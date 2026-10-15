@@ -37,6 +37,7 @@ async def test_conversion_preserves_source_revision_acl_and_replays(db, agents, 
     source = "# Titre\n\nDu **texte** et `<p>`."
     source_resource = await provider.create(source.encode())
     item.resource_id = source_resource
+    item.content = None
     item.media_type = "text/markdown"
     item.content_profile_version = None
     initial = await db.scalar(
@@ -45,6 +46,7 @@ async def test_conversion_preserves_source_revision_acl_and_replays(db, agents, 
         )
     )
     initial.resource_id = source_resource
+    initial.content = None
     initial.media_type = "text/markdown"
     initial.content_profile_version = None
     await db.flush()
@@ -83,6 +85,7 @@ async def test_native_resources_are_excluded_and_legacy_images_reported(db, agen
     item.resource_id = await get_storage(item.provider_code).create(
         b"![Remote](https://example.invalid/image.png)"
     )
+    item.content = None
     item.media_type = "text/markdown"
     item.content_profile_version = None
     await db.flush()

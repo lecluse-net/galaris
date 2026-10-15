@@ -2,6 +2,9 @@
 
 # Developer Guide
 
+[Text storage in the database](memory-text-storage.md) describes Memory, Document and
+revision content columns and their verified migration without deleting sources.
+
 See [Testing behavior](testing.md) for test commands, real Vue component scenarios,
 concurrency fixtures and the limits of local bridge validation.
 

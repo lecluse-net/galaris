@@ -18,6 +18,7 @@ from .models import MemoryItem, MemoryLink, MemoryRevision, MemoryContextEdge
 from .urls import memory_urls
 from .safety import assert_safe_text
 from .storage import get_storage
+from .inline_content import prepare_content
 
 _created: ContextVar[list[str] | None] = ContextVar("catalogue_projection_resources", default=None)
 
@@ -77,7 +78,7 @@ async def project_catalogue_entry(
         digest = item.content_hash
     if item is not None and item.content_hash == digest and item.title == title and item.metadata_ == metadata:
         return item.id
-    resource_id = item.resource_id if manual_content and item is not None else await get_storage("native").create(content)
+    resource_id, inline = (item.resource_id, item.content) if manual_content and item is not None else await prepare_content(content)
     created = _created.get()
     if created is not None and not manual_content:
         created.append(resource_id)
@@ -85,7 +86,7 @@ async def project_catalogue_entry(
         item = MemoryItem(
             owner_agent_id=agent_id, title=title[:500] or uri[:500],
             node_kind="directory" if directory else "file", provider_code="native",
-            resource_id=resource_id, content_type="text", media_type="text/html", content_profile_version=1,
+            resource_id=resource_id, content=inline, content_type="text", media_type="text/html", content_profile_version=1,
             visibility="private", source_managed=True, read_only=False, deletion_protected=True,
             managed_source_kind="file_catalogue", managed_source_ref=source_ref,
             content_hash=digest, size_bytes=len(content), search_text=search_text,
@@ -102,6 +103,7 @@ async def project_catalogue_entry(
         if not item.metadata_.get("catalogue_editable"):
             item.read_only = False
         item.resource_id = resource_id
+        item.content = inline
         item.title = title[:500] or uri[:500]
         item.content_hash = digest
         if not manual_content:
@@ -152,7 +154,7 @@ async def reconcile_catalogue_descriptions() -> None:
                 } or not isinstance(descriptor.get("uri"), str):
                     continue
                 content = remainder.encode() if visible_text(remainder).strip() else b""
-                item.resource_id = await storage.create(content)
+                item.resource_id, item.content = await prepare_content(content, storage.code)
                 if (created := _created.get()) is not None:
                     created.append(item.resource_id)
                 item.content_hash = hashlib.sha256(content).hexdigest()
@@ -169,7 +171,7 @@ async def reconcile_catalogue_descriptions() -> None:
 def _record_revision(item: MemoryItem) -> None:
     get_db().add(MemoryRevision(
         item_id=item.id, revision=item.revision, provider_code=item.provider_code,
-        resource_id=item.resource_id, content_hash=item.content_hash, content_type=item.content_type,
+        resource_id=item.resource_id, content=item.content, content_hash=item.content_hash, content_type=item.content_type,
         media_type=item.media_type, content_profile_version=item.content_profile_version,
         title=item.title, filename=item.filename, keywords=list(item.keywords), metadata_=dict(item.metadata_),
     ))
@@ -255,10 +257,11 @@ async def merge_file_nodes(canonical: MemoryItem, item: MemoryItem) -> None:
         extra = await get_storage(item.provider_code).read(item.resource_id)
         if extra not in old:
             content = old + extra
-            resource_id = await get_storage("native").create(content)
+            resource_id, inline = await prepare_content(content)
             if (created := _created.get()) is not None:
                 created.append(resource_id)
             canonical.resource_id = resource_id
+            canonical.content = inline
             canonical.content_hash = hashlib.sha256(content).hexdigest()
             canonical.size_bytes = len(content)
             canonical.search_text = visible_text(content.decode())
@@ -311,7 +314,7 @@ async def merge_file_nodes(canonical: MemoryItem, item: MemoryItem) -> None:
             canonical.revision += 1
             db.add(MemoryRevision(
                 item_id=canonical.id, revision=canonical.revision,
-                provider_code=item.provider_code, resource_id=item.resource_id,
+                provider_code=item.provider_code, resource_id=item.resource_id, content=item.content,
                 content_hash=item.content_hash, content_type=item.content_type,
                 media_type=item.media_type, content_profile_version=item.content_profile_version,
                 title=item.title, filename=item.filename, keywords=list(item.keywords),
@@ -319,6 +322,7 @@ async def merge_file_nodes(canonical: MemoryItem, item: MemoryItem) -> None:
             ))
         canonical.revision += 1
         _record_revision(canonical)
+        item.content = ""
         item.resource_id = "merged"
         item.content_hash = hashlib.sha256(b"").hexdigest()
         item.size_bytes = 0
@@ -352,7 +356,7 @@ async def catalogue_file_summary(item_id: UUID, sha256: str, description: str, *
     item.metadata_ = {**item.metadata_, "file_summary_sha256": sha256, "file_summary": description[:50000]}
     if not item.metadata_.get("catalogue_manual_content"):
         content = f"<p>{escape(description[:50000])}</p>".encode()
-        item.resource_id = await get_storage("native").create(content)
+        item.resource_id, item.content = await prepare_content(content)
         if (created := _created.get()) is not None:
             created.append(item.resource_id)
         item.content_hash = hashlib.sha256(content).hexdigest()

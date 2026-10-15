@@ -15,6 +15,7 @@ from .document_backup import (
     backup_documents, document_backup_complete, needs_document_backup, verify_unchanged_sources,
 )
 from .storage import get_storage
+from .inline_content import prepare_content
 
 
 def needs_document_split(delta: SchemaTransitionSet) -> bool:
@@ -189,9 +190,10 @@ async def _split_documents(
                     )) is None:
                         session.add(_revision_for(item, author_agent_id=None))
                         await session.flush()
-                    replacement = await storage.create(payload)
+                    replacement, inline = await prepare_content(payload, storage.code)
                     created.append((item.provider_code, replacement))
                     item.resource_id = replacement
+                    item.content = inline
                     item.content_hash = sha256(payload).hexdigest()
                     item.size_bytes = len(payload)
                     item.media_type = "text/html"

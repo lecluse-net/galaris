@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import cast
 from uuid import UUID
 from sqlalchemy import case, func, or_, select
-from sqlalchemy.orm import joinedload, raiseload, selectinload
+from sqlalchemy.orm import defer, joinedload, raiseload, selectinload
 from sqlalchemy.sql.elements import ColumnElement
 from core.database import get_db
 from core.user import UserModel, get_user_record, list_user_records
@@ -13,7 +13,7 @@ from app.agent import Agent, list_agent_records
 from .access import human_document_clause, document_team_agent_access
 from .access import readable_item_for_agents_clause, readable_item_clause, managed_item_agent_ids
 from .contracts import MemoryAccess
-from .models import DocumentListPosition, DocumentTag, DocumentTagAssignment, MemoryItem
+from .models import Document, DocumentListPosition, DocumentTag, DocumentTagAssignment, MemoryItem
 from .document_library_filters import library_filters
 from .schemas import (
     DocumentLibraryRequest,
@@ -39,6 +39,7 @@ async def list_recent_memories(
         (
             await get_db().scalars(
                 select(MemoryItem)
+                .options(defer(MemoryItem.memory_content), selectinload(MemoryItem.document).defer(Document.content))
                 .where(
                     readable_item_for_agents_clause(managed_agent_ids),
                     MemoryItem.node_kind == "memory",
@@ -250,7 +251,8 @@ async def browse_document_library(
             selectinload(MemoryItem.grants),
             raiseload(MemoryItem.revisions),
             joinedload(MemoryItem.url_relations),
-            joinedload(MemoryItem.document),
+            joinedload(MemoryItem.document).defer(Document.content),
+            defer(MemoryItem.memory_content),
         )
         .where(*base_filters)
         .order_by(

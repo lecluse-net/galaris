@@ -20,6 +20,7 @@ from .models import MemoryItem
 from .service import _revision_for, refresh_document_search  # pyright: ignore[reportPrivateUsage]
 from .semantic_index import semantic_fingerprint
 from .storage import get_storage
+from .inline_content import prepare_content
 
 
 def needs_html_conversion(transitions: SchemaTransitionSet) -> bool:
@@ -78,7 +79,7 @@ async def convert_html_batch(session: AsyncSession, _transitions: SchemaTransiti
         content = html.encode("utf-8")
         # The prior revision remains the rollback source. A distinct new immutable
         # resource guarantees that old readers and historical views retain it.
-        item.resource_id = await provider.create(content)
+        item.resource_id, item.content = await prepare_content(content, provider.code)
         item.content_hash = sha256(content).hexdigest()
         item.size_bytes = len(content)
         item.search_text = visible_text(html)

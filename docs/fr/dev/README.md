@@ -2,6 +2,9 @@
 
 # Guide développeur
 
+Le [stockage textuel en base](memory-text-storage.md) décrit les colonnes de contenu
+des souvenirs, documents et révisions, ainsi que leur migration vérifiée sans effacement des sources.
+
 Ce document décrit l’architecture qui existe dans le dépôt. Il sert de contrat de
 contribution : lorsqu’une implémentation impose un autre flux, corrigez soit le code soit ce
 guide, mais ne créez pas une seconde architecture implicite.

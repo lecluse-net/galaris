@@ -20,6 +20,7 @@ from .models import DocumentAttachment, MemoryItem, MemoryRevision
 from .safety import assert_safe_text
 from .semantic_index import stage_embedding_refresh
 from .storage import get_storage
+from .inline_content import prepare_content
 from .urls import associate_memory_url
 
 
@@ -92,10 +93,11 @@ async def write_attachment_description(
         await db.commit()
         return item.id
     storage = get_storage("native")
-    resource_id = await storage.create(content)
+    resource_id, inline = await prepare_content(content)
     try:
         item.provider_code = "native"
         item.resource_id = resource_id
+        item.content = inline
         item.content_hash = digest
         item.size_bytes = len(content)
         item.search_text = visible_text(content.decode("utf-8"))
@@ -104,7 +106,7 @@ async def write_attachment_description(
         stage_embedding_refresh(item)
         db.add(MemoryRevision(
             item_id=item.id, revision=item.revision, task_id=task_id,
-            provider_code=item.provider_code, resource_id=resource_id,
+            provider_code=item.provider_code, resource_id=resource_id, content=item.content,
             content_hash=digest, content_type="text", media_type="text/html",
             content_profile_version=1, title=item.title, filename=item.filename,
             keywords=list(item.keywords), metadata_=dict(item.metadata_),

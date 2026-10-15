@@ -127,7 +127,6 @@ async def test_image_read_saves_real_attachment_description_and_never_reports_su
     from app.image import mcp as image_mcp
     from app.tools import RecoverableToolError
     from app.tools.mcp_loader import McpToolContext
-    from app.memory.storage import get_storage
 
     owner, _ = agents
     source = await document(owner, "Gallery")
@@ -140,13 +139,16 @@ async def test_image_read_saves_real_attachment_description_and_never_reports_su
     ctx = McpToolContext(agent_id=owner.id, runtime="internal")
     assert await image_mcp.describe_image(ctx, uri) == "Une forme bleue."
     row = await db.get(DocumentAttachment, attachment.id)
-    content = (await service.get_item(row.memory_item_id, agent_id=owner.id))[1]
+    memory_id, owner_id = row.memory_item_id, owner.id
+    content = (await service.get_item(memory_id, agent_id=owner_id))[1]
     assert "forme bleue" in content.decode()
     vision.return_value = "Another description"
-    monkeypatch.setattr(get_storage("native"), "create", AsyncMock(side_effect=OSError("Storage unavailable")))
+    # Descriptions now persist with their revisions in SQL. Fail that durable
+    # boundary rather than the retired filesystem write.
+    monkeypatch.setattr(db, "commit", AsyncMock(side_effect=OSError("SQL storage unavailable")))
     with pytest.raises(RecoverableToolError):
         await image_mcp.describe_image(ctx, uri)
-    assert (await service.get_item(row.memory_item_id, agent_id=owner.id))[1] == content
+    assert (await service.get_item(memory_id, agent_id=owner_id))[1] == content
 
 
 @pytest.mark.asyncio

@@ -143,6 +143,7 @@ class MemoryGoalDocumentStore(GoalDocumentStore):
             select(
                 MemoryItem.id, MemoryItem.node_kind, MemoryItem.provider_code,
                 MemoryItem.resource_id, MemoryItem.content_type, MemoryItem.media_type,
+                MemoryItem.content.label("inline_content"),
             ).where(MemoryItem.id.in_(identities), MemoryItem.deleted_at.is_(None))
         )
         records = {row.id: row for row in rows}
@@ -153,7 +154,7 @@ class MemoryGoalDocumentStore(GoalDocumentStore):
                 raise service.MemoryNotFoundError("Memory not found.")
             if item.node_kind != "document":
                 raise service.MemoryConflictError("A Goal Markdown reference is not a document.")
-            content = await get_storage(item.provider_code).read(item.resource_id)
+            content = item.inline_content.encode("utf-8") if item.inline_content is not None else await get_storage(item.provider_code).read(item.resource_id)
             if item.content_type != "text" and not item.media_type.startswith("text/"):
                 raise service.MemoryConflictError("A Goal document must contain UTF-8 text.")
             contents[document_id] = content.decode("utf-8")

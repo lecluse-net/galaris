@@ -24,6 +24,7 @@ from .models import DocumentAttachment, DocumentTag, DocumentTagAssignment, Memo
 from .urls import associate_memory_url
 from .semantic_index import stage_embedding_refresh
 from .storage import get_storage, NativeFileStorage
+from .inline_content import prepare_content
 
 
 PROJECTION = "memory.document_structure"
@@ -90,11 +91,11 @@ async def _node(
         MemoryItem.managed_source_ref == str(source_id),
     ).execution_options(include_historized=True))
     if item is None:
-        resource_id = await get_storage("native").create(b"")
+        resource_id, inline = await prepare_content(b"")
         item = MemoryItem(
             id=uuid4(), node_kind=kind, owner_agent_id=owner_agent_id,
             owner_user_id=owner_user_id, title=title,
-            provider_code="native", resource_id=resource_id, content_type="text",
+            provider_code="native", resource_id=resource_id, content=inline, content_type="text",
             media_type="text/html", content_profile_version=1,
             content_hash=hashlib.sha256(b"").hexdigest(), size_bytes=0,
             search_text="", keywords=[], metadata_=metadata, visibility="private",

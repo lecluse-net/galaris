@@ -138,7 +138,15 @@ class NativeFileStorage:
         return path
 
     async def read(self, resource_id: str) -> bytes:
-        path = self._path(resource_id)
+        from .inline_content import read_inline_content
+
+        # Attachment storage always reads managed bytes. Only the native text
+        # provider resolves the legacy opaque pointers to their owning SQL rows.
+        if type(self) is NativeFileStorage:
+            self._path(resource_id)  # Validate even when a SQL row exists.
+            if (content := await read_inline_content(resource_id)) is not None:
+                return content
+        path = await self.path_for_read(resource_id)
         try:
             return await asyncio.to_thread(path.read_bytes)
         except FileNotFoundError as exc:

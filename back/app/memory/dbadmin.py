@@ -130,6 +130,8 @@ async def _enqueue_goal_folders(_session: AsyncSession) -> None:
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    from .content_migration import register_inline_content
+    register_inline_content(registry)
     registry.register_action(DbAdminAction(
         key="app.memory.document_thumbnail_pointer",
         phase=DbAdminPhase.AFTER_EXPAND,

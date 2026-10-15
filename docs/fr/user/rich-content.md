@@ -2,6 +2,10 @@
 
 # Écrire et relier des contenus riches
 
+Les textes des documents, souvenirs et versions historiques sont enregistrés en base
+de données. Les pièces jointes restent des fichiers distincts ; l’enregistrement,
+la restauration et les droits d’accès gardent le même fonctionnement.
+
 Les mémoires, documents, descriptions et suivis d’objectifs, consignes de tâches, fiches de
 poste et personnalités utilisent CKEditor 5 et son interface native. La mise en forme est conservée à
 l’enregistrement : titres, listes, soulignement, surlignage, citations, code et tableaux.

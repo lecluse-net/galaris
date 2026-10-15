@@ -2457,6 +2457,7 @@
           "back/app/memory/goal_folders.py",
           "back/app/memory/graph_state.py",
           "back/app/memory/html_migration.py",
+          "back/app/memory/inline_content.py",
           "back/app/memory/item_sharing.py",
           "back/app/memory/library_queries.py",
           "back/app/memory/link_reconciliation.py",
@@ -2485,6 +2486,7 @@
       },
       {
         "files": [
+          "back/app/memory/content_migration.py",
           "back/app/memory/dbadmin.py",
           "back/app/memory/document_backup.py",
           "back/app/memory/document_migration.py",
@@ -2586,6 +2588,7 @@
           "back/app/memory/attachment_analysis.py",
           "back/app/memory/attachment_description.py",
           "back/app/memory/catalogue_projection.py",
+          "back/app/memory/content_migration.py",
           "back/app/memory/context.py",
           "back/app/memory/document_links.py",
           "back/app/memory/document_migration.py",
@@ -9060,7 +9063,7 @@
           "memory_revisions.id"
         ],
         "history_mixin": false,
-        "line": 609,
+        "line": 616,
         "module": "app.memory",
         "table": "document_revisions"
       },
@@ -9109,7 +9112,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 674,
+        "line": 685,
         "module": "app.memory",
         "table": "document_team_grants"
       },
@@ -9121,7 +9124,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 663,
+        "line": 674,
         "module": "app.memory",
         "table": "document_user_grants"
       },
@@ -9141,7 +9144,7 @@
           "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 562,
+        "line": 567,
         "module": "app.memory",
         "table": "documents"
       },
@@ -9620,7 +9623,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1225,
+        "line": 1238,
         "module": "app.memory",
         "table": "memory_associations"
       },
@@ -9629,7 +9632,7 @@
         "file": "back/app/memory/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 1407,
+        "line": 1420,
         "module": "app.memory",
         "table": "memory_automation_jobs"
       },
@@ -9642,7 +9645,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 1137,
+        "line": 1150,
         "module": "app.memory",
         "table": "memory_candidates"
       },
@@ -9655,7 +9658,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 943,
+        "line": 956,
         "module": "app.memory",
         "table": "memory_contact_identities"
       },
@@ -9667,7 +9670,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 905,
+        "line": 918,
         "module": "app.memory",
         "table": "memory_contact_items"
       },
@@ -9679,7 +9682,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 868,
+        "line": 881,
         "module": "app.memory",
         "table": "memory_context_edges"
       },
@@ -9690,7 +9693,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 813,
+        "line": 826,
         "module": "app.memory",
         "table": "memory_context_nodes"
       },
@@ -9701,7 +9704,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1282,
+        "line": 1295,
         "module": "app.memory",
         "table": "memory_embedding_chunks"
       },
@@ -9712,7 +9715,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1259,
+        "line": 1272,
         "module": "app.memory",
         "table": "memory_embedding_manifests"
       },
@@ -9724,7 +9727,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 1336,
+        "line": 1349,
         "module": "app.memory",
         "table": "memory_findings"
       },
@@ -9759,7 +9762,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 639,
+        "line": 650,
         "module": "app.memory",
         "table": "memory_item_grants"
       },
@@ -9784,7 +9787,7 @@
           "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 761,
+        "line": 774,
         "module": "app.memory",
         "table": "memory_links"
       },
@@ -9797,7 +9800,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 685,
+        "line": 696,
         "module": "app.memory",
         "table": "memory_revisions"
       },
@@ -9810,7 +9813,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 1087,
+        "line": 1100,
         "module": "app.memory",
         "table": "memory_sources"
       },
@@ -9823,7 +9826,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 620,
+        "line": 627,
         "module": "app.memory",
         "table": "memory_summary_revisions"
       },
@@ -9835,7 +9838,7 @@
           "memory_topic_contact_scopes.id"
         ],
         "history_mixin": false,
-        "line": 1048,
+        "line": 1061,
         "module": "app.memory",
         "table": "memory_topic_contact_items"
       },
@@ -9847,7 +9850,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1007,
+        "line": 1020,
         "module": "app.memory",
         "table": "memory_topic_contact_scopes"
       },
@@ -9858,7 +9861,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 743,
+        "line": 756,
         "module": "app.memory",
         "table": "memory_urls"
       },
@@ -9871,7 +9874,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 1190,
+        "line": 1203,
         "module": "app.memory",
         "table": "memory_usages"
       },

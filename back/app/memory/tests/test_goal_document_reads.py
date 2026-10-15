@@ -8,7 +8,7 @@ from sqlalchemy import event, update
 
 from app.memory import service
 from app.memory.goal_document_adapter import MemoryGoalDocumentStore
-from app.memory.models import MemoryItem
+from app.memory.models import Document, MemoryItem
 from app.memory.storage import get_storage
 from app.memory.contracts import ResourceNotFoundError
 
@@ -58,9 +58,12 @@ async def test_goal_document_reads_preserve_missing_and_invalid_content_errors(d
     with pytest.raises(service.MemoryConflictError, match="not a document"):
         await store.read_many((identity,))
     await db.execute(update(MemoryItem).where(MemoryItem.id == identity).values(node_kind="document"))
-    await storage.update(item.resource_id, b'\xff')
+    # SQL TEXT cannot contain invalid UTF-8. Preserve the error contract for an
+    # unconverted historical resource by exercising the retained file fallback.
+    invalid_ref = await storage.create(b'\xff')
+    await db.execute(update(Document).where(Document.id == identity).values(content=None, resource_id=invalid_ref))
     with pytest.raises(UnicodeDecodeError):
         await store.read_many((identity,))
-    await storage.delete(item.resource_id)
+    await storage.delete(invalid_ref)
     with pytest.raises(ResourceNotFoundError):
         await store.read_many((identity,))

@@ -2,6 +2,10 @@
 
 # Functional guarantees catalogue
 
+`back/app/memory/tests/test_inline_content.py` covers native text transfer into SQL
+and its immutable backup: exact bytes and replay, history/syntheses, rollback,
+missing or changed sources, UTF-8/NUL validation and deletion.
+
 Start with business behavior and module responsibility. The suites below are entry points,
 not exhaustive certification or proof that a live external account works. The
 [September 10 review](../../../project/audits/2026-09-10-functional-tests.md) records replacements

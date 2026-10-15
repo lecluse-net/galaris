@@ -26,6 +26,8 @@ async def test_cancelled_publication_preserves_only_committed_files(db, agents, 
     monkeypatch.setattr(db, "commit" if committed else "flush", original)
     items = list(await db.scalars(select(MemoryItem).where(MemoryItem.search_text == "durable")))
     files = [path for path in memory_storage.rglob("*") if path.is_file()]
-    assert len(items) == len(files) == int(committed)
+    assert len(items) == int(committed)
+    assert files == []
     if committed:
+        assert items[0].memory_content == "<p>durable</p>"
         assert await get_storage().read(items[0].resource_id) == b"<p>durable</p>"

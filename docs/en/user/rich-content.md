@@ -2,6 +2,10 @@
 
 # Writing and linking rich content
 
+Document text, memories and historical versions are stored in the database.
+Attachments remain separate files; saving, restoration and access rights retain
+their existing behavior.
+
 Memories, documents, Goal descriptions/tracking, Task objectives, job descriptions and
 personalities use CKEditor 5 with its native interface. Headings, lists, underlines, highlights, quotes, code and
 tables survive saving. The Table menu adds/deletes rows and columns, merges/splits cells and

@@ -17,7 +17,7 @@ from loguru import logger
 from sqlalchemy import and_, case, delete, exists, func, or_, select, union_all, update
 from sqlalchemy import literal as sql_literal
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Load, aliased, joinedload, raiseload, selectinload
+from sqlalchemy.orm import Load, aliased, defer, joinedload, raiseload, selectinload
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy.sql.elements import ColumnElement
@@ -116,6 +116,7 @@ from .schemas import (
 )
 from .safety import assert_safe_text, assert_safe_value
 from .storage import get_storage
+from .inline_content import prepare_content
 
 
 class MemoryError(RuntimeError):
@@ -291,11 +292,16 @@ async def _emit_memory_event(
         )
 
 
-def _item_options(*, revisions: bool = True) -> tuple[Any, ...]:
-    return (
+def _item_options(*, revisions: bool = True, contents: bool = True) -> tuple[Any, ...]:
+    options = (
         selectinload(MemoryItem.grants),
         selectinload(MemoryItem.revisions) if revisions else raiseload(MemoryItem.revisions),
     )
+    if not contents:
+        return (*options, defer(MemoryItem.memory_content),
+                selectinload(MemoryItem.document).defer(Document.content),
+                selectinload(MemoryItem.revisions).defer(MemoryRevision.content) if revisions else raiseload(MemoryItem.revisions))
+    return options
 
 
 def _memory_sort_expression(sort_by: MemorySortField) -> ColumnElement[Any]:
@@ -762,6 +768,7 @@ def _revision_for(
         task_id=task_id,
         provider_code=item.provider_code,
         resource_id=item.resource_id,
+        content=item.content,
         content_hash=item.content_hash,
         document_content_version=document_content_version,
         document_append=document_append,
@@ -870,12 +877,13 @@ async def create_item(
             return existing, False
 
     provider = get_storage(data.provider_code)
-    resource_id = await provider.create(content)
+    resource_id, inline = await prepare_content(content, provider.code, content_type=data.content_type)
     item = MemoryItem(
         owner_agent_id=None if owner_user_id is not None else data.owner_agent_id,
         owner_user_id=owner_user_id,
         provider_code=provider.code,
         resource_id=resource_id,
+        content=inline,
         title=data.title.strip(),
         node_kind=data.node_kind,
         document_type=data.document_type,
@@ -910,7 +918,7 @@ async def create_item(
         await db.flush()
         if item.document is not None:
             db.add(MemorySummaryRevision(
-                item_id=item.id, revision=1, provider_code="native", resource_id="",
+                item_id=item.id, revision=1, provider_code="native", resource_id="", content="",
                 content_hash=_content_hash(b""), source_document_revision=item.document.revision,
                 keywords=list(item.keywords), temporal=item.temporal,
             ))
@@ -1083,12 +1091,13 @@ async def upsert_source_managed_item(
 
     if item is None:
         provider = get_storage(selected_provider_code)
-        resource_id = await provider.create(content)
+        resource_id, inline = await prepare_content(content, provider.code)
         item = MemoryItem(
             owner_agent_id=document.owner_agent_id,
             topic_id=document.topic_id,
             provider_code=provider.code,
             resource_id=resource_id,
+            content=inline,
             title=normalized_title,
             content_type="text",
             media_type="text/html",
@@ -1153,8 +1162,9 @@ async def upsert_source_managed_item(
         )
     )
     if content_changed:
-        new_resource_id = await provider.create(content)
+        new_resource_id, inline = await prepare_content(content, provider.code)
         item.resource_id = new_resource_id
+        item.content = inline
         item.content_hash = digest
         item.size_bytes = len(content)
         item.search_text = _search_text(
@@ -1624,8 +1634,9 @@ async def update_memory_content(
         assert_safe_text(content.decode("utf-8"))
         digest = _content_hash(content)
         if digest != item.memory_content_hash:
-            new_resource = await provider.create(content) if content else ""
+            new_resource, inline = await prepare_content(content, provider.code) if content else ("", "")
             item.memory_resource_id = new_resource
+            item.memory_content = inline
             item.memory_content_hash = digest
             item.memory_size_bytes = len(content)
             item.summary_document_revision = item.document.revision
@@ -1648,7 +1659,7 @@ async def update_memory_content(
     if changed:
         get_db().add(MemorySummaryRevision(
             item_id=item.id, revision=item.memory_revision, provider_code=item.memory_provider_code,
-            resource_id=item.memory_resource_id, content_hash=item.memory_content_hash,
+            resource_id=item.memory_resource_id, content=item.memory_content, content_hash=item.memory_content_hash,
             source_document_revision=item.summary_document_revision or item.document.revision,
             author_agent_id=actor_agent_id if isinstance(actor_agent_id, int) else None,
             keywords=list(item.keywords), temporal=item.temporal,
@@ -1856,8 +1867,9 @@ async def update_item(
         digest = _content_hash(content)
         content_changed = item.content_hash != digest
         if content_changed:
-            new_resource_id = await provider.create(content)
+            new_resource_id, inline = await prepare_content(content, provider.code, content_type=future_content_type)
             item.resource_id = new_resource_id
+            item.content = inline
             item.content_hash = digest
             item.size_bytes = len(content)
             item.search_text = _search_text(
@@ -2063,9 +2075,16 @@ async def _forget_item_record(
         (item.provider_code, item.resource_id),
         *((entry.provider_code, entry.resource_id) for entry in item.revisions),
     }
-    resources.update((entry.provider_code, entry.resource_id) for entry in await get_db().scalars(
+    summaries = list(await get_db().scalars(
         select(MemorySummaryRevision).where(MemorySummaryRevision.item_id == item.id),
     ))
+    resources.update((entry.provider_code, entry.resource_id) for entry in summaries)
+    inline_resources = {(entry.provider_code, entry.resource_id)
+                        for entry in (*item.revisions, *summaries) if entry.content is not None and entry.resource_id}
+    if item.content is not None and item.resource_id:
+        inline_resources.add((item.provider_code, item.resource_id))
+    if item.memory_content is not None and item.memory_resource_id:
+        inline_resources.add((item.memory_provider_code, item.memory_resource_id))
     if item.memory_resource_id:
         resources.add((item.memory_provider_code, item.memory_resource_id))
     if item.node_kind == "document":
@@ -2082,6 +2101,10 @@ async def _forget_item_record(
                 continue
             resources.add((companion.provider_code, companion.resource_id))
             resources.update((revision.provider_code, revision.resource_id) for revision in companion.revisions)
+            inline_resources.update((entry.provider_code, entry.resource_id) for entry in companion.revisions
+                                    if entry.content is not None and entry.resource_id)
+            if companion.content is not None and companion.resource_id:
+                inline_resources.add((companion.provider_code, companion.resource_id))
             await delete_item_embeddings(companion.id)
             for model in (MemoryRevision, MemorySource, MemoryItemGrant, MemoryUsage):
                 await get_db().execute(delete(model).where(model.item_id == companion.id))
@@ -2106,6 +2129,8 @@ async def _forget_item_record(
             companion.content_hash = _content_hash(b"")
             companion.semantic_fingerprint = ""
             companion.size_bytes = 0
+            companion.content = ""
+            companion.memory_content = ""
             companion.resource_id = "forgotten"
             companion.soft_delete()
     raw_attachments_value = [
@@ -2131,6 +2156,8 @@ async def _forget_item_record(
     item.content_hash = _content_hash(b"")
     item.semantic_fingerprint = ""
     item.size_bytes = 0
+    item.content = ""
+    item.memory_content = ""
     item.resource_id = "forgotten"
     item.memory_resource_id = "forgotten"
     item.memory_content_hash = _content_hash(b"")
@@ -2229,19 +2256,22 @@ async def _forget_item_record(
             )
     await db.commit()
 
-    deleted = 0
     from .document_backup import archived_resources
     protected: set[tuple[str, str]] = set()
     for provider_code in {provider for provider, _resource in resources}:
         protected.update((provider_code, resource) for resource in await archived_resources(
             db, provider_code, [resource for provider, resource in resources if provider == provider_code],
         ))
+    deleted = len(inline_resources - protected)
     for provider_code, resource_id in sorted(resources):
+        if not resource_id:
+            continue
         if (provider_code, resource_id) in protected:
             continue
         try:
             if await get_storage(provider_code).delete(resource_id):
-                deleted += 1
+                if (provider_code, resource_id) not in inline_resources:
+                    deleted += 1
         except ResourceStorageError as exc:
             logger.error(
                 "Memory resource cleanup deferred: provider={} resource={} error={}",
@@ -2744,7 +2774,7 @@ async def search_items(
     )
     query = (
         select(MemoryItem)
-        .options(*_item_options())
+        .options(*_item_options(contents=False))
         .where(
             readable_item_clause(request.agent_id),
             or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
@@ -2915,7 +2945,7 @@ async def search_items(
     if temporal_union and temporal_window is not None:
         assert temporal_scope is not None and query.whereclause is not None
         calendar_filter = MemoryItem.temporal.is_not(None) if scan_calendar else temporal_match_clause(temporal_window.start)
-        query = select(MemoryItem).options(*_item_options()).where(or_(
+        query = select(MemoryItem).options(*_item_options(contents=False)).where(or_(
             and_(MemoryItem.temporal.is_(None), query.whereclause),
             and_(temporal_scope, calendar_filter),
         ))

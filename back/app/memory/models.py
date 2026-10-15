@@ -285,6 +285,7 @@ class MemoryItem(HistoryMixin, Base):
         String(80), nullable=False, default="native", server_default="native", index=True
     )
     memory_resource_id: Mapped[str] = mapped_column("resource_id", String(1_024), nullable=False)
+    memory_content: Mapped[str | None] = mapped_column("content", Text, nullable=True)
     search_title: Mapped[str] = mapped_column("title", String(500), nullable=False, default="", server_default="")
     node_kind: Mapped[str] = mapped_column(
         String(30), nullable=False, default="memory", server_default="memory", index=True
@@ -431,6 +432,7 @@ class MemoryItem(HistoryMixin, Base):
         self.document = Document(
             id=self.id, memory_item_id=self.id, title=self.search_title or "",
             provider_code=self.memory_provider_code or "native", resource_id=self.memory_resource_id or "",
+            content=self.memory_content,
             revision=self.memory_revision or 1, document_type=self.memory_document_type,
             content_type=self.memory_content_type or "text", media_type=self.memory_media_type or "text/html",
             content_profile_version=self.memory_content_profile_version, filename=self.memory_filename,
@@ -440,6 +442,7 @@ class MemoryItem(HistoryMixin, Base):
             summary_initialized=True,
         )
         self.memory_provider_code, self.memory_resource_id, self.memory_revision = "native", "", 1
+        self.memory_content = ""
         self.memory_content_type, self.memory_media_type, self.memory_content_profile_version = "text", "text/html", 1
         self.memory_content_hash, self.memory_size_bytes = sha256(b"").hexdigest(), 0
         self.memory_read_only = bool(self.source_managed)
@@ -448,6 +451,7 @@ class MemoryItem(HistoryMixin, Base):
     revision = _document_attribute("revision", "memory_revision", 1)
     provider_code = _document_attribute("provider_code", "memory_provider_code", "native")
     resource_id = _document_attribute("resource_id", "memory_resource_id", "")
+    content = _document_attribute("content", "memory_content", cast(str | None, None))
     title = _document_attribute("title", "search_title", "")
     document_type = _document_attribute("document_type", "memory_document_type", cast(DocumentType, "html"))
     content_type = _document_attribute("content_type", "memory_content_type", "text")
@@ -477,6 +481,7 @@ class MemoryItem(HistoryMixin, Base):
     )
 
     __table_args__ = (
+        Index("ix_memory_items_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
         ForeignKeyConstraint(
             ["id", "primary_url"], ["memory_urls.memory_node_id", "memory_urls.url"],
             name="fk_memory_items_primary_url", use_alter=True,
@@ -575,6 +580,7 @@ class Document(HistoryMixin, Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     provider_code: Mapped[str] = mapped_column(String(80), nullable=False)
     resource_id: Mapped[str] = mapped_column(String(1_024), nullable=False)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     document_type: Mapped[DocumentType] = mapped_column(String(30), nullable=False, default="html", server_default="html")
     content_type: Mapped[str] = mapped_column(String(50), nullable=False, default="text", server_default="text")
@@ -593,6 +599,7 @@ class Document(HistoryMixin, Base):
     memory_item: Mapped[MemoryItem] = relationship(back_populates="document")
 
     __table_args__ = (
+        Index("ix_documents_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
         CheckConstraint("id = memory_item_id", name="ck_documents_stable_identity"),
         CheckConstraint("document_type IN ('html', 'dataset')", name="ck_documents_type"),
         # Legacy shared memories may contain non-editorial text or binary bytes.
@@ -626,6 +633,7 @@ class MemorySummaryRevision(Base):
     revision: Mapped[int] = mapped_column(Integer, nullable=False)
     provider_code: Mapped[str] = mapped_column(String(80), nullable=False)
     resource_id: Mapped[str] = mapped_column(String(1_024), nullable=False)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     source_document_revision: Mapped[int] = mapped_column(Integer, nullable=False)
     keywords: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list, server_default="[]")
@@ -633,7 +641,10 @@ class MemorySummaryRevision(Base):
     author_agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="SET NULL"))
     task_id: Mapped[UUID | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    __table_args__ = (UniqueConstraint("item_id", "revision"),)
+    __table_args__ = (
+        UniqueConstraint("item_id", "revision"),
+        Index("ix_memory_summary_revisions_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
+    )
 
 
 class MemoryItemGrant(Base):
@@ -707,6 +718,7 @@ class MemoryRevision(Base):
     )
     provider_code: Mapped[str] = mapped_column(String(80), nullable=False)
     resource_id: Mapped[str] = mapped_column(String(1_024), nullable=False)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     document_content_version: Mapped[bool | None] = mapped_column(
         Boolean,
@@ -737,6 +749,7 @@ class MemoryRevision(Base):
 
     __table_args__ = (
         UniqueConstraint("item_id", "revision", name="uq_memory_item_revision"),
+        Index("ix_memory_revisions_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
     )
 
 

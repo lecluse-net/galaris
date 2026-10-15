@@ -2,6 +2,10 @@
 
 # Catalogue des garanties fonctionnelles
 
+`back/app/memory/tests/test_inline_content.py` couvre le transfert des textes natifs
+en SQL et sa sauvegarde immuable : octets exacts et rejeu, historique et synthèses,
+rollback, sources absentes ou modifiées, validation UTF-8/NUL et effacement.
+
 Ce catalogue part des usages et des responsabilités des modules. Les suites citées sont les
 points d’entrée vérifiables ; une ligne ne signifie ni couverture exhaustive ni qualification
 d’un service externe. Les résultats exécutés et les remplacements sont consignés dans
