@@ -136,6 +136,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//dataset/[[id]]': RouteRecordInfo<
+      '//dataset/[[id]]',
+      '/dataset/:id?',
+      { id?: ParamValueZeroOrOne<true> },
+      { id?: ParamValueZeroOrOne<false> },
+      | never
+    >,
     '//dream/': RouteRecordInfo<
       '//dream/',
       '/dream',
@@ -450,6 +457,14 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | never
+    }
+    'app/dataset/pages/[[id]].vue': {
+      routes:
+        | '//dataset/[[id]]'
+      views:
+        | never
+      pathParamNames:
+        | 'id'
     }
     'app/dream/pages/index.vue': {
       routes:

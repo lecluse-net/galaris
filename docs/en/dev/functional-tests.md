@@ -21,6 +21,28 @@ quota of new tests per module.
 For each change, state the affected guarantee and the guarantees to preserve, inspect their
 contracts and tests, then select the least expensive layer that proves the observable effect.
 
+
+## Datasets and typed contracts
+
+`app/dataset/tests/test_datasets.py` also checks that native creation makes no Memory
+projection and that historical aliases follow metadata, revisions, access revocation and
+deletion. Content reads and writes remain owned by Dataset.
+
+`app/dataset/tests` covers the common codec, free JSON on every write, verified aliases,
+permissions, revisions and restoration. `test_schema_removal.py` checks DbAdmin contraction
+and replay on a populated synthetic database without losing content, history, ACLs or
+attachments. `e2e/specs/datasets.spec.mjs` exercises the assembled editor. Memory and Process
+suites preserve consent, concurrent quotas, access revocation, historical profiles and
+engine integration. HTML input and
+collection remain covered by document application tests.
+`test_management.py` checks atomic replacement of agent/user/group grants, rejection of editor
+and read-only resharing, stale versions, deletion and usage filtering before pagination.
+The Dataset E2E journey exercises the same sharing component as Documents, discovers a Document
+application and confirms deletion.
+It also checks library selection changes, preserved search, confirmation of unsaved drafts,
+mobile return navigation and creation from the list.
+
+
 ## Audio and provider catalogues
 
 `tests/test_transcription_service.py` and `core/util/tests/test_http_multipart.py` protect

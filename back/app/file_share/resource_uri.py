@@ -23,6 +23,7 @@ PROTOCOL_SCHEMES = frozenset(
         "cid",
         "coap",
         "coaps",
+        "data",
         "dav",
         "dns",
         "file",
@@ -58,6 +59,7 @@ PROTOCOL_SCHEMES = frozenset(
 )
 NATIVE_RESOURCE_SCHEMES = frozenset(
     {
+        "data",
         "file",
         "console",
         "document",
@@ -246,7 +248,7 @@ def parse_resource_uri(
             normalized = str(UUID(unquote(parts[0])))
         except ValueError as exc:
             raise ResourceUriError("memory:// requires a valid UUID.") from exc
-    if scheme == "document" and normalized:
+    if scheme in {"document", "data"} and normalized:
         parts = [part for part in normalized.strip("/").split("/") if part]
         try:
             document_id = str(UUID(unquote(parts[0])))

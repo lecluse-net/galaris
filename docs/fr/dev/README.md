@@ -5,6 +5,9 @@
 Le [stockage textuel en base](memory-text-storage.md) décrit les colonnes de contenu
 des souvenirs, documents et révisions, ainsi que leur migration vérifiée sans effacement des sources.
 
+Le [domaine Dataset](datasets.md) décrit les types JSON communs, les ressources `data://`,
+les alias historiques et le pont des applications documentaires.
+
 Le [stockage des fichiers internes](file-storage.md) décrit `file://`, le registre partagé
 et la migration vérifiée des PJ Documents et Chat.
 

@@ -28,6 +28,8 @@
 | `console://` | `console://path/file.ext` | home SSH de la console |
 | `memory://` | `memory://uuid` | souvenir gouverné, lecture générique |
 | `document://` | `document://uuid`, `document://uuid/attachments/`, `document://uuid/attachments/attachment-uuid` | document de travail révisé et ses pièces jointes |
+| `data://` | `data://uuid`, `data://uuid/attachments/attachment-uuid` | jeu de données JSON, droits et historique de `app.dataset` |
+| `file://` | `file://uuid` | fichier interne indépendant enregistré par `core.storage` |
 | `https://` | URL publique sans credentials ni fragment | source Web en lecture seule |
 | `galaris://` | `galaris://task/<uuid>`, `galaris://text/<uuid>`, `galaris://voice/<uuid>`, `galaris://goal/<uuid>`, `galaris://goal_cycle/<uuid>`, `galaris://process/<workflow-id>`, `galaris://skill/<skill-code>/<path>` | projections métier JSON en lecture seule ; fichiers de skills administrables sous autorisation |
 
@@ -64,9 +66,11 @@ remplace une ressource existante ; son contenu est soit UTF-8, soit encodé en b
 détecte le texte et renvoie les petits binaires en base64 ; les gros binaires sont passés par URI à
 un outil spécialisé ou copiés vers la console quand elle existe.
 `file_edit` remplace une plage inclusive de lignes UTF-8 (blocs pour les documents HTML).
-`file_create("document://", ..., document_type="dataset")` crée un document JSON ; le type
-par défaut est `html` et reste immuable. Les datasets conservent les mêmes ACL, révisions et
-pièces jointes. Leur contenu doit rester du JSON valide après chaque écriture, édition ou ajout.
+`file_create(path="data://", name=..., content=...)` crée un Dataset JSON indépendant.
+Dataset possède contenu, droits, historique et pièces jointes ; le JSON reste libre, sans
+schéma associé, et valide après chaque écriture. L'ancien `document_type="dataset"` dans
+`document://` délègue à Dataset ; seuls des alias vérifiés redirigent les anciennes URI.
+Les Documents HTML et définitions BPMN restent adressés par `document://`.
 
 `file_list` borne une page à 500 entrées. Les collections `galaris://` renvoient un
 `next_cursor` lorsqu'une page suivante existe ; le client le repasse sans l'interpréter dans le

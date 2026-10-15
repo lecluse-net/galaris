@@ -210,8 +210,9 @@ Read before editing; pass `expected_revision` to `file_edit`, `file_write` and `
 On conflict, read again and reconcile with the current content; never guess a revision or
 slice an HTML tag to fit a page. Ordinary text files still use line offsets.
 
-**Dataset documents** use the same `document://` URI, title, icon, classification, sharing
-and revision lifecycle, but store valid UTF-8 JSON (`application/json`) instead of HTML.
+**Datasets** are independent structured resources with a `data://<uuid>` URI, their own
+sharing and revisions, and valid UTF-8 JSON (`application/json`). Legacy Dataset documents
+retain verified `document://` aliases; ordinary Documents remain `document://` resources.
 Consider a Dataset when structured data will be reused across documents, calculations or
 Tasks: company details including share capital and currency, product records, or comparable
 figures. Prefer it when a shared reference reduces inconsistent copies. Keep self-contained
@@ -223,10 +224,9 @@ inventing missing values. Authoritative business records remain the source of tr
 the current foreground/Task action policy and resource access rights. A reference to a Dataset
 does not automatically refresh existing prose.
 
-Create one with `file_create(path="document://", name="Scenarios", document_type="dataset",
-content='{"scenarios": []}')`. The type is immutable; omission selects `html`.
-The type parameter is only accepted for creation at the `document://` collection, not files
-or attachments. Read the MIME and `file_info` metadata before editing an existing document.
+Create one with `file_create(path="data://", name="Scenarios", content='{"scenarios": []}')`.
+Use `file_list("data://")` to discover readable Datasets. The deprecated Document creation
+option returns a canonical Dataset URI too. Read MIME, metadata and revision before editing.
 Dataset reads paginate by character; `file_edit` uses actual lines. The complete result of
 write/edit/append must remain valid JSON; prefer write/edit to concatenating JSON. Keep
 `expected_revision` from the read. Invalid JSON and non-finite numbers are rejected without
@@ -235,13 +235,23 @@ the configured storage quota. Preserve JSON source; do not wrap it in HTML or co
 Copying an `application/json` source to `document://` creates a new private Dataset;
 copying into an existing document keeps its type. Restore changes content, not sharing.
 
-**Forms and JavaScript inside documents:** keep the type `html` and write ordinary HTML
+The Dataset module also owns typed JSON contracts. Each value uses `{type, value}`;
+arrays and objects recursively contain typed values. Types are `int`, `float`, `string`,
+`bool`, `Agent`, `User`, `File`, `Document`, `Dataset`, `array` and `object`. `File` remains
+an authorized provider URI; never inline file bytes in a typed value. `Document` uses
+`document://` and `Dataset` uses `data://`. A type tag does not grant resource access.
+
+Datasets store free JSON without a schema or association step. Processes declare their own
+expected variables. Ask the user for missing information, then supply the typed values
+required by the Process; preserve false, zero, nullability and defaults.
+
+**HTML/JavaScript document applications:** keep the type `html` and write ordinary HTML
 directly: `<form>`, `<style>` and `<script>`. No JSON application manifest is required.
 The usual editor and toolbar stay present; prose remains editable, forms render in place,
 and executable source is visible only through the existing Source button. No extra edit,
 view, start or form-builder mode is needed. Code executes in isolation when the saved page
 opens; generic readers and exports remain inert and hide executable source.
-For a shared Dataset, declare `<form data-dataset="document://UUID">` (alias `entries`,
+For a shared Dataset, declare `<form data-dataset="data://UUID">` (alias `entries`,
 write access), or set `data-dataset-alias` and `data-dataset-access="read|write"` explicitly.
 Read the current resource first and preserve existing HTML. Legacy `language-galaris-app`
 manifests remain supported for existing documents; do not introduce them in new content.
@@ -1072,7 +1082,7 @@ prefer `document://` over standalone Markdown (`.md`) or HTML
 requests that format or the result requires it, such as standalone source code. Interactive
 forms and applications backed by Datasets use ordinary HTML, CSS and JavaScript in documents.
 An HTML document's body is an editorial HTML fragment; that does not make it a standalone HTML
-page. For shared structured data, create a Dataset document containing valid JSON instead.
+page. For shared structured data, create a `data://` Dataset containing valid JSON instead.
 Search first and revise a relevant existing document; create a new one only when the content
 needs a separate home. Preserve its exact returned URI. Follow the current foreground/Task
 action policy for creation and editing. Use `memory_remember` for concise facts or decisions

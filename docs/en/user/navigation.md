@@ -2,6 +2,8 @@
 
 # Finding your way around Galaris: menus, screens and workflows
 
+**Knowledge → Datasets** opens the JSON library. See the [Dataset journey](datasets.md).
+
 Use this guide to locate a feature in the application. The
 [menu map generated from the frontend](../architecture/generated/navigation.md)
 provides exact labels, routes, descriptions and access conditions for the shipped version.

@@ -10,6 +10,7 @@ from app.file_share import resource_service as files
 from app.file_share.resource_contracts import ResourceContext
 from app.memory import document_service, service
 from app.memory.schemas import DocumentLibraryRequest, MemoryGrantUpdate, MemoryItemUpdate, MemoryPayload
+from app.dataset import service as datasets
 
 
 @pytest.mark.asyncio
@@ -18,7 +19,7 @@ async def test_dataset_file_lifecycle_keeps_json_rights_and_history(agents, memo
     ctx = ResourceContext(agent_id=owner.id, runtime="internal")
     source = '{\n  "label": "<strong>Literal HTML</strong>",\n  "amount": 1200\n}\n'
     created = await files.resource_create(ctx, "document://", source.encode(), name="Scenarios", document_type="dataset")
-    identity = UUID(created.uri.removeprefix("document://"))
+    identity = UUID(created.uri.removeprefix("data://"))
     info = await files.resource_info(ctx, created.uri)
     assert info.metadata["document_type"] == "dataset"
     assert info.media_type == "application/json"
@@ -28,13 +29,13 @@ async def test_dataset_file_lifecycle_keeps_json_rights_and_history(agents, memo
     assert first.revision == 1
 
     reader_ctx = ResourceContext(agent_id=reader.id, runtime="internal")
-    with pytest.raises(service.MemoryPermissionError):
+    with pytest.raises(datasets.DatasetNotFoundError):
         await files.resource_read(reader_ctx, created.uri)
-    await service.set_item_grant(identity, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    await datasets.set_grant(identity, owner.id, kind="agent", principal=reader.id, can_write=False, expected_lock_version=1)
     assert (await files.resource_read(reader_ctx, created.uri)).content == source
-    with pytest.raises(service.MemoryPermissionError):
+    with pytest.raises(datasets.DatasetNotFoundError):
         await files.resource_write(reader_ctx, created.uri, b"{}", expected_revision=1)
-    with pytest.raises(service.MemoryConflictError):
+    with pytest.raises(datasets.DatasetConflictError):
         await files.resource_write(ctx, created.uri, b"{}")
 
     edited = await files.resource_edit(ctx, created.uri, start_line=3, end_line=3,
@@ -43,24 +44,21 @@ async def test_dataset_file_lifecycle_keeps_json_rights_and_history(agents, memo
     changed = await files.resource_read(ctx, created.uri)
     assert json.loads(changed.content)["amount"] == 2400
     assert "<strong>Literal HTML</strong>" in changed.content
-    with pytest.raises(service.MemoryConflictError):
+    with pytest.raises(datasets.DatasetConflictError):
         await files.resource_write(ctx, created.uri, b"{}", expected_revision=1)
     unchanged = await files.resource_write(ctx, created.uri, changed.content.encode(), expected_revision=2)
     assert unchanged.revision == 2
-    restored = await service.restore_document_content_revision(identity, 1, expected_revision=2, actor_agent_id=owner.id)
-    assert restored.document_type == "dataset"
-    assert restored.media_type == "application/json"
+    restored = await datasets.restore(identity, owner.id, number=1, expected_revision=2)
     assert restored.revision == 3
     assert (await files.resource_read(reader_ctx, created.uri)).content == source
-    history = await service.get_document_content_revision(identity, 2, actor_agent_id=owner.id)
-    assert history.media_type == "application/json"
+    history = await datasets.revision(identity, owner.id, 2)
     assert json.loads(history.content)["amount"] == 2400
 
     copied = await files.resource_copy(ctx, created.uri, "document://")
     assert copied.uri != created.uri
     assert (await files.resource_info(ctx, copied.uri)).metadata["document_type"] == "dataset"
     assert (await files.resource_read(ctx, copied.uri)).content == source
-    with pytest.raises(service.MemoryPermissionError):
+    with pytest.raises(datasets.DatasetNotFoundError):
         await files.resource_read(reader_ctx, copied.uri)
     with pytest.raises(ValueError):
         await files.resource_append(ctx, created.uri, '{"extra":true}', expected_revision=3)
@@ -72,9 +70,10 @@ async def test_dataset_file_lifecycle_keeps_json_rights_and_history(agents, memo
     assert overwritten.uri == created.uri
     assert (await files.resource_info(ctx, created.uri)).metadata["document_type"] == "dataset"
     assert (await files.resource_read(ctx, created.uri)).content == source
-    await service.remove_item_grant(identity, reader.id, actor_agent_id=owner.id)
-    with pytest.raises(service.MemoryPermissionError):
-        await service.get_document_content_revision(identity, 1, actor_agent_id=reader.id)
+    current = await datasets.record(identity, owner.id)
+    await datasets.set_grant(identity, owner.id, kind="agent", principal=reader.id, can_write=None, expected_lock_version=current.lock_version)
+    with pytest.raises(datasets.DatasetNotFoundError):
+        await datasets.revision(identity, reader.id, 1)
 
 
 @pytest.mark.asyncio

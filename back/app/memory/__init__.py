@@ -1,6 +1,14 @@
 """Governed, durable memory public surface."""
 
 from .temporal import MemoryTemporalAnchor
+from .document_app_security import AppConsentRequired, AppWriteLimitError
+from .dataset_port import register_dataset_compatibility, refresh_dataset_projection, legacy_dataset_access, budget_reserved as dataset_budget_reserved
+from .dataset_migration import legacy_dataset_ids, legacy_dataset_snapshot, legacy_dataset_exists
+from .dataset_references import list_selectable_documents
+from .document_attachment_service import validate_attachment_content
+from .schemas import DocumentCollaborator, DocumentSharing, DocumentSharingLevelUpdate
+from .item_sharing import sharing_directory as resource_sharing_directory
+from .dataset_usage import find_dataset_document_usages
 from .catalogue_projection import project_catalogue_entry, link_catalogue_entries, catalogue_projection_write, detach_catalogue_parent_links
 from .catalogue_projection import identify_catalogue_file as identify_catalogue_file, update_catalogue_file_locations as update_catalogue_file_locations, catalogue_file_summary as catalogue_file_summary
 from .document_thumbnail_service import render_file_thumbnail as render_file_thumbnail
@@ -97,6 +105,23 @@ from .file_facade import (
 )
 
 __all__ = [
+    "AppConsentRequired",
+    "AppWriteLimitError",
+    "register_dataset_compatibility",
+    "refresh_dataset_projection",
+    "legacy_dataset_access",
+    "dataset_budget_reserved",
+    "legacy_dataset_ids",
+    "legacy_dataset_snapshot",
+    "legacy_dataset_exists",
+    "list_selectable_documents",
+    "validate_attachment_content",
+    "DocumentCollaborator",
+    "DocumentSharing",
+    "DocumentSharingLevelUpdate",
+    "resource_sharing_directory",
+    "find_dataset_document_usages",
+
     "project_catalogue_entry", "link_catalogue_entries", "catalogue_projection_write", "register_source_access",
     "detach_catalogue_parent_links",
     "MemoryTemporalAnchor",

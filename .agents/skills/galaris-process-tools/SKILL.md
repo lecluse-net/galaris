@@ -84,13 +84,18 @@ Les autres providers conservent leur format et leur unité d'offset. Adapter les
 skill runtime Galaris et tester la conservation du contenu, les conflits de révision et les
 refus de HTML hors profil ; ne pas figer un ancien bouton d'éditeur.
 
-Les Datasets sont également des documents : créer avec
-`file_create(path="document://", document_type="dataset", name=..., content=...)`.
-Le JSON reste du JSON, avec le même partage et historique. Le type est immuable ; le paramètre
-est réservé à la création dans `document://`. Les lectures JSON paginent en caractères et
-`file_edit` travaille en lignes ; tout résultat écrit doit être un JSON complet valide.
-Les mutations exigent `expected_revision`. Une copie de source `application/json` vers la
-collection Documents crée un Dataset ; une destination existante conserve son type.
+Les Datasets appartiennent à `app.dataset` et se créent avec
+`file_create(path="data://", name=..., content=...)`. Le contenu reste du JSON UTF-8 libre,
+sans schéma associé ; les droits et l'historique sont ceux de Dataset. Les lectures JSON
+paginent en caractères et `file_edit` travaille en lignes ; chaque écriture produit un JSON
+complet valide et contrôle `expected_revision`. L'ancien `document_type="dataset"` dans
+`document://` reste un adaptateur vers `data://`, réservé aux consommateurs historiques.
+Les alias ne concernent que les identités vérifiées, jamais tout Document JSON.
+Voir `docs/fr/dev/datasets.md` pour les critères de retrait des projections Memory.
+
+Pour les entrées d'un processus, l'agent recueille les informations manquantes et prépare
+les variables attendues ; Process les valide à sa frontière d'exécution avec le codec commun.
+Les applications HTML collectent leurs données par le pont Dataset existant, avec consentement.
 
 Les formulaires et scripts restent du HTML ordinaire dans les documents :
 `file_create`/`file_write`/`file_edit` acceptent directement `form`, `style` et `script`.

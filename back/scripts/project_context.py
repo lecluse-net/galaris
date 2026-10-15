@@ -303,9 +303,12 @@ def page_route_hint(module_name: str, page: Path, pages_root: Path) -> str:
     route_segments: list[str] = [module_name.rsplit("/", 1)[-1]]
     for segment in segments:
         catch_all = re.fullmatch(r"\[\.\.\.([a-zA-Z0-9_]+)\]", segment)
+        optional = re.fullmatch(r"\[\[([a-zA-Z0-9_]+)\]\]", segment)
         dynamic = re.fullmatch(r"\[([a-zA-Z0-9_]+)\]", segment)
         if catch_all:
             route_segments.append(f":{catch_all.group(1)}(.*)*")
+        elif optional:
+            route_segments.append(f":{optional.group(1)}?")
         elif dynamic:
             route_segments.append(f":{dynamic.group(1)}")
         else:

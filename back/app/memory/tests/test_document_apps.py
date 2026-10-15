@@ -253,8 +253,8 @@ async def test_invalid_app_data_preserves_dataset_and_does_not_consume_budget(db
 async def test_write_budget_survives_other_documents_and_permission_renewal(db, agents, memory_storage, monkeypatch):
     from datetime import timedelta
     from sqlalchemy import select
-    from app.memory.models import DocumentAppWriteBudget
-    from app.memory import document_app_security as security
+    from app.dataset.models import DatasetWriteBudget as DocumentAppWriteBudget
+    from app.dataset import service as security
     monkeypatch.setattr(security, "MAX_WRITES", 2)
     document, dataset, scope, _ = await setup(db, agents)
     second = await document_service.create_document(owner_agent_id=agents[0].id, task_id=None,
@@ -279,7 +279,8 @@ async def test_write_budget_survives_other_documents_and_permission_renewal(db, 
     await db.commit()
     assert (await app_dataset(document.id, "form", "entries", mutation, scope)).revision == 4
     monkeypatch.setattr(security, "MAX_WRITE_BYTES", 5)
-    with pytest.raises(security.AppWriteLimitError):
+    from app.memory.document_app_security import AppWriteLimitError
+    with pytest.raises(AppWriteLimitError):
         await app_dataset(second.id, "form", "entries", AppDatasetRequest(
             document_revision=1, operation="replace", expected_revision=4, value="large"), scope)
     assert (await service.get_item(dataset.id, agent_id=agents[0].id))[0].revision == 4
@@ -290,11 +291,12 @@ async def test_concurrent_workers_share_the_same_durable_write_budget(committed_
     import asyncio
     from app.agent.models import Agent, Title
     from app.memory import document_app_security as security
+    from app.dataset import service as dataset_security
     from core.database import get_db_session
     from sqlalchemy import select
-    from app.memory.models import DocumentAppWriteBudget
+    from app.dataset.models import DatasetWriteBudget as DocumentAppWriteBudget
 
-    monkeypatch.setattr(security, "MAX_WRITES", 2)
+    monkeypatch.setattr(dataset_security, "MAX_WRITES", 2)
     async with get_db_session() as db:
         human = UserModel(email="quota@example.test", hashed_password="unused", is_active=True)
         title = Title(label="Quota", gender="X")

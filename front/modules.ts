@@ -19,6 +19,7 @@ export const modules = [
     'app/topic',
     'app/goal',
     'app/memory',
+    'app/dataset',
     'app/lab',
     'app/incident',
     'app/process',

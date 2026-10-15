@@ -2,6 +2,8 @@
 
 # Se repérer dans Galaris : menus, écrans et parcours
 
+**Connaissances → Jeux de données** ouvre la bibliothèque JSON. Voir le [parcours des jeux de données](datasets.md).
+
 Ce guide aide à trouver une fonction dans l’application. La
 [carte des menus générée depuis le frontend](../architecture/generated/navigation.md)
 donne les libellés exacts, routes, descriptions et conditions d’accès de la version livrée.

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from scripts.frontend_architecture_contracts import (
     FRONTEND_BASELINE_PATH,
     build_frontend_architecture_baseline,
@@ -11,12 +13,27 @@ from scripts.frontend_architecture_contracts import (
 from scripts.project_context import (
     frontend_dependencies,
     frontend_import_specifiers,
+    page_route_hint,
 )
 
 
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("filename", "expected"),
+    [
+        ("index.vue", "/example"),
+        ("[id].vue", "/example/:id"),
+        ("[[id]].vue", "/example/:id?"),
+        ("[...all].vue", "/example/:all(.*)*"),
+    ],
+)
+def test_page_route_hint_preserves_parameter_contract(filename: str, expected: str) -> None:
+    pages = Path("front/app/example/pages")
+    assert page_route_hint("app/example", pages / filename, pages) == expected
 
 
 def _fixture(tmp_path: Path) -> None:

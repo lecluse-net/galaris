@@ -257,6 +257,15 @@ setup_public_docs(app)
 
 # Include public API routers; discovery also registers bridges.
 setup_api_routers(app)
+from app.dataset import register_dataset, register_dataset_usage_source
+register_dataset()
+from app.memory import find_dataset_document_usages
+from app.process.facade import find_dataset_run_usages
+from app.llm.facade import find_dataset_agent_usages
+register_dataset_usage_source("documents", "documents", find_dataset_document_usages)
+register_dataset_usage_source("processes", "runs", find_dataset_run_usages)
+register_dataset_usage_source("agents", "agents", find_dataset_agent_usages)
+
 
 # The composition root, not core, mounts bridge-specific routes.
 from bridge.one_bot import onebot_router

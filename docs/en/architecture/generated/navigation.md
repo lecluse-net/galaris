@@ -72,6 +72,14 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 - Additional conditions : —
 - Sources : `front/app/memory/navigation.ts`
 
+## Knowledge → Datasets
+
+- Route : `/dataset`
+- Purpose : JSON data
+- Menu visibility (privileges) : (DATASET_READ OR DATASET_EDIT OR DATASET_ADMIN)
+- Additional conditions : —
+- Sources : `front/app/dataset/navigation.ts`
+
 ## Knowledge → Memory
 
 - Route : `/memory`

@@ -12,6 +12,7 @@ from .accounting_scope import llm_call_accounting
 from .timing import LLMExecutionTiming, LLMProcessingTiming, execution_timing, first_output_timestamp
 
 from . import llm_call_service, llm_provider_service
+from .dataset_usage import find_dataset_agent_usages as find_dataset_agent_usages
 from .provider_facade import (
     ManagedRuntimeCredential,
     ProviderQuota,

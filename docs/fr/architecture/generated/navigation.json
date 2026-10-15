@@ -264,6 +264,40 @@
       ]
     },
     {
+      "id": "knowledge.datasets",
+      "labels": {
+        "fr": "Jeux de données",
+        "en": "Datasets"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Connaissances",
+          "Jeux de données"
+        ],
+        "en": [
+          "Knowledge",
+          "Datasets"
+        ]
+      },
+      "route": "/dataset",
+      "href": null,
+      "description": {
+        "fr": "Données JSON",
+        "en": "JSON data"
+      },
+      "privilege_groups": [
+        [
+          "DATASET_READ",
+          "DATASET_EDIT",
+          "DATASET_ADMIN"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/dataset/navigation.ts"
+      ]
+    },
+    {
       "id": "knowledge.memory",
       "labels": {
         "fr": "Mémoire",

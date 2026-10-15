@@ -646,6 +646,21 @@ async def document_record(document_id: UUID, *, revisions: bool = True) -> Memor
 
 async def commit_item_sharing(item: MemoryItem) -> None:
     """Commit sharing without changing content revisions and notify open views."""
+    from .dataset_port import dataset_compatibility
+    adapter = dataset_compatibility()
+    if item.document_type == "dataset" and adapter is not None and await adapter.contains(item.id):
+        # Bulk replacement of legacy grant rows does not refresh a loaded ORM
+        # collection. Copy the actual grants, never revive a revoked Agent.
+        await get_db().flush()
+        await get_db().refresh(item, attribute_names=["grants"])
+        user_grants = await get_db().scalars(select(DocumentUserGrant).where(DocumentUserGrant.item_id == item.id))
+        from .models import DocumentTeamGrant
+        team_grants = await get_db().scalars(select(DocumentTeamGrant).where(DocumentTeamGrant.item_id == item.id))
+        await adapter.sharing(item.id, {"owner_agent_id": item.owner_agent_id, "owner_user_id": item.owner_user_id,
+            "global_access": item.global_access, "group_access": item.group_access, "lock_version": item.lock_version,
+            "grants": [*[{"agent_id": grant.agent_id, "can_write": grant.can_write} for grant in item.grants],
+                *[{"user_id": grant.user_id, "can_write": grant.can_write} for grant in user_grants],
+                *[{"team_id": grant.team_id, "can_write": grant.can_write} for grant in team_grants]]})
     await _commit_with_conflict("Document sharing changed; reload and retry")
     await _emit_memory_event("update", item)
     await invalidate_memory_views()
@@ -943,6 +958,11 @@ async def create_item(
         if item.node_kind == "document":
             from .document_structure import sync_document_structure
             await sync_document_structure(item, content)
+        if item.document_type == "dataset":
+            from .dataset_port import dataset_compatibility
+            if adapter := dataset_compatibility():
+                await db.flush()
+                await adapter.adopt(item.id)
         await db.commit()
     except BaseException:
 
@@ -1239,6 +1259,13 @@ async def get_item(
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
     access = await assert_item_access(item, agent_id, administrative=administrative)
+    if item.document_type == "dataset" and not memory_content:
+        from .dataset_port import dataset_compatibility
+        if adapter := dataset_compatibility():
+            await adapter.adopt(item.id)
+            actor = agent_id if agent_id is not None else (item.owner_agent_id if item.owner_agent_id is not None else HumanActor(item.owner_user_id or 0))
+            state = await adapter.read(item.id, actor, revision)
+            return item, state["content"].encode("utf-8"), MemoryAccess(can_read=state["can_read"], can_write=state["can_write"]), "text", "application/json"
     provider_code = item.provider_code
     resource_id = item.resource_id
     content_type = item.content_type
@@ -1465,6 +1492,10 @@ async def list_document_content_revisions(
     if item is None or item.node_kind != "document":
         raise MemoryNotFoundError("Document not found.")
     await assert_item_access(item, actor_agent_id)
+    from .dataset_port import dataset_compatibility
+    adapter = dataset_compatibility()
+    if adapter is not None and await adapter.contains(item_id):
+        return DocumentContentRevisionPage.model_validate(await adapter.history(item_id, actor_agent_id, limit, offset))
     from .revision_queries import content_revision_page
 
     rows, total = await content_revision_page(item_id, limit=limit, offset=offset)
@@ -1503,6 +1534,11 @@ async def get_document_content_revision(
     actor_agent_id: int | HumanActor,
 ) -> DocumentContentRevisionDetail:
     """Read one immutable UTF-8 document-content version."""
+    from .dataset_port import dataset_compatibility
+    adapter = dataset_compatibility()
+    if adapter is not None and await adapter.contains(item_id):
+        state = await adapter.read(item_id, actor_agent_id, revision)
+        return DocumentContentRevisionDetail(**state["revision_detail"], content=state["content"])
 
     _item, entry, content = await _document_content_revision(
         item_id,
@@ -1522,6 +1558,14 @@ async def diff_document_content_revision(
     actor_agent_id: int | HumanActor,
 ) -> DocumentContentDiff:
     """Compare one stored content version with the current document text."""
+    from .dataset_port import dataset_compatibility
+    adapter = dataset_compatibility()
+    if adapter is not None and await adapter.contains(item_id):
+        previous = await adapter.read(item_id, actor_agent_id, revision)
+        current = await adapter.read(item_id, actor_agent_id)
+        hunks, additions, deletions = _content_diff_hunks(previous["content"], current["content"])
+        return DocumentContentDiff(revision=revision, current_revision=current["revision"],
+            additions=additions, deletions=deletions, hunks=hunks, structure_changed=False)
 
     item, entry, previous_content = await _document_content_revision(
         item_id,
@@ -1706,6 +1750,14 @@ async def update_item(
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
     await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
+    if item.document_type == "dataset" and actor_agent_id is not None:
+        from .dataset_port import dataset_compatibility
+        if adapter := dataset_compatibility():
+            from .document_policy import dataset_writer_active
+            await adapter.adopt(item.id)
+            await adapter.update(item.id, actor_agent_id, {**data.model_dump(exclude_unset=True), "_engine": dataset_writer_active(item.id)})
+            await get_db().refresh(item)
+            return item
     if data.expected_revision is not None and data.expected_revision != item.revision:
         raise MemoryConflictError(
             f"Memory revision conflict: expected {data.expected_revision}, "
@@ -2020,6 +2072,13 @@ async def restore_document_content_revision(
     actor_agent_id: int | HumanActor,
 ) -> MemoryItem:
     """Restore only editorial content while keeping current metadata and ACLs."""
+    from .dataset_port import dataset_compatibility
+    adapter = dataset_compatibility()
+    if adapter is not None and await adapter.contains(item_id):
+        await adapter.restore(item_id, actor_agent_id, revision, expected_revision)
+        loaded = await _get_item_record(item_id)
+        assert loaded is not None
+        return loaded
 
     item, entry, content = await _document_content_revision(
         item_id,
@@ -2356,6 +2415,13 @@ async def delete_document(
         await assert_item_access(item, actor_agent_id)
     else:
         await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
+    from .dataset_port import dataset_compatibility
+    adapter = dataset_compatibility()
+    if item.document_type == "dataset" and adapter is not None and await adapter.contains(document_id):
+        actor = item.owner_agent_id if item.owner_agent_id is not None else HumanActor(item.owner_user_id or 0)
+        await adapter.remove(document_id, actor)
+        await get_db().commit()
+        return MemoryForgetResult(memory_id=document_id, resources_deleted=0)
     return await _forget_item_record(item, forget_kind="explicit")
 
 
@@ -2537,6 +2603,15 @@ async def set_item_grant(
     item = await _get_item_record(item_id)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
+    if item.document_type == "dataset":
+        from .dataset_port import dataset_compatibility
+        if adapter := dataset_compatibility():
+            await adapter.adopt(item.id)
+            # The omitted actor is reserved for trusted engine/bootstrap callers.
+            principal = actor_agent_id if actor_agent_id is not None else (item.owner_agent_id if item.owner_agent_id is not None else HumanActor(item.owner_user_id or 0))
+            await adapter.grant(item.id, principal, "agent", agent_id, data.can_write)
+            await get_db().refresh(item)
+            return item
     _assert_not_source_managed(item)
     if item.node_kind != "document":
         raise MemoryPermissionError("Sharing belongs to documents; memories are private.")
@@ -2648,6 +2723,14 @@ async def remove_item_grant(
     item = await _get_item_record(item_id)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
+    if item.document_type == "dataset":
+        from .dataset_port import dataset_compatibility
+        if adapter := dataset_compatibility():
+            await adapter.adopt(item.id)
+            principal = actor_agent_id if actor_agent_id is not None else (item.owner_agent_id if item.owner_agent_id is not None else HumanActor(item.owner_user_id or 0))
+            await adapter.grant(item.id, principal, "agent", agent_id, None)
+            await get_db().refresh(item)
+            return item
     _assert_not_source_managed(item)
     if item.node_kind != "document":
         raise MemoryPermissionError("Sharing belongs to documents; memories are private.")

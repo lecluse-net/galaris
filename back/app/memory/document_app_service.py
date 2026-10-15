@@ -40,6 +40,10 @@ async def _grant(document_id: UUID, app_key: str, alias: str, user_id: int) -> D
 
 async def app_permissions(document_id: UUID, scope: AgentManagementScope) -> AppPermissions:
     document, apps = await _applications(document_id, scope)
+    from .dataset_port import dataset_compatibility
+    if adapter := dataset_compatibility():
+        return AppPermissions.model_validate(await adapter.application("permissions", scope, {
+            "document_id": str(document_id), "document_revision": document.revision, "apps": [app.model_dump(mode="json") for app in apps]}))
     grants: list[AppGrantPublic] = []
     for app in apps:
         for alias, binding in app.datasets.items():
@@ -65,6 +69,11 @@ async def set_app_permission(
 ) -> AppPermissions:
     db = get_db()
     document, apps = await _applications(document_id, scope)
+    from .dataset_port import dataset_compatibility
+    if adapter := dataset_compatibility():
+        return AppPermissions.model_validate(await adapter.application("consent", scope, {
+            "document_id": str(document_id), "document_revision": document.revision, "apps": [app.model_dump(mode="json") for app in apps],
+            "app_key": app_key, "alias": alias, "request": data.model_dump(mode="json")}))
     if document.revision != data.document_revision:
         raise service.MemoryConflictError("The application changed. Review its permissions again.")
     app = next((entry for entry in apps if entry.id == app_key), None)
@@ -95,6 +104,11 @@ async def app_dataset(
     db = get_db()
     # The same lock serializes consent changes, revocations and application calls.
     document, apps = await _applications(document_id, scope)
+    from .dataset_port import dataset_compatibility
+    if adapter := dataset_compatibility():
+        return AppDatasetResult.model_validate(await adapter.application("dataset", scope, {
+            "document_id": str(document_id), "document_revision": document.revision, "apps": [app.model_dump(mode="json") for app in apps],
+            "app_key": app_id, "alias": alias, "request": data.model_dump(mode="json")}))
     if document.revision != data.document_revision:
         raise service.MemoryConflictError("The application changed. Reopen it before accessing data.")
     app = next((entry for entry in apps if entry.id == app_id), None)
@@ -128,8 +142,10 @@ async def app_dataset(
             value = data.value
         encoded = encode_app_data(value)
         await consume_write_budget(scope.user_id, identity, len(encoded.encode("utf-8")))
-        dataset = await service.update_item(identity, MemoryItemUpdate(
-            expected_revision=data.expected_revision,
-            payload=MemoryPayload(text=encoded),
-        ), actor_agent_id=dataset_actor)
+        from .dataset_port import reserved_budget
+        with reserved_budget():
+            dataset = await service.update_item(identity, MemoryItemUpdate(
+                expected_revision=data.expected_revision,
+                payload=MemoryPayload(text=encoded),
+            ), actor_agent_id=dataset_actor)
     return AppDatasetResult(revision=dataset.revision, data=value)

@@ -21,6 +21,28 @@ Pour une évolution, préciser la garantie changée et celles à préserver, lir
 et tests, puis choisir la couche la moins coûteuse qui prouve l’effet. Conserver un test utile
 est une décision à part entière : aucun quota de tests nouveaux par module.
 
+
+## Datasets et contrats typés
+
+`app/dataset/tests/test_datasets.py` vérifie aussi qu'une création native ne crée pas de
+projection Memory et que les alias historiques suivent métadonnées, révisions, révocations
+de droits et suppression. Les lectures et écritures restent celles de Dataset.
+
+`app/dataset/tests` couvre le codec commun, le JSON libre à chaque écriture, les alias
+vérifiés, les droits, les révisions et la restauration. `test_schema_removal.py` vérifie la
+contraction DbAdmin et son rejeu sur une base synthétique peuplée, sans perte de contenus,
+d'historique, de droits ou de PJ. `e2e/specs/datasets.spec.mjs` exerce l'éditeur assemblé.
+Les suites Memory et Process conservent les contrôles de consentement, quotas concurrents,
+révocation des droits, profils historiques et intégration moteur.
+La saisie et la collecte HTML restent couvertes par les tests des applications documentaires.
+`test_management.py` vérifie le remplacement atomique des droits agents/utilisateurs/groupes,
+le refus du repartage par un éditeur et en lecture seule, les versions obsolètes, la suppression
+et les utilisations filtrées avant pagination. Le parcours E2E Dataset exerce le même composant
+de partage que les Documents, découvre une application documentaire puis confirme la suppression.
+Il vérifie aussi le changement de sélection dans la bibliothèque, la conservation de la recherche,
+la confirmation des brouillons non enregistrés, le retour mobile et la création depuis la liste.
+
+
 ## Audio et catalogues fournisseurs
 
 Les suites `tests/test_transcription_service.py` et `core/util/tests/test_http_multipart.py`

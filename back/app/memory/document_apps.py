@@ -9,12 +9,12 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 class DatasetBinding(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    uri: str = Field(pattern=r"^document://[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$")
+    uri: str = Field(pattern=r"^(?:document|data)://[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$")
     access: Literal["read", "write"] = "read"
 
     @property
     def document_id(self) -> UUID:
-        return UUID(self.uri.removeprefix("document://"))
+        return UUID(self.uri.split("://", 1)[1])
 
 
 class DocumentApp(BaseModel):
@@ -64,6 +64,7 @@ class AppGrantPublic(BaseModel):
     app_title: str
     alias: str
     dataset_id: UUID
+    dataset_uri: str | None = None
     dataset_title: str | None
     requested_access: Literal["read", "write"]
     access: Literal["read", "write"] | None

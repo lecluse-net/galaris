@@ -328,6 +328,9 @@ async def test_populated_upgrade_through_dbadmin_preserves_content_and_resumes_a
     file_path(attachment.id).replace(old_attachment)
     # Reconstruct the schema immediately before the file registry was introduced.
     async with isolated_engine.begin() as connection:
+        # Dataset's later references did not exist in this historical schema.
+        # Keep its rows/tables; Atlas restores these constraints with the registry.
+        await connection.execute(text("ALTER TABLE dataset_attachments DROP CONSTRAINT dataset_attachments_file_id_fkey"))
         await connection.execute(text("DROP TABLE file_owners, file_aliases, files, file_stores"))
         await connection.execute(text("DELETE FROM dbadmin_actions WHERE key LIKE 'core.storage.%'"))
 

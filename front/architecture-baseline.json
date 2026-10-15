@@ -181,6 +181,22 @@
       "target": "core/util"
     },
     {
+      "source": "app/dataset",
+      "target": "core/api"
+    },
+    {
+      "source": "app/dataset",
+      "target": "core/authorize"
+    },
+    {
+      "source": "app/dataset",
+      "target": "core/navigation"
+    },
+    {
+      "source": "app/dataset",
+      "target": "core/util"
+    },
+    {
       "source": "app/dream",
       "target": "app/agent"
     },

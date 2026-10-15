@@ -2,6 +2,8 @@
 
 # User and Discovery Guide
 
+For structured data, see [Datasets](datasets.md).
+
 For shared source editing with agents, see [Git repositories in a conversation](code-editor.md).
 
 In detail windows, forms and Lab benchmarks, only the content scrolls: the title and its

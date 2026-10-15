@@ -65,10 +65,12 @@ ce contrat. Ne pas généraliser la conversion aux titres, messages de transport
 fichiers Markdown ou `SKILL.md`. Pour les agents connectés, maintenir aussi
 `back/app/skill/system_skills/galaris/SKILL.md`.
 
-Un Dataset est un document (`node_kind=document`, URI `document://`) de type immuable
-`document_type=dataset`, au contenu JSON UTF-8 validé. Il conserve titre, icône, classement,
-partage et révisions ; CodeEditor JSON remplace CKEditor. Ne pas le convertir en HTML.
-Le défaut `html` conserve les documents existants. Aucun autre type n'est encore activé.
+`app.dataset` possède les jeux de données JSON, leur historique, leurs droits et le codec
+de valeurs typées commun avec Process. Créer un Dataset avec `file_create(path="data://", ...)`.
+Son JSON UTF-8 reste libre, sans schéma associé, et ne devient jamais du HTML. Les Documents
+éditoriaux conservent `document://`. Les anciens Datasets documentaires passent par des alias
+vérifiés vers `data://` et des adaptateurs Memory ; ne pas créer de nouveaux consommateurs
+de ces surfaces historiques. Voir `docs/fr/dev/datasets.md` pour les critères de leur retrait.
 
 Les documents HTML acceptent directement formulaires, CSS et JavaScript. La barre d'outils
 et l'édition normales restent présentes ; seul le bouton Source montre le code. Ne pas ajouter

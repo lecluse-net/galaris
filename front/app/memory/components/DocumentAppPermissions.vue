@@ -20,7 +20,7 @@
             <q-item-section>
               <q-item-label>{{ grant.dataset_title ?? t('documents.apps.unavailableDataset') }}</q-item-label>
               <q-item-label caption>{{ grant.app_title }} · {{ grant.alias }}</q-item-label>
-              <q-item-label caption class="text-break">document://{{ grant.dataset_id }}</q-item-label>
+              <q-item-label caption class="text-break">{{ grant.dataset_uri ?? `document://${grant.dataset_id}` }}</q-item-label>
               <q-item-label caption>{{ t('documents.apps.requestedAccess') }}: {{ t('documents.apps.' + grant.requested_access) }}</q-item-label>
               <q-select :model-value="grant.access ?? 'none'" :options="options(grant)" emit-value map-options
                 :label="t('documents.apps.allowedAccess')" :disable="saving || loading"

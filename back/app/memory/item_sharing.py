@@ -1,6 +1,6 @@
 """Atomic sharing of memory items and documents, independent of Agent identity."""
 
-from uuid import UUID
+from uuid import UUID, uuid4
 from typing import Literal
 
 from sqlalchemy import delete, select
@@ -108,6 +108,13 @@ async def _sharing_state(item: MemoryItem, *, manage: bool) -> DocumentSharing:
         # Keep the complete catalog for atomic replacement and level changes.
         options=catalog if manage else [],
     )
+
+
+async def sharing_directory(*, owner_agent_id: int | None, owner_user_id: int | None) -> DocumentSharing:
+    """Same directory and owner groups for another already authorized resource."""
+    item = MemoryItem(id=uuid4(), owner_agent_id=owner_agent_id, owner_user_id=owner_user_id,
+        lock_version=1, grants=[], visibility="private", global_access=0, group_access=0)
+    return await _sharing_state(item, manage=True)
 
 
 async def update_level(document_id: UUID, data: DocumentSharingLevelUpdate, scope: AgentManagementScope) -> DocumentSharing:

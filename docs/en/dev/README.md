@@ -5,6 +5,9 @@
 [Text storage in the database](memory-text-storage.md) describes Memory, Document and
 revision content columns and their verified migration without deleting sources.
 
+The [Dataset domain](datasets.md) describes shared JSON types, `data://` resources,
+legacy aliases and the document application bridge.
+
 [Internal file storage](file-storage.md) describes `file://`, the shared registry and
 the verified migration of Document and Chat attachments.
 

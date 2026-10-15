@@ -49,7 +49,7 @@ def _safe_name(value: str | None, attachment_id: UUID) -> str:
     return (name or str(attachment_id))[:500]
 
 
-def _validated_media_type(declared: str | None, name: str, content: bytes) -> str:
+def validate_attachment_content(declared: str | None, name: str, content: bytes) -> str:
     fallback = mimetypes.guess_type(name)[0] or "application/octet-stream"
     media_type = (declared or fallback).split(";", 1)[0].strip().casefold()
     if media_type == "application/octet-stream":
@@ -121,6 +121,10 @@ async def list_document_attachments(
     *,
     actor_agent_id: int | HumanActor,
 ) -> list[DocumentAttachmentPublic]:
+    from .dataset_port import dataset_compatibility
+    adapter = dataset_compatibility()
+    if adapter is not None and await adapter.contains(document_id):
+        return [DocumentAttachmentPublic.model_validate(item) for item in await adapter.attachments(document_id, actor_agent_id)]
     item, _content, _access, _content_type, _media_type = await service.get_item(
         document_id,
         agent_id=actor_agent_id,
@@ -163,7 +167,7 @@ async def add_document_attachment(
     declared_media_type = upload.content_type or mimetypes.guess_type(safe_name)[0]
     validated_media_type = declared_media_type or "application/octet-stream"
     if not validated_media_type.startswith("image/"):
-        validated_media_type = _validated_media_type(declared_media_type, safe_name, first_chunk)
+        validated_media_type = validate_attachment_content(declared_media_type, safe_name, first_chunk)
 
     async def chunks() -> AsyncIterator[bytes]:
         if first_chunk:
@@ -178,7 +182,7 @@ async def add_document_attachment(
         raise ValueError(f"The attachment exceeds the {limit}-byte limit.") from exc
     try:
         if validated_media_type.startswith("image/"):
-            validated_media_type = _validated_media_type(validated_media_type, safe_name, await provider.read(resource_id))
+            validated_media_type = validate_attachment_content(validated_media_type, safe_name, await provider.read(resource_id))
     except BaseException:
         await provider.delete(resource_id)
         raise
@@ -209,7 +213,7 @@ async def add_document_attachment_bytes(
         raise ValueError(f"The attachment exceeds the {limit}-byte limit.")
     attachment_id = uuid4()
     safe_name = _safe_name(name, attachment_id)
-    validated_media_type = _validated_media_type(media_type, safe_name, content)
+    validated_media_type = validate_attachment_content(media_type, safe_name, content)
     attachment = DocumentAttachmentPublic(
         id=attachment_id,
         name=safe_name,
@@ -289,6 +293,12 @@ async def read_document_attachment(
     *,
     actor_agent_id: int | HumanActor,
 ) -> tuple[DocumentAttachmentPublic, bytes]:
+    from .dataset_port import dataset_compatibility
+    adapter = dataset_compatibility()
+    if adapter is not None and await adapter.contains(document_id):
+        if result := await adapter.read_attachment(document_id, attachment_id, actor_agent_id):
+            metadata, content = result
+            return DocumentAttachmentPublic.model_validate(metadata), content
     item, _content, _access, _content_type, _media_type = await service.get_item(
         document_id,
         agent_id=actor_agent_id,
@@ -310,6 +320,12 @@ async def document_attachment_path(
     actor_agent_id: int | HumanActor,
 ) -> tuple[DocumentAttachmentPublic, Path]:
     """Resolve one authorized native attachment to a streaming response path."""
+    from .dataset_port import dataset_compatibility
+    adapter = dataset_compatibility()
+    if adapter is not None and await adapter.contains(document_id):
+        if result := await adapter.attachment_path(document_id, attachment_id, actor_agent_id):
+            metadata, path = result
+            return DocumentAttachmentPublic.model_validate(metadata), path
 
     item, _content, _access, _type, _mime = await service.get_item(document_id, agent_id=actor_agent_id)
     _assert_document(item)

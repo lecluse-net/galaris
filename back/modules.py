@@ -75,6 +75,7 @@ MODULES = [
     "app.onboarding",
     "app.voice",
     "app.file_share",
+    "app.dataset",
     "app.console",
     "app.code",
     "app.process",

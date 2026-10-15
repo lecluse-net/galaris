@@ -63,7 +63,7 @@ async def _file_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> dic
         uri = arguments.get(key)
         if not isinstance(uri, str) or not uri:
             continue
-        if key == "destination" and uri.strip() in {"document://", "file://"}:
+        if key == "destination" and uri.strip() in {"document://", "data://", "file://"}:
             snapshots[key] = {"uri": uri, "new_resource": True}
             continue
         try:
@@ -256,18 +256,20 @@ async def read_file(
 @mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="file_create",
-    effect_descriptor=EffectDescriptorV1(capability="file.create", kind="create", target_arguments=("path",), reversible=True, receipt="resource", ordinary_creation_schemes=("file", "document", "console")),
+    effect_descriptor=EffectDescriptorV1(capability="file.create", kind="create", target_arguments=("path",), reversible=True, receipt="resource", ordinary_creation_schemes=("file", "document", "data", "console")),
     description=(
         "Create a new complete text or binary file and return its canonical URI. "
         "Use path='file://' plus name for an independent private managed file; its returned file://UUID "
         "is stable and does not expose a host path. "
         "For path providers, pass an exact file path or a collection path plus name. Use path='document://' to let Galaris assign "
-        "a new document URI. document_type is immutable: 'html' (default) or 'dataset'. "
-        "For a dataset, pass valid JSON with encoding='utf-8'. For an HTML document, content must be an editorial HTML fragment "
+        "a new document URI. Use path='data://' for an independent Dataset with valid UTF-8 JSON; "
+        "its canonical URI is data://UUID and its content remains free JSON. "
+        "document_type remains immutable; the deprecated dataset option at document:// returns data:// too. "
+        "For an HTML document, content must be an editorial HTML fragment "
         "with encoding='utf-8', for example '<h1>Report</h1><p>Findings.</p>', not Markdown "
         "or a full HTML page with html/head/body tags. Documents accept ordinary form, style and script elements, "
         "rendered in an isolated sandbox alongside editable prose. No special app manifest is required. "
-        "A form declares a Dataset with data-dataset='document://UUID', optionally data-dataset-alias='entries'. "
+        "An HTML form declares a Dataset with data-dataset='data://UUID' (verified legacy document:// aliases also work), optionally data-dataset-alias='entries'. "
         "Inside the sandbox use galaris.datasets.read/append/replace, with the read revision for mutations; "
         "share both the page and Dataset explicitly. Source editing preserves this ordinary HTML. "
         "Use document://<uuid>/attachments/ plus name to attach a file to "

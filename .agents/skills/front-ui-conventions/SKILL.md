@@ -35,13 +35,17 @@ routeur central.
 
 ## Services et état
 
-Les documents ont un type immuable `html` ou `dataset` dans la même bibliothèque.
-Utiliser CKEditor pour HTML et CodeEditor en langage JSON pour Dataset, y compris dans
-l'historique. Ne jamais convertir le JSON en HTML. Une autosauvegarde attend un JSON valide
-et préserve le brouillon invalide ; le partage, les icônes et le classement restent communs.
+Les Documents éditoriaux `document://` appartiennent à Memory ; les Datasets JSON `data://`
+appartiennent à `app.dataset`. Utiliser ses services publics pour tout nouveau consommateur.
+Les anciens Datasets de la bibliothèque documentaire restent lisibles par alias vérifié.
+Utiliser CKEditor pour HTML et CodeEditor JSON pour Dataset, y compris dans l'historique.
+Ne jamais convertir le JSON en HTML. Une autosauvegarde attend un JSON valide et préserve
+le brouillon invalide. Les jeux de données n'ont pas de schéma associé. Les variables des
+processus utilisent le codec typé partagé, avec leurs propres règles de définition et validation.
+Voir `docs/fr/dev/datasets.md` pour les limites actuelles et la transition des projections.
 Les documents acceptent directement formulaires HTML, CSS et JavaScript. Conserver la barre
-d'outils et l'édition habituelles : aucun mode lecture/édition, démarrage ou assistant de
-formulaire supplémentaire. Seul Source affiche le code. CKEditor conserve les portions
+d'outils et l'édition habituelles, sans mode lecture/édition ni démarrage supplémentaire.
+Seul Source affiche le code. CKEditor conserve les portions
 interactives comme objets opaques internes ; leur rendu isolé n'ajoute aucun habillage.
 Les anciens `language-galaris-app` restent compatibles. Les autres lecteurs masquent le code
 et restent inertes. Les Datasets déclarés exigent les droits du lecteur et son accord personnel

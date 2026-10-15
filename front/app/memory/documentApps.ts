@@ -17,6 +17,7 @@ export interface AppGrant {
   app_title: string
   alias: string
   dataset_id: string
+  dataset_uri?: string | null
   dataset_title: string | null
   requested_access: 'read' | 'write'
   access: 'read' | 'write' | null
@@ -32,7 +33,7 @@ export function parseDocumentApp(source: string): DocumentApp | null {
     if (app.datasets !== undefined) {
       if (!app.datasets || typeof app.datasets !== 'object' || Array.isArray(app.datasets)) return null
       for (const [alias, binding] of Object.entries(app.datasets)) {
-        if (!/^[a-z][a-z0-9_-]{0,39}$/.test(alias) || !binding || typeof binding.uri !== 'string' || !/^document:\/\/[0-9a-f-]{36}$/.test(binding.uri) || ![undefined, 'read', 'write'].includes(binding.access)) return null
+        if (!/^[a-z][a-z0-9_-]{0,39}$/.test(alias) || !binding || typeof binding.uri !== 'string' || !/^(?:document|data):\/\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(binding.uri) || ![undefined, 'read', 'write'].includes(binding.access)) return null
       }
     }
     return app

@@ -49,6 +49,14 @@ def encode_app_data(value: JsonValue) -> str:
 
 async def consume_write_budget(user_id: int, dataset_id: UUID, size: int) -> None:
     """Caller holds the Dataset row lock; reservation commits with the content revision."""
+    from .dataset_port import dataset_compatibility
+    adapter = dataset_compatibility()
+    if adapter is not None and await adapter.contains(dataset_id):
+        try:
+            await adapter.budget(dataset_id, user_id, size)
+        except RuntimeError as exc:
+            raise AppWriteLimitError(str(exc)) from exc
+        return
     db = get_db()
     now: datetime = (await db.execute(select(func.clock_timestamp()))).scalar_one()
     budget = await db.scalar(select(DocumentAppWriteBudget).where(
