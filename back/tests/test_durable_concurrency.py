@@ -251,7 +251,7 @@ async def test_malformed_optional_observation_does_not_break_metrics(committed_d
         run.created_at = datetime.now(timezone.utc) - timedelta(seconds=60)
         run.engine_metadata = {"last_observed_at": "not-a-date-from-an-old-engine"}
     observed = []
-    monkeypatch.setattr(progress.registry, "codes", lambda: ["multimedia"])
+    monkeypatch.setattr(progress.registry, "codes", lambda: ["fake"])
     monkeypatch.setattr(progress, "_observation_age", SimpleNamespace(set=lambda value, labels: observed.append(value)))
     async with get_db_session():
         await progress.record_progress_metrics()

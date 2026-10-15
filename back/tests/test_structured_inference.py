@@ -124,7 +124,8 @@ async def test_structured_validation_retries_keep_stream_transcript_and_cost(
     assert result.output == Decision(count=3)
     key = await db.scalar(select(LLMInference.id))
     snapshot = await read_inference(key)
-    assert snapshot.request == request
+    # Admission freezes the server-owned fallback decision before dispatch.
+    assert snapshot.request == request.model_copy(update={"profile_fallback_resolved": True})
     assert snapshot.status == "completed"
     events = [event async for event in stream_inference(key)]
     assert events[-1].kind == "result"

@@ -270,7 +270,13 @@ async def test_cancelling_conversation_dispatch_stops_inference_without_a_fallba
 
 @pytest.mark.asyncio
 async def test_foreground_dispatch_is_not_blocked_by_four_waiting_lab_inferences(runtime):
+    from app.llm import llm_provider_service
+    from app.llm.provider_schemas import LLMProviderUpdate
+
     db, llm, requests, mode = runtime
+    # Saturate four background places while keeping the two dialogue reserves.
+    # Uncatalogued providers otherwise default to a single physical call.
+    await llm_provider_service.update_provider(llm.llm_provider_id, LLMProviderUpdate(max_concurrent_calls=6))
     context, options, _, _ = await dispatch_context(db, "ai")
     mode.update(concurrent=True, gate=asyncio.Event())
     keys = []

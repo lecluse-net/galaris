@@ -48,7 +48,9 @@ test(`real IDE loads and edits through the Galaris gateway (runtime stopped: ${s
   const unsaved = `synthetic retained recovery draft ${test.info().project.name}`
   await input.focus()
   await page.keyboard.press(`${modifier}+a`)
-  await page.keyboard.type(unsaved)
+  await input.pressSequentially(unsaved, { delay: 20 })
+  const retainedEditor = ide.locator('.monaco-editor').filter({ has: input }).locator('.view-lines')
+  await expect(retainedEditor).toContainText(unsaved)
   const session = editorUrl.pathname.split('/gateway/')[1].split('/')[0]
   const previousSockets = sockets.length
   expect((await request.post(`http://localhost:8484/api/code/qualification/${session}/expire?stop=${stopped}`)).ok()).toBeTruthy()
@@ -81,12 +83,12 @@ test(`real IDE loads and edits through the Galaris gateway (runtime stopped: ${s
     await expect(writable).toBeAttached()
     await writable.focus()
     await page.keyboard.press(`${modifier}+a`)
-    await page.keyboard.type(unsaved)
+    await writable.pressSequentially(unsaved, { delay: 20 })
   }
   // Revocation watches close old-cookie streams within ten seconds. The native
   // client must reconnect using the renewed cookie without reloading its buffer.
   await expect.poll(() => sockets.length, { timeout: 30_000 }).toBeGreaterThan(previousSockets)
-  await expect(ide.locator('.monaco-editor').filter({ has: input }).locator('.view-lines')).toContainText(unsaved)
+  await expect(retainedEditor).toContainText(unsaved)
   await writable.focus()
   await page.keyboard.press(`${modifier}+s`)
   await expect.poll(async () => (await (await request.get('http://fixture:8766/test/status')).json()).text).toBe(unsaved)

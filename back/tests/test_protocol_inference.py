@@ -183,40 +183,53 @@ def provider_http(monkeypatch, handler):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("with_summary", [False, True])
-async def test_raw_responses_reasoning_reaches_run_guard_and_closes_provider(
-    runtime, monkeypatch, with_summary,
+@pytest.mark.parametrize("persistent", [False, True])
+async def test_raw_responses_reasoning_closes_provider_and_guides_bounded_recovery(
+    runtime, monkeypatch, responses_sse, with_summary, persistent,
 ):
-    """Exercise SDK, durable transport, runtime projection and the common run guard."""
+    """Preserve provider cancellation and journaling under the guided recovery contract."""
     from app.agent import facade
     from app.agent.contracts import (
         AgentEvent, AgentRunRequest, AgentSnapshot, ExecutionResult, ResolvedModel,
     )
-    from app.agent.reasoning_guard import ReasoningDegenerationError
     from app.harness.runtime import Agent as HarnessAgent
+    from app.agent.models import Agent as AgentRecord, Title
+    from core.user.models import User
 
     db, llm, _, _ = runtime
     llm.provider = (await db.scalars(select(LLMProvider).where(
         LLMProvider.catalog_code == "openrouter",
     ))).one()
     llm.llm_name = "synthetic/reasoning-worker"
+    title = Title(label=f"Reasoning test {uuid4().hex}", gender="X")
+    owner = User(email=f"reasoning-{uuid4().hex}@example.test", hashed_password="unused-synthetic-hash")
+    db.add_all([title, owner])
+    await db.flush()
+    actor = AgentRecord(user_id=owner.id, title_id=title.id, first_name="Alice", last_name="Martin", code=f"reasoning-{uuid4().hex}")
+    db.add(actor)
     await db.commit()
-    closed = asyncio.Event()
+    closed = []
     generated = []
+    requests = []
     pattern = "Review the synthetic record. Proceed. "
 
     class RawReasoningStream(httpx.AsyncByteStream):
+        def __init__(self, index):
+            self.index = index
+
         async def __aiter__(self):
-            initial = {"id": "synthetic-thought", "type": "reasoning", "summary": []}
-            events = [{"type": "response.output_item.added", "output_index": 0, "item": initial}]
-            if with_summary:
-                events.append({"type": "response.reasoning_summary_text.delta", "item_id": initial["id"],
-                    "output_index": 0, "summary_index": 0, "delta": "Reviewing a synthetic record."})
-            for event in events:
-                yield f"data: {json.dumps(event)}\n\n".encode()
-            for _ in range(40):
-                generated.append(True)
-                yield f"data: {json.dumps({'type': 'response.reasoning_text.delta', 'item_id': initial['id'], 'output_index': 0, 'content_index': 0, 'delta': pattern})}\n\n".encode()
-                await asyncio.sleep(0.01)
+            if self.index == 0 or persistent:
+                initial = {"id": "synthetic-thought", "type": "reasoning", "summary": []}
+                events = [{"type": "response.output_item.added", "output_index": 0, "item": initial}]
+                if with_summary:
+                    events.append({"type": "response.reasoning_summary_text.delta", "item_id": initial["id"],
+                        "output_index": 0, "summary_index": 0, "delta": "Reviewing a synthetic record."})
+                for event in events:
+                    yield f"data: {json.dumps(event)}\n\n".encode()
+                for _ in range(40):
+                    generated[self.index].append(True)
+                    yield f"data: {json.dumps({'type': 'response.reasoning_text.delta', 'item_id': initial['id'], 'output_index': 0, 'content_index': 0, 'delta': pattern})}\n\n".encode()
+                    await asyncio.sleep(0.01)
             terminal = {"type": "response.completed", "response": {
                 "id": "synthetic-response", "object": "response", "created_at": 1,
                 "model": llm.llm_name, "status": "completed", "output": [{
@@ -224,16 +237,25 @@ async def test_raw_responses_reasoning_reaches_run_guard_and_closes_provider(
                     "status": "completed", "content": [{"type": "output_text", "text": "Finished.", "annotations": []}],
                 }],
             }}
-            yield f"data: {json.dumps(terminal)}\n\n".encode()
+            yield responses_sse(terminal["response"]).encode()
 
         async def aclose(self):
-            closed.set()
+            closed[self.index].set()
 
     def upstream(request):
         if request.method == "GET":
             return httpx.Response(200, json={"data": [{"id": llm.llm_name,
                 "context_length": 131072, "top_provider": {"max_completion_tokens": 16384}}]})
-        return httpx.Response(200, stream=RawReasoningStream(), headers={"content-type": "text/event-stream"})
+        body = json.loads(request.content)
+        if requests:
+            assert closed[-1].is_set()
+            history = json.dumps(body.get("input"), ensure_ascii=False)
+            assert "Change approach" in history
+            assert pattern.strip() not in history
+        requests.append(body)
+        closed.append(asyncio.Event())
+        generated.append([])
+        return httpx.Response(200, stream=RawReasoningStream(len(requests) - 1), headers={"content-type": "text/event-stream"})
 
     provider_http(monkeypatch, upstream)
     agent = HarnessAgent(llm)
@@ -244,31 +266,42 @@ async def test_raw_responses_reasoning_reaches_run_guard_and_closes_provider(
             async with aclosing(agent.run(request.objective)) as messages:
                 async for message in messages:
                     yield AgentEvent.from_message(message)
-            yield AgentEvent.from_result(ExecutionResult(prompt=request.objective, result="Finished."))
+            yield AgentEvent.from_result(ExecutionResult(
+                prompt=request.objective, result=agent.error or agent.terminal_output or "",
+                success=not bool(agent.error),
+            ))
 
     monkeypatch.setattr(facade, "create_driver", lambda _spec: RuntimeDriver())
     request = AgentRunRequest(
         run_id=uuid4(), task_id=None, driver_code="internal", effort="standard",
-        agent=AgentSnapshot(id=3, code="synthetic-agent", first_name="Alice", last_name="Martin", driver_code="internal"),
+        agent=AgentSnapshot(id=actor.id, code=actor.code, first_name="Alice", last_name="Martin", driver_code="internal"),
         objective="Review a synthetic record.",
         model=ResolvedModel(id=llm.id, code=llm.code, model_name=llm.llm_name, label="Synthetic", requested_effort="standard"),
     )
-    with pytest.raises(ReasoningDegenerationError):
-        async with aclosing(facade.stream(request)) as events:
-            async for _ in events:
-                pass
-    await asyncio.wait_for(closed.wait(), 5)
-    assert len(generated) < 40
-    calls = list(await db.scalars(select(LLMCall).where(LLMCall.llm_id == llm.id)))
-    assert len(calls) == 1
-    assert calls[0].status == "cancelled"
-    assert pattern.strip() in calls[0].reasoning
-    attempt = await db.get(LLMInferenceAttempt, calls[0].inference_attempt_id)
-    assert attempt is not None
-    journal = await read_inference(attempt.inference_id)
-    assert journal.status == "stopped"
-    assert len(journal.attempts) == 1
-    assert any(pattern.strip() in message.content for message in journal.attempts[0].result.messages)
+    async with aclosing(facade.stream(request)) as stream:
+        events = [event async for event in stream]
+    assert len(requests) == (3 if persistent else 2)
+    assert agent.reasoning_recoveries == (2 if persistent else 1)
+    assert sum(event.kind == "result" for event in events) == 1
+    assert events[-1].result.success is (not persistent)
+    if not persistent:
+        assert events[-1].result.result == "Finished."
+    calls = list(await db.scalars(select(LLMCall).where(LLMCall.llm_id == llm.id).order_by(LLMCall.started_at)))
+    assert len(calls) == len(requests)
+    for index, call in enumerate(calls):
+        await asyncio.wait_for(closed[index].wait(), 5)
+        if index == 0 or persistent:
+            assert len(generated[index]) < 40
+            assert call.status == "cancelled"
+            assert pattern.strip() in call.reasoning
+            attempt = await db.get(LLMInferenceAttempt, call.inference_attempt_id)
+            assert attempt is not None
+            journal = await read_inference(attempt.inference_id)
+            assert journal.status == "stopped"
+            assert len(journal.attempts) == 1
+            assert any(pattern.strip() in message.content for message in journal.attempts[0].result.messages)
+        else:
+            assert call.status == "completed"
 
 
 @pytest.mark.asyncio

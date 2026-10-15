@@ -7,6 +7,8 @@ const file = { id: 'model-1', uri: 'chat://room/model-1', name: 'cube.obj', mime
 
 for (const surface of ['document', 'message', 'resource']) {
   test(`${surface} 3D preview renders geometry, supports camera navigation and cleans up`, async ({ page }) => {
+    // Software WebGL captures share CPU with the parallel validation suites.
+    test.setTimeout(60_000)
     if (surface === 'document') await page.route('**/api/memory/documents/document-1/attachments/model-1/thumbnail?*', async route => {
       const data = await page.evaluate(async cube => {
         const { createModelThumbnail } = await import('/core/util/model3dRuntime.ts')

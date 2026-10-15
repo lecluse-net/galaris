@@ -27,6 +27,13 @@
     "line_min": 73,
     "branch_min": 49
   },
+  "app/code/": {
+    "prefixes": [
+      "app/code/"
+    ],
+    "line_min": 79,
+    "branch_min": 66
+  },
   "app/connection/": {
     "prefixes": [
       "app/connection/"
@@ -271,6 +278,13 @@
     ],
     "line_min": 63,
     "branch_min": 36
+  },
+  "bridge/code_server/": {
+    "prefixes": [
+      "bridge/code_server/"
+    ],
+    "line_min": 74,
+    "branch_min": 52
   },
   "bridge/codex/": {
     "prefixes": [

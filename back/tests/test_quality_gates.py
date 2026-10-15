@@ -2,10 +2,27 @@
 
 import json
 import sys
+from pathlib import Path
 
 import pytest
 
 from scripts.check_critical_coverage import main as coverage_main
+
+
+def test_all_backend_sources_belong_to_one_declared_coverage_domain():
+    root = Path(__file__).resolve().parents[1]
+    domains = json.loads((root / "coverage-all-domains.json").read_text())
+    gaps = []
+    for layer in ("app", "bridge", "core"):
+        for path in (root / layer).rglob("*.py"):
+            if path.name == "__init__.py" or {"tests", "default-agent"} & set(path.parts):
+                continue
+            relative = path.relative_to(root).as_posix()
+            owners = [name for name, domain in domains.items()
+                      if any(relative.startswith(prefix) for prefix in domain["prefixes"])]
+            if len(owners) != 1:
+                gaps.append(relative)
+    assert not gaps, f"Backend sources need exactly one explicit coverage floor: {gaps}"
 
 
 @pytest.mark.parametrize("fault", ["branch_gap", "missing_domain", "unassigned_source", "xml_entity"])

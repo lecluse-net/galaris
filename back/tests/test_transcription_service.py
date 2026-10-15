@@ -206,6 +206,7 @@ async def test_openrouter_sends_base64_audio_and_language(
     }
     assert _LLMCalls.created == [
         {
+            "voice_dialogue": False,
             "purpose": LLMCallPurpose.AUDIO_TRANSCRIPTION,
             "requester_user_id": None,
             "task_id": None,
