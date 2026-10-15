@@ -8,14 +8,12 @@ from typing import Any, Literal, cast
 from uuid import UUID
 
 from loguru import logger
-from sqlalchemy import select
-
-from app.task import Task
+from app.task.facade import memory_scope_for_task
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
-from core.database import get_db
 from core.i18n import t
 
-from . import acquisition_service, document_service, facade, item_sharing, service
+from . import acquisition_service, item_sharing, service
+from .recall_scope import resolve_recall_scope
 from .schemas import (
     MemoryTemporalAnchor,
     MemoryAcquisitionCreate,
@@ -85,37 +83,9 @@ async def _recall_scope(
 ) -> tuple[UUID | None, UUID | None]:
     """Resolve the server-owned Topic/contact scope for the current run."""
 
-    topic_id: UUID | None = None
-    contact_item_id: UUID | None = None
-    if ctx.task_id is not None:
-        task = (
-            await get_db().execute(
-                select(Task.topic_id, Task.contact_memory_item_id).where(
-                    Task.id == ctx.task_id, Task.agent_id == ctx.agent_id,
-                )
-            )
-        ).one_or_none()
-        if task is not None:
-            topic_id = task.topic_id
-            contact_item_id = task.contact_memory_item_id
-    else:
-        turn = ctx.resource("conversation_turn")
-        if turn is not None and getattr(turn, "agent_id", None) == ctx.agent_id:
-            from app.conversation.contracts import ConversationTurn
-            from app.conversation.facade import current_turn_scope
-
-            if isinstance(turn, ConversationTurn):
-                topic_id, contact_item_id = await current_turn_scope(turn)
-                return await service.projected_topic_item_id(topic_id), contact_item_id
-            raw_topic_id = getattr(turn, "topic_id", None)
-            raw_contact_item_id = getattr(turn, "contact_memory_item_id", None)
-            topic_id = raw_topic_id if isinstance(raw_topic_id, UUID) else None
-            contact_item_id = (
-                raw_contact_item_id
-                if isinstance(raw_contact_item_id, UUID)
-                else None
-            )
-    return await service.projected_topic_item_id(topic_id), contact_item_id
+    return await resolve_recall_scope(
+        agent_id=ctx.agent_id, task_id=ctx.task_id, conversation_turn=ctx.resource("conversation_turn"),
+    )
 
 
 def _current_source(ctx: McpToolContext) -> _CurrentSource:
@@ -144,8 +114,7 @@ async def _associate_with_current_source(
         return _SourceAssociation(associated=False)
     if source.source_kind == "task":
         assert ctx.task_id is not None
-        task = await get_db().get(Task, ctx.task_id)
-        if task is None or task.agent_id != ctx.agent_id:
+        if await memory_scope_for_task(ctx.task_id, agent_id=ctx.agent_id) is None:
             return _SourceAssociation(associated=False)
     topic_item_id, contact_item_id = await _recall_scope(ctx)
     await service.add_item_source(
@@ -203,143 +172,6 @@ def _task_association_payload(
         "links_created": 0,
         "topic_projection_pending": association.topic_projection_pending,
     }
-
-
-async def memory_search(
-    ctx: McpToolContext,
-    query: str,
-    limit: int | None = None,
-) -> str:
-    try:
-        topic_item_id, contact_item_id = await _recall_scope(ctx)
-        request = MemoryRecallRequest.model_validate(
-            {
-                "agent_id": ctx.agent_id,
-                "query": query,
-                "limit": (
-                    max(1, min(int(limit), 50))
-                    if limit is not None
-                    else None
-                ),
-                "task_id": ctx.task_id,
-                "topic_item_id": topic_item_id,
-                "contact_item_id": contact_item_id,
-            }
-        )
-        page = await facade.search_memory_detailed(
-            request.query,
-            agent_id=request.agent_id,
-            limit=request.limit,
-            task_id=request.task_id,
-            topic_item_id=request.topic_item_id,
-            contact_item_id=request.contact_item_id,
-            record_llm_access=True,
-            telemetry_kind="search",
-        )
-        return _json(
-            {
-                "query": page.query,
-                "memories": [
-                    {
-                        "memory_id": hit.item.id,
-                        "title": hit.item.title,
-                        "node_kind": hit.item.node_kind,
-                        "excerpt": hit.excerpt,
-                        "sources": hit.source_refs,
-                        "structural_path": [step.model_dump(mode="json") for step in hit.structural_path],
-                    }
-                    for hit in page.hits
-                ],
-                "has_more": page.has_more,
-                "search": {
-                    "requested": "hybrid",
-                    "used": page.mode,
-                    "degraded": page.degraded,
-                    "reason": page.degradation_reason,
-                },
-            }
-        )
-    except Exception as exc:
-        logger.exception("memory_search failed")
-        return _json({"error": str(exc)})
-
-
-async def memory_get(ctx: McpToolContext, memory_id: str, revision: int | None = None) -> str:
-    try:
-        item_id = UUID(memory_id)
-        item, content, access, content_type, media_type = await service.get_item(
-            item_id,
-            agent_id=ctx.agent_id,
-            revision=revision,
-            record_llm_access=True,
-            task_id=ctx.task_id,
-            memory_content=True,
-        )
-        if item.node_kind == "document" and not content:
-            return _json(
-                {
-                    "error": (
-                        "This item is a working document. Use file_read with its "
-                        "document:// URI to read it in bounded passages."
-                    ),
-                    "document_id": item.id,
-                    "title": item.title,
-                    "revision": item.revision,
-                }
-            )
-        detail = await service.item_to_detail(
-            item,
-            content,
-            access,
-            content_type=content_type,
-            media_type=media_type,
-            revision=revision,
-            memory_content=True,
-        )
-        return detail.model_dump_json(indent=2)
-    except Exception as exc:
-        logger.exception("memory_get failed")
-        return _json({"error": str(exc)})
-
-
-async def document_read(
-    ctx: McpToolContext,
-    document_id: str,
-    query: str = "",
-    offset: int = 0,
-    max_chars: int = 20_000,
-) -> str:
-    try:
-        result = await document_service.read_document(
-            UUID(document_id),
-            actor_agent_id=ctx.agent_id,
-            task_id=ctx.task_id,
-            query=query,
-            offset=offset,
-            max_chars=max_chars,
-        )
-        return _json(result)
-    except Exception:
-        logger.exception("document_read failed")
-        raise
-
-
-async def document_append(
-    ctx: McpToolContext,
-    document_id: str,
-    content: str,
-) -> str:
-    try:
-        result = await document_service.append_document(
-            UUID(document_id),
-            actor_agent_id=ctx.agent_id,
-            task_id=ctx.task_id,
-            content=content,
-        )
-        return _json(result)
-    except Exception:
-        logger.exception("document_append failed")
-        raise
 
 
 @mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
@@ -536,56 +368,6 @@ async def memory_upcoming(ctx: McpToolContext, limit: int = 50, offset: int = 0)
     ), limit=limit, offset=offset)
     return _json({"items": [hit.model_dump(mode="json") for hit in hits], "has_more": has_more,
                   "next_offset": offset + limit if has_more else None})
-
-
-async def memory_index(
-    ctx: McpToolContext,
-    text: str,
-    title: str = "Memory",
-    source_type: str = "manual",
-    source_id: str = "",
-    tags: list[str] | None = None,
-    replace_existing: bool = False,
-) -> str:
-    del replace_existing
-    language = await context_language(ctx)
-    resolved_title = (
-        t("memory.tools.default_title", language)
-        if not title.strip() or title == "Memory"
-        else title
-    )
-    try:
-        topic_item_id, contact_item_id = await _recall_scope(ctx)
-        acquisition = await acquisition_service.acquire_memory(
-            MemoryAcquisitionCreate(
-                agent_id=ctx.agent_id,
-                title=resolved_title,
-                content=text,
-                keywords=tags or [],
-                source_kind=source_type or "manual",
-                source_ref=source_id or f"task:{ctx.task_id or 'manual'}",
-                metadata={
-                    "requested_by": "legacy_memory_index",
-                    "language": language,
-                    **_scope_metadata(topic_item_id, contact_item_id),
-                },
-            )
-        )
-        association = await _associate_with_current_source(
-            ctx,
-            acquisition.memory_id,
-        )
-        return _json(
-            {
-                "memory_id": acquisition.memory_id,
-                "created": acquisition.created,
-                "status": acquisition.status,
-                **_task_association_payload(association),
-            }
-        )
-    except Exception as exc:
-        logger.exception("memory_index failed")
-        return _json({"error": str(exc)})
 
 
 @mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",

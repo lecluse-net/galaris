@@ -53,6 +53,7 @@ class ResourceContext:
     console_resource: Any | None = None
     language: str | None = None
     skill_management: bool = False
+    conversation_turn: object | None = None
 
 
 class ResourceDescriptor(BaseModel):

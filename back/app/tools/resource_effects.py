@@ -161,8 +161,6 @@ async def record_tool_resources(
         resource_reference = str(payload.get("uri") or "").strip() or _resource_uri(
             arguments.get("uri") or arguments.get("path")
         )
-    elif tool_name == "file_download":
-        resource_reference = _resource_uri(arguments.get("destination"))
     if resource_reference:
         normalized = _resource_uri(resource_reference)
         scheme = normalized.partition("://")[0]
@@ -218,7 +216,6 @@ async def record_tool_resources(
                             "file_edit",
                             "file_copy",
                             "file_move",
-                            "file_download",
                         }
                         else {}
                     ),
@@ -370,51 +367,6 @@ async def record_tool_resources(
                     "destination": destination,
                     "filename": normalized,
                     **({"uri": _resource_uri(delivered_uri)} if delivered_uri else {}),
-                    "tool": tool_name,
-                },
-            ),
-        )
-    elif tool_name == "file_upload":
-        source = _text(arguments, "source")
-        if not source:
-            return
-        normalized = _resource_uri(source)
-        if not normalized:
-            return
-        label = PurePosixPath(normalized.partition("://")[2]).name
-        tool_code = _text(arguments, "tool_code")
-        destination = _text(arguments, "destination")
-        delivery_reference = _resource_uri(
-            f"{tool_code}://{destination or label}"
-        )
-        await _record(
-            ctx,
-            WorkingResource(
-                resource_type="artifact",
-                role="final_artifact",
-                reference=delivery_reference,
-                label=label,
-                producer_task_id=ctx.task_id,
-                metadata={
-                    "source": normalized,
-                    "file_share_tool": tool_code,
-                    "destination": destination,
-                    "delivered": True,
-                },
-            ),
-        )
-        await _record(
-            ctx,
-            WorkingResource(
-                resource_type="delivery_receipt",
-                role=f"delivery_receipt:{normalized}"[:160],
-                reference=f"file_upload:{delivery_reference}",
-                label=label,
-                producer_task_id=ctx.task_id,
-                metadata={
-                    "source": normalized,
-                    "destination": destination,
-                    "tool_code": tool_code,
                     "tool": tool_name,
                 },
             ),

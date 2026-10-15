@@ -2,6 +2,8 @@
 
 # Functional guarantees catalogue
 
+`app/memory/tests/test_mcp.py` uses `file_search`/`file_read` for permissions, contact context and bounded reads; retired MCP wrappers no longer stand in for the actual path.
+
 `back/app/memory/tests/test_inline_content.py` covers native text transfer into SQL
 and its immutable backup: exact bytes and replay, history/syntheses, rollback,
 missing or changed sources, UTF-8/NUL validation and deletion.

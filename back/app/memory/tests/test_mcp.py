@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -13,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent.models import Agent
 from app.llm import LlmProfile
 from app.file_share.resource_contracts import ResourceContext
-from app.file_share import resource_service
+from app.file_share import resource_service, mcp as file_mcp
 from app.memory import MessengerContactObservation, mcp, observe_messenger_contact, service
 from app.memory.models import (
     MemoryContactItem,
@@ -53,7 +52,6 @@ def test_memory_mcp_family_is_discovered_once() -> None:
     }.isdisjoint(names["memory"])
     all_names = [definition.name for definition in load_mcp_tools()]
     assert all(all_names.count(name) == 1 for name in expected)
-    assert "full_search" not in inspect.signature(mcp.memory_search).parameters
 
 
 def test_memory_remember_description_preserves_storage_contract() -> None:
@@ -122,10 +120,12 @@ async def test_memory_remember_normalizes_json_encoded_keywords(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("scope_source", ["task", "text", "voice"])
 async def test_memory_remember_seals_identical_facts_to_the_exact_contact(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
+    scope_source: str,
 ) -> None:
     del memory_storage
     owner, _peer = agents
@@ -186,24 +186,30 @@ async def test_memory_remember_seals_identical_facts_to_the_exact_contact(
         (UUID(str(bob_memory["memory_id"])), bob_contact),
     }
 
-    alice_search = json.loads(
-        await mcp.memory_search(
-            McpToolContext(
-                agent_id=owner.id,
-                runtime="internal",
-                task_id=alice_task.id,
+    from app.conversation.contracts import ConversationTurn
+    search_ctx = McpToolContext(agent_id=owner.id, runtime="internal", task_id=alice_task.id)
+    if scope_source != "task":
+        search_ctx = McpToolContext(agent_id=owner.id, runtime="internal", resources={
+            "conversation_turn": ConversationTurn(
+                room_id=uuid4(), round_id=uuid4(), agent_id=owner.id, language="fr",
+                objective="Find the current contact's location", messages=(),
+                origin=scope_source, contact_memory_item_id=alice_contact,
             ),
-            "plage",
+        })
+    alice_search = json.loads(
+        await file_mcp.search_files(
+            search_ctx,
+            "memory://", "plage", mode="semantic",
         )
     )
-    assert [memory["memory_id"] for memory in alice_search["memories"]] == [
-        alice_memory["memory_id"]
+    assert [hit["resource"]["uri"] for hit in alice_search["hits"]] == [
+        f"memory://{alice_memory['memory_id']}"
     ]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("embedding_configured", [False, True])
-async def test_memory_mcp_index_search_get_and_store(
+async def test_memory_mcp_remember_search_read_and_summarize(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
@@ -259,13 +265,11 @@ async def test_memory_mcp_index_search_get_and_store(
     )
 
     indexed = json.loads(
-        await mcp.memory_index(
+        await mcp.memory_remember(
             ctx,
-            text="Use Atlas for every declarative database schema change.",
+            content="Use Atlas for every declarative database schema change.",
             title="Database schema convention",
-            source_type="test",
-            source_id="test:mcp:1",
-            tags=["atlas", "database"],
+            keywords=["atlas", "database"],
         )
     )
     memory_id = str(indexed["memory_id"])
@@ -274,25 +278,22 @@ async def test_memory_mcp_index_search_get_and_store(
     assert indexed["links_created"] == 0
     assert indexed["topic_projection_pending"] is True
 
-    searched = json.loads(await mcp.memory_search(ctx, "Atlas database"))
-    assert searched["memories"][0]["memory_id"] == memory_id
-    assert "score" not in searched["memories"][0]
-    assert sorted(searched["memories"][0]["sources"]) == sorted([
-        "test:mcp:1",
-        f"task:{task.id}",
-    ])
-    assert searched["search"] == {
-        "requested": "hybrid",
-        "used": "lexical",
-        "degraded": True,
-        "reason": "embedding_index_empty" if embedding_configured else "embedding_not_configured",
-    }
+    searched = json.loads(await file_mcp.search_files(ctx, "memory://", "Atlas database", mode="semantic"))
+    assert searched["hits"][0]["resource"]["uri"] == f"memory://{memory_id}"
+    assert searched["hits"][0]["source_refs"] == [f"task:{task.id}"]
+    assert searched["retrieval_mode"] == "lexical"
+    assert searched["degraded"] is True
+    assert searched["degradation_reason"] == (
+        "embedding_index_empty" if embedding_configured else "embedding_not_configured"
+    )
 
-    loaded = json.loads(await mcp.memory_get(ctx, memory_id))
-    assert loaded["payload"]["text"].startswith("<p>Use Atlas")
-    assert loaded["access_count"] == 2
-    assert loaded["last_accessed_at"] is not None
-    assert loaded["updated_at"] is None
+    loaded = json.loads(await file_mcp.read_file(ctx, f"memory://{memory_id}"))
+    assert loaded["content"].startswith("<p>Use Atlas")
+    memory = await db.get(MemoryItem, UUID(memory_id))
+    assert memory is not None
+    assert memory.access_count == 2
+    assert memory.last_accessed_at is not None
+    assert memory.updated_at is None
 
     remembered = json.loads(
         await mcp.memory_remember(
@@ -421,20 +422,19 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
     assert created.state == "created"
 
     owner_search = json.loads(
-        await mcp.memory_search(owner_ctx, "release investigation")
+        await file_mcp.search_files(owner_ctx, "document://", "release investigation", mode="semantic")
     )
-    assert owner_search["memories"][0]["memory_id"] == document_id
-    assert owner_search["memories"][0]["node_kind"] == "document"
-    whole_read_refused = json.loads(await mcp.memory_get(owner_ctx, document_id))
-    assert "file_read" in whole_read_refused["error"]
+    assert owner_search["hits"][0]["resource"]["uri"] == f"document://{document_id}"
+    with pytest.raises(service.MemoryConflictError, match="Use document://"):
+        await file_mcp.read_file(owner_ctx, f"memory://{document_id}")
     await service.update_memory_content(
         UUID(document_id), MemoryItemUpdate(expected_revision=1,
             payload=MemoryPayload(text="<p>Independent findings synthesis.</p>")),
         actor_agent_id=owner.id,
     )
-    summarized = json.loads(await mcp.memory_get(owner_ctx, document_id))
-    assert summarized["payload"]["text"] == "<p>Independent findings synthesis.</p>"
-    assert summarized["revision"] == 2
+    item, content, *_ = await service.get_item(UUID(document_id), agent_id=owner.id, memory_content=True)
+    assert content.decode() == "<p>Independent findings synthesis.</p>"
+    assert item.memory_revision == 2
 
     repeated_suffix = await resource_service.resource_append(
         ResourceContext(
@@ -449,9 +449,9 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
     assert repeated_suffix.state == "appended"
 
     invisible = json.loads(
-        await mcp.memory_search(peer_ctx, "release investigation")
+        await file_mcp.search_files(peer_ctx, "document://", "release investigation", mode="semantic")
     )
-    assert invisible["memories"] == []
+    assert invisible["hits"] == []
 
     shared_read = json.loads(
         await mcp.document_share(
@@ -465,15 +465,11 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
         {"agent_id": peer.id, "access": "read"}
     ]
     peer_passage = json.loads(
-        await mcp.document_read(
-            peer_ctx,
-            document_id=document_id,
-            query="Evidence",
-            max_chars=30,
-        )
+        await file_mcp.read_file(peer_ctx, f"document://{document_id}", offset=2, max_chars=30)
     )
     assert peer_passage["content"].startswith("<h2>Evidence</h2>")
-    assert peer_passage["can_write"] is False
+    peer_info = json.loads(await file_mcp.file_info(peer_ctx, f"document://{document_id}"))
+    assert "write" not in peer_info["capabilities"]
     with pytest.raises(service.MemoryPermissionError, match="access denied"):
         await resource_service.resource_edit(
             ResourceContext(
@@ -576,4 +572,4 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
     )
     assert removed["shared_with"] == []
     with pytest.raises(service.MemoryPermissionError, match="access denied"):
-        await mcp.document_read(peer_ctx, document_id=document_id)
+        await file_mcp.read_file(peer_ctx, f"document://{document_id}")

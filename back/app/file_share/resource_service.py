@@ -853,6 +853,7 @@ async def resource_list(
         data = await search_file_resources(
             agent_id=ctx.agent_id,
             task_id=ctx.task_id,
+            conversation_turn=ctx.conversation_turn,
             expected_kind=cast(
                 Literal["memory", "document"], reference.scheme
             ),
@@ -2506,6 +2507,7 @@ async def resource_search(
         data = await search_file_resources(
             agent_id=ctx.agent_id,
             task_id=ctx.task_id,
+            conversation_turn=ctx.conversation_turn,
             expected_kind=cast(Literal["memory", "document"], reference.scheme),
             query=normalized_query,
             mode=mode,

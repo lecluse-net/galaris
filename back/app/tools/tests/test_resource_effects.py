@@ -207,8 +207,10 @@ async def test_complete_binary_write_records_a_produced_console_artifact(
 
 
 @pytest.mark.asyncio
-async def test_file_upload_records_remote_artifact_and_receipt(
+@pytest.mark.parametrize("retired_tool", ["file_upload", "file_download"])
+async def test_retired_file_tools_cannot_create_delivery_evidence(
     monkeypatch: pytest.MonkeyPatch,
+    retired_tool: str,
 ) -> None:
     from app.tools import resource_effects
 
@@ -221,23 +223,16 @@ async def test_file_upload_records_remote_artifact_and_receipt(
 
     await record_tool_resources(
         McpToolContext(agent_id=1, runtime="internal", task_id=uuid4()),
-        "file_upload",
+        retired_tool,
         {
             "tool_code": "nextcloud",
             "source": "console://final/report.html",
-            "destination": "Shared/report.html",
+            "destination": "nextcloud://Shared/report.html",
         },
         "Upload completed",
     )
 
-    resources = [call.args[1] for call in recorded.await_args_list]
-    assert [resource.resource_type for resource in resources] == [
-        "artifact",
-        "delivery_receipt",
-    ]
-    assert resources[0].reference == "nextcloud://Shared/report.html"
-    assert resources[1].metadata["source"] == "console://final/report.html"
-    assert receipt_matches_artifact(resources[0], resources[1])
+    recorded.assert_not_awaited()
 
 
 @pytest.mark.asyncio

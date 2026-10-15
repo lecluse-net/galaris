@@ -66,6 +66,19 @@ et leurs politiques de dégradation. L'identité commune reprend celle des index
 existants. L'index documentaire, qui utilisait une autre empreinte, se reconstruit par son
 traitement périodique normal ; la recherche lexicale reste disponible pendant cette convergence.
 
+Les wrappers MCP non exposés `memory_search`, `memory_get`, `memory_index`, `document_read` et
+`document_append`, ainsi que les branches d'effets `file_upload`/`file_download`, sont retirés.
+Les tests de droits, de rappel par contact et de lecture documentaire passent par les fonctions
+canoniques `file_search`/`file_read` ; les transferts et reçus restent couverts par
+`file_copy`/`file_move`. Les anciens arguments d'indexation et enveloppes de réponse ne constituent
+plus un contrat. La résolution du contexte de rappel est commune aux commandes Memory et aux
+recherches de fichiers, depuis une Task ou un round conversationnel.
+
+Les anciens tests appelaient les wrappers retirés et ne vérifiaient donc pas la propagation du
+contact dans `file_search`. Leur migration conserve la garantie d'isolation et révèle cet écart :
+la façade de fichiers transmet maintenant le contexte serveur au domaine Memory. Les scénarios
+canoniques deviennent la protection contre sa réapparition.
+
 ## Contrôles
 
 - `make project-context-check`

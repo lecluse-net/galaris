@@ -9,6 +9,7 @@ from uuid import UUID
 from . import document_attachment_service, document_service, facade, service
 from .document_types import DocumentType
 from .schemas import MemoryItemUpdate, MemoryPayload, MemorySearchRequest
+from .recall_scope import resolve_recall_scope
 
 
 async def create_document_file_resource(
@@ -265,10 +266,14 @@ async def search_file_resources(
     mode: Literal["name", "text", "semantic"],
     limit: int | None,
     offset: int,
+    conversation_turn: object | None = None,
 ) -> dict[str, object]:
     """Search authorized memories and return stable identifiers and excerpts."""
 
     name_only = expected_kind == "document" and mode == "name"
+    topic_item_id, contact_item_id = (None, None) if name_only else await resolve_recall_scope(
+        agent_id=agent_id, task_id=task_id, conversation_turn=conversation_turn,
+    )
     ranked = bool(query.strip()) and not name_only
     diagnostics: dict[str, object] = {}
     if ranked:
@@ -279,6 +284,8 @@ async def search_file_resources(
             limit=min(500, offset + page_limit + 1),
             node_kinds=["document"] if expected_kind == "document" else (),
             task_id=task_id,
+            topic_item_id=topic_item_id,
+            contact_item_id=contact_item_id,
             record_llm_access=False,
             telemetry_kind="search",
         )
@@ -306,6 +313,8 @@ async def search_file_resources(
                 offset=offset,
                 node_kinds=["document"] if expected_kind == "document" else ["memory"],
                 task_id=task_id,
+                topic_item_id=topic_item_id,
+                contact_item_id=contact_item_id,
             ),
             record_llm_access=True,
             name_only=name_only,

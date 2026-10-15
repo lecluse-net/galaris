@@ -45,6 +45,7 @@ async def _resource_context(ctx: McpToolContext) -> ResourceContext:
         console_resource=ctx.resource("console"),
         language=await _context_language(ctx),
         skill_management=await can_manage_skill_resources(ctx.agent_id),
+        conversation_turn=ctx.resource("conversation_turn"),
     )
 
 

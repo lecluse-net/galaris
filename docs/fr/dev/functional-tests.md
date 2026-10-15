@@ -2,6 +2,8 @@
 
 # Catalogue des garanties fonctionnelles
 
+`app/memory/tests/test_mcp.py` passe par `file_search`/`file_read` pour les droits, le contexte du contact et les lectures bornées ; les wrappers MCP retirés ne servent plus de parcours.
+
 `back/app/memory/tests/test_inline_content.py` couvre le transfert des textes natifs
 en SQL et sa sauvegarde immuable : octets exacts et rejeu, historique et synthèses,
 rollback, sources absentes ou modifiées, validation UTF-8/NUL et effacement.

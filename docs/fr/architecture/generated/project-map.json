@@ -2374,7 +2374,7 @@
           "back/app/memory/bootstrap.py",
           "back/app/memory/conversation_document_adapter.py",
           "back/app/memory/link_reconciliation.py",
-          "back/app/memory/mcp.py",
+          "back/app/memory/recall_scope.py",
           "back/app/memory/service.py"
         ],
         "source": "app.memory",
@@ -2416,6 +2416,7 @@
           "back/app/memory/goal_folders.py",
           "back/app/memory/link_reconciliation.py",
           "back/app/memory/mcp.py",
+          "back/app/memory/recall_scope.py",
           "back/app/memory/service.py"
         ],
         "source": "app.memory",
@@ -2488,7 +2489,6 @@
           "back/app/memory/library_queries.py",
           "back/app/memory/link_reconciliation.py",
           "back/app/memory/maintenance.py",
-          "back/app/memory/mcp.py",
           "back/app/memory/messenger_contact.py",
           "back/app/memory/models.py",
           "back/app/memory/process_projection.py",
@@ -3240,6 +3240,7 @@
           "back/app/task/collab.py",
           "back/app/task/conversation.py",
           "back/app/task/execution_scope.py",
+          "back/app/task/facade.py",
           "back/app/task/live_checkpoint.py",
           "back/app/task/mcp.py",
           "back/app/task/models.py",
@@ -7314,7 +7315,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "append_file",
-        "line": 352,
+        "line": 353,
         "module": "app.file_share",
         "name": "file_append",
         "namespace": "file_sharing"
@@ -7322,7 +7323,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "copy_file",
-        "line": 414,
+        "line": 415,
         "module": "app.file_share",
         "name": "file_copy",
         "namespace": "file_sharing"
@@ -7330,7 +7331,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "create_file",
-        "line": 280,
+        "line": 281,
         "module": "app.file_share",
         "name": "file_create",
         "namespace": "file_sharing"
@@ -7338,7 +7339,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "delete_file",
-        "line": 476,
+        "line": 477,
         "module": "app.file_share",
         "name": "file_delete",
         "namespace": "file_sharing"
@@ -7346,7 +7347,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "edit_file",
-        "line": 377,
+        "line": 378,
         "module": "app.file_share",
         "name": "file_edit",
         "namespace": "file_sharing"
@@ -7354,7 +7355,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_info",
-        "line": 166,
+        "line": 167,
         "module": "app.file_share",
         "name": "file_info",
         "namespace": "file_sharing"
@@ -7362,7 +7363,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "list_files",
-        "line": 138,
+        "line": 139,
         "module": "app.file_share",
         "name": "file_list",
         "namespace": "file_sharing"
@@ -7370,7 +7371,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "move_file",
-        "line": 446,
+        "line": 447,
         "module": "app.file_share",
         "name": "file_move",
         "namespace": "file_sharing"
@@ -7378,7 +7379,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "read_file",
-        "line": 240,
+        "line": 241,
         "module": "app.file_share",
         "name": "file_read",
         "namespace": "file_sharing"
@@ -7386,7 +7387,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_schemes",
-        "line": 117,
+        "line": 118,
         "module": "app.file_share",
         "name": "file_schemes",
         "namespace": "file_sharing"
@@ -7394,7 +7395,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "search_files",
-        "line": 198,
+        "line": 199,
         "module": "app.file_share",
         "name": "file_search",
         "namespace": "file_sharing"
@@ -7402,7 +7403,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "write_file",
-        "line": 317,
+        "line": 318,
         "module": "app.file_share",
         "name": "file_write",
         "namespace": "file_sharing"
@@ -8154,7 +8155,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "document_share",
-        "line": 355,
+        "line": 187,
         "module": "app.memory",
         "name": "document_share",
         "namespace": "memory"
@@ -8162,7 +8163,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_forget",
-        "line": 600,
+        "line": 382,
         "module": "app.memory",
         "name": "memory_forget",
         "namespace": "memory"
@@ -8170,7 +8171,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_remember",
-        "line": 478,
+        "line": 310,
         "module": "app.memory",
         "name": "memory_remember",
         "namespace": "memory"
@@ -8178,7 +8179,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_share",
-        "line": 450,
+        "line": 282,
         "module": "app.memory",
         "name": "memory_share",
         "namespace": "memory"
@@ -8186,7 +8187,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_sharing",
-        "line": 422,
+        "line": 254,
         "module": "app.memory",
         "name": "memory_sharing",
         "namespace": "memory"
@@ -8194,7 +8195,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_summarize",
-        "line": 621,
+        "line": 403,
         "module": "app.memory",
         "name": "memory_summarize",
         "namespace": "memory"
@@ -8202,7 +8203,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_upcoming",
-        "line": 528,
+        "line": 360,
         "module": "app.memory",
         "name": "memory_upcoming",
         "namespace": "memory"

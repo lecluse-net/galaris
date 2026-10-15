@@ -510,6 +510,10 @@ y compris entre **Mémoire** et **Contacts**, s’il reste disponible et autoris
 ou **Tous les agents** ne remplace pas cet agent mémorisé. Une sélection explicite, notamment
 dans un lien, reste prioritaire. Un rechargement complet ou une déconnexion efface ce choix.
 
+La recherche de souvenirs conserve le contexte du contact courant, dans les échanges texte,
+les appels vocaux et les Tasks qui leur sont associées. Les commandes de mémorisation et les
+recherches de l'agent utilisent ce même contexte.
+
 La mémoire récente d’une conversation est reconstruite automatiquement. Pour le contexte durable,
 Galaris peut injecter avant l’exécution un rappel borné des souvenirs pertinents. Si la recherche
 sémantique est indisponible, l’interface indique le repli vers la recherche lexicale.

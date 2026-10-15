@@ -393,6 +393,9 @@ agent is kept in frontend memory and offered when moving to another page, includ
 or **All agents** does not replace the remembered agent. An explicit selection, including
 one in a link, takes precedence. A full reload or logout clears this choice.
 
+Memory search preserves the current contact context in text conversations, voice calls and their
+associated Tasks. Memory commands and agent searches use the same context.
+
 Recent conversation memory is reconstructed automatically. For durable context, Galaris can inject a bounded reminder of relevant memories before execution. If semantic search is unavailable, the interface indicates the fallback to lexical search.
 
 A memory's details include **Temporality (optional)**. Enter only meaningful components:

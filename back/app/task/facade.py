@@ -1,14 +1,33 @@
 """Durable peer communication using the existing delegated Task lifecycle."""
 
 from uuid import UUID
+from sqlalchemy import select
 
 from app.agent import get_agent_record, require_agent_contact
 from core.i18n import render_prompt, t
 from core.util import convert_to_html
+from core.database import get_db
 from .work_projection import (
     TaskWorkSnapshot as TaskWorkSnapshot,
     list_work_snapshots as list_work_snapshots,
 )
+
+
+async def memory_scope_for_task(
+    task_id: UUID, *, agent_id: int
+) -> tuple[UUID | None, UUID | None] | None:
+    """Read only the context of a Task owned by the requesting agent."""
+    from .models import Task
+
+    row = (
+        await get_db().execute(
+            select(Task.topic_id, Task.contact_memory_item_id).where(
+                Task.id == task_id,
+                Task.agent_id == agent_id,
+            )
+        )
+    ).one_or_none()
+    return (row.topic_id, row.contact_memory_item_id) if row is not None else None
 
 
 async def request_peer_message(
