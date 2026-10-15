@@ -375,7 +375,7 @@ const emit = defineEmits<{
 }>()
 
 const ROOT_PAGE_SIZE = 500
-const AUTO_REFRESH_INTERVAL = 30_000
+const AUTO_REFRESH_INTERVAL = 5 * 60_000
 const LINK_WIDTH_SCALE = 0.8
 const NODE_MIN_RADIUS = 10
 const NODE_RADIUS_RANGE = 8

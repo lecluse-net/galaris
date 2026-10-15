@@ -317,13 +317,15 @@ for (const width of [1440, 390]) test(`3D background refresh preserves navigatio
   expect(await page.evaluate(() => window.graphPlacementRuns)).toBe(placements)
   expect((await snapshot(page)).graph3dCamera).toBe(navigated)
   const beforePoll = requests
-  await page.clock.runFor(30_001)
+  await page.clock.fastForward(60_000)
+  expect(requests).toBe(beforePoll)
+  await page.clock.fastForward(4 * 60_000 + 1)
   await expect.poll(() => requests).toBeGreaterThan(beforePoll)
   await expect(page.getByRole('button', { name: 'Reload graph', exact: true })).toBeEnabled()
   expect(await page.evaluate(() => window.graphPlacementRuns)).toBe(placements)
   await page.getByRole('switch', { name: 'Auto refresh', exact: true }).click()
   const pausedRequests = requests
-  await page.clock.runFor(30_001)
+  await page.clock.fastForward(5 * 60_000 + 1)
   expect(requests).toBe(pausedRequests)
   const after = requests
   mode = 'error'
