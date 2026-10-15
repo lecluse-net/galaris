@@ -324,6 +324,12 @@ page and select the tab without assuming a URL parameter. Contacts are at
 `/memory/contacts`; thematic groupings are under **Knowledge → Thematic dossiers** (`/topic`).
 Sharing a link does not grant access to its content.
 
+Click a dossier row, or its mobile card, to open its content. Within a dossier, task,
+text round, voice round, space, document and memory rows open their target in a dialog
+without leaving the dossier. Keyboard activation is also available. Close the dialog
+with its close button or by clicking outside it. The **Back** button below the dossier
+title returns to the list.
+
 In the **Documents** library, every folder offers a **New document** icon among its
 actions. Enter the title and owner: the document is automatically placed in that folder,
 which expands, and opens in the editor. The general creation button keeps new documents

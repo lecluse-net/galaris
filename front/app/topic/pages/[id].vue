@@ -1,30 +1,31 @@
 <template>
   <q-page class="q-pa-md topic-detail-page">
-    <q-btn
-      flat
-      dense
-      icon="arrow_back"
-      :label="t('common.back')"
-      class="q-mb-sm"
-      @click="router.push('/topic')"
-    />
-
     <PageHeader :icon="navigationIcon('folder_copy')"
       :title="content?.topic.title || t('topic.detail.title')"
       :description="t('topic.detail.subtitle')"
-    >
-      <template #title-after>
-        <q-btn
-          flat
-          round
-          color="primary"
-          icon="refresh"
-          :loading="loading"
-          :aria-label="t('topic.refresh')"
-          @click="load"
-        />
-      </template>
-    </PageHeader>
+    />
+
+    <div class="row items-center q-gutter-sm q-mb-sm">
+      <q-btn
+        outline
+        color="primary"
+        no-caps
+        icon="arrow_back"
+        :label="t('common.back')"
+        @click="router.push('/topic')"
+      />
+      <q-btn
+        outline
+        color="primary"
+        round
+        icon="refresh"
+        :loading="loading"
+        :aria-label="t('topic.refresh')"
+        @click="load"
+      >
+        <q-tooltip>{{ t('topic.refresh') }}</q-tooltip>
+      </q-btn>
+    </div>
 
     <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">
       <template #avatar><q-icon name="error_outline" /></template>
@@ -94,7 +95,8 @@
           <q-tab-panel name="tasks" class="q-pa-none">
             <TopicSectionLimit :shown="content.tasks.length" :total="content.summary.tasks" />
             <q-list v-if="content.tasks.length" separator>
-              <q-item v-for="task in content.tasks" :key="task.id">
+              <q-item v-for="task in content.tasks" :key="task.id" clickable
+                @click="openTarget('task', task.id, task.label)">
                 <q-item-section avatar><q-icon name="task_alt" color="primary" /></q-item-section>
                 <q-item-section>
                   <q-item-label class="text-weight-medium">{{ task.label }}</q-item-label>
@@ -105,14 +107,6 @@
                 </q-item-section>
                 <q-item-section side class="topic-item-side">
                   <q-badge :color="statusColor(task.status)">{{ taskStatus(task.status) }}</q-badge>
-                  <q-btn
-                    flat
-                    round
-                    dense
-                    icon="open_in_new"
-                    :aria-label="t('topic.detail.openTask')"
-                    @click="openTask(task.id)"
-                  />
                 </q-item-section>
               </q-item>
             </q-list>
@@ -142,7 +136,8 @@
                 <div class="text-subtitle1 q-mb-sm">{{ t('topic.detail.rooms') }}</div>
                 <TopicSectionLimit :shown="content.rooms.length" :total="content.summary.rooms" />
                 <q-list v-if="content.rooms.length" bordered separator class="rounded-borders">
-                  <q-item v-for="room in content.rooms" :key="room.id">
+                  <q-item v-for="room in content.rooms" :key="room.id" clickable
+                    @click="openTarget('room', room.id, room.label || room.external_id)">
                     <q-item-section avatar>
                       <q-icon :name="room.conversation_type === 'audio' ? 'phone_in_talk' : 'forum'" color="primary" />
                     </q-item-section>
@@ -158,7 +153,8 @@
               <div class="col-12 col-lg-6">
                 <div class="text-subtitle1 q-mb-sm">{{ t('topic.detail.documents') }}</div>
                 <q-list v-if="content.documents.length" bordered separator class="rounded-borders q-mb-md">
-                  <q-item v-for="document in content.documents" :key="document.id">
+                  <q-item v-for="document in content.documents" :key="document.id" clickable
+                    @click="openTarget('document', document.id, document.title)">
                     <q-item-section avatar><DocumentIcon :document-id="document.id" :title="document.title" /></q-item-section>
                     <q-item-section>
                       <q-item-label>{{ document.title }}</q-item-label>
@@ -170,7 +166,8 @@
 
                 <div class="text-subtitle1 q-mb-sm">{{ t('topic.detail.memories') }}</div>
                 <q-list v-if="content.memories.length" bordered separator class="rounded-borders">
-                  <q-item v-for="memory in content.memories" :key="memory.id">
+                  <q-item v-for="memory in content.memories" :key="memory.id" clickable
+                    @click="openTarget('memory', memory.id, memory.title, memory.owner_agent_id)">
                     <q-item-section avatar><q-icon name="memory" color="deep-purple" /></q-item-section>
                     <q-item-section>
                       <q-item-label>{{ memory.title }}</q-item-label>
@@ -189,6 +186,8 @@
     <div v-else-if="loading" class="flex flex-center q-pa-xl">
       <q-spinner color="primary" size="42px" />
     </div>
+    <ResourceDetailDialog v-if="selectedTarget" :target="selectedTarget"
+      @close="selectedTarget = null" @changed="load" />
   </q-page>
 </template>
 
@@ -199,9 +198,9 @@ import { computed, defineComponent, h, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { QBadge, QIcon, QItem, QItemLabel, QItemSection, QList } from 'quasar'
-import { PageHeader, richTextExcerpt } from '@/core/util'
+import { PageHeader, ResourceDetailDialog, richTextExcerpt } from '@/core/util'
 import { topicService } from '../services/topicService'
-import type { TopicContent, TopicRound, TopicVoiceTurn } from '../types'
+import type { TopicContent, TopicRound, TopicVoiceTurn, TopicTarget } from '../types'
 
 type DetailTab = 'tasks' | 'conversations' | 'voice' | 'spaces'
 
@@ -212,6 +211,7 @@ const content = ref<TopicContent | null>(null)
 const loading = ref(false)
 const error = ref('')
 const activeTab = ref<DetailTab>('tasks')
+const selectedTarget = ref<TopicTarget | null>(null)
 
 const topicId = computed(() => String(route.params.id || ''))
 const metrics = computed(() => content.value ? [
@@ -240,7 +240,11 @@ const RoundList = defineComponent({
   },
   setup(props) {
     return () => props.rounds.length
-      ? h(QList, { separator: true }, () => props.rounds.map(round => h(QItem, { key: round.id }, () => [
+      ? h(QList, { separator: true }, () => props.rounds.map(round => h(QItem, {
+        key: round.id, clickable: true,
+        onClick: () => openTarget(props.voice ? 'voice' : 'round', round.id,
+          props.voice && 'sequence' in round ? t('topic.detail.voiceTurn', { sequence: round.sequence }) : round.room_label),
+      }, () => [
         h(QItemSection, { avatar: true }, () => h(QIcon, { name: props.voice ? 'record_voice_over' : 'forum', color: 'primary' })),
         h(QItemSection, {}, () => [
           h(QItemLabel, { class: 'text-weight-medium' }, () => props.voice && 'sequence' in round
@@ -293,12 +297,12 @@ function taskStatus(status: string): string {
   return statusLabel(status)
 }
 
-function openTask(id: string): void {
-  void router.push({ path: '/task', query: { tab: 'tasks', task_id: id } })
+function openTarget(kind: TopicTarget['kind'], id: string, title: string, agentId?: number | null): void {
+  selectedTarget.value = { kind, id, title, agentId }
 }
 
 onMounted(load)
-watch(topicId, load)
+watch(topicId, () => { selectedTarget.value = null; void load() })
 </script>
 
 <style scoped>

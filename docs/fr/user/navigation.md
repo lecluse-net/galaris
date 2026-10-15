@@ -351,6 +351,12 @@ et **Graphe** : ouvrez la page puis choisissez l’onglet, sans supposer un para
 Les contacts sont dans `/memory/contacts` ; les regroupements thématiques dans
 **Connaissances → Sujets** (`/topic`). Le partage d’un lien ne donne pas accès au contenu.
 
+Cliquez sur une ligne de sujet, ou sur sa carte mobile, pour ouvrir son contenu.
+Dans un sujet, les lignes des tâches, rounds texte, tours audio, espaces, documents et
+mémoires ouvrent leur cible dans une modale sans quitter le sujet. Le clavier permet aussi
+de les ouvrir. Fermez la modale avec son bouton de fermeture ou en cliquant à l’extérieur.
+Le bouton **Retour**, sous le titre du sujet, ramène à la liste.
+
 Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**
 parmi ses actions. Renseignez le titre et le propriétaire : le document est automatiquement
 classé dans ce dossier, qui se déplie, puis s’ouvre dans l’éditeur. Le bouton de création

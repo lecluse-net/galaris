@@ -77,6 +77,7 @@
         :rows-per-page-options="[10, 20, 50, 100, 500]"
         :no-data-label="t('topic.noRows')"
         @request="onRequest"
+        @row-click="openTopic"
       >
         <template #body-cell-title="props">
           <q-td :props="props">
@@ -143,7 +144,7 @@
         </template>
 
         <template #body-cell-actions="props">
-          <q-td :props="props" class="topic-actions-cell" @click.stop>
+          <q-td :props="props" class="topic-actions-cell">
             <div v-if="canEdit" class="topic-actions">
               <q-btn flat round dense icon="edit" :aria-label="t('topic.edit')" @click="openEdit(props.row)">
                 <q-tooltip>{{ t('topic.edit') }}</q-tooltip>
@@ -163,12 +164,17 @@
 
         <template #item="props">
           <div class="q-table__grid-item col-12">
-            <q-card flat bordered class="topic-mobile-card">
+            <q-card flat bordered class="topic-mobile-card cursor-pointer" @click="openTopic($event, props.row)">
               <q-card-section class="q-gutter-md">
                 <div class="topic-title-cell row items-start no-wrap q-gutter-sm">
                   <q-icon name="folder" color="primary" size="sm" />
                   <div class="topic-title-copy">
-                    <div class="text-weight-medium text-subtitle1">{{ props.row.title }}</div>
+                    <router-link
+                      :to="`/topic/${encodeURIComponent(props.row.id)}`"
+                      class="text-weight-medium text-subtitle1 topic-title-link"
+                    >
+                      {{ props.row.title }}
+                    </router-link>
                     <div class="text-body2 text-grey-7 topic-description">
                       {{ props.row.description }}
                     </div>
@@ -399,6 +405,7 @@
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useQuasar, type QTableColumn, type QTableProps } from 'quasar'
 import { privileges } from '@/core/authorize'
@@ -412,6 +419,7 @@ import type { Topic, TopicInput, TopicLinkedMemory, TopicMonthlyUsage } from '..
 type TableRequest = Parameters<NonNullable<QTableProps['onRequest']>>[0]
 
 const { t, locale } = useI18n()
+const router = useRouter()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => (
@@ -486,6 +494,11 @@ const canSubmitSplit = computed(() => (
 ))
 
 const requiredRule = (value: string): true | string => Boolean(value.trim()) || t('topic.required')
+
+function openTopic(event: Event, topic: Topic): void {
+  if (event.target instanceof Element && event.target.closest('a, button, input, select, textarea, [role="button"], [role="menu"]')) return
+  void router.push(`/topic/${encodeURIComponent(topic.id)}`)
+}
 
 async function load(): Promise<void> {
   const requestId = ++loadRequestId

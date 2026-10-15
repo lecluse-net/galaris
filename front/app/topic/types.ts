@@ -153,3 +153,10 @@ export interface TopicContent {
   memories: TopicLinkedMemory[]
   documents: TopicRelatedDocument[]
 }
+
+export interface TopicTarget {
+  kind: 'task' | 'round' | 'voice' | 'room' | 'document' | 'memory'
+  id: string
+  title: string
+  agentId?: number | null
+}

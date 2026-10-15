@@ -1,0 +1,199 @@
+<template>
+  <ConversationTurnDialog :model-value="true" :title="target.title" :icon="icons[target.kind] || 'info'"
+    :close-label="t('common.close')" @update:model-value="!$event && emit('close')">
+    <div v-if="loading" class="flex flex-center q-pa-xl"><q-spinner color="primary" size="42px" /></div>
+    <q-banner v-else-if="error" class="q-ma-md">
+      {{ error }}
+      <template #action><q-btn flat :label="t('common.retry')" @click="retry++" /></template>
+    </q-banner>
+    <TaskDetail v-else-if="target.kind === 'task'" :task-id="taskId"
+      @task-change="taskId = $event" @refresh="emit('changed')" @delete="taskToDelete = $event" />
+    <ConversationRoundDetailView v-else-if="round && message" :message="message" :round="round"
+      :calls="calls" :loading="false" error="" :calls-loading="callsLoading" :calls-error="callsError"
+      @deleted="changedAndClose" @topic-updated="round = $event; emit('changed')"
+      @delivery-resolved="round = $event; emit('changed')" />
+    <VoiceConversationDetailView v-else-if="conversation && turn" :conversation="conversation" :turn="turn"
+      @deleted="changedAndClose" @stopped="changedAndClose" @topic-updated="emit('changed')" />
+    <template v-else-if="room">
+      <q-banner v-if="messagesError" class="q-ma-md">
+        {{ messagesError }}
+        <template #action><q-btn flat :label="t('common.retry')" @click="loadMessages" /></template>
+      </q-banner>
+      <MessageTimeline :room-id="room.id" :messages="messages" :agent-id="room.agent_id"
+        :agent-name="room.agent_name" :activity="[]" :live-round="null" :allow-reply="false" />
+      <div v-if="moreMessages" class="q-pa-md">
+        <q-btn flat :loading="messagesLoading" :label="t('topic.detail.moreMessages')" @click="loadMessages" />
+      </div>
+    </template>
+    <DocumentEditor v-else-if="target.kind === 'document'" :document-id="target.id"
+      :agent-id="null" :editable="false" @unavailable="error = t('topic.detail.targetLoadError')" />
+    <div v-else-if="memory" class="q-pa-md">
+      <EditorialContent v-if="memory.payload.text != null" :content="memory.payload.text" :media-type="memory.media_type" />
+      <q-banner v-else>{{ t('memory.binaryContent') }}</q-banner>
+    </div>
+  </ConversationTurnDialog>
+  <q-dialog :model-value="taskToDelete !== null" @update:model-value="!$event && (taskToDelete = null)">
+    <q-card class="galaris-dialog-card">
+      <q-card-section class="galaris-dialog-title row items-center no-wrap">
+        <div class="text-h6">{{ t('task.deleteConfirm') }}</div><q-space />
+        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
+      </q-card-section>
+      <q-card-section>{{ t('task.deleteMessage', { label: taskToDelete?.label }) }}</q-card-section>
+      <q-banner v-if="deleteError" class="q-ma-md">{{ deleteError }}</q-banner>
+      <q-card-actions align="right">
+        <q-btn v-close-popup flat :label="t('common.cancel')" />
+        <q-btn color="negative" :label="t('common.delete')" :loading="deleting" @click="deleteTask" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+</template>
+
+<script setup lang="ts">
+import { onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { defineAsyncView, EditorialContent, ConversationTurnDialog, type ResourceDetailTarget } from '@/core/util'
+import { taskService, type TaskFull } from '@/app/task'
+import { conversationService, type ConversationMessage, type ConversationRoundDetail } from '@/app/conversation'
+import { voiceConversationService, type VoiceConversationDetail, type VoiceConversationTurn } from '@/app/voice'
+import { chatService, type MessengerMessage, type MessengerRoom } from '@/app/chat/interface'
+import { memoryService, type MemoryItemDetail } from '@/app/memory'
+import type { LLMCall } from '@/app/llm'
+
+const TaskDetail = defineAsyncView(async () => (await import('@/app/task')).TaskDetail)
+const DocumentEditor = defineAsyncView(async () => (await import('@/app/memory')).DocumentEditor)
+const ConversationRoundDetailView = defineAsyncView(async () => (await import('@/app/conversation')).ConversationRoundDetailView)
+const VoiceConversationDetailView = defineAsyncView(async () => (await import('@/app/voice')).VoiceConversationDetailView)
+const MessageTimeline = defineAsyncView(async () => (await import('@/app/chat/interface')).MessageTimeline)
+const props = defineProps<{ target: ResourceDetailTarget }>()
+const emit = defineEmits<{ close: []; changed: [] }>()
+const { t } = useI18n()
+const icons: Record<string, string> = { task: 'task_alt', round: 'forum', voice: 'record_voice_over', room: 'hub', document: 'description', memory: 'memory' }
+const retry = ref(0)
+const taskId = ref<string | null>(null)
+const taskToDelete = ref<TaskFull | null>(null)
+const deleting = ref(false)
+const deleteError = ref('')
+const loading = ref(false)
+const error = ref('')
+const round = ref<ConversationRoundDetail | null>(null)
+const message = ref<ConversationMessage | null>(null)
+const calls = ref<LLMCall[]>([])
+const callsLoading = ref(false)
+const callsError = ref('')
+const conversation = ref<VoiceConversationDetail | null>(null)
+const turn = ref<VoiceConversationTurn | null>(null)
+const memory = ref<MemoryItemDetail | null>(null)
+const room = ref<MessengerRoom | null>(null)
+const messages = ref<MessengerMessage[]>([])
+const messagesError = ref('')
+const messagesLoading = ref(false)
+const moreMessages = ref(false)
+let messagePage = 1
+let messageCursor: string | null = null
+let generation = 0
+onBeforeUnmount(() => { generation++ })
+
+function changedAndClose(): void { emit('changed'); emit('close') }
+
+async function deleteTask(): Promise<void> {
+  if (!taskToDelete.value || deleting.value) return
+  const current = generation
+  deleting.value = true
+  deleteError.value = ''
+  try {
+    await taskService.delete(taskToDelete.value.id)
+    if (current !== generation) return
+    taskToDelete.value = null
+    changedAndClose()
+  } catch {
+    if (current === generation) deleteError.value = t('topic.detail.targetLoadError')
+  } finally {
+    if (current === generation) deleting.value = false
+  }
+}
+
+async function loadMessages(): Promise<void> {
+  if (!room.value || messagesLoading.value) return
+  const current = generation
+  const roomId = room.value.id
+  messagesLoading.value = true
+  messagesError.value = ''
+  try {
+    const page = await chatService.messages(roomId, messagePage, 50, null, messageCursor)
+    if (current !== generation) return
+    messages.value = [...new Map([...messages.value, ...page.items].map(item => [item.id, item])).values()]
+      .sort((left, right) => left.created_at.localeCompare(right.created_at) || left.id.localeCompare(right.id))
+    moreMessages.value = messagePage * 50 < page.total || page.history_has_more
+    messagePage++
+    messageCursor = page.history_next_cursor
+  } catch {
+    if (current === generation) messagesError.value = t('topic.detail.targetLoadError')
+  } finally {
+    if (current === generation) messagesLoading.value = false
+  }
+}
+
+watch([() => props.target, retry], async ([target], _, onCleanup) => {
+  const current = ++generation
+  let active = true
+  onCleanup(() => { active = false; generation++ })
+  error.value = ''
+  callsError.value = ''
+  calls.value = []
+  callsLoading.value = false
+  round.value = null
+  message.value = null
+  conversation.value = null
+  turn.value = null
+  memory.value = null
+  room.value = null
+  messages.value = []
+  messagesError.value = ''
+  messagesLoading.value = false
+  moreMessages.value = false
+  messagePage = 1
+  messageCursor = null
+  taskId.value = target.id
+  loading.value = !['task', 'document'].includes(target.kind)
+  try {
+    if (target.kind === 'round') {
+      const value = await conversationService.getRound(target.id)
+      if (!active) return
+      round.value = value
+      callsLoading.value = true
+      void conversationService.llmCalls(target.id).then(value => {
+        if (active) calls.value = value
+      }).catch(() => {
+        if (active) callsError.value = t('conversation.history.detail.llmLoadError')
+      }).finally(() => {
+        if (active) callsLoading.value = false
+      })
+      message.value = { id: value.id, sequence: 0, agent_id: value.agent_id, agent_name: value.agent_name,
+        agent_code: null, channel_kind: value.channel_kind, connection_id: value.connection_id,
+        room_id: value.room_id, participant_key: value.participant_key, language: value.language,
+        payload: value.rendered_input[0] ?? {}, created_at: value.created_at, round_id: value.id,
+        round_status: value.status, response_text: value.response_text, response_error: value.last_error,
+        responded_at: value.finished_at, aggregated_message_count: value.rendered_input.length, topic_id: value.topic_id }
+    } else if (target.kind === 'voice') {
+      const detail = await voiceConversationService.getTurn(target.id)
+      if (!active) return
+      const session = await voiceConversationService.get(detail.session_id)
+      if (!active) return
+      conversation.value = session
+      turn.value = detail
+    } else if (target.kind === 'room') {
+      const detail = await chatService.room(target.id)
+      if (!active) return
+      room.value = detail
+      await loadMessages()
+    } else if (target.kind === 'memory') {
+      const detail = await memoryService.getItem(target.id, target.agentId)
+      if (active) memory.value = detail
+    }
+  } catch {
+    if (active) error.value = t('topic.detail.targetLoadError')
+  } finally {
+    if (active && current === generation) loading.value = false
+  }
+}, { immediate: true })
+</script>

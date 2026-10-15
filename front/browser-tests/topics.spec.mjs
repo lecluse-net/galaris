@@ -106,7 +106,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     const users = Array.from({ length: 5 }, (_, id) => ({ id: `contact-${id}`, display_name: `User ${id}`, user_id: `user-${id}` }))
     await page.route('**/api/topics?*', route => route.fulfill({ json: {
       items: [{
-        id: 'renovation', revision: 1, title: 'Renovation', description: '', keywords: [],
+        id: 'renovation', revision: 1, title: 'Renovation', description: 'Synthetic topic description', keywords: [],
         memory_item_id: null, created_at: '2026-09-01T12:00:00Z', updated_at: null,
         inference_cost: 0, llm_calls: 0,
         agents,
@@ -138,6 +138,13 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       for (const name of names) await expect(page.getByText(name, { exact: true })).toBeVisible()
       await page.keyboard.press('Escape')
     }
+    expect(await page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/')
+    await page.getByText('Synthetic topic description', { exact: true }).click()
+    await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/topic/renovation')
+    await page.evaluate(() => window.testApp.navigate('/'))
+    await page.getByRole('link', { name: 'Renovation', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/topic/renovation')
   })
 }
 
@@ -245,6 +252,7 @@ test('merging searches for a destination and excludes the source topic', async (
   })
   await mount(page, 'app/topic/pages/index.vue', { privileges: ['TOPIC_ACCESS', 'TOPIC_EDIT', 'AGENT_MANAGE_ALL'] })
   await page.getByRole('button', { name: 'Merge', exact: true }).click()
+  expect(await page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/')
   const input = page.getByRole('combobox', { name: 'Destination dossier', exact: true })
   await input.fill('Remote')
   await expect(page.getByRole('option', { name: 'Remote subject', exact: true })).toBeVisible()

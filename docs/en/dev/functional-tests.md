@@ -664,6 +664,10 @@ are in `front/browser-tests/`.
 
 ### Topic selection and creation
 
+`front/browser-tests/topic-detail.spec.mjs` checks desktop and mobile dossier target dialogs
+for tasks, text/voice rounds, spaces, documents and memories, including keyboard activation,
+backdrop dismissal, retry after a denied read and late responses after closing.
+
 `TopicSelect` centralizes paginated search and selection by topic ID. Entry forms enable
 `allow-create`: new conversations, conversation preferences, messages with `@topic`, badge
 reassignment, assignment editors for tasks and text/voice conversations, and merge targets.

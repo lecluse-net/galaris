@@ -681,6 +681,10 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 ### Sélection et création de sujets
 
 `TopicSelect` centralise la recherche paginée et la sélection par identifiant de sujet.
+
+`front/browser-tests/topic-detail.spec.mjs` vérifie sur desktop et mobile l’ouverture des
+cibles d’un sujet en modale (tâches, rounds texte/audio, espaces, documents et mémoires),
+le clavier, la fermeture par l’arrière-plan, le réessai après refus et les réponses tardives.
 Les formulaires activent `allow-create` : nouvelle conversation, paramètres de conversation,
 message avec `@topic`, réaffectation depuis un badge, éditeur d’affectation des tâches et
 conversations texte/voix, et cible de fusion. Le bouton `+` exige `TOPIC_EDIT` et

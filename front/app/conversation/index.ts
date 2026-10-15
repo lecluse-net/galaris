@@ -1,3 +1,5 @@
 export { conversationService } from './services/conversationService'
+export { default as ConversationRoundDetailView } from './components/ConversationRoundDetail.vue'
+export type { ConversationMessage } from './types'
 export { default as ConversationExecutionDetails } from './components/ConversationExecutionDetails.vue'
 export type { ConversationRoundDetail } from './types'

@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0191 — Composition des modales de détail des ressources](0191-resource-detail-dialog-composition.md)
+
 - [0190 — Fichiers HTML et mécanismes standards de pièces jointes](0190-html-files-use-standard-attachments.md)
 
 - [0189 — Sous-documents dans le classement personnel](0189-personal-document-hierarchy.md)
