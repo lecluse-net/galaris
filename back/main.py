@@ -47,6 +47,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from app.llm import register_scheduler_jobs as register_llm_scheduler_jobs
         from app.goal import register_scheduler_jobs as register_goal_jobs
         from app.lab import register_scheduler_jobs as register_lab_jobs
+        from app.voice import register_scheduler_jobs as register_voice_jobs
         from bridge.calendar import sync_calendars
         from bridge.mail import retry_approval_notifications
         from app.task import register_runtime_settings, scheduler as task_scheduler
@@ -61,14 +62,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from app.task.progress import record_progress_metrics as record_task_progress
         from app.conversation.progress import record_progress_metrics as record_conversation_progress
 
-        await configure_default_engine()
+        await configure_default_engine(task_scheduler.register_periodic_job, task_scheduler.unregister_periodic_job)
         register_runtime_settings()
         from app.task import reconcile_replacements, register_replacement_blocker, register_replacement_coordinator
         from app.process import replacement_blocked_task_ids, coordinate_replacement
         register_replacement_blocker("process", replacement_blocked_task_ids)
         register_replacement_coordinator("process", coordinate_replacement)
         task_scheduler.register_periodic_job("task-replacements", reconcile_replacements, interval=2.0)
-        register_llm_scheduler_jobs()
+        register_llm_scheduler_jobs(task_scheduler.register_periodic_job)
         from app.tools.authorization_notifications import deliver_authorization_notifications, reconcile_authorizations
         task_scheduler.register_periodic_job("action-authorization-notifications", deliver_authorization_notifications, interval=2.0)
         task_scheduler.register_periodic_job("action-authorization-reconciliation", reconcile_authorizations, interval=30.0)
@@ -76,13 +77,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         task_scheduler.register_periodic_job(
             "documentation-index", refresh_documentation_index, interval=30.0, timeout=90.0,
         )
-        register_scheduler_jobs()
+        register_scheduler_jobs(task_scheduler.register_periodic_job, task_scheduler.unregister_periodic_job)
         from app.file_share import repair_tick, prune_index_history, refresh_known_tick
         task_scheduler.register_periodic_job("file-index-repair", repair_tick, interval=2.0, timeout=90.0)
         task_scheduler.register_periodic_job("file-index-history", prune_index_history, interval=3600.0)
         task_scheduler.register_periodic_job("file-index-known", refresh_known_tick, interval=2.0, timeout=90.0)
-        register_goal_jobs()
-        register_lab_jobs()
+        register_goal_jobs(task_scheduler.register_periodic_job)
+        register_lab_jobs(task_scheduler.register_periodic_job)
+        register_voice_jobs(task_scheduler.register_periodic_job)
         from app.multimedia import generation_tick
         task_scheduler.register_periodic_job("multimedia-generations", generation_tick, interval=1.0, timeout=720.0)
         register_chat_jobs(task_scheduler.register_periodic_job)

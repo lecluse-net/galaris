@@ -1,5 +1,7 @@
 """Long-running Goals advanced through ordinary scheduled Tasks."""
 
+from core.scheduling import PeriodicJobRegistrar
+
 from .document_store import (
     GoalDocumentKind,
     GoalDocumentStore,
@@ -47,15 +49,14 @@ from .resource_facade import (
 )
 
 
-def register_scheduler_jobs() -> None:
+def register_scheduler_jobs(register: PeriodicJobRegistrar) -> None:
     """Register the Goal worker in the existing durable task scheduler."""
 
-    from app.task import scheduler
     from .referrer_wait import register_referrer_interaction_handler
     from .runner import process_goals
 
     register_referrer_interaction_handler()
-    scheduler.register_periodic_job("goal-runner", process_goals, interval=2.0)
+    register("goal-runner", process_goals, interval=2.0)
 
 
 __all__ = [

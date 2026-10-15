@@ -140,14 +140,15 @@ Backend modules are declared in `back/modules.py`. Each package can expose a
 `router`, models, privileges, a listener, settings, or locales. The central
 bootstrap loads only declared elements.
 
-Required Task surfaces propagate import failures.
+Domain maintenance jobs receive the `core.scheduling.PeriodicJobRegistrar` contract from `main`;
+Process also receives job removal to preserve live configuration refresh. Task still hosts their
+execution. Its required surfaces propagate import failures. Conversation context reads Task
+projections through its facade without exposing ORM models.
 
 The vector model is resolved by `app.llm.configured_embedding_model` or its required variant.
 Memory, Tools and documentation share this contract while retaining their own timeouts and
 fallback policies. Persisted Memory/Tools fingerprints are preserved; the documentation index
 automatically converges to the same identity, with lexical search during rebuilding.
-
-Conversation context reads Task projections through its facade without exposing ORM models.
 
 Frontend modules are declared in `front/modules.ts`. Pages are discovered through
 file-based routing; navigation is aggregated from the `navigation.ts` files.

@@ -1,6 +1,7 @@
 """Optional surfaces may be absent; broken active surfaces must be visible."""
 
 from types import SimpleNamespace
+import importlib
 import subprocess
 import sys
 from unittest.mock import Mock
@@ -23,7 +24,7 @@ def test_domain_scheduler_registration_in_fresh_interpreter(first_module):
             "from app.task import task_service, go_next, run_stream, scheduler; "
             "assert callable(task_service.get_by_id) and callable(go_next) and callable(run_stream); "
             "from app.lab import register_scheduler_jobs; "
-            "register_scheduler_jobs(); "
+            "register_scheduler_jobs(scheduler.register_periodic_job); "
             "from app.multimedia import generation_tick; "
             "from app.task import scheduler; "
             "scheduler.register_periodic_job('multimedia-generations', generation_tick, interval=1.0, timeout=720.0)"
@@ -50,6 +51,44 @@ import app.task
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=60)
     assert result.returncode != 0
     assert "synthetic required Task dependency failure" in result.stderr
+
+
+@pytest.mark.parametrize(("domain", "expected"), [
+    ("chat", {"chat-web-push": (1.0, 900.0)}),
+    ("llm", {"llm-running-call-reconciliation": (60.0, 900.0), "llm-document-analysis": (1.0, 1250.0)}),
+    ("goal", {"goal-runner": (2.0, 900.0)}),
+    ("lab", {"lab-operations": (1.0, 720.0), "lab-mechanism-evaluations": (1.0, 900.0)}),
+    ("voice", {"voice-turn-deletions": (2.0, 900.0)}),
+])
+def test_domain_jobs_use_the_injected_registrar(domain, expected):
+    recorded = {}
+
+    def register(name, callback, *, interval, timeout=900.0):
+        assert callable(callback)
+        recorded[name] = (interval, timeout)
+
+    module = importlib.import_module(f"app.{domain}")
+    module.register_scheduler_jobs(register)
+    module.register_scheduler_jobs(register)
+    assert recorded == expected
+
+
+@pytest.mark.asyncio
+async def test_process_job_refresh_keeps_the_injected_scheduler(monkeypatch):
+    from app import process
+    from core.params import Params, params_service
+
+    listeners = []
+    monkeypatch.setattr(params_service, "register_change_listener", listeners.append)
+    register = Mock()
+    unregister = Mock()
+    await process.configure_default_engine(register, unregister)
+    process.register_scheduler_jobs(register, unregister)
+    initial = {call.args[0]: call.kwargs for call in register.call_args_list}
+    register.reset_mock()
+    await listeners[0](Params.PROCESS_REFRESH_STALENESS_SECONDS, "5")
+    assert {call.args[0]: call.kwargs for call in register.call_args_list} == initial
+    assert {call.args[0] for call in unregister.call_args_list} == {"process-outbox", "process-refresh"}
 
 
 @pytest.mark.parametrize("surface", ["models", "router"])

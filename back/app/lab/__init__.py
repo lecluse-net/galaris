@@ -1,5 +1,7 @@
 """Evidence-based AI analysis and mechanism evaluation Lab."""
 
+from core.scheduling import PeriodicJobRegistrar
+
 from .models import (
     LabEvaluationCase,
     LabEvaluationDataset,
@@ -19,15 +21,14 @@ from . import (
 )
 
 
-def register_scheduler_jobs() -> None:
+def register_scheduler_jobs(register: PeriodicJobRegistrar) -> None:
     """Register durable Lab work in the task scheduler composition root."""
 
-    from app.task import scheduler
     from .operation_worker import tick
 
-    scheduler.register_periodic_job("lab-operations", tick, interval=1.0, timeout=720.0)
+    register("lab-operations", tick, interval=1.0, timeout=720.0)
 
-    scheduler.register_periodic_job(
+    register(
         "lab-mechanism-evaluations",
         mechanism_evaluation_service.process_runs,
         interval=1.0,

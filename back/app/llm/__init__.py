@@ -1,5 +1,7 @@
 """LLM configuration, execution, proxying, and tracing."""
 
+from core.scheduling import PeriodicJobRegistrar
+
 from .embedding_events import register_embedding_change_listener
 from .models import LLMCall
 from .retention import prune_traces
@@ -74,19 +76,17 @@ from .events import register_events as _register_events
 _register_events()
 
 
-def register_scheduler_jobs() -> None:
+def register_scheduler_jobs(register: PeriodicJobRegistrar) -> None:
     """Register LLM trace reconciliation in the durable Task scheduler."""
 
-    from app.task import scheduler
-
-    scheduler.register_periodic_job(
+    register(
         "llm-running-call-reconciliation",
         llm_call_service.reconcile_stale_running_calls,
         interval=60.0,
     )
     from .document_service import analysis_tick
 
-    scheduler.register_periodic_job(
+    register(
         "llm-document-analysis", analysis_tick, interval=1.0, timeout=1250.0,
     )
 

@@ -472,6 +472,13 @@
       },
       {
         "files": [
+          "back/app/chat/__init__.py"
+        ],
+        "source": "app.chat",
+        "target": "core.scheduling"
+      },
+      {
+        "files": [
           "back/app/chat/storage.py",
           "back/app/chat/webrtc.py"
         ],
@@ -1490,7 +1497,6 @@
       },
       {
         "files": [
-          "back/app/goal/__init__.py",
           "back/app/goal/goal_service.py",
           "back/app/goal/models.py",
           "back/app/goal/referrer_wait.py",
@@ -1540,6 +1546,13 @@
         ],
         "source": "app.goal",
         "target": "core.params"
+      },
+      {
+        "files": [
+          "back/app/goal/__init__.py"
+        ],
+        "source": "app.goal",
+        "target": "core.scheduling"
       },
       {
         "files": [
@@ -1928,7 +1941,6 @@
       },
       {
         "files": [
-          "back/app/lab/__init__.py",
           "back/app/lab/dispatcher_evaluation_service.py",
           "back/app/lab/evaluation_service.py",
           "back/app/lab/evidence_service.py",
@@ -2036,6 +2048,13 @@
       },
       {
         "files": [
+          "back/app/lab/__init__.py"
+        ],
+        "source": "app.lab",
+        "target": "core.scheduling"
+      },
+      {
+        "files": [
           "back/app/lab/human_review_service.py",
           "back/app/lab/operations.py"
         ],
@@ -2126,7 +2145,6 @@
       },
       {
         "files": [
-          "back/app/llm/__init__.py",
           "back/app/llm/events.py",
           "back/app/llm/llm_call_service.py",
           "back/app/llm/mcp.py",
@@ -2246,6 +2264,13 @@
         ],
         "source": "app.llm",
         "target": "core.params"
+      },
+      {
+        "files": [
+          "back/app/llm/__init__.py"
+        ],
+        "source": "app.llm",
+        "target": "core.scheduling"
       },
       {
         "files": [
@@ -3017,7 +3042,6 @@
       },
       {
         "files": [
-          "back/app/process/__init__.py",
           "back/app/process/process_service.py",
           "back/app/process/retention.py"
         ],
@@ -3083,6 +3107,13 @@
         ],
         "source": "app.process",
         "target": "core.params"
+      },
+      {
+        "files": [
+          "back/app/process/__init__.py"
+        ],
+        "source": "app.process",
+        "target": "core.scheduling"
       },
       {
         "files": [
@@ -3711,7 +3742,6 @@
       },
       {
         "files": [
-          "back/app/voice/__init__.py",
           "back/app/voice/mcp.py"
         ],
         "source": "app.voice",
@@ -3772,6 +3802,13 @@
         ],
         "source": "app.voice",
         "target": "core.params"
+      },
+      {
+        "files": [
+          "back/app/voice/__init__.py"
+        ],
+        "source": "app.voice",
+        "target": "core.scheduling"
       },
       {
         "files": [

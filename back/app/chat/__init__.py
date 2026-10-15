@@ -1,7 +1,6 @@
 """First-party Chat application and native provider."""
 
-from collections.abc import Awaitable, Callable
-from typing import Protocol
+from core.scheduling import PeriodicJobRegistrar
 
 from .provider import InternalMessenger
 from .events import register_events
@@ -9,16 +8,6 @@ from .storage import reconcile_storage
 from .push_service import process_push_deliveries
 
 register_events()
-
-
-class PeriodicJobRegistrar(Protocol):
-    def __call__(
-        self,
-        name: str,
-        callback: Callable[[], Awaitable[object]],
-        *,
-        interval: float,
-    ) -> None: ...
 
 
 def register_scheduler_jobs(register_periodic_job: PeriodicJobRegistrar) -> None:

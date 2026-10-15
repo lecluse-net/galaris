@@ -2,9 +2,11 @@
 
 # Functional guarantees catalogue
 
-`tests/test_module_loading.py` checks required Task imports and several loading orders.
-
-`app/memory/tests/test_mcp.py` uses `file_search`/`file_read` for permissions, contact context and bounded reads; retired MCP wrappers no longer stand in for the actual path.
+`tests/test_module_loading.py` checks required Task imports, several loading orders and injected
+jobs, including Process refresh. The LLM embedding, Tools search and Memory suites protect index
+identity and fallbacks. Scenarios in `app/memory/tests/test_mcp.py` use `file_search`/`file_read`
+for permissions, contact context and bounded reads; retired MCP wrappers no longer stand in for
+the actual path.
 
 `back/app/memory/tests/test_inline_content.py` covers native text transfer into SQL
 and its immutable backup: exact bytes and replay, history/syntheses, rollback,

@@ -139,14 +139,16 @@ Les modules backend sont déclarés dans `back/modules.py`. Chaque package peut 
 `router`, des modèles, des privilèges, un listener, des paramètres ou des locales. Le
 bootstrap central charge seulement les éléments déclarés.
 
-Les surfaces obligatoires de Task propagent les erreurs d'import.
+Les traitements périodiques des domaines reçoivent le contrat
+`core.scheduling.PeriodicJobRegistrar` depuis `main` ; Process reçoit aussi le retrait des jobs
+pour préserver le rafraîchissement à chaud. Task héberge toujours leur exécution. Ses surfaces
+obligatoires propagent les erreurs d'import. Le contexte conversationnel lit des projections
+Task par sa façade, sans exposer ses modèles ORM.
 
 Le modèle vectoriel est résolu par `app.llm.configured_embedding_model` ou sa variante obligatoire.
 Memory, Tools et la documentation partagent ce contrat ; leurs délais et replis restent propres
 à chaque usage. Les empreintes persistées de Memory/Tools sont conservées ; l'index documentaire
 converge automatiquement vers cette même identité, avec recherche lexicale pendant sa reconstruction.
-
-Le contexte conversationnel lit des projections Task par sa façade, sans exposer ses modèles ORM.
 
 Les modules frontend sont déclarés dans `front/modules.ts`. Les pages sont découvertes par
 le routage basé sur les fichiers ; la navigation est agrégée depuis les `navigation.ts`.

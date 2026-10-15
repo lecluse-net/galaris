@@ -6,6 +6,7 @@ details live in their bridge.
 """
 
 from collections.abc import Awaitable, Callable
+from core.scheduling import PeriodicJobRegistrar
 
 from .facade import (
     VoiceSynthesisFailed,
@@ -63,14 +64,18 @@ def register_runtime_settings() -> None:
     from core.params import params_service
 
     params_service.register_change_listener(_refresh_channels)
-    from app.task import scheduler
+
+
+def register_scheduler_jobs(register: PeriodicJobRegistrar) -> None:
+    """Compose deletion work with the same scheduler as other domain jobs."""
     from .management_service import process_deletions
 
-    scheduler.register_periodic_job("voice-turn-deletions", process_deletions, interval=2.0)
+    register("voice-turn-deletions", process_deletions, interval=2.0)
 
 
 __all__ = [
     "register_runtime_settings",
+    "register_scheduler_jobs",
     "AudioFrame",
     "DEFAULT_CHANNELS",
     "DEFAULT_SAMPLE_RATE",
