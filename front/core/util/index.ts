@@ -13,6 +13,7 @@ export const FullscreenPreview = defineAsyncView(() => import('./components/Full
 export { default as ResourcePreviewBlock } from './components/ResourcePreviewBlock.vue'
 export const AudioResourcePlayer = defineAsyncView(() => import('./components/AudioResourcePlayer.vue'))
 export { default as FolderIcon } from './components/FolderIcon.vue'
+export { default as DocumentFileIcon } from './components/DocumentFileIcon.vue'
 export { folderArtwork } from './folderArtwork'
 export { solaire, solaireColors, type SolaireColor } from './solaire'
 export { solaireCss } from './solaireTheme'

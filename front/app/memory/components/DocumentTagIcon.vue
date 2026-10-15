@@ -3,12 +3,13 @@
   <FolderIcon v-else-if="folder" :tone="folder.tone" :expanded="expanded" :size="size" />
   <q-icon v-else-if="fontName && fontReady" :name="fontName" :size="size" class="tag-monochrome-icon" />
   <img v-else-if="value.startsWith('data:image/svg+xml;base64,')" :src="value" alt="" :style="{ width: size, height: size }" draggable="false" />
+  <DocumentFileIcon v-else-if="defaultIcon === 'description'" :size="size" />
   <q-icon v-else-if="defaultIcon" :name="defaultIcon" :size="size" class="tag-monochrome-icon" />
   <FolderIcon v-else tone="gray" :expanded="expanded" :size="size" />
 </template>
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { FolderIcon, solaireColors, type SolaireColor } from '@/core/util'
+import { DocumentFileIcon, FolderIcon, solaireColors, type SolaireColor } from '@/core/util'
 import { loadTagFont, normalizedTagIcon, unicodeIcon } from '../tagIcon'
 const props = withDefaults(defineProps<{ icon?: string | null; size?: string; expanded?: boolean; defaultIcon?: string }>(), { size: '24px', expanded: false })
 const value = computed(() => normalizedTagIcon(props.icon))

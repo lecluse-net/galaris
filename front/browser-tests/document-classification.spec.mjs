@@ -45,7 +45,7 @@ test('document icon changes synchronize across the list and tree, persist, reset
   })
   await fixture(page)
   const button = page.getByRole('button', { name: 'Icon for document Test document', exact: true })
-  await expect(button.locator('.q-icon').first()).toHaveText('description')
+  await expect(button).toBeVisible()
   await button.click()
   await expect(page.getByLabel('Search icons', { exact: true })).toBeVisible()
   expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'select'))).toEqual([])
@@ -73,8 +73,9 @@ test('document icon changes synchronize across the list and tree, persist, reset
   await expect(treeIcon).toContainText('🚀')
   fail = false
   await page.getByRole('button', { name: 'Default icon', exact: true }).click()
-  await expect(button.first().locator('.q-icon').first()).toHaveText('description')
-  await expect(treeIcon.locator('.q-icon').first()).toHaveText('description')
+  await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
+  await expect(button.first()).not.toContainText('🚀')
+  await expect(treeIcon).not.toContainText('🚀')
   icons['doc-a'] = 'emoji:1F680'
   await mount(page, 'app/memory/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
   await page.getByText('Work', { exact: true }).click()
