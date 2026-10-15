@@ -40,6 +40,15 @@ et le worker à 120 secondes après acquisition d’un des deux emplacements par
 l’analyse documentaire. Ses checkpoints sont distincts de ceux de l’analyse complète.
 Un échec ne publie pas de cache et permet une nouvelle tentative.
 
+Les rendus PDF du backend partagent une section critique entre threads :
+[PDFium interdit les appels simultanés](https://pypdfium2.readthedocs.io/en/stable/python_api.html#incompatibility-with-threading),
+même sur des documents distincts. Cette section couvre l'ouverture, le rendu et la fermeture
+explicite des pages et bitmaps. Les captures navigateur peuvent rester parallèles ; le worker
+de conversion possède son propre processus isolé. Format, proportions et stockage restent
+identiques. Le test de concurrence dans `app/memory/tests/test_document_thumbnails.py`
+exécute la bibliothèque réelle dans un sous-processus pour détecter un crash natif
+sans arrêter le reste de la suite.
+
 Dans l’interface, les cartes de ressources des messages attendent la proximité de la zone
 visible avant de charger leurs métadonnées. Leurs images et les miniatures de documents
 (discussion et bibliothèque) partagent une file de deux chargements simultanés, différés
@@ -170,6 +179,12 @@ réinjectés aux étapes suivantes.
 
 ## URI de ressources
 
+Les fichiers internes gérés sont adressés par `file://<uuid>`, indépendamment du nom et
+du disque. `core.storage` possède le registre et le driver disque, File Sharing applique
+les droits du propriétaire ou du Document/Chat référent. Les anciens alias de PJ restent
+autorisés par leur domaine. La [migration vérifiée](../../dev/file-storage.md) ne déplace
+que les octets internes et n'ouvre aucun fournisseur externe.
+
 Lors d'une copie avec staging, un échec du téléchargement source précède tout upload :
 il est signalé au harnais comme un refus sans effet sur la destination. L'agent peut corriger
 la source et continuer. Après le début de l'upload, ou pendant un transfert direct en streaming,
@@ -228,6 +243,15 @@ ils appellent `materialize_resource` vers un temporaire borné qu'ils détruisen
 URI `nextcloud://`, `console://`, HTTPS, Mail ou Messenger est donc consommée directement. Les
 sorties sont écrites par `resource_create`/`resource_write`
 et exposent l'URI canonique créée ou livrée.
+
+Les descripteurs distinguent `name`, le nom source ou titre affiché, et `entry_name`, la clé de
+navigation dans le parent canonique. `entry_name` est le dernier segment décodé de l'URI :
+le nom réel pour un provider à chemins, l'identifiant pour un document ou une pièce jointe.
+Deux ressources du même parent ne partagent donc pas une clé parce que leurs titres ou noms
+sources sont identiques. Cette clé ne dépend ni de la page de listing ni des autres ressources
+visibles. Les listes récursives conservent la hiérarchie des URI ; elles ne constituent pas un
+répertoire aplati. Les copies et livraisons continuent de conserver `name`, et toute opération
+utilise l'URI canonique complète. Cette distinction n'installe aucun montage FUSE.
 
 `console://` désigne toujours le home de l'utilisateur SSH. Les formes `~/path`, le chemin
 absolu du home et sa forme sans slash après parsing URI sont rebasées sur ce home ; elles ne sont

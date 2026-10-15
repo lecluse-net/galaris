@@ -1357,6 +1357,32 @@ typé `load_capability`, tout en conservant l'appel et son identifiant afin que 
 active. Ne retirez pas ces deux protections : les instructions actives sont autrement dupliquées
 et refacturées à chaque tour d'outil.
 
+### Façade REST des Tools
+
+Une capacité `rest_config` facultative utilise les paramètres globaux et les connexions
+existantes. Son contrat public est exporté par `app.tools` et `app.tools.facade` :
+
+```python
+from app.tools import RestRequest, execute_rest_request
+
+response = await execute_rest_request(
+    agent_id=executing_agent_id,
+    tool_code="billing",
+    request=RestRequest(method="POST", path="invoices", json_body={"amount": 12}),
+)
+```
+
+L'appel doit provenir d'un contexte d'exécution authentifié. La façade résout uniquement
+la connexion active du même agent et du même Tool, puis l'adresse et les secrets côté serveur.
+Les permissions des endpoints relèvent du token chez le tiers, sans politique MCP ou
+catalogue d'opérations REST. `RestResponse` conserve `status_code`, `headers` et `body`
+(JSON ou texte), y compris pour une erreur HTTP. `RestError` distingue un problème de
+configuration ou de transport sans exposer les identifiants ; aucun retry n'est implicite.
+Les chemins restent relatifs à l'adresse de base et les redirections ne sont pas suivies.
+L'absence de corps et `json_body=None` sont distincts : ce dernier transmet le JSON `null`.
+Les consommateurs Process et Code, les callbacks et le suivi de jobs ne sont pas ajoutés
+par cette capacité. Voir [la configuration administrateur](../admin/tool-administration.md).
+
 ### Processus et moteurs externes
 
 `app.process` possède les définitions, les runs, l’outbox, les callbacks et le registre des

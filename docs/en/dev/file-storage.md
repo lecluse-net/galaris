@@ -9,6 +9,10 @@ retain attachment membership and authorization. Datasets remain documents in thi
 
 ## Storage
 
+Current and historical Memory/Document text now lives in PostgreSQL `content`
+columns. Transfer preserves `/data/memory` sources and a verified SQL backup.
+See [text storage in the database](memory-text-storage.md).
+
 Only the `disk` driver is implemented. Bytes live under
 `/data/files/<first 2 hexadecimal characters>/<next 2>/<canonical uuid>`, without an
 extension. `files` stores the official name, original name, MIME, actual size, SHA-256,

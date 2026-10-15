@@ -10,6 +10,11 @@ appartiennent à une étape ultérieure.
 
 ## Stockage
 
+Les contenus textuels courants et historiques de Memory et Documents sont désormais
+stockés dans leurs colonnes PostgreSQL `content`. Le transfert conserve les sources
+de `/data/memory` et une sauvegarde SQL vérifiée. Voir le
+[stockage textuel en base](memory-text-storage.md).
+
 Le seul driver livré est `disk`. Il stocke les octets sous
 `/data/files/<2 premiers caractères hexadécimaux>/<2 suivants>/<uuid canonique>`, sans
 extension. `files` porte le nom officiel, le nom original, le MIME, la taille réelle,

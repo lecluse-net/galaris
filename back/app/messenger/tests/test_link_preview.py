@@ -15,17 +15,18 @@ from app.file_share import (
 )
 
 
-def test_extract_preview_references_normalizes_deduplicates_and_trims_markdown() -> None:
+@pytest.mark.parametrize("scheme", ["document", "file"])
+def test_extract_preview_references_normalizes_deduplicates_and_trims_markdown(scheme: str) -> None:
     document_id = uuid4()
     text = (
-        f"[document](document://{document_id}) puis document://{document_id}. "
+        f"[document]({scheme}://{document_id}) puis {scheme}://{document_id}. "
         "Une page https://example.test/guide?q=chat#section), et "
         f"un objet `galaris://task/{uuid4()}`."
     )
 
     references = link_preview.extract_preview_references(text)
 
-    assert references[0] == f"document://{document_id}"
+    assert references[0] == f"{scheme}://{document_id}"
     assert references[1] == "https://example.test/guide?q=chat"
     assert references[2].startswith("galaris://task/")
     assert len(references) == 3

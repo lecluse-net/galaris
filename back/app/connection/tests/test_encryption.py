@@ -6,6 +6,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from core.util import EncryptionService, encrypt_value, decrypt_value, get_encryption_service
+from core.util import decrypt_mapping_values
 
 
 class TestEncryptionService:
@@ -83,6 +84,17 @@ class TestEncryptionService:
 
         assert encrypted != original
         assert decrypted == original
+
+    @patch("core.util.encryption.settings")
+    def test_mapping_preserves_legacy_and_unauthenticated_values(self, mock_settings):
+        from cryptography.fernet import Fernet
+
+        mock_settings.ENCRYPTION_MASTER_KEY = "synthetic_mapping_master_key_32bytes"
+        encrypted = encrypt_value("synthetic secret")
+        wrong_key = Fernet(Fernet.generate_key()).encrypt(b"other key").decode()
+        values = {"valid": encrypted, "legacy": "plain value", "empty": "",
+                  "wrong_key": wrong_key, "malformed": "gAAAA-invalid"}
+        assert decrypt_mapping_values(values) == {**values, "valid": "synthetic secret"}
 
     @patch("core.util.encryption.settings")
     def test_missing_master_key(self, mock_settings):

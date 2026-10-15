@@ -443,6 +443,51 @@ def test_printed_document_preserves_first_page_proportions(size, expected):
         assert image.format == "WEBP" and image.size == expected
 
 
+def test_concurrent_pdf_previews_do_not_crash_the_backend_process():
+    """Native crashes must fail the test rather than kill the entire pytest worker."""
+    import subprocess
+    import sys
+    from textwrap import dedent
+
+    result = subprocess.run([sys.executable, "-X", "faulthandler", "-c", dedent('''
+        from concurrent.futures import ThreadPoolExecutor
+        from io import BytesIO
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from threading import Barrier
+        from PIL import Image
+        from pypdf import PdfWriter
+        from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
+        from app.memory.document_thumbnail_service import _printed_document_thumbnail, _pdf_thumbnail
+
+        writer = PdfWriter()
+        page = writer.add_blank_page(width=300, height=400)
+        font = DictionaryObject({NameObject('/Type'): NameObject('/Font'),
+            NameObject('/Subtype'): NameObject('/Type1'), NameObject('/BaseFont'): NameObject('/Helvetica')})
+        page[NameObject('/Resources')] = DictionaryObject({NameObject('/Font'):
+            DictionaryObject({NameObject('/F1'): writer._add_object(font)})})
+        stream = DecodedStreamObject()
+        stream.set_data(b'BT /F1 18 Tf 40 60 Td (Synthetic concurrent thumbnail) Tj ET')
+        page[NameObject('/Contents')] = writer._add_object(stream)
+        output = BytesIO()
+        writer.write(output)
+        pdf = output.getvalue()
+        barrier = Barrier(4)
+        with TemporaryDirectory() as temporary:
+            source = Path(temporary) / 'synthetic.pdf'
+            source.write_bytes(pdf)
+            def render(index):
+                barrier.wait(timeout=10)
+                content = _printed_document_thumbnail(pdf) if index % 2 else _pdf_thumbnail(source)
+                assert content is not None
+                with Image.open(BytesIO(content)) as image:
+                    assert image.format == 'WEBP' and image.width > 0 and image.height <= 320
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                list(pool.map(render, range(80)))
+    ''')], capture_output=True, text=True, timeout=45)
+    assert result.returncode == 0, result.stderr
+
+
 def test_thumbnail_applies_exif_orientation_before_fitting(tmp_path: Path) -> None:
     source = tmp_path / "rotated.jpg"
     image = Image.new("RGB", (900, 600), "blue")

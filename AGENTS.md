@@ -306,10 +306,12 @@ immutable. Consult the `galaris-process-tools` skill.
 
 ### Validation scope
 
-- Run targeted tests first, then `make typecheck`, `make architecture-check`, and suites
-  proportionate to the risk.
-- Without CI, run `make validate` before publication: it tests an isolated snapshot including
-  uncommitted changes. Any subsequent edit invalidates validation of the current code. Read
+- Run targeted tests and relevant static checks proportionate to the risk. Do not repeatedly
+  rerun broad suites during stabilization.
+- `make validate` is reserved exclusively for the user. Agents must never invoke it, invoke
+  its scripts directly, or reproduce its full-suite orchestration through other commands.
+  When the user runs it, it tests an isolated snapshot including uncommitted changes. Any
+  subsequent edit invalidates validation of the current code. Read
   `artifacts/validation/*/summary.txt` and the failures; do not treat a partial run as complete
   validation. The command neither commits nor deploys.
 - Finish with `git diff --check` and review the diff without overwriting others' changes.

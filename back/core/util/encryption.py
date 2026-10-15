@@ -143,14 +143,13 @@ def encrypt_mapping_values(values: Mapping[str, str]) -> dict[str, str]:
 def decrypt_mapping_values(values: Mapping[str, str]) -> dict[str, str]:
     """Decrypt encrypted mapping values and preserve legacy plaintext values."""
     encryption = get_encryption_service()
-    return {
-        str(key): (
-            encryption.decrypt(value)
-            if value and encryption.is_encrypted(value)
-            else value
-        )
-        for key, value in values.items()
-    }
+    result: dict[str, str] = {}
+    for key, value in values.items():
+        try:
+            result[str(key)] = encryption.decrypt(value)
+        except (InvalidToken, ValueError, TypeError):
+            result[str(key)] = value
+    return result
 
 
 def mask_mapping_values(values: Mapping[str, str]) -> dict[str, str]:

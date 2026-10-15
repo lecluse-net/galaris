@@ -397,7 +397,9 @@ export const useChatStore = defineStore('chat', () => {
   async function loadRecentMessages(): Promise<void> {
     const roomId = selectedRoom.value?.id
     const now = Date.now()
-    if (!roomId || loadingRecentMessages.value || now - lastRecentMessagesLoad < 1_500) return
+    // Opening the room restores messages, activity and streaming together. A
+    // messages-only scroll refresh must not supersede that initial projection.
+    if (!roomId || loadingRoomId.value === roomId || loadingRecentMessages.value || now - lastRecentMessagesLoad < 1_500) return
     const request = selectedProjectionRequest()
     const scopeAgentId = viewerAgentId.value
     loadingRecentMessages.value = true
@@ -483,11 +485,36 @@ export const useChatStore = defineStore('chat', () => {
         : message
     })
   }
+  let signalRefresh: {
+    generation: number; requested: boolean; refreshRoom: boolean; promise: Promise<void>
+  } | null = null
+  // Keep one HTTP projection in flight and retain invalidations received while
+  // it runs. A new selection starts independently of a blocked previous room.
   async function refreshFromSignal(refreshRoom: boolean): Promise<void> {
-    try {
-      if (refreshRoom) await refreshSelected()
-      await refreshRooms()
-    } catch { /* A 403 already purges scoped state; transient losses use HTTP catch-up. */ }
+    const generation = selectedRoomGeneration
+    if (signalRefresh?.generation === generation) {
+      signalRefresh.requested = true
+      signalRefresh.refreshRoom ||= refreshRoom
+      return signalRefresh.promise
+    }
+    const refresh = { generation, requested: true, refreshRoom, promise: Promise.resolve() }
+    signalRefresh = refresh
+    refresh.promise = (async () => {
+      try {
+        do {
+          const reloadRoom = refresh.refreshRoom
+          refresh.requested = refresh.refreshRoom = false
+          try {
+            if (reloadRoom) await refreshSelected()
+            if (signalRefresh !== refresh || generation !== selectedRoomGeneration || !connected) return
+            await refreshRooms()
+          } catch { /* A 403 purges scoped state; subsequent signals and HTTP catch-up retry transient failures. */ }
+        } while (refresh.requested && signalRefresh === refresh && generation === selectedRoomGeneration && connected)
+      } finally {
+        if (signalRefresh === refresh) signalRefresh = null
+      }
+    })()
+    return refresh.promise
   }
   function rememberRealtimeMessage(messageId: string): boolean {
     if (observedRealtimeMessageIds.has(messageId)) return false
@@ -570,28 +597,6 @@ export const useChatStore = defineStore('chat', () => {
       messages.value,
     )
   }
-  let runtimeRefresh: { generation: number; requested: boolean } | null = null
-  function requestRuntimeRefresh(): void {
-    const generation = selectedRoomGeneration
-    // Coalesce requests without losing an invalidation received during HTTP.
-    // A different selection owns its own recovery, even if the old one is blocked.
-    if (runtimeRefresh?.generation === generation) {
-      runtimeRefresh.requested = true
-      return
-    }
-    const refresh = { generation, requested: true }
-    runtimeRefresh = refresh
-    void (async () => {
-      try {
-        do {
-          refresh.requested = false
-          await refreshFromSignal(true)
-        } while (refresh.requested && generation === selectedRoomGeneration && connected)
-      } finally {
-        if (runtimeRefresh === refresh) runtimeRefresh = null
-      }
-    })()
-  }
   function onRuntime(event: RealtimeRuntimeEvent): void {
     const data = event.data
     const roomId = data?.room_id
@@ -599,7 +604,7 @@ export const useChatStore = defineStore('chat', () => {
     const update = applyConversationRuntimeEvent(liveRound.value, data)
     if (!update) return
     if (update.needsSnapshot) {
-      requestRuntimeRefresh()
+      void refreshFromSignal(true)
       return
     }
     runtimeEventRevision += 1
@@ -632,6 +637,7 @@ export const useChatStore = defineStore('chat', () => {
   }
   function disconnect(): void {
     stopCatchUp()
+    signalRefresh = null
     if (subscribedRoom) websocket.leaveRoom(subscribedRoom)
     subscribedRoom = null
     if (!connected) return

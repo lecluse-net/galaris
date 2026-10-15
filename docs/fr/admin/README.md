@@ -579,10 +579,20 @@ Les affectations vivent exclusivement dans des profils de modèles. Le paramètr
 peut choisir un profil personnel ou conserver « Profil courant » ; ce second choix est persisté
 par un `profile_id` nul et suit immédiatement tout changement de profil courant.
 
+Dans **Agents → Modifier → Modèles**, **Profil principal** conserve ce choix et
+**Profil secondaire (secours)** configure un repli facultatif. En cas de surcharge ou
+d'accès impossible au fournisseur, les inférences texte et structurées essaient le même
+usage du secondaire une fois. Le harnais interne peut basculer pendant un flux et conserve
+le secondaire jusqu'à la fin du run, sans rejouer les outils terminés. Les journaux LLM
+conservent les deux appels, leurs coûts et le motif. Les autorisations Galaris, budgets,
+annulations et refus de contenu restent applicables. Un usage secondaire vide désactive
+ce secours pour cet usage ; les candidats du Lab restent fixes. Un flux brut de gateway
+déjà publié ne peut pas changer de fournisseur. Voir la [décision 0180](../../../project/decisions/0180-agent-secondary-llm-profile.md).
+
 | Usage du profil | Fonction |
 |---|---|
 | Exécuteur | exécution `standard` du harnais interne |
-| Exécuteur high | exécution `high`, avec seul repli autorisé vers l’exécuteur standard du même profil |
+| Exécuteur high | exécution `high`, utilisant l’exécuteur standard du même profil lorsque high n’est pas configuré |
 | Conversation | réponses rapides du control plane des conversations texte |
 | Dispatcher | choix `EXEC`/`PLAN` et effort des Tasks ; il n’exécute pas les conversations |
 | Planner | création de plans et synthèse finale |
@@ -1073,12 +1083,14 @@ environnement distinct.
 
 ### Cohérence des pièces jointes Messenger internes
 
-Les lignes `messenger_files` ne contiennent que les métadonnées. Les octets du canal interne sont
-dans `/data/chat`, donc dans le volume `data` de
-l'installation standard. PostgreSQL et ce répertoire constituent un même point de restauration.
+Les lignes `messenger_files` conservent les rattachements métier. Les octets des PJ internes
+sont désormais dans `/data/files`, avec le registre `files` ; `/data/chat` conserve les autres
+données Chat. Un volume dédié est possible : voir le [stockage et sa migration](../dev/file-storage.md).
+PostgreSQL, `/data/files`, `/data/memory` et les données restantes de `/data/chat` constituent
+un même point de restauration. Inclure les fichiers cachés d'identité et de manifest.
 
 Pour une sauvegarde cohérente, placez l'installation en fenêtre de maintenance sans nouvel envoi,
-produisez le dump PostgreSQL, puis archivez le répertoire `chat` avant de rouvrir les
+produisez le dump PostgreSQL, puis archivez ces répertoires avant de rouvrir les
 écritures. Conservez ensemble le dump, l'archive, la version Git et la date. À la restauration,
 restaurez d'abord la base et le répertoire avec leurs propriétaires et permissions, puis lancez la
 version de code correspondante. Vérifiez ensuite un téléchargement autorisé et laissez le job de

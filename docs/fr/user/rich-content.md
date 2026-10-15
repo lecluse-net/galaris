@@ -187,6 +187,10 @@ document, puis l'intégrer au texte. Le nom du fichier suit le format natif renv
 un PNG porte l'extension `.png`, même si la destination demandée se terminait par `.jpg`.
 L'image conserve ses octets et ses dimensions ; réutilisez l'URI rendue par l'outil.
 
+Deux pièces jointes peuvent avoir le même nom source. Pour les distinguer, l'agent utilise
+leurs URI complètes et leurs clés de navigation `entry_name`, uniques dans leur parent.
+Une copie conserve le nom source ; elle n'écrase pas un fichier existant sans demande explicite.
+
 Les images ne sont pas autorisées dans les autres mémoires, profils, tâches, descriptions ou
 suivis de Goals. Cette règle reste valable lorsqu’un document Goal est ouvert dans la
 bibliothèque. Les images distantes par URL et les SVG ne sont pas acceptés.

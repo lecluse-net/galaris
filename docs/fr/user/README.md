@@ -87,6 +87,13 @@ renseigne l'adresse et les identifiants dans ses paramètres globaux ou dans la 
 de l'agent. Les droits de l'API sont ceux du token chez le service tiers. Voir
 [l'administration des Tools](../admin/tool-administration.md).
 
+Pour connecter un compte à un serveur MCP, ouvrir la connexion de l’agent et cliquer sur
+**Connecter le compte**. Le fournisseur demande l’accord directement ; Galaris récupère
+le token sans saisie technique. OAuth se gère uniquement dans la connexion, jamais dans
+le Tool. Chaque connexion possède son autorisation et son bouton de déconnexion.
+Le renouvellement des jetons est automatique si le fournisseur le permet. Voir le
+[guide des Tools](../admin/tool-administration.md).
+
 Dans **Fournisseurs**, un administrateur peut régler le nombre d'appels LLM simultanés
 par connexion. Les conversations vocales puis textuelles ont priorité sur le travail de
 fond ; avec une seule place, un appel déjà engagé doit toutefois terminer avant le suivant.
@@ -102,7 +109,16 @@ Conservez les codes de secours affichés lors de l’activation dans un emplacem
 ils ne seront pas réaffichés et chacun ne fonctionne qu’une fois. Après plusieurs mots de passe ou
 codes erronés, Galaris ralentit temporairement les nouvelles tentatives de connexion.
 
+## Choisir un profil de secours pour un agent
+
+Les gestionnaires d'agents peuvent choisir un **Profil principal** et un **Profil secondaire
+(secours)** dans **Agents → Modifier → Modèles**. Le secondaire est facultatif et sert lors
+d'une surcharge ou d'une indisponibilité du fournisseur principal. La conversation ou la
+Task conserve le travail déjà effectué ; les détails de la bascule apparaissent dans les
+journaux d'appels LLM. Une sélection vide dans le secondaire ne remplace pas un usage absent.
+
 ## Installer Galaris sur Android ou iPhone
+
 
 Galaris est une Progressive Web App (PWA) : il peut être ajouté à l’écran d’accueil et lancé
 depuis sa propre icône, comme une application installée depuis un store. Après une première
@@ -308,7 +324,7 @@ transmet aussi à l’agent la dernière sélection de texte dans ce document, l
 du curseur et un extrait de la zone visible au moment de l’envoi. Vous pouvez sélectionner
 un passage, puis écrire « reformule ce passage » sans perdre ce repère en passant au champ
 de message. Cela fonctionne en lecture seule, dans le contenu HTML, dans Source et dans les
-Datasets JSON. Les extraits longs sont tronqués et accompagnés de la révision du document.
+jeux de données JSON. Les extraits longs sont tronqués et accompagnés de la révision du document.
 Un changement de document ou de contenu invalide les anciens repères ; fermer le panneau
 cesse de transmettre ce contexte. Les zones internes des applications intégrées ne sont pas
 inspectées. Les droits de l’agent sur le document restent inchangés.
@@ -562,7 +578,7 @@ le retour à proximité. Une miniature indisponible conserve le carré. Un aper�
 le détail apparaît aussi dans le graphe. Les miniatures gardent leurs proportions dans une
 limite de 320 × 320 pixels ; le graphe affiche directement ces images sans les recompresser.
 Leur chargement ne déplace pas les nœuds.
-Les fichiers audio portent une note de musique dans leur carré turquoise. Les Datasets
+Les fichiers audio portent une note de musique dans leur carré turquoise. Les jeux de données
 conservent leur symbole documentaire.
 
 Un clic sur un nœud ouvre directement sa modale, avec sa nature, sa visibilité, son nombre
@@ -655,17 +671,17 @@ Dans **Mémoire**, les comptes autorisés peuvent :
 - consulter contenu, révisions, provenance, relations et usages ;
 - corriger ou archiver un souvenir ordinaire ;
 - partager un document en lecture ou édition depuis son éditeur ;
-- créer des documents HTML de travail ou des Datasets JSON qui évoluent sur plusieurs Tasks ;
+- créer des documents HTML de travail ou des jeux de données JSON qui évoluent sur plusieurs Tasks ;
 - explorer le graphe sur une période donnée ;
 - oublier définitivement un élément, action irréversible réservée aux droits adéquats.
 
-Les agents sont invités à envisager un Dataset lorsque des données structurées peuvent
+Les agents sont invités à envisager un jeu de données lorsque des données structurées peuvent
 servir dans plusieurs documents, calculs ou Tasks. Par exemple, une fiche d'entreprise peut
 regrouper son capital et sa devise pour les réutiliser dans une présentation ou un budget.
-Ils privilégient un Dataset existant, conservent les sources et incertitudes et relisent
+Ils privilégient un jeu de données existant, conservent les sources et incertitudes et relisent
 les données lors de la rédaction. Ce choix reste adapté au besoin : un fait isolé ou une
-réponse courte ne nécessite pas systématiquement un Dataset. Un document rédigé à partir
-de ces données ne se met pas automatiquement à jour lorsque le Dataset change.
+réponse courte ne nécessite pas systématiquement un jeu de données. Un document rédigé à partir
+de ces données ne se met pas automatiquement à jour lorsque le jeu de données change.
 
 Les fiches Agent, Goals et cycles sont des projections en lecture seule : modifiez leur source
 plutôt que leur copie mémoire. Les contacts issus des messageries ne contiennent que l’identité

@@ -3,9 +3,9 @@ import test from 'node:test'
 import { setImmediate } from 'node:timers/promises'
 import * as pinia from 'pinia'
 import * as vue from 'vue'
-import { loadTypescript } from '../../test-support/load-typescript.mjs'
+import { deferred, loadTypescript } from '../../test-support/load-typescript.mjs'
 
-async function setup(t, service, canCall = false) {
+async function setup(t, service, canCall = false, listeners = new Map()) {
   t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: new Date('2026-09-06T00:00:00Z') })
   const originalWindow = globalThis.window
   globalThis.window = new EventTarget()
@@ -18,7 +18,9 @@ async function setup(t, service, canCall = false) {
     '@/core/authorize': { usePrivilegeStore: () => ({ hasPrivilege: () => canCall }) },
     '@/core/api': { AUTH_TOKEN_CHANGED_EVENT: 'auth', getStoredAccessToken: () => 'test' },
     '@/core/websocket': { BaseRoom: class {}, websocket: {
-      createWebsocket() {}, onEvent() {}, offEvent() {}, onConnect() {}, offConnect() {}, joinRoom() {}, leaveRoom() {},
+      createWebsocket() {},
+      onEvent(subject, action, callback) { listeners.set(`${subject}.${action}`, callback) },
+      offEvent() {}, onConnect() {}, offConnect() {}, joinRoom() {}, leaveRoom() {},
     } },
     '../services/chatService': { chatService: { status: async () => ({ enabled: false }), ...service } },
     '../liveState': liveState, '../runtimeState': {}, '../voiceCall': {},
@@ -118,3 +120,81 @@ for (const stop of ['disconnect', '$dispose']) {
     assert.equal(requests, 0)
   })
 }
+
+test('a burst of conversation signals bounds HTTP work and retains a newer invalidation', async t => {
+  const listeners = new Map(), first = deferred(), roomsLoaded = deferred()
+  let requests = 0, active = 0, peak = 0, revision = 1
+  const store = await setup(t, {
+    room: async () => {
+      const captured = revision
+      requests++; peak = Math.max(peak, ++active)
+      try {
+        if (requests === 1) await first.promise
+        return { id: 'room', label: `Revision ${captured}` }
+      } finally { active-- }
+    },
+    messages: async () => ({ items: [], total: 0 }),
+    activity: async () => ({ items: [], total: 0 }),
+    rooms: async () => {
+      if (requests >= 2) roomsLoaded.resolve()
+      return { items: [{ id: 'room', label: `Revision ${revision}` }], total: 1 }
+    },
+  }, false, listeners)
+  store.liveRound = null
+  listeners.get('chat.activity')({ data: { room_id: 'room' } })
+  await setImmediate()
+  revision = 2
+  for (let index = 0; index < 30; index++) {
+    listeners.get('chat.activity')({ data: { room_id: 'room' } })
+  }
+  first.resolve()
+  await roomsLoaded.promise
+  await setImmediate()
+  assert.equal(peak, 1, 'only one signal refresh may read the room at a time')
+  assert.equal(requests, 2, 'the burst must converge with one follow-up read')
+  assert.equal(store.selectedRoom.label, 'Revision 2')
+})
+
+test('signal refresh retries an invalidation after a failed read', async t => {
+  const listeners = new Map(), first = deferred()
+  let requests = 0
+  const store = await setup(t, {
+    room: async () => {
+      if (++requests === 1) await first.promise
+      return { id: 'room', label: 'Recovered' }
+    },
+    messages: async () => ({ items: [], total: 0 }),
+    activity: async () => ({ items: [], total: 0 }),
+    rooms: async () => ({ items: [], total: 0 }),
+  }, false, listeners)
+  store.liveRound = null
+  listeners.get('chat.activity')({ data: { room_id: 'room' } })
+  listeners.get('chat.activity')({ data: { room_id: 'room' } })
+  first.reject(Error('Temporary failure'))
+  await setImmediate()
+  assert.equal(requests, 2)
+  assert.equal(store.selectedRoom.label, 'Recovered')
+})
+
+test('a blocked signal refresh cannot delay navigation or overwrite the new room', async t => {
+  const listeners = new Map(), first = deferred()
+  const store = await setup(t, {
+    room: async id => {
+      if (id === 'room') await first.promise
+      return { id, label: id }
+    },
+    messages: async id => ({ items: [{ id, text: id }], total: 1 }),
+    activity: async () => ({ items: [], total: 0 }),
+    rooms: async () => ({ items: [], total: 0 }),
+  }, false, listeners)
+  store.liveRound = null
+  listeners.get('chat.activity')({ data: { room_id: 'room' } })
+  await store.selectRoom({ id: 'other' })
+  listeners.get('chat.activity')({ data: { room_id: 'other' } })
+  await setImmediate()
+  assert.equal(store.selectedRoom.id, 'other')
+  assert.equal(store.messages[0].text, 'other')
+  first.resolve()
+  await setImmediate()
+  assert.equal(store.selectedRoom.id, 'other')
+})

@@ -128,6 +128,7 @@ def extract_preview_references(
             continue
         normalized = str(reference)
         is_existing_preview = reference.scheme in {
+            "file",
             "document",
             "memory",
             "galaris",

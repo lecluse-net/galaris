@@ -77,6 +77,13 @@ enters its address and credentials in global parameters or the agent's connectio
 API permissions come from the token at the third-party service. See
 [Tool administration](../admin/tool-administration.md).
 
+To connect an account to an MCP server, open the agent connection and click
+**Connect account**. The provider asks for consent directly; Galaris retrieves the token
+without technical fields to fill in. OAuth belongs only to the connection, never the Tool.
+Each connection owns its authorization and its disconnect button. Tokens refresh
+automatically when supported by the provider. See the
+[Tool guide](../admin/tool-administration.md).
+
 In **Providers**, an administrator can adjust concurrent LLM calls for each connection.
 Voice conversations take priority, followed by text conversations and background work;
 with a single place, the current call must still finish before the next one starts.
@@ -85,7 +92,15 @@ The LLM, settings, users, and permissions sections are administrative. Their abs
 
 The profile also lets you enable two-factor authentication with a TOTP application. Keep the recovery codes displayed during activation in a separate, secure location: they will not be displayed again, and each one works only once. After several incorrect passwords or codes, Galaris temporarily slows down new login attempts.
 
+## Choosing an agent fallback profile
+
+Agent managers can choose a **Primary profile** and an optional **Secondary profile (fallback)**
+in **Agents → Edit → Models**. The secondary is used when the primary provider is overloaded
+or unavailable. The conversation or Task retains completed work; LLM call logs expose the
+failover details. An empty secondary selection does not replace a missing usage.
+
 ## Installing Galaris on Android or iPhone
+
 
 Galaris is a Progressive Web App (PWA): it can be added to the home screen and launched from its own icon, like an application installed from a store. After an initial login from this icon, the session is automatically restored for 30 days of inactivity by default.
 

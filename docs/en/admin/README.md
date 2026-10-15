@@ -562,10 +562,20 @@ Assignments exist exclusively in model profiles. The global
 can choose a personal profile or retain “Current profile”; the latter choice is persisted
 with a null `profile_id` and immediately follows any change to the current profile.
 
+In **Agents → Edit → Models**, **Primary profile** retains this selection and
+**Secondary profile (fallback)** configures optional failover. When a provider is overloaded
+or inaccessible, text and structured inferences try the same usage from the secondary once.
+The internal harness can switch during a stream and retains the secondary until the run
+ends, without replaying completed tools. LLM logs retain both calls, their costs and the
+reason. Galaris authorization, budgets, cancellation and content refusals still apply.
+An empty secondary usage disables failover for that usage; Lab candidates stay fixed.
+A raw gateway stream that has already been published cannot change providers.
+See [decision 0180](../../../project/decisions/0180-agent-secondary-llm-profile.md).
+
 | Profile usage | Function |
 |---|---|
 | Executor | `standard` execution of the internal harness |
-| Executor high | `high` execution, with the only permitted fallback being the standard executor from the same profile |
+| Executor high | `high` execution, using the same profile's standard executor when high is not configured |
 | Conversation | quick responses from the text conversation control plane |
 | Dispatcher | `EXEC`/`PLAN` selection and Task effort; it does not execute conversations |
 | Planner | plan creation and final synthesis |
@@ -1049,12 +1059,14 @@ separate environment.
 
 ### Consistency of Internal Messenger Attachments
 
-The `messenger_files` rows contain only metadata. The internal channel's bytes are
-in `/data/chat`, and therefore in the `data` volume of
-the standard installation. PostgreSQL and this directory constitute a single restoration point.
+`messenger_files` retains domain membership. Internal attachment bytes now live in
+`/data/files`, with the `files` registry; `/data/chat` retains other Chat data. A dedicated
+volume is supported: see [storage and migration](../dev/file-storage.md). PostgreSQL,
+`/data/files`, `/data/memory` and remaining `/data/chat` data form one restoration point.
+Include hidden volume identity and manifest files.
 
 For a consistent backup, place the installation in a maintenance window with no new uploads,
-produce the PostgreSQL dump, then archive the `chat` directory before reopening
+produce the PostgreSQL dump, then archive these directories before reopening
 writes. Keep the dump, archive, Git version, and date together. During restoration,
 restore the database and directory first with their owners and permissions, then launch the
 corresponding code version. Next, verify an authorized download and let the

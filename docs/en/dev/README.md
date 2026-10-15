@@ -1325,6 +1325,32 @@ typed `load_capability` result, while retaining the call and its identifier so t
 remains active. Do not remove either protection: active instructions would otherwise be duplicated
 and re-billed on every tool turn.
 
+### Tool REST facade
+
+An optional `rest_config` capability uses existing global parameters and connections.
+Its public contract is exported by `app.tools` and `app.tools.facade`:
+
+```python
+from app.tools import RestRequest, execute_rest_request
+
+response = await execute_rest_request(
+    agent_id=executing_agent_id,
+    tool_code="billing",
+    request=RestRequest(method="POST", path="invoices", json_body={"amount": 12}),
+)
+```
+
+The caller must supply an authenticated execution context. The facade resolves only an
+active connection belonging to the same agent and Tool, then resolves the address and
+credentials server-side. Endpoint permissions belong to the remote token, without MCP
+policy or a REST operation catalogue. `RestResponse` retains `status_code`, `headers`
+and `body` (JSON or text), including HTTP error responses. `RestError` reports configuration
+or transport failures without revealing credentials; retries are never implicit.
+Paths stay relative to the base URL and redirects are not followed. An absent body differs
+from `json_body=None`, which sends JSON `null`. Process and Code consumers, callbacks and
+remote job tracking are outside this capability. See
+[administrator configuration](../admin/tool-administration.md).
+
 ### Processes and external engines
 
 `app.process` owns definitions, runs, the outbox, callbacks, and engine registry. `bridge.n8n`

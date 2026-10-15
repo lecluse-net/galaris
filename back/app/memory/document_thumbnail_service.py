@@ -7,6 +7,7 @@ from hashlib import sha256
 from contextvars import Context
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from threading import Lock
 from typing import Any, Protocol, cast
 from uuid import UUID, uuid5
 
@@ -40,6 +41,10 @@ class HtmlThumbnailCapture(Protocol):
 _web_thumbnail_capture: WebThumbnailCapture | None = None
 _html_thumbnail_capture: HtmlThumbnailCapture | None = None
 _document_capture_slots = asyncio.Semaphore(2)
+# PDFium forbids simultaneous calls even for separate documents. Every native
+# operation and close stays inside this process-wide critical section.
+# https://pypdfium2.readthedocs.io/en/stable/python_api.html#incompatibility-with-threading
+_pdfium_render_lock = Lock()
 
 
 async def read_document_thumbnail(
@@ -135,21 +140,29 @@ def register_web_thumbnail_capture(
 
 def _printed_document_thumbnail(content: bytes) -> bytes | None:
     """Fit the first printed page without cropping or changing its proportions."""
-    import pypdfium2 as pdfium  # type: ignore
+    return _first_pdf_page_thumbnail(content)
 
-    with pdfium.PdfDocument(content) as document:
-        if not len(document):
-            return None
-        page = document[0]
-        try:
-            bitmap = cast(Any, page).render(scale=2)
+
+def _first_pdf_page_thumbnail(source: bytes | str) -> bytes | None:
+    with _pdfium_render_lock:
+        import pypdfium2 as pdfium  # type: ignore
+
+        with pdfium.PdfDocument(source) as document:
+            if not len(document):
+                return None
+            page = document[0]
             try:
-                image = cast(Image.Image, bitmap.to_pil())
-                return thumbnails.encode(image)
+                bitmap = cast(Any, page).render(scale=2)
+                try:
+                    image = cast(Image.Image, bitmap.to_pil())
+                    try:
+                        return thumbnails.encode(image)
+                    finally:
+                        image.close()
+                finally:
+                    bitmap.close()
             finally:
-                bitmap.close()
-        finally:
-            page.close()
+                page.close()
 
 
 def _reference(document_id: UUID, attachment_id: UUID) -> str:
@@ -158,21 +171,7 @@ def _reference(document_id: UUID, attachment_id: UUID) -> str:
 
 def _pdf_thumbnail(path: Path) -> bytes | None:
     try:
-        import pypdfium2 as pdfium  # type: ignore
-
-        document = pdfium.PdfDocument(str(path))
-        try:
-            if len(document) == 0:
-                return None
-            page = document[0]
-            try:
-                # pypdfium2 does not expose complete typing for its renderer.
-                rendered = cast(Any, page).render(scale=2)
-                return thumbnails.encode(cast(Image.Image, rendered.to_pil()))
-            finally:
-                page.close()
-        finally:
-            document.close()
+        return _first_pdf_page_thumbnail(str(path))
     except Exception:
         return None
 

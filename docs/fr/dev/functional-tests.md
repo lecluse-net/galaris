@@ -1010,3 +1010,17 @@ branche métier, un refus, une perte de donnée possible ou un effet rejouable e
 Un changement volontaire indique l’avant/après ; une suppression de test indique ce qui est
 repris et ce qui ne constitue plus une exigence. Mesurer les régressions échappées, l’instabilité,
 la durée et les mutations pertinentes, pas un objectif de nombre de tests.
+
+## Rafraîchissement Chat et corrections ciblées
+
+`front/app/chat/storeCatchUp.test.mjs` et `front/browser-tests/chat-recovery.spec.mjs`
+vérifient le regroupement des signaux, la conservation d'une invalidation reçue pendant
+une lecture, la reprise après erreur et les changements de conversation. Les messages,
+les réponses en cours et le brouillon restent utilisables pendant le rafraîchissement.
+
+`app/memory/tests/test_document_thumbnails.py` exerce les deux chemins de rendu PDF
+avec la vraie bibliothèque dans un sous-processus concurrent. Un crash natif échoue
+sans arrêter le worker pytest. `app/messenger/tests/test_link_preview.py` conserve
+normalisation et déduplication pour les documents et fichiers gérés. Le scénario de
+`app/connection/tests/test_encryption.py` protège les valeurs chiffrées, historiques,
+vides ou indéchiffrables des dictionnaires de connexion.

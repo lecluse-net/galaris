@@ -178,6 +178,10 @@ then embed it in the text. The filename follows the model's native output format
 `.png`, even when the requested destination ended in `.jpg`. Its bytes and dimensions are
 preserved; reuse the URI returned by the tool.
 
+Two attachments can share a source filename. To distinguish them, the agent uses their
+complete URIs and `entry_name` navigation keys, which are unique within their parent.
+A copy preserves the source filename and does not overwrite an existing file without an explicit request.
+
 Removing an image from the text preserves its attachment. Explicit deletion hides the attachment
 from the list but keeps historical versions restorable under current access rights. Forgetting
 the document permanently removes these resources, subject to business protections.

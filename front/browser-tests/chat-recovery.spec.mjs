@@ -1,7 +1,7 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { document as documentFixture } from './data.mjs'
 
-async function conversation(page, privileges = ['CHAT_SEND'], commandsHandler = null) {
+async function conversation(page, privileges = ['CHAT_SEND'], commandsHandler = null, activityHandler = null) {
   const rooms = ['a', 'b'].map(code => ({ id: `room-${code}`, label: `Conversation ${code}`,
     agent_id: 7, agent_name: 'Alice', agent_active: false, source: null, writable: true,
     members: [], muted: false, archived: false, unread_count: 0, conversation_type: 'text' }))
@@ -15,6 +15,7 @@ async function conversation(page, privileges = ['CHAT_SEND'], commandsHandler = 
   for (const room of rooms) {
     await jsonRoute(page, `**/api/chat/rooms/${room.id}`, room)
     await jsonRoute(page, `**/api/chat/rooms/${room.id}/activity?*`, { items: [], total: 0 })
+    if (activityHandler) await page.route(`**/api/chat/rooms/${room.id}/activity?*`, activityHandler)
     await page.route(`**/api/chat/rooms/${room.id}/messages?*`, route => route.fulfill({
       json: { items: [messages[room.id]], total: 1, page: 1 },
     }))
@@ -59,6 +60,58 @@ async function refresh(page, key, method = 'refreshSelected') {
 async function settled(page, key) {
   await expect.poll(() => page.evaluate(key => window.refreshResults[key], key)).toBeTruthy()
 }
+
+test('conversation activity bursts retain new messages without concurrent history reloads', async ({ page }) => {
+  const state = await conversation(page)
+  let release, requests = 0, active = 0, peak = 0
+  const blocked = new Promise(resolve => { release = resolve })
+  await page.route('**/api/chat/rooms/room-a/messages?*', async route => {
+    const items = [{ ...state.messages['room-a'] }]
+    requests++; peak = Math.max(peak, ++active)
+    try {
+      if (requests === 1) await blocked
+      await route.fulfill({ json: { items, total: items.length, page: 1 } })
+    } finally { active-- }
+  })
+  const signal = () => page.evaluate(() => window.testApp.emitSocket('chat.activity', {
+    data: { room_id: 'room-a' },
+  }))
+  await signal()
+  await expect.poll(() => requests).toBe(1)
+  state.messages['room-a'].text = 'Content received during activity burst'
+  await page.evaluate(() => {
+    for (let index = 0; index < 30; index++) window.testApp.emitSocket('chat.activity', {
+      data: { room_id: 'room-a' },
+    })
+  })
+  const composer = page.locator('.composer-shell textarea')
+  await composer.fill('Draft preserved during refresh')
+  release()
+  await expect(page.locator('.conversation-pane')).toContainText('Content received during activity burst')
+  await expect(composer).toHaveValue('Draft preserved during refresh')
+  expect(peak).toBe(1)
+  expect(requests).toBe(2)
+})
+
+test('opening a conversation retains its running response when history refresh overlaps the initial activity', async ({ page }) => {
+  let releaseActivity
+  const opening = conversation(page, ['CHAT_SEND'], null, async route => {
+    await new Promise(resolve => { releaseActivity = resolve })
+    await route.fulfill({ json: {
+      items: [{ id: 'synthetic-running-round', status: 'RUNNING', attempt: 1,
+        created_at: '2026-09-01T12:01:00Z' }], total: 1,
+      runtime: { round_id: 'synthetic-running-round', kind: 'snapshot', sequence: 1, attempt: 1,
+        result: { prompt: '', system_prompt: '', messages: [{ type: 'text', content: 'Synthetic restored response' }],
+          result: 'Synthetic restored response', success: true, execution_time: 0, cost: 0, tools_used: [], metadata: {} } },
+    } })
+  })
+  await expect.poll(() => typeof releaseActivity).toBe('function')
+  await refresh(page, 'overlapping-history', 'loadRecentMessages')
+  await settled(page, 'overlapping-history')
+  releaseActivity()
+  await opening
+  await expect(page.locator('.message-bubble--live')).toContainText('Synthetic restored response')
+})
 
 test('an admitted round is visible before streaming and keeps its response through startup', async ({ page }) => {
   await conversation(page)

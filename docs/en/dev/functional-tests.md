@@ -984,3 +984,17 @@ does not automatically need a test. A new business branch, denied operation, pos
 or replayable effect needs evidence. Intentional changes explain before/after behavior;
 retired tests identify guarantees retained elsewhere and incidental constraints dropped.
 Track escaped regressions, flakiness, feedback time and relevant mutations rather than test count.
+
+## Chat refresh and targeted corrections
+
+`front/app/chat/storeCatchUp.test.mjs` and `front/browser-tests/chat-recovery.spec.mjs`
+check signal coalescing, invalidations received during reads, recovery after errors
+and conversation changes. Messages, running responses and the draft remain usable
+throughout refreshes.
+
+`app/memory/tests/test_document_thumbnails.py` exercises both PDF render paths with
+the real library in a concurrent child process. A native crash fails the test without
+stopping the pytest worker. `app/messenger/tests/test_link_preview.py` preserves
+normalization and deduplication for documents and managed files. The scenario in
+`app/connection/tests/test_encryption.py` protects encrypted, legacy, empty and
+undecryptable values in connection dictionaries.

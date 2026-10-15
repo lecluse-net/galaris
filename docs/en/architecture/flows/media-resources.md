@@ -10,6 +10,7 @@ and relocated on read without overwriting a newer capture. Images fit within 320
 aspect ratio and transparency without padding. HTML uses the shared browser renderer;
 `.url` shortcuts reuse their target URL's thumbnail. Each domain checks access before
 reading the cache. Deleting a shortcut does not delete its target's preview.
+
 HTML files are ordinary attachments: their bytes, authorization, storage and downloads
 follow the same contracts as other files. Thumbnails are WebP images in the shared cache.
 Chat no longer reuploads their content to create a copy or an access ticket; attachment
@@ -32,6 +33,14 @@ after generation, failure or cancellation; only the WebP enters the shared cache
 limits input to 64 MiB, conversion to 90 seconds and the worker to 120 seconds after acquiring
 one of the two slots shared with document analysis. Its checkpoints are separate from full
 analysis checkpoints. Failures publish no cache and allow another attempt.
+
+Backend PDF renders share a critical section across threads:
+[PDFium forbids simultaneous calls](https://pypdfium2.readthedocs.io/en/stable/python_api.html#incompatibility-with-threading),
+even for different documents. The section covers opening, rendering and explicit page/bitmap
+closure. Browser captures can remain parallel; the conversion worker owns a separate isolated
+process. Format, proportions and storage stay the same. The concurrency test in
+`app/memory/tests/test_document_thumbnails.py` runs the real library in a child process
+to detect a native crash without stopping the rest of the suite.
 
 In the UI, message resource cards wait until they approach the viewport before loading
 metadata. Their images and document thumbnails (chat and library) share a queue of two
@@ -147,6 +156,12 @@ A successful delivery preserves the source, the final artifact at the destinatio
 
 ## Resource URIs
 
+Managed internal files use `file://<uuid>`, independent of their name and physical disk.
+`core.storage` owns the registry and disk driver; File Sharing applies ownership or the
+referring Document/Chat authorization. Historical attachment aliases keep their domain
+access checks. The [verified migration](../../dev/file-storage.md) moves only internal
+bytes and never opens an external provider.
+
 For a staged copy, a source download failure precedes any upload and is reported to the harness
 as a rejection with no destination effect. The agent can correct the source and continue.
 Once uploading begins, or during direct streaming, an error retains an uncertain outcome and
@@ -188,6 +203,15 @@ A collection destination of `file_copy` or `file_move` preserves the source name
 
 The preserved name is that of the source `ResourceDescriptor`, not necessarily the last segment of the locator: an attachment addressed by UUID thus retains its actual name. Specialized image, audio, and Messenger tools also receive canonical URIs. If they require a local path, they call `materialize_resource` into a bounded temporary file that they delete after the call. A `nextcloud://`, `console://`, HTTPS, Mail, or Messenger URI is therefore consumed directly. Outputs are written by `resource_create`/`resource_write`
 and expose the canonical URI that was created or delivered.
+
+Descriptors distinguish `name`, the displayed source filename or title, from `entry_name`,
+the navigation key within the canonical parent. `entry_name` is the final decoded URI segment:
+the actual filename for a path provider, or the identifier for a document or attachment.
+Distinct resources in the same parent therefore do not share a key because their source names
+or titles match. This key depends on neither the listing page nor other visible resources.
+Recursive listings retain the URI hierarchy rather than defining a flattened directory.
+Copies and deliveries still preserve `name`, and operations use the complete canonical URI.
+This distinction does not install a FUSE mount.
 
 `console://` always designates the SSH user's home. The forms `~/path`, the absolute home path, and its form without a slash after URI parsing are rebased to this home; they are never concatenated a second time onto the root path. No virtual `main/` segment is added:
 `console://mon_fichier` reads or writes exactly `~/mon_fichier`.
