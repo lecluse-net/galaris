@@ -60,6 +60,14 @@
         : t('connection.console.internalAgentRequired') }}
     </q-banner>
 
+    <McpOAuthConnection
+      v-if="selectedTool?.mcp_config?.type === 'http' || selectedTool?.mcp_config?.type === 'sse'"
+      :key="`${form.agent_id}:${form.tool_id}`"
+      :connection-id="props.connection?.agent_id === form.agent_id && props.connection?.tool_id === form.tool_id ? form.id : null"
+      :can-edit="canEdit"
+      :prepare-connection="isValidForm && props.persistForAction ? prepareOAuthConnection : undefined"
+    />
+
     <!-- Dynamic configuration parameter table -->
     <div v-if="showSchemaParameters" class="q-mt-md">
       <div class="text-subtitle2 q-mb-sm">
@@ -377,8 +385,9 @@ import { ConnectionParamInput, type ConnectionParamDef } from '@/app/tools'
 import { AgentSelect } from '@/app/agent'
 import { consoleService, type ConsoleConnectionStatus } from '@/app/console/services/consoleService'
 import { mailService, type MailApproverOption } from '@/app/connection/services/mailService'
-import connectionService from '../services/connectionService'
+import connectionService, { type ConnectionActionResult } from '../services/connectionService'
 import CalendarConnectionEditor from './CalendarConnectionEditor.vue'
+import McpOAuthConnection from './McpOAuthConnection.vue'
 import { authorizedKeysDeploymentCommands } from '@/app/console/sshKeyDeployment'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { CodeEditor } from '@/core/util'
@@ -407,6 +416,7 @@ interface Tool {
   code: string
   label: string
   has_mcp?: boolean
+  mcp_config?: { type?: string } | null
   connection_schema?: {
     params?: Record<string, Partial<ConnectionParamDef>>
   }
@@ -434,6 +444,7 @@ interface SchemaParam extends Partial<ConnectionParamDef> {
 
 interface ConnectionSubmitPayload {
   id: number | null
+  reuseExisting?: boolean
   data: {
     agent_id: number
     tool_id: number
@@ -459,7 +470,7 @@ const props = defineProps<{
   tools: Tool[]
   defaultAgentId?: number | null
   defaultToolId?: number | null
-  persistForAction?: (payload: ConnectionSubmitPayload) => Promise<Connection>
+  persistForAction?: (payload: ConnectionSubmitPayload) => Promise<ConnectionActionResult>
 }>()
 
 const emit = defineEmits<{
@@ -474,6 +485,7 @@ const form = ref({
   tool_id: null as number | null,
   active: true,
 })
+let oauthSavedDraft: string | null = null
 
 const paramValues = ref<Record<string, string>>({})
 const paramOverrides = ref<Record<string, boolean>>({})
@@ -716,7 +728,8 @@ function resetForm() {
   }
 }
 
-function initForm(connection?: Connection, params?: Record<string, unknown> | null) {
+function initForm(connection?: Connection, params?: Record<string, unknown> | null, configuredParams = props.configuredParams ?? []) {
+  oauthSavedDraft = null
   consoleContext += 1
   consoleAction.value = null
   editorDeployed.value = false
@@ -748,7 +761,7 @@ function initForm(connection?: Connection, params?: Record<string, unknown> | nu
       }
     }
     paramValues.value = values
-    const configured = new Set(props.configuredParams ?? [])
+    const configured = new Set(configuredParams)
     paramOverrides.value = Object.fromEntries(
       schemaParameters.value.map(param => {
         const local = params?.[param.name]
@@ -860,6 +873,26 @@ async function persistConsoleDraft(active = false): Promise<Connection> {
   const connection = await props.persistForAction(payload)
   form.value.id = connection.id
   return connection
+}
+
+async function prepareOAuthConnection(): Promise<number> {
+  const payload = buildSubmitPayload(true)
+  if (!payload || !props.persistForAction || !canEdit.value) throw new Error(t('connection.saveError'))
+  if (payload.id && JSON.stringify(payload) === oauthSavedDraft) return payload.id
+  const draft = form.value
+  const parameters = JSON.stringify(payload.params)
+  const connection = await props.persistForAction({ ...payload, reuseExisting: true })
+  if (form.value !== draft || form.value.agent_id !== payload.data.agent_id
+    || form.value.tool_id !== payload.data.tool_id
+    || JSON.stringify(buildSubmitPayload(true)?.params) !== parameters) throw new Error(t('connection.saveError'))
+  if (connection.savedParams) {
+    initForm(connection, connection.savedParams.params, connection.savedParams.configured_params)
+    newlyConfiguredParams.value = new Set(connection.savedParams.configured_params)
+  }
+  form.value.id = connection.id
+  form.value.active = connection.active
+  oauthSavedDraft = JSON.stringify(buildSubmitPayload(true))
+  return connection.id
 }
 
 async function scanHostKey(): Promise<void> {

@@ -18,6 +18,11 @@ export interface Connection {
     active: boolean
 }
 
+/** Result of saving a draft or adopting an existing connection for an action. */
+export interface ConnectionActionResult extends Connection {
+    savedParams?: Pick<ConnectionParamsResponse, 'params' | 'configured_params'>
+}
+
 export interface ConnectionCreate {
     tool_id: number
     agent_id: number

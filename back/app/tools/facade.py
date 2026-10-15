@@ -8,6 +8,8 @@ from .runtime_principals import RuntimePrincipal, register_runtime_principal_por
 from .mcp_authorization import bind_native_action
 from .authorization import authorization_policy as agent_authorization_policy
 from .secrets import public_connection_schema as public_connection_schema
+from .secrets import resolve_connection_references as resolve_connection_references
+from .admin_network import diagnostic_client as mcp_http_client
 
 
 async def has_active_admin_function(agent_id: int, function: str) -> bool:
@@ -83,6 +85,8 @@ from .authorization import (
 )
 
 __all__ = [
+    "mcp_http_client",
+    "resolve_connection_references",
     "RestAuth",
     "RestConfig",
     "RestError",

@@ -444,6 +444,7 @@ async def _diagnose_mcp_connection(
     *,
     existing_config: Mapping[str, Any] | None = None,
     http_client: httpx.AsyncClient | None = None,
+    mcp_auth: httpx.Auth | None = None,
 ) -> ToolMcpTestResponse:
     """Run a bounded, non-persistent MCP connection diagnostic."""
 
@@ -463,7 +464,9 @@ async def _diagnose_mcp_connection(
             for name, value in data.params.items()
             if value is not None
         }
-        if http_client is None:
+        if mcp_auth is not None:
+            server = build_mcp_server(preview_tool, connection_params, prefix_tools=False, http_client=http_client, mcp_auth=mcp_auth)
+        elif http_client is None:
             server = build_mcp_server(preview_tool, connection_params, prefix_tools=False)
         else:
             server = build_mcp_server(preview_tool, connection_params, prefix_tools=False, http_client=http_client)
@@ -689,12 +692,13 @@ def function_detail(tool: Any) -> ToolMcpTestFunction:
 async def diagnose_mcp_connection(
     data: ToolMcpTestRequest, *, existing_config: Mapping[str, Any] | None = None,
     http_client: httpx.AsyncClient | None = None,
+    mcp_auth: httpx.Auth | None = None,
 ) -> ToolMcpTestResponse:
     started = time.monotonic()
     try:
         async with asyncio.timeout(30), _DIAGNOSTIC_SLOTS:
             result = await _diagnose_mcp_connection(
-                data, existing_config=existing_config, http_client=http_client,
+                data, existing_config=existing_config, http_client=http_client, mcp_auth=mcp_auth,
             )
     except TimeoutError:
         result = ToolMcpTestResponse(success=False, message=await _failure_message("timeout"), failure_kind="timeout")

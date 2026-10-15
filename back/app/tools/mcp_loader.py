@@ -49,7 +49,7 @@ from core.params import runtime_settings
 from .contracts import ToolCallRejectedError, current_tool_execution
 from .execution_evidence import ExecutionEvidenceMiddleware
 from .tool_arguments import ToolArgumentsMiddleware
-from .schemas import Tool as ToolConfiguration
+from .schemas import McpConfig, Tool as ToolConfiguration
 
 ToolFunc = TypeVar("ToolFunc", bound=Callable[..., Any])
 
@@ -928,28 +928,28 @@ class _MediaFilteredFastMCP(FastMCP):
         return [tool for tool in tools if tool.name not in dynamic or tool.name in visible]
 
 
-def _resolve_auth_headers(mcp_config: Any, params: dict[str, Any]) -> dict[str, str]:
+def _resolve_auth_headers(mcp_config: McpConfig, params: dict[str, Any], *, oauth: bool = False) -> dict[str, str]:
     from app.tools.mcp import _build_auth_headers  # pyright: ignore[reportPrivateUsage]
 
-    headers = resolve_mapping_references(mcp_config.headers or {}, params)
-    headers.update(_build_auth_headers(mcp_config.auth, params))
+    headers = resolve_mapping_references({key: value for key, value in (mcp_config.headers or {}).items()
+                                         if not oauth or key.lower() != "authorization"}, params)
+    if not oauth:
+        headers.update(_build_auth_headers(mcp_config.auth, params))
     return headers
 
 
 def _external_transport(tool: Any, params: dict[str, Any]) -> Any:
     from app.tools.mcp import _inject_url_param  # pyright: ignore[reportPrivateUsage]
+    from app.connection.facade import mcp_oauth_auth
 
     mcp = tool.mcp
-    if mcp.type == "sse":
+    if mcp.type in {"sse", "http"}:
         url = resolve_connection_references(mcp.url or "", params)
-        if mcp.auth.url_param:
+        oauth = mcp_oauth_auth(params, url)
+        if oauth is None and mcp.auth.url_param:
             url = _inject_url_param(url, mcp.auth, params)
-        return SSETransport(url, headers=_resolve_auth_headers(mcp, params))
-    if mcp.type == "http":
-        url = resolve_connection_references(mcp.url or "", params)
-        if mcp.auth.url_param:
-            url = _inject_url_param(url, mcp.auth, params)
-        return StreamableHttpTransport(url, headers=_resolve_auth_headers(mcp, params))
+        transport = SSETransport if mcp.type == "sse" else StreamableHttpTransport
+        return transport(url, headers=_resolve_auth_headers(mcp, params, oauth=oauth is not None), auth=oauth)
     if mcp.type == "stdio":
         if not mcp.command:
             raise ValueError(t("tools.errors.stdio_command_missing"))

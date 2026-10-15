@@ -412,13 +412,14 @@ async def mcp_test(actor: AdministrationContext, tool_id: int | None = None, con
                    offset: int = 0, limit: int = 50, include_details: bool = False) -> dict[str, Any]:
     await actor.require()
     PageRequest(offset=offset, limit=limit)
-    from app.connection.facade import get_connection, get_params_as_dict
+    from app.connection.facade import get_connection, get_params_as_dict, mcp_oauth_auth
 
     choices = sum((tool_id is not None, connection_id is not None, candidate is not None, bool(candidate_reference)))
     if choices != 1:
         raise AdministrationError("configuration_invalid", "Choose exactly one diagnostic source.")
     allow_private = tool_id is not None or connection_id is not None or bool(candidate_reference)
     existing = None
+    mcp_auth = None
     if candidate_reference:
         prepared = resolve_candidate(candidate_reference, actor.agent_id or 0)
         config = prepared.definition.mcp_config
@@ -446,6 +447,8 @@ async def mcp_test(actor: AdministrationContext, tool_id: int | None = None, con
             raise AdministrationError("configuration_invalid", "Tool has no external MCP configuration.")
         existing = tool.mcp_config
         request = ToolMcpTestRequest(code=tool.code, mcp_config=McpConfig(**runtime_mcp_config(existing)), params=params)
+        if connection_id is not None:
+            mcp_auth = mcp_oauth_auth(params, request.mcp_config.url or "")
     _safe_mcp(request.mcp_config, literals=True)
     secret_values = [str(value) for value in request.params.values() if value]
     if any(f"${{connection:{name}}}" in (request.mcp_config.url or "") for name in request.params):
@@ -457,7 +460,7 @@ async def mcp_test(actor: AdministrationContext, tool_id: int | None = None, con
     try:
         client = await diagnostic_client(request.mcp_config.url or "", allow_private=allow_private)
         try:
-            result = await diagnose_mcp_connection(request, existing_config=existing, http_client=client)
+            result = await diagnose_mcp_connection(request, existing_config=existing, http_client=client, mcp_auth=mcp_auth)
         finally:
             await client.aclose()
     except Exception as exc:

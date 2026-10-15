@@ -251,7 +251,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { useConnectionStore, type Connection } from '../stores/connectionStore'
-import type { ConnectionCreate, ConnectionUpdate } from '../services/connectionService'
+import connectionService, { type ConnectionActionResult, type ConnectionCreate, type ConnectionUpdate } from '../services/connectionService'
 import { useAgentStore } from '@/app/agent/stores/agentStore'
 import { AgentSelect } from '@/app/agent'
 import { useToolStore } from '@/app/tools/stores/toolStore'
@@ -276,6 +276,7 @@ interface ExistingConnectionTarget {
 
 interface ConnectionPersistencePayload {
   id: number | null
+  reuseExisting?: boolean
   data: { agent_id: number; tool_id: number; active: boolean }
   params: Record<string, string | null>
 }
@@ -302,6 +303,8 @@ const connectionToDelete = ref<Connection | null>(null)
 const saveError = ref<string | null>(null)
 const existingConnectionTarget = ref<ExistingConnectionTarget | null>(null)
 const approverLabels = ref<Map<number, string>>(new Map())
+let actionConnection: Connection | null = null
+let dialogGeneration = 0
 
 const filterAgent = ref<number | null>(null)
 const filterTool = ref<number | null>(null)
@@ -472,6 +475,8 @@ function hasVisibleParams(connectionId: number, toolId: number): boolean {
 
 async function openDialog(connection?: Connection) {
   if (!canEdit.value || (connection && isSystemTool(connection.tool_id))) return
+  dialogGeneration++
+  actionConnection = null
   saveError.value = null
   existingConnectionTarget.value = null
   currentConnection.value = connection || null
@@ -546,13 +551,32 @@ async function onRefreshTools() {
   }
 }
 
-async function persistForAction(payload: ConnectionPersistencePayload): Promise<Connection> {
+async function existingOAuthConnection(payload: ConnectionPersistencePayload): Promise<ConnectionActionResult | null> {
+  // The displayed list may be filtered, stale, or paginated. Resolve this pair
+  // from the API, including inactive connections, before creating anything.
+  const { data: connections } = await connectionService.getConnections(payload.data.tool_id, payload.data.agent_id)
+  const existing = connections.find(connection => connection.agent_id === payload.data.agent_id && connection.tool_id === payload.data.tool_id)
+  if (!existing) return null
+  const { data: savedParams } = await connectionService.getConnectionParams(existing.id)
+  const connection = existing.active ? existing : await connectionStore.updateConnection(existing.id, { active: true })
+  return { ...connection, savedParams }
+}
+
+async function persistForAction(payload: ConnectionPersistencePayload): Promise<ConnectionActionResult> {
   if (!canEdit.value) throw new Error(t('connection.saveError'))
   saveError.value = null
   existingConnectionTarget.value = null
+  const current = dialogGeneration
+  const saved = actionConnection
+  const id = payload.id ?? (saved?.agent_id === payload.data.agent_id && saved.tool_id === payload.data.tool_id ? saved.id : null)
+
+  if (payload.reuseExisting && !id) {
+    const existing = await existingOAuthConnection(payload)
+    if (existing) return existing
+  }
 
   const duplicate = connectionStore.connections.find(connection =>
-    connection.id !== payload.id
+    connection.id !== id
     && connection.agent_id === payload.data.agent_id
     && connection.tool_id === payload.data.tool_id
   )
@@ -562,15 +586,21 @@ async function persistForAction(payload: ConnectionPersistencePayload): Promise<
   }
 
   try {
-    const connection = payload.id
-      ? await connectionStore.updateConnection(payload.id, payload.data)
+    const connection = id
+      ? await connectionStore.updateConnection(id, payload.data)
       : await connectionStore.createConnection(payload.data)
+    // Retain an identity even when saving parameters fails after creation.
+    if (current === dialogGeneration) actionConnection = connection
 
     if (Object.keys(payload.params).length > 0) {
       await connectionStore.createOrUpdateParamsBulk(connection.id, payload.params)
     }
     return connection
   } catch (error) {
+    if (payload.reuseExisting && !id && isAxiosError(error) && error.response?.status === 409) {
+      const existing = await existingOAuthConnection(payload)
+      if (existing) return existing
+    }
     saveError.value = apiErrorDetail(error) || t('connection.saveError')
     throw error
   }

@@ -206,7 +206,7 @@ def build_mcp_server(
     connection_params: Optional[Dict[str, Any]] = None,
     disabled_functions: Optional[set[str]] = None,
     prefix_tools: bool = True,
-    *, http_client: httpx.AsyncClient | None = None,
+    *, http_client: httpx.AsyncClient | None = None, mcp_auth: httpx.Auth | None = None,
 ) -> Any:
     """Build a native Pydantic AI MCP toolset from tool configuration.
 
@@ -217,10 +217,17 @@ def build_mcp_server(
         return None
 
     mcp: McpConfig = tool.mcp
-    params: Dict[str, Any] = connection_params or {}
+    params: Dict[str, Any] = connection_params if connection_params is not None else {}
+    from app.connection.facade import mcp_oauth_auth
 
     try:
-        auth_headers = _build_auth_headers(mcp.auth, params)
+        url = resolve_connection_references(mcp.url or "", params)
+    except MissingConnectionReference as exc:
+        raise ValueError(_error("connection_reference_missing", parameter=exc.parameter)) from exc
+    oauth = mcp_auth if mcp_auth is not None else (mcp_oauth_auth(params, url) if mcp.type != "stdio" else None)
+
+    try:
+        auth_headers = {} if oauth is not None else _build_auth_headers(mcp.auth, params)
     except ValueError as e:
         raise ValueError(_error(
             "tool_configuration_error", code=tool.code, error=e
@@ -228,7 +235,8 @@ def build_mcp_server(
 
     try:
         headers = {
-            **resolve_mapping_references(mcp.headers, params),
+            **resolve_mapping_references({key: value for key, value in mcp.headers.items()
+                                          if oauth is None or key.lower() != "authorization"}, params),
             **auth_headers,
         }
         url = resolve_connection_references(mcp.url or "", params)
@@ -244,7 +252,7 @@ def build_mcp_server(
     if headers:
         logger.info("Authentication headers for {}: {}", tool.code, list(headers.keys()))
 
-    if mcp.auth.url_param and url:
+    if oauth is None and mcp.auth.url_param and url:
         url = _inject_url_param(url, mcp.auth, params)
 
     if mcp.type == "sse":
@@ -254,17 +262,21 @@ def build_mcp_server(
                            auth: httpx.Auth | None = None) -> httpx.AsyncClient:
             assert http_client is not None
             http_client.headers.update(headers or {})
+            if oauth is not None:
+                http_client.auth = oauth
             return http_client
 
-        transport = SSETransport(url, headers=headers,
+        transport = SSETransport(url, headers=headers, auth=oauth,
             httpx_client_factory=client_factory if http_client is not None else None)
         server = MCPToolset(transport, max_retries=_MCP_TOOL_MAX_RETRIES)
     elif mcp.type == "http":
         if http_client is not None:
             http_client.headers.update(headers)
+            if oauth is not None:
+                http_client.auth = oauth
             server = MCPToolset(url, max_retries=_MCP_TOOL_MAX_RETRIES, http_client=http_client)
         else:
-            server = MCPToolset(url, headers=headers, max_retries=_MCP_TOOL_MAX_RETRIES)
+            server = MCPToolset(url, headers=headers, auth=oauth, max_retries=_MCP_TOOL_MAX_RETRIES)
     elif mcp.type == "stdio":
         if not mcp.command:
             raise ValueError(_error(

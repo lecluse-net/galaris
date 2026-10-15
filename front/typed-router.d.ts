@@ -115,6 +115,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//connection/oauth-callback': RouteRecordInfo<
+      '//connection/oauth-callback',
+      '/connection/oauth-callback',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//connection/permissions': RouteRecordInfo<
       '//connection/permissions',
       '/connection/permissions',
@@ -415,6 +422,14 @@ declare module 'vue-router/auto-routes' {
     'app/connection/pages/mail.vue': {
       routes:
         | '//connection/mail'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/connection/pages/oauth-callback.vue': {
+      routes:
+        | '//connection/oauth-callback'
       views:
         | never
       pathParamNames:

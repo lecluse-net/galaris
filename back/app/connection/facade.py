@@ -1,5 +1,13 @@
 """Stable connection-domain operations used by other modules."""
 
+from collections.abc import Mapping
+import httpx
+
+
+def mcp_oauth_auth(params: Mapping[str, object], server_url: str) -> httpx.Auth | None:
+    from .oauth_runtime import mcp_oauth_auth as build_auth
+    return build_auth(params, server_url)
+
 from . import admin_service as administration
 from .parameter_resolution import effective_param_value_expression as effective_param_value_expression
 
@@ -34,6 +42,7 @@ from .connection_service import (
 )
 
 __all__ = [
+    "mcp_oauth_auth",
     "effective_param_value_expression",
     "function_state_label",
     "get_connection",

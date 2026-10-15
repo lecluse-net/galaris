@@ -2,6 +2,24 @@
 
 default = {
     "connection_api": {
+        "oauth": {
+            "configuration": "Unable to connect this account. Check the MCP server address.",
+            "https_required": "OAuth requires HTTPS (HTTP is allowed on localhost only).",
+            "provider_unavailable": "The OAuth provider could not be reached. Try again.",
+            "provider_timeout": "The service took too long to respond while connecting the account.",
+            "provider_response": "Service response: HTTP ${status}.",
+            "discovery_failed": "This MCP server does not advertise usable OAuth metadata.",
+            "pkce_required": "The OAuth provider must support PKCE S256.",
+            "automatic_setup_unavailable": "This service does not support automatic account connection from Galaris.",
+            "registration_failed": "The service refused automatic account connection setup.",
+            "local_redirect_rejected": "The service also rejects Galaris’s local OAuth callback: ${redirect_uri}. Check its redirect rules with the provider before trying again.",
+            "redirect_uri_rejected": "The service rejected this instance’s OAuth redirect URL: ${redirect_uri}. Check the domain name, HTTPS, and the provider’s redirect rules. An address known only on your network may be rejected. The invalid_redirect_uri code alone does not identify the blocking rule; retrying with the same address does not fix it.",
+            "registration_invalid_response": "The service returned an incomplete or invalid OAuth registration response.",
+            "authorization_required": "Authorize this MCP connection in Connections, then try again.",
+            "invalid_state": "This OAuth request expired, was already used, or no longer matches the connection. Start again.",
+            "authorization_denied": "Authorization was declined. You can start again from the connection.",
+            "inactive": "Activate and save the connection before authorizing it.",
+        },
         "errors": {
             "not_found": "Connection not found",
             "not_found_by_id": "Connection ${connection_id} not found",

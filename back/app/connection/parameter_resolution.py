@@ -9,6 +9,19 @@ from sqlalchemy.sql.elements import ColumnElement
 from .models import ConnectionParam
 
 
+class RuntimeConnectionParams(dict[str, Any]):
+    """Parameter values with a server-only connection identity for OAuth.
+
+    The identity is not a dictionary entry: it is neither serialized nor
+    forgeable by supplying parameters in an API request.
+    """
+
+    def __init__(self, values: dict[str, Any], connection_id: int, *, oauth_enabled: bool = False) -> None:
+        super().__init__(values)
+        self.connection_id = connection_id
+        self.oauth_enabled = oauth_enabled
+
+
 def effective_param_value_expression(
     global_params: InstrumentedAttribute[dict[str, Any] | None],
     schema: InstrumentedAttribute[dict[str, Any]],

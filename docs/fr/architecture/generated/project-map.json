@@ -553,6 +553,7 @@
           "back/app/connection/agent_admin_service.py",
           "back/app/connection/connection_service.py",
           "back/app/connection/mcp.py",
+          "back/app/connection/oauth_service.py",
           "back/app/connection/router.py"
         ],
         "source": "app.connection",
@@ -572,6 +573,8 @@
           "back/app/connection/agent_admin_service.py",
           "back/app/connection/connection_service.py",
           "back/app/connection/models.py",
+          "back/app/connection/oauth_runtime.py",
+          "back/app/connection/oauth_service.py",
           "back/app/connection/router.py"
         ],
         "source": "app.connection",
@@ -587,10 +590,18 @@
       {
         "files": [
           "back/app/connection/connection_service.py",
+          "back/app/connection/oauth_runtime.py",
           "back/app/connection/router.py"
         ],
         "source": "app.connection",
         "target": "core.i18n"
+      },
+      {
+        "files": [
+          "back/app/connection/oauth_service.py"
+        ],
+        "source": "app.connection",
+        "target": "core.settings"
       },
       {
         "files": [
@@ -601,7 +612,8 @@
       },
       {
         "files": [
-          "back/app/connection/connection_service.py"
+          "back/app/connection/connection_service.py",
+          "back/app/connection/oauth_service.py"
         ],
         "source": "app.connection",
         "target": "core.util"
@@ -3293,6 +3305,7 @@
           "back/app/tools/documentation_service.py",
           "back/app/tools/facade.py",
           "back/app/tools/mandatory_tools.py",
+          "back/app/tools/mcp.py",
           "back/app/tools/mcp_authorization.py",
           "back/app/tools/mcp_loader.py",
           "back/app/tools/rest.py",
@@ -8367,7 +8380,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_catalog_refresh",
-        "line": 382,
+        "line": 394,
         "module": "app.tools",
         "name": "tool_admin_catalog_refresh",
         "namespace": "tool_admin"
@@ -8455,7 +8468,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_conversation_set",
-        "line": 352,
+        "line": 364,
         "module": "app.tools",
         "name": "tool_admin_conversation_set",
         "namespace": "tool_admin"
@@ -8463,7 +8476,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_create",
-        "line": 322,
+        "line": 334,
         "module": "app.tools",
         "name": "tool_admin_create",
         "namespace": "tool_admin"
@@ -8471,7 +8484,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_delete",
-        "line": 340,
+        "line": 352,
         "module": "app.tools",
         "name": "tool_admin_delete",
         "namespace": "tool_admin"
@@ -8479,7 +8492,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_function_get",
-        "line": 370,
+        "line": 382,
         "module": "app.tools",
         "name": "tool_admin_function_get",
         "namespace": "tool_admin"
@@ -8487,7 +8500,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_function_list",
-        "line": 364,
+        "line": 376,
         "module": "app.tools",
         "name": "tool_admin_function_list",
         "namespace": "tool_admin"
@@ -8495,7 +8508,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_function_set",
-        "line": 376,
+        "line": 388,
         "module": "app.tools",
         "name": "tool_admin_function_set",
         "namespace": "tool_admin"
@@ -8503,7 +8516,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_get",
-        "line": 316,
+        "line": 328,
         "module": "app.tools",
         "name": "tool_admin_get",
         "namespace": "tool_admin"
@@ -8511,7 +8524,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_global_params_set",
-        "line": 346,
+        "line": 358,
         "module": "app.tools",
         "name": "tool_admin_global_params_set",
         "namespace": "tool_admin"
@@ -8519,7 +8532,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_impact",
-        "line": 334,
+        "line": 346,
         "module": "app.tools",
         "name": "tool_admin_impact",
         "namespace": "tool_admin"
@@ -8527,7 +8540,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_list",
-        "line": 310,
+        "line": 322,
         "module": "app.tools",
         "name": "tool_admin_list",
         "namespace": "tool_admin"
@@ -8535,7 +8548,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_mcp_test",
-        "line": 358,
+        "line": 370,
         "module": "app.tools",
         "name": "tool_admin_mcp_test",
         "namespace": "tool_admin"
@@ -8543,7 +8556,7 @@
       {
         "file": "back/app/tools/mcp.py",
         "handler": "tool_admin_update",
-        "line": 328,
+        "line": 340,
         "module": "app.tools",
         "name": "tool_admin_update",
         "namespace": "tool_admin"
@@ -8814,9 +8827,20 @@
           "connections.id"
         ],
         "history_mixin": false,
-        "line": 51,
+        "line": 52,
         "module": "app.connection",
         "table": "connection_function_state"
+      },
+      {
+        "class_name": "ConnectionOAuth",
+        "file": "back/app/connection/models.py",
+        "foreign_keys": [
+          "connections.id"
+        ],
+        "history_mixin": false,
+        "line": 107,
+        "module": "app.connection",
+        "table": "connection_oauth"
       },
       {
         "class_name": "ConnectionParam",
@@ -8825,7 +8849,7 @@
           "connections.id"
         ],
         "history_mixin": false,
-        "line": 32,
+        "line": 33,
         "module": "app.connection",
         "table": "connection_params"
       },
@@ -8837,7 +8861,7 @@
           "tools.id"
         ],
         "history_mixin": false,
-        "line": 6,
+        "line": 7,
         "module": "app.connection",
         "table": "connections"
       },
@@ -10235,7 +10259,7 @@
           "tools.id"
         ],
         "history_mixin": false,
-        "line": 80,
+        "line": 81,
         "module": "app.connection",
         "table": "tool_function_state"
       },
@@ -13255,7 +13279,7 @@
         "declared_path": "/connections",
         "file": "back/app/connection/router.py",
         "handler": "list_connections",
-        "line": 184,
+        "line": 274,
         "method": "GET",
         "module": "app.connection"
       },
@@ -13264,7 +13288,7 @@
         "declared_path": "/connections",
         "file": "back/app/connection/router.py",
         "handler": "create_connection",
-        "line": 215,
+        "line": 305,
         "method": "POST",
         "module": "app.connection"
       },
@@ -13273,7 +13297,25 @@
         "declared_path": "/connections/find-by-param",
         "file": "back/app/connection/router.py",
         "handler": "find_agents_by_param",
-        "line": 86,
+        "line": 176,
+        "method": "GET",
+        "module": "app.connection"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/connections/oauth/client-metadata",
+        "file": "back/app/connection/router.py",
+        "handler": "oauth_client_metadata",
+        "line": 110,
+        "method": "GET",
+        "module": "app.connection"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/connections/oauth/client-metadata/loopback/{scheme}/{host}/{port}",
+        "file": "back/app/connection/router.py",
+        "handler": "oauth_local_client_metadata",
+        "line": 116,
         "method": "GET",
         "module": "app.connection"
       },
@@ -13282,7 +13324,7 @@
         "declared_path": "/connections/refresh-tools",
         "file": "back/app/connection/router.py",
         "handler": "refresh_connections_and_tool_catalogs",
-        "line": 144,
+        "line": 234,
         "method": "POST",
         "module": "app.connection"
       },
@@ -13291,7 +13333,7 @@
         "declared_path": "/connections/sync-integrated",
         "file": "back/app/connection/router.py",
         "handler": "sync_integrated_connections",
-        "line": 156,
+        "line": 246,
         "method": "POST",
         "module": "app.connection"
       },
@@ -13300,7 +13342,7 @@
         "declared_path": "/connections/test-mcp-tools",
         "file": "back/app/connection/router.py",
         "handler": "test_mcp_tools",
-        "line": 456,
+        "line": 546,
         "method": "POST",
         "module": "app.connection"
       },
@@ -13309,7 +13351,7 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "delete_connection",
-        "line": 295,
+        "line": 385,
         "method": "DELETE",
         "module": "app.connection"
       },
@@ -13318,7 +13360,7 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "get_connection",
-        "line": 209,
+        "line": 299,
         "method": "GET",
         "module": "app.connection"
       },
@@ -13327,7 +13369,7 @@
         "declared_path": "/connections/{connection_id}",
         "file": "back/app/connection/router.py",
         "handler": "update_connection",
-        "line": 247,
+        "line": 337,
         "method": "PATCH",
         "module": "app.connection"
       },
@@ -13336,7 +13378,7 @@
         "declared_path": "/connections/{connection_id}/capabilities",
         "file": "back/app/connection/router.py",
         "handler": "set_capability_policy",
-        "line": 575,
+        "line": 665,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -13345,7 +13387,7 @@
         "declared_path": "/connections/{connection_id}/functions",
         "file": "back/app/connection/router.py",
         "handler": "list_connection_functions",
-        "line": 516,
+        "line": 606,
         "method": "GET",
         "module": "app.connection"
       },
@@ -13354,7 +13396,7 @@
         "declared_path": "/connections/{connection_id}/functions/{function_name}",
         "file": "back/app/connection/router.py",
         "handler": "set_connection_function",
-        "line": 525,
+        "line": 615,
         "method": "PUT",
         "module": "app.connection"
       },
@@ -13363,8 +13405,53 @@
         "declared_path": "/connections/{connection_id}/functions/{function_name}/global",
         "file": "back/app/connection/router.py",
         "handler": "set_connection_function_global",
-        "line": 538,
+        "line": 628,
         "method": "PUT",
+        "module": "app.connection"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/connections/{connection_id}/oauth",
+        "file": "back/app/connection/router.py",
+        "handler": "oauth_disconnect",
+        "line": 169,
+        "method": "DELETE",
+        "module": "app.connection"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/connections/{connection_id}/oauth",
+        "file": "back/app/connection/router.py",
+        "handler": "oauth_status",
+        "line": 125,
+        "method": "GET",
+        "module": "app.connection"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/connections/{connection_id}/oauth/callback",
+        "file": "back/app/connection/router.py",
+        "handler": "oauth_callback",
+        "line": 145,
+        "method": "POST",
+        "module": "app.connection"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/connections/{connection_id}/oauth/device",
+        "file": "back/app/connection/router.py",
+        "handler": "oauth_device",
+        "line": 156,
+        "method": "POST",
+        "module": "app.connection"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/connections/{connection_id}/oauth/start",
+        "file": "back/app/connection/router.py",
+        "handler": "oauth_start",
+        "line": 135,
+        "method": "POST",
         "module": "app.connection"
       },
       {
@@ -13372,7 +13459,7 @@
         "declared_path": "/connections/{connection_id}/params",
         "file": "back/app/connection/router.py",
         "handler": "get_connection_params",
-        "line": 311,
+        "line": 401,
         "method": "GET",
         "module": "app.connection"
       },
@@ -13381,7 +13468,7 @@
         "declared_path": "/connections/{connection_id}/params",
         "file": "back/app/connection/router.py",
         "handler": "create_or_update_param",
-        "line": 358,
+        "line": 448,
         "method": "POST",
         "module": "app.connection"
       },
@@ -13390,7 +13477,7 @@
         "declared_path": "/connections/{connection_id}/params/bulk",
         "file": "back/app/connection/router.py",
         "handler": "create_or_update_params_bulk",
-        "line": 383,
+        "line": 473,
         "method": "POST",
         "module": "app.connection"
       },
@@ -13399,7 +13486,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "delete_param",
-        "line": 440,
+        "line": 530,
         "method": "DELETE",
         "module": "app.connection"
       },
@@ -13408,7 +13495,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "get_single_param",
-        "line": 331,
+        "line": 421,
         "method": "GET",
         "module": "app.connection"
       },
@@ -13417,7 +13504,7 @@
         "declared_path": "/connections/{connection_id}/params/{param_name}",
         "file": "back/app/connection/router.py",
         "handler": "update_connection_param",
-        "line": 408,
+        "line": 498,
         "method": "PATCH",
         "module": "app.connection"
       },
@@ -17808,9 +17895,12 @@
         "files": [
           "front/app/connection/availability.ts",
           "front/app/connection/components/CalendarConnectionEditor.vue",
+          "front/app/connection/components/McpOAuthConnection.vue",
+          "front/app/connection/pages/oauth-callback.vue",
           "front/app/connection/services/calendarService.ts",
           "front/app/connection/services/connectionService.ts",
           "front/app/connection/services/mailService.ts",
+          "front/app/connection/services/mcpOAuthService.ts",
           "front/app/connection/services/permissionService.ts"
         ],
         "source": "app/connection",
@@ -19882,6 +19972,11 @@
             "route_hint": "/connection/mail"
           },
           {
+            "file": "front/app/connection/pages/oauth-callback.vue",
+            "module": "app/connection",
+            "route_hint": "/connection/oauth-callback"
+          },
+          {
             "file": "front/app/connection/pages/permissions.vue",
             "module": "app/connection",
             "route_hint": "/connection/permissions"
@@ -20341,6 +20436,11 @@
         "file": "front/app/connection/pages/mail.vue",
         "module": "app/connection",
         "route_hint": "/connection/mail"
+      },
+      {
+        "file": "front/app/connection/pages/oauth-callback.vue",
+        "module": "app/connection",
+        "route_hint": "/connection/oauth-callback"
       },
       {
         "file": "front/app/connection/pages/permissions.vue",

@@ -244,7 +244,7 @@ class TestConnectionService:
         param2 = ConnectionParam(id=2, connection_id=1, param_name="login", param_value="john")
 
         mock_params_result = MagicMock()
-        mock_params_result.scalars.return_value.all.return_value = [param1, param2]
+        mock_params_result.all.return_value = [(None, param1), (None, param2)]
 
         # Configure execute to return different results.
         call_count = 0
@@ -383,7 +383,7 @@ class TestConnectionService:
 
         mock_param_result = MagicMock()
         mock_param_result.scalar_one_or_none.return_value = param
-        mock_param_result.scalars.return_value.all.return_value = [param]
+        mock_param_result.all.return_value = [(None, param)]
 
         call_count = 0
         async def side_effect(query):

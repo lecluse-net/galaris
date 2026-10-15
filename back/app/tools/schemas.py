@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Dict, List, Literal, Optional
-from pydantic import BaseModel, Field, computed_field, model_validator
+from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 from .rest_contracts import RestConfig
 
 
@@ -13,6 +13,12 @@ from .rest_contracts import RestConfig
 class McpAuth(BaseModel):
     """Authentication configuration for an MCP server."""
     type: Literal["bearer", "header", "basic", "none"] = "none"
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def connection_owned_oauth(cls, value: object) -> object:
+        # Read previously saved Tools without retaining connection credentials.
+        return "none" if value == "oauth" else value
 
     # Header name for custom-header authentication.
     header_name: str = "Authorization"
@@ -48,11 +54,15 @@ class McpConfig(BaseModel):
     auth: McpAuth = Field(default_factory=McpAuth)
     timeout: int = 120
 
-
 class McpAuthPublic(BaseModel):
     """Read model exposing credential presence but never its value."""
 
     type: Literal["bearer", "header", "basic", "none"] = "none"
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def connection_owned_oauth(cls, value: object) -> object:
+        return "none" if value == "oauth" else value
     header_name: str = "Authorization"
     param: Optional[str] = None
     login_param: str = "login"

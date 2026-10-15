@@ -25,6 +25,84 @@ connexions restent gérés par le logiciel. Seul un humain peut attribuer ou mod
 AgentAdmin, Galaris Admin, Process Admin, Lab, Goal management, Skill management et Console.
 Une chaîne de commandes agentiques ne permet pas de s’attribuer une capacité administrative.
 
+## Connecter un serveur MCP avec OAuth
+
+Dans **Connexions**, ouvrir la connexion active de l’agent vers le serveur MCP
+**HTTP** ou **SSE**, puis cliquer sur **Connecter le compte**. Se connecter chez le
+fournisseur et accepter les droits. Galaris récupère et conserve le token automatiquement.
+OAuth se gère uniquement sur la connexion : le parcours habituel ne demande aucun Client ID,
+scope ou secret, et aucun réglage OAuth n’est nécessaire dans le Tool.
+Si une connexion existe déjà pour cet agent et cet outil, le bouton la réutilise avec ses
+paramètres enregistrés et la réactive si nécessaire, même si elle n’est pas dans la liste affichée.
+
+Galaris découvre les possibilités du fournisseur et s’arrête dès qu’une préparation réussit :
+
+1. Il utilise le retour direct vers Galaris et un client déjà connu, les métadonnées publiques
+   du client (CIMD) ou l’enregistrement dynamique (DCR), selon les mécanismes disponibles.
+   Un accès par `http://localhost:<port>` ou `http://127.0.0.1:<port>` utilise directement
+   cette adresse et ne nécessite aucun script, même si `APP_HOST` contient un nom de domaine.
+   Le navigateur doit alors tourner sur la machine qui rend Galaris accessible sur ce port.
+2. Si ce parcours est refusé pendant sa préparation, il essaie le code d’appareil lorsque
+   le fournisseur l’annonce. Ouvrir la page proposée et confirmer le code affiché suffit,
+   sans installation. Galaris respecte la fréquence d’interrogation et les ralentissements
+   demandés par le fournisseur, puis affiche le compte connecté.
+3. Le relais local ci-dessous est proposé seulement en dernier recours, si le retour direct
+   est refusé et qu’aucun parcours sans relais ne peut être préparé.
+
+L’enregistrement dynamique commence par un client public, puis essaie les méthodes Basic ou
+POST annoncées par le fournisseur si celui-ci exige un secret généré. Les grants et scopes
+demandés suivent ses métadonnées. Un fournisseur qui ne publie pas ses méthodes PKCE est
+essayé avec S256 ; Galaris ne retire jamais PKCE pour obtenir un accord.
+
+Si aucun enregistrement automatique n’est disponible, la connexion demande les identifiants
+d’une application OAuth pré-enregistrée chez ce fournisseur, avec l’URL de retour affichée.
+Le secret éventuel est chiffré avec l’accord et n’est pas renvoyé au navigateur.
+Les erreurs réseau, les réponses indisponibles, le refus du consentement ou un code expiré
+n’entraînent pas de changement automatique de méthode. Les autres connexions restent inchangées.
+
+En cas d’échec, le message reste visible dans la connexion et précise le statut HTTP et
+le code OAuth renvoyés par le service lorsqu’ils sont disponibles. **Réessayer** relance
+l’action qui a échoué. Les réponses brutes du fournisseur et les jetons ne sont pas affichés.
+
+Si les parcours sans relais sont indisponibles, Galaris essaie un retour local enregistré
+à son propre nom. S’il l’accepte, la connexion propose de télécharger
+**le relais de connexion**. Sur l’ordinateur du navigateur, lancer `python3 galaris-connect.py`
+depuis le dossier de téléchargement (Python 3 requis, aucune dépendance à installer).
+Le relais écoute uniquement sur `127.0.0.1:3334`, ouvre le fournisseur puis renvoie le navigateur
+vers Galaris. Il se ferme après le retour ou après dix minutes ; si le port est occupé, fermer
+l’autre relais et recommencer. Si le navigateur ne s’ouvre pas, utiliser le lien d’autorisation
+affiché dans Galaris après avoir lancé le relais.
+
+Le relais reçoit uniquement le code temporaire protégé par PKCE : aucun jeton ni session Galaris
+ne lui est transmis. Le nouvel onglet retrouve la demande grâce à une association locale
+state/connexion expirant après dix minutes. Les permissions et l’identité de l’initiateur
+restent vérifiées par l’API. Galaris peut rester privé : le navigateur doit pouvoir atteindre
+son adresse `APP_HOST`, éventuellement via le VPN, et le serveur doit pouvoir joindre le fournisseur.
+
+Si le service refuse aussi le retour local, il renvoie `invalid_redirect_uri`.
+Le message indique l’URL exacte, construite depuis `APP_HOST`, suivie de
+`/connection/oauth-callback` pour le parcours web, ou l’adresse locale essayée en repli.
+Vérifier HTTPS, le nom de domaine et les règles de retour
+du fournisseur. Une adresse déclarée uniquement dans un fichier hosts ou un DNS interne
+peut fonctionner dans le navigateur tout en étant refusée par le service distant.
+Ce code n’identifie pas à lui seul une liste d’autorisation : confirmer le motif auprès
+du fournisseur avant de demander un ajout d’URL. Réessayer sans modifier l’adresse ou
+les règles du service ne résout pas ce refus.
+
+L'autorisation appartient à cette connexion d'agent. Les jetons et le secret du client
+enregistré sont chiffrés et ne figurent ni dans les paramètres renvoyés par l'API, ni dans
+les exports YAML. Le renouvellement est automatique si le fournisseur délivre un refresh
+token. Une expiration sans renouvellement ou une révocation exige une nouvelle autorisation.
+**Déconnecter le compte** supprime les jetons locaux et les demandes en attente ; pour révoquer
+aussi l'accord chez le fournisseur, utiliser son propre écran d'applications autorisées.
+
+Un retour expire après dix minutes et ne s'utilise qu'une fois. En cas de refus ou d'erreur,
+recommencer depuis la connexion. Une modification de l’agent ou de l’URL MCP invalide
+l’ancien accord. Les permissions des fonctions Galaris restent applicables.
+Ces méthodes exigent les métadonnées OAuth MCP ; le parcours par code d’autorisation utilise
+PKCE S256. Elles ne concernent pas stdio ni les API REST. HTTPS est requis, sauf sur localhost. Un serveur privé peut
+utiliser des endpoints OAuth sur son origine ; les autres origines découvertes doivent être publiques.
+
 ## Activer une API REST
 
 Dans **Outils → Nouvel outil** ou l'édition d'un Tool configurable, cocher **Activer API**.

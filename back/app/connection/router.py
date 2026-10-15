@@ -1,14 +1,14 @@
 """API routes for connections and their EAV parameters."""
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import Annotated, List, Optional, Dict, Any
+from typing import Annotated, List, Literal, Optional, Dict, Any
 
 from core.database import get_db
-from core.user import require_web_session
-from pydantic import Field
-from core.authorize import Privileges, authorize
+from core.user import require_web_session, get_current_user_id
+from pydantic import AnyHttpUrl, Field, ValidationError
+from core.authorize import Privileges, authorize, public
 from core.i18n import render_prompt, tr
 from app.agent import AgentManagementScope, current_management_scope
 from .models import Connection, ConnectionParam
@@ -32,6 +32,8 @@ from .schemas import (
     SyncIntegratedConnectionsResponse,
 )
 from . import connection_service
+from . import oauth_service
+from .oauth_service import DevicePoll, DevicePollResult, OAuthCallback, OAuthStart, OAuthStartOptions, OAuthStatus
 from app.tools import (
     refresh_agent_tool_catalog,
     refresh_agents_tool_catalogs,
@@ -80,6 +82,94 @@ async def _editable_tool(tool_id: int) -> None:
 # =============================================================================
 # Connection endpoints.
 # =============================================================================
+
+
+def _oauth_user() -> int:
+    user_id = get_current_user_id()
+    if user_id is None:
+        raise HTTPException(status_code=401)
+    return user_id
+
+
+async def _oauth_error(exc: ValueError) -> HTTPException:
+    key = str(exc) if isinstance(exc, oauth_service.OAuthError) else "configuration"
+    callback_uri = exc.redirect_uri if isinstance(exc, oauth_service.OAuthError) else None
+    message = render_prompt(await tr(f"connection_api.oauth.{key}"), redirect_uri=callback_uri or "")
+    if isinstance(exc, oauth_service.OAuthError):
+        logger.bind(oauth_error=key, provider_status=exc.provider_status, provider_error=exc.provider_error).warning(
+            "MCP account authorization failed: {} (provider HTTP {}, code {})", key, exc.provider_status, exc.provider_error)
+        if exc.provider_status is not None:
+            message += " " + await _message("oauth.provider_response", status=exc.provider_status)
+        if exc.provider_error:
+            message += f" ({exc.provider_error})"
+    return HTTPException(status_code=400, detail=message)
+
+
+@router.get("/oauth/client-metadata")
+@public(reason="Public OAuth client metadata; contains no account, connection, session or secret")
+async def oauth_client_metadata() -> dict[str, object]:
+    return oauth_service.client_document().model_dump(mode="json", exclude_none=True)
+
+
+@router.get("/oauth/client-metadata/loopback/{scheme}/{host}/{port}")
+@public(reason="Public OAuth client metadata for a loopback callback; contains no account or secret")
+async def oauth_local_client_metadata(scheme: Literal["http", "https"], host: Literal["localhost", "127.0.0.1", "::1"],
+                                      port: Annotated[int, Path(ge=1, le=65535)]) -> dict[str, object]:
+    authority = f"[{host}]" if host == "::1" else host
+    callback = str(AnyHttpUrl(f"{scheme}://{authority}:{port}/connection/oauth-callback"))
+    return oauth_service.client_document(callback, force_loopback=True).model_dump(mode="json", exclude_none=True)
+
+
+@router.get("/{connection_id}/oauth", response_model=OAuthStatus)
+@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+async def oauth_status(connection_id: int) -> OAuthStatus:
+    connection = await _managed_connection(connection_id)
+    try:
+        return await oauth_service.status(connection)
+    except (oauth_service.OAuthError, ValidationError) as exc:
+        raise await _oauth_error(exc) from None
+
+
+@router.post("/{connection_id}/oauth/start", response_model=OAuthStart, dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.CONNECTION_EDIT)
+async def oauth_start(connection_id: int, data: OAuthStartOptions | None = None) -> OAuthStart:
+    connection = await _managed_connection(connection_id, editable=True)
+    try:
+        return await oauth_service.start(connection, _oauth_user(), data)
+    except (oauth_service.OAuthError, ValidationError) as exc:
+        raise await _oauth_error(exc) from None
+
+
+@router.post("/{connection_id}/oauth/callback", status_code=204, dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.CONNECTION_EDIT)
+async def oauth_callback(connection_id: int, data: OAuthCallback) -> None:
+    connection = await _managed_connection(connection_id, editable=True)
+    try:
+        await oauth_service.complete(connection, data, _oauth_user())
+    except (oauth_service.OAuthError, ValidationError) as exc:
+        raise await _oauth_error(exc) from None
+    await _refresh_agent_indexes([connection.agent_id])
+
+
+@router.post("/{connection_id}/oauth/device", response_model=DevicePollResult, dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.CONNECTION_EDIT)
+async def oauth_device(connection_id: int, data: DevicePoll) -> DevicePollResult:
+    connection = await _managed_connection(connection_id, editable=True)
+    try:
+        result = await oauth_service.poll_device(connection, data, _oauth_user())
+    except (oauth_service.OAuthError, ValidationError) as exc:
+        raise await _oauth_error(exc) from None
+    if result.connected:
+        await _refresh_agent_indexes([connection.agent_id])
+    return result
+
+
+@router.delete("/{connection_id}/oauth", status_code=204, dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.CONNECTION_EDIT)
+async def oauth_disconnect(connection_id: int) -> None:
+    connection = await _managed_connection(connection_id, editable=True)
+    await oauth_service.disconnect(connection)
+    await _refresh_agent_indexes([connection.agent_id])
 
 @router.get("/find-by-param", response_model=AgentByParamResponse)
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])

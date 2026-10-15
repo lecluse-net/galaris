@@ -24,6 +24,80 @@ Only humans can delegate or modify ToolAdmin, AgentAdmin, Galaris Admin, Process
 Goal management, Skill management and Console. A sequence of agent commands cannot grant
 administrative capabilities to its caller.
 
+## Connect an MCP server with OAuth
+
+Under **Connections**, open the agent’s active **HTTP** or **SSE** MCP connection
+and click **Connect account**. Sign in with the provider and approve access. Galaris
+retrieves and stores the token automatically. OAuth belongs only to the connection:
+the usual flow requires no Client ID, scope or secret, and there is no OAuth setting in the Tool.
+If a connection already exists for that agent and tool, the button reuses its saved
+parameters and activates it if needed, even when it is absent from the displayed list.
+
+Galaris discovers the provider’s capabilities and stops as soon as setup succeeds:
+
+1. It uses a direct return to Galaris with an existing client, public Client ID Metadata
+   Documents (CIMD), or Dynamic Client Registration (DCR), according to availability.
+   Access through `http://localhost:<port>` or `http://127.0.0.1:<port>` returns directly
+   to that address without a script, even when `APP_HOST` contains a domain name. The browser
+   must run on the computer making Galaris available on that port.
+2. If preparation of that flow is refused, it tries device authorization when advertised
+   by the provider. Open the proposed page and confirm the displayed code; no installation
+   is required. Galaris respects polling intervals and slowdown responses, then shows the
+   connected account.
+3. The local relay below is offered only as a last resort when the direct callback is
+   refused and no flow without a relay can be prepared.
+
+Dynamic registration starts with a public client, then tries advertised Basic or POST
+client authentication if the provider requires a generated secret. Requested grants and scopes
+follow provider metadata. A provider omitting its PKCE methods is tried with S256; Galaris
+never removes PKCE to obtain authorization.
+
+When no automatic registration is available, the connection asks for a pre-registered
+OAuth application’s credentials and displays the required callback URL. An optional secret
+is encrypted with the grant and is not returned to the browser. Network errors, unavailable
+responses, consent denial, or an expired code do not automatically switch methods.
+Other connections remain unchanged.
+
+On failure, the connection keeps the error visible and includes the service’s HTTP status
+and OAuth error code when available. **Retry** repeats the failed action. Raw provider
+responses and tokens are never displayed.
+
+When flows without a relay are unavailable, Galaris tries a local callback registered
+under its own name. If accepted, the connection offers
+a **connection relay** download. On the browser’s computer, run `python3 galaris-connect.py`
+from the download folder (Python 3 required, no dependencies to install). The relay listens
+only on `127.0.0.1:3334`, opens the provider, then returns the browser to Galaris. It closes
+after the callback or ten minutes; if the port is busy, close the other relay and restart.
+If the browser does not open, use the authorization link shown in Galaris after starting the relay.
+
+The relay receives only the temporary PKCE-protected code: no token or Galaris session
+is sent to it. The new tab finds the request using a local state/connection association
+that expires after ten minutes. The API still verifies permissions and the initiating user.
+Galaris can stay private: the browser must reach its `APP_HOST` address, through a VPN if
+needed, and the server must reach the provider.
+
+If the service also rejects the local callback, it returns `invalid_redirect_uri`.
+The message includes the exact URL, built from `APP_HOST` followed by
+`/connection/oauth-callback` for the web flow, or the local address attempted as a fallback.
+Check HTTPS, the domain name, and the provider’s redirect
+rules. An address declared only in a hosts file or internal DNS can work in the browser
+while being rejected by the remote service. This code alone does not establish an allowlist
+requirement: confirm the reason with the provider before requesting an additional allowed URL.
+Retrying without changing the address or the service’s rules does not resolve this refusal.
+
+Authorization belongs to that agent connection. Tokens and registered client secrets are
+encrypted and never appear in API parameter responses or YAML exports. Tokens refresh
+automatically when the provider issues a refresh token. Expiry without renewal or revocation
+requires authorization again. **Disconnect account** removes local tokens and pending requests;
+to revoke the provider's consent too, use its own authorized-applications screen.
+
+A callback expires after ten minutes and can be used only once. After denial or failure,
+start again from the connection. Changing the agent or MCP URL invalidates
+the previous grant. Galaris function permissions still apply. These methods require MCP OAuth
+metadata; the authorization-code flow uses PKCE S256. They do not apply to stdio or REST APIs.
+HTTPS is required except on localhost. A private server can use OAuth endpoints on its own origin;
+other discovered origins must be public.
+
 ## Enable a REST API
 
 In **Tools → New tool**, or when editing a configurable Tool, select **Enable API**.

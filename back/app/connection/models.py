@@ -1,5 +1,6 @@
+from datetime import datetime
 from typing import Optional
-from sqlalchemy import ForeignKey, UniqueConstraint, Index, String, Boolean, Text, CheckConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint, Index, String, Boolean, Text, CheckConstraint, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from core.database import Base
 
@@ -101,3 +102,15 @@ class ToolFunctionState(Base):
         CheckConstraint("state IS NULL OR state IN ('enabled', 'disabled', 'ask')", name="ck_tool_function_state"),
         CheckConstraint("capability_kind IN ('tool', 'resource', 'prompt')", name="ck_tool_capability_kind"),
     )
+
+
+class ConnectionOAuth(Base):
+    """Encrypted grants and one short-lived, single-use browser authorization."""
+
+    __tablename__ = "connection_oauth"
+
+    connection_id: Mapped[int] = mapped_column(ForeignKey("connections.id", ondelete="CASCADE"), primary_key=True)
+    grant: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    pending: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    state_hash: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

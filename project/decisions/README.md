@@ -2,6 +2,8 @@
 
 - [0185 — Messages internes aux collègues via les Tasks déléguées](0185-internal-peer-message-tasks.md)
 
+- [0184 — OAuth pour les connexions MCP](0184-mcp-oauth-connections.md)
+
 - [0183 — Révocation durable et nettoyage des flux audio](0183-durable-audio-revocation.md)
 
 - [0182 — Capacité REST des Tools et connexions](0182-tool-rest-capability.md)

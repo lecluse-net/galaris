@@ -73,6 +73,9 @@ def test_public_route_allowlist_is_exact() -> None:
         ("core.user.router", "read_user_avatar"),
         # Static ticket bootstrap exposes no repository data; POST requires a live scoped ticket.
         ("app.code.gateway", "launch_page"),
+        # OAuth client metadata is intentionally public and contains no account secrets.
+        ("app.connection.router", "oauth_client_metadata"),
+        ("app.connection.router", "oauth_local_client_metadata"),
     }
     actual = {
         _route_key(route)

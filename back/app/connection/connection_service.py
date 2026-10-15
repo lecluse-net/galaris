@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, List, Tuple, cast, Mappin
 from sqlalchemy import CursorResult, delete, exists, or_, select
 from sqlalchemy.orm import joinedload
 
-from .models import Connection, ConnectionParam, ConnectionFunctionState, ToolFunctionState
+from .models import Connection, ConnectionParam, ConnectionFunctionState, ToolFunctionState, ConnectionOAuth
+from .parameter_resolution import RuntimeConnectionParams
 from .schemas import FunctionState, EffectiveFunctionState, CapabilityKind
 from app.tools.facade import lock_tools, finish_write
 from core.util import get_encryption_service
@@ -241,20 +242,28 @@ async def _get_local_params_as_dict(
     # default and implicit I/O raises MissingGreenlet under SQLAlchemy async.
     db = get_db()
     result = await db.execute(
-        select(ConnectionParam).where(ConnectionParam.connection_id == connection_obj.id).execution_options(populate_existing=True)
+        select(ConnectionOAuth.connection_id, ConnectionParam)
+        .select_from(Connection)
+        .outerjoin(ConnectionOAuth, ConnectionOAuth.connection_id == Connection.id)
+        .outerjoin(ConnectionParam, ConnectionParam.connection_id == Connection.id)
+        .where(Connection.id == connection_obj.id)
+        .execution_options(populate_existing=True)
     )
-    params = result.scalars().all()
+    rows = result.all()
 
     tool_schema = await _get_tool_schema(connection_obj.tool_id) if decrypt_passwords else None
 
     result_dict: Dict[str, Any] = {}
-    for param in params:
+    for _, param in rows:
+        if param is None:
+            continue
         value = param.param_value
         if decrypt_passwords and value:
             value = _decrypt_if_needed(param.param_name, value, tool_schema)
         result_dict[param.param_name] = value
 
-    return connection_obj, result_dict
+    return connection_obj, RuntimeConnectionParams(result_dict, connection_obj.id,
+        oauth_enabled=bool(rows and rows[0][0] is not None))
 
 
 async def merge_with_global_params(
@@ -291,11 +300,13 @@ async def get_params_as_dict(
     )
     if connection_obj is None:
         return None, {}
-    return connection_obj, await merge_with_global_params(
+    params = await merge_with_global_params(
         connection_obj.tool_id,
         local_params,
         decrypt_passwords=decrypt_passwords,
     )
+    oauth_enabled = isinstance(local_params, RuntimeConnectionParams) and local_params.oauth_enabled
+    return connection_obj, RuntimeConnectionParams(params, connection_obj.id, oauth_enabled=oauth_enabled)
 
 
 async def get_params_for_api(
