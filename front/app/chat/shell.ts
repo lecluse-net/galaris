@@ -1,6 +1,6 @@
-import ChatNotificationBootstrap from './components/ChatNotificationBootstrap.vue'
+import ChatShellFeatures from './components/ChatShellFeatures.vue'
 
 export default {
-  component: ChatNotificationBootstrap,
+  component: ChatShellFeatures,
   order: 10,
 }

@@ -1894,6 +1894,7 @@ async def publish_internal_message(
     reasoning_effort_override: str | None = None,
     task_requested: bool = False,
     displayed_document_id: UUID | None = None,
+    repository_context: dict[str, str | None] | None = None,
     document_focus: DocumentFocus | None = None,
     language: str | None = None,
 ) -> NativeMessengerMessage | None:
@@ -1975,6 +1976,8 @@ async def publish_internal_message(
 
     direct_task_requested = task_requested or reasoning_effort_override is not None
     metadata: dict[str, object] = {}
+    if repository_context is not None:
+        metadata["repository_context"] = repository_context
     if language:
         metadata["language"] = normalize_language(language)
     if displayed_document_id is not None:

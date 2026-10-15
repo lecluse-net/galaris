@@ -29,6 +29,7 @@ while read -r expected_id image_tag; do
     galaris-release-front:*) service=frontend ;;
     galaris-release-browser-executor:*) service=browser-executor ;;
     galaris-release-ssh-executor:*) service=ssh-executor ;;
+    galaris-release-code-executor:*) service=code-executor ;;
     *) continue ;;
   esac
   container=$(docker compose "$@" -f "$release_directory/compose.release.yaml" ps -q "$service")

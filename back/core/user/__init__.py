@@ -75,3 +75,17 @@ __all__ = [
     "list_user_records",
 ]
 from .actor import HumanActor as HumanActor
+
+
+def current_web_session_family() -> str | None:
+    """Validated browser session family from the authenticated HTTP context."""
+    from .user_service import session_family_ctx
+    return session_family_ctx.get()
+
+
+async def web_session_active(user_id: int, family: str) -> bool:
+    from .refresh_session_service import is_family_active
+    return await is_family_active(user_id, family)
+
+
+__all__ += ["current_web_session_family", "web_session_active"]

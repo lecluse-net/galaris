@@ -11,6 +11,46 @@ quota of new tests per module.
 For each change, state the affected guarantee and the guarantees to preserve, inspect their
 contracts and tests, then select the least expensive layer that proves the observable effect.
 
+## Git repositories in conversations
+
+`back/app/code/tests/test_workspaces.py` uses real PostgreSQL for exact grants,
+deduplication, ticket expiry, revocation and changed-target refusal.
+Console deployment covers management permissions, tunnel verification before publishing
+encrypted parameters, rights changing during installation and URI preservation for unchanged
+checkouts. A live session prevents changing its runtime. `front/browser-tests/console-recovery.spec.mjs`
+covers direct deployment without a prior SSH test in the dialog, explained global configuration
+blocks, retry, late responses and saving without returning or clearing the credential.
+The journey through `ConnectionList` and its real form checks that Test and Deploy preserve
+saved activation across unsaved changes, cancellation and reopening, for both active and
+intentionally inactive Consoles.
+Pane coverage also checks Galaris theme changes without an IDE synchronization API,
+delayed responses and explicit navigation without replacing buffers. Native qualification
+exercises file diffs and staged/unstaged views. Explicit updates reject live sessions and preserve
+the port and credential.
+`code-executor/tests/test_deployment.py` checks orchestration with a simulated Docker boundary;
+the native suites below separately exercise actual code-server and its mounts.
+`front/browser-tests/chat-code-workspace.spec.mjs` exercises the shared pane components,
+retained unsaved iframe contents and sequence/room isolation with explicit IDE fixtures.
+Existing Document scenarios protect their own journeys. `make tests-code` uses real
+Bubblewrap mounts, Git and a synthetic SSH forge for worktrees, consultation, shared
+identity, pull/push and a conflicting rebase. `make tests-code-browser` exercises actual
+code-server for external changes and native save conflicts, then the real Console transport
+to a prepared SSH target. Profile archives are restored with their drafts; failed backups,
+concurrent maintenance and unsafe archives preserve protected data.
+It also exercises ticket launch, scoped cookies, workers,
+WebSockets and saving on the single origin behind real Nginx and Vite proxies,
+through the Galaris gateway with real PostgreSQL in Chromium,
+Firefox and WebKit, including expiry followed by cookie and WebSocket recovery without
+replacing the buffer. Actual IDE termination checks saving in a recovery frame while
+the original draft remains accessible. Pane coverage also checks backdrop cancellation
+and confirmation before replacing the recovery frame again.
+Revoked grants and changed targets stay denied. Firefox Markdown
+preview is an accepted limitation tracked by a separate expected-failure scenario;
+source editing scenarios remain fully blocking. Aggregate startup, update latency, memory and CPU measurements
+are attached to the synthetic runtime results.
+Execution artifacts record results; a catalogue entry does not
+substitute for a successful qualification.
+
 ## Media and acquired evidence
 
 Durable audio revocation and deferred deletion are covered by

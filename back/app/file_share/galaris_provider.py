@@ -6,6 +6,7 @@ import base64
 import json
 import mimetypes
 from dataclasses import dataclass
+from collections.abc import Awaitable, Callable
 from typing import Any, Literal, cast
 from urllib.parse import quote
 from uuid import UUID
@@ -26,6 +27,7 @@ from .resource_uri import ResourceUri, ResourceUriError
 
 
 GalarisResourceKind = Literal[
+    "code",
     "task",
     "voice",
     "text",
@@ -36,6 +38,7 @@ GalarisResourceKind = Literal[
     "skill",
 ]
 _KINDS: tuple[GalarisResourceKind, ...] = (
+    "code",
     "task",
     "voice",
     "text",
@@ -47,6 +50,16 @@ _KINDS: tuple[GalarisResourceKind, ...] = (
 )
 _COLLECTION_CAPABILITIES: list[ResourceCapability] = ["info", "list", "search"]
 _ITEM_CAPABILITIES: list[ResourceCapability] = ["copy", "info", "read"]
+_code_reader: Callable[[UUID, int], Awaitable[dict[str, object] | None]] | None = None
+_code_lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]] | None = None
+
+
+def register_code_resource_provider(
+    reader: Callable[[UUID, int], Awaitable[dict[str, object] | None]],
+    lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]],
+) -> None:
+    global _code_reader, _code_lister
+    _code_reader, _code_lister = reader, lister
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,7 +168,7 @@ def _item_name(kind: GalarisResourceKind, payload: dict[str, Any]) -> str:
         )
         or "resource"
     )
-    if kind == "task":
+    if kind == "task" or kind == "code":
         return str(payload.get("label") or f"Task {identifier}")
     if kind == "text" or kind == "voice":
         round_payload = payload.get("round")
@@ -258,6 +271,7 @@ def _collection_descriptor(kind: GalarisResourceKind) -> ResourceDescriptor:
         "agent": "Agent profiles",
         "goal_cycle": "Goal cycles",
         "process": "Processes",
+        "code": "Code repositories",
         "skill": "Skills",
     }
     return ResourceDescriptor(
@@ -341,6 +355,9 @@ async def _read_payload(
     kind: GalarisResourceKind,
     identifier: UUID | str,
 ) -> dict[str, Any] | None:
+    if kind == "code":
+        assert isinstance(identifier, UUID)
+        return await _code_reader(identifier, ctx.agent_id) if _code_reader is not None else None
     if kind == "agent":
         from app.agent import read_agent_resource
         return await read_agent_resource(int(str(identifier)), actor_agent_id=ctx.agent_id)
@@ -386,6 +403,8 @@ async def _list_payloads(
     limit: int = 100,
     goal_id: UUID | None = None,
 ) -> list[dict[str, Any]]:
+    if kind == "code":
+        return await _code_lister(ctx.agent_id, query, offset, limit) if _code_lister is not None else []
     if kind == "agent":
         from app.agent import list_agent_resources
         return await list_agent_resources(actor_agent_id=ctx.agent_id, query=query, offset=offset, limit=limit)

@@ -6,6 +6,7 @@ services:
       context: ${RELEASE_BUILD_SOURCE:?required}/back
       additional_contexts:
         harness_manager: ${RELEASE_BUILD_SOURCE}/harness_manager
+        code_executor: ${RELEASE_BUILD_SOURCE}/code-executor
         product_docs: ${RELEASE_BUILD_SOURCE}/docs
         project_docs: ${RELEASE_BUILD_SOURCE}/project
       target: prod-stage
@@ -30,3 +31,8 @@ services:
       context: ${RELEASE_BUILD_SOURCE}/ssh-executor
       additional_contexts:
         console_assets: ${RELEASE_BUILD_SOURCE}/back/app/console/assets
+  code-executor:
+    image: galaris-release-code-executor:${RELEASE_BUILD_REF}
+    build:
+      context: ${RELEASE_BUILD_SOURCE}/code-executor
+      target: runtime

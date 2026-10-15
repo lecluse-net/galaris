@@ -6,6 +6,7 @@ tag="galaris-static-${CI_JOB_ID:-local}-$$"
 cleanup() { docker image rm "$tag-back" "$tag-front" "$tag-browser" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 docker build --build-context harness_manager=./harness_manager \
+  --build-context code_executor=./code-executor \
   --build-context product_docs=./docs --build-context project_docs=./project \
   --target builder -t "$tag-back" back
 docker run --rm -e APP_ENV=test -e AUTH_SECRET_KEY=ci-auth-secret-ci-auth-secret-0001 \

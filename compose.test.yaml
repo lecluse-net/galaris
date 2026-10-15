@@ -43,6 +43,7 @@ services:
       context: ./back
       additional_contexts:
         harness_manager: ./harness_manager
+        code_executor: ./code-executor
         product_docs: ./docs
         project_docs: ./project
       target: builder

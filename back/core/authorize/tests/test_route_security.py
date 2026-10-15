@@ -71,6 +71,8 @@ def test_public_route_allowlist_is_exact() -> None:
         ("core.user.router", "login"),
         ("core.user.router", "login_json"),
         ("core.user.router", "read_user_avatar"),
+        # Static ticket bootstrap exposes no repository data; POST requires a live scoped ticket.
+        ("app.code.gateway", "launch_page"),
     }
     actual = {
         _route_key(route)
@@ -87,6 +89,9 @@ def test_independent_auth_route_allowlist_is_exact() -> None:
         ("core.user.router", "logout"),
         ("core.user.router", "refresh_session"),
         ("app.chat.router", "read_standalone_html_preview"),
+        # Current repository grant, browser family, role and short-lived IDE capabilities.
+        ("app.code.gateway", "launch"),
+        ("app.code.gateway", "editor_http"),
         ("app.llm.call_router", "llm_models"),
         ("app.llm.call_router", "llm_completion"),
         ("app.llm.call_router", "llm_responses"),
@@ -290,5 +295,9 @@ def test_native_websocket_route_allowlist_is_exact() -> None:
         for route in _websocket_routes(cast(list[Any], fastapi_app.routes))
     }
 
-    # OneBot verifies its connection-scoped bearer secret before accepting.
-    assert actual == {("bridge.one_bot.router", "onebot_endpoint")}
+    # OneBot verifies its bearer secret; the IDE verifies its scoped cookie,
+    # dedicated origin and live repository grant before accepting the channel.
+    assert actual == {
+        ("bridge.one_bot.router", "onebot_endpoint"),
+        ("app.code.gateway", "editor_ws"),
+    }

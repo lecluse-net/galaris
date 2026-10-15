@@ -91,6 +91,8 @@ done
 parallel_children=()
 run_step regressions make regression-check || failed=1
 run_step executor make tests-executor || failed=1
+run_step code make tests-code || failed=1
+run_step code-browser make tests-code-browser || failed=1
 run_step harness-manager make tests-harness-manager || failed=1
 run_step harness-contracts make tests-harness-contracts || failed=1
 run_step harness-runtimes make tests-harness-runtimes || failed=1

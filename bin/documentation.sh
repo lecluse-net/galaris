@@ -25,6 +25,7 @@ selected() {
   case "/$1/" in */node_modules/*|*/__pycache__/*|*/.git/*|*/.env/*|*/artifacts/*|*/.venv/*) return 1 ;; esac
   # Match the corpus loader's case-insensitive formats in every shipped root.
   case "$1" in
+    code-executor/compose.external.yaml) return 0 ;;
     docs/*|project/decisions/*|project/plans/*)
       case "${1,,}" in *.md|*.json|*.html) return 0 ;; esac ;;
   esac

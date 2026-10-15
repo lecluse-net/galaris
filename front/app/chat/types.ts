@@ -47,7 +47,7 @@ export interface MessageTopicChange {
   topic_id: string
   scope: MessageTopicChangeScope
 }
-export type MessageResourcePreviewKind = 'document' | 'memory' | 'task' | 'text' | 'voice' | 'goal' | 'goal_cycle' | 'process' | 'skill' | 'file' | 'resource' | 'web' | 'youtube'
+export type MessageResourcePreviewKind = 'code' | 'document' | 'memory' | 'task' | 'text' | 'voice' | 'goal' | 'goal_cycle' | 'process' | 'skill' | 'file' | 'resource' | 'web' | 'youtube'
 export type MessageResourceContentFormat = 'html' | 'markdown' | 'text' | 'json' | 'none'
 export interface MessageResourcePreview { uri: string; deleted: boolean; kind: MessageResourcePreviewKind; title: string; subtitle: string; description: string; media_type: string; content: string | null; content_format: MessageResourceContentFormat; truncated: boolean; image_available: boolean; download_available: boolean; open_mode: 'inline' | 'external'; external_url: string | null; embed_url: string | null; metadata: Record<string, unknown> }
 export interface MessengerRoom { id: string; external_id: string; label: string; kind: string; conversation_type: 'text' | 'audio'; topic_id: string | null; connection_id: number; agent_id: number; agent_name: string; agent_active: boolean; source: string | null; messenger_label: string; messenger_active: boolean; writable: boolean; role: string; muted: boolean; unread_count: number; show_last_message: boolean; archived: boolean; last_message: MessengerMessage | null; members: MessengerMember[] }

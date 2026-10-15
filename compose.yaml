@@ -24,6 +24,7 @@ services:
         group_add:
             - "19999"
             - "19998"
+            - "19997"
         container_name: ${APP_NAME:-galaris}-back
         restart: unless-stopped
         stop_grace_period: 90s
@@ -31,6 +32,7 @@ services:
             context: ./back
             additional_contexts:
                 harness_manager: ./harness_manager
+                code_executor: ./code-executor
                 product_docs: ./docs
                 project_docs: ./project
             target: prod-stage
@@ -40,8 +42,11 @@ services:
             - .env
         volumes:
             - browser_credentials:/run/galaris-browser:ro
+            - code_credentials:/run/galaris-code:ro
         depends_on:
             browser-secrets:
+                condition: service_completed_successfully
+            code-secrets:
                 condition: service_completed_successfully
         environment:
             - APP_ENV=${APP_ENV-prod}
@@ -202,8 +207,42 @@ services:
             retries: 3
             start_period: 10s
 
+    code-secrets:
+        build: { context: ./code-executor, target: runtime }
+        entrypoint: ["python3", "/opt/galaris-code/provision-credential.py"]
+        user: "0:19997"
+        volumes: ["code_credentials:/run/galaris-code"]
+        network_mode: none
+        read_only: true
+        cap_drop: [ALL]
+        cap_add: [CHOWN, FOWNER]
+        security_opt: ["no-new-privileges:true"]
+        restart: "no"
+
+    code-executor:
+        build: { context: ./code-executor, target: runtime }
+        restart: unless-stopped
+        volumes_from: ["ssh-executor"]
+        volumes:
+            - code_credentials:/run/galaris-code:ro
+            - code_profiles:/var/lib/galaris-code
+        depends_on:
+            code-secrets: { condition: service_completed_successfully }
+        networks: [executor_net, browser_egress]
+        read_only: true
+        tmpfs: ["/tmp:size=256m,mode=1777"]
+        cap_drop: [ALL]
+        cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, KILL, SETUID, SETGID, SETPCAP, SYS_ADMIN, NET_ADMIN]
+        # Privileges belong to the broker; editor children drop every capability.
+        security_opt: ["seccomp=unconfined", "apparmor=unconfined", "systempaths=unconfined", "no-new-privileges:true"]
+        pids_limit: 2048
+        cpus: ${CODE_EXECUTOR_CPUS:-4.0}
+        mem_limit: ${CODE_EXECUTOR_MEMORY_LIMIT:-8g}
+
 volumes:
     browser_credentials:
+    code_credentials:
+    code_profiles:
 
 networks:
     galaris_net:

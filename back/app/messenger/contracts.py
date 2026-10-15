@@ -153,6 +153,7 @@ class MessageResourcePreview(BaseModel):
     uri: str
     deleted: bool = False
     kind: Literal[
+        "code",
         "document",
         "memory",
         "task",

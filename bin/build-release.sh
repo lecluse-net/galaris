@@ -17,18 +17,22 @@ printf 'services:\n' > "$release_output/compose.release.yaml"
 images=()
 RELEASE_BUILD_REF="$release_ref" RELEASE_BUILD_SOURCE="$release_source" \
   docker compose -f "$release_source/compose.release-build.yaml" build
-for component in back front browser-executor ssh-executor; do
+for component in back front browser-executor ssh-executor code-executor; do
   tag="galaris-release-$component:$release_ref"
   case "$component" in
     back) service=backend ;;
     front) service=frontend ;;
     ssh-executor) service=ssh-executor ;;
+    code-executor) service=code-executor ;;
     *) service=browser-executor ;;
   esac
   images+=("$tag")
   printf '  %s:\n    image: %s\n    pull_policy: never\n' "$service" "$tag" >> "$release_output/compose.release.yaml"
   if [[ "$component" == browser-executor ]]; then
     printf '  browser-secrets:\n    image: %s\n    pull_policy: never\n' "$tag" >> "$release_output/compose.release.yaml"
+  fi
+  if [[ "$component" == code-executor ]]; then
+    printf '  code-secrets:\n    image: %s\n    pull_policy: never\n' "$tag" >> "$release_output/compose.release.yaml"
   fi
   image_id=$(docker image inspect --format '{{.Id}}' "$tag")
   printf '%s %s\n' "$image_id" "$tag" >> "$release_output/IMAGE_IDS"

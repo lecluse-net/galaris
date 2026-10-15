@@ -149,7 +149,7 @@
             icon="fingerprint"
             :label="t('connection.console.scanHostKey')"
             :loading="consoleAction === 'scan'"
-            :disable="!effectiveParamValue('host')"
+            :disable="consoleAction !== null || !effectiveParamValue('host')"
             @click="scanHostKey"
           />
           <q-btn
@@ -158,7 +158,7 @@
             icon="key"
             :label="t('connection.console.generateKey')"
             :loading="consoleAction === 'key'"
-            :disable="!canPersistConsoleDraft"
+            :disable="consoleAction !== null || !canPersistConsoleDraft"
             @click="generateKey"
           />
           <q-btn
@@ -168,11 +168,17 @@
             icon="lan"
             :label="t('connection.console.test')"
             :loading="consoleAction === 'test'"
-            :disable="!canPersistConsoleDraft || (!isEdit && !canEdit)"
+            :disable="consoleAction !== null || !canPersistConsoleDraft || (!isEdit && !canEdit)"
             @click="testConsole"
           />
-          <q-btn v-if="canEdit && canInstallHelper" outline color="primary" icon="system_update_alt" :label="t('connection.console.installHelper')" :loading="consoleAction === 'install'" @click="installHelper" />
+          <q-btn v-if="canEdit && canInstallHelper" outline color="primary" icon="system_update_alt" :label="t('connection.console.installHelper')" :loading="consoleAction === 'install'" :disable="consoleAction !== null" @click="installHelper" />
+          <q-btn v-if="canEdit" outline color="primary" icon="code" :label="t(editorRuntimeConfigured ? 'connection.console.updateEditor' : 'connection.console.installEditor')"
+            :loading="consoleAction === 'editor'" :disable="consoleAction !== null" @click="installEditor">
+            <q-tooltip>{{ t('connection.console.editorDeploymentTooltip') }}</q-tooltip>
+          </q-btn>
         </div>
+        <div class="text-caption q-mt-sm">{{ t('connection.console.editorDeploymentHint') }}</div>
+        <q-banner v-if="editorDeployed" dense class="q-mt-sm" role="status">{{ t('connection.console.editorReady') }}</q-banner>
         <q-banner v-if="generatedPublicKey" dense rounded class="bg-blue-1 text-blue-9 q-mt-md">
           <div>{{ t('connection.console.installPublicKey') }}</div>
           <pre class="deployment-commands"><code>{{ deploymentCommands }}</code></pre>
@@ -238,7 +244,7 @@
         type="submit"
         color="primary"
         :loading="loading || consoleAction === 'embedded'"
-        :disable="!isValidForm"
+        :disable="!isValidForm || consoleAction === 'editor'"
       />
     </div>
   </q-form>
@@ -333,6 +339,10 @@
           :loading="consoleAction === 'install'"
           @click="installHelper"
         />
+        <q-btn v-if="canEdit && consoleTarget === 'external'" outline color="primary" icon="code" :label="t(editorRuntimeConfigured ? 'connection.console.updateEditor' : 'connection.console.installEditor')"
+          :loading="consoleAction === 'editor'" :disable="consoleAction !== null" @click="installEditor">
+          <q-tooltip>{{ t('connection.console.editorDeploymentTooltip') }}</q-tooltip>
+        </q-btn>
         <q-btn v-close-popup flat color="primary" :label="t('common.close')" />
       </q-card-actions>
     </q-card>
@@ -469,7 +479,9 @@ const paramValues = ref<Record<string, string>>({})
 const paramOverrides = ref<Record<string, boolean>>({})
 type ConsoleTarget = 'embedded' | 'external'
 
-const consoleAction = ref<'embedded' | 'scan' | 'key' | 'install' | 'test' | null>(null)
+const consoleAction = ref<'embedded' | 'scan' | 'key' | 'install' | 'editor' | 'test' | null>(null)
+const editorDeployed = ref(false)
+let consoleContext = 0
 const consoleTarget = ref<ConsoleTarget>('embedded')
 const generatedPublicKey = ref('')
 const newlyConfiguredParams = ref(new Set<string>())
@@ -587,6 +599,12 @@ const canInstallHelper = computed(() => Boolean(
   && !consoleTestStatus.value.operation_recovery_available,
 ))
 
+const editorDeploymentBlocker = computed(() => {
+  if (!canPersistConsoleDraft.value || !props.persistForAction) return 'connection.console.editorConnectionRequired'
+  if (isGloballyForced('code_runtime_port') || isGloballyForced('code_runtime_token')) return 'connection.console.editorGlobalConfiguration'
+  return null
+})
+
 const showSchemaParameters = computed(() => (
   connectionParameters.value.length > 0
 ))
@@ -673,6 +691,9 @@ function onToolChange() {
 }
 
 function resetForm() {
+  consoleContext += 1
+  consoleAction.value = null
+  editorDeployed.value = false
   consoleTestStatus.value = null
   consoleTestResult.value = ''
   showConsoleTestResult.value = false
@@ -696,6 +717,9 @@ function resetForm() {
 }
 
 function initForm(connection?: Connection, params?: Record<string, unknown> | null) {
+  consoleContext += 1
+  consoleAction.value = null
+  editorDeployed.value = false
   consoleTestStatus.value = null
   consoleTestResult.value = ''
   showConsoleTestResult.value = false
@@ -820,7 +844,7 @@ function consoleErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-async function persistConsoleDraft(): Promise<Connection> {
+async function persistConsoleDraft(active = false): Promise<Connection> {
   if (!canEdit.value && form.value.id !== null) {
     return {
       id: form.value.id,
@@ -829,7 +853,7 @@ async function persistConsoleDraft(): Promise<Connection> {
       active: form.value.active,
     }
   }
-  const payload = buildSubmitPayload(false)
+  const payload = buildSubmitPayload(active)
   if (!payload || !props.persistForAction) {
     throw new Error(t('connection.saveError'))
   }
@@ -880,7 +904,7 @@ async function generateKey(): Promise<void> {
 async function testConsole(): Promise<void> {
   consoleAction.value = 'test'
   try {
-    const connection = await persistConsoleDraft()
+    const connection = await persistConsoleDraft(props.connection?.active ?? false)
     const { data } = await consoleService.testConnection(connection.id)
     consoleTestStatus.value = data.status
     consoleTestResult.value = JSON.stringify(data, null, 2)
@@ -925,6 +949,33 @@ async function installHelper(): Promise<void> {
       message: `${t('connection.console.helperInstallError')}: ${consoleErrorMessage(error)}`,
     })
   } finally { consoleAction.value = null }
+}
+
+const editorRuntimeConfigured = computed(() => Boolean(effectiveParamValue('code_runtime_port')))
+
+async function installEditor(): Promise<void> {
+  if (!canEdit.value || consoleAction.value !== null) return
+  if (editorDeploymentBlocker.value) {
+    $q.notify({ type: 'negative', message: t(editorDeploymentBlocker.value) })
+    return
+  }
+  const context = consoleContext
+  const upgrade = editorRuntimeConfigured.value
+  consoleAction.value = 'editor'
+  try {
+    const connection = await persistConsoleDraft(props.connection?.active ?? false)
+    const { data } = await consoleService.installEditor(connection.id, upgrade)
+    if (context !== consoleContext || form.value.id !== data.connection_id) return
+    paramValues.value.code_runtime_port = String(data.port)
+    paramValues.value.code_runtime_token = ''
+    paramOverrides.value.code_runtime_port = paramOverrides.value.code_runtime_token = true
+    newlyConfiguredParams.value = new Set(newlyConfiguredParams.value).add('code_runtime_port').add('code_runtime_token')
+    editorDeployed.value = data.ready
+    showConsoleTestResult.value = false
+    $q.notify({ type: 'positive', message: t('connection.console.editorInstalled', { version: data.version }) })
+  } catch (error) {
+    if (context === consoleContext) $q.notify({ type: 'negative', message: `${t('connection.console.editorInstallError')}: ${consoleErrorMessage(error)}` })
+  } finally { if (context === consoleContext) consoleAction.value = null }
 }
 
 async function copyPublicKey(): Promise<void> {

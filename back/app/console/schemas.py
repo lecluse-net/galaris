@@ -21,6 +21,14 @@ class ConsoleHelperInstallResult(BaseModel):
     status: ConsoleStatus
 
 
+class ConsoleEditorInstallResult(BaseModel):
+    connection_id: int
+    port: int = Field(ge=1, le=65535)
+    version: str
+    ready: bool
+    already_installed: bool
+
+
 class GeneratedConsoleKey(BaseModel):
     connection_id: int
     public_key: str

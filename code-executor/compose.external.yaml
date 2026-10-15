@@ -1,0 +1,35 @@
+# Run explicitly on the prepared Linux SSH target. Never deployed by repository_show.
+name: galaris-code
+services:
+  secrets:
+    build: { context: ., target: runtime }
+    entrypoint: [python3, /opt/galaris-code/provision-credential.py]
+    volumes: ["credentials:/run/galaris-code"]
+    network_mode: none
+    restart: "no"
+  runtime:
+    build: { context: ., target: runtime }
+    environment:
+      CODE_HOME_ROOT: ${CODE_TARGET_HOME_ROOT:?Set the parent of the approved Unix homes}
+      CODE_BIND_PORT: "8766"
+    volumes:
+      # Preserve absolute Git worktree/SSH config paths. Editor children receive
+      # only individually approved repository and Git metadata mounts.
+      - ${CODE_TARGET_HOME_ROOT}:${CODE_TARGET_HOME_ROOT}
+      - credentials:/run/galaris-code:ro
+      - profiles:/var/lib/galaris-code
+    ports: ["127.0.0.1:8766:8766"]
+    depends_on:
+      secrets: { condition: service_completed_successfully }
+    read_only: true
+    tmpfs: ["/tmp:size=256m,mode=1777"]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, KILL, SETUID, SETGID, SETPCAP, SYS_ADMIN, NET_ADMIN]
+    security_opt: ["seccomp=unconfined", "apparmor=unconfined", "systempaths=unconfined", "no-new-privileges:true"]
+    pids_limit: 2048
+    mem_limit: 8g
+    cpus: 4
+    restart: unless-stopped
+volumes:
+  credentials:
+  profiles:

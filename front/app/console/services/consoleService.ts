@@ -96,6 +96,14 @@ export interface ConsoleHelperInstallResult {
   status: ConsoleConnectionStatus
 }
 
+export interface ConsoleEditorInstallResult {
+  connection_id: number
+  port: number
+  version: string
+  ready: boolean
+  already_installed: boolean
+}
+
 export const consoleService = {
   availability(): Promise<AxiosResponse<ExecutorAvailability>> {
     return api.get('/console/executor/availability')
@@ -120,6 +128,9 @@ export const consoleService = {
   },
   installHelper(connectionId: number): Promise<AxiosResponse<ConsoleHelperInstallResult>> {
     return api.post(`/console/connections/${connectionId}/install-helper`)
+  },
+  installEditor(connectionId: number, upgrade = false): Promise<AxiosResponse<ConsoleEditorInstallResult>> {
+    return api.post(`/console/connections/${connectionId}/install-editor`, undefined, { params: upgrade ? { upgrade: true } : undefined })
   },
   scanHostKey(host: string, port: number): Promise<AxiosResponse<{ host: string; port: number; key: string; fingerprint: string }>> {
     return api.post('/console/host-key/scan', { host, port })

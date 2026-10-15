@@ -48,6 +48,21 @@ def test_extract_preview_references_includes_private_file_schemes_only_when_allo
 
 
 @pytest.mark.asyncio
+async def test_directory_preview_exposes_collection_without_reading_it(monkeypatch):
+    uri = "console://synthetic-project/"
+    read = AsyncMock()
+    monkeypatch.setattr(link_preview, "resource_info", AsyncMock(return_value=ResourceDescriptor(
+        uri=uri, name="synthetic-project", is_collection=True,
+        media_type="application/octet-stream", capabilities=["info", "list"],
+    )))
+    monkeypatch.setattr(link_preview, "resource_read", read)
+    preview = await link_preview.preview_reference(uri, agent_id=7)
+    assert preview is not None and preview.metadata["is_collection"] is True
+    assert preview.content is None and not preview.download_available
+    read.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("media_type,content_format", [("text/markdown", "markdown"), ("text/html", "html")])
 async def test_resource_preview_preserves_document_format_and_revision(
     monkeypatch: pytest.MonkeyPatch, media_type: str, content_format: str,

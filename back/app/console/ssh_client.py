@@ -113,6 +113,14 @@ class SshExecutionTransport:
             connection.close()
             await connection.wait_closed()
 
+    async def persistent_connection(self) -> Any:
+        """Retain a dedicated transport until its owner closes it explicitly."""
+        connection = await self.connection()
+        if self._idle_handle is not None:
+            self._idle_handle.cancel()
+            self._idle_handle = None
+        return connection
+
     async def _simple(self, command: str, timeout_s: float = 10.0) -> Any:
         connection = await self.connection()
         return await asyncio.wait_for(

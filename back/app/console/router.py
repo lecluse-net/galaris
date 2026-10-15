@@ -13,12 +13,14 @@ from core.authorize import Privileges, authorize
 
 from .connection_service import is_embedded_executor_in_use, resolve_connection
 from .helper_service import install_connection_helper
+from .editor_service import install_connection_editor
 from .keys import generate_ed25519_keypair
 from .manager import embedded_executor_manager
 from .provisioning import provision_embedded_console
 from .schemas import (
     ConsoleConnectionTest,
     ConsoleHelperInstallResult,
+    ConsoleEditorInstallResult,
     EmbeddedProvisionRequest,
     EmbeddedProvisionResult,
     ExecutorActionRequest,
@@ -141,6 +143,19 @@ async def provision_embedded(data: EmbeddedProvisionRequest) -> EmbeddedProvisio
         return await provision_embedded_console(agent)
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.post("/connections/{connection_id}/install-editor", response_model=ConsoleEditorInstallResult)
+@authorize(privileges=Privileges.CONNECTION_EDIT)
+async def install_connection_code_editor(connection_id: int, upgrade: bool = False) -> ConsoleEditorInstallResult:
+    await _managed_connection(connection_id)
+    try:
+        return await install_connection_editor(connection_id, upgrade)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    except (RuntimeError, OSError, asyncssh.Error):
+        # Transport exceptions can contain command output: never publish credentials.
+        raise HTTPException(status_code=502, detail="Code editor deployment failed; check Docker access and SSH forwarding on the Console target") from None
 
 
 _READ_OPERATIONS = frozenset({"health", "status", "list_users", "user_usage", "list_sessions"})

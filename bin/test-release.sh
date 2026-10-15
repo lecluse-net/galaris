@@ -12,6 +12,12 @@ qualification=(docker run --rm --network none --user "$(id -u):$(id -g)" --entry
 bash bin/test-e2e.sh
 while read -r image_id image_tag; do
   case "$image_tag" in
+    galaris-release-code-executor:*)
+      docker run --rm --network none --entrypoint python3 \
+        --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
+        --security-opt systempaths=unconfined --cap-add SYS_ADMIN --cap-add NET_ADMIN \
+        -v "$PWD/code-executor/tests:/opt/galaris-code/tests:ro" -w /opt/galaris-code \
+        "$image_id" -m unittest discover -s tests -v ;;
     galaris-release-browser-executor:*)
       docker run --rm --network none --init --entrypoint npm "$image_id" test ;;
     galaris-release-ssh-executor:*)

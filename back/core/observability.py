@@ -121,7 +121,7 @@ def instrument_fastapi(app: FastAPI) -> None:
         app,
         capture_headers=False,
         record_send_receive=False,
-        excluded_urls=r"/api/(health|ready|live)$",
+        excluded_urls=r"/api/(health|ready|live)$|/api/code/gateway/",
     )
 
 

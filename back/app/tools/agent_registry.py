@@ -80,6 +80,8 @@ async def build_agent_tool_advertisement(
             "Use document_show(document=...) to present a relevant working document directly "
             "in this internal Chat. It accepts a document:// URI, UUID or Galaris document URL."
         )
+    if "repository_show" in tool_names:
+        lines.append("Before changing Git source through Console, use repository_show(repository='console://path/', view='changes') to present the actual checkout in Chat. Code is not a Document. Human and agent edits share saved files with standard VS Code behavior; unsaved IDE buffers remain local. Presenting a repository neither commits nor pushes and does not grant access.")
     if "tools_list" in tool_names:
         lines.extend(
             [

@@ -61,6 +61,7 @@ _IMAGE_MEDIA_TYPES = {
 }
 _HTML_MEDIA_TYPES = {"text/html", "application/xhtml+xml"}
 _RESOURCE_KINDS = {
+    "code",
     "task",
     "text",
     "voice",
@@ -70,6 +71,7 @@ _RESOURCE_KINDS = {
     "skill",
 }
 ResourcePreviewKind = Literal[
+    "code",
     "document",
     "memory",
     "task",
@@ -269,7 +271,7 @@ async def _resource_preview(uri: str, *, agent_id: int) -> MessageResourcePrevie
             **descriptor.metadata,
             "revision": descriptor.revision,
             "updated_at": descriptor.modified_at,
-        } if kind == "document" else descriptor.metadata,
+        } if kind == "document" else {**descriptor.metadata, "is_collection": descriptor.is_collection},
     )
 
 

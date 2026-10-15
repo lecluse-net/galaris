@@ -175,7 +175,7 @@ def create_app(lifespan: Callable[[FastAPI], AbstractAsyncContextManager[None]])
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         # Use a restrictive referrer policy.
-        response.headers["Referrer-Policy"] = "same-origin"
+        response.headers.setdefault("Referrer-Policy", "same-origin")
         # Content Security Policy (Basic)
         response.headers.setdefault("Content-Security-Policy", "default-src 'self'; img-src 'self' data: https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;")
         # Disable sensitive browser sensors.

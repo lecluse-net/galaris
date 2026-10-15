@@ -26,6 +26,7 @@ from core.database import get_db
 
 from .contracts import ConversationTurn
 from .document_display import can_display_conversation_document, display_conversation_document
+from .repository_display import can_show_repository, show_repository
 from .inspection_service import inspect_round
 from .models import ConversationProcessLink, ConversationRound, ConversationTaskLink
 from .task_objective import compose_task_objective, generate_task_fields, source_request_html
@@ -111,6 +112,14 @@ async def document_show(ctx: McpToolContext, document: str) -> dict[str, str]:
     identifier = _display_document_id(document)
     await display_conversation_document(turn, identifier)
     return {"status": "requested", "uri": f"document://{identifier}", "room_id": str(turn.room_id)}
+
+
+@mcp_tool("conversation", approval="enabled", approval_reason="Present an authorized existing Git repository without modifying its files",
+    conversation_policy="short", task_enabled=True, available_when=can_show_repository,
+    description="Present the actual Console Git checkout in the current Chat code pane, before editing it through SSH. Pass a console:// directory or returned galaris://code/<uuid>. Human access still requires an explicit repository grant. Does not clone, save, commit or push. Available to live Tasks explicitly linked to internal Chat.")
+async def repository_show(ctx: McpToolContext, repository: str, file: str | None = None,
+                          view: Literal["changes", "files"] = "changes") -> dict[str, str]:
+    return await show_repository(ctx, repository, file, view)
 
 
 def _action_key(kind: str, *values: str) -> str:

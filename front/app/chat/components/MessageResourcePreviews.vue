@@ -9,16 +9,16 @@
         :key="preview.uri"
         placement="below-page"
         :title="preview.title || (preview.deleted ? t('chat.resourcePreview.kinds.document') : '')"
-        :disabled="preview.deleted || resourceKind(preview) === 'audio'"
+        :disabled="preview.deleted || resourceKind(preview) === 'audio' || (isDirectory(preview) && !canOpenDirectory(preview))"
         :description="preview.kind === 'document' ? '' : preview.description"
         :subtitle="preview.deleted ? t('chat.resourcePreview.documentDeleted') : [kindLabel(preview.kind), preview.subtitle].filter(Boolean).join(' · ')"
         :uri="preview.uri"
         :image="imageUrls[preview.uri]"
-        :icon="kindIcon(preview.kind)"
+        :icon="isDirectory(preview) ? 'folder' : kindIcon(preview.kind)"
         :href="preview.open_mode === 'external' ? preview.external_url ?? undefined : undefined"
         :open-label="preview.open_mode === 'external'
           ? t('chat.resourcePreview.openExternal')
-          : t(downloadOnly(preview) ? 'chat.resourcePreview.download' : 'chat.resourcePreview.open', { title: preview.title })"
+          : t(canOpenDirectory(preview) ? 'code.openDirectory' : downloadOnly(preview) ? 'chat.resourcePreview.download' : 'chat.resourcePreview.open', { title: preview.title })"
         @open="handlePreviewClick($event, preview)"
       >
         <template v-if="preview.deleted" #preview>
@@ -43,6 +43,8 @@
           <AudioResourcePlayer :source="audioSource(preview)" />
         </template>
         <template v-if="!preview.deleted" #actions>
+          <q-btn v-if="preview.kind === 'code'" flat round dense icon="code" :aria-label="t('code.title')"
+            @click="emit('openRepository', preview.uri.replace('galaris://code/', ''))" />
           <q-btn
             v-if="canCoedit(preview)"
             flat
@@ -88,17 +90,17 @@
             <q-tooltip>{{ t('chat.resourcePreview.download') }}</q-tooltip>
           </q-btn>
           <q-btn
-            v-if="preview.open_mode !== 'external' && resourceKind(preview) !== 'audio' && !downloadOnly(preview)"
+            v-if="preview.open_mode !== 'external' && resourceKind(preview) !== 'audio' && !downloadOnly(preview) && (!isDirectory(preview) || canOpenDirectory(preview))"
             flat
             round
             dense
             size="sm"
-            :icon="preview.kind === 'document' ? 'edit_note' : 'open_in_full'"
+            :icon="canOpenDirectory(preview) ? 'code' : preview.kind === 'document' ? 'edit_note' : 'open_in_full'"
             class="resource-preview-action"
-            :aria-label="t('chat.resourcePreview.open', { title: preview.title })"
+            :aria-label="t(canOpenDirectory(preview) ? 'code.openDirectory' : 'chat.resourcePreview.open', { title: preview.title })"
             @click="openPreview(preview)"
           >
-            <q-tooltip>{{ t('chat.resourcePreview.open', { title: preview.title }) }}</q-tooltip>
+            <q-tooltip>{{ t(canOpenDirectory(preview) ? 'code.openDirectory' : 'chat.resourcePreview.open', { title: preview.title }) }}</q-tooltip>
           </q-btn>
         </template>
       </ResourcePreviewBlock>
@@ -299,6 +301,7 @@ import {
 import type { BrowserResourceKind, Model3dSource, WorkingDocumentSnapshot } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { useAuthStore } from '@/core/user'
+import { usePrivilegeStore } from '@/core/authorize'
 import type { ConversationDocumentReference, MessageResourcePreview, MessageResourcePreviewKind } from '../types'
 import { chatService } from '../services/chatService'
 import ConversationDocumentDialog from './ConversationDocumentDialog.vue'
@@ -318,6 +321,8 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
+  openRepository: [id: string]
+  openDirectory: [uri: string, messageId: string]
   openDocument: [document: Pick<ConversationDocumentReference, 'id' | 'label'>]
 }>()
 
@@ -332,6 +337,7 @@ interface MemoryRealtimeEvent {
 const { t } = useI18n()
 const $q = useQuasar()
 const authStore = useAuthStore()
+const privilegeStore = usePrivilegeStore()
 const loading = ref(false)
 const container = ref<HTMLElement | null>(null)
 let visible = false
@@ -359,6 +365,7 @@ let resourceGeneration = 0
 let realtimeTimer: ReturnType<typeof setTimeout> | undefined
 
 const iconByKind: Record<MessageResourcePreviewKind, string> = {
+  code: 'code',
   document: 'description',
   memory: 'psychology',
   task: 'task_alt',
@@ -378,7 +385,17 @@ function kindIcon(kind: MessageResourcePreviewKind): string {
   return iconByKind[kind]
 }
 
+function isDirectory(preview: MessageResourcePreview): boolean {
+  return preview.kind === 'file' && (preview.metadata.is_collection === true || preview.media_type === 'inode/directory')
+}
+
+function canOpenDirectory(preview: MessageResourcePreview): boolean {
+  return isDirectory(preview) && preview.uri.startsWith('console://')
+    && !preview.deleted && props.viewerAgentId === null && privilegeStore.hasPrivilege('CODE_ACCESS')
+}
+
 function kindLabel(kind: MessageResourcePreviewKind): string {
+  if (kind === 'code') return t('code.title')
   return t(`chat.resourcePreview.kinds.${kind}`)
 }
 
@@ -586,6 +603,11 @@ function handlePreviewClick(event: MouseEvent, preview: MessageResourcePreview):
 }
 
 function openPreview(preview: MessageResourcePreview): void {
+  if (isDirectory(preview)) {
+    if (canOpenDirectory(preview)) emit('openDirectory', preview.uri, props.messageId)
+    return
+  }
+  if (preview.kind === 'code') { emit('openRepository', preview.uri.replace('galaris://code/', '')); return }
   if (preview.deleted || resourceKind(preview) === 'audio') return
   if (downloadOnly(preview)) {
     void downloadPreview(preview)

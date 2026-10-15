@@ -454,6 +454,14 @@ tests-front-components: ## Exercise actual Vue/Quasar components in an isolated 
 	@bash bin/test-front-components.sh $(ARGS)
 .PHONY: tests-front-components
 
+tests-code: ## Qualify IDE confinement and Git using a synthetic SSH forge
+	@bash bin/test-code.sh
+.PHONY: tests-code
+
+tests-code-browser: ## Exercise actual code-server and a prepared external Console
+	@bash bin/test-code-browser.sh
+.PHONY: tests-code-browser
+
 tests-focus-gates: ## Prove both Playwright configurations reject focused tests
 	@bash bin/test-focus-gates.sh
 .PHONY: tests-focus-gates
@@ -474,7 +482,7 @@ tests-e2e-orchestration: ## Prove browser stacks stay isolated and propagate fai
 	@bash bin/test-e2e-orchestration.sh
 .PHONY: tests-e2e-orchestration
 
-quality: typecheck lint format-check tests-front-tooling tests-focus-gates tests-front-components tests-browser tests-executor tests-harness-manager architecture-check tests-providers tests-coverage tests-mutations tests-e2e ## Run the complete local quality gate
+quality: typecheck lint format-check tests-front-tooling tests-focus-gates tests-front-components tests-browser tests-executor tests-code tests-code-browser tests-harness-manager architecture-check tests-providers tests-coverage tests-mutations tests-e2e ## Run the complete local quality gate
 	@$(MAKE) regression-check
 .PHONY: quality
 

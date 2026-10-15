@@ -6,7 +6,7 @@
   >
     <q-banner v-if="store.status && !store.enabled" class="bg-warning text-dark q-ma-md" rounded>{{ t('chat.disabled') }}</q-banner>
     <q-inner-loading :showing="store.loading" />
-    <div ref="messengerGrid" v-if="store.enabled" class="messenger-grid" :class="{ 'messenger-grid--empty': !store.selectedRoom, 'messenger-grid--resizing': resizingColumns, 'messenger-grid--document': integratedDocument }" :style="messengerGridStyle">
+    <div ref="messengerGrid" v-if="store.enabled" class="messenger-grid" :class="{ 'messenger-grid--empty': !store.selectedRoom, 'messenger-grid--resizing': resizingColumns, 'messenger-grid--document': integratedWorkspace }" :style="messengerGridStyle">
       <main v-if="!store.selectedRoom" class="chat-home q-pa-md">
         <PageHeader help-key="chat" :help-text="t('contextHelpPages.chat')" :icon="navigationIcon('forum')" :title="t('nav.chat')" :description="t('nav.chat_desc')" />
         <div class="chat-home-content">
@@ -34,10 +34,10 @@
         </div>
       </main>
       <section v-if="store.selectedRoom" class="chat-workspace" :class="{ 'mobile-hidden': $q.screen.lt.md && mobileView !== 'conversation' }">
-        <div ref="documentWorkspace" class="chat-workspace-content" :class="{ 'chat-workspace-content--document': integratedDocument, 'chat-workspace-content--rows': effectiveDocumentLayout === 'rows', 'chat-workspace-content--resizing': resizingDocument }" :style="documentWorkspaceStyle">
+        <div ref="documentWorkspace" class="chat-workspace-content" :class="{ 'chat-workspace-content--document': integratedWorkspace, 'chat-workspace-content--rows': effectiveDocumentLayout === 'rows', 'chat-workspace-content--resizing': resizingDocument }" :style="documentWorkspaceStyle">
       <main class="conversation-pane">
         <template v-if="store.selectedRoom">
-          <q-toolbar class="conversation-toolbar"><template v-if="!integratedDocument"><q-btn v-if="$q.screen.lt.md" flat round dense icon="arrow_back" :aria-label="t('chat.details')" @click="mobileView = 'details'" /></template><InternalAgentAvatar :agent-id="store.selectedRoom.agent_id" :name="store.selectedRoom.agent_name" size="36px" class="q-ml-xs" /><q-toolbar-title class="conversation-title">{{ store.selectedRoom.label }}</q-toolbar-title><q-btn flat round dense size="xs" icon="content_copy" class="room-id-copy" :aria-label="t('chat.copyRoomId')" :title="store.selectedRoom.id" @click="copyRoomId"><q-tooltip>{{ store.selectedRoom.id }}</q-tooltip></q-btn><q-badge v-if="store.selectedRoom.source" outline color="grey-7" :label="t(sourceTranslationKey(store.selectedRoom.source))" /><q-chip v-if="!canWriteSelectedRoom" dense outline color="grey-7" icon="lock" class="read-only-chip">{{ t('chat.readOnly') }}</q-chip><q-btn v-if="(inboxStore.pushSupported && inboxStore.pushAvailable) || canWriteSelectedRoom" flat round :icon="store.selectedRoom.muted ? 'notifications_off' : 'notifications'" :aria-label="t('chat.notifications.settings')">
+          <q-toolbar class="conversation-toolbar"><template v-if="!integratedWorkspace"><q-btn v-if="$q.screen.lt.md" flat round dense icon="arrow_back" :aria-label="t('chat.details')" @click="mobileView = 'details'" /></template><InternalAgentAvatar :agent-id="store.selectedRoom.agent_id" :name="store.selectedRoom.agent_name" size="36px" class="q-ml-xs" /><q-toolbar-title class="conversation-title">{{ store.selectedRoom.label }}</q-toolbar-title><q-btn flat round dense size="xs" icon="content_copy" class="room-id-copy" :aria-label="t('chat.copyRoomId')" :title="store.selectedRoom.id" @click="copyRoomId"><q-tooltip>{{ store.selectedRoom.id }}</q-tooltip></q-btn><q-badge v-if="store.selectedRoom.source" outline color="grey-7" :label="t(sourceTranslationKey(store.selectedRoom.source))" /><q-chip v-if="!canWriteSelectedRoom" dense outline color="grey-7" icon="lock" class="read-only-chip">{{ t('chat.readOnly') }}</q-chip><q-btn v-if="(inboxStore.pushSupported && inboxStore.pushAvailable) || canWriteSelectedRoom" flat round :icon="store.selectedRoom.muted ? 'notifications_off' : 'notifications'" :aria-label="t('chat.notifications.settings')">
               <q-tooltip>{{ t('chat.notifications.settings') }}</q-tooltip>
               <q-menu>
                 <q-list style="min-width: 260px">
@@ -53,7 +53,7 @@
               </q-menu>
             </q-btn><q-btn v-if="canCustomizeSelectedRoom" flat round icon="settings" :aria-label="t('chat.roomPreferences.open')" @click="preferencesDialog=true" /><VoiceCallPanel v-if="store.viewerAgentId === null && store.selectedRoom.agent_active && canCall && store.callAvailable" :room-id="store.selectedRoom.id" :language="locale" :active-call-id="store.activeCall?.call_id" :stopping-call-id="store.stoppingCallId" :ended-call-id="store.endedCallId" :mobile="$q.screen.lt.md" @error="reportError" @starting="store.prepareCallStart" @stopping="store.markCallStopping" @ended="refreshAfterCallEnded" /></q-toolbar>
           <div class="message-scroll-zone">
-            <q-scroll-area ref="messageScrollArea" class="message-scroll" @scroll="onMessageScroll" @wheel.passive="beginConversationHistoryNavigation" @touchstart.passive="beginConversationHistoryNavigation"><div v-if="store.loadingOlderMessages" class="history-loader"><q-spinner color="primary" size="20px" /></div><MessageTimeline :room-id="store.selectedRoom.id" :messages="store.messages" :activity="store.activity" :live-round="store.liveRound" :pending-transcriptions="store.pendingVoiceTranscriptions" :agent-id="store.selectedRoom.agent_id" :agent-name="store.selectedRoom.agent_name" :loading="store.loadingSelectedRoom" :viewer-agent-id="store.viewerAgentId" :show-agent-avatars="!store.selectedRoom.source" :allow-reply="canWriteSelectedRoom" @controlled="store.refreshSelected" :can-read-documents="canReadDocuments" :can-edit-documents="canEditDocuments" @open-document="openConversationDocument" @reply="message => replyingTo = message" @topic-changed="refreshMessageTopics" @block-rendered="scrollRenderedConversationToBottom" @layout-changed="keepConversationAtBottom" @message-visible="markVisibleMessageRead" /></q-scroll-area>
+            <q-scroll-area ref="messageScrollArea" class="message-scroll" @scroll="onMessageScroll" @wheel.passive="beginConversationHistoryNavigation" @touchstart.passive="beginConversationHistoryNavigation"><div v-if="store.loadingOlderMessages" class="history-loader"><q-spinner color="primary" size="20px" /></div><MessageTimeline :room-id="store.selectedRoom.id" :messages="store.messages" :activity="store.activity" :live-round="store.liveRound" :pending-transcriptions="store.pendingVoiceTranscriptions" :agent-id="store.selectedRoom.agent_id" :agent-name="store.selectedRoom.agent_name" :loading="store.loadingSelectedRoom" :viewer-agent-id="store.viewerAgentId" :show-agent-avatars="!store.selectedRoom.source" :allow-reply="canWriteSelectedRoom" @controlled="store.refreshSelected" :can-read-documents="canReadDocuments" :can-edit-documents="canEditDocuments" @open-document="openConversationDocument" @open-repository="openRepository" @open-directory="openDirectory" @reply="message => replyingTo = message" @topic-changed="refreshMessageTopics" @block-rendered="scrollRenderedConversationToBottom" @layout-changed="keepConversationAtBottom" @message-visible="markVisibleMessageRead" /></q-scroll-area>
             <transition name="scroll-to-bottom">
               <q-btn
                 v-if="showScrollToBottom"
@@ -70,8 +70,8 @@
           <template v-if="canWriteSelectedRoom"><q-separator /><Composer :before-send="prepareMessage" :room-id="store.selectedRoom.id" :sending="store.sending" :commands="store.commands" :reply-to="replyingTo" :topic-id="selectedTopicId" :can-select-topic="canSelectTopic" :max-attachment-bytes="store.status?.max_attachment_bytes ?? 0" @send="sendMessage" @cancel-reply="replyingTo=null" @update:topic-id="selectedTopicId=$event" @error="reportError" /></template>
         </template>
       </main>
-          <div v-if="integratedDocument" class="document-resizer" :class="{ 'document-resizer--rows': effectiveDocumentLayout === 'rows' }"
-            role="separator" tabindex="0" :aria-label="t('chat.resizeDocument')"
+          <div v-if="integratedWorkspace" class="document-resizer" :class="{ 'document-resizer--rows': effectiveDocumentLayout === 'rows' }"
+            role="separator" tabindex="0" :aria-label="t(selectedCodeId ? 'code.resize' : 'chat.resizeDocument')"
             :aria-orientation="effectiveDocumentLayout === 'rows' ? 'horizontal' : 'vertical'"
             :aria-valuenow="documentChatRatio" :aria-valuemin="documentRatioLimits[0]" :aria-valuemax="documentRatioLimits[1]"
             @pointerdown="startDocumentResize" @pointermove="moveDocumentResize" @pointerup="finishDocumentResize"
@@ -83,6 +83,12 @@
               <q-btn flat round dense icon="view_agenda" :aria-label="t('chat.documentRows')" :aria-pressed="effectiveDocumentLayout === 'rows'" :color="effectiveDocumentLayout === 'rows' ? 'primary' : undefined" @click="documentLayout = 'rows'"><q-tooltip>{{ t('chat.documentRows') }}</q-tooltip></q-btn>
             </template>
           </ChatDocumentPane>
+          <CodeWorkspacePane v-if="!$q.screen.lt.md && selectedCodeId" :workspace-id="selectedCodeId" @hide="selectedWorkTarget = null">
+            <template #actions>
+              <q-btn flat round dense icon="view_column" :aria-label="t('code.columns')" :aria-pressed="effectiveDocumentLayout === 'columns'" @click="documentLayout = 'columns'" />
+              <q-btn flat round dense icon="view_agenda" :aria-label="t('code.rows')" :aria-pressed="effectiveDocumentLayout === 'rows'" @click="documentLayout = 'rows'" />
+            </template>
+          </CodeWorkspacePane>
         </div>
       </section>
       <div
@@ -134,6 +140,11 @@
             </template>
             <div class="sidebar-section-content"><ConversationDocumentsPanel embedded :displayed-document-id="selectedDocument?.id === displayedDocumentId ? displayedDocumentId : null" @has-items="documentsExpanded = $event" @open="openConversationDocument" ref="conversationDocumentsPanel" :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadDocuments" :can-edit="canEditDocuments" /></div>
           </q-expansion-item>
+          <q-expansion-item v-if="repositories.length" icon="code" :label="t('code.repositories')" default-opened>
+            <q-item v-for="repository in repositories" :key="repository.id" clickable @click="openRepository(repository.id)">
+              <q-item-section><q-item-label>{{ repository.label }}</q-item-label></q-item-section>
+            </q-item>
+          </q-expansion-item>
           <q-expansion-item v-if="store.selectedRoom" v-model="tasksExpanded" dense-toggle expand-separator icon="account_tree" :label="t('chat.tasks')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': tasksExpanded }" header-class="sidebar-accordion-header">
             <div class="sidebar-section-content"><AgentTasksPanel @has-items="tasksExpanded = $event" ref="agentTasksPanel" embedded :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadTasks" /></div>
           </q-expansion-item>
@@ -149,6 +160,9 @@
     <ConversationDocumentDialog ref="mobileDocument" v-model="mobileDocumentOpen" :document-id="selectedDocument?.id ?? null"
       :agent-id="selectedDocumentAgentId" :title="selectedDocument?.title ?? t('chat.workingDocument')" :editable="canEditDocuments" @changed="displayedDocumentId = $event.id" @unavailable="displayedDocumentId = null" />
     <ChatDocumentSearchDialog v-if="canReadDocuments && store.viewerAgentId === null" v-model="documentSearchOpen" @select="openLibraryDocument" />
+    <q-dialog v-model="mobileCodeOpen" maximized>
+      <q-card><CodeWorkspacePane v-if="selectedCodeId" :workspace-id="selectedCodeId" @hide="selectedWorkTarget = null" /></q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -172,6 +186,7 @@ import ConversationDocumentsPanel from '../components/ConversationDocumentsPanel
 import ConversationDocumentDialog from '../components/ConversationDocumentDialog.vue'
 import ConversationProcessesPanel from '../components/ConversationProcessesPanel.vue'
 import ChatDocumentPane from '../components/ChatDocumentPane.vue'
+import { CodeWorkspacePane, codeService, codeErrorTranslationKey, useCodeStore, type CodeWorkspace } from '../code'
 import ChatDocumentSearchDialog from '../components/ChatDocumentSearchDialog.vue'
 import type { WorkingDocumentReference } from '@/core/util'
 import type { ConversationDocumentReference } from '../types'
@@ -205,7 +220,19 @@ function toggleRoomFilters(): void {
   else if (!store.rooms.length) conversationsExpanded.value = false
 }
 const chatPageVisible=ref(document.visibilityState==='visible')
-const selectedDocument = ref<WorkingDocumentReference | null>(null)
+type WorkTarget = { kind: 'document'; reference: WorkingDocumentReference } | { kind: 'code'; id: string }
+const selectedWorkTarget = ref<WorkTarget | null>(null)
+const selectedDocument = computed({
+  get: () => selectedWorkTarget.value?.kind === 'document' ? selectedWorkTarget.value.reference : null,
+  set: (reference: WorkingDocumentReference | null) => { selectedWorkTarget.value = reference ? { kind: 'document', reference } : null },
+})
+const selectedCodeId = computed(() => selectedWorkTarget.value?.kind === 'code' ? selectedWorkTarget.value.id : null)
+const codeStore = useCodeStore()
+const repositories = ref<CodeWorkspace[]>([])
+const integratedWorkspace = computed(() => !$q.screen.lt.md && selectedWorkTarget.value !== null)
+const mobileCodeOpen = computed({ get: () => $q.screen.lt.md && selectedCodeId.value !== null,
+  set: (open: boolean) => { if (!open) selectedWorkTarget.value = null },
+})
 const selectedDocumentAgentId = ref<number | null>(null)
 const displayedDocumentId = ref<string | null>(null)
 const documentPane = ref<InstanceType<typeof ChatDocumentPane> | null>(null)
@@ -286,24 +313,68 @@ function resizeDocumentWithKeyboard(event: KeyboardEvent): void {
 }
 const sidebarVisible = computed(() => !$q.screen.lt.md || mobileView.value === 'details')
 async function openLibraryDocument(document: WorkingDocumentReference): Promise<void> {
+  const request = ++documentDisplayRequest
   const roomId = store.selectedRoom?.id
   if (documentPane.value && !await documentPane.value.flush()) return
-  if (store.selectedRoom?.id !== roomId) return
+  if (mobileDocumentOpen.value && !await mobileDocument.value?.flush()) return
+  if (request !== documentDisplayRequest || store.selectedRoom?.id !== roomId) return
   selectedDocumentAgentId.value = null
   selectedDocument.value = document
   mobileView.value = 'conversation'
 }
 async function openConversationDocument(document: Pick<ConversationDocumentReference, 'id' | 'label'>): Promise<void> {
+  const request = ++documentDisplayRequest
   const roomId = store.selectedRoom?.id
   if (documentPane.value && !await documentPane.value.flush()) return
-  if (store.selectedRoom?.id !== roomId) return
+  if (mobileDocumentOpen.value && !await mobileDocument.value?.flush()) return
+  if (request !== documentDisplayRequest || store.selectedRoom?.id !== roomId) return
   selectedDocumentAgentId.value = store.viewerAgentId ?? store.selectedRoom?.agent_id ?? null
   selectedDocument.value = { id: document.id, title: document.label }
   mobileView.value = 'conversation'
 }
 let documentDisplayRequest = 0
 watch(() => store.selectedRoom?.id, () => { documentDisplayRequest += 1 }, { flush: 'sync' })
-watch(selectedDocument, () => { documentDisplayRequest += 1 }, { flush: 'sync' })
+watch(selectedWorkTarget, () => { documentDisplayRequest += 1; if (selectedWorkTarget.value?.kind !== 'code') codeStore.hide() }, { flush: 'sync' })
+async function openDirectory(uri: string, messageId: string): Promise<void> {
+  const roomId = store.selectedRoom?.id
+  if (!roomId || store.viewerAgentId !== null || !privilegeStore.hasPrivilege('CODE_ACCESS')) return
+  await openRepository(uri, undefined, undefined, () => service.messageDirectoryRepository(roomId, messageId, uri))
+}
+async function openRepository(id: string, file?: string, view?: string, resolve?: () => Promise<CodeWorkspace>): Promise<void> {
+  const roomId = store.selectedRoom?.id
+  const request = ++documentDisplayRequest
+  try {
+    if (documentPane.value && !await documentPane.value.flush()) return
+    if (mobileDocumentOpen.value && !await mobileDocument.value?.flush()) return
+    if (resolve) {
+      const workspace = await resolve()
+      if (request !== documentDisplayRequest || store.selectedRoom?.id !== roomId) return
+      id = workspace.id
+      repositories.value = [workspace, ...repositories.value.filter(item => item.id !== id)]
+    }
+    await codeStore.open(id, file, view)
+    if (request !== documentDisplayRequest || store.selectedRoom?.id !== roomId) return
+    selectedWorkTarget.value = { kind: 'code', id }
+    mobileView.value = 'conversation'
+  } catch (error) { $q.notify({ type: 'negative', message: t(codeErrorTranslationKey(error)) }) }
+}
+const repositorySequences = new Map<string, bigint>()
+function onRepositoryShow(event: { data?: { room_id?: string; workspace_id?: string; file?: string; view?: string; sequence?: string } }): void {
+  const room = store.selectedRoom
+  if (!room || room.source || event.data?.room_id !== room.id || !event.data.workspace_id || store.viewerAgentId !== null) return
+  if (!event.data.sequence || !/^\d+$/.test(event.data.sequence)) return
+  const sequence = BigInt(event.data.sequence)
+  if (sequence <= (repositorySequences.get(room.id) ?? 0n)) return
+  repositorySequences.set(room.id, sequence)
+  void openRepository(event.data.workspace_id, event.data.file, event.data.view)
+  void codeService.list(room.id).then(items => { if (store.selectedRoom?.id === room.id) repositories.value = items }).catch(() => undefined)
+}
+watch(() => store.selectedRoom?.id, (roomId, _, onCleanup) => {
+  repositories.value = []
+  let stale = false
+  onCleanup(() => { stale = true })
+  if (roomId && privilegeStore.hasPrivilege('CODE_ACCESS')) void codeService.list(roomId).then(items => { if (!stale) repositories.value = items }).catch(() => undefined)
+})
 async function onDocumentShow(event: { data?: { room_id?: string; document_id?: string } }): Promise<void> {
   const room = store.selectedRoom
   const id = event.data?.document_id
@@ -322,7 +393,10 @@ async function onDocumentShow(event: { data?: { room_id?: string; document_id?: 
   }
 }
 onMounted(() => websocket.onEvent('chat', 'document_show', onDocumentShow))
+onMounted(() => websocket.onEvent('chat', 'repository_show', onRepositoryShow))
 onBeforeUnmount(() => {
+  codeStore.hide()
+  websocket.offEvent('chat', 'repository_show', onRepositoryShow)
   documentDisplayRequest += 1
   websocket.offEvent('chat', 'document_show', onDocumentShow)
 })
@@ -403,9 +477,13 @@ watch([() => store.enabled, () => store.selectedRoom?.id, () => store.rooms, roo
     if (!cancelled) loadingHomeRooms.value = false
   })
 }, { immediate: true })
-watch([() => store.selectedRoom?.id, () => store.viewerAgentId, canReadDocuments], () => {
-  selectedDocument.value = null
+watch([() => store.selectedRoom?.id, () => store.viewerAgentId], () => {
+  selectedWorkTarget.value = null
   documentSearchOpen.value = false
+})
+watch(canReadDocuments, allowed => {
+  if (!allowed && selectedWorkTarget.value?.kind === 'document') selectedDocument.value = null
+  if (!allowed) documentSearchOpen.value = false
 })
 async function report(action:()=>Promise<void>){try{await action()}catch(error){$q.notify({type:'negative',message:apiErrorDetail(error) ?? t('chat.error')})}}
 function reportError(error:unknown){$q.notify({type:'negative',message:apiErrorDetail(error) ?? t('chat.error')})}
@@ -438,7 +516,7 @@ async function sendMessage(text:string,files?:File[],reasoningEffortOverride?:Re
   try {
     const documentId = integratedDocument.value?.id === displayedDocumentId.value
       ? displayedDocumentId.value : null
-    await store.send(text,files,replyingTo.value?.id ?? null,selectedTopicId.value,reasoningEffortOverride ?? null,taskRequested,documentId,locale.value,documentId ? documentPane.value?.captureFocus() ?? null : null)
+    await store.send(text,files,replyingTo.value?.id ?? null,selectedTopicId.value,reasoningEffortOverride ?? null,taskRequested,documentId,locale.value,documentId ? documentPane.value?.captureFocus() ?? null : null, codeStore.active?.loaded && !codeStore.active.error ? selectedCodeId.value : null)
     replyingTo.value=null;selectedTopicId.value=null
   } catch(error) { reportError(error) }
 }

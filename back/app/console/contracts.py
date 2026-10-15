@@ -30,6 +30,22 @@ class SshConnectionConfig(BaseModel):
     known_host_key: str
     connect_timeout_s: float = 10.0
     command_timeout_s: float = 300.0
+    code_runtime_port: int | None = Field(default=None, ge=1, le=65535)
+    code_runtime_token: SecretStr | None = None
+    model_config = ConfigDict(frozen=True)
+
+
+class RepositoryTarget(BaseModel):
+    """Validated Git checkout on a pinned Console target; never sent to browsers."""
+
+    home: str
+    root: str
+    git_paths: tuple[str, ...]
+    generation: str
+    root_identity: str | None = None
+    git_identities: tuple[str, ...] = ()
+    branch: str | None = None
+    head: str | None = None
     model_config = ConfigDict(frozen=True)
 
 

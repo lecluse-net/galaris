@@ -1,5 +1,22 @@
 export default {
   fr: {
+    privilege: { CODE_ACCESS: 'Accéder aux dépôts Git autorisés' },
+    code: {
+      title: 'Dépôt Git', repositories: 'Dépôts Git',
+      openDirectory: 'Ouvrir {title} dans l’éditeur de code',
+      directoryNotRepository: 'Ce dossier doit appartenir à un dépôt Git pour être ouvert dans l’éditeur de code.',
+      hide: 'Masquer l’éditeur',
+      recoveredWindow: 'L’éditeur a redémarré. La fenêtre précédente reste conservée avec ses éventuels brouillons.',
+      previousWindow: 'Fenêtre précédente : copiez vos modifications non enregistrées vers l’éditeur repris.',
+      showPrevious: 'Voir la fenêtre précédente', showRecovered: 'Voir l’éditeur repris',
+      reloadTitle: 'Recharger l’éditeur de récupération',
+      reloadWarning: 'L’éditeur a redémarré une nouvelle fois. Enregistrez ou copiez les modifications de cette fenêtre avant de la recharger. La fenêtre d’origine restera conservée.',
+      reloadConfirm: 'Recharger après sauvegarde',
+      connectionLost: 'Connexion ou accès interrompu. La fenêtre est conservée pour récupérer vos buffers.',
+      retry: 'Réessayer', error: 'Éditeur de code indisponible',
+      runtimeNotConfigured: 'L’éditeur n’est pas configuré pour cette Console externe. Un gestionnaire peut le déployer depuis la connexion Console de l’agent avec « Déployer l’éditeur de code ».',
+      columns: 'Discussion et code côte à côte', rows: 'Discussion et code superposés', resize: 'Redimensionner la discussion et le code',
+    },
     contextHelpPages: {
       "chat": "Le Chat est votre point de dialogue avec les agents. Décrivez le résultat que vous souhaitez obtenir : selon la demande et ses capacités, l’agent peut répondre directement, utiliser des outils ou engager un travail suivi dans les tâches. Il peut aussi échanger avec d’autres agents pour mobiliser leurs compétences. Le panneau de la conversation rassemble les tâches, processus et documents liés à cet échange, afin de suivre les actions derrière la réponse. Pour un contenu à conserver et à retravailler, demandez un document : vous pourrez le faire évoluer avec l’agent tout en poursuivant la discussion."
     },
@@ -352,6 +369,23 @@ export default {
     },
   },
   en: {
+    privilege: { CODE_ACCESS: 'Access authorized Git repositories' },
+    code: {
+      title: 'Git repository', repositories: 'Git repositories',
+      openDirectory: 'Open {title} in the code editor',
+      directoryNotRepository: 'This folder must belong to a Git repository to open in the code editor.',
+      hide: 'Hide editor',
+      recoveredWindow: 'The editor restarted. The previous window is retained with any unsaved drafts.',
+      previousWindow: 'Previous window: copy unsaved changes to the recovered editor.',
+      showPrevious: 'Show previous window', showRecovered: 'Show recovered editor',
+      reloadTitle: 'Reload the recovery editor',
+      reloadWarning: 'The editor restarted again. Save or copy changes from this window before reloading it. The original window will remain retained.',
+      reloadConfirm: 'Reload after saving',
+      connectionLost: 'Connection or access interrupted. The window is retained to recover your buffers.',
+      retry: 'Retry', error: 'Code editor unavailable',
+      runtimeNotConfigured: 'The editor is not configured for this external Console. A connection manager can deploy it using “Deploy code editor” in the agent’s Console connection.',
+      columns: 'Chat and code side by side', rows: 'Chat and code stacked', resize: 'Resize chat and code',
+    },
     contextHelpPages: {
       "chat": "Chat is where you talk with agents. Describe the result you want: depending on the request and its capabilities, an agent can reply directly, use tools or start work tracked as tasks. It can also exchange with other agents to draw on their skills. The conversation panel brings together related tasks, processes and documents so you can follow the actions behind the response. For content to keep and refine, ask for a document: you can develop it with the agent while continuing the discussion."
     },
@@ -702,6 +736,21 @@ export default {
     },
   },
   zh: {
+    privilege: { CODE_ACCESS: '访问获授权的 Git 仓库' },
+    code: {
+      title: 'Git 仓库', repositories: 'Git 仓库', hide: '隐藏编辑器',
+      recoveredWindow: '编辑器已重启。原窗口及其中未保存的草稿仍然保留。',
+      previousWindow: '原窗口：请将未保存的修改复制到恢复后的编辑器。',
+      showPrevious: '查看原窗口', showRecovered: '查看恢复后的编辑器',
+      reloadTitle: '重新加载恢复窗口',
+      reloadWarning: '编辑器再次重启。重新加载前，请保存或复制此窗口中的修改。原始窗口将继续保留。',
+      reloadConfirm: '保存后重新加载',
+      openDirectory: '在代码编辑器中打开 {title}',
+      directoryNotRepository: '此文件夹必须属于 Git 仓库才能在代码编辑器中打开。',
+      connectionLost: '连接或访问权限已中断。窗口将保留，以便恢复未保存的内容。', retry: '重试', error: '代码编辑器不可用',
+      runtimeNotConfigured: '此远程 Console 尚未配置代码编辑器。连接管理员可以在代理的 Console 连接中点击“部署代码编辑器”。',
+      columns: '并排显示讨论和代码', rows: '上下显示讨论和代码', resize: '调整讨论和代码区域大小',
+    },
     contextHelpPages: {
       "chat": "聊天是您与智能体交流的入口。请描述希望获得的结果：根据请求和自身能力，智能体可以直接回答、使用工具，或启动通过任务跟踪的工作。它也可以与其他智能体交流以借助其技能。对话面板汇集相关任务、流程和文档，让您了解回答背后的操作。对于需要保存和反复完善的内容，请要求生成文档；您可以在继续讨论的同时与智能体共同修改它。"
     },

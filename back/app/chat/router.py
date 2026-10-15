@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
+from app.code import workspace_context, human_repository_info, human_directory_repository, CodeRuntimeNotConfiguredError, WorkspaceInfo
 from pydantic import Json
 from starlette.background import BackgroundTask
 
@@ -17,7 +18,7 @@ from core import websocket
 from core.database import get_db
 from core.i18n import current_language, tr
 from core.params import runtime_settings
-from core.user import user_service
+from core.user import user_service, require_web_session
 from app.agent import (
     AgentManagementScope,
     AgentDialogueAssertion,
@@ -776,8 +777,16 @@ async def read_message_previews(
     if message is None or room is None:
         raise _not_found()
     references = _message_preview_references(message)
+    allowed_references: list[str] = []
+    for reference in references:
+        if reference.startswith("galaris://code/"):
+            try:
+                await human_repository_info(UUID(reference.removeprefix("galaris://code/")), user_id)
+            except (PermissionError, FileNotFoundError, ValueError):
+                continue
+        allowed_references.append(reference)
     previews = await preview_references(
-        references,
+        tuple(allowed_references),
         agent_id=room.agent_id,
     )
     previews = await with_deleted_document_previews(references, previews)
@@ -800,6 +809,38 @@ async def read_message_previews(
         ):
             schedule_html_thumbnail(agent_id=room.agent_id, uri=preview.uri)
     return previews
+
+
+@router.post(
+    "/rooms/{room_id}/messages/{message_id}/previews/repository",
+    response_model=WorkspaceInfo,
+    dependencies=[Depends(require_web_session)],
+)
+@authorize(privileges="CODE_ACCESS", assertion=ChatRoomAccessAssertion)
+async def open_message_directory_repository(
+    room_id: UUID,
+    message_id: UUID,
+    uri: str = Query(max_length=4096),
+) -> WorkspaceInfo:
+    user_id = await _user_id()
+    message = await get_chat_message(user_id, room_id, message_id)
+    room = await get_chat_room(user_id, room_id)
+    if message is None or room is None or uri not in _message_preview_references(message):
+        raise _not_found()
+    preview = await preview_reference(uri, agent_id=room.agent_id)
+    if (preview is None or not uri.startswith("console://")
+            or preview.metadata.get("is_collection") is not True):
+        raise _not_found()
+    try:
+        return await human_directory_repository(uri, room.agent_id, user_id, room_id)
+    except (PermissionError, FileNotFoundError):
+        raise HTTPException(403, "Repository unavailable") from None
+    except CodeRuntimeNotConfiguredError:
+        raise HTTPException(503, "code_runtime_not_configured") from None
+    except ValueError:
+        raise HTTPException(422, "code_directory_not_repository") from None
+    except (RuntimeError, OSError):
+        raise HTTPException(503, "Code editor unavailable") from None
 
 
 @router.get(
@@ -867,6 +908,11 @@ async def read_message_preview_content(
     agent_id: int | None = Query(default=None, ge=1),
 ) -> FileResponse:
     user_id = await _user_id()
+    if uri.startswith("galaris://code/"):
+        try:
+            await human_repository_info(UUID(uri.removeprefix("galaris://code/")), user_id)
+        except (PermissionError, FileNotFoundError, ValueError):
+            raise _not_found() from None
     message = await get_chat_message(
         user_id,
         room_id,
@@ -1072,6 +1118,10 @@ async def create_message(room_id: UUID, data: MessageCreate) -> NativeMessengerM
     _require_enabled()
     await _validate_topic(data.topic_id)
     try:
+        if data.displayed_document_id is not None and data.displayed_repository_id is not None:
+            raise PermissionError("Only one displayed work context is allowed")
+        repository_context = (await workspace_context(data.displayed_repository_id, await _user_id(), room_id)
+                              if data.displayed_repository_id is not None else None)
         result = await publish_internal_message(
             user_id=await _user_id(),
             room_id=room_id,
@@ -1082,6 +1132,7 @@ async def create_message(room_id: UUID, data: MessageCreate) -> NativeMessengerM
             reasoning_effort_override=data.reasoning_effort_override,
             task_requested=data.task_requested,
             displayed_document_id=data.displayed_document_id,
+            repository_context=repository_context,
             document_focus=data.document_focus,
             language=data.language or await current_language(),
         )
@@ -1157,6 +1208,7 @@ async def create_attachment_message(
     reasoning_effort_override: ReasoningEffort | None = Form(default=None),
     task_requested: bool = Form(default=False),
     displayed_document_id: UUID | None = Form(default=None),
+    displayed_repository_id: UUID | None = Form(default=None),
     language: str = Form(default="", max_length=10),
     document_focus: Annotated[Json[DocumentFocus] | None, Form()] = None,
 ) -> NativeMessengerMessage:
@@ -1165,6 +1217,13 @@ async def create_attachment_message(
     room = await get_internal_room(await _user_id(), room_id)
     if room is None or not room.agent_active:
         raise _not_found()
+    if displayed_document_id is not None and displayed_repository_id is not None:
+        raise HTTPException(422, "Only one displayed work resource is allowed")
+    try:
+        repository_context = (await workspace_context(displayed_repository_id, await _user_id(), room_id)
+                              if displayed_repository_id is not None else None)
+    except (PermissionError, FileNotFoundError, ValueError):
+        raise HTTPException(403, "Displayed repository unavailable") from None
     observations: list[ObservedMessengerFile] = []
     stored_file_ids: list[UUID] = []
     try:
@@ -1202,6 +1261,7 @@ async def create_attachment_message(
             reasoning_effort_override=reasoning_effort_override,
             task_requested=task_requested,
             displayed_document_id=displayed_document_id,
+            repository_context=repository_context,
             document_focus=document_focus,
             language=language or await current_language(),
         )

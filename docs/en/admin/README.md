@@ -2,6 +2,9 @@
 
 # Administrator Guide
 
+The [conversational code editor](code-editor.md) guide covers origins, permissions and
+prepared external Consoles for Git review and editing.
+
 This guide covers the deployment, configuration, and operation of Galaris. Commands are run from the repository root.
 
 For a first installation, follow the [installation guide](installation.md):

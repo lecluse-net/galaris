@@ -179,6 +179,17 @@ export default defineConfig({
             clientPort: 443,
         },
         proxy: {
+            '/api/code/gateway/': {
+                target: backendUrl,
+                changeOrigin: false,
+                ws: true,
+                configure(proxy) {
+                    // IDE authorization uses its scoped cookie, never the SPA bearer.
+                    const stripAuthorization = (request: import('node:http').ClientRequest) => request.removeHeader('authorization')
+                    proxy.on('proxyReq', stripAuthorization)
+                    proxy.on('proxyReqWs', stripAuthorization)
+                },
+            },
             '/socket.io': {
                 target: backendUrl,
                 changeOrigin: true,

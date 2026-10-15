@@ -4,6 +4,10 @@ Revue du **8 octobre 2026**, par comparaison des sources, contrats, tests et dé
 Elle prend en compte le worktree courant ; elle ne rejoue pas les campagnes et ne prouve
 ni qualification globale ni déploiement.
 
+Finalisation ciblée du **15 octobre 2026** : intégration de l'éditeur stable, reprise des
+sessions et maintenance des profils. Le plan correspondant conserve les seules extensions
+facultatives ; l'aperçu Markdown Firefox est une limite acceptée du périmètre livré localement.
+
 Ce répertoire conserve les écarts concrets, conceptions et expériences encore ouverts.
 Les contrats réalisés appartiennent aux [décisions](../decisions/README.md),
 aux tests et à la [documentation](../../docs/fr/README.md).
@@ -22,6 +26,7 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
 | Plan | Statut | Reste à faire |
 |---|---|---|
+| [editeur-code-conversationnel.md](editeur-code-conversationnel.md) | `partial` | Intégration stable réalisée (0173), reprise autorisée sans remplacement du buffer et archivage/restauration des profils. Résultats globaux par snapshot dans `artifacts/validation/`. Limite d'aperçu Firefox acceptée. Seules la synchronisation du thème, le terminal complet et l'identité humaine distincte restent facultatifs. |
 | [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `partial` | Transcriptions et analyses acquises vers les souvenirs, reçus tardifs et provenance réalisés (0169). Restent analyses partielles/Tasks descendantes, index PJ précis, pertinence/utilité aval sur corpus élargi, observation et réaffectation des Topics. Qualifications particulières du catalogue File Share regroupées ici. |
 | [analyse-documentaire-unifiee.md](analyse-documentaire-unifiee.md) | `partial` | XLS structurel, formats non couverts, isolation réseau, contrôles sémantiques et qualification répétée des grandes sources. |
 | [graphe-memoire-multiechelle.md](graphe-memoire-multiechelle.md) | `partial` | Graphe exclusivement 3D (0168), répertoires connus dès l'ouverture, fichiers paginés à l'approche, représentants des éléments masqués et actualisation sans perte de cadrage. Les états incompatibles reconstruisent le placement. Générations serveur, occurrences de fichiers, carte régionale préparée et qualification très grands volumes restent planifiées. |
@@ -36,7 +41,6 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
 | Plan | Statut | Portée |
 |---|---|---|
-| [editeur-code-conversationnel.md](editeur-code-conversationnel.md) | `design` | code-server dans le panneau documentaire du Chat, même dépôt/worktree et fonctionnement standard de VS Code ; Git humain avec la configuration et les clés SSH existantes de l'agent, présentation pendant les Tasks. Consoles interne et externe requises ; identité humaine séparée et environnement terminal complet facultatifs. Sessions, droits et consultation protégée à qualifier. |
 | [processus-metier-internes-bpmn.md](processus-metier-internes-bpmn.md) | `design` | BPMN interne : Tasks/prompts, IF/FOR/WHILE, parallélisme selon graphe/harnais, erreurs, imbrication et reprise ; aucun budget v1. Lancement du contenu courant sans choix de version, historique/restauration, WYSIWYG/débogueur, métriques, Dataset/PJ, partage Document et audit MCP ; accès humains/lecture seule/orphelins administrés, Tools/Connections/REST, coexistence n8n ; Lab progressif et mocks en seconde phase. |
 | [programmes-documentaires-json.md](programmes-documentaires-json.md) | `design` | Programmes dans les Documents, `document_exec` avec nom personnel et entrée/sortie JSON, dernier contenu sauvegardé au démarrage, moteur isolé, suivi Process et amélioration autonome. |
 | [ordonnancement-llm-par-fournisseur.md](ordonnancement-llm-par-fournisseur.md) | `design` | Provenance exhaustive, limite par connexion, priorités par type avec audio réservé, admission/annulation, activité et reprise. |

@@ -1,11 +1,22 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, exists, true
+from sqlalchemy.sql.elements import ColumnElement
 from loguru import logger
 
 from core.user.models import User
 from .models import Assignment, Privilege, RolePrivilege
 from .cache import cached_privileges
 from .context import role_id_ctx
+
+
+def privilege_clause(user_id: int, code: str) -> ColumnElement[bool]:
+    """SQL counterpart of the active-role privilege check for resource filters."""
+    statement = select(Privilege.id).join(RolePrivilege).join(
+        Assignment, Assignment.role_id == RolePrivilege.role_id,
+    ).join(User, User.id == Assignment.user_id).where(User.is_active.is_(True),
+        Assignment.user_id == user_id, Assignment.deleted_at.is_(None), Privilege.code == code)
+    role = role_id_ctx.get()
+    return exists(statement.where(Assignment.role_id == role if role is not None else true()).correlate(None))
 
 
 async def check_privilege(

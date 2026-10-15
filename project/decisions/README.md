@@ -20,6 +20,8 @@
 
 - [0175 — Même route Messenger pour l'autorisation et l'envoi](0175-messenger-route-authorization.md)
 
+- [0173 — Espaces Git conversationnels et runtime code-server isolé](0173-conversational-code-workspaces.md)
+
 - [0172 — Clôtures demandées après un échec](0172-requested-closing-actions-after-failure.md)
 
 - [0171 — Organisation adaptée au travail demandé](0171-adaptive-task-organization.md)

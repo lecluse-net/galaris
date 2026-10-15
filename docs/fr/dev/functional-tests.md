@@ -11,6 +11,48 @@ Pour une évolution, préciser la garantie changée et celles à préserver, lir
 et tests, puis choisir la couche la moins coûteuse qui prouve l’effet. Conserver un test utile
 est une décision à part entière : aucun quota de tests nouveaux par module.
 
+## Dépôts Git dans la discussion
+
+`back/app/code/tests/test_workspaces.py` vérifie les grants exacts, la déduplication,
+les tickets expirés, la révocation et le refus de changer de cible avec PostgreSQL réel.
+Le déploiement Console couvre les droits de gestion, la vérification du tunnel avant publication
+des paramètres chiffrés, les changements de droits pendant l’installation et la conservation
+des URI des seuls checkouts inchangés. Une session ouverte empêche de changer son runtime.
+`front/browser-tests/console-recovery.spec.mjs` protège le déploiement direct sans test SSH
+préalable dans la fenêtre, les blocages globaux explicitement expliqués au clic, le retry,
+les réponses tardives et la sauvegarde qui conserve le credential sans le renvoyer au navigateur.
+Le parcours avec `ConnectionList` et son formulaire réel vérifie que Tester et Déployer
+conservent l’activation enregistrée, même après modification non enregistrée, annulation et
+réouverture, pour une Console active comme pour une Console volontairement inactive.
+Le panneau vérifie aussi les changements de thème Galaris sans API de synchronisation IDE,
+les réponses retardées et la navigation explicite sans remplacer un buffer. La qualification
+native exerce le diff d’un fichier et les vues de changements indexés/non indexés.
+La mise à jour explicite refuse les sessions actives et conserve le port et le credential.
+`code-executor/tests/test_deployment.py` vérifie l’orchestration avec une frontière Docker
+simulée ; les suites natives ci-dessous vérifient séparément code-server réel et ses montages.
+`front/browser-tests/chat-code-workspace.spec.mjs` exerce les composants du panneau partagé,
+la conservation de l’iframe non enregistrée et l’isolation des séquences/rooms ; son contenu
+IDE est une fixture explicite. La suite documentaire existante protège ses propres parcours.
+`make tests-code` utilise Bubblewrap, un Git réel et une forge SSH synthétique pour les
+montages, les worktrees, l’identité partagée, pull/push et un rebase en conflit.
+`make tests-code-browser` utilise code-server réel pour les changements externes et le
+conflit de sauvegarde natif, puis le transport Console réel vers une cible SSH préparée.
+Les archives de profils sont restaurées avec leurs brouillons ; une sauvegarde échouée,
+une maintenance concurrente ou une archive dangereuse laisse les données protégées.
+Elle exerce également le lancement à ticket, le cookie scoped, les workers, WebSockets
+et la sauvegarde sur l'origine unique, derrière les proxies Nginx et Vite réels,
+à travers la passerelle Galaris avec PostgreSQL réel, dans Chromium,
+Firefox et WebKit, y compris l'expiration suivie d'une reprise du cookie et des WebSockets
+sans remplacement du buffer. L'arrêt réel du processus IDE vérifie la sauvegarde dans
+une fenêtre de récupération avec l'ancien brouillon toujours accessible. Le panneau
+vérifie aussi l'annulation par backdrop et la confirmation avant un second remplacement.
+Les droits retirés et les cibles modifiées restent refusés.
+L'aperçu Markdown Firefox est une limitation acceptée, surveillée par un scénario distinct
+en échec attendu ; les scénarios d'édition restent entièrement bloquants. Les mesures agrégées d'ouverture,
+d'actualisation, de mémoire et de CPU sont jointes aux résultats du runtime synthétique.
+Les résultats de ces dernières qualifications sont des artefacts d’exécution ; leur
+présence au catalogue ne remplace pas une exécution réussie.
+
 ## Médias et preuves acquises
 
 La révocation et la suppression différée des flux audio sont couvertes par

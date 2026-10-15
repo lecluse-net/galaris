@@ -1,0 +1,7 @@
+{
+  "name": "galaris-repository", "displayName": "Galaris Repository", "publisher": "galaris",
+  "version": "0.2.0", "engines": { "vscode": "^1.141.0" }, "main": "extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "capabilities": { "untrustedWorkspaces": { "supported": true } },
+  "license": "CECILL-2.1"
+}

@@ -30,6 +30,7 @@ from .contracts import (
 from .controller import register_controller
 from .management_service import delete_round
 from .contracts import ConversationControlAction, ConversationControlConflict, ConversationControlResult
+from .repository_display import register_repository_display_publisher
 from .preparation import ConversationSuperseded, ConversationSuspended, run_preparation
 from .document_display import (
     can_display_conversation_document,
@@ -82,6 +83,7 @@ from .service import linked_work_snapshot, control_round
 __all__ = [
     "delete_round",
     "control_round", "ConversationControlAction", "ConversationControlConflict", "ConversationControlResult",
+    "register_repository_display_publisher",
     "ConversationSuperseded",
     "ConversationSuspended",
     "run_preparation",

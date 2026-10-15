@@ -1,0 +1,114 @@
+# Only synthetic data and keys. No ports, existing volumes or production networks.
+services:
+  fixture:
+    build: { context: "${CODE_TEST_SOURCE_DIR:-.}/code-executor", target: qualification }
+    command: [python3, /opt/galaris-code/tests/browser_fixture.py]
+    environment: { PYTHONPATH: /opt/galaris-code }
+    volumes: ["${CODE_TEST_SOURCE_DIR:-.}/code-executor/tests:/opt/galaris-code/tests:ro"]
+    security_opt: ["seccomp=unconfined", "apparmor=unconfined", "systempaths=unconfined"]
+    cap_add: [SYS_ADMIN, NET_ADMIN]
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8766/test/status')"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  runner:
+    build: "${CODE_TEST_SOURCE_DIR:-.}/e2e"
+    init: true
+    network_mode: service:fixture
+    volumes:
+      - ${CODE_TEST_SOURCE_DIR:-.}/code-executor/tests:/tests/code:ro
+      - ${CODE_TEST_ARTIFACT_DIR:-./artifacts/code-runtime}:/artifacts
+    command: [npx, playwright, test, --config, code/playwright.config.mjs]
+  transport:
+    &backend-qualification
+    build:
+      context: ${CODE_TEST_SOURCE_DIR:-.}/back
+      target: builder
+      additional_contexts:
+        harness_manager: ${CODE_TEST_SOURCE_DIR:-.}/harness_manager
+        code_executor: ${CODE_TEST_SOURCE_DIR:-.}/code-executor
+        product_docs: ${CODE_TEST_SOURCE_DIR:-.}/docs
+        project_docs: ${CODE_TEST_SOURCE_DIR:-.}/project
+    environment:
+      APP_ENV: test
+      AUTH_SECRET_KEY: synthetic-code-auth-secret-00000001
+      ENCRYPTION_MASTER_KEY: synthetic-code-encryption-key-0001
+      BROWSER_EXECUTOR_TOKEN: synthetic-code-browser-token-0001
+      PYTHONPATH: /repo/back
+      LOGFIRE_SEND_TO_LOGFIRE: "false"
+    volumes:
+      - ${CODE_TEST_SOURCE_DIR:-.}/back:/repo/back:ro
+      - ${CODE_TEST_SOURCE_DIR:-.}/code-executor/tests:/qualification:ro
+    command: [python, /qualification/external_console.py]
+  db:
+    image: pgvector/pgvector:pg17
+    environment: { POSTGRES_USER: synthetic, POSTGRES_PASSWORD: synthetic, POSTGRES_DB: synthetic }
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U synthetic -d synthetic]
+      interval: 2s
+      retries: 30
+  gateway:
+    <<: *backend-qualification
+    environment:
+      APP_ENV: dev
+      APP_HOST: http://localhost:8484
+      AUTH_SECRET_KEY: synthetic-code-auth-secret-00000001
+      ENCRYPTION_MASTER_KEY: synthetic-code-encryption-key-0001
+      BROWSER_EXECUTOR_TOKEN: synthetic-code-browser-token-0001
+      PYTHONPATH: /repo/back
+      LOGFIRE_SEND_TO_LOGFIRE: "false"
+      POSTGRES_USER: synthetic
+      POSTGRES_PASSWORD: synthetic
+      POSTGRES_HOST: db
+      POSTGRES_DB: synthetic
+    depends_on:
+      db: { condition: service_healthy }
+      fixture: { condition: service_healthy }
+    command: [bash, -ec, "python -m core.dbadmin synchronize --mode test >/tmp/code-dbadmin.log; exec python /qualification/gateway_fixture.py"]
+    networks:
+      default:
+        aliases: [code-qualification-back]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/code/qualification/status')"]
+      interval: 2s
+      timeout: 3s
+      retries: 90
+  proxy:
+    image: nginx:stable-alpine@sha256:dc5069ad14f19660b141b21236140b91656bf89bbc3e2417c70ae650cd66104c
+    environment: { APP_NAME: code-qualification }
+    volumes:
+      - ${CODE_TEST_SOURCE_DIR:-.}/front/nginx.conf:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      gateway: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8484/api/code/qualification/status]
+      interval: 2s
+      retries: 30
+  dev-proxy:
+    build:
+      context: ${CODE_TEST_SOURCE_DIR:-.}/front
+      target: dev-stage
+      args: { VITE_APP_ENV: dev, VITE_APP_NAME: code-qualification }
+    volumes:
+      - ${CODE_TEST_SOURCE_DIR:-.}/front:/app
+      - /app/node_modules
+    depends_on:
+      gateway: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8484/api/code/qualification/status]
+      interval: 2s
+      retries: 30
+  gateway-runner:
+    extends: runner
+    network_mode: service:proxy
+    environment: { CODE_TEST_PROXY: nginx }
+    command: [npx, playwright, test, --config, code/gateway-playwright.config.mjs]
+  dev-gateway-runner:
+    extends: runner
+    network_mode: service:dev-proxy
+    environment: { CODE_TEST_PROXY: vite }
+    command: [npx, playwright, test, --config, code/gateway-playwright.config.mjs]
+networks:
+  default: { internal: true }

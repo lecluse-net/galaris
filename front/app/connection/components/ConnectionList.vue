@@ -562,10 +562,9 @@ async function persistForAction(payload: ConnectionPersistencePayload): Promise<
   }
 
   try {
-    const inactiveData = { ...payload.data, active: false }
     const connection = payload.id
-      ? await connectionStore.updateConnection(payload.id, inactiveData)
-      : await connectionStore.createConnection(inactiveData)
+      ? await connectionStore.updateConnection(payload.id, payload.data)
+      : await connectionStore.createConnection(payload.data)
 
     if (Object.keys(payload.params).length > 0) {
       await connectionStore.createOrUpdateParamsBulk(connection.id, payload.params)

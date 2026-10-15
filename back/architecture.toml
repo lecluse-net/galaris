@@ -101,12 +101,12 @@ allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.
 max_domain_fan_out = 8
 
 [module."app.chat"]
-allowed_dependencies = ["app.agent", "app.browser", "app.conversation", "app.messenger", "app.topic", "app.voice"]
-max_domain_fan_out = 6
+allowed_dependencies = ["app.agent", "app.browser", "app.code", "app.conversation", "app.messenger", "app.topic", "app.voice"]
+max_domain_fan_out = 7
 
 [module."app.conversation"]
-allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.llm", "app.messenger", "app.process", "app.task", "app.tools"]
-max_domain_fan_out = 8
+allowed_dependencies = ["app.agent", "app.code", "app.connection", "app.file_share", "app.llm", "app.messenger", "app.process", "app.task", "app.tools"]
+max_domain_fan_out = 9
 
 [module."app.browser"]
 allowed_dependencies = ["app.connection", "app.file_share", "app.messenger", "app.tools"]
@@ -134,6 +134,14 @@ max_domain_fan_out = 14
 
 [module."app.console"]
 allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.tools"]
+max_domain_fan_out = 4
+
+[module."app.code"]
+allowed_dependencies = []
+max_domain_fan_out = 0
+
+[module."bridge.code_server"]
+allowed_dependencies = ["app.agent", "app.code", "app.console", "app.file_share"]
 max_domain_fan_out = 4
 
 [module."app.process"]

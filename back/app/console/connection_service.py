@@ -63,6 +63,8 @@ async def _config_from_connection(connection: Connection) -> SshConnectionConfig
                 else None
             ),
             known_host_key=_required(params, "known_host_key"),
+            code_runtime_port=(int(str(params["code_runtime_port"])) if params.get("code_runtime_port") else None),
+            code_runtime_token=(SecretStr(str(params["code_runtime_token"])) if params.get("code_runtime_token") else None),
             connect_timeout_s=_bounded_number(
                 params, "connect_timeout_s", 10, 1, 120
             ),
@@ -84,6 +86,14 @@ async def resolve_connection(connection_id: int) -> SshConnectionConfig:
     connection = await connection_service.get_connection(connection_id)
     if connection is None:
         raise ValueError(f"Connection {connection_id} not found")
+    return await _config_from_connection(connection)
+
+
+async def resolve_active_connection(connection_id: int) -> SshConnectionConfig:
+    """IDE access requires an active target; provisioning may resolve inactive ones."""
+    connection = await connection_service.get_connection(connection_id)
+    if connection is None or not connection.active:
+        raise ValueError("Console unavailable")
     return await _config_from_connection(connection)
 
 

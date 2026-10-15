@@ -51,6 +51,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from bridge.mail import retry_approval_notifications
         from app.task import register_runtime_settings, scheduler as task_scheduler
         from app.chat import reconcile_storage, register_scheduler_jobs as register_chat_jobs
+        from app.code import reconcile_sessions as reconcile_code_sessions
         from app.incident import prune_traces as prune_incident_traces
         from app.llm import prune_traces as prune_llm_traces
         from core.user.refresh_session_service import purge_expired_sessions
@@ -85,6 +86,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from app.multimedia import generation_tick
         task_scheduler.register_periodic_job("multimedia-generations", generation_tick, interval=1.0, timeout=720.0)
         register_chat_jobs(task_scheduler.register_periodic_job)
+        task_scheduler.register_periodic_job("code-sessions", reconcile_code_sessions, interval=10.0, timeout=90.0)
         task_scheduler.register_periodic_job(
             "mail-approval-notifications", retry_approval_notifications, interval=30.0, timeout=450.0,
         )

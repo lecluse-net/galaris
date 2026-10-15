@@ -85,6 +85,7 @@ def test_every_route_has_the_expected_privilege_and_resource_assertion() -> None
         "read_message_speech": (ACCESS, ChatRoomAccessAssertion),
         "update_message_topic": ("TOPIC_EDIT", ChatRoomAccessAssertion),
         "read_message_previews": (ACCESS, ChatRoomAccessAssertion),
+        "open_message_directory_repository": ("CODE_ACCESS", ChatRoomAccessAssertion),
         "read_message_preview_image": (ACCESS, ChatRoomAccessAssertion),
         "read_message_preview_content": (ACCESS, ChatRoomAccessAssertion),
         "create_standalone_html_preview": (ACCESS, None),
@@ -188,6 +189,38 @@ async def test_room_document_creation_uses_the_room_agent_and_returns_reference(
     assert result.id == document_id
     assert result.uri == f"document://{document_id}"
     assert result.updated_at == created_at
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("case,status", [("valid", None), ("missing", 404), ("unreferenced", 404), ("file", 404), ("denied", 403), ("not_git", 422)])
+async def test_directory_editor_open_requires_a_referenced_directory_and_preserves_repository_access(monkeypatch, case, status):
+    from app.code import WorkspaceInfo
+    room_id, message_id = uuid4(), uuid4()
+    uri = "console://synthetic-project/"
+    monkeypatch.setattr(router_module, "_user_id", AsyncMock(return_value=17))
+    monkeypatch.setattr(router_module, "get_chat_room", AsyncMock(return_value=Mock(agent_id=9)))
+    monkeypatch.setattr(router_module, "get_chat_message", AsyncMock(return_value=None if case == "missing" else
+        Mock(text="No directory reference" if case == "unreferenced" else uri, direction="outbound")))
+    monkeypatch.setattr(router_module, "preview_reference", AsyncMock(return_value=MessageResourcePreview(
+        uri=uri, kind="file", title="Synthetic project", metadata={"is_collection": case != "file"},
+    )))
+    result = WorkspaceInfo(id=uuid4(), uri="galaris://code/synthetic", label="Synthetic project",
+                           mode="edit", branch="main", head=None)
+    resolve = AsyncMock(return_value=result)
+    if case == "denied":
+        resolve.side_effect = PermissionError("Synthetic denial")
+    if case == "not_git":
+        resolve.side_effect = ValueError("Synthetic non-Git directory")
+    monkeypatch.setattr(router_module, "human_directory_repository", resolve)
+    if status is None:
+        assert await router_module.open_message_directory_repository(room_id, message_id, uri) == result
+        resolve.assert_awaited_once_with(uri, 9, 17, room_id)
+    else:
+        with pytest.raises(HTTPException) as exc:
+            await router_module.open_message_directory_repository(room_id, message_id, uri)
+        assert exc.value.status_code == status
+        if status == 404:
+            resolve.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -585,6 +618,7 @@ async def test_attachment_message_publishes_all_uploaded_files_together(
         None,
         True,
         displayed_document_id,
+        None,
         "fr",
         focus,
     )
@@ -639,6 +673,7 @@ async def test_attachment_message_discards_files_when_a_later_upload_fails(
             None,
             None,
             None,
+            displayed_repository_id=None,
         )
 
     assert raised.value.status_code == 422
@@ -675,6 +710,7 @@ async def test_attachment_message_reports_oversized_upload_as_413(
             None,
             None,
             None,
+            displayed_repository_id=None,
         )
 
     assert raised.value.status_code == 413

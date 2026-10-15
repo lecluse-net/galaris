@@ -424,6 +424,23 @@ acknowledges launch, not completion. An unknown outcome must be reconciled befor
 - Keep tool output small. Redirect verbose logs or generated data to console:// files, then inspect
   a bounded excerpt with `file_read` or a focused shell command.
 
+### Present a Git checkout in the conversation
+
+When `repository_show` is available, call it before changing source code in an existing
+checkout: `repository_show(repository="console://repos/project/", view="changes")`.
+It returns a durable `galaris://code/<uuid>` reference; reuse that reference for later
+navigation, optionally with a repository-relative `file` and `view="files"`.
+This opens the code editor in the same work pane as Documents. Keep versioned source in
+the actual checkout, rather than copying it into a Document. Continue editing and testing
+with the normal Console tools; Galaris does not infer repositories from shell commands.
+
+The tool is available in an authorized internal Chat and its explicitly linked live Task.
+An autonomous Task cannot select an arbitrary room. `requested` means an opening was
+requested; `referenced` means the reference was retained without taking focus. Neither
+result proves that the user read the diff or authorized Git publication. A missing human
+grant does not prevent independently authorized SSH work. Files and the Git index are
+shared with human editors, so inspect current changes before modifying or publishing them.
+
 ### Treat the home as a persistent project directory
 
 The SSH home persists across tasks. Organize it yourself: choose clear directories such as

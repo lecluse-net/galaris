@@ -11,6 +11,7 @@ from app.conversation import (
     register_activity_listener,
     register_runtime_listener,
     register_document_display_publisher,
+    register_repository_display_publisher,
 )
 from app.messenger import (
     Interaction,
@@ -51,6 +52,11 @@ async def _publish_document_display(room_id: UUID, document_id: UUID) -> None:
         {"room_id": str(room_id), "document_id": str(document_id)},
         room=ChatRoom(room_id),
     )
+
+
+async def _publish_repository_display(room_id: UUID, workspace_id: UUID, file: str | None, view: str, sequence: str) -> None:
+    await websocket.emit("chat", "repository_show", {"room_id": str(room_id),
+        "workspace_id": str(workspace_id), "file": file, "view": view, "sequence": sequence}, room=ChatRoom(room_id))
 
 
 async def _publish(message: Message) -> None:
@@ -139,6 +145,7 @@ async def _publish_voice_transcription(event: VoiceTranscriptionEvent) -> None:
 
 
 def register_events() -> None:
+    register_repository_display_publisher(_publish_repository_display)
     register_document_display_publisher(_publish_document_display)
     message_journaled.connect(_publish)
     interaction_changed.connect(_publish_interaction, required=False)

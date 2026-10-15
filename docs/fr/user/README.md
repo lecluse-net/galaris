@@ -17,6 +17,8 @@ Pour commencer par une vue d’ensemble, consultez le
 
 Pour organiser les accès aux agents, consultez [Équipes et autorisations de dialogue](teams.md).
 
+Pour suivre et coéditer le code des agents, consultez [Dépôts Git dans une discussion](code-editor.md).
+
 ## Galaris, simplement
 
 Un agent Galaris est un collaborateur logiciel avec :

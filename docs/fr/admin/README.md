@@ -2,6 +2,9 @@
 
 # Guide administrateur
 
+L’[éditeur de code conversationnel](code-editor.md) décrit les origines, les accès et la
+préparation des Consoles externes pour la revue et l’édition Git.
+
 Ce guide couvre le déploiement, la configuration et l’exploitation de Galaris. Les
 commandes partent de la racine du dépôt.
 

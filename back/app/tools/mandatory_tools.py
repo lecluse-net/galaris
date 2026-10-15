@@ -173,7 +173,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         label="Conversation",
         description=DESCRIPTIONS["conversation"],
         mcp_tools=(
-            "document_show", "conversation_task_submit", "conversation_task_list",
+            "document_show", "repository_show", "conversation_task_submit", "conversation_task_list",
             "conversation_task_status", "conversation_task_pause", "conversation_task_resume",
             "conversation_task_retry", "conversation_task_stop", "conversation_choice_resolve",
             "conversation_process_start",
@@ -505,6 +505,10 @@ def _messenger_connection_params(
 
 def _console_connection_params() -> dict[str, dict[str, Any]]:
     return {
+        "code_runtime_port": _param("integer", required=False,
+            description="Prepared external IDE broker loopback port (SSH PermitOpen required)"),
+        "code_runtime_token": _param("password", required=False,
+            description="Prepared external IDE broker credential; never sent to the browser"),
         "host": _param(description="SSH server DNS name or IP address"),
         "port": _param("integer", default="22", description="SSH server port"),
         "username": _param(description="Dedicated Unix user"),

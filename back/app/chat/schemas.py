@@ -92,6 +92,7 @@ class MessageCreate(BaseModel):
     reasoning_effort_override: ReasoningEffort | None = None
     task_requested: bool = False
     displayed_document_id: UUID | None = None
+    displayed_repository_id: UUID | None = None
     document_focus: DocumentFocus | None = None
 
 

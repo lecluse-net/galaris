@@ -26,7 +26,7 @@ from .decorators import authorize, independent_auth, public
 from .authorize_service import AuthorizeService
 from .privilege_service import PrivilegeService
 from .update_admin_role import update_admin_role
-from .logic import check_privilege
+from .logic import check_privilege, privilege_clause
 from .admin_guard import AdministratorConflictError, preserve_administrator
 
 # Providers
@@ -68,6 +68,7 @@ __all__ = [
     "PrivilegeService",
     "update_admin_role",
     "check_privilege",
+    "privilege_clause",
     "GuardProvider",
     "GuardConfig",
     "global_authorization_guard",

@@ -139,6 +139,8 @@
               :can-read-documents="canReadDocuments"
               :can-edit-documents="canEditDocuments"
               @open-document="emit('openDocument', $event)"
+              @open-repository="emit('openRepository', $event)"
+              @open-directory="(uri, messageId) => emit('openDirectory', uri, messageId)"
             />
             <div v-for="file in entry.message?.files ?? []" :key="file.id" class="attachment q-mt-xs">
               <button
@@ -349,6 +351,8 @@ const props = withDefaults(defineProps<{ roomId: string; messages: MessengerMess
 const emit = defineEmits<{
   reply: [message: MessengerMessage]
   openDocument: [document: Pick<ConversationDocumentReference, 'id' | 'label'>]
+  openRepository: [id: string]
+  openDirectory: [uri: string, messageId: string]
   topicChanged: [change: MessageTopicChange]
   blockRendered: []
   layoutChanged: []

@@ -31,6 +31,7 @@ services:
         volumes:
             - ./back:/app
             - ./harness_manager:/opt/galaris-harness-manager:ro
+            - ./code-executor:/opt/galaris-code-deployment:ro
             - ./docs:/opt/galaris-documentation/docs:ro
             - ./project/decisions:/opt/galaris-documentation/project/decisions:ro
             - ./project/plans:/opt/galaris-documentation/project/plans:ro

@@ -1,13 +1,34 @@
 # Éditeur de code Git dans les discussions
 
-- Statut : `design`
+Amendement du 2026-10-14 : le panneau Galaris conserve le titre, la disposition et le
+masquage. Les commandes Fichiers/diffs Git, les badges branche/mode, le partage et la
+suppression manuelle de session ainsi que leurs mécanismes dédiés sont retirés. Les
+opérations se font dans VS Code ; la présentation explicite d’un fichier par l’agent
+reste possible. **Dépôts Git** se place sous **Documents**. Cet amendement remplace les
+exigences correspondantes du plan initial, sans changer son statut. Les scénarios de
+suppression manuelle sont retirés ; la conservation des brouillons est couverte par les
+transitions document/dépôt et masquage/réouverture, et le nettoyage automatique par les
+tests de leases/réconciliation de `app.code`. Voir la [décision 0173](../decisions/0173-conversational-code-workspaces.md).
+
+Le premier jet stable reporte aussi la synchronisation du thème et des préférences
+personnelles. Le thème reste géré dans VS Code ; les appels et interfaces expérimentaux
+de synchronisation sont retirés. Les comportements existants d’ouverture, de masquage,
+de réouverture et de conservation des brouillons restent inchangés.
+
+- Statut : `partial` — intégration stable réalisée ; ce plan conserve seulement les
+  extensions facultatives (thème, terminal complet, identité humaine distincte).
 - Date : 2026-10-11.
 - Demande : suivre les changements des agents développeurs avant commit et push, et
   afficher leur dépôt dans le panneau utilisé par les documents de la discussion.
   L'humain doit aussi pouvoir modifier le code, coéditer avec les agents et gérer
   lui-même Git : branches, commits, pull, push, rebase et autres commandes.
 - Candidat retenu pour le prototype : code-server, service autonome fondé sur VS Code OSS.
-- Ce plan décrit une cible ; aucun éditeur, droit ou outil supplémentaire n'est encore livré.
+- Implémentation réalisée le 2026-10-11 ; recettes ciblées acquises, résultats globaux
+  consignés par snapshot dans `artifacts/validation/`. L'aperçu Markdown Firefox conserve
+  une limite upstream documentée.
+- Complément du 2026-10-13 : déploiement explicite du runtime externe depuis la connexion
+  Console de chaque agent, par SFTP, avec vérification et configuration de l’accès ;
+  Docker/Compose, les namespaces Linux et le forwarding SSH restent des prérequis.
 
 ## Résultat recherché
 
@@ -59,16 +80,19 @@ leur qualification constitue un lot distinct, sans présumer que toute cible SSH
 | `back/app/tools`, `app.connection`, `app.file_share` | Réutiliser droits d'outils, secrets chiffrés, provenance de connexion et URI de fichiers ; ne pas créer un second transport générique de fichiers. |
 | `front/nginx.conf` | CSP et intégration des frames doivent être traitées explicitement ; une iframe ne suffit pas à intégrer l'IDE. |
 
-Les déclarations `back/modules.py` et `front/modules.ts` ne comportent pas de module
-d'espace de code. Les Documents HTML et Dataset restent les ressources documentaires
-actuelles. Le panneau générique ne change ni leurs types ni leurs ACL.
+À l'étude initiale, les déclarations `back/modules.py` et `front/modules.ts` ne comportaient
+pas de domaine d'espace de code. La réalisation ajoute le domaine et son bridge backend ;
+le panneau frontend appartient au Chat. Les Documents HTML et Dataset conservent leurs
+types et ACL.
 
 ## Architecture et identité du dépôt
 
 Proposer `app.code` pour posséder les espaces de code, leur autorisation, les références
 conversationnelles et les sessions humaines ; `bridge.code_server` adapte le cycle de vie
-et les capacités du service tiers. Le frontend métier correspondant est `front/app/code`.
-Confirmer cette séparation après le prototype et enregistrer une décision avant réalisation.
+et les capacités du service tiers. La réalisation retient `front/app/chat/code` comme
+fonction du Chat et un port `CodeRuntime` dans `app.code`, implémenté par le bridge via
+les contrats publics de Console et Agent. Voir la décision acceptée
+[0173](../decisions/0173-conversational-code-workspaces.md).
 
 ```text
 Agent / Task ── console SSH ─────────────── dépôt Git / worktree réel
@@ -327,10 +351,12 @@ Partager une référence n'accorde pas l'accès au dépôt. Le contenu des fichi
 par le système de fichiers et l'isolation du runtime, même si l'IDE propose « Ouvrir dossier ».
 
 code-server reste un service autonome à version et digest fixés, sans port public direct.
-Proposer une origine IDE distincte, avec cookies propres et autorisation d'intégration limitée
-à Galaris. Qualifier SSO par session courte côté passerelle, WebSockets, sous-chemins,
-redirections, workers et webviews. La CSP du shell autorise seulement cette origine ; ne
-pas exposer les cookies de l'application aux extensions ou previews exécutables de l'IDE.
+Sur demande utilisateur du 12 octobre 2026, conserver l'unique origine publique de Galaris.
+La passerelle `/api/code/gateway/` passe par Vite en développement et Nginx en production,
+avec cookies propres aux chemins de session. Qualifier tickets, WebSockets, sous-chemins,
+redirections, workers et webviews. Filtrer les cookies et bearer applicatifs sur le transport
+vers code-server. Le shell et les extensions frontend IDE partagent le périmètre de confiance
+navigateur ; l'isolation des fichiers et processus appartient toujours au broker.
 Le prototype doit fonctionner avec les politiques de cookies des navigateurs ciblés.
 
 La passerelle ne prend pas d'URL ou de port libre du navigateur. Elle résout une cible
@@ -399,6 +425,58 @@ Pas de chiffrage calendaire fiable avant le lot 0, notamment pour le pont iframe
 profils en lecture seule sur cibles externes.
 
 ## Critères de réception et vérification
+
+### Réalisation et réception locale du 11 octobre 2026
+
+Les lots 0 à 5 sont réalisés dans le dépôt : `app.code`, port `CodeRuntime`, discovery
+Console, bridge code-server, broker isolé, passerelle HTTP/WebSocket, panneau commun du
+Chat, grants et `repository_show` pendant les Tasks liées. Les profils IDE restent montés
+pendant les bascules ; aucun pont de sauvegarde ou de buffers collaboratifs n'est ajouté.
+Le terminal livré couvre Git et réutilise la configuration/les clés du compte Console.
+La reproduction complète des services de cette Console demeure le complément facultatif
+non livré, conformément au périmètre accepté.
+
+| Preuve locale | Résultat obtenu |
+|---|---|
+| Backend ciblé Code, Document, Console et File Share | 113 tests passants, puis les 14 scénarios Code repassés avec la réconciliation équitable et les métadonnées canoniques. PostgreSQL réel, boundaries SSH/IDE synthétiques pour les règles métier. |
+| Broker et Git réels | Six scénarios passants : montages read/edit, worktree, index commun, forge SSH, identité partagée, pull/push/rebase en conflit, quotas/profils conservés et navigation sans suivi de symlink. |
+| Panneau Chat | Sept scénarios Code passants, dont mobile, réponse tardive, fermeture en erreur, conservation des brouillons et reconnexion sans rechargement du buffer. Les 36 parcours Document existants passent également. |
+| IDE derrière Galaris | Lancement réel à ticket, cookie scoped, workers, WebSockets et sauvegarde sur les mêmes fichiers passants dans Chromium, Firefox et WebKit. Aperçu Markdown passé dans Chromium et WebKit. |
+| Console externe préparée | Discovery et tunnel SSH épinglés réels, modes read/edit, refus d'IDE absent/forwarding interdit, clé hôte changée, tunnel interrompu et checkout remplacé : passants sur cible synthétique. |
+| Mesures agrégées, une exécution synthétique | Ouverture 1 915 ms ; modification externe observée en 196 ms ; mémoire du conteneur de 28 à 510 Mio, CPU cumulé de 0,16 à 3,35 s. Mesures de faisabilité, sans garantie de latence sur un dépôt réel. |
+| Bornes opérationnelles | Huit IDE actifs, 64 profils retenus, huit profils par compte Unix ; aucun profil supprimé pour libérer une place. Logs bornés à 1 Mio et réconciliation persistante par lots équitables. |
+
+Limite observée : l'aperçu Markdown natif Firefox échoue au chargement de ressources par
+son CDN virtuel ; il n'est pas certifié. Un problème upstream connexe est suivi dans
+[code-server #7913](https://github.com/coder/code-server/issues/7913). L'édition source est
+qualifiée dans ce navigateur. Les assets VSDA facultatifs manquent dans l'image upstream,
+avec fonctionnement de secours de l'IDE ; les notices de licence restent préservées.
+
+Les types backend, types frontend, catalogues FR/EN/ZH, documentation et contrats
+d'architecture ont passé leurs contrôles. La réception globale est attestée séparément
+par le résumé de chaque snapshot produit par `make validate` dans `artifacts/validation/` :
+un résultat ciblé ne vaut pas validation complète. La première campagne avait détecté un
+démarrage Nginx impossible sans origine IDE. L'intégration utilise désormais `APP_HOST`
+seul, avec qualification de l'édition native derrière Nginx et Vite sans origine IDE dédiée.
+L'aperçu Firefox est une limite acceptée du périmètre stable, surveillée séparément des
+garanties d'édition. Ce plan conserve `partial` uniquement pour les extensions facultatives.
+Aucun commit, démarrage d'installation existante
+ou déploiement n'est réalisé.
+
+### Finalisation du 15 octobre 2026
+
+Le contexte Docker `code_executor` est fourni au contrôle statique comme aux autres builds.
+La reprise explicite renouvelle la même session et son cookie après vérification des droits,
+de la famille de connexion et de la cible, sans rechargement de l'iframe d'origine. Un arrêt
+complet ouvre une fenêtre de récupération dans le même panneau, avec accès conservé à
+l'ancien brouillon. Un nouveau remplacement de cette fenêtre demande confirmation ;
+au plus deux iframes sont conservées par dépôt. Le runtime distingue
+le quota des huit IDE actifs de celui des 64 profils retenus. La maintenance hors ligne
+archive avant de retirer un profil et permet sa restauration, avec exclusion du broker
+actif et refus des chemins d'archives dangereux. Les profils arrêtés n'ont plus de plafond
+de huit par compte Unix. Les procédures et parcours sont documentés en français et anglais.
+Les scénarios de reprise, de révocation et d'archivage complètent les suites existantes ;
+la réception globale dépend du résultat du snapshot courant de `make validate`.
 
 | Garantie observable | Vérification attendue |
 |---|---|

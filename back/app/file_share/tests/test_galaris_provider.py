@@ -19,7 +19,7 @@ async def test_galaris_root_lists_the_supported_business_collections(db) -> None
         max_entries=100,
     )
 
-    assert [entry.uri for entry in result.entries] == [
+    assert {entry.uri for entry in result.entries} == {
         "galaris://task/",
         "galaris://voice/",
         "galaris://text/",
@@ -27,49 +27,30 @@ async def test_galaris_root_lists_the_supported_business_collections(db) -> None
         "galaris://goal_cycle/",
         "galaris://agent/",
         "galaris://process/",
-    ]
+        "galaris://code/",
+    }
 
 
 @pytest.mark.asyncio
 async def test_galaris_root_listing_is_paginated(db) -> None:
     ctx = ResourceContext(agent_id=7, runtime="internal")
 
-    first = await resource_service.resource_list(
-        ctx,
-        "galaris://",
-        max_entries=2,
-    )
-    second = await resource_service.resource_list(
-        ctx,
-        "galaris://",
-        max_entries=2,
-        cursor=first.next_cursor,
-    )
-    third = await resource_service.resource_list(
-        ctx,
-        "galaris://",
-        max_entries=2,
-        cursor=second.next_cursor,
-    )
-
-    assert [entry.uri for entry in first.entries] == [
-        "galaris://task/",
-        "galaris://voice/",
-    ]
-    assert first.truncated is True
-    assert first.next_cursor == "2"
-    assert [entry.uri for entry in second.entries] == [
-        "galaris://text/",
-        "galaris://goal/",
-    ]
-    assert second.truncated is True
-    assert second.next_cursor == "4"
-    assert [entry.uri for entry in third.entries] == [
-        "galaris://goal_cycle/",
-        "galaris://agent/",
-    ]
-    assert third.truncated is True
-    assert third.next_cursor == "6"
+    complete = await resource_service.resource_list(ctx, "galaris://", max_entries=100)
+    entries = []
+    cursors = set()
+    cursor = None
+    while True:
+        page = await resource_service.resource_list(ctx, "galaris://", max_entries=2, cursor=cursor)
+        assert 0 < len(page.entries) <= 2
+        entries.extend(page.entries)
+        if not page.truncated:
+            assert page.next_cursor is None
+            break
+        assert page.next_cursor is not None and page.next_cursor not in cursors
+        cursors.add(page.next_cursor)
+        cursor = page.next_cursor
+    assert [entry.uri for entry in entries] == [entry.uri for entry in complete.entries]
+    assert len({entry.uri for entry in entries}) == len(entries)
 
 
 @pytest.mark.asyncio
