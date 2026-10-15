@@ -6,7 +6,7 @@ import asyncio
 import base64
 import json
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import httpx
@@ -18,7 +18,7 @@ from app.llm.provider_facade import (
     RealtimeTranscriber,
     TranscriptionResult,
 )
-from core.util import as_dict
+from core.util import as_dict, post_multipart_file
 
 
 def _websocket_url(base_url: str, path: str, query: dict[str, str]) -> str:
@@ -63,53 +63,6 @@ def _event_error(payload: dict[str, Any]) -> str:
     return ""
 
 
-async def _post_multipart(
-    client: httpx.AsyncClient,
-    url: str,
-    source: bytes | Path,
-    *,
-    filename: str,
-    mime_type: str,
-    data: dict[str, str],
-    headers: dict[str, str],
-) -> httpx.Response:
-    if isinstance(source, Path):
-        with source.open("rb") as audio_file:
-            return await _post_audio_file(
-                client,
-                url,
-                audio_file,
-                filename=filename,
-                mime_type=mime_type,
-                data=data,
-                headers=headers,
-            )
-    return await client.post(
-        url,
-        data=data,
-        files={"file": (filename, source, mime_type)},
-        headers=headers,
-    )
-
-
-async def _post_audio_file(
-    client: httpx.AsyncClient,
-    url: str,
-    audio_file: BinaryIO,
-    *,
-    filename: str,
-    mime_type: str,
-    data: dict[str, str],
-    headers: dict[str, str],
-) -> httpx.Response:
-    return await client.post(
-        url,
-        data=data,
-        files={"file": (filename, audio_file, mime_type)},
-        headers=headers,
-    )
-
-
 class ElevenLabsTranscription:
     async def transcribe(
         self,
@@ -129,7 +82,7 @@ class ElevenLabsTranscription:
         raw_response = ""
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await _post_multipart(
+                response = await post_multipart_file(
                     client,
                     f"{connection.base_url.rstrip('/')}/speech-to-text",
                     source,

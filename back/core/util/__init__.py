@@ -29,6 +29,7 @@ from .calendar import local_timezone_name, month_bounds
 from .transfers import DEFAULT_DOWNLOAD_BYTES, copy_download, read_buffered_file
 from .thread_io import complete_await, complete_io
 from .http_buffer import post_buffered, read_response
+from .http_multipart import post_multipart_file
 from .byte_budget import BufferedAdmissionDeferred, ByteBudget, buffered_io_budget
 
 from .rich_text import (
@@ -64,6 +65,7 @@ __all__ = [
     "complete_io",
     "complete_await",
     "post_buffered",
+    "post_multipart_file",
     "read_response",
     "BufferedAdmissionDeferred",
     "ByteBudget",

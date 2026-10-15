@@ -21,6 +21,13 @@ Pour une évolution, préciser la garantie changée et celles à préserver, lir
 et tests, puis choisir la couche la moins coûteuse qui prouve l’effet. Conserver un test utile
 est une décision à part entière : aucun quota de tests nouveaux par module.
 
+## Audio et catalogues fournisseurs
+
+Les suites `tests/test_transcription_service.py` et `core/util/tests/test_http_multipart.py`
+protègent l'envoi audio depuis des octets ou un fichier et la fermeture des handles après
+erreur ou annulation. `tests/test_audio_resource_discovery.py` couvre les catalogues vocaux
+publics, leur cache séparé par fournisseur, son expiration et le réessai après panne.
+
 ## Dépôts Git dans la discussion
 
 `back/app/code/tests/test_workspaces.py` vérifie les grants exacts, la déduplication,

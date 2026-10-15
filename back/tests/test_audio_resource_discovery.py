@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Optional, Self
 
+import httpx
 import pytest
 
 from app.llm import resource_discovery
+from app.llm import voice_catalog
 from app.llm.provider_models import LLMProvider
 from bridge.azure_speech import resources as azure_speech_resources
 from bridge.elevenlabs import resources as elevenlabs_resources
@@ -75,8 +77,8 @@ def _provider(
 def fake_http_client(monkeypatch: pytest.MonkeyPatch) -> None:
     _FakeAsyncClient.responses = []
     _FakeAsyncClient.requests = []
-    azure_speech_resources._public_voice_cache = None
-    google_resources._public_voice_cache = None
+    azure_speech_resources._public_voice_catalog.clear()
+    google_resources._public_voice_catalog.clear()
     monkeypatch.setattr(
         elevenlabs_resources.httpx,
         "AsyncClient",
@@ -217,20 +219,21 @@ async def test_azure_speech_lists_regional_voices_as_tts_resources() -> None:
     ],
 )
 async def test_cloud_tts_provider_lists_public_catalog_without_api_key(
+    monkeypatch: pytest.MonkeyPatch,
     provider_type: str,
     catalog_code: str,
     documented_voice: str,
 ) -> None:
+    now = 100.0
+    monkeypatch.setattr(voice_catalog, "monotonic", lambda: now)
     _FakeAsyncClient.responses = [
-        _FakeResponse({}, text=f"<table><code>{documented_voice}</code></table>")
+        _FakeResponse({}, text=f"<table><code>{documented_voice}</code><code>{documented_voice}</code></table>"),
+        _FakeResponse({}, text=f"<code>{documented_voice}</code>"),
     ]
 
+    provider = _provider(provider_type, "https://unused.example/v1", catalog_code=catalog_code)
     resources = await resource_discovery.list_resources(
-        _provider(
-            provider_type,
-            "https://unused.example/v1",
-            catalog_code=catalog_code,
-        ),
+        provider,
         None,
         "speech",
     )
@@ -238,3 +241,33 @@ async def test_cloud_tts_provider_lists_public_catalog_without_api_key(
     assert [resource.id for resource in resources] == [f"voice:{documented_voice}"]
     assert resources[0].metadata_source == "public-catalog"
     assert resources[0].resource_type == "voice"
+    resources[0].name = "Caller-local label"
+    cached = await resource_discovery.list_resources(provider, None, "speech")
+    assert cached[0].name == documented_voice
+    assert len(_FakeAsyncClient.requests) == 1
+    now += 6 * 60 * 60
+    refreshed = await resource_discovery.list_resources(provider, None, "speech")
+    assert refreshed[0].id == f"voice:{documented_voice}"
+    assert len(_FakeAsyncClient.requests) == 2
+
+
+@pytest.mark.asyncio
+async def test_public_voice_catalogues_keep_provider_isolation_and_retry_after_failure(monkeypatch):
+    google = _provider("google_cloud_tts", "https://unused.example/v1", catalog_code="google-cloud-tts")
+    azure = _provider("azure_speech", "https://unused.example/v1", catalog_code="azure-speech")
+    original_get = _FakeAsyncClient.get
+
+    async def unavailable(*args, **kwargs):
+        raise httpx.ConnectError("Synthetic catalogue outage")
+
+    monkeypatch.setattr(_FakeAsyncClient, "get", unavailable)
+    with pytest.raises(httpx.ConnectError):
+        await resource_discovery.list_resources(google, None, "speech")
+    monkeypatch.setattr(_FakeAsyncClient, "get", original_get)
+    _FakeAsyncClient.responses = [
+        _FakeResponse({}, text="<code>fr-FR-Neural2-F</code>"),
+        _FakeResponse({}, text="<code>fr-FR-DeniseNeural</code>"),
+    ]
+    assert [item.id for item in await resource_discovery.list_resources(google, None, "speech")] == ["voice:fr-FR-Neural2-F"]
+    assert [item.id for item in await resource_discovery.list_resources(azure, None, "speech")] == ["voice:fr-FR-DeniseNeural"]
+    assert len(_FakeAsyncClient.requests) == 2

@@ -21,6 +21,13 @@ quota of new tests per module.
 For each change, state the affected guarantee and the guarantees to preserve, inspect their
 contracts and tests, then select the least expensive layer that proves the observable effect.
 
+## Audio and provider catalogues
+
+`tests/test_transcription_service.py` and `core/util/tests/test_http_multipart.py` protect
+audio uploads from bytes or disk and handle cleanup after errors or cancellation.
+`tests/test_audio_resource_discovery.py` covers public voice catalogues, cache isolation
+between providers, expiry and retry after an outage.
+
 ## Git repositories in conversations
 
 `back/app/code/tests/test_workspaces.py` uses real PostgreSQL for exact grants,

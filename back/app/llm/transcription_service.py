@@ -5,12 +5,11 @@ from __future__ import annotations
 import asyncio
 from dataclasses import replace
 from pathlib import Path
-from typing import BinaryIO
 
 import httpx
 import anyio
 
-from core.util import as_dict
+from core.util import as_dict, post_multipart_file
 
 from . import llm_call_service, llm_provider_service, llm_service
 from .purposes import LLMCallPurpose
@@ -306,7 +305,7 @@ async def _transcribe_openai_compatible(
     raw_response = ""
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await _post_multipart_audio(
+            response = await post_multipart_file(
                 client,
                 f"{base_url}/audio/transcriptions",
                 source,
@@ -352,53 +351,6 @@ async def _transcribe_openai_compatible(
         usage=as_dict(usage),
         upstream_request_id=str(request_id) if request_id else None,
         raw_response=raw_response,
-    )
-
-
-async def _post_multipart_audio(
-    client: httpx.AsyncClient,
-    url: str,
-    source: bytes | Path,
-    *,
-    filename: str,
-    mime_type: str,
-    data: dict[str, str],
-    headers: dict[str, str],
-) -> httpx.Response:
-    if isinstance(source, Path):
-        with source.open("rb") as audio_file:
-            return await _post_audio_file(
-                client,
-                url,
-                audio_file,
-                filename=filename,
-                mime_type=mime_type,
-                data=data,
-                headers=headers,
-            )
-    return await client.post(
-        url,
-        data=data,
-        files={"file": (filename, source, mime_type)},
-        headers=headers,
-    )
-
-
-async def _post_audio_file(
-    client: httpx.AsyncClient,
-    url: str,
-    audio_file: BinaryIO,
-    *,
-    filename: str,
-    mime_type: str,
-    data: dict[str, str],
-    headers: dict[str, str],
-) -> httpx.Response:
-    return await client.post(
-        url,
-        data=data,
-        files={"file": (filename, audio_file, mime_type)},
-        headers=headers,
     )
 
 

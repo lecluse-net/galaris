@@ -15,6 +15,7 @@ from pydantic_ai.profiles import ModelProfile
 
 from .capabilities import AICapability
 from .handlers.base import LLMModelInfo
+from .voice_catalog import PublicVoiceCatalog
 from .provider_catalog import ProviderProfile, register_provider_profile, resolve_provider_profile
 from .request_parameters import (
     BASIC_PARAMETERS, CHAT_PARAMETERS, RESPONSES_PARAMETERS, SAMPLING_PARAMETERS,
@@ -868,6 +869,7 @@ def usage_accounting_for(code: str | None) -> ProviderUsageAccounting | None:
 
 
 __all__ = [
+    "PublicVoiceCatalog",
     "ProviderQuota", "ProviderQuotaWindow", "ProviderQuotaReader",
     "register_provider_quota_reader", "provider_quota_reader_for",
     "ChoiceQuestion", "DecisionUnavailable", "ProviderDecisionResponse", "DecisionProvider",

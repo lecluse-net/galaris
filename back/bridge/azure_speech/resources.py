@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import re
-import time
 from typing import Any
 
 import httpx
 
 from app.llm.capabilities import AICapability, with_capability
 from app.llm.handlers import LLMModelInfo
-from app.llm.provider_facade import ProviderConnection
+from app.llm.provider_facade import ProviderConnection, PublicVoiceCatalog
 from core.util import as_dict, as_list
 
 
@@ -23,44 +22,7 @@ _PUBLIC_VOICE_PATTERN = re.compile(
     r"(?:Multilingual|TurboMultilingual)?Neural(?:HD)?"
     r")"
 )
-_PUBLIC_VOICE_CACHE_TTL_SECONDS = 6 * 60 * 60
-_public_voice_cache: tuple[float, tuple[str, ...]] | None = None
-
-
-async def _public_voices() -> list[LLMModelInfo]:
-    global _public_voice_cache
-    now = time.monotonic()
-    if (
-        _public_voice_cache is not None
-        and now - _public_voice_cache[0] < _PUBLIC_VOICE_CACHE_TTL_SECONDS
-    ):
-        voice_ids = _public_voice_cache[1]
-    else:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                _PUBLIC_VOICE_URL,
-                headers={"Accept": "text/html"},
-            )
-            response.raise_for_status()
-            voice_ids = tuple(sorted(set(_PUBLIC_VOICE_PATTERN.findall(response.text))))
-        _public_voice_cache = (now, voice_ids)
-    return [
-        with_capability(
-            LLMModelInfo(
-                id=f"voice:{voice_id}",
-                name=voice_id,
-                description=(
-                    f"Catalogue public · "
-                    f"{voice_id.split('-', 2)[0]}-{voice_id.split('-', 2)[1]}"
-                ),
-                resource_type="voice",
-                metadata_source="public-catalog",
-            ),
-            "speech",
-            resource_type="voice",
-        )
-        for voice_id in voice_ids
-    ]
+_public_voice_catalog = PublicVoiceCatalog(_PUBLIC_VOICE_URL, _PUBLIC_VOICE_PATTERN)
 
 
 class AzureSpeechResourceDiscovery:
@@ -72,7 +34,7 @@ class AzureSpeechResourceDiscovery:
         if capability != "speech":
             return []
         if not connection.api_key:
-            return await _public_voices()
+            return await _public_voice_catalog.list_resources()
         region = str(connection.configuration.get("region") or "").strip().lower()
         if not region:
             raise ValueError("La région Azure Speech est requise")

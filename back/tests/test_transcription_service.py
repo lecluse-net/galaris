@@ -282,12 +282,14 @@ async def test_openai_compatible_sends_multipart_language(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("provider_type", ["openai_compatible", "elevenlabs"])
 async def test_disk_audio_uses_streaming_multipart_and_batch_timeout(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
+    provider_type: str,
 ) -> None:
     async def selected(_agent_id: int | None = None) -> SimpleNamespace:
-        return _resource("openai_compatible")
+        return _resource(provider_type)
 
     monkeypatch.setattr(transcription_service.llm_service, "get_transcription_llm", selected)
     source = tmp_path / "meeting.m4a"
