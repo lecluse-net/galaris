@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
+from sqlalchemy.orm import load_only
 
 from core.database import get_db
 from core.params import runtime_settings
@@ -24,6 +25,8 @@ async def prune_traces(*, preview: bool = False, batch_size: int = 100) -> int:
         (
             await db.scalars(
                 select(FailureIncidentTrace)
+                .options(load_only(FailureIncidentTrace.incident_id, FailureIncidentTrace.truncated_fields,
+                                   raiseload=True))
                 .join(FailureIncident, FailureIncident.id == FailureIncidentTrace.incident_id)
                 .where(
                     FailureIncident.recovered_at < cutoff,

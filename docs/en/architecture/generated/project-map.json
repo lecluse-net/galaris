@@ -1227,6 +1227,7 @@
       },
       {
         "files": [
+          "back/app/dream/attachment_processing.py",
           "back/app/dream/contracts.py"
         ],
         "source": "app.dream",
@@ -1801,7 +1802,9 @@
       },
       {
         "files": [
-          "back/app/image/image_service.py"
+          "back/app/image/image_service.py",
+          "back/app/image/mcp.py",
+          "back/app/image/transport.py"
         ],
         "source": "app.image",
         "target": "core.util"
@@ -2290,11 +2293,13 @@
       },
       {
         "files": [
+          "back/app/llm/document_analysis.py",
           "back/app/llm/document_input.py",
           "back/app/llm/document_responses.py",
           "back/app/llm/embedding_service.py",
           "back/app/llm/generation_capacity.py",
           "back/app/llm/handlers/openai_compatible.py",
+          "back/app/llm/image_generation_service.py",
           "back/app/llm/image_trace.py",
           "back/app/llm/llm_call_service.py",
           "back/app/llm/llm_provider_service.py",
@@ -2843,6 +2848,8 @@
       },
       {
         "files": [
+          "back/app/messenger/ingest.py",
+          "back/app/messenger/interface.py",
           "back/app/messenger/link_preview.py"
         ],
         "source": "app.messenger",
@@ -3186,6 +3193,14 @@
         ],
         "source": "app.skill",
         "target": "core.params"
+      },
+      {
+        "files": [
+          "back/app/skill/projection.py",
+          "back/app/skill/skill_service.py"
+        ],
+        "source": "app.skill",
+        "target": "core.util"
       },
       {
         "files": [
@@ -7696,7 +7711,7 @@
       {
         "file": "back/app/image/mcp.py",
         "handler": "generate_image",
-        "line": 138,
+        "line": 139,
         "module": "app.image",
         "name": "image_generate",
         "namespace": "image"
@@ -7704,7 +7719,7 @@
       {
         "file": "back/app/image/mcp.py",
         "handler": "describe_image",
-        "line": 223,
+        "line": 224,
         "module": "app.image",
         "name": "image_read",
         "namespace": "image"

@@ -82,6 +82,29 @@ async def test_old_requests_progress_and_conversations_share_capacity():
     (await voice.future).release()
 
 
+@pytest.mark.asyncio
+async def test_equal_priority_owners_share_capacity_and_keep_fifo_within_each_owner():
+    queue = ProviderScheduler()
+    active = await queue.acquire(1, 4, 2, owner="first")
+    first = queue.enqueue(1, 4, 2, owner="first")
+    second = queue.enqueue(1, 4, 2, owner="second")
+    await asyncio.sleep(0)
+    assert second.future.done() and not first.future.done()
+    second.future.result().release()
+    active.release()
+    (await first.future).release()
+
+    order = []
+    tickets = [queue.enqueue(2, 0, 2, owner=owner) for owner in ("a", "a", "a", "b", "b")]
+    for index, ticket in enumerate(tickets):
+        ticket.future.add_done_callback(lambda _future, index=index: order.append(index))
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    assert order == [0, 3, 1, 4, 2]
+    for ticket in tickets:
+        ticket.future.result().release()
+
+
 def test_defaults_and_audio_files_do_not_receive_voice_priority():
     assert default_concurrency("openai_compatible", "openrouter") == 10
     assert default_concurrency("ollama", None) == 1

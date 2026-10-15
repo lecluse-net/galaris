@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from .schemas import ImageDimension, ImageGenerationOptions
-from core.util import as_dict, as_list
+from core.util import as_dict, as_list, complete_io
 from core.i18n import default_language, is_supported, render_prompt, t
 
 from app.llm import LLM, LLMCallPurpose, generate_image_native, llm_service
@@ -172,7 +172,7 @@ async def generate_image_bytes(
     for data, mime in (sources or []):
         user_content.append({
             "type": "image_url",
-            "image_url": {"url": _data_url(data, mime)},
+            "image_url": {"url": await complete_io(_data_url, data, mime)},
         })
 
     body: Dict[str, Any] = {
@@ -193,7 +193,7 @@ async def generate_image_bytes(
 
     choices = as_list(payload.get("choices"))
     message = as_dict(as_dict(choices[0]).get("message")) if choices else {}
-    got = _extract_image(message)
+    got = await complete_io(_extract_image, message)
     if got is None:
         logger.warning("generate_image: model {} returned no image", model)
         raise RuntimeError(t("image.model_returned_no_image", lang))
@@ -227,7 +227,7 @@ async def describe_image(
 
     user_content: List[Dict[str, Any]] = [
         {"type": "text", "text": instruction.strip() or t("image.default_description", lang)},
-        {"type": "image_url", "image_url": {"url": _data_url(data, normalized_mime)}},
+        {"type": "image_url", "image_url": {"url": await complete_io(_data_url, data, normalized_mime)}},
     ]
     body: Dict[str, Any] = {
         "model": model_code,

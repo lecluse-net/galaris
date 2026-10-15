@@ -16,6 +16,81 @@ from core.document import prepare_document
 from core.document.worker import prepare
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize('operation', ['_visual_parts', '_batch_parts'])
+async def test_visual_preparation_leaves_the_event_loop_available(tmp_path, monkeypatch, operation):
+    import asyncio
+    from threading import Event
+    from types import SimpleNamespace
+    from app.llm import document_input
+
+    entered, released = Event(), Event()
+    original = getattr(document_input, operation)
+
+    def slow_source_operation(*args):
+        entered.set()
+        assert released.wait(3), 'Document preparation blocked unrelated asynchronous work'
+        return original(*args)
+
+    monkeypatch.setattr(document_input, operation, slow_source_operation)
+    path = tmp_path / 'source.pdf'
+    pdf(path, size=(500, 600))
+
+    async def unrelated_request():
+        while not entered.is_set():
+            await asyncio.sleep(0.001)
+        released.set()
+
+    async def send(request):
+        assert 'physical page 1' in str(request)
+        return JSONResponse({'choices': [{'message': {'content': 'Synthetic evidence'}}]})
+
+    async with asyncio.TaskGroup() as group:
+        group.create_task(unrelated_request())
+        response = await route_documents(body(path, 'prepared'), SimpleNamespace(input_file=False, input_image=True), send)
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_cancelled_visual_preparation_finishes_before_temporary_files_are_removed(tmp_path, monkeypatch):
+    import asyncio
+    from threading import Event
+    from types import SimpleNamespace
+    from app.llm import document_input
+
+    entered, released = Event(), Event()
+    original = document_input._batch_parts
+    image_paths = []
+
+    def slow_read(parts):
+        image_paths.extend(Path(part['_galaris_image_path']) for part in parts if '_galaris_image_path' in part)
+        entered.set()
+        assert released.wait(3), 'Cancellation detached the reader from its temporary files'
+        assert all(path.exists() for path in image_paths)
+        return original(parts)
+
+    monkeypatch.setattr(document_input, '_batch_parts', slow_read)
+    path = tmp_path / 'source.pdf'
+    pdf(path, size=(500, 600))
+
+    async def send(_request):
+        pytest.fail('A cancelled document reached the provider')
+
+    task = asyncio.create_task(route_documents(body(path, 'prepared'), SimpleNamespace(input_file=False, input_image=True), send))
+    try:
+        async with asyncio.timeout(10):
+            while not entered.is_set():
+                await asyncio.sleep(0.001)
+        task.cancel()
+        await asyncio.sleep(0)
+        assert not task.done()
+    finally:
+        released.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    assert image_paths and all(not path.exists() for path in image_paths)
+
+
 def pdf(path: Path, count: int = 1, size: tuple[int, int] = (200, 100)) -> None:
     writer = PdfWriter()
     font = DictionaryObject({NameObject('/Type'): NameObject('/Font'),
@@ -199,6 +274,86 @@ async def test_sparse_page_detail_crops_preserve_page_and_image_batch_budget(tmp
     assert sum(images_per_call) == 10
     assert max(images_per_call) <= 8
     assert 'physical page 2' in str(requests) and 'detail quadrant 4' in str(requests)
+
+
+def test_page_details_reuse_content_and_recover_missing_derivatives(tmp_path, monkeypatch):
+    import os
+    from PIL import Image
+    from core.document import page_images
+
+    path = tmp_path / 'page.png'
+    Image.new('RGB', (1000, 1000), 'red').save(path)
+    original_crop = Image.Image.crop
+    crops = []
+
+    def crop(image, box):
+        crops.append(box)
+        return original_crop(image, box)
+
+    monkeypatch.setattr(Image.Image, 'crop', crop)
+    first = page_images(path, '')
+    assert len(first) == 5 and len(crops) == 4
+    assert page_images(path, '') == first
+    assert len(crops) == 4, 'Resuming an analysis must reuse its source-derived details'
+    first[2].unlink()
+    first[3].write_bytes(b'')
+    assert page_images(path, '') == first
+    for derivative in first[1:]:
+        with Image.open(derivative) as image:
+            assert image.getpixel((0, 0)) == (255, 0, 0)
+    timestamp = path.stat().st_mtime_ns
+    Image.new('RGB', (1000, 1000), 'blue').save(path)
+    os.utime(path, ns=(timestamp, timestamp))
+    for derivative in page_images(path, '')[1:]:
+        with Image.open(derivative) as image:
+            assert image.getpixel((0, 0)) == (0, 0, 255)
+
+
+def test_failed_detail_write_never_publishes_a_partial_image(tmp_path, monkeypatch):
+    from PIL import Image
+    from core.document import page_images
+
+    path = tmp_path / 'page.png'
+    Image.new('RGB', (1000, 1000), 'red').save(path)
+    def fail_save(image, destination, *args, **kwargs):
+        if hasattr(destination, 'write'):
+            destination.write(b'incomplete')
+        else:
+            Path(destination).write_bytes(b'incomplete')
+        raise OSError('Synthetic storage failure')
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Image.Image, 'save', fail_save)
+        with pytest.raises(OSError, match='Synthetic storage failure'):
+            page_images(path, '')
+    assert list(tmp_path.iterdir()) == [path], 'Failed derivatives must not be visible to retries'
+    for derivative in page_images(path, '')[1:]:
+        with Image.open(derivative) as image:
+            assert image.getpixel((0, 0)) == (255, 0, 0)
+
+
+def test_concurrent_detail_readers_publish_complete_images(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from PIL import Image
+    from core.document import page_images
+
+    path = tmp_path / 'page.png'
+    Image.new('RGB', (1000, 1000), 'red').save(path)
+    barrier = Barrier(4)
+
+    def read(_):
+        barrier.wait(timeout=5)
+        images = page_images(path, '')
+        for derivative in images:
+            with Image.open(derivative) as image:
+                image.verify()
+        return images
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        results = list(executor.map(read, range(4)))
+    assert all(images == results[0] for images in results)
+    assert set(tmp_path.iterdir()) == set(results[0])
 
 
 @pytest.mark.asyncio

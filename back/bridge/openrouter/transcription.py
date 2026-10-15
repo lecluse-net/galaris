@@ -12,7 +12,7 @@ from app.llm.provider_facade import (
     ProviderTranscriptionError,
     TranscriptionResult,
 )
-from core.util import as_dict
+from core.util import as_dict, complete_io
 
 
 _AUDIO_FORMATS = {
@@ -53,11 +53,13 @@ class OpenRouterTranscription:
         language: str,
         timeout: float,
     ) -> TranscriptionResult:
-        content = source.read_bytes() if isinstance(source, Path) else source
+        encoded = await complete_io(lambda: base64.b64encode(
+            source.read_bytes() if isinstance(source, Path) else source
+        ).decode("ascii"))
         payload: dict[str, object] = {
             "model": model,
             "input_audio": {
-                "data": base64.b64encode(content).decode("ascii"),
+                "data": encoded,
                 "format": _audio_format(mime_type, filename),
             },
         }

@@ -14,6 +14,7 @@ from app.llm import llm_service, model_usages, run_structured, transcription_ser
 from app.llm.facade import proxy_chat_completion
 from core.database import get_db_session
 from core.i18n import default_language
+from core.util import complete_io
 
 from .interface import describe_image, normalize_for_transcription_chunks
 
@@ -93,7 +94,7 @@ async def describe_document(path: Path, source: MediaAnalysisSource) -> str:
         llm = await llm_service.get_document_llm(agent_id=source.owner_agent_id)
         if llm is None:
             raise ValueError("No native document-analysis model is configured")
-        data = base64.b64encode(path.read_bytes()).decode("ascii")
+        data = await complete_io(lambda: base64.b64encode(path.read_bytes()).decode("ascii"))
         response = await proxy_chat_completion({
             "model": llm.code,
             "messages": [
@@ -125,7 +126,7 @@ async def analyze_attachment(kind: AttachmentKind, path: Path, source: MediaAnal
         return await describe_document(path, source)
     if kind == "image":
         async with get_db_session():
-            return await describe_image(path.read_bytes(), source.media_type,
+            return await describe_image(await complete_io(path.read_bytes), source.media_type,
                                         instruction=_INSTRUCTION, agent_id=source.owner_agent_id)
     with TemporaryDirectory(prefix="dream-video-") as temporary:
         chunks = await normalize_for_transcription_chunks(path, Path(temporary))

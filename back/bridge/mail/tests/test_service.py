@@ -67,6 +67,66 @@ def _outgoing(subject: str = "Bonjour") -> OutgoingMail:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('cancelled', [False, True])
+async def test_mail_attachment_read_is_responsive_and_drained_before_cleanup(monkeypatch, cancelled):
+    import asyncio
+    from pathlib import Path
+    from threading import Event
+    from types import SimpleNamespace
+
+    content = b'Synthetic Mail attachment'
+    paths = []
+
+    async def materialize(_context, _uri, destination, *, max_bytes):
+        assert len(content) <= max_bytes
+        destination.write_bytes(content)
+        paths.append(destination)
+        return SimpleNamespace(name='synthetic.txt', media_type='text/plain', size=len(content))
+
+    monkeypatch.setattr(service, 'materialize_resource', materialize)
+    entered, released = Event(), Event()
+    original_read = Path.read_bytes
+
+    def read_bytes(path):
+        entered.set()
+        assert released.wait(3), 'Mail attachment read blocked unrelated asynchronous work'
+        assert path.exists(), 'A cancelled read lost its owning temporary directory'
+        return original_read(path)
+
+    monkeypatch.setattr(Path, 'read_bytes', read_bytes)
+    task = asyncio.create_task(service._attachments_from_uris(
+        _config(1, agent_id=1), runtime='internal', task_id=None, uris=['https://example.test/synthetic.txt'],
+    ))
+    try:
+        async with asyncio.timeout(10):
+            while not entered.is_set():
+                if task.done():
+                    await task
+                    pytest.fail('The attachment read was not exercised')
+                await asyncio.sleep(0.001)
+        if cancelled:
+            task.cancel()
+            await asyncio.sleep(0)
+            task.cancel()
+            await asyncio.sleep(0)
+            assert not task.done() and all(path.exists() for path in paths)
+            released.set()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+        else:
+            released.set()
+            attachments = await task
+            assert len(attachments) == 1
+            assert attachments[0].filename == 'synthetic.txt' and attachments[0].content == content
+    finally:
+        released.set()
+        if not task.done():
+            task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+    assert paths and all(not path.exists() for path in paths)
+
+
+@pytest.mark.asyncio
 async def test_delivery_claim_reuses_key_and_rejects_a_different_payload(
     db: AsyncSession,
 ) -> None:

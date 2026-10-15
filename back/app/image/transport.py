@@ -11,6 +11,7 @@ from pathlib import Path
 
 from . import image_service
 from core.i18n import default_language, t
+from core.util import complete_io
 
 _DEFAULT_MIME = "image/png"
 
@@ -31,11 +32,11 @@ class ImageFileTransport:
         data, _mime = await image_service.generate_image_bytes(prompt)
         if len(data) > max_bytes:
             raise ValueError("Generated image exceeds the requested byte limit")
-        dest.write_bytes(data)
+        await complete_io(dest.write_bytes, data)
         return len(data)
 
     async def upload_from(self, src: Path, filename: str, *, target: str = "") -> str:
         """Describe local image ``src`` using optional instruction ``target``."""
-        data = src.read_bytes()
+        data = await complete_io(src.read_bytes)
         mime = self._guess_mime(filename or src.name)
         return await image_service.describe_image(data, mime, instruction=target)

@@ -24,6 +24,7 @@ from app.agent.contracts import RuntimeName
 from app.file_share import ResourceContext, materialize_resource
 from core.database import get_db
 from core.user import UserModel
+from core.util import complete_io
 
 from .connection_service import resolve_connection, resolve_mail_connection
 from .contracts import (
@@ -288,7 +289,7 @@ async def _attachments_from_uris(
                         or mimetypes.guess_type(filename)[0]
                         or "application/octet-stream"
                     ),
-                    content=destination.read_bytes(),
+                    content=await complete_io(destination.read_bytes),
                 )
             )
     return tuple(attachments)

@@ -34,6 +34,7 @@ from app.file_share import (
 )
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.i18n import render_prompt, t
+from core.util import complete_io
 
 _DEFAULT_MIME = "image/png"
 _MAX_IMAGE_RESOURCE_BYTES = 32_000_000
@@ -170,7 +171,7 @@ async def generate_image(
                         f"Image attachment has unsupported MIME type: "
                         f"{materialized.media_type}"
                     )
-                sources.append((path.read_bytes(), media_type))
+                sources.append((await complete_io(path.read_bytes), media_type))
             img, mime = await image_service.generate_image_bytes(
                 prompt,
                 sources or None,
@@ -241,7 +242,7 @@ async def describe_image(
             if not media_type.startswith("image/"):
                 media_type = mimetypes.guess_type(materialized.name)[0] or media_type
             description = await image_service.describe_image(
-                path.read_bytes(),
+                await complete_io(path.read_bytes),
                 media_type,
                 instruction=prompt or "",
                 language=language,

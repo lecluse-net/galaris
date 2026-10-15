@@ -15,7 +15,7 @@ from typing import Any
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from core.document import PreparedDocument, prepare_document, page_images
-from core.util import as_dict, as_list
+from core.util import as_dict, as_list, complete_io
 from .provider_models import LLM
 
 Send = Callable[[dict[str, Any]], Awaitable[JSONResponse | StreamingResponse]]
@@ -196,7 +196,7 @@ async def _route_documents(body: dict[str, Any], llm: LLM, send: Send) -> JSONRe
                 if not header.endswith(";base64"):
                     return JSONResponse({"error": {"message": "Invalid document data encoding"}}, status_code=422)
                 try:
-                    data = base64.b64decode(encoded, validate=True)
+                    data = await complete_io(base64.b64decode, encoded, validate=True)
                 except ValueError:
                     return JSONResponse({"error": {"message": "Invalid document base64"}}, status_code=422)
                 total_bytes += len(data)
@@ -205,7 +205,7 @@ async def _route_documents(body: dict[str, Any], llm: LLM, send: Send) -> JSONRe
                 directory = root / str(len(prepared))
                 directory.mkdir()
                 path = directory / "input"
-                path.write_bytes(data)
+                await complete_io(path.write_bytes, data)
                 name = Path(str(file.get("filename") or "document")).name
                 mime = header[5:-7]
                 try:
@@ -220,7 +220,7 @@ async def _route_documents(body: dict[str, Any], llm: LLM, send: Send) -> JSONRe
                 if llm.input_image and document.pages:
                     cover = document.image_path(document.pages[0], directory)
                     if cover:
-                        native_parts.extend([{"type": "text", "text": f"[Rendered cover of {name}, page 1]"}, _image(cover)])
+                        native_parts.extend([{"type": "text", "text": f"[Rendered cover of {name}, page 1]"}, await complete_io(_image, cover)])
                 retained.append({"type": "text", "text": f"[Document {name}; {len(document.pages)} source pages]"})
             as_dict(as_list(stripped["messages"])[message_index])["content"] = retained
         pages = sum(len(document.pages) for document, _ in prepared)
@@ -262,7 +262,7 @@ async def _route_documents(body: dict[str, Any], llm: LLM, send: Send) -> JSONRe
                     current.append({"type": "text", "text": piece})
                     size += len(piece)
                 if image:
-                    for detail_number, visual in enumerate(_visual_parts(image, page.text)):
+                    for detail_number, visual in enumerate(await complete_io(_visual_parts, image, page.text)):
                         label = f"[Document {document.name}; physical page {page.number}; " + (
                             "whole page]" if detail_number == 0 else f"detail quadrant {detail_number} (top-left, top-right, bottom-left, bottom-right order)]")
                         if current and (images >= _BATCH_IMAGES or size + len(label) > _BATCH_TEXT):
@@ -280,7 +280,7 @@ async def _route_documents(body: dict[str, Any], llm: LLM, send: Send) -> JSONRe
             return JSONResponse({"error": {"message": "Document contains no readable units"}}, status_code=422)
         if len(batches) == 1:
             request = deepcopy(stripped)
-            request["messages"].append({"role": "user", "content": _batch_parts(batches[0])})
+            request["messages"].append({"role": "user", "content": await complete_io(_batch_parts, batches[0])})
             return _annotate(await send(request), "prepared", pages, 1, reason)
         if clean.get("tools"):
             return JSONResponse({"error": {"message": "Long document preparation requires a dedicated analysis request without tools"}}, status_code=422)
@@ -290,7 +290,7 @@ async def _route_documents(body: dict[str, Any], llm: LLM, send: Send) -> JSONRe
             request = deepcopy(stripped)
             request["stream"] = False
             request["messages"].append({"role": "user", "content": [
-                {"type": "text", "text": f"Source batch {number}/{len(batches)}. Record relevant facts with source pages. Unavailable answers in this batch are not absence in the whole document. Preserve exact numbers and quotations for final consolidation."}, *_batch_parts(batch)]})
+                {"type": "text", "text": f"Source batch {number}/{len(batches)}. Record relevant facts with source pages. Unavailable answers in this batch are not absence in the whole document. Preserve exact numbers and quotations for final consolidation."}, *await complete_io(_batch_parts, batch)]})
             response = await send(request)
             if not isinstance(response, JSONResponse) or response.status_code >= 400:
                 return _annotate(response, "prepared-partial", pages, number, reason)

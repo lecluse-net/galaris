@@ -17,6 +17,7 @@ from . import llm_service, model_usages
 from .contracts import ProtocolInferenceRequest
 from .facade import read_inference, control_inference
 from core.document import PreparedDocument, page_images
+from core.util import complete_io
 from .document_store import document_checkpoint, submit_batch
 from .document_contracts import DocumentAnalysisSnapshot, DocumentAnalysisError
 
@@ -165,7 +166,7 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
                 if admission.vision_fingerprint and model_fingerprint(vision) != admission.vision_fingerprint:
                     raise ValueError("Admitted visual preparation model changed")
                 reader = vision
-            plan = batches(document, directory, bool(reader.input_image))
+            plan = await complete_io(batches, document, directory, bool(reader.input_image))
             coverage = document.coverage()
             coverage.update({"completed_batches": completed, "expected_batches": len(plan),
                              "visual_interpretation_supplied": bool(reader.input_image),
@@ -203,7 +204,8 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
                     for part in plan[completed]:
                         if "_image" in part:
                             image = Path(str(part["_image"]))
-                            parts.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(image.read_bytes()).decode(), "detail": "high"}})
+                            encoded = await complete_io(lambda: base64.b64encode(image.read_bytes()).decode("ascii"))
+                            parts.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + encoded, "detail": "high"}})
                         else:
                             parts.append(part)
                     content: JsonValue = [{"type": "text", "text": f"Question: {admission.question}\nBatch {completed + 1}/{len(plan)}. Record evidence and source pages. A missing answer here does not imply absence elsewhere."}, *parts]

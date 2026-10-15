@@ -11,6 +11,75 @@ from app.messenger.models import AUDIO_TRANSCRIPT_METADATA_KEY, File, Message
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('stage', ['bridge_write', 'pdf_write', 'office_write', 'pdf_read'])
+async def test_attachment_disk_io_leaves_other_requests_running(tmp_path, monkeypatch, stage):
+    import asyncio
+    from pathlib import Path
+    from threading import Event
+    from zipfile import ZipFile
+    from app.messenger.interface import Messenger
+    from app.messenger._observations import ObservedMessengerFile
+    from tests.test_document_pipeline import pdf
+
+    source = tmp_path / ('synthetic.odt' if stage == 'office_write' else 'synthetic.pdf')
+    if stage == 'office_write':
+        with ZipFile(source, 'w') as archive:
+            archive.writestr('mimetype', 'application/vnd.oasis.opendocument.text')
+            archive.writestr('META-INF/manifest.xml', '<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/></manifest:manifest>')
+            archive.writestr('content.xml', '<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" office:version="1.2"><office:body><office:text><text:p>Synthetic evidence 1200.</text:p></office:text></office:body></office:document-content>')
+    else:
+        pdf(source)
+    data = source.read_bytes()
+    monkeypatch.setattr(ingest, 'fetch_bytes', AsyncMock(return_value=data))
+    messenger = SimpleNamespace(fetch_attachment=AsyncMock(return_value=data))
+    attachment = File(id=uuid4(), name=source.name, mime_type='application/pdf' if source.suffix == '.pdf' else 'application/vnd.oasis.opendocument.text', kind='document')
+    entered, released = Event(), Event()
+    original_write, original_read = Path.write_bytes, Path.read_bytes
+    destination = tmp_path / 'copied.pdf'
+
+    def wait_for_other_request():
+        entered.set()
+        assert released.wait(3), 'Attachment filesystem I/O blocked unrelated asynchronous work'
+
+    def write_bytes(path, content):
+        if (stage == 'bridge_write' and path == destination) or (
+            stage in {'pdf_write', 'office_write'} and path.name == 'input'
+        ):
+            wait_for_other_request()
+        return original_write(path, content)
+
+    def read_bytes(path):
+        if stage == 'pdf_read' and path.suffix == '.png':
+            wait_for_other_request()
+        return original_read(path)
+
+    monkeypatch.setattr(Path, 'write_bytes', write_bytes)
+    monkeypatch.setattr(Path, 'read_bytes', read_bytes)
+
+    async def unrelated_request():
+        while not entered.is_set():
+            await asyncio.sleep(0.001)
+        released.set()
+
+    async with asyncio.TaskGroup() as group:
+        other = group.create_task(unrelated_request())
+        try:
+            if stage == 'bridge_write':
+                count = await Messenger.fetch_attachment_to_file(messenger, ObservedMessengerFile(), destination)
+                assert count == len(data) and original_read(destination) == data
+            elif stage == 'pdf_read':
+                images = await ingest.pdf_to_images(messenger, attachment)
+                assert len(images) == 1 and images[0][1] == 'image/png'
+                assert images[0][0].startswith(b'\x89PNG')
+            else:
+                assert '1200' in await ingest._extract(messenger, attachment, 'en')
+        finally:
+            if not entered.is_set():
+                other.cancel()
+    assert entered.is_set(), 'The source I/O stage must be exercised'
+
+
+@pytest.mark.asyncio
 async def test_attachment_inline_limit_changes_without_reload(monkeypatch):
     from core.params import runtime_settings
 

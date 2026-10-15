@@ -9,6 +9,7 @@ from uuid import UUID
 import httpx
 import anyio
 from PIL import Image
+from core.util import complete_io
 
 from . import llm_call_service, llm_provider_service, llm_service
 from .provider_facade import ImageGenerationProviderError, image_generation_provider_for
@@ -48,7 +49,7 @@ async def generate_image_native(
         f"{selected.width}x{selected.height} pixels"
         if selected.width is not None and selected.height is not None else "model default"
     )
-    request = adapter.prepare_request(
+    request = await complete_io(adapter.prepare_request,
         connection, model=llm.llm_name, prompt=prompt, sources=sources,
         width=selected.width or width, height=selected.height or height,
     )
@@ -80,7 +81,7 @@ async def generate_image_native(
             raw_response = response.text
         if not response.is_success:
             raise ImageGenerationProviderError(llm.llm_name, response.status_code, response.text[:500])
-        result = adapter.read_response(response)
+        result = await complete_io(adapter.read_response, response)
         trace = {
             "usage": result.usage,
             "finish_reason": "stop",

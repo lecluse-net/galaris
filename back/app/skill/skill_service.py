@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.agent.models import Agent
 from app.agent import list_driver_specs
 from core.database import get_db
+from core.util import complete_io
 
 from .models import AgentSkill, AgentSkillCategory, Skill, SkillCategory
 from .schemas import (
@@ -333,8 +334,10 @@ def _changed_agent_ids(
     )
 
 
-def to_authorization(skill: Skill, agent: Agent) -> SkillAuthorization:
-    inspection = storage.inspect(skill.code)
+def to_authorization(
+    skill: Skill, agent: Agent, *, inspection: storage.SkillInspection | None = None,
+) -> SkillAuthorization:
+    inspection = inspection if inspection is not None else storage.inspect(skill.code)
     assignment = next(
         (item for item in skill.assignments if item.agent_id == agent.id),
         None,
@@ -393,8 +396,12 @@ async def list_authorizations(
     if category_id is not None:
         await _require_category(category_id)
         skills = [skill for skill in skills if skill.category_id == category_id]
+    if not agents:
+        return []
+    codes = [skill.code for skill in skills]
+    inspections = await complete_io(lambda: {code: storage.inspect(code) for code in codes})
     return [
-        to_authorization(skill, agent)
+        to_authorization(skill, agent, inspection=inspections[skill.code])
         for skill in skills
         for agent in agents
     ]

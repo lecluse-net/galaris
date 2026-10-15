@@ -54,6 +54,37 @@ def mock_http(monkeypatch, handler):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('operation', ['prepare_request', 'read_response'])
+async def test_native_image_payload_work_leaves_the_event_loop_available(monkeypatch, model_context, operation):
+    import asyncio
+    from threading import Event
+
+    entered, released = Event(), Event()
+    original = getattr(OpenAIImageGeneration, operation)
+    content = image_bytes()
+
+    def slow_payload(self, *args, **kwargs):
+        entered.set()
+        assert released.wait(3), 'Image payload processing blocked unrelated asynchronous work'
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(OpenAIImageGeneration, operation, slow_payload)
+    mock_http(monkeypatch, lambda request: httpx.Response(200, json={
+        'data': [{'b64_json': base64.b64encode(content).decode('ascii')}],
+    }))
+
+    async def unrelated_request():
+        while not entered.is_set():
+            await asyncio.sleep(0.001)
+        released.set()
+
+    async with asyncio.TaskGroup() as group:
+        group.create_task(unrelated_request())
+        result = await service.generate_image_native('synthetic-model', 'Synthetic image', [], width=1024, height=1024)
+    assert result == (content, 'image/png')
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("provider_code,model_name,endpoint,dimensions", [
     ("openai-api", "gpt-image-1", "/v1/images/generations", (1024, 1024)),
     (None, "custom-image", "/v1/images/generations", (800, 600)),

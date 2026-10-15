@@ -132,7 +132,22 @@ async def test_authorization_cascade_resolves_global_and_agent_overrides(
     await db.commit()
 
     initial = (await skill_service.list_authorizations(first.id))[0]
-    matrix = await skill_service.list_authorizations()
+    inspections = []
+    original_inspect = storage.inspect
+
+    def inspect(code):
+        inspections.append(code)
+        return original_inspect(code)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(storage, "inspect", inspect)
+        matrix = await skill_service.list_authorizations()
+    assert inspections.count(skill.code) == 1
+    assert len(inspections) == len(set(inspections)), 'Inspect each tree once per request, including bundled skills'
+    source = root / skill.code / "SKILL.md"
+    source.write_text(source.read_text().replace("Procedures for cascade-skill.", "Updated synthetic procedure."))
+    refreshed = (await skill_service.list_authorizations(first.id, skill.id))[0]
+    assert refreshed.description == "Updated synthetic procedure."
     filtered = await skill_service.list_authorizations(skill_id=skill.id)
     combined = await skill_service.list_authorizations(first.id, skill.id)
     assert {

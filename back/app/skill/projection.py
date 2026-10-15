@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import hashlib
 from pathlib import Path
 
+from core.util import complete_io
+
 from . import skill_service, storage
 from . import learning_service
 
@@ -27,6 +29,24 @@ class SkillProjectionSnapshot:
     revision: str
 
 
+def _assigned_files(code: str) -> list[SkillProjectionFile]:
+    if not storage.inspect(code).valid:
+        return []
+    files: list[SkillProjectionFile] = []
+    for relative, source in storage.iter_skill_files(code):
+        digest = storage.file_hash(source)
+        files.append(SkillProjectionFile(skill_code=code, relative_path=relative, source=source,
+                                        size=source.stat().st_size, sha256=digest))
+    return files
+
+
+def _learned_file(agent_id: int, code: str, markdown: str) -> SkillProjectionFile:
+    source = storage.project_learned_markdown(agent_id, code, markdown)
+    digest = storage.file_hash(source)
+    return SkillProjectionFile(skill_code=code, relative_path="SKILL.md", source=source,
+                               size=source.stat().st_size, sha256=digest)
+
+
 async def build_skill_projection(
     agent_id: int,
     *,
@@ -43,26 +63,13 @@ async def build_skill_projection(
     files: list[SkillProjectionFile] = []
     digest = hashlib.sha256()
     for code in assigned_codes:
-        inspection = storage.inspect(code)
-        if not inspection.valid:
-            continue
-        for relative, source in storage.iter_skill_files(code):
-            sha256 = storage.file_hash(source)
-            size = source.stat().st_size
-            files.append(
-                SkillProjectionFile(
-                    skill_code=code,
-                    relative_path=relative,
-                    source=source,
-                    size=size,
-                    sha256=sha256,
-                )
-            )
+        for item in await complete_io(_assigned_files, code):
+            files.append(item)
             digest.update(code.encode())
             digest.update(b"\0")
-            digest.update(relative.encode())
+            digest.update(item.relative_path.encode())
             digest.update(b"\0")
-            digest.update(sha256.encode())
+            digest.update(item.sha256.encode())
     learned = await learning_service.list_injectable(agent_id)
     learned_codes: list[str] = []
     occupied = set(assigned_codes)
@@ -71,21 +78,11 @@ async def build_skill_projection(
             continue
         occupied.add(item.code)
         learned_codes.append(item.code)
-        source = storage.project_learned_markdown(agent_id, item.code, item.markdown)
-        sha256 = storage.file_hash(source)
-        size = source.stat().st_size
-        files.append(
-            SkillProjectionFile(
-                skill_code=item.code,
-                relative_path="SKILL.md",
-                source=source,
-                size=size,
-                sha256=sha256,
-            )
-        )
+        file = await complete_io(_learned_file, agent_id, item.code, item.markdown)
+        files.append(file)
         digest.update(item.code.encode())
         digest.update(b"\0SKILL.md\0")
-        digest.update(sha256.encode())
+        digest.update(file.sha256.encode())
     codes = tuple(sorted((*assigned_codes, *learned_codes)))
     return SkillProjectionSnapshot(
         agent_id=agent_id,
@@ -104,7 +101,7 @@ async def build_skill_prompt(agent_id: int, *, max_bytes: int = 200_000) -> str:
     for item in snapshot.files:
         if item.relative_path != "SKILL.md":
             continue
-        content = item.source.read_text(encoding="utf-8")
+        content = await complete_io(item.source.read_text, encoding="utf-8")
         block = f"## Skill: {item.skill_code}\n\n{content.strip()}"
         encoded = block.encode("utf-8")
         if used + len(encoded) > max_bytes:

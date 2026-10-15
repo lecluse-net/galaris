@@ -147,6 +147,9 @@ def decrypt_mapping_values(values: Mapping[str, str]) -> dict[str, str]:
     for key, value in values.items():
         try:
             result[str(key)] = encryption.decrypt(value)
+        except UnicodeDecodeError:
+            # An authenticated token with non-text content is corrupt, not legacy plaintext.
+            raise
         except (InvalidToken, ValueError, TypeError):
             result[str(key)] = value
     return result

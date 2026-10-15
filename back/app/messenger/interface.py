@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Collection, Generic, List, Literal, Optional, Set, TypeVar, Union
 
+from core.util import complete_io
+
 from app.messenger._observations import (
     ObservedMessengerFile,
     ObservedMessengerMessage,
@@ -248,7 +250,7 @@ class Messenger(ABC):
         data = await self.fetch_attachment(attachment)
         if len(data) > max_bytes:
             raise ValueError("Messenger attachment exceeds the requested byte limit")
-        dest.write_bytes(data)
+        await complete_io(dest.write_bytes, data)
         return len(data)
 
     async def send_voice_note(

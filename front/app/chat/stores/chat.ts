@@ -617,6 +617,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
   function onConnect(): void {
+    signalRefresh = null
     if (subscribedRoom) websocket.joinRoom(subscribedRoom)
     void loadStatus().catch(() => undefined)
     void refreshFromSignal(true)

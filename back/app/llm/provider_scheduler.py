@@ -8,6 +8,7 @@ belongs to one physical call, never to a tool or an entire agent run.
 from __future__ import annotations
 
 import asyncio
+from collections import Counter
 from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -141,13 +142,19 @@ class ProviderScheduler:
         self._scheduled = False
         now = asyncio.get_running_loop().time()
         for provider_id, queue in self._providers.items():
+            if not queue.waiting:
+                continue
+            # A drain does not yield: only grants below can change these counts.
+            owners = Counter(permit.owner for permit in queue.active if permit.owner)
+            priorities = {ticket.priority for ticket in queue.waiting}
             while queue.waiting:
-                eligible = [ticket for ticket in queue.waiting if self._eligible(queue, ticket.priority)]
+                allowed = {priority for priority in priorities if self._eligible(queue, priority)}
+                eligible = [ticket for ticket in queue.waiting if ticket.priority in allowed]
                 if not eligible:
                     break
-                def rank(ticket: Ticket, active: set[Permit] = queue.active) -> tuple[int, int, float]:
+                def rank(ticket: Ticket) -> tuple[int, int, float]:
                     age = int((now - ticket.queued_at) / 30)
-                    concurrent = sum(permit.owner == ticket.owner for permit in active) if ticket.owner else 0
+                    concurrent = owners[ticket.owner] if ticket.owner else 0
                     return max(0, ticket.priority - age), concurrent, ticket.queued_at
                 ticket = min(eligible, key=rank)
                 queue.waiting.remove(ticket)
@@ -155,6 +162,8 @@ class ProviderScheduler:
                     continue
                 permit = Permit(self, provider_id, ticket.priority, ticket.owner)
                 queue.active.add(permit)
+                if ticket.owner:
+                    owners[ticket.owner] += 1
                 ticket.future.set_result(permit)
 
 

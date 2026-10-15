@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 from loguru import logger
 from sqlalchemy import Select, and_, delete as sa_delete, exists, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 from sqlalchemy.sql.elements import ColumnElement
 
 from core import websocket
@@ -465,6 +466,20 @@ async def serialize_calls(calls: Sequence[LLMCall]) -> list[LLMCallRead]:
 
     db = get_db()
     payloads = {call.id: _public(call) for call in calls}
+    by_round: dict[UUID, list[dict[str, Any]]] = {}
+    by_task: dict[UUID, list[dict[str, Any]]] = {}
+    by_agent: dict[int, list[dict[str, Any]]] = {}
+    by_process: dict[UUID, list[dict[str, Any]]] = {}
+    for call in calls:
+        payload = payloads[call.id]
+        if call.conversation_round_id is not None:
+            by_round.setdefault(call.conversation_round_id, []).append(payload)
+        if call.task_id is not None:
+            by_task.setdefault(call.task_id, []).append(payload)
+        if call.agent_id is not None:
+            by_agent.setdefault(call.agent_id, []).append(payload)
+        if call.process_run_id is not None:
+            by_process.setdefault(call.process_run_id, []).append(payload)
 
     # Calls created before conversation purposes were propagated were persisted as
     # ``agent.exec``. The durable round is authoritative for the medium, so repair the
@@ -493,11 +508,10 @@ async def serialize_calls(calls: Sequence[LLMCall]) -> list[LLMCallRead]:
                 if voice_session_id is not None
                 else LLMCallPurpose.CONVERSATION_TEXT
             )
-            for call in calls:
-                if call.conversation_round_id == conversation_round_id:
-                    payloads[call.id]["purpose"] = purpose.value
+            for payload in by_round[conversation_round_id]:
+                payload["purpose"] = purpose.value
 
-    task_ids = {call.task_id for call in calls if call.task_id is not None}
+    task_ids = set(by_task)
     if task_ids:
         rows = (
             await db.execute(
@@ -508,10 +522,7 @@ async def serialize_calls(calls: Sequence[LLMCall]) -> list[LLMCallRead]:
             )
         ).all()
         for task_id, label, objective, status in rows:
-            payloads_by_id = [
-                payloads[call.id] for call in calls if call.task_id == task_id
-            ]
-            for payload in payloads_by_id:
+            for payload in by_task[task_id]:
                 payload["task_label"] = label
                 payload["task_status"] = (
                     status.value if isinstance(status, TaskStatus) else str(status)
@@ -526,7 +537,7 @@ async def serialize_calls(calls: Sequence[LLMCall]) -> list[LLMCallRead]:
                     task_objective=str(objective or ""),
                 )
 
-    agent_ids = {call.agent_id for call in calls if call.agent_id is not None}
+    agent_ids = set(by_agent)
     if agent_ids:
         rows = (
             await db.execute(
@@ -543,14 +554,11 @@ async def serialize_calls(calls: Sequence[LLMCall]) -> list[LLMCallRead]:
         ).all()
         for agent_id, first_name, last_name, code in rows:
             name = f"{first_name} {last_name}".strip()
-            for call in calls:
-                if call.agent_id == agent_id:
-                    payloads[call.id]["agent_name"] = name
-                    payloads[call.id]["agent_code"] = code
+            for payload in by_agent[agent_id]:
+                payload["agent_name"] = name
+                payload["agent_code"] = code
 
-    process_run_ids = {
-        call.process_run_id for call in calls if call.process_run_id is not None
-    }
+    process_run_ids = set(by_process)
     if process_run_ids:
         rows = (
             await db.execute(
@@ -566,9 +574,8 @@ async def serialize_calls(calls: Sequence[LLMCall]) -> list[LLMCallRead]:
             )
         ).all()
         for process_run_id, label in rows:
-            for call in calls:
-                if call.process_run_id == process_run_id:
-                    payloads[call.id]["process_label"] = label
+            for payload in by_process[process_run_id]:
+                payload["process_label"] = label
 
     return [LLMCallRead.model_validate(payloads[call.id]) for call in calls]
 
@@ -833,7 +840,9 @@ async def attach_tool_results(
     if not raw_results:
         return
     results = as_dict(await asyncio.to_thread(compact_trace_images, raw_results))
-    query = select(LLMCall).order_by(LLMCall.started_at.desc()).limit(200)
+    query = select(LLMCall).options(
+        load_only(LLMCall.id, LLMCall.tool_calls, raiseload=True),
+    ).order_by(LLMCall.started_at.desc()).limit(200)
     if task_id is not None:
         query = query.where(LLMCall.task_id == task_id)
     elif conversation_round_id is not None:
@@ -846,7 +855,6 @@ async def attach_tool_results(
         return
     db = get_db()
     calls = list((await db.execute(query)).scalars().all())
-    call_by_id = {call.id: call for call in calls}
     tools_by_call = {call.id: [dict(tool) for tool in (call.tool_calls or [])] for call in calls}
 
     # Candidate call and tool index for every tool-call ID still awaiting a result.
@@ -857,9 +865,19 @@ async def attach_tool_results(
             if tool_id in results and "result" not in tool:
                 candidates.setdefault(tool_id, []).append((call.id, index))
 
+    if not candidates:
+        return
+    # Full traces are needed for lineage ties and the unchanged websocket payload,
+    # not for the other calls in the bounded history window.
+    matching_ids = {call_id for hits in candidates.values() for call_id, _ in hits}
+    matched = (await db.scalars(select(LLMCall).where(LLMCall.id.in_(matching_ids)))).all()
+    call_by_id = {call.id: call for call in matched}
     now = datetime.now(timezone.utc).isoformat()
     dirty: set[UUID] = set()
     for tool_id, hits in candidates.items():
+        hits = [hit for hit in hits if hit[0] in call_by_id]
+        if not hits:
+            continue  # A trace deleted between the two reads must not be recreated.
         if len(hits) > 1:
             # Disambiguate IDs reused across parallel sessions by conversation lineage.
             hits = [max(hits, key=lambda h: _lineage_score(call_by_id[h[0]].request_messages, messages))]

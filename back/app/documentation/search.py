@@ -8,8 +8,9 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Float, cast, delete, func, or_, select
+from sqlalchemy import Float, cast, delete, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import load_only
 
 from core.database import get_db
 
@@ -61,7 +62,9 @@ async def synchronize(corpus: Corpus) -> None:
 async def index_embeddings(corpus: Corpus, *, model_key: str, embed: Embed, batch_size: int = 32) -> int:
     await synchronize(corpus)
     fingerprints = [p.fingerprint for p in corpus.passages]
-    rows = list((await get_db().scalars(select(Row).where(
+    rows = list((await get_db().scalars(select(Row).options(
+        load_only(Row.id, Row.title, Row.content, raiseload=True),
+    ).where(
         Row.fingerprint.in_(fingerprints),
         or_(Row.model_key.is_(None), Row.model_key != model_key, Row.embedding.is_(None)),
     ).order_by(Row.id).limit(batch_size))).all())
@@ -89,12 +92,12 @@ async def prune_retired(corpus: Corpus) -> None:
 
 async def index_status(corpus: Corpus, *, model_key: str | None) -> dict[str, int | bool]:
     keys = [p.fingerprint for p in corpus.passages]
-    indexed = int(await get_db().scalar(select(func.count()).select_from(Row).where(Row.fingerprint.in_(keys))) or 0)
-    embedded = 0
-    if model_key:
-        embedded = int(await get_db().scalar(select(func.count()).select_from(Row).where(
-            Row.fingerprint.in_(keys), Row.model_key == model_key, Row.embedding.is_not(None),
-        )) or 0)
+    indexed, matching = (await get_db().execute(select(
+        func.count(),
+        func.count().filter(Row.model_key == model_key, Row.embedding.is_not(None)) if model_key else literal(0),
+    ).select_from(Row).where(Row.fingerprint.in_(keys)))).one()
+    embedded = int(matching) if model_key else 0
+    indexed = int(indexed)
     return {"total_passages": len(keys), "indexed_passages": indexed, "embedded_passages": embedded,
             "vector_model_configured": model_key is not None}
 
@@ -146,11 +149,11 @@ async def search(
     if model_key and query_vector:
         matching = (Row.fingerprint.in_(keys), Row.model_key == model_key,
                     Row.dimensions == len(query_vector), Row.embedding.is_not(None))
-        coverage = int(await get_db().scalar(select(func.count()).select_from(Row).where(*matching)) or 0)
-        if coverage:
-            distance = cast(Row.embedding.op("<=>")(query_vector), Float())
-            semantic = list((await get_db().scalars(select(Row.fingerprint).where(*matching)
-                .order_by(distance, Row.fingerprint).limit(100))).all())
+        distance = cast(Row.embedding.op("<=>")(query_vector), Float())
+        ranked = (await get_db().execute(select(Row.fingerprint, func.count().over()).where(*matching)
+            .order_by(distance, Row.fingerprint).limit(100))).all()
+        semantic = [key for key, _ in ranked]
+        coverage = int(ranked[0][1]) if ranked else 0
         if coverage < len(keys):
             degradation_reason = "semantic_index_incomplete"
     elif degradation_reason is None:

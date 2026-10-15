@@ -94,13 +94,39 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
     && !subscribed.value
   ))
 
+  let summaryRefresh: {
+    lifecycle: number; session: string; requested: boolean; promise: Promise<void>
+  } | null = null
   async function refreshSummary(): Promise<void> {
-    const request = ++summaryRequest
+    const lifecycle = lifecycleGeneration
     const session = sessionGeneration()
-    const summary = await chatService.inbox()
-    if (request !== summaryRequest || session !== sessionGeneration()) return
-    unreadCount.value = summary.unread_count
-    await setApplicationBadge(summary.unread_count)
+    if (summaryRefresh?.lifecycle === lifecycle && summaryRefresh.session === session) {
+      summaryRefresh.requested = true
+      return summaryRefresh.promise
+    }
+    const refresh = { lifecycle, session, requested: true, promise: Promise.resolve() }
+    summaryRefresh = refresh
+    const current = (): boolean => summaryRefresh === refresh
+      && lifecycle === lifecycleGeneration && session === sessionGeneration()
+    refresh.promise = (async () => {
+      try {
+        do {
+          refresh.requested = false
+          const request = ++summaryRequest
+          try {
+            const summary = await chatService.inbox()
+            if (request !== summaryRequest || !current()) return
+            unreadCount.value = summary.unread_count
+            await setApplicationBadge(summary.unread_count)
+          } catch (error) {
+            if (!refresh.requested || !current()) throw error
+          }
+        } while (refresh.requested && current())
+      } finally {
+        if (summaryRefresh === refresh) summaryRefresh = null
+      }
+    })()
+    return refresh.promise
   }
 
   async function currentSubscription(): Promise<PushSubscription | null> {
@@ -246,6 +272,9 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
   }
 
   function onConnect(): void {
+    // A lost HTTP request from the previous connection must not own recovery.
+    summaryRequest++
+    summaryRefresh = null
     void refreshSummary().catch(() => undefined)
   }
 
@@ -281,6 +310,7 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
   function stop(): void {
     lifecycleGeneration++
     summaryRequest++
+    summaryRefresh = null
     if (!started.value) return
     websocket.offEvent('chat', 'message', onMessage)
     websocket.offConnect(onConnect)

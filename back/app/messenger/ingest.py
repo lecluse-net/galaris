@@ -26,6 +26,7 @@ from app.messenger.models import (
 from core.database import get_db
 from core.params import runtime_settings
 from core.i18n import default_language, is_supported, render_prompt, t
+from core.util import complete_io
 
 if TYPE_CHECKING:
     from app.llm import MediaCaps
@@ -140,7 +141,7 @@ async def _extract(messenger: MessengerFacade, att: File, language: str) -> str:
         with TemporaryDirectory(prefix="messenger-document-") as temporary:
             directory = Path(temporary)
             path = directory / "input"
-            path.write_bytes(await fetch_bytes(messenger, att))
+            await complete_io(path.write_bytes, await fetch_bytes(messenger, att))
             document = await prepare_document(path, att.name, mime, directory)
             return document.text()
 
@@ -286,7 +287,7 @@ async def _extract_pdf(messenger: MessengerFacade, att: File, language: str) -> 
     with TemporaryDirectory(prefix="messenger-pdf-") as temporary:
         directory = Path(temporary)
         path = directory / "input"
-        path.write_bytes(await fetch_bytes(messenger, att))
+        await complete_io(path.write_bytes, await fetch_bytes(messenger, att))
         document = await prepare_document(path, att.name, "application/pdf", directory)
         text = document.text() if any(page.text.strip() for page in document.pages) else ""
     return text or _message(
@@ -357,12 +358,12 @@ async def pdf_to_images(
     with TemporaryDirectory(prefix="messenger-render-") as temporary:
         directory = Path(temporary)
         path = directory / "input"
-        path.write_bytes(await fetch_bytes(messenger, att))
+        await complete_io(path.write_bytes, await fetch_bytes(messenger, att))
         document = await prepare_document(path, att.name, "application/pdf", directory)
         for page in document.pages[:max_pages]:
             image = document.image_path(page, directory)
             if image:
-                out.append((image.read_bytes(), "image/png"))
+                out.append((await complete_io(image.read_bytes), "image/png"))
     return out
 
 

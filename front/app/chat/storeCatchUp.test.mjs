@@ -20,7 +20,7 @@ async function setup(t, service, canCall = false, listeners = new Map()) {
     '@/core/websocket': { BaseRoom: class {}, websocket: {
       createWebsocket() {},
       onEvent(subject, action, callback) { listeners.set(`${subject}.${action}`, callback) },
-      offEvent() {}, onConnect() {}, offConnect() {}, joinRoom() {}, leaveRoom() {},
+      offEvent() {}, onConnect(callback) { listeners.set('connect', callback) }, offConnect() {}, joinRoom() {}, leaveRoom() {},
     } },
     '../services/chatService': { chatService: { status: async () => ({ enabled: false }), ...service } },
     '../liveState': liveState, '../runtimeState': {}, '../voiceCall': {},
@@ -197,4 +197,29 @@ test('a blocked signal refresh cannot delay navigation or overwrite the new room
   first.resolve()
   await setImmediate()
   assert.equal(store.selectedRoom.id, 'other')
+})
+
+test('reconnection starts a fresh projection while the previous HTTP request is blocked', async t => {
+  const listeners = new Map(), first = deferred()
+  let requests = 0
+  const store = await setup(t, {
+    room: async () => {
+      if (++requests === 1) {
+        await first.promise
+        return { id: 'room', label: 'Obsolete connection' }
+      }
+      return { id: 'room', label: 'Reconnected' }
+    },
+    messages: async () => ({ items: [], total: 0 }),
+    activity: async () => ({ items: [], total: 0 }),
+    rooms: async () => ({ items: [], total: 0 }),
+  }, false, listeners)
+  store.liveRound = null
+  listeners.get('chat.activity')({ data: { room_id: 'room' } })
+  listeners.get('connect')()
+  await setImmediate()
+  assert.equal(store.selectedRoom.label, 'Reconnected')
+  first.resolve()
+  await setImmediate()
+  assert.equal(store.selectedRoom.label, 'Reconnected')
 })

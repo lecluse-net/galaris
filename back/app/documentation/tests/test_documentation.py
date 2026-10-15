@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select, func
+from sqlalchemy import event, select, func
 
 from app.documentation import corpus, facade
 from app.documentation.models import DocumentationPassage
@@ -298,6 +298,77 @@ async def test_semantic_index_is_incremental_and_does_not_reuse_other_models(db,
     changed_model = await facade.search(snapshot, "orchestration périodique", model_key="b" * 64, query_vector=[1.0, 0.0])
     assert changed_model.mode == "lexical"
     assert changed_model.degradation_reason == "semantic_index_incomplete"
+    assert await facade.index_embeddings(snapshot, model_key="b" * 64, embed=embedding, batch_size=100) == count
+    rebuilt = await facade.search(snapshot, "orchestration périodique", model_key="b" * 64, query_vector=[1.0, 0.0])
+    assert rebuilt.mode == "hybrid" and rebuilt.indexed_passages == count
+    incompatible = await facade.search(snapshot, "orchestration périodique", model_key="b" * 64,
+                                       query_vector=[1.0, 0.0, 0.0])
+    assert incompatible.mode == "lexical" and incompatible.indexed_passages == 0
+    assert incompatible.degradation_reason == "semantic_index_incomplete"
+
+
+@pytest.mark.asyncio
+async def test_semantic_search_counts_the_full_scope_with_one_ranked_read(db):
+    from hashlib import sha256
+    from app.documentation.contracts import Corpus, Page, Passage
+
+    page = Page("docs/fr/synthetic.md", "Stations", "fr", "sample", "documentation",
+                "current", "Stations orbit around the synthetic observatory.", "synthetic")
+    passages = tuple(Passage(sha256(str(n).encode()).hexdigest(), page, "Stations", 0, len(page.content))
+                     for n in range(125))
+    snapshot = Corpus("synthetic", "test", (page,), passages)
+
+    async def embed(texts):
+        return [[1.0, 0.0] for _ in texts]
+
+    assert await facade.index_embeddings(snapshot, model_key="a" * 64, embed=embed, batch_size=200) == 125
+    connection = await db.connection()
+    statements = []
+
+    def capture(_connection, _cursor, statement, _parameters, _context, _many):
+        if statement.lstrip().upper().startswith("SELECT"):
+            statements.append(statement)
+
+    event.listen(connection.sync_connection, "before_cursor_execute", capture)
+    try:
+        result = await facade.search(snapshot, "Stations", model_key="a" * 64, query_vector=[1.0, 0.0])
+    finally:
+        event.remove(connection.sync_connection, "before_cursor_execute", capture)
+    assert result.mode == "hybrid" and result.degradation_reason is None
+    assert result.indexed_passages == result.total_passages == 125
+    assert result.hits[0].uri == page.uri
+    assert len(statements) <= 3, f"Hybrid search used {len(statements)} reads for one corpus"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model_key", ["a" * 64, "b" * 64, None, ""])
+@pytest.mark.parametrize("empty", [False, True])
+async def test_index_status_counts_only_current_corpus_in_one_read(db, sources, model_key, empty):
+    from dataclasses import replace
+
+    snapshot = facade.load_corpus()
+
+    async def embed(texts):
+        return [[1.0, 0.0] for _ in texts]
+
+    await facade.index_embeddings(snapshot, model_key="a" * 64, embed=embed, batch_size=100)
+    current = replace(snapshot, passages=() if empty else snapshot.passages[:1])
+    connection = await db.connection()
+    statements = []
+
+    def capture(_connection, _cursor, statement, _parameters, _context, _many):
+        if statement.lstrip().upper().startswith("SELECT"):
+            statements.append(statement)
+
+    event.listen(connection.sync_connection, "before_cursor_execute", capture)
+    try:
+        status = await facade.index_status(current, model_key=model_key)
+    finally:
+        event.remove(connection.sync_connection, "before_cursor_execute", capture)
+    assert status == {"total_passages": int(not empty), "indexed_passages": int(not empty),
+                      "embedded_passages": int(not empty and model_key == "a" * 64),
+                      "vector_model_configured": model_key is not None}
+    assert len(statements) <= 1, f"Index status used {len(statements)} reads for one corpus"
 
 
 @pytest_asyncio.fixture

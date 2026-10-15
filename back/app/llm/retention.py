@@ -6,6 +6,7 @@ from typing import Literal
 from uuid import UUID
 
 from sqlalchemy import Select, and_, case, delete, false, func, or_, select
+from sqlalchemy.orm import load_only
 
 from core.database import get_db
 from core.params import runtime_settings
@@ -91,6 +92,7 @@ async def prune_traces(*, preview: bool = False, batch_size: int = 100) -> int:
         (
             await db.scalars(
                 select(LLMCall)
+                .options(load_only(LLMCall.id, LLMCall.usage, raiseload=True))
                 .where(
                     # Durable inference replay owns this journal independently of
                     # the diagnostic trace retention policy.

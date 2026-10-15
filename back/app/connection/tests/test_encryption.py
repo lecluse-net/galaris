@@ -97,6 +97,16 @@ class TestEncryptionService:
         assert decrypt_mapping_values(values) == {**values, "valid": "synthetic secret"}
 
     @patch("core.util.encryption.settings")
+    def test_mapping_rejects_authenticated_non_text_content(self, mock_settings):
+        from cryptography.fernet import Fernet
+
+        key = Fernet.generate_key()
+        mock_settings.ENCRYPTION_MASTER_KEY = key.decode()
+        token = Fernet(key).encrypt(b"\xff").decode()
+        with pytest.raises(UnicodeDecodeError):
+            decrypt_mapping_values({"corrupt": token})
+
+    @patch("core.util.encryption.settings")
     def test_missing_master_key(self, mock_settings):
         """Test the error raised when the master key is undefined."""
         mock_settings.ENCRYPTION_MASTER_KEY = ""
