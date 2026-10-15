@@ -389,8 +389,6 @@ async def test_interrupted_native_dispatch_preserves_unknown_outcome_without_rep
             Connection.agent_id == action.agent_id, Tool.code == "browser"))
         await connections.set_connection_function_state(connection.id, "browser_open", "ask")
     definition = next(item for item in mcp_loader.load_mcp_tools() if item.name == "browser_open")
-    if interruption == "timeout":
-        definition = replace(definition, timeout_seconds=0.1)
     wrapper = mcp_loader._wrap_tool(definition, mcp_loader.McpToolContext(
         agent_id=action.agent_id, runtime="internal", resources={"authorization_context": action.context_key}))
     operation = uuid4()
@@ -413,6 +411,11 @@ async def test_interrupted_native_dispatch_preserves_unknown_outcome_without_rep
     async with get_db_session() as db:
         row = await db.get(ActionAuthorization, identifier)
         assert await answer_action(identifier, user_id=row.approver_user_id, approved=True)
+    if interruption == "timeout":
+        # Exercise interruption after admission, not a 100 ms race against
+        # permission/catalog SQL before the executor was ever reached.
+        wrapper = mcp_loader._wrap_tool(replace(definition, timeout_seconds=2), mcp_loader.McpToolContext(
+            agent_id=action.agent_id, runtime="internal", resources={"authorization_context": action.context_key}))
     running = asyncio.create_task(invoke())
     try:
         await asyncio.wait_for(entered.wait(), 5)

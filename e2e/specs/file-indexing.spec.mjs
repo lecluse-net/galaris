@@ -16,6 +16,7 @@ test('Memory 3D attachment thumbnail persists across document reopening in the a
     if (new URL(request.url()).pathname === `/api/memory/documents/${fixture.model_document_id}/attachments/${fixture.model_attachment_id}`) downloads++
   })
   const path = `/memory/documents?document_id=${fixture.model_document_id}`
+  await errors.settle()
   await page.goto(path)
   const image = page.locator('.model3d-thumbnail img')
   await page.locator('.model3d-thumbnail').scrollIntoViewIfNeeded()
@@ -23,7 +24,9 @@ test('Memory 3D attachment thumbnail persists across document reopening in the a
   await expect.poll(() => image.evaluate(element => element.naturalWidth)).toBeGreaterThan(0)
   const first = await image.evaluate(async element => Array.from(new Uint8Array(await (await fetch(element.src)).arrayBuffer())))
   await errors.settle()
-  await page.goto('/memory')
+  // Fully close the document before reopening it. An intermediate application
+  // screen would start its own deferred previews during the next navigation.
+  await page.goto('about:blank')
   await expect(image).toHaveCount(0)
   await page.goto(path)
   await page.locator('.model3d-thumbnail').scrollIntoViewIfNeeded()

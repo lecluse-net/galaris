@@ -269,13 +269,12 @@ async def test_source_change_invalidates_previously_prepared_analysis(db, tmp_pa
     agent, uri = await setup_source(db, tmp_path, monkeypatch, count=2)
     async with prepared_resource(ResourceContext(agent.id, 'internal'), uri) as (before, first):
         before_hash = before.sha256
-    # A changed source under the same URI must not resolve the previous cache key.
+    # A changed source under the same URI must be prepared from its current bytes.
     from app.messenger.models import File
     from uuid import UUID
     attachment = await db.get(File, UUID(uri.rsplit('/', 1)[-1]))
-    from core.settings import settings as configuration
-    paths = list((tmp_path / 'chat').rglob('*'))
-    binary = next(p for p in paths if p.is_file() and p.read_bytes().startswith(b'%PDF-'))
+    from core.storage import file_path
+    binary = file_path(attachment.id)
     pdf(binary, count=3)
     async with prepared_resource(ResourceContext(agent.id, 'internal'), uri) as (after, second):
         assert after.sha256 != before_hash and second != first

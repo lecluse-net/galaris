@@ -21,6 +21,7 @@ ALLOWED_DATABASE_SESSION_BOUNDARIES = {
     "app/chat/thumbnail_service.py",
     "app/chat/webrtc.py",  # Independent audio coroutines recheck revocation in short sessions.
     "app/code/gateway.py",  # IDE websocket and detached stream revocation watcher own short sessions.
+    "app/connection/oauth_runtime.py",  # HTTP auth callbacks isolate sessions and serialize refresh rotation.
     "app/conversation/facade.py",
     "app/conversation/scheduler.py",
     "app/conversation/service.py",

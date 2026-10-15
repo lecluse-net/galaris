@@ -479,7 +479,7 @@
                         />
                       </template>
                     </q-banner>
-                    <q-input v-if="form.mcp_config.auth.type !== 'none' && form.mcp_config.auth.type !== 'basic' && form.mcp_config.type !== 'stdio'"
+                    <q-input v-if="!['none', 'basic'].includes(form.mcp_config.auth.type) && form.mcp_config.type !== 'stdio'"
                       v-model="form.mcp_config.auth.url_param" :label="$t('tools.urlParam')"
                       dense outlined style="max-width: 280px" :hint="$t('tools.urlParamHint')" />
                     <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">{{ $t('tools.staticHeaders') }}</div>
@@ -1234,6 +1234,7 @@ function mcpConfigForForm(config?: McpConfig | null): McpFormConfig {
   }
 }
 const emptyFileShareConfig = (): FileShareConfig => ({ service: '', base_url: '', param_map: {} })
+
 const emptyMessengerConfig = (): MessengerConfig => ({
   service: '',
   settings: {},

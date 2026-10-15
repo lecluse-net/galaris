@@ -60,20 +60,21 @@ def test_resolve_file_cannot_escape_skill(skill_root: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_system_skill_uses_bundled_read_only_storage(skill_root: Path) -> None:
-    inspection = storage.inspect("galaris")
+@pytest.mark.parametrize("code", [definition.code for definition in storage.SYSTEM_SKILLS])
+async def test_system_skill_uses_bundled_read_only_storage(skill_root: Path, code: str) -> None:
+    inspection = storage.inspect(code)
 
     assert inspection.available is True
     assert inspection.valid is True
-    assert not (skill_root / "galaris").exists()
-    assert storage.source_skill_dir("galaris") == storage.SYSTEM_SKILLS_ROOT / "galaris"
-    assert storage.read_text("galaris", "SKILL.md").startswith("---\nname: galaris")
+    assert not (skill_root / code).exists()
+    assert storage.source_skill_dir(code) == storage.SYSTEM_SKILLS_ROOT / code
+    assert storage.metadata_from_markdown(storage.read_text(code, "SKILL.md"), expected_code=code)[0] == code
 
     with pytest.raises(ValueError, match="système"):
         await storage.install_markdown(
-            "galaris",
-            "Galaris",
-            "---\nname: galaris\ndescription: Override.\n---\n",
+            code,
+            "Override",
+            f"---\nname: {code}\ndescription: Override.\n---\n",
         )
 
 
@@ -81,7 +82,7 @@ def test_system_skill_documents_every_native_mcp_tool(skill_root: Path) -> None:
     from app.tools.mcp_loader import load_mcp_tools
 
     # Native operations may live in a dedicated system guide linked by the general skill.
-    markdown = storage.read_text("galaris", "SKILL.md") + storage.read_text("galaris-lab", "SKILL.md")
+    markdown = "\n".join(storage.read_text(definition.code, "SKILL.md") for definition in storage.SYSTEM_SKILLS)
     missing = sorted(
         f"{definition.tool_code}:{definition.name}"
         for definition in load_mcp_tools()

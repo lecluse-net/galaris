@@ -54,8 +54,10 @@ Le chargement dépend d'une configuration de compétence, jamais de l'identité 
 Un fichier facultatif `runtime.yaml` contenant `loading: eager` demande au harnais interne
 de charger une compétence effectivement attribuée dès la première requête en Task,
 conversation texte et voix par tours. Sans ce fichier, avec `loading: deferred`, ou avec
-une configuration invalide, les Tasks conservent le chargement à la demande et les
-conversations ne chargent pas cette compétence par ce mécanisme. Le fichier ne modifie
+une configuration invalide, les Tasks, conversations texte et voix par tours conservent
+le chargement à la demande. Leur modèle reçoit le catalogue des compétences autorisées
+et peut charger leurs instructions et ressources associées avec `load_capability`.
+Le fichier ne modifie
 aucune autorisation ni connexion. Il est borné à 4096 octets et accepte uniquement `loading`.
 
 `galaris-knowledge` fournit cette configuration ; son défaut global reste désactivé et son

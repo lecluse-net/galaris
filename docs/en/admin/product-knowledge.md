@@ -41,7 +41,8 @@ the agent's name, code or installation marker.
 An optional `runtime.yaml` at a skill's root configures loading in the internal harness:
 `loading: eager` loads instructions on the first request in Tasks, text conversations and
 turn-based voice. Without this file, or with `loading: deferred`, skills remain available
-on demand in Tasks; this mechanism does not add them to conversations. Invalid configuration
+on demand in Tasks, text conversations and turn-based voice: the model sees the authorized
+skill catalogue and loads the skill matching the request. Invalid configuration
 preserves this default. The `SKILL.md` frontmatter remains unchanged.
 
 The system skill `galaris-knowledge` supplies `loading: eager`. Any agent effectively assigned

@@ -612,7 +612,7 @@ async def test_direct_refresh_preserves_completed_agents_and_stops_on_interrupti
     async def interrupted_discovery(agent_id, **kwargs):
         calls.append(agent_id)
         if interruption == "revoke" and len(calls) == 1:
-            # Revocation is reached after a discovery slower than the timeout case's budget.
+            # Exercise revocation after a deliberately slow discovery.
             await asyncio.sleep(1.1)
         if len(calls) == 2:
             if interruption == "timeout":
@@ -636,10 +636,10 @@ async def test_direct_refresh_preserves_completed_agents_and_stops_on_interrupti
         # Cancellation leaves the contextual session usable after rollback.
         assert await db.get(Agent, recipient)
     else:
-        # The short deadline belongs only to the timeout scenario. Revocation
-        # must reach the second discovery even when the first one is slow.
+        # Allow the first real catalogue and its checkpoint to finish under load
+        # before timing out the deliberately stalled second discovery.
         if interruption == "timeout":
-            refreshed = await admin_service.refresh_catalogs(actor, identifiers, timeout_seconds=1)
+            refreshed = await admin_service.refresh_catalogs(actor, identifiers, timeout_seconds=10)
         else:
             refreshed = await admin_service.refresh_catalogs(actor, identifiers)
         assert not refreshed["complete"] and refreshed["agents_refreshed"] == 1

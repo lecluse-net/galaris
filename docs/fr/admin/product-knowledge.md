@@ -43,7 +43,8 @@ de la compétence, sans dépendre du nom, du code ou du marqueur d'installation 
 Le fichier facultatif `runtime.yaml` à la racine d'une compétence configure son chargement
 dans le harnais interne : `loading: eager` charge les instructions dès la première requête
 en Task, conversation texte et voix par tours. Sans fichier, ou avec `loading: deferred`,
-le chargement reste à la demande en Task ; ce mécanisme ne l'ajoute pas aux conversations.
+le chargement reste à la demande en Task, conversation texte et voix par tours : le modèle
+voit le catalogue des compétences autorisées et charge celle qui correspond à la demande.
 Une configuration invalide conserve ce défaut. Le frontmatter de `SKILL.md` reste inchangé.
 
 La compétence système `galaris-knowledge` fournit `loading: eager`. Tout agent auquel elle

@@ -47,6 +47,6 @@ async def video_generate(ctx: McpToolContext, prompt: str, destination: str, dur
         duration=duration, resolution=resolution, aspect_ratio=aspect_ratio), destination, invocation_key)
 
 
-@mcp_tool("multimedia", name="multimedia_get_run", description="Read a media generation's progress and final file URIs using its run_id. Generation advances in the background.")
+@mcp_tool("multimedia", approval="ask", approval_reason="Inspect an authorized media generation", name="multimedia_get_run", description="Read a media generation's progress and final file URIs using its run_id. Generation advances in the background.")
 async def multimedia_get_run(ctx: McpToolContext, run_id: UUID) -> dict[str, Any]:
     return await read(ctx, run_id)

@@ -563,8 +563,10 @@ async def test_enabled_native_definition_projection_applies_every_visibility_fil
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("revoked", [False, True])
 async def test_conversation_projection_intersects_checkbox_and_function_policy(
     monkeypatch: pytest.MonkeyPatch,
+    revoked: bool,
 ) -> None:
     from app.tools import mcp_loader
 
@@ -572,12 +574,13 @@ async def test_conversation_projection_intersects_checkbox_and_function_policy(
         return {"galaris", "conversation", "memory", "file_sharing"}
 
     async def disabled(_agent_id: int) -> set[str]:
-        return set()
+        return {"memory_sharing"} if revoked else set()
 
     checked_tools = SimpleNamespace(all=lambda: [
         SimpleNamespace(code="galaris", messenger_config=None),
         SimpleNamespace(code="conversation", messenger_config=None),
         SimpleNamespace(code="file_sharing", messenger_config=None),
+        SimpleNamespace(code="memory", messenger_config=None),
     ])
     db = SimpleNamespace(scalars=AsyncMock(return_value=checked_tools))
     monkeypatch.setattr(mcp_loader, "get_enabled_integrated_tool_codes", enabled)
@@ -595,6 +598,7 @@ async def test_conversation_projection_intersects_checkbox_and_function_policy(
             "conversation_task_resume",
             "conversation_task_retry",
             "file_search",
+            "memory_sharing",
             "process_start",
             "task_run",
         },
@@ -609,7 +613,8 @@ async def test_conversation_projection_intersects_checkbox_and_function_policy(
         "conversation_task_resume",
         "conversation_task_retry",
         "file_search",
-    }
+        "memory_sharing",
+    } - ({"memory_sharing"} if revoked else set())
 
 
 @pytest.mark.asyncio

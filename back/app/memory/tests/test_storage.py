@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 
 from app.memory.contracts import ResourceNotFoundError, ResourceTooLargeError
-from app.memory.storage import NativeFileStorage
+from app.memory.storage import AttachmentFileStorage, NativeFileStorage
 
 
 @pytest.mark.asyncio
@@ -61,9 +61,12 @@ async def test_stream_limit_rejection_keeps_existing_resources(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_existing_storage_uses_changed_resource_limit_and_keeps_saved_content(tmp_path, monkeypatch):
+@pytest.mark.parametrize("storage_type", [NativeFileStorage, AttachmentFileStorage], ids=["document-body", "managed-attachment"])
+async def test_existing_storage_uses_changed_resource_limit_and_keeps_saved_content(tmp_path, monkeypatch, storage_type):
     from core.params import runtime_settings
-    storage = NativeFileStorage(tmp_path)
+    from core.settings import settings
+    monkeypatch.setattr(type(settings), "GALARIS_FILE_ROOT", str(tmp_path))
+    storage = storage_type(tmp_path)
     monkeypatch.setattr(runtime_settings, 'MEMORY_RESOURCE_MAX_BYTES', 2048)
     existing = await storage.create(b'x' * 1500)
     monkeypatch.setattr(runtime_settings, 'MEMORY_RESOURCE_MAX_BYTES', 1024)
@@ -75,6 +78,7 @@ async def test_existing_storage_uses_changed_resource_limit_and_keeps_saved_cont
         yield b'x'
     with pytest.raises(ResourceTooLargeError):
         await storage.create_stream(chunks())
+    assert {path for path in tmp_path.rglob('*') if path.is_file()} == {await storage.path_for_read(existing)}
     monkeypatch.setattr(runtime_settings, 'MEMORY_RESOURCE_MAX_BYTES', 2048)
     assert await storage.read(await storage.create(b'x' * 1500)) == b'x' * 1500
     assert not list(tmp_path.rglob('*.part'))

@@ -186,7 +186,7 @@ _CONVERSATION_TOOL_POLICIES: dict[str, Literal["short", "deferred"]] = {
         for name in (
             "file_list", "file_info", "file_search", "file_read", "file_create",
             "file_write", "file_append", "file_edit", "memory_remember", "memory_forget",
-            "memory_summarize", "memory_upcoming", "document_share",
+            "memory_summarize", "memory_upcoming", "document_share", "memory_sharing",
         )
     },
     # Personal processes are inspected or started asynchronously.
@@ -477,7 +477,10 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                     )
                     if not visible:
                         raise ToolCallRejectedError("This tool is no longer authorized or available in this execution.")
-                    bound = inspect.signature(definition.function).bind(ctx, *args, **kwargs)
+                    try:
+                        bound = inspect.signature(definition.function).bind(ctx, *args, **kwargs)
+                    except TypeError as error:
+                        raise ToolCallRejectedError("Arguments do not match this Tool's declared signature") from error
                     bound.apply_defaults()
                     arguments = {
                         key: value for key, value in bound.arguments.items() if key not in {"ctx", "context"}
@@ -533,6 +536,8 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                 await get_db().commit()
             from .authorization import finish_action
             await finish_action(authorization_id, receipt=result)
+            if execution is not None:
+                execution.outcome = "returned"
             return result
         except asyncio.CancelledError:
             from .authorization import finish_action

@@ -169,7 +169,8 @@ async def effective_access(item: MemoryItem, agent_id: int | HumanActor, *, evid
     if isinstance(agent_id, HumanActor):
         return await human_item_access(item, agent_id.user_id)
     if (evidence_ids is not None and item.id not in evidence_ids) or not await source_is_readable(
-        item.id, item.managed_source_kind, agent_id, check_evidence=evidence_ids is None,
+        item.id, item.managed_source_kind, agent_id,
+        check_evidence=evidence_ids is None and item.metadata_.get("evidence_validator") is not None,
     ):
         return MemoryAccess(can_read=False, can_write=False)
     if item.node_kind in {"attachment", "folder"}:

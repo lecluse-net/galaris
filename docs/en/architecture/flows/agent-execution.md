@@ -32,7 +32,9 @@ the terminal result. See [0171](../../../../project/decisions/0171-adaptive-task
 
 The internal harness applies `runtime.yaml` from effectively assigned skills: `loading: eager`
 loads them on the first request in Tasks, text conversations and turn-based voice; the default
-remains on demand in Tasks. `galaris-knowledge` supplies this configuration and retains its
+remains on demand in all three contexts. The deferred catalogue makes assigned skills
+discoverable during a conversation. Tools retain
+their own permissions and restrictions. `galaris-knowledge` supplies this configuration and retains its
 documentation access check. Execution depends on neither the agent's name nor its installation
 marker. See the [product knowledge workflow](../../admin/product-knowledge.md).
 

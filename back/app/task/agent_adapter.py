@@ -177,32 +177,32 @@ class SqlAlchemyAgentTaskAdapter:
         return task
 
     async def create(self, draft: AgentTaskDraft) -> Any:
-        return await task_service.create(
-            TaskCreate(
-                label=draft.label,
-                objective=draft.objective,
-                status=TaskStatus(draft.status.value),
-                paused=draft.paused,
-                ai=draft.ai,
-                effort=draft.effort,
-                agent_id=draft.agent_id,
-                goal_id=draft.goal_id,
-                requester_agent_id=draft.requester_agent_id,
-                messenger_connection_id=draft.messenger_connection_id,
-                message_platform=draft.message_platform,
-                message_group_id=draft.message_group_id,
-                data=dict(draft.data) if draft.data is not None else None,
-                messages=(
-                    [TaskMessage.model_validate(item) for item in draft.messages]
-                    if draft.messages is not None
-                    else None
-                ),
-                parent_id=draft.parent_id,
-                source_task_id=draft.source_task_id,
-                plan=dict(draft.plan) if draft.plan is not None else None,
+        data = TaskCreate(
+            label=draft.label,
+            objective=draft.objective,
+            status=TaskStatus(draft.status.value),
+            paused=draft.paused,
+            ai=draft.ai,
+            effort=draft.effort,
+            agent_id=draft.agent_id,
+            goal_id=draft.goal_id,
+            requester_agent_id=draft.requester_agent_id,
+            messenger_connection_id=draft.messenger_connection_id,
+            message_platform=draft.message_platform,
+            message_group_id=draft.message_group_id,
+            data=dict(draft.data) if draft.data is not None else None,
+            messages=(
+                [TaskMessage.model_validate(item) for item in draft.messages]
+                if draft.messages is not None
+                else None
             ),
-            **({"idempotency_key": draft.idempotency_key} if draft.idempotency_key is not None else {}),
+            parent_id=draft.parent_id,
+            source_task_id=draft.source_task_id,
+            plan=dict(draft.plan) if draft.plan is not None else None,
         )
+        if draft.idempotency_key is None:
+            return await task_service.create(data)
+        return await task_service.create(data, idempotency_key=draft.idempotency_key)
 
     async def get_by_id(self, task_id: UUID) -> Any | None:
         return await task_service.get_by_id(task_id)

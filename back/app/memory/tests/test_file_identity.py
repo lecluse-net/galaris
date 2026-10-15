@@ -140,9 +140,16 @@ async def test_equal_attachments_merge_within_parent_and_preserve_live_access(db
     await attachments.delete_document_attachment(parent.id, children[1].id, actor_agent_id=owner.id)
     with pytest.raises(service.MemoryPermissionError):
         await service.get_item(canonical_id, agent_id=owner.id)
-    payloads = [path for path in memory_storage.rglob("*") if path.is_file() and path.stat().st_size]
+    from core.storage import file_path
+    from app.memory.models import MemoryRevision
+    from sqlalchemy import func
+    payloads = [file_path(row.id) for row in children]
+    assert all(path.is_file() for path in payloads)
+    assert any(await db.scalars(select(MemoryRevision.content).where(MemoryRevision.item_id == canonical_id)))
     await service.delete_document(parent.id, actor_agent_id=owner.id)
-    assert payloads and all(not path.exists() for path in payloads)
+    assert all(not path.exists() for path in payloads)
+    assert await db.scalar(select(func.count()).select_from(MemoryRevision).where(MemoryRevision.item_id.in_(node_ids))) == 0
+    assert not any(await db.scalars(select(MemoryItem.memory_content).where(MemoryItem.id.in_(node_ids)).execution_options(include_historized=True)))
 
 
 @pytest.mark.asyncio

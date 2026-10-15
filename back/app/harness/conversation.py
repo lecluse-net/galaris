@@ -58,7 +58,8 @@ from .mcp_toolset import build_conversation_toolset
 from .conversation_interrupt import ConversationInterruption
 from .runtime import Agent, create_agent
 from .checkpoint import HarnessRunCheckpoint
-from .skills import build_eager_skill_capabilities
+from .skills import build_internal_skill_capabilities
+from .prompt import harness_system_prompt_tree
 
 
 _PENDING_INTERACTION_PROMPT_LIMIT = 6
@@ -298,6 +299,7 @@ def _system_prompt(
     context: AgentRunContext | None = None,
     executor: ExecutorKind = "conversation",
     has_prior_history: bool = False,
+    has_skills: bool = False,
     suffix: str | None = None,
     action_policy: str,
 ) -> str:
@@ -414,7 +416,10 @@ def _system_prompt(
         conversation_action_policy=action_policy,
     )
     rendered = render_prompt_tree(
-        build_executor_prompt_tree(executor, prompt_context, suffix=suffix)
+        harness_system_prompt_tree(
+            build_executor_prompt_tree(executor, prompt_context, suffix=suffix),
+            has_skills=has_skills,
+        )
     )
     if executor == "conversation" and has_prior_history:
         variety_policy = (
@@ -752,7 +757,7 @@ class HarnessConversationController:
                 model=ResolvedModel(id=llm.id, code=llm.code, model_name=llm.llm_name, label=llm.label, requested_effort="standard"),
                 resume_checkpoint=turn.resume_checkpoint, control=AgentRunControl(save_checkpoint=turn.save_checkpoint),
             )) if turn.save_checkpoint is not None else None
-            capabilities = [] if turn.force_response else await build_eager_skill_capabilities(turn.agent_id)
+            capabilities = [] if turn.force_response else await build_internal_skill_capabilities(turn.agent_id)
             runtime = await create_agent(
                 llm=llm,
                 system_prompt=_system_prompt(
@@ -763,6 +768,7 @@ class HarnessConversationController:
                     context=context,
                     executor="conversation",
                     has_prior_history=bool(history),
+                    has_skills=bool(capabilities),
                     suffix=prompt_suffix,
                     action_policy=action_policy,
                 ),
@@ -1071,6 +1077,7 @@ async def stream_voice_conversation(
         await params_service.get_or_default(Params.AI_CONVERSATION_ACTION_POLICY)
         or ""
     )
+    capabilities = await build_internal_skill_capabilities(request.agent_id)
     runtime = await create_agent(
         llm=llm,
         system_prompt=_system_prompt(
@@ -1081,11 +1088,12 @@ async def stream_voice_conversation(
             context=context,
             executor="voice",
             has_prior_history=bool(history),
+            has_skills=bool(capabilities),
             suffix=prompt_suffix,
             action_policy=action_policy,
         ),
         mcp_servers=[toolset],
-        capabilities=await build_eager_skill_capabilities(request.agent_id),
+        capabilities=capabilities,
         task_id=None,
         agent_run_id=request.run_id,
         conversation_round_id=conversation_round_id,

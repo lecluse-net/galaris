@@ -60,11 +60,11 @@ async def test_bundled_galaris_skills_receive_default_category_without_reclassif
     monkeypatch.setattr(type(storage.settings), "GALARIS_SKILLS_ROOT", str(root))
     write_skill(root, "galaris-custom")
     await skill_service.sync_from_disk()
-    codes = ("galaris", "galaris-lab", "galaris-knowledge")
+    codes = tuple(definition.code for definition in storage.SYSTEM_SKILLS)
     skills = list((await db.scalars(select(Skill).where(Skill.code.in_(codes)))).all())
     category = await db.scalar(select(SkillCategory).where(SkillCategory.label == "Galaris"))
     assert category is not None
-    assert len(skills) == 3
+    assert len(skills) == len(codes)
     assert {skill.category_id for skill in skills} == {category.id}
     imported = await skill_service.get_by_code("galaris-custom")
     assert imported is not None and imported.category_id is None
@@ -464,16 +464,17 @@ async def test_galaris_system_skill_is_referenced_enabled_and_protected(
     db.add(agent)
     await db.commit()
 
-    existing_before = await skill_service.get_by_code("galaris")
+    skill_code = "galaris"
+    existing_before = await skill_service.get_by_code(skill_code)
     result = await skill_service.sync_from_disk()
-    skill = await skill_service.get_by_code("galaris")
+    skill = await skill_service.get_by_code(skill_code)
 
     assert result["created"] == int(existing_before is None)
     assert result["invalid_directories"] == []
     assert skill is not None
     assert skill.system is True
     assert skill.global_enabled is True
-    assert not (root / "galaris").exists()
+    assert not (root / skill_code).exists()
     public = skill_service.to_public(skill)
     assert public.available is True
     assert public.valid is True

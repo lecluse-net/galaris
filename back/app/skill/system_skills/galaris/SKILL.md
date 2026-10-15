@@ -1080,7 +1080,8 @@ When durable authored content is needed and Memory and `file_create` are availab
 prefer `document://` over standalone Markdown (`.md`) or HTML
 (`.html`) files, even when you have a console. Use a standalone file when the user explicitly
 requests that format or the result requires it, such as standalone source code. Interactive
-forms and applications backed by Datasets use ordinary HTML, CSS and JavaScript in documents.
+forms and applications use ordinary HTML, CSS and JavaScript in documents, with the
+Dataset bridge when they need to collect structured data.
 An HTML document's body is an editorial HTML fragment; that does not make it a standalone HTML
 page. For shared structured data, create a `data://` Dataset containing valid JSON instead.
 Search first and revise a relevant existing document; create a new one only when the content

@@ -4,6 +4,9 @@ import { selectOption } from '../select-option.mjs'
 
 for (const mobile of [false, true]) {
   test(`Tool parameter labels and choices persist across editing and global settings (${mobile ? 'mobile' : 'desktop'})`, async ({ page, request }, testInfo) => {
+    // Desktop also checks the built-in browser's global/local settings through
+    // several full navigations; keep time for that journey and its cleanup.
+    if (!mobile) test.setTimeout(120_000)
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
     const pageErrors = collectPageErrors(page)
     const fixture = await (await request.post('/api/__test/seed')).json()

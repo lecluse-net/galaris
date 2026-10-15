@@ -120,10 +120,9 @@ class Settings(BaseSettings):
         if app_name:
             hosts.extend([f"{app_name}-back", f"{app_name}-front"])
 
-        for address in (self.APP_HOST,):
-            parsed = urlparse(address.strip())
-            if parsed.hostname:
-                hosts.append(parsed.hostname)
+        parsed = urlparse(self.APP_HOST.strip())
+        if parsed.hostname:
+            hosts.append(parsed.hostname)
 
         # Add configured hosts.
         if self.BACK_ALLOWED_HOSTS:

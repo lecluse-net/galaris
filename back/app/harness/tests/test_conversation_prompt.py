@@ -7,6 +7,9 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
+from pydantic_ai import Agent as PydanticAgent
+from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.models.function import FunctionModel
 
 from app.agent import (
     AIMessage,
@@ -24,6 +27,7 @@ from app.file_share import ResourceTransfer
 from core.params import Params, prompt_default
 from app.harness import conversation as conversation_module
 from app.llm import LLMCallPurpose
+from app.skill import learning_service, skill_service
 from app.harness.conversation import (
     HarnessConversationController,
     _LiveTextProgressBuffer,
@@ -45,7 +49,11 @@ def frozen_topic_scope(monkeypatch):
 
     monkeypatch.setattr("app.conversation.facade.current_turn_scope", current_scope)
     monkeypatch.setattr(
-        conversation_module, "build_eager_skill_capabilities",
+        skill_service, "get_assigned_codes",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        learning_service, "list_injectable",
         AsyncMock(return_value=[]),
     )
 
@@ -606,11 +614,9 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
     llm = SimpleNamespace(id=1, llm_name="test-model")
     captured: dict[str, Any] = {}
     progress_events: list[AIMessage] = []
-    knowledge_capability = object()
-    knowledge_capabilities = AsyncMock(return_value=[knowledge_capability])
+    assigned_skills = AsyncMock(return_value=["galaris-lab"])
     monkeypatch.setattr(
-        conversation_module, "build_eager_skill_capabilities",
-        knowledge_capabilities,
+        skill_service, "get_assigned_codes", assigned_skills,
     )
     release_transaction = AsyncMock(return_value=True)
 
@@ -657,6 +663,31 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
 
     async def fake_create_agent(**kwargs: Any) -> object:
         captured.update(kwargs)
+        if not force_response:
+            # Exercise the real capability catalogue and resource tool, not a stub
+            # that would also pass if the conversation silently filtered out skills.
+            requests = 0
+
+            def respond(messages: Any, info: Any) -> ModelResponse:
+                nonlocal requests
+                requests += 1
+                tools = {tool.name for tool in info.function_tools}
+                if requests == 1:
+                    assert "load_capability" in tools
+                    assert "skill_galaris_lab_read_file" not in tools
+                    return ModelResponse(parts=[ToolCallPart("load_capability", {"id": "galaris-lab"})])
+                if requests == 2:
+                    assert "skill_galaris_lab_read_file" in tools
+                    return ModelResponse(parts=[ToolCallPart("skill_galaris_lab_read_file", {"path": "SKILL.md"})])
+                from pydantic_ai.messages import ToolReturnPart
+
+                returned = [part.content for message in messages for part in message.parts
+                            if isinstance(part, ToolReturnPart) and part.tool_name == "skill_galaris_lab_read_file"]
+                assert "name: galaris-lab" in returned[-1]
+                return ModelResponse(parts=[TextPart("Skill guide available")])
+
+            await PydanticAgent(FunctionModel(respond), capabilities=kwargs["capabilities"]).run("Inspect the Galaris Lab guide")
+            assert requests == 3
 
         class FakeRuntime:
             system_prompt = str(kwargs["system_prompt"])
@@ -780,14 +811,16 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
 
     release_transaction.assert_awaited_once_with()
     if force_response:
-        knowledge_capabilities.assert_not_awaited()
+        assigned_skills.assert_not_awaited()
+        assert captured["capabilities"] == []
         assert captured["mcp_servers"] == []
         assert captured["response_only"] is True
         assert "Reply now" in captured["runtime_prompt"]
         assert outcome.execution_result.metadata["dispatch_result"] == {"forced_response": True}
     else:
-        knowledge_capabilities.assert_awaited_once_with(turn.agent_id)
-        assert knowledge_capability in captured["capabilities"]
+        assigned_skills.assert_awaited_once_with(turn.agent_id)
+        assert [capability.id for capability in captured["capabilities"]] == ["galaris-lab"]
+        assert captured["capabilities"][0].defer_loading is True
     assert outcome.text == "Réponse rapide."
     assert [message.content for message in progress_events] == ["Réponse rapide."]
     assert outcome.execution_result is not None

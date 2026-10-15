@@ -34,7 +34,10 @@ résultat terminal. Voir [0171](../../../../project/decisions/0171-adaptive-task
 
 Le harnais interne applique la politique `runtime.yaml` des compétences effectivement
 attribuées : `loading: eager` les charge dès la première requête en Task, conversation texte
-et voix par tours ; le défaut reste à la demande en Task. `galaris-knowledge` fournit cette
+et voix par tours ; le défaut reste à la demande dans ces trois contextes. Le catalogue
+différé permet de découvrir les compétences attribuées pendant une conversation.
+Les outils gardent leurs propres droits et restrictions.
+`galaris-knowledge` fournit cette
 configuration et conserve son contrôle documentaire. L'exécution ne dépend ni du nom ni du
 marqueur d'installation de l'agent. Voir le [parcours de connaissance produit](../../admin/product-knowledge.md).
 
