@@ -6,11 +6,6 @@ import { isAxiosError } from 'axios'
 import type { CodeWorkspace } from '../code/types'
 import type { ActiveCall, ChatCommandCatalog, ChatIdentityMapping, ChatInboxSummary, ChatViewerAgent, ConversationActivityPage, ConversationActivityDetail, ConversationDocumentDetail, ConversationDocumentList, ConversationDocumentReference, ConversationDocumentUpdate, ConversationProcessList, ConversationTaskTree, DictationResult, FrequentEmojiList, MessagePage, MessageResourcePreview, MessageSpeechStatus, MessageTopicChangeScope, MessageTopicUpdateResult, MessengerMessage, MessengerRoom, MessengerStatus, Page, PushConfiguration, PushSubscriptionPayload, PushSubscriptionRead, ReasoningEffort, RecipientCatalog, VoiceCallStatus, WebRtcIceCandidate } from '../types'
 
-interface HtmlPreviewTicket {
-  url: string
-  expires_in: number
-}
-
 const base = '/chat'
 const avatars = createSessionReadCache<Blob>({
   sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration,
@@ -60,7 +55,6 @@ export const chatService = {
   async messageDirectoryRepository(roomId: string, messageId: string, uri: string): Promise<CodeWorkspace> { return (await api.post<CodeWorkspace>(`${base}/rooms/${roomId}/messages/${messageId}/previews/repository`, undefined, { params: { uri } })).data },
   async messagePreviewImageBlob(roomId: string, messageId: string, uri: string, agentId: number | null = null, signal?: AbortSignal): Promise<Blob> { return (await api.get<Blob>(`${base}/rooms/${roomId}/messages/${messageId}/previews/image`, { params: { uri, agent_id: agentId }, responseType: 'blob', signal })).data },
   async messagePreviewContentBlob(roomId: string, messageId: string, uri: string, agentId: number | null = null, signal?: AbortSignal): Promise<Blob> { return (await api.get<Blob>(`${base}/rooms/${roomId}/messages/${messageId}/previews/content`, { params: { uri, agent_id: agentId }, responseType: 'blob', signal })).data },
-  async standaloneHtmlPreview(blob: Blob, name: string): Promise<string> { const data = new FormData(); data.append('file', blob, name); return (await api.post<HtmlPreviewTicket>(`${base}/html-previews`, data)).data.url },
   async activity(roomId: string, page = 1, pageSize = 50, agentId: number | null = null): Promise<ConversationActivityPage> { return (await api.get<ConversationActivityPage>(`${base}/rooms/${roomId}/activity`, { params: { page, page_size: pageSize, agent_id: agentId } })).data },
   async activityDetail(roomId: string, roundId: string, agentId: number | null = null): Promise<ConversationActivityDetail> { return (await api.get<ConversationActivityDetail>(`${base}/rooms/${roomId}/activity/${roundId}`, { params: { agent_id: agentId } })).data },
   async controlResponse(roomId: string, roundId: string, action: import('../types').ConversationControlAction, expectedAttempt: number): Promise<import('../types').ConversationControlResult> {

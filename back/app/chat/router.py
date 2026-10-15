@@ -13,7 +13,7 @@ from app.code import workspace_context, human_repository_info, human_directory_r
 from pydantic import Json
 from starlette.background import BackgroundTask
 
-from core.authorize import authorize, check_privilege, independent_auth
+from core.authorize import authorize, check_privilege
 from core import websocket
 from core.database import get_db
 from core.i18n import current_language, tr
@@ -89,7 +89,6 @@ from app.conversation import (
 )
 
 from . import storage
-from . import html_preview
 from .document_previews import with_deleted_document_previews
 from .assertions import (
     ChatRoomAccessAssertion,
@@ -114,7 +113,6 @@ from .schemas import (
     DictationResult,
     EmojiUse,
     FrequentEmojiList,
-    HtmlPreviewTicket,
     IdentityMappingUpdate,
     MessageCreate,
     MessageSpeechStatus,
@@ -186,19 +184,6 @@ _DICTATION_MIME_TYPES = {
 }
 
 router = APIRouter(prefix="/chat", tags=["chat"])
-
-_HTML_PREVIEW_CSP = (
-    "sandbox allow-scripts allow-forms allow-modals allow-popups "
-    "allow-popups-to-escape-sandbox allow-downloads allow-presentation; "
-    "default-src * data: blob: 'unsafe-inline'; "
-    "script-src * data: blob: 'unsafe-inline' 'unsafe-eval'; "
-    "style-src * data: blob: 'unsafe-inline'; "
-    "connect-src * data: blob: ws: wss:; img-src * data: blob:; "
-    "font-src * data: blob:; media-src * data: blob:; "
-    "worker-src * data: blob:; frame-src * data: blob:"
-    "; frame-ancestors 'self'"
-)
-
 
 def _room_for_scope(
     room: NativeMessengerRoom,
@@ -272,40 +257,6 @@ def _attachment_error(exc: storage.AttachmentStorageError) -> HTTPException:
     if isinstance(exc, storage.AttachmentStorageFullError):
         return HTTPException(status_code=507, detail=str(exc))
     return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
-
-
-@router.post("/html-previews", response_model=HtmlPreviewTicket)
-@authorize(privileges=ACCESS)
-async def create_standalone_html_preview(file: UploadFile = File(...)) -> HtmlPreviewTicket:
-    try:
-        ticket = await html_preview.store(file)
-    except (html_preview.HtmlPreviewTooLargeError, storage.AttachmentStorageFullError) as exc:
-        raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail=str(exc)) from exc
-    except html_preview.HtmlPreviewError as exc:
-        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(exc)) from exc
-    return HtmlPreviewTicket(
-        url=f"/api/chat/html-previews/{ticket.hex}",
-        expires_in=html_preview.TTL_SECONDS,
-    )
-
-
-@router.get("/html-previews/{ticket}", response_class=FileResponse)
-@independent_auth(reason="Unguessable, short-lived HTML preview capability ticket")
-async def read_standalone_html_preview(ticket: UUID) -> FileResponse:
-    path = await html_preview.resolve(ticket)
-    if path is None:
-        raise _not_found()
-    return FileResponse(
-        path,
-        media_type="text/html; charset=utf-8",
-        content_disposition_type="inline",
-        headers={
-            "Cache-Control": "private, no-store",
-            "Content-Security-Policy": _HTML_PREVIEW_CSP,
-            "Referrer-Policy": "no-referrer",
-            "X-Frame-Options": "SAMEORIGIN",
-        },
-    )
 
 
 async def _validate_topic(topic_id: UUID | None) -> None:

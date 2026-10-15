@@ -13,16 +13,22 @@ from core.settings import settings
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('name,media_type,content', [
+    ('../../unsafe.txt', 'text/plain', b'bounded payload'),
+    ('../../unsafe.html', 'text/html', b'<!doctype html><script>const ready = true</script><img src="https://example.invalid/photo.png">'),
+    ('diagram.html', 'text/html', b'<svg xmlns="http://www.w3.org/2000/svg"><text>Diagram</text></svg>'),
+    ('report.xhtml', 'application/xhtml+xml', b'<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml"><p>Report</p></html>'),
+])
 async def test_upload_uses_uuid_path_and_round_trips(
-    tmp_path: object, monkeypatch: pytest.MonkeyPatch
+    tmp_path: object, monkeypatch: pytest.MonkeyPatch, name, media_type, content,
 ) -> None:
     root = str(tmp_path)
     monkeypatch.setattr(type(settings), "GALARIS_INTERNAL_MESSENGER_ROOT", root)
     file_id = uuid4()
     upload = UploadFile(
-        filename="../../unsafe.txt",
-        file=BytesIO(b"bounded payload"),
-        headers={"content-type": "text/plain"},
+        filename=name,
+        file=BytesIO(content),
+        headers={"content-type": media_type},
     )
 
     path, size, mime_type = await storage.store_upload(upload, file_id)
@@ -30,9 +36,9 @@ async def test_upload_uses_uuid_path_and_round_trips(
     assert path == storage.attachment_path(file_id)
     assert path.name == file_id.hex
     assert "unsafe" not in str(path)
-    assert size == 15
-    assert mime_type == "text/plain"
-    assert await storage.read_bytes(file_id) == b"bounded payload"
+    assert size == len(content)
+    assert mime_type == media_type
+    assert await storage.read_bytes(file_id) == content
 
 
 @pytest.mark.asyncio

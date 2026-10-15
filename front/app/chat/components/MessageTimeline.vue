@@ -285,7 +285,7 @@
           v-else-if="isHtmlFile(previewFile) && mediaUrls[previewFile.id]"
           :src="mediaUrls[previewFile.id]"
           :title="previewFile.name"
-          sandbox="allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-presentation"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-presentation"
           referrerpolicy="no-referrer"
           class="attachment-preview-html"
           :class="{ 'attachment-preview-content--fit': fit }"
@@ -793,9 +793,7 @@ async function loadMedia(requestedFiles?: MessengerFile[]): Promise<void> {
           continue
         }
         if (currentGeneration !== generation) return
-        const objectUrl = isHtmlFile(file)
-          ? await chatService.standaloneHtmlPreview(blob, file.name)
-          : await isolatedBrowserResourceUrl(blob, file.mime_type, file.name)
+        const objectUrl = await isolatedBrowserResourceUrl(blob, file.mime_type, file.name)
         if (currentGeneration !== generation) {
           if (objectUrl.startsWith('blob:')) URL.revokeObjectURL(objectUrl)
           return

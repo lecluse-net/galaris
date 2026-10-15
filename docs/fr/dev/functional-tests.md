@@ -78,6 +78,13 @@ L'analyse documentaire relève de `app.llm` et ne crée aucune définition ni ex
 de processus métier. `back/tests/test_document_analysis.py` protège cette séparation,
 la reprise des lots de 500 pages sans double facturation, l'annulation, les droits,
 la progression par le scheduler et le transfert idempotent des anciens runs techniques.
+Le cache de préparation temporaire réutilise les conversions, revalide les droits et disparaît
+avec son espace de travail.
+Les scénarios HTML paramétrés de `front/browser-tests/attachment-previews.spec.mjs` protègent
+le lecteur commun des PJ Documents, messages et liens : interaction isolée sous CSP restrictive,
+téléchargement des octets d'origine, nouvel onglet et réouverture sur petit écran sans upload
+de prévisualisation. L'ancien contrat de copie HTML temporaire avec ticket est retiré ;
+les tests du stockage Chat protègent désormais aussi le round-trip d'une PJ HTML ordinaire.
 Le même scénario raccorde les passages acquis au round sans préparation ni nouvelle inférence,
 vérifie l'isolation agent/Task/URI, les versions obsolètes et les reçus tardifs.
 `back/app/dream/tests/test_conversation_memory.py` protège la capture d'un audio sans texte,

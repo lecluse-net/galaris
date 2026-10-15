@@ -91,7 +91,6 @@ def test_independent_auth_route_allowlist_is_exact() -> None:
         ("app.browser.router", "network_authorization"),
         ("core.user.router", "logout"),
         ("core.user.router", "refresh_session"),
-        ("app.chat.router", "read_standalone_html_preview"),
         # Current repository grant, browser family, role and short-lived IDE capabilities.
         ("app.code.gateway", "launch"),
         ("app.code.gateway", "editor_http"),

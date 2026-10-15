@@ -27,14 +27,18 @@ Une annulation attend la confirmation de l'arrêt local de l'inférence ; elle n
 pas l'annulation de la facturation chez le fournisseur. Les états terminaux de l'analyse
 restent immuables et les checkpoints ignorent les publications tardives.
 
-La préparation garde des checkpoints atomiques par page. Une reprise ne rerend pas
-les pages terminées. Le cache interne sous la racine documentaire de `/data` est séparé
-par agent, URI, empreinte source et version de préparation. Chaque consultation vérifie
+La préparation garde des checkpoints atomiques par page. Une reprise réutilise
+les pages terminées encore disponibles. Correction du 2026-10-15 : le cache interne est
+hébergé dans un répertoire temporaire privé appartenant au processus, hors de `/data`,
+séparé par agent, URI, empreinte source et version de préparation. Chaque consultation vérifie
 les droits et télécharge les octets source avant réutilisation : un checksum identique
 ne confère aucun droit et les providers sans version fiable restent couverts.
 Une version source différente invalide les résultats déjà admis. Le cache a une rétention
 opportuniste de sept jours et un quota de 2 Gio par agent ; les entrées utilisées ne sont
-pas purgées. Les dérivés restent privés et ne constituent pas un provider public.
+pas purgées. La fin normale du processus nettoie son cache ; un redémarrage peut donc
+reconvertir la source, mais ne rejoue pas les inférences déjà facturées. La racine persistante
+`/data/document-analysis` et son setting sont retirés ; les anciens fichiers ne sont pas
+effacés automatiquement. Les dérivés restent privés et ne constituent pas un provider public.
 
 La couverture distingue unités attendues, préparées, textuelles, OCR et visuelles, ainsi
 que lots terminés et attendus. Fournir chaque unité ne certifie pas sa justesse sémantique.

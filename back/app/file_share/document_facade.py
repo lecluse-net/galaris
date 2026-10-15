@@ -1,4 +1,4 @@
-"""Authorized, content-versioned preparation cache; never a second file provider."""
+"""Authorized preparation cache in a process-owned temporary workspace."""
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -11,13 +11,13 @@ import shutil
 from tempfile import TemporaryDirectory
 import time
 
-from core import settings
 from core.document import PreparedDocument, prepare_document
 from .resource_contracts import ResourceContext, ResourceDescriptor
 from .resource_service import materialize_resource, resource_info
 
 CACHE_DAYS = 7
 CACHE_BYTES = 2 * 1024**3
+_cache = TemporaryDirectory(prefix="galaris-document-preparation-")
 
 
 def _revision(info: ResourceDescriptor) -> str:
@@ -38,7 +38,7 @@ async def prepared_resource(ctx: ResourceContext, uri: str) -> AsyncGenerator[tu
         digest = await asyncio.to_thread(_digest, source)
         identity = json.dumps([ctx.agent_id, uri, digest, materialized.name, materialized.media_type, 3])
         key = hashlib.sha256(identity.encode()).hexdigest()
-        root = Path(settings.GALARIS_DOCUMENT_ROOT) / "cache" / str(ctx.agent_id)
+        root = Path(_cache.name) / str(ctx.agent_id)
         root.mkdir(parents=True, exist_ok=True, mode=0o700)
         directory = root / key
         directory.mkdir(exist_ok=True, mode=0o700)

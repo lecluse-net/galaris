@@ -10,6 +10,14 @@ and relocated on read without overwriting a newer capture. Images fit within 320
 aspect ratio and transparency without padding. HTML uses the shared browser renderer;
 `.url` shortcuts reuse their target URL's thumbnail. Each domain checks access before
 reading the cache. Deleting a shortcut does not delete its target's preview.
+HTML files are ordinary attachments: their bytes, authorization, storage and downloads
+follow the same contracts as other files. Thumbnails are WebP images in the shared cache.
+Chat no longer reuploads their content to create a copy or an access ticket; attachment
+and resource viewers all use the shared file renderer. Its fixed shells load the file
+in an isolated frame without `allow-same-origin`; only the trusted rendering shells keep
+the application origin. Their CSP permits interactive rendering without relaxing the app
+policy. Server-side static shells retain no user content. Ingesting an HTML file neither
+downloads its URL dependencies nor rewrites its content.
 Document captures show the entire first page. `documents.thumbnail_id` names the single
 current WebP file under
 `documents/<first 2 document UUID characters>/<next 2>/<document UUID>/<thumbnail_id>.webp`.

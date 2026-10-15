@@ -87,7 +87,10 @@ uploading. Upload progress
 includes cancellation; images also retain CKEditor’s native upload controls.
 
 The document body remains rich text. Interactive HTML pages, 3D scenes, videos and other
-content are attachments opened with their resource viewer. The toolbar’s **Insert attachment** button
+content are attachments opened with their resource viewer. HTML files use the same attachment
+and thumbnail mechanisms as other files and also open from Chat without creating another copy.
+Import keeps the supplied file; images, styles and other resources referenced by URLs inside
+it are neither downloaded nor added as attachments. The toolbar’s **Insert attachment** button
 opens a file picker and inserts uploaded files at the cursor. The attachment area below the content
 remains available even when empty: drop files there or use **Add**, then the **Insert into document**
 icon in the preview actions to insert them into the text. Images appear in the text; audio, video and PDF files have inline

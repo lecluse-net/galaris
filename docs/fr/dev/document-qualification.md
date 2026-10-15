@@ -82,10 +82,13 @@ préparer les observations visuelles ; sa provenance est indiquée dans la couve
 Sans vision, la limite reste visible. La couverture des unités fournies ne certifie
 jamais la justesse sémantique (`semantic_accuracy_verified=false`).
 
-Le cache de préparation est privé par agent, URI, empreinte et version du lecteur.
-Chaque accès revalide les droits et les octets de la source. Rétention opportuniste :
-sept jours ; quota : 2 Gio par agent. Le worker reprend ses pages terminées via des
-checkpoints atomiques. XLSX/ODS conservent séparément cellules, formules, caches,
+Le cache de préparation utilise un répertoire temporaire privé du processus, hors de `/data`,
+séparé par agent, URI, empreinte et version du lecteur. Chaque accès revalide les droits et les
+octets de la source. Rétention opportuniste : sept jours ; quota : 2 Gio par agent et processus.
+La fin normale du processus nettoie le cache. Après un redémarrage, la source est reconvertie
+si nécessaire ; les résultats et lots d'inférence restent durables en base et ne sont pas refacturés.
+Le worker reprend ses pages terminées encore disponibles via des checkpoints atomiques.
+XLSX/ODS conservent séparément cellules, formules, caches,
 styles, feuilles cachées, fusions et commentaires ; les formules ne sont pas recalculées.
 Le XLS ancien conserve une limite explicite sur ses données structurelles.
 

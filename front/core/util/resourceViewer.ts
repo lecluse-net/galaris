@@ -48,13 +48,23 @@ export async function isolatedBrowserResourceUrl(
   mediaType: string,
   name: string,
 ): Promise<string> {
-  if (browserResourceKind(blob.type || mediaType, name) !== 'html') {
+  const htmlMediaTypes = ['text/html', 'application/xhtml+xml']
+  if (!htmlMediaTypes.includes(normalizedMediaType(blob.type))
+      && !htmlMediaTypes.includes(normalizedMediaType(mediaType))
+      && browserResourceKind(blob.type || mediaType, name) !== 'html') {
     return URL.createObjectURL(blob)
   }
-  const isolated = new Blob(
-    [await blob.arrayBuffer()],
-    { type: 'text/html;charset=utf-8' },
-  )
+  // A file format renderer is shared by every attachment surface. Only the
+  // authenticated source bytes enter it: there is no server copy or access ticket.
+  // Keep untrusted HTML out of this outer document, including closing script tags.
+  const payload = JSON.stringify({ content: await blob.text(), name }).replace(/</g, '\\u003c')
+  const renderer = new URL('/resource-viewer.js', window.location.origin).href
+  const isolated = new Blob([
+    '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
+    '<meta name="referrer" content="no-referrer"><style>html,body,iframe{margin:0;border:0;width:100%;height:100%;display:block}body{overflow:hidden}</style>',
+    `</head><body><script type="application/json" id="resource-payload">${payload}</script>`,
+    `<script src="${renderer}"></script></body></html>`,
+  ], { type: 'text/html;charset=utf-8' })
   return URL.createObjectURL(isolated)
 }
 

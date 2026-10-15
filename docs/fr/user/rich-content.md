@@ -89,6 +89,10 @@ changer, ou cliquez de nouveau sur le style actif pour retirer l’encadré.
 
 Le corps du document reste du texte enrichi. Les pages HTML interactives, scènes 3D,
 vidéos et autres contenus sont joints au document et ouverts dans leur visionneuse.
+Les fichiers HTML utilisent les mêmes mécanismes de pièces jointes et de miniatures que
+les autres fichiers. Ils s'ouvrent aussi depuis Discussion, sans créer de copie supplémentaire.
+L'import conserve le fichier fourni ; les images, styles et autres ressources désignés par
+des URL dans ce fichier ne sont pas téléchargés ni ajoutés comme pièces jointes.
 Pour insérer de nouveaux fichiers directement dans le texte, déposez-les à l’endroit voulu
 ou placez le curseur puis collez les fichiers copiés. Plusieurs fichiers peuvent être envoyés
 ensemble ; leur insertion suit l’ordre choisi et la position reste conservée pendant l’envoi.

@@ -166,7 +166,6 @@ async def test_text_only_harness_prepares_authorized_chat_pdf(db, tmp_path, monk
     from core.settings import settings
 
     monkeypatch.setattr(type(settings), 'GALARIS_INTERNAL_MESSENGER_ROOT', str(tmp_path))
-    monkeypatch.setattr(type(settings), 'GALARIS_DOCUMENT_ROOT', str(tmp_path / 'cache'))
     agent, owner, _ = await _scope(db)
     room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
     messenger = await get_messenger(room.connection_id)

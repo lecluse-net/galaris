@@ -74,9 +74,12 @@ the same profile's configured vision model may prepare visual observations; cove
 identifies that model. Without vision, the limitation remains visible. Supplied-unit
 coverage never certifies semantic accuracy (`semantic_accuracy_verified=false`).
 
-The preparation cache is private per agent, URI, checksum and reader version. Every
-access rechecks permissions and source bytes. Opportunistic retention is seven days;
-quota is 2 GiB per agent. Atomic page checkpoints preserve completed conversion work.
+The preparation cache uses a private process-owned temporary directory outside `/data`,
+partitioned by agent, URI, checksum and reader version. Every access rechecks permissions
+and source bytes. Opportunistic retention is seven days; quota is 2 GiB per agent and process.
+Normal process termination cleans the cache. After a restart, sources are converted again
+when needed; results and inference batches remain durable in the database without duplicate
+billing. Atomic page checkpoints reuse completed conversion work while it remains available.
 XLSX/ODS retain cells, formulas, caches, styles, hidden sheets, merges and comments
 separately from printed pages. Formulas are not recalculated. Legacy XLS retains an
 explicit limitation on structural extraction.

@@ -20,6 +20,16 @@ Les captures HTML passent par le navigateur partagé ; les raccourcis `.url` ré
 directement l'aperçu de leur URL cible. Chaque domaine contrôle les droits avant d'accéder
 au cache. Supprimer un raccourci ne supprime pas l'aperçu de sa cible.
 
+Les fichiers HTML sont des pièces jointes ordinaires : mêmes octets, droits, stockage
+et téléchargement que les autres fichiers. Leurs miniatures sont des images WebP du cache
+partagé. Discussion ne réimporte plus leur contenu pour créer une copie ou un ticket
+d'ouverture : les lecteurs de PJ et de ressources utilisent tous le lecteur commun.
+Son enveloppe fixe charge le fichier dans un cadre isolé sans `allow-same-origin` ;
+seules les enveloppes de rendu fiables conservent l'origine de l'application. Leur CSP
+permet l'affichage interactif sans assouplir celle de l'application. Aucun contenu utilisateur
+n'est conservé dans les enveloppes statiques du serveur. L'ingestion d'un fichier HTML
+ne télécharge pas les ressources qu'il référence par URL et ne réécrit pas son contenu.
+
 Les pièces jointes Office utilisent le worker isolé de `core.document` en mode aperçu :
 LibreOffice exporte uniquement la première page en PDF, puis le worker la rasterise sans
 extraction de texte, OCR ni appel LLM. XLS, XLSX et ODS utilisent la première page imprimée

@@ -161,7 +161,7 @@
         v-else-if="previewKind === 'html'"
         :src="objectUrls[previewAttachment.id]"
         :title="previewAttachment.name"
-        sandbox="allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-presentation"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-presentation"
         referrerpolicy="no-referrer"
         class="document-attachments__fullscreen-frame"
         :class="{ 'document-attachments__fullscreen-frame--fit': fit }"

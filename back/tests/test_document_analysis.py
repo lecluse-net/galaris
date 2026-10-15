@@ -27,7 +27,6 @@ from tests.test_inference_lifecycle import runtime, state
 
 async def setup_source(db, tmp_path, monkeypatch, count=17):
     monkeypatch.setattr(type(settings), 'GALARIS_INTERNAL_MESSENGER_ROOT', str(tmp_path / 'chat'))
-    monkeypatch.setattr(type(settings), 'GALARIS_DOCUMENT_ROOT', str(tmp_path / 'documents'))
     agent, owner, _ = await _scope(db)
     room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
     messenger = await get_messenger(room.connection_id)
@@ -211,9 +210,13 @@ async def test_document_analysis_reopens_completed_batches_without_refactoring_o
 
 
 @pytest.mark.asyncio
-async def test_preparation_cache_does_not_grant_access_by_matching_bytes(db, tmp_path, monkeypatch):
+async def test_temporary_cache_reuses_preparation_and_rechecks_source_access(db, tmp_path, monkeypatch):
+    from pathlib import Path
+    from tempfile import gettempdir
+
     agent, uri = await setup_source(db, tmp_path, monkeypatch, count=2)
     async with prepared_resource(ResourceContext(agent.id, 'internal'), uri) as (document, directory):
+        assert directory.is_relative_to(Path(gettempdir()))
         manifest = directory / 'manifest.json'
         saved = manifest.stat().st_mtime_ns
         assert document.coverage()['expected_units'] == 2
@@ -222,14 +225,14 @@ async def test_preparation_cache_does_not_grant_access_by_matching_bytes(db, tmp
     stranger, _, _ = await _scope(db)
     with pytest.raises((PermissionError, ValueError)):
         async with prepared_resource(ResourceContext(stranger.id, 'internal'), uri):
-            pytest.fail('Cache granted source access to another agent')
+            pytest.fail('Preparation granted source access to another agent')
     from app.connection import Connection
     connection = await db.scalar(select(Connection).where(Connection.agent_id == agent.id))
     connection.active = False
     await db.commit()
     with pytest.raises((PermissionError, ValueError)):
         async with prepared_resource(ResourceContext(agent.id, 'internal'), uri):
-            pytest.fail('Cache ignored revoked connection')
+            pytest.fail('Preparation ignored revoked connection')
 
 
 @pytest.mark.asyncio

@@ -170,11 +170,6 @@ class PushSubscriptionRead(BaseModel):
     enabled: bool
 
 
-class HtmlPreviewTicket(BaseModel):
-    url: str
-    expires_in: int = Field(gt=0)
-
-
 class DictationResult(BaseModel):
     text: str
 
@@ -252,7 +247,6 @@ __all__ = [
     "EmojiUse",
     "FrequentEmojiList",
     "IdentityMappingUpdate",
-    "HtmlPreviewTicket",
     "MessageCreate",
     "MessageSpeechStatus",
     "MessageTopicUpdate",

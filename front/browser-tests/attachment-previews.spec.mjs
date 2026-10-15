@@ -17,7 +17,9 @@ async function setup(page, surface, { name = 'NOTES.MD', mime = 'application/oct
     : surface === 'resource' ? { roomId: 'room-1', messageId: 'message-1' }
     : { roomId: 'room-1', agentId: 7, agentName: 'Test', activity: [], liveRound: null, messages: [{ id: 'message-1', external_id: 'external-1', text: '', files: [file], is_mine: true, sender: { display_name: 'Test', is_ai: false }, created_at: '2026-01-01T12:00:00Z' }] }
   await mount(page, component, { props })
-  const open = surface === 'message' ? page.getByRole('button', { name, exact: true }) : page.locator('.resource-preview-main')
+  const open = surface === 'message'
+    ? page.getByRole('button', { name, exact: true }).or(page.getByRole('link', { name, exact: true }))
+    : page.locator('.resource-preview-main')
   return { open, dialog: page.getByRole('dialog'), props }
 }
 
@@ -272,5 +274,69 @@ for (const [surface, name, mime] of [
     await expect(dialog.getByRole('heading', { name: 'Obsolete content' })).toHaveCount(0)
     await expect(content).toBeVisible()
     if (name.endsWith('.txt')) await expect(content).toHaveValue(markdown)
+  })
+}
+
+// The same source bytes go through the ordinary file reader on every surface.
+// In particular, opening HTML must not upload a second server-side preview.
+for (const surface of ['document', 'message', 'resource']) {
+  test(`${surface} HTML file renders safely, downloads unchanged and reopens`, async ({ page }) => {
+    // An extension that normally disables previews must never bypass HTML isolation.
+    const filename = surface === 'message' ? 'report.doc' : 'report.html'
+    // Exercise the shared renderer under the deployment's restrictive app policy.
+    await page.route('**/test-support/browser/index.html', async route => {
+      const response = await route.fetch()
+      await route.fulfill({ response, headers: { ...response.headers(),
+        'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ws: wss:; frame-src 'self' blob:;" } })
+    })
+    await page.route('**/resource-viewer.html', async route => {
+      const response = await route.fetch()
+      await route.fulfill({ response, headers: { ...response.headers(),
+        'Content-Security-Policy': "default-src * data: blob: 'unsafe-inline'; script-src * data: blob: 'unsafe-inline';" } })
+    })
+    const content = '<!doctype html><html><body><button onclick="this.textContent=\'Clicked\'">Interact</button><script>try { top.document.body.dataset.fileEscaped = "yes" } catch {} document.body.dataset.ready = "yes"</script></body></html>'
+    const { open, dialog } = await setup(page, surface, { name: filename, mime: 'text/html',
+      respond: route => route.fulfill({ contentType: 'text/html', body: content }) })
+    const interact = async (target = page) => {
+      let fileFrame
+      await expect(async () => {
+        fileFrame = undefined
+        for (const frame of target.frames()) {
+          if (await frame.getByRole('button', { name: 'Interact', exact: true }).isVisible()) fileFrame = frame
+        }
+        expect(fileFrame).toBeTruthy()
+      }).toPass()
+      await fileFrame.getByRole('button', { name: 'Interact', exact: true }).click()
+      await expect(fileFrame.getByRole('button', { name: 'Clicked', exact: true })).toBeVisible()
+      expect(await (await fileFrame.frameElement()).getAttribute('sandbox')).not.toMatch(/allow-same-origin/)
+      expect(await target.evaluate(() => document.body.dataset.fileEscaped)).toBeUndefined()
+    }
+    await open.click()
+    await interact()
+    const downloaded = page.waitForEvent('download')
+    await dialog.getByRole('button', { name: /Download/ }).click()
+    const download = await downloaded
+    expect(download.suggestedFilename()).toBe(filename)
+    const chunks = []
+    for await (const chunk of await download.createReadStream()) chunks.push(chunk)
+    expect(Buffer.concat(chunks).toString('utf8')).toBe(content)
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await page.setViewportSize({ width: 390, height: 844 })
+    await open.click()
+    // Reopening may reuse the already running local file renderer.
+    await expect(async () => {
+      expect((await Promise.all(page.frames().map(frame => frame.getByRole('button', { name: /Interact|Clicked/ }).isVisible()))).some(Boolean)).toBe(true)
+    }).toPass()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    if (surface === 'resource') {
+      const opened = page.waitForEvent('popup')
+      await page.getByRole('button', { name: 'Open in a new tab', exact: true }).click()
+      const standalone = await opened
+      await interact(standalone)
+      expect(await standalone.evaluate(() => window.opener)).toBeNull()
+      await standalone.close()
+    }
   })
 }

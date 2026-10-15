@@ -709,9 +709,16 @@ test('HTML attachments show loading then run in their isolated viewer', async ({
   await page.locator('.document-attachments .resource-preview-main').click()
   await expect(page.getByText('Loading content…')).toBeVisible()
   finish()
-  await page.frameLocator('iframe').getByRole('button', { name: 'Interact' }).click()
-  await expect(page.frameLocator('iframe').getByRole('button', { name: 'Clicked' })).toBeVisible()
-  await expect(page.locator('iframe')).not.toHaveAttribute('sandbox', /allow-same-origin/)
+  let fileFrame
+  await expect(async () => {
+    for (const frame of page.frames()) {
+      if (await frame.getByRole('button', { name: 'Interact' }).isVisible()) fileFrame = frame
+    }
+    expect(fileFrame).toBeTruthy()
+  }).toPass()
+  await fileFrame.getByRole('button', { name: 'Interact' }).click()
+  await expect(fileFrame.getByRole('button', { name: 'Clicked' })).toBeVisible()
+  expect(await (await fileFrame.frameElement()).getAttribute('sandbox')).not.toMatch(/allow-same-origin/)
 })
 
 test('dropping multiple files permits cancellation and explains removal of a used file', async ({ page }) => {

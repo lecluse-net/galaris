@@ -22,8 +22,6 @@ from core.settings import settings
 _CHUNK_SIZE = 1024 * 1024
 _ACTIVE_MIME_TYPES = {
     "image/svg+xml",
-    "text/html",
-    "application/xhtml+xml",
     "application/javascript",
     "text/javascript",
     "application/x-msdownload",
@@ -77,7 +75,8 @@ def _validated_content_type(
     declared = _validate_mime(declared_type)
     guessed = _validate_mime(mimetypes.guess_type(filename)[0] or declared)
     normalized = prefix[:8_192].lstrip().lower()
-    if (
+    is_html = declared in {"text/html", "application/xhtml+xml"} or guessed in {"text/html", "application/xhtml+xml"}
+    if not is_html and (
         normalized.startswith((b"<!doctype html", b"<html", b"<script", b"#!"))
         or normalized.startswith(b"<svg")
         or (normalized.startswith(b"<?xml") and b"<svg" in normalized)
@@ -106,7 +105,7 @@ def _stored_bytes() -> int:
 
 
 async def write_bounded_chunk(handle: BinaryIO, chunk: bytes) -> None:
-    """Account for attachments, previews and partial uploads across workers.
+    """Account for attachments and partial uploads across workers.
 
     Hold the filesystem lock only during accounting and writing, never while
     awaiting the uploader. Finish an in-flight write before cancellation cleanup.

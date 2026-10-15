@@ -88,7 +88,6 @@ def test_every_route_has_the_expected_privilege_and_resource_assertion() -> None
         "open_message_directory_repository": ("CODE_ACCESS", ChatRoomAccessAssertion),
         "read_message_preview_image": (ACCESS, ChatRoomAccessAssertion),
         "read_message_preview_content": (ACCESS, ChatRoomAccessAssertion),
-        "create_standalone_html_preview": (ACCESS, None),
         "read_activity": (ACCESS, ChatRoomAccessAssertion),
         "read_activity_detail": (ACCESS, ChatRoomAccessAssertion),
         "control_response": (SEND, InternalRoomAccessAssertion),
@@ -119,11 +118,6 @@ def test_every_route_has_the_expected_privilege_and_resource_assertion() -> None
         for route in router.routes
         if isinstance(route, APIRoute)
     }
-
-    standalone_route = routes.pop("read_standalone_html_preview")
-    assert getattr(standalone_route.endpoint, "_independent_auth_reason") == (
-        "Unguessable, short-lived HTML preview capability ticket"
-    )
 
     assert set(routes) == set(expected)
     for name, (privilege, assertion) in expected.items():

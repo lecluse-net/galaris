@@ -75,6 +75,13 @@ Document analysis belongs to `app.llm` and creates no business-process definitio
 `back/tests/test_document_analysis.py` protects this separation, recovery of 500-page
 batches without duplicate billing, cancellation, access control, scheduler progression,
 and idempotent transfer of legacy technical runs.
+The temporary preparation cache reuses conversions, rechecks access and disappears with
+its workspace.
+Parameterized HTML scenarios in `front/browser-tests/attachment-previews.spec.mjs` protect
+the shared viewer for document attachments, messages and resource links: isolated interaction
+under restrictive CSP, original-byte downloads, new tabs and small-screen reopening without
+preview uploads. The former temporary HTML-copy/ticket contract is retired; Chat storage tests
+also protect the round trip of an ordinary HTML attachment.
 The same scenario connects acquired passages to a round without preparing bytes or starting
 new inference, and checks agent/Task/URI isolation, obsolete versions and late receipts.
 `back/app/dream/tests/test_conversation_memory.py` protects audio-only capture, attribution

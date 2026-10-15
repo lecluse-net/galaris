@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0190 — Fichiers HTML et mécanismes standards de pièces jointes](0190-html-files-use-standard-attachments.md)
+
 - [0185 — Messages internes aux collègues via les Tasks déléguées](0185-internal-peer-message-tasks.md)
 
 - [0184 — OAuth pour les connexions MCP](0184-mcp-oauth-connections.md)

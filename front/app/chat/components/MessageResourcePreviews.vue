@@ -200,7 +200,7 @@
             :title="selected.title"
             class="resource-preview-file-frame"
             :class="{ 'resource-preview-content--fit': fit }"
-            sandbox="allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-presentation"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-presentation"
             referrerpolicy="no-referrer"
           />
           <iframe
@@ -657,9 +657,7 @@ async function openStandalone(event: Event, preview: MessageResourcePreview): Pr
   openingResourceUri.value = preview.uri
   try {
     const blob = await fetchResourceBlob(preview)
-    const url = resourceKind(preview) === 'html'
-      ? await chatService.standaloneHtmlPreview(blob, preview.title)
-      : URL.createObjectURL(blob)
+    const url = await isolatedBrowserResourceUrl(blob, preview.media_type, preview.title)
     if (tab.closed) {
       if (url.startsWith('blob:')) URL.revokeObjectURL(url)
       return
@@ -718,9 +716,7 @@ async function ensureResourceBlob(force = false): Promise<Blob | null> {
     )
     if (currentGeneration !== resourceGeneration || selected.value?.uri !== preview.uri) return null
     const text = ['markdown', 'text'].includes(resourceKind(preview) ?? '') ? await blob.text() : ''
-    const objectUrl = resourceKind(preview) === 'html'
-      ? await chatService.standaloneHtmlPreview(blob, preview.title)
-      : await isolatedBrowserResourceUrl(blob, preview.media_type, preview.title)
+    const objectUrl = await isolatedBrowserResourceUrl(blob, preview.media_type, preview.title)
     if (currentGeneration !== resourceGeneration || selected.value?.uri !== preview.uri) {
       URL.revokeObjectURL(objectUrl)
       return null
