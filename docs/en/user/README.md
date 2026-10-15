@@ -260,6 +260,11 @@ Nextcloud Talk active therefore does not redirect messages from a Goal assigned 
 For an outgoing message without a fixed channel, Galaris uses the recipient's latest inbound
 exchange, then internal Chat by default. The Agent may explicitly request another channel.
 
+When a Task asks another Agent for help over the internal channel, it creates a tracked request
+and waits for its result, without requiring a conversation with a human. Follow the request
+through its Task link. Acceptance confirms neither the colleague's reply nor completion of the
+requested action; contact and sharing permissions still apply.
+
 Attachments remain files. Specify their name and the expected action: “read,” “modify,” “compare,” “return,” or “share.” For a large file, the Agent may transfer it without loading all its content into the model.
 
 To exchange files with agents from your PC, use a Nextcloud folder accessible to the agent's

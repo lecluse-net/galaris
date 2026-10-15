@@ -137,13 +137,13 @@ async def test_delegation_blocked_when_creator_user_paused(monkeypatch: pytest.M
 
     held = _task(paused=True, data={"pause_reasons": ["user"]})
     monkeypatch.setattr(task_service, "get_by_id", AsyncMock(return_value=held))
-    msg = await task_mcp._delegation_blocked_message(held.id)  # pyright: ignore[reportPrivateUsage]
+    msg = await task_mcp.delegation_blocked_message(held.id)
     assert msg is not None and "pause" in msg.lower()
 
     # Automatic child waiting is not a human pause, so delegation is allowed.
     waiting = _task(paused=True, data={"pause_reasons": ["child"]})
     monkeypatch.setattr(task_service, "get_by_id", AsyncMock(return_value=waiting))
-    assert await task_mcp._delegation_blocked_message(waiting.id) is None  # pyright: ignore[reportPrivateUsage]
+    assert await task_mcp.delegation_blocked_message(waiting.id) is None
 
 
 @pytest.mark.asyncio
@@ -163,7 +163,7 @@ async def test_task_run_raises_when_delegation_blocked(
     )
     monkeypatch.setattr(
         task_mcp,
-        "_delegation_blocked_message",
+        "delegation_blocked_message",
         AsyncMock(return_value="Delegation blocked."),
     )
 
@@ -197,7 +197,7 @@ async def test_task_run_returns_canonical_task_uri(
     task_id = uuid4()
     monkeypatch.setattr(
         task_mcp,
-        "_delegation_blocked_message",
+        "delegation_blocked_message",
         AsyncMock(return_value=None),
     )
     monkeypatch.setattr(
@@ -246,7 +246,7 @@ async def test_task_run_rejects_a_missing_target_agent(
 ) -> None:
     monkeypatch.setattr(
         task_mcp,
-        "_delegation_blocked_message",
+        "delegation_blocked_message",
         AsyncMock(return_value=None),
     )
     monkeypatch.setattr(

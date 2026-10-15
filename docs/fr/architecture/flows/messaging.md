@@ -11,6 +11,14 @@ utilisateur `/chat` est aussi la vue unifiée en lecture seule des rooms issues 
 externes. L’ancien `EmployeeMessenger` en boucle
 locale et son Tool `galaris_messenger` restent retirés.
 
+Depuis une Task, `messenger_send_message_to_user` adresse un collègue interne par
+`agent:<ID>` ou par son identité Messenger canonique. La façade Task admet une sous-tâche
+avec le message converti de Markdown en HTML ; le parent attend puis reprend avec son résultat,
+comme pour une délégation ordinaire. Aucun salon humain n'est recherché ou créé pour cet échange.
+Le reçu rend l'URI de la demande, sans attester de réponse ni d'action accomplie. Les droits de
+contact et d'accès documentaire, la pause humaine et la limite de collaboration restent appliqués.
+Cette voie exige une Task courante ; elle ne crée pas de Task depuis une conversation courte.
+
 Le chat peut intégrer le composant documentaire complet dans sa page, à côté de la
 conversation ou au-dessous, avec les mêmes droits et sauvegardes que dans sa modale.
 Lors de l'envoi, le client attend les sauvegardes puis transmet `displayed_document_id`

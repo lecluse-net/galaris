@@ -363,7 +363,8 @@ async def mcp_room_send_message(ctx: McpToolContext, room_id: str, message: str)
         "(internal, nextcloud_talk, telegram, matrix, whatsapp, or one_bot) to select another platform; "
         "an unavailable or ambiguous channel never falls back. Use messenger_search_users first "
         "when the recipient ID is unknown. Sending to another AI agent becomes a blocking peer "
-        "request."
+        "request. From a Task on internal Chat, address a colleague as agent:<ID> using the ID from agent_list; "
+        "the message creates a durable peer Task and returns its URI without requiring a human Chat room."
     ),
 )
 async def mcp_send_message_to_user(
@@ -395,6 +396,23 @@ async def mcp_send_message_to_user(
         # await. Regular recipients use a simple private message.
         peer_agent_id = await _recipient_agent_id(messenger, user_id)
         is_peer_ai = peer_agent_id is not None and peer_agent_id != ctx.agent_id
+        if messenger.kind == "internal" and peer_agent_id is not None:
+            from app.task.facade import request_peer_message
+
+            if ctx.task_id is None:
+                raise ValueError(_message(language, "peer_task_required"))
+            request_id = await request_peer_message(
+                requester_agent_id=ctx.agent_id,
+                peer_agent_id=peer_agent_id,
+                message=message,
+                language=language,
+                source_task_id=ctx.task_id,
+            )
+            return _message(
+                language,
+                "peer_request_waiting",
+                uri=f"galaris://task/{request_id}",
+            )
         if is_peer_ai and ctx.task_id is not None:
             parent = await task_service.get_by_id(ctx.task_id)
             if parent is not None:
@@ -448,6 +466,10 @@ async def _resolve_recipient_id(
     value = (user or "").strip()
     if not value:
         raise ValueError(t("messenger_mcp.recipient_missing", language))
+    # Native peer IDs are exact addresses, never display names to fuzzy-match
+    # against the human directory of the current Chat connection.
+    if messenger.kind == "internal" and value.startswith("agent:"):
+        return value
     try:
         candidates = await messenger.search_users(value)
     except NotSupported:
@@ -521,6 +543,29 @@ async def _recipient_agent_id(
 ) -> Optional[int]:
     """Return the recipient's agent ID when it represents an AI agent."""
     from . import directory
+
+    if messenger.kind == "internal":
+        from sqlalchemy import select
+        from core.database import get_db
+        from app.agent import get_agent_record
+        from .models import MessengerUser
+
+        if user_id.startswith("agent:"):
+            raw_agent_id = user_id.removeprefix("agent:")
+            if not raw_agent_id.isascii() or not raw_agent_id.isdecimal() or len(raw_agent_id) > 10:
+                raise ValueError("Use an exact agent:<ID> address from agent_list.")
+            agent = await get_agent_record(int(raw_agent_id))
+            if agent is None:
+                raise ValueError("The recipient agent does not exist.")
+            return agent.id
+        try:
+            identity_id = UUID(user_id)
+        except ValueError:
+            return None
+        return await get_db().scalar(select(MessengerUser.agent_id).where(
+            MessengerUser.id == identity_id,
+            MessengerUser.tool_id == messenger.tool_id,
+        ))
 
     tool_id = int(getattr(messenger, "tool_id", 0) or 0)
     if not tool_id:

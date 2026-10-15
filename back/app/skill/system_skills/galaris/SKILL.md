@@ -887,6 +887,11 @@ exchange exists. Supported channel values are `internal`, `nextcloud_talk`, `mat
   Galaris keeps the Task or conversation's exact connection. Without a fixed route, it selects the
   recipient's latest inbound channel, then internal Chat by default. Pass `channel` to deliberately
   choose another platform. A fixed or explicit unavailable route fails without switching channels.
+  From a Task, contact an internal colleague with `user="agent:<ID>"`, using the exact ID from
+  `agent_list`, and `channel="internal"`. This creates a peer Task and returns its canonical URI;
+  the calling Task waits for its result. No human Chat room is required. Acceptance does not prove
+  that the colleague has replied or completed the requested action. Contact and document access
+  checks still apply. This path requires a current Task.
 - `messenger_send_audio_message(user: str, message: str, channel: str = "", ...) -> str` generates
   an MP3 with the TTS configured on this agent and attaches it to the recipient's latest room on
   the selected connection. It applies the same channel selection as `messenger_send_message_to_user`.

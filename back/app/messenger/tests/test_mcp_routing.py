@@ -23,6 +23,80 @@ from app.tools.mcp_loader import McpToolContext
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("scenario", [
+    "accepted", "canonical_uuid", "denied", "paused", "round_limit", "terminal", "outside_task", "self",
+])
+async def test_internal_peer_message_creates_an_awaited_request_without_a_human_room(
+    db, monkeypatch, scenario,
+):
+    from app.agent.models import Agent, Title
+    from app.connection import Connection
+    from app.task import Task, TaskStatus, runner
+    from app.tools import ToolModel
+    from core.params import runtime_settings
+    from core.team import TeamModel
+    from sqlalchemy import select
+
+    title = Title(label="Synthetic colleague", gender="X")
+    team = TeamModel(name=f"Synthetic dialogue {uuid4().hex}")
+    db.add_all([title, team])
+    await db.flush()
+    sender = Agent(code=f"sender-{uuid4().hex}", first_name="Sender", last_name="Test",
+                   title_id=title.id, group_id=team.id, agent_driver="internal")
+    peer = Agent(code=f"peer-{uuid4().hex}", first_name="Peer", last_name="Test",
+                 title_id=title.id, group_id=None if scenario == "denied" else team.id, agent_driver="internal")
+    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
+    assert tool is not None
+    db.add_all([sender, peer])
+    await db.flush()
+    identity = MessengerUser(tool_id=tool.id, external_id=f"agent:{peer.id}",
+                             display_name="Peer Test", agent_id=peer.id, is_ai=True)
+    db.add(identity)
+    connection = Connection(agent_id=sender.id, tool_id=tool.id, active=True)
+    parent = Task(agent_id=sender.id, label="Synthetic update", objective="<p>Ask the peer.</p>",
+                  status=TaskStatus.EXEC, data={"language": "en"})
+    db.add_all([connection, parent])
+    if scenario == "paused":
+        parent.paused = True
+        parent.data = {"language": "en", "pause_reasons": ["user"]}
+    elif scenario == "round_limit":
+        parent.data = {"language": "en", "collab_rounds": runtime_settings.TASK_ASK_AGENT_MAX_ROUNDS}
+    elif scenario == "terminal":
+        parent.status = TaskStatus.SUCCESS
+    await db.flush()
+    scheduled = []
+    monkeypatch.setattr(runner, "go_next", lambda task_id, **kwargs: scheduled.append(task_id))
+
+    ctx = McpToolContext(agent_id=sender.id, runtime="internal",
+                         task_id=None if scenario == "outside_task" else parent.id)
+    recipient = str(identity.id) if scenario == "canonical_uuid" else f"agent:{peer.id}"
+    if scenario == "self":
+        recipient = f"agent:{sender.id}"
+    errors = {"denied": "not authorized", "paused": "paused", "round_limit": "limit",
+              "terminal": "terminal", "outside_task": "from a Task", "self": "another agent"}
+    if scenario in errors:
+        with pytest.raises(RuntimeError, match=errors[scenario]):
+            await mcp.mcp_send_message_to_user(ctx, recipient, "**Synthetic** update", "internal")
+        assert scheduled == []
+        assert await db.scalar(select(Task.id).where(Task.parent_id == parent.id)) is None
+        return
+
+    result = await mcp.mcp_send_message_to_user(ctx, recipient, "**Synthetic** update", "internal")
+    await db.flush()
+    assert len(scheduled) == 1
+    child = await db.get(Task, scheduled[0])
+    assert child is not None
+    assert child.agent_id == peer.id
+    assert child.requester_agent_id == sender.id
+    assert child.parent_id == child.source_task_id == parent.id
+    assert child.data["delegated"] is True
+    assert child.auto_approve is False
+    assert "<strong>Synthetic</strong>" in child.objective
+    assert f"galaris://task/{child.id}" in result
+    assert "waiting" in result.lower()
+
+
+@pytest.mark.asyncio
 async def test_concurrent_messaging_calls_keep_separate_authorized_channels(monkeypatch):
     from app.messenger import service
 

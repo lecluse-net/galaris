@@ -10,6 +10,14 @@ reuses the canonical journal and rooms, without a network listener or secret. Th
 `/chat` is also the unified read-only view of rooms originating from external bridges. The former
 local-loop `EmployeeMessenger` and its `galaris_messenger` Tool remain removed.
 
+From a Task, `messenger_send_message_to_user` addresses an internal colleague with
+`agent:<ID>` or their canonical Messenger identity. The Task facade admits a child Task
+with the message converted from Markdown to HTML; the parent waits and resumes with its result,
+as with ordinary delegation. No human room is looked up or created for this exchange.
+The receipt returns the request URI, without claiming a reply or completed action. Contact
+and document permissions, human pauses and collaboration limits still apply.
+This path requires a current Task; it does not create a Task from a short conversation.
+
 Chat can embed the full document component beside or below the conversation, with the
 same permissions and saves as its dialog. Before sending a message, the client waits for
 document saves and includes `displayed_document_id` only when that document has loaded

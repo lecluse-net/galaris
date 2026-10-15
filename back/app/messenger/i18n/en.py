@@ -46,6 +46,10 @@ default: dict[str, object] = {
             "Message sent to the peer. Your task is waiting for their response and will resume "
             "automatically. Briefly acknowledge the original requester."
         ),
+        "peer_task_required": "Contact an internal colleague from a Task. No peer request was created.",
+        "peer_request_waiting": (
+            "Peer request accepted: ${uri}. Your task is waiting for its result and will resume automatically."
+        ),
         "recipient_missing": "A recipient is required; provide a user ID or name.",
         "recent_room_missing": (
             "No recent room was found for '${user}'. Ask this user to send a message first, "

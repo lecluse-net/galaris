@@ -242,6 +242,11 @@ Nextcloud Talk actif ne détourne donc pas les messages d'un objectif rattaché 
 Pour un envoi sans canal fixé, Galaris reprend le dernier échange entrant avec le destinataire,
 puis choisit le chat interne par défaut. L'agent peut demander explicitement un autre canal.
 
+Lorsqu'une Task doit solliciter un autre agent par le canal interne, elle lui crée une demande
+suivie et attend son résultat, sans nécessiter de conversation avec un humain. Vous pouvez suivre
+la demande par son lien Task. Son acceptation ne confirme ni une réponse du collègue ni
+l'accomplissement de l'action demandée ; les droits de contact et de partage restent nécessaires.
+
 Dans l’installation par défaut, les skills `galaris-lab` et `galaris-knowledge` sont
 bloqués globalement et autorisés individuellement pour le seul agent **Galaris** créé
 à l’installation. Les autorisations restent modifiables et les mises à jour conservent

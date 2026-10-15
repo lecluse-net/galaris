@@ -210,7 +210,7 @@ async def mcp_run_task(
     if agent_id == ctx.agent_id:
         language = await _context_language(ctx)
         raise ValueError(_message("self_delegation", language))
-    blocked = await _delegation_blocked_message(ctx.task_id)
+    blocked = await delegation_blocked_message(ctx.task_id)
     if blocked is not None:
         raise ValueError(blocked)
     if not await _delegation_target_exists(agent_id):
@@ -1218,7 +1218,7 @@ async def run_task(
     return str(task_id)
 
 
-async def _delegation_blocked_message(source_task_id: Optional[UUID]) -> Optional[str]:
+async def delegation_blocked_message(source_task_id: Optional[UUID]) -> Optional[str]:
     """Return a delegation rejection message, or ``None`` when delegation is allowed.
 
     A human-held task cannot create children, and the collaboration round limit prevents an

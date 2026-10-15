@@ -2447,7 +2447,8 @@
           "back/app/memory/retrieval.py",
           "back/app/memory/router.py",
           "back/app/memory/service.py",
-          "back/app/memory/storage.py"
+          "back/app/memory/storage.py",
+          "back/app/memory/tag_icons.py"
         ],
         "source": "app.memory",
         "target": "core.params"
@@ -3041,6 +3042,7 @@
           "back/app/task/budget.py",
           "back/app/task/call_recovery.py",
           "back/app/task/execution_scope.py",
+          "back/app/task/facade.py",
           "back/app/task/live_checkpoint.py",
           "back/app/task/mcp.py",
           "back/app/task/models.py",
@@ -3147,6 +3149,7 @@
           "back/app/task/budget.py",
           "back/app/task/call_recovery.py",
           "back/app/task/collab.py",
+          "back/app/task/facade.py",
           "back/app/task/mcp.py",
           "back/app/task/router.py",
           "back/app/task/scheduler.py",
@@ -3178,6 +3181,7 @@
       {
         "files": [
           "back/app/task/activity_snapshot.py",
+          "back/app/task/facade.py",
           "back/app/task/html_migration.py",
           "back/app/task/mcp.py",
           "back/app/task/models.py",
@@ -7967,7 +7971,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_list_rooms",
-        "line": 702,
+        "line": 747,
         "module": "app.messenger",
         "name": "messenger_list_rooms",
         "namespace": "messenger"
@@ -7975,7 +7979,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_history",
-        "line": 740,
+        "line": 785,
         "module": "app.messenger",
         "name": "messenger_room_history",
         "namespace": "messenger"
@@ -7983,7 +7987,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_send_file",
-        "line": 954,
+        "line": 999,
         "module": "app.messenger",
         "name": "messenger_room_send_file",
         "namespace": "messenger"
@@ -7999,7 +8003,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_search_users",
-        "line": 812,
+        "line": 857,
         "module": "app.messenger",
         "name": "messenger_search_users",
         "namespace": "messenger"
@@ -8007,7 +8011,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_audio_message",
-        "line": 591,
+        "line": 636,
         "module": "app.messenger",
         "name": "messenger_send_audio_message",
         "namespace": "messenger"
@@ -8015,7 +8019,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_file_to_user",
-        "line": 900,
+        "line": 945,
         "module": "app.messenger",
         "name": "messenger_send_file_to_user",
         "namespace": "messenger"
@@ -8023,7 +8027,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_message_to_user",
-        "line": 369,
+        "line": 370,
         "module": "app.messenger",
         "name": "messenger_send_message_to_user",
         "namespace": "messenger"
@@ -10435,6 +10439,7 @@
       },
       {
         "capabilities": [
+          "facade.py",
           "i18n/",
           "mcp.py",
           "models.py",
