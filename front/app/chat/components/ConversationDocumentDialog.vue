@@ -20,6 +20,7 @@
           @loaded="emit('changed', $event)"
           @updated="emit('changed', $event)"
           @unavailable="emit('unavailable', $event)"
+          @deleted="onDeleted"
         />
       </div>
     </q-card>
@@ -43,6 +44,7 @@ const { documentId, agentId, title, editable = false } = defineProps<{
 const emit = defineEmits<{
   changed: [document: WorkingDocumentSnapshot]
   unavailable: [documentId: string]
+  deleted: [documentId: string]
 }>()
 
 const { t } = useI18n()
@@ -52,6 +54,11 @@ const workingDocumentEditor = useTemplateRef<InstanceType<typeof WorkingDocument
 
 function flushDocument(): void {
   void workingDocumentEditor.value?.flush()
+}
+function onDeleted(deletedId: string): void {
+  if (deletedId !== documentId) return
+  emit('deleted', deletedId)
+  open.value = false
 }
 async function flush(): Promise<boolean> { return await workingDocumentEditor.value?.flush() ?? true }
 defineExpose({ flush })

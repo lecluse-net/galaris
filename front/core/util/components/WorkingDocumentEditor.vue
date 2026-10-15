@@ -11,6 +11,7 @@
     @loaded="forwardLoaded"
     @updated="forwardUpdated"
     @unavailable="forwardUnavailable"
+    @deleted="forwardDeleted"
   />
 </template>
 
@@ -36,6 +37,7 @@ const emit = defineEmits<{
   loaded: [document: WorkingDocumentSnapshot]
   updated: [document: WorkingDocumentSnapshot]
   unavailable: [documentId: string]
+  deleted: [documentId: string]
 }>()
 
 interface FlushableEditor {
@@ -71,5 +73,9 @@ function forwardUpdated(value: unknown): void {
 
 function forwardUnavailable(value: unknown): void {
   if (typeof value === 'string') emit('unavailable', value)
+}
+
+function forwardDeleted(value: unknown): void {
+  if (typeof value === 'string') emit('deleted', value)
 }
 </script>

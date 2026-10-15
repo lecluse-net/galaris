@@ -1304,6 +1304,7 @@ async def test_room_work_projection_starts_at_oldest_displayed_message(
     old_message = await _message(db, connection, room, 1, "Ancien échange")
     visible_document_id = uuid4()
     second_visible_document_id = uuid4()
+    deleted_document_id = uuid4()
     visible_message = await _message(
         db,
         connection,
@@ -1311,7 +1312,7 @@ async def test_room_work_projection_starts_at_oldest_displayed_message(
         2,
         (
             f"Documents courants document://{visible_document_id} "
-            f"document://{second_visible_document_id}"
+            f"document://{second_visible_document_id} document://{deleted_document_id}"
         ),
     )
     old_round = ConversationRound(room_id=room.id, language="fr", status="SUCCEEDED")
@@ -1441,7 +1442,14 @@ async def test_room_work_projection_starts_at_oldest_displayed_message(
                 title="Canonical visible document title",
                 revision=7,
                 updated_at=canonical_updated_at,
-            )
+            ),
+            deleted_document_id: ConversationDocumentMetadata(
+                id=deleted_document_id,
+                title="Synthetic deleted working document",
+                revision=3,
+                updated_at=canonical_updated_at,
+                deleted=True,
+            ),
         }
     )
     monkeypatch.setattr(

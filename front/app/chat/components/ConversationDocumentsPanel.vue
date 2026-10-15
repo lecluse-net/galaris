@@ -75,6 +75,7 @@
       :editable="documentEditable"
       @changed="onDocumentChanged"
       @unavailable="onDocumentUnavailable"
+      @deleted="removeDocument"
     />
 
     <q-dialog v-model="createOpen">
@@ -139,11 +140,13 @@ const props = withDefaults(defineProps<{
   canEdit: false,
 })
 
-const emit = defineEmits<{ open: [document: ConversationDocumentReference]; 'has-items': [value: boolean] }>()
+const emit = defineEmits<{ open: [document: ConversationDocumentReference]; 'has-items': [value: boolean]; deleted: [documentId: string] }>()
 
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const documents = ref<ConversationDocumentReference[]>([])
+// A response started before deletion must not restore a removed document.
+const deletedDocumentIds = new Set<string>()
 const total = ref(0)
 const page = ref(1)
 const loading = ref(false)
@@ -218,8 +221,8 @@ async function load(reset = true, scrollAfterLoad = false): Promise<void> {
       props.viewerAgentId,
     )
     if (sequence !== requestSequence) return
-    documents.value = result.items
-    total.value = result.total
+    documents.value = result.items.filter(document => !deletedDocumentIds.has(document.id))
+    total.value = Math.max(0, result.total - (result.items.length - documents.value.length))
     if (reset) page.value = 1
     error.value = ''
     if (scrollAfterLoad || result.items.some(document => !knownIds.has(document.id))) {
@@ -249,8 +252,9 @@ async function loadMore(): Promise<void> {
     )
     if (sequence !== requestSequence) return
     const knownIds = new Set(documents.value.map(document => document.id))
-    documents.value = [...documents.value, ...result.items.filter(document => !knownIds.has(document.id))]
-    total.value = result.total
+    const availableItems = result.items.filter(document => !deletedDocumentIds.has(document.id))
+    documents.value = [...documents.value, ...availableItems.filter(document => !knownIds.has(document.id))]
+    total.value = Math.max(0, result.total - (result.items.length - availableItems.length))
     page.value = nextPage
     error.value = ''
   } catch (caught) {
@@ -303,7 +307,29 @@ function scrollDocumentsToBottom(): void {
   })
 }
 
-defineExpose({ scrollToBottom: scrollDocumentsToBottom, openCreateDocument })
+defineExpose({ scrollToBottom: scrollDocumentsToBottom, openCreateDocument, removeDocument })
+
+function removeDocument(documentId: string): void {
+  if (deletedDocumentIds.has(documentId)) return
+  deletedDocumentIds.add(documentId)
+  if (documents.value.some(document => document.id === documentId)) {
+    documents.value = documents.value.filter(document => document.id !== documentId)
+    total.value = Math.max(0, total.value - 1)
+  }
+  if (selectedReference.value?.id === documentId) {
+    dialogOpen.value = false
+    dialogDocumentId.value = null
+    selectedReference.value = null
+  }
+  emit('deleted', documentId)
+}
+
+function onMemoryDelete(response: { data: { id: string; node_kind: string } }): void {
+  const event = response.data
+  if (event.node_kind !== 'document') return
+  removeDocument(event.id)
+  scheduleRefresh()
+}
 
 function scheduleRefresh(): void {
   if (!props.canRead) return
@@ -316,7 +342,7 @@ function subscribe(): void {
   websocket.createWebsocket()
   websocket.onEvent('memory', 'create', scheduleRefresh)
   websocket.onEvent('memory', 'update', scheduleRefresh)
-  websocket.onEvent('memory', 'delete', scheduleRefresh)
+  websocket.onEvent('memory', 'delete', onMemoryDelete)
   websocket.onConnect(scheduleRefresh)
   subscribed = true
 }
@@ -325,7 +351,7 @@ function unsubscribe(): void {
   if (!subscribed) return
   websocket.offEvent('memory', 'create', scheduleRefresh)
   websocket.offEvent('memory', 'update', scheduleRefresh)
-  websocket.offEvent('memory', 'delete', scheduleRefresh)
+  websocket.offEvent('memory', 'delete', onMemoryDelete)
   websocket.offConnect(scheduleRefresh)
   subscribed = false
 }
@@ -397,6 +423,7 @@ watch(
   () => [props.roomId, props.fromMessageId, props.viewerAgentId, props.canRead] as const,
   ([roomId, , viewerAgentId, canRead], previous) => {
     if (roomId !== previous?.[0] || viewerAgentId !== previous?.[2] || canRead !== previous?.[3]) {
+      deletedDocumentIds.clear()
       documents.value = []
       total.value = 0
     }

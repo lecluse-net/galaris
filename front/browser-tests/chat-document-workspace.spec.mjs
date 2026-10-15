@@ -1,7 +1,7 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
 
-async function workspace(page, editable = true) {
+async function workspace(page, editable = true, extraDocuments = []) {
   const room = { id: 'room-a', label: 'Document conversation', agent_id: 7, agent_name: 'Alice', agent_active: false, source: null, writable: true, members: [], muted: false, archived: false, unread_count: 0, conversation_type: 'text' }
   const message = { id: 'message-a', room_id: room.id, text: 'Conversation remains available', files: [], sender: null, created_at: '2026-09-01T12:00:00Z', is_mine: true, status: 'sent' }
   let document = { ...documentFixture, media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Initial document body</p>' } }
@@ -34,7 +34,7 @@ async function workspace(page, editable = true) {
   const readDocument = route => denied ? route.fulfill({ status: 403, json: { detail: 'Forbidden' } }) : route.fulfill({ json: route.request().url().includes('/items/') ? document : { item: document, agent_id: 7 } })
   await page.route('**/api/memory/items/doc-a?*', readDocument)
   await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, readDocument)
-  await page.route('**/api/memory/documents/doc-b', route => {
+  await page.route(/\/api\/memory\/documents\/doc-b(?:\?.*)?$/, route => {
     openedDocumentId = 'doc-b'
     if (route.request().method() === 'PATCH') {
       const change = route.request().postDataJSON()
@@ -46,7 +46,7 @@ async function workspace(page, editable = true) {
     return denied ? route.fulfill({ status: 403, json: { detail: 'Forbidden' } }) : route.fulfill({ json: { item: { ...document, id: 'doc-b', title: 'Off-list document' }, agent_id: null } })
   })
   await page.route('**/api/memory/documents/library', route => route.fulfill({ json: { entries: [{ item: { ...document, id: 'doc-b', title: 'Off-list document' }, agent_ids: [] }], total: 1, has_more: false } }))
-  await jsonRoute(page, '**/api/chat/rooms/room-a/documents?*', { items: [{ id: document.id, label: document.title, uri: 'document://doc-a', revision: 3 }], total: 1 })
+  await jsonRoute(page, '**/api/chat/rooms/room-a/documents?*', { items: [{ id: document.id, label: document.title, uri: 'document://doc-a', revision: 3 }, ...extraDocuments], total: 1 + extraDocuments.length })
   await page.route('**/api/chat/rooms/room-a/documents', route => route.fulfill({ json: { id: document.id, label: route.request().postDataJSON().title, uri: 'document://doc-a' } }))
   await mount(page, 'app/chat/pages/index.vue', { route: '/chat?room=room-a', privileges: ['CHAT_SEND', 'MEMORY_ACCESS', ...(editable ? ['MEMORY_EDIT'] : [])] })
   await expect(page.locator('.conversation-pane')).toContainText(message.text)
@@ -623,11 +623,97 @@ test('denied document and reconnect recover authorized current content while cha
   await expect(page.locator('.chat-document-pane')).toContainText('Denied document body')
   await expect(page.locator('.conversation-pane textarea')).toHaveValue('Draft survives connection loss')
   await page.evaluate(() => window.testApp.emitSocket('memory.delete', { data: { id: 'doc-b', node_kind: 'document' } }))
-  await expect(page.locator('.chat-document-pane')).not.toContainText('Denied document body')
+  await expect(page.locator('.chat-document-pane')).toHaveCount(0)
   await expect(page.locator('.conversation-pane textarea')).toBeEditable()
   await page.getByRole('button', { name: 'Post', exact: true }).click()
   await expect.poll(() => state.writes.length).toBe(1)
   expect(state.writes[0]).not.toHaveProperty('displayed_document_id')
+})
+
+for (const surface of ['desktop', 'mobile', 'dialog']) {
+  for (const deletion of ['editor', 'realtime']) {
+    test(`${deletion} deletion removes the working document and closes its ${surface} view`, async ({ page }) => {
+      await page.setViewportSize({ width: surface === 'mobile' ? 390 : 1440, height: 900 })
+      const state = await workspace(page, true, [{ id: 'doc-b', label: 'Off-list document', uri: 'document://doc-b' }])
+      const draft = page.locator('.conversation-pane textarea')
+      await draft.fill('Keep this message after deletion')
+      if (surface === 'mobile') await page.getByRole('button', { name: 'Details', exact: true }).click()
+      const row = page.getByLabel('Open document Test document', { exact: true })
+      if (surface === 'dialog') await page.getByRole('button', { name: 'Open document Test document in a dialog', exact: true }).click()
+      else await row.click()
+      const viewer = surface === 'desktop' ? page.locator('.chat-document-pane') : page.locator('.conversation-document-dialog')
+      await expect(viewer).toContainText('Initial document body')
+
+      // A pending list read contains the old document even after successful deletion.
+      let releaseList
+      const pendingList = new Promise(resolve => { releaseList = resolve })
+      await page.route('**/api/chat/rooms/room-a/documents?*', async route => {
+        await pendingList
+        await route.fulfill({ json: { items: [
+          { id: 'doc-a', label: 'Test document', uri: 'document://doc-a' },
+          { id: 'doc-b', label: 'Remaining document', uri: 'document://doc-b' },
+        ], total: 2 } })
+      })
+      const listRequest = page.waitForRequest(request => request.url().includes('/rooms/room-a/documents?'))
+      await page.evaluate(() => window.testApp.emitSocket('memory.update', { data: { id: 'doc-a', node_kind: 'document', revision: 3 } }))
+      await listRequest
+      if (deletion === 'editor') {
+        let refused = surface === 'desktop'
+        await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+          if (route.request().method() !== 'DELETE') return route.fallback()
+          return route.fulfill(refused ? { status: 403, json: { detail: 'Deletion refused' } } : { json: {} })
+        })
+        await viewer.getByRole('button', { name: 'Delete document', exact: true }).click()
+        const confirm = page.getByRole('dialog').filter({ hasText: 'Permanently delete “Test document”' })
+        if (refused) {
+          await confirm.getByRole('button', { name: 'Delete document', exact: true }).click()
+          await expect(page.getByText('Unable to delete the document.', { exact: true })).toBeVisible()
+          await expect(viewer).toContainText('Initial document body')
+          await expect(row).toHaveCount(1)
+          refused = false
+        }
+        await confirm.getByRole('button', { name: 'Delete document', exact: true }).click()
+      } else {
+        await page.evaluate(() => window.testApp.emitSocket('memory.delete', { data: { id: 'doc-a', node_kind: 'document' } }))
+      }
+      await expect(viewer).toHaveCount(0)
+      await expect(row).toHaveCount(0)
+      // Repeated notifications and stale API results cannot restore the deleted entry.
+      const listResponse = page.waitForResponse(response => response.url().includes('/rooms/room-a/documents?'))
+      await page.evaluate(() => window.testApp.emitSocket('memory.delete', { data: { id: 'doc-a', node_kind: 'document' } }))
+      releaseList()
+      await listResponse
+      await expect(page.getByLabel('Open document Remaining document', { exact: true })).toHaveCount(1)
+      await expect(row).toHaveCount(0)
+      await expect(draft).toHaveValue('Keep this message after deletion')
+      await page.getByRole('button', { name: 'Post', exact: true }).click()
+      await expect.poll(() => state.writes.length).toBe(1)
+      expect(state.writes[0]).not.toHaveProperty('displayed_document_id')
+    })
+  }
+}
+
+test('an off-list deletion cannot reappear through a pending document list response', async ({ page }) => {
+  await jsonRoute(page, '**/api/memory/documents/doc-c?*', { item: { ...documentFixture, id: 'doc-c', title: 'Surviving new document' }, agent_id: 7 })
+  await workspace(page)
+  await expect(page.getByLabel('Open document Test document', { exact: true })).toBeVisible()
+  let releaseList
+  const pending = new Promise(resolve => { releaseList = resolve })
+  await page.route('**/api/chat/rooms/room-a/documents?*', async route => {
+    await pending
+    await route.fulfill({ json: { items: [
+      { id: 'doc-a', label: 'Test document', uri: 'document://doc-a' },
+      { id: 'doc-b', label: 'Deleted before arrival', uri: 'document://doc-b' },
+      { id: 'doc-c', label: 'Surviving new document', uri: 'document://doc-c' },
+    ], total: 3 } })
+  })
+  const request = page.waitForRequest(url => url.url().includes('/rooms/room-a/documents?'))
+  await page.evaluate(() => window.testApp.emitSocket('memory.update', { data: { id: 'doc-a', node_kind: 'document', revision: 3 } }))
+  await request
+  await page.evaluate(() => window.testApp.emitSocket('memory.delete', { data: { id: 'doc-b', node_kind: 'document' } }))
+  releaseList()
+  await expect(page.getByLabel('Open document Surviving new document', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Open document Deleted before arrival', { exact: true })).toHaveCount(0)
 })
 
 test('creation cancellation and rejection preserve chat without opening a fictitious document', async ({ page }) => {

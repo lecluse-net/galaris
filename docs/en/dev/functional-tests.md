@@ -700,6 +700,11 @@ automatic history loading at the top while preserving the reading position, refr
 the arrow to the latest messages, bounded requests, failures and room changes during loading
 on desktop and mobile.
 
+The document projection (`app/conversation/tests/test_service.py`) removes deleted documents
+before counting and pagination. `chat-document-workspace.spec.mjs` also covers deletion before
+a pending HTTP list arrives; `document-deletion.spec.mjs` checks the historical “Document deleted”
+label in French and English without granting access to content.
+
 `TopicSelect` centralizes paginated search and selection by topic ID. Entry forms enable
 `allow-create`: new conversations, conversation preferences, messages with `@topic`, badge
 reassignment, assignment editors for tasks and text/voice conversations, and merge targets.

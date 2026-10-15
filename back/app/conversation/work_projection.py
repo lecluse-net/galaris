@@ -178,6 +178,7 @@ async def list_room_documents(
     metadata_by_id = await resolve_conversation_document_metadata(tuple(documents))
     for document_id, metadata in metadata_by_id.items():
         if metadata.deleted:
+            documents.pop(document_id, None)
             continue
         current = documents.get(document_id)
         if current is None:

@@ -66,7 +66,7 @@
             @pointerdown="startDocumentResize" @pointermove="moveDocumentResize" @pointerup="finishDocumentResize"
             @pointercancel="finishDocumentResize" @lostpointercapture="finishDocumentResize" @keydown="resizeDocumentWithKeyboard"
           ><span class="column-resizer-handle"><q-icon name="drag_indicator" size="16px" /></span></div>
-          <ChatDocumentPane v-if="integratedDocument" ref="documentPane" :document="integratedDocument" :agent-id="selectedDocumentAgentId" :editable="canEditDocuments" @available="displayedDocumentId = $event" @unavailable="displayedDocumentId = null" @close="selectedDocument = null">
+          <ChatDocumentPane v-if="integratedDocument" ref="documentPane" :document="integratedDocument" :agent-id="selectedDocumentAgentId" :editable="canEditDocuments" @available="displayedDocumentId = $event" @unavailable="displayedDocumentId = null" @deleted="onDocumentDeleted" @close="selectedDocument = null">
             <template #actions>
               <q-btn flat round dense icon="view_column" :aria-label="t('chat.documentColumns')" :aria-pressed="effectiveDocumentLayout === 'columns'" :color="effectiveDocumentLayout === 'columns' ? 'primary' : undefined" @click="documentLayout = 'columns'"><q-tooltip>{{ t('chat.documentColumns') }}</q-tooltip></q-btn>
               <q-btn flat round dense icon="view_agenda" :aria-label="t('chat.documentRows')" :aria-pressed="effectiveDocumentLayout === 'rows'" :color="effectiveDocumentLayout === 'rows' ? 'primary' : undefined" @click="documentLayout = 'rows'"><q-tooltip>{{ t('chat.documentRows') }}</q-tooltip></q-btn>
@@ -127,7 +127,7 @@
                 </q-btn>
               </q-item-section>
             </template>
-            <div class="sidebar-section-content"><ConversationDocumentsPanel embedded :displayed-document-id="selectedDocument?.id === displayedDocumentId ? displayedDocumentId : null" @has-items="documentsExpanded = $event" @open="openConversationDocument" ref="conversationDocumentsPanel" :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadDocuments" :can-edit="canEditDocuments" /></div>
+            <div class="sidebar-section-content"><ConversationDocumentsPanel embedded :displayed-document-id="selectedDocument?.id === displayedDocumentId ? displayedDocumentId : null" @has-items="documentsExpanded = $event" @open="openConversationDocument" @deleted="onDocumentDeleted" ref="conversationDocumentsPanel" :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadDocuments" :can-edit="canEditDocuments" /></div>
           </q-expansion-item>
           <q-expansion-item v-if="repositories.length" icon="code" :label="t('code.repositories')" default-opened>
             <q-item v-for="repository in repositories" :key="repository.id" clickable @click="openRepository(repository.id)">
@@ -147,7 +147,7 @@
     <RoomCreateDialog v-model="createDialog" :agents="recipients.agents" :initial-agent-id="initialAgentId" :saving="creatingRoom" :can-edit-topic="canEditConversationTopic" @create="createRoom" />
     <RoomPreferencesDialog v-model="preferencesDialog" :room="store.selectedRoom" :saving="savingRoomPreferences" :archiving="archivingRoom" :can-edit-topic="canEditConversationTopic" @save="saveRoomPreferences" @archive="setRoomArchived" />
     <ConversationDocumentDialog ref="mobileDocument" v-model="mobileDocumentOpen" :document-id="selectedDocument?.id ?? null"
-      :agent-id="selectedDocumentAgentId" :title="selectedDocument?.title ?? t('chat.workingDocument')" :editable="canEditDocuments" @changed="displayedDocumentId = $event.id" @unavailable="displayedDocumentId = null" />
+      :agent-id="selectedDocumentAgentId" :title="selectedDocument?.title ?? t('chat.workingDocument')" :editable="canEditDocuments" @changed="displayedDocumentId = $event.id" @unavailable="displayedDocumentId = null" @deleted="onDocumentDeleted" />
     <ChatDocumentSearchDialog v-if="canReadDocuments && store.viewerAgentId === null" v-model="documentSearchOpen" @select="openLibraryDocument" />
     <q-dialog v-model="mobileCodeOpen" maximized>
       <q-card><CodeWorkspacePane v-if="selectedCodeId" :workspace-id="selectedCodeId" @hide="selectedWorkTarget = null" /></q-card>
@@ -322,6 +322,12 @@ async function openConversationDocument(document: Pick<ConversationDocumentRefer
   selectedDocument.value = { id: document.id, title: document.label }
   mobileView.value = 'conversation'
 }
+function onDocumentDeleted(documentId: string): void {
+  if (selectedDocument.value?.id !== documentId) return
+  selectedDocument.value = null
+  displayedDocumentId.value = null
+  conversationDocumentsPanel.value?.removeDocument(documentId)
+}
 let documentDisplayRequest = 0
 watch(() => store.selectedRoom?.id, () => { documentDisplayRequest += 1 }, { flush: 'sync' })
 watch(selectedWorkTarget, () => { documentDisplayRequest += 1; if (selectedWorkTarget.value?.kind !== 'code') codeStore.hide() }, { flush: 'sync' })
@@ -400,7 +406,7 @@ type BottomScrollablePanelHandle = { scrollToBottom: () => void }
 const messageScrollArea=ref<MessageScrollArea|null>(null)
 const agentTasksPanel=ref<BottomScrollablePanelHandle|null>(null)
 const conversationProcessesPanel=ref<BottomScrollablePanelHandle|null>(null)
-const conversationDocumentsPanel=ref<(BottomScrollablePanelHandle & { openCreateDocument: () => void })|null>(null)
+const conversationDocumentsPanel=ref<(BottomScrollablePanelHandle & { openCreateDocument: () => void; removeDocument: (documentId: string) => void })|null>(null)
 const messengerGrid=ref<HTMLElement|null>(null)
 const conversationRatio=ref(68)
 const resizingColumns=ref(false)

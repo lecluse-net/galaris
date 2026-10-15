@@ -339,6 +339,9 @@ A discussion opened in a dialog starts at the latest messages. Scroll to the top
 earlier messages automatically while keeping your reading position. Scroll back to the bottom
 to refresh the latest messages, or use the downward arrow.
 
+Deleted documents disappear from the chat document list. Their old references in messages
+display **Document deleted**, without allowing access to their content.
+
 In the **Documents** library, every folder offers a **New document** icon among its
 actions. Enter the title and owner: the document is automatically placed in that folder,
 which expands, and opens in the editor. The general creation button keeps new documents

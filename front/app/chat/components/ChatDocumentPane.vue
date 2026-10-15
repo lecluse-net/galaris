@@ -8,7 +8,7 @@
     </q-toolbar>
     <div ref="content" class="chat-document-content">
       <WorkingDocumentEditor ref="editor" :key="`${agentId}:${document.id}`" :document-id="document.id" :agent-id="agentId"
-        :editable="editable" content-min-height="100px" @loaded="changed" @updated="changed" @unavailable="unavailable" />
+        :editable="editable" content-min-height="100px" @loaded="changed" @updated="changed" @unavailable="unavailable" @deleted="deleted" />
     </div>
   </section>
 </template>
@@ -20,7 +20,7 @@ import { useI18n } from 'vue-i18n'
 import { WorkingDocumentEditor, type WorkingDocumentReference, type WorkingDocumentSnapshot } from '@/core/util'
 import { useDocumentFocus } from '../documentFocus'
 const { document, agentId, editable } = defineProps<{ document: WorkingDocumentReference; agentId: number | null; editable: boolean }>()
-const emit = defineEmits<{ close: []; available: [documentId: string]; unavailable: [] }>()
+const emit = defineEmits<{ close: []; available: [documentId: string]; unavailable: []; deleted: [documentId: string] }>()
 const { t } = useI18n()
 const title = ref(document.title)
 const editor = useTemplateRef<InstanceType<typeof WorkingDocumentEditor>>('editor')
@@ -39,6 +39,9 @@ function changed(value: WorkingDocumentSnapshot): void {
   emit('available', value.id)
 }
 function unavailable(): void { focus.reset(); title.value = t('chat.workingDocument'); emit('unavailable') }
+function deleted(documentId: string): void {
+  if (documentId === document.id) emit('deleted', documentId)
+}
 </script>
 
 <style scoped>

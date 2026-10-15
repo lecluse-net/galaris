@@ -716,6 +716,10 @@ le clavier, la fermeture par l’arrière-plan, le réessai après refus et les 
 le chargement automatique en haut avec conservation de la position, l’actualisation en bas,
 la flèche de retour aux derniers messages, les requêtes bornées, les erreurs et les changements
 de discussion pendant un chargement, sur desktop et mobile.
+La projection documentaire (`app/conversation/tests/test_service.py`) retire les documents
+supprimés avant le décompte et la pagination. `chat-document-workspace.spec.mjs` couvre aussi
+une suppression reçue avant l’arrivée d’une liste HTTP ; `document-deletion.spec.mjs` vérifie
+l’indication historique « Document supprimé » en français et en anglais, sans accès au contenu.
 Les formulaires activent `allow-create` : nouvelle conversation, paramètres de conversation,
 message avec `@topic`, réaffectation depuis un badge, éditeur d’affectation des tâches et
 conversations texte/voix, et cible de fusion. Le bouton `+` exige `TOPIC_EDIT` et

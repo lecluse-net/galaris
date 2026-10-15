@@ -366,6 +366,9 @@ Une discussion ouverte en modale se cale sur les derniers messages. Remontez tou
 pour charger automatiquement les messages précédents, sans perdre votre position de lecture.
 Revenez tout en bas pour actualiser les derniers messages, ou utilisez la flèche descendante.
 
+Les documents supprimés disparaissent de la liste des documents du chat. Leurs anciennes
+références dans les messages indiquent **Document supprimé**, sans permettre d’ouvrir leur contenu.
+
 Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**
 parmi ses actions. Renseignez le titre et le propriétaire : le document est automatiquement
 classé dans ce dossier, qui se déplie, puis s’ouvre dans l’éditeur. Le bouton de création
