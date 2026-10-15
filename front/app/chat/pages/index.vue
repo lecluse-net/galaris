@@ -129,10 +129,14 @@
             </template>
             <div class="sidebar-section-content"><ConversationDocumentsPanel embedded :displayed-document-id="selectedDocument?.id === displayedDocumentId ? displayedDocumentId : null" @has-items="documentsExpanded = $event" @open="openConversationDocument" @deleted="onDocumentDeleted" ref="conversationDocumentsPanel" :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadDocuments" :can-edit="canEditDocuments" /></div>
           </q-expansion-item>
-          <q-expansion-item v-if="repositories.length" icon="code" :label="t('code.repositories')" default-opened>
-            <q-item v-for="repository in repositories" :key="repository.id" clickable @click="openRepository(repository.id)">
-              <q-item-section><q-item-label>{{ repository.label }}</q-item-label></q-item-section>
-            </q-item>
+          <q-expansion-item v-if="repositories.length" v-model="repositoriesExpanded" dense-toggle expand-separator icon="code" :label="t('code.repositories')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': repositoriesExpanded }" header-class="sidebar-accordion-header">
+            <div class="sidebar-section-content">
+              <q-list>
+                <q-item v-for="repository in repositories" :key="repository.id" clickable @click="openRepository(repository.id)">
+                  <q-item-section><q-item-label>{{ repository.label }}</q-item-label></q-item-section>
+                </q-item>
+              </q-list>
+            </div>
           </q-expansion-item>
           <q-expansion-item v-if="store.selectedRoom" v-model="tasksExpanded" dense-toggle expand-separator icon="account_tree" :label="t('chat.tasks')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': tasksExpanded }" header-class="sidebar-accordion-header">
             <div class="sidebar-section-content"><AgentTasksPanel @has-items="tasksExpanded = $event" ref="agentTasksPanel" embedded :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadTasks" /></div>
@@ -219,6 +223,7 @@ const selectedDocument = computed({
 const selectedCodeId = computed(() => selectedWorkTarget.value?.kind === 'code' ? selectedWorkTarget.value.id : null)
 const codeStore = useCodeStore()
 const repositories = ref<CodeWorkspace[]>([])
+const repositoriesExpanded = ref(true)
 const integratedWorkspace = computed(() => !$q.screen.lt.md && selectedWorkTarget.value !== null)
 const mobileCodeOpen = computed({ get: () => $q.screen.lt.md && selectedCodeId.value !== null,
   set: (open: boolean) => { if (!open) selectedWorkTarget.value = null },

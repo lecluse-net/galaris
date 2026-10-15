@@ -2,7 +2,7 @@ export default {
   fr: {
     privilege: { CODE_ACCESS: 'Accéder aux dépôts Git autorisés' },
     code: {
-      title: 'Dépôt Git', repositories: 'Dépôts Git',
+      title: 'Dépôt Git', repositories: 'Code source',
       openDirectory: 'Ouvrir {title} dans l’éditeur de code',
       directoryNotRepository: 'Ce dossier doit appartenir à un dépôt Git pour être ouvert dans l’éditeur de code.',
       hide: 'Masquer l’éditeur',
@@ -371,7 +371,7 @@ export default {
   en: {
     privilege: { CODE_ACCESS: 'Access authorized Git repositories' },
     code: {
-      title: 'Git repository', repositories: 'Git repositories',
+      title: 'Git repository', repositories: 'Source code',
       openDirectory: 'Open {title} in the code editor',
       directoryNotRepository: 'This folder must belong to a Git repository to open in the code editor.',
       hide: 'Hide editor',
@@ -738,7 +738,7 @@ export default {
   zh: {
     privilege: { CODE_ACCESS: '访问获授权的 Git 仓库' },
     code: {
-      title: 'Git 仓库', repositories: 'Git 仓库', hide: '隐藏编辑器',
+      title: 'Git 仓库', repositories: '源代码', hide: '隐藏编辑器',
       recoveredWindow: '编辑器已重启。原窗口及其中未保存的草稿仍然保留。',
       previousWindow: '原窗口：请将未保存的修改复制到恢复后的编辑器。',
       showPrevious: '查看原窗口', showRecovered: '查看恢复后的编辑器',

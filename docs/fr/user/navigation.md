@@ -301,6 +301,11 @@ visibles tant que l’image n’est pas disponible.
 Les avatars sont aussi réutilisés brièvement entre les autres écrans. Un remplacement ou
 une suppression effectués dans l’application invalident leur cache ; la déconnexion le vide.
 
+Dans la discussion, supprimer un document le retire immédiatement de la rubrique **Documents**
+et ferme son panneau ou sa modale, sans effacer le message en cours de rédaction.
+La rubrique **Code source** regroupe les dépôts associés à la discussion et se replie
+comme les autres rubriques de la colonne latérale.
+
 Les listes d’agents sont réutilisées pendant une minute ; les titres, groupes et paramètres
 pendant cinq minutes. Les sauvegardes correspondantes invalident le cache concerné.
 Pour voir immédiatement un changement effectué depuis une autre session, rechargez la page

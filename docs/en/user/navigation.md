@@ -277,6 +277,10 @@ image is unavailable.
 Avatars are also briefly reused across other screens. Replacing or deleting one in the app
 invalidates its cache; signing out clears it.
 
+In chat, deleting a document immediately removes it from the **Documents** section and closes
+its pane or dialog, preserving the message draft. The **Source code** section groups
+repositories linked to the discussion and collapses like the other sidebar sections.
+
 Agent lists are reused for one minute; titles, groups and parameters for five minutes.
 Saving these resources invalidates the corresponding cache. To immediately see a change
 made from another session, reload the page with **F5**: all these memory caches start empty.
