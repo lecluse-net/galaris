@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import cast
 from xml.etree import ElementTree
 
-MAX_ICON_BYTES = 64_000
-MAX_ICON_URI_LENGTH = 4 * ((MAX_ICON_BYTES + 2) // 3) + 26
+from core.params import runtime_settings
+
 SVG_PREFIX = "data:image/svg+xml;base64,"
 BUILTIN_ICONS = frozenset(cast(list[str], json.loads(Path(__file__).with_name("icon_catalog.json").read_text())))
 
@@ -22,13 +22,19 @@ def validate_icon(value: str) -> str:
         return value
     if not value.startswith(SVG_PREFIX):
         raise ValueError("Expected a local emoji or an SVG image")
+    max_bytes = runtime_settings.MEMORY_RESOURCE_MAX_BYTES
+    max_uri_length = len(SVG_PREFIX) + 4 * ((max_bytes + 2) // 3)
+    if len(value) > max_uri_length:
+        raise ValueError(f"SVG exceeds the file size limit of {max_bytes} bytes")
     try:
         raw = base64.b64decode(value[len(SVG_PREFIX):], validate=True)
+        if len(raw) > max_bytes:
+            raise ValueError(f"SVG exceeds the file size limit of {max_bytes} bytes")
         source = raw.decode("utf-8")
     except (binascii.Error, UnicodeError) as exc:
         raise ValueError("Invalid SVG encoding") from exc
-    if len(raw) > MAX_ICON_BYTES or "<!DOCTYPE" in source.upper() or "<!ENTITY" in source.upper():
-        raise ValueError("SVG must be at most 64 KiB and contain no entities")
+    if "<!DOCTYPE" in source.upper() or "<!ENTITY" in source.upper():
+        raise ValueError("SVG must contain no entities")
     if "<?xml-stylesheet" in source.lower():
         raise ValueError("SVG must not load external stylesheets")
     try:

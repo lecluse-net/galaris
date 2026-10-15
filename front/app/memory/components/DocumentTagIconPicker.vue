@@ -131,7 +131,7 @@ async function upload(event: Event): Promise<void> {
   input.value = ''
   if (!file || uploading.value) return
   error.value = ''; loadError.value = false
-  if (!file.name.toLowerCase().endsWith('.svg') || file.size > 64_000) { error.value = t('documents.library.iconUploadError'); return }
+  if (!file.name.toLowerCase().endsWith('.svg')) { error.value = t('documents.library.iconUploadError'); return }
   uploading.value = true
   try {
     const data = await new Promise<string>((resolve, reject) => {

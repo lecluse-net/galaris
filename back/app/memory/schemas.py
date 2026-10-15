@@ -11,7 +11,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
-from .tag_icons import MAX_ICON_URI_LENGTH, SVG_PREFIX, validate_icon
+from .tag_icons import SVG_PREFIX, validate_icon
 
 
 MemoryNodeKind = Literal["memory", "document", "attachment", "folder", "file", "directory"]
@@ -448,7 +448,7 @@ class DocumentTagWrite(BaseModel):
 
     name: str = Field(min_length=1, max_length=100)
     parent_id: UUID | None = None
-    icon: str | None = Field(default=None, max_length=MAX_ICON_URI_LENGTH)
+    icon: str | None = None
 
     @field_validator("icon")
     @classmethod
@@ -458,7 +458,7 @@ class DocumentTagWrite(BaseModel):
 
 class DocumentIconWrite(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    icon: str | None = Field(max_length=MAX_ICON_URI_LENGTH)
+    icon: str | None
 
     @field_validator("icon")
     @classmethod
@@ -502,7 +502,7 @@ class DocumentOrderSort(BaseModel):
 class DocumentTagIconWrite(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=100)
-    data: str = Field(max_length=MAX_ICON_URI_LENGTH)
+    data: str
 
     @field_validator("data")
     @classmethod

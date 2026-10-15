@@ -2026,7 +2026,8 @@ Pendant l’édition du dossier, un clic sur son icône ouvre une palette avec r
 le choix enregistre ensemble le nom saisi et l’icône. La palette propose des émojis Unicode dans la
 langue active, dossiers Solaire ouverts ou fermés dans les 11 couleurs, polices Material Design
 Icons et Font Awesome Free, ou SVG privés téléversés. Les catalogues sont chargés à la demande.
-Les SVG, limités à 64 Kio, sont validés sans contenu actif ou externe et affichés comme images.
+Les SVG suivent la limite des fichiers `MEMORY_RESOURCE_MAX_BYTES` (100 Mo par défaut),
+sont validés sans contenu actif ou externe et affichés comme images.
 
 Les documents possèdent leur propre icône par utilisateur, avec émojis, icônes de police et SVG,
 mais sans les pictogrammes réservés aux dossiers. Le choix se répercute dans bibliothèque,

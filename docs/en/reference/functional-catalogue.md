@@ -1530,8 +1530,9 @@ prevents filing mutations even if an old association remains.
 
 Editing a folder's icon opens searchable collections and saves the entered name and icon together:
 Unicode emoji in the active language, open/closed Solaire folders in 11 colours, Material Design
-Icons, Font Awesome Free and private SVG uploads. Catalogues load on demand. SVGs are limited to
-64 KiB, reject active/external content and render as images.
+Icons, Font Awesome Free and private SVG uploads. Catalogues load on demand. SVGs follow the
+file size limit, `MEMORY_RESOURCE_MAX_BYTES` (100 MB by default), reject active/external content
+and render as images.
 
 Documents have per-user emoji/font/SVG icons, excluding folder-only pictograms. The choice appears
 in library, editor, chat/previews, Tasks, Topics and memory details. Readers can customise their

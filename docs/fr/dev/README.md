@@ -224,8 +224,9 @@ stockés en Mio acceptent les fractions pour saisir des Mo ronds. Les défauts s
 0,064 Mo pour les données brutes de processus. DbAdmin remplace uniquement les valeurs exactement
 égales aux anciens défauts ; les autres valeurs et les remises à zéro explicites sont préservées.
 Le manager conserve les unités historiques de son API et de son `.env`, avec des fractions
-correspondant à 1 Mo et 512 Mo par défaut. Les avatars sont limités à 5 Mo, les icônes SVG à
-0,064 Mo, les aperçus 3D à 32 Mo et les exports à 64 Mo dont 12 Mo de contenu HTML.
+correspondant à 1 Mo et 512 Mo par défaut. Les avatars sont limités à 5 Mo, les aperçus 3D
+à 32 Mo et les exports à 64 Mo dont 12 Mo de contenu HTML. Les icônes SVG des documents et
+dossiers suivent la limite des fichiers `MEMORY_RESOURCE_MAX_BYTES` (100 Mo par défaut).
 
 Le manager Hermès utilise exclusivement le harness manager et pilote un Compose par agent. Le
 répertoire `BASE_DIR/<agent.code>/data` est monté dans `/opt/data` du conteneur

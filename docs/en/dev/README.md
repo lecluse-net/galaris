@@ -223,8 +223,9 @@ whole decimal MB. Defaults are 20 MB for the internal harness, 4 MB for inline a
 1 MB for webhooks and 0.064 MB for raw process data. DbAdmin replaces only exact former
 defaults; other stored values and explicit resets are preserved. The manager keeps its
 historical API and `.env` units, using fractions equivalent to 1 MB and 512 MB by default.
-Avatars are limited to 5 MB, SVG icons to 0.064 MB, 3D previews to 32 MB and exports to
-64 MB including at most 12 MB of HTML content.
+Avatars are limited to 5 MB, 3D previews to 32 MB and exports to 64 MB including at most
+12 MB of HTML content. Document and folder SVG icons follow the file size limit,
+`MEMORY_RESOURCE_MAX_BYTES` (100 MB by default).
 
 The Hermes manager uses only the harness manager and controls one Compose project per agent. The
 `BASE_DIR/<agent.code>/data` directory is mounted at `/opt/data` in the

@@ -486,6 +486,10 @@ relancer le processus.
 
 ## Mémoire, documents et dossiers thématiques
 
+Pour personnaliser un document ou un dossier, ouvrez sa palette d’icônes et utilisez le
+bouton **+** pour téléverser un SVG. La limite de taille est celle des fichiers
+(100 Mo par défaut) ; les scripts et contenus externes restent refusés.
+
 Les sélecteurs d’agents suivent l’ordre alphabétique du prénom puis du nom. Le dernier agent
 sélectionné est conservé en mémoire frontend et proposé lors du passage à une autre page,
 y compris entre **Mémoire** et **Contacts**, s’il reste disponible et autorisé. Un choix vide

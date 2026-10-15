@@ -418,13 +418,38 @@ async def test_icons_survive_rename_moves_and_tag_deletion_and_are_private(db):
     '<svg xmlns="http://www.w3.org/2000/svg"><foreignObject/></svg>',
     '<svg xmlns="http://www.w3.org/2000/svg"><style>@import "https://example.test";</style></svg>',
     '<?xml-stylesheet href="https://example.test/style.css"?><svg xmlns="http://www.w3.org/2000/svg"/>',
-    '<html/>', 'broken', '<svg xmlns="http://www.w3.org/2000/svg">' + ' ' * 65536 + '</svg>',
+    '<html/>', 'broken',
 ])
-def test_uploaded_icons_reject_active_external_invalid_and_oversized_svg(source):
+def test_uploaded_icons_reject_active_external_and_invalid_svg(source):
     with pytest.raises(ValidationError):
         DocumentTagIconWrite(name="Invalid", data=svg_data(source))
     with pytest.raises(ValidationError):
         DocumentTagWrite(name="Invalid", icon=svg_data(source))
+
+
+@pytest.mark.parametrize(("schema", "field", "extra"), [
+    (DocumentTagIconWrite, "data", {"name": "Large icon"}),
+    (DocumentTagWrite, "icon", {"name": "Folder"}),
+    (DocumentIconWrite, "icon", {}),
+])
+def test_svg_icons_follow_the_current_file_size_limit(monkeypatch, schema, field, extra):
+    from core.params import runtime_settings
+
+    prefix = '<svg xmlns="http://www.w3.org/2000/svg">'
+    suffix = '</svg>'
+    limit = 100_000
+    source = prefix + ' ' * (limit - len(prefix) - len(suffix)) + suffix
+    data = svg_data(source)
+    monkeypatch.setattr(runtime_settings, "MEMORY_RESOURCE_MAX_BYTES", limit)
+    assert getattr(schema(**extra, **{field: data}), field) == data
+    # One extra byte can still fit in the same base64 length.
+    with pytest.raises(ValidationError):
+        schema(**extra, **{field: svg_data(source + ' ')})
+    monkeypatch.setattr(runtime_settings, "MEMORY_RESOURCE_MAX_BYTES", limit - 1)
+    with pytest.raises(ValidationError):
+        schema(**extra, **{field: data})
+    monkeypatch.setattr(runtime_settings, "MEMORY_RESOURCE_MAX_BYTES", limit + 1)
+    assert getattr(schema(**extra, **{field: data}), field) == data
 
 
 @pytest.mark.parametrize("icon", ["emoji:1F680", "emoji:1F9A6", "folder:blue", "folder-open:iris", "font:mdi:database", "font:fas:database"])

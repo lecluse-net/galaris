@@ -369,6 +369,10 @@ A local cancellation does not always guarantee that the external engine will sto
 
 ## Memory, Documents, and Topics
 
+To personalise a document or folder, open its icon picker and use the **+** button to
+upload an SVG. The size limit is the same as for files (100 MB by default); scripts
+and external content remain prohibited.
+
 Agent selectors follow alphabetical order by first name, then last name. The last selected
 agent is kept in frontend memory and offered when moving to another page, including between
 **Memory** and **Contacts**, provided it remains available and authorized. An empty choice

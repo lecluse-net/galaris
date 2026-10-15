@@ -617,9 +617,11 @@ test('each tag creates a child and its icon picker searches Unicode emojis and r
   await expect.poll(() => mutations.at(-1).icon).toBeNull()
   await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
   await openFolderIcon(icon)
-  await page.locator('input[type=file]').setInputFiles({ name: 'Triangle.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 10L5 0L10 10Z"/></svg>') })
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 10L5 0L10 10Z"/>${' '.repeat(100_000)}</svg>`
+  await page.locator('input[type=file]').setInputFiles({ name: 'Triangle.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svg) })
   await expect.poll(() => mutations.at(-1).icon).toMatch(/^data:image\/svg\+xml;base64,/)
   const uploaded = mutations.at(-1).icon
+  expect(Buffer.from(uploaded.split(',')[1], 'base64').toString()).toBe(svg)
   await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
   await openFolderIcon(page.getByRole('button', { name: 'Icon for folder Work', exact: true }))
   await page.getByRole('combobox', { name: 'Icon library', exact: true }).click()

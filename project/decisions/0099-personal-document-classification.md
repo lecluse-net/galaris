@@ -89,7 +89,8 @@ SVG d'émojis sont supprimés. Changer de police d'émojis modifie leur dessin, 
 répertoire Unicode : les polices de pictogrammes apportent les sujets supplémentaires.
 
 `DocumentTagIcon` conserve les SVG privés téléversés indépendamment des tags. Ils restent
-limités à 64 Kio et validés sans contenu actif ou externe, puis affichés comme images,
+soumis à la limite des fichiers `MEMORY_RESOURCE_MAX_BYTES` (100 Mo par défaut) et validés
+sans contenu actif ou externe, puis affichés comme images,
 jamais injectés dans le DOM. Les dossiers et composants utilisent Solaire.
 
 `DocumentIcon` conserve une icône personnelle par couple utilisateur/document, avec les mêmes
