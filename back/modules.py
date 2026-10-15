@@ -46,6 +46,7 @@ MODULES = [
     "core.authorize",
     "core.params",
     "core.dbadmin",
+    "core.storage",
     "app.incident",
     "app.tools",
     "app.documentation",

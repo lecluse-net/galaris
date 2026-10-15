@@ -494,6 +494,12 @@ relancer le processus.
 
 ## Mémoire, documents et dossiers thématiques
 
+Les PJ déposées dans Documents et Chat utilisent le stockage interne partagé. Leurs liens
+existants et leurs droits restent valables après migration. Un agent peut aussi créer un
+fichier privé indépendant via `file_create` avec `path="file://"` et un nom intelligible.
+Une référence externe, par exemple Nextcloud, conserve son fournisseur et n'est pas rapatriée
+par la migration. Voir le [stockage et les sauvegardes](../dev/file-storage.md).
+
 Pour personnaliser un document ou un dossier, ouvrez sa palette d’icônes et utilisez le
 bouton **+** pour téléverser un SVG. La limite de taille est celle des fichiers
 (100 Mo par défaut) ; les scripts et contenus externes restent refusés.

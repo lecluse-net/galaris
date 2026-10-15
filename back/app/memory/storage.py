@@ -131,6 +131,10 @@ class NativeFileStorage:
         """Return a validated native path for a response that streams the file."""
 
         path = self._path(resource_id)
+        if not path.is_file():
+            from core.storage import file_path
+
+            path = file_path(UUID(resource_id))
         if not await asyncio.to_thread(path.is_file):
             raise ResourceNotFoundError(
                 f"Native resource {resource_id!r} does not exist."
@@ -166,6 +170,16 @@ class NativeFileStorage:
     async def delete(self, resource_id: str) -> bool:
         path = self._path(resource_id)
 
+        if not path.is_file():
+            from core.storage import file_path, purge_retired_file
+
+            try:
+                if not file_path(UUID(resource_id)).is_file():
+                    return False
+                return await purge_retired_file(UUID(resource_id))
+            except (OSError, ValueError) as exc:
+                raise ResourceStorageError("Managed file cleanup failed") from exc
+
         def remove() -> bool:
             if not path.is_file():
                 return False
@@ -180,6 +194,55 @@ class NativeFileStorage:
 
 
 _providers: dict[str, ResourceStorage] = {}
+
+
+class AttachmentFileStorage(NativeFileStorage):
+    """Immutable document attachment bytes in the shared file store."""
+
+    def _path(self, resource_id: str) -> Path:
+        from core.storage import file_path
+
+        return file_path(UUID(resource_id))
+
+    async def create(self, content: bytes) -> str:
+        self._validate_content(content)
+
+        async def chunks() -> AsyncIterator[bytes]:
+            yield content
+
+        resource_id, _size = await self.create_stream(chunks())
+        return resource_id
+
+    async def create_stream(self, chunks: AsyncIterator[bytes]) -> tuple[str, int]:
+        from core.storage import DiskFileDriver, file_key, fingerprint
+
+        identifier = uuid4()
+        driver = DiskFileDriver()
+        await complete_io(driver.root.mkdir, parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix=".attachment-", dir=driver.root) as directory:
+            source = Path(directory) / "upload"
+            size = 0
+            with source.open("wb") as output:
+                async for chunk in chunks:
+                    size += len(chunk)
+                    if size > self._max_bytes:
+                        raise ResourceTooLargeError("Attachment exceeds its upload limit")
+                    await complete_io(output.write, chunk)
+            measured, digest = await complete_io(fingerprint, source)
+            await complete_io(driver.publish, source, file_key(identifier), size=measured, sha256=digest)
+        return str(identifier), size
+
+    async def update(self, resource_id: str, content: bytes) -> None:
+        raise ResourceStorageError("Managed attachment bytes are immutable")
+
+    async def delete(self, resource_id: str) -> bool:
+        from core.storage import discard_unregistered_file
+
+        return await discard_unregistered_file(UUID(resource_id))
+
+
+def get_attachment_storage() -> NativeFileStorage:
+    return AttachmentFileStorage(settings.GALARIS_FILE_ROOT)
 
 
 def register_storage(provider: ResourceStorage) -> None:

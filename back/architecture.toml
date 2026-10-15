@@ -24,6 +24,10 @@ max_domain_fan_out = 0
 allowed_dependencies = []
 max_domain_fan_out = 0
 
+[module."core.storage"]
+allowed_dependencies = []
+max_domain_fan_out = 0
+
 [module."app.incident"]
 allowed_dependencies = []
 max_domain_fan_out = 0

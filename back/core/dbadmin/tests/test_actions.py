@@ -67,7 +67,7 @@ async def test_disappeared_action_preserves_journaled_criticality(db, required):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("open_status", ["running", "deferred", "failed"])
+@pytest.mark.parametrize("open_status", ["running", "deferred", "failed", "before_ddl"])
 async def test_unfinished_action_is_retried_after_schema_delta_disappears(
     db: AsyncSession,
     open_status: str,
@@ -99,15 +99,19 @@ async def test_unfinished_action_is_retried_after_schema_delta_disappears(
             postcondition=postcondition,
         )
     )
-    db.add(
-        DbAdminActionRecord(
-            key=key,
-            phase=DbAdminPhase.AFTER_EXPAND.value,
-            checksum="v1",
-            status=open_status,
-        )
-    )
-    await db.commit()
+    if open_status == "before_ddl":
+        from core.dbadmin.actions import stage_actions
+
+        # Persist the obligation, then simulate DDL completing and the process
+        # dying before AFTER_EXPAND ever gets a chance to run.
+        await stage_actions(registry, SchemaTransitionSet(added_columns=frozenset({"probe.value"})))
+        assert state["handler_calls"] == 0
+    else:
+        db.add(DbAdminActionRecord(
+            key=key, phase=DbAdminPhase.AFTER_EXPAND.value,
+            checksum="v1", status=open_status,
+        ))
+        await db.commit()
 
     results, issues = await run_actions(
         registry,

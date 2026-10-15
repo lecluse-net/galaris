@@ -599,6 +599,9 @@ async def _reconcile_hermes_session_bindings(session: AsyncSession) -> None:
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     """Register transitional Hermès work without changing the in-progress bridge."""
 
+    from file_storage_composition import register_dbadmin as register_file_storage
+
+    register_file_storage(registry)
     registry.register_action(DbAdminAction(
         key="app.memory.normalize_snapshots",
         phase=DbAdminPhase.BEFORE_EXPAND,

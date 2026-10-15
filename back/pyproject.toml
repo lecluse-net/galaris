@@ -129,6 +129,7 @@ include = [
     "tests",
     "main.py",
     "modules.py",
+    "file_storage_composition.py",
     "conftest.py",
 ]
 

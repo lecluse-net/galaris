@@ -1,7 +1,8 @@
 """API routes exposing file-sharing bridges and configuration parameters."""
 
-from fastapi import APIRouter, HTTPException, Query, Response
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, HTTPException, Query, Response, UploadFile
+from pydantic import BaseModel, Field
+from fastapi.responses import StreamingResponse, FileResponse
 from collections.abc import AsyncIterator
 import asyncio
 from uuid import UUID
@@ -9,7 +10,7 @@ from core.database import get_db
 from app.agent import current_management_scope
 from .indexing import start_index_run, cancel_index_run, index_progress, retry_repairs
 from .indexing_contracts import FileIndexRequest, FileIndexProgress, FileIndexPage
-from .resource_contracts import ResourceContext
+from .resource_contracts import ResourceContext, ResourceDescriptor
 
 from core.authorize import authorize, Privileges
 
@@ -17,6 +18,69 @@ from .bridges import FileShareBridgeInfo, available_bridges
 from . import catalogue_resources
 
 router = APIRouter(prefix="/file-share", tags=["file-share"])
+
+
+class ManagedFileRename(BaseModel):
+    name: str = Field(min_length=1, max_length=512)
+
+
+@router.post("/files", response_model=ResourceDescriptor, status_code=201)
+@authorize(privileges=Privileges.MEMORY_EDIT)
+async def create_managed_file(upload: UploadFile, agent_id: int) -> ResourceDescriptor:
+    from .managed_files import upload_managed_file
+
+    await _index_access(agent_id)
+    try:
+        return await upload_managed_file(ResourceContext(agent_id=agent_id, runtime="internal"), upload)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.patch("/files/{file_id}", response_model=ResourceDescriptor)
+@authorize(privileges=Privileges.MEMORY_EDIT)
+async def rename_file(file_id: UUID, agent_id: int, data: ManagedFileRename) -> ResourceDescriptor:
+    from .managed_files import rename_managed_file
+
+    await _index_access(agent_id)
+    try:
+        return await rename_managed_file(ResourceContext(agent_id=agent_id, runtime="internal"), file_id, data.name)
+    except (PermissionError, FileNotFoundError):
+        raise HTTPException(404, "Managed file unavailable") from None
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.get("/files/{file_id}/content", response_class=FileResponse)
+@authorize(privileges=Privileges.MEMORY_ACCESS)
+async def read_managed_file(file_id: UUID, agent_id: int) -> FileResponse:
+    from core.storage import file_path
+    from .managed_files import managed_file_info
+
+    await _index_access(agent_id)
+    try:
+        descriptor = await managed_file_info(ResourceContext(agent_id=agent_id, runtime="internal"), file_id)
+        path = file_path(file_id)
+        if not path.is_file():
+            raise FileNotFoundError
+        return FileResponse(path, filename=descriptor.name, media_type=descriptor.media_type,
+            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+    except (PermissionError, FileNotFoundError):
+        raise HTTPException(404, "Managed file unavailable") from None
+
+
+@router.get("/files/{file_id}/thumbnail", response_class=Response)
+@authorize(privileges=Privileges.MEMORY_ACCESS)
+async def read_managed_file_thumbnail(file_id: UUID, agent_id: int) -> Response:
+    from .managed_files import managed_file_thumbnail
+
+    await _index_access(agent_id)
+    try:
+        data = await managed_file_thumbnail(ResourceContext(agent_id=agent_id, runtime="internal"), file_id)
+        if data is None:
+            raise FileNotFoundError
+        return Response(data, media_type="image/webp", headers={"Cache-Control": "private, no-store"})
+    except (PermissionError, FileNotFoundError):
+        raise HTTPException(404, "Managed file unavailable") from None
 
 
 @router.get("/bridges", response_model=list[FileShareBridgeInfo])

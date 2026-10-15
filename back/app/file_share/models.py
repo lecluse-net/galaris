@@ -15,6 +15,16 @@ from app.memory import MemoryURL
 from core.database import Base
 
 
+class ManagedFileOwner(Base):
+    """Private standalone uploads; attachments instead inherit their domain ACL."""
+
+    __tablename__ = "file_owners"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    file_id: Mapped[UUID] = mapped_column(ForeignKey("files.id"), unique=True)
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), index=True)
+
+
 class FileCatalogEntry(Base):
     __tablename__ = "file_catalog_entries"
 

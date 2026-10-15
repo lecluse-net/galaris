@@ -643,6 +643,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | OAuth MCP | Retour direct localhost, CIMD/DCR et négociation du secret client, client pré-enregistré en repli, PKCE, chiffrement, retour unique et expirant, isolation et refus HTTP ; code d’appareil avant le relais, intervalle/slow_down, refus terminal et jeton tardif après déconnexion ; clients HTTP/SSE réels ; relais téléchargé sur un vrai port HTTP, contrôles Host/state, expiration et port occupé ; parcours navigateur desktop/mobile, nouvel onglet, erreurs et annulation au changement de connexion | `app/connection/tests/test_mcp_oauth.py`, `app/connection/tests/test_oauth_loopback.py`, `front/browser-tests/mcp-oauth.spec.mjs` |
 | `mcp` | Exposer les capacités et propager l’identité d’exécution dans les outils | `back/tests/test_realtime_security.py`, `back/app/tools/tests/test_mcp.py`, `back/core/authorize/tests/test_guard_provider.py` |
 | `file_share` | Lire/copier/modifier via URI canonique, respecter ACL et limites, nettoyer les temporaires | `test_resource_service.py`, `test_transport.py`, `test_web_transport.py`, `test_galaris_provider.py` |
+| Fichiers internes et migration | Déplacer uniquement les octets internes avec empreintes vérifiées et reprise après interruption ; préserver mémoire, documents, historiques, journal et anciens liens ; ne jamais ouvrir un fournisseur externe ; effacer une PJ devenue inutile sans supprimer un fichier encore référencé ; reprendre une purge interrompue sans réutiliser son UUID | `back/core/storage/tests`, `back/app/memory/tests/test_managed_files.py`, `test_service.py`, `back/app/file_share/tests/test_managed_http.py`, `e2e/specs/office-thumbnails.spec.mjs` |
 | Nextcloud fichiers | Préserver les noms réservés, parcourir au-delà de 500 entrées, rejeter les écritures concurrentes, conserver une source modifiée pendant un déplacement, refuser les suppressions de dossiers et les faux succès OCS | `back/bridge/nextcloud/tests/test_file_share.py` : vraie façade et vrai client, serveur HTTP synthétique |
 | Samba fichiers | Énumérer les partages accessibles, parcourir, lire, éditer et transférer des fichiers ; rejeter les conflits de version et les comptes sans droit d'écriture ; confiner la racine | `back/bridge/samba/tests/test_file_share.py`, `test_share_rpc.py` ; `make tests-samba` lance un vrai serveur Samba isolé |
 | `console` | Exécuter dans le périmètre autorisé et transporter les fichiers sans traversée de chemin | `test_console.py`, `make tests-executor` |
@@ -800,6 +801,12 @@ applicative vers l’infrastructure utilisateur n’ajoute ni import privé ni c
   Le choix d'icône se propage entre arbre et liste, persiste à la réouverture et ignore les réponses
   périmées après sauvegarde ou changement de session ; l'icône par défaut et les erreurs restent utilisables.
   Dans l'arbre, l'icône d'un document ouvre le document sans sélecteur d'icône ; celle d'un dossier reste modifiable.
+- `e2e/specs/document-folder-create.spec.mjs` : création depuis un sous-dossier, classement
+  personnel persisté, création de sous-documents et dépliage après rechargement de la bibliothèque assemblée.
+  `test_document_classification.py` couvre aussi l'isolation personnelle, la lecture seule,
+  les cycles, les ancres périmées, les déplacements de branches et les parents supprimés ou illisibles ;
+  `document-classification.spec.mjs` vérifie le dépliage récursif, les erreurs/reprises,
+  les déplacements et le changement de session sur ordinateur et mobile.
 - `front/browser-tests/memory.spec.mjs` et `document-sharing.spec.mjs` : pagination à la demande,
   ouverture mobile, création et sauvegarde avec l'identité humaine.
 - `e2e/specs/document-refresh.spec.mjs` : modification distante via l'API et les vrais événements

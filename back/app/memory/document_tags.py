@@ -101,7 +101,7 @@ async def remove_tag(user_id: int, tag_id: UUID, *, confirmed: bool = False) -> 
     from .document_structure import sync_folder_structure
     await sync_folder_structure(user_id)
     for document_id in affected_ids:
-        await _sync_classified_document(document_id)
+        await sync_classified_document(document_id)
     await db.commit()
     await emit_classification(user_id, document_ids=affected_ids, tags_changed=True, list_changed=bool(affected_ids))
     return result.model_copy(update={"deleted": True})
@@ -112,6 +112,8 @@ async def assign_tag(scope: AgentManagementScope, document_id: UUID, tag_id: UUI
     await lock_tree(scope.user_id)
     await require_tag(scope.user_id, tag_id)
     await document_sharing.document_actor(document_id, scope)
+    from .document_nesting import clear_parent
+    previous_parent = await clear_parent(scope.user_id, document_id) if not remove else None
     existing = await db.scalar(select(DocumentTagAssignment).where(
         DocumentTagAssignment.tag_id == tag_id, DocumentTagAssignment.document_id == document_id,
     ))
@@ -121,9 +123,9 @@ async def assign_tag(scope: AgentManagementScope, document_id: UUID, tag_id: UUI
     elif existing is None:
         db.add(DocumentTagAssignment(tag_id=tag_id, document_id=document_id,
             position=await next_position(scope.user_id, tag_id)))
-    await _sync_classified_document(document_id)
+    await sync_classified_document(document_id)
     await db.commit()
-    await emit_classification(scope.user_id, tag_ids=[tag_id], document_ids=[document_id], list_changed=True)
+    await emit_classification(scope.user_id, tag_ids=[tag_id], document_ids=[document_id, *([previous_parent] if previous_parent else [])], list_changed=True)
 
 
 async def move_document(scope: AgentManagementScope, document_id: UUID, tag_id: UUID | None) -> None:
@@ -133,6 +135,8 @@ async def move_document(scope: AgentManagementScope, document_id: UUID, tag_id: 
     if tag_id is not None:
         await require_tag(scope.user_id, tag_id)
     await document_sharing.document_actor(document_id, scope)
+    from .document_nesting import clear_parent
+    previous_parent = await clear_parent(scope.user_id, document_id)
     own_tags = select(DocumentTag.id).where(DocumentTag.user_id == scope.user_id)
     previous = list(await db.scalars(select(DocumentTagAssignment.tag_id).where(
         DocumentTagAssignment.document_id == document_id, DocumentTagAssignment.tag_id.in_(own_tags),
@@ -144,13 +148,13 @@ async def move_document(scope: AgentManagementScope, document_id: UUID, tag_id: 
     if tag_id is not None:
         db.add(DocumentTagAssignment(tag_id=tag_id, document_id=document_id,
             position=await next_position(scope.user_id, tag_id)))
-    await _sync_classified_document(document_id)
+    await sync_classified_document(document_id)
     await db.commit()
     await emit_classification(scope.user_id, tag_ids=[*previous, *([tag_id] if tag_id else [])],
-        document_ids=[document_id], list_changed=bool(previous) != bool(tag_id))
+        document_ids=[document_id, *([previous_parent] if previous_parent else [])], list_changed=bool(previous_parent) or bool(previous) != bool(tag_id))
 
 
-async def _sync_classified_document(document_id: UUID) -> None:
+async def sync_classified_document(document_id: UUID) -> None:
     from .document_structure import sync_document_structure
     await get_db().flush()
     item = await service.document_record(document_id)

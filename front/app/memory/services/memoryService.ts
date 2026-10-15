@@ -195,6 +195,9 @@ export const memoryService = {
   async moveDocumentToTag(documentId: string, tagId: string | null): Promise<void> {
     await api.put(`/memory/documents/${documentId}/tags`, { tag_id: tagId })
   },
+  async moveDocumentUnderDocument(documentId: string, parentDocumentId: string | null): Promise<void> {
+    await api.put(`/memory/documents/${documentId}/parent`, { parent_document_id: parentDocumentId })
+  },
   async reorderDocuments(data: DocumentOrderMove): Promise<void> {
     await api.put('/memory/documents/order', data)
   },

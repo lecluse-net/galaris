@@ -1,4 +1,5 @@
 import { onBeforeUnmount, ref } from 'vue'
+import { isAxiosError } from 'axios'
 import { memoryService } from './services/memoryService'
 import type { DocumentLibraryEntry } from './types'
 import { reconcileLibrarySnapshot } from './librarySnapshot'
@@ -23,7 +24,8 @@ export function useDocumentBranches(changed: () => void) {
       const documents: DocumentLibraryEntry[] = []
       let more = true
       while (more) {
-        const result = await memoryService.browseDocumentLibrary({ tag_id: id, include_descendants: false,
+        const parent = id.startsWith('doc:') ? { parent_document_id: id.slice(4) } : { tag_id: id }
+        const result = await memoryService.browseDocumentLibrary({ ...parent, include_descendants: false,
           classification: 'classified', sort_by: 'position', limit: 500, offset: documents.length })
         if (!valid()) return
         documents.push(...result.entries)
@@ -31,7 +33,14 @@ export function useDocumentBranches(changed: () => void) {
       }
       entries.value[id] = reconcileLibrarySnapshot(entries.value[id] ?? [], documents, entry => entry.item.id)
       stale.delete(id); changed()
-    } catch { if (valid()) errors.value[id] = true }
+    } catch (error) {
+      if (valid()) {
+        errors.value[id] = true
+        if (isAxiosError(error) && [401, 403, 404].includes(error.response?.status ?? 0)) {
+          delete entries.value[id]; changed()
+        }
+      }
+    }
     finally { if (valid()) loading.value[id] = false }
   }
   function close(id: string): void {
@@ -41,6 +50,13 @@ export function useDocumentBranches(changed: () => void) {
   }
   function reset(): void {
     ++generation; requests.clear(); stale.clear(); entries.value = {}; loading.value = {}; errors.value = {}
+  }
+  function invalidate(): void {
+    // Supersede pending reads while retaining mounted rows until their replacements arrive.
+    for (const id of new Set([...Object.keys(entries.value), ...requests.keys()])) {
+      close(id)
+      stale.add(id)
+    }
   }
   function forget(id: string): void {
     close(id)
@@ -53,5 +69,5 @@ export function useDocumentBranches(changed: () => void) {
     await load(id)
   }
   onBeforeUnmount(reset)
-  return { entries, loading, errors, load, close, reset, forget, refresh }
+  return { entries, loading, errors, load, close, reset, invalidate, forget, refresh }
 }

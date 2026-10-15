@@ -628,6 +628,7 @@ are in `front/browser-tests/`.
 | MCP OAuth | Direct localhost return, CIMD/DCR and client-secret negotiation, pre-registered client fallback, PKCE, encryption, single-use expiring callbacks, isolation and HTTP denials; device authorization before the relay, interval/slow_down, terminal refusal and late token after disconnect; real HTTP/SSE clients; downloaded relay on a real HTTP port, Host/state checks, expiry and busy port; desktop/mobile browser flows, new tab, error recovery and cancellation on connection change | `app/connection/tests/test_mcp_oauth.py`, `app/connection/tests/test_oauth_loopback.py`, `front/browser-tests/mcp-oauth.spec.mjs` |
 | `mcp` | Expose capabilities and propagate execution identity | `back/tests/test_realtime_security.py`, `back/app/tools/tests/test_mcp.py`, `back/core/authorize/tests/test_guard_provider.py` |
 | `file_share` | Canonical URI operations, ACLs, limits and temporary-file cleanup | `test_resource_service.py`, `test_transport.py`, `test_web_transport.py`, `test_galaris_provider.py` |
+| Internal files and migration | Move only internal bytes with verified hashes and interruption recovery; preserve memory, documents, revisions, journal and old links; never open an external provider; erase an unused attachment without deleting referenced files; resume interrupted purges without UUID reuse | `back/core/storage/tests`, `back/app/memory/tests/test_managed_files.py`, `test_service.py`, `back/app/file_share/tests/test_managed_http.py`, `e2e/specs/office-thumbnails.spec.mjs` |
 | Nextcloud files | Preserve reserved names, traverse beyond 500 entries, reject concurrent writes, preserve a source changed during a move, reject folder deletion and false OCS success | `back/bridge/nextcloud/tests/test_file_share.py`: real facade and client, synthetic HTTP server |
 | Samba files | Enumerate accessible shares, browse, read, edit and transfer files; reject version conflicts and accounts without write permission; confine the root | `back/bridge/samba/tests/test_file_share.py`, `test_share_rpc.py`; `make tests-samba` runs a real isolated Samba server |
 | `console` | Scoped execution and file transport without path traversal | `test_console.py`, `make tests-executor` |
@@ -782,6 +783,12 @@ user infrastructure adds neither private imports nor cycles.
   Document icon choices propagate between tree and list, persist on reopening and ignore stale
   reads or previous-session writes; resetting the default and retrying failures remain usable.
   In the tree, a document icon opens the document without an icon picker; folder icons remain editable.
+- `e2e/specs/document-folder-create.spec.mjs`: creation from a nested folder, persisted
+  personal classification, sub-document creation and expansion after reloading the assembled library.
+  `test_document_classification.py` also covers personal isolation, read-only classification,
+  cycles, stale anchors, branch moves and deleted or unreadable parents;
+  `document-classification.spec.mjs` exercises recursive expansion, errors/retries,
+  moves and session changes on desktop and mobile.
 - `front/browser-tests/memory.spec.mjs` and `document-sharing.spec.mjs`: on-demand pagination,
   mobile opening, creation and saving with a human identity.
 - `back/app/memory/tests/test_goal_folders.py`: background classification notifies only its owner

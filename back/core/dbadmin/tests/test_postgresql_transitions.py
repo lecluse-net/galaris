@@ -717,3 +717,50 @@ async def test_index_deltas_include_covering_operator_classes_and_storage_option
     finally:
         async with engine.begin() as connection:
             await connection.execute(text("DROP TABLE public.dbadmin_index_probe"))
+
+
+@pytest.mark.asyncio
+async def test_crash_after_expansion_keeps_transfer_and_cleanup_obligations(monkeypatch):
+    from core.dbadmin import orchestrator
+
+    target = _copy_metadata(load_target_metadata())
+    Table("dbadmin_crash_probe", target, Column("id", Integer, primary_key=True))
+    monkeypatch.setattr(orchestrator, "load_target_metadata", lambda: target)
+    monkeypatch.setattr(orchestrator, "_load_contributions", lambda registry: None)
+    crashed = False
+
+    async def crash_after_ddl(*args, **kwargs):
+        nonlocal crashed
+        result = await apply_target(*args, **kwargs)
+        if not crashed:
+            crashed = True
+            raise RuntimeError("Synthetic crash after committed expansion")
+        return result
+
+    monkeypatch.setattr(orchestrator, "apply_target", crash_after_ddl)
+    registry = DbAdminRegistry()
+    for phase, value in ((DbAdminPhase.AFTER_EXPAND, 1), (DbAdminPhase.AFTER_CONTRACT, 2)):
+        async def handler(session, _delta, value=value):
+            await session.execute(text("INSERT INTO dbadmin_crash_probe VALUES (:value) ON CONFLICT DO NOTHING"), {"value": value})
+
+        async def complete(session, _delta, value=value):
+            return bool(await session.scalar(text("SELECT EXISTS(SELECT 1 FROM dbadmin_crash_probe WHERE id=:value)"), {"value": value}))
+
+        registry.register_action(DbAdminAction(
+            key=f"test.crash_before_handler.{value}", phase=phase, checksum="v1",
+            predicate=lambda delta: delta.table_added("dbadmin_crash_probe"),
+            handler=handler, postcondition=complete,
+        ))
+    try:
+        first = await synchronize_database(target_registry=registry)
+        assert first.verdict is DbAdminVerdict.FATAL
+        second = await synchronize_database(target_registry=registry)
+        assert not second.transitions.table_added("dbadmin_crash_probe")
+        assert second.verdict is DbAdminVerdict.CONVERGED
+        async with engine.connect() as connection:
+            assert list(await connection.scalars(text("SELECT id FROM dbadmin_crash_probe ORDER BY id"))) == [1, 2]
+    finally:
+        async with engine.begin() as connection:
+            await connection.execute(text("DROP TABLE IF EXISTS dbadmin_crash_probe"))
+            await connection.execute(text("DELETE FROM dbadmin_actions WHERE key LIKE 'test.crash_before_handler.%'"))
+        await engine.dispose()

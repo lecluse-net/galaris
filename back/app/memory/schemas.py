@@ -478,6 +478,11 @@ class DocumentTagMove(BaseModel):
     tag_id: UUID | None
 
 
+class DocumentParentMove(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    parent_document_id: UUID | None
+
+
 class DocumentOrderNode(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: Literal["tag", "document"]
@@ -488,9 +493,16 @@ class DocumentOrderMove(BaseModel):
     model_config = ConfigDict(extra="forbid")
     node: DocumentOrderNode
     parent_id: UUID | None = None
+    parent_document_id: UUID | None = None
     list_only: bool = False
     anchor: DocumentOrderNode | None = None
     after: bool = False
+
+    @model_validator(mode="after")
+    def validate_parent(self) -> DocumentOrderMove:
+        if self.parent_document_id is not None and (self.parent_id is not None or self.list_only or self.node.kind != "document"):
+            raise ValueError("A document parent only accepts documents outside the flat list")
+        return self
 
 
 class DocumentOrderSort(BaseModel):
@@ -547,6 +559,7 @@ class DocumentLibraryRequest(BaseModel):
     offset: int = Field(default=0, ge=0)
 
     tag_id: UUID | None = None
+    parent_document_id: UUID | None = None
     include_descendants: bool = True
     include_owners: bool = False
     classification: Literal["all", "classified", "unclassified"] = "all"
@@ -561,6 +574,8 @@ class DocumentLibraryRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_filters(self) -> DocumentLibraryRequest:
+        if self.tag_id is not None and self.parent_document_id is not None:
+            raise ValueError("Choose either a folder or a document parent")
         if self.owner is not None and self.owner_kind is None:
             raise ValueError("An owner requires its kind")
         for start, end in ((self.created_from, self.created_until), (self.updated_from, self.updated_until)):
@@ -573,6 +588,8 @@ class DocumentLibraryRequest(BaseModel):
 
 
 class DocumentLibraryEntry(BaseModel):
+    parent_document_id: UUID | None = None
+    children_count: int = Field(default=0, ge=0)
     position: int = 0
     tags: list[DocumentTagPublic] = Field(default_factory=list[DocumentTagPublic])
     owner_label: str = ""

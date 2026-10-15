@@ -116,6 +116,22 @@ class DocumentTagAssignment(Base):
     __table_args__ = (UniqueConstraint("tag_id", "document_id"),)
 
 
+class DocumentNesting(Base):
+    """One user's document hierarchy; ownership and grants remain independent."""
+
+    __tablename__ = "document_nesting"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    document_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
+    parent_document_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    __table_args__ = (
+        UniqueConstraint("user_id", "document_id"),
+        CheckConstraint("document_id <> parent_document_id", name="ck_document_nesting_not_self"),
+        Index("ix_document_nesting_user_parent", "user_id", "parent_document_id"),
+    )
+
+
 class DocumentIcon(Base):
     """Personal document appearance shared by all UI projections for one user."""
 

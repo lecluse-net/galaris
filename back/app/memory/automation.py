@@ -560,7 +560,7 @@ async def _process_resource_cleanup(payload: Mapping[str, Any]) -> None:
     async with get_db_session() as session:
         if await archived_resources(session, provider_code, [resource_id]):
             return
-    await get_storage(provider_code).delete(resource_id)
+        await get_storage(provider_code).delete(resource_id)
 
 
 async def _process_consolidation(payload: Mapping[str, Any]) -> None:

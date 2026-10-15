@@ -13,7 +13,7 @@ from app.agent import Agent, list_agent_records
 from .access import human_document_clause, document_team_agent_access
 from .access import readable_item_for_agents_clause, readable_item_clause, managed_item_agent_ids
 from .contracts import MemoryAccess
-from .models import Document, DocumentListPosition, DocumentTag, DocumentTagAssignment, MemoryItem
+from .models import Document, DocumentListPosition, DocumentNesting, DocumentTag, DocumentTagAssignment, MemoryItem
 from .document_library_filters import library_filters
 from .schemas import (
     DocumentLibraryRequest,
@@ -186,7 +186,8 @@ async def browse_document_library(
                 DocumentOwnerOption(kind="user", id=identity, label=name or email, subtitle="")
             )
     owner_options.sort(key=lambda option: (option.label.casefold(), option.kind, option.id))
-    base_filters.extend(await library_filters(request, user_id))
+    visible_ids = select(MemoryItem.id).where(*base_filters).correlate(None)
+    base_filters.extend(await library_filters(request, user_id, visible_ids))
     keyword = request.keyword.strip() if request.keyword is not None else ""
     if keyword:
         base_filters.append(MemoryItem.keywords.contains([keyword]))
@@ -204,7 +205,13 @@ async def browse_document_library(
     total = int(await db.scalar(select(func.count(MemoryItem.id)).where(*base_filters)) or 0)
     position = func.coalesce(
         (
-            select(DocumentTagAssignment.position)
+            select(DocumentNesting.position).where(
+                DocumentNesting.user_id == user_id,
+                DocumentNesting.document_id == MemoryItem.id,
+                DocumentNesting.parent_document_id == request.parent_document_id,
+            ).scalar_subquery()
+            if request.parent_document_id is not None
+            else select(DocumentTagAssignment.position)
             .where(
                 DocumentTagAssignment.document_id == MemoryItem.id,
                 DocumentTagAssignment.tag_id == request.tag_id,
@@ -271,7 +278,18 @@ async def browse_document_library(
     has_more = len(items) > request.limit
     items = items[: request.limit]
     personal_tags: dict[UUID, list[DocumentTagPublic]] = {}
+    parents: dict[UUID, UUID] = {}
+    child_counts: dict[UUID, int] = {}
     if user_id is not None and items:
+        item_ids = [item.id for item in items]
+        parents = dict((await db.execute(select(DocumentNesting.document_id, DocumentNesting.parent_document_id).where(
+            DocumentNesting.user_id == user_id, DocumentNesting.document_id.in_(item_ids),
+            DocumentNesting.parent_document_id.in_(visible_ids),
+        ))).tuples().all())
+        child_counts = dict((await db.execute(select(DocumentNesting.parent_document_id, func.count()).where(
+            DocumentNesting.user_id == user_id, DocumentNesting.parent_document_id.in_(item_ids),
+            DocumentNesting.document_id.in_(visible_ids),
+        ).group_by(DocumentNesting.parent_document_id))).tuples().all())
         tag_rows = await db.execute(
             select(DocumentTagAssignment.document_id, DocumentTag)
             .join(DocumentTag)
@@ -322,6 +340,8 @@ async def browse_document_library(
             continue
         entries.append(
             DocumentLibraryEntry(
+                parent_document_id=parents.get(item.id),
+                children_count=child_counts.get(item.id, 0),
                 position=positions.get(item.id, 0),
                 tags=personal_tags.get(item.id, []),
                 owner_label=owner_labels.get(item.id, ""),

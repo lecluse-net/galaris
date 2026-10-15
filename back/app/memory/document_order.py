@@ -25,6 +25,11 @@ class Sibling:
 
 
 async def reorder(scope: AgentManagementScope, data: DocumentOrderMove) -> None:
+    from . import document_nesting
+
+    if data.parent_document_id is not None:
+        await document_nesting.reorder(scope, data)
+        return
     db = get_db()
     await document_tags.lock_tree(scope.user_id)
     previous_tags = list(await db.scalars(select(DocumentTagAssignment.tag_id).where(
@@ -90,9 +95,11 @@ async def reorder(scope: AgentManagementScope, data: DocumentOrderMove) -> None:
         index += int(data.after)
 
     # Validate everything before replacing classification. A stale anchor never moves a document.
+    previous_parent: UUID | None = None
     if isinstance(moving, DocumentTag):
         moving.parent_id = data.parent_id
     elif not data.list_only:
+        previous_parent = await document_nesting.clear_parent(scope.user_id, data.node.id)
         await db.execute(delete(DocumentTagAssignment).where(
             DocumentTagAssignment.document_id == data.node.id,
             DocumentTagAssignment.tag_id.in_(select(DocumentTag.id).where(DocumentTag.user_id == scope.user_id)),
@@ -115,7 +122,7 @@ async def reorder(scope: AgentManagementScope, data: DocumentOrderMove) -> None:
     await db.commit()
     await emit_classification(scope.user_id,
         tag_ids=[] if data.list_only else [*previous_tags, *([data.parent_id] if data.parent_id else [])],
-        document_ids=[data.node.id] if data.node.kind == "document" and not data.list_only else [],
+        document_ids=[data.node.id, *([previous_parent] if previous_parent else [])] if data.node.kind == "document" and not data.list_only else [],
         tags_changed=not data.list_only,
         list_changed=data.list_only or (data.node.kind == "document" and (data.parent_id is None or not previous_tags)),
     )

@@ -144,6 +144,8 @@ export interface MemoryItemDetail extends MemoryItem {
 }
 
 export interface DocumentLibraryEntry {
+  parent_document_id?: string | null
+  children_count?: number
   position?: number
   tags?: DocumentTag[]
   owner_label?: string
@@ -183,6 +185,7 @@ export interface DocumentOrderNode { kind: 'tag' | 'document'; id: string }
 export interface DocumentOrderMove {
   node: DocumentOrderNode
   parent_id: string | null
+  parent_document_id?: string | null
   list_only?: boolean
   anchor?: DocumentOrderNode
   after?: boolean
@@ -195,6 +198,7 @@ export interface DocumentLibraryFilters {
   limit?: number
   offset?: number
   tag_id?: string | null
+  parent_document_id?: string | null
   include_descendants?: boolean
   include_owners?: boolean
   classification?: 'all' | 'classified' | 'unclassified'

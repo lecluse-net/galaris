@@ -123,6 +123,106 @@ test('late icon reads cannot undo a saved choice and session changes discard per
   await expect(button).toContainText('😀')
 })
 
+for (const width of [1440, 390]) {
+for (const location of ['list', 'tree']) {
+test(`sub-documents expand recursively, recover loading and move between parents at ${width}px in the ${location}`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  await fixture(page)
+  const docs = [document, { ...document, id: 'doc-b', title: 'Child notes' },
+    { ...document, id: 'doc-c', title: 'Grandchild notes' }, { ...document, id: 'doc-d', title: 'Other notes' }]
+  if (location === 'tree') docs.push({ ...document, id: 'doc-f', title: 'Delivery review — A synthetic standalone briefing with a long title' })
+  await jsonRoute(page, '**/api/memory/documents/doc-d', { item: docs[3], agent_id: 7 })
+  const parents = new Map([['doc-b', 'doc-a'], ['doc-c', 'doc-b']])
+  const reads = [], moves = []
+  let fail = true
+  const inFolder = item => location === 'tree' && ['doc-a', 'doc-f'].includes(item.id)
+  const entry = item => ({ item, parent_document_id: parents.get(item.id) ?? null,
+    children_count: [...parents.values()].filter(id => id === item.id).length,
+    tags: inFolder(item) ? [{ id: 'work', name: 'Work', parent_id: null }] : [], agent_ids: [7], writable_agent_ids: [] })
+  await page.route('**/api/memory/documents/library', route => {
+    const body = route.request().postDataJSON(); reads.push(body)
+    if (body.parent_document_id && fail) return route.fulfill({ status: 503, json: { detail: 'Unavailable' } })
+    const entries = docs.filter(item => body.parent_document_id ? parents.get(item.id) === body.parent_document_id
+      : body.tag_id ? body.tag_id === 'work' && inFolder(item)
+      : body.classification !== 'unclassified' || (!parents.has(item.id) && !inFolder(item))).map(entry)
+    return route.fulfill({ json: { entries, total: entries.length, has_more: false, keywords: [] } })
+  })
+  await page.route('**/api/memory/documents/order', route => {
+    const body = route.request().postDataJSON(); moves.push(body)
+    parents.set(body.node.id, body.parent_document_id)
+    return route.fulfill({ status: 204 })
+  })
+  await page.route('**/api/memory/documents/doc-d/tags', route => {
+    expect(route.request().postDataJSON()).toEqual({ tag_id: null })
+    parents.delete('doc-d')
+    return route.fulfill({ status: 204 })
+  })
+  await page.evaluate(() => window.testApp.emitSocket('memory.classification', { data: { user_id: 1, list_changed: true } }))
+  const list = page.getByLabel('Unclassified documents', { exact: true })
+  await expect(list.getByText('Other notes', { exact: true })).toBeVisible()
+  if (location === 'tree') await page.getByText('Work', { exact: true }).click()
+  async function toggle(title, open) {
+    if (location === 'tree') await page.getByRole('treeitem').filter({ has: page.getByText(title, { exact: true }) }).press('Space')
+    else await page.getByRole('button', { name: `${open ? 'Expand' : 'Collapse'} sub-documents of ${title}`, exact: true }).click()
+  }
+  await toggle('Test document', true)
+  await expect(page.getByRole('alert')).toBeVisible()
+  fail = false
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  const children = location === 'tree' ? page.locator('.document-tree') : page.getByLabel('Sub-documents of Test document', { exact: true })
+  await expect(children.getByText('Child notes', { exact: true })).toBeVisible()
+  expect(reads.filter(read => read.parent_document_id === 'doc-a').at(-1)).toMatchObject({ include_descendants: false, limit: 500 })
+  await toggle('Child notes', true)
+  await expect(children.getByText('Grandchild notes', { exact: true })).toBeVisible()
+  const before = reads.length
+  await toggle('Test document', false)
+  await toggle('Test document', true)
+  await expect(children.getByText('Grandchild notes', { exact: true })).toBeVisible()
+  expect(reads).toHaveLength(before)
+  // A remote addition invalidates cached children even while their parent is closed.
+  await toggle('Test document', false)
+  docs.push({ ...document, id: 'doc-e', title: 'Remote child notes' })
+  parents.set('doc-e', 'doc-a')
+  const rootReads = reads.filter(read => !read.parent_document_id).length
+  await page.evaluate(() => window.testApp.emitSocket('memory.classification', { data: {
+    user_id: 1, document_ids: ['doc-a', 'doc-e'], list_changed: true,
+  } }))
+  await expect.poll(() => reads.filter(read => !read.parent_document_id).length).toBeGreaterThan(rootReads)
+  await toggle('Test document', true)
+  await expect(children.getByText('Remote child notes', { exact: true })).toBeVisible()
+  await list.getByText('Other notes', { exact: true }).dragTo(children.getByText('Child notes', { exact: true }))
+  await expect.poll(() => moves.at(-1)?.parent_document_id).toBe('doc-b')
+  const grandchildren = page.getByLabel('Sub-documents of Child notes', { exact: true })
+  await expect(grandchildren.getByText('Other notes', { exact: true })).toBeVisible()
+  const bounds = await list.boundingBox()
+  if (!bounds) throw new Error('The unclassified list must be visible')
+  await grandchildren.getByText('Other notes', { exact: true }).dragTo(list, { targetPosition: { x: 8, y: bounds.height - 8 } })
+  await expect(grandchildren.getByText('Other notes', { exact: true })).toHaveCount(0)
+  await expect(list.getByText('Other notes', { exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('sub-documents.png'), animations: 'disabled' })
+  let release
+  const gate = new Promise(resolve => { release = resolve })
+  let pending = false
+  await page.route('**/api/memory/documents/library', async route => {
+    if (route.request().postDataJSON().parent_document_id !== 'doc-b') return route.fallback()
+    pending = true; await gate
+    return route.fulfill({ json: { entries: [entry(docs[2])], total: 1, has_more: false, keywords: [] } })
+  })
+  await page.evaluate(() => window.testApp.emitSocket('memory.classification', { data: { user_id: 1, document_ids: ['doc-b'] } }))
+  await expect.poll(() => pending).toBe(true)
+  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 2, tags: [] })
+  await jsonRoute(page, '**/api/memory/documents/library', { entries: [], total: 0, has_more: false, keywords: [] })
+  await page.evaluate(async () => {
+    window.testApp.auth.$patch({ user: { id: 2, email: 'other@example.test' } })
+    const { saveAccessToken } = await import('/core/api.ts')
+    saveAccessToken('other-session')
+  })
+  release()
+  await expect(page.getByText('Grandchild notes', { exact: true })).toHaveCount(0)
+})
+}
+}
+
 async function fixture(page, locale = 'en') {
   const readOnlyDocument = { ...document, access: { can_read: true, can_write: false } }
   await jsonRoute(page, '**/api/memory/documents/doc-a', { item: readOnlyDocument, agent_id: 7 })
@@ -301,7 +401,7 @@ test('classification refreshes only affected folders and keeps other documents u
   expect(tagReads).toBe(1)
   expect(requests).toEqual([])
   expect(await other.evaluate(element => element.isConnected)).toBe(true)
-  // Rights changes must still discard visible snapshots, even when rereading is slow.
+  // Rights changes remove only rows absent from the completed authoritative response.
   let releaseAccess
   const gate = new Promise(resolve => { releaseAccess = resolve })
   await page.route('**/api/memory/documents/library', async route => {
@@ -309,12 +409,15 @@ test('classification refreshes only affected folders and keeps other documents u
     await route.fulfill({ json: { entries: [], total: 0, keywords: [], has_more: false } })
   })
   await page.evaluate(() => window.testApp.emitSocket('memory.invalidate', { data: {} }))
+  await expect(page.getByText('Other report', { exact: true })).toBeVisible()
+  await expect(page.getByText('Root report', { exact: true })).toBeVisible()
+  releaseAccess()
   await expect(page.getByText('Other report', { exact: true })).toHaveCount(0)
   await expect(page.getByText('Root report', { exact: true })).toHaveCount(0)
-  releaseAccess()
 })
 
-test('reconnection reconciles documents without removing rows and failed refreshes preserve usable content', async ({ page }) => {
+for (const event of ['connect', 'memory.invalidate']) {
+test(`${event} reconciles documents without removing rows and failed refreshes preserve usable content`, async ({ page }) => {
   const state = await fixture(page)
   state.assignments.add('work')
   await toggleUnclassified(page)
@@ -334,7 +437,7 @@ test('reconnection reconciles documents without removing rows and failed refresh
     const entry = { item: { ...document, title: 'Updated report', revision: 4 }, agent_ids: [7], writable_agent_ids: [], tags: [{ id: 'work', name: 'Work', parent_id: null }] }
     await route.fulfill({ json: { entries: [entry], total: 1, keywords: [], has_more: false } })
   })
-  await page.evaluate(() => window.testApp.emitSocket('connect', {}))
+  await page.evaluate(event => window.testApp.emitSocket(event, {}), event)
   await expect.poll(() => requests.length).toBe(2)
   await expect(list.getByText('Test document', { exact: true })).toBeVisible()
   await expect(tree.getByText('Test document', { exact: true })).toBeVisible()
@@ -346,7 +449,7 @@ test('reconnection reconciles documents without removing rows and failed refresh
   expect(await listRow.evaluate(element => element.isConnected)).toBe(true)
   expect(await treeRow.evaluate(element => element.isConnected)).toBe(true)
   fail = true
-  await page.evaluate(() => window.testApp.emitSocket('connect', {}))
+  await page.evaluate(event => window.testApp.emitSocket(event, {}), event)
   await expect(page.getByRole('alert')).toHaveCount(2)
   await expect(list.getByText('Updated report', { exact: true })).toBeVisible()
   await expect(tree.getByText('Updated report', { exact: true })).toBeVisible()
@@ -357,7 +460,32 @@ test('reconnection reconciles documents without removing rows and failed refresh
   await expect(page.getByRole('alert')).toHaveCount(1)
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
   await expect(page.getByRole('alert')).toHaveCount(0)
+
+  // A second refresh wins even if the older list and folder replies arrive last.
+  let releaseOld
+  const obsoleteGate = new Promise(resolve => { releaseOld = resolve })
+  let oldReads = 0
+  const response = title => ({ entries: [{ item: { ...document, title }, agent_ids: [7], writable_agent_ids: [], tags: [] }], total: 1, keywords: [], has_more: false })
+  await page.route('**/api/memory/documents/library', async route => {
+    oldReads++
+    await obsoleteGate
+    await route.fulfill({ json: response('Obsolete report') })
+  })
+  await page.evaluate(event => window.testApp.emitSocket(event, {}), event)
+  await expect.poll(() => oldReads).toBe(2)
+  await page.route('**/api/memory/documents/library', route => route.fulfill({ json: response('Latest report') }))
+  await page.evaluate(event => window.testApp.emitSocket(event, {}), event)
+  await expect(list.getByText('Latest report', { exact: true })).toBeVisible()
+  await expect(tree.getByText('Latest report', { exact: true })).toBeVisible()
+  const obsolete = Promise.all([null, 'work'].map(id => page.waitForResponse(response => response.url().endsWith('/api/memory/documents/library') && response.request().postDataJSON().tag_id === id)))
+  releaseOld()
+  await obsolete
+  await expect(list.getByText('Latest report', { exact: true })).toBeVisible()
+  await expect(tree.getByText('Latest report', { exact: true })).toBeVisible()
+  await expect(page.getByText('Obsolete report', { exact: true })).toHaveCount(0)
+  for (const row of [listRow, treeRow]) expect(await row.evaluate(element => element.isConnected)).toBe(true)
 })
+}
 
 test('access-token renewal keeps expanded folders, filters and document rows without browsing again', async ({ page }) => {
   const state = await fixture(page)
@@ -649,12 +777,18 @@ test('each tag creates a child and its icon picker searches Unicode emojis and r
   await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
 })
 
-test('icon palette recovers a loading error and rejects oversized uploads without changing the tag', async ({ page }) => {
+test('icon palette recovers a loading error and preserves the tag after a server-rejected upload', async ({ page }) => {
   const { mutations } = await fixture(page)
   let fail = true
-  await page.route('**/api/memory/documents/tag-icons', route => route.fulfill(fail
-    ? { status: 500, json: { detail: 'Unavailable' } }
-    : { json: [{ id: 'saved', name: 'Saved icon', data: '/tag-icons/openmoji/1F680.svg' }] }))
+  let rejectedUploads = 0
+  await page.route('**/api/memory/documents/tag-icons', route => {
+    if (route.request().method() === 'POST') {
+      rejectedUploads++
+      return route.fulfill({ status: 400, json: { detail: 'Synthetic configured file size limit exceeded' } })
+    }
+    return route.fulfill(fail ? { status: 500, json: { detail: 'Unavailable' } }
+      : { json: [{ id: 'saved', name: 'Saved icon', data: '/tag-icons/openmoji/1F680.svg' }] })
+  })
   const trigger = page.getByRole('button', { name: 'Icon for folder Work', exact: true })
   await trigger.focus()
   await trigger.press('F2')
@@ -666,8 +800,14 @@ test('icon palette recovers a loading error and rejects oversized uploads withou
   await page.getByRole('combobox', { name: 'Icon library', exact: true }).click()
   await page.getByRole('option', { name: 'My icons', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Saved icon', exact: true })).toBeVisible()
-  await page.locator('input[type=file]').setInputFiles({ name: 'Too big.svg', mimeType: 'image/svg+xml', buffer: Buffer.alloc(65537) })
-  await expect(page.getByRole('alert')).toContainText('0.064 MB')
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  // The API enforces MEMORY_RESOURCE_MAX_BYTES; the obsolete local 64 KiB
+  // ceiling must not replace its configured limit or hide a server refusal.
+  await page.locator('input[type=file]').setInputFiles({ name: 'Server-rejected.svg', mimeType: 'image/svg+xml',
+    buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg">${' '.repeat(65537)}</svg>`) })
+  await expect(page.getByRole('alert')).toBeVisible()
+  expect(rejectedUploads).toBe(1)
+  await expect(page.getByRole('button', { name: 'Saved icon', exact: true })).toBeVisible()
   expect(mutations).toEqual([])
   await page.keyboard.press('Escape')
   await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
@@ -782,6 +922,7 @@ test('late search responses cannot replace current results and request errors ca
   await expect(page.getByText('slow', { exact: true })).toHaveCount(0)
   await search.fill('error')
   await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
+  await expect(page.getByText('current', { exact: true })).toBeVisible()
   fail = false
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
   await expect(page.getByText('error', { exact: true })).toBeVisible()

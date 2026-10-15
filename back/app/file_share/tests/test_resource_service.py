@@ -858,7 +858,7 @@ async def test_document_collection_lists_canonical_resource_uris(
 ) -> None:
     import app.memory as memory
 
-    identifier = uuid4()
+    identifiers = [uuid4(), uuid4()]
 
     async def search(**_kwargs: object) -> dict[str, object]:
         return {
@@ -875,6 +875,7 @@ async def test_document_collection_lists_canonical_resource_uris(
                     "can_write": True,
                     "metadata": {},
                 }
+                for identifier in identifiers
             ],
             "has_more": False,
             "next_offset": None,
@@ -887,7 +888,9 @@ async def test_document_collection_lists_canonical_resource_uris(
         "document://",
     )
 
-    assert [entry.uri for entry in result.entries] == [f"document://{identifier}"]
+    assert [entry.uri for entry in result.entries] == [f"document://{identifier}" for identifier in identifiers]
+    assert len({entry.entry_name for entry in result.entries}) == len(identifiers)
+    assert [entry.name for entry in result.entries] == ["release.md", "release.md"]
     assert {"read", "write", "append", "edit"} <= set(
         result.entries[0].capabilities
     )
@@ -970,16 +973,14 @@ async def test_messenger_listing_uses_tool_code_room_locator_and_local_file_uuid
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     room_id = uuid4()
-    file_id = uuid4()
-    attachment = SimpleNamespace(
-        id=file_id,
-        name="rapport.pdf",
-        mime_type="application/pdf",
-        size_bytes=42,
-    )
+    file_ids = [uuid4(), uuid4()]
+    attachments = [
+        SimpleNamespace(id=file_id, name="rapport.pdf", mime_type="application/pdf", size_bytes=42)
+        for file_id in file_ids
+    ]
     message = SimpleNamespace(
         room=SimpleNamespace(id=room_id, external_id="provider-room"),
-        files=[attachment],
+        files=attachments,
     )
 
     class Messenger:
@@ -994,7 +995,8 @@ async def test_messenger_listing_uses_tool_code_room_locator_and_local_file_uuid
         _ctx: ResourceContext,
         _reference: object,
     ) -> tuple[MessengerFileTransport, str, str, str]:
-        return transport, "messenger", "placeholder", "provider-room"
+        remote = str(_reference).rstrip("/").rsplit("/", 1)[-1]
+        return transport, "messenger", remote, "provider-room"
 
     monkeypatch.setattr(resource_service, "_connected_transport", connected)
 
@@ -1005,8 +1007,15 @@ async def test_messenger_listing_uses_tool_code_room_locator_and_local_file_uuid
 
     assert result.uri == "nextcloud://provider-room/"
     assert [entry.uri for entry in result.entries] == [
-        f"nextcloud://provider-room/{file_id}"
+        f"nextcloud://provider-room/{file_id}" for file_id in file_ids
     ]
+    assert len({entry.entry_name for entry in result.entries}) == len(file_ids)
+    assert [entry.name for entry in result.entries] == ["rapport.pdf", "rapport.pdf"]
+    for entry in result.entries:
+        descriptor = await resource_service.resource_info(
+            ResourceContext(agent_id=1, runtime="internal"), entry.uri,
+        )
+        assert descriptor.entry_name == entry.entry_name
 
 
 @pytest.mark.asyncio

@@ -121,6 +121,17 @@ async def _record_status(
             record.finished_at = now
 
 
+async def stage_actions(registry: DbAdminRegistry, transitions: SchemaTransitionSet) -> None:
+    """Persist obligations before DDL can make their triggering delta disappear."""
+    async with get_db_session() as session:
+        unfinished = set(await session.scalars(select(DbAdminActionRecord.key).where(
+            DbAdminActionRecord.status.in_(("running", "deferred", "failed")),
+        )))
+    for action in registry.actions:
+        if action.key not in unfinished and action.predicate(transitions):
+            await _record_status(action, "deferred")
+
+
 async def run_actions(
     registry: DbAdminRegistry,
     phase: DbAdminPhase,

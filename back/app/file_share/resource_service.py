@@ -518,6 +518,10 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
         galaris_capabilities.extend(("append", "create", "delete", "edit", "move", "write"))
     schemes = [
         ResourceSchemeDescription(
+            scheme="file", label="Galaris managed file", example="file://<uuid>",
+            capabilities=["create", "info", "read", "copy"], native=True,
+        ),
+        ResourceSchemeDescription(
             scheme="https",
             label="Public HTTPS resource",
             example="https://example.org/files/report.pdf",
@@ -620,6 +624,13 @@ async def resource_info(
     include_checksum: bool = False,
 ) -> ResourceDescriptor:
     reference = parse_resource_uri(uri, allow_empty=True)
+    if reference.scheme == "file":
+        from .managed_files import managed_file_info
+
+        if not reference.locator:
+            return ResourceDescriptor(uri="file://", name="files", is_collection=True,
+                media_type="inode/directory", capabilities=["create"])
+        return await managed_file_info(ctx, UUID(reference.locator))
     if reference.scheme == "galaris":
         from .galaris_provider import galaris_resource_info
 
@@ -973,7 +984,17 @@ async def _materialize_resource(
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     try:
-        if reference.scheme == "galaris" and reference.decoded_locator.startswith("skill/"):
+        if reference.scheme == "file":
+            from core.storage import file_path
+            from core.util import copy_download
+
+            async def chunks():
+                with file_path(UUID(reference.locator)).open("rb") as incoming:
+                    while chunk := await complete_io(incoming.read, 64 * 1024):
+                        yield chunk
+
+            size = await copy_download(chunks(), destination, max_bytes=max_bytes)
+        elif reference.scheme == "galaris" and reference.decoded_locator.startswith("skill/"):
             from .galaris_provider import galaris_skill_file_bytes
 
             content = await galaris_skill_file_bytes(ctx, reference)
@@ -1062,6 +1083,15 @@ async def resource_read(
     reference = parse_resource_uri(uri)
     start = max(0, offset)
     limit = max(1, min(max_chars, 2_000_000 if reference.scheme in {"memory", "document"} else _TEXT_READ_LIMIT))
+    if reference.scheme == "file":
+        from core.storage import file_path
+
+        descriptor = await resource_info(ctx, reference)
+        # file_read stays bounded; large bytes use streaming materialization/copy.
+        if descriptor.size is not None and descriptor.size > _FILE_WRITE_LIMIT:
+            raise ResourceValidationError("Use file_copy or a specialized tool for this large managed file")
+        content = await complete_io(file_path(UUID(reference.locator)).read_bytes)
+        return _resource_read_from_bytes(reference, content, media_type=descriptor.media_type or "application/octet-stream", start=start, limit=limit)
     if reference.scheme == "galaris":
         from .galaris_provider import galaris_resource_read
 
@@ -1324,6 +1354,17 @@ async def resource_create(
     if document_type is not None and (reference.scheme != "document" or reference.locator):
         raise ValueError("document_type is only accepted when creating at document://.")
     clean_name = name.strip()
+    if reference.scheme == "file":
+        from io import BytesIO
+        from fastapi import UploadFile
+        from .managed_files import upload_managed_file
+
+        if reference.locator:
+            raise PermissionError("Managed file UUIDs are assigned by the server; create at file://")
+        if not clean_name:
+            raise ValueError("file_create at file:// requires a name")
+        descriptor = await upload_managed_file(ctx, UploadFile(filename=clean_name, file=BytesIO(content), size=len(content)))
+        return ResourceMutation(uri=descriptor.uri, operation="create", state="created", size=descriptor.size)
     if reference.scheme == "document":
         attachment_ids = _document_attachment_ids(reference)
         if attachment_ids is not None:
@@ -1898,6 +1939,23 @@ async def resource_copy(
 ) -> ResourceTransfer:
     source_ref = parse_resource_uri(source)
     destination_ref = parse_resource_uri(destination, allow_empty=True)
+    if destination_ref.scheme == "file":
+        if destination_ref.locator:
+            raise PermissionError("Managed files are immutable; copy into file://")
+        from core.database import get_db
+        from core.params import runtime_settings
+        from core.storage import DiskFileDriver, ensure_disk_identity
+        from .managed_files import persist_managed_file
+
+        descriptor = await resource_info(ctx, source_ref)
+        if descriptor.is_collection:
+            raise IsADirectoryError(str(source_ref))
+        await ensure_disk_identity(get_db())
+        with tempfile.TemporaryDirectory(prefix=".copy-", dir=DiskFileDriver().root) as directory:
+            staging = Path(directory) / "source"
+            await materialize_resource(ctx, source_ref, staging, max_bytes=runtime_settings.MEMORY_RESOURCE_MAX_BYTES)
+            created = await persist_managed_file(ctx, staging, name=descriptor.name, media_type=descriptor.media_type)
+        return ResourceTransfer(source_uri=str(source_ref), uri=created.uri, size=created.size or 0)
     destination_ref = await _resolve_transfer_destination(
         ctx,
         source_ref,

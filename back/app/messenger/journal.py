@@ -14,6 +14,7 @@ from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.database import get_db, get_db_session
+from core.storage import file_path, register_file
 
 from ._observations import (
     ObservedMessengerFile,
@@ -128,6 +129,17 @@ async def _synchronize_files(
             await get_db().flush()
         if file_id is None:
             raise RuntimeError("The Messenger file disappeared while being synchronized.")
+        message = await get_db().get(Message, message_id)
+        if (
+            message is not None and message.platform == "internal" and message.room_id
+            and file_path(file_id).is_file()
+        ):
+            from .resource_reference import attachment_resource_uri
+
+            await register_file(
+                file_id, name=str(values["name"]), media_type=str(values["mime_type"]),
+                alias=attachment_resource_uri("chat", message.room_id, file_id),
+            )
         await get_db().execute(
             pg_insert(Attachment)
             .values(message_id=message_id, position=position, file_id=file_id)

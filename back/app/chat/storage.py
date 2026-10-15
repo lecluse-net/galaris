@@ -17,6 +17,7 @@ from loguru import logger
 
 from core.params import runtime_settings
 from core.settings import settings
+from core.storage import file_path, sync_directory
 
 
 _CHUNK_SIZE = 1024 * 1024
@@ -52,8 +53,7 @@ def root() -> Path:
 
 
 def attachment_path(file_id: UUID) -> Path:
-    value = file_id.hex
-    return root() / "attachments" / value[:2] / value
+    return file_path(file_id)
 
 
 def _validate_mime(mime_type: str) -> str:
@@ -87,21 +87,26 @@ def _validated_content_type(
     return guessed if declared == "application/octet-stream" else declared
 
 
-def _stored_bytes() -> int:
+def _stored_bytes(*, excluded_bytes: int = 0) -> int:
     total = 0
-    storage_root = root()
-    if not storage_root.exists():
-        return 0
-    for directory, _names, files in os.walk(storage_root, followlinks=False):
-        parent = Path(directory)
-        for name in files:
-            path = parent / name
-            try:
-                if not path.is_symlink():
-                    total += path.stat().st_size
-            except FileNotFoundError:
-                continue
-    return total
+    seen: set[Path] = set()
+    for storage_root in (root(), Path(settings.GALARIS_FILE_ROOT)):
+        if not storage_root.exists():
+            continue
+        for directory, names, files in os.walk(storage_root, followlinks=False):
+            names[:] = [name for name in names if name != ".migration"]
+            parent = Path(directory)
+            for name in files:
+                if name in {".store-uuid", ".capacity.lock"}:
+                    continue
+                path = parent / name
+                try:
+                    if path not in seen and not path.is_symlink():
+                        seen.add(path)
+                        total += path.stat().st_size
+                except FileNotFoundError:
+                    continue
+    return max(0, total - excluded_bytes)
 
 
 async def write_bounded_chunk(handle: BinaryIO, chunk: bytes) -> None:
@@ -110,10 +115,30 @@ async def write_bounded_chunk(handle: BinaryIO, chunk: bytes) -> None:
     Hold the filesystem lock only during accounting and writing, never while
     awaiting the uploader. Finish an in-flight write before cancellation cleanup.
     """
+    from core.database import get_db
+    from core.storage import StoredFile, FileAlias
+    from sqlalchemy import func, select
+
+    # The historical Chat quota must not charge durable Document/standalone
+    # files merely because the physical volume is now shared. Pending bytes
+    # remain included until their owning domain has committed registration.
+    excluded_bytes = 0
+    try:
+        db = get_db()
+    except RuntimeError:
+        db = None  # Raw driver tests intentionally have no database context.
+    if db is not None:
+        chat_reference = select(FileAlias.id).where(
+            FileAlias.file_id == StoredFile.id, FileAlias.uri.like("chat://%"),
+        ).exists()
+        excluded_bytes = int(await db.scalar(select(func.sum(StoredFile.size_bytes)).where(
+            StoredFile.backend == "disk", ~chat_reference,
+        )) or 0)
+
     def write() -> None:
         with (root() / ".capacity.lock").open("ab") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
-            if _stored_bytes() + len(chunk) > runtime_settings.GALARIS_INTERNAL_MESSENGER_MAX_BYTES:
+            if _stored_bytes(excluded_bytes=excluded_bytes) + len(chunk) > runtime_settings.GALARIS_INTERNAL_MESSENGER_MAX_BYTES:
                 raise AttachmentStorageFullError("Chat attachment storage is full.")
             handle.write(chunk)
             handle.flush()
@@ -149,13 +174,15 @@ async def store_upload(upload: UploadFile, file_id: UUID) -> tuple[Path, int, st
     if upload.size is not None and upload.size > limit:
         raise AttachmentTooLargeError(limit)
     destination = attachment_path(file_id)
-    staging = root() / ".staging" / f"{file_id.hex}-{uuid4().hex}.part"
+    staging = destination.parent / f".{file_id.hex}-{uuid4().hex}.part"
+    await asyncio.to_thread(root().mkdir, parents=True, exist_ok=True)
     await asyncio.to_thread(staging.parent.mkdir, parents=True, exist_ok=True)
     await asyncio.to_thread(destination.parent.mkdir, parents=True, exist_ok=True)
     size = 0
     prefix = bytearray()
     try:
-        with staging.open("xb") as handle:
+        descriptor = os.open(staging, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "wb") as handle:
             while chunk := await upload.read(_CHUNK_SIZE):
                 if len(prefix) < 8_192:
                     prefix.extend(chunk[: 8_192 - len(prefix)])
@@ -169,7 +196,15 @@ async def store_upload(upload: UploadFile, file_id: UUID) -> tuple[Path, int, st
             upload.filename or "",
             bytes(prefix),
         )
-        os.replace(staging, destination)
+        def publish() -> None:
+            os.link(staging, destination)
+            # Persist both shard levels, including a shard created by this upload.
+            sync_directory(destination.parent)
+            sync_directory(destination.parent.parent)
+            sync_directory(Path(settings.GALARIS_FILE_ROOT))
+            staging.unlink()
+
+        await _finish_io(publish)
     except BaseException:
         await asyncio.to_thread(staging.unlink, missing_ok=True)
         raise
@@ -219,7 +254,9 @@ async def copy_to(file_id: UUID, destination: Path, *, max_bytes: int = 512 * 10
 
 
 async def discard(file_id: UUID) -> None:
-    await asyncio.to_thread(attachment_path(file_id).unlink, missing_ok=True)
+    from core.storage import discard_unregistered_file
+
+    await discard_unregistered_file(file_id)
 
 
 async def reconcile_storage() -> None:

@@ -9,6 +9,13 @@ services:
   backend:
     volumes:
       - galaris_data:/data
+      # Optional dedicated file disk. Prepare the existing host directory first;
+      # mount it before the first upgrade that migrates internal attachments.
+      # - type: bind
+      #   source: /mnt/galaris-files
+      #   target: /data/files
+      #   bind:
+      #     create_host_path: false
 
   ssh-executor:
     volumes:

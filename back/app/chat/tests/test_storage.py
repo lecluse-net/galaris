@@ -34,7 +34,7 @@ async def test_upload_uses_uuid_path_and_round_trips(
     path, size, mime_type = await storage.store_upload(upload, file_id)
 
     assert path == storage.attachment_path(file_id)
-    assert path.name == file_id.hex
+    assert path.name == str(file_id)
     assert "unsafe" not in str(path)
     assert size == len(content)
     assert mime_type == media_type
@@ -188,10 +188,10 @@ async def test_cancellation_waits_for_the_inflight_disk_write_before_cleanup(tmp
     entered, release = threading.Event(), threading.Event()
     operation = storage._stored_bytes if stage == "write" else storage.os.fsync
 
-    def delayed_operation(*args):
+    def delayed_operation(*args, **kwargs):
         entered.set()
         assert release.wait(timeout=5)
-        return operation(*args)
+        return operation(*args, **kwargs)
 
     if stage == "write":
         monkeypatch.setattr(storage, "_stored_bytes", delayed_operation)

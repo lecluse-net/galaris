@@ -7,10 +7,12 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol, runtime_checkable
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from app.agent.contracts import RuntimeName
 from app.tools.contracts import FileIndexingMode
+
+from .resource_uri import parse_resource_uri
 
 
 ResourceCapability = Literal[
@@ -66,6 +68,22 @@ class ResourceDescriptor(BaseModel):
     etag: str | None = None
     capabilities: list[ResourceCapability] = Field(default_factory=_empty_capabilities)
     metadata: dict[str, Any] = Field(default_factory=dict[str, Any])
+
+    @computed_field
+    @property
+    def entry_name(self) -> str:
+        """Unique navigation key in the canonical parent, independent of source labels.
+
+        ``name`` remains the original filename/title used for display and copies.
+        URI segments carry identity even when two attachments share a filename.
+        """
+        reference = parse_resource_uri(self.uri, allow_empty=True)
+        if reference.scheme in {"http", "https"}:
+            from urllib.parse import unquote, urlsplit
+
+            path = urlsplit(str(reference)).path.rstrip("/")
+            return unquote(path.rsplit("/", 1)[-1]) or reference.scheme
+        return reference.segments[-1] if reference.segments else reference.scheme
 
 
 class ResourceListing(BaseModel):

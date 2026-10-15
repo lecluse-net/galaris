@@ -7,6 +7,41 @@ from app.file_share.resource_uri import (
     parse_resource_uri,
     validate_external_tool_code,
 )
+from app.file_share.resource_contracts import ResourceDescriptor
+
+
+@pytest.mark.parametrize("uri", ["file:///etc/passwd", "file://host/share", "file://../secret", "file://C:/secret", "file://not-a-uuid", "file://00000000-0000-0000-0000-000000000000/extra"])
+def test_managed_file_uri_never_addresses_a_filesystem_path(uri):
+    with pytest.raises(ResourceUriError):
+        parse_resource_uri(uri)
+
+
+def test_managed_file_uri_accepts_only_its_stable_identity():
+    identifier = uuid4()
+    assert str(parse_resource_uri(f"file://{identifier}")) == f"file://{identifier}"
+
+
+@pytest.mark.parametrize("collection", ["document://", "memory://", "nextcloud://synthetic-room/"])
+def test_same_source_names_have_distinct_stable_navigation_names(collection: str) -> None:
+    resources = [
+        ResourceDescriptor(uri=f"{collection}{uuid4()}", name="report.pdf")
+        for _ in range(2)
+    ]
+    first, second = [resource.model_dump()["entry_name"] for resource in resources]
+
+    assert first != second
+    # Names do not depend on which page or visible siblings contained the resource.
+    assert ResourceDescriptor.model_validate(resources[0].model_dump()).model_dump()["entry_name"] == first
+    assert resources[0].model_copy(update={"name": "renamed.pdf"}).model_dump()["entry_name"] == first
+    assert [resource.name for resource in resources] == ["report.pdf", "report.pdf"]
+
+
+def test_navigation_names_keep_provider_paths_and_collection_keys() -> None:
+    file = ResourceDescriptor(uri="nextcloud://Shared/rapport%20%C3%A9t%C3%A9.pdf", name="Report")
+    collection = ResourceDescriptor(uri="galaris://task/", name="Tasks", is_collection=True)
+
+    assert file.model_dump()["entry_name"] == "rapport été.pdf"
+    assert collection.model_dump()["entry_name"] == "task"
 
 
 def test_resource_uri_normalization_is_canonical_and_idempotent() -> None:

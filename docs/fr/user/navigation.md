@@ -351,6 +351,20 @@ et **Graphe** : ouvrez la page puis choisissez l’onglet, sans supposer un para
 Les contacts sont dans `/memory/contacts` ; les regroupements thématiques dans
 **Connaissances → Sujets** (`/topic`). Le partage d’un lien ne donne pas accès au contenu.
 
+Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**
+parmi ses actions. Renseignez le titre et le propriétaire : le document est automatiquement
+classé dans ce dossier, qui se déplie, puis s’ouvre dans l’éditeur. Le bouton de création
+général conserve les nouveaux documents parmi les documents non classés.
+
+Un document peut aussi contenir des **sous-documents**. Utilisez son icône
+**Nouveau sous-document**, ou glissez un document existant au centre de sa ligne.
+La flèche permet de déplier ses enfants, sur plusieurs niveaux ; cliquer sur le titre
+continue d'ouvrir le document. Pour sortir un enfant de son parent, glissez-le dans la zone
+des documents non classés ou dans un dossier.
+Cette hiérarchie est personnelle, comme les dossiers : chaque document conserve ses
+propres droits de partage. Supprimer le parent conserve les enfants ; ceux qui restent
+lisibles réapparaissent parmi les non-classés, également si l'accès au parent est retiré.
+
 Pour faire évoluer un document avec un agent, demandez une mise à jour des passages concernés.
 L'agent conserve les informations utiles et peut ajouter des éléments distincts ; les anciennes
 versions restent dans les révisions. Précisez si le résultat attendu est un journal chronologique

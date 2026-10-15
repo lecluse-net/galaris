@@ -14,6 +14,7 @@ from uuid import UUID, uuid4
 from fastapi import UploadFile
 from sqlalchemy import select
 from core.database import get_db
+from core.storage import register_file
 
 from core.user import HumanActor
 
@@ -23,7 +24,7 @@ from . import service
 from .contracts import ResourceTooLargeError
 from .models import DocumentAttachment, MemoryItem
 from .schemas import DocumentAttachmentPublic, MemoryItemUpdate
-from .storage import NativeFileStorage, get_storage
+from .storage import get_attachment_storage
 
 
 ATTACHMENT_METADATA_KEY = "document_attachments"
@@ -170,11 +171,7 @@ async def add_document_attachment(
         while chunk := await upload.read(_CHUNK_SIZE):
             yield chunk
 
-    provider = get_storage("native")
-    if not isinstance(provider, NativeFileStorage):
-        raise service.MemoryConflictError(
-            "Document attachments require the native storage provider."
-        )
+    provider = get_attachment_storage()
     try:
         resource_id, size = await provider.create_stream(chunks())
     except ResourceTooLargeError as exc:
@@ -220,7 +217,7 @@ async def add_document_attachment_bytes(
         size_bytes=len(content),
         created_at=datetime.now(timezone.utc),
     )
-    provider = get_storage("native")
+    provider = get_attachment_storage()
     resource_id = await provider.create(content)
     if resource_id != str(attachment_id):
         attachment = attachment.model_copy(update={"id": UUID(resource_id)})
@@ -237,7 +234,8 @@ async def _register_document_attachment(
     actor_agent_id: int | HumanActor,
     attachment: DocumentAttachmentPublic,
 ) -> DocumentAttachmentPublic:
-    provider = get_storage("native")
+    provider = get_attachment_storage()
+    publication_attempted = False
     try:
         for _attempt in range(3):
             item, _content, access, _content_type, _media_type = await service.get_item(
@@ -255,15 +253,20 @@ async def _register_document_attachment(
                     f"A document accepts at most {_MAX_ATTACHMENTS} attachments."
                 )
             try:
+                metadata = _metadata_with_attachments(item, [*attachments, attachment])
+                await register_file(
+                    attachment.id, name=attachment.name, media_type=attachment.media_type,
+                    alias=f"document://{document_id}/attachments/{attachment.id}",
+                )
+                # An interrupted commit may already have made the attachment
+                # durable. Keep its bytes rather than risk a dangling manifest.
+                publication_attempted = True
                 await service.update_item(
                     item.id,
                     MemoryItemUpdate(
                         expected_revision=item.revision,
                         expected_lock_version=item.lock_version,
-                        metadata=_metadata_with_attachments(
-                            item,
-                            [*attachments, attachment],
-                        ),
+                        metadata=metadata,
                     ),
                     actor_agent_id=actor_agent_id,
                     preserve_document_attachments=False,
@@ -275,7 +278,8 @@ async def _register_document_attachment(
             "The document changed while the attachment was being added."
         )
     except BaseException:
-        await provider.delete(str(attachment.id))
+        if not publication_attempted:
+            await provider.delete(str(attachment.id))
         raise
 
 
@@ -296,7 +300,7 @@ async def read_document_attachment(
     )
     if attachment is None:
         raise service.MemoryNotFoundError("Document attachment not found.")
-    return attachment, await get_storage("native").read(str(attachment.id))
+    return attachment, await get_attachment_storage().read(str(attachment.id))
 
 
 async def document_attachment_path(
@@ -313,11 +317,7 @@ async def document_attachment_path(
     attachment = next((value for value in attachments if value.id == attachment_id), None)
     if attachment is None:
         raise service.MemoryNotFoundError("Document attachment not found.")
-    provider = get_storage("native")
-    if not isinstance(provider, NativeFileStorage):
-        raise service.MemoryConflictError(
-            "Document attachments require the native storage provider."
-        )
+    provider = get_attachment_storage()
     return attachment, await provider.path_for_read(str(attachment.id))
 
 

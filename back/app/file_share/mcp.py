@@ -62,8 +62,8 @@ async def _file_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> dic
         uri = arguments.get(key)
         if not isinstance(uri, str) or not uri:
             continue
-        if key == "destination" and uri.strip() == "document://":
-            snapshots[key] = {"uri": uri, "new_document": True}
+        if key == "destination" and uri.strip() in {"document://", "file://"}:
+            snapshots[key] = {"uri": uri, "new_resource": True}
             continue
         try:
             descriptor = await resource_info(context, uri)
@@ -255,10 +255,12 @@ async def read_file(
 @mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="file_create",
-    effect_descriptor=EffectDescriptorV1(capability="file.create", kind="create", target_arguments=("path",), reversible=True, receipt="resource", ordinary_creation_schemes=("document", "console")),
+    effect_descriptor=EffectDescriptorV1(capability="file.create", kind="create", target_arguments=("path",), reversible=True, receipt="resource", ordinary_creation_schemes=("file", "document", "console")),
     description=(
-        "Create a new complete text or binary file and return its canonical URI. Pass an exact "
-        "file path, or a collection path plus name. Use path='document://' to let Galaris assign "
+        "Create a new complete text or binary file and return its canonical URI. "
+        "Use path='file://' plus name for an independent private managed file; its returned file://UUID "
+        "is stable and does not expose a host path. "
+        "For path providers, pass an exact file path or a collection path plus name. Use path='document://' to let Galaris assign "
         "a new document URI. document_type is immutable: 'html' (default) or 'dataset'. "
         "For a dataset, pass valid JSON with encoding='utf-8'. For an HTML document, content must be an editorial HTML fragment "
         "with encoding='utf-8', for example '<h1>Report</h1><p>Findings.</p>', not Markdown "

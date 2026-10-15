@@ -66,7 +66,8 @@ A non-dry synchronization follows this order:
 2. wait for PostgreSQL and acquire a global advisory lock;
 3. inspect `public`, calculate the delta toward the canonical target, and preflight ENUM changes;
 4. create the DbAdmin journal tables if necessary;
-5. check unfinished actions and explicitly compatible successors, deferring incompatible optional actions;
+5. check unfinished actions and explicitly compatible successors, then journal every
+   obligation from the delta before any DDL;
 6. execute `BEFORE_EXPAND` actions;
 7. prepare ENUM changes;
 8. apply with Atlas a target in which new required columns are temporarily nullable;
@@ -349,7 +350,11 @@ DbAdmin retains:
 - up to one hundred bounded issues in `dbadmin_issues`;
 - the latest state of each action in `dbadmin_actions`.
 
-Action statuses are `running`, `deferred`, `failed`, `applied`, and `already_satisfied`. When an action is `running`, `deferred`, or `failed`:
+Action statuses are `running`, `deferred`, `failed`, `applied`, and `already_satisfied`.
+Applicable actions are first journaled as `deferred` before Atlas, including actions
+whose phase comes later. An interruption between committed expansion and the first
+handler cannot lose the obligation when the initial delta disappears.
+When an action is `running`, `deferred`, or `failed`:
 
 - its code must remain registered;
 - its checksum must not change;

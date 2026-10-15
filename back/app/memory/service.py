@@ -2254,6 +2254,11 @@ async def _forget_item_record(
                     resolved_at=datetime.now(timezone.utc),
                 )
             )
+    if item.node_kind == "document":
+        from core.storage import retire_file_references
+
+        retired_files = await retire_file_references(f"document://{item_id}/attachments/")
+        resources.update(("native", str(identifier)) for identifier in retired_files)
     await db.commit()
 
     from .document_backup import archived_resources
@@ -2616,9 +2621,7 @@ async def set_document_global_access(
     item.global_access = data.global_access
     item.group_access = 0
     item.visibility = "shared" if data.global_access > 0 or has_grants else "private"
-    await _commit_with_conflict(
-        "The document changed while sharing was being edited; reload and retry."
-    )
+    await commit_item_sharing(item)
     loaded = await _get_item_record(item_id)
     assert loaded is not None
     await _emit_memory_event("update", loaded)
@@ -3186,9 +3189,7 @@ async def transfer_document_owner(
     await db.flush()
     has_grants = await has_document_grants(document_id)
     item.visibility = "shared" if has_grants or item.global_access > 0 or item.group_access > 0 else "private"
-    await _commit_with_conflict(
-        "The document changed while ownership was being edited; reload and retry."
-    )
+    await commit_item_sharing(item)
     loaded = await _get_item_record(document_id)
     assert loaded is not None
     await _emit_memory_event("update", loaded)

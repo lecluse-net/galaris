@@ -5,6 +5,9 @@
 [Text storage in the database](memory-text-storage.md) describes Memory, Document and
 revision content columns and their verified migration without deleting sources.
 
+[Internal file storage](file-storage.md) describes `file://`, the shared registry and
+the verified migration of Document and Chat attachments.
+
 See [Testing behavior](testing.md) for test commands, real Vue component scenarios,
 concurrency fixtures and the limits of local bridge validation.
 

@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from core import settings
 from core.database import engine, wait_for_db
 
-from .actions import run_actions, run_datasets, run_reconcilers, validate_open_actions
+from .actions import run_actions, run_datasets, run_reconcilers, stage_actions, validate_open_actions
 from .contracts import (
     DbAdminActionResult,
     DbAdminFatalError,
@@ -228,6 +228,7 @@ async def synchronize_database(
         else:
             await _bootstrap_journal()
             issues.extend(await validate_open_actions(target_registry))
+            await stage_actions(target_registry, transitions)
             phase_results, phase_issues = await run_actions(
                 target_registry, DbAdminPhase.BEFORE_EXPAND, transitions
             )

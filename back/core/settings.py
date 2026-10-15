@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     GALARIS_SKILLS_ROOT: ClassVar[str] = "/data/skills"
     GALARIS_MEMORY_ROOT: ClassVar[str] = "/data/memory"
+    GALARIS_FILE_ROOT: ClassVar[str] = "/data/files"
     GALARIS_INTERNAL_MESSENGER_ROOT: ClassVar[str] = "/data/chat"
     GALARIS_THUMBNAIL_ROOT: ClassVar[str] = "/data/thumbnails"
 

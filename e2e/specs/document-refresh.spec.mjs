@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
-test('remote document changes refresh only their folder and visible page without removing rows', async ({ page, request }) => {
+test('remote changes and sharing updates reconcile documents without removing accessible rows or the editor', async ({ page, request }) => {
   const pageErrors = collectPageErrors(page)
   const fixture = await (await request.post('/api/__test/seed')).json()
   const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
@@ -55,10 +55,11 @@ test('remote document changes refresh only their folder and visible page without
   const rootRow = await list.getByText(rootTitle, { exact: true }).elementHandle()
   let release
   const gate = new Promise(resolve => { release = resolve })
+  let readGate = gate
   const requests = []
   await page.route('**/api/memory/documents/library', async route => {
     requests.push(route.request().postDataJSON().tag_id)
-    await gate
+    await readGate
     await route.continue()
   })
   const updated = await request.patch(`/api/memory/documents/${documents[0].id}?actor_agent_id=${fixture.agent_id}`, {
@@ -73,5 +74,29 @@ test('remote document changes refresh only their folder and visible page without
   await expect(list.getByText(updatedTitle, { exact: true })).toBeVisible()
   await expect(tree.getByText(updatedTitle, { exact: true })).toBeVisible()
   for (const row of [listRow, treeRow, rootRow]) expect(await row.evaluate(element => element.isConnected)).toBe(true)
+
+  const editor = page.locator('.ck-editor__editable')
+  await expect(editor).toContainText('Synthetic report')
+  const editorNode = await editor.elementHandle()
+  readGate = new Promise(resolve => { release = resolve })
+  requests.length = 0
+  let documentReads = 0
+  await page.route(new RegExp(`/api/memory/documents/${documents[1].id}(?:\\?|$)`), async route => {
+    documentReads++
+    await readGate
+    await route.continue()
+  })
+  await page.getByRole('combobox', { name: 'Partage', exact: true }).click()
+  await page.getByRole('button', { name: 'Public : Lecture', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await expect.poll(() => requests.length).toBeGreaterThanOrEqual(2)
+  await expect.poll(() => documentReads).toBeGreaterThanOrEqual(1)
+  for (const row of [listRow, treeRow, rootRow, editorNode]) expect(await row.evaluate(element => element.isConnected)).toBe(true)
+  await expect(editor).toContainText('Synthetic report')
+  const refreshed = page.waitForResponse(response => new URL(response.url()).pathname === `/api/memory/documents/${documents[1].id}`)
+  release()
+  expect((await refreshed).ok()).toBe(true)
+  await expect(page.getByRole('button', { name: 'Basculer lecture / écriture pour Public', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  for (const row of [listRow, treeRow, rootRow, editorNode]) expect(await row.evaluate(element => element.isConnected)).toBe(true)
   expect(pageErrors()).toEqual([])
 })

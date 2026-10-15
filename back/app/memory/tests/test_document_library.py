@@ -33,6 +33,7 @@ from app.memory.router import (
     set_managed_document_global_access,
     set_managed_document_grant,
     save_document_icon,
+    move_personal_subdocument,
 )
 from app.memory.schemas import (
     DocumentFolderUpdate,
@@ -288,6 +289,7 @@ def test_document_library_routes_use_the_dedicated_assertion() -> None:
         set_managed_document_grant,
         remove_managed_document_grant,
         save_document_icon,
+        move_personal_subdocument,
     ):
         metadata = endpoint._authorize_meta  # pyright: ignore[reportFunctionMemberAccess]
         assert metadata["assertion"] is ManagedDocumentAccessAssertion

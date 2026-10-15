@@ -3,7 +3,7 @@
     <template #before>
       <div class="q-pa-sm">
         <q-banner v-if="tagError" dense class="library-error" role="alert">{{ t('documents.library.tagError') }}<q-btn flat :label="t('documents.retry')" @click="loadTags" /></q-banner>
-        <q-tree v-model:expanded="expanded" :nodes="tree" node-key="id" dense no-transition class="document-tree">
+        <q-tree v-model:expanded="treeExpanded" :nodes="tree" node-key="id" dense no-transition class="document-tree">
           <template #default-header="{ node }">
             <div class="tag-row row items-center no-wrap full-width"
               :class="dropClass(node.id)"
@@ -12,15 +12,25 @@
               <DocumentTagRow :key="`${userId}:${node.id}`" :tag="node.tag" :selected="expanded.includes(node.id)" :busy="busy" :save="saveTag" :create="createTag"
                 :rename-on-create="renameTagId === node.id" @renamed="renameTagId === node.id && (renameTagId = null)"
                 @sort="sortFolder(node.id, $event)" @expand="expandFolder(node.id, true)" @collapse="expandFolder(node.id, false)"
-                @delete="requestDelete(node.tag)" />
+                @create-document="emit('create', node.tag)" @delete="requestDelete(node.tag)" />
             </div>
           </template>
           <template #header-document="{ node }">
-            <div class="full-width" :class="dropClass(node.id)" :aria-label="t('documents.library.tagDocuments', { name: node.tag.name })"
-              @dragover.stop="dragOverNode($event, { kind: 'document', id: node.entry.item.id }, node.tag.id, false, node.id)"
-              @dragleave="dropTarget = null" @drop.prevent.stop="dropNode">
-              <DocumentLibraryEntryRow :selected-document-id="selectedDocumentId" :entry="node.entry" :loading="false" compact @select="emit('select', $event)"
-                @dragstart="startDocumentDrag" @dragend="clearDrag" />
+            <div class="full-width" :aria-label="node.parentDocumentId ? t('documents.library.subdocuments', { name: node.parentDocumentTitle }) : t('documents.library.tagDocuments', { name: node.tag.name })">
+              <DocumentLibraryDocument :entry="node.entry" compact tree-row :tag-id="node.parentDocumentId ? null : node.tag.id" :parent-document-id="node.parentDocumentId" :selected-document-id="selectedDocumentId" :busy="busy"
+                :children="branchEntries" :loading="branches.loading.value" :errors="branchErrors" :expanded="expandedDocuments" :drop-target="dropTarget" :drop-placement="dropPlacement"
+                @select="emit('select', $event)" @create="emit('create', undefined, $event)"
+                @toggle="toggleDocument" @retry="id => branches.refresh(`doc:${id}`)" @dragstart="startDocumentDrag" @dragend="clearDrag"
+                @dragover="dragOverDocument" @dragleave="dropTarget = null" @drop="dropNode" />
+            </div>
+          </template>
+          <template #header-document-status="{ node }">
+            <div class="full-width text-caption" @click.stop>
+              <q-spinner v-if="branches.loading.value[node.branchKey]" size="16px" />
+              <q-banner v-else-if="branchErrors[node.branchKey]" dense role="alert">{{ t('documents.loadError') }}
+                <q-btn flat dense :label="t('documents.retry')" @click="branches.refresh(node.branchKey)" />
+              </q-banner>
+              <span v-else-if="branchEntries[node.branchKey] && !branches.loading.value[node.branchKey]">{{ t('documents.library.noSubdocuments') }}</span>
             </div>
           </template>
           <template #header-status="{ node }">
@@ -54,10 +64,11 @@
         </div>
         <q-banner v-if="loadError" dense class="library-error" role="alert">{{ t('documents.loadError') }}<q-btn flat :label="t('documents.retry')" @click="reload" /></q-banner>
         <q-list class="document-list-scroll" separator :aria-busy="loading" :aria-label="t(onlyUnclassified ? 'documents.library.orphans' : 'documents.library.all')">
-          <DocumentLibraryEntryRow v-for="entry in entries" :key="entry.item.id" :selected-document-id="selectedDocumentId" :entry="entry" :loading="false"
-            :class="dropClass(`list:${entry.item.id}`)" @dragover.stop="dragOverNode($event, { kind: 'document', id: entry.item.id }, null, true, `list:${entry.item.id}`)"
-            @dragleave="dropTarget = null" @drop.prevent.stop="dropNode"
-            @select="emit('select', $event)" @dragstart="startDocumentDrag" @dragend="clearDrag" />
+          <DocumentLibraryDocument v-for="entry in entries" :key="entry.item.id" :entry="entry" list-only :selected-document-id="selectedDocumentId" :busy="busy"
+            :children="branchEntries" :loading="branches.loading.value" :errors="branchErrors" :expanded="expandedDocuments" :drop-target="dropTarget" :drop-placement="dropPlacement"
+            @select="emit('select', $event)" @create="emit('create', undefined, $event)"
+            @toggle="toggleDocument" @retry="id => branches.refresh(`doc:${id}`)" @dragstart="startDocumentDrag" @dragend="clearDrag"
+            @dragover="dragOverDocument" @dragleave="dropTarget = null" @drop="dropNode" />
           <div v-if="!loading && !loadError && !entries.length" class="q-pa-md text-caption">{{ t('documents.empty') }}</div>
         </q-list>
         <div class="library-pagination row items-center justify-center q-pa-xs">
@@ -92,16 +103,17 @@ import DocumentTagCreateButton from './DocumentTagCreateButton.vue'
 import DocumentTagRow from './DocumentTagRow.vue'
 import { useDocumentBranches } from '../useDocumentBranches'
 import { reconcileLibrarySnapshot } from '../librarySnapshot'
-import DocumentLibraryEntryRow from './DocumentLibraryEntryRow.vue'
+import DocumentLibraryDocument from './DocumentLibraryDocument.vue'
 import DocumentSplitterHandle from './DocumentSplitterHandle.vue'
 defineProps<{ selectedDocumentId: string | null }>()
-const emit = defineEmits<{ select: [entry: DocumentLibraryEntry]; loaded: [entries: DocumentLibraryEntry[]]; create: [] }>()
+const emit = defineEmits<{ select: [entry: DocumentLibraryEntry]; loaded: [entries: DocumentLibraryEntry[]]; create: [tag?: DocumentTag, parent?: DocumentLibraryEntry] }>()
 const { t } = useI18n()
 const $q = useQuasar()
 const userId = ref<number | null>(null)
 const split = ref(35)
 const tags = ref<DocumentTag[]>([])
 const expanded = ref<string[]>([])
+const expandedDocuments = ref<string[]>([])
 const renameTagId = ref<string | null>(null)
 const onlyUnclassified = ref(true)
 const entries = ref<DocumentLibraryEntry[]>([])
@@ -126,7 +138,7 @@ let pendingDrop: Omit<DocumentOrderMove, 'node'> | null = null
 let drag: { kind: 'tag' | 'document'; id: string } | null = null
 let documentFromTree = false
 let generation = 0
-let loadedListContext: string | null = null
+let accessGeneration = 0
 let tagGeneration = 0
 let disposed = false
 let ready = false
@@ -135,7 +147,26 @@ let authSession = authSessionGeneration()
 interface ClassificationChange { tag_ids?: string[]; document_ids?: string[]; tags_changed?: boolean; list_changed?: boolean }
 let pendingChanges: ClassificationChange[] = []
 let refreshTimer: ReturnType<typeof setTimeout> | undefined
-interface TagNode { id: string; label: string; tag: DocumentTag; position: number; entry?: DocumentLibraryEntry; children?: TagNode[]; header?: string; selectable?: boolean }
+interface TagNode {
+  id: string; label: string; tag: DocumentTag; position: number; entry?: DocumentLibraryEntry
+  parentDocumentId?: string; parentDocumentTitle?: string; branchKey?: string
+  children?: TagNode[]; header?: string; selectable?: boolean
+}
+function documentTreeNode(entry: DocumentLibraryEntry, tag: DocumentTag, ancestors: string[] = [], parent?: DocumentLibraryEntry): TagNode {
+  const branchKey = `doc:${entry.item.id}`
+  const node: TagNode = { id: `document:${tag.id}:${entry.item.id}`, label: entry.item.title, tag, entry,
+    parentDocumentId: parent?.item.id, parentDocumentTitle: parent?.item.title, branchKey,
+    position: entry.position ?? 0, header: 'document', selectable: false }
+  const cached = branchEntries.value[branchKey]
+  if (entry.children_count || cached?.length || expandedDocuments.value.includes(branchKey)) {
+    const path = [...ancestors, entry.item.id]
+    node.children = (cached ?? []).filter(child => !path.includes(child.item.id)).map(child => documentTreeNode(child, tag, path, entry))
+    if (!cached || branchErrors.value[branchKey] || !node.children.length) {
+      node.children.push({ id: `status:${node.id}`, label: '', tag, branchKey, position: 0, header: 'document-status', selectable: false })
+    }
+  }
+  return node
+}
 const tree = computed<TagNode[]>(() => {
   const nodes = new Map<string, TagNode>(tags.value.map(tag => [tag.id, { id: tag.id, label: tag.name, tag, position: tag.position ?? 0, children: [] }]))
   const roots: TagNode[] = []
@@ -148,8 +179,7 @@ const tree = computed<TagNode[]>(() => {
   const compare = (a: TagNode, b: TagNode) => Number(Boolean(a.entry)) - Number(Boolean(b.entry)) || a.position - b.position || a.label.toLowerCase().localeCompare(b.label.toLowerCase()) || a.id.localeCompare(b.id)
   for (const node of nodes.values()) {
     const documents = branchEntries.value[node.id]
-    node.children!.push(...(documents ?? []).map(entry => ({ id: `document:${node.id}:${entry.item.id}`, label: entry.item.title,
-      tag: node.tag, entry, position: entry.position ?? 0, header: 'document', selectable: false })))
+    node.children!.push(...(documents ?? []).map(entry => documentTreeNode(entry, node.tag)))
     node.children!.sort(compare)
     // Keep empty folders expandable: QTree otherwise turns them into leaves after loading.
     if (!documents || branchErrors.value[node.id] || node.children!.length === 0) {
@@ -158,6 +188,30 @@ const tree = computed<TagNode[]>(() => {
   }
   roots.sort(compare)
   return roots
+})
+const treeDocumentKeys = computed(() => {
+  const keys = new Map<string, string>()
+  const visit = (nodes: TagNode[]): void => {
+    for (const node of nodes) {
+      if (node.entry && node.branchKey) keys.set(node.id, node.branchKey)
+      if (node.children) visit(node.children)
+    }
+  }
+  visit(tree.value)
+  return keys
+})
+const treeExpanded = computed({
+  get: () => [...expanded.value, ...[...treeDocumentKeys.value].filter(([, key]) => expandedDocuments.value.includes(key)).map(([id]) => id)],
+  set: (value: string[]) => {
+    const keys = treeDocumentKeys.value
+    const present = new Set(keys.values())
+    const next = [...new Set([...expandedDocuments.value.filter(key => !present.has(key)),
+      ...value.flatMap(id => keys.has(id) ? [keys.get(id)!] : [])])]
+    for (const key of expandedDocuments.value) if (!next.includes(key)) branches.close(key)
+    for (const key of next) if (!expandedDocuments.value.includes(key)) void branches.load(key)
+    expandedDocuments.value = next
+    expanded.value = value.filter(id => tags.value.some(tag => tag.id === id))
+  },
 })
 const listFilters = computed(() => ({ ...libraryRequestFilters(filters.value), query: query.value ?? '' }))
 function publishEntries(): void {
@@ -180,7 +234,6 @@ async function reload(): Promise<void> {
     classification: onlyUnclassified.value ? 'unclassified' : 'all',
     tag_id: null, limit: pageSize.value, offset: (page.value - 1) * pageSize.value,
   }
-  const context = JSON.stringify(request)
   loading.value = true; loadError.value = false
   try {
     const result = await memoryService.browseDocumentLibrary(request)
@@ -192,13 +245,10 @@ async function reload(): Promise<void> {
       page.value = Math.max(1, Math.ceil(result.total / pageSize.value)); return
     }
     entries.value = reconcileLibrarySnapshot(entries.value, result.entries, entry => entry.item.id)
-    loadedListContext = context
     publishEntries()
   } catch {
     if (!disposed && current === generation) {
       loadError.value = true
-      // A failed background refresh keeps usable rows; a new filter must not show unrelated results.
-      if (loadedListContext !== context) { entries.value = []; publishEntries() }
     }
   }
   finally { if (!disposed && current === generation) loading.value = false }
@@ -211,12 +261,12 @@ async function loadTags(): Promise<void> {
     if (userId.value !== result.user_id) { userId.value = result.user_id; restoreSplit() }
     tags.value = reconcileLibrarySnapshot(tags.value, result.tags, tag => tag.id); tagError.value = false
     expanded.value = expanded.value.filter(id => result.tags.some(tag => tag.id === id))
-    for (const id of Object.keys(branchEntries.value)) if (!result.tags.some(tag => tag.id === id)) branches.forget(id)
+    for (const id of Object.keys(branchEntries.value)) if (!id.startsWith('doc:') && !result.tags.some(tag => tag.id === id)) branches.forget(id)
   } catch { if (!disposed && current === tagGeneration) tagError.value = true }
 }
-async function refreshTree(ids = expanded.value): Promise<void> {
+async function refreshTree(ids = [...expanded.value, ...expandedDocuments.value]): Promise<void> {
   await Promise.all([...new Set(ids)].map(id => {
-    if (!expanded.value.includes(id)) { branches.forget(id); return }
+    if (!expanded.value.includes(id) && !expandedDocuments.value.includes(id)) { branches.forget(id); return }
     return branches.refresh(id)
   }))
 }
@@ -235,11 +285,15 @@ async function flushChanges(): Promise<void> {
   const changes = pendingChanges.splice(0)
   if (!changes.length || disposed) return
   const session = sessionGeneration
-  const ids = [...new Set(changes.flatMap(change => [...(change.tag_ids ?? []), ...documentFolders(change.document_ids ?? [])]))]
+  const access = accessGeneration
+  const ids = [...new Set(changes.flatMap(change => [...(change.tag_ids ?? []), ...documentFolders(change.document_ids ?? []),
+    ...(change.document_ids ?? []).map(id => `doc:${id}`)]))]
   if (changes.some(change => change.tags_changed)) await loadTags()
-  if (disposed || session !== sessionGeneration) return
+  if (disposed || session !== sessionGeneration || access !== accessGeneration) return
   await Promise.all([refreshTree(ids), ...(changes.some(change => change.list_changed) ? [reload()] : [])])
-  if (disposed || session !== sessionGeneration) return
+  if (disposed || session !== sessionGeneration || access !== accessGeneration) return
+  // A completed list read is authoritative; a failed folder refresh must not overwrite it.
+  if (changes.some(change => change.list_changed)) return
   const refreshed = new Map(ids.flatMap(id => branchEntries.value[id] ?? []).map(entry => [entry.item.id, entry]))
   entries.value = reconcileLibrarySnapshot(entries.value, entries.value.map(entry => {
     const current = refreshed.get(entry.item.id)
@@ -250,24 +304,39 @@ async function flushChanges(): Promise<void> {
 function classificationChanged(event: { data: ClassificationChange & { user_id: number } }): void {
   if (event.data.user_id === userId.value) queueChange(event.data)
 }
-function refreshDocuments(ids: string[]): void {
-  queueChange({ document_ids: ids, list_changed: true })
+function refreshDocuments(ids: string[], tagId?: string, parentDocumentId?: string): void {
+  if (parentDocumentId && !expandedDocuments.value.includes(`doc:${parentDocumentId}`)) expandedDocuments.value.push(`doc:${parentDocumentId}`)
+  if (tagId) {
+    const open = new Set(expanded.value)
+    let tag = tags.value.find(value => value.id === tagId)
+    const seen = new Set<string>()
+    while (tag && !seen.has(tag.id)) {
+      seen.add(tag.id); open.add(tag.id)
+      tag = tags.value.find(value => value.id === tag?.parent_id)
+    }
+    expanded.value = [...open]
+  }
+  queueChange({ document_ids: [...ids, ...(parentDocumentId ? [parentDocumentId] : [])], tag_ids: tagId ? [tagId] : [], list_changed: true })
+}
+function toggleDocument(id: string): void {
+  const key = `doc:${id}`
+  if (expandedDocuments.value.includes(key)) {
+    expandedDocuments.value = expandedDocuments.value.filter(value => value !== key)
+    branches.close(key)
+  } else { expandedDocuments.value.push(key); void branches.load(key) }
 }
 function invalidateAccess(): void {
+  ++accessGeneration
   pendingChanges = []
+  if (refreshTimer) clearTimeout(refreshTimer)
+  refreshTimer = undefined
   ++generation
-  loadedListContext = null
-  entries.value = []; owners.value = []; keywords.value = []; total.value = 0
-  branches.reset()
-  publishEntries()
-  const session = sessionGeneration
-  void loadTags().then(() => {
-    if (!disposed && session === sessionGeneration) return refresh()
-  })
+  branches.invalidate()
+  reconnect()
 }
 function reconnect(): void {
-  // Reconcile after missed events without dismantling the current navigation.
-  // Explicit access invalidations and identity changes still discard snapshots immediately.
+  // Access changes and reconnects reconcile authoritative snapshots in place.
+  // Identity changes use changeSession to discard the previous user's data.
   const session = sessionGeneration
   void loadTags().then(() => {
     if (!disposed && session === sessionGeneration) return refresh()
@@ -353,12 +422,12 @@ function startTagDrag(event: DragEvent, id: string): void {
 function startDocumentDrag(event: DragEvent, id: string): void {
   if (busy.value) { event.preventDefault(); return }
   drag = { kind: 'document', id }; event.dataTransfer?.setData('text/plain', id)
-  documentFromTree = event.target instanceof Element && Boolean(event.target.closest('.document-tree'))
+  documentFromTree = event.target instanceof Element && Boolean(event.target.closest('.document-tree, .document-children'))
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
 }
 async function moveDocument(documentId: string, tagId: string | null): Promise<void> {
   const entry = [...entries.value, ...Object.values(branchEntries.value).flat()].find(value => value.item.id === documentId)
-  const change = { document_ids: [documentId], tag_ids: tagId ? [tagId] : [], list_changed: !entry || Boolean(entry.tags?.length) !== Boolean(tagId) }
+  const change = { document_ids: [documentId], tag_ids: tagId ? [tagId] : [], list_changed: !entry || Boolean(entry.parent_document_id) || Boolean(entry.tags?.length) !== Boolean(tagId) }
   if (await mutate(() => memoryService.moveDocumentToTag(documentId, tagId), change) && tagId) {
     let tag = tags.value.find(value => value.id === tagId)
     while (tag) {
@@ -390,6 +459,32 @@ function dragOverNode(event: DragEvent, anchor: DocumentOrderNode, parentId: str
   dropPlacement.value = inside ? 'inside' : ratio < 0.5 ? 'before' : 'after'
   pendingDrop = { parent_id: parent, list_only: listOnly && !documentFromTree, ...(inside ? {} : { anchor, after: ratio >= 0.5 }) }
 }
+function dragOverDocument(event: DragEvent, entry: DocumentLibraryEntry, parentDocumentId?: string | null, tagId?: string | null, listOnly = false): void {
+  pendingDrop = null; dropTarget.value = null
+  if (!drag || busy.value || drag.kind !== 'document' || drag.id === entry.item.id) return
+  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const ratio = (event.clientY - bounds.top) / bounds.height
+  const inside = ratio >= 0.25 && ratio <= 0.75
+  const parent = inside ? entry.item.id : parentDocumentId
+  // Known descendants are rejected immediately; the server checks the entire stored hierarchy.
+  let ancestor = parent
+  const seen = new Set<string>()
+  const known = [...entries.value, ...Object.values(branchEntries.value).flat()]
+  while (ancestor && !seen.has(ancestor)) {
+    if (ancestor === drag.id) return
+    seen.add(ancestor); ancestor = known.find(value => value.item.id === ancestor)?.parent_document_id
+  }
+  event.preventDefault()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  dropTarget.value = `doc:${entry.item.id}`
+  dropPlacement.value = inside ? 'inside' : ratio < 0.5 ? 'before' : 'after'
+  pendingDrop = {
+    parent_id: parent ? null : tagId ?? null,
+    ...(parent ? { parent_document_id: parent } : {}),
+    list_only: !inside && !parent && listOnly && !documentFromTree,
+    ...(inside ? {} : { anchor: { kind: 'document', id: entry.item.id }, after: ratio >= 0.5 }),
+  }
+}
 function dropClass(key: string): Record<string, boolean> {
   return { 'tag-row--drop': dropTarget.value === key && dropPlacement.value === 'inside',
     'node-drop-before': dropTarget.value === key && dropPlacement.value === 'before',
@@ -398,6 +493,15 @@ function dropClass(key: string): Record<string, boolean> {
 async function dropNode(): Promise<void> {
   const node = drag; const target = pendingDrop; clearDrag()
   if (!node || !target) return
+  if (target.parent_document_id) {
+    if (await mutate(() => memoryService.reorderDocuments({ node, ...target }), {
+      document_ids: [node.id, target.parent_document_id], list_changed: true,
+    }) && !expandedDocuments.value.includes(`doc:${target.parent_document_id}`)) {
+      expandedDocuments.value.push(`doc:${target.parent_document_id}`)
+      await branches.refresh(`doc:${target.parent_document_id}`)
+    }
+    return
+  }
   if (!target.anchor && !target.list_only) {
     if (node.kind === 'document') { await moveDocument(node.id, target.parent_id); return }
     const tag = tags.value.find(value => value.id === node.id)
@@ -435,11 +539,11 @@ async function changeSession(event: Event): Promise<void> {
   if ((event as CustomEvent<string | null>).detail !== null && currentSession === authSession) return
   authSession = currentSession
   const session = ++sessionGeneration
-  loadedListContext = null
   pendingChanges = []
   if (refreshTimer) clearTimeout(refreshTimer)
   ++generation; ++tagGeneration; entries.value = []; tags.value = []; owners.value = []; keywords.value = []; total.value = 0
   deleteDialog.value = false; editingTag.value = null; renameTagId.value = null; userId.value = null; busy.value = false; expanded.value = []; branches.reset(); clearDrag()
+  expandedDocuments.value = []
   ready = false; reset(); page.value = 1; await loadTags()
   if (disposed || session !== sessionGeneration) return
   ready = true; await reload()
@@ -458,12 +562,8 @@ defineExpose({ reload: refresh, refreshDocuments })
 .tag-row--drop { background: var(--solaire-blue-light); }
 .node-drop-before { box-shadow: inset 0 2px var(--solaire-blue-accent); }
 .node-drop-after { box-shadow: inset 0 -2px var(--solaire-blue-accent); }
-.document-tree :deep(.q-tree__children) { padding-left: 40px; }
-.document-tree :deep(.q-tree__node-header) { min-height: 28px; padding-top: 1px; padding-bottom: 1px; }
-.document-tree :deep(.q-tree__node:after) { left: -9px; }
-.document-tree :deep(.q-tree__node-header:before) { left: -9px; width: 9px; }
-.document-tree :deep(.q-tree__node--child) { padding-left: 0; }
-.document-tree :deep(.q-tree__node--child > .q-tree__node-header:before) { left: -9px; width: 9px; }
+.document-tree :deep(.q-tree__arrow), .document-tree :deep(.q-tree__spinner) { color: var(--solaire-gray-accent); }
+.document-tree :deep(.q-tree__node-header) { min-height: 28px; }
 .document-list-panel { height: 100%; display: flex; flex-direction: column; min-height: 0; }
 .document-list-scroll { flex: 1; min-height: 0; overflow: auto; }
 .library-pagination { flex-shrink: 0; gap: 4px 12px; }

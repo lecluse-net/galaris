@@ -324,6 +324,19 @@ page and select the tab without assuming a URL parameter. Contacts are at
 `/memory/contacts`; thematic groupings are under **Knowledge → Thematic dossiers** (`/topic`).
 Sharing a link does not grant access to its content.
 
+In the **Documents** library, every folder offers a **New document** icon among its
+actions. Enter the title and owner: the document is automatically placed in that folder,
+which expands, and opens in the editor. The general creation button keeps new documents
+in the unclassified list.
+
+A document can also contain **sub-documents**. Use its **New sub-document** icon,
+or drag an existing document onto the middle of its row. The arrow expands its children
+across multiple levels; clicking the title still opens the document. To move a child out of
+its parent, drag it into the unclassified documents area or a folder.
+This hierarchy is personal, like folders: each document retains its own sharing rights.
+Deleting a parent preserves its children; readable children reappear in the unclassified
+list, including when access to their parent is revoked.
+
 To develop a document with an agent, ask for updates to the relevant passages. The agent
 preserves useful information and can add distinct material; prior versions remain in the
 revisions. Specify when you need a chronological journal or meeting minutes: that chronology

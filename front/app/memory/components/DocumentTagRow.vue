@@ -15,6 +15,9 @@
       @keydown.f2.prevent.stop="startRename" @keydown.enter.prevent.stop="startRename">{{ tag.name }}</span>
     <div v-if="!renaming" class="tag-toolbar row items-center no-wrap" role="group" :aria-label="t('documents.library.tagActions', { name: tag.name })"
       @click.stop @dblclick.stop @dragstart.prevent.stop>
+      <q-btn flat dense round size="sm" icon="note_add" :disable="busy" :aria-label="t('documents.library.newDocument', { name: tag.name })" @click="emit('createDocument')">
+        <q-tooltip>{{ t('documents.library.newDocument', { name: tag.name }) }}</q-tooltip>
+      </q-btn>
       <q-btn flat dense round size="sm" icon="playlist_add" :disable="busy" :aria-label="t('documents.library.newSibling', { name: tag.name })" @click="createSibling">
         <q-tooltip>{{ t('documents.library.newSibling', { name: tag.name }) }}</q-tooltip>
       </q-btn>
@@ -55,7 +58,7 @@ const props = defineProps<{
   save: (tag: DocumentTag) => Promise<boolean>
   create: (name: string, parentId: string | null, afterTagId?: string) => Promise<boolean>
 }>()
-const emit = defineEmits<{ delete: []; renamed: []; sort: [descending: boolean]; expand: []; collapse: [] }>()
+const emit = defineEmits<{ createDocument: []; delete: []; renamed: []; sort: [descending: boolean]; expand: []; collapse: [] }>()
 const { t } = useI18n()
 const renaming = ref(false)
 const name = ref('')
@@ -90,12 +93,12 @@ async function rename(): Promise<void> {
 </script>
 <style scoped>
 .document-tag-row { position: relative; min-width: 0; }
-.tag-toolbar { position: absolute; right: 0; top: 50%; transform: translateY(-50%); border-radius: 4px; background: var(--solaire-gray-light); opacity: 0; pointer-events: none; }
+.tag-toolbar { flex-shrink: 0; border-radius: 4px; background: var(--solaire-gray-light); opacity: 0; pointer-events: none; }
 .document-tag-row:hover .tag-toolbar, .document-tag-row:focus-within .tag-toolbar { opacity: 1; pointer-events: auto; }
 .document-tag-row--dark .tag-toolbar { background: var(--solaire-gray-dark); }
 .tag-delete { color: var(--solaire-red-accent); }
 @media (hover: none), (max-width: 1023px) {
-  .tag-toolbar { position: static; transform: none; opacity: 1; pointer-events: auto; }
+  .tag-toolbar { opacity: 1; pointer-events: auto; }
 }
 .folder-icon-button { width: 26px; height: 26px; min-width: 26px; min-height: 26px; padding: 0; }
 .tag-name { min-width: 0; cursor: pointer; }

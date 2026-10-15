@@ -377,6 +377,12 @@ A local cancellation does not always guarantee that the external engine will sto
 
 ## Memory, Documents, and Topics
 
+Files uploaded to Documents and Chat use shared internal storage. Existing links and access
+rights remain valid after migration. An agent can also create an independent private file
+with `file_create`, `path="file://"` and a readable name. External references such as Nextcloud
+retain their provider and are never imported by migration. See
+[storage and backups](../dev/file-storage.md).
+
 To personalise a document or folder, open its icon picker and use the **+** button to
 upload an SVG. The size limit is the same as for files (100 MB by default); scripts
 and external content remain prohibited.

@@ -59,7 +59,7 @@
       <q-card class="documents-create-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="note_add" size="24px" class="q-mr-sm" />
-          <div class="text-h6">{{ t('documents.createDocument') }}</div>
+          <div class="text-h6">{{ createDocumentParent ? t('documents.library.newSubdocument', { name: createDocumentParent.item.title }) : createDocumentTag ? t('documents.library.newDocument', { name: createDocumentTag.name }) : t('documents.createDocument') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
@@ -142,6 +142,7 @@ import { websocket } from '@/core/websocket'
 import { memoryService } from '../services/memoryService'
 import type {
   DocumentType,
+  DocumentTag,
   DocumentLibraryEntry,
   DocumentOwnerKind,
   DocumentOwnerOption,
@@ -195,6 +196,8 @@ const createDocumentOwner = ref('')
 const createDocumentActorAgentId = ref<number | null>(null)
 const createDocumentTitle = ref('')
 const createDocumentType = ref<DocumentType>('html')
+const createDocumentTag = ref<DocumentTag | null>(null)
+const createDocumentParent = ref<DocumentLibraryEntry | null>(null)
 const documentTypeOptions = computed(() => ['html', 'dataset'].map(value => ({ value, label: t(`documents.types.${value}`) })))
 const createOwnerOptions = ref<DocumentOwnerOptions>({ agents: [], users: [] })
 const filteredCreateOwnerOptions = ref<CreateOwnerSelectOption[]>([])
@@ -292,7 +295,9 @@ async function selectEntry(entry: DocumentLibraryEntry): Promise<void> {
   if ($q.screen.lt.md) openMobileDocument(entry.item.id, actor)
   else await selectDocument(entry.item.id, actor)
 }
-async function openCreateDocument(): Promise<void> {
+async function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry): Promise<void> {
+  createDocumentTag.value = tag ?? null
+  createDocumentParent.value = parent ?? null
   createDocumentActorAgentId.value = selectedAgentId.value ?? agentStore.sortedAgents[0]?.id ?? null
   createDocumentTitle.value = ''
   createDocumentType.value = 'html'
@@ -316,6 +321,8 @@ async function createDocument(): Promise<void> {
   const owner = selectedCreateDocumentOwner.value
   const actorAgentId = owner?.kind === 'agent' ? owner.id : createDocumentActorAgentId.value
   const title = createDocumentTitle.value.trim()
+  const tag = createDocumentTag.value
+  const parent = createDocumentParent.value
   if (!owner || actorAgentId === null || !title || creatingDocument.value) return
   creatingDocument.value = true
   try {
@@ -328,11 +335,23 @@ async function createDocument(): Promise<void> {
       folder: '',
     })
     createDocumentOpen.value = false
-    navigation.value?.refreshDocuments([document.id])
+    let classified = false
+    if (tag || parent) {
+      try {
+        if (parent) await memoryService.moveDocumentUnderDocument(document.id, parent.item.id)
+        else if (tag) await memoryService.moveDocumentToTag(document.id, tag.id)
+        classified = true
+      } catch {
+        $q.notify({ type: 'warning', message: parent
+          ? t('documents.createdUnnested', { name: parent.item.title })
+          : t('documents.createdUnclassified', { name: tag?.name }) })
+      }
+    }
+    navigation.value?.refreshDocuments([document.id], classified ? tag?.id : undefined, classified ? parent?.item.id : undefined)
     const documentActor = owner.kind === 'user' ? null : actorAgentId
     if ($q.screen.lt.md) openMobileDocument(document.id, documentActor)
     else await selectDocument(document.id, documentActor)
-    $q.notify({ type: 'positive', message: t('documents.created') })
+    if ((!tag && !parent) || classified) $q.notify({ type: 'positive', message: t('documents.created') })
   } catch {
     $q.notify({ type: 'negative', message: t('documents.createError') })
   } finally {

@@ -1,0 +1,63 @@
+"""Exercise multipart upload, download and denial through the assembled API."""
+
+from uuid import UUID, uuid4
+
+import pytest
+from sqlalchemy import select
+
+from app.agent.models import Agent, Title
+from core.authorize import Assignment, Privilege, Role
+from core.database import get_db_session
+from core.storage import StoredFile
+
+
+@pytest.mark.asyncio
+async def test_managed_file_http_upload_download_rename_and_scope_denials(client):
+    password = "Synthetic-file-password-123"
+    admin_credentials = {"email": f"file-admin-{uuid4()}@example.com", "password": password}
+    registered = await client.post("/api/auth/register", json=admin_credentials)
+    assert registered.status_code == 201, registered.text
+    login = await client.post("/api/auth/login-json", json=admin_credentials)
+    admin = {"Authorization": "Bearer " + login.json()["access_token"]}
+    admin_id = (await client.get("/api/auth/me", headers=admin)).json()["id"]
+    human_credentials = {"email": f"file-owner-{uuid4()}@example.com", "password": password}
+    created = await client.post("/api/auth/users", headers=admin, json=human_credentials)
+    assert created.status_code == 201, created.text
+    human_id = created.json()["id"]
+    async with get_db_session() as db:
+        permissions = list(await db.scalars(select(Privilege).where(Privilege.code.in_(["MEMORY_ACCESS", "MEMORY_EDIT"]))))
+        role = Role(code=f"file-owner-{uuid4()}", display_name="Synthetic file owner", privileges=permissions)
+        title = Title(label="Synthetic files", gender="X")
+        db.add_all([role, title])
+        await db.flush()
+        db.add(Assignment(user_id=human_id, role_id=role.id, is_default=True))
+        owner = Agent(user_id=human_id, title_id=title.id, code=f"file-owner-{uuid4()}", first_name="File", last_name="Owner")
+        other = Agent(user_id=admin_id, title_id=title.id, code=f"file-other-{uuid4()}", first_name="Other", last_name="Owner")
+        db.add_all([owner, other])
+        await db.flush()
+        owner_id, other_id = owner.id, other.id
+    client.cookies.clear()
+    denied = await client.post(f"/api/file-share/files?agent_id={owner_id}", files={"upload": ("x.txt", b"private")})
+    assert denied.status_code in {401, 403}
+    login = await client.post("/api/auth/login-json", json=human_credentials)
+    human = {"Authorization": "Bearer " + login.json()["access_token"]}
+    uploaded = await client.post(f"/api/file-share/files?agent_id={owner_id}", headers=human,
+        files={"upload": ("Report.txt", b"Synthetic HTTP bytes", "text/plain")})
+    assert uploaded.status_code == 201, uploaded.text
+    uri = uploaded.json()["uri"]
+    assert uri.startswith("file://")
+    identifier = uri.removeprefix("file://")
+    async with get_db_session() as db:
+        record = await db.get(StoredFile, UUID(identifier))
+        assert record is not None and record.created_by == human_id
+    download = f"/api/file-share/files/{identifier}/content"
+    response = await client.get(download, params={"agent_id": owner_id}, headers=human)
+    assert response.status_code == 200 and response.content == b"Synthetic HTTP bytes"
+    assert "attachment" in response.headers["content-disposition"]
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert (await client.get(download, params={"agent_id": other_id}, headers=human)).status_code == 404
+    renamed = await client.patch(f"/api/file-share/files/{identifier}?agent_id={owner_id}", headers=human,
+        json={"name": "Official.txt"})
+    assert renamed.status_code == 200 and renamed.json()["uri"] == uri and renamed.json()["name"] == "Official.txt"
+    # A manager of another agent cannot access this private owner binding either.
+    assert (await client.get(download, params={"agent_id": other_id}, headers=admin)).status_code == 404

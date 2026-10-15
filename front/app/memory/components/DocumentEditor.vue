@@ -9,6 +9,10 @@
       <q-btn flat :label="t('documents.retry')" @click="loadDocument" />
     </div>
     <template v-else>
+      <q-banner v-if="refreshError" role="alert">
+        {{ t('documents.loadError') }}
+        <q-btn flat :label="t('documents.retry')" @click="onWebsocketConnect" />
+      </q-banner>
       <q-toolbar class="document-editor-toolbar">
         <DocumentIcon :document-id="currentDocument.id" :title="editorTitle || currentDocument.title" size="40px" class="q-mr-sm" />
         <q-toolbar-title>
@@ -292,6 +296,7 @@ import DocumentIcon from './DocumentIcon.vue'
 import DocumentApplicationBlock from './DocumentApplicationBlock.vue'
 import DocumentAppPermissions from './DocumentAppPermissions.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { isAxiosError } from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { copyToClipboard, useQuasar } from 'quasar'
@@ -300,6 +305,7 @@ import { CodeEditor, RichTextEditor, richLinkHref, documentResourceHtml, documen
 import { websocket } from '@/core/websocket'
 import { AgentAvatar, useAgentStore } from '@/app/agent'
 import { memoryService } from '../services/memoryService'
+import { reconcileLibrarySnapshot } from '../librarySnapshot'
 import type {
   DocumentAttachment,
   DocumentGlobalAccess,
@@ -387,6 +393,7 @@ const loading = ref(true)
 const deleteDialogOpen = ref(false)
 const deletingDocument = ref(false)
 const refreshing = ref(false)
+const refreshError = ref(false)
 const currentDocument = ref<MemoryItemDetail | null>(null)
 const autosaveState = ref<AutosaveState>('saved')
 const editorTitle = ref('')
@@ -724,18 +731,20 @@ async function loadKeywords(): Promise<void> {
 }
 
 async function onSharingChanged(): Promise<void> {
-  await mergeLatestDocument(props.documentId)
-  scheduleAutosave()
+  pendingExternalRevision = Math.max(pendingExternalRevision, currentDocument.value?.revision ?? 0)
+  await refreshFromRealtime()
 }
 
 async function loadAttachments(): Promise<void> {
-  attachmentsLoading.value = true
+  const generation = loadGeneration
+  attachmentsLoading.value = attachments.value.length === 0
   try {
-    attachments.value = await memoryService.listDocumentAttachments(props.documentId, props.agentId)
+    const incoming = await memoryService.listDocumentAttachments(props.documentId, props.agentId)
+    if (generation === loadGeneration) attachments.value = reconcileLibrarySnapshot(attachments.value, incoming, attachment => attachment.id)
   } catch {
-    attachments.value = []
+    // A temporary failure must not remove already displayed attachments.
   } finally {
-    attachmentsLoading.value = false
+    if (generation === loadGeneration) attachmentsLoading.value = false
   }
 }
 
@@ -818,7 +827,8 @@ async function onHistoryRestored(): Promise<void> {
 
 async function loadDocument(): Promise<void> {
   const generation = ++loadGeneration
-  loading.value = true
+  loading.value = !currentDocument.value
+  refreshError.value = false
   try {
     const document = await memoryService.getDocument(props.documentId, props.agentId)
     if (generation !== loadGeneration) return
@@ -827,10 +837,9 @@ async function loadDocument(): Promise<void> {
     if (generation !== loadGeneration) return
     applyDocument(document, 'loaded')
     await Promise.all([loadKeywords(), loadAttachments()])
-  } catch {
+  } catch (error) {
     if (generation !== loadGeneration) return
-    currentDocument.value = null
-    emit('unavailable', props.documentId)
+    handleRefreshError(error)
   } finally {
     if (generation === loadGeneration) loading.value = false
   }
@@ -924,12 +933,17 @@ function resolveConflict(keepDraft: boolean): void {
   scheduleAutosave(150)
 }
 
-async function mergeLatestDocument(documentId: string): Promise<void> {
+async function mergeLatestDocument(documentId: string, generation = loadGeneration): Promise<void> {
+  const latest = await memoryService.getDocument(documentId, props.agentId)
+  if (generation !== loadGeneration || currentDocument.value?.id !== documentId) return
+  mergeDocument(latest)
+}
+
+function mergeDocument(latest: MemoryItemDetail): void {
   const previousBase = lastSavedDraft.value
   if (!previousBase) return
+  // Include edits made while the request was pending.
   const local = draftFromEditor()
-  const latest = await memoryService.getDocument(documentId, props.agentId)
-  if (currentDocument.value?.id !== documentId) return
   const remote = draftFromDocument(latest)
   const overlapping = (Object.keys(local) as (keyof DocumentDraft)[]).some(key => !sameValue(local[key], previousBase[key]) && !sameValue(remote[key], previousBase[key]) && !sameValue(local[key], remote[key]))
   if (overlapping) {
@@ -1146,25 +1160,39 @@ async function refreshFromRealtime(): Promise<void> {
     return
   }
   const generation = ++loadGeneration
+  loading.value = false
   refreshing.value = true
+  refreshError.value = false
   try {
     if (hasUnsavedChanges.value) {
-      await mergeLatestDocument(document.id)
-      scheduleAutosave(150)
+      await mergeLatestDocument(document.id, generation)
+      if (generation === loadGeneration) scheduleAutosave(150)
     } else {
       const latest = await memoryService.getDocument(document.id, props.agentId)
       if (generation === loadGeneration && currentDocument.value?.id === document.id) {
-        applyDocument(latest, 'updated')
+        // A clean editor may have acquired a draft during the read.
+        if (hasUnsavedChanges.value) {
+          mergeDocument(latest)
+          scheduleAutosave(150)
+        } else applyDocument(latest, 'updated')
         await loadAttachments()
       }
     }
-  } catch {
+  } catch (error) {
     if (generation !== loadGeneration) return
-    currentDocument.value = null
-    emit('unavailable', document.id)
+    handleRefreshError(error)
   } finally {
     if (generation === loadGeneration) refreshing.value = false
   }
+}
+
+function handleRefreshError(error: unknown): void {
+  const status = isAxiosError(error) ? error.response?.status : undefined
+  if (!currentDocument.value || status === 401 || status === 403 || status === 404) {
+    preserveDraft()
+    currentDocument.value = null
+    emit('unavailable', props.documentId)
+  } else refreshError.value = true
 }
 
 function scheduleRealtimeRefresh(): void {
@@ -1179,13 +1207,12 @@ function onMemoryRealtime(response: MemoryRealtimeEvent): void {
   const event = response.data
   if (event.node_kind !== 'document' || event.id !== props.documentId) return
   if (event.revision <= 0) {
-    loadGeneration += 1
-    currentDocument.value = null
-    emit('unavailable', event.id)
+    onWebsocketConnect()
     return
   }
+  if (currentDocument.value && event.revision < currentDocument.value.revision) return
   pendingExternalRevision = Math.max(pendingExternalRevision, event.revision)
-  if (!saveInFlight) scheduleRealtimeRefresh()
+  if (!saveInFlight) { ++loadGeneration; scheduleRealtimeRefresh() }
 }
 
 function onMemoryDelete(response: MemoryRealtimeEvent): void {
@@ -1198,9 +1225,11 @@ function onMemoryDelete(response: MemoryRealtimeEvent): void {
 }
 
 function onWebsocketConnect(): void {
+  ++loadGeneration
+  refreshError.value = false
   if (!currentDocument.value) { refreshing.value = false; void loadDocument(); return }
-  if (!props.editable) refreshing.value = true
-  pendingExternalRevision = currentDocument.value.revision + 1
+  refreshing.value = true
+  pendingExternalRevision = Math.max(pendingExternalRevision, currentDocument.value.revision + 1)
   scheduleRealtimeRefresh()
 }
 

@@ -77,7 +77,8 @@ Une synchronisation non sèche suit cet ordre :
 2. attendre PostgreSQL et acquérir un verrou consultatif global ;
 3. inspecter `public`, calculer le delta vers la cible canonique et vérifier les changements d’ENUM ;
 4. créer si nécessaire les tables de journal DbAdmin ;
-5. vérifier les actions inachevées et les successions explicitement compatibles ;
+5. vérifier les actions inachevées et les successions explicitement compatibles, puis
+   journaliser toutes les obligations du delta avant tout DDL ;
 6. exécuter les actions `BEFORE_EXPAND` ;
 7. préparer les changements d’ENUM ;
 8. appliquer avec Atlas une cible où les nouvelles colonnes obligatoires sont temporairement
@@ -396,6 +397,9 @@ DbAdmin conserve :
 - le dernier état de chaque action dans `dbadmin_actions`.
 
 Les statuts d’action sont `running`, `deferred`, `failed`, `applied` et `already_satisfied`.
+Les actions applicables sont d'abord journalisées `deferred` avant Atlas, même si leur
+phase est ultérieure. Un arrêt entre l'expansion validée et le premier handler ne peut
+donc pas faire disparaître leur obligation avec le delta initial.
 Lorsqu’une action est `running`, `deferred` ou `failed` :
 
 - son code doit rester enregistré ;

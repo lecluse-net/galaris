@@ -64,6 +64,7 @@ from .schemas import (
     DocumentTagDeletionResult,
     DocumentTagWrite,
     DocumentTagMove,
+    DocumentParentMove,
     DocumentTagIconWrite,
     DocumentTagIconPublic,
     DocumentOwnerOptions,
@@ -777,6 +778,17 @@ async def upload_personal_tag_icon(data: DocumentTagIconWrite) -> DocumentTagIco
 async def move_personal_document(document_id: UUID, data: DocumentTagMove) -> None:
     try:
         await document_tags.move_document(await current_management_scope(), document_id, data.tag_id)
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.put("/documents/{document_id}/parent", status_code=204)
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN], assertion=ManagedDocumentAccessAssertion)
+async def move_personal_subdocument(document_id: UUID, data: DocumentParentMove) -> None:
+    from .document_nesting import move
+
+    try:
+        await move(await current_management_scope(), document_id, data.parent_document_id)
     except Exception as exc:
         raise _http_error(exc) from exc
 

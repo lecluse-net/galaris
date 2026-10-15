@@ -2,7 +2,11 @@
 
 - [0190 — Fichiers HTML et mécanismes standards de pièces jointes](0190-html-files-use-standard-attachments.md)
 
+- [0189 — Sous-documents dans le classement personnel](0189-personal-document-hierarchy.md)
+
 - [0188 — Contenus textuels dans les tables Memory et Documents](0188-inline-memory-and-document-text.md)
+
+- [0186 — Fichiers gérés et déplacement interne vérifié](0186-managed-files-and-verified-moves.md)
 
 - [0185 — Messages internes aux collègues via les Tasks déléguées](0185-internal-peer-message-tasks.md)
 

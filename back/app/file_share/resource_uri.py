@@ -23,7 +23,6 @@ PROTOCOL_SCHEMES = frozenset(
         "cid",
         "coap",
         "coaps",
-        "data",
         "dav",
         "dns",
         "file",
@@ -59,6 +58,7 @@ PROTOCOL_SCHEMES = frozenset(
 )
 NATIVE_RESOURCE_SCHEMES = frozenset(
     {
+        "file",
         "console",
         "document",
         "galaris",
@@ -227,6 +227,16 @@ def parse_resource_uri(
         )
     if scheme in {"http", "https"}:
         return _normalize_web_uri(f"{scheme}://{locator}")
+    if scheme == "file":
+        if not locator and allow_empty:
+            return ResourceUri("file", "")
+        try:
+            file_id = UUID(locator)
+        except ValueError as exc:
+            raise ResourceUriError("file:// requires exactly one managed file UUID.") from exc
+        if locator.lower() != str(file_id):
+            raise ResourceUriError("file:// requires a canonical UUID, never a filesystem path.")
+        return ResourceUri("file", str(file_id))
     normalized = _normalize_locator(locator, allow_empty=allow_empty)
     if scheme == "memory" and normalized:
         parts = [part for part in normalized.strip("/").split("/") if part]

@@ -22,6 +22,21 @@ from core.settings import settings
 
 
 @pytest.fixture(autouse=True)
+def isolated_managed_files(monkeypatch: pytest.MonkeyPatch, tmp_path_factory):
+    """Managed file bytes must never leak between synthetic test databases."""
+    from pathlib import Path
+
+    # DbAdmin's ephemeral baseline already binds its synthetic volume. Each test
+    # gets fresh bytes and the matching baseline identity, outside its own tmp_path
+    # so unrelated storage/quota assertions cannot count this control file.
+    baseline = Path(settings.GALARIS_FILE_ROOT) / ".store-uuid"
+    directory = tmp_path_factory.mktemp("managed-files")
+    if baseline.is_file():
+        (directory / ".store-uuid").write_bytes(baseline.read_bytes())
+    monkeypatch.setattr(type(settings), "GALARIS_FILE_ROOT", str(directory))
+
+
+@pytest.fixture(autouse=True)
 def isolated_internal_secrets(monkeypatch, tmp_path_factory):
     """Unit/HTTP clients do not run lifespan; provide isolated test credentials."""
     import core.secrets as internal

@@ -5,6 +5,9 @@
 Le [stockage textuel en base](memory-text-storage.md) décrit les colonnes de contenu
 des souvenirs, documents et révisions, ainsi que leur migration vérifiée sans effacement des sources.
 
+Le [stockage des fichiers internes](file-storage.md) décrit `file://`, le registre partagé
+et la migration vérifiée des PJ Documents et Chat.
+
 Ce document décrit l’architecture qui existe dans le dépôt. Il sert de contrat de
 contribution : lorsqu’une implémentation impose un autre flux, corrigez soit le code soit ce
 guide, mais ne créez pas une seconde architecture implicite.
