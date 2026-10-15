@@ -3253,6 +3253,7 @@
           "back/app/task/scheduler.py",
           "back/app/task/startup_timing.py",
           "back/app/task/task_service.py",
+          "back/app/task/work_projection.py",
           "back/app/task/work_tracking.py",
           "back/app/task/working_set.py"
         ],

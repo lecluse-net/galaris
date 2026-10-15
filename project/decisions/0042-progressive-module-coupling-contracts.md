@@ -53,6 +53,13 @@ de modules référencées par étoile sans importer l'application.
 - Les surfaces publiques restent des contrats de code : le manifeste ne rend pas stable un module
   interne et ne remplace ni les tests de comportement ni les décisions métier.
 
+## Consolidation des surfaces existantes
+
+Les projections de travail conversationnel sont lues et sérialisées par `app.task.facade`.
+Conversation possède ses liens, ses fenêtres de récence, son ordre de présentation et ses
+horodatages ; elle n'interprète plus les modèles Task pour construire ce contexte. La lecture
+reste interne à une room déjà autorisée et ne crée aucun droit supplémentaire.
+
 ## Contrôles
 
 - `make project-context-check`

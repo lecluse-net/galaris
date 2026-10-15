@@ -894,94 +894,51 @@ async def _mark_effect_if_fresh(round_id: UUID, *, lease_token: UUID) -> bool:
 async def linked_work_snapshot(room_id: UUID) -> tuple[Mapping[str, object], ...]:
     """Return temporally relevant Tasks launched from one canonical room."""
 
-    from app.task import Task, amendment_basis
-    from app.task.operational_state import inspect_operational_state
-    from app.task.working_set import parse_working_set
+    from app.task.facade import TaskWorkSnapshot, list_work_snapshots
 
-    linked_from_room = exists(
-        select(ConversationTaskLink.id)
+    linked_task_ids = tuple(await get_db().scalars(
+        select(ConversationTaskLink.task_id)
         .join(
             ConversationRound,
             ConversationRound.id == ConversationTaskLink.round_id,
         )
         .where(
-            ConversationTaskLink.task_id == Task.id,
             ConversationRound.room_id == room_id,
         )
-    )
-    rows = list(
-        (
-            await get_db().scalars(
-                Task.histo_filter(
-                    select(Task).where(
-                        or_(
-                            linked_from_room,
-                            Task.message_group_id == str(room_id),
-                        )
-                    )
-                ).order_by(Task.created_at.desc(), Task.id.desc())
-            )
-        ).all()
-    )
+    ))
     processing_at = _aware_utc(_now())
+    rows = await list_work_snapshots(
+        task_ids=linked_task_ids, message_group_id=str(room_id),
+        paused_since=processing_at - LINKED_WORK_PAUSED_MAX_AGE,
+        terminal_since=processing_at - LINKED_WORK_TERMINAL_MAX_AGE,
+        terminal_limit=LINKED_WORK_TERMINAL_LIMIT,
+    )
     candidates: list[
-        tuple[int, datetime, str, Task, Mapping[str, object]]
+        tuple[int, datetime, str, TaskWorkSnapshot]
     ] = []
     for task in rows:
-        operational = await inspect_operational_state(task)
-        state = str(operational["operational_state"])
-        activity_at = _aware_utc(cast(datetime, task.updated_at or task.created_at))
-        if (
-            state == "PAUSED"
-            and activity_at < processing_at - LINKED_WORK_PAUSED_MAX_AGE
-        ):
-            continue
-        if (
-            state == "TERMINAL"
-            and activity_at <= processing_at - LINKED_WORK_TERMINAL_MAX_AGE
-        ):
-            continue
+        state = task.state
+        activity_at = _aware_utc(task.activity_at)
         candidates.append(
             (
                 _LINKED_WORK_STATE_PRIORITY.get(state, len(_LINKED_WORK_STATE_PRIORITY)),
                 activity_at,
-                str(task.id),
+                str(task.task_id),
                 task,
-                cast(Mapping[str, object], operational),
             )
         )
 
     candidates.sort(key=lambda item: (item[0], -item[1].timestamp(), item[2]))
     snapshots: list[Mapping[str, object]] = []
-    terminal_count = 0
-    for _priority, activity_at, _task_id, task, operational in candidates:
-        state = str(operational["operational_state"])
-        if state == "TERMINAL":
-            if terminal_count >= LINKED_WORK_TERMINAL_LIMIT:
-                continue
-            terminal_count += 1
-        result = task.get_execution_result()
-        working_set = parse_working_set(task)
+    for _priority, activity_at, _task_id, task in candidates:
         created_at = _aware_utc(task.created_at)
         snapshots.append(
             {
-                "task_id": str(task.id),
-                "resource_uri": f"galaris://task/{task.id}",
-                "label": task.label,
-                "status": task.status.value,
-                "paused": task.paused,
-                "revision": task.revision,
-                "amendment_basis": amendment_basis(task),
-                "objective": str(task.objective or "")[:LINKED_WORK_OBJECTIVE_MAX_CHARS],
+                **task.fields,
+                "objective": str(task.fields["objective"])[:LINKED_WORK_OBJECTIVE_MAX_CHARS],
                 "created_at": _prompt_timestamp(created_at),
                 "state_since": _prompt_timestamp(activity_at),
                 "updated_at": activity_at.isoformat(),
-                "result_available": result is not None,
-                "working_set": [
-                    resource.model_dump(mode="json")
-                    for resource in working_set.active()[:25]
-                ],
-                **operational,
             }
         )
     return tuple(snapshots)

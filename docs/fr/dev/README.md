@@ -139,6 +139,8 @@ Les modules backend sont déclarés dans `back/modules.py`. Chaque package peut 
 `router`, des modèles, des privilèges, un listener, des paramètres ou des locales. Le
 bootstrap central charge seulement les éléments déclarés.
 
+Le contexte conversationnel lit des projections Task par sa façade, sans exposer ses modèles ORM.
+
 Les modules frontend sont déclarés dans `front/modules.ts`. Les pages sont découvertes par
 le routage basé sur les fichiers ; la navigation est agrégée depuis les `navigation.ts`.
 

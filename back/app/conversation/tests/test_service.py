@@ -1086,6 +1086,7 @@ async def test_linked_work_filters_and_orders_tasks_by_operational_recency(
             agent_id=agent.id,
             created_at=now - timedelta(days=1),
             updated_at=now - timedelta(minutes=30),
+            data={"working_set": {"resources": "unread historical checkpoint"}},
         ),
         Task(
             label="Terminal stale",
@@ -1093,6 +1094,7 @@ async def test_linked_work_filters_and_orders_tasks_by_operational_recency(
             agent_id=agent.id,
             created_at=now - timedelta(days=1),
             updated_at=now - timedelta(minutes=60),
+            data={"working_set": {"resources": "unread historical checkpoint"}},
         ),
     ]
     db.add_all(tasks)

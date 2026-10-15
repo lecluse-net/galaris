@@ -140,6 +140,8 @@ Backend modules are declared in `back/modules.py`. Each package can expose a
 `router`, models, privileges, a listener, settings, or locales. The central
 bootstrap loads only declared elements.
 
+Conversation context reads Task projections through its facade without exposing ORM models.
+
 Frontend modules are declared in `front/modules.ts`. Pages are discovered through
 file-based routing; navigation is aggregated from the `navigation.ts` files.
 

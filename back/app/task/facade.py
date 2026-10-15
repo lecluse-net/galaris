@@ -5,6 +5,10 @@ from uuid import UUID
 from app.agent import get_agent_record, require_agent_contact
 from core.i18n import render_prompt, t
 from core.util import convert_to_html
+from .work_projection import (
+    TaskWorkSnapshot as TaskWorkSnapshot,
+    list_work_snapshots as list_work_snapshots,
+)
 
 
 async def request_peer_message(

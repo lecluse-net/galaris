@@ -101,14 +101,6 @@
       "target": "app.task.models"
     },
     {
-      "source": "back/app/conversation/service.py",
-      "target": "app.task.operational_state"
-    },
-    {
-      "source": "back/app/conversation/service.py",
-      "target": "app.task.working_set"
-    },
-    {
       "source": "back/app/dashboard/dashboard_service.py",
       "target": "app.agent.models"
     },
