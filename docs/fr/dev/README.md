@@ -139,6 +139,8 @@ Les modules backend sont déclarés dans `back/modules.py`. Chaque package peut 
 `router`, des modèles, des privilèges, un listener, des paramètres ou des locales. Le
 bootstrap central charge seulement les éléments déclarés.
 
+Les surfaces obligatoires de Task propagent les erreurs d'import.
+
 Le modèle vectoriel est résolu par `app.llm.configured_embedding_model` ou sa variante obligatoire.
 Memory, Tools et la documentation partagent ce contrat ; leurs délais et replis restent propres
 à chaque usage. Les empreintes persistées de Memory/Tools sont conservées ; l'index documentaire

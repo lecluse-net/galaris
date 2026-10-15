@@ -14,10 +14,14 @@ from core.util import router_loader
 import modules
 
 
-def test_domain_scheduler_registration_in_fresh_interpreter():
+@pytest.mark.parametrize("first_module", ["app.task", "app.llm", "app.lab", "app.conversation", "app.process"])
+def test_domain_scheduler_registration_in_fresh_interpreter(first_module):
     """Startup must not rely on MCP tests having imported operation services first."""
     result = subprocess.run(
         [sys.executable, "-c", (
+            f"import {first_module}; "
+            "from app.task import task_service, go_next, run_stream, scheduler; "
+            "assert callable(task_service.get_by_id) and callable(go_next) and callable(run_stream); "
             "from app.lab import register_scheduler_jobs; "
             "register_scheduler_jobs(); "
             "from app.multimedia import generation_tick; "
@@ -29,6 +33,23 @@ def test_domain_scheduler_registration_in_fresh_interpreter():
         timeout=60,
     )
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("surface", ["app.task.task_service", "app.task.runner"])
+def test_required_task_import_failure_is_visible(surface):
+    script = f'''
+import importlib.abc
+import sys
+class BrokenTaskSurface(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path, target=None):
+        if fullname == {surface!r}:
+            raise ImportError("synthetic required Task dependency failure")
+sys.meta_path.insert(0, BrokenTaskSurface())
+import app.task
+'''
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=60)
+    assert result.returncode != 0
+    assert "synthetic required Task dependency failure" in result.stderr
 
 
 @pytest.mark.parametrize("surface", ["models", "router"])

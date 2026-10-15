@@ -79,6 +79,8 @@ contact dans `file_search`. Leur migration conserve la garantie d'isolation et r
 la façade de fichiers transmet maintenant le contexte serveur au domaine Memory. Les scénarios
 canoniques deviennent la protection contre sa réapparition.
 
+Les imports obligatoires de Task propagent leurs erreurs, sans surface partielle.
+
 ## Contrôles
 
 - `make project-context-check`

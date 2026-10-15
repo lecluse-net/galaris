@@ -83,12 +83,9 @@ __all__ = [
     "initialize_scope",
 ]
 
-# Import the service separately to avoid circular dependencies.
-try:
-    from . import task_service as task_service
-    __all__.append("task_service")
-except ImportError:
-    pass
+# Required public surfaces must fail visibly if an import is broken.
+from . import task_service as task_service
+__all__.append("task_service")
 
 # Register the durable port consumed by ``app.agent`` without reversing the dependency.
 from . import agent_adapter as _agent_adapter  # noqa: F401 - registers the durable port # pyright: ignore[reportUnusedImport]
@@ -98,9 +95,6 @@ from .run_events import register_events as _register_run_events
 
 _register_run_events()
 
-try:
-    from .runner import go_next as go_next, run_stream as run_stream
-    __all__.extend(["go_next", "run_stream"])
-except ImportError:
-    pass
+from .runner import go_next as go_next, run_stream as run_stream
+__all__.extend(["go_next", "run_stream"])
 from .execution_scope import initialize_scope as initialize_scope

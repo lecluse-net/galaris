@@ -2,6 +2,8 @@
 
 # Functional guarantees catalogue
 
+`tests/test_module_loading.py` checks required Task imports and several loading orders.
+
 `app/memory/tests/test_mcp.py` uses `file_search`/`file_read` for permissions, contact context and bounded reads; retired MCP wrappers no longer stand in for the actual path.
 
 `back/app/memory/tests/test_inline_content.py` covers native text transfer into SQL

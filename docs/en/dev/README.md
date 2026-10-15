@@ -140,6 +140,8 @@ Backend modules are declared in `back/modules.py`. Each package can expose a
 `router`, models, privileges, a listener, settings, or locales. The central
 bootstrap loads only declared elements.
 
+Required Task surfaces propagate import failures.
+
 The vector model is resolved by `app.llm.configured_embedding_model` or its required variant.
 Memory, Tools and documentation share this contract while retaining their own timeouts and
 fallback policies. Persisted Memory/Tools fingerprints are preserved; the documentation index

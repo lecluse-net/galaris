@@ -2,6 +2,8 @@
 
 # Catalogue des garanties fonctionnelles
 
+`tests/test_module_loading.py` vérifie les imports obligatoires Task et plusieurs ordres de chargement.
+
 `app/memory/tests/test_mcp.py` passe par `file_search`/`file_read` pour les droits, le contexte du contact et les lectures bornées ; les wrappers MCP retirés ne servent plus de parcours.
 
 `back/app/memory/tests/test_inline_content.py` couvre le transfert des textes natifs
