@@ -359,6 +359,10 @@ mémoires ouvrent leur cible dans une modale sans quitter le sujet. Le clavier p
 de les ouvrir. Fermez la modale avec son bouton de fermeture ou en cliquant à l’extérieur.
 Le bouton **Retour**, sous le titre du sujet, ramène à la liste.
 
+Une discussion ouverte en modale se cale sur les derniers messages. Remontez tout en haut
+pour charger automatiquement les messages précédents, sans perdre votre position de lecture.
+Revenez tout en bas pour actualiser les derniers messages, ou utilisez la flèche descendante.
+
 Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**
 parmi ses actions. Renseignez le titre et le propriétaire : le document est automatiquement
 classé dans ce dossier, qui se déplie, puis s’ouvre dans l’éditeur. Le bouton de création

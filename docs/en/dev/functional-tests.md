@@ -690,6 +690,11 @@ are in `front/browser-tests/`.
 for tasks, text/voice rounds, spaces, documents and memories, including keyboard activation,
 backdrop dismissal, retry after a denied read and late responses after closing.
 
+`front/browser-tests/room-discussion.spec.mjs` covers initial positioning and reopening,
+automatic history loading at the top while preserving the reading position, refresh at the bottom,
+the arrow to the latest messages, bounded requests, failures and room changes during loading
+on desktop and mobile.
+
 `TopicSelect` centralizes paginated search and selection by topic ID. Entry forms enable
 `allow-create`: new conversations, conversation preferences, messages with `@topic`, badge
 reassignment, assignment editors for tasks and text/voice conversations, and merge targets.

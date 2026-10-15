@@ -54,18 +54,7 @@
             </q-btn><q-btn v-if="canCustomizeSelectedRoom" flat round icon="settings" :aria-label="t('chat.roomPreferences.open')" @click="preferencesDialog=true" /><VoiceCallPanel v-if="store.viewerAgentId === null && store.selectedRoom.agent_active && canCall && store.callAvailable" :room-id="store.selectedRoom.id" :language="locale" :active-call-id="store.activeCall?.call_id" :stopping-call-id="store.stoppingCallId" :ended-call-id="store.endedCallId" :mobile="$q.screen.lt.md" @error="reportError" @starting="store.prepareCallStart" @stopping="store.markCallStopping" @ended="refreshAfterCallEnded" /></q-toolbar>
           <div class="message-scroll-zone">
             <q-scroll-area ref="messageScrollArea" class="message-scroll" @scroll="onMessageScroll" @wheel.passive="beginConversationHistoryNavigation" @touchstart.passive="beginConversationHistoryNavigation"><div v-if="store.loadingOlderMessages" class="history-loader"><q-spinner color="primary" size="20px" /></div><MessageTimeline :room-id="store.selectedRoom.id" :messages="store.messages" :activity="store.activity" :live-round="store.liveRound" :pending-transcriptions="store.pendingVoiceTranscriptions" :agent-id="store.selectedRoom.agent_id" :agent-name="store.selectedRoom.agent_name" :loading="store.loadingSelectedRoom" :viewer-agent-id="store.viewerAgentId" :show-agent-avatars="!store.selectedRoom.source" :allow-reply="canWriteSelectedRoom" @controlled="store.refreshSelected" :can-read-documents="canReadDocuments" :can-edit-documents="canEditDocuments" @open-document="openConversationDocument" @open-repository="openRepository" @open-directory="openDirectory" @reply="message => replyingTo = message" @topic-changed="refreshMessageTopics" @block-rendered="scrollRenderedConversationToBottom" @layout-changed="keepConversationAtBottom" @message-visible="markVisibleMessageRead" /></q-scroll-area>
-            <transition name="scroll-to-bottom">
-              <q-btn
-                v-if="showScrollToBottom"
-                class="scroll-to-bottom-button"
-                flat
-                round
-                dense
-                icon="keyboard_arrow_down"
-                :aria-label="t('chat.scrollToBottom')"
-                @click="scrollConversationToBottom"
-              ><q-tooltip>{{ t('chat.scrollToBottom') }}</q-tooltip></q-btn>
-            </transition>
+            <ScrollToBottomButton :visible="showScrollToBottom" @click="scrollConversationToBottom" />
           </div>
           <template v-if="canWriteSelectedRoom"><q-separator /><Composer :before-send="prepareMessage" :room-id="store.selectedRoom.id" :sending="store.sending" :commands="store.commands" :reply-to="replyingTo" :topic-id="selectedTopicId" :can-select-topic="canSelectTopic" :max-attachment-bytes="store.status?.max_attachment_bytes ?? 0" @send="sendMessage" @cancel-reply="replyingTo=null" @update:topic-id="selectedTopicId=$event" @error="reportError" /></template>
         </template>
@@ -179,6 +168,7 @@ import { privileges } from '@/core/authorize'
 import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
 import RoomList from '../components/RoomList.vue'; import MessageTimeline from '../components/MessageTimeline.vue'; import Composer from '../components/Composer.vue'; import AgentTasksPanel from '../components/AgentTasksPanel.vue'; import VoiceCallPanel from '../components/VoiceCallPanel.vue'; import InternalAgentAvatar from '../components/InternalAgentAvatar.vue'
 import RoomPreferencesDialog from '../components/RoomPreferencesDialog.vue'
+import ScrollToBottomButton from '../components/ScrollToBottomButton.vue'
 import RoomCreateDialog from '../components/RoomCreateDialog.vue'
 import ChatWelcome from '../components/ChatWelcome.vue'
 import ChatHomePagination from '../components/ChatHomePagination.vue'
@@ -652,13 +642,6 @@ onMounted(()=>{document.addEventListener('visibilitychange',updateChatPageVisibi
 .message-scroll :deep(.q-scrollarea__content) { width: 100%; min-width: 0 !important; max-width: 100%; }
 .message-scroll :deep(.q-scrollarea__bar--h),
 .message-scroll :deep(.q-scrollarea__thumb--h) { display: none; }
-.scroll-to-bottom-button { position: absolute; right: 14px; bottom: 12px; z-index: 2; color: var(--chat-text-muted); background: color-mix(in srgb, var(--chat-surface-raised) 88%, transparent); border: 1px solid var(--chat-border-strong); box-shadow: 0 2px 8px color-mix(in srgb, var(--chat-shadow) 70%, transparent); opacity: .78; backdrop-filter: blur(5px); transition: color .15s ease, opacity .15s ease, background-color .15s ease; }
-.scroll-to-bottom-button:hover,
-.scroll-to-bottom-button:focus-visible { color: var(--q-primary); background: var(--chat-surface-raised); opacity: 1; }
-.scroll-to-bottom-enter-active,
-.scroll-to-bottom-leave-active { transition: opacity .15s ease, transform .15s ease; }
-.scroll-to-bottom-enter-from,
-.scroll-to-bottom-leave-to { opacity: 0; transform: translateY(6px); }
 .history-loader { display: flex; justify-content: center; padding: 7px; background: var(--chat-page-bg); }
 .sidebar-mobile-toolbar { flex: 0 0 auto; min-height: 48px; background: var(--chat-surface); border-bottom: 1px solid var(--chat-border); }
 .sidebar-mobile-toolbar .q-toolbar__title { font-size: .9rem; font-weight: 600; }

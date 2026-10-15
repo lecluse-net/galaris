@@ -332,6 +332,10 @@ without leaving the dossier. Keyboard activation is also available. Close the di
 with its close button or by clicking outside it. The **Back** button below the dossier
 title returns to the list.
 
+A discussion opened in a dialog starts at the latest messages. Scroll to the top to load
+earlier messages automatically while keeping your reading position. Scroll back to the bottom
+to refresh the latest messages, or use the downward arrow.
+
 In the **Documents** library, every folder offers a **New document** icon among its
 actions. Enter the title and owner: the document is automatically placed in that folder,
 which expands, and opens in the editor. The general creation button keeps new documents

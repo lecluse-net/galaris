@@ -14,17 +14,7 @@
       @delivery-resolved="round = $event; emit('changed')" />
     <VoiceConversationDetailView v-else-if="conversation && turn" :conversation="conversation" :turn="turn"
       @deleted="changedAndClose" @stopped="changedAndClose" @topic-updated="emit('changed')" />
-    <template v-else-if="room">
-      <q-banner v-if="messagesError" class="q-ma-md">
-        {{ messagesError }}
-        <template #action><q-btn flat :label="t('common.retry')" @click="loadMessages" /></template>
-      </q-banner>
-      <MessageTimeline :room-id="room.id" :messages="messages" :agent-id="room.agent_id"
-        :agent-name="room.agent_name" :activity="[]" :live-round="null" :allow-reply="false" />
-      <div v-if="moreMessages" class="q-pa-md">
-        <q-btn flat :loading="messagesLoading" :label="t('topic.detail.moreMessages')" @click="loadMessages" />
-      </div>
-    </template>
+    <RoomDiscussion v-else-if="room" :room="room" />
     <DocumentEditor v-else-if="target.kind === 'document'" :document-id="target.id"
       :agent-id="null" :editable="false" @unavailable="error = t('topic.detail.targetLoadError')" />
     <div v-else-if="memory" class="q-pa-md">
@@ -55,7 +45,7 @@ import { defineAsyncView, EditorialContent, ConversationTurnDialog, type Resourc
 import { taskService, type TaskFull } from '@/app/task'
 import { conversationService, type ConversationMessage, type ConversationRoundDetail } from '@/app/conversation'
 import { voiceConversationService, type VoiceConversationDetail, type VoiceConversationTurn } from '@/app/voice'
-import { chatService, type MessengerMessage, type MessengerRoom } from '@/app/chat/interface'
+import { chatService, type MessengerRoom } from '@/app/chat/interface'
 import { memoryService, type MemoryItemDetail } from '@/app/memory'
 import type { LLMCall } from '@/app/llm'
 
@@ -63,7 +53,7 @@ const TaskDetail = defineAsyncView(async () => (await import('@/app/task')).Task
 const DocumentEditor = defineAsyncView(async () => (await import('@/app/memory')).DocumentEditor)
 const ConversationRoundDetailView = defineAsyncView(async () => (await import('@/app/conversation')).ConversationRoundDetailView)
 const VoiceConversationDetailView = defineAsyncView(async () => (await import('@/app/voice')).VoiceConversationDetailView)
-const MessageTimeline = defineAsyncView(async () => (await import('@/app/chat/interface')).MessageTimeline)
+const RoomDiscussion = defineAsyncView(async () => (await import('@/app/chat/interface')).RoomDiscussion)
 const props = defineProps<{ target: ResourceDetailTarget }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
 const { t } = useI18n()
@@ -84,12 +74,6 @@ const conversation = ref<VoiceConversationDetail | null>(null)
 const turn = ref<VoiceConversationTurn | null>(null)
 const memory = ref<MemoryItemDetail | null>(null)
 const room = ref<MessengerRoom | null>(null)
-const messages = ref<MessengerMessage[]>([])
-const messagesError = ref('')
-const messagesLoading = ref(false)
-const moreMessages = ref(false)
-let messagePage = 1
-let messageCursor: string | null = null
 let generation = 0
 onBeforeUnmount(() => { generation++ })
 
@@ -112,27 +96,6 @@ async function deleteTask(): Promise<void> {
   }
 }
 
-async function loadMessages(): Promise<void> {
-  if (!room.value || messagesLoading.value) return
-  const current = generation
-  const roomId = room.value.id
-  messagesLoading.value = true
-  messagesError.value = ''
-  try {
-    const page = await chatService.messages(roomId, messagePage, 50, null, messageCursor)
-    if (current !== generation) return
-    messages.value = [...new Map([...messages.value, ...page.items].map(item => [item.id, item])).values()]
-      .sort((left, right) => left.created_at.localeCompare(right.created_at) || left.id.localeCompare(right.id))
-    moreMessages.value = messagePage * 50 < page.total || page.history_has_more
-    messagePage++
-    messageCursor = page.history_next_cursor
-  } catch {
-    if (current === generation) messagesError.value = t('topic.detail.targetLoadError')
-  } finally {
-    if (current === generation) messagesLoading.value = false
-  }
-}
-
 watch([() => props.target, retry], async ([target], _, onCleanup) => {
   const current = ++generation
   let active = true
@@ -147,12 +110,6 @@ watch([() => props.target, retry], async ([target], _, onCleanup) => {
   turn.value = null
   memory.value = null
   room.value = null
-  messages.value = []
-  messagesError.value = ''
-  messagesLoading.value = false
-  moreMessages.value = false
-  messagePage = 1
-  messageCursor = null
   taskId.value = target.id
   loading.value = !['task', 'document'].includes(target.kind)
   try {
@@ -185,7 +142,6 @@ watch([() => props.target, retry], async ([target], _, onCleanup) => {
       const detail = await chatService.room(target.id)
       if (!active) return
       room.value = detail
-      await loadMessages()
     } else if (target.kind === 'memory') {
       const detail = await memoryService.getItem(target.id, target.agentId)
       if (active) memory.value = detail

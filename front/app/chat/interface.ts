@@ -1,3 +1,4 @@
 export { default as MessageTimeline } from './components/MessageTimeline.vue'
+export { default as RoomDiscussion } from './components/RoomDiscussion.vue'
 export { chatService } from './services/chatService'
 export type { MessengerRoom, MessengerMessage } from './types'

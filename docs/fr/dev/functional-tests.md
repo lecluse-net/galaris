@@ -707,6 +707,10 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 `front/browser-tests/topic-detail.spec.mjs` vérifie sur desktop et mobile l’ouverture des
 cibles d’un sujet en modale (tâches, rounds texte/audio, espaces, documents et mémoires),
 le clavier, la fermeture par l’arrière-plan, le réessai après refus et les réponses tardives.
+`front/browser-tests/room-discussion.spec.mjs` couvre le calage initial et à la réouverture,
+le chargement automatique en haut avec conservation de la position, l’actualisation en bas,
+la flèche de retour aux derniers messages, les requêtes bornées, les erreurs et les changements
+de discussion pendant un chargement, sur desktop et mobile.
 Les formulaires activent `allow-create` : nouvelle conversation, paramètres de conversation,
 message avec `@topic`, réaffectation depuis un badge, éditeur d’affectation des tâches et
 conversations texte/voix, et cible de fusion. Le bouton `+` exige `TOPIC_EDIT` et
