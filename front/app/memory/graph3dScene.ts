@@ -862,7 +862,11 @@ export class MemoryGraphScene {
       const squared = (point.x - x) ** 2 + (point.y - y) ** 2
       if (squared < distance) { nearest = point; distance = squared }
     }
-    const marker = nearest ? this.displayById.get(nearest.id) : null
+    // Keep the selected visible node on the navigation plane. Choosing another
+    // depth from an empty corner makes that node slide faster or slower than
+    // the pointer, even though the camera-target distance is unchanged.
+    const plane = (this.selected ? this.projections.get(this.selected) : null) ?? nearest
+    const marker = plane ? this.displayById.get(plane.id) : null
     if (!marker) return // Keep the last usable scale when navigating empty space.
     const offset = this.controls.target.clone().sub(this.camera.position)
     const targetDistance = offset.length()

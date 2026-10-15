@@ -27,6 +27,7 @@ export const Markdown = defineAsyncView(() => import('./components/Markdown.vue'
 export const TextResourcePreview = defineAsyncView(() => import('./components/TextResourcePreview.vue'))
 export const MarkdownWysiwygEditor = defineAsyncView(() => import('./components/MarkdownWysiwygEditor.vue'))
 export { default as PageHeader } from './components/PageHeader.vue'
+export { default as GraphViewControls } from './components/GraphViewControls.vue'
 export { default as ContextHelp } from './components/ContextHelp.vue'
 export { contextHelpKey, type ContextHelpState } from './contextHelp'
 export { default as StatusBadge } from './components/StatusBadge.vue'

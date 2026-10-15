@@ -231,7 +231,7 @@
           </span>
           <q-tooltip>{{ t('memory.graph.freshnessHint') }}</q-tooltip>
         </div>
-        <div class="memory-graph__view-controls row items-center q-gutter-xs no-wrap">
+        <GraphViewControls class="memory-graph__view-controls">
           <q-btn outline round dense color="primary" icon="add" :aria-label="t('memory.graph.zoomIn')" @click="zoomBy(1.25)">
             <q-tooltip>{{ t('memory.graph.zoomIn') }}</q-tooltip>
           </q-btn>
@@ -256,7 +256,7 @@
               {{ t(isFullscreen ? 'memory.graph.exitFullscreen' : 'memory.graph.fullscreen') }}
             </q-tooltip>
           </q-btn>
-        </div>
+        </GraphViewControls>
       </section>
     </div>
 
@@ -333,7 +333,7 @@ import { useI18n } from 'vue-i18n'
 import { isAxiosError } from 'axios'
 import { websocket } from '@/core/websocket'
 import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration, SupersededSessionError } from '@/core/api'
-import { browserResourceKind, solaire, solaireCss, type BrowserResourceKind, type SolaireColor } from '@/core/util'
+import { GraphViewControls, browserResourceKind, solaire, solaireCss, type BrowserResourceKind, type SolaireColor } from '@/core/util'
 import { useInterval, useQuasar, useTimeout } from 'quasar'
 import { matAudioFile, matDescription, matImage, matVideoFile } from '@quasar/extras/material-icons'
 import MemoryGraphNodeDetail from './MemoryGraphNodeDetail.vue'
@@ -1644,12 +1644,6 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-.memory-graph__view-controls {
-  padding: 3px;
-  border-radius: 999px;
-  background: rgba(25, 118, 210, 0.06);
-}
-
 .memory-graph__fullscreen-control {
   box-shadow: 0 2px 8px rgba(25, 118, 210, 0.38);
 }
@@ -1866,10 +1860,6 @@ onUnmounted(() => {
 
 .memory-graph--dark .memory-graph__freshness-legend {
   color: #c9d1df;
-}
-
-.memory-graph--dark .memory-graph__view-controls {
-  background: rgba(144, 202, 249, 0.08);
 }
 
 .memory-graph--dark .memory-graph__type-legend-dot {
