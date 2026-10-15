@@ -398,7 +398,8 @@ async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] =
         sections["work_organization"] = (
             "This mission requires durable organization. Before substantive work, inspect "
             "the authorized sources and existing results needed to establish scope and a "
-            "workable method. Use task_get for your current Task revision and task_work_update "
+            "workable method. Read work_plan_revision from task_get (initially 0), then pass "
+            "it as expected_revision to task_work_update, independently of the Task revision, "
             "to retain a bounded set of milestones, acceptance checks and next action. Keep "
             "one end-to-end owner for a coherent deliverable; independent substantial items "
             "belong in the existing collection workflow. Update tracking after meaningful "

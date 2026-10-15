@@ -545,7 +545,9 @@ mean the colleague is unknown or unreachable. Contact permissions still apply.
   The plan has `milestones` (unique `key`, `label`, `acceptance`, `state`, `observation`,
   optional canonical `resource_refs`) and `next_action`. States are `pending`, `doing`, `done`
   or `blocked`; at most one is doing. Done and blocked require an observed result. Read the
-  current revision with `task_get`; a stale write requires rereading. Changing completed work
+  `work_plan_revision` with `task_get` (initially 0) and pass it as `expected_revision`;
+  this is separate from the Task's `revision`, which changes during execution checkpoints.
+  A stale work plan requires rereading. Changing completed work
   requires `revision_reason`. Updates preserve other Task data and reject paused or terminal Tasks.
   Inspect sources before settling the method, update after meaningful progress and verify
   actual resources before resuming an uncertain effect. Checked milestones do not prove delivery.

@@ -17,7 +17,6 @@ _MAX_INLINE_SKILL_INSTRUCTIONS_CHARS = 12_000
 _MAX_RESOURCE_PATH_HINT_CHARS = 1_200
 _MAX_SECTION_SCHEMA_VALUES = 200
 _RESOURCE_ERROR_PREFIXES = (
-    "A path is required",
     "The section parameter",
     "Section ",
     "Unable to read resource",
@@ -112,7 +111,7 @@ def _read_skill_resource(code: str, path: str = "", section: str = "") -> str:
     """List a skill package or read one of its text resources."""
     if not path.strip():
         if section.strip():
-            return "A path is required when reading a section."
+            return _read_skill_resource(code, "SKILL.md", section)
         files = storage.list_files(code)
         if not files:
             return f"Skill {code!r} has no files."
@@ -143,8 +142,9 @@ def _capability_instructions(code: str, instructions: str, tool_name: str) -> st
     resource_guide = (
         "## Internal harness resources\n\n"
         f"The primary guide is `SKILL.md`. Use `{tool_name}` with `path=\"SKILL.md\"` "
-        "and an exact `section` when the guide section is known. Omit `path` only to list "
-        "the package's actual files; never guess or synthesize a resource filename. "
+        "and an exact `section` when the guide section is known. A section without a path "
+        "reads `SKILL.md`; omit both to list the package's actual files; "
+        "never guess or synthesize a resource filename. "
         "Copy path and section values verbatim from the values shown here; never translate "
         "or paraphrase a heading. For Markdown, pass `section` to read only one named "
         "heading and its subsections; leading `#` markers are optional. "
@@ -228,9 +228,10 @@ def _build_capability(code: str, *, defer_loading: bool = True) -> Capability[No
     capability.tool_plain(
         name=tool_name,
         description=(
-            f"List files from the loaded {code!r} skill when path is empty, or read one "
+            f"List files from the loaded {code!r} skill when path and section are empty, or read one "
             "text resource by its relative path. For Markdown, set section to an exact "
-            "heading to return only that section and its subsections. Copy exact path and "
+            "heading to return only that section and its subsections; without path, read SKILL.md. "
+            "Copy exact path and "
             "heading values without translating or paraphrasing them. "
             f"{resource_path_hint}"
         ),

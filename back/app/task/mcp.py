@@ -106,7 +106,8 @@ async def mcp_get_task(
     approval_reason="Record bounded progress on the executing agent's own Task",
     description=(
         "Persist milestones and next action for your current long or complex Task. Read "
-        "task_get first for its revision. Keep preparation, acceptance checks, verified "
+        "task_get first and pass its work_plan_revision (initially 0) as expected_revision. "
+        "Task revision is separate. Keep preparation, acceptance checks, verified "
         "observations and canonical resource references. Preserve completed milestones; "
         "changing them requires revision_reason. This records progress without completing "
         "the Task or executing any business action. Simple tasks need no work plan."
@@ -528,6 +529,7 @@ async def get_task(
         **operational,
         "activity": activity.model_dump(mode="json"),
         "revision": resolved_task.revision,
+        "work_plan_revision": (resolved_task.data or {}).get("work_plan_revision", 0),
         "work_plan": (resolved_task.data or {}).get("work_plan"),
     }
 

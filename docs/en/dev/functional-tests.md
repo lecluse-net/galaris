@@ -147,7 +147,8 @@ name discovery without semantic recall or body passages, including pagination an
 `back/app/agent/tests/test_task_organization.py` protects organization selection in the
 existing inference, waiting without execution, expiry and late answers.
 `back/app/task/tests/test_work_tracking.py` checks PostgreSQL milestone recovery,
-concurrent writes, revisions, ownership, pauses, idempotency and checkpoint preservation.
+concurrent writes, revisions, ownership, pauses, idempotency and checkpoint preservation,
+including an execution checkpoint between reading and updating progress.
 Import the synthetic `task_organization_corpus.json` with
 `scripts/import_lab_reference.py --corpus task-organization --install`. Its eight cases
 complement fifteen routing boundaries; real-model comparison measures decisions and

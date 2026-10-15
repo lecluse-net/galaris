@@ -1274,7 +1274,9 @@ Planner, qui transmet l’organisation aux feuilles.
 
 `task_get` restitue le suivi et sa révision ; `task_work_update` enregistre les jalons de la Task
 courante, uniquement pour son exécuteur et pendant une phase active non suspendue. Les écritures
-contrôlent la révision et préservent les checkpoints. Modifier un jalon déjà terminé exige une
+contrôlent la révision et préservent les checkpoints. `expected_revision` utilise
+`work_plan_revision` de `task_get` (0 initialement),
+indépendamment de la révision globale de la Task. Modifier un jalon déjà terminé exige une
 raison explicite. Le progrès déclaré ne remplace ni la vérification des ressources ni le résultat
 terminal de la tâche.
 

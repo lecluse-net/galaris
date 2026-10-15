@@ -40,6 +40,13 @@ préserve les autres données et refuse les Tasks suspendues ou terminales. Un m
 est idempotent ; modifier un jalon achevé demande une raison explicite. `task_get` fournit
 la révision et le suivi. Les mises à jour utilisent les événements Task existants.
 
+Le suivi dispose de `work_plan_revision` dans les données de la Task, initialisé à zéro
+pour un suivi absent ou historique. `expected_revision` compare ce compteur, incrémenté
+uniquement lorsque les jalons changent. La révision globale de Task conserve son rôle de
+concurrence ORM et HTTP ; les checkpoints et l'activité ne périment plus une lecture du suivi.
+Le verrou de ligne continue de sérialiser les écrivains et les commandes de suspension ou d'arrêt.
+Un conflit de suivi est refusé avant mutation avec une consigne explicite de relecture.
+
 Les consignes de reprise demandent de contrôler les ressources et effets conservés avant
 de répéter une action. Un jalon coché est une déclaration du modèle, jamais une preuve de
 réussite terminale. Le contrat de résultat et les reçus d'effets restent les autorités.

@@ -138,7 +138,8 @@ documentaire par nom sans rappel sémantique ni passages du corps, avec paginati
 l'inférence existante, l'attente sans exécution, l'expiration et la réponse tardive.
 `back/app/task/tests/test_work_tracking.py` vérifie avec PostgreSQL la reprise des jalons,
 les écritures concurrentes, la révision, les droits, les pauses, l'idempotence et la
-préservation des checkpoints. Le corpus synthétique `task_organization_corpus.json`
+préservation des checkpoints, y compris une sauvegarde d’exécution entre lecture et écriture du suivi.
+Le corpus synthétique `task_organization_corpus.json`
 s'importe avec `scripts/import_lab_reference.py --corpus task-organization --install`.
 Ses huit cas complètent les quinze frontières de routage ; une comparaison avec modèle
 réel mesure décisions et latence, sans certifier la réalisation complète des missions.

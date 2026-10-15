@@ -985,7 +985,8 @@ independent outputs still use the Planner, which passes organization to leaves.
 
 `task_get` exposes tracking and revision; `task_work_update` records the current Task's milestones
 only for its executor during an active, unpaused phase. Writes check revision and preserve
-checkpoints. Changing completed milestones requires an explicit reason. Declared progress does
+checkpoints. `expected_revision` uses `work_plan_revision` from `task_get` (initially 0), independently
+of the global Task revision. Changing completed milestones requires an explicit reason. Declared progress does
 not replace resource verification or the Task's terminal result.
 
 Ambiguous intent, scope or expected depth triggers a durable question and suspension. The answer

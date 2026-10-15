@@ -69,6 +69,7 @@ Le détail de Task permet d’inspecter l’activité, les outils et les résult
 expose le suivi par jalons enregistré. L’exécuteur peut le mettre à jour
 avec `task_work_update`, sur sa Task active, avec contrôle de révision. Jusqu’à vingt jalons
 sont conservés ; un jalon déclaré terminé ne remplace pas la preuve du résultat ou de sa livraison.
+Le suivi possède sa propre révision : les sauvegardes d’exécution ne bloquent pas ses mises à jour.
 
 Si le périmètre ou la profondeur attendue change sensiblement le travail, Galaris peut poser
 une question avant de commencer. Répondez dans la conversation liée à la demande. Une inconnue

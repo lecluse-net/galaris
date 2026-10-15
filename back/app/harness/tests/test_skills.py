@@ -261,6 +261,8 @@ def test_large_skill_capability_uses_progressive_section_loading(
     assert "Use audio_transcribe" in audio
     assert "Never read the original multimedia file" in audio
     assert "Verbose console documentation" not in audio
+    assert _read_skill_resource("large-guide", section="Audio transcription") == audio
+    assert "Section 'Unknown' not found" in _read_skill_resource("large-guide", section="Unknown")
     assert _section_schema_values("large-guide") == (
         "Large guide",
         "Audio transcription",
@@ -300,7 +302,6 @@ async def test_skill_reader_can_recover_after_two_invalid_resource_guesses(
         ToolCallPart(
             "skill_research_read_file",
             {
-                "path": "SKILL.md",
                 "section": "Persistent console: shell, Python, and Git",
             },
             "call-exact-section",

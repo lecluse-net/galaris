@@ -2019,9 +2019,9 @@ tests restent l’autorité sur le comportement.
 | `process_list_runs` | `galaris` | `app.process` | `process_list_runs` | `back/app/process/mcp.py:123` |
 | `process_start` | `galaris` | `app.process` | `process_start` | `back/app/process/mcp.py:88` |
 | `task_get` | `galaris` | `app.task` | `mcp_get_task` | `back/app/task/mcp.py:91` |
-| `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:198` |
-| `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:174` |
-| `task_work_update` | `galaris` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:114` |
+| `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:199` |
+| `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:175` |
+| `task_work_update` | `galaris` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:115` |
 | `tools_list` | `galaris` | `app.tools` | `list_mcp_tools` | `back/app/tools/mcp.py:89` |
 | `conversation_round_get` | `galaris_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:245` |
 | `documentation_catalog` | `galaris_admin` | `app.tools` | `documentation_catalog` | `back/app/tools/mcp.py:37` |

@@ -54,6 +54,7 @@ Task details show activity, tools and results; `task_get` exposes saved mileston
 The executor can update it with
 `task_work_update` on its active Task, with revision checks. Up to twenty milestones are
 retained; declaring one complete does not replace evidence of the result or its delivery.
+Tracking has its own revision, so execution checkpoints do not block progress updates.
 
 When scope or expected depth substantially changes the work, Galaris can ask a question
 before starting. Reply in the conversation linked to the request. A technical unknown

@@ -7444,7 +7444,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_run_task",
-        "line": 198,
+        "line": 199,
         "module": "app.task",
         "name": "task_run",
         "namespace": "galaris"
@@ -7452,7 +7452,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_stop_task",
-        "line": 174,
+        "line": 175,
         "module": "app.task",
         "name": "task_stop",
         "namespace": "galaris"
@@ -7460,7 +7460,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_work_update",
-        "line": 114,
+        "line": 115,
         "module": "app.task",
         "name": "task_work_update",
         "namespace": "galaris"
