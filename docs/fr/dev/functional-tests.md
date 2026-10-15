@@ -338,9 +338,13 @@ du brouillon, round arrêté immuable et refus de reprendre des effets incertain
 Les tests de harnais vérifient que Répondre maintenant contourne le dispatcher et expose
 zéro outil au modèle. `front/browser-tests/conversation-control.spec.mjs` exerce clavier,
 doubles clics, erreurs réessayables, droits et réponses tardives sur les composants réels.
+`front/app/chat/liveState.test.mjs` et `front/browser-tests/chat-recovery.spec.mjs`
+protègent la disparition de la réponse arrêtée, même après des fragments tardifs et
+réouverture, tout en conservant la demande humaine, la pause et une réponse dont l’arrêt
+a été refusé. L’ancienne attente d’un bloc de réponse arrêtée réouvrable est retirée.
 Les deux parcours de contrôle de `e2e/specs/chat.spec.mjs` utilisent Chat, PostgreSQL,
 le scheduler et le harnais réels avec un fournisseur synthétique ; ils couvrent réouverture,
-reprise, arrêt, relance et réponse immédiate persistée.
+reprise, disparition après arrêt, nouvelle demande et réponse immédiate persistée.
 
 La stabilisation du journal et du streaming est couverte par
 `back/app/agent/tests/test_reasoning_guard.py` (fragments irréguliers, snapshots rejoués,

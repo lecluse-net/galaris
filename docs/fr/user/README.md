@@ -268,11 +268,12 @@ réponse déjà en cours reste affichée si vous envoyez une nouvelle demande.
 
 Dans une discussion native, les petits boutons à côté de « Réflexion en cours » donnent
 la main sur cette réponse : **Pause** conserve l’avancement, **Reprendre** continue depuis
-ce point, **Stop** termine la réponse et **Relancer** ouvre une nouvelle exécution avec
-les résultats sauvegardés. **Répondre maintenant** demande une réponse avec les éléments
+ce point et **Stop** retire la réponse de l’agent du round, y compris son texte provisoire.
+Votre message reste visible. **Répondre maintenant** demande une réponse avec les éléments
 disponibles, sans nouveaux outils. Un outil déjà engagé termine avant l’arrêt ; les actions
 accomplies ne sont pas annulées. Une reprise dont les effets précédents sont incertains est
-refusée. Les états pause et arrêt restent visibles après réouverture. Ces commandes visent
+refusée. Une réponse en pause reste visible après réouverture ; une réponse arrêtée reste
+absente, et vous pouvez envoyer une nouvelle demande. Ces commandes visent
 la réponse conversationnelle ; les tâches et processus de fond ont leurs propres commandes.
 
 Avant de sélectionner une conversation, l’accueil de **Discussion** affiche d’abord les

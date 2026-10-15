@@ -329,9 +329,14 @@ and Reply now commands: exact attempts, preserved inputs, suppressed unfinished 
 immutable stopped rounds and refusal to resume uncertain effects. Harness tests verify
 that Reply now bypasses dispatch and exposes no tools. The real components in
 `front/browser-tests/conversation-control.spec.mjs` cover keyboard use, duplicate clicks,
-retryable errors, permissions and late replies. The two control journeys in
+retryable errors, permissions and late replies.
+`front/app/chat/liveState.test.mjs` and `front/browser-tests/chat-recovery.spec.mjs`
+protect removal of stopped responses, including late fragments and reopening, while
+preserving human requests, pauses and responses whose stop was refused. The previous
+expectation of a reopenable stopped response block is retired. The two control journeys in
 `e2e/specs/chat.spec.mjs` exercise real Chat, PostgreSQL, scheduler and harness with a
-synthetic model provider, including reopening and a durably delivered immediate answer.
+synthetic model provider, including reopening, removal after stopping, a new request and
+a durably delivered immediate answer.
 
 The journal and streaming checks include
 `back/app/agent/tests/test_reasoning_guard.py` (irregular fragments, replayed snapshots,

@@ -29,14 +29,34 @@ const emptyResult = {
   success: true,
 }
 
-test('paused and stopped replies remain controllable after reopening without runtime events', () => {
+test('paused replies remain controllable after reopening without runtime events', () => {
   const input = { id: 'input-1', external_id: 'input-remote', text: 'Synthetic request' }
-  for (const status of ['PAUSED', 'CANCELLED']) {
-    const item = { ...activity('round-live', status), message_ids: [input.id] }
-    const entries = conversationTimelineEntries('room-1', [input], [item], null)
-    assert.equal(entries.length, 2)
-    assert.equal(entries[1].activity.id, item.id)
-    assert.equal(entries[1].liveRound, null)
+  const item = { ...activity('round-live', 'PAUSED'), message_ids: [input.id] }
+  const entries = conversationTimelineEntries('room-1', [input], [item], null)
+  assert.equal(entries.length, 2)
+  assert.equal(entries[1].activity.id, item.id)
+  assert.equal(entries[1].liveRound, null)
+})
+
+test('stopping removes only the agent reply, including late fragments and reopening', () => {
+  const input = { id: 'input-1', external_id: 'input-remote', text: 'Synthetic request' }
+  const earlier = { id: 'earlier-reply', external_id: 'earlier-remote', text: 'Earlier answer' }
+  for (const control of [
+    { status: 'RUNNING', control_action: 'stop' },
+    { status: 'PAUSED', control_action: 'stop' },
+    { status: 'CANCELLED', control_action: null },
+  ]) {
+    const item = { ...activity('round-live', control.status), ...control, message_ids: [input.id] }
+    for (const round of [null, liveRound(), liveRound({
+      active: false, success: false,
+      ai_result: { ...emptyResult, result: 'Unfinished answer' },
+    }), liveRound({ ai_result: { ...emptyResult,
+      messages: [{ type: 'text', content: 'Late fragment' }],
+    } })]) {
+      const entries = conversationTimelineEntries('room-1', [earlier, input], [item], round)
+      assert.deepEqual(entries.map(entry => entry.message), [earlier, input])
+      assert.equal(shouldShowLiveConversationRound(round, 'room-1', [item], [earlier, input]), false)
+    }
   }
 })
 

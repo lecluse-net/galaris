@@ -193,11 +193,12 @@ Permissions remain configurable, and updates preserve previously saved choices.
 The **Messenger** entry opens Galaris’s native messaging system when it is enabled and your role has the necessary permissions. You can create separate direct conversations with an Agent, search rooms, track unread messages, reply, attach a file, record a voice note, and start a browser call. The **Activity** panel shows publishable steps and Tools from the round. Archiving a conversation removes it from the current list without deleting its history; you can find it again in the archives. Internal messaging does not offer group creation or participant management.
 
 In native Chat, the small buttons beside “Thinking” control that response: **Pause** saves
-progress, **Resume** continues from it, **Stop** ends the response, and **Restart** creates
-a new execution using the saved results. **Reply now** requests an answer using available
+progress, **Resume** continues from it, and **Stop** removes the Agent’s response from the
+round, including its provisional text. Your message remains visible. **Reply now** requests an answer using available
 information, without new tools. An already running tool finishes before stopping; completed
-actions are preserved. Resuming uncertain previous effects is refused. Paused and stopped
-responses remain visible after reopening. Background Tasks and Processes have their own controls.
+actions are preserved. Resuming uncertain previous effects is refused. Paused responses
+remain visible after reopening; stopped responses remain absent, and you can send a new
+request. Background Tasks and Processes have their own controls.
 
 After your message is admitted, “Thinking” appears as soon as the interface
 receives the queued round, before its first fragments. A response already in

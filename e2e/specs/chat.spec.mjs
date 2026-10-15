@@ -99,7 +99,7 @@ test('progress is visible before completion and survives durable handoff and rel
   await final(page)
 })
 
-test('human controls pause, resume, stop and restart a real conversation execution', async ({ page, request }) => {
+test('human controls pause and resume, then stopping removes the reply and preserves a new request', async ({ page, request }) => {
   test.setTimeout(90_000)
   const fixture = await prepare(page, request, 'conversation-control')
   await send(page)
@@ -123,11 +123,18 @@ test('human controls pause, resume, stop and restart a real conversation executi
   await page.getByRole('button', { name: 'Reprendre la réponse', exact: true }).click()
   await expect(page.locator('.message-timeline')).toContainText('Réponse progressive')
   await page.getByRole('button', { name: 'Arrêter la réponse', exact: true }).click()
-  await expect(page.getByText('Réponse arrêtée', { exact: true })).toBeVisible()
+  await expect(page.locator('.message-bubble--live')).toHaveCount(0)
+  await expect.poll(async () => {
+    const rounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
+    return rounds.find(round => round.id === roundId)?.status
+  }).toBe('CANCELLED')
+  await expect(page.locator('.message-row')).toHaveCount(1)
   await page.reload()
-  await expect(page.getByText('Réponse arrêtée', { exact: true })).toBeVisible()
+  await expect(page.locator('.composer-fields textarea')).toBeVisible()
+  await expect(page.locator('.message-row')).toHaveCount(1)
+  await expect(page.getByText('Réponse arrêtée', { exact: true })).toHaveCount(0)
+  await send(page)
   await release(request, fixture.rooms[0])
-  await page.getByRole('button', { name: 'Relancer la réponse', exact: true }).click()
   await final(page)
   await page.reload()
   await final(page)

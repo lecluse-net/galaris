@@ -209,7 +209,10 @@ export function shouldShowLiveConversationRound(
 ): boolean {
   if (!round || round.room_id !== roomId) return false
 
-  const responseMessageId = activity.find(item => item.id === round.round_id)?.response_message_id
+  const roundActivity = activity.find(item => item.id === round.round_id)
+  if (roundActivity?.status === 'CANCELLED' || roundActivity?.control_action === 'stop') return false
+
+  const responseMessageId = roundActivity?.response_message_id
   if (
     responseMessageId
     && messages.some(message => message.id === responseMessageId)
@@ -259,10 +262,10 @@ export function conversationTimelineEntries(
       pendingTranscription: null,
     })
   }
-  // Paused/stopped responses remain controllable after navigation or a reload,
+  // Paused responses remain controllable after navigation or a reload,
   // including when the runtime never emitted any text.
   for (const item of [...activity].reverse()) {
-    if (!['PAUSED', 'CANCELLED'].includes(item.status) || item.response_message_id
+    if (item.status !== 'PAUSED' || item.control_action === 'stop' || item.response_message_id
       || entries.some(entry => entry.liveRound?.round_id === item.id)
       || !item.message_ids?.some(id => messages.some(message => message.id === id))) continue
     entries.push({ key: `response:${item.id}`, message: null, liveRound: null,

@@ -86,6 +86,57 @@ test('an admitted round is visible before streaming and keeps its response throu
   await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
 })
 
+test('stopping removes the agent response through late events and reopening, while a refused stop preserves it', async ({ page }, testInfo) => {
+  await conversation(page)
+  let activity = { id: 'stopped-round', status: 'RUNNING', attempt: 1,
+    available_actions: ['pause', 'stop', 'respond'], control_action: null,
+    response_message_id: null, message_ids: ['message-room-a'], tools_used: [],
+    created_at: '2026-09-01T12:01:00Z' }
+  await page.route('**/api/chat/rooms/room-a/activity?*', route => route.fulfill({
+    json: { items: [activity], total: 1 },
+  }))
+  await refresh(page, 'running')
+  await settled(page, 'running')
+  const emit = event => page.evaluate(event => window.testApp.emitSocket('chat.runtime', {
+    data: { room_id: 'room-a', round_id: 'stopped-round', attempt: 1, ...event },
+  }), event)
+  await emit({ kind: 'started', sequence: 0 })
+  await emit({ kind: 'message', sequence: 1, message: { type: 'text', content: 'Unfinished answer' } })
+  const response = page.locator('.message-bubble--live')
+  await expect(response).toContainText('Unfinished answer')
+  let commands = 0
+  await page.route('**/api/chat/rooms/room-a/activity/stopped-round/control', route => {
+    expect(route.request().postDataJSON()).toEqual({ action: 'stop', expected_attempt: 1 })
+    commands += 1
+    if (commands === 1) return route.fulfill({ status: 409, json: { detail: 'Synthetic stop refused' } })
+    activity = { ...activity, control_action: 'stop', available_actions: [] }
+    return route.fulfill({ json: { round_id: activity.id, status: activity.status, control_action: 'stop' } })
+  })
+  const stop = page.getByRole('button', { name: 'Stop response', exact: true })
+  await stop.click()
+  await expect(page.getByRole('alert')).toContainText('Synthetic stop refused')
+  await expect(response).toContainText('Unfinished answer')
+  await expect(stop).toBeEnabled()
+  await stop.focus()
+  await page.keyboard.press('Enter')
+  await expect(response).toHaveCount(0)
+  await expect(page.locator('.message-timeline')).toContainText('Content room-a')
+  await emit({ kind: 'message', sequence: 2, message: { type: 'text', content: 'Late fragment' } })
+  await expect(response).toHaveCount(0)
+  activity = { ...activity, status: 'CANCELLED', control_action: null, available_actions: ['restart'] }
+  await emit({ kind: 'finished', sequence: 3, success: false })
+  await expect.poll(() => page.evaluate(async () => {
+    const { useChatStore } = await import('/app/chat/stores/chat.ts')
+    return useChatStore(window.testApp.pinia).activity[0]?.status
+  })).toBe('CANCELLED')
+  await mount(page, 'app/chat/pages/index.vue', { route: '/chat?room=room-a', privileges: ['CHAT_SEND'] })
+  await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+  await expect(page.locator('.message-row')).toHaveCount(1)
+  await expect(page.getByText('Unfinished answer')).toHaveCount(0)
+  await expect(page.getByText('Response stopped', { exact: true })).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('stopped-response-removed.png'), fullPage: true })
+})
+
 test('an intervention shows rewriting before HTTP catches up and the successor retains real errors', async ({ page }) => {
   const state = await conversation(page)
   const result = { prompt: '', system_prompt: '', messages: [], result: '', success: true,
