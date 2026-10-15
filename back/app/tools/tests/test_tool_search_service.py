@@ -40,7 +40,7 @@ async def test_lexical_search_indexes_only_effective_catalog(
 ) -> None:
     monkeypatch.setattr(
         tool_search_service,
-        "_resolve_embedding_model",
+        "configured_embedding_model",
         AsyncMock(return_value=None),
     )
     catalog = _catalog(
@@ -85,7 +85,7 @@ async def test_hybrid_search_prefilters_authorized_fingerprints(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     del db
-    model = tool_search_service.ToolEmbeddingModel(  # pyright: ignore[reportPrivateUsage]
+    model = tool_search_service.ConfiguredEmbeddingModel(  # pyright: ignore[reportPrivateUsage]
         key="model-key",
         code="vector-test",
         model_name="vector-test",
@@ -94,7 +94,7 @@ async def test_hybrid_search_prefilters_authorized_fingerprints(
     )
     monkeypatch.setattr(
         tool_search_service,
-        "_resolve_embedding_model",
+        "configured_embedding_model",
         AsyncMock(return_value=model),
     )
 
@@ -148,7 +148,7 @@ async def test_hybrid_search_reembeds_when_provider_dimensions_change(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    model = tool_search_service.ToolEmbeddingModel(  # pyright: ignore[reportPrivateUsage]
+    model = tool_search_service.ConfiguredEmbeddingModel(  # pyright: ignore[reportPrivateUsage]
         key="stable-model-key",
         code="vector-test",
         model_name="vector-test",
@@ -157,7 +157,7 @@ async def test_hybrid_search_reembeds_when_provider_dimensions_change(
     )
     monkeypatch.setattr(
         tool_search_service,
-        "_resolve_embedding_model",
+        "configured_embedding_model",
         AsyncMock(return_value=model),
     )
     dimensions = 2
@@ -201,7 +201,7 @@ async def test_forced_refresh_prunes_stale_documents_after_complete_snapshot(
 ) -> None:
     monkeypatch.setattr(
         tool_search_service,
-        "_resolve_embedding_model",
+        "configured_embedding_model",
         AsyncMock(return_value=None),
     )
     stale_catalog = _catalog(
@@ -250,7 +250,7 @@ async def test_lexical_discovery_corpus_returns_expected_tool_first(
     del db
     monkeypatch.setattr(
         tool_search_service,
-        "_resolve_embedding_model",
+        "configured_embedding_model",
         AsyncMock(return_value=None),
     )
     catalog = _catalog(

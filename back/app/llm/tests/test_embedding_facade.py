@@ -10,8 +10,8 @@ from app.llm import embedding_facade
 async def test_semantic_ranking_returns_every_index_in_similarity_order(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    provider = SimpleNamespace(is_active=True, api_key="encrypted")
-    llm = SimpleNamespace(provider=provider, llm_name="multilingual-embedding")
+    provider = SimpleNamespace(is_active=True, api_key="encrypted", provider_type="openai_compatible")
+    llm = SimpleNamespace(provider=provider, llm_provider_id=7, code="vector", llm_name="multilingual-embedding")
     calls: list[list[str]] = []
 
     async def embed_many(
@@ -74,6 +74,32 @@ async def test_semantic_ranking_is_absent_without_a_vector_model(
         "get_profile_llm",
         AsyncMock(return_value=None),
     )
+    assert await embedding_facade.rank_texts_by_semantic_similarity("request", ["candidate"]) is None
+
+
+@pytest.mark.asyncio
+async def test_configured_vector_identity_preserves_indexes_and_excludes_credentials(monkeypatch):
+    provider = SimpleNamespace(is_active=True, api_key="encrypted", provider_type="openai_compatible")
+    llm = SimpleNamespace(provider=provider, llm_provider_id=7, code="vector", llm_name="multilingual-embedding")
+    monkeypatch.setattr(embedding_facade.llm_service, "get_profile_llm", AsyncMock(return_value=llm))
+    monkeypatch.setattr(embedding_facade, "provider_connection", lambda *_: object())
+    monkeypatch.setattr(embedding_facade, "openai_protocol_base_url", lambda _: "https://embedding.example/v1")
+    monkeypatch.setattr(embedding_facade.llm_provider_service, "decrypt_api_key", lambda value: value)
+
+    original = await embedding_facade.require_configured_embedding_model()
+    # Existing Memory/Tools indexes persist this exact identity.
+    assert original.key == "a045dee342371fcc2a26c62fa8bf10693b96fb9dace2d312ce85775bc2ac951b"
+    provider.api_key = "synthetic-rotated-key"
+    rotated = await embedding_facade.require_configured_embedding_model()
+    assert rotated.key == original.key
+    assert rotated.endpoint.api_key == "synthetic-rotated-key"
+    assert "synthetic-rotated-key" not in repr(rotated)
+    llm.llm_name = "replacement-vector"
+    assert (await embedding_facade.require_configured_embedding_model()).key != original.key
+    provider.is_active = False
+    assert await embedding_facade.configured_embedding_model() is None
+    with pytest.raises(embedding_facade.EmbeddingNotConfiguredError, match="inactive"):
+        await embedding_facade.require_configured_embedding_model()
 
     assert (
         await embedding_facade.rank_texts_by_semantic_similarity(

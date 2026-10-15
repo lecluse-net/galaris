@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import math
 import hashlib
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, field
 from collections.abc import Sequence
 
 from . import embedding_service, llm_provider_service, llm_service, model_usages
@@ -21,24 +22,66 @@ class ConfiguredEmbeddingModel:
     """Public embedding handle with a credential-free cache identity."""
 
     key: str
-    endpoint: embedding_service.EmbeddingEndpoint
+    code: str
+    model_name: str
+    base_url: str
+    api_key: str | None = field(default=None, repr=False)
+
+    @property
+    def endpoint(self) -> embedding_service.EmbeddingEndpoint:
+        return embedding_service.EmbeddingEndpoint(
+            model_name=self.model_name,
+            base_url=self.base_url,
+            api_key=self.api_key,
+        )
 
     async def embed(self, texts: list[str], *, timeout: float = 5.0) -> list[list[float]]:
-        return await embedding_service.embed_many(texts, endpoint=self.endpoint, timeout_seconds=timeout)
+        return await embedding_service.embed_many(
+            texts, endpoint=self.endpoint, timeout_seconds=timeout
+        )
+
+
+class EmbeddingNotConfiguredError(embedding_service.EmbeddingError):
+    """The configured vector model has no usable provider endpoint."""
+
+
+async def require_configured_embedding_model() -> ConfiguredEmbeddingModel:
+    """Resolve vector configuration once, preserving existing index identities."""
+    llm = await llm_service.get_profile_llm(model_usages.VECTOR)
+    if llm is None:
+        raise EmbeddingNotConfiguredError("No embedding model is configured.")
+    if not llm.provider.is_active:
+        raise EmbeddingNotConfiguredError("The selected embedding provider is inactive.")
+    base_url = openai_protocol_base_url(provider_connection(llm.provider, None)).strip()
+    if not base_url:
+        raise EmbeddingNotConfiguredError("The selected embedding provider has no base URL.")
+    payload = json.dumps(
+        {
+            "contract": 1,
+            "provider_id": llm.llm_provider_id,
+            "provider_type": llm.provider.provider_type,
+            "base_url": base_url,
+            "model_code": llm.code,
+            "model_name": llm.llm_name,
+        },
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return ConfiguredEmbeddingModel(
+        key=hashlib.sha256(payload.encode("utf-8")).hexdigest(),
+        code=llm.code,
+        model_name=llm.llm_name,
+        base_url=base_url,
+        api_key=llm_provider_service.decrypt_api_key(llm.provider.api_key),
+    )
 
 
 async def configured_embedding_model() -> ConfiguredEmbeddingModel | None:
-    llm = await llm_service.get_profile_llm(model_usages.VECTOR)
-    if llm is None or not llm.provider.is_active:
+    try:
+        return await require_configured_embedding_model()
+    except EmbeddingNotConfiguredError:
         return None
-    base_url = openai_protocol_base_url(provider_connection(llm.provider, None)).strip()
-    if not base_url:
-        return None
-    key = hashlib.sha256(f"v1\0{llm.llm_provider_id}\0{base_url}\0{llm.code}\0{llm.llm_name}".encode()).hexdigest()
-    return ConfiguredEmbeddingModel(key, embedding_service.EmbeddingEndpoint(
-        model_name=llm.llm_name, base_url=base_url,
-        api_key=llm_provider_service.decrypt_api_key(llm.provider.api_key),
-    ))
 
 
 def _cosine(left: Sequence[float], right: Sequence[float]) -> float:
@@ -62,33 +105,18 @@ async def rank_texts_by_semantic_similarity(
     normalized_texts = [text.strip() or "[empty]" for text in texts]
     if not normalized_query or not normalized_texts:
         return None
-    llm = await llm_service.get_profile_llm(model_usages.VECTOR)
-    if llm is None or not llm.provider.is_active:
+    model = await configured_embedding_model()
+    if model is None:
         return None
-    base_url = openai_protocol_base_url(
-        provider_connection(llm.provider, None)
-    ).strip()
-    if not base_url:
-        return None
-    endpoint = embedding_service.EmbeddingEndpoint(
-        model_name=llm.llm_name,
-        base_url=base_url,
-        api_key=llm_provider_service.decrypt_api_key(llm.provider.api_key),
-    )
     query_embedding = (
-        await embedding_service.embed_many(
-            [normalized_query],
-            endpoint=endpoint,
-            timeout_seconds=_SEMANTIC_RANKING_TIMEOUT_SECONDS,
-        )
+        await model.embed([normalized_query], timeout=_SEMANTIC_RANKING_TIMEOUT_SECONDS)
     )[0]
     text_embeddings: list[list[float]] = []
     for offset in range(0, len(normalized_texts), _EMBEDDING_BATCH_SIZE):
         text_embeddings.extend(
-            await embedding_service.embed_many(
+            await model.embed(
                 normalized_texts[offset : offset + _EMBEDDING_BATCH_SIZE],
-                endpoint=endpoint,
-                timeout_seconds=_SEMANTIC_RANKING_TIMEOUT_SECONDS,
+                timeout=_SEMANTIC_RANKING_TIMEOUT_SECONDS,
             )
         )
     return tuple(
@@ -102,4 +130,10 @@ async def rank_texts_by_semantic_similarity(
     )
 
 
-__all__ = ["rank_texts_by_semantic_similarity", "ConfiguredEmbeddingModel", "configured_embedding_model"]
+__all__ = [
+    "rank_texts_by_semantic_similarity",
+    "ConfiguredEmbeddingModel",
+    "configured_embedding_model",
+    "require_configured_embedding_model",
+    "EmbeddingNotConfiguredError",
+]

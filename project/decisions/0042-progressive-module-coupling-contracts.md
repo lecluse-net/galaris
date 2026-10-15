@@ -60,6 +60,12 @@ Conversation possède ses liens, ses fenêtres de récence, son ordre de présen
 horodatages ; elle n'interprète plus les modèles Task pour construire ce contexte. La lecture
 reste interne à une room déjà autorisée et ne crée aucun droit supplémentaire.
 
+`app.llm` possède la résolution du modèle vectoriel, son identité et le client d'embedding.
+Memory conserve la classification de ses erreurs ; les consommateurs conservent leurs délais
+et leurs politiques de dégradation. L'identité commune reprend celle des index Memory/Tools
+existants. L'index documentaire, qui utilisait une autre empreinte, se reconstruit par son
+traitement périodique normal ; la recherche lexicale reste disponible pendant cette convergence.
+
 ## Contrôles
 
 - `make project-context-check`

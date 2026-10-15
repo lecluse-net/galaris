@@ -441,14 +441,6 @@
       "target": "core.params.consts"
     },
     {
-      "source": "back/app/memory/embedding.py",
-      "target": "app.llm.provider_facade"
-    },
-    {
-      "source": "back/app/memory/embedding.py",
-      "target": "app.llm.resource_discovery"
-    },
-    {
       "source": "back/app/memory/mcp.py",
       "target": "app.tools.mcp_loader"
     },
@@ -551,14 +543,6 @@
     {
       "source": "back/app/tools/resource_effects.py",
       "target": "app.agent.task_port"
-    },
-    {
-      "source": "back/app/tools/tool_search_service.py",
-      "target": "app.llm.provider_facade"
-    },
-    {
-      "source": "back/app/tools/tool_search_service.py",
-      "target": "app.llm.resource_discovery"
     },
     {
       "source": "back/app/topic/classifier.py",

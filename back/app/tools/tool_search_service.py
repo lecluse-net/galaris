@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from app.llm import model_usages
-
 import hashlib
-import json
 import math
 import re
 import time
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Literal, cast
 
@@ -19,10 +16,7 @@ from sqlalchemy import Float, cast as sql_cast, delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.llm import LLM, llm_provider_service, llm_service
-from app.llm import embedding_service as llm_embedding
-from app.llm.provider_facade import openai_protocol_base_url
-from app.llm.resource_discovery import provider_connection
+from app.llm import ConfiguredEmbeddingModel, EmbeddingError, configured_embedding_model
 from core.database import get_db, get_db_session
 
 from . import metrics
@@ -38,15 +32,6 @@ INDEX_EMBEDDING_TIMEOUT_SECONDS = 30.0
 QUERY_EMBEDDING_TIMEOUT_SECONDS = 5.0
 EMBEDDING_BATCH_SIZE = 64
 _SEARCH_TOKEN_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9]+")
-
-
-@dataclass(frozen=True)
-class ToolEmbeddingModel:
-    key: str
-    code: str
-    model_name: str
-    base_url: str
-    api_key: str | None = field(repr=False)
 
 
 @dataclass(frozen=True)
@@ -76,56 +61,13 @@ class ToolIndexRefreshResult:
     degradation_reason: str | None = None
 
 
-def _embedding_model_key(llm: LLM, *, base_url: str) -> str:
-    payload = json.dumps(
-        {
-            "contract": 1,
-            "provider_id": llm.llm_provider_id,
-            "provider_type": llm.provider.provider_type,
-            "base_url": base_url,
-            "model_code": llm.code,
-            "model_name": llm.llm_name,
-        },
-        ensure_ascii=True,
-        sort_keys=True,
-        separators=(",", ":"),
-    )
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
-async def _resolve_embedding_model() -> ToolEmbeddingModel | None:
-    llm = await llm_service.get_profile_llm(model_usages.VECTOR)
-    if llm is None or not llm.provider.is_active:
-        return None
-    base_url = openai_protocol_base_url(
-        provider_connection(llm.provider, None)
-    ).strip()
-    if not base_url:
-        return None
-    return ToolEmbeddingModel(
-        key=_embedding_model_key(llm, base_url=base_url),
-        code=llm.code,
-        model_name=llm.llm_name,
-        base_url=base_url,
-        api_key=llm_provider_service.decrypt_api_key(llm.provider.api_key),
-    )
-
-
 async def _embed_many(
     texts: list[str],
     *,
-    model: ToolEmbeddingModel,
+    model: ConfiguredEmbeddingModel,
     timeout_seconds: float,
 ) -> list[list[float]]:
-    return await llm_embedding.embed_many(
-        texts,
-        endpoint=llm_embedding.EmbeddingEndpoint(
-            model_name=model.model_name,
-            base_url=model.base_url,
-            api_key=model.api_key,
-        ),
-        timeout_seconds=timeout_seconds,
-    )
+    return await model.embed(texts, timeout=timeout_seconds)
 
 
 async def _sync_documents(
@@ -177,7 +119,7 @@ async def _ensure_embeddings(
     catalog: AgentToolCatalog,
     documents: dict[str, ToolSearchDocument],
     *,
-    model: ToolEmbeddingModel,
+    model: ConfiguredEmbeddingModel,
     expected_dimensions: int,
     force: bool = False,
 ) -> tuple[int | None, int]:
@@ -202,7 +144,7 @@ async def _ensure_embeddings(
             )
             dimensions = len(embeddings[0])
             if dimensions != expected_dimensions:
-                raise llm_embedding.EmbeddingError(
+                raise EmbeddingError(
                     "The tool embedding dimension changed during index refresh."
                 )
             for entry, embedding in zip(batch, embeddings, strict=True):
@@ -291,7 +233,7 @@ async def refresh_catalog_index(
 
     try:
         async with get_db().begin_nested():
-            model = await _resolve_embedding_model()
+            model = await configured_embedding_model()
     except Exception:
         logger.exception("Tool index refresh embedding model resolution failed")
         model = None
@@ -329,7 +271,7 @@ async def refresh_catalog_index(
                 expected_dimensions=expected_dimensions,
                 force=force_embeddings,
             )
-    except llm_embedding.EmbeddingError:
+    except EmbeddingError:
         logger.warning("Tool index refresh fell back to lexical retrieval")
         return ToolIndexRefreshResult(
             documents_indexed=len(documents),
@@ -390,7 +332,7 @@ async def _lexical_fingerprints(
 async def _semantic_fingerprints(
     catalog: AgentToolCatalog,
     *,
-    model: ToolEmbeddingModel,
+    model: ConfiguredEmbeddingModel,
     dimensions: int,
     query_embedding: list[float],
     limit: int,
@@ -592,7 +534,7 @@ async def search_catalog(
 
     try:
         async with get_db().begin_nested():
-            model = await _resolve_embedding_model()
+            model = await configured_embedding_model()
     except Exception:
         logger.exception("Tool discovery embedding model resolution failed")
         model = None
@@ -646,7 +588,7 @@ async def search_catalog(
                 )
             else:
                 semantic = []
-    except llm_embedding.EmbeddingError:
+    except EmbeddingError:
         logger.warning("Tool discovery fell back to lexical retrieval")
         semantic = []
     except Exception:
