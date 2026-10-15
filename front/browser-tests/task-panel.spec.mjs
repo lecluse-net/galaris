@@ -130,6 +130,12 @@ test('waiting task explains its dependency and stops suggesting active work', as
 })
 
 test('task details restore activity and expose the admitted demand and recorded delivery receipt', async ({ page }) => {
+  await page.clock.install()
+  await page.clock.pauseAt(new Date())
+  const snapshotReads = []
+  page.on('request', request => {
+    if (/\/api\/tasks\/task-1(?:\/full)?$/.test(new URL(request.url()).pathname)) snapshotReads.push(request.url())
+  })
   const item = { ...task(1), status: 'EXEC', data: { _agent_run_identity: { request_run_id: 'run' } },
     execution_result: undefined, effort: 'standard', ai: true, cost: 0, messages: [] }
   const snapshot = { ...activityFor(item), phase: 'EXEC', pause_pending: true,
@@ -149,7 +155,10 @@ test('task details restore activity and expose the admitted demand and recorded 
   })
   await jsonRoute(page, '**/api/topics?*', [])
   await mount(page, 'app/task/components/TaskDetail.vue', { props: { taskId: item.id } })
+  await expect(page.getByText(item.label, { exact: true })).toBeVisible()
+  await page.clock.fastForward(300)
   await expect(page.getByRole('paragraph').filter({ hasText: 'Recovered detail activity' })).toBeVisible()
+  expect(snapshotReads).toHaveLength(1)
   await expect(page.getByText('Failure', { exact: true })).toHaveCount(0)
   await page.getByRole('tab', { name: 'Details', exact: true }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Pause requested' })).toBeVisible()

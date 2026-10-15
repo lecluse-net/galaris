@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 import asyncio
 import time
 from dataclasses import dataclass, field
@@ -80,6 +80,7 @@ class _ResourceRoomPolicy:
     required_privileges: tuple[str, ...]
     authorize: ResourceRoomAuthorization
     displayed_only: bool = False
+    joined_only: bool = False
 
 
 # Private module state.
@@ -170,11 +171,13 @@ def register_resource_room(
     required_privileges: str | tuple[str, ...],
     authorize: ResourceRoomAuthorization,
     displayed_only: bool = False,
+    joined_only: bool = False,
 ) -> None:
     """Register resource authorization, optionally limiting events to its open page.
 
-    displayed_only filters clients before database checks; it does not replace
-    the live session, privilege and domain authorization of those recipients.
+    displayed_only and joined_only filter clients before database checks; neither
+    replaces the live session, privilege and domain authorization of recipients.
+    The default also serves resource notifications outside the currently open room.
     """
 
     privileges = (
@@ -191,6 +194,7 @@ def register_resource_room(
         required_privileges=privileges,
         authorize=authorize,
         displayed_only=displayed_only,
+        joined_only=joined_only,
     )
 
 
@@ -268,10 +272,18 @@ async def emit(
 
         event_name = f"{subject}.{action}"
         displayed_room = str(room) if room_policy and room_policy.displayed_only else None
+        resource_room = str(room) if room is not None and room_policy and room_policy.joined_only else None
+        # Event subscriptions describe a kind of event, not interest in every
+        # resource. Filter room members before any session/permission DB reads.
+        participants = (
+            {sid for sid, _ in cast(Iterable[tuple[str, str]], _sio.manager.get_participants("/", resource_room))}  # type: ignore[reportUnknownMemberType]
+            if resource_room is not None else None
+        )
         identities = tuple(
             (sid, identity)
             for sid, identity in _connected_identities.items()
             if _event_is_requested(sid, event_name)
+            and (participants is None or sid in participants)
             and (displayed_room is None or _displayed_resource_rooms.get(sid) == displayed_room)
         )
         if not identities:
@@ -324,6 +336,8 @@ async def emit(
                 continue
             # The page may have closed while authorization was awaiting the DB.
             if displayed_room is not None and _displayed_resource_rooms.get(sid) != displayed_room:
+                continue
+            if resource_room is not None and resource_room not in cast(list[str], _sio.rooms(sid)):  # type: ignore[reportUnknownMemberType]
                 continue
             await _sio.emit(  # type: ignore
                 event_name,

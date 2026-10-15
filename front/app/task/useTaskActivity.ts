@@ -23,7 +23,10 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
   let ids = new Set<string>()
   let joined = new Set<string>()
   let generation = 0
+  let selection = ''
   let disposed = false
+  let inFlight = false
+  let refreshPending = false
   let timer: ReturnType<typeof setTimeout> | undefined
   let buffered: TaskLiveRunEvent[] | null = null
 
@@ -69,19 +72,33 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
     const event = payload.data
     if (!event || !ids.has(event.task_id)) return
     if (buffered) buffered.push(event)
-    else receive(event)
+    // HTTP reconciliation must never hold up already-authorized live progress.
+    receive(event)
     if (event.kind !== 'message') schedule()
   }
   function schedule() {
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(() => { void refresh() }, 250)
+    if (disposed) return
+    if (inFlight) { refreshPending = true; return }
+    // A continuous stream must not postpone reconciliation indefinitely.
+    timer ??= setTimeout(() => { timer = undefined; void refresh() }, 250)
   }
   function onCall(payload: { data?: Partial<LLMCall> }) {
     if (payload.data?.task_id && ids.has(payload.data.task_id)
       && snapshots.value[payload.data.task_id]?.streams_ai_messages === false) schedule()
   }
   async function refresh() {
-    const request = ++generation
+    if (disposed) return
+    if (inFlight) { refreshPending = true; return }
+    if (timer) clearTimeout(timer)
+    timer = undefined
+    if (!ids.size) {
+      snapshots.value = {}
+      unavailable.value = false
+      return
+    }
+    const request = generation
+    inFlight = true
+    refreshPending = false
     buffered ??= []
     const selected = [...ids]
     try {
@@ -137,6 +154,9 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
         buffered = null
         for (const event of events) receive(event)
       }
+    } finally {
+      inFlight = false
+      if (refreshPending && !disposed) schedule()
     }
   }
   function resultFor(task: Task): AIResult | null {
@@ -162,11 +182,19 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
   websocket.onConnect(schedule)
   const poll = setInterval(() => { if (joined.size) schedule() }, 15_000)
   watch(() => tasks().map(task => `${task.id}:${task.revision}:${task.status}:${taskRunId(task)}`).join('|'), () => {
+    const nextSelection = tasks().map(task => `${task.id}:${taskRunId(task)}`).join('|')
+    if (nextSelection !== selection) {
+      selection = nextSelection
+      generation++
+      buffered = null
+    }
     const next = new Set(tasks().map(task => task.id))
     const active = new Set(tasks().filter(task => !['SUCCESS', 'ERROR'].includes(task.status)).map(task => task.id))
     for (const id of joined) if (!active.has(id)) rooms.release(id)
     for (const id of active) if (!joined.has(id)) rooms.retain(id)
-    for (const id of ids) if (!next.has(id)) { delete live.value[id]; delete fallback.value[id]; observedActivity.delete(id) }
+    for (const id of ids) if (!next.has(id)) {
+      delete snapshots.value[id]; delete live.value[id]; delete fallback.value[id]; observedActivity.delete(id)
+    }
     joined = active
     ids = next
     schedule()

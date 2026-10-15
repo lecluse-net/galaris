@@ -92,6 +92,7 @@ def register_events() -> None:
         TaskRunRoom,
         required_privileges=(Privileges.TASK_ACCESS, Privileges.TASK_EDIT),
         authorize=_can_read_task,
+        joined_only=True,
     )
 
 

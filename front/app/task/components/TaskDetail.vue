@@ -1109,10 +1109,7 @@ async function loadTask() {
     error.value = null
 
     try {
-        const [fullTask, { agent }] = await Promise.all([
-            taskService.getFull(taskId),
-            taskStore.fetchTaskByIdWithAgent(taskId)
-        ])
+        const { task: fullTask, agent } = await taskStore.fetchTaskByIdWithAgent(taskId)
         if (request !== loadTaskRequest || props.taskId !== taskId) return
         const liveTask = taskStore.currentTask?.id === taskId ? taskStore.currentTask : null
         let mergedTask = liveTask

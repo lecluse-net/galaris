@@ -11,6 +11,76 @@ from core.user.models import User
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("joined_only", [False, True])
+async def test_resource_audience_preserves_notifications_and_can_limit_live_streams(monkeypatch, joined_only):
+    from socketio import AsyncServer
+
+    class TaskRunRoom(websocket.BaseRoom):
+        pass
+
+    server = AsyncServer(async_mode="asgi")
+    server.emit = AsyncMock()
+    viewer = await server.manager.connect("viewer-transport", "/")
+    other_tab = await server.manager.connect("other-transport", "/")
+    room = TaskRunRoom("selected-task")
+    await server.enter_room(viewer, str(room))
+    await server.enter_room(other_tab, str(TaskRunRoom("another-task")))
+    user = User(id=1, email="listener@example.test", hashed_password="x", is_active=True)
+    db = Mock()
+    db.execute = AsyncMock(return_value=Mock())
+    db.execute.return_value.scalars.return_value.all.return_value = [user]
+
+    @asynccontextmanager
+    async def session():
+        yield
+
+    monkeypatch.setattr(websocket, "_sio", server)
+    monkeypatch.setattr(websocket, "get_db_session", session)
+    monkeypatch.setattr(websocket, "get_db", lambda: db)
+    monkeypatch.setattr(websocket, "_connected_identities", {
+        sid: websocket._SocketIdentity(user.id, None, token="test")
+        for sid in (viewer, other_tab)
+    })
+    monkeypatch.setattr(websocket, "_event_subscriptions", {})
+    monkeypatch.setattr(websocket, "_EVENT_PRIVILEGES", dict(websocket._EVENT_PRIVILEGES))
+    monkeypatch.setattr(websocket, "_resource_room_policies", {})
+    monkeypatch.setattr(websocket, "_event_authorizations", {})
+    authorize = AsyncMock(return_value=True)
+    websocket.register_resource_room("agent_run", TaskRunRoom,
+        required_privileges="TASK_ACCESS", authorize=authorize,
+        **({"joined_only": True} if joined_only else {}))
+    valid = AsyncMock(return_value=True)
+    monkeypatch.setattr(websocket, "_identity_is_valid", valid)
+    monkeypatch.setattr(websocket, "check_privilege", AsyncMock(return_value=True))
+
+    for _ in range(30):
+        await websocket.emit("agent_run", "event", {"sequence": 1}, room)
+    assert server.emit.await_count == (30 if joined_only else 60)
+    assert {call.kwargs["room"] for call in server.emit.await_args_list} == ({viewer} if joined_only else {viewer, other_tab})
+    # Revalidate access even after a successful join; no permission cache.
+    authorize.return_value = False
+    server.emit.reset_mock()
+    await websocket.emit("agent_run", "event", {}, room)
+    server.emit.assert_not_awaited()
+    authorize.return_value = True
+    if not joined_only:
+        return
+
+    async def leave_during_authorization(*_args):
+        await server.leave_room(viewer, str(room))
+        return True
+
+    authorize.side_effect = leave_during_authorization
+    await websocket.emit("agent_run", "event", {}, room)
+    server.emit.assert_not_awaited()
+    db.execute.reset_mock()
+    valid.reset_mock()
+    await websocket.emit("agent_run", "event", {}, room)
+    db.execute.assert_not_awaited()
+    valid.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("subject", ["task", "llm_call", "memory", "goal", "goal_settings", "process_run", "voice_conversation", "chat", "agent_run"])
 async def test_no_consumer_skips_db_and_delivery_but_subscribed_users_keep_their_rights(monkeypatch, subject):
     user = User(id=1, email="listener@example.test", hashed_password="x", is_active=True)
