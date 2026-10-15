@@ -54,7 +54,7 @@
             type="button"
             class="message-round-copy"
             :disabled="!entry.copyRoundId"
-            :title="t('chat.copyRoundId')"
+            :title="entry.copyRoundId ? t('chat.copyRoundId') : undefined"
             @click="copyRoundId(entry.copyRoundId)"
           >
             <span class="message-sender">{{ entry.senderName }}</span>

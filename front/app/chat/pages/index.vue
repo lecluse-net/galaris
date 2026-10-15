@@ -543,6 +543,11 @@ onMounted(()=>{document.addEventListener('visibilitychange',updateChatPageVisibi
 </script>
 
 <style scoped>
+.messenger-page :deep(:is(.disabled, [disabled])),
+.messenger-page :deep(:is(.disabled, [disabled]) *) {
+  cursor: default !important;
+}
+
 .messenger-page {
   --chat-page-bg: #eceff3;
   --chat-surface: #fff;
