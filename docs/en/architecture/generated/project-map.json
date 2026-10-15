@@ -9514,7 +9514,7 @@
           "memory_revisions.id"
         ],
         "history_mixin": false,
-        "line": 632,
+        "line": 638,
         "module": "app.memory",
         "table": "document_revisions"
       },
@@ -9563,7 +9563,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 701,
+        "line": 707,
         "module": "app.memory",
         "table": "document_team_grants"
       },
@@ -9575,7 +9575,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 690,
+        "line": 696,
         "module": "app.memory",
         "table": "document_user_grants"
       },
@@ -9595,7 +9595,7 @@
           "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 583,
+        "line": 589,
         "module": "app.memory",
         "table": "documents"
       },
@@ -10115,7 +10115,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1254,
+        "line": 1260,
         "module": "app.memory",
         "table": "memory_associations"
       },
@@ -10124,7 +10124,7 @@
         "file": "back/app/memory/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 1436,
+        "line": 1442,
         "module": "app.memory",
         "table": "memory_automation_jobs"
       },
@@ -10137,7 +10137,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 1166,
+        "line": 1172,
         "module": "app.memory",
         "table": "memory_candidates"
       },
@@ -10150,7 +10150,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 972,
+        "line": 978,
         "module": "app.memory",
         "table": "memory_contact_identities"
       },
@@ -10162,7 +10162,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 934,
+        "line": 940,
         "module": "app.memory",
         "table": "memory_contact_items"
       },
@@ -10174,7 +10174,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 897,
+        "line": 903,
         "module": "app.memory",
         "table": "memory_context_edges"
       },
@@ -10185,7 +10185,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 842,
+        "line": 848,
         "module": "app.memory",
         "table": "memory_context_nodes"
       },
@@ -10196,7 +10196,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1311,
+        "line": 1317,
         "module": "app.memory",
         "table": "memory_embedding_chunks"
       },
@@ -10207,7 +10207,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1288,
+        "line": 1294,
         "module": "app.memory",
         "table": "memory_embedding_manifests"
       },
@@ -10219,7 +10219,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 1365,
+        "line": 1371,
         "module": "app.memory",
         "table": "memory_findings"
       },
@@ -10254,7 +10254,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 666,
+        "line": 672,
         "module": "app.memory",
         "table": "memory_item_grants"
       },
@@ -10267,7 +10267,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 265,
+        "line": 271,
         "module": "app.memory",
         "table": "memory_items"
       },
@@ -10279,7 +10279,7 @@
           "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 790,
+        "line": 796,
         "module": "app.memory",
         "table": "memory_links"
       },
@@ -10292,7 +10292,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 712,
+        "line": 718,
         "module": "app.memory",
         "table": "memory_revisions"
       },
@@ -10305,7 +10305,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 1116,
+        "line": 1122,
         "module": "app.memory",
         "table": "memory_sources"
       },
@@ -10318,7 +10318,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 643,
+        "line": 649,
         "module": "app.memory",
         "table": "memory_summary_revisions"
       },
@@ -10330,7 +10330,7 @@
           "memory_topic_contact_scopes.id"
         ],
         "history_mixin": false,
-        "line": 1077,
+        "line": 1083,
         "module": "app.memory",
         "table": "memory_topic_contact_items"
       },
@@ -10342,7 +10342,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1036,
+        "line": 1042,
         "module": "app.memory",
         "table": "memory_topic_contact_scopes"
       },
@@ -10353,7 +10353,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 772,
+        "line": 778,
         "module": "app.memory",
         "table": "memory_urls"
       },
@@ -10366,7 +10366,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 1219,
+        "line": 1225,
         "module": "app.memory",
         "table": "memory_usages"
       },
@@ -20948,12 +20948,17 @@
           {
             "file": "front/app/memory/pages/documents.vue",
             "module": "app/memory",
-            "route_hint": "/memory/documents"
+            "route_hint": "/documents"
           },
           {
             "file": "front/app/memory/pages/index.vue",
             "module": "app/memory",
             "route_hint": "/memory"
+          },
+          {
+            "file": "front/app/memory/pages/legacy-documents.vue",
+            "module": "app/memory",
+            "route_hint": "/memory/documents"
           }
         ],
         "path": "front/app/memory"
@@ -21241,6 +21246,11 @@
         "route_hint": "/dataset/:id?"
       },
       {
+        "file": "front/app/memory/pages/documents.vue",
+        "module": "app/memory",
+        "route_hint": "/documents"
+      },
+      {
         "file": "front/app/dream/pages/index.vue",
         "module": "app/dream",
         "route_hint": "/dream"
@@ -21326,7 +21336,7 @@
         "route_hint": "/memory/contacts"
       },
       {
-        "file": "front/app/memory/pages/documents.vue",
+        "file": "front/app/memory/pages/legacy-documents.vue",
         "module": "app/memory",
         "route_hint": "/memory/documents"
       },

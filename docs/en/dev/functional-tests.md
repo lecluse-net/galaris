@@ -22,6 +22,11 @@ For each change, state the affected guarantee and the guarantees to preserve, in
 contracts and tests, then select the least expensive layer that proves the observable effect.
 
 
+`app/memory/tests/test_document_library.py` also covers legacy `form` documents:
+listing and HTML filtering, reads, permissions and content preservation without rewriting.
+`e2e/specs/document-refresh.spec.mjs` verifies redirection from `/memory/documents` to
+`/documents` with the selection preserved, followed by refresh and sharing.
+
 ## Datasets and typed contracts
 
 `app/dataset/tests/test_datasets.py` also checks that native creation makes no Memory

@@ -247,7 +247,7 @@
           "Documents"
         ]
       },
-      "route": "/memory/documents",
+      "route": "/documents",
       "href": null,
       "description": {
         "fr": "Retrouver et classer vos documents accessibles",

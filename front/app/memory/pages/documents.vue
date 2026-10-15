@@ -1,3 +1,7 @@
+<route lang="json">
+{ "path": "/documents" }
+</route>
+
 <template>
   <DocumentLibraryPage />
 </template>

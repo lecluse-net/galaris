@@ -20,10 +20,10 @@ export default {
   },
   href(uri) {
     const attachment = /^document:\/\/([0-9a-f-]{36})\/attachments\/([0-9a-f-]{36})$/.exec(uri)
-    if (attachment) return `/memory/documents?document_id=${attachment[1]}&attachment_id=${attachment[2]}`
+    if (attachment) return `/documents?document_id=${attachment[1]}&attachment_id=${attachment[2]}`
 
     const match = /^(document|memory):\/\/([0-9a-f-]{36})$/.exec(uri)
-    if (match) return match[1] === 'document' ? `/memory/documents?document_id=${match[2]}` : `/memory?item_id=${match[2]}`
+    if (match) return match[1] === 'document' ? `/documents?document_id=${match[2]}` : `/memory?item_id=${match[2]}`
     return null
   },
 } satisfies RichContentContribution

@@ -36,6 +36,13 @@ def test_page_route_hint_preserves_parameter_contract(filename: str, expected: s
     assert page_route_hint("app/example", pages / filename, pages) == expected
 
 
+def test_page_route_hint_respects_explicit_page_path(tmp_path: Path) -> None:
+    pages = tmp_path / "front/app/example/pages"
+    page = pages / "documents.vue"
+    _write(page, '<route lang="json">{ "path": "/documents" }</route>\n<template><span /></template>')
+    assert page_route_hint("app/example", page, pages) == "/documents"
+
+
 def _fixture(tmp_path: Path) -> None:
     _write(
         tmp_path / "front/modules.ts",

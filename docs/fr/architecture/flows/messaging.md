@@ -29,7 +29,7 @@ le plus récent ; elle ne reprend jamais l'affichage d'un message ancien comme �
 Fermer le document ou perdre son accès supprime cette indication des envois suivants.
 L'outil `document_show(document=...)`, rattaché au Tool Conversation (`conversation`), demande l'ouverture dans ce même
 panneau (ou la visionneuse mobile). Il accepte un UUID, une URI `document://` ou une URL
-Galaris `/memory/documents?document_id=...`. Son exposition exige une connexion Conversation active,
+Galaris `/documents?document_id=...` (ou son ancien chemin `/memory/documents`). Son exposition exige une connexion Conversation active,
 Conversation autorisé en conversation et un round textuel dans une room interne appartenant à l'agent.
 Le catalogue et le prompt partagent ce filtre ; l'appel revérifie les autorisations, l'accès au
 document et la fraîcheur du round. L'événement `chat.document_show` ne contient que la room et

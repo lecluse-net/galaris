@@ -113,12 +113,13 @@ async def test_structural_links_are_idempotent_without_admitting_unrelated_searc
 
 def test_explicit_reference_normalization_does_not_invent_documents():
     from uuid import uuid4
-    doc, attachment = uuid4(), uuid4()
+    doc, attachment, current_doc = uuid4(), uuid4(), uuid4()
     assert document_references(
         f'<a href="document://{doc}">One</a><a href="/memory/documents?document_id={doc}">Two</a>'
+        f'<a href="/documents?document_id={current_doc}">Current</a>'
         f'<img src="document://{doc}/attachments/{attachment}"><p>document://{uuid4()}</p>'
         '<a href="https://outside.example/memory/documents?document_id=bad">External</a>'
-    ) == {(doc, None), (doc, attachment)}
+    ) == {(doc, None), (doc, attachment), (current_doc, None)}
 
 
 @pytest.mark.asyncio

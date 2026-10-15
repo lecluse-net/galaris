@@ -211,8 +211,12 @@ def _document_attribute[T](name: str, memory_name: str, default: T) -> hybrid_pr
     @hybrid_property
     def attribute(item: MemoryItem) -> T:
         document = item.__dict__.get("document") if item.node_kind == "document" else None
-        return cast(T, getattr(document if document is not None else item,
-                               name if document is not None else memory_name, default))
+        value = getattr(document if document is not None else item,
+                        name if document is not None else memory_name, default)
+        # Retired forms contain HTML; retain their bytes and stable identity.
+        if name == "document_type" and value == "form":
+            return cast(T, "html")
+        return cast(T, value)
 
     @attribute.inplace.setter
     def setter(item: MemoryItem, value: T) -> None:  # pyright: ignore[reportUnusedFunction]
@@ -254,6 +258,8 @@ def _document_attribute[T](name: str, memory_name: str, default: T) -> hybrid_pr
             resolved = case((document_exists, document_value), else_=memory_value)
         else:
             resolved = func.coalesce(document_value, memory_value)
+        if name == "document_type":
+            resolved = case((resolved == "form", "html"), else_=resolved)
         return cast(ColumnElement[T], case(
             (cls.node_kind == "document", resolved),
             else_=memory_value,

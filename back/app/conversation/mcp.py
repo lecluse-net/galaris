@@ -84,7 +84,7 @@ def _display_document_id(value: str) -> UUID:
     if parsed.scheme in {"http", "https"} or reference.startswith("/"):
         origin = urlsplit(settings.APP_HOST)
         if (parsed.netloc and (parsed.scheme, parsed.netloc) != (origin.scheme, origin.netloc)
-                or parsed.path != "/memory/documents" or parsed.fragment):
+                or parsed.path not in {"/documents", "/memory/documents"} or parsed.fragment):
             raise ValueError("Expected a Galaris document URL, document:// URI or UUID.")
         identifiers = parse_qs(parsed.query).get("document_id", [])
         if len(identifiers) != 1:

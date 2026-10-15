@@ -162,9 +162,12 @@ async def test_folder_details_endpoint_preserves_agent_scope(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("legacy_form", [False, True])
 async def test_library_unites_owned_and_granted_documents(
+    db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
+    legacy_form: bool,
 ) -> None:
     del memory_storage
     managed, peer = agents
@@ -191,6 +194,16 @@ async def test_library_unites_owned_and_granted_documents(
         actor_agent_id=peer.id,
     )
 
+    if legacy_form:
+        from sqlalchemy import text
+
+        # Reproduce a database predating the retirement of the HTML form type.
+        # The test transaction restores the constraint along with its data.
+        await db.execute(text("ALTER TABLE documents DROP CONSTRAINT ck_documents_type"))
+        await db.execute(text("ALTER TABLE documents DROP CONSTRAINT ck_documents_content_type"))
+        await db.execute(text("UPDATE documents SET document_type = 'form' WHERE id = :id"), {"id": owned.id})
+        db.expire(owned, ["document"])
+
     page = await service.browse_document_library(
         DocumentLibraryRequest(),
         managed_agent_ids=frozenset({managed.id}),
@@ -202,9 +215,21 @@ async def test_library_unites_owned_and_granted_documents(
     assert by_id[owned.id].writable_agent_ids == [managed.id]
     assert by_id[shared.id].agent_ids == [managed.id]
     assert by_id[shared.id].writable_agent_ids == []
+    assert by_id[owned.id].item.document_type == "html"
+    html_page = await service.browse_document_library(
+        DocumentLibraryRequest(document_type="html"),
+        managed_agent_ids=frozenset({managed.id}),
+    )
+    assert {entry.item.id for entry in html_page.entries} == {owned.id, shared.id}
     from sqlalchemy import inspect
     assert "revisions" in inspect(owned).unloaded
     assert "revisions" in inspect(shared).unloaded
+    item, content, access, *_ = await service.get_item(owned.id, agent_id=managed.id)
+    assert item.document_type == "html"
+    assert content == b"<p>Owned</p>"
+    assert access.can_write
+    if legacy_form:
+        assert await db.scalar(text("SELECT document_type FROM documents WHERE id = :id"), {"id": owned.id}) == "form"
 
 
 @pytest.mark.asyncio

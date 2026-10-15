@@ -22,6 +22,11 @@ et tests, puis choisir la couche la moins coûteuse qui prouve l’effet. Conser
 est une décision à part entière : aucun quota de tests nouveaux par module.
 
 
+`app/memory/tests/test_document_library.py` couvre aussi les anciens documents `form` :
+liste et filtre HTML, lecture, droits et conservation du contenu sans réécriture.
+`e2e/specs/document-refresh.spec.mjs` vérifie la redirection de `/memory/documents` vers
+`/documents` avec la sélection conservée, puis le rafraîchissement et le partage.
+
 ## Datasets et contrats typés
 
 `app/dataset/tests/test_datasets.py` vérifie aussi qu'une création native ne crée pas de

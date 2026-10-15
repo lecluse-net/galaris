@@ -320,11 +320,14 @@ a task with multiple calls may run for hours. Changes apply to new calls.
 
 ## Documents and knowledge
 
-**Knowledge → Documents** (`/memory/documents`) holds authored content and Datasets.
+**Knowledge → Documents** (`/documents`) holds authored content and Datasets.
 **Knowledge → Memory** (`/memory`) offers **List** and **Graph**: open the
 page and select the tab without assuming a URL parameter. Contacts are at
 `/memory/contacts`; thematic groupings are under **Knowledge → Thematic dossiers** (`/topic`).
 Sharing a link does not grant access to its content.
+
+Legacy `/memory/documents` links redirect to `/documents`, preserving the selected document
+and attachment. Legacy HTML forms remain accessible in the library.
 
 Click a dossier row, or its mobile card, to open its content. Within a dossier, task,
 text round, voice round, space, document and memory rows open their target in a dialog

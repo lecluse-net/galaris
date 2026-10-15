@@ -36,6 +36,7 @@ test('remote changes and sharing updates reconcile documents without removing ac
   expect(filed.ok(), await filed.text()).toBeTruthy()
   await pageErrors.settle()
   await page.goto(`/memory/documents?document_id=${documents[1].id}`)
+  await expect(page).toHaveURL(url => url.pathname === '/documents' && url.searchParams.get('document_id') === documents[1].id)
   await page.getByText(folderName, { exact: true }).click()
   const searched = page.waitForResponse(response => new URL(response.url()).pathname === '/api/memory/documents/library'
     && response.request().postDataJSON()?.query === prefix)

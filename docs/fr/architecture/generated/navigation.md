@@ -66,7 +66,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 ## Connaissances → Documents
 
-- Route : `/memory/documents`
+- Route : `/documents`
 - Usage : Retrouver et classer vos documents accessibles
 - Visibilité du menu (privilèges) : (MEMORY_ACCESS)
 - Conditions supplémentaires : —

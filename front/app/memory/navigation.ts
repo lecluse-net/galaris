@@ -9,7 +9,7 @@ const navigation: NavigationTree = {
         description: 'nav.documents_desc',
         icon: 'description',
         order: 10,
-        to: '/memory/documents',
+        to: '/documents',
         privileges: [privileges.MEMORY_ACCESS],
       },
       memory: {

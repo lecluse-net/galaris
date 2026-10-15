@@ -213,16 +213,23 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '//memory/contacts': RouteRecordInfo<
-      '//memory/contacts',
-      '/memory/contacts',
+    '//memory/documents': RouteRecordInfo<
+      '//memory/documents',
+      '/documents',
       Record<never, never>,
       Record<never, never>,
       | never
     >,
-    '//memory/documents': RouteRecordInfo<
-      '//memory/documents',
+    '//memory/legacy-documents': RouteRecordInfo<
+      '//memory/legacy-documents',
       '/memory/documents',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '//memory/contacts': RouteRecordInfo<
+      '//memory/contacts',
+      '/memory/contacts',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -546,17 +553,25 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | never
     }
-    'app/memory/pages/contacts.vue': {
+    'app/memory/pages/documents.vue': {
       routes:
-        | '//memory/contacts'
+        | '//memory/documents'
       views:
         | never
       pathParamNames:
         | never
     }
-    'app/memory/pages/documents.vue': {
+    'app/memory/pages/legacy-documents.vue': {
       routes:
-        | '//memory/documents'
+        | '//memory/legacy-documents'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/memory/pages/contacts.vue': {
+      routes:
+        | '//memory/contacts'
       views:
         | never
       pathParamNames:

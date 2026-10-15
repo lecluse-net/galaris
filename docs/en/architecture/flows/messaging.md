@@ -28,7 +28,7 @@ document as current UI state. Closing the document or losing access removes the 
 from subsequent sends.
 The Conversation Tool's `document_show(document=...)` requests opening a document in this same pane
 (or the mobile viewer). It accepts a UUID, a `document://` URI or a Galaris URL of the form
-`/memory/documents?document_id=...`. Availability requires an active Conversation connection, Conversation
+`/documents?document_id=...` (or its legacy `/memory/documents` path). Availability requires an active Conversation connection, Conversation
 enabled for conversations and a text round in the agent's own internal room. The tool catalog
 and prompt share this filter; execution rechecks permissions, document access and round freshness.
 The `chat.document_show` event contains only the room and document IDs, changes no sharing grants

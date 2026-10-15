@@ -58,7 +58,7 @@ async def server_for(agent, turn, *, conversation_only=True):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("reference_kind", ["uuid", "uri", "url", "relative_url"])
+@pytest.mark.parametrize("reference_kind", ["uuid", "uri", "url", "relative_url", "legacy_url", "legacy_relative_url"])
 @pytest.mark.parametrize("legacy_function_denials", [False, True])
 async def test_show_document_honors_function_policy_without_changing_content_or_sharing(
     display_scope, db, reference_kind, legacy_function_denials,
@@ -77,8 +77,10 @@ async def test_show_document_honors_function_policy_without_changing_content_or_
         await db.flush()
     references = {
         "uuid": str(document.id), "uri": f"document://{document.id}",
-        "url": f"{settings.APP_HOST.rstrip('/')}/memory/documents?document_id={document.id}",
-        "relative_url": f"/memory/documents?document_id={document.id}",
+        "url": f"{settings.APP_HOST.rstrip('/')}/documents?document_id={document.id}",
+        "relative_url": f"/documents?document_id={document.id}",
+        "legacy_url": f"{settings.APP_HOST.rstrip('/')}/memory/documents?document_id={document.id}",
+        "legacy_relative_url": f"/memory/documents?document_id={document.id}",
     }
     advertisement = await build_agent_tool_advertisement(
         agent.id, runtime="internal", conversation_only=True, resources={"conversation_turn": turn},

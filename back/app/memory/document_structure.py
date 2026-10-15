@@ -64,7 +64,7 @@ def document_references(content: str) -> set[tuple[UUID, UUID | None]]:
                 elif uri.path.startswith("/attachments/"):
                     attachment_id = UUID(uri.path.removeprefix("/attachments/"))
                     result.add((document_id, attachment_id))
-            elif not uri.scheme and not uri.netloc and uri.path == "/memory/documents":
+            elif not uri.scheme and not uri.netloc and uri.path in {"/documents", "/memory/documents"}:
                 query = parse_qs(uri.query)
                 document_id = UUID(query["document_id"][0])
                 attachment = query.get("attachment_id", [])

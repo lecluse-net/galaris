@@ -295,6 +295,14 @@ def frontend_module_names(root: Path) -> list[str]:
 
 
 def page_route_hint(module_name: str, page: Path, pages_root: Path) -> str:
+    if page.is_file():
+        route_block = re.search(r'<route\s+lang="json">(.*?)</route>', page.read_text(encoding="utf-8"), re.S)
+        if route_block:
+            route: object = json.loads(route_block.group(1))
+            if isinstance(route, dict):
+                path = cast(dict[str, object], route).get("path")
+                if isinstance(path, str):
+                    return path
     relative_page = page.relative_to(pages_root).with_suffix("")
     segments = list(relative_page.parts)
     if segments and segments[-1] == "index":

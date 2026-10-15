@@ -66,7 +66,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 ## Knowledge → Documents
 
-- Route : `/memory/documents`
+- Route : `/documents`
 - Purpose : Find and organize your accessible documents
 - Menu visibility (privileges) : (MEMORY_ACCESS)
 - Additional conditions : —

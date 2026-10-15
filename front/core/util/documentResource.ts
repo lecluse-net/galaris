@@ -21,8 +21,8 @@ export function documentIdFromRouteQuery(value: unknown): string | null {
 export function documentResourceHref(documentId: string): string {
   const normalized = normalizeDocumentId(documentId)
   return normalized
-    ? `/memory/documents?document_id=${encodeURIComponent(normalized)}`
-    : '/memory/documents'
+    ? `/documents?document_id=${encodeURIComponent(normalized)}`
+    : '/documents'
 }
 
 function markDocumentLink(link: HTMLAnchorElement, documentId: string): void {
