@@ -66,6 +66,7 @@ def test_first_party_task_purposes_reject_a_missing_task(
         LLMCallPurpose.CONVERSATION_TEXT,
         LLMCallPurpose.CONVERSATION_AUDIO,
         LLMCallPurpose.CONVERSATION_TASK_OBJECTIVE,
+        LLMCallPurpose.CONVERSATION_PROCESS_ADMISSION,
     ],
 )
 def test_conversation_purposes_reject_a_missing_round(

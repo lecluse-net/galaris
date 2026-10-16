@@ -12,13 +12,16 @@ from .access import human_document_clause, readable_item_for_agents_clause
 
 async def find_dataset_document_usages(uris: tuple[str, ...], actor: AgentManagementScope,
     offset: int, limit: int, *, document_type: str = "html") -> dict[str, Any]:
-    required = ["MEMORY_ACCESS", "MEMORY_EDIT", "MEMORY_ADMIN"]
+    required = ["PROCESS_READ", "PROCESS_EDIT", "PROCESS_ADMIN"] if document_type == "process" else ["MEMORY_ACCESS", "MEMORY_EDIT", "MEMORY_ADMIN"]
     if not await check_privilege(await get_user_record(actor.user_id), required, get_db()):
         return {"total": 0, "items": []}
     query = select(Document, MemoryItem).join(MemoryItem, MemoryItem.id == Document.memory_item_id).where(
         Document.document_type == document_type,
         or_(human_document_clause(actor.user_id), readable_item_for_agents_clause(actor.agent_ids)),
         or_(*(Document.content.contains(uri, autoescape=True) for uri in uris)))
+    if document_type == "process":
+        from .workflow_documents import workflow_document_policy_ids
+        query = query.where(Document.id.in_(workflow_document_policy_ids(actor)))
     total = await get_db().scalar(select(func.count()).select_from(query.subquery())) or 0
     rows: list[tuple[Document, MemoryItem]] = list((await get_db().execute(query.order_by(Document.id).offset(offset).limit(limit))).tuples().all()) if limit else []
     return {"total": total, "items": [{"id": f"document:{doc.id}", "label": item.title,

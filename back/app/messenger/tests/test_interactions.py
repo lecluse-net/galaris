@@ -129,6 +129,22 @@ def _incoming(
     return message
 
 
+@pytest.mark.asyncio
+async def test_a_process_reply_is_interpreted_before_any_other_pending_approval(db):
+    messenger = _FakeMessenger()
+    await create_choice(messenger, agent_id=7, room_id="room-1", user_id="alice",
+        request=ChoiceRequest(kind="free-test", title="Send an invented file", free_text=True,
+            interpretation_required=True))
+    approval = await create_choice(messenger, agent_id=7, room_id="room-1", user_id="alice",
+        request=ChoiceRequest(kind="closed-test", title="Another approval",
+            options=[ChoiceOption(id="once", label="Approve once", aliases=["yes"])]))
+    assert await resolve_from_message(_incoming("yes"), agent_id=7) is None
+    assert len(await list_pending_choices(agent_id=7, connection_id=None, tool_id=42,
+        room_id="room-1", user_id="alice")) == 2
+    assert await resolve_from_message(_incoming(f"#{approval.reference} yes"), agent_id=7) is not None
+    await _reset_for_tests()
+
+
 def test_choice_text_free_text_with_options_mentions_both() -> None:
     text = _render_choice_text(
         ChoiceRequest(

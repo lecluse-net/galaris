@@ -1,9 +1,29 @@
 """Immutable document formats and dataset validation."""
 
 import json
+from collections.abc import Callable
 from typing import Literal, NoReturn
 
-DocumentType = Literal["html", "dataset"]
+DocumentType = Literal["html", "dataset", "process"]
+_validators: dict[str, Callable[[str], object]] = {}
+
+
+def register_document_validator(kind: str, validator: Callable[[str], object]) -> None:
+    _validators[kind] = validator
+
+
+def validate_document_content(kind: str, content: bytes) -> None:
+    if kind == "dataset":
+        validate_dataset(content)
+    elif kind == "process":
+        validator = _validators.get(kind)
+        if validator is None:
+            raise ValueError(f"The {kind} document validator is unavailable")
+        validator(content.decode("utf-8"))
+
+
+def document_media_type(kind: DocumentType) -> str:
+    return {"html": "text/html", "dataset": "application/json", "process": "application/bpmn+xml"}[kind]
 
 
 def validate_dataset(content: bytes) -> None:

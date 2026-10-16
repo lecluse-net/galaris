@@ -65,8 +65,8 @@ async def test_document_analysis_does_not_create_a_business_process(runtime, tmp
     assert duplicate['analysis_id'] == result['analysis_id']
     with pytest.raises(ValueError, match='another request'):
         await document_analyze(ctx, uri, 'A different question', idempotency_key='synthetic-admission')
-    from app.process import registry
-    assert 'galaris' not in registry.codes()
+    # The native BPMN engine now exists independently of document analysis.
+    # This admission must still create neither a business definition nor a Run.
     assert not list(await db.scalars(select(ProcessDefinition).where(ProcessDefinition.agent_id == agent.id)))
     assert not list(await db.scalars(select(ProcessRun).where(ProcessRun.launcher_agent_id == agent.id)))
 

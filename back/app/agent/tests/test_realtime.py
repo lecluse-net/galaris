@@ -373,7 +373,7 @@ async def test_realtime_voice_context_uses_conversation_action_policy(
     assert "# Continuity context" in result.instructions
     assert "# Context projection" not in result.instructions
     assert "Recent conversation transcript" in result.instructions
-    assert "# Recently linked work" in result.instructions
+    assert "# Active tasks and processes" in result.instructions
     assert "task=galaris://task/task-1" in result.instructions
     assert "created=2026-08-24T10:00+02:00" in result.instructions
     assert f"objective: {'A' * 250}" in result.instructions

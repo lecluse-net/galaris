@@ -114,6 +114,41 @@ def test_completion_uses_one_isolated_session_and_final_response(
     assert (tmp_path / "sessions" / completion.id).is_dir()
 
 
+@pytest.mark.parametrize("unavailable_starts", [1, 3])
+def test_mcp_startup_is_retried_before_any_model_execution(tmp_path, monkeypatch, unavailable_starts):
+    starts, runs, closes = [], [], []
+
+    class SDKBoundary:
+        def __init__(self, **_options):
+            starts.append(self)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            closes.append(self)
+
+        def run(self, _prompt, **_options):
+            runs.append(self)
+            return SimpleNamespace(final_response="Done", finish_reason="completed")
+
+    monkeypatch.setattr(runtime_adapter, "_harness_factory", lambda: SDKBoundary)
+    def execute():
+        return runtime_adapter.run_completion(
+            {"model": "synthetic", "messages": [{"role": "user", "content": "Do the work"}]},
+            _config(tmp_path), mcp_ready=lambda: len(starts) > unavailable_starts)
+
+    if unavailable_starts == 3:
+        with pytest.raises(RuntimeError, match="MCP catalogue"):
+            execute()
+        assert not runs
+    else:
+        assert execute().content == "Done"
+        assert runs == [starts[-1]]
+    assert len(starts) == min(unavailable_starts + 1, 3)
+    assert closes == starts
+
+
 @pytest.mark.parametrize("status", [502, 503, 504])
 def test_transient_provider_error_continues_same_session_without_replaying_tool(tmp_path, monkeypatch, status):
     calls = []

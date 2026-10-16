@@ -1027,7 +1027,7 @@ async def read_room_processes(
     from_message_id: UUID = Query(),
     agent_id: int | None = Query(default=None, ge=1),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=10, ge=1, le=500),
+    page_size: int = Query(default=50, ge=1, le=500),
 ) -> ConversationProcessList:
     del agent_id
     return await list_room_processes(

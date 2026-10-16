@@ -36,6 +36,7 @@ class ActionApprovals:
         self.on_pending = on_pending
         self.on_running = on_running
         self.mcp_url = mcp_url
+        self.mcp_catalog_ready = False
         self.cancelled = threading.Event()
         self.permits: dict[str, str] = {}
         self.waiting: set[str] = set()
@@ -137,6 +138,8 @@ class ActionApprovals:
             meta = _object(payload.get("_meta") or payload.get("meta") or payload)
             authorization = _object(meta.get("galaris.authorization/v1"))
             if authorization.get("disposition") != "authorization_required":
+                if body.get("method") == "tools/list":
+                    self.mcp_catalog_ready = bool(payload.get("tools")) and "error" not in result
                 self._running()
                 return status, json.dumps(result, ensure_ascii=False).encode()
             identifier = str(authorization["request_id"])

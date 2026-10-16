@@ -21,6 +21,93 @@ from app.task.models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("local_changes", [False, True])
+@pytest.mark.parametrize("held", [False, True])
+async def test_run_admission_preserves_input_committed_while_context_was_prepared(committed_database, local_changes, held):
+    token = uuid4()
+    async with get_db_session() as db:
+        task = Task(label="Synthetic concurrent admission", status=TaskStatus.EXEC,
+            lease_token=token, lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+            data={"existing": "keep", "obsolete": "remove", "input_request": {"key": "synthetic", "status": "pending"}})
+        db.add(task); await db.flush()
+        db.add(TaskAttempt(task_id=task.id, attempt_number=1, phase="DISPATCH", status="CLAIMED",
+            worker_id="synthetic", lease_token=token))
+        identity = task.id
+
+    async with get_db_session() as db:
+        preparing = await db.get(Task, identity)
+        if local_changes:
+            preparing.data = {key: value for key, value in preparing.data.items() if key != "obsolete"} | {"prepared": "keep"}
+        async with get_db_session() as reply_db:
+            receiving = await reply_db.get(Task, identity)
+            receiving.data = {**receiving.data, "input_context": "Synthetic received answer",
+                "input_request": {"key": "synthetic", "status": "answered", "response": "Synthetic received answer"}}
+            if held:
+                from app.task import task_service
+                task_service.suspend(receiving, task_service.PAUSE_USER)
+        if held:
+            with pytest.raises(StaleAgentRunError):
+                await SqlAlchemyAgentTaskAdapter().activate_agent_run(preparing,
+                    {"request_run_id": str(uuid4()), "driver_code": "internal"})
+            await db.rollback()
+        else:
+            await SqlAlchemyAgentTaskAdapter().activate_agent_run(preparing,
+                {"request_run_id": str(uuid4()), "driver_code": "internal"})
+
+    async with get_db_session() as db:
+        persisted = await db.get(Task, identity)
+        assert persisted.data["input_context"] == "Synthetic received answer"
+        assert persisted.data["input_request"]["status"] == "answered"
+        assert persisted.data["existing"] == "keep"
+        if held:
+            assert persisted.paused and persisted.data["pause_reasons"] == ["user"]
+            assert "_agent_run_identity" not in persisted.data
+        elif local_changes:
+            assert persisted.data["prepared"] == "keep" and "obsolete" not in persisted.data
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("success", [True, False])
+async def test_finalization_preserves_run_cleanup_and_a_concurrent_input_reply(committed_database, success):
+    from dataclasses import replace
+    from app.agent import executor_service, facade
+    from app.agent.tests.test_driver_testkit import _request
+
+    checkpoint = {"driver_code": "openai_messages", "runtime_run_id": "a" * 64,
+        "status": "completed" if success else "interrupted",
+        "data": {"version": 1, "run_context": "synthetic-opaque-state"}}
+    key = uuid4().hex
+    async with get_db_session() as db:
+        task = Task(label="Synthetic input continuation", status=TaskStatus.EXEC, data={
+            "_agent_run_checkpoint": checkpoint, "_agent_run_identity": {"request_run_id": str(uuid4())},
+            "input_request": {"key": key, "status": "pending"}})
+        db.add(task); await db.flush()
+        identity = task.id
+
+    async with get_db_session() as db:
+        task = await db.get(Task, identity)
+        result = ExecutionResult(prompt="Synthetic", result="Waiting for an answer", success=success)
+        facade._apply_run_result(task, result, replace(_request(), task_id=identity))
+        async with get_db_session() as reply_db:
+            concurrent = await reply_db.get(Task, identity)
+            concurrent.data = {**concurrent.data,
+                "input_request": {"key": key, "status": "answered", "response": "synthetic response"},
+                "input_context": "synthetic response"}
+        await executor_service._update_task_after_execution(task, result, base_cost=0)
+
+    async with get_db_session() as db:
+        task = await db.get(Task, identity)
+        assert task.status == TaskStatus.DISPATCH and not task.paused
+        assert task.data["input_request"]["status"] == "delivered"
+        assert task.data["input_context"] == "synthetic response"
+        assert "_agent_run_identity" not in task.data
+        if success:
+            assert "_agent_run_checkpoint" not in task.data
+        else:
+            assert task.data["_agent_run_checkpoint"] == checkpoint
+
+
+@pytest.mark.asyncio
 async def test_authorization_wait_survives_checkpoint_and_releases_claim(committed_database):
     """A driver's authorization UUIDs must survive real JSONB persistence."""
     from app.agent import executor_service
@@ -126,7 +213,7 @@ async def test_model_activity_without_visible_output_refreshes_only_current_run(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["checkpoint", "progress", "event", "activate", "resource", "capsule", "force_terminate"])
+@pytest.mark.parametrize("operation", ["checkpoint", "progress", "event", "activate", "resource", "capsule", "finalize", "force_terminate"])
 async def test_run_writes_do_not_wait_for_uncommitted_llm_trace(
     committed_database, monkeypatch, operation,
 ) -> None:
@@ -182,6 +269,10 @@ async def test_run_writes_do_not_wait_for_uncommitted_llm_trace(
                     await adapter.upsert_working_resource(task_id, WorkingResource(
                         resource_type="artifact", role="source",
                         reference="https://example.test/source"))
+                elif operation == "finalize":
+                    from app.agent import executor_service
+                    await executor_service._update_task_after_execution(current,
+                        ExecutionResult(prompt="run", result="Synthetic result"), base_cost=0)
                 elif operation == "force_terminate":
                     from app import agent as agent_domain
                     from app.task import task_service
@@ -210,6 +301,9 @@ async def test_run_writes_do_not_wait_for_uncommitted_llm_trace(
                 assert recorded.data["agent_run"]["request_run_id"] == str(run_id)
             elif operation == "resource":
                 assert (await adapter.get_working_set(task_id)).active("source")
+            elif operation == "finalize":
+                assert persisted.status == TaskStatus.SUCCESS
+                assert persisted.get_execution_result().result == "Synthetic result"
             elif operation == "force_terminate":
                 assert persisted.status == TaskStatus.ERROR
                 assert persisted.lease_token is None

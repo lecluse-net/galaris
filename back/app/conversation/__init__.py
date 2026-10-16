@@ -28,6 +28,7 @@ from .contracts import (
     public_ai_result,
 )
 from .controller import register_controller
+from .process_interactions import ProcessHumanMessenger
 from .management_service import delete_round
 from .contracts import ConversationControlAction, ConversationControlConflict, ConversationControlResult
 from .repository_display import register_repository_display_publisher
@@ -92,6 +93,7 @@ __all__ = [
     "register_document_display_publisher",
     "register_document_read_authorizer",
     "ConversationController",
+    "ProcessHumanMessenger",
     "ConversationActivity",
     "ConversationActivityDetail",
     "ConversationActivityInteraction",

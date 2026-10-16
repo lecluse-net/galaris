@@ -98,6 +98,7 @@ from .interactions import (
     register_choice_handler,
     resolve_pending_choice,
     resolve_from_message,
+    apply_interpreted_response,
 )
 from .session import ConversationSessionSnapshot, build_conversation_session
 from .voice_journal import (
@@ -289,6 +290,7 @@ __all__ = [
     "register_choice_handler",
     "resolve_pending_choice",
     "resolve_from_message",
+    "apply_interpreted_response",
     "ConversationSessionSnapshot",
     "build_conversation_session",
     "AudioRoomSpeakers",

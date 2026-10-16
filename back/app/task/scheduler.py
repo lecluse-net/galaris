@@ -632,6 +632,7 @@ async def _next_task(
                     )
                 )
                 .where(Task.paused.is_(False))
+                .where(Task.data.contains({"workflow_operation": True}).is_not(True))
                 .where(Task.agent_id.is_not(None))
                 .where(or_(Task.lease_token.is_(None), Task.lease_expires_at <= now))
                 .where(or_(Task.next_attempt_at.is_(None), Task.next_attempt_at <= now))
@@ -722,6 +723,7 @@ async def _claim_specific(task_id: UUID, *, priority: int) -> ClaimedTask | None
                 )
             )
             .where(Task.paused.is_(False))
+            .where(Task.data.contains({"workflow_operation": True}).is_not(True))
             .where(Task.agent_id.is_not(None))
             .where(or_(Task.lease_token.is_(None), Task.lease_expires_at <= now))
             .where(or_(Task.next_attempt_at.is_(None), Task.next_attempt_at <= now))
@@ -1062,6 +1064,10 @@ async def _complete_claim(
 
 def _retry_is_safe(task: Task, phase: TaskStatus) -> bool:
     """Prevent automatic replay after an attempt has already produced tool effects."""
+    # The workflow engine owns this receipt. Never dispatch its non-agent
+    # context through the Harness or replay an ambiguous Tool effect.
+    if (task.data or {}).get("workflow_operation"):
+        return False
     if phase == TaskStatus.PLAN and task.get_execution_result() is not None:
         # The planner already aggregated a terminal outcome, such as a failed child. Replaying
         # ``advance`` would only repeat the same abort.

@@ -1,5 +1,6 @@
 default = {
     "process": {
+        "human": {"messaging_reply": "Reply in this conversation. You can attach the requested files; I will ask for any missing details."},
         "tracking": "Process started. Galaris tracking ID: ${run_id}.",
         "summary": {
             "queued": "The process is queued.",

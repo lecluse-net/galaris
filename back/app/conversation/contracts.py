@@ -131,6 +131,7 @@ class ConversationTurn:
     # Voice/legacy callers fall back to their admitted objective, never their history.
     source_request: str | None = None
     linked_work: tuple[Mapping[str, object], ...] = ()
+    active_work: tuple[Mapping[str, object], ...] | None = None
     pending_interactions: tuple[Mapping[str, object], ...] = ()
     omitted_input_count: int = 0
     assert_fresh_before_effect: FreshnessGuard | None = None

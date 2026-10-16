@@ -211,7 +211,7 @@ async def list_room_processes(
     from_message_id: UUID,
     *,
     page: int = 1,
-    page_size: int = 10,
+    page_size: int = 50,
 ) -> ConversationProcessList:
     """List process runs launched by visible rounds or their Task trees."""
 

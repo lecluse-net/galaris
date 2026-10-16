@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from uuid import UUID
 
 from loguru import logger
@@ -11,6 +11,7 @@ from sqlalchemy import Select, select, update
 
 from core.database import get_db, get_db_session
 from app.messenger import Message
+from app.agent import AgentManagementScope
 
 from .contracts import ConversationRuntimeEvent, ConversationTurn
 
@@ -21,6 +22,18 @@ ConversationRuntimeListener = Callable[
 ]
 _activity_listeners: set[ConversationActivityListener] = set()
 _runtime_listeners: set[ConversationRuntimeListener] = set()
+
+
+async def active_work_snapshot(agent_id: int, *, reader: AgentManagementScope | None = None) -> tuple[Mapping[str, object], ...]:
+    """Refresh live personal work independently of the current conversation room."""
+    from app.task.facade import list_work_snapshots
+    from app.process.facade import active_work_for_agent
+
+    tasks = await list_work_snapshots(active_agent_id=agent_id)
+    processes = await active_work_for_agent(agent_id, reader=reader)
+    return (*({**task.fields, "kind": "task", "id": str(task.task_id), "objective": str(task.fields["objective"])[:250],
+        "created_at": task.created_at.isoformat(), "state_since": task.activity_at.isoformat()}
+        for task in tasks), *processes)
 
 
 async def inherit_reply_topics(round_id: UUID) -> None:

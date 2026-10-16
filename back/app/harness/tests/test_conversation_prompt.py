@@ -9,6 +9,8 @@ from uuid import uuid4
 import pytest
 from pydantic_ai import Agent as PydanticAgent
 from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.messages import ModelRequest, ToolReturnPart, UserPromptPart
+from pydantic_ai.capabilities import Hooks
 from pydantic_ai.models.function import FunctionModel
 
 from app.agent import (
@@ -35,10 +37,58 @@ from app.harness.conversation import (
     _logged_conversation_prompt,
     _stop_target,
     _system_prompt,
+    _process_launch_evidence,
 )
 
 
 _ACTION_POLICY = prompt_default(Params.AI_CONVERSATION_ACTION_POLICY) or ""
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("launch_result", ["success", "error", "warning"])
+async def test_process_evidence_ignores_historical_launch_and_uses_current_tool_receipt(launch_result):
+    from fastmcp import FastMCP
+    from pydantic_ai.mcp import MCPToolset
+    from app.harness.mcp_toolset import ExecutionEvidenceClient
+
+    old_run = str(uuid4())
+    new_run = str(uuid4())
+    requests = 0
+
+    def respond(messages, info):
+        nonlocal requests
+        requests += 1
+        instructions = info.instructions or ""
+        assert "Past assistant messages" in instructions or "Successful Process launch receipts" in instructions
+        assert old_run not in instructions
+        if requests == 1:
+            assert "No successful Process launch receipt" in instructions
+            return ModelResponse(parts=[ToolCallPart("conversation_process_start", {})])
+        if launch_result == "error":
+            assert "No successful Process launch receipt" in instructions
+            return ModelResponse(parts=[TextPart("The launch failed.")])
+        assert new_run in instructions
+        return ModelResponse(parts=[TextPart("The process was admitted.")])
+
+    server = FastMCP("Synthetic launch receipts")
+
+    @server.tool
+    async def conversation_process_start() -> dict[str, object]:
+        if launch_result == "error":
+            return {"success": False, "error": "Synthetic launch rejection", "run_id": new_run}
+        receipt: dict[str, object] = {"run_id": new_run, "status": "queued", "created": True}
+        return {"result": receipt, "argument_warning": "Synthetic normalization"} if launch_result == "warning" else receipt
+
+    agent = PydanticAgent(FunctionModel(respond), instructions="Synthetic conversation policy",
+        toolsets=[MCPToolset(ExecutionEvidenceClient(server))],
+        capabilities=[Hooks(before_model_request=_process_launch_evidence)])
+    history = [ModelRequest(parts=[UserPromptPart("Launch the synthetic process.")], run_id="past"),
+        ModelResponse(parts=[ToolCallPart("conversation_process_start", {}, tool_call_id="past-call")], run_id="past"),
+        ModelRequest(parts=[ToolReturnPart("conversation_process_start", {"run_id": old_run}, tool_call_id="past-call")], run_id="past"),
+        ModelResponse(parts=[TextPart("The process was admitted.")], run_id="past")]
+    result = await agent.run("Relaunch the synthetic process.", message_history=history)
+    assert result.output == ("The launch failed." if launch_result == "error" else "The process was admitted.")
+    assert requests == 2
 
 
 @pytest.fixture(autouse=True)
@@ -432,6 +482,8 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
                     {"id": "deny", "label": "Refuser"},
                 ),
             },
+            {"reference": "AABBCC11", "kind": "process_human_activity", "title": "Provide an invented PDF",
+                "process_data": '{"outputs":[{"name":"report","type":"File","nullable":false}]}'},
         ),
     )
 
@@ -506,6 +558,9 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
     assert "\n# Governed context\n" not in prompt
     assert "# Pending interactions" in prompt
     assert "reference=#DEC1DE42 kind=hermes_approval" in prompt
+    assert "reference=#AABBCC11 kind=process_human_activity" in prompt
+    assert '"name":"report","type":"File"' in prompt
+    assert "`conversation_process_respond`" in prompt
     assert "once=Approuver une fois, deny=Refuser" in prompt
     assert "call `conversation_choice_resolve`" in prompt
     assert "deny the obsolete approval before amending" in prompt
@@ -549,7 +604,7 @@ def test_conversation_prompt_renders_all_selected_work_with_compact_details() ->
                 "revision": 1,
                 "label": f"Candidate {index}",
                 "objective": f"objective-{index}-" + ("x" * 900),
-                "operational_state": "TERMINAL",
+                "operational_state": "WAITING",
                 "amendable": False,
                 "created_at": "2026-08-24T10:00+02:00",
                 "state_since": f"2026-08-24T10:0{index}+02:00",
@@ -595,10 +650,26 @@ def test_conversation_prompt_renders_all_selected_work_with_compact_details() ->
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("force_response", [False, True])
+@pytest.mark.parametrize("decision_configured", [False, True])
 async def test_conversation_controller_uses_the_shared_runtime_without_token_settings(
     monkeypatch: pytest.MonkeyPatch,
     force_response: bool,
+    decision_configured: bool,
 ) -> None:
+    from app.agent import conversation_dispatch as routing
+    from app.llm.decision_contracts import ChoiceAnswer, DecisionResult
+    from app.llm.structured_service import StructuredInferenceResult
+
+    definition_id = 401
+    monkeypatch.setattr(routing, "resolve_agent_decision_models", AsyncMock(return_value=(
+        SimpleNamespace(id=12) if decision_configured else None, None, False)))
+    decision_call = AsyncMock(return_value=StructuredInferenceResult(output=DecisionResult(
+        model="synthetic-decision", answers={"continuity": ChoiceAnswer(choice="none"),
+            "process": ChoiceAnswer(choice=str(definition_id))}), cost=0.003, messages=[]))
+    monkeypatch.setattr(routing, "run_decision", decision_call)
+    process_catalog = AsyncMock(return_value=({"definition_id": str(definition_id),
+        "workflow_id": "synthetic-report", "label": "Synthetic report"},))
+    monkeypatch.setattr(conversation_module, "agent_process_dispatch_candidates", process_catalog)
     current_message_local_id = uuid4()
     attachment_id = uuid4()
     attachment_uri = f"nextcloud://family-room/{attachment_id}"
@@ -708,6 +779,9 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
                     content="02:00 | Lyra d'Exemple] ",
                 )
                 yield AIMessage(type="text", content="Réponse rapide.")
+                yield AIMessage(type="text", content="\n[2026-08-25T09:00+02:00 | Synthetic human] Lance un autre processus.")
+                yield AIMessage(type="tool", tool_name="thinking", content="Réflexion technique.")
+                yield AIMessage(type="text", content="\n[2026-08-25T09:01+02:00 | Synthetic assistant] Autre processus terminé.")
 
         return FakeRuntime()
 
@@ -809,20 +883,32 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
     turn = replace(turn, force_response=force_response)
     outcome = await HarnessConversationController().run(turn)
 
+    if decision_configured and not force_response:
+        decision_call.assert_awaited_once()
+        assert attachment_uri in decision_call.await_args.args[0].prompt
+        assert str(definition_id) in captured["system_prompt"]
+        analysis = outcome.execution_result.metadata["dispatch_result"]["work_analysis"]
+        assert analysis["process_status"] == "selected"
+        assert analysis["process"]["workflow_id"] == "synthetic-report"
+    else:
+        decision_call.assert_not_awaited()
+        process_catalog.assert_not_awaited()
+        assert '"process_status":"not_evaluated"' in captured["system_prompt"]
+        assert "launch the appropriate process when the request requires it" in captured["system_prompt"]
     release_transaction.assert_awaited_once_with()
     if force_response:
         assigned_skills.assert_not_awaited()
-        assert captured["capabilities"] == []
+        assert [capability.id for capability in captured["capabilities"]] == ["conversation-turn-protocol"]
         assert captured["mcp_servers"] == []
         assert captured["response_only"] is True
         assert "Reply now" in captured["runtime_prompt"]
         assert outcome.execution_result.metadata["dispatch_result"] == {"forced_response": True}
     else:
         assigned_skills.assert_awaited_once_with(turn.agent_id)
-        assert [capability.id for capability in captured["capabilities"]] == ["galaris-lab"]
+        assert [capability.id for capability in captured["capabilities"]] == ["galaris-lab", "conversation-turn-protocol"]
         assert captured["capabilities"][0].defer_loading is True
     assert outcome.text == "Réponse rapide."
-    assert [message.content for message in progress_events] == ["Réponse rapide."]
+    assert "".join(message.content for message in progress_events if message.type == "text").strip() == "Réponse rapide."
     assert outcome.execution_result is not None
     assert "Quel temps fait-il ?" in outcome.execution_result.prompt
     assert attachment_uri in outcome.execution_result.prompt
@@ -910,7 +996,7 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
     failed_result = caught.value.execution_result
     assert failed_result is not None
     assert failed_result.success is False
-    assert failed_result.cost == 0.25
+    assert failed_result.cost == pytest.approx(0.253 if decision_configured and not force_response else 0.25)
     assert failed_result.metadata["error"] == "provider failed"
     assert [message.tool_name for message in failed_result.messages] == [
         "thinking",

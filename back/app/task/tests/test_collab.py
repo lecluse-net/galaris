@@ -102,6 +102,7 @@ async def test_wait_resume_and_finish_consumes_children_before_publishing_parent
     await collab.maybe_fan_in(parent.id)
     assert collab.collab_rounds(parent) == 1
     parent.status = TaskStatus.EXEC
+    await task_service.save(parent)
     await executor_service._update_task_after_execution(
         parent, ExecutionResult(prompt="Consolidate", result="Consolidated budget saved.", success=True), base_cost=0,
     )

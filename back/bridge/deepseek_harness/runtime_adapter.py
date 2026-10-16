@@ -6,7 +6,8 @@ standard library so the image needs no web framework in addition to the DSH SDK.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -381,6 +382,7 @@ def run_completion(
     run_context: str = "",
     actor_id: str = "",
     can_continue: Callable[[], bool] | None = None,
+    mcp_ready: Callable[[], bool] | None = None,
 ) -> Completion:
     model = str(body.get("model") or "").strip()
     if not model:
@@ -414,9 +416,8 @@ def run_completion(
         "xhigh": "max",
         "max": "max",
     }.get(requested_effort)
-    harness = cast(
-        _Harness,
-        factory(
+    def create_harness() -> _Harness:
+        return cast(_Harness, factory(
             provider="deepseek-official",
             model=model,
             cwd=str(config.workspace),
@@ -433,54 +434,47 @@ def run_completion(
             } if actor_id else {}), **(
                 {"DSH_REASONING_EFFORT": reasoning_effort} if reasoning_effort is not None else {}
             )},
-        ),
-    )
-    if active is not None:
-        active.bind(harness)
+        ))
     result: _RunResult | None = None
-    try:
-        with harness:
-            rendered_prompt = render_prompt(messages, runtime_context)
-            policy = _mapping(body.get("galaris_network_retry"))
-            attempts = max(1, int(_retry_number(policy, "max_attempts", 8, 30)))
-            base_delay = _retry_number(policy, "base_seconds", 30, 600)
-            max_delay = _retry_number(policy, "max_seconds", 300, 3600)
-            pending_tools: set[str] = set()
-            for attempt in range(attempts):
-                if active is not None and not active.wait_for_retry(0):
+    with _ready_harness(create_harness, mcp_ready, active) as harness:
+        rendered_prompt = render_prompt(messages, runtime_context)
+        policy = _mapping(body.get("galaris_network_retry"))
+        attempts = max(1, int(_retry_number(policy, "max_attempts", 8, 30)))
+        base_delay = _retry_number(policy, "base_seconds", 30, 600)
+        max_delay = _retry_number(policy, "max_seconds", 300, 3600)
+        pending_tools: set[str] = set()
+        for attempt in range(attempts):
+            if active is not None and not active.wait_for_retry(0):
+                raise RuntimeError("DeepSeek Harness was cancelled before automatic continuation")
+            result = (
+                harness.run(rendered_prompt, session_id=completion_id, on_notification=on_notification)
+                if on_notification is not None
+                else harness.run(rendered_prompt, session_id=completion_id)
+            )
+            failure = _turn_failure(result, pending_tools)
+            if result.finish_reason in (None, "completed", "stop"):
+                if pending_tools:
+                    raise RuntimeError("DeepSeek Harness finished with an unresolved tool call")
+                break
+            status = failure.get("status")
+            transient = isinstance(status, int) and status in {408, 429, 500, 502, 503, 504}
+            if (not transient or pending_tools or attempt + 1 == attempts
+                    or (can_continue is not None and not can_continue())):
+                raise RuntimeError(f"DeepSeek Harness turn failed: {result.finish_reason}; HTTP {status}")
+            delay = min(max_delay, base_delay * 2 ** attempt)
+            if active is not None:
+                if not active.wait_for_retry(delay):
                     raise RuntimeError("DeepSeek Harness was cancelled before automatic continuation")
-                result = (
-                    harness.run(rendered_prompt, session_id=completion_id, on_notification=on_notification)
-                    if on_notification is not None
-                    else harness.run(rendered_prompt, session_id=completion_id)
-                )
-                failure = _turn_failure(result, pending_tools)
-                if result.finish_reason in (None, "completed", "stop"):
-                    if pending_tools:
-                        raise RuntimeError("DeepSeek Harness finished with an unresolved tool call")
-                    break
-                status = failure.get("status")
-                transient = isinstance(status, int) and status in {408, 429, 500, 502, 503, 504}
-                if (not transient or pending_tools or attempt + 1 == attempts
-                        or (can_continue is not None and not can_continue())):
-                    raise RuntimeError(f"DeepSeek Harness turn failed: {result.finish_reason}; HTTP {status}")
-                delay = min(max_delay, base_delay * 2 ** attempt)
-                if active is not None:
-                    if not active.wait_for_retry(delay):
-                        raise RuntimeError("DeepSeek Harness was cancelled before automatic continuation")
-                else:
-                    time.sleep(delay)
-                if can_continue is not None and not can_continue():
-                    raise RuntimeError("DeepSeek Harness has an unresolved action before automatic continuation")
-                _LOG.warning("Resuming interrupted SDK session after HTTP %s (attempt %s/%s)", status, attempt + 2, attempts)
-                rendered_prompt = (
-                    "Continue the current task from this session's recorded history after the temporary "
-                    "provider error. Preserve completed work. Do not repeat completed actions or actions "
-                    "with an unknown outcome; reconcile them before proceeding."
-                )
-    finally:
-        if active is not None:
-            active.unbind(harness)
+            else:
+                time.sleep(delay)
+            if can_continue is not None and not can_continue():
+                raise RuntimeError("DeepSeek Harness has an unresolved action before automatic continuation")
+            _LOG.warning("Resuming interrupted SDK session after HTTP %s (attempt %s/%s)", status, attempt + 2, attempts)
+            rendered_prompt = (
+                "Continue the current task from this session's recorded history after the temporary "
+                "provider error. Preserve completed work. Do not repeat completed actions or actions "
+                "with an unknown outcome; reconcile them before proceeding."
+            )
     if result is None:
         raise RuntimeError("DeepSeek Harness produced no turn result")
     content = result.final_response.strip()
@@ -495,6 +489,31 @@ def run_completion(
         content=content,
         finish_reason=reason[:100],
     )
+
+
+@contextmanager
+def _ready_harness(factory: Callable[[], _Harness], ready: Callable[[], bool] | None,
+                   active: "ActiveRun | None") -> Generator[_Harness, None, None]:
+    # The SDK contains optional plugin failures, including failOnStartupError.
+    # Retry only initialization: no model call or business action has started yet.
+    for attempt in range(3):
+        if active is not None and not active.wait_for_retry(0):
+            raise RuntimeError("DeepSeek Harness was cancelled during startup")
+        harness = factory()
+        if active is not None:
+            active.bind(harness)
+        try:
+            with harness:
+                if active is not None and not active.wait_for_retry(0):
+                    raise RuntimeError("DeepSeek Harness was cancelled during startup")
+                if ready is None or ready():
+                    yield harness
+                    return
+                _LOG.warning("Galaris MCP catalogue unavailable after SDK startup (attempt %s/3)", attempt + 1)
+        finally:
+            if active is not None:
+                active.unbind(harness)
+    raise RuntimeError("Galaris MCP catalogue unavailable during Harness startup; no model execution was started")
 
 
 class ActiveRun:
@@ -692,7 +711,8 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
                     active = ActiveRun()
                     worker = asyncio.create_task(asyncio.to_thread(run_completion, augmented, self.config,
                         active=active, on_notification=notifications.put, run_context=credential, actor_id=actor.identifier,
-                        can_continue=lambda: not approvals.cancelled.is_set() and not approvals.permits and not approvals.waiting))
+                        can_continue=lambda: not approvals.cancelled.is_set() and not approvals.permits and not approvals.waiting,
+                        mcp_ready=lambda: approvals.mcp_catalog_ready))
                     try:
                         while not worker.done() or not notifications.empty():
                             while not notifications.empty():

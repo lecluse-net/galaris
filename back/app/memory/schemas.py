@@ -143,6 +143,8 @@ class MemoryItemCreate(BaseModel):
             raise ValueError("A document title is required.")
         if self.document_type == "dataset" and self.media_type != "application/json":
             raise ValueError("A Dataset document must use application/json.")
+        if self.document_type == "process" and self.media_type != "application/bpmn+xml":
+            raise ValueError("A Process document must use application/bpmn+xml.")
         if self.content_type != "text" or (self.document_type == "html" and not self.media_type.startswith("text/")):
             raise ValueError("A document must contain text.")
         if self.visibility != "private":

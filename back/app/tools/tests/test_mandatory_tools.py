@@ -78,6 +78,10 @@ async def test_connection_dataset_is_idempotent_and_preserves_admin_activation(
     tool = await db.get(Tool, integrated_connection.tool_id)
     assert tool is not None
     assert tool.conversation_enabled is (tool_code not in {"image", "multimedia"})
+    if tool_code == "conversation":
+        from app.tools.mcp_loader import list_enabled_native_mcp_definitions
+        definitions = await list_enabled_native_mcp_definitions(agent.id, runtime="internal", conversation_only=True)
+        assert {"conversation_process_pending", "conversation_process_respond"} <= {item.name for item in definitions}
     integrated_connection.active = False
     await db.commit()
 

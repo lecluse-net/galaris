@@ -56,6 +56,7 @@ ALLOWED_DATABASE_SESSION_BOUNDARIES = {
     "app/messenger/native_facade.py",
     "app/messenger/service.py",
     "app/process/workers.py",  # Per-engine admission and observation roots; one session per branch.
+    "app/process/activity_jobs.py",  # Scheduler root gives each concurrent external activity its own session.
     "app/task/activity.py",
     "app/task/live_checkpoint.py",  # Agent event callback persists independently of the run transaction.
     "app/task/agent_adapter.py",

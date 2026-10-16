@@ -27,6 +27,7 @@ def call_priority(purpose: str | None, *, round_origin: str | None = None) -> in
         return 0
     if round_origin == "text" or purpose in {
         LLMCallPurpose.CONVERSATION_TEXT, LLMCallPurpose.CONVERSATION_TASK_OBJECTIVE,
+        LLMCallPurpose.CONVERSATION_PROCESS_ADMISSION,
     }:
         return 1
     return 2

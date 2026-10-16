@@ -99,6 +99,9 @@ class ConversationRound(Base):
     execution_result: Mapped[dict[str, object] | None] = mapped_column(
         JSONB, nullable=True
     )
+    # Process-only launch permission, bound to the immutable admitted input.
+    # Null preserves pre-existing rounds; it is populated only at a new launch.
+    process_launch_admission: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     encrypted_checkpoint: Mapped[str | None] = mapped_column(Text, nullable=True)
     control_action: Mapped[str | None] = mapped_column(String(20), nullable=True)
     response_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")

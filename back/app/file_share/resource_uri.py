@@ -65,6 +65,7 @@ NATIVE_RESOURCE_SCHEMES = frozenset(
         "document",
         "galaris",
         "memory",
+        "processus",
         "resource",
     }
 )

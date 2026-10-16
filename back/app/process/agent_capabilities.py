@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 from typing import Any
 
 from loguru import logger
@@ -205,7 +205,23 @@ async def build_agent_process_advertisement(
     )
 
 
+async def agent_process_dispatch_candidates(
+    agent_id: int, available_tool_names: Collection[str],
+) -> tuple[Mapping[str, object], ...]:
+    """Return the assigned catalog only when conversation discovery and launch are exposed.
+
+    Keep the full catalog: the dispatcher must not mistake the ten-item prompt
+    advertisement for evidence that no applicable process exists.
+    """
+    if not (_PROCESS_DISCOVERY_TOOLS | {"conversation_process_start"}).issubset(available_tool_names):
+        raise PermissionError("Conversation process discovery and launch are unavailable")
+    from . import process_service
+
+    return tuple(await process_service.list_for_agent(agent_id))
+
+
 __all__ = [
+    "agent_process_dispatch_candidates",
     "build_agent_process_advertisement",
     "render_agent_process_advertisement",
     "select_agent_processes",

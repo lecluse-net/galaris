@@ -694,10 +694,11 @@ async def _update_task_after_execution(
 ) -> Any:
     """Persist terminal execution metrics, result, and coordination state."""
     waiting_for_authorization = execution_result.disposition == "waiting_for_authorization"
+    waiting_for_input = await task_port.suspend_on_pending_input(task)
     if waiting_for_authorization:
         task_port.suspend(task, "approval")
         task.data = {**(task.data or {}), "authorization_requests": [str(identifier) for identifier in execution_result.authorization_requests]}
-    else:
+    elif not waiting_for_input:
         task_port.clear_pauses(task)
     # Drivers may persist partial snapshots. Rebase on pre-attempt cost to preserve planning
     # cost without counting executor snapshots twice.
@@ -706,8 +707,8 @@ async def _update_task_after_execution(
     # Call-stack coordination keeps a parent suspended while peer or delegated children are
     # pending. This also applies after LLM failure because tools may already have created
     # children; fan-in later resumes synthesis without replaying side effects.
-    waiting_for_children = await task_port.suspend_on_pending_children(task)
-    if not waiting_for_children and not waiting_for_authorization:
+    waiting_for_children = False if waiting_for_input else await task_port.suspend_on_pending_children(task)
+    if not waiting_for_children and not waiting_for_authorization and not waiting_for_input:
         task_port.transition(
             task,
             TaskTransition.EXECUTION_SUCCEEDED

@@ -122,6 +122,8 @@ from .realtime import (
     submit_realtime_task,
 )
 from .dispatcher import (
+    analyze_conversation_work,
+    conversation_work_analysis_context,
     dispatch_conversation,
     evaluate_dispatcher_input,
     dispatcher_system_prompt,
@@ -129,6 +131,8 @@ from .dispatcher import (
     register_dispatcher_output_contracts,
 )
 from .conversation_context import (
+    ConversationReplyFilter,
+    conversation_reply_text,
     conversation_context_block,
     current_message_data,
     linked_work_context,
@@ -310,6 +314,8 @@ __all__ = [
     "aggregate_llm_run_usage",
     "build_agent_run_context",
     "conversation_context_block",
+    "ConversationReplyFilter",
+    "conversation_reply_text",
     "current_message_data",
     "linked_work_context",
     "build_task_context",
@@ -370,6 +376,8 @@ __all__ = [
     "preview_dispatcher_input",
     "register_dispatcher_output_contracts",
     "dispatch_conversation",
+    "analyze_conversation_work",
+    "conversation_work_analysis_context",
     "ExecutorKind",
     "ExecutorPromptContext",
     "PromptTree",

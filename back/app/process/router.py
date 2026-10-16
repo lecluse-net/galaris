@@ -54,13 +54,27 @@ async def _definition_or_404(process_id: int) -> Any:
     record = await process_service.get_definition(process_id)
     if record is None:
         raise _not_found(await tr("process.errors.process_not_found"))
+    if getattr(record, "document_id", None) is not None:
+        from .native_definitions import get
+        try:
+            await get(record.code or "", scope)
+        except (PermissionError, LookupError) as error:
+            raise _not_found(await tr("process.errors.process_not_found")) from error
+        return record
     await _require_agent(scope, record.agent_id)
     return record
 
 
-async def _run_or_404(run_id: UUID) -> Any:
+async def _run_or_404(run_id: UUID, *, control: bool = False) -> Any:
     scope = await current_management_scope()
     run = await process_service.get_run(run_id)
+    if run is not None and getattr(run, "engine_code", "") == "galaris":
+        from .native_runs import require_run
+        from app.memory import MemoryPermissionError, MemoryNotFoundError
+        try:
+            return await require_run(run_id, scope, control=control)
+        except (PermissionError, LookupError, MemoryPermissionError, MemoryNotFoundError) as error:
+            raise _not_found(await tr("process.errors.run_not_found")) from error
     if run is None or not scope.allows(run.launcher_agent_id):
         raise _not_found(await tr("process.errors.run_not_found"))
     return run
@@ -127,10 +141,11 @@ async def read_definitions(
 ) -> list[Any]:
     scope = await current_management_scope()
     await _require_agent(scope, agent_id)
-    return await process_service.list_definitions(
+    records = await process_service.list_definitions(
         agent_id=agent_id,
         agent_ids=scope.agent_ids,
     )
+    return [record for record in records if record.document_id is None]
 
 
 @routes.post("/definitions", response_model=ProcessDefinitionRead, status_code=201)
@@ -181,7 +196,13 @@ async def update_definition(process_id: int, data: ProcessDefinitionUpdate) -> A
 @routes.delete("/definitions/{process_id}", status_code=204)
 @authorize(privileges=Privileges.PROCESS_ADMIN)
 async def delete_definition(process_id: int) -> None:
-    await _definition_or_404(process_id)
+    record = await _definition_or_404(process_id)
+    if getattr(record, "document_id", None) is not None:
+        from .native_definitions import get
+        try:
+            await get(record.code or "", await current_management_scope(), write=True)
+        except (PermissionError, LookupError) as error:
+            raise _not_found(await tr("process.errors.process_not_found")) from error
     if not await process_service.delete_definition(process_id):
         raise _not_found(await tr("process.errors.process_not_found"))
 
@@ -266,6 +287,7 @@ async def read_runs(
         page=page,
         page_size=page_size,
         agent_ids=scope.agent_ids,
+        native_actor=scope,
     )
     return ProcessRunPage(
         items=[
@@ -292,7 +314,7 @@ async def read_run(run_id: UUID) -> ProcessRunDetail:
 @authorize(privileges=Privileges.PROCESS_ADMIN)
 async def delete_run(run_id: UUID) -> None:
     try:
-        await _run_or_404(run_id)
+        await _run_or_404(run_id, control=True)
         deleted = await process_service.delete_run(run_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
@@ -304,11 +326,13 @@ async def delete_run(run_id: UUID) -> None:
 @authorize(privileges=[Privileges.PROCESS_LAUNCH, Privileges.PROCESS_ADMIN])
 async def refresh_run(run_id: UUID) -> ProcessRunRead:
     try:
-        await _run_or_404(run_id)
+        await _run_or_404(run_id, control=True)
         run = await process_service.refresh_run(run_id)
         return await process_service._run_read(run)  # pyright: ignore[reportPrivateUsage]
     except LookupError as exc:
         raise _not_found(str(exc)) from exc
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -327,7 +351,7 @@ async def analyze_run(run_id: UUID) -> ProcessAnalysis:
 @authorize(privileges=[Privileges.PROCESS_LAUNCH, Privileges.PROCESS_ADMIN])
 async def cancel_run(run_id: UUID) -> ProcessRunRead:
     try:
-        await _run_or_404(run_id)
+        await _run_or_404(run_id, control=True)
         run = await process_service.cancel_run(run_id)
         return await process_service._run_read(run)  # pyright: ignore[reportPrivateUsage]
     except LookupError as exc:
@@ -340,7 +364,7 @@ async def cancel_run(run_id: UUID) -> ProcessRunRead:
 @authorize(privileges=[Privileges.PROCESS_LAUNCH, Privileges.PROCESS_ADMIN])
 async def retry_run(run_id: UUID) -> ProcessStartResponse:
     try:
-        await _run_or_404(run_id)
+        await _run_or_404(run_id, control=True)
         return await process_service.retry_run(run_id)
     except LookupError as exc:
         raise _not_found(str(exc)) from exc
@@ -436,6 +460,8 @@ async def read_metrics() -> dict[str, list[dict[str, Any]]]:
 # `/processes` is the canonical API. Keep the former French path as a hidden,
 # deprecated alias so existing n8n callbacks and bookmarks continue to work.
 router = APIRouter()
+from .native_router import routes as native_routes
+routes.include_router(native_routes)
 router.include_router(routes, prefix="/processes")
 router.include_router(
     routes,

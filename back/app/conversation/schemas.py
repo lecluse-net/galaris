@@ -6,9 +6,37 @@ from datetime import datetime
 from uuid import UUID
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue
 from app.task import TaskStartupTiming
 from app.llm.facade import LLMExecutionTiming
+
+
+class ActiveWorkItem(BaseModel):
+    """Monitoring projection shared with the conversation's live work context."""
+
+    kind: Literal["task", "process"]
+    id: UUID
+    label: str | None = None
+    status: str
+    operational_state: str
+    resource_uri: str | None = None
+    engine_code: str | None = None
+    workflow_id: str | None = None
+    revision: int | None = None
+    objective: str | None = None
+    pause_reasons: list[str] = Field(default_factory=list)
+    waits: list[dict[str, JsonValue]] = Field(default_factory=list[dict[str, JsonValue]])
+    created_at: datetime
+    state_since: datetime
+
+
+class ActiveWorkPage(BaseModel):
+    agent_id: int
+    observed_at: datetime
+    items: list[ActiveWorkItem]
+    total: int = Field(ge=0)
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1, le=500)
 
 
 class ConversationNotificationTarget(BaseModel):

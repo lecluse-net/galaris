@@ -2,6 +2,7 @@
 
 default = {
     "memory": {
+        "errors": {"current_revision_delete": "L’état courant du processus ne peut pas être supprimé."},
         "capture": {
             "user_request": "Demande utilisateur",
             "outcome": "Résultat",

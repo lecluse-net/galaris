@@ -42,6 +42,7 @@ class ChoiceRequest(BaseModel):
     body: str = ""
     options: list[ChoiceOption] = Field(default_factory=lambda: [])
     free_text: bool = False
+    interpretation_required: bool = False
     metadata: dict[str, Any] = Field(default_factory=lambda: {})
     timeout_seconds: int = 300
     language: str = ""
@@ -180,10 +181,17 @@ async def create_choice(
             .limit(1)
         )
         if existing is not None:
+            if (existing.agent_id != agent_id or existing.connection_id != (messenger.connection_id or None)
+                    or existing.tool_id != (messenger.tool_id or None) or existing.room_id != room_id
+                    or existing.user_id != user_id):
+                raise PermissionError("The existing request belongs to another messaging scope")
+            if existing.prompt_message_id is None and existing.status == "PENDING" and existing.expires_at > now:
+                return await _send_choice_prompt(messenger, existing, request, reply_to=reply_to)
             return _pending_from_record(existing)
 
     reference = uuid4().hex[:8].upper()
     metadata = dict(request.metadata)
+    metadata["interpretation_required"] = request.interpretation_required
     metadata["language"] = _language(request.language)
     if normalized_key:
         metadata["idempotency_key"] = normalized_key
@@ -274,8 +282,15 @@ async def resolve_from_message(
     reference_match = _REFERENCE_RE.search(message.text or "")
     reference = reference_match.group(1).upper() if reference_match else None
     answer_text = _REFERENCE_RE.sub("", message.text or "").strip()
+    if reference is None and any(record.metadata_.get("interpretation_required") for record in records):
+        # The same "yes" or file can concern a Process instead of another pending
+        # approval. Let the conversation controller disambiguate before any effect.
+        return None
     compatible: list[tuple[Interaction, PendingChoice, Optional[ChoiceOption]]] = []
     for record in records:
+        # Text and files need interpretation: proximity alone is never an answer.
+        if record.metadata_.get("interpretation_required"):
+            continue
         if reference is not None and record.reference.upper() != reference:
             continue
         choice = _pending_from_record(record)
@@ -323,6 +338,8 @@ async def list_pending_choices(
     room_id: str,
     user_id: str | None,
     limit: int = 10,
+    offset: int = 0,
+    kind: str | None = None,
 ) -> list[PendingChoice]:
     """Return live choices visible to one exact conversation participant.
 
@@ -352,12 +369,52 @@ async def list_pending_choices(
             user_clause,
         )
         .order_by(Interaction.created_at.desc())
+        .offset(max(0, offset))
         .limit(max(1, min(limit, 20)))
     )
+    if kind is not None:
+        query = query.where(Interaction.kind == kind)
     return [
         _pending_from_record(record)
         for record in (await get_db().scalars(query)).all()
     ]
+
+
+async def apply_interpreted_response(
+    *, reference: str, kind: str, agent_id: int, connection_id: int,
+    tool_id: int | None, room_id: str, user_id: str,
+    response: dict[str, Any], apply: Callable[[PendingChoice], Awaitable[None]],
+    normalize_response: Callable[[PendingChoice, dict[str, Any]], dict[str, Any]] | None = None,
+) -> bool:
+    """Apply a validated domain answer and settle its exact messaging request atomically.
+
+    ``apply`` only mutates the contextual transaction; it must not commit or send.
+    Invalid or incomplete answers leave the request pending for a clarification.
+    """
+    db = get_db()
+    record = await db.scalar(select(Interaction).where(
+        Interaction.reference == reference.strip().lstrip("#").upper(),
+        Interaction.kind == kind, Interaction.agent_id == agent_id,
+        Interaction.connection_id == connection_id, Interaction.tool_id == tool_id,
+        Interaction.room_id == room_id, Interaction.user_id == user_id,
+    ).with_for_update().execution_options(populate_existing=True))
+    if record is None or not record.metadata_.get("interpretation_required"):
+        raise PermissionError("No matching request for this conversation participant")
+    if normalize_response is not None:
+        response = normalize_response(_pending_from_record(record), response)
+    if record.status == "RESOLVED":
+        if (record.resolution or {}).get("data") != response:
+            raise ValueError("This request already has a different response")
+        return False
+    if record.status != "PENDING" or record.expires_at <= datetime.now(timezone.utc):
+        raise ValueError("This request is no longer pending")
+    await apply(_pending_from_record(record))
+    record.resolution = {"data": response}
+    record.status = "RESOLVED"
+    record.resolved_at = datetime.now(timezone.utc)
+    await db.commit()
+    await interaction_changed.send_async(record)
+    return True
 
 
 async def resolve_pending_choice(
@@ -597,6 +654,7 @@ async def request_user_choice(
                 kind=existing.kind, title=existing.title, body=existing.body,
                 options=[ChoiceOption.model_validate(option) for option in existing.options],
                 free_text=existing.free_text, language=request.language,
+                interpretation_required=bool(existing.metadata_.get("interpretation_required")),
             ))
         return _pending_from_record(existing)
     room = await internal_direct_room_observation(messenger.connection_id, external_user)

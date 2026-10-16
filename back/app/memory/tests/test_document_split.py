@@ -443,7 +443,10 @@ async def test_dbadmin_detects_new_documents_archives_then_contracts_and_resumes
         owner_id = owner.id
         await session.execute(text("DROP TABLE IF EXISTS galaris_migration.memory_document_split_manifest, galaris_migration.memory_document_split_rows"))
         if not already_expanded:
-            await session.execute(text("DROP TABLE document_revisions, documents"))
+            # Recreate the historical schema in this isolated database. New
+            # process/campaign references did not exist before the split; Atlas
+            # restores their constraints together with the Documents tables.
+            await session.execute(text("DROP TABLE document_revisions, documents CASCADE"))
         await session.execute(text("""
             ALTER TABLE memory_items
             ADD COLUMN document_type varchar(30) NOT NULL DEFAULT 'html',

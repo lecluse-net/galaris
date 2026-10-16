@@ -100,6 +100,7 @@ async def test_process_admin_can_create_update_and_delete_for_another_agent(
     tool = SimpleNamespace(id=5, code="n8n")
     definition = SimpleNamespace(
         id=8,
+        document_id=None,
         agent_id=77,
         tool_id=tool.id,
         engine_process_id="invoice-workflow",
@@ -118,6 +119,7 @@ async def test_process_admin_can_create_update_and_delete_for_another_agent(
         AsyncMock(return_value=tool),
     )
     monkeypatch.setattr(mcp.process_service, "create_definition", create_definition)
+    monkeypatch.setattr(mcp.process_service, "get_definition", AsyncMock(return_value=definition))
     monkeypatch.setattr(mcp.process_service, "update_definition", update_definition)
     monkeypatch.setattr(mcp.process_service, "delete_definition", delete_definition)
     monkeypatch.setattr(
@@ -181,6 +183,7 @@ async def test_process_admin_can_inspect_another_agents_run(
     get_run_detail = AsyncMock(return_value=Detail())
     monkeypatch.setattr(database_module, "get_db_session", _db_session)
     monkeypatch.setattr(mcp.process_service, "get_run_detail", get_run_detail)
+    monkeypatch.setattr(mcp.process_service, "get_run", AsyncMock(return_value=SimpleNamespace(engine_code="n8n")))
 
     result = await mcp.process_admin_get_run(
         McpToolContext(agent_id=1, runtime="internal"),

@@ -60,6 +60,7 @@ _ROUND_REQUIRED_PURPOSES = frozenset(
         LLMCallPurpose.CONVERSATION_TEXT.value,
         LLMCallPurpose.CONVERSATION_AUDIO.value,
         LLMCallPurpose.CONVERSATION_TASK_OBJECTIVE.value,
+        LLMCallPurpose.CONVERSATION_PROCESS_ADMISSION.value,
     }
 )
 _PROCESS_REQUIRED_PURPOSES = frozenset(

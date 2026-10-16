@@ -14,7 +14,7 @@ from core.util import normalize_html, read_html_page, replace_visible_text, html
 
 from . import service
 from .models import MemoryItem
-from .document_types import DocumentType
+from .document_types import DocumentType, document_media_type
 from .schemas import (
     MemoryGrantUpdate,
     MemoryItemCreate,
@@ -156,6 +156,7 @@ async def create_document(
     metadata: dict[str, object] | None = None,
     deletion_protected: bool = False,
     document_type: DocumentType = "html",
+    workflow_metadata: bool = False,
 ) -> MemoryItem:
     """Create a private, mutable, non-deduplicated working document."""
 
@@ -181,7 +182,7 @@ async def create_document(
             node_kind="document",
             content_type="text",
             document_type=document_type,
-            media_type="application/json" if document_type == "dataset" else "text/html",
+            media_type=document_media_type(document_type),
             keywords=keywords or [],
             metadata={
                 **(metadata or {}),
@@ -197,6 +198,7 @@ async def create_document(
         actor_task_id=task_id,
         deletion_protected=deletion_protected,
         deduplicate=False,
+        workflow_metadata=workflow_metadata,
     )
     return item
 
@@ -224,7 +226,7 @@ async def create_user_document(
             node_kind="document",
             content_type="text",
             document_type=document_type,
-            media_type="application/json" if document_type == "dataset" else "text/html",
+            media_type=document_media_type(document_type),
             keywords=[],
             metadata=(
                 {"document_path": normalized_folder}

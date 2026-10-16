@@ -149,8 +149,8 @@ allowed_dependencies = ["app.agent", "app.code", "app.console", "app.file_share"
 max_domain_fan_out = 4
 
 [module."app.process"]
-allowed_dependencies = ["app.agent", "app.console", "app.dataset", "app.file_share", "app.llm", "app.task", "app.tools"]
-max_domain_fan_out = 7
+allowed_dependencies = ["app.agent", "app.console", "app.dataset", "app.file_share", "app.llm", "app.memory", "app.task", "app.tools"]
+max_domain_fan_out = 8
 
 [module."app.dataset"]
 allowed_dependencies = ["app.agent", "app.file_share", "app.memory"]

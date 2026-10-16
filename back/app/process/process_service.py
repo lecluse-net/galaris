@@ -14,8 +14,10 @@ from typing import Any, Optional, Sequence, cast
 from uuid import UUID, uuid4
 
 from loguru import logger
+from app.agent import AgentManagementScope
 from pydantic import ValidationError
-from sqlalchemy import DateTime, String, case, cast as sa_cast, func, or_, select, true
+from sqlalchemy import DateTime, String, case, cast as sa_cast, func, or_, and_, select, true
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.exc import IntegrityError
 
 from core import settings, websocket
@@ -303,7 +305,9 @@ async def _process_tool(tool_id: int) -> ToolModel:
 
 
 async def create_definition(data: ProcessDefinitionCreate) -> ProcessDefinition:
-    await _process_tool(data.tool_id)
+    tool = await _process_tool(data.tool_id)
+    if tool.code == "galaris":
+        raise ValueError("Create internal BPMN definitions through the Document contract")
     await _validate_agent(data.agent_id)
     existing_engine_process = (
         await get_db().execute(
@@ -330,11 +334,15 @@ async def update_definition(
     if record is None:
         return None
     changes = data.model_dump(exclude_unset=True)
+    if record.document_id is not None:
+        raise ValueError("Internal definitions are edited through their Document contract")
     for required_field in ("tool_id", "engine_process_id", "label"):
         if required_field in changes and changes[required_field] is None:
             raise ValueError(f"{required_field} cannot be null")
     if "tool_id" in changes:
-        await _process_tool(cast(int, changes["tool_id"]))
+        tool = await _process_tool(cast(int, changes["tool_id"]))
+        if tool.code == "galaris":
+            raise ValueError("Internal definitions are created through their Document contract")
     if "agent_id" in changes:
         await _validate_agent(cast(int | None, changes["agent_id"]))
 
@@ -366,7 +374,10 @@ async def delete_definition(process_id: int) -> bool:
     record = await get_definition(process_id)
     if record is None:
         return False
-    record.soft_delete()
+    if record.document_id is not None:
+        record.archived = True
+    else:
+        record.soft_delete()
     await get_db().commit()
     return True
 
@@ -375,7 +386,8 @@ async def list_for_agent(agent_id: int) -> list[dict[str, Any]]:
     query = (
         select(ProcessDefinition)
         .where(
-            ProcessDefinition.agent_id == agent_id,
+            _agent_definition_clause(agent_id),
+            ProcessDefinition.archived.is_(False),
             ~ProcessDefinition.engine_process_id.startswith("agent_admin:"),
         )
         .order_by(ProcessDefinition.label)
@@ -383,6 +395,7 @@ async def list_for_agent(agent_id: int) -> list[dict[str, Any]]:
     rows = (await get_db().execute(query)).scalars().all()
     return [
         {
+            "definition_id": process.id,
             "workflow_id": process.engine_process_id,
             "label": process.label,
             "description": process.description,
@@ -402,7 +415,8 @@ async def list_resource_definitions_for_agent(
     """Return one bounded page of definitions visible to an agent."""
 
     statement = select(ProcessDefinition).where(
-        ProcessDefinition.agent_id == agent_id,
+        _agent_definition_clause(agent_id),
+        ProcessDefinition.archived.is_(False),
         ~ProcessDefinition.engine_process_id.startswith("agent_admin:"),
     )
     normalized_query = query.strip()
@@ -429,11 +443,20 @@ async def list_resource_definitions_for_agent(
 async def get_for_agent(agent_id: int, workflow_id: str) -> Optional[ProcessDefinition]:
     result = await get_db().execute(
         select(ProcessDefinition).where(
-            ProcessDefinition.agent_id == agent_id,
+            _agent_definition_clause(agent_id),
             ProcessDefinition.engine_process_id == workflow_id,
+            ProcessDefinition.archived.is_(False),
         )
     )
     return result.scalar_one_or_none()
+
+
+def _agent_definition_clause(agent_id: int) -> ColumnElement[bool]:
+    from app.memory import workflow_document_readable_ids
+    return or_(
+        and_(ProcessDefinition.document_id.is_(None), ProcessDefinition.agent_id == agent_id),
+        ProcessDefinition.document_id.in_(workflow_document_readable_ids(agent_id)),
+    )
 
 
 async def resolve_engine_run(
@@ -527,6 +550,7 @@ async def _resolve_files(
     *,
     run_id: UUID,
     task_id: UUID | None = None,
+    references_only: bool = False,
 ) -> list[ProcessFileRef]:
     from app.file_share import (
         ResourceContext,
@@ -570,7 +594,7 @@ async def _resolve_files(
             if descriptor.is_collection:
                 raise IsADirectoryError(resource_uri)
             size = descriptor.size
-            if size is None:
+            if size is None and not references_only:
                 from tempfile import TemporaryDirectory
 
                 from app.file_share import materialize_resource
@@ -583,7 +607,7 @@ async def _resolve_files(
                         max_bytes=PROCESS_FILE_MAX_BYTES,
                     )
                     size = materialized.size
-            if size > PROCESS_FILE_MAX_BYTES:
+            if size is not None and size > PROCESS_FILE_MAX_BYTES and not references_only:
                 raise ValueError(
                     render_prompt(
                         await tr("process.errors.resource_too_large"),
@@ -603,6 +627,7 @@ async def _resolve_files(
         file_id = uuid4().hex
         result.append(ProcessFileRef(
             id=file_id,
+            slot=request_file.slot,
             uri=resource_uri,
             runtime=cast(Any, runtime),
             task_id=task_id,
@@ -647,7 +672,7 @@ async def _ensure_process_wait(run: ProcessRun, process: ProcessDefinition) -> N
         parent=parent,
         run_id=current.id,
         process_label=process.label,
-        timeout_seconds=runtime_settings.PROCESS_WAIT_MAX_SECONDS,
+        timeout_seconds=None if process.document_id is not None else runtime_settings.PROCESS_WAIT_MAX_SECONDS,
     )
     locked = await _locked_run(current.id)
     if locked is None:
@@ -677,13 +702,70 @@ async def start_process(
     idempotency_key: str | None = None,
     task_id: UUID | None = None,
     runtime: str = "internal",
+    requester_user_id: int | None = None,
+    parent_run_id: UUID | None = None,
+    root_run_id: UUID | None = None,
+    caller_node_attempt_id: UUID | None = None,
+    typed_input: bool = False,
 ) -> ProcessStartResponse:
+    if idempotency_key and idempotency_key.strip():
+        # Reattach an admitted native operation even when its definition has
+        # since been archived. This path never admits an additional effect.
+        admitted = await get_db().scalar(select(ProcessRun).where(
+            ProcessRun.launcher_agent_id == agent_id, ProcessRun.engine_code == "galaris",
+            ProcessRun.idempotency_key == idempotency_key.strip(),
+            ProcessRun.launch_snapshot["workflow_id"].astext == workflow_id))
+        if admitted is not None:
+            from .native_runs import require_run
+            from app.agent import management_scope_for
+            from core.user import get_user_record
+            actor: Any = agent_id
+            if requester_user_id is not None:
+                user = await get_user_record(requester_user_id)
+                if user is None or not user.is_active:
+                    raise PermissionError("An active human launcher is required")
+                actor = await management_scope_for(user, get_db())
+                actor.require(agent_id)
+            await require_run(admitted.id, actor, control=True)
+            definition = await get_definition(admitted.process_id)
+            if definition is None:
+                raise LookupError("Admitted process definition not found")
+            if wait_for_completion:
+                await _ensure_process_wait(admitted, definition)
+            return await _start_response(admitted, definition, deduplicated=True)
     allowed = await get_for_agent(agent_id, workflow_id)
+    human_scope = None
+    if requester_user_id is not None:
+        from app.agent import management_scope_for
+        from core.user import get_user_record
+        user = await get_user_record(requester_user_id)
+        if user is None or not user.is_active:
+            raise PermissionError("An active human launcher is required")
+        human_scope = await management_scope_for(user, get_db())
+        human_scope.require(agent_id)
+        if allowed is None or allowed.document_id is not None:
+            from .native_definitions import get
+            allowed, _ = await get(workflow_id, human_scope)
+            if allowed.archived:
+                raise PermissionError("This process is archived")
     if allowed is None:
         raise PermissionError(render_prompt(
             await tr("process.errors.workflow_not_allowed"),
             workflow_id=workflow_id,
         ))
+    if task_id is not None and parent_run_id is None:
+        # Causality is resolved from engine-owned attempts, never agent input.
+        from .models import ProcessNodeAttempt, ProcessNodeRun
+        origin = (await get_db().execute(select(ProcessRun, ProcessNodeAttempt.id)
+            .join(ProcessNodeRun, ProcessNodeRun.run_id == ProcessRun.id)
+            .join(ProcessNodeAttempt, ProcessNodeAttempt.node_run_id == ProcessNodeRun.id)
+            .where(ProcessNodeAttempt.task_id == task_id, ProcessRun.launcher_agent_id == agent_id)
+            .limit(1))).first()
+        if origin is not None:
+            parent, caller = origin
+            parent_run_id = parent.id
+            root_run_id = parent.root_run_id or parent.id
+            caller_node_attempt_id = caller
     process = allowed
     if not process.engine_process_id:
         raise ValueError(await tr("process.errors.engine_process_id_missing"))
@@ -709,10 +791,27 @@ async def start_process(
                 await _ensure_process_wait(existing, process)
             return await _start_response(existing, process, deduplicated=True)
 
+    native_definition: dict[str, Any] | None = None
+    typed_native = False
+    if process.document_id is not None:
+        from .native_definitions import read
+        from .bpmn import Workflow
+        from .native_actors import validate_assignments
+        native_definition = await read(process.engine_process_id, human_scope or agent_id)
+        native_graph = Workflow.model_validate(native_definition["graph"])
+        await validate_assignments(native_graph, human_scope or agent_id)
+        typed_native = native_graph.typed
+        if typed_native:
+            from .values import normalize
+            assert native_graph.inputs is not None
+            input_data = normalize(native_graph.inputs, input_data, path="process.input")
+    if typed_input and not typed_native:
+        from .values import unwrap, validate_values
+        input_data = {key: unwrap(value) for key, value in validate_values(input_data).items()}
     run_id = uuid4()
     callback_token = secrets.token_urlsafe(42)[:64]
     resolved_files = await _resolve_files(
-        agent_id, runtime, files, run_id=run_id, task_id=task_id
+        agent_id, runtime, files, run_id=run_id, task_id=task_id, references_only=typed_native
     )
     serialized_files = [item.model_dump(mode="json") for item in resolved_files]
     fingerprint = _json_fingerprint(process.id, input_data, serialized_files)
@@ -746,6 +845,12 @@ async def start_process(
         "input": input_data,
         "files": serialized_files,
     }
+    if native_definition is not None:
+        definition = native_definition
+        launch_snapshot["definition"] = {key: definition[key] for key in ("xml", "graph", "revision", "document_id")}
+        launch_snapshot["process_label"] = definition["title"]
+        from .run_participants import participant_agents
+        launch_snapshot["participant_agents"] = participant_agents(launch_snapshot, agent_id)
     from app.tools.facade import register_deferred_dispatch
     authorization_permit = await register_deferred_dispatch(launch_snapshot)
     if authorization_permit is not None:
@@ -754,6 +859,10 @@ async def start_process(
         id=run_id,
         process_id=process.id,
         launcher_agent_id=agent_id,
+        requester_user_id=requester_user_id,
+        parent_run_id=parent_run_id,
+        root_run_id=root_run_id,
+        caller_node_attempt_id=caller_node_attempt_id,
         task_id=task_id,
         launch_snapshot=launch_snapshot,
         engine_code=tool.code,
@@ -769,6 +878,7 @@ async def start_process(
     db.add_all([run, job])
     await _append_event(run, "run.created", payload={"workflow_id": process.engine_process_id})
     await _append_event(run, "engine.start.requested", payload={"tool_code": tool.code})
+    process_id = process.id
     try:
         await db.commit()
     except IntegrityError:
@@ -778,10 +888,15 @@ async def start_process(
         existing = (
             await db.execute(select(ProcessRun).where(
                 ProcessRun.launcher_agent_id == agent_id,
-                ProcessRun.process_id == process.id,
+                ProcessRun.process_id == process_id,
                 ProcessRun.idempotency_key == explicit_key,
             ))
-        ).scalar_one()
+        ).scalar_one_or_none()
+        if existing is None:
+            raise
+        # Rollback expires loaded ORM objects even with expire_on_commit=False.
+        # Reload explicitly before building the existing invocation's receipt.
+        await db.refresh(process)
         return await _start_response(existing, process, deduplicated=True)
     metrics.increment("process_runs_started_total", process_code=process.engine_process_id, engine=tool.code)
     await websocket.emit("process_run", "create", {"id": str(run.id), "status": run.status}, None)
@@ -817,6 +932,8 @@ async def delete_run(run_id: UUID) -> bool:
         return False
     if run.status not in TERMINAL_STATUSES:
         raise ValueError(await tr("process.errors.active_run_delete"))
+    if run.parent_run_id is not None or await get_db().scalar(select(ProcessRun.id).where(ProcessRun.parent_run_id == run.id).limit(1)):
+        raise ValueError("A run referenced by process ancestry must retain its durable history")
     db = get_db()
     await db.delete(run)
     await db.commit()
@@ -832,10 +949,18 @@ async def list_runs(
     workflow_id: str | None = None,
     status: str | None = None,
     limit: int = 100,
+    participant_agent_id: int | None = None,
 ) -> list[ProcessRun]:
     query = select(ProcessRun).join(ProcessDefinition, ProcessDefinition.id == ProcessRun.process_id)
     if agent_id is not None:
         query = query.where(ProcessRun.launcher_agent_id == agent_id)
+    if participant_agent_id is not None:
+        from .native_runs import readable_run_clause
+        from app.tools import has_process_admin_access
+        administrative = await has_process_admin_access(participant_agent_id)
+        query = query.where(or_(
+            and_(ProcessRun.engine_code == "galaris", readable_run_clause(participant_agent_id, administrative=administrative)),
+            and_(ProcessRun.engine_code != "galaris", true() if administrative else ProcessRun.launcher_agent_id == participant_agent_id)))
     if workflow_id:
         query = query.where(ProcessDefinition.engine_process_id == workflow_id)
     if status:
@@ -859,7 +984,11 @@ async def paginate_runs(
     page: int = 1,
     page_size: int = 20,
     agent_ids: Collection[int] | None = None,
+    native_actor: AgentManagementScope | None = None,
 ) -> tuple[list[ProcessRun], int]:
+    if native_actor is not None:
+        from app.memory import prepare_workflow_document_read
+        await prepare_workflow_document_read()
     base = select(ProcessRun.id).join(
         ProcessDefinition,
         ProcessDefinition.id == ProcessRun.process_id,
@@ -868,6 +997,9 @@ async def paginate_runs(
         base = base.where(ProcessRun.launcher_agent_id == agent_id)
     if agent_ids is not None:
         base = base.where(ProcessRun.launcher_agent_id.in_(agent_ids))
+    if native_actor is not None:
+        from .native_runs import readable_run_clause
+        base = base.where(or_(ProcessRun.engine_code != "galaris", readable_run_clause(native_actor)))
     if process_id is not None:
         base = base.where(ProcessRun.process_id == process_id)
     if workflow_id:
@@ -1067,7 +1199,7 @@ async def list_run_summaries_page_for_scope(
     task_ids: Sequence[UUID],
     *,
     page: int = 1,
-    page_size: int = 10,
+    page_size: int = 50,
 ) -> tuple[list[ProcessRunRead], int]:
     """Return one recent-first page of runs linked directly or through scoped Tasks."""
 
@@ -1120,7 +1252,9 @@ async def _apply_snapshot(run: ProcessRun, snapshot: EngineRunSnapshot, event_ty
         return
     run.engine_run_id = snapshot.engine_run_id or run.engine_run_id
     if snapshot.output is not None:
-        run.output = cast(dict[str, Any], await _sanitize(snapshot.output))
+        # Exact business JSON is owned by the internal run Dataset. Diagnostic
+        # sanitization remains mandatory for external callbacks and telemetry.
+        run.output = snapshot.output if run.engine_code == "galaris" and run.dataset_document_id else cast(dict[str, Any], await _sanitize(snapshot.output))
     run.raw_snapshot = cast(Optional[dict[str, Any]], await _sanitize(snapshot.raw))
     run.engine_metadata = {
         **(run.engine_metadata or {}),
@@ -1269,6 +1403,7 @@ async def refresh_active_runs(*, engine_code: str | None = None, parallel: bool 
                         ) <= _utcnow(),
                     ),
                     or_(
+                        (ProcessRun.engine_code == "galaris") & (ProcessRun.updated_at <= _utcnow() - timedelta(seconds=1)),
                         ProcessRun.updated_at <= cutoff,
                         (
                             ProcessRun.updated_at.is_(None)
@@ -1370,6 +1505,8 @@ async def receive_callback(
     if not secrets.compare_digest(token or "", run.callback_token):
         metrics.increment("process_callback_auth_failures_total", engine=run.engine_code)
         raise PermissionError(await tr("process.errors.invalid_callback_token"))
+    if run.engine_code == "galaris":
+        raise PermissionError("Internal runs accept only fenced engine transitions")
     duplicate = (
         await get_db().execute(select(ProcessRunEvent.id).where(
             ProcessRunEvent.run_id == run.id,
@@ -1724,7 +1861,7 @@ async def process_start_jobs(*, batch_size: int = 10, engine_code: str | None = 
             exc = ProcessEngineError(
                 "engine_timeout",
                 await tr("process.errors.engine_timeout"),
-                retryable=True,
+                retryable=run.engine_code != "galaris",
             )
             metrics.increment("process_start_timeouts_total", engine=run.engine_code)
         except ProcessEngineError as error:

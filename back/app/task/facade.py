@@ -1,6 +1,8 @@
 """Durable peer communication using the existing delegated Task lifecycle."""
 
 from uuid import UUID
+from collections.abc import Sequence
+from typing import Any
 from sqlalchemy import select
 
 from app.agent import get_agent_record, require_agent_contact
@@ -10,6 +12,12 @@ from core.database import get_db
 from .work_projection import (
     TaskWorkSnapshot as TaskWorkSnapshot,
     list_work_snapshots as list_work_snapshots,
+)
+from .input_requests import (
+    request_task_input as request_task_input,
+    answer_task_input as answer_task_input,
+    consume_task_input as consume_task_input,
+    replace_legacy_input_wait as replace_legacy_input_wait,
 )
 
 
@@ -28,6 +36,32 @@ async def memory_scope_for_task(
         )
     ).one_or_none()
     return (row.topic_id, row.contact_memory_item_id) if row is not None else None
+
+
+async def inspect_workflow_tasks(identities: Sequence[UUID]) -> dict[UUID, dict[str, Any]]:
+    """Read bounded Task states after the owning workflow has authorized its run."""
+    from .models import Task
+    from .operational_state import operational_snapshot
+
+    if len(identities) > 500:
+        raise ValueError("Inspect at most 500 workflow Tasks at once")
+    if not identities:
+        return {}
+    tasks = list(await get_db().scalars(select(Task).where(Task.id.in_(identities))))
+    children = list(await get_db().scalars(select(Task).where(Task.parent_id.in_(identities))))
+    grouped: dict[UUID, list[Task]] = {}
+    for child in children:
+        if child.parent_id is not None:
+            grouped.setdefault(child.parent_id, []).append(child)
+    snapshots = {task.id: operational_snapshot(task, grouped.get(task.id, [])) for task in tasks}
+    return {task.id: {"operational_state": snapshots[task.id]["operational_state"],
+        "pause_reasons": snapshots[task.id]["pause_reasons"], "waits": snapshots[task.id]["waits"],
+        "status": task.status.value, "agent_id": task.agent_id,
+        "last_error": task.last_error[:1000] if task.last_error else None,
+        "lease_expires_at": task.lease_expires_at.isoformat() if task.lease_expires_at else None,
+        "next_attempt_at": task.next_attempt_at.isoformat() if task.next_attempt_at else None,
+        "updated_at": (task.updated_at or task.created_at).isoformat(),
+    } for task in tasks}
 
 
 async def request_peer_message(

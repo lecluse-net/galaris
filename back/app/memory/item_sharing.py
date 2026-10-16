@@ -41,6 +41,11 @@ async def item_actor(
 async def can_manage(item: MemoryItem, scope: AgentManagementScope) -> bool:
     if item.node_kind != "document" or item.source_managed or item.read_only:
         return False
+    if item.document_type == "process":
+        from .document_policy import orphan_process_clause
+        orphan = await get_db().scalar(select(MemoryItem.id).where(MemoryItem.id == item.id, orphan_process_clause()))
+        if orphan:
+            return await check_privilege(await get_user_record(scope.user_id), "PROCESS_ADMIN", get_db())
     return (
         item.owner_user_id == scope.user_id or scope.allows(item.owner_agent_id)
         or await check_privilege(await get_user_record(scope.user_id), Privileges.MEMORY_ADMIN, get_db())
@@ -108,6 +113,16 @@ async def _sharing_state(item: MemoryItem, *, manage: bool) -> DocumentSharing:
         # Keep the complete catalog for atomic replacement and level changes.
         options=catalog if manage else [],
     )
+
+
+async def sharing_preview(scope: AgentManagementScope, *, owner_agent_id: int | None) -> DocumentSharing:
+    """Build the canonical sharing picker without creating a document."""
+    if owner_agent_id is not None:
+        scope.require(owner_agent_id)
+    item = MemoryItem(id=uuid4(), owner_agent_id=owner_agent_id,
+        owner_user_id=scope.user_id if owner_agent_id is None else None,
+        lock_version=1, grants=[], visibility="private", global_access=0, group_access=0)
+    return await _sharing_state(item, manage=True)
 
 
 async def sharing_directory(*, owner_agent_id: int | None, owner_user_id: int | None) -> DocumentSharing:

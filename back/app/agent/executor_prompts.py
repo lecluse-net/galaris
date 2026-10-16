@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import NotRequired, TypedDict
 
 from .prompt_tree import ExecutorKind, PromptNode, PromptTree, section, system_prompt_tree
+from .conversation_dispatch import conversation_work_analysis_context
 
 
 class ExecutorPromptContext(TypedDict):
@@ -36,6 +37,7 @@ class ExecutorPromptContext(TypedDict):
     runtime_guide: NotRequired[str]
     runtime_rules: NotRequired[str]
     conversation_action_policy: NotRequired[str]
+    dispatch_analysis: NotRequired[str]
 
 
 def _identity_nodes(context: ExecutorPromptContext, *, short_round: bool) -> list[PromptNode]:
@@ -149,6 +151,9 @@ def _conversation_rules(executor: ExecutorKind, action_policy: str) -> str:
         f"{register}"
         "- Answer promptly and directly whenever the request can be handled in the current "
         "conversational turn.\n"
+        "- Default to one or two short sentences. Omit repeated acknowledgements, emojis, "
+        "promises of updates and optional closing questions. Give detail when requested. "
+        "Answer only this turn; never invent subsequent user messages or future results.\n"
         f"{action_policy.strip()}\n"
         "- Conversation and background Task execution are two operating modes of the same "
         "agent, with the same identity and relationship to the user. Never describe a Task "
@@ -161,12 +166,22 @@ def _conversation_rules(executor: ExecutorKind, action_policy: str) -> str:
         "Task or Process to finish. After a successful launch, acknowledge it naturally without "
         "a structured receipt, label, status, UUID, or technical reference unless explicitly "
         "asked.\n"
+        "- Confirm an action only after its tool returns a successful receipt in this turn. "
+        "An earlier assistant confirmation, remembered intention, or previous run is not "
+        "evidence of a new action. A request to relaunch a Process requires a new call to "
+        "`conversation_process_start`; use its receipt before saying it was relaunched. "
+        "If the call fails or needs authorization, describe that actual outcome.\n"
         "- Use Task status tools before claiming what ongoing work is doing or how close "
         "it is to completion. Do not invent progress; if only a durable phase is known, "
         "say exactly that.\n"
         "- Reply in the conversation language unless the user explicitly asks otherwise.\n"
         "- The Turn or Call context supplies language and routing. File notes immediately "
         "following a message belong to that message.\n"
+        "- Human interactions for running Processes always take place through messaging, "
+        "including requests for files. Check pending interactions before treating a message "
+        "or attachment as a new request, using `conversation_process_pending` when the "
+        "relevant request is absent or truncated in context. Correlate it with the expected activity; clarify "
+        "ambiguous or incomplete replies and never complete a Process from an unrelated message.\n"
         "- A newer message may make an effect stale; if a tool reports this, stop and let "
         "the next round respond.\n"
         "- The final answer must not repeat a result that a tool already sent to the "
@@ -236,7 +251,10 @@ def build_executor_prompt_tree(
                     "When essential information is missing or materially ambiguous, and guessing "
                     "could produce the wrong action or recipient, ask the user one concise, "
                     "concrete question and stop the run. Never claim that an action was completed "
-                    "while waiting for that answer."
+                    "while waiting for that answer. When executing a Process activity, work only "
+                    "on that activity and its run Dataset. Keep the final acknowledgement to one "
+                    "short sentence unless the activity requires a longer deliverable. Do not "
+                    "add optional offers, recap old runs, or narrate internal submission receipts."
                 ),
             )
         )
@@ -302,7 +320,7 @@ def build_executor_prompt_tree(
             "Pending interactions",
             context.get("pending_interactions", ""),
         ),
-        ("recently-linked-work", "Recently linked work", context.get("linked_work", "")),
+        ("recently-linked-work", "Active tasks and processes", context.get("linked_work", "")),
         (
             "conversation-history",
             "Conversation history",
@@ -325,6 +343,10 @@ def build_executor_prompt_tree(
         if value.strip():
             nodes.append(section(key, title=title, text=value))
     if short_round:
+        nodes.append(section(
+            "conversation-dispatch-analysis", title="Conversation dispatch analysis",
+            text=context.get("dispatch_analysis") or conversation_work_analysis_context(),
+        ))
         name = context["agent_name"]
         nodes.append(
             section(

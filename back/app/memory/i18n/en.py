@@ -2,6 +2,7 @@
 
 default = {
     "memory": {
+        "errors": {"current_revision_delete": "The current process state cannot be deleted."},
         "capture": {
             "user_request": "User request",
             "outcome": "Outcome",

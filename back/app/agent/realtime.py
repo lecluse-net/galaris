@@ -48,6 +48,7 @@ async def build_realtime_agent_context(
     topic_id: UUID | None = None,
     contact_memory_item_id: UUID | None = None,
     linked_work: Sequence[Mapping[str, object]] = (),
+    active_work: Sequence[Mapping[str, object]] | None = None,
 ) -> RealtimeAgentContext:
     """Build the same identity and registered context used by ordinary drivers."""
 
@@ -150,7 +151,7 @@ async def build_realtime_agent_context(
             "`process_list`, `process_get`, and `conversation_process_start`."
         ),
         process_advertisement=process_advertisement,
-        linked_work=linked_work_context(linked_work),
+        linked_work=linked_work_context(linked_work if active_work is None else active_work),
         conversation_action_policy=action_policy,
         governed_context_policy=contributed.system_instructions,
         conversation_history_context=history_context,

@@ -36,5 +36,12 @@ async def require_galaris_admin_access(agent_id: int) -> None:
         )
 
 
+async def has_process_admin_access(agent_id: int) -> bool:
+    """Only the dedicated, currently active Process administration grant is sufficient."""
+    from app.connection import facade as connection_service
+
+    return await connection_service.has_active_tool_connection(agent_id=agent_id, tool_code="process_admin")
+
+
 __all__ = ["GALARIS_ADMIN_TOOL_CODE", "has_galaris_admin_access", "require_galaris_admin_access",
-           "has_documentation_access", "require_documentation_access"]
+           "has_documentation_access", "require_documentation_access", "has_process_admin_access"]

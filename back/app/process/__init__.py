@@ -9,6 +9,8 @@ from .models import (
     ProcessRun,
     ProcessRunEvent,
     ProcessStartJob,
+    ProcessNodeRun,
+    ProcessNodeAttempt,
 )
 from .schemas import (
     EngineError,
@@ -19,16 +21,24 @@ from .schemas import (
     ProcessEngineHealth,
     ProcessRunRead,
     ProcessStartPayload,
+    ProcessFileInput,
 )
 from .sanitizer import sanitize as sanitize_process_payload
-from .agent_capabilities import build_agent_process_advertisement
-from .resource_facade import list_process_resources, read_process_resource
+from .agent_capabilities import build_agent_process_advertisement, agent_process_dispatch_candidates
+from .resource_facade import list_process_resources, read_process_resource, read_process_run_resource
 from .process_service import has_process_definitions, list_run_summaries_page_for_scope
 from . import process_service, registry
 from .retention import register_retention_guard
 from .replacement import replacement_blocked_task_ids, coordinate_replacement
+from .program_contracts import ProgramExecutor, register_program_executor
+from .isolated_code import CodeInvocation, CodeObservation, IsolatedCodeRunner, register_isolated_code_runner
 
 registry.register(FakeProcessEngine())
+from app.memory import register_document_validator
+from .bpmn import compile_bpmn
+register_document_validator("process", compile_bpmn)
+from .native_engine import NativeProcessEngine
+registry.register(NativeProcessEngine())
 
 
 async def configure_default_engine(register: PeriodicJobRegistrar, unregister: PeriodicJobRemover) -> None:
@@ -52,6 +62,8 @@ def register_scheduler_jobs(register: PeriodicJobRegistrar, unregister: Periodic
     from functools import partial
     from .engine import IntegratedProcessEngine
     from .workers import start_engine_jobs
+    from .activity_jobs import run_external_activity_jobs
+    from .human_requests import deliver_human_requests
     from app.llm import register_trace_release
     from .retention import released_trace_ids
 
@@ -59,6 +71,8 @@ def register_scheduler_jobs(register: PeriodicJobRegistrar, unregister: Periodic
 
     unregister("process-outbox")
     unregister("process-refresh")
+    register("process-external-activities", run_external_activity_jobs, interval=1.0, timeout=360)
+    register("process-human-requests", deliver_human_requests, interval=1.0, timeout=60)
     for code in registry.codes():
         engine = registry.get(code)
         start_timeout = engine.start_timeout_seconds if isinstance(engine, IntegratedProcessEngine) else runtime_settings.PROCESS_START_TIMEOUT_SECONDS
@@ -70,20 +84,29 @@ def register_scheduler_jobs(register: PeriodicJobRegistrar, unregister: Periodic
         register(
             f"process-refresh:{code}",
             partial(process_service.refresh_active_runs, engine_code=code, parallel=True, batch_size=4),
-            interval=max(1.0, min(float(runtime_settings.PROCESS_REFRESH_STALENESS_SECONDS or 1), 10.0)),
+            interval=1.0 if code == "galaris" else max(1.0, min(float(runtime_settings.PROCESS_REFRESH_STALENESS_SECONDS or 1), 10.0)),
             timeout=refresh_timeout + 60,
         )
     register(
         "process-retention", process_service.purge_retention, interval=3600.0
     )
 
+from .human_directory import (ProcessHumanContact, ProcessHumanDirectory, register_process_human_directory,
+    ProcessHumanRequest, ProcessHumanMessenger, register_process_human_messenger)
+
 __all__ = [
+    "ProcessHumanContact", "ProcessHumanDirectory", "register_process_human_directory",
+    "ProcessHumanRequest", "ProcessHumanMessenger", "register_process_human_messenger",
     "ProcessDefinition",
+    "ProgramExecutor", "register_program_executor",
+    "CodeInvocation", "CodeObservation", "IsolatedCodeRunner", "register_isolated_code_runner",
     "ProcessEngine",
     "ProcessEngineError",
     "ProcessRun",
     "ProcessRunEvent",
     "ProcessStartJob",
+    "ProcessNodeRun",
+    "ProcessNodeAttempt",
     "EngineError",
     "EngineProcessDefinition",
     "EngineRunReference",
@@ -92,11 +115,14 @@ __all__ = [
     "ProcessEngineHealth",
     "ProcessRunRead",
     "ProcessStartPayload",
+    "ProcessFileInput",
     "build_agent_process_advertisement",
+    "agent_process_dispatch_candidates",
     "list_process_resources",
     "has_process_definitions",
     "list_run_summaries_page_for_scope",
     "read_process_resource",
+    "read_process_run_resource",
     "process_service",
     "registry",
     "configure_default_engine",

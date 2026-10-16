@@ -55,6 +55,7 @@ from core.user.user_service import encrypt_password
 from tests.e2e_tool_admin import router as tool_admin_fixture, remote_app as tool_admin_remote
 from tests import e2e_call_recovery
 from tests import e2e_conversation_control
+from tests import e2e_process_conversations
 from app.harness.executor import stream as internal_task_stream
 from app.harness.runtime import build_model_for_llm as original_model_builder
 
@@ -66,7 +67,7 @@ quota_fixture = {"used": 2500, "status": 200, "codex_credits": 125.5}
 
 class ScriptedController:
     async def run(self, turn: ConversationTurn) -> ConversationOutcome:
-        if modes.get(turn.room_id) == "conversation-control":
+        if modes.get(turn.room_id) in {"conversation-control", "process-human"}:
             from app.harness.conversation import HarnessConversationController
             return await HarnessConversationController().run(turn)
         assert turn.publish_progress is not None
@@ -134,6 +135,8 @@ async def task_stream(request):
 
 
 async def harness_model(llm, **kwargs):
+    if kwargs.get("agent_id") in e2e_process_conversations.agents:
+        return await e2e_process_conversations.build_model(llm, **kwargs)
     if kwargs.get("agent_id") in e2e_conversation_control.states:
         return await e2e_conversation_control.build_model(llm, **kwargs)
     if kwargs.get("agent_id") in e2e_call_recovery.states:
@@ -304,7 +307,7 @@ async def elevenlabs_voices():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = True):
-    if mode not in {"normal", "tools", "error", "task", "call-recovery", "conversation-control", "missing-terminal", "interruptible", "mail", "file-catalogue"}:
+    if mode not in {"normal", "tools", "error", "task", "call-recovery", "conversation-control", "process-human", "missing-terminal", "interruptible", "mail", "file-catalogue"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -349,6 +352,10 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
         assert tool is not None
         db.add(Connection(tool_id=tool.id, agent_id=agent.id, active=True))
         await db.commit()
+        if mode == "process-human":
+            from app.tools import sync_integrated_tool_connections
+            await sync_integrated_tool_connections(agent.id)
+            await db.commit()
         rooms = []
         for _ in range(2):
             room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
@@ -360,7 +367,7 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
                    "agent_id": agent.id}
         if mode == "call-recovery":
             e2e_call_recovery.register(agent.id)
-        if mode == "conversation-control":
+        if mode in {"conversation-control", "process-human"}:
             # Other journeys can select an image-only installation profile.
             # This real-harness scenario owns its text configuration.
             from app.llm import LLM, LlmProfile
@@ -375,6 +382,8 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             agent.profile_id = control_profile.id
             await db.commit()
             e2e_conversation_control.register(agent.id)
+            if mode == "process-human":
+                e2e_process_conversations.agents.add(agent.id)
         if mode == 'file-catalogue':
             from tests.e2e_file_catalogue import seed_catalogue
             fixture.update(await seed_catalogue(agent.id, app.state.file_catalogue_root))

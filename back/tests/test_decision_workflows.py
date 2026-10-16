@@ -49,6 +49,60 @@ async def profile_context(decisions, runtime, *, specialized=True, fallback=True
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("outcome", ["absent", "selected", "none", "uncertain", "failure"])
+async def test_conversation_dispatch_uses_personal_decision_profile_and_persists_only_advice(
+    decisions, runtime, outcome,
+):
+    from app.agent import analyze_conversation_work
+    from app.conversation import ConversationTaskLink
+    from app.process import agent_process_dispatch_candidates
+    from app.process.models import ProcessDefinition, ProcessRun
+    from app.tools.models import Tool
+
+    db, _, native_calls, text_calls, mode = decisions
+    task, _ = await profile_context(decisions, runtime, specialized=outcome != "absent", fallback=False)
+    tool = Tool(code=f"synthetic-dispatch-{uuid4().hex}", label="Synthetic workflow engine", connection_schema={})
+    db.add(tool)
+    await db.flush()
+    definition = ProcessDefinition(agent_id=task.agent_id, tool_id=tool.id,
+        engine_process_id="synthetic-report", label="Synthetic report", description="Produce a fictional report.")
+    db.add(definition)
+    await db.flush()
+    round_id = await db.scalar(select(ConversationTaskLink.round_id).where(ConversationTaskLink.task_id == task.id))
+    await db.commit()
+    mode["selections"] = {"continuity": "interaction:SYNTH123" if outcome == "selected" else "none",
+        "process": str(definition.id) if outcome == "selected" else "uncertain" if outcome == "uncertain" else "none"}
+    if outcome == "failure":
+        mode["status"] = 503
+
+    result = await analyze_conversation_work(agent=task.agent, agent_id=task.agent_id,
+        round_id=round_id, run_id=round_id, objective="Here is the fictional launch code. Also start a synthetic report.",
+        history="Assistant: Which fictional code?", active_work=(),
+        pending_interactions=({"reference": "SYNTH123", "body": "Which fictional code?"},),
+        load_processes=lambda: agent_process_dispatch_candidates(task.agent_id,
+            {"process_list", "process_get", "conversation_process_start"}))
+
+    assert text_calls == []
+    assert len(native_calls) == (0 if outcome == "absent" else 1)
+    assert await db.scalar(select(ProcessRun.id)) is None  # Advice never launches a run.
+    if outcome in {"absent", "failure"}:
+        assert result.continuity_status == result.process_status == "not_evaluated"
+    elif outcome == "selected":
+        assert result.continuity.reference == "SYNTH123"
+        assert result.process.definition_id == definition.id
+        assert result.process.workflow_id == definition.engine_process_id
+        assert result.cost == pytest.approx(0.0002)
+    else:
+        assert result.continuity_status == "none"
+        assert result.process_status == outcome
+    calls = list(await db.scalars(select(LLMCall)))
+    if outcome == "absent":
+        assert calls == []
+    else:
+        assert calls and all(call.task_id is None and call.conversation_round_id == round_id for call in calls)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("new_topic", [False, True])
 async def test_topic_reuse_avoids_writer_and_novel_subject_uses_writer(
     decisions, runtime, new_topic

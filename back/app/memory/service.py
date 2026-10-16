@@ -14,6 +14,7 @@ from typing import Any, Literal, Sequence, cast
 from uuid import UUID, uuid4
 
 from loguru import logger
+from core.i18n import tr
 from sqlalchemy import and_, case, delete, exists, func, or_, select, union_all, update
 from sqlalchemy import literal as sql_literal
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -25,7 +26,8 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.agent import Agent, get_agent_record
 from core import websocket
 from core.util import convert_to_html, visible_text, image_references, attachment_reference, archived_document_html
-from .document_types import validate_dataset
+from .document_types import validate_document_content
+from .document_policy import document_policy_clause
 from .document_apps import document_apps
 from core.database import get_db
 from core.user import get_user_record
@@ -154,7 +156,9 @@ def _assert_not_source_managed(item: MemoryItem, *, allow_catalogue: bool = Fals
 
 
 def _assert_not_deletion_protected(item: MemoryItem) -> None:
-    if item.deletion_protected:
+    if item.deletion_protected or item.metadata_.get("engine_dataset") or (
+        item.document_type == "process" and item.metadata_.get("process_code")
+    ):
         raise MemoryPermissionError(
             "This document is owned by another Galaris resource and cannot be forgotten."
         )
@@ -686,6 +690,11 @@ async def assert_item_access(
 ) -> MemoryAccess:
     if write:
         _assert_not_source_managed(item, allow_catalogue=True)
+    if item.document_type == "process" and not await get_db().scalar(select(MemoryItem.id).where(
+        MemoryItem.id == item.id,
+        document_policy_clause(agent_id.user_id if isinstance(agent_id, HumanActor) else None),
+    )):
+        raise MemoryPermissionError("An orphan Process is accessible only to human administrators")
     if administrative:
         return MemoryAccess(can_read=True, can_write=not item.source_managed or item.managed_source_kind == "file_catalogue")
     if agent_id is None:
@@ -816,8 +825,12 @@ async def create_item(
     deduplicate: bool = True,
     owner_user_id: int | None = None,
     initial_editor_agent_id: int | None = None,
+    workflow_metadata: bool = False,
 ) -> tuple[MemoryItem, bool]:
     """Create a logical memory and immutable first resource revision."""
+    if not workflow_metadata and any(key in data.metadata for key in (
+        "creation_command", "engine_dataset", "engine_managed", "engine_agent", "dataset_sequence", "dataset_command_hash", "process_code", "workflow_attachments", "workflow_integrations")):
+        raise MemoryPermissionError("Workflow metadata is server-owned")
 
     if owner_user_id is not None and data.node_kind != "document":
         raise ValueError("Only a document can be owned by a User.")
@@ -831,10 +844,10 @@ async def create_item(
     content = decode_payload(data.payload)
     if data.node_kind == "memory" and data.visibility != "private":
         raise MemoryPermissionError("Memories are private; create a document to share content.")
-    if data.node_kind == "document" and data.document_type == "dataset":
+    if data.node_kind == "document" and data.document_type != "html":
         if deletion_protected:
             raise ValueError("Managed editorial documents cannot be datasets.")
-        validate_dataset(content)
+        validate_document_content(data.document_type, content)
     if data.content_type == "text" and data.media_type in {
         "text/html",
         "text/markdown",
@@ -1485,6 +1498,7 @@ async def list_document_content_revisions(
     actor_agent_id: int | HumanActor,
     limit: int = 50,
     offset: int = 0,
+    before_revision: int | None = None,
 ) -> DocumentContentRevisionPage:
     """List only restorable document-content versions, newest first."""
 
@@ -1495,10 +1509,12 @@ async def list_document_content_revisions(
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
     if adapter is not None and await adapter.contains(item_id):
+        if before_revision is not None:
+            raise ValueError("Bounded history is only available for native documents.")
         return DocumentContentRevisionPage.model_validate(await adapter.history(item_id, actor_agent_id, limit, offset))
     from .revision_queries import content_revision_page
 
-    rows, total = await content_revision_page(item_id, limit=limit, offset=offset)
+    rows, total = await content_revision_page(item_id, limit=limit, offset=offset, before_revision=before_revision)
     return DocumentContentRevisionPage(
         items=[DocumentContentRevisionPublic.model_validate(entry) for entry in rows],
         total=total,
@@ -1592,6 +1608,26 @@ async def diff_document_content_revision(
         previous_html=previous_content.decode("utf-8") if entry.media_type == "text/html" else None,
         current_html=current_content.decode("utf-8") if item.media_type == "text/html" else None,
     )
+
+
+async def delete_process_content_revision(
+    item_id: UUID, revision: int, *, actor_agent_id: int | HumanActor,
+) -> None:
+    """Erase an old process snapshot without changing its current content or ACLs."""
+    item = await document_record(item_id, revisions=False)
+    if item is None or item.document_type != "process":
+        raise MemoryNotFoundError("Process not found.")
+    await assert_item_access(item, actor_agent_id, write=True)
+    if revision >= item.revision:
+        raise MemoryConflictError(await tr("memory.errors.current_revision_delete"))
+    from .revision_queries import content_revision
+    entry = await content_revision(item_id, revision)
+    if entry is None:
+        raise MemoryNotFoundError("Process revision not found.")
+    provider_code, resource_id = entry.provider_code, entry.resource_id
+    await get_db().delete(entry)
+    await get_db().commit()
+    await _delete_resource_if_unreferenced(provider_code, resource_id)
 
 
 async def _delete_resource_if_unreferenced(
@@ -1773,6 +1809,22 @@ async def update_item(
     }
     if not fields:
         return item
+    if item.metadata_.get("engine_managed") and fields.intersection({"payload", "metadata", "read_only", "media_type", "content_type"}):
+        from .document_policy import dataset_writer_active
+        if not dataset_writer_active(item.id):
+            raise MemoryPermissionError("Run data is integrated by the workflow engine; submit the activity output instead")
+    if "metadata" in fields and data.metadata is not None:
+        from .document_policy import dataset_writer_active
+        protected_workflow = ("creation_command", "engine_dataset", "engine_managed", "engine_agent", "dataset_sequence", "dataset_command_hash", "process_code", "workflow_attachments", "workflow_integrations")
+        if not dataset_writer_active(item.id) and any(data.metadata.get(key) != item.metadata_.get(key) for key in protected_workflow):
+            raise MemoryPermissionError("Workflow metadata is server-owned")
+    if item.document_type == "process" and "metadata" in fields and data.metadata is not None and data.metadata.get("process_code") != item.metadata_.get("process_code"):
+        raise MemoryPermissionError("The process code is immutable")
+    if item.metadata_.get("engine_dataset") and "metadata" in fields and data.metadata is not None:
+        protected = ("engine_dataset", "engine_agent", "creation_command", "dataset_sequence", "dataset_command_hash")
+        from .document_policy import dataset_writer_active
+        if not dataset_writer_active(item.id) and any(data.metadata.get(key) != item.metadata_.get(key) for key in protected):
+            raise MemoryPermissionError("Run Dataset checkpoints are server-owned")
     if item.node_kind == "memory" and not item.source_managed:
         if "title" in fields:
             raise MemoryPermissionError("A memory has no editable title.")
@@ -1815,6 +1867,8 @@ async def update_item(
             raise MemoryConflictError("A document must contain text.")
         if item.document_type == "dataset" and data.media_type not in (None, "application/json"):
             raise MemoryConflictError("A Dataset document must retain its application/json format.")
+        if item.document_type == "process" and data.media_type not in (None, "application/bpmn+xml"):
+            raise MemoryConflictError("A Process document must retain its BPMN format.")
         if item.document_type == "html" and data.media_type is not None and not data.media_type.startswith("text/"):
             raise MemoryConflictError("A document must contain text.")
         if data.visibility == "public":
@@ -1859,8 +1913,8 @@ async def update_item(
     provider = get_storage(item.provider_code)
     if "payload" in fields and data.payload is not None:
         content = decode_payload(data.payload)
-        if item.node_kind == "document" and item.document_type == "dataset":
-            validate_dataset(content)
+        if item.node_kind == "document" and item.document_type != "html":
+            validate_document_content(item.document_type, content)
         future_content_type = data.content_type or item.content_type
         future_media_type = data.media_type or item.media_type
         if future_content_type == "text" and future_media_type in {
@@ -2098,14 +2152,14 @@ async def restore_document_content_revision(
         MemoryItemUpdate(
             expected_revision=expected_revision,
             payload=MemoryPayload(
-                text=content.decode("utf-8") if item.document_type == "dataset" else convert_to_html(
+                text=content.decode("utf-8") if item.document_type != "html" else convert_to_html(
                     archived_document_html(content.decode("utf-8"))
                     if entry.media_type == "text/html" and item.content_profile == "document"
                     else content.decode("utf-8"),
                     entry.media_type, profile=item.content_profile
                 )
             ),
-            media_type="application/json" if item.document_type == "dataset" else "text/html",
+            media_type=item.media_type if item.document_type != "html" else "text/html",
         ),
         actor_agent_id=actor_agent_id,
         document_revision_author_agent_id=None,

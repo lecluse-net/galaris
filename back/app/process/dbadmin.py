@@ -54,6 +54,9 @@ async def _purge_technical_processes(session: AsyncSession, tool_code: str, oper
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_reconciler(DbAdminReconciler(
+        key="app.process.run_participants", handler=_backfill_run_participants,
+    ))
+    registry.register_reconciler(DbAdminReconciler(
         key="app.process.remove_catalog_refresh_workflows", handler=_purge_catalog_refresh_processes,
         depends_on=("app.tools.mandatory.tools",),
     ))
@@ -65,6 +68,22 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
         key="app.process.move_document_analyses", handler=_move_document_analyses,
         depends_on=("app.tools.mandatory.tools",),
     ))
+
+
+async def _backfill_run_participants(session: AsyncSession) -> None:
+    """Rebuild missing access snapshots in bounded batches, without changing the frozen graph."""
+    from .run_participants import participant_agents
+
+    while True:
+        runs = list(await session.scalars(select(ProcessRun).where(
+            ProcessRun.engine_code == "galaris", ProcessRun.launch_snapshot["participant_agents"].astext.is_(None),
+        ).order_by(ProcessRun.id).limit(200).with_for_update().execution_options(include_historized=True)))
+        if not runs:
+            return
+        for run in runs:
+            run.launch_snapshot = {**run.launch_snapshot,
+                "participant_agents": participant_agents(run.launch_snapshot, run.launcher_agent_id)}
+        await session.flush()
 
 
 async def _move_document_analyses(session: AsyncSession) -> None:

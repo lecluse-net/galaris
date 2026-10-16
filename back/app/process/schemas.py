@@ -72,6 +72,7 @@ class EngineRunReference(BaseModel):
 class ProcessFileInput(BaseModel):
     uri: str = Field(min_length=1)
     description: str = ""
+    slot: str | None = None
 
 
 class ProcessFileRef(BaseModel):
@@ -82,8 +83,9 @@ class ProcessFileRef(BaseModel):
     task_id: UUID | None = None
     filename: str
     content_type: str
-    size: int
+    size: int | None
     description: str = ""
+    slot: str | None = None
     download_url: str
     expires_at: datetime
 

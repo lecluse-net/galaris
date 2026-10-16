@@ -28,6 +28,10 @@ async def test_process_advertisement_is_absent_without_all_required_functions(
     assert result == ""
     list_for_agent.assert_not_awaited()
 
+    with pytest.raises(PermissionError):
+        await agent_capabilities.agent_process_dispatch_candidates(7, {"process_list", "process_get"})
+    list_for_agent.assert_not_awaited()
+
 
 @pytest.mark.asyncio
 async def test_process_advertisement_lists_only_assigned_process_metadata(

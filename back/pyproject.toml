@@ -92,6 +92,7 @@ dependencies = [
     "typing_extensions~=4.16",
     "uvloop~=0.22",
     "watchfiles~=1.2",
+    "pydantic-monty~=1.1.0",
 ]
 
 [build-system]

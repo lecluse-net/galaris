@@ -758,8 +758,11 @@ async def build_turn(
         room_id=str(room.id),
         user_id=newest.sender_external_id,
     )
+    from .process_interactions import PROCESS_HUMAN_INTERACTION, process_interaction_context, live_process_choices
+    pending_choices = await live_process_choices(pending_choices, requester_user_id=hydrated[-1].requester_user_id)
     from core.util import get_encryption_service
     resume_checkpoint = _read_round_checkpoint(round_)
+    from .facade import active_work_snapshot
 
     async def save_checkpoint(checkpoint: AgentRunCheckpoint) -> None:
         from app.tools.facade import canonical_authorization_snapshot
@@ -787,20 +790,25 @@ async def build_turn(
             "room_kind": room.kind,
             "tool_code": newest.tool_code,
             "participant_id": newest.sender_external_id,
+            "requester_user_id": hydrated[-1].requester_user_id,
             "voice_session_id": str(round_.voice_session_id) if round_.voice_session_id else None,
         },
         linked_work=await linked_work_snapshot(room.id),
+        active_work=await active_work_snapshot(connection.agent_id),
         pending_interactions=tuple(
             {
                 "reference": choice.reference,
                 "kind": choice.kind,
                 "title": choice.title[:500],
                 "body": choice.body[:2_000],
+                **({"process_data": process_interaction_context(choice.metadata)}
+                    if choice.kind == PROCESS_HUMAN_INTERACTION else {}),
                 "options": tuple(
                     {"id": option.id[:100], "label": option.label[:300]}
                     for option in choice.options[:20]
                 ),
                 "task_id": str(choice.metadata.get("task_id") or ""),
+                **({"run_id": str(choice.metadata["run_id"])} if choice.metadata.get("run_id") else {}),
                 "expires_at": choice.expires_at.isoformat(),
             }
             for choice in pending_choices
@@ -1869,7 +1877,7 @@ async def deliver_process_notification(link_id: UUID) -> None:
         language=round_.language,
         label=label,
         status=run.status,
-        result=run.output or {},
+        result=run.engine_metadata.get("native", {}).get("summary") or run.output or {},
         error=str(run.error_message or "")[:2_000],
     )
     await get_db().commit()

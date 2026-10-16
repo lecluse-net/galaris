@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlsplit
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.agent import (
     OBJECTIVE_IS_STANDALONE_DATA_KEY,
@@ -31,6 +32,7 @@ from .inspection_service import inspect_round
 from .models import ConversationProcessLink, ConversationRound, ConversationTaskLink
 from .task_objective import compose_task_objective, generate_task_fields, source_request_html
 from .preparation import ConversationSuperseded, run_preparation
+from .process_admission import admit_process_launch
 
 
 _TASK_RESOURCE_PREFIX = "galaris://task/"
@@ -905,6 +907,23 @@ async def conversation_choice_resolve(
     }
 
 
+@mcp_tool("conversation", approval="enabled", approval_reason="Record the assigned human's response to an existing process request",
+    conversation_policy="short", task_enabled=False,
+    description='Complete a pending process_human_activity from this human\'s chat reply, including attached files. Use the exact pending reference and ordinary JSON values matching the declared output types, for example output={"age": 27}. The server validates and stores typed values; do not stringify numbers or booleans. When outputs is null for a historical activity, submit a completion summary as {text: summary}. Never guess missing values or select between ambiguous requests; ask for clarification. File values are canonical URIs supplied in the conversation, never bytes or paths. Does not launch another Task or Process.')
+async def conversation_process_respond(ctx: McpToolContext, *, reference: str,
+                                       output: dict[str, Any], typed_values: bool = False) -> dict[str, Any]:
+    from .process_interactions import respond_to_process_activity
+    return await respond_to_process_activity(await _fresh(ctx), reference, output, typed_values=typed_values)
+
+
+@mcp_tool("conversation", approval="enabled", approval_reason="Read this participant's pending process requests",
+    conversation_policy="short", task_enabled=False,
+    description="Read complete pending process requests and expected output variables for the current conversation participant. Use before interpreting a reply or a file attachment, and page through multiple requests when necessary. Returns no other participant's work.")
+async def conversation_process_pending(ctx: McpToolContext, *, page: int = 1) -> dict[str, Any]:
+    from .process_interactions import pending_process_activities
+    return await pending_process_activities(await _fresh(ctx, before_effect=False), page)
+
+
 async def _mutate_task(ctx: McpToolContext, task_id: str, command: str) -> dict[str, Any]:
     await _fresh(ctx)
     task = await _visible_task(ctx, task_id, lock=command == "stop")
@@ -995,7 +1014,10 @@ async def conversation_task_stop(ctx: McpToolContext, *, task_id: str) -> dict[s
     description=(
         "Start an assigned business Process asynchronously, associate it with this conversation, "
         "and return its internal tracking ID for later Process tools. Never wait for completion "
-        "or expose that ID to the user unless explicitly asked."
+        "or expose that ID to the user unless explicitly asked. The server freezes the workflows "
+        "and exact inputs requested by the actual current message before the first new launch. "
+        "A reply to an activity does not authorize a new run. Retries reuse the same invocation. "
+        "Use occurrence=2 only for the second identical execution explicitly requested by the human."
     ),
 )
 async def conversation_process_start(
@@ -1003,17 +1025,18 @@ async def conversation_process_start(
     *,
     workflow_id: str,
     input: dict[str, Any] | None = None,
+    occurrence: int = 1,
 ) -> dict[str, Any]:
-    turn = await _fresh(ctx)
+    turn = await _fresh(ctx, before_effect=False)
     clean_workflow = workflow_id.strip()
     if not clean_workflow:
         raise ValueError("workflow_id is required")
-    action_key = _action_key("process", clean_workflow, repr(sorted((input or {}).items())))
-    if turn.origin == "text":
+    legacy_key = _action_key("process", clean_workflow, repr(sorted((input or {}).items())))
+    if turn.origin == "text" and occurrence == 1:
         existing = await get_db().scalar(
             select(ConversationProcessLink).where(
                 ConversationProcessLink.round_id == turn.round_id,
-                ConversationProcessLink.action_key == action_key,
+                ConversationProcessLink.action_key == legacy_key,
             )
         )
         if existing is not None:
@@ -1023,8 +1046,31 @@ async def conversation_process_start(
                 "status": "already_linked",
             }
 
+    action_key = await admit_process_launch(turn, clean_workflow, input or {}, occurrence=occurrence)
+    if turn.origin == "text":
+        existing = await get_db().scalar(select(ConversationProcessLink).where(
+            ConversationProcessLink.round_id == turn.round_id, ConversationProcessLink.action_key == action_key))
+        if existing is not None:
+            return {"created": False, "run_id": str(existing.process_run_id), "status": "already_linked"}
+
     from app.process import process_service
 
+    # Only a manager's authenticated scope can authorize other execution agents.
+    # An ordinary participant retains the launcher's existing assigned rights.
+    authenticated_user_id = await get_db().scalar(select(ConversationRound.requester_user_id).where(
+        ConversationRound.id == turn.round_id, ConversationRound.room_id == turn.room_id,
+    ))
+    requester_user_id: int | None = None
+    if authenticated_user_id is not None:
+        from app.agent import management_scope_for
+        from core.user import get_user_record
+
+        user = await get_user_record(authenticated_user_id)
+        if user is not None and user.is_active:
+            scope = await management_scope_for(user, get_db())
+            if scope.allows(turn.agent_id):
+                requester_user_id = user.id
+    await _fresh(ctx)
     response = await process_service.start_process(
         agent_id=turn.agent_id,
         workflow_id=clean_workflow,
@@ -1033,6 +1079,7 @@ async def conversation_process_start(
         idempotency_key=f"conversation:{_effect_scope(turn)}:{action_key}"[:255],
         task_id=None,
         runtime="internal",
+        requester_user_id=requester_user_id,
     )
     if turn.origin == "text":
         get_db().add(
@@ -1042,7 +1089,17 @@ async def conversation_process_start(
                 action_key=action_key,
             )
         )
-    await get_db().commit()
+    try:
+        await get_db().commit()
+    except IntegrityError:
+        await get_db().rollback()
+        # Concurrent identical callers can share the admitted Process run. The
+        # canonical engine already deduplicates its invocation before this link.
+        existing = await get_db().scalar(select(ConversationProcessLink).where(
+            ConversationProcessLink.round_id == turn.round_id, ConversationProcessLink.action_key == action_key))
+        if existing is None or existing.process_run_id != response.run_id:
+            raise
+        return {"created": False, "run_id": str(existing.process_run_id), "status": "already_linked"}
     return {"created": not response.deduplicated, **response.model_dump(mode="json")}
 
 
@@ -1057,4 +1114,6 @@ __all__ = [
     "conversation_task_stop",
     "conversation_task_submit",
     "conversation_process_start",
+    "conversation_process_respond",
+    "conversation_process_pending",
 ]

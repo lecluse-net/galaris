@@ -850,6 +850,40 @@ class ConversationDispatchDecision(BaseModel):
         return lang if is_supported(lang) else "en"
 
 
+class ConversationWorkTarget(BaseModel):
+    """A server-supplied candidate; the decision model never invents identifiers."""
+
+    kind: Literal["interaction", "task", "process_run"]
+    relation: Literal["answer", "related"]
+    reference: str
+    label: str = ""
+    task_uri: str | None = None
+    run_id: str | None = None
+    question: str = ""
+    summary: str = ""
+
+
+class ConversationProcessTarget(BaseModel):
+    definition_id: int
+    workflow_id: str
+    label: str = ""
+
+
+ConversationAnalysisStatus = Literal["not_evaluated", "uncertain", "none", "selected"]
+
+
+class ConversationWorkAnalysis(BaseModel):
+    """Advisory conversation routing, separate from the Task execution route."""
+
+    continuity_status: ConversationAnalysisStatus = "not_evaluated"
+    continuity: ConversationWorkTarget | None = None
+    process_status: ConversationAnalysisStatus = "not_evaluated"
+    process: ConversationProcessTarget | None = None
+    reason: str = "not_evaluated"
+    cost: float = 0.0
+    decision_inference: dict[str, Any] | None = None
+
+
 class DispatchResult(BaseModel):
     decision_inference: dict[str, Any] | None = None
     prompt: str

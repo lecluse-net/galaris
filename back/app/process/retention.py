@@ -78,6 +78,10 @@ async def purge_retention(*, preview: bool = False, batch_size: int = 100) -> di
     statement = (
         select(ProcessRun)
         .where(
+            # Internal run history owns its graph, Dataset and nested run links.
+            # Existing external retention cannot delete those durable records.
+            ProcessRun.engine_code != "galaris",
+            ProcessRun.parent_run_id.is_(None),
             ProcessRun.status.in_(("success", "error", "cancelled")),
             ProcessRun.finished_at < now - timedelta(days=min(active_policies)),
             or_(ProcessRun.await_task_id.is_(None), ProcessRun.await_resolved_at.is_not(None)),

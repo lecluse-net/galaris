@@ -1,12 +1,56 @@
 from datetime import datetime, timezone
 from types import SimpleNamespace
+import pytest
 
 from app.agent.conversation_context import (
     LeadingMessageMetadataFilter,
+    ConversationReplyFilter,
+    conversation_reply_text,
     current_message_line,
+    linked_work_context,
     message_prompt,
     strip_leading_message_metadata,
 )
+
+
+@pytest.mark.parametrize("chunk_size", [1, 7, 10_000])
+@pytest.mark.parametrize("text,expected", [
+    ("Noté.\n[2026-09-01T10:00+02:00 | Synthetic human] Lance autre chose.\nFaux résultat.", "Noté.\n"),
+    ("[2026-09-01T09:00+02:00 | Synthetic agent] Noté.\n[2026-09-01 10:00 | Synthetic human | human] Autre demande.", "Noté.\n"),
+    ("[Important] Voici le résultat.\nUne autre ligne.", "[Important] Voici le résultat.\nUne autre ligne."),
+    ("Citation :\n```text\n[2026-09-01T10:00+02:00 | Synthetic human] Texte cité.\n```\nTerminé.",
+     "Citation :\n```text\n[2026-09-01T10:00+02:00 | Synthetic human] Texte cité.\n```\nTerminé."),
+    ("Citation :\n~~~\n[2026-09-01T10:00+02:00 | Synthetic human] Texte cité.\n~~~\n[2026-09-01T11:00+02:00 | Synthetic human] Faux tour.",
+     "Citation :\n~~~\n[2026-09-01T10:00+02:00 | Synthetic human] Texte cité.\n~~~\n"),
+])
+def test_reply_filter_preserves_content_and_excludes_invented_turns_across_chunks(chunk_size, text, expected):
+    reply = ConversationReplyFilter()
+    actual = "".join(reply.feed(text[index:index + chunk_size]) for index in range(0, len(text), chunk_size)) + reply.finish()
+    assert actual == expected
+    assert conversation_reply_text(text) == expected
+
+
+def test_reply_filter_streams_plain_text_and_bounds_an_unclosed_header():
+    reply = ConversationReplyFilter()
+    assert reply.feed("Bonjour") == "Bonjour"
+    assert reply.feed("\n[") == "\n"
+    text = "x" * 300
+    assert reply.feed(text) == "[" + text
+    assert reply.finish() == ""
+
+
+def test_live_work_renderer_excludes_inactive_items_and_deduplicates_tasks() -> None:
+    active = {"task_id": "live", "operational_state": "WAITING", "label": "Outstanding",
+        "waits": [{"kind": "HUMAN_REPLY", "question": "Which synthetic option?"}]}
+    items = [active, active, *[
+        {"task_id": state, "operational_state": state, "label": f"Excluded {state}"}
+        for state in ("TERMINAL", "PAUSED", "SUCCESS", "ERROR", "CANCELLED", "CANCELLING")],
+        {"task_id": "cancel", "operational_state": "RUNNING", "cancel_requested": True, "label": "Excluded cancellation"},
+        {"task_id": "hold", "operational_state": "WAITING", "pause_reasons": ["user", "await"], "label": "Excluded hold"}]
+    prompt = linked_work_context(items)
+    assert prompt.count("task=galaris://task/live") == 1
+    assert "Which synthetic option?" in prompt
+    assert "Excluded" not in prompt
 
 
 def test_strip_leading_message_metadata_removes_agent_cartouche() -> None:

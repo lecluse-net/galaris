@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from core.authorize import Privileges, authorize
+from core.authorize import Privileges, authorize, RequireAllPrivilegesAssertion
 from core.i18n import tr
-from app.agent import current_management_scope
+from app.agent import current_management_scope, get_agent_record
 
 from . import inspection_service, management_service, monitoring_service
 from .schemas import (
@@ -18,11 +18,33 @@ from .schemas import (
     ConversationRoundDetail,
     ConversationTopicUpdate,
     ConversationDeliveryResolve,
+    ActiveWorkItem,
+    ActiveWorkPage,
 )
 
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 ConversationStatus = Literal["IDLE", "READY", "RUNNING", "WAITING_APPROVAL", "PAUSED"]
+
+
+@router.get("/agents/{agent_id}/active-work", response_model=ActiveWorkPage)
+@authorize(privileges=Privileges.TASK_ACCESS, assertion=RequireAllPrivilegesAssertion,
+    params={"required_privileges": ["TASK_ACCESS", "PROCESS_READ"]})
+async def read_agent_active_work(
+    agent_id: int,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=500),
+) -> ActiveWorkPage:
+    from .facade import active_work_snapshot
+
+    scope = await current_management_scope()
+    if not scope.allows(agent_id) or await get_agent_record(agent_id) is None:
+        raise HTTPException(status_code=404, detail=await tr("agent_api.errors.agent_not_found"))
+    work = await active_work_snapshot(agent_id, reader=scope)
+    offset = (page - 1) * page_size
+    return ActiveWorkPage(agent_id=agent_id, observed_at=datetime.now(timezone.utc),
+        items=[ActiveWorkItem.model_validate(item) for item in work[offset:offset + page_size]],
+        total=len(work), page=page, page_size=page_size)
 
 
 @router.get("/messages", response_model=ConversationMessagePage)

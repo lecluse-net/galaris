@@ -248,6 +248,7 @@ class RealtimeAgentVoiceEngine:
 
         async with get_db_session():
             from app.conversation import linked_work_snapshot
+            from app.conversation.facade import active_work_snapshot
 
             try:
                 conversation_room_id = UUID(self._conversation_id)
@@ -264,6 +265,7 @@ class RealtimeAgentVoiceEngine:
                 topic_id=self._topic_id,
                 contact_memory_item_id=self._contact_memory_item_id,
                 linked_work=linked_work,
+                active_work=await active_work_snapshot(self._agent_id),
             )
         self._provider = await self._configuration.service.create_realtime_session(
             self._configuration.connection,

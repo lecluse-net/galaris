@@ -35,6 +35,8 @@ from .contracts import (
     OBJECTIVE_IS_STANDALONE_DATA_KEY,
 )
 from .conversation_context import conversation_context_block, current_message_data
+from .conversation_dispatch import analyze_conversation_work as analyze_conversation_work
+from .conversation_dispatch import conversation_work_analysis_context as conversation_work_analysis_context
 from .model_resolver import has_agent_profile_model, require_agent_profile_model, resolve_agent_decision_models
 from .registry import get_driver_spec
 

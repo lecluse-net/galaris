@@ -4,9 +4,30 @@ from __future__ import annotations
 
 
 from typing import Any
+from uuid import UUID
 
 from . import process_service
 from .models import ProcessDefinition
+
+
+async def read_process_run_resource(identity: UUID, *, actor_agent_id: int) -> dict[str, Any]:
+    """Observe an authorized run without refreshing or advancing its engine."""
+    from . import native_runs
+    from app.tools import has_process_admin_access
+
+    run = await process_service.get_run(identity)
+    if run is None:
+        raise FileNotFoundError("Process run not found")
+    if run.engine_code == "galaris":
+        payload = await native_runs.inspect_run(identity, actor_agent_id)
+    else:
+        if run.launcher_agent_id != actor_agent_id and not await has_process_admin_access(actor_agent_id):
+            raise PermissionError("Run not found in this agent's participation scope")
+        detail = await process_service.get_run_detail(identity)
+        if detail is None:
+            raise FileNotFoundError("Process run not found")
+        payload = detail.model_dump(mode="json")
+    return {**payload, "resource_uri": f"processus://run/{identity}"}
 
 
 async def _tool_codes() -> dict[int, str]:
@@ -66,4 +87,4 @@ async def list_process_resources(
     return [_payload(definition, tool_codes=tool_codes) for definition in definitions]
 
 
-__all__ = ["list_process_resources", "read_process_resource"]
+__all__ = ["list_process_resources", "read_process_resource", "read_process_run_resource"]

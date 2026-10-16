@@ -259,13 +259,14 @@ setup_public_docs(app)
 setup_api_routers(app)
 from app.dataset import register_dataset, register_dataset_usage_source
 register_dataset()
+from functools import partial
 from app.memory import find_dataset_document_usages
 from app.process.facade import find_dataset_run_usages
 from app.llm.facade import find_dataset_agent_usages
 register_dataset_usage_source("documents", "documents", find_dataset_document_usages)
+register_dataset_usage_source("processes", "definitions", partial(find_dataset_document_usages, document_type="process"))
 register_dataset_usage_source("processes", "runs", find_dataset_run_usages)
 register_dataset_usage_source("agents", "agents", find_dataset_agent_usages)
-
 
 # The composition root, not core, mounts bridge-specific routes.
 from bridge.one_bot import onebot_router
@@ -308,6 +309,23 @@ class GoalContactDirectoryAdapter:
 
 
 register_goal_contact_directory(GoalContactDirectoryAdapter())
+
+from app.process import ProcessHumanContact, register_process_human_directory
+
+
+class ProcessHumanDirectoryAdapter:
+    async def list_humans(self, *, agent_id: int) -> tuple[ProcessHumanContact, ...]:
+        contacts = await list_reachable_humans(agent_id=agent_id)
+        return tuple(ProcessHumanContact(user_id=contact.galaris_user_id, display_name=contact.display_name,
+            connection_id=contact.connection_id, external_user=contact.user_id)
+            for contact in contacts)
+
+
+register_process_human_directory(ProcessHumanDirectoryAdapter())
+
+from app.process import register_process_human_messenger
+from app.conversation import ProcessHumanMessenger
+register_process_human_messenger(ProcessHumanMessenger())
 
 # Context composition is driver-neutral: both internal and Hermes runs receive
 # the same governed long-term and Messenger-session snapshots.

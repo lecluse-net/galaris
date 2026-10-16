@@ -53,7 +53,8 @@ def test_managed_actor_keeps_native_authorization_and_cannot_replay(tmp_path, mo
                 state["receipts"].append(body)
                 self.respond({"recorded": True})
             elif "/mcp/" in self.path:
-                self.respond({"jsonrpc": "2.0", "id": body["id"], "result": {"content": []}})
+                result = {"tools": [{"name": "file_read", "inputSchema": {"type": "object"}}]} if body["method"] == "tools/list" else {"content": []}
+                self.respond({"jsonrpc": "2.0", "id": body["id"], "result": result})
             elif state["decision"] is None:
                 self.respond({"status": "pending", "request_id": "human-question"})
             elif state["decision"] == "allow":
@@ -71,6 +72,12 @@ def test_managed_actor_keeps_native_authorization_and_cannot_replay(tmp_path, mo
                     self.environment = options["env"]
 
                 def __enter__(self):
+                    actor_id = self.environment["GALARIS_AUTHORIZATION_PROXY"].rsplit("/", 1)[1]
+                    with httpx.Client(base_url=base, timeout=15) as sdk:
+                        response = sdk.post(f"/mcp/{actor_id}", headers={"Authorization": "Bearer synthetic-mcp-token"},
+                            json={"jsonrpc": "2.0", "id": "startup", "method": "tools/list"})
+                        assert response.status_code == 200
+                        assert response.json()["result"]["tools"]
                     return self
 
                 def __exit__(self, *_args):

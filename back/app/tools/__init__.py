@@ -67,7 +67,7 @@ from .agent_registry import (
 )
 from .mandatory_tools import sync_integrated_tool_connections, sync_mandatory_tools
 from .mandatory_tools import initialize_admin_agent_connections
-from .admin_access import GALARIS_ADMIN_TOOL_CODE, has_galaris_admin_access, require_galaris_admin_access
+from .admin_access import GALARIS_ADMIN_TOOL_CODE, has_galaris_admin_access, require_galaris_admin_access, has_process_admin_access
 from .admin_access import has_documentation_access, require_documentation_access
 from .connection_functions import list_available_connection_functions
 from .mcp_loader import (
@@ -144,6 +144,7 @@ __all__ = [
     "has_documentation_access",
     "require_documentation_access",
     "has_galaris_admin_access",
+    "has_process_admin_access",
     "list_available_connection_functions",
     "load_mcp_tools",
     "mcp_tools_by_tool_code",

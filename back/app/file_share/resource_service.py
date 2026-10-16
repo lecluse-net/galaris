@@ -2341,7 +2341,7 @@ async def resource_move(
         raise PermissionError(
             "galaris:// resources cannot be moved; copy a readable resource to another scheme."
         )
-    if source_ref.scheme in {"memory", "document", "data", "http", "https"}:
+    if source_ref.scheme in {"memory", "document", "data", "processus", "http", "https"}:
         raise PermissionError(
             f"{source_ref.scheme}:// resources cannot be moved because generic file tools "
             "cannot delete the source; use file_copy instead."

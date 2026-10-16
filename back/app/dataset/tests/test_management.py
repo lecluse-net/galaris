@@ -110,7 +110,7 @@ async def test_dataset_usages_find_current_documents_processes_and_agent_traces_
     assert first["total"] == second["total"] == 2
     assert {first["items"][0]["label"], second["items"][0]["label"]} == {"Synthetic visible page", "Synthetic other page"}
     processes = await usage.list_usages(dataset.id, scope, kind="processes")
-    assert processes["total"] == 1 and processes["items"][0]["url"] == "/process"
+    assert processes["total"] == 1 and processes["items"][0]["url"] == f"/process/internal/run/{run.id}"
     observed = await usage.list_usages(dataset.id, scope, kind="agents")
     assert observed["total"] == 1 and observed["items"][0]["id"] == f"agent:{owner.id}"
     with pytest.raises(service.DatasetNotFoundError):

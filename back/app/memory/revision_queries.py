@@ -68,11 +68,13 @@ async def content_revision(item_id: UUID, revision: int) -> MemoryRevision | Non
 
 
 async def content_revision_page(
-    item_id: UUID, *, limit: int, offset: int
+    item_id: UUID, *, limit: int, offset: int, before_revision: int | None = None,
 ) -> tuple[list[MemoryRevision], int]:
     if not 1 <= limit <= 500 or offset < 0:
         raise ValueError("Invalid revision pagination")
     versions = _content_version_ids(item_id)
+    if before_revision is not None:
+        versions = select(MemoryRevision.id).where(MemoryRevision.id.in_(versions), MemoryRevision.revision < before_revision)
     query = select(MemoryRevision).options(defer(MemoryRevision.content)).where(MemoryRevision.id.in_(versions))
     total = int(await get_db().scalar(select(func.count()).select_from(versions.subquery())) or 0)
     rows = list(

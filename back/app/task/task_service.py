@@ -57,7 +57,8 @@ PAUSE_PLAN = "plan"        # Waiting for a plan child task.
 PAUSE_CLARIFY = "clarify"  # Waiting for a clarification response.
 PAUSE_CHILD = "child"      # Waiting for a delegated child in the call-stack model.
 PAUSE_APPROVAL = "approval"  # Waiting for one-operation human authorization.
-_AUTO_PAUSE_REASONS = (PAUSE_AWAIT, PAUSE_PLAN, PAUSE_CLARIFY, PAUSE_CHILD, PAUSE_APPROVAL)
+PAUSE_INPUT = "input"  # The current execution awaits domain-owned input.
+_AUTO_PAUSE_REASONS = (PAUSE_AWAIT, PAUSE_PLAN, PAUSE_CLARIFY, PAUSE_CHILD, PAUSE_APPROVAL, PAUSE_INPUT)
 
 # Marker on a child created through ``task_run``. Its creator waits with the ``child`` pause
 # reason and resumes when the child terminates.
@@ -296,12 +297,23 @@ async def publish_created(task: Task) -> None:
     )
 
 
-async def create(task_data: TaskCreate, *, idempotency_key: str | None = None) -> Task:
+def submission_identity(agent_id: int | None, idempotency_key: str) -> UUID:
+    return uuid5(NAMESPACE_URL, f"galaris:task:{agent_id}:{idempotency_key}")
+
+
+async def get_submission(agent_id: int, idempotency_key: str) -> Task | None:
+    """Observe an admitted invocation even when its caller lost the receipt."""
+    return await get_db().scalar(select(Task).where(Task.id == submission_identity(agent_id, idempotency_key))
+        .execution_options(include_historized=True))
+
+
+async def create(task_data: TaskCreate, *, idempotency_key: str | None = None,
+                 requester_user_id: int | None = None) -> Task:
     """Create a task."""
     db = get_db()
     submission_id: UUID | None = None
     if idempotency_key is not None:
-        submission_id = uuid5(NAMESPACE_URL, f"galaris:task:{task_data.agent_id}:{idempotency_key}")
+        submission_id = submission_identity(task_data.agent_id, idempotency_key)
         # Serialize competing submissions, including a replay after creation was
         # committed but its caller did not receive the receipt.
         lock_key = int.from_bytes(submission_id.bytes[:8], "big", signed=True)
@@ -316,6 +328,12 @@ async def create(task_data: TaskCreate, *, idempotency_key: str | None = None) -
     await apply_goal_lineage(task_data)
     await apply_reasoning_effort_lineage(task_data)
     new_task = build(task_data)
+    if requester_user_id is not None:
+        from core.user import get_user_record
+        requester = await get_user_record(requester_user_id)
+        if requester is None or not requester.is_active:
+            raise PermissionError("An active Task requester is required")
+        new_task.requester_user_id = requester_user_id
     if submission_id is not None:
         new_task.id = submission_id
     await apply_requester_lineage(new_task)
@@ -391,6 +409,82 @@ async def create_from_messenger(
     await db.refresh(new_task)
     await publish_created(new_task)
     return new_task, True
+
+
+@asynccontextmanager
+async def workflow_operation(task_id: UUID) -> AsyncGenerator[bool]:
+    """Admit an inline Tool context using the normal Harness capacity and lease."""
+    import asyncio
+    from . import scheduler
+    task = await _get_by_id_for_update(task_id)
+    if task is None or task.ai or not (task.data or {}).get("workflow_operation"):
+        raise ValueError("This Task is not a workflow operation context")
+    if is_held_by_user(task):
+        await get_db().commit()
+        yield False
+        return
+    try:
+        token = await scheduler.claim_inline_execution(task_id)
+    except scheduler.InlineClaimUnavailable:
+        await get_db().commit()
+        yield False
+        return
+    transition(task, TaskEvent.START_EXECUTION)
+    await save(task)
+    heartbeat = asyncio.create_task(scheduler.maintain_inline_execution(task_id, token))
+    try:
+        yield True
+    finally:
+        heartbeat.cancel()
+        try:
+            await heartbeat
+        except asyncio.CancelledError:
+            pass
+
+
+async def suspend_workflow_operation(task_id: UUID) -> None:
+    """Await one-operation authorization without leaving a runnable context Task."""
+    from . import scheduler
+    task = await _get_by_id_for_update(task_id)
+    if task is None or task.ai or not (task.data or {}).get("workflow_operation"):
+        raise ValueError("This Task is not a workflow operation context")
+    token = task.lease_token
+    transition(task, TaskEvent.INTERRUPT_EXECUTION)
+    suspend(task, "workflow_operation")
+    await save(task)
+    if token is not None:
+        await scheduler.finish_inline_execution(task_id, token)
+        await get_db().refresh(task)
+
+
+async def complete_workflow_operation(task_id: UUID, result: dict[str, Any], *, error: str | None = None) -> None:
+    """Complete the durable, non-agent Task which owns a workflow Tool context."""
+    task = await _get_by_id_for_update(task_id)
+    if task is None:
+        raise LookupError("Workflow operation Task not found")
+    if task.ai or not (task.data or {}).get("workflow_operation"):
+        raise ValueError("This Task is not a workflow operation context")
+    if task.status in {TaskStatus.SUCCESS, TaskStatus.ERROR}:
+        if task.lease_token is not None:
+            from . import scheduler
+            await get_db().commit()
+            await scheduler.finish_inline_execution(task_id, task.lease_token,
+                error=error if task.status == TaskStatus.ERROR else None)
+            await get_db().refresh(task)
+        return
+    from app.agent.contracts import ExecutionResult
+    import json
+    token = task.lease_token
+    task.set_execution_result(ExecutionResult(prompt="Workflow Tool operation", result=json.dumps(result, ensure_ascii=False), success=error is None))
+    if task.status == TaskStatus.DISPATCH:
+        transition(task, TaskEvent.START_EXECUTION)
+    transition(task, TaskEvent.EXECUTION_FAILED if error else TaskEvent.EXECUTION_SUCCEEDED)
+    clear_pauses(task)
+    await save(task)
+    if token is not None:
+        from . import scheduler
+        await scheduler.finish_inline_execution(task_id, token, error=error)
+        await get_db().refresh(task)
 
 
 async def save(task: Task) -> Task:

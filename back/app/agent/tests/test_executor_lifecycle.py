@@ -160,6 +160,7 @@ async def test_empty_output_without_delivery_receipt_stays_failed(
 
 @pytest.mark.asyncio
 async def test_final_cost_uses_attempt_base_cost(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(executor_service.task_port, "suspend_on_pending_input", AsyncMock(return_value=False))
     task = Task(
         id=uuid4(),
         label="Cost",
@@ -208,6 +209,7 @@ async def test_final_cost_uses_attempt_base_cost(monkeypatch: pytest.MonkeyPatch
 async def test_failed_stream_waits_for_children_instead_of_ending_parent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(executor_service.task_port, "suspend_on_pending_input", AsyncMock(return_value=False))
     task = Task(
         id=uuid4(),
         label="Coordination interrompue",

@@ -146,6 +146,7 @@ async def add_document_attachment(
     *,
     actor_agent_id: int | HumanActor,
     upload: UploadFile,
+    workflow_receipt: tuple[str, dict[str, Any]] | None = None,
 ) -> DocumentAttachmentPublic:
     item, _content, access, _content_type, _media_type = await service.get_item(
         document_id,
@@ -197,6 +198,7 @@ async def add_document_attachment(
         document_id,
         actor_agent_id=actor_agent_id,
         attachment=attachment,
+        workflow_receipt=workflow_receipt,
     )
 
 
@@ -237,6 +239,7 @@ async def _register_document_attachment(
     *,
     actor_agent_id: int | HumanActor,
     attachment: DocumentAttachmentPublic,
+    workflow_receipt: tuple[str, dict[str, Any]] | None = None,
 ) -> DocumentAttachmentPublic:
     provider = get_attachment_storage()
     publication_attempted = False
@@ -258,6 +261,14 @@ async def _register_document_attachment(
                 )
             try:
                 metadata = _metadata_with_attachments(item, [*attachments, attachment])
+                if workflow_receipt is not None:
+                    from .document_policy import dataset_writer_active
+                    if not item.metadata_.get("engine_dataset") or not dataset_writer_active(item.id):
+                        raise service.MemoryPermissionError("Workflow attachment receipts are server-owned")
+                    key, receipt = workflow_receipt
+                    metadata["workflow_attachments"] = {**item.metadata_.get("workflow_attachments", {}),
+                        key: {**receipt, "uri": f"document://{item.id}/attachments/{attachment.id}",
+                            "content_type": attachment.media_type, "size": attachment.size_bytes}}
                 await register_file(
                     attachment.id, name=attachment.name, media_type=attachment.media_type,
                     alias=f"document://{document_id}/attachments/{attachment.id}",

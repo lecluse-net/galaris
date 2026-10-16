@@ -6,7 +6,7 @@ from collections.abc import Collection
 from uuid import UUID
 
 from sqlalchemy import exists, or_, select, and_, true, false, union_all
-from app.agent import Agent, AgentTeamModel
+from app.agent import Agent, AgentManagementScope, AgentTeamModel
 from core.database import get_db
 from core.team import TeamModel, TeamUserModel
 from core.user import HumanActor, UserModel
@@ -15,6 +15,8 @@ from sqlalchemy.sql.selectable import Subquery
 from sqlalchemy.orm import aliased, InstrumentedAttribute
 
 from .contracts import MemoryAccess
+from .document_policy import document_policy_clause, orphan_process_clause
+from core.authorize import privilege_clause
 from .source_access import source_access_clause, source_is_readable
 from .models import MemoryItem, MemoryItemGrant, DocumentUserGrant, DocumentTeamGrant, DocumentAttachment, DocumentTag, DocumentTagAssignment
 
@@ -74,7 +76,7 @@ def _direct_readable_item_for_agents_clause(
 def _structural_access(direct: ColumnElement[bool], *, write: bool = False, user_id: int | None = None) -> ColumnElement[bool]:
     """Attachment access is live parent access, never a copied grant snapshot."""
     parents = select(MemoryItem.id).where(
-        MemoryItem.node_kind == "document", MemoryItem.deleted_at.is_(None), direct,
+        MemoryItem.node_kind == "document", MemoryItem.deleted_at.is_(None), direct, document_policy_clause(user_id),
     ).correlate(None)
     attachment_ids = select(DocumentAttachment.memory_item_id).where(
         DocumentAttachment.active.is_(True), DocumentAttachment.document_id.in_(parents),
@@ -98,7 +100,7 @@ def _structural_access(direct: ColumnElement[bool], *, write: bool = False, user
         # from readable documents. Folder grants never authorize either surface.
         folder_access = and_(direct, MemoryItem.owner_user_id == user_id, MemoryItem.id.in_(folder_ids))
     return or_(
-        and_(MemoryItem.node_kind.not_in(("attachment", "folder")), direct),
+        and_(MemoryItem.node_kind.not_in(("attachment", "folder")), direct, document_policy_clause(user_id)),
         and_(MemoryItem.node_kind == "folder", folder_access) if not write else false(),
         and_(MemoryItem.node_kind == "attachment", MemoryItem.id.in_(attachment_ids)) if not write else false(),
     )
@@ -118,6 +120,11 @@ async def managed_item_agent_ids(
     *, team_access: dict[int, bool] | None = None,
 ) -> tuple[tuple[int, ...], tuple[int, ...]]:
     """Return managed Agent ids with read access and with write access."""
+
+    if item.document_type == "process" and not await get_db().scalar(select(MemoryItem.id).where(
+        MemoryItem.id == item.id, document_policy_clause(),
+    )):
+        return (), ()
 
     if item.node_kind in {"attachment", "folder"}:
         query = select(Agent.id)
@@ -168,6 +175,10 @@ async def effective_access(item: MemoryItem, agent_id: int | HumanActor, *, evid
 
     if isinstance(agent_id, HumanActor):
         return await human_item_access(item, agent_id.user_id)
+    if item.document_type == "process" and not await get_db().scalar(select(MemoryItem.id).where(
+        MemoryItem.id == item.id, document_policy_clause(),
+    )):
+        return MemoryAccess(can_read=False, can_write=False)
     if (evidence_ids is not None and item.id not in evidence_ids) or not await source_is_readable(
         item.id, item.managed_source_kind, agent_id,
         check_evidence=evidence_ids is None and item.metadata_.get("evidence_validator") is not None,
@@ -273,6 +284,7 @@ def _direct_human_item_clause(user_id: int, *, write: bool = False) -> ColumnEle
     return and_(
         exists(select(UserModel.id).where(UserModel.id == user_id, UserModel.is_active.is_(True))),
         or_(MemoryItem.owner_user_id == user_id,
+            and_(orphan_process_clause(), privilege_clause(user_id, "PROCESS_ADMIN")),
             and_(MemoryItem.source_managed.is_(True), MemoryItem.visibility == "public") if not write else false(),
             and_(MemoryItem.node_kind == "document", or_(MemoryItem.global_access == 2 if write else MemoryItem.global_access >= 1, exists(direct), exists(teams)))),
         ~MemoryItem.read_only if write else true(),
@@ -286,6 +298,18 @@ def human_item_clause(user_id: int, *, write: bool = False) -> ColumnElement[boo
 
 def human_document_clause(user_id: int, *, write: bool = False) -> ColumnElement[bool]:
     return and_(MemoryItem.node_kind == "document", human_item_clause(user_id, write=write))
+
+
+def readable_workflow_document_clause(actor: int | AgentManagementScope) -> ColumnElement[bool]:
+    """Apply Document ACLs without folder ancestry or attachment inheritance."""
+    if isinstance(actor, int):
+        clause = and_(_direct_readable_item_clause(actor), document_policy_clause(), source_access_clause())
+    else:
+        clause = or_(
+            and_(_direct_human_item_clause(actor.user_id), document_policy_clause(actor.user_id)),
+            and_(_direct_readable_item_for_agents_clause(actor.agent_ids), document_policy_clause(), source_access_clause()),
+        )
+    return and_(MemoryItem.node_kind == "document", clause)
 
 
 async def human_item_access(item: MemoryItem, user_id: int) -> MemoryAccess:

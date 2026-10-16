@@ -1,15 +1,18 @@
 """Stable configuration read port consumed by connection resolution."""
 
 from typing import Any
+from uuid import UUID
 from .schemas import Tool
-from .rest_contracts import RestAuth, RestConfig, RestError, RestRequest, RestResponse
-from .rest import execute_rest_request
 from .runtime_principals import RuntimePrincipal, register_runtime_principal_port
 from .mcp_authorization import bind_native_action
 from .authorization import authorization_policy as agent_authorization_policy
 from .secrets import public_connection_schema as public_connection_schema
 from .secrets import resolve_connection_references as resolve_connection_references
 from .admin_network import diagnostic_client as mcp_http_client
+
+
+from .rest_contracts import RestAuth, RestConfig, RestError, RestRequest, RestResponse
+from .rest import execute_rest_request
 
 
 async def has_active_admin_function(agent_id: int, function: str) -> bool:
@@ -93,6 +96,7 @@ __all__ = [
     "RestRequest",
     "RestResponse",
     "execute_rest_request",
+    "execute_workflow_tool",
     "register_runtime_authorization_configuration",
     "authorization_fingerprint",
     "continued_deferred_dispatch",
@@ -141,3 +145,99 @@ __all__ = [
     "HUMAN_ONLY_TOOL_CODES",
     "administration",
 ]
+
+
+async def execute_workflow_tool(
+    *,
+    agent_id: int,
+    task_id: UUID | None,
+    tool_name: str,
+    arguments: dict[str, Any],
+    operation_id: UUID,
+    continuation: str | None = None,
+) -> dict[str, Any]:
+    """Declared native operations keep their connection, scope and approval checks."""
+    from .mcp_loader import execute_native_mcp_tool, load_mcp_tools, build_agent_mcp
+    from .contracts import ToolExecutionContext, tool_execution, EXECUTION_META_KEY
+    from .authorization import AUTHORIZATION_META_KEY
+    from fastmcp.tools import ToolResult
+    from fastmcp import Client
+    from pydantic import BaseModel
+
+    if task_id is None:
+        raise ValueError("A Tool activity requires an admitted execution Task")
+    evidence = ToolExecutionContext(
+        operation_id, tool_name, authorization_continuation=continuation
+    )
+    definition = next((item for item in load_mcp_tools() if item.name == tool_name), None)
+    native = definition is not None
+    read_only = definition is not None and definition.effect_policy == "read"
+    with tool_execution(evidence):
+        if native:
+            try:
+                result = await execute_native_mcp_tool(
+                    agent_id,
+                    runtime="internal",
+                    task_id=task_id,
+                    tool_name=tool_name,
+                    arguments=arguments,
+                )
+            except PermissionError:
+                if evidence.entered:
+                    raise
+                return {"status": "rejected", "error": "The Tool is not authorized for this agent"}
+        else:
+            # External APIs use their declared MCP connection. Credentials stay
+            # inside the shared loader and its live authorization middleware.
+            server = await build_agent_mcp(agent_id, runtime="internal", task_id=task_id)
+            async with Client(server) as client:
+                remote = await client.call_tool(
+                    tool_name,
+                    arguments,
+                    raise_on_error=False,
+                    meta={
+                        EXECUTION_META_KEY: {"operation_id": str(operation_id)},
+                        **(
+                            {AUTHORIZATION_META_KEY: {"continuation": continuation}}
+                            if continuation
+                            else {}
+                        ),
+                    },
+                )
+                result = ToolResult(
+                    content=remote.content,
+                    structured_content=remote.structured_content,
+                    is_error=remote.is_error,
+                    meta=remote.meta,
+                )
+    if isinstance(result, ToolResult):
+        authorization = (result.meta or {}).get(AUTHORIZATION_META_KEY)
+        if authorization:
+            return {
+                "authorization": authorization,
+                "status": "waiting" if authorization.get("status") == "pending" else "rejected",
+            }
+        if result.is_error:
+            if native and (evidence.outcome == "rejected" or read_only):
+                return {
+                    "status": "rejected",
+                    "error": "The Tool rejected this activity before dispatch",
+                }
+            raise ValueError("The Tool rejected this activity")
+        return {
+            "status": "completed",
+            "output": result.structured_content
+            or {"content": [block.model_dump(mode="json") for block in result.content]},
+        }
+    if native and (
+        evidence.outcome == "rejected" or (read_only and evidence.outcome != "returned")
+    ):
+        return {"status": "rejected", "error": str(result)}
+    if native and evidence.outcome != "returned":
+        raise ValueError("Tool effect outcome is unknown; reconcile it before retrying")
+    if isinstance(result, BaseModel):
+        result = result.model_dump(mode="json")
+    return {
+        "status": "completed",
+        "output": result if isinstance(result, dict) else {"value": result},
+    }

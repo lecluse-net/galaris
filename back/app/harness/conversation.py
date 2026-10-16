@@ -8,12 +8,20 @@ import asyncio
 import re
 import time
 from datetime import datetime
+from dataclasses import replace
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from typing import cast
 from uuid import UUID
 
+from pydantic_ai import RunContext
+from pydantic_ai.capabilities import Hooks
+from pydantic_ai.messages import InstructionPart, ModelRequest, ToolReturnPart
+from pydantic_ai.models import ModelRequestContext
+
 from app.agent import (
     AIMessage,
+    ConversationReplyFilter,
+    conversation_reply_text,
     AgentContextRequest,
     AgentEvent,
     AgentRunContext,
@@ -23,12 +31,13 @@ from app.agent import (
     agent_service,
     build_agent_run_context,
     dispatch_conversation,
+    analyze_conversation_work,
+    conversation_work_analysis_context,
     memory_context_trace,
 )
 from app.agent.executor_prompts import ExecutorPromptContext, build_executor_prompt_tree
 from app.agent.prompt_tree import ExecutorKind, render_prompt_tree
 from app.agent.conversation_context import (
-    LeadingMessageMetadataFilter,
     current_message_data,
     linked_work_context,
     message_prompt,
@@ -45,8 +54,8 @@ from app.conversation import (
 from app.llm import llm_service
 from app.messenger import build_conversation_session
 from app.agent.contracts import TaskMessage as Message
-from app.agent.contracts import AgentRunControl, ResolvedModel
-from app.process import build_agent_process_advertisement
+from app.agent.contracts import AgentRunControl, ResolvedModel, ConversationWorkAnalysis
+from app.process import build_agent_process_advertisement, agent_process_dispatch_candidates
 from app.tools.agent_registry import build_agent_tool_advertisement
 from app.tools.mcp_loader import McpToolContext
 from core.database import get_db_session, release_db_transaction
@@ -56,10 +65,12 @@ from core.params import runtime_settings
 
 from .mcp_toolset import build_conversation_toolset
 from .conversation_interrupt import ConversationInterruption
+from .conversation_protocol import ConversationTurnProtocol
 from .runtime import Agent, create_agent
 from .checkpoint import HarnessRunCheckpoint
 from .skills import build_internal_skill_capabilities
 from .prompt import harness_system_prompt_tree
+from .tool_results import decode_tool_result, reported_tool_failure
 
 
 _PENDING_INTERACTION_PROMPT_LIMIT = 6
@@ -67,6 +78,67 @@ _ACTIVE_TASK_PHASES = frozenset({"CREATE", "DISPATCH", "EXEC", "PLAN"})
 _LIVE_TEXT_FLUSH_SECONDS = 0.12
 _LIVE_TEXT_FLUSH_CHARS = 512
 _LIVE_TEXT_EVENT_CHARS = 8_000
+
+
+async def _process_launch_evidence(
+    ctx: RunContext[object], request: ModelRequestContext,
+) -> ModelRequestContext:
+    """Keep historical acknowledgements separate from this run's actual receipts.
+
+    This supplies facts to the executor, without judging its prose, forcing an
+    action, or adding a second inference/retry path to the controller (ADR 0101).
+    """
+    launches: list[str] = []
+    for message in ctx.messages:
+        if not isinstance(message, ModelRequest) or message.run_id != ctx.run_id:
+            continue
+        for part in message.parts:
+            if not isinstance(part, ToolReturnPart) or part.tool_name != "conversation_process_start":
+                continue
+            result = decode_tool_result(part.content)
+            if reported_tool_failure(result) is not None or not isinstance(result, dict):
+                continue
+            receipt = cast(dict[str, object], result)
+            # ExecutionEvidenceClient can retain an argument warning alongside
+            # the unmodified structured receipt.
+            if set(receipt) == {"result", "argument_warning"}:
+                nested = decode_tool_result(receipt["result"])
+                if not isinstance(nested, dict):
+                    continue
+                receipt = cast(dict[str, object], nested)
+            identifier = receipt.get("run_id")
+            if isinstance(identifier, str):
+                try:
+                    launches.append(str(UUID(identifier)))
+                except ValueError:
+                    continue
+    evidence = (
+        "Successful Process launch receipts observed in this run: " + ", ".join(dict.fromkeys(launches)) + ". "
+        "These prove admission only; inspect current state before claiming progress or completion."
+        if launches else
+        "No successful Process launch receipt has been observed in this run. "
+        "Past assistant messages and previous runs do not prove a new launch. "
+        "If the current user requests a launch or relaunch, call `conversation_process_start` "
+        "and obtain its receipt before confirming. A replay of the same call in this turn "
+        "is idempotent. Otherwise answer the actual question or clarify an ambiguous target; "
+        "do not launch anything solely because this evidence note is present."
+    )
+    parts = request.model_request_parameters.instruction_parts
+    if parts is None:
+        # Direct Model.request callers use the SDK's history fallback; normal
+        # Agent calls already carry their governed and capability instructions.
+        previous = next((message.instructions for message in reversed(request.messages)
+            if isinstance(message, ModelRequest) and message.instructions is not None), None)
+        parts = [InstructionPart(content=previous)] if previous else []
+    # The SDK prefers these structured parts over ModelRequest.instructions.
+    # Updating only that historical projection never changes an Agent request.
+    return replace(request, model_request_parameters=replace(
+        request.model_request_parameters,
+        instruction_parts=[*parts, InstructionPart(
+            content="# Current turn execution evidence\n\n" + evidence,
+            dynamic=True, name="conversation-process-evidence",
+        )],
+    ))
 
 
 class _LiveTextProgressBuffer:
@@ -302,6 +374,7 @@ def _system_prompt(
     has_skills: bool = False,
     suffix: str | None = None,
     action_policy: str,
+    dispatch_analysis: ConversationWorkAnalysis | None = None,
 ) -> str:
     context = context or AgentRunContext()
     name = " ".join(
@@ -323,7 +396,7 @@ def _system_prompt(
         )
         else "female"
     )
-    linked = linked_work_context(turn.linked_work)
+    linked = linked_work_context(turn.linked_work if turn.active_work is None else turn.active_work)
     pending_lines: list[str] = []
     for item in turn.pending_interactions[:_PENDING_INTERACTION_PROMPT_LIMIT]:
         reference = str(item.get("reference") or "").strip()
@@ -347,6 +420,8 @@ def _system_prompt(
         body = str(item.get("body") or "").strip()
         if body:
             line += f"\n  request: {body}"
+        if item.get("process_data"):
+            line += f"\n  activity data and expected outputs: {item['process_data']}"
         if rendered_options:
             line += f"\n  options: {', '.join(rendered_options)}"
         pending_lines.append(line)
@@ -361,6 +436,16 @@ def _system_prompt(
             "consent from an ambiguous message; ask one concise clarification instead. When the "
             "user redirects the Task behind an approval, deny the obsolete approval before "
             "amending that same Task with `conversation_task_submit`.\n"
+            "For kind=process_human_activity, compare the incoming text AND attachments with "
+            "the pending activity, its inputs and expected outputs. A file-only message can be "
+            "the requested answer. Use `conversation_process_respond` with its exact reference "
+            "and ordinary JSON output values (for example output={\"age\": 27}) only when the user's contribution clearly supplies "
+            "the requested result. When outputs is null for a historical activity, send a "
+            "completion summary as {text: summary}. File values must use the exact canonical URI from the "
+            "message history, never a local path, invented URI or file bytes. If data is missing "
+            "or several requests could match, ask one concise clarification and leave them "
+            "pending. Unrelated questions and attachments remain ordinary conversation. "
+            "Never launch a new Task or Process just to record this response.\n"
             + "\n".join(pending_lines)
         )
     omitted = (
@@ -414,6 +499,7 @@ def _system_prompt(
         memory_context=memory_context,
         continuity_context=continuity_context,
         conversation_action_policy=action_policy,
+        dispatch_analysis=conversation_work_analysis_context(dispatch_analysis),
     )
     rendered = render_prompt_tree(
         harness_system_prompt_tree(
@@ -587,7 +673,7 @@ class HarnessConversationController:
                 sender_is_ai=turn.sender_is_ai,
                 agent_loader=lambda: agent_service.get(turn.agent_id),
             ))
-            dispatch_trace = dispatch_result.model_dump(mode="json") if dispatch_result else {"forced_response": True}
+            dispatch_trace: dict[str, object] = dispatch_result.model_dump(mode="json") if dispatch_result else {"forced_response": True}
             dispatch_time = dispatch_result.execution_time if dispatch_result else 0.0
             dispatch_cost = dispatch_result.cost if dispatch_result else 0.0
             if dispatch_result is not None and not dispatch_result.success:
@@ -732,6 +818,18 @@ class HarnessConversationController:
                 relevance_query=turn.objective,
                 include_execution_guidance=False,
             )
+            work_analysis = await run_preparation(turn, lambda: analyze_conversation_work(
+                agent=agent, agent_id=turn.agent_id, round_id=turn.round_id, run_id=turn.round_id,
+                objective="\n".join([turn.source_request or turn.objective,
+                    *(message_prompt(message) for message in turn.messages)]),
+                history="\n".join(message_prompt(message) for message in history[-10:]),
+                active_work=turn.active_work, pending_interactions=turn.pending_interactions,
+                load_processes=lambda: agent_process_dispatch_candidates(turn.agent_id, tool_advertisement.tool_names),
+                force_response=turn.force_response,
+            ))
+            if not turn.force_response:
+                dispatch_trace["work_analysis"] = work_analysis.model_dump(mode="json")
+            dispatch_cost += work_analysis.cost
             prompt_suffix = await params_service.get(
                 Params.AI_CONVERSATION_EXECUTOR_SYSTEM_PROMPT
             )
@@ -757,7 +855,12 @@ class HarnessConversationController:
                 model=ResolvedModel(id=llm.id, code=llm.code, model_name=llm.llm_name, label=llm.label, requested_effort="standard"),
                 resume_checkpoint=turn.resume_checkpoint, control=AgentRunControl(save_checkpoint=turn.save_checkpoint),
             )) if turn.save_checkpoint is not None else None
-            capabilities = [] if turn.force_response else await build_internal_skill_capabilities(turn.agent_id)
+            capabilities = [] if turn.force_response else [
+                *await build_internal_skill_capabilities(turn.agent_id),
+                *([Hooks(before_model_request=_process_launch_evidence, id="conversation-process-evidence")]
+                  if "conversation_process_start" in tool_advertisement.tool_names else []),
+            ]
+            capabilities.append(ConversationTurnProtocol(turn.objective).hooks)
             runtime = await create_agent(
                 llm=llm,
                 system_prompt=_system_prompt(
@@ -771,6 +874,7 @@ class HarnessConversationController:
                     has_skills=bool(capabilities),
                     suffix=prompt_suffix,
                     action_policy=action_policy,
+                    dispatch_analysis=work_analysis,
                 ),
                 mcp_servers=[] if turn.force_response else [toolset],
                 response_only=turn.force_response,
@@ -832,7 +936,7 @@ class HarnessConversationController:
 
             async def execute(prompt: str) -> None:
                 nonlocal failure
-                metadata_filter = LeadingMessageMetadataFilter()
+                metadata_filter = ConversationReplyFilter()
                 try:
                     async for message in runtime.run(
                         prompt,
@@ -850,18 +954,18 @@ class HarnessConversationController:
                             progress_message = message.model_copy(
                                 update={"content": safe_content}
                             )
-                        elif message.type == "tool":
+                        elif message.type == "tool" and message.tool_name != "thinking":
                             pending = metadata_filter.finish()
                             if pending:
                                 await publish_progress(
                                     AIMessage(type="text", content=pending)
                                 )
-                            metadata_filter = LeadingMessageMetadataFilter()
+                            metadata_filter = ConversationReplyFilter()
                         if progress_message.content:
                             await publish_progress(progress_message)
                         if message.type == "text" and message.success and message.content:
-                            chunks.append(message.content)
-                        elif message.type == "tool":
+                            chunks.append(progress_message.content)
+                        elif message.type == "tool" and message.tool_name != "thinking":
                             # Text emitted before a tool call is internal progress narration.
                             # Keep it in the trace, but expose only the final post-tool answer.
                             chunks.clear()
@@ -880,6 +984,7 @@ class HarnessConversationController:
                     raise
                 pending = metadata_filter.finish()
                 if pending:
+                    chunks.append(pending)
                     await publish_progress(AIMessage(type="text", content=pending))
                 if text_progress is not None:
                     await text_progress.flush()
@@ -902,8 +1007,11 @@ class HarnessConversationController:
                     await interruption.close()
             if turn.should_suspend is not None and turn.should_suspend():
                 raise ConversationSuspended
-            text = strip_leading_message_metadata("".join(chunks)).strip()
             traced_runtime = cast(Agent, runtime)
+            terminal_output = getattr(traced_runtime, "terminal_output", None)
+            text = conversation_reply_text(
+                terminal_output if isinstance(terminal_output, str) else "".join(chunks)
+            ).strip()
             if not failure and traced_runtime.error:
                 failure = (
                     str(traced_runtime.error).strip()
@@ -1025,6 +1133,8 @@ async def stream_voice_conversation(
         except ValueError:
             continue
 
+    from app.conversation.facade import active_work_snapshot
+
     turn = ConversationTurn(
         room_id=correlation_id,
         round_id=correlation_id,
@@ -1032,6 +1142,7 @@ async def stream_voice_conversation(
         language=str(request.task_data.get("language") or "en"),
         objective=request.objective,
         messages=tuple(serialized_history),
+        active_work=await active_work_snapshot(request.agent_id),
         messaging_context=_voice_turn_messaging_context(request),
         linked_work=tuple(
             cast(Mapping[str, object], item)

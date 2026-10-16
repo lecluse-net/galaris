@@ -182,12 +182,12 @@ async def dispatch_process_wait(
     parent: Task,
     run_id: UUID,
     process_label: str,
-    timeout_seconds: int,
+    timeout_seconds: int | None,
 ) -> Task:
     """Create an opt-in ProcessRun await without creating an LLM execution task."""
     from .schemas import TaskCreate
     asked_at = datetime.now(timezone.utc)
-    deadline = asked_at + timedelta(seconds=max(60, timeout_seconds))
+    deadline = asked_at + timedelta(seconds=max(60, timeout_seconds)) if timeout_seconds is not None else None
     language = _task_language(parent)
     label = render_prompt(t("process.await_label", language), label=process_label)
     objective = render_prompt(
@@ -214,7 +214,7 @@ async def dispatch_process_wait(
                 "process_label": process_label,
                 "peer_display": process_label,
                 "asked_at": asked_at.isoformat(),
-                "deadline": deadline.isoformat(),
+                "deadline": deadline.isoformat() if deadline else None,
             },
         },
     ))
