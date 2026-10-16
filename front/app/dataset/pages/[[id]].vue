@@ -48,7 +48,7 @@
             </q-table>
           </nav>
         </template>
-        <template #separator><q-icon name="drag_indicator" class="dataset-splitter-handle" /></template>
+        <template #separator><span class="dataset-splitter-handle"><q-icon name="drag_indicator" size="16px" /></span></template>
         <template #after>
           <q-btn v-if="selectedId" flat icon="arrow_back" :label="t('datasets.backToList')" class="lt-md q-ma-sm" to="/dataset" />
           <DatasetEditor v-if="selectedId" :key="selectedId" :id="selectedId" @updated="load" @deleted="removed" />
@@ -141,6 +141,11 @@ onBeforeUnmount(() => { mounted = false; generation++ })
 .datasets-splitter { min-height: 540px; }
 .datasets-splitter :deep(> .q-splitter__before),
 .datasets-splitter :deep(> .q-splitter__after) { min-width: 0; overflow: auto; }
+.datasets-splitter :deep(> .q-splitter__separator) { z-index: 2; width: 8px; background: color-mix(in srgb, var(--solaire-gray-accent) 4%, transparent); }
+.datasets-splitter :deep(> .q-splitter__separator)::before { position: absolute; inset: 0 auto 0 3px; width: 2px; background: color-mix(in srgb, var(--solaire-gray-accent) 28%, transparent); content: ""; transition: background-color .15s ease; }
+.datasets-splitter :deep(> .q-splitter__separator:hover)::before,
+.datasets-splitter :deep(> .q-splitter__separator:focus-within)::before,
+.datasets-splitter.q-splitter--active :deep(> .q-splitter__separator)::before { background: var(--q-primary); }
 .dataset-list { min-width: 0; }
 .dataset-list-table :deep(.q-table__middle) { overflow: visible; }
 .dataset-list-table :deep(td) { padding: 0; }
@@ -153,7 +158,8 @@ onBeforeUnmount(() => { mounted = false; generation++ })
 :global(body.body--dark) .dataset-row--selected { background: var(--solaire-blue-dark); }
 .dataset-pagination { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 8px 0; }
 .dataset-page-size { max-width: 190px; }
-.dataset-splitter-handle { color: var(--solaire-gray-accent); }
+.dataset-splitter-handle { position: absolute; top: 50%; left: 50%; z-index: 1; display: flex; width: 20px; height: 42px; align-items: center; justify-content: center; transform: translate(-50%, -50%); border: 1px solid color-mix(in srgb, var(--solaire-gray-accent) 28%, transparent); border-radius: 10px; color: var(--solaire-gray-accent); background: var(--solaire-gray-light); box-shadow: 0 2px 8px color-mix(in srgb, var(--solaire-gray-accent) 24%, transparent); }
+:global(body.body--dark) .dataset-splitter-handle { background: var(--solaire-gray-dark); }
 .dataset-placeholder { display: flex; min-height: 420px; height: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; text-align: center; color: var(--solaire-gray-accent); }
 @media (min-width: 1024px) {
   .datasets-page { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
