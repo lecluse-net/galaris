@@ -103,34 +103,50 @@ for (const [name, options] of [
 }
 
 for (const mobile of [false, true]) {
-  test(`deleting a personal document removes it from the ${mobile ? 'mobile' : 'desktop'} library`, async ({ page }) => {
+for (const realtime of [false, true]) {
+  test(`deleting a personal document removes it from the ${mobile ? 'mobile' : 'desktop'} library (${realtime ? 'server event' : 'HTTP only'})`, async ({ page }) => {
     await setup(page, { human: true })
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
-    let deleted = false
+    let deleted = false, holdRefresh = false, releaseRefresh
+    const refreshGate = new Promise(resolve => { releaseRefresh = resolve })
+    const reads = []
     const item = { ...documentFixture, owner_agent_id: null, owner_user_id: 1 }
     await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [] })
-    await page.route('**/api/memory/documents/library', route => route.fulfill({ json: {
-      entries: deleted ? [] : [{ item, tags: [], agent_ids: [], writable_agent_ids: [], user_access: item.access }],
-      total: deleted ? 0 : 1, has_more: false, keywords: [],
-    } }))
+    await page.route('**/api/memory/documents/library', async route => {
+      reads.push(route.request().postDataJSON())
+      const snapshot = {
+        entries: deleted ? [] : [{ item, tags: [], agent_ids: [], writable_agent_ids: [], user_access: item.access }],
+        total: deleted ? 0 : 1, has_more: false, keywords: [],
+      }
+      if (holdRefresh) await refreshGate
+      return route.fulfill({ json: snapshot })
+    })
     await page.route('**/api/memory/documents/doc-a', async route => {
       if (route.request().method() !== 'DELETE') return route.fallback()
       expect(route.request().method()).toBe('DELETE')
       deleted = true
       // The real server can notify readers before the HTTP response reaches the caller.
-      await page.evaluate(() => window.testApp.emitSocket('memory.delete', { data: { id: 'doc-a', node_kind: 'document' } }))
+      if (realtime) await page.evaluate(() => window.testApp.emitSocket('memory.delete', { data: { id: 'doc-a', node_kind: 'document' } }))
       await route.fulfill({ json: {} })
     })
     await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
     if (mobile) await page.getByText('Test document', { exact: true }).click()
+    // A list read started before the deletion must never resurrect its captured row.
+    holdRefresh = true
+    await page.evaluate(() => window.testApp.emitSocket('memory.classification', { data: { user_id: 1, list_changed: true } }))
+    await expect.poll(() => reads.length).toBe(2)
     await page.getByRole('button', { name: 'Delete document', exact: true }).click()
     const confirmation = page.getByRole('dialog').filter({ hasText: 'Permanently delete' })
     await confirmation.getByRole('button', { name: 'Delete document', exact: true }).click()
     await expect.poll(() => deleted).toBe(true)
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page.getByText('Test document', { exact: true })).toHaveCount(0)
-    await expect(page.getByRole('list', { name: 'Unclassified documents', exact: true })).toContainText('No document matches this search.')
     // Mobile returns to the library; only desktop has an empty editor pane.
     if (!mobile) await expect(page.getByText('Select a document in the tree.', { exact: true })).toBeVisible()
+    await expect.poll(() => reads.length).toBe(3)
+    releaseRefresh()
+    await expect(page.getByRole('list', { name: 'Unclassified documents', exact: true })).toContainText('No document matches this search.')
+    await expect(page.getByText('Test document', { exact: true })).toHaveCount(0)
   })
+}
 }

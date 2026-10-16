@@ -51,9 +51,9 @@ export function useDocumentBranches(changed: () => void) {
   function reset(): void {
     ++generation; requests.clear(); stale.clear(); entries.value = {}; loading.value = {}; errors.value = {}
   }
-  function invalidate(): void {
+  function invalidate(ids = [...new Set([...Object.keys(entries.value), ...requests.keys()])]): void {
     // Supersede pending reads while retaining mounted rows until their replacements arrive.
-    for (const id of new Set([...Object.keys(entries.value), ...requests.keys()])) {
+    for (const id of ids) {
       close(id)
       stale.add(id)
     }

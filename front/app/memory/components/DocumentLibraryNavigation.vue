@@ -274,6 +274,79 @@ async function refresh(): Promise<void> { await Promise.all([reload(), refreshTr
 function documentFolders(ids: string[]): string[] {
   return Object.entries(branchEntries.value).filter(([, values]) => values.some(entry => ids.includes(entry.item.id))).map(([id]) => id)
 }
+function supersedeReads(ids: string[]): void {
+  // Reads started before a confirmed write cannot restore its previous placement.
+  ++generation
+  if (loading.value) { loading.value = false; queueChange({ list_changed: true }) }
+  branches.invalidate(ids)
+}
+function applyDocumentMove(move: DocumentOrderMove): void {
+  const id = move.node.id
+  const entry = [...entries.value, ...Object.values(branchEntries.value).flat()].find(value => value.item.id === id)
+  if (!entry) return
+  const target = move.parent_document_id ? `doc:${move.parent_document_id}` : move.parent_id
+  const affected = move.list_only ? [] : [...new Set([...documentFolders([id]), ...(target ? [target] : [])])]
+  supersedeReads(affected)
+  if (!move.list_only && target) {
+    if (move.parent_document_id) {
+      if (!expandedDocuments.value.includes(target)) expandedDocuments.value.push(target)
+    } else {
+      let tag = tags.value.find(value => value.id === target)
+      while (tag) {
+        if (!expanded.value.includes(tag.id)) expanded.value.push(tag.id)
+        tag = tags.value.find(value => value.id === tag?.parent_id)
+      }
+    }
+  }
+  const place = (values: DocumentLibraryEntry[], value: DocumentLibraryEntry): DocumentLibraryEntry[] => {
+    const siblings = values.filter(candidate => candidate.item.id !== id)
+    const anchor = move.anchor?.kind === 'document' ? siblings.findIndex(candidate => candidate.item.id === move.anchor?.id) : -1
+    siblings.splice(anchor < 0 ? siblings.length : anchor + Number(Boolean(move.after)), 0, value)
+    return siblings.map((candidate, index) => ({ ...candidate, position: index + 1 }))
+  }
+  if (move.list_only) entries.value = place(entries.value, entry)
+  else {
+    const moved: DocumentLibraryEntry = { ...entry, parent_document_id: move.parent_document_id ?? null,
+      tags: move.parent_id ? tags.value.filter(tag => tag.id === move.parent_id) : [] }
+    for (const key of affected) {
+      const values = branchEntries.value[key] ?? []
+      branchEntries.value[key] = key === target ? place(values, moved) : values.filter(candidate => candidate.item.id !== id)
+    }
+    const inList = entries.value.some(candidate => candidate.item.id === id)
+    const classified = Boolean(target)
+    if (onlyUnclassified.value && classified) {
+      entries.value = entries.value.filter(candidate => candidate.item.id !== id)
+      if (inList) total.value = Math.max(0, total.value - 1)
+    } else if (onlyUnclassified.value && !classified && !inList && page.value === 1 && !hasFilters.value) {
+      entries.value = place(entries.value, moved).slice(0, pageSize.value)
+      total.value += 1
+    } else {
+      entries.value = entries.value.map(candidate => candidate.item.id === id ? { ...moved, position: candidate.position } : candidate)
+    }
+    const parentIds = new Set([entry.parent_document_id, moved.parent_document_id].filter(Boolean))
+    const updateCounts = (values: DocumentLibraryEntry[]) => values.map(candidate => {
+      if (!parentIds.has(candidate.item.id) || entry.parent_document_id === moved.parent_document_id) return candidate
+      const delta = candidate.item.id === moved.parent_document_id ? 1 : -1
+      return { ...candidate, children_count: Math.max(0, (candidate.children_count ?? 0) + delta) }
+    })
+    entries.value = updateCounts(entries.value)
+    for (const key of Object.keys(branchEntries.value)) branchEntries.value[key] = updateCounts(branchEntries.value[key] ?? [])
+  }
+  // Preserve the source locations before removing their rows from the local snapshot.
+  queueChange({ tag_ids: affected })
+  publishEntries()
+}
+function removeDocument(id: string): void {
+  const affected = documentFolders([id])
+  supersedeReads([...affected, `doc:${id}`])
+  if (entries.value.some(entry => entry.item.id === id)) total.value = Math.max(0, total.value - 1)
+  entries.value = entries.value.filter(entry => entry.item.id !== id)
+  for (const key of affected) branchEntries.value[key] = (branchEntries.value[key] ?? []).filter(entry => entry.item.id !== id)
+  branches.forget(`doc:${id}`)
+  expandedDocuments.value = expandedDocuments.value.filter(key => key !== `doc:${id}`)
+  queueChange({ tag_ids: affected, list_changed: true })
+  publishEntries()
+}
 function queueChange(change: ClassificationChange): void {
   pendingChanges.push(change)
   if (refreshTimer) clearTimeout(refreshTimer)
@@ -355,15 +428,16 @@ onBeforeUnmount(() => {
   if (refreshTimer) clearTimeout(refreshTimer)
 })
 function reset(): void { query.value = ''; filters.value = defaultLibraryFilters(); onlyUnclassified.value = true }
-async function mutate(action: () => Promise<unknown>, change: ClassificationChange = { tags_changed: true }): Promise<boolean> {
+async function mutate(action: () => Promise<unknown>, change: ClassificationChange = { tags_changed: true }, confirmed?: () => void): Promise<boolean> {
   if (busy.value) return false
   const session = sessionGeneration
   busy.value = true
   try {
     await action()
     if (disposed || session !== sessionGeneration) return false
+    confirmed?.()
     queueChange(change)
-    await flushChanges()
+    if (!confirmed) await flushChanges()
     return !disposed && session === sessionGeneration
   }
   catch { if (!disposed && session === sessionGeneration) $q.notify({ type: 'negative', message: t('documents.library.error') }); return false }
@@ -428,7 +502,8 @@ function startDocumentDrag(event: DragEvent, id: string): void {
 async function moveDocument(documentId: string, tagId: string | null): Promise<void> {
   const entry = [...entries.value, ...Object.values(branchEntries.value).flat()].find(value => value.item.id === documentId)
   const change = { document_ids: [documentId], tag_ids: tagId ? [tagId] : [], list_changed: !entry || Boolean(entry.parent_document_id) || Boolean(entry.tags?.length) !== Boolean(tagId) }
-  if (await mutate(() => memoryService.moveDocumentToTag(documentId, tagId), change) && tagId) {
+  if (await mutate(() => memoryService.moveDocumentToTag(documentId, tagId), change,
+    () => applyDocumentMove({ node: { kind: 'document', id: documentId }, parent_id: tagId })) && tagId) {
     let tag = tags.value.find(value => value.id === tagId)
     while (tag) {
       if (!expanded.value.includes(tag.id)) expanded.value.push(tag.id)
@@ -494,12 +569,9 @@ async function dropNode(): Promise<void> {
   const node = drag; const target = pendingDrop; clearDrag()
   if (!node || !target) return
   if (target.parent_document_id) {
-    if (await mutate(() => memoryService.reorderDocuments({ node, ...target }), {
+    await mutate(() => memoryService.reorderDocuments({ node, ...target }), {
       document_ids: [node.id, target.parent_document_id], list_changed: true,
-    }) && !expandedDocuments.value.includes(`doc:${target.parent_document_id}`)) {
-      expandedDocuments.value.push(`doc:${target.parent_document_id}`)
-      await branches.refresh(`doc:${target.parent_document_id}`)
-    }
+    }, () => applyDocumentMove({ node, ...target }))
     return
   }
   if (!target.anchor && !target.list_only) {
@@ -511,7 +583,7 @@ async function dropNode(): Promise<void> {
     tag_ids: target.list_only || !target.parent_id ? [] : [target.parent_id],
     document_ids: node.kind === 'document' && !target.list_only ? [node.id] : [],
     list_changed: target.list_only || (node.kind === 'document' && (!target.parent_id || !documentFolders([node.id]).length)),
-  })) {
+  }, node.kind === 'document' ? () => applyDocumentMove({ node, ...target }) : undefined)) {
     if (target.parent_id === null && node.kind === 'document' && (filters.value.sort_by !== 'position' || filters.value.sort_desc)) filters.value = { ...filters.value, sort_by: 'position', sort_desc: false }
   }
   if (target.parent_id && !expanded.value.includes(target.parent_id)) expanded.value.push(target.parent_id)
@@ -550,7 +622,7 @@ async function changeSession(event: Event): Promise<void> {
 }
 onMounted(async () => { window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession); await loadTags(); if (!disposed) { ready = true; await reload() } })
 onBeforeUnmount(() => { disposed = true; ++generation; ++tagGeneration; window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession) })
-defineExpose({ reload: refresh, refreshDocuments })
+defineExpose({ reload: refresh, refreshDocuments, removeDocument })
 </script>
 <style scoped>
 .library-navigation { height: 100%; min-height: 0; }

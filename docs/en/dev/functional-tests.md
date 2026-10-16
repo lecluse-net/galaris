@@ -837,6 +837,9 @@ user infrastructure adds neither private imports nor cycles.
   documents, and access invalidation still removes visible snapshots immediately.
   Reconnection reconciles existing rows without unmounting them, failed refreshes retain usable
   content, and token renewal preserves expanded folders and filters without browsing again.
+  Confirmed document moves appear before refresh reads complete; another move remains
+  possible, a stale reply cannot restore the first placement, and a refused move preserves
+  the existing position and supports retry.
   Document icon choices propagate between tree and list, persist on reopening and ignore stale
   reads or previous-session writes; resetting the default and retrying failures remain usable.
   In the tree, a document icon opens the document without an icon picker; folder icons remain editable.
@@ -853,6 +856,9 @@ user infrastructure adds neither private imports nor cycles.
   `test_document_structure.py` verifies that an attachment description notifies only its memory.
 - `e2e/specs/document-refresh.spec.mjs`: remote API edits and real websocket events refresh only
   the affected folder and visible page while preserving rows in the tree and list.
+- `front/browser-tests/document-deletion.spec.mjs`: confirmed deletion immediately removes
+  the document from the desktop/mobile library during slow reads; responses captured before
+  deletion cannot restore it, and notifications coalesce into one list refresh after deletion.
 
 ### Dialog scrolling
 

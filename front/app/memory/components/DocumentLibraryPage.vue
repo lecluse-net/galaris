@@ -20,7 +20,7 @@
             :key="`${selectedAgentId}:${selectedDocumentId}`"
             ref="documentEditor"
             :document-id="selectedDocumentId" :agent-id="selectedAgentId"
-            @updated="onDocumentUpdated" @unavailable="onDocumentUnavailable" @deleted="selectedNodeKey = null"
+            @updated="onDocumentUpdated" @unavailable="onDocumentUnavailable" @deleted="onDocumentDeleted"
           />
         </template>
       </q-splitter>
@@ -50,6 +50,7 @@
             content-min-height="min(42vh, 420px)"
             @updated="onDocumentUpdated"
             @unavailable="onMobileDocumentUnavailable"
+            @deleted="onDocumentDeleted"
           />
         </div>
       </q-card>
@@ -285,7 +286,6 @@ function openMobileDocument(id: string, agentId: number | null): void {
   mobileDocumentAgentId.value = agentId
   mobileDocumentOpen.value = true
 }
-async function loadDocuments(): Promise<void> { await navigation.value?.reload() }
 function onLibraryLoaded(loaded: DocumentLibraryEntry[]): void {
   entries.value = loaded
   if (!selectedDocumentId.value && !documentIdFromRouteQuery(route.query.document_id) && !$q.screen.lt.md && loaded[0]) void selectEntry(loaded[0])
@@ -362,10 +362,18 @@ function onDocumentUpdated(document: MemoryItemDetail): void {
   entries.value = entries.value.map(entry => entry.item.id === document.id ? { ...entry, item: document } : entry)
   navigation.value?.refreshDocuments([document.id])
 }
-function onDocumentUnavailable(): void { void loadDocuments() }
-function onMobileDocumentUnavailable(): void {
+function onDocumentDeleted(id: string): void {
+  if (selectedDocumentId.value === id) selectedNodeKey.value = null
+  if (mobileDocumentId.value === id) mobileDocumentOpen.value = false
+  navigation.value?.removeDocument(id)
+}
+function onDocumentUnavailable(id: string): void {
+  // A deletion already removed this row; avoid a second full-library refresh.
+  if (entries.value.some(entry => entry.item.id === id)) navigation.value?.refreshDocuments([id])
+}
+function onMobileDocumentUnavailable(id: string): void {
   mobileDocumentOpen.value = false
-  void loadDocuments()
+  onDocumentUnavailable(id)
 }
 async function openRouteDocument(id: string): Promise<void> {
   const entry = entries.value.find(value => value.item.id === id)
@@ -393,6 +401,9 @@ function clearMobileDocument(): void {
 function realtimeRefresh(response: MemoryRealtimeEvent): void {
   if (response.data.node_kind !== 'document') return
   navigation.value?.refreshDocuments([response.data.id])
+}
+function realtimeDelete(response: MemoryRealtimeEvent): void {
+  if (response.data.node_kind === 'document') onDocumentDeleted(response.data.id)
 }
 
 watch(() => $q.screen.lt.md, mobile => {
@@ -439,7 +450,7 @@ onMounted(async () => {
   websocket.createWebsocket()
   websocket.onEvent('memory', 'create', realtimeRefresh)
   websocket.onEvent('memory', 'update', realtimeRefresh)
-  websocket.onEvent('memory', 'delete', realtimeRefresh)
+  websocket.onEvent('memory', 'delete', realtimeDelete)
 })
 onBeforeUnmount(() => {
   disposed = true
@@ -447,7 +458,7 @@ onBeforeUnmount(() => {
   removeNavigationObserver()
   websocket.offEvent('memory', 'create', realtimeRefresh)
   websocket.offEvent('memory', 'update', realtimeRefresh)
-  websocket.offEvent('memory', 'delete', realtimeRefresh)
+  websocket.offEvent('memory', 'delete', realtimeDelete)
 })
 </script>
 

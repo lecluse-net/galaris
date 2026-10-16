@@ -855,6 +855,9 @@ applicative vers l’infrastructure utilisateur n’ajoute ni import privé ni c
   réconciliation après reconnexion sans démonter les lignes, maintien du contenu en cas d'erreur
   de rafraîchissement et renouvellement du jeton sans perdre dossiers ouverts ni filtres,
   suppression vide immédiate ou confirmée avec annulation, réponses tardives et reprise après erreur.
+  Les déplacements documentaires confirmés s'affichent sans attendre les lectures de
+  rafraîchissement ; un second déplacement reste possible, une ancienne réponse ne rétablit
+  pas le premier classement, et un refus conserve la position puis permet un réessai.
   Le choix d'icône se propage entre arbre et liste, persiste à la réouverture et ignore les réponses
   périmées après sauvegarde ou changement de session ; l'icône par défaut et les erreurs restent utilisables.
   Dans l'arbre, l'icône d'un document ouvre le document sans sélecteur d'icône ; celle d'un dossier reste modifiable.
@@ -868,6 +871,10 @@ applicative vers l’infrastructure utilisateur n’ajoute ni import privé ni c
   ouverture mobile, création et sauvegarde avec l'identité humaine.
 - `e2e/specs/document-refresh.spec.mjs` : modification distante via l'API et les vrais événements
   websocket, requêtes limitées au dossier concerné et à la page visible, lignes conservées dans l'arbre et la liste.
+- `front/browser-tests/document-deletion.spec.mjs` : suppression confirmée retirée immédiatement
+  de la bibliothèque desktop/mobile, même pendant une lecture lente ; les réponses capturées
+  avant suppression ne réintroduisent pas le document et les notifications se regroupent en
+  un seul rafraîchissement de la liste après suppression.
 
 ### Défilement des modales
 

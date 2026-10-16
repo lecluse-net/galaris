@@ -359,6 +359,11 @@ This hierarchy is personal, like folders: each document retains its own sharing 
 Deleting a parent preserves its children; readable children reappear in the unclassified
 list, including when access to their parent is revoked.
 
+Once the server confirms an operation, a moved document appears in its new location and a
+deleted document disappears immediately. Lists refresh in the background without blocking
+the next move. If the server rejects a move, the existing placement stays unchanged and you
+can retry.
+
 To develop a document with an agent, ask for updates to the relevant passages. The agent
 preserves useful information and can add distinct material; prior versions remain in the
 revisions. Specify when you need a chronological journal or meeting minutes: that chronology

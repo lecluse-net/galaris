@@ -388,6 +388,11 @@ Cette hiérarchie est personnelle, comme les dossiers : chaque document conserve
 propres droits de partage. Supprimer le parent conserve les enfants ; ceux qui restent
 lisibles réapparaissent parmi les non-classés, également si l'accès au parent est retiré.
 
+Après confirmation du serveur, un document déplacé prend sa nouvelle place et un document
+supprimé disparaît aussitôt. Le rafraîchissement des listes continue en arrière-plan sans
+bloquer le déplacement suivant. Si le serveur refuse un déplacement, le classement reste
+inchangé et vous pouvez réessayer.
+
 Pour faire évoluer un document avec un agent, demandez une mise à jour des passages concernés.
 L'agent conserve les informations utiles et peut ajouter des éléments distincts ; les anciennes
 versions restent dans les révisions. Précisez si le résultat attendu est un journal chronologique

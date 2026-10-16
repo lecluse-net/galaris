@@ -372,6 +372,9 @@ test('classification refreshes only affected folders and keeps other documents u
   requests.length = 0; tagReads = 0; delayProject = true
   await page.getByText('Test document', { exact: true }).dragTo(page.getByText('Project', { exact: true }))
   await expect.poll(() => Boolean(release)).toBe(true)
+  // A committed move is usable before the folder's authoritative refresh returns.
+  await expect(page.getByLabel('Documents in folder Project', { exact: true }).getByText('Test document', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Create a folder', exact: true })).toBeEnabled()
   await expect(page.getByText('Other report', { exact: true })).toBeVisible()
   expect(await other.evaluate(element => element.isConnected)).toBe(true)
   await page.getByText('Other report', { exact: true }).click()
@@ -414,6 +417,55 @@ test('classification refreshes only affected folders and keeps other documents u
   releaseAccess()
   await expect(page.getByText('Other report', { exact: true })).toHaveCount(0)
   await expect(page.getByText('Root report', { exact: true })).toHaveCount(0)
+})
+
+test('successive committed moves stay usable during a stale folder read and a refused move can be retried', async ({ page }) => {
+  const state = await fixture(page)
+  state.assignments.add('work')
+  let release, holdProject = false, rejectMove = false
+  const gate = new Promise(resolve => { release = resolve })
+  await page.route('**/api/memory/documents/library', async route => {
+    const body = route.request().postDataJSON()
+    const tags = [...state.assignments].map(id => ({ id, name: id === 'work' ? 'Work' : 'Project', parent_id: id === 'work' ? null : 'work' }))
+    const present = body.tag_id ? state.assignments.has(body.tag_id) : !state.assignments.size
+    // Capture the old placement before waiting, just as an already-running server read can.
+    const entries = present ? [{ item: document, tags, agent_ids: [7], writable_agent_ids: [] }] : []
+    if (body.tag_id === 'project' && holdProject) { holdProject = false; await gate }
+    return route.fulfill({ json: { entries, total: entries.length, has_more: false, keywords: [] } })
+  })
+  await page.route('**/api/memory/documents/doc-a/tags', route => {
+    if (rejectMove) return route.fulfill({ status: 409, json: { detail: 'Placement changed' } })
+    state.assignments.clear()
+    const { tag_id } = route.request().postDataJSON()
+    if (tag_id) state.assignments.add(tag_id)
+    return route.fulfill({ status: 204 })
+  })
+  await page.evaluate(() => window.testApp.emitSocket('memory.classification', { data: { user_id: 1, list_changed: true } }))
+  await page.getByText('Work', { exact: true }).click()
+  await page.getByText('Project', { exact: true }).click()
+  const work = page.getByLabel('Documents in folder Work', { exact: true })
+  const project = page.getByLabel('Documents in folder Project', { exact: true })
+  await expect(work.getByText('Test document', { exact: true })).toBeVisible()
+  holdProject = true
+  await work.getByText('Test document', { exact: true }).dragTo(page.getByText('Project', { exact: true }))
+  await expect.poll(() => holdProject).toBe(false)
+  await expect(project.getByText('Test document', { exact: true })).toBeVisible()
+  await project.getByText('Test document', { exact: true }).dragTo(page.getByText('Work', { exact: true }))
+  await expect.poll(() => [...state.assignments]).toEqual(['work'])
+  await expect(work.getByText('Test document', { exact: true })).toBeVisible()
+  await expect(project.getByText('Test document', { exact: true })).toHaveCount(0)
+  const staleResponse = page.waitForResponse(response => response.url().endsWith('/documents/library') && response.request().postDataJSON().tag_id === 'project')
+  release()
+  await (await staleResponse).finished()
+  await expect(work.getByText('Test document', { exact: true })).toBeVisible()
+  await expect(project.getByText('Test document', { exact: true })).toHaveCount(0)
+  rejectMove = true
+  await work.getByText('Test document', { exact: true }).dragTo(page.getByText('Project', { exact: true }))
+  await expect(page.getByText('Unable to update your classification.', { exact: true })).toBeVisible()
+  await expect(work.getByText('Test document', { exact: true })).toBeVisible()
+  rejectMove = false
+  await work.getByText('Test document', { exact: true }).dragTo(page.getByText('Project', { exact: true }))
+  await expect(project.getByText('Test document', { exact: true })).toBeVisible()
 })
 
 for (const event of ['connect', 'memory.invalidate']) {
