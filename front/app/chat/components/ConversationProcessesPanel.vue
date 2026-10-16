@@ -314,9 +314,9 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.conversation-processes-panel { min-width: 0; color: var(--chat-text, #252b36); background: var(--chat-surface, #fff); }
+.conversation-processes-panel { display: flex; flex: 1 1 auto; min-width: 0; min-height: 0; flex-direction: column; color: var(--chat-text, #252b36); background: var(--chat-surface, #fff); }
 .conversation-work-state { display: flex; min-height: 120px; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 18px; text-align: center; font-size: .78rem; }
-.conversation-work-list { max-height: 280px; overflow-y: auto; }
+.conversation-work-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .conversation-work-loader { display: flex; min-height: 36px; align-items: center; justify-content: center; }
 .conversation-work-inline-error { padding: 7px 10px; font-size: .75rem; }
 </style>
