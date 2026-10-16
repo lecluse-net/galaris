@@ -91,7 +91,7 @@ async def test_old_or_unavailable_execution_is_never_interrupted(db, monkeypatch
 
 
 @pytest.mark.asyncio
-async def test_http_recovery_enforces_edit_privilege_agent_scope_and_exact_run(committed_database, monkeypatch):
+async def test_http_controls_enforce_edit_privilege_agent_scope_and_execution_identity(committed_database, monkeypatch):
     from httpx import ASGITransport, AsyncClient
     from sqlalchemy import delete, select
     from app.agent.models import Agent, Title
@@ -155,3 +155,28 @@ async def test_http_recovery_enforces_edit_privilege_agent_scope_and_exact_run(c
             assert task.status == TaskStatus.EXEC and not task.cancel_requested
             assert attempt.data["agent_checkpoint"] == {"receipt": "synthetic-saved"}
             assert attempt.data["call_recovery"] == accepted.json()
+
+        # Emergency termination preserves authorization, but never rejects an old view.
+        from app import agent as agent_domain
+        from app.task import task_service
+
+        monkeypatch.setattr(agent_domain, "handle_terminal_task", AsyncMock())
+        monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+        async with get_db_session() as db:
+            task = await db.get(Task, task_id)
+            task.feedback = "Synthetic progress after opening the task"
+        stop_url = f"/api/tasks/{task_id}/force-terminate"
+        denied = await http.post(stop_url, headers=headers[1], json={"expected_revision": 1})
+        assert denied.status_code == 403
+        hidden = await http.post(f"/api/tasks/{outsider_id}/force-terminate", headers=headers[0], json={"expected_revision": 1})
+        assert hidden.status_code == 404
+        for _ in range(2):
+            stopped = await http.post(stop_url, headers=headers[0], json={"expected_revision": 1})
+            assert stopped.status_code == 200, stopped.text
+            assert stopped.json()["status"] == "ERROR"
+            assert stopped.json()["paused"] is False
+        async with get_db_session() as db:
+            task = await db.get(Task, task_id)
+            attempt = await db.get(TaskAttempt, attempt_id)
+            assert task.lease_token is None
+            assert attempt.status == "CANCELLED"

@@ -390,8 +390,11 @@ Si « Lancer un cycle maintenant » doit d’abord reprendre une évaluation en 
 demande manuelle reste en attente : `CONTINUE` permet de créer une nouvelle tâche sans attendre
 le planning, tandis que `STOP` annule cette demande. « Réessayer le suivi » reprend seulement
 l’évaluation. Dans les deux cas, la tâche précédente et son résultat sont conservés.
-La clôture forcée d’une Task rend sa tentative terminale, libère son lease et
-clôt immédiatement son cycle ouvert avec `CONTINUE`, sans lui attribuer de progrès. Le Goal
+La clôture forcée d’une Task ignore la révision attendue, rend sa tentative terminale et libère
+son lease dans un premier commit. La clôture du cycle, les notifications et le cycle de vie terminal
+s’exécutent ensuite dans des transactions distinctes, avec une attente de cinq secondes par
+traitement ; leurs erreurs sont journalisées sans faire échouer l’arrêt acquis. Une nouvelle demande
+retente la clôture d’un cycle resté ouvert. Cette clôture applique `CONTINUE`, sans attribuer de progrès. Le Goal
 reste pausé s’il l’était volontairement ; sinon son suivi est reprogrammé au cycle suivant.
 Une reprise explicite de `COMPLETED` conserve les documents, coûts et cycles historiques, efface
 `completed_at`, repasse le Goal en `ACTIVE` et rend un nouveau cycle immédiatement éligible selon

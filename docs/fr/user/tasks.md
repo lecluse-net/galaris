@@ -57,6 +57,18 @@ Les conversations texte et voix suivent leur propre contrôleur et leur exécute
 ne passent pas par le Dispatcher de Tasks ; lorsqu’elles ont besoin d’un travail durable, elles
 créent une Task explicitement liée.
 
+## Terminer une tâche de force
+
+**Terminer de force** rend la tâche terminale en erreur et révoque son bail d’exécution,
+même si sa révision a changé depuis l’ouverture du détail. Une tentative active est annulée
+sans attendre la coopération du harnais. Un worker tardif ne peut plus enregistrer son résultat.
+Les droits de modification et la portée de gestion de l’agent restent requis.
+
+L’arrêt est enregistré avant la clôture du cycle d’objectif et les notifications. Ces traitements
+ont une attente bornée : leur échec est journalisé et ne remet pas l’arrêt en cause. Répéter la
+commande conserve l’état terminal et retente la clôture d’un cycle encore ouvert. Les effets
+déjà envoyés à un système externe ne sont pas annulés rétroactivement.
+
 ## Une méthode adaptée au travail
 
 Une action bornée, comme renommer un fichier précisément identifié, reste directe.

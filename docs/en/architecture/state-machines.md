@@ -385,8 +385,11 @@ If “Run a cycle now” first needs to recover a failed evaluation, the manual 
 pending: `CONTINUE` allows a new Task to start without waiting for the schedule, while `STOP`
 cancels the request. “Retry tracking” only retries the evaluation. Both commands preserve the
 previous Task and its result.
-Force-closing a Task makes its attempt terminal, releases its lease, and
-immediately closes its open cycle with `CONTINUE`, without assigning progress to it. The Goal
+Force-closing a Task ignores the expected revision, makes its attempt terminal, and releases
+its lease in an initial commit. Cycle cleanup, notifications, and the terminal lifecycle then
+run in separate transactions with a five-second wait per followup; failures are logged without
+failing the committed stop. A repeated command retries cleanup of a cycle still open.
+That cleanup applies `CONTINUE`, without assigning progress to it. The Goal
 remains paused if it was paused voluntarily; otherwise its tracking is rescheduled for the next
 cycle.
 An explicit resumption of `COMPLETED` retains documents, costs, and historical cycles, clears

@@ -42,6 +42,18 @@ unavailable attachment does not prevent the text from being published.
 
 Text and voice conversations follow their own configured controller and executor. They do not go through the Task Dispatcher; when they need durable work, they explicitly create a linked Task.
 
+## Force-terminating a Task
+
+**Force terminate** makes the Task terminal with an error and revokes its execution lease,
+even if its revision changed after opening the details. An active attempt is cancelled
+without waiting for the harness to cooperate. A late worker can no longer save its result.
+Edit permissions and management scope over the agent remain required.
+
+The stop commits before Goal cycle cleanup and notifications. These followups have bounded
+waits: failures are logged and cannot undo the stop. Repeating the command preserves the
+terminal state and retries cleanup of any cycle still open. Effects already sent to an
+external system are not undone retroactively.
+
 ## A method suited to the work
 
 A bounded action, such as renaming a precisely identified file, runs directly.

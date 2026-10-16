@@ -7,6 +7,9 @@ Usage:
 """
 
 from datetime import date, datetime, time, timedelta, timezone
+import asyncio
+from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator
 
 from sqlalchemy import (
     String,
@@ -62,6 +65,7 @@ DELEGATED_KEY = "delegated"
 RETENTION_KEY = "retention_reasons"
 _DELIVERY_RECOVERY_DATA_KEY = "delivery_recovery"
 _AGENT_RUN_CHECKPOINT_DATA_KEY = "_agent_run_checkpoint"
+_FORCE_TERMINATE_FOLLOWUP_TIMEOUT = 5.0
 
 
 class TaskConflictError(RuntimeError):
@@ -722,14 +726,15 @@ async def request_cancellation(task: Task) -> None:
 
 async def force_terminate(
     task_id: UUID,
-    expected_revision: int | None,
+    expected_revision: int | None = None,
     *,
     notify_terminal: bool = True,
 ) -> Optional[Task]:
     """Make a Task durably terminal without waiting for its current worker.
 
-    The command also closes an unfinished Goal cycle attached to the Task and then
-    runs the normal terminal lifecycle so parents and coordination waits can resume.
+    A stale revision must never veto an emergency stop. ``expected_revision`` remains
+    accepted for existing callers, but is deliberately ignored. Followups run only
+    after the stop commits, with bounded waits and independent failure handling.
     """
 
     from app.goal.facade import (
@@ -740,34 +745,26 @@ async def force_terminate(
     from app.task import scheduler
 
     db = get_db()
-    goal_context = await lock_cycle_for_forced_task(task_id)
-    task = await _get_by_id_for_update(task_id)
+    task = await db.scalar(Task.histo_filter(
+        # Do not conflict with the FK locks held by an unfinished LLM trace.
+        select(Task).where(Task.id == task_id).with_for_update(key_share=True)
+        .execution_options(populate_existing=True)
+    ))
     if task is None:
         return None
-    if expected_revision is not None and task.revision != expected_revision:
-        raise TaskRevisionConflict(
-            render_prompt(
-                await tr("task_api.errors.revision_conflict"),
-                expected=expected_revision,
-                current=task.revision,
-            )
-        )
 
     was_terminal = task.status in _TERMINAL_STATUSES
     reason = await tr("task_api.errors.force_terminated_by_user")
     now = datetime.now(timezone.utc)
     lease_token = task.lease_token
 
-    if was_terminal and lease_token is None and goal_context is None:
-        return task
-    scheduler.cancel(task.id)
     if not was_terminal:
         transition(task, TaskEvent.FORCE_TERMINATE)
     if lease_token is not None:
         attempt = await db.scalar(
             select(TaskAttempt)
             .where(TaskAttempt.lease_token == lease_token)
-            .with_for_update()
+            .with_for_update(key_share=True)
         )
         if attempt is not None and attempt.finished_at is None:
             attempt.status = TaskAttemptStatus.CANCELLED.value
@@ -786,28 +783,58 @@ async def force_terminate(
         task.feedback = reason
     clear_pauses(task)
 
-    goal_id: UUID | None = None
-    if goal_context is not None:
-        goal_id = close_cycle_for_forced_task(
-            goal_context,
-            task_cost=task.cost,
-            finished_at=now,
-        )
-        await enqueue_children_for_forced_task(goal_context)
-        release_retention(task, "goal_judgement")
+    # Revoke durable execution authority before calling any external lifecycle code.
+    await db.commit()
+    try:
+        scheduler.cancel(task_id)
+    except Exception:
+        logger.exception("Local cancellation failed after Task force termination task={}", task_id)
 
-    saved = await _persist_internal(task)
+    goal_id: UUID | None = None
+    async with _force_termination_followup(task, "Goal cycle"):
+        # The stop transaction has released the Task lock. Goal cleanup can now
+        # retain its usual Goal → cycle → Task order without blocking the stop.
+        goal_context = await lock_cycle_for_forced_task(task_id)
+        if goal_context is not None:
+            await db.refresh(task, with_for_update={"key_share": True})
+            if has_terminal_outcome(task):
+                goal_id = close_cycle_for_forced_task(
+                    goal_context, task_cost=task.cost, finished_at=now,
+                )
+                await enqueue_children_for_forced_task(goal_context)
+                release_retention(task, "goal_judgement")
+
     if goal_id is not None:
         from app.goal import goal_service
 
-        await goal_service.emit_updated(goal_id)
-        scheduler.wake()
+        async with _force_termination_followup(task, "Goal notification"):
+            await goal_service.emit_updated(goal_id)
+            scheduler.wake()
+    async with _force_termination_followup(task, "Task notification"):
+        await publish_updated(task)
     if not was_terminal and notify_terminal:
         from app.agent import handle_terminal_task
         from app.task.agent_adapter import as_agent_task
 
-        await handle_terminal_task(as_agent_task(saved))
-    return saved
+        async with _force_termination_followup(task, "terminal lifecycle"):
+            await handle_terminal_task(as_agent_task(task))
+    return task
+
+
+@asynccontextmanager
+async def _force_termination_followup(task: Task, operation: str) -> AsyncGenerator[None, None]:
+    """A secondary failure cannot undo or misreport an already committed stop."""
+    db = get_db()
+    task_id = task.id
+    try:
+        async with asyncio.timeout(_FORCE_TERMINATE_FOLLOWUP_TIMEOUT):
+            yield
+            await db.commit()
+    except Exception:
+        await db.rollback()
+        logger.exception("{} failed after Task force termination task={}", operation, task_id)
+        # Rollback expires ORM objects; keep the response and following consumers usable.
+        await db.refresh(task)
 
 
 async def is_auto_approved(task: Task) -> bool:

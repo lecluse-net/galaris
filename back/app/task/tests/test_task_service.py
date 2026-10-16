@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import asyncio
 from datetime import date, datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock
@@ -30,6 +31,61 @@ def _task(**kwargs: Any) -> Task:
     }
     defaults.update(kwargs)
     return Task(**defaults)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["revision", "goal", "notification", "lifecycle", "timeout"])
+async def test_force_termination_survives_stale_views_and_failed_followups(
+    db: AsyncSession, monkeypatch: pytest.MonkeyPatch, failure: str,
+) -> None:
+    from app import agent as agent_domain
+    from app.goal import facade as goal_facade
+    from app.task import scheduler
+
+    token = uuid4()
+    task = _task(status=TaskStatus.EXEC, lease_token=token, lease_owner="stuck-worker",
+        paused=True, next_attempt_at=datetime.now(timezone.utc),
+        data={"pause_reasons": [task_service.PAUSE_USER]})
+    attempt = TaskAttempt(task=task, attempt_number=1, phase="EXEC",
+        worker_id="stuck-worker", lease_token=token)
+    db.add_all([task, attempt])
+    await db.commit()
+    task_id, attempt_id, revision = task.id, attempt.id, task.revision
+    monkeypatch.setattr(scheduler, "cancel", lambda _: True)
+    monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+    monkeypatch.setattr(agent_domain, "handle_terminal_task", AsyncMock())
+    if failure == "goal":
+        monkeypatch.setattr(goal_facade, "lock_cycle_for_forced_task",
+            AsyncMock(side_effect=RuntimeError("Synthetic unavailable Goal")))
+    elif failure == "notification":
+        monkeypatch.setattr(task_service.websocket, "emit",
+            AsyncMock(side_effect=RuntimeError("Synthetic unavailable websocket")))
+    elif failure in {"lifecycle", "timeout"}:
+        async def broken_lifecycle(_task):
+            # A failing followup must never roll back the durable stop.
+            task.feedback = "Synthetic uncommitted followup"
+            await db.flush()
+            if failure == "timeout":
+                await asyncio.Future()
+            raise RuntimeError("Synthetic unavailable lifecycle")
+        monkeypatch.setattr(agent_domain, "handle_terminal_task", broken_lifecycle)
+        monkeypatch.setattr(task_service, "_FORCE_TERMINATE_FOLLOWUP_TIMEOUT", 0.05, raising=False)
+
+    result = await task_service.force_terminate(task_id, revision - 1 if failure == "revision" else revision)
+
+    assert result is not None and result.status == TaskStatus.ERROR
+    await db.refresh(task)
+    await db.refresh(attempt)
+    assert task.status == TaskStatus.ERROR and not task.paused
+    assert task.lease_token is None and task.lease_owner is None
+    assert task.lease_expires_at is None and not task.cancel_requested
+    assert task.next_attempt_at is None
+    assert task.feedback == task.last_error
+    assert attempt.status == TaskAttemptStatus.CANCELLED.value
+    assert attempt.finished_at is not None and not attempt.retryable
+    assert attempt.data["force_terminated"] is True
+    repeated = await task_service.force_terminate(task_id, revision)
+    assert repeated is not None and repeated.revision == result.revision
 
 
 @pytest.mark.asyncio

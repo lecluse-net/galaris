@@ -126,9 +126,9 @@ async def test_model_activity_without_visible_output_refreshes_only_current_run(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["checkpoint", "progress", "event", "activate", "resource", "capsule"])
+@pytest.mark.parametrize("operation", ["checkpoint", "progress", "event", "activate", "resource", "capsule", "force_terminate"])
 async def test_run_writes_do_not_wait_for_uncommitted_llm_trace(
-    committed_database, operation,
+    committed_database, monkeypatch, operation,
 ) -> None:
     """A trace's foreign keys must not block the run waiting for its checkpoint."""
     from app.llm.models import LLMCall
@@ -182,6 +182,14 @@ async def test_run_writes_do_not_wait_for_uncommitted_llm_trace(
                     await adapter.upsert_working_resource(task_id, WorkingResource(
                         resource_type="artifact", role="source",
                         reference="https://example.test/source"))
+                elif operation == "force_terminate":
+                    from app import agent as agent_domain
+                    from app.task import task_service
+                    from unittest.mock import AsyncMock
+
+                    monkeypatch.setattr(agent_domain, "handle_terminal_task", AsyncMock())
+                    monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+                    await task_service.force_terminate(task_id, current.revision)
                 else:
                     await adapter.freeze_context_capsule(current, AgentContextCapsule(
                         contact_memory_item_id=uuid4(), rendered="Synthetic context"))
@@ -202,6 +210,10 @@ async def test_run_writes_do_not_wait_for_uncommitted_llm_trace(
                 assert recorded.data["agent_run"]["request_run_id"] == str(run_id)
             elif operation == "resource":
                 assert (await adapter.get_working_set(task_id)).active("source")
+            elif operation == "force_terminate":
+                assert persisted.status == TaskStatus.ERROR
+                assert persisted.lease_token is None
+                assert recorded.status == TaskAttemptStatus.CANCELLED.value
             else:
                 assert (await adapter.get_context_capsule(persisted)).rendered == "Synthetic context"
     finally:
@@ -209,8 +221,8 @@ async def test_run_writes_do_not_wait_for_uncommitted_llm_trace(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("superseded", ["lease", "expired", "terminal"])
-async def test_checkpoint_is_archived_and_late_attempt_cannot_overwrite_it(db, superseded):
+@pytest.mark.parametrize("superseded", ["lease", "expired", "terminal", "force_terminated"])
+async def test_checkpoint_is_archived_and_late_attempt_cannot_overwrite_it(db, monkeypatch, superseded):
     token = uuid4()
     task = Task(id=uuid4(), label="Fenced checkpoint", objective="<p>Once</p>",
                 status=TaskStatus.EXEC, lease_token=token,
@@ -230,6 +242,14 @@ async def test_checkpoint_is_archived_and_late_attempt_cannot_overwrite_it(db, s
         task.lease_token = uuid4()
     elif superseded == "expired":
         task.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    elif superseded == "force_terminated":
+        from app import agent as agent_domain
+        from app.task import task_service
+        from unittest.mock import AsyncMock
+
+        monkeypatch.setattr(agent_domain, "handle_terminal_task", AsyncMock())
+        monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+        await task_service.force_terminate(task.id, task.revision)
     else:
         attempt.status = "SUCCEEDED"
     await db.commit()
