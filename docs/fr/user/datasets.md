@@ -20,8 +20,8 @@ en lecture ou en écriture. Seul le propriétaire ou un administrateur autorisé
 ce partage ; le droit d'écriture ne donne pas le droit de repartager. Les groupes suivent
 leurs membres actuels. Un jeu de données en lecture seule ne peut pas être repartagé.
 
-**Utilisations** liste les documents qui contiennent sa référence, les exécutions de
-processus qui le référencent, et les agents dont les traces d'outils conservées
+**Utilisations** liste les documents qui contiennent sa référence, les définitions et
+exécutions de processus qui le référencent, et les agents dont les traces d'outils conservées
 mentionnent son URI. Chaque catégorie respecte vos droits sur ses sources. Les URI construites
 dynamiquement et les historiques déjà purgés peuvent manquer ; une mention dans une trace
 ne prouve pas que l'accès a réussi.

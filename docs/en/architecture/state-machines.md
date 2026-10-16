@@ -109,6 +109,14 @@ the resume phase.
 Scheduler actions: `CREATE → dispatch`, `DISPATCH → execute`, `PLAN → advance_plan`.
 A paused task retains its phase without being executed.
 
+A domain-owned input request suspends the existing Task for reason `input`, without a
+technical child. At the end of the turn, `INTERRUPT_EXECUTION` keeps a `DISPATCH` resume point.
+An answer received during `EXEC` is folded at finalization; an answer received later releases
+only `input`. Independent user holds remain effective.
+The marker retains the turn that asked the question. Reconciling that turn after network
+loss does not complete the Task if a reply received since then has not been used yet:
+a fresh `DISPATCH` turn handles the reply without sending the question again.
+
 An organization question suspends in `PLAN`. Its answer retains the clarification and
 applies `REASSESS_ORGANIZATION`; routing selects again with that answer. An unanswered
 deadline or unavailable question channel applies `FAIL`, ending the Task in `ERROR`.
@@ -483,7 +491,32 @@ Authority: `back/app/multimedia/generation_contracts.py`, `generation_store.py`,
 
 ## Processes
 
+Native v2 normalizes inputs before activity intent.
+MCP/REST effects are prepared as `tool_ready`/`rest_ready`, claimed as `claiming`, then
+marked `started` immediately before dispatch, fenced against cancellation and stale workers.
+Each job owns an independent DB session; slow calls do not hold graph progression for
+other branches. A pre-dispatch claim can be recovered; a `started` effect without a receipt
+is never automatically resent. Validated output is retained before
+integration: an acquired external response goes through `returned` before `completed`,
+without resending the call after interruption. Acquiring a result and integrating it are
+separate steps; a Memory receipt makes integration idempotent. Contract failures prevent
+integration and successor admission. Multi-predecessor activities wait for all arrivals
+of the same invocation. Code phases retain invocation keys and observations in their
+occurrence: `queued`/`running` wait, and `success` is usable only with `stopped=true`.
+Cancellation also waits for physical stop; late output cannot reopen a terminal.
+The Monty adapter closes its isolated worker before confirming stop. Only this pure
+computation may repeat after a lost result; external effects are never replayed.
+A configured IF follows exactly one True/False output after validating its boolean.
+Human mode reuses `human_waiting` and Messenger choices, without an AI waiting Task or
+integrating the boolean into the Dataset.
+
 Terminal states: `success`, `error`, `cancelled`.
+
+For internal processes, the first execution error stops admissions and requests cancellation
+of active tasks and child runs. The run goes through `cancelling` to `error` after confirmed
+stops, preserving `error_code` and data. An uncertain external effect returns
+`effect_outcome_unknown` and remains stopping until reconciliation. No recovery activity
+or automatic process retry executes.
 
 Waiting-task finalization is separate from run status: `await_resolved_at` remains null until
 the child Task is closed and its parent resumed. Callbacks, refresh and periodic reconciliation
@@ -506,6 +539,14 @@ be logged as an event. `started_at` is set upon the first entry into `running` o
 
 Authority: `TERMINAL_STATUSES` and `TRANSITIONS` in
 `back/app/process/process_service.py`.
+
+A native `human_task` creates a `human_waiting` attempt and a `waiting` occurrence.
+Only a valid reply by its assigned user moves the attempt to `completed`; the next engine
+pass marks the occurrence `success` and continues the flow. An identical reply replays the
+receipt; a different reply after completion conflicts. Another user, an inactive user, or
+a cancelling/terminal Run cannot admit a new receipt. Cancellation closes the Run without
+admitting an AI Task for the human activity. These guarantees are exercised by
+`test_human_activity_waits_for_assignee_and_replays_one_receipt`.
 
 ## AI Lab Evaluations
 

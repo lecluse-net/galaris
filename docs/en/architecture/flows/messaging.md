@@ -315,9 +315,13 @@ of assigned Processes. It responds directly after a few short calls, launches th
 Process if the need is already modeled, or otherwise creates an autonomous Task; it never blocks
 the conversation while waiting for their result.
 
-For a human sender, the short dispatcher returns `EXEC standard` directly, without a model,
-on every text channel. The executor retains the choice to admit a Process or Task. The controller
-delivers a successful result without checking admission afterward or judging its wording.
+For a human sender, the reply gate returns `EXEC standard` directly, without a model.
+A separate correlation and Process-selection analysis runs only when the effective profile
+configures Decision. It distinguishes negative conclusions from absent or uncertain analysis
+and passes exact references to the executor. Without a sufficient conclusion, the executor
+must identify the pending request or suitable Process itself. It remains responsible for
+applying replies and launching a Process or Task through canonical tools.
+The controller delivers a successful result without checking admission afterward or judging its wording.
 It passes execution errors to the scheduler, which retains its bounded retry and protections
 against repeated effects. A terminal error produces the fallback response with its category and
 details after masking common secret forms. The admitted Task retains the agent, room, and

@@ -6,6 +6,21 @@ A Task keeps durable work, its state and its result. This guide explains methods
 milestones, plans, questions and recovery. To create your first request, follow the
 [user guide](README.md); to find commands, see the [menus and workflows](navigation.md).
 
+Conversation context includes the agent's active Tasks and Processes, including work started
+in another discussion: queued, running or waiting, with the known question or dependency.
+Old waits remain visible until resolved. Finished work, cancellation requests and manual holds
+are excluded. Replying to a question or sending the requested file gives the agent context
+to recognize that contribution. If several waits match, it must ask for clarification; replies
+remain subject to the permissions and validation of the relevant resumption mechanism.
+
+The same projection is available for monitoring through
+`GET /api/conversations/agents/{agent_id}/active-work?page=1&page_size=50`.
+It combines Tasks and internal and external process runs with their operational states,
+waits and references. The response contains `items`, `total`, `page`, `page_size` and
+`observed_at`; `kind` distinguishes `task` from `process`, and `engine_code` identifies
+the process engine. Access requires `TASK_ACCESS`, `PROCESS_READ` and management scope
+over the agent; process read permissions still apply. Pagination accepts up to 500 items.
+
 ## Standard and High
 
 The effort level does not refer to two different architectures. The same driver executes the
@@ -41,6 +56,12 @@ unavailable attachment does not prevent the text from being published.
 5. Galaris records the trace and result, then resumes any parent Tasks.
 
 Text and voice conversations follow their own configured controller and executor. They do not go through the Task Dispatcher; when they need durable work, they explicitly create a linked Task.
+
+If the agent's profile configures a Decision model, the text conversation dispatcher helps
+match your message to pending or active work and select a new business process to launch.
+The agent then performs the action through the usual checks. Without this model, or when
+analysis cannot conclude, the agent must identify the pending request and select and launch
+the appropriate process itself when needed. A progress request does not answer a pending question.
 
 ## Force-terminating a Task
 

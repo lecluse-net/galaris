@@ -11,6 +11,8 @@ legacy aliases and the document application bridge.
 [Internal file storage](file-storage.md) describes `file://`, the shared registry and
 the verified migration of Document and Chat attachments.
 
+The [native BPMN profile](native-processes.md) documents internal process contracts.
+
 See [Testing behavior](testing.md) for test commands, real Vue component scenarios,
 concurrency fixtures and the limits of local bridge validation.
 
@@ -397,8 +399,14 @@ within its Messenger scope. The conversational LLM may resolve them through
 causes a question; an instruction such as “don't do that, do this instead” may reject the
 current approval and then amend the Task through the durable path above.
 
-For a human textual round, the dispatcher returns `EXEC standard` without loading a model or
-performing inference, on every text channel. The executor chooses its tools and durable work
+For a human textual round, the reply gate returns `EXEC standard` without inference.
+A separate dispatcher analysis runs only if the effective profile configures Decision:
+it correlates the message with pending or active work and selects a new assigned Process
+when applicable. Both axes and exact references are injected near the end of the prompt.
+Without a model, after failure or uncertainty, the executor explicitly retains responsibility
+for identifying the pending request and selecting and launching the right Process. An incomplete
+catalog never proves a negative conclusion. See [ADR 0194](../../../project/decisions/0194-conversation-decision-routing.md).
+The executor chooses its tools and durable work
 admission according to the action policy. The controller delivers a successful response without
 judging its wording, repetition, or missing tool activity. Only an execution error can trigger
 the scheduler's bounded retry, subject to its effect-safety conditions. Admission persists the

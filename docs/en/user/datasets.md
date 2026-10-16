@@ -17,7 +17,7 @@ authenticated users, with read or write grants for agents, users and groups. Onl
 owner or an authorized administrator can change sharing; write access does not grant
 resharing rights. Groups follow current membership. Read-only Datasets cannot be reshared.
 
-**Usages** lists documents containing the reference, process runs that
+**Usages** lists documents containing the reference, process definitions and runs that
 reference it, and agents whose retained tool traces mention its URI. Each category respects
 your permissions on its sources. Dynamically constructed URIs and purged history may be
 missing; a mention in a trace does not establish successful access.

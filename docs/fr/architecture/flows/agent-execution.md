@@ -2,6 +2,12 @@
 
 # Flux d’exécution agentique
 
+Le contrôleur texte restitue un seul tour de réponse. Il coupe les faux échanges
+horodatés générés hors des citations, les retire du contexte réutilisé et refuse avant
+exécution les outils qui les suivent. Le SDK fournit son retry borné habituel, sans
+second classificateur d'intention. La demande courante reste celle du journal entrant.
+Les réponses sont brèves par défaut ; une demande de détail conserve sa portée.
+
 Les rounds texte survivent aux interruptions du worker : l'arrêt propre libère le bail après
 la sauvegarde de l'historique et des reçus ; l'arrêt brutal récupère le bail expiré. Ces
 interruptions ne consomment pas les retries métier. Les outils engagés sont drainés pendant
@@ -817,9 +823,18 @@ demandent une réponse immédiate pour le travail court ; un travail long lance 
 correspondant avec `conversation_process_start`, ou crée sinon une Task avec
 `conversation_task_submit`, sans jamais attendre leur fin.
 
-Pour un humain, le dispatcher retourne `EXEC standard` avant tout chargement de modèle et sans
-inférence, sur tous les canaux textuels. L'exécuteur décide d'utiliser un outil ou d'admettre du
-travail durable. Le contrôleur ne juge plus une réponse réussie : absence d'admission, absence
+Pour un humain, la porte de réponse retourne `EXEC standard` sans inférence. Si le profil
+effectif configure Décision, le dispatcher préanalyse ensuite le message, ses pièces jointes,
+les interactions en attente, les travaux actifs et le catalogue Process affecté. Deux choix
+indépendants distinguent réponse ou suivi d'un travail existant, et nouveau processus à lancer.
+L'exécuteur reçoit les références exactes et les états `not_evaluated`, `uncertain`, `none` ou
+`selected` vers la fin de son prompt. Sans modèle, après échec ou sans conclusion suffisante,
+il doit rechercher lui-même l'attente et choisir puis lancer le bon Process si nécessaire.
+Un catalogue partiel ne permet pas d'affirmer qu'aucun Process ne convient. La préanalyse
+n'exécute aucun effet et ne change pas le dispatcher des Tasks. Les chemins vocaux directs
+conservent cette responsabilité dans l'exécuteur. Voir l'[ADR 0194](../../../../project/decisions/0194-conversation-decision-routing.md).
+L'exécuteur décide d'utiliser un outil ou d'admettre du travail durable.
+Le contrôleur ne juge plus une réponse réussie : absence d'admission, absence
 d'outil ou formulation répétée ne provoquent aucune relance. Les erreurs d'exécution remontent au
 scheduler, dont le budget et les protections contre les effets dupliqués restent applicables.
 Le champ `requires_action` disparaît aussi du dispatcher de Task et du Lab. Les drivers interne

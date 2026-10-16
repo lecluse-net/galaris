@@ -4,6 +4,8 @@
 
 Pour gérer les données structurées, consultez [Jeux de données](datasets.md).
 
+Pour créer et observer des workflows, consultez [Processus métier internes](internal-processes.md).
+
 Pour trouver un écran, consultez le [guide des menus et parcours](navigation.md) et la
 [carte de navigation générée](../architecture/generated/navigation.md).
 

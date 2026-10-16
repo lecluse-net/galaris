@@ -21,6 +21,7 @@
           "back/app/agent/admin_service.py",
           "back/app/agent/agent_service.py",
           "back/app/agent/avatar_generation.py",
+          "back/app/agent/conversation_dispatch.py",
           "back/app/agent/dispatcher.py",
           "back/app/agent/facade.py",
           "back/app/agent/janus.py",
@@ -754,9 +755,11 @@
           "back/app/conversation/context.py",
           "back/app/conversation/contracts.py",
           "back/app/conversation/directives.py",
+          "back/app/conversation/facade.py",
           "back/app/conversation/inspection_service.py",
           "back/app/conversation/mcp.py",
           "back/app/conversation/monitoring_service.py",
+          "back/app/conversation/process_admission.py",
           "back/app/conversation/router.py",
           "back/app/conversation/runtime.py",
           "back/app/conversation/scheduler.py",
@@ -780,6 +783,8 @@
           "back/app/conversation/facade.py",
           "back/app/conversation/inspection_service.py",
           "back/app/conversation/monitoring_service.py",
+          "back/app/conversation/process_admission.py",
+          "back/app/conversation/process_interactions.py",
           "back/app/conversation/resource_facade.py",
           "back/app/conversation/service.py",
           "back/app/conversation/task_projection.py"
@@ -791,6 +796,7 @@
         "files": [
           "back/app/conversation/artifact_delivery.py",
           "back/app/conversation/context.py",
+          "back/app/conversation/process_interactions.py",
           "back/app/conversation/service.py"
         ],
         "source": "app.conversation",
@@ -802,6 +808,7 @@
           "back/app/conversation/inspection_service.py",
           "back/app/conversation/management_service.py",
           "back/app/conversation/monitoring_service.py",
+          "back/app/conversation/process_admission.py",
           "back/app/conversation/schemas.py",
           "back/app/conversation/service.py",
           "back/app/conversation/task_objective.py"
@@ -817,6 +824,8 @@
           "back/app/conversation/inspection_service.py",
           "back/app/conversation/mcp.py",
           "back/app/conversation/monitoring_service.py",
+          "back/app/conversation/process_admission.py",
+          "back/app/conversation/process_interactions.py",
           "back/app/conversation/repository_display.py",
           "back/app/conversation/resource_facade.py",
           "back/app/conversation/service.py",
@@ -831,6 +840,8 @@
           "back/app/conversation/contracts.py",
           "back/app/conversation/facade.py",
           "back/app/conversation/mcp.py",
+          "back/app/conversation/process_admission.py",
+          "back/app/conversation/process_interactions.py",
           "back/app/conversation/progress.py",
           "back/app/conversation/scheduler.py",
           "back/app/conversation/service.py",
@@ -860,6 +871,8 @@
       {
         "files": [
           "back/app/conversation/mcp.py",
+          "back/app/conversation/process_admission.py",
+          "back/app/conversation/process_interactions.py",
           "back/app/conversation/repository_display.py",
           "back/app/conversation/service.py"
         ],
@@ -883,6 +896,8 @@
           "back/app/conversation/mcp.py",
           "back/app/conversation/models.py",
           "back/app/conversation/monitoring_service.py",
+          "back/app/conversation/process_admission.py",
+          "back/app/conversation/process_interactions.py",
           "back/app/conversation/progress.py",
           "back/app/conversation/repository_display.py",
           "back/app/conversation/resource_facade.py",
@@ -903,6 +918,7 @@
       },
       {
         "files": [
+          "back/app/conversation/process_interactions.py",
           "back/app/conversation/router.py",
           "back/app/conversation/service.py",
           "back/app/conversation/task_objective.py"
@@ -923,6 +939,14 @@
         ],
         "source": "app.conversation",
         "target": "core.settings"
+      },
+      {
+        "files": [
+          "back/app/conversation/mcp.py",
+          "back/app/conversation/process_interactions.py"
+        ],
+        "source": "app.conversation",
+        "target": "core.user"
       },
       {
         "files": [
@@ -1438,7 +1462,8 @@
       },
       {
         "files": [
-          "back/app/file_share/galaris_provider.py"
+          "back/app/file_share/galaris_provider.py",
+          "back/app/file_share/process_provider.py"
         ],
         "source": "app.file_share",
         "target": "app.process"
@@ -1569,6 +1594,7 @@
           "back/app/file_share/indexing.py",
           "back/app/file_share/managed_files.py",
           "back/app/file_share/messenger_transport.py",
+          "back/app/file_share/process_provider.py",
           "back/app/file_share/resource_service.py",
           "back/app/file_share/transport.py",
           "back/app/file_share/web_transport.py"
@@ -1695,6 +1721,7 @@
           "back/app/harness/checkpoint_policy.py",
           "back/app/harness/contracts.py",
           "back/app/harness/conversation.py",
+          "back/app/harness/conversation_protocol.py",
           "back/app/harness/driver.py",
           "back/app/harness/executor.py",
           "back/app/harness/facade.py",
@@ -1968,6 +1995,8 @@
           "back/app/lab/objective_checks.py",
           "back/app/lab/operation_execution.py",
           "back/app/lab/operations.py",
+          "back/app/lab/process_evaluation.py",
+          "back/app/lab/process_evaluation_router.py",
           "back/app/lab/router.py",
           "back/app/lab/schemas.py"
         ],
@@ -1978,7 +2007,8 @@
         "files": [
           "back/app/lab/mcp_access.py",
           "back/app/lab/mechanism_evaluation_service.py",
-          "back/app/lab/operations.py"
+          "back/app/lab/operations.py",
+          "back/app/lab/process_evaluation.py"
         ],
         "source": "app.lab",
         "target": "app.connection"
@@ -2023,6 +2053,7 @@
           "back/app/lab/operation_execution.py",
           "back/app/lab/operation_worker.py",
           "back/app/lab/operations.py",
+          "back/app/lab/process_evaluation.py",
           "back/app/lab/run_inference.py",
           "back/app/lab/synthetic_service.py"
         ],
@@ -2031,7 +2062,9 @@
       },
       {
         "files": [
-          "back/app/lab/mechanism_evaluation_service.py"
+          "back/app/lab/mechanism_evaluation_service.py",
+          "back/app/lab/process_evaluation.py",
+          "back/app/lab/process_evaluation_router.py"
         ],
         "source": "app.lab",
         "target": "app.memory"
@@ -2047,7 +2080,8 @@
       {
         "files": [
           "back/app/lab/evidence_service.py",
-          "back/app/lab/mechanism_evaluation_service.py"
+          "back/app/lab/mechanism_evaluation_service.py",
+          "back/app/lab/process_evaluation.py"
         ],
         "source": "app.lab",
         "target": "app.process"
@@ -2107,6 +2141,7 @@
         "files": [
           "back/app/lab/access.py",
           "back/app/lab/assertions.py",
+          "back/app/lab/process_evaluation_router.py",
           "back/app/lab/router.py"
         ],
         "source": "app.lab",
@@ -2134,6 +2169,8 @@
           "back/app/lab/operation_store.py",
           "back/app/lab/operation_worker.py",
           "back/app/lab/operations.py",
+          "back/app/lab/process_evaluation.py",
+          "back/app/lab/process_evaluation_models.py",
           "back/app/lab/run_claims.py",
           "back/app/lab/run_lease.py",
           "back/app/lab/run_publication.py",
@@ -2176,7 +2213,8 @@
       {
         "files": [
           "back/app/lab/human_review_service.py",
-          "back/app/lab/operations.py"
+          "back/app/lab/operations.py",
+          "back/app/lab/process_evaluation.py"
         ],
         "source": "app.lab",
         "target": "core.user"
@@ -2506,6 +2544,7 @@
           "back/app/memory/document_icons.py",
           "back/app/memory/document_nesting.py",
           "back/app/memory/document_order.py",
+          "back/app/memory/document_policy.py",
           "back/app/memory/document_service.py",
           "back/app/memory/document_sharing.py",
           "back/app/memory/document_tags.py",
@@ -2518,7 +2557,8 @@
           "back/app/memory/library_queries.py",
           "back/app/memory/router.py",
           "back/app/memory/service.py",
-          "back/app/memory/source_projection.py"
+          "back/app/memory/source_projection.py",
+          "back/app/memory/workflow_documents.py"
         ],
         "source": "app.memory",
         "target": "app.agent"
@@ -2600,8 +2640,10 @@
       },
       {
         "files": [
+          "back/app/memory/access.py",
           "back/app/memory/assertions.py",
           "back/app/memory/dataset_usage.py",
+          "back/app/memory/document_policy.py",
           "back/app/memory/goal_folders.py",
           "back/app/memory/item_sharing.py",
           "back/app/memory/router.py"
@@ -2664,7 +2706,8 @@
           "back/app/memory/topic_ranking.py",
           "back/app/memory/urls.py",
           "back/app/memory/usage.py",
-          "back/app/memory/vector.py"
+          "back/app/memory/vector.py",
+          "back/app/memory/workflow_documents.py"
         ],
         "source": "app.memory",
         "target": "core.database"
@@ -2694,7 +2737,8 @@
           "back/app/memory/automation.py",
           "back/app/memory/goal_document_adapter.py",
           "back/app/memory/goal_folders.py",
-          "back/app/memory/mcp.py"
+          "back/app/memory/mcp.py",
+          "back/app/memory/service.py"
         ],
         "source": "app.memory",
         "target": "core.i18n"
@@ -2765,6 +2809,7 @@
           "back/app/memory/document_export.py",
           "back/app/memory/document_image_import.py",
           "back/app/memory/document_links.py",
+          "back/app/memory/document_policy.py",
           "back/app/memory/document_sharing.py",
           "back/app/memory/document_thumbnail_service.py",
           "back/app/memory/events.py",
@@ -2774,7 +2819,8 @@
           "back/app/memory/library_queries.py",
           "back/app/memory/maintenance.py",
           "back/app/memory/router.py",
-          "back/app/memory/service.py"
+          "back/app/memory/service.py",
+          "back/app/memory/workflow_documents.py"
         ],
         "source": "app.memory",
         "target": "core.user"
@@ -2800,7 +2846,8 @@
           "back/app/memory/source_projection.py",
           "back/app/memory/storage.py",
           "back/app/memory/storage_reconciliation.py",
-          "back/app/memory/temporal.py"
+          "back/app/memory/temporal.py",
+          "back/app/memory/workflow_documents.py"
         ],
         "source": "app.memory",
         "target": "core.util"
@@ -3147,7 +3194,13 @@
         "files": [
           "back/app/process/dataset_usage.py",
           "back/app/process/events.py",
+          "back/app/process/facade.py",
           "back/app/process/mcp.py",
+          "back/app/process/native_actors.py",
+          "back/app/process/native_definitions.py",
+          "back/app/process/native_engine.py",
+          "back/app/process/native_router.py",
+          "back/app/process/native_runs.py",
           "back/app/process/process_service.py",
           "back/app/process/router.py"
         ],
@@ -3156,6 +3209,7 @@
       },
       {
         "files": [
+          "back/app/process/native_engine.py",
           "back/app/process/process_service.py",
           "back/app/process/router.py"
         ],
@@ -3171,6 +3225,7 @@
       },
       {
         "files": [
+          "back/app/process/native_engine.py",
           "back/app/process/process_service.py",
           "back/app/process/router.py"
         ],
@@ -3182,6 +3237,7 @@
           "back/app/process/__init__.py",
           "back/app/process/agent_capabilities.py",
           "back/app/process/dbadmin.py",
+          "back/app/process/native_runs.py",
           "back/app/process/process_service.py"
         ],
         "source": "app.process",
@@ -3189,17 +3245,42 @@
       },
       {
         "files": [
+          "back/app/process/__init__.py",
+          "back/app/process/events.py",
+          "back/app/process/mcp.py",
+          "back/app/process/native_actors.py",
+          "back/app/process/native_definitions.py",
+          "back/app/process/native_engine.py",
+          "back/app/process/native_router.py",
+          "back/app/process/native_runs.py",
           "back/app/process/process_service.py",
-          "back/app/process/retention.py"
+          "back/app/process/router.py"
+        ],
+        "source": "app.process",
+        "target": "app.memory"
+      },
+      {
+        "files": [
+          "back/app/process/activity_controls.py",
+          "back/app/process/activity_jobs.py",
+          "back/app/process/native_engine.py",
+          "back/app/process/process_service.py",
+          "back/app/process/retention.py",
+          "back/app/process/run_observation.py"
         ],
         "source": "app.process",
         "target": "app.task"
       },
       {
         "files": [
+          "back/app/process/activity_jobs.py",
           "back/app/process/dbadmin.py",
           "back/app/process/mcp.py",
-          "back/app/process/process_service.py"
+          "back/app/process/native_definitions.py",
+          "back/app/process/native_engine.py",
+          "back/app/process/native_runs.py",
+          "back/app/process/process_service.py",
+          "back/app/process/resource_facade.py"
         ],
         "source": "app.process",
         "target": "app.tools"
@@ -3207,6 +3288,8 @@
       {
         "files": [
           "back/app/process/dataset_usage.py",
+          "back/app/process/facade.py",
+          "back/app/process/native_router.py",
           "back/app/process/router.py"
         ],
         "source": "app.process",
@@ -3214,15 +3297,25 @@
       },
       {
         "files": [
+          "back/app/process/activity_controls.py",
+          "back/app/process/activity_jobs.py",
           "back/app/process/dataset_usage.py",
           "back/app/process/events.py",
           "back/app/process/export.py",
+          "back/app/process/facade.py",
+          "back/app/process/human_requests.py",
           "back/app/process/interface.py",
+          "back/app/process/mcp.py",
           "back/app/process/models.py",
+          "back/app/process/native_actors.py",
+          "back/app/process/native_definitions.py",
+          "back/app/process/native_engine.py",
+          "back/app/process/native_runs.py",
           "back/app/process/process_service.py",
           "back/app/process/progress.py",
           "back/app/process/replacement.py",
           "back/app/process/retention.py",
+          "back/app/process/run_observation.py",
           "back/app/process/workers.py"
         ],
         "source": "app.process",
@@ -3266,8 +3359,14 @@
       },
       {
         "files": [
+          "back/app/process/activity_controls.py",
           "back/app/process/dataset_usage.py",
-          "back/app/process/events.py"
+          "back/app/process/events.py",
+          "back/app/process/facade.py",
+          "back/app/process/native_actors.py",
+          "back/app/process/native_definitions.py",
+          "back/app/process/native_engine.py",
+          "back/app/process/process_service.py"
         ],
         "source": "app.process",
         "target": "core.user"
@@ -3430,6 +3529,7 @@
           "back/app/task/conversation.py",
           "back/app/task/execution_scope.py",
           "back/app/task/facade.py",
+          "back/app/task/input_requests.py",
           "back/app/task/live_checkpoint.py",
           "back/app/task/mcp.py",
           "back/app/task/models.py",
@@ -5748,6 +5848,10 @@
         ],
         [
           "app.memory",
+          "app.process"
+        ],
+        [
+          "app.memory",
           "app.topic"
         ],
         [
@@ -5767,7 +5871,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 279,
+      "domain_edges": 280,
       "fan_in": [
         {
           "count": 43,
@@ -6039,6 +6143,22 @@
         },
         {
           "count": 10,
+          "module": "app.memory",
+          "modules": [
+            "app.contact",
+            "app.dataset",
+            "app.dream",
+            "app.file_share",
+            "app.lab",
+            "app.messenger",
+            "app.process",
+            "app.topic",
+            "app.voice",
+            "bridge.hermes"
+          ]
+        },
+        {
+          "count": 10,
           "module": "app.skill",
           "modules": [
             "app.agent",
@@ -6050,21 +6170,6 @@
             "bridge.claude_agent",
             "bridge.codex",
             "bridge.deepseek_harness",
-            "bridge.hermes"
-          ]
-        },
-        {
-          "count": 9,
-          "module": "app.memory",
-          "modules": [
-            "app.contact",
-            "app.dataset",
-            "app.dream",
-            "app.file_share",
-            "app.lab",
-            "app.messenger",
-            "app.topic",
-            "app.voice",
             "bridge.hermes"
           ]
         },
@@ -6408,6 +6513,20 @@
           ]
         },
         {
+          "count": 8,
+          "module": "app.process",
+          "modules": [
+            "app.agent",
+            "app.console",
+            "app.dataset",
+            "app.file_share",
+            "app.llm",
+            "app.memory",
+            "app.task",
+            "app.tools"
+          ]
+        },
+        {
           "count": 7,
           "module": "app.agent",
           "modules": [
@@ -6443,19 +6562,6 @@
             "app.messenger",
             "app.process",
             "app.skill",
-            "app.tools"
-          ]
-        },
-        {
-          "count": 7,
-          "module": "app.process",
-          "modules": [
-            "app.agent",
-            "app.console",
-            "app.dataset",
-            "app.file_share",
-            "app.llm",
-            "app.task",
             "app.tools"
           ]
         },
@@ -7443,15 +7549,31 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_choice_resolve",
-        "line": 864,
+        "line": 866,
         "module": "app.conversation",
         "name": "conversation_choice_resolve",
         "namespace": "conversation"
       },
       {
         "file": "back/app/conversation/mcp.py",
+        "handler": "conversation_process_pending",
+        "line": 922,
+        "module": "app.conversation",
+        "name": "conversation_process_pending",
+        "namespace": "conversation"
+      },
+      {
+        "file": "back/app/conversation/mcp.py",
+        "handler": "conversation_process_respond",
+        "line": 913,
+        "module": "app.conversation",
+        "name": "conversation_process_respond",
+        "namespace": "conversation"
+      },
+      {
+        "file": "back/app/conversation/mcp.py",
         "handler": "conversation_process_start",
-        "line": 1001,
+        "line": 1023,
         "module": "app.conversation",
         "name": "conversation_process_start",
         "namespace": "conversation"
@@ -7459,7 +7581,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_list",
-        "line": 804,
+        "line": 806,
         "module": "app.conversation",
         "name": "conversation_task_list",
         "namespace": "conversation"
@@ -7467,7 +7589,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_pause",
-        "line": 943,
+        "line": 962,
         "module": "app.conversation",
         "name": "conversation_task_pause",
         "namespace": "conversation"
@@ -7475,7 +7597,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_resume",
-        "line": 954,
+        "line": 973,
         "module": "app.conversation",
         "name": "conversation_task_resume",
         "namespace": "conversation"
@@ -7483,7 +7605,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_retry",
-        "line": 974,
+        "line": 993,
         "module": "app.conversation",
         "name": "conversation_task_retry",
         "namespace": "conversation"
@@ -7491,7 +7613,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_status",
-        "line": 844,
+        "line": 846,
         "module": "app.conversation",
         "name": "conversation_task_status",
         "namespace": "conversation"
@@ -7499,7 +7621,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_stop",
-        "line": 985,
+        "line": 1004,
         "module": "app.conversation",
         "name": "conversation_task_stop",
         "namespace": "conversation"
@@ -7507,7 +7629,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_submit",
-        "line": 560,
+        "line": 562,
         "module": "app.conversation",
         "name": "conversation_task_submit",
         "namespace": "conversation"
@@ -7515,7 +7637,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "document_show",
-        "line": 108,
+        "line": 110,
         "module": "app.conversation",
         "name": "document_show",
         "namespace": "conversation"
@@ -7523,7 +7645,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "repository_show",
-        "line": 120,
+        "line": 122,
         "module": "app.conversation",
         "name": "repository_show",
         "namespace": "conversation"
@@ -7690,16 +7812,56 @@
       },
       {
         "file": "back/app/process/mcp.py",
+        "handler": "process_activity_complete",
+        "line": 145,
+        "module": "app.process",
+        "name": "process_activity_complete",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_activity_question",
+        "line": 160,
+        "module": "app.process",
+        "name": "process_activity_question",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
         "handler": "process_analyze_run",
-        "line": 158,
+        "line": 368,
         "module": "app.process",
         "name": "process_analyze_run",
         "namespace": "galaris"
       },
       {
         "file": "back/app/process/mcp.py",
+        "handler": "process_archive",
+        "line": 212,
+        "module": "app.process",
+        "name": "process_archive",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_create",
+        "line": 174,
+        "module": "app.process",
+        "name": "process_create",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_definition_read",
+        "line": 168,
+        "module": "app.process",
+        "name": "process_definition_read",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
         "handler": "process_get",
-        "line": 61,
+        "line": 106,
         "module": "app.process",
         "name": "process_get",
         "namespace": "galaris"
@@ -7707,15 +7869,23 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_get_run",
-        "line": 143,
+        "line": 355,
         "module": "app.process",
         "name": "process_get_run",
         "namespace": "galaris"
       },
       {
         "file": "back/app/process/mcp.py",
+        "handler": "process_history",
+        "line": 198,
+        "module": "app.process",
+        "name": "process_history",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
         "handler": "process_list",
-        "line": 52,
+        "line": 97,
         "module": "app.process",
         "name": "process_list",
         "namespace": "galaris"
@@ -7723,17 +7893,113 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_list_runs",
-        "line": 123,
+        "line": 331,
         "module": "app.process",
         "name": "process_list_runs",
         "namespace": "galaris"
       },
       {
         "file": "back/app/process/mcp.py",
+        "handler": "process_restore",
+        "line": 206,
+        "module": "app.process",
+        "name": "process_restore",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_run_cancel",
+        "line": 266,
+        "module": "app.process",
+        "name": "process_run_cancel",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_run_children",
+        "line": 237,
+        "module": "app.process",
+        "name": "process_run_children",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_run_control",
+        "line": 257,
+        "module": "app.process",
+        "name": "process_run_control",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_run_inspect",
+        "line": 229,
+        "module": "app.process",
+        "name": "process_run_inspect",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_run_metrics",
+        "line": 251,
+        "module": "app.process",
+        "name": "process_run_metrics",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_run_occurrence",
+        "line": 245,
+        "module": "app.process",
+        "name": "process_run_occurrence",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_run_retry",
+        "line": 274,
+        "module": "app.process",
+        "name": "process_run_retry",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_share",
+        "line": 218,
+        "module": "app.process",
+        "name": "process_share",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
         "handler": "process_start",
-        "line": 88,
+        "line": 296,
         "module": "app.process",
         "name": "process_start",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_update",
+        "line": 183,
+        "module": "app.process",
+        "name": "process_update",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_validate",
+        "line": 191,
+        "module": "app.process",
+        "name": "process_validate",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "processus_get",
+        "line": 28,
+        "module": "app.process",
+        "name": "processus_get",
         "namespace": "galaris"
       },
       {
@@ -7779,7 +8045,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_round_get",
-        "line": 245,
+        "line": 247,
         "module": "app.conversation",
         "name": "conversation_round_get",
         "namespace": "galaris_admin"
@@ -7891,7 +8157,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_campaign_get",
-        "line": 563,
+        "line": 605,
         "module": "app.lab",
         "name": "lab_campaign_get",
         "namespace": "lab"
@@ -7899,7 +8165,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_campaign_list",
-        "line": 550,
+        "line": 592,
         "module": "app.lab",
         "name": "lab_campaign_list",
         "namespace": "lab"
@@ -7907,7 +8173,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_case_create",
-        "line": 242,
+        "line": 284,
         "module": "app.lab",
         "name": "lab_case_create",
         "namespace": "lab"
@@ -7915,7 +8181,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_case_delete",
-        "line": 294,
+        "line": 336,
         "module": "app.lab",
         "name": "lab_case_delete",
         "namespace": "lab"
@@ -7923,7 +8189,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_case_duplicate",
-        "line": 276,
+        "line": 318,
         "module": "app.lab",
         "name": "lab_case_duplicate",
         "namespace": "lab"
@@ -7931,7 +8197,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_case_get",
-        "line": 229,
+        "line": 271,
         "module": "app.lab",
         "name": "lab_case_get",
         "namespace": "lab"
@@ -7939,7 +8205,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_case_import",
-        "line": 360,
+        "line": 402,
         "module": "app.lab",
         "name": "lab_case_import",
         "namespace": "lab"
@@ -7947,7 +8213,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_case_list",
-        "line": 216,
+        "line": 258,
         "module": "app.lab",
         "name": "lab_case_list",
         "namespace": "lab"
@@ -7955,7 +8221,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_case_restore_source",
-        "line": 313,
+        "line": 355,
         "module": "app.lab",
         "name": "lab_case_restore_source",
         "namespace": "lab"
@@ -7963,7 +8229,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_case_update",
-        "line": 259,
+        "line": 301,
         "module": "app.lab",
         "name": "lab_case_update",
         "namespace": "lab"
@@ -7971,7 +8237,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_content_read",
-        "line": 811,
+        "line": 853,
         "module": "app.lab",
         "name": "lab_content_read",
         "namespace": "lab"
@@ -7979,7 +8245,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_dataset_clone",
-        "line": 181,
+        "line": 223,
         "module": "app.lab",
         "name": "lab_dataset_clone",
         "namespace": "lab"
@@ -7987,7 +8253,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_dataset_create",
-        "line": 148,
+        "line": 190,
         "module": "app.lab",
         "name": "lab_dataset_create",
         "namespace": "lab"
@@ -7995,7 +8261,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_dataset_delete",
-        "line": 199,
+        "line": 241,
         "module": "app.lab",
         "name": "lab_dataset_delete",
         "namespace": "lab"
@@ -8003,7 +8269,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_dataset_generate",
-        "line": 596,
+        "line": 638,
         "module": "app.lab",
         "name": "lab_dataset_generate",
         "namespace": "lab"
@@ -8011,7 +8277,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_dataset_get",
-        "line": 133,
+        "line": 175,
         "module": "app.lab",
         "name": "lab_dataset_get",
         "namespace": "lab"
@@ -8019,7 +8285,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_dataset_list",
-        "line": 120,
+        "line": 162,
         "module": "app.lab",
         "name": "lab_dataset_list",
         "namespace": "lab"
@@ -8027,7 +8293,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_dataset_update",
-        "line": 164,
+        "line": 206,
         "module": "app.lab",
         "name": "lab_dataset_update",
         "namespace": "lab"
@@ -8035,7 +8301,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_expected_generate",
-        "line": 614,
+        "line": 656,
         "module": "app.lab",
         "name": "lab_expected_generate",
         "namespace": "lab"
@@ -8043,7 +8309,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_get",
-        "line": 57,
+        "line": 99,
         "module": "app.lab",
         "name": "lab_get",
         "namespace": "lab"
@@ -8051,7 +8317,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_input_preview",
-        "line": 334,
+        "line": 376,
         "module": "app.lab",
         "name": "lab_input_preview",
         "namespace": "lab"
@@ -8059,7 +8325,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_list",
-        "line": 40,
+        "line": 82,
         "module": "app.lab",
         "name": "lab_list",
         "namespace": "lab"
@@ -8067,7 +8333,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_models",
-        "line": 75,
+        "line": 117,
         "module": "app.lab",
         "name": "lab_models",
         "namespace": "lab"
@@ -8075,7 +8341,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_operation_cancel",
-        "line": 693,
+        "line": 735,
         "module": "app.lab",
         "name": "lab_operation_cancel",
         "namespace": "lab"
@@ -8083,15 +8349,55 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_operation_get",
-        "line": 680,
+        "line": 722,
         "module": "app.lab",
         "name": "lab_operation_get",
         "namespace": "lab"
       },
       {
         "file": "back/app/lab/mcp.py",
+        "handler": "lab_process_campaign_cancel",
+        "line": 70,
+        "module": "app.lab",
+        "name": "lab_process_campaign_cancel",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_process_campaign_get",
+        "line": 62,
+        "module": "app.lab",
+        "name": "lab_process_campaign_get",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_process_campaign_start",
+        "line": 53,
+        "module": "app.lab",
+        "name": "lab_process_campaign_start",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_process_dataset_create",
+        "line": 36,
+        "module": "app.lab",
+        "name": "lab_process_dataset_create",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
+        "handler": "lab_process_dataset_generate",
+        "line": 43,
+        "module": "app.lab",
+        "name": "lab_process_dataset_generate",
+        "namespace": "lab"
+      },
+      {
+        "file": "back/app/lab/mcp.py",
         "handler": "lab_prompt_defaults",
-        "line": 100,
+        "line": 142,
         "module": "app.lab",
         "name": "lab_prompt_defaults",
         "namespace": "lab"
@@ -8099,7 +8405,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_review_get",
-        "line": 782,
+        "line": 824,
         "module": "app.lab",
         "name": "lab_review_get",
         "namespace": "lab"
@@ -8107,7 +8413,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_review_list",
-        "line": 769,
+        "line": 811,
         "module": "app.lab",
         "name": "lab_review_list",
         "namespace": "lab"
@@ -8115,7 +8421,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_review_submit",
-        "line": 795,
+        "line": 837,
         "module": "app.lab",
         "name": "lab_review_submit",
         "namespace": "lab"
@@ -8123,7 +8429,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_run_analyze",
-        "line": 638,
+        "line": 680,
         "module": "app.lab",
         "name": "lab_run_analyze",
         "namespace": "lab"
@@ -8131,7 +8437,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_run_cancel",
-        "line": 482,
+        "line": 524,
         "module": "app.lab",
         "name": "lab_run_cancel",
         "namespace": "lab"
@@ -8139,7 +8445,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_run_compare",
-        "line": 576,
+        "line": 618,
         "module": "app.lab",
         "name": "lab_run_compare",
         "namespace": "lab"
@@ -8147,7 +8453,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_run_delete",
-        "line": 529,
+        "line": 571,
         "module": "app.lab",
         "name": "lab_run_delete",
         "namespace": "lab"
@@ -8155,7 +8461,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_run_get",
-        "line": 456,
+        "line": 498,
         "module": "app.lab",
         "name": "lab_run_get",
         "namespace": "lab"
@@ -8163,7 +8469,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_run_list",
-        "line": 443,
+        "line": 485,
         "module": "app.lab",
         "name": "lab_run_list",
         "namespace": "lab"
@@ -8171,7 +8477,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_run_rejudge",
-        "line": 510,
+        "line": 552,
         "module": "app.lab",
         "name": "lab_run_rejudge",
         "namespace": "lab"
@@ -8179,7 +8485,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_run_results",
-        "line": 469,
+        "line": 511,
         "module": "app.lab",
         "name": "lab_run_results",
         "namespace": "lab"
@@ -8187,7 +8493,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_run_resume",
-        "line": 495,
+        "line": 537,
         "module": "app.lab",
         "name": "lab_run_resume",
         "namespace": "lab"
@@ -8195,7 +8501,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_run_start",
-        "line": 427,
+        "line": 469,
         "module": "app.lab",
         "name": "lab_run_start",
         "namespace": "lab"
@@ -8203,7 +8509,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_source_list",
-        "line": 347,
+        "line": 389,
         "module": "app.lab",
         "name": "lab_source_list",
         "namespace": "lab"
@@ -8211,7 +8517,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_task_add",
-        "line": 730,
+        "line": 772,
         "module": "app.lab",
         "name": "lab_task_add",
         "namespace": "lab"
@@ -8219,7 +8525,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_task_analyze",
-        "line": 661,
+        "line": 703,
         "module": "app.lab",
         "name": "lab_task_analyze",
         "namespace": "lab"
@@ -8227,7 +8533,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_task_candidates",
-        "line": 704,
+        "line": 746,
         "module": "app.lab",
         "name": "lab_task_candidates",
         "namespace": "lab"
@@ -8235,7 +8541,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_task_diagnoses",
-        "line": 756,
+        "line": 798,
         "module": "app.lab",
         "name": "lab_task_diagnoses",
         "namespace": "lab"
@@ -8243,7 +8549,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_task_list",
-        "line": 717,
+        "line": 759,
         "module": "app.lab",
         "name": "lab_task_list",
         "namespace": "lab"
@@ -8251,7 +8557,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_task_remove",
-        "line": 742,
+        "line": 784,
         "module": "app.lab",
         "name": "lab_task_remove",
         "namespace": "lab"
@@ -8259,7 +8565,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_topic_agent_list",
-        "line": 377,
+        "line": 419,
         "module": "app.lab",
         "name": "lab_topic_agent_list",
         "namespace": "lab"
@@ -8267,7 +8573,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_topic_messages_import",
-        "line": 414,
+        "line": 456,
         "module": "app.lab",
         "name": "lab_topic_messages_import",
         "namespace": "lab"
@@ -8275,7 +8581,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_topic_messages_preview",
-        "line": 401,
+        "line": 443,
         "module": "app.lab",
         "name": "lab_topic_messages_preview",
         "namespace": "lab"
@@ -8283,7 +8589,7 @@
       {
         "file": "back/app/lab/mcp.py",
         "handler": "lab_topic_person_list",
-        "line": 388,
+        "line": 430,
         "module": "app.lab",
         "name": "lab_topic_person_list",
         "namespace": "lab"
@@ -8539,7 +8845,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_analyze_run",
-        "line": 471,
+        "line": 705,
         "module": "app.process",
         "name": "process_admin_analyze_run",
         "namespace": "process_admin"
@@ -8547,7 +8853,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_cancel_run",
-        "line": 443,
+        "line": 677,
         "module": "app.process",
         "name": "process_admin_cancel_run",
         "namespace": "process_admin"
@@ -8555,7 +8861,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_create",
-        "line": 247,
+        "line": 468,
         "module": "app.process",
         "name": "process_admin_create",
         "namespace": "process_admin"
@@ -8563,7 +8869,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete",
-        "line": 324,
+        "line": 546,
         "module": "app.process",
         "name": "process_admin_delete",
         "namespace": "process_admin"
@@ -8571,7 +8877,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete_run",
-        "line": 485,
+        "line": 719,
         "module": "app.process",
         "name": "process_admin_delete_run",
         "namespace": "process_admin"
@@ -8579,7 +8885,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_engines",
-        "line": 170,
+        "line": 382,
         "module": "app.process",
         "name": "process_admin_engines",
         "namespace": "process_admin"
@@ -8587,7 +8893,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get",
-        "line": 228,
+        "line": 448,
         "module": "app.process",
         "name": "process_admin_get",
         "namespace": "process_admin"
@@ -8595,7 +8901,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get_run",
-        "line": 409,
+        "line": 643,
         "module": "app.process",
         "name": "process_admin_get_run",
         "namespace": "process_admin"
@@ -8603,7 +8909,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list",
-        "line": 205,
+        "line": 417,
         "module": "app.process",
         "name": "process_admin_list",
         "namespace": "process_admin"
@@ -8611,7 +8917,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list_runs",
-        "line": 380,
+        "line": 606,
         "module": "app.process",
         "name": "process_admin_list_runs",
         "namespace": "process_admin"
@@ -8619,7 +8925,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_refresh_run",
-        "line": 429,
+        "line": 663,
         "module": "app.process",
         "name": "process_admin_refresh_run",
         "namespace": "process_admin"
@@ -8627,7 +8933,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_retry_run",
-        "line": 457,
+        "line": 691,
         "module": "app.process",
         "name": "process_admin_retry_run",
         "namespace": "process_admin"
@@ -8635,7 +8941,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_start",
-        "line": 345,
+        "line": 568,
         "module": "app.process",
         "name": "process_admin_start",
         "namespace": "process_admin"
@@ -8643,7 +8949,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_sync",
-        "line": 189,
+        "line": 401,
         "module": "app.process",
         "name": "process_admin_sync",
         "namespace": "process_admin"
@@ -8651,7 +8957,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_update",
-        "line": 277,
+        "line": 498,
         "module": "app.process",
         "name": "process_admin_update",
         "namespace": "process_admin"
@@ -9202,7 +9508,7 @@
           "process_runs.id"
         ],
         "history_mixin": false,
-        "line": 316,
+        "line": 319,
         "module": "app.conversation",
         "table": "conversation_process_links"
       },
@@ -9213,7 +9519,7 @@
           "conversation_rounds.id"
         ],
         "history_mixin": false,
-        "line": 238,
+        "line": 241,
         "module": "app.conversation",
         "table": "conversation_round_attempts"
       },
@@ -9225,7 +9531,7 @@
           "messenger_messages.id"
         ],
         "history_mixin": false,
-        "line": 178,
+        "line": 181,
         "module": "app.conversation",
         "table": "conversation_round_messages"
       },
@@ -9254,7 +9560,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 268,
+        "line": 271,
         "module": "app.conversation",
         "table": "conversation_task_links"
       },
@@ -9816,7 +10122,7 @@
           "tasks.id"
         ],
         "history_mixin": true,
-        "line": 427,
+        "line": 428,
         "module": "app.lab",
         "table": "lab_agent_reviews"
       },
@@ -9828,7 +10134,7 @@
           "tasks.id"
         ],
         "history_mixin": true,
-        "line": 413,
+        "line": 414,
         "module": "app.lab",
         "table": "lab_commands"
       },
@@ -9840,7 +10146,7 @@
           "lab_evaluation_datasets.id"
         ],
         "history_mixin": true,
-        "line": 132,
+        "line": 133,
         "module": "app.lab",
         "table": "lab_evaluation_cases"
       },
@@ -9849,7 +10155,7 @@
         "file": "back/app/lab/models.py",
         "foreign_keys": [],
         "history_mixin": true,
-        "line": 91,
+        "line": 92,
         "module": "app.lab",
         "table": "lab_evaluation_datasets"
       },
@@ -9861,7 +10167,7 @@
           "lab_evaluation_runs.id"
         ],
         "history_mixin": true,
-        "line": 291,
+        "line": 292,
         "module": "app.lab",
         "table": "lab_evaluation_run_cases"
       },
@@ -9875,7 +10181,7 @@
           "tasks.id"
         ],
         "history_mixin": true,
-        "line": 193,
+        "line": 194,
         "module": "app.lab",
         "table": "lab_evaluation_runs"
       },
@@ -9888,7 +10194,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 391,
+        "line": 392,
         "module": "app.lab",
         "table": "lab_human_reviews"
       },
@@ -9900,7 +10206,7 @@
           "llms.id"
         ],
         "history_mixin": true,
-        "line": 339,
+        "line": 340,
         "module": "app.lab",
         "table": "lab_judgment_campaigns"
       },
@@ -9912,7 +10218,7 @@
           "lab_judgment_campaigns.id"
         ],
         "history_mixin": true,
-        "line": 366,
+        "line": 367,
         "module": "app.lab",
         "table": "lab_judgment_results"
       },
@@ -9923,7 +10229,7 @@
           "lab_operations.id"
         ],
         "history_mixin": true,
-        "line": 442,
+        "line": 443,
         "module": "app.lab",
         "table": "lab_operation_results"
       },
@@ -9940,13 +10246,38 @@
         "table": "lab_operations"
       },
       {
+        "class_name": "LabProcessCampaign",
+        "file": "back/app/lab/process_evaluation_models.py",
+        "foreign_keys": [
+          "agents.id",
+          "documents.id",
+          "users.id"
+        ],
+        "history_mixin": true,
+        "line": 14,
+        "module": "app.lab",
+        "table": "lab_process_campaigns"
+      },
+      {
+        "class_name": "LabProcessCase",
+        "file": "back/app/lab/process_evaluation_models.py",
+        "foreign_keys": [
+          "lab_process_campaigns.id",
+          "process_runs.id"
+        ],
+        "history_mixin": true,
+        "line": 30,
+        "module": "app.lab",
+        "table": "lab_process_cases"
+      },
+      {
         "class_name": "LabTaskDiagnosis",
         "file": "back/app/lab/models.py",
         "foreign_keys": [
           "tasks.id"
         ],
         "history_mixin": true,
-        "line": 45,
+        "line": 46,
         "module": "app.lab",
         "table": "lab_task_diagnoses"
       },
@@ -9957,7 +10288,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 29,
+        "line": 30,
         "module": "app.lab",
         "table": "lab_tasks"
       },
@@ -10551,12 +10882,37 @@
         "file": "back/app/process/models.py",
         "foreign_keys": [
           "agents.id",
+          "documents.id",
           "tools.id"
         ],
         "history_mixin": true,
-        "line": 25,
+        "line": 26,
         "module": "app.process",
         "table": "process_definitions"
+      },
+      {
+        "class_name": "ProcessNodeAttempt",
+        "file": "back/app/process/models.py",
+        "foreign_keys": [
+          "process_node_runs.id",
+          "process_runs.id",
+          "tasks.id"
+        ],
+        "history_mixin": false,
+        "line": 195,
+        "module": "app.process",
+        "table": "process_node_attempts"
+      },
+      {
+        "class_name": "ProcessNodeRun",
+        "file": "back/app/process/models.py",
+        "foreign_keys": [
+          "process_runs.id"
+        ],
+        "history_mixin": false,
+        "line": 178,
+        "module": "app.process",
+        "table": "process_node_runs"
       },
       {
         "class_name": "ProcessRunEvent",
@@ -10565,7 +10921,7 @@
           "process_runs.id"
         ],
         "history_mixin": false,
-        "line": 116,
+        "line": 135,
         "module": "app.process",
         "table": "process_run_events"
       },
@@ -10574,11 +10930,15 @@
         "file": "back/app/process/models.py",
         "foreign_keys": [
           "agents.id",
+          "documents.id",
           "process_definitions.id",
-          "tasks.id"
+          "process_node_attempts.id",
+          "process_runs.id",
+          "tasks.id",
+          "users.id"
         ],
         "history_mixin": true,
-        "line": 52,
+        "line": 58,
         "module": "app.process",
         "table": "process_runs"
       },
@@ -10589,7 +10949,7 @@
           "process_runs.id"
         ],
         "history_mixin": false,
-        "line": 138,
+        "line": 157,
         "module": "app.process",
         "table": "process_start_jobs"
       },
@@ -11972,28 +12332,28 @@
       {
         "constant": "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 28,
+        "line": 30,
         "module": "app.lab",
         "value": "privilege.CONVERSATION_EXECUTOR_EVALUATION_ACCESS"
       },
       {
         "constant": "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 29,
+        "line": 31,
         "module": "app.lab",
         "value": "privilege.CONVERSATION_EXECUTOR_EVALUATION_EDIT"
       },
       {
         "constant": "DISPATCHER_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 6,
+        "line": 8,
         "module": "app.lab",
         "value": "privilege.DISPATCHER_EVALUATION_ACCESS"
       },
       {
         "constant": "DISPATCHER_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 7,
+        "line": 9,
         "module": "app.lab",
         "value": "privilege.DISPATCHER_EVALUATION_EDIT"
       },
@@ -12014,98 +12374,112 @@
       {
         "constant": "GOAL_TRACKING_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 22,
+        "line": 24,
         "module": "app.lab",
         "value": "privilege.GOAL_TRACKING_EVALUATION_ACCESS"
       },
       {
         "constant": "GOAL_TRACKING_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 23,
+        "line": 25,
         "module": "app.lab",
         "value": "privilege.GOAL_TRACKING_EVALUATION_EDIT"
       },
       {
         "constant": "MEMORY_EXTRACTION_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 16,
+        "line": 18,
         "module": "app.lab",
         "value": "privilege.MEMORY_EXTRACTION_EVALUATION_ACCESS"
       },
       {
         "constant": "MEMORY_EXTRACTION_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 17,
+        "line": 19,
         "module": "app.lab",
         "value": "privilege.MEMORY_EXTRACTION_EVALUATION_EDIT"
       },
       {
         "constant": "OUTCOME_REFLECTION_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 19,
+        "line": 21,
         "module": "app.lab",
         "value": "privilege.OUTCOME_REFLECTION_EVALUATION_ACCESS"
       },
       {
         "constant": "OUTCOME_REFLECTION_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 20,
+        "line": 22,
         "module": "app.lab",
         "value": "privilege.OUTCOME_REFLECTION_EVALUATION_EDIT"
       },
       {
         "constant": "PLANNER_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 10,
+        "line": 12,
         "module": "app.lab",
         "value": "privilege.PLANNER_EVALUATION_ACCESS"
       },
       {
         "constant": "PLANNER_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 11,
+        "line": 13,
         "module": "app.lab",
         "value": "privilege.PLANNER_EVALUATION_EDIT"
       },
       {
+        "constant": "PROCESS_EVALUATION_ACCESS",
+        "file": "back/app/lab/privileges.py",
+        "line": 5,
+        "module": "app.lab",
+        "value": "privilege.PROCESS_EVALUATION_ACCESS"
+      },
+      {
+        "constant": "PROCESS_EVALUATION_EDIT",
+        "file": "back/app/lab/privileges.py",
+        "line": 6,
+        "module": "app.lab",
+        "value": "privilege.PROCESS_EVALUATION_EDIT"
+      },
+      {
         "constant": "TASK_EXECUTOR_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 25,
+        "line": 27,
         "module": "app.lab",
         "value": "privilege.TASK_EXECUTOR_EVALUATION_ACCESS"
       },
       {
         "constant": "TASK_EXECUTOR_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 26,
+        "line": 28,
         "module": "app.lab",
         "value": "privilege.TASK_EXECUTOR_EVALUATION_EDIT"
       },
       {
         "constant": "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 13,
+        "line": 15,
         "module": "app.lab",
         "value": "privilege.TOPIC_CLASSIFICATION_EVALUATION_ACCESS"
       },
       {
         "constant": "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 14,
+        "line": 16,
         "module": "app.lab",
         "value": "privilege.TOPIC_CLASSIFICATION_EVALUATION_EDIT"
       },
       {
         "constant": "VOICE_EXECUTOR_EVALUATION_ACCESS",
         "file": "back/app/lab/privileges.py",
-        "line": 31,
+        "line": 33,
         "module": "app.lab",
         "value": "privilege.VOICE_EXECUTOR_EVALUATION_ACCESS"
       },
       {
         "constant": "VOICE_EXECUTOR_EVALUATION_EDIT",
         "file": "back/app/lab/privileges.py",
-        "line": 32,
+        "line": 34,
         "module": "app.lab",
         "value": "privilege.VOICE_EXECUTOR_EVALUATION_EDIT"
       },
@@ -12175,14 +12549,21 @@
       {
         "constant": "PROCESS_ADMIN",
         "file": "back/app/process/privileges.py",
-        "line": 5,
+        "line": 6,
         "module": "app.process",
         "value": "privilege.PROCESS_ADMIN"
       },
       {
-        "constant": "PROCESS_LAUNCH",
+        "constant": "PROCESS_EDIT",
         "file": "back/app/process/privileges.py",
         "line": 4,
+        "module": "app.process",
+        "value": "privilege.PROCESS_EDIT"
+      },
+      {
+        "constant": "PROCESS_LAUNCH",
+        "file": "back/app/process/privileges.py",
+        "line": 5,
         "module": "app.process",
         "value": "privilege.PROCESS_LAUNCH"
       },
@@ -14141,10 +14522,19 @@
       },
       {
         "authorized": true,
+        "declared_path": "/conversations/agents/{agent_id}/active-work",
+        "file": "back/app/conversation/router.py",
+        "handler": "read_agent_active_work",
+        "line": 33,
+        "method": "GET",
+        "module": "app.conversation"
+      },
+      {
+        "authorized": true,
         "declared_path": "/conversations/messages",
         "file": "back/app/conversation/router.py",
         "handler": "read_conversation_messages",
-        "line": 30,
+        "line": 52,
         "method": "GET",
         "module": "app.conversation"
       },
@@ -14153,7 +14543,7 @@
         "declared_path": "/conversations/rounds/{round_id}",
         "file": "back/app/conversation/router.py",
         "handler": "delete_conversation_round",
-        "line": 139,
+        "line": 161,
         "method": "DELETE",
         "module": "app.conversation"
       },
@@ -14162,7 +14552,7 @@
         "declared_path": "/conversations/rounds/{round_id}",
         "file": "back/app/conversation/router.py",
         "handler": "read_conversation_round",
-        "line": 73,
+        "line": 95,
         "method": "GET",
         "module": "app.conversation"
       },
@@ -14171,7 +14561,7 @@
         "declared_path": "/conversations/rounds/{round_id}/dataset",
         "file": "back/app/conversation/router.py",
         "handler": "export_conversation_round",
-        "line": 101,
+        "line": 123,
         "method": "GET",
         "module": "app.conversation"
       },
@@ -14180,7 +14570,7 @@
         "declared_path": "/conversations/rounds/{round_id}/delivery-resolution",
         "file": "back/app/conversation/router.py",
         "handler": "resolve_conversation_delivery",
-        "line": 114,
+        "line": 136,
         "method": "POST",
         "module": "app.conversation"
       },
@@ -14189,7 +14579,7 @@
         "declared_path": "/conversations/rounds/{round_id}/topic",
         "file": "back/app/conversation/router.py",
         "handler": "update_conversation_round_topic",
-        "line": 79,
+        "line": 101,
         "method": "PUT",
         "module": "app.conversation"
       },
@@ -14369,7 +14759,7 @@
         "declared_path": "/definitions",
         "file": "back/app/process/router.py",
         "handler": "read_definitions",
-        "line": 125,
+        "line": 139,
         "method": "GET",
         "module": "app.process"
       },
@@ -14378,7 +14768,7 @@
         "declared_path": "/definitions",
         "file": "back/app/process/router.py",
         "handler": "create_definition",
-        "line": 138,
+        "line": 153,
         "method": "POST",
         "module": "app.process"
       },
@@ -14387,7 +14777,7 @@
         "declared_path": "/definitions/sync",
         "file": "back/app/process/router.py",
         "handler": "sync_definitions",
-        "line": 149,
+        "line": 164,
         "method": "POST",
         "module": "app.process"
       },
@@ -14396,7 +14786,7 @@
         "declared_path": "/definitions/{process_id}",
         "file": "back/app/process/router.py",
         "handler": "delete_definition",
-        "line": 183,
+        "line": 198,
         "method": "DELETE",
         "module": "app.process"
       },
@@ -14405,7 +14795,7 @@
         "declared_path": "/definitions/{process_id}",
         "file": "back/app/process/router.py",
         "handler": "read_definition",
-        "line": 161,
+        "line": 176,
         "method": "GET",
         "module": "app.process"
       },
@@ -14414,7 +14804,7 @@
         "declared_path": "/definitions/{process_id}",
         "file": "back/app/process/router.py",
         "handler": "update_definition",
-        "line": 167,
+        "line": 182,
         "method": "PUT",
         "module": "app.process"
       },
@@ -14486,7 +14876,7 @@
         "declared_path": "/evaluation/candidates",
         "file": "back/app/lab/router.py",
         "handler": "read_candidates",
-        "line": 214,
+        "line": 216,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14495,7 +14885,7 @@
         "declared_path": "/evaluation/config",
         "file": "back/app/lab/router.py",
         "handler": "read_config",
-        "line": 208,
+        "line": 210,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14504,7 +14894,7 @@
         "declared_path": "/evaluation/dispatcher/candidates",
         "file": "back/app/lab/router.py",
         "handler": "read_dispatcher_candidates",
-        "line": 376,
+        "line": 378,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14513,7 +14903,7 @@
         "declared_path": "/evaluation/dispatcher/cases/{case_id}",
         "file": "back/app/lab/router.py",
         "handler": "delete_dispatcher_case",
-        "line": 421,
+        "line": 423,
         "method": "DELETE",
         "module": "app.lab"
       },
@@ -14522,7 +14912,7 @@
         "declared_path": "/evaluation/dispatcher/cases/{case_id}",
         "file": "back/app/lab/router.py",
         "handler": "update_dispatcher_case",
-        "line": 410,
+        "line": 412,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -14531,7 +14921,7 @@
         "declared_path": "/evaluation/dispatcher/cases/{case_id}/duplicate",
         "file": "back/app/lab/router.py",
         "handler": "duplicate_dispatcher_case",
-        "line": 432,
+        "line": 434,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14540,7 +14930,7 @@
         "declared_path": "/evaluation/dispatcher/cases/{case_id}/generate-expected",
         "file": "back/app/lab/router.py",
         "handler": "generate_dispatcher_expected",
-        "line": 461,
+        "line": 463,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14549,7 +14939,7 @@
         "declared_path": "/evaluation/dispatcher/cases/{case_id}/restore-source",
         "file": "back/app/lab/router.py",
         "handler": "restore_dispatcher_case",
-        "line": 441,
+        "line": 443,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14558,7 +14948,7 @@
         "declared_path": "/evaluation/dispatcher/datasets",
         "file": "back/app/lab/router.py",
         "handler": "read_dispatcher_datasets",
-        "line": 294,
+        "line": 296,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14567,7 +14957,7 @@
         "declared_path": "/evaluation/dispatcher/datasets",
         "file": "back/app/lab/router.py",
         "handler": "create_dispatcher_dataset",
-        "line": 304,
+        "line": 306,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14576,7 +14966,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}",
         "file": "back/app/lab/router.py",
         "handler": "delete_dispatcher_dataset",
-        "line": 343,
+        "line": 345,
         "method": "DELETE",
         "module": "app.lab"
       },
@@ -14585,7 +14975,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}",
         "file": "back/app/lab/router.py",
         "handler": "update_dispatcher_dataset",
-        "line": 312,
+        "line": 314,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -14594,7 +14984,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}/cases",
         "file": "back/app/lab/router.py",
         "handler": "read_dispatcher_cases",
-        "line": 350,
+        "line": 352,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14603,7 +14993,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}/cases",
         "file": "back/app/lab/router.py",
         "handler": "create_dispatcher_case",
-        "line": 363,
+        "line": 365,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14612,7 +15002,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}/cases/from-task",
         "file": "back/app/lab/router.py",
         "handler": "import_dispatcher_case",
-        "line": 394,
+        "line": 396,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14621,7 +15011,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}/runs",
         "file": "back/app/lab/router.py",
         "handler": "read_dispatcher_runs",
-        "line": 489,
+        "line": 491,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14630,7 +15020,7 @@
         "declared_path": "/evaluation/dispatcher/datasets/{dataset_id}/runs",
         "file": "back/app/lab/router.py",
         "handler": "start_dispatcher_run",
-        "line": 478,
+        "line": 480,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14639,7 +15029,7 @@
         "declared_path": "/evaluation/dispatcher/runs/{run_id}",
         "file": "back/app/lab/router.py",
         "handler": "read_dispatcher_run",
-        "line": 501,
+        "line": 503,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14648,7 +15038,7 @@
         "declared_path": "/evaluation/dispatcher/runs/{run_id}/analyze",
         "file": "back/app/lab/router.py",
         "handler": "analyze_dispatcher_run",
-        "line": 510,
+        "line": 512,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14657,7 +15047,7 @@
         "declared_path": "/evaluation/dispatcher/runs/{run_id}/cancel",
         "file": "back/app/lab/router.py",
         "handler": "cancel_dispatcher_run",
-        "line": 523,
+        "line": 525,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14666,7 +15056,7 @@
         "declared_path": "/evaluation/executor-prompts/defaults",
         "file": "back/app/lab/router.py",
         "handler": "read_executor_prompt_defaults",
-        "line": 538,
+        "line": 540,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14675,7 +15065,7 @@
         "declared_path": "/evaluation/mechanisms",
         "file": "back/app/lab/router.py",
         "handler": "read_mechanisms",
-        "line": 544,
+        "line": 546,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14684,7 +15074,7 @@
         "declared_path": "/evaluation/memory_extraction/datasets/{dataset_id}/configuration",
         "file": "back/app/lab/router.py",
         "handler": "update_memory_extraction_dataset_configuration",
-        "line": 645,
+        "line": 647,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -14693,7 +15083,7 @@
         "declared_path": "/evaluation/memory_extraction/prompt-default",
         "file": "back/app/lab/router.py",
         "handler": "read_memory_extraction_prompt_default",
-        "line": 328,
+        "line": 330,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14702,7 +15092,7 @@
         "declared_path": "/evaluation/planner/datasets/{dataset_id}/configuration",
         "file": "back/app/lab/router.py",
         "handler": "update_planner_dataset_configuration",
-        "line": 664,
+        "line": 666,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -14711,7 +15101,7 @@
         "declared_path": "/evaluation/planner/prompt-default",
         "file": "back/app/lab/router.py",
         "handler": "read_planner_prompt_default",
-        "line": 337,
+        "line": 339,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14720,7 +15110,7 @@
         "declared_path": "/evaluation/tasks",
         "file": "back/app/lab/router.py",
         "handler": "read_lab_tasks",
-        "line": 228,
+        "line": 230,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14729,7 +15119,7 @@
         "declared_path": "/evaluation/tasks",
         "file": "back/app/lab/router.py",
         "handler": "add_lab_task",
-        "line": 239,
+        "line": 241,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14738,7 +15128,7 @@
         "declared_path": "/evaluation/tasks/{task_id}",
         "file": "back/app/lab/router.py",
         "handler": "remove_lab_task",
-        "line": 254,
+        "line": 256,
         "method": "DELETE",
         "module": "app.lab"
       },
@@ -14747,7 +15137,7 @@
         "declared_path": "/evaluation/tasks/{task_id}/analyze",
         "file": "back/app/lab/router.py",
         "handler": "analyze_task",
-        "line": 278,
+        "line": 280,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14756,7 +15146,7 @@
         "declared_path": "/evaluation/tasks/{task_id}/diagnoses",
         "file": "back/app/lab/router.py",
         "handler": "read_task_diagnoses",
-        "line": 265,
+        "line": 267,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14765,7 +15155,7 @@
         "declared_path": "/evaluation/topic-classification/datasets/{dataset_id}/cases/from-message-range",
         "file": "back/app/lab/router.py",
         "handler": "import_topic_messages",
-        "line": 607,
+        "line": 609,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14774,7 +15164,7 @@
         "declared_path": "/evaluation/topic-classification/datasets/{dataset_id}/configuration",
         "file": "back/app/lab/router.py",
         "handler": "update_topic_dataset_configuration",
-        "line": 626,
+        "line": 628,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -14783,7 +15173,7 @@
         "declared_path": "/evaluation/topic-classification/message-agents",
         "file": "back/app/lab/router.py",
         "handler": "read_topic_message_agents",
-        "line": 553,
+        "line": 555,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14792,7 +15182,7 @@
         "declared_path": "/evaluation/topic-classification/message-people",
         "file": "back/app/lab/router.py",
         "handler": "read_topic_message_people",
-        "line": 563,
+        "line": 565,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14801,7 +15191,7 @@
         "declared_path": "/evaluation/topic-classification/message-preview",
         "file": "back/app/lab/router.py",
         "handler": "preview_topic_messages",
-        "line": 577,
+        "line": 579,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14810,7 +15200,7 @@
         "declared_path": "/evaluation/{mechanism}/candidates",
         "file": "back/app/lab/router.py",
         "handler": "read_mechanism_candidates",
-        "line": 776,
+        "line": 778,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14819,7 +15209,7 @@
         "declared_path": "/evaluation/{mechanism}/cases/{case_id}",
         "file": "back/app/lab/router.py",
         "handler": "delete_mechanism_case",
-        "line": 898,
+        "line": 900,
         "method": "DELETE",
         "module": "app.lab"
       },
@@ -14828,7 +15218,7 @@
         "declared_path": "/evaluation/{mechanism}/cases/{case_id}",
         "file": "back/app/lab/router.py",
         "handler": "update_mechanism_case",
-        "line": 880,
+        "line": 882,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -14837,7 +15227,7 @@
         "declared_path": "/evaluation/{mechanism}/cases/{case_id}/duplicate",
         "file": "back/app/lab/router.py",
         "handler": "duplicate_mechanism_case",
-        "line": 912,
+        "line": 914,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14846,7 +15236,7 @@
         "declared_path": "/evaluation/{mechanism}/cases/{case_id}/generate-expected",
         "file": "back/app/lab/router.py",
         "handler": "generate_mechanism_expected",
-        "line": 954,
+        "line": 956,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14855,7 +15245,7 @@
         "declared_path": "/evaluation/{mechanism}/cases/{case_id}/restore-source",
         "file": "back/app/lab/router.py",
         "handler": "restore_mechanism_case",
-        "line": 929,
+        "line": 931,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14864,7 +15254,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets",
         "file": "back/app/lab/router.py",
         "handler": "read_mechanism_datasets",
-        "line": 683,
+        "line": 685,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14873,7 +15263,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets",
         "file": "back/app/lab/router.py",
         "handler": "create_mechanism_dataset",
-        "line": 698,
+        "line": 700,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14882,7 +15272,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/synthetic",
         "file": "back/app/lab/router.py",
         "handler": "generate_synthetic_dataset",
-        "line": 114,
+        "line": 116,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14891,7 +15281,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}",
         "file": "back/app/lab/router.py",
         "handler": "delete_mechanism_dataset",
-        "line": 727,
+        "line": 729,
         "method": "DELETE",
         "module": "app.lab"
       },
@@ -14900,7 +15290,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}",
         "file": "back/app/lab/router.py",
         "handler": "update_mechanism_dataset",
-        "line": 709,
+        "line": 711,
         "method": "PATCH",
         "module": "app.lab"
       },
@@ -14909,7 +15299,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/cases",
         "file": "back/app/lab/router.py",
         "handler": "read_mechanism_cases",
-        "line": 740,
+        "line": 742,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14918,7 +15308,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/cases",
         "file": "back/app/lab/router.py",
         "handler": "create_mechanism_case",
-        "line": 758,
+        "line": 760,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14927,7 +15317,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/cases/from-execution",
         "file": "back/app/lab/router.py",
         "handler": "import_executor_execution_case",
-        "line": 854,
+        "line": 856,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14936,7 +15326,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/cases/from-source",
         "file": "back/app/lab/router.py",
         "handler": "import_mechanism_case",
-        "line": 799,
+        "line": 801,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14945,7 +15335,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/cases/from-task",
         "file": "back/app/lab/router.py",
         "handler": "import_mechanism_task_case",
-        "line": 829,
+        "line": 831,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14954,7 +15344,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/preview",
         "file": "back/app/lab/router.py",
         "handler": "preview_lab_input",
-        "line": 155,
+        "line": 157,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14963,7 +15353,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/runs",
         "file": "back/app/lab/router.py",
         "handler": "read_mechanism_runs",
-        "line": 997,
+        "line": 999,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14972,7 +15362,7 @@
         "declared_path": "/evaluation/{mechanism}/datasets/{dataset_id}/runs",
         "file": "back/app/lab/router.py",
         "handler": "start_mechanism_run",
-        "line": 976,
+        "line": 978,
         "method": "POST",
         "module": "app.lab"
       },
@@ -14981,7 +15371,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/compare",
         "file": "back/app/lab/router.py",
         "handler": "compare_benchmarks",
-        "line": 91,
+        "line": 93,
         "method": "GET",
         "module": "app.lab"
       },
@@ -14990,7 +15380,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}",
         "file": "back/app/lab/router.py",
         "handler": "delete_mechanism_run",
-        "line": 1025,
+        "line": 1027,
         "method": "DELETE",
         "module": "app.lab"
       },
@@ -14999,7 +15389,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}",
         "file": "back/app/lab/router.py",
         "handler": "read_mechanism_run",
-        "line": 1013,
+        "line": 1015,
         "method": "GET",
         "module": "app.lab"
       },
@@ -15008,7 +15398,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}/analyze",
         "file": "back/app/lab/router.py",
         "handler": "analyze_mechanism_run",
-        "line": 1039,
+        "line": 1041,
         "method": "POST",
         "module": "app.lab"
       },
@@ -15017,7 +15407,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}/cancel",
         "file": "back/app/lab/router.py",
         "handler": "cancel_mechanism_run",
-        "line": 1057,
+        "line": 1059,
         "method": "POST",
         "module": "app.lab"
       },
@@ -15026,7 +15416,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}/human-review",
         "file": "back/app/lab/router.py",
         "handler": "read_human_review",
-        "line": 129,
+        "line": 131,
         "method": "GET",
         "module": "app.lab"
       },
@@ -15035,7 +15425,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}/human-review",
         "file": "back/app/lab/router.py",
         "handler": "submit_human_review",
-        "line": 142,
+        "line": 144,
         "method": "POST",
         "module": "app.lab"
       },
@@ -15044,7 +15434,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}/rejudge",
         "file": "back/app/lab/router.py",
         "handler": "rejudge_benchmark",
-        "line": 168,
+        "line": 170,
         "method": "POST",
         "module": "app.lab"
       },
@@ -15053,7 +15443,7 @@
         "declared_path": "/evaluation/{mechanism}/runs/{run_id}/resume",
         "file": "back/app/lab/router.py",
         "handler": "resume_benchmark",
-        "line": 181,
+        "line": 183,
         "method": "POST",
         "module": "app.lab"
       },
@@ -15695,6 +16085,231 @@
         "line": 152,
         "method": "GET",
         "module": "app.incident"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/agents",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_execution_agents",
+        "line": 105,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_list_definitions",
+        "line": 112,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_create_definition",
+        "line": 119,
+        "method": "POST",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions/{code}",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_read_definition",
+        "line": 130,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions/{code}",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_update_definition",
+        "line": 137,
+        "method": "PUT",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions/{code}/archive",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_archive_definition",
+        "line": 193,
+        "method": "POST",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions/{code}/history",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_definition_history",
+        "line": 145,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions/{code}/history/{revision}",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_delete_revision",
+        "line": 166,
+        "method": "DELETE",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions/{code}/history/{revision}",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_history_detail",
+        "line": 152,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions/{code}/restore",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_restore_definition",
+        "line": 159,
+        "method": "POST",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions/{code}/runs",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_launch",
+        "line": 200,
+        "method": "POST",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions/{code}/sharing",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_sharing",
+        "line": 173,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions/{code}/sharing",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_update_sharing",
+        "line": 183,
+        "method": "PUT",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/humans",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_human_options",
+        "line": 79,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/runs",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_run_list",
+        "line": 210,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/runs/{identity}",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_inspect_run",
+        "line": 218,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/runs/{identity}/activities/{node_key}",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_activity_occurrences",
+        "line": 233,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/runs/{identity}/cancel",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_cancel",
+        "line": 263,
+        "method": "POST",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/runs/{identity}/children",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_run_children",
+        "line": 241,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/runs/{identity}/control",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_control",
+        "line": 255,
+        "method": "POST",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/runs/{identity}/metrics",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_metrics",
+        "line": 248,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/runs/{identity}/nodes/{node_identity}",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_inspect_node",
+        "line": 226,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/runs/{identity}/retry",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_retry",
+        "line": 272,
+        "method": "POST",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/sharing-options",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_sharing_options",
+        "line": 88,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/validate",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_validate_definition",
+        "line": 97,
+        "method": "POST",
+        "module": "app.process"
       },
       {
         "authorized": true,
@@ -17087,7 +17702,7 @@
         "declared_path": "/metrics",
         "file": "back/app/process/router.py",
         "handler": "read_metrics",
-        "line": 431,
+        "line": 455,
         "method": "GET",
         "module": "app.process"
       },
@@ -17150,7 +17765,7 @@
         "declared_path": "/operations",
         "file": "back/app/process/router.py",
         "handler": "read_process_operations",
-        "line": 114,
+        "line": 128,
         "method": "GET",
         "module": "app.process"
       },
@@ -17189,6 +17804,51 @@
         "line": 29,
         "method": "DELETE",
         "module": "app.messenger"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/process-campaigns",
+        "file": "back/app/lab/process_evaluation_router.py",
+        "handler": "lab_process_campaign_start",
+        "line": 85,
+        "method": "POST",
+        "module": "app.lab"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/process-campaigns/datasets",
+        "file": "back/app/lab/process_evaluation_router.py",
+        "handler": "lab_process_dataset_create",
+        "line": 65,
+        "method": "POST",
+        "module": "app.lab"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/process-campaigns/datasets/generate",
+        "file": "back/app/lab/process_evaluation_router.py",
+        "handler": "lab_process_dataset_generate",
+        "line": 74,
+        "method": "POST",
+        "module": "app.lab"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/process-campaigns/{identity}",
+        "file": "back/app/lab/process_evaluation_router.py",
+        "handler": "lab_process_campaign_get",
+        "line": 95,
+        "method": "GET",
+        "module": "app.lab"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/process-campaigns/{identity}/cancel",
+        "file": "back/app/lab/process_evaluation_router.py",
+        "handler": "lab_process_campaign_cancel",
+        "line": 104,
+        "method": "POST",
+        "module": "app.lab"
       },
       {
         "authorized": false,
@@ -17285,7 +17945,7 @@
         "declared_path": "/retention/preview",
         "file": "back/app/process/router.py",
         "handler": "preview_retention",
-        "line": 79,
+        "line": 93,
         "method": "GET",
         "module": "app.process"
       },
@@ -17294,7 +17954,7 @@
         "declared_path": "/runs",
         "file": "back/app/process/router.py",
         "handler": "read_runs",
-        "line": 237,
+        "line": 258,
         "method": "GET",
         "module": "app.process"
       },
@@ -17303,7 +17963,7 @@
         "declared_path": "/runs",
         "file": "back/app/process/router.py",
         "handler": "create_run",
-        "line": 191,
+        "line": 212,
         "method": "POST",
         "module": "app.process"
       },
@@ -17312,7 +17972,7 @@
         "declared_path": "/runs/{run_id}",
         "file": "back/app/process/router.py",
         "handler": "delete_run",
-        "line": 293,
+        "line": 315,
         "method": "DELETE",
         "module": "app.process"
       },
@@ -17321,7 +17981,7 @@
         "declared_path": "/runs/{run_id}",
         "file": "back/app/process/router.py",
         "handler": "read_run",
-        "line": 283,
+        "line": 305,
         "method": "GET",
         "module": "app.process"
       },
@@ -17330,7 +17990,7 @@
         "declared_path": "/runs/{run_id}/analyze",
         "file": "back/app/process/router.py",
         "handler": "analyze_run",
-        "line": 318,
+        "line": 342,
         "method": "POST",
         "module": "app.process"
       },
@@ -17339,7 +17999,7 @@
         "declared_path": "/runs/{run_id}/cancel",
         "file": "back/app/process/router.py",
         "handler": "cancel_run",
-        "line": 328,
+        "line": 352,
         "method": "POST",
         "module": "app.process"
       },
@@ -17348,7 +18008,7 @@
         "declared_path": "/runs/{run_id}/events",
         "file": "back/app/process/router.py",
         "handler": "receive_event",
-        "line": 361,
+        "line": 385,
         "method": "POST",
         "module": "app.process"
       },
@@ -17357,7 +18017,7 @@
         "declared_path": "/runs/{run_id}/export",
         "file": "back/app/process/router.py",
         "handler": "export_process_run",
-        "line": 86,
+        "line": 100,
         "method": "GET",
         "module": "app.process"
       },
@@ -17366,7 +18026,7 @@
         "declared_path": "/runs/{run_id}/files/{file_id}",
         "file": "back/app/process/router.py",
         "handler": "download_run_file",
-        "line": 375,
+        "line": 399,
         "method": "GET",
         "module": "app.process"
       },
@@ -17375,7 +18035,7 @@
         "declared_path": "/runs/{run_id}/refresh",
         "file": "back/app/process/router.py",
         "handler": "refresh_run",
-        "line": 305,
+        "line": 327,
         "method": "POST",
         "module": "app.process"
       },
@@ -17384,7 +18044,7 @@
         "declared_path": "/runs/{run_id}/retry",
         "file": "back/app/process/router.py",
         "handler": "retry_run",
-        "line": 341,
+        "line": 365,
         "method": "POST",
         "module": "app.process"
       },
@@ -17915,7 +18575,7 @@
         "declared_path": "/tools",
         "file": "back/app/process/router.py",
         "handler": "read_process_tools",
-        "line": 99,
+        "line": 113,
         "method": "GET",
         "module": "app.process"
       },
@@ -17978,7 +18638,7 @@
         "declared_path": "/tools/{tool_code}/health",
         "file": "back/app/process/router.py",
         "handler": "read_process_tool_health",
-        "line": 105,
+        "line": 119,
         "method": "GET",
         "module": "app.process"
       },
@@ -18320,7 +18980,7 @@
         "declared_path": "/workflows/{workflow_id}/runs/{engine_run_id}/sync",
         "file": "back/app/process/router.py",
         "handler": "sync_engine_run",
-        "line": 216,
+        "line": 237,
         "method": "POST",
         "module": "app.process"
       },
@@ -18568,6 +19228,7 @@
           "front/app/chat/components/ConversationDocumentDialog.vue",
           "front/app/chat/components/ConversationDocumentsPanel.vue",
           "front/app/chat/components/ConversationProcessDialog.vue",
+          "front/app/chat/components/ConversationProcessesPanel.vue",
           "front/app/chat/components/MarkdownAttachmentPreview.vue",
           "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/components/MessageTimeline.vue",
@@ -19099,7 +19760,8 @@
           "front/app/lab/services/dispatcherEvaluationService.ts",
           "front/app/lab/services/evaluationService.ts",
           "front/app/lab/services/labWorkbenchService.ts",
-          "front/app/lab/services/mechanismEvaluationService.ts"
+          "front/app/lab/services/mechanismEvaluationService.ts",
+          "front/app/lab/services/processCampaignService.ts"
         ],
         "source": "app/lab",
         "target": "core/api"
@@ -19110,7 +19772,8 @@
           "front/app/lab/components/TaskLabCaptureMenu.vue",
           "front/app/lab/pages/[section].vue",
           "front/app/lab/pages/ai-evaluations.vue",
-          "front/app/lab/pages/index.vue"
+          "front/app/lab/pages/index.vue",
+          "front/app/lab/pages/processes.vue"
         ],
         "source": "app/lab",
         "target": "core/authorize"
@@ -19133,6 +19796,7 @@
           "front/app/lab/components/MemoryExtractionCaseEditor.vue",
           "front/app/lab/pages/ai-evaluations.vue",
           "front/app/lab/pages/index.vue",
+          "front/app/lab/pages/processes.vue",
           "front/app/lab/textPresentation.ts"
         ],
         "source": "app/lab",
@@ -19354,11 +20018,31 @@
       },
       {
         "files": [
+          "front/app/process/components/ProcessAgentSelect.vue",
+          "front/app/process/components/ProcessLaneHeader.vue",
           "front/app/process/components/ProcessRunsPanel.vue",
-          "front/app/process/pages/index.vue"
+          "front/app/process/components/ProcessSharingDraft.vue",
+          "front/app/process/pages/index.vue",
+          "front/app/process/services/processService.ts"
         ],
         "source": "app/process",
         "target": "app/agent"
+      },
+      {
+        "files": [
+          "front/app/process/services/nativeProcessService.ts"
+        ],
+        "source": "app/process",
+        "target": "app/dataset"
+      },
+      {
+        "files": [
+          "front/app/process/components/NativeProcessEditor.vue",
+          "front/app/process/components/ProcessSharingDraft.vue",
+          "front/app/process/services/nativeProcessService.ts"
+        ],
+        "source": "app/process",
+        "target": "app/memory"
       },
       {
         "files": [
@@ -19369,6 +20053,7 @@
       },
       {
         "files": [
+          "front/app/process/services/nativeProcessService.ts",
           "front/app/process/services/processService.ts"
         ],
         "source": "app/process",
@@ -19376,6 +20061,10 @@
       },
       {
         "files": [
+          "front/app/process/components/NativeActivityDetails.vue",
+          "front/app/process/components/NativeProcessEditor.vue",
+          "front/app/process/components/NativeProcessLibrary.vue",
+          "front/app/process/components/NativeRunPanel.vue",
           "front/app/process/navigation.ts",
           "front/app/process/pages/index.vue"
         ],
@@ -19384,6 +20073,7 @@
       },
       {
         "files": [
+          "front/app/process/components/NativeProcessEditor.vue",
           "front/app/process/navigation.ts",
           "front/app/process/pages/index.vue"
         ],
@@ -19392,15 +20082,23 @@
       },
       {
         "files": [
+          "front/app/process/components/BpmnCanvas.vue",
+          "front/app/process/components/NativeActivityDetails.vue",
+          "front/app/process/components/NativeProcessEditor.vue",
+          "front/app/process/components/NativeRunPanel.vue",
+          "front/app/process/components/NativeRunsTable.vue",
           "front/app/process/components/ProcessRunDetailContent.vue",
           "front/app/process/components/ProcessRunsPanel.vue",
-          "front/app/process/pages/index.vue"
+          "front/app/process/components/ProcessSharingDraft.vue",
+          "front/app/process/pages/index.vue",
+          "front/app/process/pages/internal/run/[id].vue"
         ],
         "source": "app/process",
         "target": "core/util"
       },
       {
         "files": [
+          "front/app/process/components/NativeRunPanel.vue",
           "front/app/process/components/ProcessRunsPanel.vue"
         ],
         "source": "app/process",
@@ -20167,7 +20865,7 @@
           "app/voice"
         ]
       ],
-      "domain_edges": 45,
+      "domain_edges": 47,
       "fan_in": [
         {
           "count": 13,
@@ -20250,6 +20948,14 @@
           ]
         },
         {
+          "count": 2,
+          "module": "app/memory",
+          "modules": [
+            "app/process",
+            "app/task"
+          ]
+        },
+        {
           "count": 1,
           "module": "app/console",
           "modules": [
@@ -20258,16 +20964,16 @@
         },
         {
           "count": 1,
-          "module": "app/harnesses",
+          "module": "app/dataset",
           "modules": [
-            "app/agent"
+            "app/process"
           ]
         },
         {
           "count": 1,
-          "module": "app/memory",
+          "module": "app/harnesses",
           "modules": [
-            "app/task"
+            "app/agent"
           ]
         },
         {
@@ -20357,6 +21063,16 @@
           ]
         },
         {
+          "count": 4,
+          "module": "app/process",
+          "modules": [
+            "app/agent",
+            "app/dataset",
+            "app/memory",
+            "app/task"
+          ]
+        },
+        {
           "count": 3,
           "module": "app/connection",
           "modules": [
@@ -20384,14 +21100,6 @@
         {
           "count": 2,
           "module": "app/llm",
-          "modules": [
-            "app/agent",
-            "app/task"
-          ]
-        },
-        {
-          "count": 2,
-          "module": "app/process",
           "modules": [
             "app/agent",
             "app/task"
@@ -21011,6 +21719,11 @@
             "file": "front/app/lab/pages/index.vue",
             "module": "app/lab",
             "route_hint": "/lab"
+          },
+          {
+            "file": "front/app/lab/pages/processes.vue",
+            "module": "app/lab",
+            "route_hint": "/lab/processes"
           }
         ],
         "path": "front/app/lab"
@@ -21051,6 +21764,21 @@
             "file": "front/app/process/pages/index.vue",
             "module": "app/process",
             "route_hint": "/process"
+          },
+          {
+            "file": "front/app/process/pages/internal/[code].vue",
+            "module": "app/process",
+            "route_hint": "/process/internal/:code"
+          },
+          {
+            "file": "front/app/process/pages/internal/run/[id].vue",
+            "module": "app/process",
+            "route_hint": "/process/internal/run/:id"
+          },
+          {
+            "file": "front/app/process/pages/new-internal.vue",
+            "module": "app/process",
+            "route_hint": "/process/new-internal"
           }
         ],
         "path": "front/app/process"
@@ -21316,6 +22044,11 @@
         "route_hint": "/lab/ai-evaluations"
       },
       {
+        "file": "front/app/lab/pages/processes.vue",
+        "module": "app/lab",
+        "route_hint": "/lab/processes"
+      },
+      {
         "file": "front/app/llm/pages/index.vue",
         "module": "app/llm",
         "route_hint": "/llm"
@@ -21359,6 +22092,21 @@
         "file": "front/app/process/pages/index.vue",
         "module": "app/process",
         "route_hint": "/process"
+      },
+      {
+        "file": "front/app/process/pages/internal/[code].vue",
+        "module": "app/process",
+        "route_hint": "/process/internal/:code"
+      },
+      {
+        "file": "front/app/process/pages/internal/run/[id].vue",
+        "module": "app/process",
+        "route_hint": "/process/internal/run/:id"
+      },
+      {
+        "file": "front/app/process/pages/new-internal.vue",
+        "module": "app/process",
+        "route_hint": "/process/new-internal"
       },
       {
         "file": "front/app/skill/pages/index.vue",

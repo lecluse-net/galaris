@@ -2,6 +2,9 @@
 
 Statut : accepté — 16 septembre 2026.
 
+Extension : l'[ADR 0194](0194-conversation-decision-routing.md) ajoute une préanalyse
+conversationnelle conditionnée à la configuration Décision, sans jugement après réponse.
+
 ## Problème
 
 Le dispatcher conversationnel consultait un modèle pour un message humain alors que sa route
@@ -34,6 +37,12 @@ sous leurs conditions de sécurité. Aucun second mécanisme de retry n'est ajou
 Un ancien verdict de garde ne permet plus de contourner l'exigence de checkpoint après un effet.
 Les autorisations, la fraîcheur du round, l'idempotence, les reçus, la récupération de livraison
 et les contrôles de protocole/limites pendant le stream restent applicables.
+
+Le contrôle de protocole conserve une seule réponse par tour authentifié. Un cartouche
+de conversation généré hors d'une citation clôt la réponse affichée ; les faux tours
+suivants ne deviennent pas du contexte exploitable. Un outil précédé de tels faux tours
+est refusé avant validation/exécution, avec retour dans le budget de retry du SDK.
+Cette règle ne classe pas l'intention humaine et ne juge pas l'absence d'outil.
 
 ## Compatibilité et preuves
 

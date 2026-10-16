@@ -2,6 +2,27 @@
 
 # Flux des outils et processus
 
+L'inspection native et `processus_get` partagent l'état opérationnel persisté : activités,
+attentes, dernière activité et commandes disponibles. Les agents sont limités aux runs
+de leur participation figée, sauf connexion dédiée `process_admin` active ; les grants
+Dataset restent indépendants. Le filtrage précède comptage/pagination et couvre enfants
+et métriques. Voir la [décision 0193](../../../../project/decisions/0193-process-run-observation-and-participation.md).
+
+Les [activités humaines](../../dev/native-processes.md) utilisent exclusivement la messagerie.
+Process persiste l'attente et appelle un port injecté ; Conversation envoie une interaction
+Messenger, retrouve les attentes du participant et interprète ses messages et fichiers.
+Le résultat validé et le reçu de réponse sont atomiques ; aucun formulaire Process ne reçoit
+de réponse humaine. Voir la [décision 0192](../../../../project/decisions/0192-process-human-interactions-through-messaging.md).
+
+Le moteur natif ajoute le [profil de données v2](../../dev/native-processes.md) :
+entrées/sorties déclarées par tâche, normalisation des omissions et défauts, validation
+avant effet/intégration et Dataset global administré par le moteur. Les références de
+fichiers passent entre activités sans transfert ; les octets ne sont demandés que pour
+une opération explicite via File Sharing. Le profil historique v1 reste interprété tel quel.
+Les phases Python utilisent le port de runner et un worker Monty neuf pour les computations
+pures, sans capacités hôte. Le Python généraliste et son broker restent à qualifier sur une
+VM/hôte distinct ; les tests locaux ne constituent pas une qualification de sécurité globale.
+
 Un appel d’outil retourne directement une sortie structurée. Les workflows métier, par exemple
 ceux gérés dans n8n, utilisent un `ProcessRun` durable afin que l’agent puisse attendre,
 reprendre, annuler et analyser sans garder une requête ouverte. La maintenance technique
@@ -27,6 +48,13 @@ Agent runtime
 ```
 
 ## Découverte par l’agent
+
+Avant un nouveau lancement via `conversation_process_start`, Conversation fige les
+invocations demandées dans une autorisation liée au message réellement admis. Le serveur
+contrôle processus, paramètres et nombre d'exécutions ; une reprise retrouve le même run.
+Cette vérification n'est appelée ni pour une réponse à une activité ni pour une conversation
+sans lancement. Voir la [décision 0195](../../../../project/decisions/0195-conversation-process-launch-permissions.md)
+pour les limites de l'interprétation assistée et le périmètre des outils concernés.
 
 Les six fonctions personnelles `process_*` appartiennent au package socle `galaris` : la connexion
 optionnelle `process` n’existe plus. L’inventaire du prompt est produit depuis exactement la même

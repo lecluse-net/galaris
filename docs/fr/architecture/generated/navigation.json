@@ -1213,6 +1213,8 @@
       },
       "privilege_groups": [
         [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT",
           "EVALUATION_ACCESS",
           "EVALUATION_EDIT",
           "DISPATCHER_EVALUATION_ACCESS",
@@ -1233,6 +1235,65 @@
           "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
           "VOICE_EXECUTOR_EVALUATION_ACCESS",
           "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/lab/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.lab.processes",
+      "labels": {
+        "fr": "Lab des processus",
+        "en": "Process Lab"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Laboratoire",
+          "Lab des processus"
+        ],
+        "en": [
+          "Administer",
+          "Laboratory",
+          "Process Lab"
+        ]
+      },
+      "route": "/lab/processes",
+      "href": null,
+      "description": {
+        "fr": "",
+        "en": ""
+      },
+      "privilege_groups": [
+        [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT",
+          "EVALUATION_ACCESS",
+          "EVALUATION_EDIT",
+          "DISPATCHER_EVALUATION_ACCESS",
+          "DISPATCHER_EVALUATION_EDIT",
+          "PLANNER_EVALUATION_ACCESS",
+          "PLANNER_EVALUATION_EDIT",
+          "TOPIC_CLASSIFICATION_EVALUATION_ACCESS",
+          "TOPIC_CLASSIFICATION_EVALUATION_EDIT",
+          "MEMORY_EXTRACTION_EVALUATION_ACCESS",
+          "MEMORY_EXTRACTION_EVALUATION_EDIT",
+          "OUTCOME_REFLECTION_EVALUATION_ACCESS",
+          "OUTCOME_REFLECTION_EVALUATION_EDIT",
+          "GOAL_TRACKING_EVALUATION_ACCESS",
+          "GOAL_TRACKING_EVALUATION_EDIT",
+          "TASK_EXECUTOR_EVALUATION_ACCESS",
+          "TASK_EXECUTOR_EVALUATION_EDIT",
+          "CONVERSATION_EXECUTOR_EVALUATION_ACCESS",
+          "CONVERSATION_EXECUTOR_EVALUATION_EDIT",
+          "VOICE_EXECUTOR_EVALUATION_ACCESS",
+          "VOICE_EXECUTOR_EVALUATION_EDIT"
+        ],
+        [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT"
         ]
       ],
       "conditions": [],
@@ -1266,6 +1327,8 @@
       },
       "privilege_groups": [
         [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT",
           "EVALUATION_ACCESS",
           "EVALUATION_EDIT",
           "DISPATCHER_EVALUATION_ACCESS",
@@ -1323,6 +1386,8 @@
       },
       "privilege_groups": [
         [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT",
           "EVALUATION_ACCESS",
           "EVALUATION_EDIT",
           "DISPATCHER_EVALUATION_ACCESS",
@@ -1380,6 +1445,8 @@
       },
       "privilege_groups": [
         [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT",
           "EVALUATION_ACCESS",
           "EVALUATION_EDIT",
           "DISPATCHER_EVALUATION_ACCESS",
@@ -1437,6 +1504,8 @@
       },
       "privilege_groups": [
         [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT",
           "EVALUATION_ACCESS",
           "EVALUATION_EDIT",
           "DISPATCHER_EVALUATION_ACCESS",
@@ -1494,6 +1563,8 @@
       },
       "privilege_groups": [
         [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT",
           "EVALUATION_ACCESS",
           "EVALUATION_EDIT",
           "DISPATCHER_EVALUATION_ACCESS",
@@ -1551,6 +1622,8 @@
       },
       "privilege_groups": [
         [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT",
           "EVALUATION_ACCESS",
           "EVALUATION_EDIT",
           "DISPATCHER_EVALUATION_ACCESS",
@@ -1608,6 +1681,8 @@
       },
       "privilege_groups": [
         [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT",
           "EVALUATION_ACCESS",
           "EVALUATION_EDIT",
           "DISPATCHER_EVALUATION_ACCESS",
@@ -1665,6 +1740,8 @@
       },
       "privilege_groups": [
         [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT",
           "EVALUATION_ACCESS",
           "EVALUATION_EDIT",
           "DISPATCHER_EVALUATION_ACCESS",
@@ -1722,6 +1799,8 @@
       },
       "privilege_groups": [
         [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT",
           "EVALUATION_ACCESS",
           "EVALUATION_EDIT",
           "DISPATCHER_EVALUATION_ACCESS",
@@ -1779,6 +1858,8 @@
       },
       "privilege_groups": [
         [
+          "PROCESS_EVALUATION_ACCESS",
+          "PROCESS_EVALUATION_EDIT",
           "EVALUATION_ACCESS",
           "EVALUATION_EDIT",
           "DISPATCHER_EVALUATION_ACCESS",

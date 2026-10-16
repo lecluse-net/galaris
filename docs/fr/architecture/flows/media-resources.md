@@ -192,6 +192,7 @@ une erreur conserve un résultat incertain et interdit un rejeu aveugle. Le temp
 est supprimé dans les deux cas.
 
 La référence échangée entre tools, Tasks et providers est canonique : `console://path`,
+`processus://run/<uuid>` pour l'instantané JSON en lecture seule d'une exécution,
 `<code-tool>://room-provider/attachment-uuid`, `memory://uuid`, `document://uuid`,
 `document://uuid/attachments/attachment-uuid`,
 `galaris://process/workflow-id`, `galaris://skill/skill-code/SKILL.md`, `https://host/path` ou

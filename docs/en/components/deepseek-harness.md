@@ -27,6 +27,16 @@ API token, stored encrypted by `app.harnesses`, and a rotating MCP system token.
 authenticates both `/api/mcp/{agent_code}` and the `/api/llm/openai` gateway. No LLM-provider or
 business-connection credential enters the container.
 
+Before any model call, the adapter requires a loaded Galaris MCP catalogue. The SDK may
+contain an optional plugin failure despite `failOnStartupError`: the adapter retries its
+initialization up to three times, before any business action. Without a catalogue, it returns
+an explicit error instead of letting the agent produce a false result without tools.
+Existing provisioned instances need their image rebuilt to apply this check.
+
+The MCP run context retains the `deepseek_harness` provider for authorization. The tool catalogue
+uses the validated assignment's `openai_messages` driver; the Task comes from the server-issued
+context, allowing Process activities to ask a human question and record results in their own run.
+
 The technical context rendered by the adapter keeps the Task and run identifiers in the prompt
 sent to the gateway; its extractors therefore restore them on every `LLMCall`, even when the
 DeepSeek SDK does not allow arbitrary HTTP headers. At termination, the shared client aggregates

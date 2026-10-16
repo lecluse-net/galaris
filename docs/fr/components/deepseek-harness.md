@@ -28,6 +28,17 @@ Ce dernier authentifie à la fois `/api/mcp/{agent_code}` et le gateway
 `/api/llm/openai`. Aucun credential de fournisseur LLM ou de connexion métier n'entre dans le
 conteneur.
 
+Avant tout appel au modèle, l'adaptateur exige un catalogue MCP Galaris chargé. Le SDK peut
+contenir l'échec d'un plugin optionnel malgré `failOnStartupError` : l'adaptateur retente alors
+son initialisation au plus trois fois, avant toute action métier. Sans catalogue, il retourne
+une erreur explicite au lieu de laisser l'agent produire un faux résultat sans outils.
+Ce contrôle nécessite la reconstruction de l'image des instances déjà provisionnées.
+
+Le contexte d'exécution MCP conserve le fournisseur `deepseek_harness` pour les autorisations.
+Le catalogue d'outils utilise le driver `openai_messages` de l'affectation validée ; la Task
+provient du contexte serveur, ce qui permet aux activités Process de poser une question humaine
+et d'enregistrer leur résultat dans leur propre exécution.
+
 Le contexte technique rendu par l'adapter conserve les identifiants de Task et de run dans le
 prompt envoyé au gateway ; ses extracteurs les rétablissent donc sur chaque `LLMCall`, y compris
 lorsque le SDK DeepSeek ne permet pas d'ajouter des en-têtes HTTP arbitraires. À la terminaison, le

@@ -316,8 +316,12 @@ libellés et descriptions des Process affectés. Il répond directement après q
 lance le Process correspondant si le besoin est déjà modélisé, ou crée sinon une Task autonome ;
 il ne bloque jamais la conversation en attendant leur résultat.
 
-Pour un auteur humain, le dispatcher court retourne directement `EXEC standard`, sans modèle,
-sur tous les canaux textuels. L'exécuteur conserve le choix d'admettre un Process ou une Task.
+Pour un auteur humain, la porte de réponse retourne directement `EXEC standard`, sans modèle.
+Une préanalyse de rattachement et de sélection de Process ne s'exécute que si le profil effectif
+configure Décision. Elle distingue les conclusions négatives des analyses absentes ou incertaines
+et transmet les références exactes à l'exécuteur. Celui-ci doit rechercher lui-même une attente
+ou un Process adapté lorsqu'aucune conclusion suffisante n'est disponible. Il reste chargé
+d'appliquer les réponses et de lancer un Process ou une Task par les outils canoniques.
 Le contrôleur restitue le résultat réussi sans contrôle d'admission a posteriori ni jugement de
 formulation. Il transmet les erreurs d'exécution au scheduler, qui conserve sa reprise bornée et
 ses protections contre la répétition d'effets. Une erreur finale produit la réponse de secours,

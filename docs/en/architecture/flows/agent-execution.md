@@ -2,6 +2,12 @@
 
 # Agentic Execution Flow
 
+The text controller delivers one reply turn. It cuts generated timestamped dialogue
+outside quotations, removes those invented turns from reused context, and rejects
+following tools before execution. The SDK supplies its existing bounded retry, without
+a second intent classifier. The current request remains the admitted inbound message.
+Replies are concise by default; requests for detail retain their scope.
+
 Text rounds survive worker interruptions: graceful shutdown releases the lease after saving
 history and receipts; abrupt stops recover the expired lease. Interruptions do not consume
 execution retries. Already running tools drain for twenty seconds during shutdown; Docker
@@ -782,8 +788,17 @@ mandatory. Its rules require an immediate response for short work; long work fir
 matching Process with `conversation_process_start`, or otherwise creates a Task with
 `conversation_task_submit`, without ever waiting for completion.
 
-For a human, the dispatcher returns `EXEC standard` before loading any model and without
-inference, on every text channel. The executor chooses tools and durable work admission.
+For a human, the reply gate returns `EXEC standard` without inference. If the effective
+profile configures Decision, the dispatcher then analyzes the message, attachments, pending
+interactions, active work and assigned Process catalog. Two independent choices identify an
+answer or follow-up to existing work and a new process to launch. The executor receives exact
+references and `not_evaluated`, `uncertain`, `none` or `selected` states near the end of its
+prompt. Without a model, after failure or without a sufficient conclusion, it must identify
+the pending request and select and launch a suitable Process itself when needed. A partial
+catalog cannot prove that no Process applies. Analysis performs no effects and does not change
+the Task dispatcher. Direct voice paths retain this responsibility in the executor.
+See [ADR 0194](../../../../project/decisions/0194-conversation-decision-routing.md).
+The executor chooses tools and durable work admission.
 The controller no longer judges a successful response: missing admission, missing tool activity,
 or repeated wording never trigger another execution. Execution errors reach the scheduler,
 whose retry budget and protections against duplicated effects remain applicable. `requires_action`

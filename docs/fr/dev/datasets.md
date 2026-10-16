@@ -4,7 +4,7 @@
 
 `app.dataset` possède le codec commun, les jeux de données et leurs opérations JSON.
 La façade publique est `app.dataset.facade` ; les imports
-`app.process.values` exposent le codec avec les restrictions de compatibilité de Process.
+historiques `app.process.values` conservent les restrictions du profil BPMN v2.
 
 Le codec de variables représente chaque valeur avec son type :
 

@@ -15,6 +15,16 @@ l’affectation : les importer en retour depuis Topics créerait des cycles supp
 point de composition applicatif `front/resourceDetails.vue`, découvert comme fournisseur
 sans importer les domaines dans Core.
 
+Les runs internes ouverts depuis le Chat utilisent cette même composition avec la cible
+`process_run` et le composant public de suivi natif de Process. Le diagramme figé, les
+activités et commandes restent ceux de Process ; le Chat ne duplique pas leur lecture.
+Les processus externes conservent leur détail spécifique.
+
+Le fournisseur peut exposer un préchargement de code par type de cible. `core.util`
+le relaie avec `preloadResourceDetail`, sans lecture de données ni nouvelle dépendance
+entre domaines. Le Chat prépare ainsi le diagramme lorsqu'un run interne est présent.
+Les services et vues des autres types sont importés uniquement lorsqu'ils sont utilisés.
+
 Ce fournisseur assemble les services et vues publics des domaines. Il conserve leur
 autorisation serveur, leurs actions et leurs composants de détail. Les lectures tardives
 sont ignorées après fermeture ou changement de cible ; les traces LLM ne bloquent pas

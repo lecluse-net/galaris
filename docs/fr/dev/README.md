@@ -11,6 +11,8 @@ les alias historiques et le pont des applications documentaires.
 Le [stockage des fichiers internes](file-storage.md) décrit `file://`, le registre partagé
 et la migration vérifiée des PJ Documents et Chat.
 
+Le [profil BPMN natif](native-processes.md) décrit les processus internes et leurs contrats.
+
 Ce document décrit l’architecture qui existe dans le dépôt. Il sert de contrat de
 contribution : lorsqu’une implémentation impose un autre flux, corrigez soit le code soit ce
 guide, mais ne créez pas une seconde architecture implicite.
@@ -407,8 +409,14 @@ attente de sa portée Messenger. Le LLM conversationnel peut les résoudre par
 provoque une question ; une instruction du type « ne fais pas cela, fais plutôt ceci » peut refuser
 l'approbation courante puis amender la Task par le chemin durable ci-dessus.
 
-Pour un round textuel humain, le dispatcher retourne `EXEC standard` sans charger de modèle ni
-effectuer d'inférence, sur tous les canaux textuels. L'exécuteur décide d'utiliser ses outils ou
+Pour un round textuel humain, la porte de réponse retourne `EXEC standard` sans inférence.
+Une préanalyse distincte du dispatcher ne s'active que si le profil effectif configure Décision :
+elle rattache le message à une attente ou un travail actif et sélectionne un nouveau Process
+affecté si nécessaire. Les deux axes et leurs références sont injectés en fin de prompt.
+Sans modèle, en cas d'échec ou d'incertitude, l'exécuteur conserve explicitement la recherche
+de l'attente et le choix puis le lancement du bon Process. Un catalogue incomplet ne vaut
+jamais une conclusion négative. Voir l'[ADR 0194](../../../project/decisions/0194-conversation-decision-routing.md).
+L'exécuteur décide d'utiliser ses outils ou
 d'admettre un travail durable selon la politique d'action. Le contrôleur restitue une réponse
 réussie sans juger sa formulation, sa répétition ou l'absence d'appel d'outil. Seule une erreur
 d'exécution peut déclencher la reprise bornée du scheduler, sous ses conditions de sécurité des effets.

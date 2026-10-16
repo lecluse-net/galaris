@@ -2,6 +2,27 @@
 
 # Tool and Process Flow
 
+Native inspection and `processus_get` share persisted operational evidence: activities,
+waits, last activity and available commands. Agents are scoped to frozen run participation
+unless they have an active dedicated `process_admin` connection; Dataset grants remain
+independent. Filtering precedes counts and pagination and covers children and metrics.
+See [decision 0193](../../../../project/decisions/0193-process-run-observation-and-participation.md).
+
+[Human activities](../../dev/native-processes.md) use messaging exclusively. Process persists
+the wait and calls an injected port; Conversation sends a Messenger interaction, retrieves
+the participant's pending requests, and interprets messages and files. The validated result
+and response receipt are atomic; no Process form accepts human replies. See
+[decision 0192](../../../../project/decisions/0192-process-human-interactions-through-messaging.md).
+
+The native engine adds the [v2 data profile](../../dev/native-processes.md): per-activity
+input/output declarations, omission/default normalization, validation before effects and
+integration, and an engine-managed global Dataset. File references travel between
+activities without transfers; bytes are requested only for explicit File Sharing
+operations. Historical v1 remains interpreted under its original contract. Python phases
+use the runner port and a fresh Monty worker for pure computations without host capabilities.
+General Python and its broker still require qualification on a separate VM/host; local tests
+do not constitute a global security qualification.
+
 A tool call returns a structured output directly. Business workflows, such as those managed
 in n8n, use a durable `ProcessRun` so the Agent can wait, resume, cancel, and analyze them
 without keeping a request open. Technical maintenance stays in its owning module:
@@ -26,6 +47,13 @@ Agent runtime
 ```
 
 ## Agent Discovery
+
+Before a new launch through `conversation_process_start`, Conversation freezes the requested
+invocations in a permission bound to the actual admitted message. The server checks workflows,
+parameters and execution counts; recovery reuses the same run. This check is not invoked for
+an activity reply or a conversation without a launch. See
+[decision 0195](../../../../project/decisions/0195-conversation-process-launch-permissions.md)
+for the limits of model-assisted interpretation and the covered tool surface.
 
 The six personal `process_*` functions belong to the `galaris` core package: the optional
 `process` connection no longer exists. The prompt inventory is produced from exactly the same

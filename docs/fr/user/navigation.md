@@ -283,6 +283,10 @@ restent accessibles depuis la demande faite à l'agent et ne créent aucune entr
 ce catalogue de workflows. Le [guide utilisateur](README.md) explique
 quand choisir une conversation, une Task ou un Goal.
 
+La page **Processus** affiche ses listes sans attendre le contrôle du moteur externe ni
+le catalogue des agents. Les détails d'une exécution et son diagramme se chargent seulement
+à l'ouverture de sa fiche ; vous pouvez fermer celle-ci pendant le chargement et la rouvrir.
+
 Les traitements de **Processus** utilisent le moteur de leur définition affectée.
 **Préférences → Processus** configure actuellement n8n ; les autres logiciels nécessitent
 un bridge installé. Le [guide des moteurs externes](../dev/process-engines.md)

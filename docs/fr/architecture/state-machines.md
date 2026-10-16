@@ -111,6 +111,14 @@ la phase de reprise.
 Actions du scheduler : `CREATE → dispatch`, `DISPATCH → execute`, `PLAN → advance_plan`.
 Une tâche suspendue conserve sa phase sans être exécutée.
 
+Une demande d'information appartenant à un domaine suspend la Task existante avec la raison
+`input`, sans enfant technique. À la fin du tour, `INTERRUPT_EXECUTION` conserve un point de
+reprise `DISPATCH`. Une réponse reçue pendant `EXEC` est injectée à la finalisation ; une réponse
+reçue après libère uniquement `input`. Une pause utilisateur indépendante demeure effective.
+Le marqueur conserve le tour qui a posé la question. La réconciliation de ce tour après
+perte réseau ne termine pas la Task si la réponse arrivée depuis n'a pas encore été utilisée :
+un nouveau tour `DISPATCH` traite cette réponse, sans renvoyer la question.
+
 Une question d'organisation suspend en `PLAN`. Sa réponse conserve les précisions puis
 applique `REASSESS_ORGANIZATION` ; le routage choisit de nouveau avec cette réponse. Sans
 réponse à l'échéance, ou sans canal de question, `FAIL` termine la Task en `ERROR`.
@@ -487,7 +495,33 @@ Autorité : `back/app/multimedia/generation_contracts.py`, `generation_store.py`
 
 ## Processus
 
+Le profil natif v2 normalise les entrées avant l'intention d'activité. Les appels
+MCP/REST sont préparées en `tool_ready`/`rest_ready`, réclamées en `claiming`, puis
+marquées `started` juste avant effet, sous une garde contre annulation et worker périmé.
+Les jobs possèdent une session DB indépendante ; un appel lent ne retient pas la progression
+des autres branches. Un claim expiré avant dispatch peut être repris ; un effet `started`
+sans reçu n'est jamais réémis automatiquement. Les sorties
+validées sont conservées avant l'intégration : une réponse externe acquise passe par
+`returned` avant `completed`, sans réémission de l'appel après interruption. La réception
+du résultat et son intégration sont deux étapes distinctes ; le reçu Memory rend la seconde
+idempotente. Une erreur de contrat interdit l'intégration et toute admission du successeur.
+Les tâches à plusieurs prédécesseurs attendent toutes leurs arrivées de la même invocation.
+Les phases de code conservent leurs identités et observations dans l'occurrence :
+`queued`/`running` restent en attente, et `success` n'est utilisable qu'avec `stopped=true`.
+Une annulation attend elle aussi la confirmation physique ; aucun résultat tardif ne
+rouvre un terminal. L'adapter Monty ferme son worker isolé avant de confirmer l'arrêt.
+Seule cette computation pure peut être recalculée après perte du résultat ; les effets
+externes ne sont pas rejoués. Un IF configuré suit une seule sortie True/False après
+validation de son booléen. Son mode humain réutilise `human_waiting` et les choix Messenger,
+sans Task IA d'attente et sans intégration du booléen dans le Dataset.
+
 États terminaux : `success`, `error`, `cancelled`.
+
+Pour les processus internes, la première erreur d'exécution interdit toute nouvelle
+activité et demande l'arrêt des tâches et enfants actifs. Le run passe par `cancelling`
+puis `error` après confirmation des arrêts, en conservant `error_code` et les données.
+Un effet externe incertain renvoie `effect_outcome_unknown` et reste en arrêt en cours
+jusqu'à réconciliation. Aucun traitement de secours ou réessai automatique n'est exécuté.
 
 La finalisation d'une attente est distincte du statut du run : `await_resolved_at` reste nul
 jusqu'à la clôture de la Task enfant et à la reprise de son parent. Cette étape est rejouable
@@ -510,6 +544,14 @@ Une transition vers le même état est idempotente. Toute tentative, acceptée o
 
 Autorité : `TERMINAL_STATUSES` et `TRANSITIONS` dans
 `back/app/process/process_service.py`.
+
+Une activité native `human_task` crée une tentative `human_waiting` et une occurrence
+`waiting`. Seule la réponse valide de l'utilisateur affecté passe la tentative à `completed` ;
+le prochain passage du moteur passe l'occurrence à `success` et poursuit le flux.
+Une réponse identique rejoue le reçu ; une réponse différente après complétion est un conflit.
+Un autre utilisateur, un utilisateur inactif ou un Run en annulation/terminal ne peut plus
+créer de reçu. Une annulation ferme le Run sans admettre de Task IA pour l'activité humaine.
+Ces garanties sont exercées par `test_human_activity_waits_for_assignee_and_replays_one_receipt`.
 
 ## Évaluations du Lab IA
 

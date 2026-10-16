@@ -57,6 +57,30 @@ Les conversations texte et voix suivent leur propre contrôleur et leur exécute
 ne passent pas par le Dispatcher de Tasks ; lorsqu’elles ont besoin d’un travail durable, elles
 créent une Task explicitement liée.
 
+Le contexte de conversation présente les tâches et processus réellement actifs de l’agent,
+y compris ceux lancés dans une autre discussion : travail en file, en cours ou en attente,
+avec la question ou la dépendance connue. Une attente ancienne reste visible tant qu’elle
+n’est pas résolue. Les éléments terminés, en cours d’annulation ou mis en pause manuellement
+sont exclus. Vous pouvez ainsi répondre à une question ou envoyer le fichier attendu dans
+la conversation : l’agent dispose du contexte pour reconnaître cette contribution. Si plusieurs
+attentes correspondent, il doit demander une précision ; la réponse reste soumise aux droits
+et à la validation du mécanisme de reprise concerné.
+
+Si le profil de l'agent configure un modèle Décision, le dispatcher de conversation aide à
+rattacher votre message à une attente ou à un travail en cours et à choisir un nouveau processus
+à lancer. L'agent réalise ensuite l'action avec les contrôles habituels. Sans ce modèle ou si
+l'analyse ne peut pas conclure, il doit faire lui-même cette recherche et lancer le processus
+adapté si nécessaire. Une demande de suivi ne débloque pas une question en attente.
+
+La même projection est disponible pour la supervision via
+`GET /api/conversations/agents/{agent_id}/active-work?page=1&page_size=50`.
+Elle réunit les Tasks et les exécutions de processus internes et externes, avec leur état
+opérationnel, leurs attentes et leurs références. La réponse contient `items`, `total`,
+`page`, `page_size` et `observed_at` ; `kind` distingue `task` de `process`, et `engine_code`
+identifie le moteur d’un processus. L’accès exige `TASK_ACCESS`, `PROCESS_READ` et la gestion
+de l’agent ; les droits de lecture des processus restent appliqués. La pagination accepte
+jusqu’à 500 éléments par page.
+
 ## Terminer une tâche de force
 
 **Terminer de force** rend la tâche terminale en erreur et révoque son bail d’exécution,

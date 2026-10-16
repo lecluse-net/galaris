@@ -44,6 +44,110 @@ audio uploads from bytes or disk and handle cleanup after errors or cancellation
 `tests/test_audio_resource_discovery.py` covers public voice catalogues, cache isolation
 between providers, expiry and retry after an outage.
 
+## Internal business processes
+
+`front/browser-tests/process-loading.spec.mjs` verifies that the catalogue displays without
+downloading execution views or waiting for agents and n8n health. Delayed views can close and
+reopen on desktop/mobile. The measurement scenario attaches module requests, decoded bytes
+and display time without a fragile timing threshold. `e2e/specs/process-catalogue.spec.mjs`
+opens the list and editor with real APIs, displays five executions launched through the API and
+prohibits loading full agent profiles.
+`storeConcurrency.test.mjs` protects independent definition display and agent options surviving
+a filter change.
+
+`back/app/process/tests/test_catalogue_performance.py` measures authorized lists against
+isolated PostgreSQL with five executions and forces the JIT compilation thresholds that
+reproduced several seconds of latency. It checks the interactive budget for execution and
+definition lists and transaction settings reverting after commit and rollback. Process
+permission tests preserve denials, sharing and orphan definition exclusion; the access
+filter optimization removes folder and attachment branches that these lists do not need.
+
+`test_run_observation.py` covers frozen participation, unused roles, independent Dataset
+ACLs, dedicated administration revocation and the wait/pause/resume/stop cycle. The
+progress scenarios in `native-processes.spec.mjs` exercise commands on the same run,
+stop confirmation, read-only access and removal of closed waits. The assembled journey
+resumes a human activity after pausing, then receives its reply through Chat.
+
+`front/browser-tests/native-processes.spec.mjs` exercises the execution diagram in the
+Chat, definition and tracking dialogs and the shared detail content: active work, read-only
+results/data, unexecuted activities and rejection of a late response after switching
+nodes. The Chat journey also closes and reopens the run on desktop and mobile; its external
+process scenario preserves input/output inspection.
+The real-time scenario checks run-scoped events, updates during in-flight requests,
+open details through the final result, reconnect and subscription cleanup on close.
+Delayed accounting never blocks opening or progress, and late metrics from another run
+are discarded.
+Process dialogs remain usable when another domain's screen cannot download.
+`topic-detail.spec.mjs` preserves reads, errors, retry and dismissal for the other resource
+types. `chat.spec.mjs` checks chronological process pages, reading position when loading
+older runs and scrolling to new runs on desktop and mobile.
+`test_native_bpmn.py` verifies permissions and inspection independently of global
+pagination, including loop-body isolation and a 500-item limit.
+
+The history scenario in `front/browser-tests/native-processes.spec.mjs` checks saved-revision
+server pagination, retry after a page fails, and preservation of the editing draft while
+browsing history. Restore and delete confirmations are exercised with cancellation and
+server failure, preserving the draft. `test_native_bpmn.py` checks HTTP permissions,
+protection of the current state, pagination excluding that state, and preservation of
+existing runs after a saved state is deleted.
+
+The v2 profile is covered by `test_typed_values.py` and typed scenarios in
+`test_native_bpmn.py`: recursive transport, omitted nullable values, defaults, strict
+types, XML round trips, local output, managed Dataset protection, idempotent integration
+after a lost acknowledgement, conflicts and file URIs without transfers. All six orders
+of three human branches admit one successor. REST uses a synthetic HTTP server and real
+connections, preserving HTTP denials. Code-port tests replace only the remote runner and
+check waiting, identity, refusal without a runner and physical stop confirmation; they
+qualify no real system isolation. Components cover saved declarations, invalid drafts
+and omission/null/false. The assembled typed journey uses an actual assignee, output form
+and PostgreSQL, including rejection of invalid defaults at save time. Shared-pool guarantees
+described below concern the historical v1 profile.
+
+`back/app/process/tests/test_native_bpmn.py` exercises compilation, expressions,
+actual Documents/grants/Datasets, Task admission recovery, human/orphan permissions,
+FOR/WHILE, joins, stopping on the first error, debugger and current-content calls. Services and PostgreSQL
+remain real; harness responses are synthetic. Lab campaigns admit and observe actual
+Runs without external mocks. `front/browser-tests/native-processes.spec.mjs` mounts
+actual components with synthetic HTTP responses for graph connections/keyboard,
+read-only access, retained drafts and expected-revision saves. Existing Dataset/sharing
+suites protect shared consumers. These suites alone do not qualify real harness/n8n effects.
+`e2e/specs/native-processes.spec.mjs` exercises the assembled application: visual edits,
+saving, actual Task admission, live completion, persistent Dataset and a Run graph that
+survives later definition changes. APIs and PostgreSQL remain real; only the harness is
+synthetic. URL-encoded pagination parameters are also exercised over HTTP with actual
+authorization on Process and Lab routes.
+The journey in `test_activity_controls.py` uses the actual scheduler, leases, Agent facade,
+Harness client, MCP HTTP and PostgreSQL; only the remote Harness is synthetic. It covers losing
+the remote result before the human reply, reconciling without another effect, a fresh turn
+consuming the reply, a second question in the next Task, process pause, an engine restart and
+exactly one final notification. Tests also protect old references, concurrent withdrawal,
+rollback and a delegated activity that still exchanges messages in the launch conversation.
+
+`app/process/tests/test_decisions.py` covers both IF branches for AI/code/human, human
+authorization and receipts, Dataset updates from ordinary Python return values and the
+real Monty worker: denied host/network access and bounded loops/memory exhaustion.
+Assembled Chromium journeys execute a code task, followed by a code IF or the human
+False button in Chat. Component tests cover both handles and actor-specific modes.
+Actors survive XML round trips; human/agent type inversions are rejected. Coverage checks
+the actual assigned agent and writable shared Dataset access, human waiting, another user's denial,
+deactivation, repeated replies and cancellation. Components build from Start,
+insert through handles while retaining conditions, and filter compatible actors. Human drafts
+survive network errors. Synthetic light/dark/mobile captures support visual inspection without
+freezing presentation. The human E2E journey inserts through a handle, saves, launches,
+answers from the assignee's inbox and checks that the Run resumes to completion.
+Dragging changes agent/human assignments on release, preserves task types and flows,
+refuses incompatible lanes, and cancels on Escape or edit revocation. The assembled journey
+checks assignment after saving, reloading and launching.
+Business JSON and attachments are shared by all tasks in one Run. Tests exercise File Sharing
+reads/writes, stale revisions, preservation of parallel edits, human/agent access, loops and
+isolation between Runs. Legacy schema, file slot and mapping assertions are retired with
+those features; compilation verifies that they cannot create hidden requirements. Invalid
+JSON drafts remain covered for editable Tool arguments. The assembled human journey edits
+the Dataset, adds a file and verifies their preservation through completion.
+Stopping on failure replaces the old retry/recovery checks: one attempt, no successors,
+cancellation of active branches, preserved executor/child error codes and retained data.
+Unexpected executor exceptions are covered too.
+
 ## Git repositories in conversations
 
 `back/app/code/tests/test_workspaces.py` uses real PostgreSQL for exact grants,
@@ -179,6 +283,14 @@ an empty tool call: the inference and its trace remain failed for both streaming
 responses, instead of accepting the tool call as a plan.
 
 ## Task organization and planning
+
+`back/app/agent/tests/test_conversation_dispatch.py` protects conversation-only preanalysis
+gated by Decision configuration: exact references, answers versus progress, independent new
+launches, incomplete context, failure and cancellation. `back/tests/test_decision_workflows.py`
+uses real profile resolution and durable conversation inference, replacing only provider HTTP.
+The controller scenario in `back/app/harness/tests/test_conversation_prompt.py` checks prompt
+injection, attachments and executor responsibility without analysis. These tests measure
+neither semantic quality nor latency with a real model.
 
 `back/app/task/tests/test_execution_scope.py` checks out-of-scope writes rejected before any
 effect, a cause distinct from invalid arguments, MCP delivery to the model with and without
@@ -512,6 +624,7 @@ unavailability), using a real DB.
 | Activity and recovery | The round's terminal result takes precedence over attempt errors; unavailable choices do not revoke selection and a new search permits recovery | `back/app/conversation/tests/test_monitoring_service.py`, `front/browser-tests/execution.spec.mjs`, `front/browser-tests/topics.spec.mjs` |
 | Choices loaded on demand | Empty agent/topic selectors load nothing before opening; cancellation, agent changes and closing do not create false errors; actual failures remain visible and a new search allows retry | `front/browser-tests/filter-loading.spec.mjs`, `front/browser-tests/goals.spec.mjs`, `front/browser-tests/topics.spec.mjs`, `front/core/api.test.mjs` |
 | Process → waiting task | An authenticated callback releases the wait; duplicates and late events preserve the outcome | `back/app/process/tests/test_recovery.py`, `test_worker_concurrency.py` |
+| Process → human → messaging | Private internal or external request, plain JSON reply converted to typed values, file-only message with source URI, retried delivery failure, rejection of another sender or a late reply; unrelated messages never complete the activity. An AI activity waits without an auxiliary Task, resumes even after an early answer, and preserves user holds; historical waits are retired, duplicates stay idempotent, and the Dataset and final message are preserved | `back/app/process/tests/test_human_messaging.py`, `back/app/process/tests/test_activity_controls.py`, `back/app/harness/tests/test_conversation_prompt.py`, `e2e/specs/native-processes.spec.mjs` |
 | Document → file → agent | Content, revision, canonical URIs and ACLs agree across readers and writers | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
 | Dataset document | Immutable type, exact JSON source, invalid writes leave no revision, shared classification/icons/ACLs, copy/restore and conflicts; CodeEditor preserves invalid drafts | `back/app/memory/tests/test_dataset_documents.py`, `test_document_classification.py`, `test_document_library.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs` |
 | Interactive document HTML | Ordinary HTML forms using shared Datasets, viewer ACLs and personal revision-bound consent; revocation, unapproved cross-Dataset copies, JSON validation and quotas across workers; editable prose and usual toolbar, code only in Source; static print/PDF with resource filtering; isolation, WebRTC, bridge saturation and late responses | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
@@ -577,6 +690,16 @@ still admit work. Old tests of action/artifact rejection and wording comparison 
 with those constraints. `test_action_guard.py` retains execution-error recovery and idempotent
 delivery guarantees; `test_scheduler.py` checks that a legacy guard verdict no longer bypasses
 the checkpoint requirement after an effect.
+
+`test_conversation_protocol.py` blocks a launch derived from invented dialogue before
+effects, preserves the actual human reply, and allows explicit quotations. Filter tests
+in `test_conversation_context.py` cover stream chunking and code blocks;
+`test_conversation_prompt.py` checks that delivered and saved text stays in the current
+turn. `test_runtime_instructions.py` inspects Chat and Responses payloads.
+`app/conversation/tests/test_process_admission.py` checks persisted Process permissions:
+replies without launches, exact inputs, multiplicity, recovery, concurrency and late decisions.
+The `test_activity_controls.py` scenarios retain the complete question, human reply,
+resumption and next-activity journey.
 The following change adds each provider's capability matrix and distinct application of
 EXEC standard, EXEC high and PLAN. `test_dispatcher_inference.py` proves persistence
 of a single-choice Task decision without an LLM call; `test_registry.py` protects historical

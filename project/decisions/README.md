@@ -1,5 +1,13 @@
 # Décisions d'architecture
 
+- [0195 — Autorisations bornées des lancements conversationnels de processus](0195-conversation-process-launch-permissions.md)
+
+- [0194 — Préanalyse décisionnelle des messages conversationnels](0194-conversation-decision-routing.md)
+
+- [0193 — Observation des exécutions et participation figée](0193-process-run-observation-and-participation.md)
+
+- [0192 — Interactions humaines des processus par messagerie](0192-process-human-interactions-through-messaging.md)
+
 - [0191 — Composition des modales de détail des ressources](0191-resource-detail-dialog-composition.md)
 
 - [0190 — Fichiers HTML et mécanismes standards de pièces jointes](0190-html-files-use-standard-attachments.md)
@@ -9,7 +17,6 @@
 - [0188 — Contenus textuels dans les tables Memory et Documents](0188-inline-memory-and-document-text.md)
 
 - [0187 — Domaine Dataset et contrats JSON typés](0187-dataset-domain-and-typed-contracts.md)
-
 - [0186 — Fichiers gérés et déplacement interne vérifié](0186-managed-files-and-verified-moves.md)
 
 - [0185 — Messages internes aux collègues via les Tasks déléguées](0185-internal-peer-message-tasks.md)
@@ -33,6 +40,8 @@
 - [0176 — Récupération guidée du raisonnement répétitif](0176-guided-reasoning-recovery.md)
 
 - [0175 — Même route Messenger pour l'autorisation et l'envoi](0175-messenger-route-authorization.md)
+
+- [0174 — Processus métier natifs adossés aux Documents](0174-native-document-backed-business-processes.md)
 
 - [0173 — Espaces Git conversationnels et runtime code-server isolé](0173-conversational-code-workspaces.md)
 

@@ -3,8 +3,8 @@
 # Datasets and data contracts
 
 `app.dataset` owns the common codec, Datasets and their JSON operations.
-Its public facade is `app.dataset.facade`. Imports from `app.process.values`
-expose the codec with Process compatibility restrictions.
+Its public facade is `app.dataset.facade`. Historical imports from
+`app.process.values` retain the frozen BPMN v2 profile restrictions.
 
 ```json
 {

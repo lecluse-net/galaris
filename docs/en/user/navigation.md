@@ -260,6 +260,10 @@ large-report analyses remain available through the request made to the agent and
 not create entries in this workflow catalogue. The
 [user guide](README.md) explains when to choose a conversation, Task or Goal.
 
+The **Processes** page displays its lists without waiting for the external engine check or
+agent catalogue. Execution details and their diagram load only when you open an execution;
+you can close its dialog during loading and reopen it.
+
 **Processes** use the engine selected by their assigned definition.
 **Preferences → Processes** currently configures n8n; other software requires an
 installed bridge. The [external engine guide](../dev/process-engines.md)

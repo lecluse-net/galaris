@@ -53,6 +53,120 @@ protègent l'envoi audio depuis des octets ou un fichier et la fermeture des han
 erreur ou annulation. `tests/test_audio_resource_discovery.py` couvre les catalogues vocaux
 publics, leur cache séparé par fournisseur, son expiration et le réessai après panne.
 
+## Processus métier internes
+
+`front/browser-tests/process-loading.spec.mjs` vérifie que le catalogue s'affiche sans
+télécharger les fiches d'exécution ni attendre les agents et le contrôle n8n. Les fiches
+retardées restent refermables et se rouvrent sur ordinateur/mobile. Le scénario de mesure
+joint les requêtes de modules, leur volume décodé et le délai d'affichage, sans seuil temporel
+fragile. `e2e/specs/process-catalogue.spec.mjs` ouvre la liste puis l'éditeur avec les vraies
+API, affiche cinq exécutions réellement lancées et interdit le chargement des profils complets des agents. `storeConcurrency.test.mjs`
+protège l'affichage indépendant des définitions et la conservation des agents lors d'un filtre.
+
+`back/app/process/tests/test_catalogue_performance.py` mesure les listes autorisées sur une
+base PostgreSQL isolée avec cinq exécutions et force les seuils de compilation JIT qui
+reproduisaient plusieurs secondes de latence. Il vérifie le budget interactif des listes
+d'exécutions et de définitions ainsi que le rétablissement des paramètres de transaction
+après commit et rollback. Les tests de permissions des processus conservent les refus,
+les partages et l'exclusion des définitions orphelines ; l'optimisation du filtre d'accès
+retire les branches de dossiers et de pièces jointes inutiles à ces listes.
+
+`front/browser-tests/native-processes.spec.mjs` exerce le diagramme d'exécution dans les
+modales du Chat, de la définition et du suivi ainsi que le contenu partagé : activité en cours,
+résultats/données en lecture seule, activité non exécutée et rejet d'une réponse tardive
+après changement de nœud. Le parcours Chat vérifie aussi fermeture/réouverture sur ordinateur
+et mobile ; son scénario de processus externe conserve la lecture des entrées/sorties.
+Le scénario temps réel vérifie les événements filtrés par run, les mises à jour pendant
+des requêtes en cours, la fiche ouverte jusqu'au résultat final, la reconnexion et le
+nettoyage des abonnements à la fermeture. Les statistiques retardées ne bloquent ni
+l'ouverture du graphe ni sa progression, et une réponse tardive d'un autre run est ignorée.
+`test_native_bpmn.py` vérifie les permissions et la consultation
+indépendante de la pagination générale, avec isolation des corps de boucle et limite de 500.
+
+Les modales de processus restent utilisables lorsque le téléchargement d'un écran d'un
+autre domaine est indisponible. `topic-detail.spec.mjs` conserve la lecture, les erreurs,
+le réessai et la fermeture des autres types de ressources. `chat.spec.mjs` vérifie le tri
+chronologique, la conservation de la position au chargement des runs plus anciens et le
+défilement vers les nouveaux runs sur ordinateur et mobile.
+
+`test_run_observation.py` couvre la participation figée, les rôles inutilisés, les ACL
+Dataset indépendantes, la révocation de l'administration dédiée et le cycle
+attente/pause/reprise/arrêt. Les scénarios de suivi de `native-processes.spec.mjs`
+exercent les commandes sur la même exécution, la confirmation d'arrêt, la lecture seule
+et la disparition des attentes terminées. Le parcours assemblé reprend une activité
+humaine après pause puis recueille sa réponse dans le Chat.
+
+Le scénario d'historique de `front/browser-tests/native-processes.spec.mjs` vérifie la
+pagination serveur des sauvegardes, le réessai d'une page en erreur et la conservation
+du brouillon pendant la navigation dans l'historique. Les confirmations de retour et de
+suppression sont exercées avec annulation et erreur serveur, sans perte du brouillon.
+`test_native_bpmn.py` vérifie les droits HTTP, le refus de supprimer l'état courant,
+la pagination sans cet état et la conservation des exécutions après suppression d'une sauvegarde.
+
+Le profil v2 est couvert par `test_typed_values.py` et les scénarios typés de
+`test_native_bpmn.py` : transport récursif, nullable omis, défauts, types stricts,
+round-trip XML, sorties locales, protection du Dataset global, intégration idempotente
+après accusé perdu, conflits et URI sans transfert. Les six ordres de convergence de
+trois tâches humaines n'admettent qu'un successeur. REST utilise un serveur HTTP
+synthétique avec les vraies connexions ; les refus HTTP sont conservés. Les tests du port
+de code remplacent seulement le runner distant et vérifient attente, identité, refus
+sans runner et confirmation d'arrêt ; ils ne qualifient aucune isolation système.
+Les composants testent la sauvegarde des déclarations, les brouillons invalides et
+omission/null/false. Le parcours assemblé typé utilise un vrai utilisateur affecté,
+le formulaire de sortie et PostgreSQL, avec refus des défauts invalides à la sauvegarde.
+Les garanties de pool partagé décrites ci-dessous concernent le profil historique v1.
+
+`back/app/process/tests/test_native_bpmn.py` exerce le compilateur, les expressions,
+Documents/grants/Datasets réels, la reprise Task, les droits humains et orphelins,
+FOR/WHILE, convergence, arrêt à la première erreur, debugger et appels courants. Les services et PostgreSQL
+restent réels ; la réponse du harnais est synthétique. La campagne Lab admet et observe
+un vrai Run sans mock externe. `front/browser-tests/native-processes.spec.mjs` monte
+les composants réels avec des réponses HTTP synthétiques : connexions/clavier,
+lecture seule, conservation des brouillons et sauvegarde avec révision attendue.
+Les acteurs survivent à l'aller-retour XML ; les inversions humain/agent sont refusées.
+La suite vérifie l'agent réellement affecté et l'écriture de son Dataset commun, ainsi que
+l'attente humaine, le refus d'un autre utilisateur, la désactivation,
+les réponses répétées et l'annulation. Les composants construisent le flux depuis Début,
+insèrent depuis les poignées en préservant les conditions et filtrent les acteurs compatibles.
+La réponse humaine conserve son brouillon après une erreur réseau. Les captures synthétiques
+servent à l'inspection visuelle en clair, sombre et mobile, sans figer la présentation.
+Le glisser-déposer change les acteurs agents et humains au dépôt, conserve types et liens,
+refuse les lignes incompatibles et annule sur Échap ou révocation de l'édition. Le parcours
+assemblé vérifie l'affectation après sauvegarde, rechargement et lancement.
+`e2e/specs/native-processes.spec.mjs` exerce l'application assemblée : édition et
+sauvegarde, Task réellement admise, suivi de fin, Dataset persistant et graphe du Run
+préservé après modification de la définition. API et PostgreSQL restent réels ; seul
+le harnais est synthétique. Les paramètres de pagination encodés dans l'URL sont aussi
+vérifiés par HTTP avec les droits réels sur les routes Process et Lab.
+
+Le parcours de `test_activity_controls.py` utilise le vrai scheduler, ses leases,
+la façade Agent, le client du harnais, MCP HTTP et PostgreSQL ; seul le harnais distant est
+synthétique. Il couvre la perte du résultat distant avant la réponse humaine, la réconciliation
+sans nouvel effet, un nouveau tour consommant la réponse, une deuxième question dans la tâche
+suivante, la pause du processus, le redémarrage de l'engine et l'unique notification finale.
+Les tests protègent aussi les anciennes références, les retraits concurrents, le rollback
+et une activité déléguée qui continue d'échanger dans la conversation de lancement.
+
+`app/process/tests/test_decisions.py` exerce les deux branches des IF IA/code/humain,
+les droits et reçus humains, la modification du Dataset par retour Python ordinaire et
+le vrai worker Monty : accès système/réseau refusés, boucle et saturation bornées.
+Les parcours Chromium assemblés exécutent une tâche code, puis un IF code ou le clic
+humain False dans Chat. Les composants vérifient les deux poignées et les modes par acteur.
+Le parcours humain ajoute une activité par poignée, sauvegarde, lance, répond depuis
+la boîte d'activités affectées et vérifie la reprise jusqu'à la fin du Run.
+Le JSON métier et les pièces jointes sont communs à toutes les tâches d'un Run : les
+tests vérifient lecture/écriture via File Sharing, révisions dépassées, préservation
+des modifications parallèles, accès humain/agent, boucles et isolation entre Runs.
+Les anciens oracles de schémas, slots et affectations sont retirés avec ces fonctions ;
+le compilateur vérifie qu'ils ne créent plus d'exigences cachées. Le brouillon JSON
+invalide est protégé sur les arguments Tool qui restent éditables. Le parcours humain
+assemblé édite le Dataset, ajoute un fichier et vérifie leur conservation jusqu'à la fin.
+L'arrêt sur erreur remplace les anciens tests de réessai/secours : une seule tentative,
+aucun successeur, annulation des branches actives, codes d'erreur conservés pour les
+exécuteurs et les enfants, données préservées. Les exceptions inattendues sont aussi couvertes.
+Les suites Dataset/partage couvrent les consommateurs communs. Elles ne qualifient
+pas à elles seules les effets d'un harnais ou d'un serveur n8n réel.
+
 ## Dépôts Git dans la discussion
 
 `back/app/code/tests/test_workspaces.py` vérifie les grants exacts, la déduplication,
@@ -169,6 +283,15 @@ vérifie qu'elle ne retire pas le portrait chargé par le catalogue courant et q
 URL temporaire est libérée.
 
 ## Organisation des Tasks et planification
+
+`back/app/agent/tests/test_conversation_dispatch.py` protège la préanalyse réservée au mode
+conversation et conditionnée à Décision : références exactes, réponse versus suivi, lancement
+indépendant, absence de conclusion avec contexte incomplet, erreur et annulation.
+`back/tests/test_decision_workflows.py` vérifie la résolution réelle du profil et la persistance
+des inférences conversationnelles, avec remplacement du seul transport HTTP. Le scénario du
+contrôleur dans `back/app/harness/tests/test_conversation_prompt.py` vérifie l'injection dans le
+prompt, les pièces jointes et la responsabilité de l'exécuteur sans analyse. Ces tests ne
+mesurent ni la qualité sémantique ni la latence d'un modèle réel.
 
 `back/app/task/tests/test_execution_scope.py` vérifie le refus d'écriture hors périmètre avant
 tout effet, sa cause distincte d'une erreur d'arguments, sa transmission MCP jusqu'au modèle
@@ -526,6 +649,7 @@ du fournisseur (succès, abonnement disparu, refus et indisponibilité), avec un
 | Activité et reprise | Le résultat terminal du round prime sur les erreurs de tentatives ; une indisponibilité des choix ne révoque pas la sélection et une nouvelle recherche permet la reprise | `back/app/conversation/tests/test_monitoring_service.py`, `front/browser-tests/execution.spec.mjs`, `front/browser-tests/topics.spec.mjs` |
 | Choix chargés à la demande | Les sélecteurs agents/sujets vides ne chargent rien avant ouverture ; une annulation, un changement d’agent ou une fermeture de formulaire ne produit pas de fausse erreur ; une panne réelle reste visible et permet une nouvelle recherche | `front/browser-tests/filter-loading.spec.mjs`, `front/browser-tests/goals.spec.mjs`, `front/browser-tests/topics.spec.mjs`, `front/core/api.test.mjs` |
 | Process → tâche en attente | Un callback autorisé libère l’attente ; doublons et événements tardifs préservent résultat et erreur | `back/app/process/tests/test_recovery.py`, `test_worker_concurrency.py` |
+| Process → humain → messagerie | Demande privée interne ou externe, réponse JSON simple convertie en valeurs typées, fichier seul avec URI source, échec de livraison repris, refus d'un autre auteur ou d'une réponse tardive ; aucun message sans rapport ne termine l'étape. Une activité IA attend sans Task auxiliaire, reprend même après une réponse rapide et conserve une pause utilisateur ; anciennes attentes retirées, doublons idempotents, Dataset et message final conservés | `back/app/process/tests/test_human_messaging.py`, `back/app/process/tests/test_activity_controls.py`, `back/app/harness/tests/test_conversation_prompt.py`, `e2e/specs/native-processes.spec.mjs` |
 | Document → fichier → agent | Le contenu, sa révision, ses URI et ses ACL restent cohérents entre lecture et écriture | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
 | Document Dataset | Type immuable, JSON source préservé, erreurs sans révision, partage/classement/icône communs, copie/restauration et conflits ; CodeEditor conserve le brouillon invalide | `back/app/memory/tests/test_dataset_documents.py`, `test_document_classification.py`, `test_document_library.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs` |
 | HTML interactif dans un document | Formulaires HTML directs vers Dataset partagé, ACL et accords personnels liés à la révision ; révocation, copie non autorisée entre Datasets, validation JSON et quotas entre workers ; texte éditable et barre habituelle, code uniquement dans Source ; impression et PDF statiques avec filtrage des ressources ; isolation, WebRTC, saturation du pont et réponses tardives | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
@@ -593,6 +717,16 @@ Les anciens tests de rejet d'action/artefact et de comparaison de formulations s
 ces contraintes. `test_action_guard.py` conserve les garanties de reprise sur erreur et de
 livraison idempotente ; `test_scheduler.py` vérifie qu'un ancien verdict de garde ne contourne
 plus l'exigence de checkpoint après un effet.
+
+`test_conversation_protocol.py` bloque avant effet un lancement issu d'un faux échange,
+conserve la véritable réponse humaine et autorise les citations explicites. Les tests
+du filtre dans `test_conversation_context.py` couvrent le découpage du stream et les blocs
+de code ; `test_conversation_prompt.py` vérifie que le texte affiché et enregistré reste
+dans le tour courant. `test_runtime_instructions.py` inspecte les payloads Chat et Responses.
+`app/conversation/tests/test_process_admission.py` vérifie les permissions Process persistées :
+réponse sans lancement, paramètres exacts, multiplicité, reprise, concurrence et décision tardive.
+Les scénarios de `test_activity_controls.py` conservent le parcours complet question,
+réponse humaine, reprise et activité suivante.
 Le lot suivant ajoute la matrice des capacités de chaque provider et l'application distincte
 d'EXEC standard, EXEC high et PLAN. `test_dispatcher_inference.py` prouve la persistance
 d'une décision de Task à choix unique sans appel LLM ; `test_registry.py` protège la reprise des
