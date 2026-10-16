@@ -96,6 +96,8 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
             "lab_campaign_get",
             "lab_run_compare",
             "lab_dataset_generate",
+            "lab_process_dataset_create", "lab_process_dataset_generate", "lab_process_campaign_start",
+            "lab_process_campaign_get", "lab_process_campaign_cancel",
             "lab_expected_generate",
             "lab_run_analyze",
             "lab_task_analyze",

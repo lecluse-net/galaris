@@ -27,6 +27,8 @@ def register_scheduler_jobs(register: PeriodicJobRegistrar) -> None:
     from .operation_worker import tick
 
     register("lab-operations", tick, interval=1.0, timeout=720.0)
+    from .process_evaluation import tick as process_campaign_tick
+    register("lab-process-campaigns", process_campaign_tick, interval=1.0)
 
     register(
         "lab-mechanism-evaluations",

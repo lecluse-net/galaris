@@ -311,7 +311,8 @@ import { labSections, type LabSectionKey } from '../presentation'
 import { labSectionPrivileges } from '../access'
 import { useEvaluationStore } from '../stores/evaluationStore'
 
-const { section = 'tasks' } = defineProps<{ section?: LabSectionKey }>()
+type MechanismSection = Exclude<LabSectionKey, 'processes'>
+const { section = 'tasks' } = defineProps<{ section?: MechanismSection }>()
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const store = useEvaluationStore()
@@ -319,7 +320,7 @@ const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => (
   privilegeStore.hasPrivilege(labSectionPrivileges[section][1])
 ))
-const labTab = computed<LabSectionKey>(() => section)
+const labTab = computed<MechanismSection>(() => section)
 const taskFilter = ref('')
 const removeTaskDialog = ref(false)
 const taskToRemove = ref<string | null>(null)

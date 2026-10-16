@@ -1,5 +1,5 @@
 <template>
-  <AiEvaluationsPage v-if="section && canAccessSection" :section="section.key" />
+  <AiEvaluationsPage v-if="section && section.key !== 'processes' && canAccessSection" :section="section.key" />
 </template>
 
 <script setup lang="ts">

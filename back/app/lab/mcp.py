@@ -28,6 +28,48 @@ from .schemas import (
     MechanismExpectedGenerate,
 )
 from .synthetic_schemas import SyntheticDatasetRequest, SyntheticExecutorOutput
+from . import process_evaluation as process_evaluations
+
+
+@mcp_tool("lab", name="lab_process_dataset_create", description="Create a private Dataset of entirely synthetic process inputs and optional exact expected outputs.", approval="ask", approval_reason="Create a reusable synthetic Dataset", effect_policy="idempotent")
+@lab_call(mutation=True)
+async def lab_process_dataset_create(ctx: McpToolContext, title: str, cases: list[process_evaluations.ProcessCaseInput], invocation_key: str) -> dict[str, Any]:
+    return await process_evaluations.create_synthetic_dataset(ctx.agent_id, agent_id=ctx.agent_id,
+        title=title, cases=cases, invocation_key=invocation_key)
+
+
+@mcp_tool("lab", name="lab_process_dataset_generate", description="Generate synthetic inputs for the current process input contract using the configured Lab model. No external mocks.", approval="ask", approval_reason="Generate a paid synthetic Dataset", effect_policy="idempotent")
+@lab_call(mutation=True)
+async def lab_process_dataset_generate(ctx: McpToolContext, code: str, title: str, invocation_key: str,
+                                       instructions: str = "", count: int = 8) -> dict[str, Any]:
+    if not 1 <= count <= 20:
+        raise ValueError("Synthetic generation returns 1–20 cases per request")
+    return await process_evaluations.generate_synthetic_dataset(ctx.agent_id, agent_id=ctx.agent_id,
+        code=code, title=title, invocation_key=invocation_key, instructions=instructions, count=count)
+
+
+@mcp_tool("lab", name="lab_process_campaign_start", description="Benchmark a process with real runs using a synthetic Dataset. Each admission resolves the latest saved definition. Real external effects may occur.", approval="ask", approval_reason="Start a campaign of real process executions", effect_policy="idempotent")
+@lab_call(mutation=True)
+async def lab_process_campaign_start(ctx: McpToolContext, code: str, dataset_document_id: UUID,
+                                     title: str, invocation_key: str) -> dict[str, Any]:
+    campaign = await process_evaluations.start_campaign(ctx.agent_id, agent_id=ctx.agent_id,
+        code=code, dataset_document_id=dataset_document_id, title=title, invocation_key=invocation_key)
+    return await process_evaluations.inspect_campaign(campaign.id, ctx.agent_id)
+
+
+@mcp_tool("lab", name="lab_process_campaign_get", description="Inspect owned process campaign cases and their actual run, Dataset, duration, cost and optional exact-check evidence.", approval="enabled", approval_reason="Read authorized campaign evidence", effect_policy="read")
+@lab_call()
+async def lab_process_campaign_get(ctx: McpToolContext, campaign_id: UUID, page: int = 1, page_size: int = 50) -> dict[str, Any]:
+    if page < 1 or page_size not in {10, 20, 50, 100, 500}:
+        raise ValueError("Invalid pagination")
+    return await process_evaluations.inspect_campaign(campaign_id, ctx.agent_id, page=page, page_size=page_size)
+
+
+@mcp_tool("lab", name="lab_process_campaign_cancel", description="Cancel an owned process campaign and request cancellation of its admitted real runs.", approval="ask", approval_reason="Cancel process executions", effect_policy="idempotent")
+@lab_call(mutation=True)
+async def lab_process_campaign_cancel(ctx: McpToolContext, campaign_id: UUID, invocation_key: str) -> dict[str, Any]:
+    await process_evaluations.cancel_campaign(campaign_id, ctx.agent_id)
+    return await process_evaluations.inspect_campaign(campaign_id, ctx.agent_id)
 
 
 @mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",

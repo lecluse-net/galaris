@@ -43,8 +43,11 @@ def test_every_evaluation_lab_has_a_distinct_read_edit_pair() -> None:
         "conversation_executor",
         "voice_executor",
     }
-    assert len(ALL_EVALUATION_LAB_PRIVILEGES) == 20
-    assert len(set(ALL_EVALUATION_LAB_PRIVILEGES)) == 20
+    expected = {
+        privilege for pair in MECHANISM_PRIVILEGES.values() for privilege in pair
+    } | {Privileges.PROCESS_EVALUATION_ACCESS, Privileges.PROCESS_EVALUATION_EDIT}
+    assert set(ALL_EVALUATION_LAB_PRIVILEGES) == expected
+    assert len(ALL_EVALUATION_LAB_PRIVILEGES) == len(expected)
 
 
 def test_static_and_dynamic_routes_declare_their_lab_contract() -> None:

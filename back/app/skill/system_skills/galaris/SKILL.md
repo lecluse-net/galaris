@@ -45,6 +45,14 @@ generation and analysis return durable operations. Real-source capture additiona
 the execution-inspection functions of `galaris_admin`. These tools operate canonical Lab
 records and do not promote experimental settings to production.
 
+For native Process benchmarks, `lab_process_dataset_create` saves entirely invented input
+cases and optional exact outputs; `lab_process_dataset_generate` generates such cases from
+the current input contract. `lab_process_campaign_start` admits real runs, each from the
+latest saved Process. Inspect their actual duration, cost, Dataset and checks with
+`lab_process_campaign_get`, and request cancellation with `lab_process_campaign_cancel`.
+These operations require your Lab and Process capabilities. Application mocks are deferred;
+campaigns can therefore execute the real declared external operations.
+
 ## Document attachments and large reports
 
 Use `document_analyze(uri="<exact canonical source URI>", question="...",

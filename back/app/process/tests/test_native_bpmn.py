@@ -325,6 +325,84 @@ def test_expressions_have_missing_null_and_short_circuit_semantics():
 
 
 @pytest.mark.asyncio
+async def test_http_native_and_lab_pagination_accepts_encoded_sizes_with_real_authorization(client, inference_db, committed_native):
+    from core.user import UserModel
+    from core.user.user_service import encrypt_password
+    from core.authorize.models import Assignment, Role, Privilege
+    from app.agent import AgentManagementScope
+    from app.lab.process_evaluation import create_synthetic_dataset, start_campaign, ProcessCaseInput
+
+    owner, other_agent = committed_native
+    db = inference_db
+    user = UserModel(email=f"process-http-{uuid4().hex}@example.com", hashed_password=encrypt_password("synthetic-http-password"), is_active=True)
+    rights = list(await db.scalars(select(Privilege).where(Privilege.code.in_([
+        "PROCESS_READ", "PROCESS_EDIT", "PROCESS_LAUNCH", "PROCESS_EVALUATION_ACCESS",
+    ]))))
+    assert len(rights) == 4
+    role = Role(code=f"process-http-{uuid4().hex}", privileges=rights)
+    db.add_all([user, role])
+    await db.flush()
+    db.add(Assignment(user_id=user.id, role_id=role.id, is_default=True))
+    owner.user_id = user.id
+    owner_id, other_agent_id, user_id, email = owner.id, other_agent.id, user.id, user.email
+    await db.commit()
+    login = await client.post("/api/auth/login-json", json={"email": email, "password": "synthetic-http-password"})
+    assert login.status_code == 200, login.text
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    humans_path = "/api/processes/internal/humans"
+    assert (await client.get(humans_path, headers=headers, params={"agent_id": owner_id})).status_code == 200
+    assert (await client.get(humans_path, headers=headers, params={"agent_id": other_agent_id})).status_code == 403
+    assert (await client.get(humans_path, headers=headers)).status_code == 422
+    sharing_options = await client.get("/api/processes/internal/sharing-options", headers=headers, params={"agent_id": owner_id})
+    assert sharing_options.status_code == 200, sharing_options.text
+    assert sharing_options.json()["owner"]["kind"] == "user"
+    assert sharing_options.json()["owner"]["id"] == user_id
+    assert (await client.get("/api/processes/internal/sharing-options", headers=headers, params={"agent_id": other_agent_id})).status_code == 403
+    definition_graph = Workflow(nodes=[Node(id="begin", kind="start"), Node(id="finish", kind="end")],
+        flows=[Flow(id="a", source="begin", target="finish")])
+    created = await client.post("/api/processes/internal/definitions", headers=headers, json={
+        "agent_id": owner_id, "owner": "user", "title": "Synthetic HTTP definition", "graph": definition_graph.model_dump(mode="json")})
+    assert created.status_code == 201, created.text
+    code = created.json()["code"]
+    admission = await client.post(f"/api/processes/internal/definitions/{code}/runs", headers=headers, json={"agent_id": owner_id})
+    assert admission.status_code == 202, admission.text
+    run_id = UUID(admission.json()["run_id"])
+    await process_service.process_start_jobs(engine_code="galaris")
+    await finish_run(db, run_id)
+    scope = AgentManagementScope(user_id, frozenset({owner_id}))
+    dataset = await create_synthetic_dataset(scope, agent_id=owner_id, title="Synthetic HTTP inputs",
+        cases=[ProcessCaseInput(input={})], invocation_key=uuid4().hex)
+    campaign = await start_campaign(scope, agent_id=owner_id, code=code,
+        dataset_document_id=UUID(dataset["document_id"]), title="Synthetic HTTP campaign", invocation_key=uuid4().hex)
+    campaign_id = campaign.id
+    await db.commit()
+    paths = ["/api/processes/internal/definitions", f"/api/processes/internal/definitions/{code}/history",
+        "/api/processes/internal/runs", f"/api/processes/internal/runs/{run_id}",
+        f"/api/processes/internal/runs/{run_id}/activities/begin",
+        f"/api/processes/internal/runs/{run_id}/children", f"/api/evaluation/process-campaigns/{campaign_id}"]
+    for path in paths:
+        for size in (50, 500):
+            response = await client.get(path, headers=headers, params={"page": "1", "page_size": str(size)})
+            assert response.status_code == 200, (path, response.text)
+        assert (await client.get(path, headers=headers, params={"page_size": "501"})).status_code == 422
+    definition_graph.nodes[0].title = "Synthetic updated start"
+    updated = await client.put(f"/api/processes/internal/definitions/{code}", headers=headers,
+        json={"expected_revision": 1, "graph": definition_graph.model_dump(mode="json")})
+    assert updated.status_code == 200, updated.text
+    history_path = f"/api/processes/internal/definitions/{code}/history"
+    assert (await client.delete(f"{history_path}/2", headers=headers)).status_code == 409
+    foreign = await create(actor_agent_id=other_agent_id, title="Synthetic private history", graph=graph())
+    assert (await client.delete(f"/api/processes/internal/definitions/{foreign.code}/history/1", headers=headers)).status_code == 403
+    assert (await client.delete(f"{history_path}/1", headers=headers)).status_code == 204
+    assert (await client.get(f"{history_path}/1", headers=headers)).status_code == 404
+    assert (await client.delete(f"{history_path}/1", headers=headers)).status_code == 404
+    remaining = await client.get(history_path, headers=headers)
+    assert [entry["revision"] for entry in remaining.json()["items"]] == [2]
+    past_only = await client.get(history_path, headers=headers, params={"exclude_current": "true", "page_size": 10})
+    assert past_only.json()["items"] == [] and past_only.json()["total"] == 0
+
+
+@pytest.mark.asyncio
 async def test_incomplete_parallel_convergence_fails_instead_of_waiting_forever(db, native):
     owner, _ = native
     value = Workflow(nodes=[Node(id="begin", kind="start"), Node(id="fork", kind="parallel"),
@@ -2002,3 +2080,89 @@ async def test_human_ownership_readonly_sharing_run_dataset_and_orphans(db, nati
     # Even a former agent grant cannot expose an orphan via generic Memory APIs.
     with pytest.raises(memory.MemoryPermissionError):
         await memory.get_item(definition.document_id, agent_id=agent_reader.id, administrative=True)
+
+
+@pytest.mark.asyncio
+async def test_lab_real_campaign_idempotency_exact_evidence_and_private_inputs(db, native):
+    from app.lab import process_evaluation as lab
+    from app.connection import Connection
+    from app.tools import ToolModel
+    from app.lab.process_evaluation_models import LabProcessCase
+    from uuid import UUID
+    owner, stranger = native
+    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris"))
+    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    db.add(connection)
+    await db.flush()
+    from app.connection.facade import set_connection_function_state
+    await set_connection_function_state(connection.id, "process_start", "enabled")
+    await db.commit()
+    definition = await create(actor_agent_id=owner.id, title="Synthetic benchmark workflow", graph=Workflow(
+        nodes=[Node(id="start", kind="start"), Node(id="end", kind="end", config={"output": {"$expr": "input"}})],
+        flows=[Flow(id="f1", source="start", target="end")]))
+    dataset = await lab.create_synthetic_dataset(owner.id, agent_id=owner.id, title="Invented cases",
+        cases=[lab.ProcessCaseInput(input={"value": 7}, expected={"value": 7})], invocation_key="synthetic-inputs")
+    campaign = await lab.start_campaign(owner.id, agent_id=owner.id, code=definition.code,
+        dataset_document_id=UUID(dataset["document_id"]), title="Real synthetic benchmark", invocation_key="one-campaign")
+    assert (await lab.start_campaign(owner.id, agent_id=owner.id, code=definition.code,
+        dataset_document_id=UUID(dataset["document_id"]), title="Real synthetic benchmark", invocation_key="one-campaign")).id == campaign.id
+    with pytest.raises(PermissionError):
+        await lab.inspect_campaign(campaign.id, stranger.id)
+    await lab.tick()
+    case = await db.scalar(select(LabProcessCase).where(LabProcessCase.campaign_id == campaign.id))
+    run_id = case.run_id
+    await lab.tick()  # a replay must not launch another run
+    assert case.run_id == run_id
+    await process_service.process_start_jobs(engine_code="galaris")
+    await finish_run(db, run_id)
+    await lab.tick()
+    evidence = await lab.inspect_campaign(campaign.id, owner.id)
+    assert evidence["status"] == "completed"
+    assert evidence["items"][0]["evidence"]["exact_check"] is True
+    assert evidence["items"][0]["evidence"]["metrics"]["direct"]["cost"] is None
+
+
+@pytest.mark.asyncio
+async def test_lab_rechecks_launch_rights_and_can_cancel_admitted_runs_after_campaign_failure(db, native):
+    from app.lab import process_evaluation as lab
+    from app.lab.process_evaluation_models import LabProcessCase
+    from app.connection import Connection
+    from app.connection.facade import set_connection_function_state
+    from app.tools import ToolModel
+    from app.process.facade import launch_current
+    from uuid import UUID
+    owner, _ = native
+    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris"))
+    connection = Connection(tool_id=tool.id, agent_id=owner.id, active=True)
+    db.add(connection)
+    await db.flush()
+    await set_connection_function_state(connection.id, "process_start", "enabled")
+    definition = await create(actor_agent_id=owner.id, title="Synthetic revocation workflow", graph=graph())
+    dataset = await lab.create_synthetic_dataset(owner.id, agent_id=owner.id, title="Invented revocation cases",
+        cases=[lab.ProcessCaseInput(input={"value": 1}), lab.ProcessCaseInput(input={"value": 2})], invocation_key="revocation-inputs")
+    campaign = await lab.start_campaign(owner.id, agent_id=owner.id, code=definition.code,
+        dataset_document_id=UUID(dataset["document_id"]), title="Synthetic interrupted benchmark", invocation_key="revocation-campaign")
+    cases = list(await db.scalars(select(LabProcessCase).where(LabProcessCase.campaign_id == campaign.id).order_by(LabProcessCase.position)))
+    # One real admission predates the revocation; the next case is still queued.
+    cases[0].run_id = await launch_current(definition.code, owner.id, agent_id=owner.id,
+        input_data=cases[0].input, invocation_key=f"lab-process-case:{cases[0].id}")
+    cases[0].status = "running"
+    await db.commit()
+    await process_service.process_start_jobs(engine_code="galaris")
+    await process_service.refresh_run(cases[0].run_id)
+    await process_service.refresh_run(cases[0].run_id)
+    await set_connection_function_state(connection.id, "process_start", "disabled")
+    await db.commit()
+    owner_id, campaign_id = owner.id, campaign.id
+    await lab.tick()
+    failed = await lab.inspect_campaign(campaign_id, owner_id)
+    assert failed["status"] == "failed"
+    assert failed["items"][0]["status"] == "running"
+    assert failed["items"][1]["run_id"] is None
+    await lab.cancel_campaign(campaign_id, owner_id)
+    await lab.tick()
+    await process_service.refresh_run(UUID(failed["items"][0]["run_id"]))
+    await lab.tick()
+    cancelled = await lab.inspect_campaign(campaign_id, owner_id)
+    assert cancelled["status"] == "cancelled"
+    assert cancelled["items"][0]["status"] == "cancelled"

@@ -192,6 +192,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//lab/processes': RouteRecordInfo<
+      '//lab/processes',
+      '/lab/processes',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//llm/': RouteRecordInfo<
       '//llm/',
       '/llm',
@@ -545,6 +552,14 @@ declare module 'vue-router/auto-routes' {
     'app/lab/pages/ai-evaluations.vue': {
       routes:
         | '//lab/ai-evaluations'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/lab/pages/processes.vue': {
+      routes:
+        | '//lab/processes'
       views:
         | never
       pathParamNames:

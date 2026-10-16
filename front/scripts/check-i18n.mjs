@@ -26,7 +26,7 @@ async function loadTypeScriptDefault(filePath) {
   return evaluateCatalog(filePath, source).default
 }
 
-const importedCatalogs = new Set(['app/process/nativeI18n.ts'])
+const importedCatalogs = new Set(['app/lab/processI18n.ts', 'app/process/nativeI18n.ts'])
 function evaluateCatalog(filePath, source) {
   validateCatalogSyntax(source, filePath)
   const output = ts.transpileModule(source, {

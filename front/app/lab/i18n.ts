@@ -1,3 +1,4 @@
+import { processLabMessages } from './processI18n'
 const comparisonFr = {
   risksTitle: 'Régressions à examiner', riskCoverage: '{count} paires avec des jugements comparables. Les preuves manquantes restent inconnues.',
   criticalCount: '{count} apparitions d’échec critique — voir les cas', verdictCount: '{count} passages de réussi à échoué — voir les cas',
@@ -240,6 +241,7 @@ const syntheticZh = {
 
 export default {
   fr: {
+    processLab: processLabMessages.fr,
     contextHelpPages: {
       "lab": "Le Lab sert à comprendre et à améliorer les choix de l’IA en les confrontant à des cas concrets et reproductibles. Chaque laboratoire isole une fonction de Galaris, comme orienter une demande, préparer un plan, extraire un souvenir ou exécuter une tâche. Vous constituez un jeu de cas avec leur contexte et le résultat attendu, puis comparez des modèles ou des réglages sur les mêmes situations. Les évaluations combinent des contrôles et, selon le parcours, le jugement d’un autre modèle ; leurs résultats restent à examiner, notamment en regard du coût et du temps de réponse. L’idée est de choisir une configuration sur des observations, puis de pouvoir vérifier qu’un changement l’améliore réellement."
     },
@@ -903,6 +905,7 @@ export default {
     },
   },
   en: {
+    processLab: processLabMessages.en,
     contextHelpPages: {
       "lab": "The Lab helps you understand and improve AI decisions by testing them against concrete, reproducible cases. Each laboratory isolates a Galaris function, such as routing a request, preparing a plan, extracting a memory or executing a task. Build a set of cases with their context and expected outcome, then compare models or settings on the same situations. Evaluations combine checks and, depending on the workflow, another model’s judgment; review their results alongside cost and response time. The aim is to choose a configuration based on observations and verify whether a change actually improves it."
     },
@@ -1566,6 +1569,7 @@ export default {
     },
   },
   zh: {
+    processLab: processLabMessages.zh,
     contextHelpPages: {
       "lab": "Lab 通过具体、可复现的案例帮助您理解和改进 AI 的决策。每个实验室聚焦 Galaris 的一项功能，例如分派请求、制定计划、提取记忆或执行任务。您可以建立包含上下文和预期结果的案例集，再让不同模型或配置处理相同情境。评估结合规则检查，并根据流程使用另一模型进行判断；结果仍需结合成本和响应时间审阅。其理念是根据实际观察选择配置，并验证后续更改是否真正带来改进。"
     },

@@ -4,6 +4,7 @@ import type { LabSectionKey } from './presentation'
 export type LabPrivilegePair = readonly [read: string, edit: string]
 
 export const labSectionPrivileges = {
+  processes: [privileges.PROCESS_EVALUATION_ACCESS, privileges.PROCESS_EVALUATION_EDIT],
   tasks: [privileges.EVALUATION_ACCESS, privileges.EVALUATION_EDIT],
   dispatcher: [
     privileges.DISPATCHER_EVALUATION_ACCESS,

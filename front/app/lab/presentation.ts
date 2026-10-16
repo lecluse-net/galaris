@@ -1,4 +1,5 @@
 export const labSections = [
+  { key: 'processes', slug: 'processes', icon: 'account_tree', color: 'iris', titleKey: 'processLab.title', descriptionKey: 'processLab.description' },
   {
     key: 'tasks',
     slug: 'ai-evaluations',

@@ -9,6 +9,7 @@ const navigation = loadTypescript(new URL('./navigation.ts', import.meta.url), {
 const incidentNavigation = loadTypescript(new URL('../incident/navigation.ts', import.meta.url), { '@/core/authorize': { privileges } }).default
 
 const labKeys = [
+  'processes',
   'tasks',
   'dispatcher',
   'planner',

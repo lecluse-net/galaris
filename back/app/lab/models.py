@@ -7,6 +7,7 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from .operation_models import LabOperation as LabOperation
+from .process_evaluation_models import LabProcessCampaign as LabProcessCampaign, LabProcessCase as LabProcessCase
 
 from sqlalchemy import (
     Boolean,

@@ -84,6 +84,8 @@ from .schemas import (
 )
 
 router = APIRouter(prefix="/evaluation", tags=["task-analysis-lab"])
+from .process_evaluation_router import routes as process_campaign_routes
+router.include_router(process_campaign_routes)
 
 
 @router.get("/{mechanism}/runs/compare", response_model=RunComparison)
