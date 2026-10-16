@@ -1,3 +1,4 @@
 export { default as DocumentEditor } from './components/DocumentEditor.vue'
 export { memoryService } from './services/memoryService'
-export type { MemoryItem, MemoryItemDetail } from './types'
+export { default as MemorySharingPanel } from './components/MemorySharingPanel.vue'
+export type { MemoryItem, MemoryItemDetail, DocumentSharing, DocumentSharingLevelUpdate } from './types'

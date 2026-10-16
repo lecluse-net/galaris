@@ -169,6 +169,49 @@ test('conversation process states and opening details follow the loaded data', a
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
+for (const width of [390, 1280]) test(`conversation processes place recent runs at the bottom and follow new runs at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  const runs = Array.from({ length: 56 }, (_, index) => ({
+    id: `process-${String(index + 1).padStart(3, '0')}`, process_label: `Synthetic run ${String(index + 1).padStart(3, '0')}`,
+    tool_code: 'n8n', status: 'success', created_at: new Date(Date.UTC(2026, 8, 1, 12, 0, index)).toISOString(),
+  })).reverse()
+  let reads = 0
+  await page.route('**/api/chat/rooms/room-a/processes?*', route => {
+    reads++
+    const query = new URL(route.request().url()).searchParams
+    const size = Number(query.get('page_size')), pageNumber = Number(query.get('page'))
+    expect(size).toBeLessThanOrEqual(500)
+    if (pageNumber > 1) expect(size).toBe(50)
+    return route.fulfill({ json: { items: runs.slice((pageNumber - 1) * size, pageNumber * size), total: runs.length } })
+  })
+  await mount(page, 'app/chat/components/ConversationProcessesPanel.vue', {
+    props: { roomId: 'room-a', fromMessageId: 'message-a', canRead: true },
+    containerStyle: { height: '100vh', display: 'flex', flexDirection: 'column' },
+  })
+  const list = page.locator('.conversation-work-list')
+  const labels = list.locator('.text-weight-medium')
+  const atBottom = () => list.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop < 2)
+  await expect(labels).toHaveCount(50)
+  await expect(labels.first()).toHaveText('Synthetic run 007')
+  await expect(labels.last()).toHaveText('Synthetic run 056')
+  await expect.poll(atBottom).toBe(true)
+  await list.evaluate(element => { element.scrollTop = 0 })
+  await expect(labels).toHaveCount(56)
+  await expect(labels.first()).toHaveText('Synthetic run 001')
+  await expect(list.getByText('Synthetic run 007', { exact: true })).toBeInViewport()
+  await list.evaluate(element => { element.scrollTop = 0 })
+  const beforeUpdate = reads
+  runs[0].status = 'running'
+  await page.evaluate(() => window.testApp.emitSocket('process_run.update', { data: { id: 'process-056' } }))
+  await expect.poll(() => reads).toBeGreaterThan(beforeUpdate)
+  await expect.poll(() => list.evaluate(element => element.scrollTop)).toBe(0)
+  runs.unshift({ ...runs[0], id: 'process-057', process_label: 'Synthetic run 057', created_at: '2026-09-01T12:01:00Z' })
+  await page.evaluate(() => window.testApp.emitSocket('process_run.create', { data: { id: 'process-057' } }))
+  await expect(labels.last()).toHaveText('Synthetic run 057')
+  await expect.poll(atBottom).toBe(true)
+  await expect(list.getByText('Synthetic run 057', { exact: true })).toBeInViewport()
+})
+
 test('conversation documents hide UUID labels and respect read and edit permissions', async ({ page }) => {
   await jsonRoute(page, '**/api/memory/documents/doc-a?agent_id=7', { item: { ...documentFixture, payload: { text: '<p>Working document</p>' } }, agent_id: 7 })
   await jsonRoute(page, '**/api/chat/rooms/room-a/documents?*', { items: [{ id: 'doc-a', label: '12345678-1234-1234-8234-123456789abc', revision: 2, updated_at: null }], total: 1 })

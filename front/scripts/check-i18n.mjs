@@ -1,4 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -22,14 +23,24 @@ async function findModuleCatalogs(directory) {
 
 async function loadTypeScriptDefault(filePath) {
   const source = await readFile(filePath, 'utf8')
+  return evaluateCatalog(filePath, source).default
+}
+
+const importedCatalogs = new Set(['app/process/nativeI18n.ts'])
+function evaluateCatalog(filePath, source) {
   validateCatalogSyntax(source, filePath)
   const output = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
     fileName: filePath,
   }).outputText
   const loaded = { exports: {} }
-  new Function('module', 'exports', output)(loaded, loaded.exports)
-  return loaded.exports.default
+  const require = specifier => {
+    const target = path.resolve(path.dirname(filePath), `${specifier}.ts`)
+    if (!specifier.startsWith('./') || !importedCatalogs.has(path.relative(frontendRoot, target))) throw new Error(`Unreviewed catalog import: ${specifier}`)
+    return evaluateCatalog(target, readFileSync(target, 'utf8'))
+  }
+  new Function('module', 'exports', 'require', output)(loaded, loaded.exports, require)
+  return loaded.exports
 }
 
 function flatten(value, prefix = '', result = new Map()) {

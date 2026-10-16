@@ -123,7 +123,7 @@
             <q-separator />
             <div class="document-history-content scroll col">
               <div v-if="viewMode === 'preview'" class="q-pa-md">
-                <CodeEditor v-if="detail.media_type === 'application/json'" :model-value="detail.content" language="json" readonly :min-lines="20" :label="t('documents.historyPreview')" />
+                <CodeEditor v-if="detail.media_type === 'application/json' || detail.media_type === 'application/bpmn+xml'" :model-value="detail.content" :language="detail.media_type === 'application/json' ? 'json' : 'xml'" readonly :min-lines="20" :label="t('documents.historyPreview')" />
                 <EditorialContent
                   v-else
                   :content="detail.content"

@@ -17,8 +17,9 @@
       <span>{{ t('chat.noProcesses') }}</span>
     </div>
     <q-list ref="processList" v-else separator class="conversation-work-list" @scroll.passive="onScroll">
+      <div v-if="loadingMore" class="conversation-work-loader"><q-spinner color="primary" size="20px" /></div>
       <q-item
-        v-for="run in processes"
+        v-for="run in chronologicalProcesses"
         :key="run.id"
         clickable
         v-ripple
@@ -47,7 +48,6 @@
           </q-chip>
         </q-item-section>
       </q-item>
-      <div v-if="loadingMore" class="conversation-work-loader"><q-spinner color="primary" size="20px" /></div>
       <div v-if="error && processes.length" class="conversation-work-inline-error text-negative"><q-icon name="warning" size="14px" /> {{ error }}</div>
     </q-list>
 
@@ -63,6 +63,7 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { websocket } from '@/core/websocket'
+import { preloadResourceDetail } from '@/core/util'
 import { chatService } from '../services/chatService'
 import type { ConversationProcess, ConversationProcessStatus } from '../types'
 import ConversationProcessDialog from './ConversationProcessDialog.vue'
@@ -94,12 +95,19 @@ let scrollFrame: number | null = null
 let scrollResizeObserver: ResizeObserver | null = null
 let pendingBottomScroll = false
 let subscribed = false
-const PROCESS_PAGE_SIZE = 10
+const PROCESS_PAGE_SIZE = 50
 const hasMore = computed(() => processes.value.length < total.value)
+const chronologicalProcesses = computed(() => [...processes.value].sort((left, right) =>
+  Date.parse(left.created_at) - Date.parse(right.created_at) || left.id.localeCompare(right.id)))
 const selectedProcess = computed(() => (
   processes.value.find(run => run.id === selectedProcessId.value) ?? null
 ))
 const processList = useTemplateRef<{ $el: HTMLElement }>('processList')
+
+// Prepare the diagram code while the user reads the list; run data stays fetched on opening.
+watch(() => props.canRead && processes.value.some(run => run.tool_code === 'galaris'), available => {
+  if (available) void preloadResourceDetail('process_run').catch(() => { /* Opening the dialog offers the normal download retry. */ })
+})
 
 function isActive(status: ConversationProcessStatus): boolean {
   return status === 'queued' || status === 'running'
@@ -155,31 +163,40 @@ function formatDate(value: string): string {
 
 async function load(reset = true, scrollAfterLoad = false): Promise<void> {
   const sequence = ++requestSequence
+  loadingMore.value = false
   if (!props.canRead || !props.fromMessageId) {
     processes.value = []
     total.value = 0
     page.value = 1
     error.value = ''
+    loading.value = false
     return
   }
-  if (reset) loadingMore.value = false
   loading.value = true
   try {
     const knownIds = new Set(processes.value.map(run => run.id))
     const requestedPageSize = reset ? PROCESS_PAGE_SIZE : Math.max(PROCESS_PAGE_SIZE, page.value * PROCESS_PAGE_SIZE)
+    const batchSize = Math.min(500, requestedPageSize)
     const result = await chatService.processes(
       props.roomId,
       props.fromMessageId,
       1,
-      requestedPageSize,
+      batchSize,
       props.viewerAgentId,
     )
     if (sequence !== requestSequence) return
-    processes.value = result.items
+    const items = [...result.items]
+    for (let batch = 2; items.length < Math.min(requestedPageSize, result.total); batch++) {
+      const older = await chatService.processes(props.roomId, props.fromMessageId, batch, batchSize, props.viewerAgentId)
+      if (sequence !== requestSequence) return
+      if (!older.items.length) break
+      items.push(...older.items.slice(0, requestedPageSize - items.length))
+    }
+    processes.value = [...new Map(items.map(run => [run.id, run])).values()]
     total.value = result.total
     if (reset) page.value = 1
     error.value = ''
-    if (scrollAfterLoad || result.items.some(run => !knownIds.has(run.id))) {
+    if (scrollAfterLoad || items.some(run => !knownIds.has(run.id))) {
       scrollProcessesToBottom()
     }
   } catch (caught) {
@@ -194,6 +211,9 @@ async function load(reset = true, scrollAfterLoad = false): Promise<void> {
 async function loadMore(): Promise<void> {
   if (loading.value || loadingMore.value || !hasMore.value || !props.fromMessageId) return
   const sequence = requestSequence
+  const target = processList.value?.$el
+  const previousHeight = target?.scrollHeight ?? 0
+  const previousPosition = target?.scrollTop ?? 0
   loadingMore.value = true
   try {
     const nextPage = page.value + 1
@@ -210,6 +230,10 @@ async function loadMore(): Promise<void> {
     total.value = result.total
     page.value = nextPage
     error.value = ''
+    loadingMore.value = false
+    await nextTick()
+    if (sequence !== requestSequence) return
+    if (target) target.scrollTop = previousPosition + target.scrollHeight - previousHeight
   } catch (caught) {
     if (sequence === requestSequence) error.value = apiErrorDetail(caught) ?? t('chat.processesLoadError')
   } finally {
@@ -219,7 +243,7 @@ async function loadMore(): Promise<void> {
 
 function onScroll(event: Event): void {
   const target = event.currentTarget as HTMLElement
-  if (target.scrollHeight - target.scrollTop - target.clientHeight <= 80) void loadMore()
+  if (!pendingBottomScroll && target.scrollTop <= 80) void loadMore()
 }
 
 function disconnectScrollResizeObserver(): void {
@@ -264,8 +288,8 @@ defineExpose({ scrollToBottom: scrollProcessesToBottom })
 
 function scheduleRefresh(): void {
   if (!props.canRead) return
-  if (refreshTimer) window.clearTimeout(refreshTimer)
-  refreshTimer = setTimeout(() => { void load(false) }, 250)
+  if (refreshTimer !== null) return
+  refreshTimer = setTimeout(() => { refreshTimer = null; void load(false) }, 250)
 }
 
 function subscribe(): void {
@@ -295,6 +319,8 @@ watch(
     if (roomId !== previous?.[0] || viewerAgentId !== previous?.[2] || canRead !== previous?.[3]) {
       processes.value = []
       total.value = 0
+      detailDialogOpen.value = false
+      selectedProcessId.value = null
     }
     if (canRead) subscribe()
     else unsubscribe()
@@ -314,9 +340,9 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.conversation-processes-panel { min-width: 0; color: var(--chat-text, #252b36); background: var(--chat-surface, #fff); }
+.conversation-processes-panel { display: flex; flex: 1 1 auto; min-width: 0; min-height: 0; flex-direction: column; color: var(--chat-text, #252b36); background: var(--chat-surface, #fff); }
 .conversation-work-state { display: flex; min-height: 120px; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 18px; text-align: center; font-size: .78rem; }
-.conversation-work-list { max-height: 280px; overflow-y: auto; }
+.conversation-work-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .conversation-work-loader { display: flex; min-height: 36px; align-items: center; justify-content: center; }
 .conversation-work-inline-error { padding: 7px 10px; font-size: .75rem; }
 </style>

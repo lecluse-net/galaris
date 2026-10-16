@@ -15,6 +15,7 @@ interface ProcessState {
   runsRequest: number
   detailRequest: number
   definitionsRequest: number
+  agentsRequest: number
   definitions: ProcessDefinition[]
   runs: ProcessRun[]
   runsTotal: number
@@ -37,7 +38,7 @@ interface ProcessState {
 
 export const useProcessStore = defineStore('processes', {
   state: (): ProcessState => ({
-    runsRequest: 0, detailRequest: 0, definitionsRequest: 0,
+    runsRequest: 0, detailRequest: 0, definitionsRequest: 0, agentsRequest: 0,
     definitions: [], runs: [], runsTotal: 0, runsPage: 1, runsPageSize: 50,
     runsSearch: '', runsSortBy: 'created_at', runsDescending: true,
     runsWorkflowId: null, loadingRuns: false,
@@ -47,21 +48,12 @@ export const useProcessStore = defineStore('processes', {
   }),
   actions: {
     async loadAll(agentId?: number): Promise<void> {
-      const request = ++this.definitionsRequest
-      this.loading = true
-      this.error = null
-      try {
-        const [definitions, agents] = await Promise.all([
-          processService.definitions(agentId), processService.agents(),
-        ])
-        if (request !== this.definitionsRequest) return
-        this.$patch({ definitions, agents })
-      } catch (error) {
-        if (request !== this.definitionsRequest) return
-        this.error = error
-        console.error('Error loading process administration:', error)
-        throw error
-      } finally { if (request === this.definitionsRequest) this.loading = false }
+      await Promise.all([this.loadDefinitions(agentId), this.loadAgents()])
+    },
+    async loadAgents(): Promise<void> {
+      const request = ++this.agentsRequest
+      const agents = await processService.agents()
+      if (request === this.agentsRequest) this.agents = agents
     },
     async saveDefinition(data: ProcessDefinitionCreate, agentId?: number): Promise<ProcessDefinition> {
       const record = await processService.createDefinition(data)
@@ -70,9 +62,13 @@ export const useProcessStore = defineStore('processes', {
     },
     async loadDefinitions(agentId?: number): Promise<void> {
       const request = ++this.definitionsRequest
+      this.loading = true
+      this.error = null
       try {
         const definitions = await processService.definitions(agentId)
         if (request === this.definitionsRequest) this.definitions = definitions
+      } catch (error) {
+        if (request === this.definitionsRequest) { this.error = error; throw error }
       } finally { if (request === this.definitionsRequest) this.loading = false }
     },
     async deleteDefinition(id: number): Promise<void> {
@@ -116,9 +112,6 @@ export const useProcessStore = defineStore('processes', {
       } finally {
         if (request === this.runsRequest) this.loadingRuns = false
       }
-    },
-    async startRun(data: { agent_id: number; workflow_id: string; input: Record<string, unknown>; files: never[]; wait_for_completion: boolean }): Promise<void> {
-      await processService.startRun(data)
     },
     async openRun(id: string): Promise<void> {
       const request = ++this.detailRequest

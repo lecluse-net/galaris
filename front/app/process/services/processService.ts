@@ -1,4 +1,5 @@
 import { api } from '@/core/api'
+import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 
 export interface ProcessDefinition {
   id: number
@@ -133,13 +134,7 @@ export interface ProcessAnalysis {
   recommendations: string[]
 }
 
-export interface AgentOption {
-  id: number
-  code: string
-  first_name: string
-  last_name: string
-  has_avatar: boolean
-}
+export type AgentOption = AgentSelectionOption
 
 export const processService = {
   async tools(): Promise<ProcessTool[]> {
@@ -205,9 +200,6 @@ export const processService = {
   async deleteRun(id: string): Promise<void> {
     await api.delete(`/processes/runs/${id}`)
   },
-  async startRun(data: { agent_id: number; workflow_id: string; input: Record<string, unknown>; files: never[]; wait_for_completion: boolean }): Promise<Record<string, unknown>> {
-    return (await api.post('/processes/runs', data)).data
-  },
   async refreshRun(id: string): Promise<ProcessRun> {
     return (await api.post(`/processes/runs/${id}/refresh`)).data
   },
@@ -221,6 +213,6 @@ export const processService = {
     return (await api.post(`/processes/runs/${id}/analyze`)).data
   },
   async agents(): Promise<AgentOption[]> {
-    return (await api.get('/agents', { params: { limit: 500 } })).data
+    return getAgentSelection('management')
   },
 }

@@ -1,5 +1,7 @@
 <template>
-  <q-dialog v-model="open">
+  <ResourceDetailDialog v-if="open && process?.tool_code === 'galaris'"
+    :target="{ kind: 'process_run', id: process.id, title: processLabel(process) }" @close="open = false" />
+  <q-dialog v-else v-model="open">
     <q-card class="conversation-process-dialog galaris-detail-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <q-icon name="account_tree" size="sm" />
@@ -84,7 +86,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { CodeEditor } from '@/core/util'
+import { CodeEditor, ResourceDetailDialog } from '@/core/util'
 import type { ConversationProcess, ConversationProcessStatus } from '../types'
 
 const open = defineModel<boolean>({ required: true })

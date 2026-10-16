@@ -19,4 +19,6 @@ test('human pause takes precedence over automatic wait and the execution phase',
   assert.equal(service.getTaskOperationalIcon({ status: 'EXEC', paused: true, data: { pause_reasons: ['await'] } }), 'hourglass_top')
   assert.equal(service.getTaskOperationalIcon({ status: 'EXEC', paused: true, data: { pause_reasons: ['await', 'user'] } }), 'pause_circle')
   assert.equal(service.pauseBadge({ paused: true, data: { pause_reasons: ['await', 'user'] } }).waiting, false)
+  assert.equal(service.pauseBadge({ paused: true, data: { pause_reasons: ['input'] } }).waiting, true)
+  assert.equal(service.pauseBadge({ paused: true, data: { pause_reasons: ['input', 'user'] } }).waiting, false)
 })

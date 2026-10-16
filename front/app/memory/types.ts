@@ -88,7 +88,7 @@ export interface CatalogueResource extends DocumentAttachment {
   uri: string
 }
 
-export type DocumentType = 'html' | 'dataset'
+export type DocumentType = 'html' | 'dataset' | 'process'
 
 export interface MemoryItem {
   document_id?: string | null

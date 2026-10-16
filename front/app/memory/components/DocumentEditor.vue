@@ -69,7 +69,7 @@
             </q-chip>
           </div>
         </q-toolbar-title>
-        <DocumentAppPermissions v-if="!isDataset" :document-id="currentDocument.id" :revision="currentDocument.revision"
+        <DocumentAppPermissions v-if="!isDataset && !isProcess" :document-id="currentDocument.id" :revision="currentDocument.revision"
           :disabled="hasUnsavedChanges || !!conflictDocument"
           :can-write="privilegeStore.hasPrivilege(privileges.MEMORY_EDIT) || privilegeStore.hasPrivilege(privileges.MEMORY_ADMIN)"
           @changed="appPermissionsGeneration++" />
@@ -204,6 +204,7 @@
         </div>
         <div class="col-12">
           <q-banner v-if="currentDocument.content_type !== 'text'" dense>{{ t('memory.binaryContent') }}</q-banner>
+          <q-btn v-else-if="isProcess && currentDocument.metadata?.process_code" icon="account_tree" :label="t('nativeProcesses.visual')" :to="`/process/internal/${currentDocument.metadata.process_code}`" />
           <q-input v-else-if="!isDataset && !currentDocument.media_type.startsWith('text/')"
             :model-value="editorContent" type="textarea" outlined readonly autogrow :label="t('documents.content')" />
           <CodeEditor
@@ -400,6 +401,7 @@ const editorTitle = ref('')
 const editorOwner = ref('')
 const editorContent = ref('')
 const isDataset = computed(() => currentDocument.value?.document_type === 'dataset')
+const isProcess = computed(() => currentDocument.value?.document_type === 'process')
 const validDataset = computed(() => {
   if (!isDataset.value) return true
   try { JSON.parse(editorContent.value); return true } catch { return false }

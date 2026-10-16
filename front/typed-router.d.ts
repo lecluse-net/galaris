@@ -262,6 +262,27 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//process/internal/[code]': RouteRecordInfo<
+      '//process/internal/[code]',
+      '/process/internal/:code',
+      { code: ParamValue<true> },
+      { code: ParamValue<false> },
+      | never
+    >,
+    '//process/internal/run/[id]': RouteRecordInfo<
+      '//process/internal/run/[id]',
+      '/process/internal/run/:id',
+      { id: ParamValue<true> },
+      { id: ParamValue<false> },
+      | never
+    >,
+    '//process/new-internal': RouteRecordInfo<
+      '//process/new-internal',
+      '/process/new-internal',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//skill/': RouteRecordInfo<
       '//skill/',
       '/skill',
@@ -604,6 +625,30 @@ declare module 'vue-router/auto-routes' {
     'app/process/pages/index.vue': {
       routes:
         | '//process/'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/process/pages/internal/[code].vue': {
+      routes:
+        | '//process/internal/[code]'
+      views:
+        | never
+      pathParamNames:
+        | 'code'
+    }
+    'app/process/pages/internal/run/[id].vue': {
+      routes:
+        | '//process/internal/run/[id]'
+      views:
+        | never
+      pathParamNames:
+        | 'id'
+    }
+    'app/process/pages/new-internal.vue': {
+      routes:
+        | '//process/new-internal'
       views:
         | never
       pathParamNames:

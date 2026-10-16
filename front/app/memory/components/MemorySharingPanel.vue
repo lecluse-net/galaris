@@ -14,9 +14,11 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { PersonAvatar, SharingPanel, type SharingDraft } from '@/core/util'
 import { AgentAvatar } from '@/app/agent'
 import { memoryService } from '../services/memoryService'
-import type { DocumentSharing } from '../types'
+import type { DocumentSharing, DocumentSharingLevelUpdate } from '../types'
 
-const props = withDefaults(defineProps<{ itemId: string; editable: boolean; lockVersion?: number; resourceKind?: 'memory' | 'document' }>(), { resourceKind: 'memory' })
+const props = withDefaults(defineProps<{ itemId: string; editable: boolean; lockVersion?: number; resourceKind?: 'memory' | 'document';
+  reader?: (id: string) => Promise<DocumentSharing>; writer?: (id: string, data: DocumentSharingLevelUpdate) => Promise<DocumentSharing>
+}>(), { resourceKind: 'memory' })
 const emit = defineEmits<{ changed: []; permission: [value: boolean] }>()
 const state = ref<DocumentSharing | null>(null)
 const loading = ref(false)
@@ -30,7 +32,7 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = false
   try {
-    const result = props.resourceKind === 'document'
+    const result = props.reader ? await props.reader(props.itemId) : props.resourceKind === 'document'
       ? await memoryService.documentSharing(props.itemId)
       : await memoryService.itemSharing(props.itemId)
     if (current !== generation) return
@@ -48,7 +50,7 @@ async function save(draft: SharingDraft): Promise<void> {
   saving.value = true
   error.value = false
   try {
-    const update = props.resourceKind === 'document' ? memoryService.updateDocumentSharingLevel : memoryService.updateItemSharing
+    const update = props.writer ?? (props.resourceKind === 'document' ? memoryService.updateDocumentSharingLevel : memoryService.updateItemSharing)
     const result = await update(props.itemId, {
       ...draft, expected_lock_version: state.value.lock_version,
     })

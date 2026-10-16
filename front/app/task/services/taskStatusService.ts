@@ -160,7 +160,7 @@ export const STATIC_STATUSES: TaskStatus[] = ['CREATE', 'SUCCESS', 'ERROR']
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const PAUSE_REASON = {
-  USER: 'user', AWAIT: 'await', PLAN: 'plan', CLARIFY: 'clarify', CHILD: 'child',
+  USER: 'user', AWAIT: 'await', PLAN: 'plan', CLARIFY: 'clarify', CHILD: 'child', INPUT: 'input',
 } as const
 
 interface HasPause { paused?: boolean; data?: Record<string, any> | null }
@@ -195,6 +195,7 @@ export function pauseBadge(task: HasPause): PauseBadge | null {
   const reasons = pauseReasons(task)
   // A human pause takes precedence over automatic wait reasons.
   if (reasons.includes(PAUSE_REASON.USER)) return { labelKey: 'task.detail.pausedBadge', ...PAUSED }
+  if (reasons.includes(PAUSE_REASON.INPUT)) return { labelKey: 'task.detail.waitingHumanInput', ...WAITING }
   if (reasons.includes(PAUSE_REASON.AWAIT)) return { labelKey: 'task.detail.waitingColleague', ...WAITING }
   if (reasons.includes(PAUSE_REASON.CHILD)) return { labelKey: 'task.detail.waitingSubtask', ...WAITING }
   if (reasons.includes(PAUSE_REASON.CLARIFY)) return { labelKey: 'task.detail.waitingClarification', ...WAITING }

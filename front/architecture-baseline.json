@@ -426,6 +426,14 @@
     },
     {
       "source": "app/process",
+      "target": "app/dataset"
+    },
+    {
+      "source": "app/process",
+      "target": "app/memory"
+    },
+    {
+      "source": "app/process",
       "target": "app/task"
     },
     {
@@ -993,10 +1001,6 @@
     {
       "source": "front/app/memory/pages/index.vue",
       "target": "@/core/authorize/stores/privilegeStore"
-    },
-    {
-      "source": "front/app/process/pages/index.vue",
-      "target": "@/app/agent/services/agentService"
     },
     {
       "source": "front/app/skill/components/SkillAuthorizationManager.vue",

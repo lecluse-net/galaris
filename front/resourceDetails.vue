@@ -8,6 +8,7 @@
     </q-banner>
     <TaskDetail v-else-if="target.kind === 'task'" :task-id="taskId"
       @task-change="taskId = $event" @refresh="emit('changed')" @delete="taskToDelete = $event" />
+    <NativeRunPanel v-else-if="target.kind === 'process_run'" :key="target.id" :run-id="target.id" embedded class="q-pa-md" />
     <ConversationRoundDetailView v-else-if="round && message" :message="message" :round="round"
       :calls="calls" :loading="false" error="" :calls-loading="callsLoading" :calls-error="callsError"
       @deleted="changedAndClose" @topic-updated="round = $event; emit('changed')"
@@ -38,18 +39,25 @@
   </q-dialog>
 </template>
 
+<script lang="ts">
+export async function preload(kind: string): Promise<void> {
+  if (kind === 'process_run') await import('@/app/process')
+}
+</script>
+
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { defineAsyncView, EditorialContent, ConversationTurnDialog, type ResourceDetailTarget } from '@/core/util'
-import { taskService, type TaskFull } from '@/app/task'
-import { conversationService, type ConversationMessage, type ConversationRoundDetail } from '@/app/conversation'
-import { voiceConversationService, type VoiceConversationDetail, type VoiceConversationTurn } from '@/app/voice'
-import { chatService, type MessengerRoom } from '@/app/chat/interface'
-import { memoryService, type MemoryItemDetail } from '@/app/memory'
+import type { TaskFull } from '@/app/task'
+import type { ConversationMessage, ConversationRoundDetail } from '@/app/conversation'
+import type { VoiceConversationDetail, VoiceConversationTurn } from '@/app/voice'
+import type { MessengerRoom } from '@/app/chat/interface'
+import type { MemoryItemDetail } from '@/app/memory'
 import type { LLMCall } from '@/app/llm'
 
 const TaskDetail = defineAsyncView(async () => (await import('@/app/task')).TaskDetail)
+const NativeRunPanel = defineAsyncView(async () => (await import('@/app/process')).NativeRunPanel)
 const DocumentEditor = defineAsyncView(async () => (await import('@/app/memory')).DocumentEditor)
 const ConversationRoundDetailView = defineAsyncView(async () => (await import('@/app/conversation')).ConversationRoundDetailView)
 const VoiceConversationDetailView = defineAsyncView(async () => (await import('@/app/voice')).VoiceConversationDetailView)
@@ -57,7 +65,7 @@ const RoomDiscussion = defineAsyncView(async () => (await import('@/app/chat/int
 const props = defineProps<{ target: ResourceDetailTarget }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
 const { t } = useI18n()
-const icons: Record<string, string> = { task: 'task_alt', round: 'forum', voice: 'record_voice_over', room: 'hub', document: 'description', memory: 'memory' }
+const icons: Record<string, string> = { task: 'task_alt', process_run: 'account_tree', round: 'forum', voice: 'record_voice_over', room: 'hub', document: 'description', memory: 'memory' }
 const retry = ref(0)
 const taskId = ref<string | null>(null)
 const taskToDelete = ref<TaskFull | null>(null)
@@ -82,10 +90,13 @@ function changedAndClose(): void { emit('changed'); emit('close') }
 async function deleteTask(): Promise<void> {
   if (!taskToDelete.value || deleting.value) return
   const current = generation
+  const identity = taskToDelete.value.id
   deleting.value = true
   deleteError.value = ''
   try {
-    await taskService.delete(taskToDelete.value.id)
+    const { taskService } = await import('@/app/task')
+    if (current !== generation) return
+    await taskService.delete(identity)
     if (current !== generation) return
     taskToDelete.value = null
     changedAndClose()
@@ -111,9 +122,11 @@ watch([() => props.target, retry], async ([target], _, onCleanup) => {
   memory.value = null
   room.value = null
   taskId.value = target.id
-  loading.value = !['task', 'document'].includes(target.kind)
+  loading.value = !['task', 'document', 'process_run'].includes(target.kind)
   try {
     if (target.kind === 'round') {
+      const { conversationService } = await import('@/app/conversation')
+      if (!active) return
       const value = await conversationService.getRound(target.id)
       if (!active) return
       round.value = value
@@ -132,6 +145,8 @@ watch([() => props.target, retry], async ([target], _, onCleanup) => {
         round_status: value.status, response_text: value.response_text, response_error: value.last_error,
         responded_at: value.finished_at, aggregated_message_count: value.rendered_input.length, topic_id: value.topic_id }
     } else if (target.kind === 'voice') {
+      const { voiceConversationService } = await import('@/app/voice')
+      if (!active) return
       const detail = await voiceConversationService.getTurn(target.id)
       if (!active) return
       const session = await voiceConversationService.get(detail.session_id)
@@ -139,10 +154,14 @@ watch([() => props.target, retry], async ([target], _, onCleanup) => {
       conversation.value = session
       turn.value = detail
     } else if (target.kind === 'room') {
+      const { chatService } = await import('@/app/chat/interface')
+      if (!active) return
       const detail = await chatService.room(target.id)
       if (!active) return
       room.value = detail
     } else if (target.kind === 'memory') {
+      const { memoryService } = await import('@/app/memory')
+      if (!active) return
       const detail = await memoryService.getItem(target.id, target.agentId)
       if (active) memory.value = detail
     }

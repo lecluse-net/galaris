@@ -2,7 +2,7 @@
 import { defineAsyncComponent } from 'vue'
 import { defineAsyncView } from './asyncView'
 export { defineAsyncView } from './asyncView'
-export { ResourceDetailDialog } from './resourceDetail'
+export { ResourceDetailDialog, preloadResourceDetail } from './resourceDetail'
 export type { ResourceDetailTarget } from './resourceDetail'
 export { default as ConversationTurnDialog } from './components/ConversationTurnDialog.vue'
 import './resourcePreviewCard.css'

@@ -202,7 +202,7 @@
     </q-card>
 
     <q-dialog v-model="detailDialogOpen">
-      <q-card class="process-run-dialog galaris-detail-dialog galaris-dialog-card">
+      <q-card class="process-run-dialog galaris-detail-dialog galaris-dialog-card" :class="{ 'process-run-dialog--native': selectedRun?.tool_code === 'galaris' }">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="account_tree" size="sm" />
           <div class="text-h6 ellipsis q-ml-sm">
@@ -222,6 +222,14 @@
         <div class="galaris-dialog-body">
           <q-card-section v-if="detailLoading" class="text-center q-pa-xl">
             <q-spinner color="primary" size="2.5em" />
+          </q-card-section>
+          <q-card-section v-else-if="detailError">
+            <q-banner role="alert">{{ t('nativeProcesses.error') }}<template #action><q-btn outline :label="t('nativeProcesses.retry')" @click="selectedRun && openRun($event, selectedRun)" /></template></q-banner>
+          </q-card-section>
+          <q-card-section v-else-if="selectedRun?.tool_code === 'galaris'">
+            <NativeRunPanel v-if="detailDialogOpen" :key="selectedRun.id" :run-id="selectedRun.id" />
+            <q-expansion-item icon="input" :label="t('processes.input')"><CodeEditor :model-value="pretty(selectedRun.input)" language="json" readonly :label="t('processes.input')" :min-lines="3" :visible-lines="8" /></q-expansion-item>
+            <q-expansion-item icon="output" :label="t('processes.output')"><CodeEditor :model-value="pretty(selectedRun.output)" language="json" readonly :label="t('processes.output')" :min-lines="3" :visible-lines="8" /></q-expansion-item>
           </q-card-section>
           <q-card-section v-else-if="selectedRun" class="q-gutter-md">
             <div class="row items-center q-gutter-sm">
@@ -309,6 +317,7 @@ import {
   type StatusBadgeTone,
 } from '@/core/util'
 import { websocket } from '@/core/websocket'
+import NativeRunPanel from './NativeRunPanel.vue'
 import {
   processService,
   type ProcessOperations,
@@ -348,7 +357,9 @@ const dateFrom = ref<string | null>(null)
 const dateTo = ref<string | null>(null)
 const detailDialogOpen = ref(false)
 const detailLoading = ref(false)
+const detailError = ref(false)
 const selectedRun = ref<ProcessRun | null>(null)
+let detailGeneration = 0
 let runRequestSequence = 0
 let realtimeRefreshTimer: ReturnType<typeof setTimeout> | null = null
 const pagination = ref<RunPagination>({
@@ -613,17 +624,21 @@ async function onRequest(request: RunsRequest): Promise<void> {
 }
 
 async function openRun(_event: Event, run: ProcessRun): Promise<void> {
+  const request = ++detailGeneration
   selectedRun.value = run
   detailDialogOpen.value = true
   detailLoading.value = true
+  detailError.value = false
   try {
-    selectedRun.value = await processService.run(run.id)
+    const result = await processService.run(run.id)
+    if (request === detailGeneration && detailDialogOpen.value) selectedRun.value = result
   } catch (error) {
-    console.error('Error loading process run details:', error)
+    if (request === detailGeneration && detailDialogOpen.value) { detailError.value = true; console.error('Error loading process run details:', error) }
   } finally {
-    detailLoading.value = false
+    if (request === detailGeneration) detailLoading.value = false
   }
 }
+watch(detailDialogOpen, open => { if (!open) { detailGeneration++; selectedRun.value = null; detailLoading.value = false; detailError.value = false } })
 
 watch([search, selectedStatus, dateFrom, dateTo], () => {
   void loadRuns(1)
@@ -654,6 +669,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  detailGeneration++
   if (realtimeRefreshTimer) clearTimeout(realtimeRefreshTimer)
   websocket.offEvent('process_run', 'create', scheduleRealtimeRefresh)
   websocket.offEvent('process_run', 'update', scheduleRealtimeRefresh)
@@ -765,6 +781,7 @@ body.body--dark .process-mobile-summary {
   max-height: 96vh;
   overflow-y: auto;
 }
+.process-run-dialog--native { width: 1400px; }
 
 .process-run-metadata {
   display: grid;

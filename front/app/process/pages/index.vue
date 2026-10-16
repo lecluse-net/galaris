@@ -1,6 +1,7 @@
 <template>
   <q-page class="process-page q-pa-md">
     <PageHeader help-key="processes" :help-text="$t('contextHelpPages.processes')" :icon="navigationIcon('account_tree')" :title="t('nav.processes')" :description="t('nav.processes_desc')" />
+    <NativeProcessLibrary />
 
     <div class="process-toolbar q-mb-md">
       <q-input v-model="definitionFilter" class="process-definition-filter" dense outlined clearable debounce="250" :placeholder="t('processes.filter')">
@@ -72,10 +73,8 @@
             <q-separator />
             <q-card-section class="q-py-sm">
               <div class="row items-center no-wrap q-gutter-sm">
-                <q-avatar size="28px" color="primary" text-color="white">
-                  <img v-if="props.row.agent_id !== null && avatarUrls[props.row.agent_id]" :src="avatarUrls[props.row.agent_id]" :alt="agentLabel(props.row.agent_id)" />
-                  <q-icon v-else name="person" />
-                </q-avatar>
+                <AgentAvatar v-if="props.row.agent_id !== null" :agent-id="props.row.agent_id" :name="agentLabel(props.row.agent_id)" :has-avatar="agentHasAvatar(props.row.agent_id)" size="28px" />
+                <q-avatar v-else size="28px" color="primary" text-color="white"><q-icon name="person" /></q-avatar>
                 <span class="text-body2 ellipsis">{{ agentLabel(props.row.agent_id) }}</span>
               </div>
               <div v-if="props.row.description" class="process-card-description text-caption text-grey-7 q-mt-sm">{{ props.row.description }}</div>
@@ -86,10 +85,7 @@
       <template #body-cell-agent_id="props">
         <q-td :props="props">
           <div v-if="props.row.agent_id !== null" class="row items-center no-wrap q-gutter-sm">
-            <q-avatar size="32px" color="primary" text-color="white">
-              <img v-if="avatarUrls[props.row.agent_id]" :src="avatarUrls[props.row.agent_id]" :alt="agentLabel(props.row.agent_id)" />
-              <q-icon v-else name="person" />
-            </q-avatar>
+            <AgentAvatar :agent-id="props.row.agent_id" :name="agentLabel(props.row.agent_id)" :has-avatar="agentHasAvatar(props.row.agent_id)" size="32px" />
             <span>{{ agentLabel(props.row.agent_id) }}</span>
           </div>
           <span v-else>—</span>
@@ -167,10 +163,8 @@
                     <div><div class="metadata-label">{{ t('processes.tool') }}</div><div class="text-weight-bold">{{ toolLabel(definitionForm.tool_id) }}</div></div>
                   </div>
                   <div class="process-metadata-item">
-                    <q-avatar size="32px" color="grey-3" text-color="grey-7">
-                      <img v-if="definitionForm.agent_id !== null && avatarUrls[definitionForm.agent_id]" :src="avatarUrls[definitionForm.agent_id]" alt="" />
-                      <q-icon v-else name="person" size="20px" />
-                    </q-avatar>
+                    <AgentAvatar v-if="definitionForm.agent_id !== null" :agent-id="definitionForm.agent_id" :name="agentLabel(definitionForm.agent_id)" :has-avatar="agentHasAvatar(definitionForm.agent_id)" size="32px" />
+                    <q-avatar v-else size="32px" color="grey-3" text-color="grey-7"><q-icon name="person" size="20px" /></q-avatar>
                     <div><div class="metadata-label">{{ t('processes.agent') }}</div><div class="text-weight-bold">{{ agentLabel(definitionForm.agent_id) }}</div></div>
                   </div>
                   <div class="process-metadata-item">
@@ -184,23 +178,10 @@
             <q-input v-model="definitionForm.description" outlined type="textarea" autogrow :readonly="!canAdmin" :label="t('processes.description')" />
 
             <div class="process-definition-actions">
-              <q-btn v-if="definitionId && canLaunch" color="green" icon="play_arrow" :label="t('processes.newRun')" :disable="definitionForm.agent_id === null" @click="showRunForm = !showRunForm" />
               <q-btn v-if="canAdmin" color="primary" icon="save" :label="t('processes.save')" :loading="saving" :disable="definitionId === undefined && (!definitionForm.tool_id || !definitionForm.engine_process_id)" @click="saveDefinition" />
               <q-btn v-if="definitionId && canAdmin" color="negative" icon="delete" :label="t('processes.delete')" @click="removeCurrentDefinition" />
             </div>
           </q-form>
-
-          <q-slide-transition>
-            <q-card v-if="definitionId && showRunForm && canLaunch" flat bordered class="q-mt-md bg-green-1">
-              <q-card-section>
-                <div class="text-subtitle2 text-positive q-mb-md"><q-icon name="play_arrow" class="q-mr-xs" />{{ t('processes.launchParameters') }}</div>
-                <CodeEditor v-model="runForm.input" language="json" :label="t('processes.input')" :visible-lines="8" :min-lines="5" />
-                <div class="process-launch-actions q-mt-md">
-                  <q-btn color="green" icon="play_arrow" :label="t('processes.start')" :loading="starting" @click="startRun" />
-                </div>
-              </q-card-section>
-            </q-card>
-          </q-slide-transition>
 
           <q-card v-if="definitionId" flat bordered class="q-mt-md">
             <q-card-section class="run-history-header q-py-sm">
@@ -267,7 +248,7 @@
     </q-dialog>
 
     <q-dialog v-model="runDetailDialog" :maximized="$q.screen.lt.md">
-      <q-card class="process-run-detail-dialog galaris-dialog-card">
+      <q-card class="process-run-detail-dialog galaris-dialog-card" :class="{ 'process-run-detail-dialog--native': store.currentRun?.tool_code === 'galaris' }">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="account_tree" size="sm" />
           <div class="text-subtitle1 text-weight-medium ellipsis q-ml-sm">{{ t('processes.details') }}</div>
@@ -304,17 +285,18 @@
 <script setup lang="ts">
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { copyToClipboard, useQuasar, type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { agentService } from '@/app/agent/services/agentService'
-import { AgentSelect } from '@/app/agent'
+import { AgentAvatar, AgentSelect } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { CodeEditor, PageHeader } from '@/core/util'
-import ProcessRunDetailContent from '../components/ProcessRunDetailContent.vue'
+import { PageHeader, defineAsyncView } from '@/core/util'
+import NativeProcessLibrary from '../components/NativeProcessLibrary.vue'
 import { useProcessRunActions } from '../composables/useProcessRunActions'
 import { useProcessStore } from '../stores/processStore'
-import { processService, type AgentOption, type ProcessDefinition, type ProcessRun, type ProcessTool, type ToolProcessDefinition } from '../services/processService'
+import { processService, type ProcessDefinition, type ProcessRun, type ProcessTool, type ToolProcessDefinition } from '../services/processService'
+
+const ProcessRunDetailContent = defineAsyncView(() => import('../components/ProcessRunDetailContent.vue'))
 
 const store = useProcessStore()
 const $q = useQuasar()
@@ -345,12 +327,8 @@ const definitionAgentFilter = ref<number | null>(null)
 const runFilter = ref('')
 const runPagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0, sortBy: 'created_at', descending: true })
 const processTools = ref<ProcessTool[]>([])
-const showRunForm = ref(false)
 const saving = ref(false)
-const starting = ref(false)
 const definitionForm = reactive({ agent_id: null as number | null, tool_id: null as number | null, engine_process_id: '', label: '', description: null as string | null })
-const runForm = reactive({ input: '{}' })
-const avatarUrls = reactive<Record<number, string>>({})
 const columns = (items: QTableColumn[]): QTableColumn[] => items
 const definitionColumns = computed(() => columns([
   { name: 'tool_id', label: t('processes.tool'), field: (row: ProcessDefinition) => toolLabel(row.tool_id), align: 'left', sortable: true },
@@ -372,14 +350,14 @@ const workflowOptions = computed(() => store.discovered.map(workflow => ({
   value: workflow.engine_process_id,
   disable: !workflow.active,
 })))
-const agentOptions = computed(() => store.agents.map(agent => ({ label: agentDisplayLabel(agent), value: agent.id })))
+const agentOptions = computed(() => store.agents.map(agent => ({ label: agent.label, value: agent.id })))
 const definitionAgentOptions = computed(() => [
   { label: t('processes.allAgents'), value: null },
   ...agentOptions.value,
 ])
 
-function agentDisplayLabel(agent: AgentOption): string { return `${agent.first_name} ${agent.last_name}`.trim() || '—' }
-function agentLabel(agentId: number | null): string { const agent = store.agents.find(item => item.id === agentId); return agent ? agentDisplayLabel(agent) : '—' }
+function agentLabel(agentId: number | null): string { return store.agents.find(item => item.id === agentId)?.label ?? '—' }
+function agentHasAvatar(agentId: number): boolean { return store.agents.some(agent => agent.id === agentId && agent.has_avatar) }
 function toolLabel(toolId: number | null): string { return processTools.value.find(tool => tool.id === toolId)?.label ?? '—' }
 function defaultToolId(): number | null { return processTools.value.find(tool => tool.code === 'n8n')?.id ?? processTools.value[0]?.id ?? null }
 function applyWorkflow(workflow: ToolProcessDefinition): void { Object.assign(definitionForm, { engine_process_id: workflow.engine_process_id, label: workflow.label, description: workflow.description }) }
@@ -387,8 +365,6 @@ function onWorkflowChanged(engineProcessId: string): void { const workflow = sto
 function onToolChanged(): void { Object.assign(definitionForm, { engine_process_id: '', label: '', description: null }); store.discovered = [] }
 async function syncSelectedTool(): Promise<void> { if (!canAdmin.value || !selectedToolCode.value) return; try { await store.sync(selectedToolCode.value) } catch (error) { console.error(error); notify('negative', errorDetail(error)) } }
 async function syncN8n(): Promise<void> { if (!canAdmin.value) return; try { await Promise.all([store.sync('n8n'), loadOperations()]); notify('positive', t('processes.synced')) } catch (error) { console.error(error); notify('negative', errorDetail(error)) } }
-async function loadAgentAvatars(): Promise<void> { await Promise.all(store.agents.filter(agent => agent.has_avatar).map(async (agent) => { try { avatarUrls[agent.id] = await agentService.getAvatarBlobUrl(agent.id) } catch (error) { console.error(`Failed to load avatar for agent ${agent.id}:`, error) } })) }
-function parseJson(value: string): Record<string, unknown> { const parsed: unknown = JSON.parse(value || '{}'); if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') throw new Error('object expected'); return parsed as Record<string, unknown> }
 function formatDate(value: string | null): string { return value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(value)) : '—' }
 function shortId(id: string): string { return `${id.slice(0, 8)}…${id.slice(-4)}` }
 function statusLabel(status: string): string { const key = `processes.statuses.${status}`; return te(key) ? t(key) : status }
@@ -402,7 +378,7 @@ function errorDetail(error: unknown): string {
 const healthBannerClass = computed(() => ({ healthy: 'bg-green-1 text-positive', degraded: 'bg-orange-1 text-warning', error: 'bg-red-1 text-negative' } as const)[store.health?.status ?? 'error'])
 const healthIcon = computed(() => ({ healthy: 'check_circle', degraded: 'warning', error: 'error' } as const)[store.health?.status ?? 'error'])
 function notify(type: 'positive' | 'negative', message: string): void { $q.notify({ type, message }) }
-function resetDefinition(): void { Object.assign(definitionForm, { agent_id: null, tool_id: defaultToolId(), engine_process_id: '', label: '', description: null }); definitionId.value = undefined; runDetailDialog.value = false; runDetailLoading.value = false; showRunForm.value = false; runForm.input = '{}'; runFilter.value = ''; runPagination.value = { page: 1, rowsPerPage: 50, rowsNumber: 0, sortBy: 'created_at', descending: true }; store.$patch((state) => { state.runs = []; state.runsTotal = 0; state.currentRun = null; state.currentAnalysis = null }) }
+function resetDefinition(): void { Object.assign(definitionForm, { agent_id: null, tool_id: defaultToolId(), engine_process_id: '', label: '', description: null }); definitionId.value = undefined; runDetailDialog.value = false; runDetailLoading.value = false; runFilter.value = ''; runPagination.value = { page: 1, rowsPerPage: 50, rowsNumber: 0, sortBy: 'created_at', descending: true }; store.$patch((state) => { state.runs = []; state.runsTotal = 0; state.currentRun = null; state.currentAnalysis = null }) }
 async function loadRunPage(page: number = runPagination.value.page, rowsPerPage: number = runPagination.value.rowsPerPage, filter: string = runFilter.value, sortBy: string = runPagination.value.sortBy, descending: boolean = runPagination.value.descending): Promise<void> { if (!definitionForm.engine_process_id) return; await store.loadRuns(definitionForm.engine_process_id, page, rowsPerPage, filter, sortBy, descending); runPagination.value = { page: store.runsPage, rowsPerPage: store.runsPageSize, rowsNumber: store.runsTotal, sortBy: store.runsSortBy, descending: store.runsDescending } }
 async function onRunsRequest(props: { pagination: { page: number; rowsPerPage: number; sortBy?: string | null; descending?: boolean }; filter?: string }): Promise<void> { await loadRunPage(props.pagination.page, props.pagination.rowsPerPage, props.filter ?? '', props.pagination.sortBy ?? 'created_at', props.pagination.descending ?? true) }
 async function openDefinition(item?: ProcessDefinition): Promise<void> { resetDefinition(); if (item) { definitionId.value = item.id; Object.assign(definitionForm, { agent_id: item.agent_id, tool_id: item.tool_id, engine_process_id: item.engine_process_id, label: item.label, description: item.description }) } definitionDialog.value = true; if (item) await loadRunPage(1, runPagination.value.rowsPerPage, '') }
@@ -430,19 +406,6 @@ async function saveDefinition(): Promise<void> {
   finally { saving.value = false }
 }
 async function removeCurrentDefinition(): Promise<void> { if (!canAdmin.value || definitionId.value === undefined) return; const id = definitionId.value; showConfirmationDialog({ title: t('common.confirm'), message: t('processes.confirmDelete'), cancel: true }).onOk(async () => { await store.deleteDefinition(id); definitionDialog.value = false; notify('positive', t('processes.deleted')) }) }
-async function startRun(): Promise<void> {
-  if (!canLaunch.value) return
-  if (!definitionForm.agent_id || !definitionForm.engine_process_id) return
-  starting.value = true
-  try {
-    await store.startRun({ agent_id: definitionForm.agent_id, workflow_id: definitionForm.engine_process_id, input: parseJson(runForm.input), files: [], wait_for_completion: false })
-    await loadRunPage(1)
-    showRunForm.value = false
-    runForm.input = '{}'
-    notify('positive', t('processes.started'))
-  } catch (error) { console.error(error); notify('negative', errorDetail(error)) }
-  finally { starting.value = false }
-}
 async function openRunFromRow(_event: Event, row: ProcessRun): Promise<void> { await openRun(row) }
 async function copyRunId(id: string): Promise<void> { await copyToClipboard(id); notify('positive', t('processes.copied')) }
 async function loadOperations(): Promise<void> {
@@ -463,13 +426,15 @@ watch(definitionAgentFilter, agentId => {
 
 onMounted(async () => {
   try {
-    const [tools] = await Promise.all([processService.tools(), store.loadAll(), loadOperations()])
-    processTools.value = tools
-    definitionForm.tool_id = defaultToolId()
-    await loadAgentAvatars()
+    await Promise.all([
+      processService.tools().then(tools => {
+        processTools.value = tools
+        if (definitionForm.tool_id === null) definitionForm.tool_id = defaultToolId()
+      }),
+      store.loadAll(), loadOperations(),
+    ])
   } catch { notify('negative', t('processes.genericError')) }
 })
-onUnmounted(() => { Object.values(avatarUrls).forEach(url => URL.revokeObjectURL(url)) })
 </script>
 
 <style scoped>
@@ -477,7 +442,7 @@ onUnmounted(() => { Object.values(avatarUrls).forEach(url => URL.revokeObjectURL
 .process-toolbar { display: flex; align-items: center; gap: 8px; }
 .process-definition-filter { flex: 1 1 auto; min-width: 0; }
 .process-agent-filter { flex: 0 1 260px; min-width: 200px; }
-.process-toolbar-actions, .process-definition-actions, .process-launch-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.process-toolbar-actions, .process-definition-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .process-detail-card { width: 1100px; max-width: 96vw; margin: auto; height: fit-content; max-height: 96vh; overflow-y: auto; }
 .process-detail-content { padding: 20px; }
 .process-workflow-select-row { display: flex; align-items: flex-start; }
@@ -496,6 +461,7 @@ body.body--dark .metadata-label { color: #98a2b8; }
 .run-card-dates { display: grid; gap: 4px; }
 .run-card-dates > div:not(.process-card-description) { display: flex; justify-content: space-between; gap: 12px; }
 .process-run-detail-dialog { display: flex; flex-direction: column; width: 1100px; max-width: 96vw; height: 90vh; max-height: 900px; }
+.process-run-detail-dialog--native { width: 1400px; }
 .process-run-detail-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .min-width-0 { min-width: 0; }
 @media (max-width: 1023px) {
@@ -514,9 +480,9 @@ body.body--dark .metadata-label { color: #98a2b8; }
 }
 @media (max-width: 599px) {
   .process-page { padding: 8px; }
-  .process-toolbar-actions, .process-definition-actions, .process-launch-actions { display: grid; grid-template-columns: 1fr; }
+  .process-toolbar-actions, .process-definition-actions { display: grid; grid-template-columns: 1fr; }
   .process-agent-filter { flex-basis: 100%; width: 100%; }
-  .process-toolbar-actions .q-btn, .process-definition-actions .q-btn, .process-launch-actions .q-btn { width: 100%; }
+  .process-toolbar-actions .q-btn, .process-definition-actions .q-btn { width: 100%; }
   .process-detail-content { padding: 12px; }
   .process-workflow-select-row { align-items: stretch; flex-direction: column; }
   .process-workflow-select-row .q-select { width: 100%; }

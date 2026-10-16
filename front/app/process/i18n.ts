@@ -1,5 +1,7 @@
+import { nativeProcessMessages } from './nativeI18n'
 export default {
   fr: {
+    nativeProcesses: nativeProcessMessages.fr,
     contextHelpPages: {
       "processes": "Un processus est une automatisation réutilisable que l’agent peut lancer pour accomplir une opération connue, par exemple traiter un formulaire ou synchroniser des données. Le déroulement est défini à l’avance dans un moteur externe tel que n8n ; l’agent choisit quand l’utiliser et avec quelles données. Cela permet de confier les opérations répétitives à un workflow établi et de réserver le raisonnement de l’agent à la demande et à ses résultats. Associez une définition de processus à l’agent qui doit pouvoir l’utiliser. Les exécutions enregistrent ensuite les entrées, la progression et la sortie, ce qui permet de suivre une opération longue sans perdre son résultat."
     },
@@ -51,6 +53,7 @@ export default {
     },
   },
   en: {
+    nativeProcesses: nativeProcessMessages.en,
     contextHelpPages: {
       "processes": "A process is reusable automation an agent can launch for a known operation, such as handling a form or synchronizing data. Its steps are defined in advance in an external engine such as n8n; the agent decides when to use it and with which data. This assigns repeatable operations to an established workflow while the agent reasons about the request and its results. Link a process definition to the agent that should use it. Runs then record inputs, progress and output, allowing you to track a long operation without losing its result."
     },
@@ -102,6 +105,7 @@ export default {
     },
   },
   zh: {
+    nativeProcesses: nativeProcessMessages.zh,
     contextHelpPages: {
       "processes": "流程是智能体可以启动的可复用自动化，用于处理已知操作，例如表单处理或数据同步。具体步骤预先在 n8n 等外部引擎中定义，智能体决定何时使用以及传入哪些数据。这样可将重复操作交给既定工作流，由智能体负责理解请求和分析结果。请将流程定义关联到需要使用它的智能体。每次执行会记录输入、进度和输出，便于跟踪耗时操作并保留结果。"
     },

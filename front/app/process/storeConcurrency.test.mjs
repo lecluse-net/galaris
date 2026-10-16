@@ -10,6 +10,23 @@ function setup(service) {
   return useProcessStore(pinia.createPinia())
 }
 
+test('definitions display while agent options load and a filter change does not discard those options', async () => {
+  const agents = deferred(), definitions = deferred(), filtered = deferred()
+  const store = setup({ agents: () => agents.promise, definitions: agent => agent ? filtered.promise : definitions.promise })
+  const loading = store.loadAll()
+  definitions.resolve([{ id: 1, label: 'Synthetic process' }])
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(store.definitions[0].label, 'Synthetic process')
+  assert.equal(store.loading, false)
+  const filtering = store.loadDefinitions(7)
+  filtered.resolve([{ id: 2, label: 'Filtered process' }])
+  await filtering
+  agents.resolve([{ id: 7, label: 'Synthetic agent' }])
+  await loading
+  assert.equal(store.definitions[0].label, 'Filtered process')
+  assert.equal(store.agents[0].id, 7)
+})
+
 test('a late process page cannot replace the latest filter or clear its loading state', async () => {
   const old = deferred(), current = deferred()
   let calls = 0
