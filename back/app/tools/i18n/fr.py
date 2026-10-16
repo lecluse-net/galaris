@@ -37,6 +37,8 @@ default: dict[str, object] = {
             "Référence d’erreur : ${reference}"
         ),
         "call_failure_reasons": {
+            "scope_clarification": "Cette cible est hors du périmètre d’exécution autorisé.",
+            "scope_denied": "Le périmètre d’exécution est invalide, périmé ou n’autorise plus cette action.",
             "actionable": "L’opération a été refusée avec une erreur métier actionnable.",
             "invalid_arguments": (
                 "Les arguments ou l’état courant de la ressource ont été refusés."
@@ -62,6 +64,17 @@ default: dict[str, object] = {
         },
         "call_failure_http": "Le service distant a retourné HTTP ${status} : ${reason}",
         "call_failure_hints": {
+            "scope_clarification": (
+                "Aucun effet n’a eu lieu. Ne réessayez pas sur cette cible avec d’autres arguments ou un autre outil. "
+                "Le demandeur doit autoriser explicitement son URI exacte par un amendement de la Task racine. "
+                "Si cette étape exige l’action, signalez BLOCKED avec la cible et l’autorisation manquante ; "
+                "ne créez pas de document de remplacement pour contourner la restriction."
+            ),
+            "scope_denied": (
+                "Aucun effet n’a eu lieu. Ne réessayez pas en changeant les arguments ou les outils. "
+                "Inspectez la Task actuelle et replanifiez selon son périmètre autorisé courant ; "
+                "arrêtez et signalez le blocage si le refus persiste."
+            ),
             "actionable": "Appliquez la correction indiquée dans la cause avant de réessayer.",
             "invalid_arguments": (
                 "Relisez le schéma de la fonction et corrigez formats, identifiants, bornes "

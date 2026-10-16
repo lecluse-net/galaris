@@ -84,6 +84,7 @@ class ExecutionEvidenceMiddleware(Middleware):
                     "operation_id": str(operation_id),
                     "tool_name": execution.tool_name,
                     "outcome": execution.outcome,
+                    **({"scope_rejection": execution.scope_rejection} if execution.scope_rejection else {}),
                 },
             }
             return result

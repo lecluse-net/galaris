@@ -148,6 +148,14 @@ ou arrêter. Le checkpoint v5 conserve séparément ces erreurs acquittées et l
 interrompus sans réponse ; le stream continue de signaler un échec d’outil sans en faire
 automatiquement un échec de Task. Voir [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
 
+Les refus de périmètre conservent leur décision `clarify` ou `deny` dans la preuve native MCP
+et le checkpoint. Le résultat destiné au modèle porte un code `execution_scope_*` et
+`retryable=false` : changer d'arguments ou d'outil ne résout pas ce refus. Une cible absente
+requiert un amendement explicite de la Task racine ; un périmètre périmé impose sa relecture
+et une replanification. Le modèle peut poursuivre le travail indépendant autorisé ou signaler
+`BLOCKED`. Aucun droit n'est ajouté depuis le plan et aucune attente humaine n'est créée
+automatiquement par ce diagnostic.
+
 Une demande d’autorisation suspend l’appel avant effet. Le checkpoint v5 conserve les requêtes
 différées Pydantic AI et leur identité ; l’accord reprend cet appel sans nouvelle décision du
 modèle. Le résultat v2 expose `waiting_for_authorization` et les UUIDs exacts. La tentative

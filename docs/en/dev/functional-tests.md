@@ -182,6 +182,13 @@ responses, instead of accepting the tool call as a plan.
 
 ## Task organization and planning
 
+`back/app/task/tests/test_execution_scope.py` checks out-of-scope writes rejected before any
+effect, a cause distinct from invalid arguments, MCP delivery to the model with and without
+a checkpoint, and success after a sourced amendment. The external-evidence test in
+`back/app/harness/tests/test_execution_evidence.py` prevents forging this diagnostic as native
+evidence. These journeys use synthetic models; they do not qualify a real provider's
+compliance with the instruction not to retry.
+
 `back/app/agent/tests/test_planner_collections.py` covers repeated work: small mechanical batches
 of up to five known items in one leaf without discovery or replanning, decomposition of
 substantial work or oversized/unknown batches, one Task per collection item,

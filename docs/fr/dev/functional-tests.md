@@ -172,6 +172,13 @@ URL temporaire est libérée.
 
 ## Organisation des Tasks et planification
 
+`back/app/task/tests/test_execution_scope.py` vérifie le refus d'écriture hors périmètre avant
+tout effet, sa cause distincte d'une erreur d'arguments, sa transmission MCP jusqu'au modèle
+avec ou sans checkpoint et la réussite après un amendement sourcé. Le test de preuve externe
+dans `back/app/harness/tests/test_execution_evidence.py` interdit de falsifier ce diagnostic
+comme une preuve native. Les modèles de ces parcours sont synthétiques ; ils ne qualifient
+pas l'obéissance d'un fournisseur réel à la consigne de ne pas réessayer.
+
 `back/app/agent/tests/test_planner_collections.py` couvre les traitements répétés : petits lots
 mécaniques connus d'au plus cinq éléments en une feuille sans découverte ni replanification,
 décomposition des traitements substantiels ou des lots trop grands/inconnus, une Task

@@ -152,6 +152,11 @@ starting work. An explicit retry goes through routing again. When clarifying an 
 selected plan, the Planner may ask one series of questions and resume at expiry with
 explicit assumptions. Expiration never grants approval for a sensitive action.
 
+If a step reports that a document is outside its admitted scope, changing tools or retrying
+does not grant permission to modify it. To authorize the change, include the document's exact
+URI in an amendment to the root Task. The Agent receives a diagnostic distinct from invalid
+arguments; this refusal does not automatically create an approval request or a waiting state.
+
 ## Reading a Task’s Status
 
 | Displayed status | Practical meaning |

@@ -33,8 +33,11 @@ _CHECKPOINT_VERSION = 5
 _COMPATIBLE_CHECKPOINT_VERSIONS = frozenset({1, 2, 3, 4, _CHECKPOINT_VERSION})
 
 
-def _tool_error_result(error: Exception, outcome: Literal["rejected", "unknown"]) -> dict[str, Any]:
-    return {
+def _tool_error_result(
+    error: Exception, outcome: Literal["rejected", "unknown"], *,
+    scope_rejection: Literal["clarify", "deny"] | None = None,
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
         "schema": TOOL_ERROR_SCHEMA,
         "status": "error",
         "outcome": outcome,
@@ -49,16 +52,37 @@ def _tool_error_result(error: Exception, outcome: Literal["rejected", "unknown"]
             "Do not claim this action succeeded without evidence."
         ),
     }
+    if outcome == "rejected" and scope_rejection is not None:
+        # Only matching native execution evidence can supply this disposition.
+        # Keep it in the durable receipt as well as the model-facing history.
+        result["code"] = (
+            "execution_scope_clarification_required" if scope_rejection == "clarify"
+            else "execution_scope_denied"
+        )
+        result["retryable"] = False
+        result["instruction"] = (
+            "No effect occurred. Do not retry this target with different arguments or another tool. "
+            "The requester must explicitly authorize its exact URI in an amendment to the root Task. "
+            "If this step requires the action, report BLOCKED with the target and missing authorization. "
+            "Continue only independently authorized work; do not create substitute artifacts to bypass the restriction."
+            if scope_rejection == "clarify" else
+            "No effect occurred. Do not retry by changing arguments or tools. Inspect the current Task "
+            "and replan against its current admitted scope; stop and report the blocker if it remains denied."
+        )
+    return result
 
 
-def _returned_tool_error(result: Any, outcome: Literal["rejected", "unknown"]) -> Any:
+def _returned_tool_error(
+    result: Any, outcome: Literal["rejected", "unknown"], *,
+    scope_rejection: Literal["clarify", "deny"] | None = None,
+) -> Any:
     """A returned failure is acknowledged, but cannot prove absence of remote effects."""
     failure = reported_tool_failure(result)
     if failure is None:
         return result
     detail = failure.get("error") or failure.get("message") or "The tool explicitly reported failure without a diagnostic."
     message = detail if isinstance(detail, str) else json.dumps(detail, ensure_ascii=False, default=str)
-    owned = _tool_error_result(ModelRetry(message[:2_000]), outcome)
+    owned = _tool_error_result(ModelRetry(message[:2_000]), outcome, scope_rejection=scope_rejection)
     if failure.get("schema") == TOOL_ERROR_SCHEMA:
         # The instruction and outcome are Galaris-owned, even if an external
         # server copied our error schema and claimed the action had no effect.
@@ -897,13 +921,13 @@ def wrap_toolsets(
                                     "rejected" if execution.outcome == "rejected"
                                     or effect_policy == "read" else "unknown"
                                 )
-                                result = _tool_error_result(exc, tool_error_outcome)
+                                result = _tool_error_result(exc, tool_error_outcome, scope_rejection=execution.scope_rejection)
                             if reported_tool_failure(result) is not None:
                                 tool_error_outcome = (
                                     "rejected" if execution.outcome == "rejected"
                                     or effect_policy == "read" else "unknown"
                                 )
-                                result = _returned_tool_error(result, tool_error_outcome)
+                                result = _returned_tool_error(result, tool_error_outcome, scope_rejection=execution.scope_rejection)
                             await checkpoint.completed(
                                 effect_id=effect_id,
                                 name=name,
@@ -925,11 +949,13 @@ def wrap_toolsets(
                             result = _tool_error_result(
                                 exc, "rejected" if execution.outcome == "rejected"
                                 or effect_policy == "read" else "unknown",
+                                scope_rejection=execution.scope_rejection,
                             )
                         if reported_tool_failure(result) is not None:
                             result = _returned_tool_error(
                                 result, "rejected" if execution.outcome == "rejected"
                                 or effect_policy == "read" else "unknown",
+                                scope_rejection=execution.scope_rejection,
                             )
             except BaseException as exc:
                 error = exc

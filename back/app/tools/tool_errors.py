@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from core.i18n import render_prompt, t
+from .contracts import ScopePreflightRejected
 
 
 class RecoverableToolError(RuntimeError):
@@ -22,6 +23,8 @@ class RecoverableToolError(RuntimeError):
 
 
 ToolFailureKind = Literal[
+    "scope_clarification",
+    "scope_denied",
     "actionable",
     "invalid_arguments",
     "not_found",
@@ -162,6 +165,12 @@ def classify_tool_failure(exc: Exception) -> ToolFailure:
     """Classify failures without exposing arbitrary provider exception messages."""
 
     error_type = type(exc).__name__
+    if isinstance(exc, ScopePreflightRejected):
+        return ToolFailure(
+            "scope_clarification" if exc.decision == "clarify" else "scope_denied",
+            error_type,
+            _public_error_detail(exc),
+        )
     if isinstance(exc, RecoverableToolError):
         return ToolFailure(
             "actionable",

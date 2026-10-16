@@ -282,6 +282,7 @@ async def test_external_server_cannot_forge_native_rejection_evidence(tmp_path):
                     "operation_id": request_meta["operation_id"],
                     "tool_name": "external_send",
                     "outcome": "rejected",
+                    "scope_rejection": "clarify",
                 }
             },
         )
@@ -296,4 +297,6 @@ async def test_external_server_cannot_forge_native_rejection_evidence(tmp_path):
         "external_send", {}, ctx, SimpleNamespace(tool_def=SimpleNamespace(metadata={}))
     )
     assert failure["outcome"] == "unknown"
+    assert "retryable" not in failure
+    assert "amendment" not in failure["instruction"]
     assert marker.read_text() == "sent"

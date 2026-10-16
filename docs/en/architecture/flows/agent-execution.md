@@ -176,6 +176,13 @@ or stop. The v5 checkpoint distinguishes these acknowledged errors from calls in
 without a response; the stream still reports a tool failure without automatically failing
 the Task. See [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
 
+Scope rejections retain their `clarify` or `deny` decision in native MCP evidence and the
+checkpoint. The model-facing result carries an `execution_scope_*` code and
+`retryable=false`: changing arguments or tools cannot resolve this refusal. A missing target
+requires an explicit root Task amendment; a stale scope requires re-reading and replanning.
+The model may continue independently authorized work or report `BLOCKED`. The plan never
+adds permissions, and this diagnostic does not automatically create a human wait.
+
 The chat and task detail hydrate `POST /tasks/activity` on opening and reconnecting, then share
 subscriptions to active runs. The common projection exposes operational state, requested or
 acknowledged pauses, waits, the latest attempt and the next retry. `task_get` also exposes this

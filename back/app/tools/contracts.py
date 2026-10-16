@@ -22,6 +22,7 @@ class ToolExecutionContext:
     outcome: Literal["unknown", "rejected", "returned"] = "unknown"
     entered: bool = False
     authorization_continuation: str | None = None
+    scope_rejection: Literal["clarify", "deny"] | None = None
 
 
 _execution: ContextVar[ToolExecutionContext | None] = ContextVar("tool_execution", default=None)
@@ -42,3 +43,11 @@ def tool_execution(context: ToolExecutionContext) -> Generator[ToolExecutionCont
 
 class ToolCallRejectedError(ValueError):
     """An explicit precondition rejected a call before any external effect."""
+
+
+class ScopePreflightRejected(ToolCallRejectedError):
+    """A server-owned scope decision, distinct from correctable argument errors."""
+
+    def __init__(self, decision: Literal["clarify", "deny"], reason: str) -> None:
+        super().__init__(reason)
+        self.decision: Literal["clarify", "deny"] = decision

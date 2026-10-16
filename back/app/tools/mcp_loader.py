@@ -46,7 +46,7 @@ from core.i18n import render_prompt, t, tr
 from core.database import get_db
 from core.params import runtime_settings
 
-from .contracts import ToolCallRejectedError, current_tool_execution
+from .contracts import ScopePreflightRejected, ToolCallRejectedError, current_tool_execution
 from .execution_evidence import ExecutionEvidenceMiddleware
 from .tool_arguments import ToolArgumentsMiddleware
 from .schemas import McpConfig, Tool as ToolConfiguration
@@ -496,8 +496,8 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                             agent_id=ctx.agent_id, descriptor=definition.effect_descriptor,
                             tool_name=definition.name, arguments=arguments,
                             operation_id=execution.operation_id if execution is not None else None)
-                        if decision.decision in {"deny", "clarify"}:
-                            raise ToolCallRejectedError(decision.reason)
+                        if decision.decision in ("deny", "clarify"):
+                            raise ScopePreflightRejected(decision.decision, decision.reason)
                     else:
                         decision = None
 
@@ -508,8 +508,8 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                         final = await record_scope_preflight(ctx.task_id, agent_id=ctx.agent_id,
                             descriptor=definition.effect_descriptor, tool_name=definition.name, arguments=arguments,
                             operation_id=decision.operation_id, expected_scope_revision=decision.scope_revision)
-                        if final.decision in {"deny", "clarify"}:
-                            raise ToolCallRejectedError(final.reason)
+                        if final.decision in ("deny", "clarify"):
+                            raise ScopePreflightRejected(final.decision, final.reason)
 
                     from .mcp_authorization import authorize_native_call, bind_native_action
                     if definition.authorization_boundary == "prepared":
@@ -561,6 +561,8 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
             await finish_action(authorization_id, outcome="failed" if isinstance(exc, ToolCallRejectedError) else "outcome_unknown")
             if isinstance(exc, ToolCallRejectedError) and execution is not None:
                 execution.outcome = "rejected"
+                if isinstance(exc, ScopePreflightRejected):
+                    execution.scope_rejection = exc.decision
             failure = classify_tool_failure(exc)
             error_reference = uuid4().hex[:12]
             error_trace = safe_trace(exc)
@@ -573,7 +575,7 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                 error_trace=error_trace,
             )
             log.log(
-                "WARNING" if failure.kind == "actionable" else "ERROR",
+                "WARNING" if failure.kind in {"actionable", "scope_clarification", "scope_denied"} else "ERROR",
                 "MCP tool {} failed (error_kind={}, error_type={}, error_reference={}, trace={})",
                 definition.name,
                 failure.kind,

@@ -36,6 +36,8 @@ default: dict[str, object] = {
             "Error reference: ${reference}"
         ),
         "call_failure_reasons": {
+            "scope_clarification": "This target is outside the admitted execution scope.",
+            "scope_denied": "The execution scope is invalid, stale, or no longer permits this action.",
             "actionable": "The operation was rejected with an actionable domain error.",
             "invalid_arguments": "The arguments or current resource state were rejected.",
             "not_found": "A requested resource, identifier, file, or directory does not exist.",
@@ -55,6 +57,16 @@ default: dict[str, object] = {
         },
         "call_failure_http": "The remote service returned HTTP ${status}: ${reason}",
         "call_failure_hints": {
+            "scope_clarification": (
+                "No effect occurred. Do not retry this target with different arguments or another tool. "
+                "The requester must explicitly authorize its exact URI in an amendment to the root Task. "
+                "If this step requires the action, report BLOCKED with the target and missing authorization; "
+                "do not create substitute artifacts to bypass the restriction."
+            ),
+            "scope_denied": (
+                "No effect occurred. Do not retry by changing arguments or tools. Inspect the current Task "
+                "and replan against its current admitted scope; stop and report the blocker if it remains denied."
+            ),
             "actionable": "Apply the correction stated in the cause before retrying.",
             "invalid_arguments": (
                 "Re-read the function schema and correct formats, identifiers, ranges, "

@@ -180,6 +180,12 @@ plan déjà choisi, le Planner peut demander une unique série de précisions et
 l’expiration avec des hypothèses explicites. Aucune expiration ne donne une autorisation
 d’action sensible.
 
+Si une étape signale qu'un document est hors du périmètre autorisé, changer d'outil ou
+réessayer ne donne pas le droit de le modifier. Pour autoriser cette modification, précisez
+l'URI exacte du document dans un amendement de la tâche racine. L'agent reçoit un diagnostic
+distinct d'une erreur d'arguments ; ce refus ne crée pas automatiquement une demande
+d'autorisation ni une mise en attente.
+
 ## Lire l’état d’une tâche
 
 | État affiché | Signification pratique |

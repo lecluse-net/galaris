@@ -175,7 +175,8 @@ async def test_live_preflight_uses_attempt_journal_without_invalidating_checkpoi
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("change_after_admission", [False, True])
-async def test_native_wrapper_persists_refusal_before_any_effect(scoped_task, monkeypatch, change_after_admission):
+@pytest.mark.parametrize("language", ["fr", "en"])
+async def test_native_wrapper_persists_refusal_before_any_effect(scoped_task, monkeypatch, change_after_admission, language):
     from fastmcp.exceptions import ToolError
     from app.tools import mcp_loader
     from app.tools.mcp_loader import McpToolContext, McpToolDefinition
@@ -195,6 +196,7 @@ async def test_native_wrapper_persists_refusal_before_any_effect(scoped_task, mo
         effect_descriptor=EffectDescriptorV1(capability="synthetic.send", kind="transport", target_arguments=("uri",)))
     monkeypatch.setattr("app.agent.effective_capabilities", AsyncMock(return_value=frozenset({"execute"})))
     monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", AsyncMock(return_value=(definition,)))
+    monkeypatch.setattr(mcp_loader, "context_language", AsyncMock(return_value=language))
     monkeypatch.setattr(task_port, "record_scope_preflight", SqlAlchemyAgentTaskAdapter().record_scope_preflight)
     authorize = AsyncMock(return_value=None)
     if change_after_admission:
@@ -206,8 +208,12 @@ async def test_native_wrapper_persists_refusal_before_any_effect(scoped_task, mo
         authorize.side_effect = amend_during_authorization
     monkeypatch.setattr("app.tools.mcp_authorization.authorize_native_call", authorize)
     wrapper = mcp_loader._wrap_tool(definition, McpToolContext(agent_id=agent_id, runtime="internal", task_id=task_id))
-    with pytest.raises(ToolError):
+    with pytest.raises(ToolError) as failure:
         await wrapper(uri="synthetic://profile-target")
+    diagnostic = str(failure.value)
+    assert "scope" in diagnostic.lower() or "périmètre" in diagnostic.lower()
+    assert "replan" in diagnostic.lower() if change_after_admission else "amend" in diagnostic.lower()
+    assert "corrigez formats" not in diagnostic and "correct formats" not in diagnostic
     assert observed == []
     assert authorize.await_count == int(change_after_admission)
     async with get_db_session() as db:
@@ -217,6 +223,92 @@ async def test_native_wrapper_persists_refusal_before_any_effect(scoped_task, mo
         if change_after_admission:
             assert journal[-2]["decision"] == "allow"
             assert journal[-2]["operation_id"] == journal[-1]["operation_id"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("durable", [False, True])
+@pytest.mark.parametrize("tool_name", ["file_edit", "file_append"])
+async def test_scope_clarification_reaches_model_and_resumes_only_after_sourced_amendment(
+    scoped_task, monkeypatch, durable, tool_name,
+):
+    from types import SimpleNamespace
+    from fastmcp import FastMCP
+    from pydantic_ai import Agent as PydanticAgent
+    from pydantic_ai.mcp import MCPToolset
+    from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolReturnPart
+    from pydantic_ai.models.function import FunctionModel
+    from app.harness.checkpoint import HarnessRunCheckpoint, wrap_toolsets
+    from app.harness.mcp_toolset import ExecutionEvidenceClient
+    from app.harness.tests.test_checkpoint import _request
+    from app.tools import mcp_loader
+    from app.tools.execution_evidence import ExecutionEvidenceMiddleware
+
+    task_id, agent_id = scoped_task
+    target = f"document://{uuid4()}"
+    writes = []
+
+    async def update(ctx, uri: str, content: str) -> dict[str, str]:
+        writes.append((uri, content))
+        return {"uri": uri}
+
+    definition = mcp_loader.McpToolDefinition(
+        tool_code="synthetic", name=tool_name, description="Update the synthetic report.",
+        required_capabilities=frozenset(), function=update,
+        effect_descriptor=EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("uri",)),
+    )
+    monkeypatch.setattr("app.agent.effective_capabilities", AsyncMock(return_value=frozenset({"execute"})))
+    monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", AsyncMock(return_value=(definition,)))
+    monkeypatch.setattr(mcp_loader, "context_language", AsyncMock(return_value="en"))
+    monkeypatch.setattr("app.tools.mcp_authorization.authorize_native_call", AsyncMock(return_value=None))
+    server = FastMCP("synthetic-scope-clarification")
+    server.add_middleware(ExecutionEvidenceMiddleware({tool_name}))
+    server.tool(name=tool_name)(mcp_loader._wrap_tool(
+        definition, mcp_loader.McpToolContext(agent_id=agent_id, runtime="internal", task_id=task_id),
+    ))
+    save = AsyncMock()
+    checkpoint = HarnessRunCheckpoint(_request(save_checkpoint=save)) if durable else None
+    toolset = wrap_toolsets([MCPToolset(ExecutionEvidenceClient(server))], checkpoint)[0]
+    args = {"uri": target, "content": "<p>Synthetic report update.</p>"}
+    failures = []
+
+    def model(messages, _info):
+        returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
+        if not returns:
+            return ModelResponse(parts=[ToolCallPart(tool_name, args, tool_call_id="update")])
+        failure = returns[-1].content
+        assert failure["outcome"] == "rejected"
+        assert failure["code"] == "execution_scope_clarification_required"
+        assert failure["retryable"] is False
+        assert "amendment" in failure["instruction"] and "root Task" in failure["instruction"]
+        assert "Do not retry" in failure["instruction"]
+        failures.append(failure)
+        return ModelResponse(parts=[TextPart(f"BLOCKED: authorize {target} in a root Task amendment.")])
+
+    agent = PydanticAgent(FunctionModel(model), retries=0, toolsets=[toolset])
+    result = await agent.run("Update the synthetic report.")
+    assert result.output.startswith("BLOCKED:")
+    assert writes == []
+    assert len(failures) == 1
+    if checkpoint is not None:
+        resumed = HarnessRunCheckpoint(_request(resume_checkpoint=save.await_args.args[0]))
+        await resumed.prepare_resume()
+        assert resumed.effects[0]["result"] == failures[0]
+        assert resumed.effects[0]["outcome"] == "rejected"
+
+    # An authorized amendment, rather than a changed tool or content, unlocks the effect.
+    monkeypatch.setattr("app.task.scheduler.wake", lambda *_: None)
+    async with get_db_session() as db:
+        task = await db.get(Task, task_id)
+        await SqlAlchemyAgentTaskAdapter().amend(
+            task_id=task_id, expected_revision=task.revision,
+            instruction=f"<p>Update <code>{target}</code>.</p>", disposition="AMEND_QUEUED",
+            reason=None, source_kind="conversation_round", source_id="synthetic-round",
+            idempotency_key="synthetic-document-amendment",
+        )
+    ctx = SimpleNamespace(messages=[ModelResponse(parts=[ToolCallPart(tool_name, args, "amended")])], tool_call_id="amended")
+    receipt = await toolset.call_tool(tool_name, args, ctx, SimpleNamespace(tool_def=SimpleNamespace(metadata={})))
+    assert receipt == {"uri": target}
+    assert writes == [(target, args["content"])]
 
 
 @pytest.mark.asyncio
