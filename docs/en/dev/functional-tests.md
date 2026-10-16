@@ -12,16 +12,6 @@ the actual path.
 and its immutable backup: exact bytes and replay, history/syntheses, rollback,
 missing or changed sources, UTF-8/NUL validation and deletion.
 
-Start with business behavior and module responsibility. The suites below are entry points,
-not exhaustive certification or proof that a live external account works. The
-[September 10 review](../../../project/audits/2026-09-10-functional-tests.md) records replacements
-and actual execution results. Keeping an effective test is a valid decision; there is no
-quota of new tests per module.
-
-For each change, state the affected guarantee and the guarantees to preserve, inspect their
-contracts and tests, then select the least expensive layer that proves the observable effect.
-
-
 `app/memory/tests/test_document_library.py` also covers legacy `form` documents:
 listing and HTML filtering, reads, permissions and content preservation without rewriting.
 `e2e/specs/document-refresh.spec.mjs` verifies redirection from `/memory/documents` to
@@ -46,7 +36,6 @@ The Dataset E2E journey exercises the same sharing component as Documents, disco
 application and confirms deletion.
 It also checks library selection changes, preserved search, confirmation of unsaved drafts,
 mobile return navigation and creation from the list.
-
 
 ## Audio and provider catalogues
 
@@ -94,6 +83,15 @@ source editing scenarios remain fully blocking. Aggregate startup, update latenc
 are attached to the synthetic runtime results.
 Execution artifacts record results; a catalogue entry does not
 substitute for a successful qualification.
+
+Start with business behavior and module responsibility. The suites below are entry points,
+not exhaustive certification or proof that a live external account works. The
+[September 10 review](../../../project/audits/2026-09-10-functional-tests.md) records replacements
+and actual execution results. Keeping an effective test is a valid decision; there is no
+quota of new tests per module.
+
+For each change, state the affected guarantee and the guarantees to preserve, inspect their
+contracts and tests, then select the least expensive layer that proves the observable effect.
 
 ## Media and acquired evidence
 
@@ -373,16 +371,6 @@ The silence journey in `e2e/specs/chat.spec.mjs` exercises the assembled convers
 real PostgreSQL, scheduler and internal harness with a synthetic provider: current attempt preserved,
 the same Task, call closure followed by guided recovery and a durable result.
 
-Provider admission is covered by `app/llm/tests/test_provider_scheduler.py` and
-`tests/test_inference_lifecycle.py`: priority, protected places, shared model/native-call
-capacity, live changes, queued stop/pause/deadline, voice transcription under load and
-released capacity after cancelling native transcription or image generation. The transport
-test in `tests/test_protocol_inference.py` measures journal commits, preserves large Unicode
-fragments and retains early reasoning cancellation. `front/browser-tests/provider-autosave.spec.mjs`
-covers saving 0, reopening, validation and preservation of other settings.
-
-Journal and streaming stabilization is covered by
-
 `app/conversation/tests/test_service.py` also protects human Pause, Stop, Resume, Restart
 and Reply now commands: exact attempts, preserved inputs, suppressed unfinished answers,
 immutable stopped rounds and refusal to resume uncertain effects. Harness tests verify
@@ -396,6 +384,14 @@ expectation of a reopenable stopped response block is retired. The two control j
 `e2e/specs/chat.spec.mjs` exercise real Chat, PostgreSQL, scheduler and harness with a
 synthetic model provider, including reopening, removal after stopping, a new request and
 a durably delivered immediate answer.
+
+Provider admission is covered by `app/llm/tests/test_provider_scheduler.py` and
+`tests/test_inference_lifecycle.py`: priority, protected places, shared model/native-call
+capacity, live changes, queued stop/pause/deadline, voice transcription under load and
+released capacity after cancelling native transcription or image generation. The transport
+test in `tests/test_protocol_inference.py` measures journal commits, preserves large Unicode
+fragments and retains early reasoning cancellation. `front/browser-tests/provider-autosave.spec.mjs`
+covers saving 0, reopening, validation and preservation of other settings.
 
 The journal and streaming checks include
 `back/app/agent/tests/test_reasoning_guard.py` (irregular fragments, replayed snapshots,
@@ -866,6 +862,11 @@ after scrolling. Coverage: `front/browser-tests/dialogs.spec.mjs`, `teams.spec.m
 `lab-comparison.spec.mjs` and `lab-insights.spec.mjs`. The `skills.spec.mjs`,
 `galaris-links.spec.mjs` and `chat-document-workspace.spec.mjs` journeys cover panels,
 editors and nested dialogs.
+
+In chat, deletion from the editor or in real time removes the document's row and closes
+its desktop pane or dialog while preserving the message draft. A refused deletion keeps
+the document available; repeated notifications and late list responses cannot restore a
+deleted entry. Coverage: `chat-document-workspace.spec.mjs`.
 
 ### Mobile editing toolbar
 

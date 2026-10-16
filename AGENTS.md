@@ -244,6 +244,10 @@ immutable. Consult the `galaris-process-tools` skill.
   colors or approximate Quasar shades as a reference, or reintroduce discarded colors.
   Any palette change must be reflected in this shared reference.
 - Keep components and pages focused; place API calls in services and shared state in Pinia.
+- Use standard Quasar `QBtn` components and their native styles for action buttons. Buttons
+  must have a clearly visible boundary: use the default filled style or `outline`, not `flat`
+  or borderless controls unless explicitly requested. Deletion buttons use the default filled
+  style with `color="negative"`. Do not recreate button styling with custom CSS or HTML buttons.
 - Routes are derived from `pages/`; do not maintain a second route table.
 - `mobile` mode means exclusively a viewport width below 1024 CSS px (`$q.screen.lt.md`);
   `desktop` mode starts at 1024 px, regardless of orientation or device type.

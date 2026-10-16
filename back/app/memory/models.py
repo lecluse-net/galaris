@@ -623,11 +623,11 @@ class Document(HistoryMixin, Base):
     __table_args__ = (
         Index("ix_documents_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
         CheckConstraint("id = memory_item_id", name="ck_documents_stable_identity"),
-        CheckConstraint("document_type IN ('html', 'dataset')", name="ck_documents_type"),
+        CheckConstraint("document_type IN ('html', 'dataset', 'form')", name="ck_documents_type"),
         # Legacy shared memories may contain non-editorial text or binary bytes.
-        # Preserve their resource format; new document APIs enforce HTML/JSON.
+        # Preserve their format and retired form archives; APIs enforce current types.
         CheckConstraint("content_type IN ('text', 'binary')", name="ck_documents_text"),
-        CheckConstraint("(document_type = 'dataset' AND content_type = 'text' AND media_type = 'application/json' AND content_profile_version IS NULL) OR document_type = 'html'", name="ck_documents_content_type"),
+        CheckConstraint("(document_type = 'dataset' AND content_type = 'text' AND media_type = 'application/json' AND content_profile_version IS NULL) OR document_type IN ('html', 'form')", name="ck_documents_content_type"),
         CheckConstraint("visibility IN ('private', 'shared')", name="ck_documents_visibility"),
         CheckConstraint("global_access IN (0, 1, 2) AND group_access IN (0, 1, 2)", name="ck_documents_access"),
         CheckConstraint("global_access = 0 OR visibility = 'shared'", name="ck_documents_global_visibility"),

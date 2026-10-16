@@ -10,12 +10,15 @@ import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import CheckConstraint, text
+from sqlalchemy.schema import AddConstraint
 
 from app.agent import AgentManagementScope
 from app.agent.models import Agent
 from app.memory import conversation_document_adapter, service
 from app.memory.assertions import ManagedDocumentAccessAssertion
 from app.memory.contracts import ResourceNotFoundError
+from app.memory.models import Document
 from app.memory.router import (
     browse_managed_documents,
     change_document_owner,
@@ -159,6 +162,42 @@ async def test_folder_details_endpoint_preserves_agent_scope(
         await read_document_folders(agent_id=peer.id, details=True)
     assert denied.value.status_code == 404
     reader.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("media_type", ["text/html", "application/json"])
+@pytest.mark.parametrize("deleted", [False, True])
+async def test_document_schema_preserves_retired_forms(
+    db: AsyncSession, agents: tuple[Agent, Agent], memory_storage: Path,
+    media_type: str, deleted: bool,
+) -> None:
+    del memory_storage
+    owner, _ = agents
+    item, _ = await service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title="Synthetic legacy form", node_kind="document",
+        payload=MemoryPayload(text="Archived content"),
+    ))
+    constraints = [constraint for constraint in Document.__table__.constraints
+                   if isinstance(constraint, CheckConstraint)
+                   and constraint.name in {"ck_documents_type", "ck_documents_content_type"}]
+    for constraint in constraints:
+        await db.execute(text(f"ALTER TABLE documents DROP CONSTRAINT {constraint.name}"))
+    # Both representations existed before forms were retired. Tombstones still
+    # participate in PostgreSQL constraint validation during startup.
+    await db.execute(text("""
+        UPDATE documents SET document_type = 'form', media_type = :media_type,
+            content_profile_version = NULL,
+            deleted_at = CASE WHEN :deleted THEN now() ELSE NULL END
+        WHERE id = :id
+    """), {"id": item.id, "media_type": media_type, "deleted": deleted})
+    query = text("SELECT * FROM documents WHERE id = :id")
+    before = (await db.execute(query, {"id": item.id})).mappings().one()
+    # Exercise the target DDL against existing rows, as DbAdmin does, rather
+    # than merely checking that readers tolerate a relaxed legacy schema.
+    for constraint in constraints:
+        await db.execute(AddConstraint(constraint))
+    after = (await db.execute(query, {"id": item.id})).mappings().one()
+    assert dict(after) == dict(before)
 
 
 @pytest.mark.asyncio

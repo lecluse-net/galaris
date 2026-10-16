@@ -76,7 +76,7 @@ test('shared settings belong to the dataset and history belongs to each item on 
   expect(preview.origins.history).toBe('item')
   expect(preview.origins.language).toBe('dataset')
   await dialog.getByRole('button', { name: 'Enregistrer', exact: true }).click()
-  await expect(dialog).not.toBeVisible()
+  await expect(dialog).toHaveCount(0)
   await page.setViewportSize({ width: 390, height: 844 })
   // The responsive table changes after Quasar's screen update. Target the mobile
   // control, not the desktop button that can disappear between pointer events.

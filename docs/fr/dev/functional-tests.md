@@ -8,19 +8,9 @@ recherche Tools et Memory protègent l'identité des index et les replis. Les sc
 `app/memory/tests/test_mcp.py` passent par `file_search`/`file_read` pour les droits, le contexte
 du contact et les lectures bornées ; les anciens wrappers MCP retirés ne servent plus de parcours.
 
-`back/app/memory/tests/test_inline_content.py` couvre le transfert des textes natifs
-en SQL et sa sauvegarde immuable : octets exacts et rejeu, historique et synthèses,
-rollback, sources absentes ou modifiées, validation UTF-8/NUL et effacement.
-
-Ce catalogue part des usages et des responsabilités des modules. Les suites citées sont les
-points d’entrée vérifiables ; une ligne ne signifie ni couverture exhaustive ni qualification
-d’un service externe. Les résultats exécutés et les remplacements sont consignés dans
-[la revue du 10 septembre](../../../project/audits/2026-09-10-functional-tests.md).
-
-Pour une évolution, préciser la garantie changée et celles à préserver, lire leurs contrats
-et tests, puis choisir la couche la moins coûteuse qui prouve l’effet. Conserver un test utile
-est une décision à part entière : aucun quota de tests nouveaux par module.
-
+Le transfert des textes natifs vers les colonnes SQL et sa sauvegarde immuable sont
+couverts par `back/app/memory/tests/test_inline_content.py` : octets exacts et rejeu,
+historique et synthèses, rollback, sources absentes ou altérées, UTF-8/NUL et suppression.
 
 `app/memory/tests/test_document_library.py` couvre aussi les anciens documents `form` :
 liste et filtre HTML, lecture, droits et conservation du contenu sans réécriture.
@@ -47,6 +37,14 @@ de partage que les Documents, découvre une application documentaire puis confir
 Il vérifie aussi le changement de sélection dans la bibliothèque, la conservation de la recherche,
 la confirmation des brouillons non enregistrés, le retour mobile et la création depuis la liste.
 
+Ce catalogue part des usages et des responsabilités des modules. Les suites citées sont les
+points d’entrée vérifiables ; une ligne ne signifie ni couverture exhaustive ni qualification
+d’un service externe. Les résultats exécutés et les remplacements sont consignés dans
+[la revue du 10 septembre](../../../project/audits/2026-09-10-functional-tests.md).
+
+Pour une évolution, préciser la garantie changée et celles à préserver, lire leurs contrats
+et tests, puis choisir la couche la moins coûteuse qui prouve l’effet. Conserver un test utile
+est une décision à part entière : aucun quota de tests nouveaux par module.
 
 ## Audio et catalogues fournisseurs
 
@@ -382,15 +380,6 @@ Le parcours de silence de `e2e/specs/chat.spec.mjs` exerce la discussion assembl
 PostgreSQL, le scheduler et le harnais interne réels avec un fournisseur synthétique :
 tentative courante conservée, même Task, appel fermé puis reprise guidée et résultat durable.
 
-L'admission par fournisseur est couverte par `app/llm/tests/test_provider_scheduler.py`
-et `tests/test_inference_lifecycle.py` : priorité, places protégées, partage entre modèles
-et appels natifs, changement à chaud, arrêt/pause/expiration en file, transcription vocale
-sous charge et libération après annulation d'une transcription ou image native. Le test
-de transport dans `tests/test_protocol_inference.py` compare les commits du journal,
-préserve les grands fragments Unicode et conserve l'arrêt anticipé du raisonnement.
-`front/browser-tests/provider-autosave.spec.mjs` vérifie sauvegarde de 0, réouverture,
-validation et préservation des autres paramètres.
-
 `app/conversation/tests/test_service.py` protège aussi les commandes humaines Pause, Stop,
 Reprendre, Relancer et Répondre maintenant : tentative exacte, inputs conservés, suppression
 du brouillon, round arrêté immuable et refus de reprendre des effets incertains.
@@ -404,6 +393,15 @@ a été refusé. L’ancienne attente d’un bloc de réponse arrêtée réouvra
 Les deux parcours de contrôle de `e2e/specs/chat.spec.mjs` utilisent Chat, PostgreSQL,
 le scheduler et le harnais réels avec un fournisseur synthétique ; ils couvrent réouverture,
 reprise, disparition après arrêt, nouvelle demande et réponse immédiate persistée.
+
+L'admission par fournisseur est couverte par `app/llm/tests/test_provider_scheduler.py`
+et `tests/test_inference_lifecycle.py` : priorité, places protégées, partage entre modèles
+et appels natifs, changement à chaud, arrêt/pause/expiration en file, transcription vocale
+sous charge et libération après annulation d'une transcription ou image native. Le test
+de transport dans `tests/test_protocol_inference.py` compare les commits du journal,
+préserve les grands fragments Unicode et conserve l'arrêt anticipé du raisonnement.
+`front/browser-tests/provider-autosave.spec.mjs` vérifie sauvegarde de 0, réouverture,
+validation et préservation des autres paramètres.
 
 La stabilisation du journal et du streaming est couverte par
 `back/app/agent/tests/test_reasoning_guard.py` (fragments irréguliers, snapshots rejoués,
@@ -879,6 +877,11 @@ brouillons, leur validation et leur sauvegarde après défilement. Garanties :
 `front/browser-tests/dialogs.spec.mjs`, `teams.spec.mjs`, `lab-comparison.spec.mjs` et
 `lab-insights.spec.mjs`. Les parcours `skills.spec.mjs`, `galaris-links.spec.mjs` et
 `chat-document-workspace.spec.mjs` couvrent les panneaux, éditeurs et dialogues imbriqués.
+
+Dans le chat, supprimer un document depuis l’éditeur ou en temps réel retire sa ligne et
+ferme son panneau desktop ou sa modale, tout en conservant le brouillon du message.
+Un refus laisse le document disponible ; une notification répétée ou une réponse de liste
+tardive ne le réintroduit pas. Garantie : `chat-document-workspace.spec.mjs`.
 
 ### Barre d’édition mobile
 

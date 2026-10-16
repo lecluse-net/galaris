@@ -622,6 +622,13 @@
     "line_min": 94,
     "branch_min": 64
   },
+  "core/storage/": {
+    "prefixes": [
+      "core/storage/"
+    ],
+    "line_min": 88,
+    "branch_min": 75
+  },
   "core/team/": {
     "prefixes": [
       "core/team/"
