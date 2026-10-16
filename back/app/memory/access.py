@@ -163,7 +163,9 @@ async def managed_item_agent_ids(
     return tuple(readable), tuple(writable)
 
 
-async def effective_access(item: MemoryItem, agent_id: int | HumanActor, *, evidence_ids: set[UUID] | None = None) -> MemoryAccess:
+async def effective_access(item: MemoryItem, agent_id: int | HumanActor, *, evidence_ids: set[UUID] | None = None,
+                           team_access: tuple[bool, bool] | None = None,
+                           structural_access: bool | None = None) -> MemoryAccess:
     """Resolve item and space permissions without relying on lazy loading."""
 
     if isinstance(agent_id, HumanActor):
@@ -174,6 +176,8 @@ async def effective_access(item: MemoryItem, agent_id: int | HumanActor, *, evid
     ):
         return MemoryAccess(can_read=False, can_write=False)
     if item.node_kind in {"attachment", "folder"}:
+        if structural_access is not None:
+            return MemoryAccess(can_read=structural_access, can_write=False)
         readable = await get_db().scalar(select(MemoryItem.id).where(
             MemoryItem.id == item.id, readable_item_clause(agent_id),
         ))
@@ -182,8 +186,11 @@ async def effective_access(item: MemoryItem, agent_id: int | HumanActor, *, evid
         return MemoryAccess(can_read=True, can_write=not item.read_only)
     if item.node_kind == "memory" and not item.source_managed:
         return MemoryAccess(can_read=False, can_write=False)
-    team_read = bool(await get_db().scalar(select(agent_team_grant_clause(agent_id, item_id=item.id))))
-    team_write = bool(await get_db().scalar(select(agent_team_grant_clause(agent_id, item_id=item.id, write=True))))
+    if team_access is None:
+        row = (await get_db().execute(select(agent_team_grant_clause(agent_id, item_id=item.id),
+            agent_team_grant_clause(agent_id, item_id=item.id, write=True)))).one()
+        team_access = bool(row[0]), bool(row[1])
+    team_read, team_write = team_access
     can_read = item.visibility == "public" or item.global_access >= 1
 
     item_grant = next(
@@ -201,6 +208,31 @@ async def effective_access(item: MemoryItem, agent_id: int | HumanActor, *, evid
         )
     )
     return MemoryAccess(can_read=can_read, can_write=can_write)
+
+
+async def effective_access_many(items: Collection[MemoryItem], agent_id: int, *,
+                                evidence_ids: set[UUID]) -> dict[UUID, MemoryAccess]:
+    """Batch page-level grants while retaining source checks and final admission.
+
+    Decisions live only for this projection; callers still perform fresh SQL
+    admission before exposing results, including after concurrent revocations.
+    """
+    subjects = [item.id for item in items if item.owner_agent_id != agent_id
+                and item.node_kind not in {"attachment", "folder"}
+                and (item.node_kind != "memory" or item.source_managed)]
+    teams: dict[UUID, tuple[bool, bool]] = {}
+    if subjects:
+        rows = await get_db().execute(select(MemoryItem.id,
+            agent_team_grant_clause(agent_id), agent_team_grant_clause(agent_id, write=True),
+        ).where(MemoryItem.id.in_(subjects)))
+        teams = {identity: (bool(read), bool(write)) for identity, read, write in rows}
+    structural = {item.id for item in items if item.node_kind in {"attachment", "folder"}}
+    visible = set(await get_db().scalars(select(MemoryItem.id).where(
+        MemoryItem.id.in_(structural), readable_item_clause(agent_id),
+    ))) if structural else set[UUID]()
+    return {item.id: await effective_access(item, agent_id, evidence_ids=evidence_ids,
+        team_access=teams.get(item.id), structural_access=item.id in visible if item.id in structural else None)
+        for item in items}
 
 
 __all__ = [

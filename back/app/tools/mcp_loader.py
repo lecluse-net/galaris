@@ -701,10 +701,10 @@ async def get_enabled_integrated_tool_codes(agent_id: int) -> set[str]:
 
     known_codes = set(mcp_tools_by_tool_code())
     enabled: set[str] = set()
-    for connection in await connection_service.get_connections_by_agent(agent_id):
-        if not connection.active:
-            continue
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
+    connections = [connection for connection in await connection_service.get_connections_by_agent(agent_id) if connection.active]
+    tools = await tool_service.get_tools_by_ids({connection.tool_id for connection in connections})
+    for connection in connections:
+        tool = tools.get(connection.tool_id)
         if tool:
             enabled.update(
                 native_tool_codes_for_tool(tool) & known_codes
@@ -719,12 +719,12 @@ async def get_disabled_internal_function_names(agent_id: int) -> set[str]:
 
     known_codes = set(mcp_tools_by_tool_code())
     names: set[str] = set()
-    for connection in await connection_service.get_connections_by_agent(agent_id):
-        if not connection.active:
-            continue
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
-        if tool and native_tool_codes_for_tool(tool) & known_codes:
-            names |= await connection_service.get_disabled_function_names(connection)
+    connections = [connection for connection in await connection_service.get_connections_by_agent(agent_id) if connection.active]
+    tools = await tool_service.get_tools_by_ids({connection.tool_id for connection in connections})
+    native_connections = [connection for connection in connections
+        if (tool := tools.get(connection.tool_id)) and native_tool_codes_for_tool(tool) & known_codes]
+    for disabled in (await connection_service.get_disabled_function_names_many(native_connections)).values():
+        names.update(disabled)
     from app.llm import available_media_functions
 
     media_names = {definition.name for definition in load_mcp_tools() if definition.tool_code == "multimedia"}

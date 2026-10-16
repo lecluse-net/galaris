@@ -16,6 +16,7 @@ from app.lab.comparison_service import compare
 from app.lab.router import compare_benchmarks
 from core.authorize import AssertionContext
 from core.database import get_db_session
+from tests.sql_reads import measured_reads
 
 
 @pytest.mark.asyncio
@@ -84,7 +85,9 @@ async def test_regressions_and_paired_performance_cover_the_run_before_paginatio
                         "first_output_seconds": (1 if changed else 2) if index < 12 else None}},
                 cost=0.02 if changed else 0.04, duration=3 if changed else 4))
     await db.flush()
-    first = await compare("conversation_executor", before.id, after.id, "model", limit=10)
+    async with measured_reads(db, "lab-comparison-10") as reads:
+        first = await compare("conversation_executor", before.id, after.id, "model", limit=10)
+    assert len(reads) <= 16, "Pairing reads must remain bounded as the page grows"
     assert len(first["items"]) == 10
     assert not any(row["introduced_critical"] for row in first["items"])
     assert first["risks"] == {"assessed_pairs": 13, "introduced_critical": 2, "pass_to_fail": 2,

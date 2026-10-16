@@ -1738,25 +1738,25 @@ tests remain authoritative for behavior.
 | GET | `/skills/{skill_id}/file` | `app.skill` | `download_skill_file` | yes | `back/app/skill/router.py:506` |
 | GET | `/skills/{skill_id}/files` | `app.skill` | `list_skill_files` | yes | `back/app/skill/router.py:484` |
 | GET | `/tasks` | `app.task` | `read_tasks` | yes | `back/app/task/router.py:59` |
-| POST | `/tasks` | `app.task` | `create_task` | yes | `back/app/task/router.py:186` |
-| GET | `/tasks/active` | `app.task` | `read_active_tasks` | yes | `back/app/task/router.py:138` |
-| POST | `/tasks/activity` | `app.task` | `read_task_activity` | yes | `back/app/task/router.py:149` |
-| DELETE | `/tasks/cleanup` | `app.task` | `cleanup_tasks` | yes | `back/app/task/router.py:296` |
+| POST | `/tasks` | `app.task` | `create_task` | yes | `back/app/task/router.py:177` |
+| GET | `/tasks/active` | `app.task` | `read_active_tasks` | yes | `back/app/task/router.py:129` |
+| POST | `/tasks/activity` | `app.task` | `read_task_activity` | yes | `back/app/task/router.py:140` |
+| DELETE | `/tasks/cleanup` | `app.task` | `cleanup_tasks` | yes | `back/app/task/router.py:287` |
 | GET | `/tasks/recent` | `app.task` | `read_recent_tasks` | yes | `back/app/task/router.py:79` |
-| DELETE | `/tasks/{task_id}` | `app.task` | `delete_task` | yes | `back/app/task/router.py:306` |
-| GET | `/tasks/{task_id}` | `app.task` | `read_task` | yes | `back/app/task/router.py:156` |
-| PUT | `/tasks/{task_id}` | `app.task` | `update_task` | yes | `back/app/task/router.py:210` |
-| GET | `/tasks/{task_id}/budget` | `app.task` | `read_task_budget` | yes | `back/app/task/router.py:176` |
-| POST | `/tasks/{task_id}/cancel` | `app.task` | `cancel_task` | yes | `back/app/task/router.py:264` |
-| GET | `/tasks/{task_id}/children` | `app.task` | `read_task_children` | yes | `back/app/task/router.py:380` |
-| POST | `/tasks/{task_id}/force-terminate` | `app.task` | `force_terminate_task` | yes | `back/app/task/router.py:279` |
-| GET | `/tasks/{task_id}/full` | `app.task` | `read_task_full` | yes | `back/app/task/router.py:370` |
-| POST | `/tasks/{task_id}/pause` | `app.task` | `pause_task` | yes | `back/app/task/router.py:337` |
-| POST | `/tasks/{task_id}/recover-call` | `app.task` | `recover_task_call` | yes | `back/app/task/router.py:166` |
-| POST | `/tasks/{task_id}/restore` | `app.task` | `restore_task` | yes | `back/app/task/router.py:323` |
-| POST | `/tasks/{task_id}/resume` | `app.task` | `resume_task` | yes | `back/app/task/router.py:351` |
-| POST | `/tasks/{task_id}/retry` | `app.task` | `retry_task` | yes | `back/app/task/router.py:230` |
-| POST | `/tasks/{task_id}/run` | `app.task` | `run_task` | yes | `back/app/task/router.py:396` |
+| DELETE | `/tasks/{task_id}` | `app.task` | `delete_task` | yes | `back/app/task/router.py:297` |
+| GET | `/tasks/{task_id}` | `app.task` | `read_task` | yes | `back/app/task/router.py:147` |
+| PUT | `/tasks/{task_id}` | `app.task` | `update_task` | yes | `back/app/task/router.py:201` |
+| GET | `/tasks/{task_id}/budget` | `app.task` | `read_task_budget` | yes | `back/app/task/router.py:167` |
+| POST | `/tasks/{task_id}/cancel` | `app.task` | `cancel_task` | yes | `back/app/task/router.py:255` |
+| GET | `/tasks/{task_id}/children` | `app.task` | `read_task_children` | yes | `back/app/task/router.py:371` |
+| POST | `/tasks/{task_id}/force-terminate` | `app.task` | `force_terminate_task` | yes | `back/app/task/router.py:270` |
+| GET | `/tasks/{task_id}/full` | `app.task` | `read_task_full` | yes | `back/app/task/router.py:361` |
+| POST | `/tasks/{task_id}/pause` | `app.task` | `pause_task` | yes | `back/app/task/router.py:328` |
+| POST | `/tasks/{task_id}/recover-call` | `app.task` | `recover_task_call` | yes | `back/app/task/router.py:157` |
+| POST | `/tasks/{task_id}/restore` | `app.task` | `restore_task` | yes | `back/app/task/router.py:314` |
+| POST | `/tasks/{task_id}/resume` | `app.task` | `resume_task` | yes | `back/app/task/router.py:342` |
+| POST | `/tasks/{task_id}/retry` | `app.task` | `retry_task` | yes | `back/app/task/router.py:221` |
+| POST | `/tasks/{task_id}/run` | `app.task` | `run_task` | yes | `back/app/task/router.py:387` |
 | GET | `/teams` | `core.team` | `list_teams` | yes | `back/core/team/router.py:13` |
 | POST | `/teams` | `core.team` | `create_team` | yes | `back/core/team/router.py:25` |
 | GET | `/teams/humans` | `core.team` | `search_humans` | yes | `back/core/team/router.py:19` |
@@ -1941,10 +1941,10 @@ tests remain authoritative for behavior.
 | `memory_topic_contact_scopes` | `MemoryTopicContactScope` | `app.memory` | no | `agents.id`, `memory_items.id` | `back/app/memory/models.py:1042` |
 | `memory_urls` | `MemoryURL` | `app.memory` | no | `memory_items.id` | `back/app/memory/models.py:778` |
 | `memory_usages` | `MemoryUsage` | `app.memory` | no | `agents.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:1225` |
-| `messenger_files` | `File` | `app.messenger` | yes | `connections.id` | `back/app/messenger/models.py:428` |
+| `messenger_files` | `File` | `app.messenger` | yes | `connections.id` | `back/app/messenger/models.py:429` |
 | `messenger_interactions` | `Interaction` | `app.messenger` | no | `connections.id` | `back/app/messenger/models.py:192` |
-| `messenger_listener_state` | `ListenerState` | `app.messenger` | no | `connections.id` | `back/app/messenger/models.py:484` |
-| `messenger_message_files` | `Attachment` | `app.messenger` | no | `messenger_files.id`, `messenger_messages.id` | `back/app/messenger/models.py:465` |
+| `messenger_listener_state` | `ListenerState` | `app.messenger` | no | `connections.id` | `back/app/messenger/models.py:485` |
+| `messenger_message_files` | `Attachment` | `app.messenger` | no | `messenger_files.id`, `messenger_messages.id` | `back/app/messenger/models.py:466` |
 | `messenger_messages` | `Message` | `app.messenger` | yes | `connections.id`, `memory_items.id`, `messenger_rooms.id`, `messenger_users.id`, `topics.id`, `users.id` | `back/app/messenger/models.py:254` |
 | `messenger_room_users` | `RoomUser` | `app.messenger` | no | `messenger_messages.id`, `messenger_rooms.id`, `messenger_users.id` | `back/app/messenger/models.py:139` |
 | `messenger_rooms` | `Room` | `app.messenger` | yes | `connections.id`, `topics.id` | `back/app/messenger/models.py:63` |
@@ -1966,9 +1966,9 @@ tests remain authoritative for behavior.
 | `runtime_run_grants` | `RuntimeRunGrant` | `app.tools` | no | `agent_mcp_tokens.id`, `agents.id` | `back/app/tools/authorization_models.py:81` |
 | `skill_categories` | `SkillCategory` | `app.skill` | yes | — | `back/app/skill/models.py:31` |
 | `skills` | `Skill` | `app.skill` | yes | `skill_categories.id` | `back/app/skill/models.py:52` |
-| `task_amendments` | `TaskAmendment` | `app.task` | no | `tasks.id` | `back/app/task/models.py:243` |
-| `task_attempts` | `TaskAttempt` | `app.task` | no | `tasks.id` | `back/app/task/models.py:276` |
-| `tasks` | `Task` | `app.task` | yes | `agents.id`, `connections.id`, `goals.id`, `memory_items.id`, `messenger_messages.id`, `tasks.id`, `topics.id`, `users.id` | `back/app/task/models.py:78` |
+| `task_amendments` | `TaskAmendment` | `app.task` | no | `tasks.id` | `back/app/task/models.py:249` |
+| `task_attempts` | `TaskAttempt` | `app.task` | no | `tasks.id` | `back/app/task/models.py:282` |
+| `tasks` | `Task` | `app.task` | yes | `agents.id`, `connections.id`, `goals.id`, `memory_items.id`, `messenger_messages.id`, `tasks.id`, `topics.id`, `users.id` | `back/app/task/models.py:80` |
 | `team_audit` | `TeamAudit` | `core.team` | yes | — | `back/core/team/models.py:28` |
 | `team_users` | `TeamUser` | `core.team` | no | `agent_groups.id`, `users.id` | `back/core/team/models.py:19` |
 | `titles` | `Title` | `app.agent` | no | — | `back/app/agent/models.py:41` |

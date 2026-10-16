@@ -11,13 +11,14 @@ from typing import Any, Literal, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import defer
 
 from app.agent import AgentManagementScope
 from core.database import get_db
 from core.user import HumanActor
 
 from .access import accessible_clause, access, is_administrator
-from .contracts import DataActor, DatasetConflictError, DatasetNotFoundError, DatasetPermissionError, DatasetWriteLimitError
+from .contracts import DataActor, DatasetAccess, DatasetConflictError, DatasetNotFoundError, DatasetPermissionError, DatasetWriteLimitError
 from .models import Dataset, DatasetGrant, DatasetRevision, DatasetWriteBudget
 
 MAX_BYTES = 2_000_000
@@ -92,13 +93,20 @@ async def record(identity: UUID, actor: DataActor, *, write: bool = False, manag
 
 async def describe(dataset: Dataset, actor: DataActor, *, content: bool = True) -> dict[str, Any]:
     permissions = await access(dataset, actor)
+    return _description(dataset, permissions, content=content)
+
+
+def _description(dataset: Dataset, permissions: DatasetAccess, *, content: bool,
+                 size_checksum: tuple[int, str] | None = None) -> dict[str, Any]:
+    size, checksum = size_checksum if size_checksum is not None else (
+        len(dataset.content.encode()), hashlib.sha256(dataset.content.encode()).hexdigest())
     result: dict[str, Any] = {
         "id": str(dataset.id), "uri": f"data://{dataset.id}", "title": dataset.title,
         "revision": dataset.revision, "lock_version": dataset.lock_version,
         "owner_agent_id": dataset.owner_agent_id, "owner_user_id": dataset.owner_user_id,
         "global_access": dataset.global_access, "group_access": dataset.group_access,
         "keywords": dataset.keywords, "metadata": dataset.metadata_, "read_only": dataset.read_only,
-        "size": len(dataset.content.encode()), "checksum": hashlib.sha256(dataset.content.encode()).hexdigest(),
+        "size": size, "checksum": checksum,
         "can_write": permissions.can_write and not dataset.metadata_.get("engine_managed", False),
         "can_manage": permissions.can_manage, "created_at": dataset.created_at.isoformat() if dataset.created_at else None,
         "can_delete": permissions.can_manage and not dataset.metadata_.get("engine_dataset") and not dataset.metadata_.get("engine_managed"),
@@ -307,9 +315,20 @@ async def list_datasets(actor: DataActor, *, page: int = 1, page_size: int = 50,
             raise DatasetNotFoundError("Personal Dataset tag not found")
         statement = statement.where(Dataset.id.in_(select(DatasetTagAssignment.dataset_id).where(DatasetTagAssignment.tag_id == tag_id)))
     total = await get_db().scalar(select(func.count()).select_from(statement.subquery())) or 0
-    rows = await get_db().scalars(statement.order_by(Dataset.updated_at.desc().nulls_last(), Dataset.created_at.desc(), Dataset.id)
+    # One page snapshot contains both metadata and the live permissions. Large
+    # JSON values stay in PostgreSQL; checksum/size retain their exact UTF-8 contract.
+    administrator = await is_administrator(actor)
+    rows = await get_db().execute(statement.add_columns(
+        accessible_clause(actor, write=True).label("can_write"),
+        accessible_clause(actor, manage=True).label("can_manage"),
+        func.octet_length(func.convert_to(Dataset.content, "UTF8")).label("size"),
+        func.encode(func.sha256(func.convert_to(Dataset.content, "UTF8")), "hex").label("checksum"),
+    ).options(defer(Dataset.content, raiseload=True))
+        .order_by(Dataset.updated_at.desc().nulls_last(), Dataset.created_at.desc(), Dataset.id)
         .limit(page_size).offset((page - 1) * page_size))
-    return {"total": total, "items": [await describe(dataset, actor, content=False) for dataset in rows]}
+    return {"total": total, "items": [_description(dataset,
+        DatasetAccess(True, bool(write), bool(manage) or administrator), content=False,
+        size_checksum=(int(size), str(checksum))) for dataset, write, manage, size, checksum in rows]}
 
 
 async def sharing(identity: UUID, actor: DataActor) -> dict[str, Any]:

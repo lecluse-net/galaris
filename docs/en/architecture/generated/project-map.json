@@ -10377,7 +10377,7 @@
           "connections.id"
         ],
         "history_mixin": true,
-        "line": 428,
+        "line": 429,
         "module": "app.messenger",
         "table": "messenger_files"
       },
@@ -10399,7 +10399,7 @@
           "connections.id"
         ],
         "history_mixin": false,
-        "line": 484,
+        "line": 485,
         "module": "app.messenger",
         "table": "messenger_listener_state"
       },
@@ -10411,7 +10411,7 @@
           "messenger_messages.id"
         ],
         "history_mixin": false,
-        "line": 465,
+        "line": 466,
         "module": "app.messenger",
         "table": "messenger_message_files"
       },
@@ -10665,7 +10665,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 243,
+        "line": 249,
         "module": "app.task",
         "table": "task_amendments"
       },
@@ -10676,7 +10676,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 276,
+        "line": 282,
         "module": "app.task",
         "table": "task_attempts"
       },
@@ -10694,7 +10694,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 78,
+        "line": 80,
         "module": "app.task",
         "table": "tasks"
       },
@@ -17672,7 +17672,7 @@
         "declared_path": "/tasks",
         "file": "back/app/task/router.py",
         "handler": "create_task",
-        "line": 186,
+        "line": 177,
         "method": "POST",
         "module": "app.task"
       },
@@ -17681,7 +17681,7 @@
         "declared_path": "/tasks/active",
         "file": "back/app/task/router.py",
         "handler": "read_active_tasks",
-        "line": 138,
+        "line": 129,
         "method": "GET",
         "module": "app.task"
       },
@@ -17690,7 +17690,7 @@
         "declared_path": "/tasks/activity",
         "file": "back/app/task/router.py",
         "handler": "read_task_activity",
-        "line": 149,
+        "line": 140,
         "method": "POST",
         "module": "app.task"
       },
@@ -17699,7 +17699,7 @@
         "declared_path": "/tasks/cleanup",
         "file": "back/app/task/router.py",
         "handler": "cleanup_tasks",
-        "line": 296,
+        "line": 287,
         "method": "DELETE",
         "module": "app.task"
       },
@@ -17717,7 +17717,7 @@
         "declared_path": "/tasks/{task_id}",
         "file": "back/app/task/router.py",
         "handler": "delete_task",
-        "line": 306,
+        "line": 297,
         "method": "DELETE",
         "module": "app.task"
       },
@@ -17726,7 +17726,7 @@
         "declared_path": "/tasks/{task_id}",
         "file": "back/app/task/router.py",
         "handler": "read_task",
-        "line": 156,
+        "line": 147,
         "method": "GET",
         "module": "app.task"
       },
@@ -17735,7 +17735,7 @@
         "declared_path": "/tasks/{task_id}",
         "file": "back/app/task/router.py",
         "handler": "update_task",
-        "line": 210,
+        "line": 201,
         "method": "PUT",
         "module": "app.task"
       },
@@ -17744,7 +17744,7 @@
         "declared_path": "/tasks/{task_id}/budget",
         "file": "back/app/task/router.py",
         "handler": "read_task_budget",
-        "line": 176,
+        "line": 167,
         "method": "GET",
         "module": "app.task"
       },
@@ -17753,7 +17753,7 @@
         "declared_path": "/tasks/{task_id}/cancel",
         "file": "back/app/task/router.py",
         "handler": "cancel_task",
-        "line": 264,
+        "line": 255,
         "method": "POST",
         "module": "app.task"
       },
@@ -17762,7 +17762,7 @@
         "declared_path": "/tasks/{task_id}/children",
         "file": "back/app/task/router.py",
         "handler": "read_task_children",
-        "line": 380,
+        "line": 371,
         "method": "GET",
         "module": "app.task"
       },
@@ -17771,7 +17771,7 @@
         "declared_path": "/tasks/{task_id}/force-terminate",
         "file": "back/app/task/router.py",
         "handler": "force_terminate_task",
-        "line": 279,
+        "line": 270,
         "method": "POST",
         "module": "app.task"
       },
@@ -17780,7 +17780,7 @@
         "declared_path": "/tasks/{task_id}/full",
         "file": "back/app/task/router.py",
         "handler": "read_task_full",
-        "line": 370,
+        "line": 361,
         "method": "GET",
         "module": "app.task"
       },
@@ -17789,7 +17789,7 @@
         "declared_path": "/tasks/{task_id}/pause",
         "file": "back/app/task/router.py",
         "handler": "pause_task",
-        "line": 337,
+        "line": 328,
         "method": "POST",
         "module": "app.task"
       },
@@ -17798,7 +17798,7 @@
         "declared_path": "/tasks/{task_id}/recover-call",
         "file": "back/app/task/router.py",
         "handler": "recover_task_call",
-        "line": 166,
+        "line": 157,
         "method": "POST",
         "module": "app.task"
       },
@@ -17807,7 +17807,7 @@
         "declared_path": "/tasks/{task_id}/restore",
         "file": "back/app/task/router.py",
         "handler": "restore_task",
-        "line": 323,
+        "line": 314,
         "method": "POST",
         "module": "app.task"
       },
@@ -17816,7 +17816,7 @@
         "declared_path": "/tasks/{task_id}/resume",
         "file": "back/app/task/router.py",
         "handler": "resume_task",
-        "line": 351,
+        "line": 342,
         "method": "POST",
         "module": "app.task"
       },
@@ -17825,7 +17825,7 @@
         "declared_path": "/tasks/{task_id}/retry",
         "file": "back/app/task/router.py",
         "handler": "retry_task",
-        "line": 230,
+        "line": 221,
         "method": "POST",
         "module": "app.task"
       },
@@ -17834,7 +17834,7 @@
         "declared_path": "/tasks/{task_id}/run",
         "file": "back/app/task/router.py",
         "handler": "run_task",
-        "line": 396,
+        "line": 387,
         "method": "POST",
         "module": "app.task"
       },

@@ -21,7 +21,7 @@ from core.database import get_db
 from core.params import runtime_settings
 
 from . import metrics, service
-from .access import effective_access, readable_item_clause
+from .access import effective_access_many, readable_item_clause
 from .admission import admit_search_hits
 from .embedding import (
     EmbeddingModel,
@@ -561,6 +561,7 @@ async def _semantic_candidates(
     )
     items = {item.id: item for item in item_result.all()}
     evidence_ids = await readable_evidence_ids(set(items), request.agent_id)
+    accesses = await effective_access_many(list(items.values()), request.agent_id, evidence_ids=evidence_ids)
     candidates: list[SemanticCandidate] = []
     passages_by_id: dict[UUID, list[MemorySearchPassage]] = {}
     for row in rows:
@@ -584,7 +585,7 @@ async def _semantic_candidates(
             continue
         passages_by_id[item_id] = [passage]
         candidates.append(
-            (service.item_to_public(item, await effective_access(item, request.agent_id, evidence_ids=evidence_ids)),
+            (service.item_to_public(item, accesses[item.id]),
              str(row[1]), raw_distance, list(cast(Sequence[float], row[2])), passages_by_id[item_id])
         )
     return candidates
@@ -682,8 +683,10 @@ async def _graph_candidates(
             str(item_id),
         ),
     )[:limit]
+    accesses = await effective_access_many([items[identity] for identity in ranked_ids], request.agent_id,
+        evidence_ids=evidence_ids)
     return [
-        (service.item_to_public(items[item_id], await effective_access(items[item_id], request.agent_id, evidence_ids=evidence_ids)),
+        (service.item_to_public(items[item_id], accesses[item_id]),
          items[item_id].search_text, evidence[item_id][1])
         for item_id in ranked_ids if item_id in evidence_ids
     ]
@@ -1096,7 +1099,8 @@ async def _structural_candidates(
         MemoryItem.id.in_(strengths), *_item_filters(request),
     )))
     evidence_ids = await readable_evidence_ids({item.id for item in items}, request.agent_id)
-    return [(service.item_to_public(item, await effective_access(item, request.agent_id, evidence_ids=evidence_ids)),
+    accesses = await effective_access_many(items, request.agent_id, evidence_ids=evidence_ids)
+    return [(service.item_to_public(item, accesses[item.id]),
              item.search_text, strengths[item.id]) for item in items if item.id in evidence_ids]
 
 
@@ -1708,6 +1712,7 @@ async def temporal_hits(
         *filters, MemoryItem.id.in_(matches),
     ).options(selectinload(MemoryItem.grants)).execution_options(populate_existing=True))).all()
     evidence_ids = await readable_evidence_ids({item.id for item in items}, request.agent_id)
+    accesses = await effective_access_many(items, request.agent_id, evidence_ids=evidence_ids)
     hits: list[MemorySearchHit] = []
     for item in items:
         # A concurrent edit between metadata selection and hydration can change
@@ -1718,7 +1723,7 @@ async def temporal_hits(
         if match is None:
             continue
         hits.append(MemorySearchHit(
-            item=service.item_to_public(item, await effective_access(item, request.agent_id, evidence_ids=evidence_ids)),
+            item=service.item_to_public(item, accesses[item.id]),
             excerpt=_excerpt(item.search_text), score=1.0, temporal_match_at=match,
         ))
     hits.sort(key=lambda hit: (hit.temporal_match_at or start, hit.item.id))

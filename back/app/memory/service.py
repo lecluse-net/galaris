@@ -33,6 +33,7 @@ from core.util import complete_await
 
 from .access import (
     effective_access,
+    effective_access_many,
     managed_item_agent_ids,
     readable_item_clause,
 )
@@ -2860,7 +2861,7 @@ async def search_items(
     )
     query = (
         select(MemoryItem)
-        .options(*_item_options(contents=False))
+        .options(*_item_options(revisions=False, contents=False))
         .where(
             readable_item_clause(request.agent_id),
             or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
@@ -3031,7 +3032,7 @@ async def search_items(
     if temporal_union and temporal_window is not None:
         assert temporal_scope is not None and query.whereclause is not None
         calendar_filter = MemoryItem.temporal.is_not(None) if scan_calendar else temporal_match_clause(temporal_window.start)
-        query = select(MemoryItem).options(*_item_options(contents=False)).where(or_(
+        query = select(MemoryItem).options(*_item_options(revisions=False, contents=False)).where(or_(
             and_(MemoryItem.temporal.is_(None), query.whereclause),
             and_(temporal_scope, calendar_filter),
         ))
@@ -3080,18 +3081,17 @@ async def search_items(
             query = query.where(MemoryItem.temporal.is_not(None))
         calendar_query = query.with_only_columns(MemoryItem.id, MemoryItem.temporal)
         selected_ids: list[UUID] = []
-        scan_offset = 0
-        while True:
-            candidates = (await db.execute(calendar_query.offset(scan_offset).limit(200))).all()
-            for item_id, anchor in candidates:
-                if anchor is not None and next_match(MemoryTemporalAnchor.model_validate(anchor), temporal_window.start, temporal_window.end) is None:
-                    continue
-                if request.offset <= total < request.offset + request.limit + 1:
-                    selected_ids.append(item_id)
-                total += 1
-            if len(candidates) < 200:
-                break
-            scan_offset += len(candidates)
+        stream = await db.stream(calendar_query.execution_options(yield_per=200))
+        try:
+            async for candidates in stream.partitions(200):
+                for item_id, anchor in candidates:
+                    if anchor is not None and next_match(MemoryTemporalAnchor.model_validate(anchor), temporal_window.start, temporal_window.end) is None:
+                        continue
+                    if request.offset <= total < request.offset + request.limit + 1:
+                        selected_ids.append(item_id)
+                    total += 1
+        finally:
+            await stream.close()
         query = query.where(MemoryItem.id.in_(selected_ids))
     result = await db.execute(query.execution_options(populate_existing=True)
                               .offset(0 if scan_calendar else request.offset).limit(request.limit + 1))
@@ -3104,9 +3104,10 @@ async def search_items(
 
     evidence_ids, sources = await source_evidence_admission({item.id for item, _score in ranked}, request.agent_id,
         include_locations=True)
+    accesses = await effective_access_many([item for item, _score in ranked], request.agent_id, evidence_ids=evidence_ids)
     hits: list[MemorySearchHit] = []
     for item, score in ranked:
-        access = await effective_access(item, request.agent_id, evidence_ids=evidence_ids)
+        access = accesses[item.id]
         if not access.can_read:
             continue
         temporal_match_at: datetime | None = None

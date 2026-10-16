@@ -15,7 +15,7 @@ from typing import Literal, cast
 from uuid import UUID, uuid4
 
 from loguru import logger
-from sqlalchemy import and_, case, func, or_, select, tuple_, update
+from sqlalchemy import and_, case, func, or_, select, tuple_, true, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.database import get_db, get_db_session
@@ -825,15 +825,12 @@ async def _room_list_projection(room_ids: list[UUID]) -> _RoomListProjection:
     if not room_ids:
         return projection
     db = get_db()
-    ranked = select(
-        Message.id,
-        func.row_number().over(
-            partition_by=Message.messenger_room_id,
-            order_by=(Message.created_at.desc(), Message.id.desc()),
-        ).label("position"),
-    ).where(Message.messenger_room_id.in_(room_ids)).subquery()
+    latest = select(Message.id).where(Message.messenger_room_id == Room.id).order_by(
+        Message.created_at.desc(), Message.id.desc(),
+    ).limit(1).lateral("latest_room_message")
+    latest_ids = select(latest.c.id).select_from(Room).join(latest, true()).where(Room.id.in_(room_ids))
     records = list(await db.scalars(
-        select(Message).where(Message.id.in_(select(ranked.c.id).where(ranked.c.position == 1)))
+        select(Message).where(Message.id.in_(latest_ids))
     ))
     messages = await journal.hydrate_messages(records)
     sender_keys = [(message.messenger_room_id, message.sender.id) for message in messages if message.sender is not None]

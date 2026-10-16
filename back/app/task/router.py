@@ -105,7 +105,7 @@ async def read_recent_tasks(
         date_to=date_to,
         agent_ids=scope.agent_ids,
     )
-    _, summary = await task_service.summarize_recent(
+    page_total, summary = await task_service.summarize_recent(
         agent_id=agent_id,
         goal_id=goal_id,
         topic_id=topic_id,
@@ -113,18 +113,9 @@ async def read_recent_tasks(
         date_from=date_from,
         date_to=date_to,
         agent_ids=scope.agent_ids,
-    )
-    page_total = await task_service.count_recent(
-        agent_id=agent_id,
-        goal_id=goal_id,
-        topic_id=topic_id,
-        search=q,
         errors_only=errors_only,
         paused_only=paused_only,
         active=active,
-        date_from=date_from,
-        date_to=date_to,
-        agent_ids=scope.agent_ids,
     )
     return TaskPage(
         items=[TaskSchema.model_validate(t) for t in tasks],

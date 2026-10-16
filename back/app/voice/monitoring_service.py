@@ -239,7 +239,8 @@ async def _turns_by_session(
             LLMCall.conversation_round_id.label("round_id"),
             func.count(LLMCall.id).label("llm_call_count"),
         )
-        .where(LLMCall.conversation_round_id.is_not(None))
+        .join(ConversationRound, ConversationRound.id == LLMCall.conversation_round_id)
+        .where(ConversationRound.voice_session_id.in_(session_ids))
         .group_by(LLMCall.conversation_round_id)
         .subquery()
     )

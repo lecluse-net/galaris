@@ -633,6 +633,12 @@ async def test_summarize_recent_counts_all_filtered_tasks(db: AsyncSession) -> N
     assert [task.status for task in errors] == [TaskStatus.ERROR]
     assert [(task.status, task.paused) for task in paused] == [(TaskStatus.PLAN, True)]
     assert paused_count == 1
+    for state in ({"errors_only": True}, {"paused_only": True}, {"active": True},
+                  {"active": False}, {"paused_only": True, "active": True},
+                  {"errors_only": True, "active": False}):
+        page_total, overview = await task_service.summarize_recent(search=marker, **state)
+        assert page_total == await task_service.count_recent(search=marker, **state)
+        assert overview == summary
 
 
 @pytest.mark.asyncio
@@ -844,20 +850,13 @@ async def test_delete_spares_other_agent_subtree(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.asyncio
-async def test_pause_tree_marks_non_terminal_descendants(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_pause_tree_marks_non_terminal_descendants(db: AsyncSession, monkeypatch: pytest.MonkeyPatch) -> None:
     parent = _task(status=TaskStatus.PLAN)
     child = _task(parent_id=parent.id, status=TaskStatus.DISPATCH)
     done = _task(parent_id=parent.id, status=TaskStatus.SUCCESS)
-    children_by_parent = {parent.id: [child, done], child.id: [], done.id: []}
-    db = SimpleNamespace(commit=AsyncMock(), refresh=AsyncMock())
+    db.add_all([parent, child, done])
+    await db.flush()
     emit = AsyncMock()
-
-    def _children_for(task_id: UUID) -> list[Task]:
-        return children_by_parent[task_id]
-
-    monkeypatch.setattr(task_service, "get_db", lambda: db)
-    monkeypatch.setattr(task_service, "get_by_id", AsyncMock(return_value=parent))
-    monkeypatch.setattr(task_service, "get_children", AsyncMock(side_effect=_children_for))
     monkeypatch.setattr(task_service.websocket, "emit", emit)
 
     result = await task_service.pause_tree(parent.id)
@@ -866,13 +865,15 @@ async def test_pause_tree_marks_non_terminal_descendants(monkeypatch: pytest.Mon
     assert parent.paused is True
     assert child.paused is True
     assert done.paused is False
-    db.commit.assert_awaited_once()
-    assert [call.args[0].id for call in db.refresh.await_args_list] == [parent.id, child.id]
+    # Persistence is the guarantee; individual refresh calls are incidental.
+    await db.refresh(child)
+    assert child.paused is True
     assert [call.args[2]["id"] for call in emit.await_args_list] == [str(parent.id), str(child.id)]
 
 
 @pytest.mark.asyncio
 async def test_resume_tree_restarts_paused_parent_when_current_child_is_done(
+    db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # A plan parent paused by a human may have its current step finish while paused. Resuming it
@@ -884,16 +885,9 @@ async def test_resume_tree_restarts_paused_parent_when_current_child_is_done(
         plan={"steps": [{"label": "A", "objective": "oA"}], "cursor": 0},
     )
     child = _task(parent_id=parent.id, status=TaskStatus.SUCCESS, data={"plan_step": 0})
-    children_by_parent = {parent.id: [child], child.id: []}
-    db = SimpleNamespace(commit=AsyncMock(), refresh=AsyncMock())
+    db.add_all([parent, child])
+    await db.flush()
     emit = AsyncMock()
-
-    def _children_for(task_id: UUID) -> list[Task]:
-        return children_by_parent[task_id]
-
-    monkeypatch.setattr(task_service, "get_db", lambda: db)
-    monkeypatch.setattr(task_service, "get_by_id", AsyncMock(return_value=parent))
-    monkeypatch.setattr(task_service, "get_children", AsyncMock(side_effect=_children_for))
     monkeypatch.setattr(task_service.websocket, "emit", emit)
 
     result = await task_service.resume_tree(parent.id)
@@ -902,12 +896,14 @@ async def test_resume_tree_restarts_paused_parent_when_current_child_is_done(
     assert parent.paused is False
     assert parent.status == TaskStatus.PLAN
     assert child.status == TaskStatus.SUCCESS
-    db.commit.assert_awaited_once()
+    await db.refresh(parent)
+    assert not parent.paused and parent.status == TaskStatus.PLAN
     assert [call.args[2]["id"] for call in emit.await_args_list] == [str(parent.id)]
 
 
 @pytest.mark.asyncio
 async def test_pause_tree_interrupts_running_action_and_requeues_exec(
+    db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Pausing interrupts an EXEC task already running in the scheduler and returns it to
@@ -916,8 +912,8 @@ async def test_pause_tree_interrupts_running_action_and_requeues_exec(
 
     running = _task(status=TaskStatus.EXEC)
     idle_child = _task(parent_id=running.id, status=TaskStatus.CREATE)
-    children_by_parent = {running.id: [idle_child], idle_child.id: []}
-    db = SimpleNamespace(commit=AsyncMock(), refresh=AsyncMock())
+    db.add_all([running, idle_child])
+    await db.flush()
     emit = AsyncMock()
     cancelled: list[UUID] = []
 
@@ -925,12 +921,6 @@ async def test_pause_tree_interrupts_running_action_and_requeues_exec(
         cancelled.append(task_id)
         return task_id == running.id  # Only the root is actually running.
 
-    def _children_for(task_id: UUID) -> list[Task]:
-        return children_by_parent[task_id]
-
-    monkeypatch.setattr(task_service, "get_db", lambda: db)
-    monkeypatch.setattr(task_service, "get_by_id", AsyncMock(return_value=running))
-    monkeypatch.setattr(task_service, "get_children", AsyncMock(side_effect=_children_for))
     monkeypatch.setattr(task_service.websocket, "emit", emit)
     monkeypatch.setattr(scheduler, "cancel", _cancel)
 
@@ -944,7 +934,8 @@ async def test_pause_tree_interrupts_running_action_and_requeues_exec(
     # Reclassify the interrupted execution as DISPATCH so it can restart on resume.
     assert running.status == TaskStatus.DISPATCH
     assert idle_child.status == TaskStatus.CREATE
-    db.commit.assert_awaited_once()
+    await db.refresh(running)
+    assert running.paused and running.status == TaskStatus.DISPATCH
 
 
 @pytest.mark.asyncio
