@@ -8,10 +8,12 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    Index,
     String,
     Text,
     TypeDecorator,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB
 from sqlalchemy.orm import relationship, Mapped, mapped_column, validates
@@ -78,6 +80,10 @@ class TaskAttemptStatus(str, enum.Enum):
 class Task(HistoryMixin, Base):
     """Versioned task table."""
     __tablename__ = "tasks"
+    __table_args__ = (
+        Index("ix_tasks_recent", "created_at", "id", postgresql_where=text("deleted_at IS NULL")),
+        Index("ix_tasks_agent_recent", "agent_id", "created_at", "id", postgresql_where=text("deleted_at IS NULL")),
+    )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4, index=True)
     revision: Mapped[int] = mapped_column(

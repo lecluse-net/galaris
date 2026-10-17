@@ -4,7 +4,8 @@ from copy import deepcopy
 from typing import Any, Literal, cast
 from uuid import UUID
 
-from sqlalchemy import and_, case, false, func, or_, select
+from sqlalchemy import and_, case, false, func, or_, select, true
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql.selectable import CTE
 
 from core.database import get_db
@@ -180,24 +181,26 @@ async def compare(
     if page_ids and not blockers:
         for result_id, code, delta in (await get_db().execute(select(dimensions).where(dimensions.c.left_id.in_(page_ids)))).all():
             dimension_deltas.setdefault(result_id, {})[code] = float(delta)
+    # Preserve the two-match ambiguity check, but retrieve all page pairings in
+    # one statement. LIMIT remains inside each lateral lookup to bound duplicates.
+    source = aliased(LabEvaluationRunCase)
+    matching = select(LabEvaluationRunCase).where(
+        LabEvaluationRunCase.run_id == right_id,
+        LabEvaluationRunCase.repetition == source.repetition,
+        LabEvaluationRunCase.case_snapshot["input_data"] == source.case_snapshot["input_data"],
+        LabEvaluationRunCase.case_snapshot["expected_output"] == source.case_snapshot["expected_output"],
+    ).order_by(LabEvaluationRunCase.id).limit(2).lateral("page_matches")
+    target_row = aliased(LabEvaluationRunCase, matching)
+    page_matches: dict[UUID, list[LabEvaluationRunCase]] = {}
+    if page_ids:
+        for identity, target in (await get_db().execute(select(source.id, target_row)
+                .join(target_row, true()).where(source.id.in_(page_ids)))).tuples():
+            page_matches.setdefault(identity, []).append(target)
     compared: list[dict[str, Any]] = []
     for row, is_ambiguous in rows[:limit]:
         item = EvaluationRunCaseRead.model_validate(row).model_dump(mode="json")
         snapshot = item["case_snapshot"]
-        matches = (
-            await get_db().scalars(
-                select(LabEvaluationRunCase)
-                .where(
-                    LabEvaluationRunCase.run_id == right_id,
-                    LabEvaluationRunCase.repetition == item["repetition"],
-                    LabEvaluationRunCase.case_snapshot["input_data"] == snapshot["input_data"],
-                    LabEvaluationRunCase.case_snapshot["expected_output"]
-                    == snapshot["expected_output"],
-                )
-                .order_by(LabEvaluationRunCase.id)
-                .limit(2)
-            )
-        ).all()
+        matches = page_matches.get(row.id, [])
         target = matches[0] if len(matches) == 1 and not is_ambiguous else None
         compared.append(
             {

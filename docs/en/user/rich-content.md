@@ -164,6 +164,16 @@ A single icon button toggles **Full width** to use all available space when work
 tables; it is active in full width mode. It also works in fullscreen and leaves the saved
 content unchanged. On mobile, the page fits the screen width.
 
+## Source code files
+
+You can attach JavaScript, TypeScript, Python, shell and other source files to a document
+or chat. Click the file to open its preview: the internal CodeEditor displays read-only
+code with syntax highlighting. You can select and copy the text, then download the
+original file. Neither the preview nor thumbnail generation executes the source, even
+when it contains HTML tags or a shebang. Downloading does not launch the file.
+
+HTML and SVG files keep their usual isolated previews.
+
 ## Document images
 
 Ordinary working documents accept local images through CKEditor's native selection, paste or
@@ -192,6 +202,11 @@ Documents save automatically. Wait for the saved status before closing the brows
 also retained within the tab so interrupted editing can be recovered. If two people change the
 same content, a message preserves your draft and offers a choice between your version and the
 latest remote version. No automatic choice overwrites a concurrent edit.
+
+In Documents, saving updates the title in the list and tree before their refresh completes.
+After you confirm deletion, the row disappears while the server processes the request; a refusal
+restores the row and preserves the open content. Reconnecting refreshes documents and available
+filters without closing expanded folders.
 
 History displays versions in their original format and compares content, links, tables and
 images. Restoring creates a new revision without restoring old sharing permissions. Agent job

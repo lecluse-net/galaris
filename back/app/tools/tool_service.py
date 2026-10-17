@@ -1,6 +1,7 @@
 """Database service for MCP tools."""
 
 from typing import Any, Dict, List, Optional, Tuple, cast
+from collections.abc import Collection
 
 from loguru import logger
 import yaml
@@ -629,6 +630,15 @@ async def get_tool_by_id(tool_id: int) -> Optional[Tool]:
     if not record:
         return None
     return _to_internal(record)
+
+
+async def get_tools_by_ids(tool_ids: Collection[int]) -> dict[int, Tool]:
+    """Read a fresh bounded configuration snapshot without a per-Tool query."""
+    if not tool_ids:
+        return {}
+    records = await get_db().scalars(select(ToolModel).where(ToolModel.id.in_(tool_ids))
+        .execution_options(populate_existing=True))
+    return {record.id: _to_internal(record) for record in records}
 
 
 # =============================================================================

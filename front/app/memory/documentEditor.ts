@@ -9,7 +9,7 @@ export default {
   iconComponent: defineAsyncComponent(() => import('./components/DocumentIcon.vue')),
   thumbnailComponent: defineAsyncComponent(() => import('./components/DocumentThumbnail.vue')),
   async search(query, limit, offset) {
-    const page = await memoryService.browseDocumentLibrary({ query, limit, offset })
+    const page = await memoryService.browseDocumentLibrary({ query, limit, offset, include_keywords: false })
     return { items: page.entries.map(({ item }) => ({ id: item.id, title: item.title })), total: page.total }
   },
 } satisfies WorkingDocumentEditorContribution

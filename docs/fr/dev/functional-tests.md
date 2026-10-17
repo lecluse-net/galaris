@@ -411,6 +411,22 @@ Les cycles restent lisibles si un document Goal manque, tandis que le détail co
 son erreur ; `app/goal/tests/test_goal_runner.py` vérifie aussi propriétaire et référent.
 Ces budgets SQL synthétiques ne constituent pas une mesure de latence en production.
 
+`app/dataset/tests/test_list_performance.py` vérifie les droits, tailles UTF-8 et checksums
+des listes sans charger les contenus JSON, ainsi que la révocation à la réouverture.
+`app/memory/tests/test_search_history_budget.py` protège la recherche de documents partagés :
+droits de lecture/écriture conservés, nombre de requêtes borné et historique non matérialisé.
+`app/tools/tests/test_catalog_sql_budget.py` contrôle les lectures groupées du catalogue MCP,
+l'héritage des modes de fonctions et la prise en compte immédiate d'une désactivation.
+`app/task/tests/test_tree_performance.py` exerce pause et reprise d'un arbre en base réelle,
+sans retirer les autres raisons d'attente ni modifier les tâches terminées.
+La comparaison Lab garde ses contrôles d'ambiguïté avec un budget indépendant de la taille
+de page dans `app/lab/tests/test_comparison.py`. Les recherches vectorielles restent exactes ;
+les compteurs et les pages de doublons partagent leur calcul dans un même snapshot SQL.
+`app/memory/tests/test_vector_read_cost.py` compare les résultats à un corpus vectoriel
+synthétique connu et vérifie l'isolation entre propriétaires. Le scénario
+`app/task/tests/test_list_plan.py` compare les buffers de la même page sur 20 000 tâches,
+avec et sans les index temporels, uniquement dans la base éphémère.
+
 `app/browser/tests/test_network_permissions.py` couvre permissions durables par agent/origine,
 réponses par texte et boutons, refus, nouvelle demande après suppression ou expiration,
 concurrence entre sessions SQL, priorité de la connexion, DNS mixtes, filtres et droits HTTP
@@ -953,6 +969,13 @@ et `DocumentOpenMode` de `core/user` pour lire et enregistrer la préférence. C
 applicative vers l’infrastructure utilisateur n’ajoute ni import privé ni cycle.
 
 ### Classement personnel des documents
+
+`front/browser-tests/document-flows.spec.mjs` retient les réponses annexes et de suppression :
+contenu utilisable avant les catalogues, retrait anticipé et restauration de la ligne courante
+en cas de refus, propagation d'un titre sauvegardé dans l'arbre et la liste avant relecture,
+regroupement des notifications pendant une lecture lente et réutilisation des catalogues.
+`test_library_performance.py` compare les lectures SQL avec/sans catalogues, à résultats identiques,
+sur 100 puis 1 000 documents et jusqu'à 100 000 révisions ; le compteur inclut `WITH`.
 
 - `back/app/memory/tests/test_goal_folders.py` : classement automatique par utilisateur et Goal,
   respect des dossiers manuels et des droits courants, reprise globale par lots, homonymes,

@@ -422,7 +422,7 @@ test('classification refreshes only affected folders and keeps other documents u
 test('successive committed moves stay usable during a stale folder read and a refused move can be retried', async ({ page }) => {
   const state = await fixture(page)
   state.assignments.add('work')
-  let release, holdProject = false, rejectMove = false
+  let release, holdProject = false, rejectMove = false, staleReplied = false
   const gate = new Promise(resolve => { release = resolve })
   await page.route('**/api/memory/documents/library', async route => {
     const body = route.request().postDataJSON()
@@ -430,7 +430,13 @@ test('successive committed moves stay usable during a stale folder read and a re
     const present = body.tag_id ? state.assignments.has(body.tag_id) : !state.assignments.size
     // Capture the old placement before waiting, just as an already-running server read can.
     const entries = present ? [{ item: document, tags, agent_ids: [7], writable_agent_ids: [] }] : []
-    if (body.tag_id === 'project' && holdProject) { holdProject = false; await gate }
+    if (body.tag_id === 'project' && holdProject) {
+      holdProject = false
+      await gate
+      await route.fulfill({ json: { entries, total: entries.length, has_more: false, keywords: [] } })
+      staleReplied = true
+      return
+    }
     return route.fulfill({ json: { entries, total: entries.length, has_more: false, keywords: [] } })
   })
   await page.route('**/api/memory/documents/doc-a/tags', route => {
@@ -454,9 +460,8 @@ test('successive committed moves stay usable during a stale folder read and a re
   await expect.poll(() => [...state.assignments]).toEqual(['work'])
   await expect(work.getByText('Test document', { exact: true })).toBeVisible()
   await expect(project.getByText('Test document', { exact: true })).toHaveCount(0)
-  const staleResponse = page.waitForResponse(response => response.url().endsWith('/documents/library') && response.request().postDataJSON().tag_id === 'project')
   release()
-  await (await staleResponse).finished()
+  await expect.poll(() => staleReplied).toBe(true)
   await expect(work.getByText('Test document', { exact: true })).toBeVisible()
   await expect(project.getByText('Test document', { exact: true })).toHaveCount(0)
   rejectMove = true
@@ -516,12 +521,13 @@ test(`${event} reconciles documents without removing rows and failed refreshes p
   // A second refresh wins even if the older list and folder replies arrive last.
   let releaseOld
   const obsoleteGate = new Promise(resolve => { releaseOld = resolve })
-  let oldReads = 0
+  let oldReads = 0, oldReplies = 0
   const response = title => ({ entries: [{ item: { ...document, title }, agent_ids: [7], writable_agent_ids: [], tags: [] }], total: 1, keywords: [], has_more: false })
   await page.route('**/api/memory/documents/library', async route => {
     oldReads++
     await obsoleteGate
     await route.fulfill({ json: response('Obsolete report') })
+    oldReplies++
   })
   await page.evaluate(event => window.testApp.emitSocket(event, {}), event)
   await expect.poll(() => oldReads).toBe(2)
@@ -529,9 +535,9 @@ test(`${event} reconciles documents without removing rows and failed refreshes p
   await page.evaluate(event => window.testApp.emitSocket(event, {}), event)
   await expect(list.getByText('Latest report', { exact: true })).toBeVisible()
   await expect(tree.getByText('Latest report', { exact: true })).toBeVisible()
-  const obsolete = Promise.all([null, 'work'].map(id => page.waitForResponse(response => response.url().endsWith('/api/memory/documents/library') && response.request().postDataJSON().tag_id === id)))
   releaseOld()
-  await obsolete
+  // Superseded requests may be cancelled rather than produce a browser response.
+  await expect.poll(() => oldReplies).toBe(2)
   await expect(list.getByText('Latest report', { exact: true })).toBeVisible()
   await expect(tree.getByText('Latest report', { exact: true })).toBeVisible()
   await expect(page.getByText('Obsolete report', { exact: true })).toHaveCount(0)

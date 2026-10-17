@@ -175,6 +175,17 @@ Les documents s’ouvrent en **Largeur fixe** : une page A4 avec des marges de 1
 sur de grands tableaux ; il est activé en pleine largeur. Il fonctionne aussi en plein écran et ne modifie pas
 le contenu enregistré. Sur mobile, la page s’adapte à la largeur de l’écran.
 
+## Fichiers de code source
+
+Vous pouvez joindre des sources JavaScript, TypeScript, Python, shell et d'autres langages
+dans un document ou une discussion. Cliquez sur le fichier pour ouvrir l'aperçu : le
+composant CodeEditor affiche le code en lecture seule avec coloration syntaxique. Vous
+pouvez sélectionner et copier le texte, puis télécharger le fichier original. L'aperçu
+et la création de sa miniature n'exécutent jamais la source, même si elle contient des
+balises HTML ou un shebang. Le téléchargement ne lance pas le fichier.
+
+Les fichiers HTML et SVG conservent leurs aperçus isolés habituels.
+
 ## Images des documents
 
 Les documents de travail ordinaires permettent de choisir une image locale, de la coller ou
@@ -206,6 +217,11 @@ navigateur. Un brouillon est également conservé dans l’onglet pour retrouver
 interrompue. Si deux personnes modifient le même contenu, un message conserve votre brouillon
 et vous laisse choisir entre votre version et la version distante. Aucun choix automatique
 ne remplace une modification concurrente.
+
+Dans Documents, une sauvegarde actualise le titre dans la liste et l'arbre sans attendre leur
+rafraîchissement. Après confirmation d'une suppression, la ligne disparaît pendant le traitement
+serveur ; un refus la réaffiche et conserve le contenu ouvert. La reconnexion actualise les
+documents et les filtres disponibles sans fermer les dossiers ouverts.
 
 L’historique présente les versions dans leur format d’origine et permet de comparer contenu,
 liens, tableaux et images. Restaurer une version crée une nouvelle révision ; cela ne rétablit

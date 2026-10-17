@@ -9,7 +9,7 @@ from typing import cast
 from uuid import UUID
 
 from loguru import logger
-from sqlalchemy import Float, and_, cast as sql_cast, exists, func, or_, select, literal
+from sqlalchemy import Float, and_, cast as sql_cast, exists, func, or_, select, literal, true
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.selectable import Subquery
@@ -404,24 +404,19 @@ async def _pair_preview(item_pairs: Subquery, *, threshold: float, limit: int,
     matching = (
         select(item_pairs)
         .where(item_pairs.c.similarity >= threshold)
-        .subquery()
+        .cte("matching_duplicate_pairs")
+        .prefix_with("MATERIALIZED", dialect="postgresql")
     )
-    total_pairs = int(
-        await get_db().scalar(select(func.count()).select_from(matching)) or 0
-    )
-    pair_rows = list(
-        (
-            await get_db().execute(
-                select(matching)
-                .order_by(
-                    matching.c.similarity.desc(),
-                    matching.c.first_memory_id,
-                    matching.c.second_memory_id,
-                )
-                .limit(limit)
-            )
-        ).all()
-    )
+    # Compute the exact pair set once, sharing it between count and page. The
+    # outer join also returns a zero count when the requested page is empty.
+    total = select(func.count().label("total")).select_from(matching).subquery()
+    page = select(matching).order_by(matching.c.similarity.desc(),
+        matching.c.first_memory_id, matching.c.second_memory_id).limit(limit).subquery()
+    rows = (await get_db().execute(select(page, total.c.total)
+        .select_from(total.outerjoin(page, true()))
+        .order_by(page.c.similarity.desc(), page.c.first_memory_id, page.c.second_memory_id))).all()
+    total_pairs = int(rows[0].total)
+    pair_rows = [row for row in rows if row.first_memory_id is not None]
     item_ids = {
         memory_id
         for row in pair_rows

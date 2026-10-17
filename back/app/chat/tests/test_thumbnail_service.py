@@ -14,12 +14,15 @@ from app.chat import thumbnail_service
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("name", ["page.html", "component.vue"])
 async def test_private_thumbnail_generation_uses_its_own_database_context(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
+    name: str,
 ) -> None:
     entered = False
-    resource = SimpleNamespace(path=tmp_path / "page.html", cleanup=lambda: None)
+    cleaned = []
+    resource = SimpleNamespace(path=tmp_path / name, name=name, media_type="text/html", cleanup=lambda: cleaned.append(True))
     resource.path.write_bytes(b"<h1>Preview</h1>")
 
     @asynccontextmanager
@@ -36,12 +39,16 @@ async def test_private_thumbnail_generation_uses_its_own_database_context(
 
     await thumbnail_service._generate_html_thumbnail(  # pyright: ignore[reportPrivateUsage]
         agent_id=7,
-        uri="console://page.html",
+        uri=f"console://{name}",
     )
 
     assert entered is True
     materialize.assert_awaited_once()
-    capture.assert_awaited_once()
+    if name.endswith(".vue"):
+        capture.assert_not_awaited()
+    else:
+        capture.assert_awaited_once()
+    assert cleaned == [True]
 
 
 @pytest.mark.asyncio

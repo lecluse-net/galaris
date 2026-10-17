@@ -11,6 +11,7 @@ from app.browser import BrowserExecutorError, capture_html_page_thumbnail
 from app.messenger import materialize_preview_resource
 from core.database import get_db_session
 from core.params import runtime_settings
+from core.util import source_code_media_type
 
 
 _tasks: dict[str, asyncio.Task[None]] = {}
@@ -29,6 +30,8 @@ async def _generate_html_thumbnail(*, agent_id: int, uri: str) -> None:
     if resource is None:
         return
     try:
+        if source_code_media_type(resource.name, resource.media_type):
+            return
         content = await asyncio.to_thread(resource.path.read_bytes)
         await capture_html_page_thumbnail(
             agent_id=agent_id,

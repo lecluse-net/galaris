@@ -393,6 +393,22 @@ Cycles remain readable when a Goal document is missing, while detail still repor
 `app/goal/tests/test_goal_runner.py` also checks owner and referrer restrictions.
 These synthetic SQL budgets are not production latency measurements.
 
+`app/dataset/tests/test_list_performance.py` verifies permissions, UTF-8 sizes and checksums
+of lists without loading JSON contents, plus revocation when reopening the list.
+`app/memory/tests/test_search_history_budget.py` protects shared-document search: preserved
+read/write permissions, bounded query counts and no materialized revision history.
+`app/tools/tests/test_catalog_sql_budget.py` checks batched MCP catalogue reads, inherited
+function modes and immediate application of a disabled connection.
+`app/task/tests/test_tree_performance.py` exercises pause and resume of a tree against a real
+database, preserving other waiting reasons and leaving completed tasks unchanged.
+Lab comparisons retain ambiguity checks with a page-size-independent query budget in
+`app/lab/tests/test_comparison.py`. Vector searches remain exact; duplicate counts and pages
+share their computation within one SQL snapshot.
+`app/memory/tests/test_vector_read_cost.py` compares results with a known synthetic vector
+corpus and verifies owner isolation. `app/task/tests/test_list_plan.py` compares buffers
+for the same page over 20,000 tasks, with and without the temporal indexes, exclusively
+inside the ephemeral database.
+
 `app/browser/tests/test_network_permissions.py` covers durable permissions per agent/origin,
 text and button responses, denials, renewed questions after deletion or expiry, concurrent SQL
 sessions, connection priority, mixed DNS, filters and managers' HTTP rights.
@@ -930,6 +946,13 @@ exports from `core/user` to read and save this preference. This application depe
 user infrastructure adds neither private imports nor cycles.
 
 ### Personal document classification
+
+`front/browser-tests/document-flows.spec.mjs` holds ancillary and deletion responses to verify
+usable content before catalogues, early row removal and restoration of the current row on refusal,
+saved titles appearing in both tree and list before rereads, coalesced notifications during slow
+reads, and catalogue reuse. `test_library_performance.py` compares SQL reads with/without
+catalogues while preserving results, across 100 and 1,000 documents and up to 100,000 revisions;
+its counter includes `WITH`.
 
 - `back/app/memory/tests/test_goal_folders.py`: automatic filing per user and Goal, preserving
   manual folders and current access; paginated global catch-up, duplicate Goal names, renames,

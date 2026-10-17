@@ -30,13 +30,13 @@
               <q-banner v-else-if="branchErrors[node.branchKey]" dense role="alert">{{ t('documents.loadError') }}
                 <q-btn flat dense :label="t('documents.retry')" @click="branches.refresh(node.branchKey)" />
               </q-banner>
-              <span v-else-if="branchEntries[node.branchKey] && !branches.loading.value[node.branchKey]">{{ t('documents.library.noSubdocuments') }}</span>
+              <span v-else-if="branchSnapshots[node.branchKey] && !branches.loading.value[node.branchKey]">{{ t('documents.library.noSubdocuments') }}</span>
             </div>
           </template>
           <template #header-status="{ node }">
             <div class="full-width text-caption" @click.stop>
               <div v-if="branchErrors[node.tag.id]" class="library-error q-pa-sm" role="alert">{{ t('documents.loadError') }} <q-btn flat dense :label="t('documents.retry')" @click="branches.load(node.tag.id)" /></div>
-              <span v-else-if="branchEntries[node.tag.id]">{{ t('documents.library.emptyFolder') }}</span>
+              <span v-else-if="branchSnapshots[node.tag.id]">{{ t('documents.library.emptyFolder') }}</span>
             </div>
           </template>
         </q-tree>
@@ -64,15 +64,15 @@
         </div>
         <q-banner v-if="loadError" dense class="library-error" role="alert">{{ t('documents.loadError') }}<q-btn flat :label="t('documents.retry')" @click="reload" /></q-banner>
         <q-list class="document-list-scroll" separator :aria-busy="loading" :aria-label="t(onlyUnclassified ? 'documents.library.orphans' : 'documents.library.all')">
-          <DocumentLibraryDocument v-for="entry in entries" :key="entry.item.id" :entry="entry" list-only :selected-document-id="selectedDocumentId" :busy="busy"
+          <DocumentLibraryDocument v-for="entry in visibleEntries" :key="entry.item.id" :entry="entry" list-only :selected-document-id="selectedDocumentId" :busy="busy"
             :children="branchEntries" :loading="branches.loading.value" :errors="branchErrors" :expanded="expandedDocuments" :drop-target="dropTarget" :drop-placement="dropPlacement"
             @select="emit('select', $event)" @create="emit('create', undefined, $event)"
             @toggle="toggleDocument" @retry="id => branches.refresh(`doc:${id}`)" @dragstart="startDocumentDrag" @dragend="clearDrag"
             @dragover="dragOverDocument" @dragleave="dropTarget = null" @drop="dropNode" />
-          <div v-if="!loading && !loadError && !entries.length" class="q-pa-md text-caption">{{ t('documents.empty') }}</div>
+          <div v-if="!loading && !loadError && !visibleEntries.length" class="q-pa-md text-caption">{{ t('documents.empty') }}</div>
         </q-list>
         <div class="library-pagination row items-center justify-center q-pa-xs">
-          <span class="text-caption">{{ t('documents.library.pageRange', { first: entries.length ? (page - 1) * pageSize + 1 : 0, last: entries.length ? (page - 1) * pageSize + entries.length : 0, total }) }}</span>
+          <span class="text-caption">{{ t('documents.library.pageRange', { first: visibleEntries.length ? (page - 1) * pageSize + 1 : 0, last: visibleEntries.length ? (page - 1) * pageSize + visibleEntries.length : 0, total: visibleTotal }) }}</span>
           <q-select v-model="pageSize" :options="[10, 20, 50, 100, 500]" dense borderless :aria-label="t('documents.library.pageSize')">
             <template #selected>{{ t('documents.library.perPage', { count: pageSize }) }}</template>
           </q-select>
@@ -91,11 +91,11 @@
 </template>
 <script setup lang="ts">
 import { websocket } from '@/core/websocket'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration as authSessionGeneration } from '@/core/api'
-import type { DocumentLibraryEntry, DocumentLibraryFilters as LibraryRequest, DocumentOwnerOption, DocumentTag, DocumentOrderNode, DocumentOrderMove } from '../types'
+import type { DocumentLibraryEntry, DocumentLibraryFilters as LibraryRequest, DocumentOwnerOption, DocumentTag, DocumentOrderNode, DocumentOrderMove, MemoryItem } from '../types'
 import { memoryService } from '../services/memoryService'
 import { defaultLibraryFilters, libraryRequestFilters } from '../libraryFilterState'
 import DocumentLibraryFilters from './DocumentLibraryFilters.vue'
@@ -103,6 +103,7 @@ import DocumentTagCreateButton from './DocumentTagCreateButton.vue'
 import DocumentTagRow from './DocumentTagRow.vue'
 import { useDocumentBranches } from '../useDocumentBranches'
 import { reconcileLibrarySnapshot } from '../librarySnapshot'
+import { useDocumentMutations } from '../stores/documentMutations'
 import DocumentLibraryDocument from './DocumentLibraryDocument.vue'
 import DocumentSplitterHandle from './DocumentSplitterHandle.vue'
 defineProps<{ selectedDocumentId: string | null }>()
@@ -116,7 +117,7 @@ const expanded = ref<string[]>([])
 const expandedDocuments = ref<string[]>([])
 const renameTagId = ref<string | null>(null)
 const onlyUnclassified = ref(true)
-const entries = ref<DocumentLibraryEntry[]>([])
+const entries = shallowRef<DocumentLibraryEntry[]>([])
 const owners = ref<DocumentOwnerOption[]>([])
 const keywords = ref<string[]>([])
 const total = ref(0)
@@ -131,7 +132,32 @@ const busy = ref(false)
 const deleteDialog = ref(false)
 const editingTag = ref<DocumentTag | null>(null)
 const branches = useDocumentBranches(publishEntries)
-const { entries: branchEntries, errors: branchErrors } = branches
+const { entries: branchSnapshots, errors: branchErrors } = branches
+const documentMutations = useDocumentMutations()
+// One current item per document; list/folder entries retain only their placement and access context.
+const libraryItems = shallowRef<Record<string, MemoryItem>>({})
+function rememberItems(incoming: MemoryItem[]): void {
+  const next = { ...libraryItems.value }
+  let changed = false
+  for (const item of incoming) {
+    const current = next[item.id]
+    if (current && (item.lock_version ?? item.revision) < (current.lock_version ?? current.revision)) continue
+    if (current === item || (current && JSON.stringify(current) === JSON.stringify(item))) continue
+    next[item.id] = item
+    changed = true
+  }
+  if (changed) libraryItems.value = next
+}
+function projectEntries(values: DocumentLibraryEntry[], includePending = false): DocumentLibraryEntry[] {
+  return values.filter(entry => includePending || documentMutations.deleting[entry.item.id] === undefined).map(entry => {
+    const item = libraryItems.value[entry.item.id]
+    return item && item !== entry.item ? { ...entry, item } : entry
+  })
+}
+const visibleEntries = computed(() => projectEntries(entries.value))
+const visibleTotal = computed(() => Math.max(0, total.value - (entries.value.length - visibleEntries.value.length)))
+const branchEntries = computed(() => Object.fromEntries(Object.entries(branchSnapshots.value).map(([key, values]) => [key,
+  projectEntries(values)])))
 const dropTarget = ref<string | null>(null)
 const dropPlacement = ref<'inside' | 'before' | 'after'>('inside')
 let pendingDrop: Omit<DocumentOrderMove, 'node'> | null = null
@@ -144,7 +170,11 @@ let disposed = false
 let ready = false
 let sessionGeneration = 0
 let authSession = authSessionGeneration()
-interface ClassificationChange { tag_ids?: string[]; document_ids?: string[]; tags_changed?: boolean; list_changed?: boolean }
+let listController: AbortController | undefined
+let facetsGeneration = 0
+let loadedFacetsGeneration = -1
+let refreshInFlight: Promise<void> | undefined
+interface ClassificationChange { tag_ids?: string[]; document_ids?: string[]; content_ids?: string[]; tags_changed?: boolean; list_changed?: boolean }
 let pendingChanges: ClassificationChange[] = []
 let refreshTimer: ReturnType<typeof setTimeout> | undefined
 interface TagNode {
@@ -214,8 +244,14 @@ const treeExpanded = computed({
   },
 })
 const listFilters = computed(() => ({ ...libraryRequestFilters(filters.value), query: query.value ?? '' }))
-function publishEntries(): void {
-  emit('loaded', [...new Map([...entries.value, ...Object.values(branchEntries.value).flat()].map(entry => [entry.item.id, entry])).values()])
+function publishEntries(incoming?: DocumentLibraryEntry[]): void {
+  if (incoming) rememberItems(incoming.map(entry => entry.item))
+  const snapshots = [...entries.value, ...Object.values(branchSnapshots.value).flat()]
+  const retained = new Set(snapshots.map(entry => entry.item.id))
+  if (Object.keys(libraryItems.value).some(id => !retained.has(id))) {
+    libraryItems.value = Object.fromEntries(Object.entries(libraryItems.value).filter(([id]) => retained.has(id)))
+  }
+  emit('loaded', [...new Map(projectEntries(snapshots, true).map(entry => [entry.item.id, entry])).values()])
 }
 function isDescendant(id: string, ancestor: string): boolean {
   let tag = tags.value.find(value => value.id === id)
@@ -229,23 +265,31 @@ function isDescendant(id: string, ancestor: string): boolean {
 const hasFilters = computed(() => Boolean(!onlyUnclassified.value || query.value || JSON.stringify(filters.value) !== JSON.stringify(defaultLibraryFilters())))
 async function reload(): Promise<void> {
   const current = ++generation
+  listController?.abort()
+  const controller = new AbortController()
+  listController = controller
+  const facets = facetsGeneration
+  const includeFacets = loadedFacetsGeneration !== facets
   const request: LibraryRequest = {
-    ...listFilters.value, include_owners: true,
+    ...listFilters.value, include_owners: includeFacets, include_keywords: includeFacets,
     classification: onlyUnclassified.value ? 'unclassified' : 'all',
     tag_id: null, limit: pageSize.value, offset: (page.value - 1) * pageSize.value,
   }
   loading.value = true; loadError.value = false
   try {
-    const result = await memoryService.browseDocumentLibrary(request)
+    const result = await memoryService.browseDocumentLibrary(request, controller.signal)
     if (disposed || current !== generation) return
     total.value = result.total
-    owners.value = result.owners ?? []
-    keywords.value = result.keywords
+    if (includeFacets) {
+      owners.value = result.owners ?? []
+      keywords.value = result.keywords
+      loadedFacetsGeneration = facets
+    }
     if (page.value > Math.max(1, Math.ceil(result.total / pageSize.value))) {
       page.value = Math.max(1, Math.ceil(result.total / pageSize.value)); return
     }
     entries.value = reconcileLibrarySnapshot(entries.value, result.entries, entry => entry.item.id)
-    publishEntries()
+    publishEntries(result.entries)
   } catch {
     if (!disposed && current === generation) {
       loadError.value = true
@@ -261,7 +305,7 @@ async function loadTags(): Promise<void> {
     if (userId.value !== result.user_id) { userId.value = result.user_id; restoreSplit() }
     tags.value = reconcileLibrarySnapshot(tags.value, result.tags, tag => tag.id); tagError.value = false
     expanded.value = expanded.value.filter(id => result.tags.some(tag => tag.id === id))
-    for (const id of Object.keys(branchEntries.value)) if (!id.startsWith('doc:') && !result.tags.some(tag => tag.id === id)) branches.forget(id)
+    for (const id of Object.keys(branchSnapshots.value)) if (!id.startsWith('doc:') && !result.tags.some(tag => tag.id === id)) branches.forget(id)
   } catch { if (!disposed && current === tagGeneration) tagError.value = true }
 }
 async function refreshTree(ids = [...expanded.value, ...expandedDocuments.value]): Promise<void> {
@@ -272,17 +316,18 @@ async function refreshTree(ids = [...expanded.value, ...expandedDocuments.value]
 }
 async function refresh(): Promise<void> { await Promise.all([reload(), refreshTree()]) }
 function documentFolders(ids: string[]): string[] {
-  return Object.entries(branchEntries.value).filter(([, values]) => values.some(entry => ids.includes(entry.item.id))).map(([id]) => id)
+  return Object.entries(branchSnapshots.value).filter(([, values]) => values.some(entry => ids.includes(entry.item.id))).map(([id]) => id)
 }
 function supersedeReads(ids: string[]): void {
   // Reads started before a confirmed write cannot restore its previous placement.
   ++generation
+  listController?.abort()
   if (loading.value) { loading.value = false; queueChange({ list_changed: true }) }
   branches.invalidate(ids)
 }
 function applyDocumentMove(move: DocumentOrderMove): void {
   const id = move.node.id
-  const entry = [...entries.value, ...Object.values(branchEntries.value).flat()].find(value => value.item.id === id)
+  const entry = [...entries.value, ...Object.values(branchSnapshots.value).flat()].find(value => value.item.id === id)
   if (!entry) return
   const target = move.parent_document_id ? `doc:${move.parent_document_id}` : move.parent_id
   const affected = move.list_only ? [] : [...new Set([...documentFolders([id]), ...(target ? [target] : [])])]
@@ -309,8 +354,8 @@ function applyDocumentMove(move: DocumentOrderMove): void {
     const moved: DocumentLibraryEntry = { ...entry, parent_document_id: move.parent_document_id ?? null,
       tags: move.parent_id ? tags.value.filter(tag => tag.id === move.parent_id) : [] }
     for (const key of affected) {
-      const values = branchEntries.value[key] ?? []
-      branchEntries.value[key] = key === target ? place(values, moved) : values.filter(candidate => candidate.item.id !== id)
+      const values = branchSnapshots.value[key] ?? []
+      branchSnapshots.value[key] = key === target ? place(values, moved) : values.filter(candidate => candidate.item.id !== id)
     }
     const inList = entries.value.some(candidate => candidate.item.id === id)
     const classified = Boolean(target)
@@ -330,7 +375,7 @@ function applyDocumentMove(move: DocumentOrderMove): void {
       return { ...candidate, children_count: Math.max(0, (candidate.children_count ?? 0) + delta) }
     })
     entries.value = updateCounts(entries.value)
-    for (const key of Object.keys(branchEntries.value)) branchEntries.value[key] = updateCounts(branchEntries.value[key] ?? [])
+    for (const key of Object.keys(branchSnapshots.value)) branchSnapshots.value[key] = updateCounts(branchSnapshots.value[key] ?? [])
   }
   // Preserve the source locations before removing their rows from the local snapshot.
   queueChange({ tag_ids: affected })
@@ -341,13 +386,27 @@ function removeDocument(id: string): void {
   supersedeReads([...affected, `doc:${id}`])
   if (entries.value.some(entry => entry.item.id === id)) total.value = Math.max(0, total.value - 1)
   entries.value = entries.value.filter(entry => entry.item.id !== id)
-  for (const key of affected) branchEntries.value[key] = (branchEntries.value[key] ?? []).filter(entry => entry.item.id !== id)
+  for (const key of affected) branchSnapshots.value[key] = (branchSnapshots.value[key] ?? []).filter(entry => entry.item.id !== id)
   branches.forget(`doc:${id}`)
   expandedDocuments.value = expandedDocuments.value.filter(key => key !== `doc:${id}`)
   queueChange({ tag_ids: affected, list_changed: true })
   publishEntries()
 }
+function updateDocument(document: MemoryItem): void {
+  const affected = documentFolders([document.id])
+  supersedeReads(affected)
+  rememberItems([document])
+  const update = (values: DocumentLibraryEntry[]) => values.map(entry => {
+    if (entry.item.id !== document.id || entry.item.lock_version > document.lock_version) return entry
+    return { ...entry, item: document }
+  })
+  entries.value = update(entries.value)
+  for (const key of affected) branchSnapshots.value[key] = update(branchSnapshots.value[key] ?? [])
+  publishEntries()
+  queueChange({ content_ids: [document.id], list_changed: true })
+}
 function queueChange(change: ClassificationChange): void {
+  if (change.list_changed) ++facetsGeneration
   pendingChanges.push(change)
   if (refreshTimer) clearTimeout(refreshTimer)
   refreshTimer = setTimeout(() => { refreshTimer = undefined; if (!busy.value) void flushChanges() }, 100)
@@ -355,11 +414,22 @@ function queueChange(change: ClassificationChange): void {
 async function flushChanges(): Promise<void> {
   if (refreshTimer) clearTimeout(refreshTimer)
   refreshTimer = undefined
+  // A burst during a slow read gets one trailing reconciliation, never parallel copies.
+  if (refreshInFlight) {
+    await refreshInFlight
+    if (pendingChanges.length) await flushChanges()
+    return
+  }
   const changes = pendingChanges.splice(0)
   if (!changes.length || disposed) return
+  const refresh = applyChanges(changes)
+  refreshInFlight = refresh
+  try { await refresh } finally { if (refreshInFlight === refresh) refreshInFlight = undefined }
+}
+async function applyChanges(changes: ClassificationChange[]): Promise<void> {
   const session = sessionGeneration
   const access = accessGeneration
-  const ids = [...new Set(changes.flatMap(change => [...(change.tag_ids ?? []), ...documentFolders(change.document_ids ?? []),
+  const ids = [...new Set(changes.flatMap(change => [...(change.tag_ids ?? []), ...documentFolders([...(change.document_ids ?? []), ...(change.content_ids ?? [])]),
     ...(change.document_ids ?? []).map(id => `doc:${id}`)]))]
   if (changes.some(change => change.tags_changed)) await loadTags()
   if (disposed || session !== sessionGeneration || access !== accessGeneration) return
@@ -367,7 +437,7 @@ async function flushChanges(): Promise<void> {
   if (disposed || session !== sessionGeneration || access !== accessGeneration) return
   // A completed list read is authoritative; a failed folder refresh must not overwrite it.
   if (changes.some(change => change.list_changed)) return
-  const refreshed = new Map(ids.flatMap(id => branchEntries.value[id] ?? []).map(entry => [entry.item.id, entry]))
+  const refreshed = new Map(ids.flatMap(id => branchSnapshots.value[id] ?? []).map(entry => [entry.item.id, entry]))
   entries.value = reconcileLibrarySnapshot(entries.value, entries.value.map(entry => {
     const current = refreshed.get(entry.item.id)
     return current ? { ...current, position: entry.position } : entry
@@ -389,7 +459,7 @@ function refreshDocuments(ids: string[], tagId?: string, parentDocumentId?: stri
     }
     expanded.value = [...open]
   }
-  queueChange({ document_ids: [...ids, ...(parentDocumentId ? [parentDocumentId] : [])], tag_ids: tagId ? [tagId] : [], list_changed: true })
+  queueChange({ content_ids: ids, document_ids: parentDocumentId ? [parentDocumentId] : [], tag_ids: tagId ? [tagId] : [], list_changed: true })
 }
 function toggleDocument(id: string): void {
   const key = `doc:${id}`
@@ -399,6 +469,7 @@ function toggleDocument(id: string): void {
   } else { expandedDocuments.value.push(key); void branches.load(key) }
 }
 function invalidateAccess(): void {
+  ++facetsGeneration
   ++accessGeneration
   pendingChanges = []
   if (refreshTimer) clearTimeout(refreshTimer)
@@ -411,6 +482,7 @@ function reconnect(): void {
   // Access changes and reconnects reconcile authoritative snapshots in place.
   // Identity changes use changeSession to discard the previous user's data.
   const session = sessionGeneration
+  ++facetsGeneration
   void loadTags().then(() => {
     if (!disposed && session === sessionGeneration) return refresh()
   })
@@ -481,7 +553,7 @@ async function requestDelete(tag: DocumentTag, confirmed = false): Promise<void>
     if (!result.deleted) { editingTag.value = tag; deleteDialog.value = true; return }
     deleteDialog.value = false; editingTag.value = null
     const removed = tags.value.filter(value => isDescendant(value.id, tag.id)).map(value => value.id)
-    const documents = Object.values(branchEntries.value).flat().filter(entry => entry.tags?.some(value => removed.includes(value.id))).map(entry => entry.item.id)
+    const documents = Object.values(branchSnapshots.value).flat().filter(entry => entry.tags?.some(value => removed.includes(value.id))).map(entry => entry.item.id)
     queueChange({ tags_changed: true, document_ids: documents, list_changed: result.document_count > 0 })
     await flushChanges()
   } catch { if (!disposed && session === sessionGeneration) $q.notify({ type: 'negative', message: t('documents.library.error') }) }
@@ -500,7 +572,7 @@ function startDocumentDrag(event: DragEvent, id: string): void {
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
 }
 async function moveDocument(documentId: string, tagId: string | null): Promise<void> {
-  const entry = [...entries.value, ...Object.values(branchEntries.value).flat()].find(value => value.item.id === documentId)
+  const entry = [...entries.value, ...Object.values(branchSnapshots.value).flat()].find(value => value.item.id === documentId)
   const change = { document_ids: [documentId], tag_ids: tagId ? [tagId] : [], list_changed: !entry || Boolean(entry.parent_document_id) || Boolean(entry.tags?.length) !== Boolean(tagId) }
   if (await mutate(() => memoryService.moveDocumentToTag(documentId, tagId), change,
     () => applyDocumentMove({ node: { kind: 'document', id: documentId }, parent_id: tagId })) && tagId) {
@@ -544,7 +616,7 @@ function dragOverDocument(event: DragEvent, entry: DocumentLibraryEntry, parentD
   // Known descendants are rejected immediately; the server checks the entire stored hierarchy.
   let ancestor = parent
   const seen = new Set<string>()
-  const known = [...entries.value, ...Object.values(branchEntries.value).flat()]
+  const known = [...entries.value, ...Object.values(branchSnapshots.value).flat()]
   while (ancestor && !seen.has(ancestor)) {
     if (ancestor === drag.id) return
     seen.add(ancestor); ancestor = known.find(value => value.item.id === ancestor)?.parent_document_id
@@ -611,18 +683,24 @@ async function changeSession(event: Event): Promise<void> {
   if ((event as CustomEvent<string | null>).detail !== null && currentSession === authSession) return
   authSession = currentSession
   const session = ++sessionGeneration
+  ++facetsGeneration
+  listController?.abort()
   pendingChanges = []
   if (refreshTimer) clearTimeout(refreshTimer)
-  ++generation; ++tagGeneration; entries.value = []; tags.value = []; owners.value = []; keywords.value = []; total.value = 0
+  ++generation; ++tagGeneration; entries.value = []; libraryItems.value = {}; tags.value = []; owners.value = []; keywords.value = []; total.value = 0
   deleteDialog.value = false; editingTag.value = null; renameTagId.value = null; userId.value = null; busy.value = false; expanded.value = []; branches.reset(); clearDrag()
   expandedDocuments.value = []
   ready = false; reset(); page.value = 1; await loadTags()
   if (disposed || session !== sessionGeneration) return
   ready = true; await reload()
 }
-onMounted(async () => { window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession); await loadTags(); if (!disposed) { ready = true; await reload() } })
-onBeforeUnmount(() => { disposed = true; ++generation; ++tagGeneration; window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession) })
-defineExpose({ reload: refresh, refreshDocuments, removeDocument })
+onMounted(async () => {
+  window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession)
+  ready = true
+  await Promise.all([loadTags(), reload()])
+})
+onBeforeUnmount(() => { disposed = true; ++generation; ++tagGeneration; listController?.abort(); window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession) })
+defineExpose({ reload: refresh, refreshDocuments, removeDocument, updateDocument })
 </script>
 <style scoped>
 .library-navigation { height: 100%; min-height: 0; }

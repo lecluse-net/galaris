@@ -306,6 +306,7 @@ import { CodeEditor, RichTextEditor, richLinkHref, documentResourceHtml, documen
 import { websocket } from '@/core/websocket'
 import { AgentAvatar, useAgentStore } from '@/app/agent'
 import { memoryService } from '../services/memoryService'
+import { useDocumentMutations } from '../stores/documentMutations'
 import { reconcileLibrarySnapshot } from '../librarySnapshot'
 import type {
   DocumentAttachment,
@@ -362,6 +363,7 @@ interface MemoryRealtimeEvent {
     owner_user_id: number | null
     node_kind: MemoryNodeKind
     revision: number
+    lock_version?: number
   }
 }
 
@@ -370,6 +372,7 @@ type NewKeywordDone = (value?: string, mode?: 'add' | 'add-unique' | 'toggle') =
 const props = withDefaults(defineProps<{
   documentId: string
   agentId: number | null
+  initialDocument?: MemoryItemDetail | null
   editable?: boolean
   contentMinHeight?: string
   contentMaxHeight?: string
@@ -388,6 +391,7 @@ const emit = defineEmits<{
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const agentStore = useAgentStore()
+const documentMutations = useDocumentMutations()
 const privilegeStore = usePrivilegeStore()
 const appPermissionsGeneration = ref(0)
 const loading = ref(true)
@@ -463,9 +467,13 @@ let saveWaiters: Array<() => void> = []
 let autosaveTimer: ReturnType<typeof setTimeout> | undefined
 let realtimeTimer: ReturnType<typeof setTimeout> | undefined
 let pendingExternalRevision = 0
+let pendingExternalLockVersion = 0
 let loadGeneration = 0
 let ownerFilterGeneration = 0
+let ownerLoadGeneration = 0
+let keywordLoadGeneration = 0
 let disposed = false
+let initialDocument = props.initialDocument
 
 const agentOptions = computed(() => agentStore.sortedAgents.map(agent => ({
   value: agent.id,
@@ -630,12 +638,8 @@ function normalizedKeywords(values: string[]): string[] {
 }
 
 function documentSharing(document: MemoryItemDetail): Record<number, DocumentShareAccess> {
-  const result: Record<number, DocumentShareAccess> = {}
-  for (const agent of sharingAgentOptions.value) {
-    const grant = document.grants.find(value => value.agent_id === agent.value)
-    result[agent.value] = grant ? (grant.can_write ? 'edit' : 'read') : 'none'
-  }
-  return result
+  // The saved draft must not depend on whether the owner catalogue has arrived.
+  return Object.fromEntries(document.grants.map(grant => [grant.agent_id, grant.can_write ? 'edit' : 'read']))
 }
 
 function draftFromDocument(document: MemoryItemDetail): DocumentDraft {
@@ -661,10 +665,7 @@ function draftFromEditor(): DocumentDraft {
     content: editorContent.value,
     keywords: normalizedKeywords(editorKeywords.value),
     globalAccess: editorGlobalAccess.value,
-    sharing: Object.fromEntries(sharingAgentOptions.value.map(agent => [
-      agent.value,
-      sharingAccessByAgentId.value[agent.value] ?? 'none',
-    ])),
+    sharing: Object.fromEntries(Object.entries(sharingAccessByAgentId.value).filter(([, access]) => access !== 'none')),
   }
 }
 
@@ -679,7 +680,8 @@ function sameDraft(left: DocumentDraft | null, right: DocumentDraft | null): boo
 const hasUnsavedChanges = computed(() => currentDocument.value !== null && !sameDraft(lastSavedDraft.value, draftFromEditor()))
 
 function cloneDraft(draft: DocumentDraft): DocumentDraft {
-  return { ...draft, keywords: [...draft.keywords], sharing: { ...draft.sharing } }
+  return { ...draft, keywords: [...draft.keywords],
+    sharing: Object.fromEntries(Object.entries(draft.sharing).filter(([, access]) => access !== 'none')) }
 }
 
 function applyEditorDraft(draft: DocumentDraft): void {
@@ -700,7 +702,7 @@ function applyDocument(document: MemoryItemDetail, event: 'loaded' | 'updated'):
   lastSavedDraft.value = draft
   autosaveState.value = 'saved'
   if (event === 'loaded' && props.editable) restoreDraft(document)
-  if (event !== 'loaded') pendingExternalRevision = 0
+  if (event !== 'loaded') { pendingExternalRevision = 0; pendingExternalLockVersion = 0 }
   applyingDocument = false
   keywordOptions.value = [...new Set([...keywordOptions.value, ...document.keywords])]
     .sort((left, right) => left.localeCompare(right, locale.value, { sensitivity: 'base' }))
@@ -723,10 +725,14 @@ function applyPublicDocument(document: MemoryItem): void {
 }
 
 async function loadKeywords(): Promise<void> {
+  const generation = ++keywordLoadGeneration
   try {
-    keywordOptions.value = await memoryService.listDocumentKeywords(props.agentId)
+    const incoming = await memoryService.listDocumentKeywords(props.agentId)
+    if (disposed || generation !== keywordLoadGeneration) return
+    keywordOptions.value = [...new Set([...incoming, ...(currentDocument.value?.keywords ?? [])])]
     filteredKeywordOptions.value = keywordOptions.value
   } catch {
+    if (disposed || generation !== keywordLoadGeneration) return
     keywordOptions.value = [...(currentDocument.value?.keywords ?? [])]
     filteredKeywordOptions.value = keywordOptions.value
   }
@@ -832,13 +838,15 @@ async function loadDocument(): Promise<void> {
   loading.value = !currentDocument.value
   refreshError.value = false
   try {
-    const document = await memoryService.getDocument(props.documentId, props.agentId)
+    const seed = initialDocument
+    initialDocument = null
+    const document = seed?.id === props.documentId ? seed : await memoryService.getDocument(props.documentId, props.agentId)
     if (generation !== loadGeneration) return
     if (document.node_kind !== 'document') throw new Error('The resource is not a document.')
-    await loadOwnerOptions()
-    if (generation !== loadGeneration) return
     applyDocument(document, 'loaded')
-    await Promise.all([loadKeywords(), loadAttachments()])
+    // Ancillary catalogues must not keep the current document behind a loading screen.
+    loading.value = false
+    void Promise.all([loadOwnerOptions(), loadKeywords(), loadAttachments()])
   } catch (error) {
     if (generation !== loadGeneration) return
     handleRefreshError(error)
@@ -848,9 +856,13 @@ async function loadDocument(): Promise<void> {
 }
 
 async function loadOwnerOptions(): Promise<void> {
+  const generation = ++ownerLoadGeneration
   try {
-    ownerOptions.value = await memoryService.listDocumentOwnerOptions()
+    const incoming = await memoryService.listDocumentOwnerOptions()
+    if (disposed || generation !== ownerLoadGeneration) return
+    ownerOptions.value = incoming
   } catch {
+    if (disposed || generation !== ownerLoadGeneration) return
     ownerOptions.value = {
       agents: [],
       users: [],
@@ -959,12 +971,14 @@ function mergeDocument(latest: MemoryItemDetail): void {
     sameValue(localValue, previousValue) ? remoteValue : localValue
   )
   const sharing: Record<number, DocumentShareAccess> = {}
-  for (const agent of sharingAgentOptions.value) {
-    sharing[agent.value] = choose(
-      local.sharing[agent.value] ?? 'none',
-      previousBase.sharing[agent.value] ?? 'none',
-      remote.sharing[agent.value] ?? 'none',
+  for (const key of new Set([...Object.keys(local.sharing), ...Object.keys(previousBase.sharing), ...Object.keys(remote.sharing)])) {
+    const id = Number(key)
+    const access = choose(
+      local.sharing[id] ?? 'none',
+      previousBase.sharing[id] ?? 'none',
+      remote.sharing[id] ?? 'none',
     )
+    if (access !== 'none') sharing[id] = access
   }
   const merged: DocumentDraft = {
     owner: choose(local.owner, previousBase.owner, remote.owner),
@@ -1091,8 +1105,9 @@ async function persistAutosave(): Promise<void> {
     saveWaiters = []
     for (const resolve of waiters) resolve()
     const mustRefreshExternal = pendingExternalRevision > (currentDocument.value?.revision ?? 0)
+      || pendingExternalLockVersion > (currentDocument.value?.lock_version ?? 0)
     const mustSaveAgain = saveQueued || (autosaveState.value === 'pending' && hasUnsavedChanges.value)
-    if (!mustRefreshExternal) pendingExternalRevision = 0
+    if (!mustRefreshExternal) { pendingExternalRevision = 0; pendingExternalLockVersion = 0 }
     saveQueued = false
     if (mustRefreshExternal) scheduleRealtimeRefresh()
     if (mustSaveAgain) scheduleAutosave(150)
@@ -1128,6 +1143,8 @@ async function deleteDocument(): Promise<void> {
   const agentId = props.agentId
   const storageKey = draftKey()
   if (!document || !canDeleteDocument.value || deletingDocument.value) return
+  const finishDeletion = documentMutations.beginDeletion(document.id)
+  if (!finishDeletion) return
   deletingDocument.value = true
   if (autosaveTimer) clearTimeout(autosaveTimer)
   if (realtimeTimer) clearTimeout(realtimeTimer)
@@ -1148,6 +1165,7 @@ async function deleteDocument(): Promise<void> {
       $q.notify({ type: 'negative', message: t('documents.deleteError') })
     }
   } finally {
+    finishDeletion()
     deletingDocument.value = false
     if (!disposed) scheduleAutosave()
   }
@@ -1157,8 +1175,9 @@ async function refreshFromRealtime(): Promise<void> {
   if (deletingDocument.value) return
   const document = currentDocument.value
   if (!document || saveInFlight) return
-  if (pendingExternalRevision < document.revision) {
+  if (pendingExternalRevision < document.revision && pendingExternalLockVersion <= document.lock_version) {
     pendingExternalRevision = 0
+    pendingExternalLockVersion = 0
     return
   }
   const generation = ++loadGeneration
@@ -1213,7 +1232,10 @@ function onMemoryRealtime(response: MemoryRealtimeEvent): void {
     return
   }
   if (currentDocument.value && event.revision < currentDocument.value.revision) return
+  if (currentDocument.value && event.lock_version && event.lock_version <= currentDocument.value.lock_version
+    && event.revision <= currentDocument.value.revision) return
   pendingExternalRevision = Math.max(pendingExternalRevision, event.revision)
+  pendingExternalLockVersion = Math.max(pendingExternalLockVersion, event.lock_version ?? 0)
   if (!saveInFlight) { ++loadGeneration; scheduleRealtimeRefresh() }
 }
 
@@ -1309,7 +1331,7 @@ function restoreDraft(document: MemoryItemDetail): void {
     const saved = JSON.parse(raw) as { revision?: number; base?: DocumentDraft; draft?: DocumentDraft }
     if (!saved.draft || !saved.base || typeof saved.draft.content !== 'string' || !Array.isArray(saved.draft.keywords)) return
     applyEditorDraft(saved.draft)
-    lastSavedDraft.value = saved.base
+    lastSavedDraft.value = cloneDraft(saved.base)
     if (saved.revision !== document.revision) {
       conflictDocument.value = document
       autosaveState.value = 'error'

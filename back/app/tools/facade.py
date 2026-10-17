@@ -2,6 +2,7 @@
 
 from typing import Any
 from uuid import UUID
+from collections.abc import Collection
 from .schemas import Tool
 from .runtime_principals import RuntimePrincipal, register_runtime_principal_port
 from .mcp_authorization import bind_native_action
@@ -25,6 +26,12 @@ async def get_tool_by_id(tool_id: int) -> Tool | None:
     from . import tool_service
 
     return await tool_service.get_tool_by_id(tool_id)
+
+
+async def get_tools_by_ids(tool_ids: Collection[int]) -> dict[int, Tool]:
+    from . import tool_service
+
+    return await tool_service.get_tools_by_ids(tool_ids)
 
 
 async def get_tool(code: str) -> Tool | None:
@@ -135,6 +142,7 @@ __all__ = [
     "invalidate_authorization_context",
     "current_action_covers",
     "get_tool_by_id",
+    "get_tools_by_ids",
     "get_tool",
     "get_runtime_global_params",
     "has_active_admin_function",

@@ -54,7 +54,7 @@ async def test_library_page_cost_does_not_materialize_the_revision_corpus(db, ag
         statements = []
 
         def capture(_connection, _cursor, statement, _parameters, _context, _many):
-            if statement.lstrip().upper().startswith("SELECT"):
+            if statement.lstrip().upper().startswith(("SELECT", "WITH")):
                 statements.append(statement)
 
         event.listen(connection.sync_connection, "before_cursor_execute", capture)
@@ -75,8 +75,30 @@ async def test_library_page_cost_does_not_materialize_the_revision_corpus(db, ag
         assert not any(isinstance(value, MemoryRevision) for value in db.identity_map.values())
         assert peak < 16 * 1024 * 1024, "A library page must not allocate its corpus history"
         assert elapsed < 5
+        baseline_reads = len(statements)
+        statements.clear()
+        event.listen(connection.sync_connection, "before_cursor_execute", capture)
+        try:
+            with_facets = await service.browse_document_library(
+                DocumentLibraryRequest(limit=50, include_owners=True), managed_agent_ids={owner_id},
+            )
+            full_reads = len(statements)
+            statements.clear()
+            without_facets = await service.browse_document_library(
+                DocumentLibraryRequest(limit=50, include_keywords=False), managed_agent_ids={owner_id},
+            )
+            lean_reads = len(statements)
+        finally:
+            event.remove(connection.sync_connection, "before_cursor_execute", capture)
+        assert without_facets.entries == with_facets.entries
+        assert (without_facets.total, without_facets.has_more) == (with_facets.total, with_facets.has_more)
+        assert without_facets.keywords == [] and without_facets.owners == []
+        assert with_facets.keywords == ["visible"] and with_facets.owners
+        assert lean_reads == full_reads - 3, "Reusing catalogues skips both owner reads and the keyword scan"
+        assert not any("jsonb_array_elements_text" in statement for statement in statements)
         measurements.append({"documents": stop, "revisions": stop * revisions_per_document,
-                             "page_size": 50, "queries": len(statements), "python_peak_bytes": peak,
+                             "page_size": 50, "queries": baseline_reads,
+                             "queries_with_facets": full_reads, "queries_without_facets": lean_reads, "python_peak_bytes": peak,
                              "seconds": elapsed, "loaded_revisions": 0})
     assert measurements[0]["queries"] == measurements[1]["queries"]
     assert measurements[1]["python_peak_bytes"] <= measurements[0]["python_peak_bytes"] + 2 * 1024 * 1024

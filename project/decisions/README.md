@@ -8,6 +8,8 @@
 
 - [0192 — Interactions humaines des processus par messagerie](0192-process-human-interactions-through-messaging.md)
 
+- [0192 — Réconciliation de la bibliothèque documentaire](0192-document-library-reconciliation.md)
+
 - [0191 — Composition des modales de détail des ressources](0191-resource-detail-dialog-composition.md)
 
 - [0190 — Fichiers HTML et mécanismes standards de pièces jointes](0190-html-files-use-standard-attachments.md)

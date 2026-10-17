@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 import asyncio
 from uuid import UUID
 from core.database import get_db
+from core.util import source_code_response_headers
 from app.agent import current_management_scope
 from .indexing import start_index_run, cancel_index_run, index_progress, retry_repairs
 from .indexing_contracts import FileIndexRequest, FileIndexProgress, FileIndexPage
@@ -63,7 +64,8 @@ async def read_managed_file(file_id: UUID, agent_id: int) -> FileResponse:
         if not path.is_file():
             raise FileNotFoundError
         return FileResponse(path, filename=descriptor.name, media_type=descriptor.media_type,
-            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                     **source_code_response_headers(descriptor.name, descriptor.media_type)})
     except (PermissionError, FileNotFoundError):
         raise HTTPException(404, "Managed file unavailable") from None
 
@@ -132,7 +134,8 @@ async def read_item_resource_content(item_id: UUID, entry_id: UUID, agent_id: in
         finally:
             await manager.__aexit__(None, None, None)
     return StreamingResponse(chunks(), media_type=source.media_type,
-        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                 **source_code_response_headers(source.name, source.media_type)})
 
 
 @router.get("/indexing", response_model=FileIndexPage)

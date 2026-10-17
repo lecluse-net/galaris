@@ -684,6 +684,33 @@ async def get_disabled_function_names(connection: Connection, *, capability_kind
     }
 
 
+async def get_disabled_function_names_many(connections: Collection[Connection], *,
+                                           capability_kind: CapabilityKind = "tool") -> dict[int, set[str]]:
+    """Resolve the same local/global cascade for one freshly loaded page."""
+    if not connections:
+        return {}
+    local: dict[int, dict[str, bool | str]] = {}
+    global_states: dict[int, dict[str, bool | str]] = {}
+    rows = await get_db().scalars(select(ConnectionFunctionState).where(
+        ConnectionFunctionState.connection_id.in_([connection.id for connection in connections]),
+    ).execution_options(populate_existing=True))
+    for row in rows:
+        if (row.capability_kind or "tool") == capability_kind:
+            local.setdefault(row.connection_id, {})[row.function_name] = stored_function_state(row)
+    global_rows = await get_db().scalars(select(ToolFunctionState).where(
+        ToolFunctionState.tool_id.in_({connection.tool_id for connection in connections}),
+    ).execution_options(populate_existing=True))
+    for row in global_rows:
+        if (row.capability_kind or "tool") == capability_kind:
+            global_states.setdefault(row.tool_id, {})[row.function_name] = stored_function_state(row)
+    result: dict[int, set[str]] = {}
+    for connection in connections:
+        overrides, inherited = local.get(connection.id, {}), global_states.get(connection.tool_id, {})
+        result[connection.id] = {name for name in overrides.keys() | inherited.keys()
+                                 if not resolve_function_enabled(name, overrides, inherited)}
+    return result
+
+
 def _validate_capability_name(name: str, kind: CapabilityKind) -> None:
     if not name or len(name.encode("utf-8")) > (2000 if kind == "resource" else 255):
         raise ValueError("Invalid bounded MCP capability name")

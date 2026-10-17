@@ -200,7 +200,7 @@ tests restent l’autorité sur le comportement.
 | `app.chat` | `core.settings` | `back/app/chat/storage.py`, `back/app/chat/webrtc.py` |
 | `app.chat` | `core.storage` | `back/app/chat/storage.py` |
 | `app.chat` | `core.user` | `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
-| `app.chat` | `core.util` | `back/app/chat/push_service.py`, `back/app/chat/storage.py` |
+| `app.chat` | `core.util` | `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py` |
 | `app.code` | `core.authorize` | `back/app/code/gateway.py`, `back/app/code/lifecycle.py`, `back/app/code/router.py`, `back/app/code/service.py` |
 | `app.code` | `core.database` | `back/app/code/gateway.py`, `back/app/code/lifecycle.py`, `back/app/code/models.py`, `back/app/code/resource_facade.py`, `back/app/code/router.py`, `back/app/code/runtime_configuration.py`, `back/app/code/service.py` |
 | `app.code` | `core.settings` | `back/app/code/gateway.py`, `back/app/code/service.py` |
@@ -307,7 +307,7 @@ tests restent l’autorité sur le comportement.
 | `app.file_share` | `core.params` | `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_delivery.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `core.preview` | `back/app/file_share/__init__.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/web_preview.py` |
 | `app.file_share` | `core.storage` | `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py` |
-| `app.file_share` | `core.util` | `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
+| `app.file_share` | `core.util` | `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
 | `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.connection` | `back/app/goal/mcp.py`, `back/app/goal/models.py`, `back/app/goal/resource_facade.py` |
 | `app.goal` | `app.llm` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
@@ -417,7 +417,7 @@ tests restent l’autorité sur le comportement.
 | `app.memory` | `core.storage` | `back/app/memory/document_attachment_service.py`, `back/app/memory/service.py`, `back/app/memory/storage.py` |
 | `app.memory` | `core.team` | `back/app/memory/access.py`, `back/app/memory/bootstrap.py`, `back/app/memory/item_sharing.py` |
 | `app.memory` | `core.user` | `back/app/memory/access.py`, `back/app/memory/bootstrap.py`, `back/app/memory/dataset_port.py`, `back/app/memory/dataset_references.py`, `back/app/memory/dataset_usage.py`, `back/app/memory/document_attachment_service.py`, `back/app/memory/document_export.py`, `back/app/memory/document_image_import.py`, `back/app/memory/document_links.py`, `back/app/memory/document_policy.py`, `back/app/memory/document_sharing.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/events.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/item_sharing.py`, `back/app/memory/library_queries.py`, `back/app/memory/maintenance.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/workflow_documents.py` |
-| `app.memory` | `core.util` | `back/app/memory/acquisition_service.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/content_migration.py`, `back/app/memory/context.py`, `back/app/memory/document_links.py`, `back/app/memory/document_migration.py`, `back/app/memory/document_service.py`, `back/app/memory/document_structure.py`, `back/app/memory/file_facade.py`, `back/app/memory/html_migration.py`, `back/app/memory/models.py`, `back/app/memory/passages.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage.py`, `back/app/memory/storage_reconciliation.py`, `back/app/memory/temporal.py`, `back/app/memory/workflow_documents.py` |
+| `app.memory` | `core.util` | `back/app/memory/acquisition_service.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/content_migration.py`, `back/app/memory/context.py`, `back/app/memory/document_attachment_service.py`, `back/app/memory/document_links.py`, `back/app/memory/document_migration.py`, `back/app/memory/document_service.py`, `back/app/memory/document_structure.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/file_facade.py`, `back/app/memory/html_migration.py`, `back/app/memory/models.py`, `back/app/memory/passages.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage.py`, `back/app/memory/storage_reconciliation.py`, `back/app/memory/temporal.py`, `back/app/memory/workflow_documents.py` |
 | `app.messenger` | `app.agent` | `back/app/messenger/contact_access.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/permission_router.py`, `back/app/messenger/permissions.py`, `back/app/messenger/router.py`, `back/app/messenger/schemas.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.connection` | `back/app/messenger/configuration.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/ingest.py`, `back/app/messenger/journal.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.conversation` | `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
@@ -840,7 +840,7 @@ tests restent l’autorité sur le comportement.
 | `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/pages/index.vue`, `front/app/llm/useEditorVoice.ts` |
 | `app/llm` | `core/websocket` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue` |
 | `app/memory` | `app/agent` | `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
-| `app/memory` | `core/api` | `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/documentIcons.ts` |
+| `app/memory` | `core/api` | `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/documentIcons.ts`, `front/app/memory/stores/documentMutations.ts` |
 | `app/memory` | `core/authorize` | `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/MemoryDreamActions.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/navigation` | `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/util` | `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentApplicationBlock.vue`, `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentFolderSelect.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentTagIcon.vue`, `front/app/memory/components/DocumentTagIconPicker.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/documentAppResources.ts`, `front/app/memory/documentEditor.ts`, `front/app/memory/documentFolders.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
@@ -1195,11 +1195,11 @@ tests restent l’autorité sur le comportement.
 | POST | `/agents/{id}/avatar` | `app.agent` | `upload_avatar` | oui | `back/app/agent/router.py:377` |
 | POST | `/agents/{id}/avatar/generate` | `app.agent` | `generate_agent_avatar` | oui | `back/app/agent/router.py:351` |
 | PUT | `/agents/{id}/yolo` | `app.agent` | `update_agent_yolo` | oui | `back/app/agent/router.py:39` |
-| GET | `/api/docs` | `core.api` | `public_swagger_ui_html` | non | `back/core/api.py:235` |
-| GET | `/api/health` | `core.api` | `health_check` | non | `back/core/api.py:266` |
-| GET | `/api/health/live` | `core.api` | `liveness_check` | non | `back/core/api.py:271` |
-| GET | `/api/health/ready` | `core.api` | `readiness_check` | non | `back/core/api.py:277` |
-| GET | `/api/openapi.json` | `core.api` | `get_public_openapi_endpoint` | non | `back/core/api.py:229` |
+| GET | `/api/docs` | `core.api` | `public_swagger_ui_html` | non | `back/core/api.py:239` |
+| GET | `/api/health` | `core.api` | `health_check` | non | `back/core/api.py:270` |
+| GET | `/api/health/live` | `core.api` | `liveness_check` | non | `back/core/api.py:275` |
+| GET | `/api/health/ready` | `core.api` | `readiness_check` | non | `back/core/api.py:281` |
+| GET | `/api/openapi.json` | `core.api` | `get_public_openapi_endpoint` | non | `back/core/api.py:233` |
 | GET | `/auth/avatars/{avatar_key}` | `core.user` | `read_user_avatar` | non | `back/core/user/router.py:410` |
 | POST | `/auth/keep-alive` | `core.user` | `keep_alive` | oui | `back/core/user/router.py:383` |
 | POST | `/auth/login` | `core.user` | `login` | non | `back/core/user/router.py:208` |
@@ -1259,54 +1259,54 @@ tests restent l’autorité sur le comportement.
 | DELETE | `/calendars/{calendar_id}` | `bridge.calendar` | `delete_calendar` | oui | `back/bridge/calendar/router.py:89` |
 | PUT | `/calendars/{calendar_id}` | `bridge.calendar` | `update_calendar` | oui | `back/bridge/calendar/router.py:75` |
 | POST | `/calendars/{calendar_id}/test` | `bridge.calendar` | `test_calendar` | oui | `back/bridge/calendar/router.py:97` |
-| GET | `/chat/agents/{agent_id}/avatar` | `app.chat` | `read_agent_avatar` | oui | `back/app/chat/router.py:397` |
-| GET | `/chat/emojis/frequent` | `app.chat` | `read_frequent_emojis` | oui | `back/app/chat/router.py:318` |
-| POST | `/chat/emojis/usage` | `app.chat` | `create_emoji_usage` | oui | `back/app/chat/router.py:327` |
-| GET | `/chat/identities` | `app.chat` | `read_identity_mappings` | oui | `back/app/chat/router.py:337` |
-| DELETE | `/chat/identities/{tool_id}` | `app.chat` | `delete_identity_mapping` | oui | `back/app/chat/router.py:367` |
-| PUT | `/chat/identities/{tool_id}` | `app.chat` | `update_identity_mapping` | oui | `back/app/chat/router.py:346` |
-| GET | `/chat/inbox` | `app.chat` | `read_inbox` | oui | `back/app/chat/router.py:279` |
-| GET | `/chat/push/configuration` | `app.chat` | `read_push_configuration` | oui | `back/app/chat/router.py:285` |
-| DELETE | `/chat/push/subscriptions` | `app.chat` | `remove_push_subscription` | oui | `back/app/chat/router.py:308` |
-| POST | `/chat/push/subscriptions` | `app.chat` | `create_push_subscription` | oui | `back/app/chat/router.py:295` |
-| GET | `/chat/recipients` | `app.chat` | `read_recipients` | oui | `back/app/chat/router.py:374` |
-| GET | `/chat/rooms` | `app.chat` | `read_rooms` | oui | `back/app/chat/router.py:417` |
-| POST | `/chat/rooms` | `app.chat` | `create_room` | oui | `back/app/chat/router.py:443` |
-| GET | `/chat/rooms/{room_id}` | `app.chat` | `read_room` | oui | `back/app/chat/router.py:471` |
-| PATCH | `/chat/rooms/{room_id}` | `app.chat` | `update_room_preferences` | oui | `back/app/chat/router.py:488` |
-| GET | `/chat/rooms/{room_id}/activity` | `app.chat` | `read_activity` | oui | `back/app/chat/router.py:900` |
-| GET | `/chat/rooms/{room_id}/activity/{round_id}` | `app.chat` | `read_activity_detail` | oui | `back/app/chat/router.py:915` |
-| POST | `/chat/rooms/{room_id}/activity/{round_id}/control` | `app.chat` | `control_response` | oui | `back/app/chat/router.py:929` |
-| PATCH | `/chat/rooms/{room_id}/archive` | `app.chat` | `update_room_archive` | oui | `back/app/chat/router.py:506` |
-| POST | `/chat/rooms/{room_id}/attachments` | `app.chat` | `create_attachment_message` | oui | `back/app/chat/router.py:1152` |
-| POST | `/chat/rooms/{room_id}/calls` | `app.chat` | `start_call` | oui | `back/app/chat/router.py:1319` |
-| GET | `/chat/rooms/{room_id}/calls/active` | `app.chat` | `read_active_call` | oui | `back/app/chat/router.py:1378` |
-| GET | `/chat/rooms/{room_id}/calls/status` | `app.chat` | `read_voice_call_status` | oui | `back/app/chat/router.py:1292` |
-| DELETE | `/chat/rooms/{room_id}/calls/{call_id}` | `app.chat` | `stop_call` | oui | `back/app/chat/router.py:1437` |
-| POST | `/chat/rooms/{room_id}/calls/{call_id}/candidates` | `app.chat` | `add_call_candidate` | oui | `back/app/chat/router.py:1402` |
-| GET | `/chat/rooms/{room_id}/commands` | `app.chat` | `read_room_commands` | oui | `back/app/chat/router.py:547` |
-| POST | `/chat/rooms/{room_id}/dictation` | `app.chat` | `transcribe_dictation` | oui | `back/app/chat/router.py:1101` |
-| GET | `/chat/rooms/{room_id}/documents` | `app.chat` | `read_room_documents` | oui | `back/app/chat/router.py:967` |
-| POST | `/chat/rooms/{room_id}/documents` | `app.chat` | `create_room_document` | oui | `back/app/chat/router.py:997` |
-| GET | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `download_file` | oui | `back/app/chat/router.py:1249` |
-| GET | `/chat/rooms/{room_id}/interactions/{interaction_id}` | `app.chat` | `read_interaction` | oui | `back/app/chat/router.py:1043` |
-| POST | `/chat/rooms/{room_id}/interactions/{interaction_id}/answer` | `app.chat` | `answer_interaction` | oui | `back/app/chat/router.py:1052` |
-| GET | `/chat/rooms/{room_id}/messages` | `app.chat` | `read_messages` | oui | `back/app/chat/router.py:561` |
-| POST | `/chat/rooms/{room_id}/messages` | `app.chat` | `create_message` | oui | `back/app/chat/router.py:1068` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews` | `app.chat` | `read_message_previews` | oui | `back/app/chat/router.py:711` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/content` | `app.chat` | `read_message_preview_content` | oui | `back/app/chat/router.py:855` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/image` | `app.chat` | `read_message_preview_image` | oui | `back/app/chat/router.py:802` |
-| POST | `/chat/rooms/{room_id}/messages/{message_id}/previews/repository` | `app.chat` | `open_message_directory_repository` | oui | `back/app/chat/router.py:771` |
-| POST | `/chat/rooms/{room_id}/messages/{message_id}/speech` | `app.chat` | `read_message_speech` | oui | `back/app/chat/router.py:612` |
-| PATCH | `/chat/rooms/{room_id}/messages/{message_id}/topic` | `app.chat` | `update_message_topic` | oui | `back/app/chat/router.py:680` |
-| POST | `/chat/rooms/{room_id}/mute` | `app.chat` | `set_muted` | oui | `back/app/chat/router.py:1241` |
-| GET | `/chat/rooms/{room_id}/processes` | `app.chat` | `read_room_processes` | oui | `back/app/chat/router.py:1025` |
-| POST | `/chat/rooms/{room_id}/read` | `app.chat` | `mark_read` | oui | `back/app/chat/router.py:1233` |
-| GET | `/chat/rooms/{room_id}/speech/status` | `app.chat` | `read_message_speech_status` | oui | `back/app/chat/router.py:586` |
-| GET | `/chat/rooms/{room_id}/tasks` | `app.chat` | `read_room_tasks` | oui | `back/app/chat/router.py:946` |
-| PATCH | `/chat/rooms/{room_id}/topic` | `app.chat` | `update_room_topic` | oui | `back/app/chat/router.py:523` |
-| GET | `/chat/status` | `app.chat` | `read_status` | oui | `back/app/chat/router.py:269` |
-| GET | `/chat/viewer-agents` | `app.chat` | `read_viewer_agents` | oui | `back/app/chat/router.py:390` |
+| GET | `/chat/agents/{agent_id}/avatar` | `app.chat` | `read_agent_avatar` | oui | `back/app/chat/router.py:398` |
+| GET | `/chat/emojis/frequent` | `app.chat` | `read_frequent_emojis` | oui | `back/app/chat/router.py:319` |
+| POST | `/chat/emojis/usage` | `app.chat` | `create_emoji_usage` | oui | `back/app/chat/router.py:328` |
+| GET | `/chat/identities` | `app.chat` | `read_identity_mappings` | oui | `back/app/chat/router.py:338` |
+| DELETE | `/chat/identities/{tool_id}` | `app.chat` | `delete_identity_mapping` | oui | `back/app/chat/router.py:368` |
+| PUT | `/chat/identities/{tool_id}` | `app.chat` | `update_identity_mapping` | oui | `back/app/chat/router.py:347` |
+| GET | `/chat/inbox` | `app.chat` | `read_inbox` | oui | `back/app/chat/router.py:280` |
+| GET | `/chat/push/configuration` | `app.chat` | `read_push_configuration` | oui | `back/app/chat/router.py:286` |
+| DELETE | `/chat/push/subscriptions` | `app.chat` | `remove_push_subscription` | oui | `back/app/chat/router.py:309` |
+| POST | `/chat/push/subscriptions` | `app.chat` | `create_push_subscription` | oui | `back/app/chat/router.py:296` |
+| GET | `/chat/recipients` | `app.chat` | `read_recipients` | oui | `back/app/chat/router.py:375` |
+| GET | `/chat/rooms` | `app.chat` | `read_rooms` | oui | `back/app/chat/router.py:418` |
+| POST | `/chat/rooms` | `app.chat` | `create_room` | oui | `back/app/chat/router.py:444` |
+| GET | `/chat/rooms/{room_id}` | `app.chat` | `read_room` | oui | `back/app/chat/router.py:472` |
+| PATCH | `/chat/rooms/{room_id}` | `app.chat` | `update_room_preferences` | oui | `back/app/chat/router.py:489` |
+| GET | `/chat/rooms/{room_id}/activity` | `app.chat` | `read_activity` | oui | `back/app/chat/router.py:902` |
+| GET | `/chat/rooms/{room_id}/activity/{round_id}` | `app.chat` | `read_activity_detail` | oui | `back/app/chat/router.py:917` |
+| POST | `/chat/rooms/{room_id}/activity/{round_id}/control` | `app.chat` | `control_response` | oui | `back/app/chat/router.py:931` |
+| PATCH | `/chat/rooms/{room_id}/archive` | `app.chat` | `update_room_archive` | oui | `back/app/chat/router.py:507` |
+| POST | `/chat/rooms/{room_id}/attachments` | `app.chat` | `create_attachment_message` | oui | `back/app/chat/router.py:1154` |
+| POST | `/chat/rooms/{room_id}/calls` | `app.chat` | `start_call` | oui | `back/app/chat/router.py:1323` |
+| GET | `/chat/rooms/{room_id}/calls/active` | `app.chat` | `read_active_call` | oui | `back/app/chat/router.py:1382` |
+| GET | `/chat/rooms/{room_id}/calls/status` | `app.chat` | `read_voice_call_status` | oui | `back/app/chat/router.py:1296` |
+| DELETE | `/chat/rooms/{room_id}/calls/{call_id}` | `app.chat` | `stop_call` | oui | `back/app/chat/router.py:1441` |
+| POST | `/chat/rooms/{room_id}/calls/{call_id}/candidates` | `app.chat` | `add_call_candidate` | oui | `back/app/chat/router.py:1406` |
+| GET | `/chat/rooms/{room_id}/commands` | `app.chat` | `read_room_commands` | oui | `back/app/chat/router.py:548` |
+| POST | `/chat/rooms/{room_id}/dictation` | `app.chat` | `transcribe_dictation` | oui | `back/app/chat/router.py:1103` |
+| GET | `/chat/rooms/{room_id}/documents` | `app.chat` | `read_room_documents` | oui | `back/app/chat/router.py:969` |
+| POST | `/chat/rooms/{room_id}/documents` | `app.chat` | `create_room_document` | oui | `back/app/chat/router.py:999` |
+| GET | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `download_file` | oui | `back/app/chat/router.py:1251` |
+| GET | `/chat/rooms/{room_id}/interactions/{interaction_id}` | `app.chat` | `read_interaction` | oui | `back/app/chat/router.py:1045` |
+| POST | `/chat/rooms/{room_id}/interactions/{interaction_id}/answer` | `app.chat` | `answer_interaction` | oui | `back/app/chat/router.py:1054` |
+| GET | `/chat/rooms/{room_id}/messages` | `app.chat` | `read_messages` | oui | `back/app/chat/router.py:562` |
+| POST | `/chat/rooms/{room_id}/messages` | `app.chat` | `create_message` | oui | `back/app/chat/router.py:1070` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews` | `app.chat` | `read_message_previews` | oui | `back/app/chat/router.py:712` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/content` | `app.chat` | `read_message_preview_content` | oui | `back/app/chat/router.py:856` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/image` | `app.chat` | `read_message_preview_image` | oui | `back/app/chat/router.py:803` |
+| POST | `/chat/rooms/{room_id}/messages/{message_id}/previews/repository` | `app.chat` | `open_message_directory_repository` | oui | `back/app/chat/router.py:772` |
+| POST | `/chat/rooms/{room_id}/messages/{message_id}/speech` | `app.chat` | `read_message_speech` | oui | `back/app/chat/router.py:613` |
+| PATCH | `/chat/rooms/{room_id}/messages/{message_id}/topic` | `app.chat` | `update_message_topic` | oui | `back/app/chat/router.py:681` |
+| POST | `/chat/rooms/{room_id}/mute` | `app.chat` | `set_muted` | oui | `back/app/chat/router.py:1243` |
+| GET | `/chat/rooms/{room_id}/processes` | `app.chat` | `read_room_processes` | oui | `back/app/chat/router.py:1027` |
+| POST | `/chat/rooms/{room_id}/read` | `app.chat` | `mark_read` | oui | `back/app/chat/router.py:1235` |
+| GET | `/chat/rooms/{room_id}/speech/status` | `app.chat` | `read_message_speech_status` | oui | `back/app/chat/router.py:587` |
+| GET | `/chat/rooms/{room_id}/tasks` | `app.chat` | `read_room_tasks` | oui | `back/app/chat/router.py:948` |
+| PATCH | `/chat/rooms/{room_id}/topic` | `app.chat` | `update_room_topic` | oui | `back/app/chat/router.py:524` |
+| GET | `/chat/status` | `app.chat` | `read_status` | oui | `back/app/chat/router.py:270` |
+| GET | `/chat/viewer-agents` | `app.chat` | `read_viewer_agents` | oui | `back/app/chat/router.py:391` |
 | GET | `/code/rooms/{room_id}` | `app.code` | `room_workspaces` | oui | `back/app/code/router.py:37` |
 | POST | `/code/sessions/{identifier}/heartbeat` | `app.code` | `heartbeat` | oui | `back/app/code/router.py:84` |
 | POST | `/code/sessions/{identifier}/navigate` | `app.code` | `navigate_session` | oui | `back/app/code/router.py:70` |
@@ -1455,18 +1455,18 @@ tests restent l’autorité sur le comportement.
 | POST | `/evaluation/{mechanism}/runs/{run_id}/human-review` | `app.lab` | `submit_human_review` | oui | `back/app/lab/router.py:144` |
 | POST | `/evaluation/{mechanism}/runs/{run_id}/rejudge` | `app.lab` | `rejudge_benchmark` | oui | `back/app/lab/router.py:170` |
 | POST | `/evaluation/{mechanism}/runs/{run_id}/resume` | `app.lab` | `resume_benchmark` | oui | `back/app/lab/router.py:183` |
-| GET | `/file-share/bridges` | `app.file_share` | `list_bridges` | oui | `back/app/file_share/router.py:88` |
-| POST | `/file-share/files` | `app.file_share` | `create_managed_file` | oui | `back/app/file_share/router.py:29` |
-| PATCH | `/file-share/files/{file_id}` | `app.file_share` | `rename_file` | oui | `back/app/file_share/router.py:41` |
-| GET | `/file-share/files/{file_id}/content` | `app.file_share` | `read_managed_file` | oui | `back/app/file_share/router.py:55` |
-| GET | `/file-share/files/{file_id}/thumbnail` | `app.file_share` | `read_managed_file_thumbnail` | oui | `back/app/file_share/router.py:73` |
-| GET | `/file-share/indexing` | `app.file_share` | `read_indexing` | oui | `back/app/file_share/router.py:140` |
-| POST | `/file-share/indexing` | `app.file_share` | `create_indexing` | oui | `back/app/file_share/router.py:147` |
-| POST | `/file-share/indexing/repairs/retry` | `app.file_share` | `retry_index_repairs` | oui | `back/app/file_share/router.py:172` |
-| POST | `/file-share/indexing/{run_id}/cancel` | `app.file_share` | `cancel_indexing` | oui | `back/app/file_share/router.py:162` |
-| GET | `/file-share/items/{item_id}/resources` | `app.file_share` | `read_item_resources` | oui | `back/app/file_share/router.py:100` |
-| GET | `/file-share/items/{item_id}/resources/{entry_id}/content` | `app.file_share` | `read_item_resource_content` | oui | `back/app/file_share/router.py:120` |
-| GET | `/file-share/items/{item_id}/resources/{entry_id}/thumbnail` | `app.file_share` | `read_item_resource_thumbnail` | oui | `back/app/file_share/router.py:107` |
+| GET | `/file-share/bridges` | `app.file_share` | `list_bridges` | oui | `back/app/file_share/router.py:90` |
+| POST | `/file-share/files` | `app.file_share` | `create_managed_file` | oui | `back/app/file_share/router.py:30` |
+| PATCH | `/file-share/files/{file_id}` | `app.file_share` | `rename_file` | oui | `back/app/file_share/router.py:42` |
+| GET | `/file-share/files/{file_id}/content` | `app.file_share` | `read_managed_file` | oui | `back/app/file_share/router.py:56` |
+| GET | `/file-share/files/{file_id}/thumbnail` | `app.file_share` | `read_managed_file_thumbnail` | oui | `back/app/file_share/router.py:75` |
+| GET | `/file-share/indexing` | `app.file_share` | `read_indexing` | oui | `back/app/file_share/router.py:143` |
+| POST | `/file-share/indexing` | `app.file_share` | `create_indexing` | oui | `back/app/file_share/router.py:150` |
+| POST | `/file-share/indexing/repairs/retry` | `app.file_share` | `retry_index_repairs` | oui | `back/app/file_share/router.py:175` |
+| POST | `/file-share/indexing/{run_id}/cancel` | `app.file_share` | `cancel_indexing` | oui | `back/app/file_share/router.py:165` |
+| GET | `/file-share/items/{item_id}/resources` | `app.file_share` | `read_item_resources` | oui | `back/app/file_share/router.py:102` |
+| GET | `/file-share/items/{item_id}/resources/{entry_id}/content` | `app.file_share` | `read_item_resource_content` | oui | `back/app/file_share/router.py:122` |
+| GET | `/file-share/items/{item_id}/resources/{entry_id}/thumbnail` | `app.file_share` | `read_item_resource_thumbnail` | oui | `back/app/file_share/router.py:109` |
 | WEBSOCKET | `/gateway/{identifier}/editor/{path:path}` | `app.code` | `editor_ws` | non | `back/app/code/gateway.py:188` |
 | GET | `/gateway/{identifier}/launch` | `app.code` | `launch_page` | non | `back/app/code/gateway.py:47` |
 | POST | `/gateway/{identifier}/launch` | `app.code` | `launch` | non | `back/app/code/gateway.py:71` |
@@ -1642,7 +1642,7 @@ tests restent l’autorité sur le comportement.
 | POST | `/memory/documents/{document_id}/apps/{app_id}/datasets/{alias}` | `app.memory` | `access_app_dataset` | oui | `back/app/memory/router.py:148` |
 | GET | `/memory/documents/{document_id}/attachments` | `app.memory` | `list_document_attachments` | oui | `back/app/memory/router.py:1379` |
 | POST | `/memory/documents/{document_id}/attachments` | `app.memory` | `add_document_attachment` | oui | `back/app/memory/router.py:1399` |
-| DELETE | `/memory/documents/{document_id}/attachments/{attachment_id}` | `app.memory` | `delete_document_attachment` | oui | `back/app/memory/router.py:1504` |
+| DELETE | `/memory/documents/{document_id}/attachments/{attachment_id}` | `app.memory` | `delete_document_attachment` | oui | `back/app/memory/router.py:1505` |
 | GET | `/memory/documents/{document_id}/attachments/{attachment_id}` | `app.memory` | `read_document_attachment` | oui | `back/app/memory/router.py:1473` |
 | GET | `/memory/documents/{document_id}/attachments/{attachment_id}/info` | `app.memory` | `read_document_attachment_info` | oui | `back/app/memory/router.py:1455` |
 | GET | `/memory/documents/{document_id}/attachments/{attachment_id}/thumbnail` | `app.memory` | `read_document_attachment_thumbnail` | oui | `back/app/memory/router.py:1420` |
@@ -1656,8 +1656,8 @@ tests restent l’autorité sur le comportement.
 | POST | `/memory/documents/{document_id}/export-pdf` | `app.memory` | `export_managed_document_pdf` | oui | `back/app/memory/router.py:1056` |
 | PATCH | `/memory/documents/{document_id}/folder` | `app.memory` | `move_managed_document` | oui | `back/app/memory/router.py:1185` |
 | PATCH | `/memory/documents/{document_id}/global-access` | `app.memory` | `set_managed_document_global_access` | oui | `back/app/memory/router.py:1285` |
-| DELETE | `/memory/documents/{document_id}/grants/{agent_id}` | `app.memory` | `remove_document_grant` | oui | `back/app/memory/router.py:1563` |
-| PUT | `/memory/documents/{document_id}/grants/{agent_id}` | `app.memory` | `set_document_grant` | oui | `back/app/memory/router.py:1530` |
+| DELETE | `/memory/documents/{document_id}/grants/{agent_id}` | `app.memory` | `remove_document_grant` | oui | `back/app/memory/router.py:1564` |
+| PUT | `/memory/documents/{document_id}/grants/{agent_id}` | `app.memory` | `set_document_grant` | oui | `back/app/memory/router.py:1531` |
 | PUT | `/memory/documents/{document_id}/icon` | `app.memory` | `save_document_icon` | oui | `back/app/memory/router.py:730` |
 | POST | `/memory/documents/{document_id}/import-image` | `app.memory` | `import_document_image` | oui | `back/app/memory/router.py:1020` |
 | POST | `/memory/documents/{document_id}/link-card` | `app.memory` | `create_document_link_card` | oui | `back/app/memory/router.py:1031` |
@@ -1684,15 +1684,15 @@ tests restent l’autorité sur le comportement.
 | DELETE | `/memory/items/{item_id}` | `app.memory` | `forget_memory_item` | oui | `back/app/memory/router.py:669` |
 | GET | `/memory/items/{item_id}` | `app.memory` | `get_memory_item` | oui | `back/app/memory/router.py:598` |
 | PUT | `/memory/items/{item_id}` | `app.memory` | `update_memory_item` | oui | `back/app/memory/router.py:646` |
-| DELETE | `/memory/items/{item_id}/grants/{agent_id}` | `app.memory` | `remove_memory_item_grant` | oui | `back/app/memory/router.py:1607` |
-| PUT | `/memory/items/{item_id}/grants/{agent_id}` | `app.memory` | `set_memory_item_grant` | oui | `back/app/memory/router.py:1592` |
-| GET | `/memory/items/{item_id}/links` | `app.memory` | `list_memory_links` | oui | `back/app/memory/router.py:1642` |
+| DELETE | `/memory/items/{item_id}/grants/{agent_id}` | `app.memory` | `remove_memory_item_grant` | oui | `back/app/memory/router.py:1608` |
+| PUT | `/memory/items/{item_id}/grants/{agent_id}` | `app.memory` | `set_memory_item_grant` | oui | `back/app/memory/router.py:1593` |
+| GET | `/memory/items/{item_id}/links` | `app.memory` | `list_memory_links` | oui | `back/app/memory/router.py:1643` |
 | GET | `/memory/items/{item_id}/revisions` | `app.memory` | `list_memory_revisions` | oui | `back/app/memory/router.py:631` |
 | GET | `/memory/items/{item_id}/sharing` | `app.memory` | `read_item_sharing` | oui | `back/app/memory/router.py:572` |
 | PUT | `/memory/items/{item_id}/sharing` | `app.memory` | `update_item_sharing` | oui | `back/app/memory/router.py:581` |
 | GET | `/memory/link-reconciliation` | `app.memory` | `read_link_reconciliation_status` | oui | `back/app/memory/router.py:317` |
 | POST | `/memory/link-reconciliation` | `app.memory` | `launch_link_reconciliation` | oui | `back/app/memory/router.py:329` |
-| POST | `/memory/links` | `app.memory` | `create_memory_link` | oui | `back/app/memory/router.py:1624` |
+| POST | `/memory/links` | `app.memory` | `create_memory_link` | oui | `back/app/memory/router.py:1625` |
 | GET | `/memory/metrics` | `app.memory` | `read_memory_metrics` | oui | `back/app/memory/router.py:299` |
 | POST | `/memory/provider/remember` | `bridge.hermes` | `hermes_provider_remember` | non | `back/bridge/hermes/router.py:192` |
 | POST | `/memory/provider/search` | `bridge.hermes` | `hermes_provider_search` | non | `back/bridge/hermes/router.py:168` |
@@ -1775,25 +1775,25 @@ tests restent l’autorité sur le comportement.
 | GET | `/skills/{skill_id}/file` | `app.skill` | `download_skill_file` | oui | `back/app/skill/router.py:506` |
 | GET | `/skills/{skill_id}/files` | `app.skill` | `list_skill_files` | oui | `back/app/skill/router.py:484` |
 | GET | `/tasks` | `app.task` | `read_tasks` | oui | `back/app/task/router.py:59` |
-| POST | `/tasks` | `app.task` | `create_task` | oui | `back/app/task/router.py:186` |
-| GET | `/tasks/active` | `app.task` | `read_active_tasks` | oui | `back/app/task/router.py:138` |
-| POST | `/tasks/activity` | `app.task` | `read_task_activity` | oui | `back/app/task/router.py:149` |
-| DELETE | `/tasks/cleanup` | `app.task` | `cleanup_tasks` | oui | `back/app/task/router.py:296` |
+| POST | `/tasks` | `app.task` | `create_task` | oui | `back/app/task/router.py:177` |
+| GET | `/tasks/active` | `app.task` | `read_active_tasks` | oui | `back/app/task/router.py:129` |
+| POST | `/tasks/activity` | `app.task` | `read_task_activity` | oui | `back/app/task/router.py:140` |
+| DELETE | `/tasks/cleanup` | `app.task` | `cleanup_tasks` | oui | `back/app/task/router.py:287` |
 | GET | `/tasks/recent` | `app.task` | `read_recent_tasks` | oui | `back/app/task/router.py:79` |
-| DELETE | `/tasks/{task_id}` | `app.task` | `delete_task` | oui | `back/app/task/router.py:306` |
-| GET | `/tasks/{task_id}` | `app.task` | `read_task` | oui | `back/app/task/router.py:156` |
-| PUT | `/tasks/{task_id}` | `app.task` | `update_task` | oui | `back/app/task/router.py:210` |
-| GET | `/tasks/{task_id}/budget` | `app.task` | `read_task_budget` | oui | `back/app/task/router.py:176` |
-| POST | `/tasks/{task_id}/cancel` | `app.task` | `cancel_task` | oui | `back/app/task/router.py:264` |
-| GET | `/tasks/{task_id}/children` | `app.task` | `read_task_children` | oui | `back/app/task/router.py:380` |
-| POST | `/tasks/{task_id}/force-terminate` | `app.task` | `force_terminate_task` | oui | `back/app/task/router.py:279` |
-| GET | `/tasks/{task_id}/full` | `app.task` | `read_task_full` | oui | `back/app/task/router.py:370` |
-| POST | `/tasks/{task_id}/pause` | `app.task` | `pause_task` | oui | `back/app/task/router.py:337` |
-| POST | `/tasks/{task_id}/recover-call` | `app.task` | `recover_task_call` | oui | `back/app/task/router.py:166` |
-| POST | `/tasks/{task_id}/restore` | `app.task` | `restore_task` | oui | `back/app/task/router.py:323` |
-| POST | `/tasks/{task_id}/resume` | `app.task` | `resume_task` | oui | `back/app/task/router.py:351` |
-| POST | `/tasks/{task_id}/retry` | `app.task` | `retry_task` | oui | `back/app/task/router.py:230` |
-| POST | `/tasks/{task_id}/run` | `app.task` | `run_task` | oui | `back/app/task/router.py:396` |
+| DELETE | `/tasks/{task_id}` | `app.task` | `delete_task` | oui | `back/app/task/router.py:297` |
+| GET | `/tasks/{task_id}` | `app.task` | `read_task` | oui | `back/app/task/router.py:147` |
+| PUT | `/tasks/{task_id}` | `app.task` | `update_task` | oui | `back/app/task/router.py:201` |
+| GET | `/tasks/{task_id}/budget` | `app.task` | `read_task_budget` | oui | `back/app/task/router.py:167` |
+| POST | `/tasks/{task_id}/cancel` | `app.task` | `cancel_task` | oui | `back/app/task/router.py:255` |
+| GET | `/tasks/{task_id}/children` | `app.task` | `read_task_children` | oui | `back/app/task/router.py:371` |
+| POST | `/tasks/{task_id}/force-terminate` | `app.task` | `force_terminate_task` | oui | `back/app/task/router.py:270` |
+| GET | `/tasks/{task_id}/full` | `app.task` | `read_task_full` | oui | `back/app/task/router.py:361` |
+| POST | `/tasks/{task_id}/pause` | `app.task` | `pause_task` | oui | `back/app/task/router.py:328` |
+| POST | `/tasks/{task_id}/recover-call` | `app.task` | `recover_task_call` | oui | `back/app/task/router.py:157` |
+| POST | `/tasks/{task_id}/restore` | `app.task` | `restore_task` | oui | `back/app/task/router.py:314` |
+| POST | `/tasks/{task_id}/resume` | `app.task` | `resume_task` | oui | `back/app/task/router.py:342` |
+| POST | `/tasks/{task_id}/retry` | `app.task` | `retry_task` | oui | `back/app/task/router.py:221` |
+| POST | `/tasks/{task_id}/run` | `app.task` | `run_task` | oui | `back/app/task/router.py:387` |
 | GET | `/teams` | `core.team` | `list_teams` | oui | `back/core/team/router.py:13` |
 | POST | `/teams` | `core.team` | `create_team` | oui | `back/core/team/router.py:25` |
 | GET | `/teams/humans` | `core.team` | `search_humans` | oui | `back/core/team/router.py:19` |
@@ -1980,10 +1980,10 @@ tests restent l’autorité sur le comportement.
 | `memory_topic_contact_scopes` | `MemoryTopicContactScope` | `app.memory` | non | `agents.id`, `memory_items.id` | `back/app/memory/models.py:1042` |
 | `memory_urls` | `MemoryURL` | `app.memory` | non | `memory_items.id` | `back/app/memory/models.py:778` |
 | `memory_usages` | `MemoryUsage` | `app.memory` | non | `agents.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:1225` |
-| `messenger_files` | `File` | `app.messenger` | oui | `connections.id` | `back/app/messenger/models.py:428` |
+| `messenger_files` | `File` | `app.messenger` | oui | `connections.id` | `back/app/messenger/models.py:429` |
 | `messenger_interactions` | `Interaction` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:192` |
-| `messenger_listener_state` | `ListenerState` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:484` |
-| `messenger_message_files` | `Attachment` | `app.messenger` | non | `messenger_files.id`, `messenger_messages.id` | `back/app/messenger/models.py:465` |
+| `messenger_listener_state` | `ListenerState` | `app.messenger` | non | `connections.id` | `back/app/messenger/models.py:485` |
+| `messenger_message_files` | `Attachment` | `app.messenger` | non | `messenger_files.id`, `messenger_messages.id` | `back/app/messenger/models.py:466` |
 | `messenger_messages` | `Message` | `app.messenger` | oui | `connections.id`, `memory_items.id`, `messenger_rooms.id`, `messenger_users.id`, `topics.id`, `users.id` | `back/app/messenger/models.py:254` |
 | `messenger_room_users` | `RoomUser` | `app.messenger` | non | `messenger_messages.id`, `messenger_rooms.id`, `messenger_users.id` | `back/app/messenger/models.py:139` |
 | `messenger_rooms` | `Room` | `app.messenger` | oui | `connections.id`, `topics.id` | `back/app/messenger/models.py:63` |
@@ -2007,9 +2007,9 @@ tests restent l’autorité sur le comportement.
 | `runtime_run_grants` | `RuntimeRunGrant` | `app.tools` | non | `agent_mcp_tokens.id`, `agents.id` | `back/app/tools/authorization_models.py:81` |
 | `skill_categories` | `SkillCategory` | `app.skill` | oui | — | `back/app/skill/models.py:31` |
 | `skills` | `Skill` | `app.skill` | oui | `skill_categories.id` | `back/app/skill/models.py:52` |
-| `task_amendments` | `TaskAmendment` | `app.task` | non | `tasks.id` | `back/app/task/models.py:243` |
-| `task_attempts` | `TaskAttempt` | `app.task` | non | `tasks.id` | `back/app/task/models.py:276` |
-| `tasks` | `Task` | `app.task` | oui | `agents.id`, `connections.id`, `goals.id`, `memory_items.id`, `messenger_messages.id`, `tasks.id`, `topics.id`, `users.id` | `back/app/task/models.py:78` |
+| `task_amendments` | `TaskAmendment` | `app.task` | non | `tasks.id` | `back/app/task/models.py:249` |
+| `task_attempts` | `TaskAttempt` | `app.task` | non | `tasks.id` | `back/app/task/models.py:282` |
+| `tasks` | `Task` | `app.task` | oui | `agents.id`, `connections.id`, `goals.id`, `memory_items.id`, `messenger_messages.id`, `tasks.id`, `topics.id`, `users.id` | `back/app/task/models.py:80` |
 | `team_audit` | `TeamAudit` | `core.team` | oui | — | `back/core/team/models.py:28` |
 | `team_users` | `TeamUser` | `core.team` | non | `agent_groups.id`, `users.id` | `back/core/team/models.py:19` |
 | `titles` | `Title` | `app.agent` | non | — | `back/app/agent/models.py:41` |

@@ -216,14 +216,14 @@ export const memoryService = {
   async uploadDocumentTagIcon(name: string, data: string): Promise<DocumentTagIcon> {
     return (await api.post<DocumentTagIcon>('/memory/documents/tag-icons', { name, data })).data
   },
-  async browseDocumentLibrary(params: DocumentLibraryFilters): Promise<DocumentLibraryPage> {
+  async browseDocumentLibrary(params: DocumentLibraryFilters, signal?: AbortSignal): Promise<DocumentLibraryPage> {
     const response = await api.post<DocumentLibraryPage>('/memory/documents/library', {
       ...params,
       query: params.query ?? '',
       keyword: params.keyword ?? null,
       limit: params.limit ?? 50,
       offset: params.offset ?? 0,
-    })
+    }, { signal })
     return response.data
   },
 

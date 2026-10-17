@@ -1,5 +1,14 @@
 import highlighter from 'highlight.js/lib/common'
+import powershell from 'highlight.js/lib/languages/powershell'
+import dos from 'highlight.js/lib/languages/dos'
+import dart from 'highlight.js/lib/languages/dart'
+import dockerfile from 'highlight.js/lib/languages/dockerfile'
 import './solaireTheme'
+
+highlighter.registerLanguage('powershell', powershell)
+highlighter.registerLanguage('dos', dos)
+highlighter.registerLanguage('dart', dart)
+highlighter.registerLanguage('dockerfile', dockerfile)
 
 // Bound automatic detection during editing; large blocks remain readable plain code.
 const maxHighlightedLength = 50_000

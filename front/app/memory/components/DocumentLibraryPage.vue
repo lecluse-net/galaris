@@ -20,6 +20,7 @@
             :key="`${selectedAgentId}:${selectedDocumentId}`"
             ref="documentEditor"
             :document-id="selectedDocumentId" :agent-id="selectedAgentId"
+            :initial-document="selectedInitialDocument"
             @updated="onDocumentUpdated" @unavailable="onDocumentUnavailable" @deleted="onDocumentDeleted"
           />
         </template>
@@ -47,6 +48,7 @@
             ref="mobileDocumentEditor"
             :document-id="mobileDocumentId"
             :agent-id="mobileDocumentAgentId"
+            :initial-document="mobileInitialDocument"
             content-min-height="min(42vh, 420px)"
             @updated="onDocumentUpdated"
             @unavailable="onMobileDocumentUnavailable"
@@ -188,9 +190,11 @@ const entries = ref<DocumentLibraryEntry[]>([])
 const splitterModel = ref(30)
 const selectedNodeKey = ref<string | null>(null)
 const selectedAgentId = ref<number | null>(null)
+const selectedInitialDocument = ref<MemoryItemDetail | null>(null)
 const mobileDocumentOpen = ref(false)
 const mobileDocumentId = ref<string | null>(null)
 const mobileDocumentAgentId = ref<number | null>(null)
+const mobileInitialDocument = ref<MemoryItemDetail | null>(null)
 const createDocumentOpen = ref(false)
 const creatingDocument = ref(false)
 const createDocumentOwner = ref('')
@@ -206,6 +210,7 @@ const createOwnerOptionsLoading = ref(false)
 let pageMounted = false
 let leavingPage = false
 let disposed = false
+let selectionGeneration = 0
 const removeNavigationObserver = router.afterEach((_to, _from, failure) => {
   // A later guard may cancel leaving; the still-mounted library must stay usable.
   if (failure && !disposed) leavingPage = false
@@ -269,7 +274,8 @@ function preferredAgent(entry: DocumentLibraryEntry): number | null {
   if (entry.item.owner_agent_id !== null && entry.agent_ids.includes(entry.item.owner_agent_id)) return entry.item.owner_agent_id
   return entry.writable_agent_ids[0] ?? entry.agent_ids[0] ?? null
 }
-async function selectDocument(id: string, agentId: number | null): Promise<void> {
+async function selectDocument(id: string, agentId: number | null, initialDocument: MemoryItemDetail | null = null): Promise<void> {
+  const selection = ++selectionGeneration
   if (id !== selectedDocumentId.value && documentEditor.value) {
     const saved = await documentEditor.value.flush()
     if (!saved) {
@@ -277,11 +283,14 @@ async function selectDocument(id: string, agentId: number | null): Promise<void>
       return
     }
   }
-  if (disposed || leavingPage) return
+  if (disposed || leavingPage || selection !== selectionGeneration) return
+  selectedInitialDocument.value = initialDocument
   selectedAgentId.value = agentId
   selectedNodeKey.value = `document:${agentId ?? 'user'}:${id}`
 }
-function openMobileDocument(id: string, agentId: number | null): void {
+function openMobileDocument(id: string, agentId: number | null, initialDocument: MemoryItemDetail | null = null): void {
+  ++selectionGeneration
+  mobileInitialDocument.value = initialDocument
   mobileDocumentId.value = id
   mobileDocumentAgentId.value = agentId
   mobileDocumentOpen.value = true
@@ -360,7 +369,7 @@ async function createDocument(): Promise<void> {
 }
 function onDocumentUpdated(document: MemoryItemDetail): void {
   entries.value = entries.value.map(entry => entry.item.id === document.id ? { ...entry, item: document } : entry)
-  navigation.value?.refreshDocuments([document.id])
+  navigation.value?.updateDocument(document)
 }
 function onDocumentDeleted(id: string): void {
   if (selectedDocumentId.value === id) selectedNodeKey.value = null
@@ -376,6 +385,7 @@ function onMobileDocumentUnavailable(id: string): void {
   onDocumentUnavailable(id)
 }
 async function openRouteDocument(id: string): Promise<void> {
+  const selection = ++selectionGeneration
   const entry = entries.value.find(value => value.item.id === id)
   const agentId = entry ? preferredAgent(entry) : null
   if (agentId !== null || entry?.user_access?.can_read) {
@@ -385,9 +395,10 @@ async function openRouteDocument(id: string): Promise<void> {
   }
   try {
     const detail = await memoryService.getManagedDocument(id)
-    if ($q.screen.lt.md) openMobileDocument(id, detail.agent_id)
-    else await selectDocument(id, detail.agent_id)
-  } catch { $q.notify({ type: 'negative', message: t('documents.loadError') }) }
+    if (disposed || leavingPage || selection !== selectionGeneration) return
+    if ($q.screen.lt.md) openMobileDocument(id, detail.agent_id, detail.item)
+    else await selectDocument(id, detail.agent_id, detail.item)
+  } catch { if (!disposed && selection === selectionGeneration) $q.notify({ type: 'negative', message: t('documents.loadError') }) }
 }
 
 function flushMobileDocumentEditor(): void {

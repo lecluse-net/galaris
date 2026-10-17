@@ -350,6 +350,7 @@ class Message(HistoryMixin, Base):
             "room_id",
             "created_at",
         ),
+        Index("ix_messenger_messages_room_time", "messenger_room_id", "created_at", "id"),
     )
 
     @property

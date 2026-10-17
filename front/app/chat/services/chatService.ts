@@ -1,5 +1,5 @@
 import { api, AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
-import { createSessionReadCache, queuePreview } from '@/core/util/facade'
+import { createSessionReadCache, queuePreview, saveBlobAsResource } from '@/core/util/facade'
 import type { DocumentFocus } from '../documentFocus'
 import type { MessengerInteraction } from '../types'
 import { isAxiosError } from 'axios'
@@ -88,13 +88,7 @@ export const chatService = {
   async attachmentBlob(roomId: string, fileId: string, agentId: number | null = null): Promise<Blob> { return (await api.get<Blob>(`${base}/rooms/${roomId}/files/${fileId}`, { params: { agent_id: agentId }, responseType: 'blob' })).data },
   async downloadFile(roomId: string, fileId: string, name: string, agentId: number | null = null): Promise<void> {
     const blob = await this.attachmentBlob(roomId, fileId, agentId)
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = name
-    link.rel = 'noopener'
-    link.click()
-    window.setTimeout(() => URL.revokeObjectURL(url), 1_000)
+    saveBlobAsResource(blob, name)
   },
   async startCall(roomId: string, sdp: string, language: string): Promise<{ call_id: string; sdp: string; type: RTCSdpType }> { return (await api.post(`${base}/rooms/${roomId}/calls`, { sdp, type: 'offer', language })).data },
   // An active call may retain this callback across a development hot reload.

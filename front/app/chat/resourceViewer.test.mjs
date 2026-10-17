@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   browserResourceKind,
+  isolatedBrowserResourceUrl,
   shouldOpenInline,
 } from '../../core/util/resourceViewer.ts'
 import { resourceTextLanguage } from '../../core/util/resourceText.ts'
@@ -43,7 +44,14 @@ test('text and source attachments select their language without treating binary 
     ['text/plain', 'Dockerfile', 'dockerfile'],
     ['text/plain', 'Makefile', 'makefile'],
     ['text/javascript', 'source', 'javascript'],
+    ['text/javascript', 'source.html', 'javascript'],
+    ['text/html', 'Dockerfile', 'dockerfile'],
     ['text/plain', 'component.vue', 'html'],
+    ['text/html', 'component.vue', 'html'],
+    ['text/html', 'module.js', 'javascript'],
+    ['video/mp2t', 'module.ts', 'typescript'],
+    ['application/x-sh', 'script.sh', 'bash'],
+    ['text/javascript', 'source', 'javascript'],
     ['text/csv', 'export', 'text'],
   ]) {
     assert.equal(browserResourceKind(mime, name), 'text')
@@ -61,6 +69,18 @@ test('Office documents and spreadsheets remain download-only even with a generic
     }
   }
   assert.equal(browserResourceKind('text/rtf; charset=utf-8', 'Report'), null)
+})
+
+test('standalone source URLs contain unchanged inert text even with an HTML MIME type', async () => {
+  const content = '<script>window.sourceExecuted = true</script>'
+  const url = await isolatedBrowserResourceUrl(new Blob([content], { type: 'text/html' }), 'text/html', 'component.vue')
+  try {
+    const response = await fetch(url)
+    assert.equal(response.headers.get('content-type'), 'text/plain;charset=utf-8')
+    assert.equal(await response.text(), content)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
 })
 
 test('only an unmodified primary click opens the inline viewer', () => {

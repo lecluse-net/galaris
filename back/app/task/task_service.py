@@ -1144,8 +1144,11 @@ async def _set_tree_paused(task_id: UUID, *, paused: bool) -> Optional[Task]:
 
     if changed:
         await db.commit()
+        # Reload server-generated timestamps and revisions in one read before
+        # publishing, retaining per-row optimistic write checks above.
+        await db.execute(select(Task).where(Task.id.in_([task.id for task in changed]))
+            .execution_options(populate_existing=True))
         for task in changed:
-            await db.refresh(task)
             await websocket.emit(
                 "task",
                 "update",
@@ -1158,11 +1161,29 @@ async def _set_tree_paused(task_id: UUID, *, paused: bool) -> Optional[Task]:
 async def _collect_tree(task: Task, seen: set[UUID]) -> list[Task]:
     if task.id in seen:
         return []
-    seen.add(task.id)
-
-    tasks = [task]
-    for child in await get_children(task.id):
-        tasks.extend(await _collect_tree(child, seen))
+    # UNION terminates safely even on a corrupt cyclic parent graph. Deleted
+    # nodes remain traversal boundaries, as in get_children().
+    descendants = select(Task.id, Task.parent_id).where(
+        Task.parent_id == task.id, Task.deleted_at.is_(None), Task.id.not_in(seen),
+    ).cte("task_descendants", recursive=True)
+    descendants = descendants.union(select(Task.id, Task.parent_id).join(
+        descendants, Task.parent_id == descendants.c.id,
+    ).where(Task.deleted_at.is_(None), Task.id.not_in(seen)))
+    records = await get_db().scalars(select(Task).where(Task.id.in_(select(descendants.c.id)))
+        .order_by(Task.created_at.asc(), Task.id.asc()))
+    children: dict[UUID, list[Task]] = {}
+    for record in records:
+        if record.parent_id is not None:
+            children.setdefault(record.parent_id, []).append(record)
+    tasks: list[Task] = []
+    pending = [task]
+    while pending:
+        current = pending.pop()
+        if current.id in seen:
+            continue
+        seen.add(current.id)
+        tasks.append(current)
+        pending.extend(reversed(children.get(current.id, [])))
     return tasks
 
 
@@ -1525,12 +1546,18 @@ async def summarize_recent(
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
     agent_ids: Collection[int] | None = None,
+    errors_only: bool = False,
+    paused_only: bool = False,
+    active: bool | None = None,
 ) -> tuple[int, TaskOverview]:
-    """Return global status totals after applying the task-list filters."""
+    """Return the page total and overview together, retaining global status totals."""
     db = get_db()
     non_terminal = Task.status.not_in(_TERMINAL_STATUSES)
+    state_filter = _apply_active_filter(_apply_monitoring_state_filter(select(Task.id),
+        errors_only=errors_only, paused_only=paused_only), active).whereclause
+    total_count = func.count(Task.id)
     query = select(
-        func.count(Task.id),
+        total_count.filter(state_filter) if state_filter is not None else total_count,
         func.count(Task.id).filter(non_terminal, Task.paused.is_(False)),
         func.count(Task.id).filter(Task.status == TaskStatus.SUCCESS),
         func.count(Task.id).filter(non_terminal, Task.paused.is_(True)),
