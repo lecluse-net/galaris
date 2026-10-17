@@ -19,3 +19,9 @@ tests et documents canoniques en conservent la connaissance durable utile.
 La [matrice des contrats et preuves](audits/2026-09-19-fiabilisation-transversale.md)
 relie les corrections conversationnelles aux garanties de persistance, d'arrêt, de
 capacité, de recherche et de ressources à préserver dans les travaux suivants.
+
+## Performances SQL
+
+L'[audit SQL du 17 octobre 2026](audits/2026-10-17-sql-optimizations.md) décrit les
+lectures répétées, les agrégations et les index à optimiser, avec quatre
+comparaisons sur données synthétiques et les garanties à préserver.
