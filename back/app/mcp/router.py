@@ -24,7 +24,7 @@ from core.authorize import (
 from core.database import get_db_session
 from core.i18n import tr
 from core.user import require_web_session
-from app.agent import agent_service, current_management_scope
+from app.agent import agent_service, configured_harness_selection, current_management_scope
 
 from . import service as mcp_token_service
 from .schemas import (
@@ -226,7 +226,17 @@ async def agent_mcp_endpoint(agent_code: str, request: Request) -> Response:
                 grant = await resolve_runtime_run_grant(credential, principal=RuntimePrincipal(matched.id, matched.agent_id, matched.enabled))
             except PermissionError as exc:
                 raise HTTPException(403, "Invalid runtime run context") from exc
-            runtime = grant.runtime
+            selection = await configured_harness_selection(agent)
+            if (
+                selection is None
+                or selection.provider_code != grant.runtime
+                or f"harness:{selection.id}" != grant.target_ref
+                or str(selection.revision) != grant.target_revision
+            ):
+                raise HTTPException(403, "The runtime assignment changed")
+            # Grants retain the provider's authorization namespace; the tool
+            # catalogue is built for the selected execution driver.
+            runtime = selection.driver_code
             task_id = UUID(grant.context_key.removeprefix("task:")) if grant.context_key.startswith("task:") else None
             resources.update(runtime_grant_id=str(grant.id), authorization_context=grant.context_key)
         mcp_server = await build_agent_mcp(

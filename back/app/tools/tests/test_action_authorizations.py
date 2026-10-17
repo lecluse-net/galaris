@@ -163,7 +163,8 @@ async def test_refused_arguments_cannot_create_a_new_question_under_a_new_callba
 
 
 @pytest.mark.asyncio
-async def test_runtime_run_grant_is_scoped_renewable_and_revoked_by_assignment_changes(action, monkeypatch):
+@pytest.mark.parametrize("runtime_action", ["openai_messages", "codex", "claude_agent", "deepseek_harness"], indirect=True)
+async def test_runtime_run_grant_is_scoped_renewable_and_revoked_by_assignment_changes(action, runtime_action, monkeypatch):
     from app.agent import AgentSnapshot, ResolvedExecutionTarget, AgentRunCheckpoint
     from app.agent.tests.test_driver_testkit import _request
     from app.harnesses.models import Harness, AgentHarness
@@ -172,23 +173,20 @@ async def test_runtime_run_grant_is_scoped_renewable_and_revoked_by_assignment_c
     from app.mcp.service import rotate_system_token
     from app.mcp.service import create_token_for_agent
     from app.mcp.schemas import AgentMcpTokenCreate
+    from app.harnesses.registry import get_provider
+    from core.params import params_service
+    provider = runtime_action.runtime
+    provider_spec = get_provider(provider)
     async with get_db_session() as db:
         agent = await db.get(Agent, action.agent_id)
-        harness = Harness(name="Synthetic approval harness", provider_code="openai_messages", driver_code="openai_messages",
-            enabled=True, base_url="http://harness.example.test/v1", model="synthetic", capabilities=["execute", "stream"])
-        db.add(harness)
-        await db.flush()
-        agent.task_harness_id = harness.id
-        assignment = AgentHarness(agent_id=agent.id, harness_id=harness.id, provider_code="openai_messages", lifecycle_status="ready")
-        db.add(assignment)
-        await db.flush()
-        agent_id, assignment_id, harness_id = agent.id, assignment.id, harness.id
+        assignment = await db.scalar(select(AgentHarness).where(AgentHarness.agent_id == agent.id))
+        agent_id, assignment_id, harness_id = agent.id, assignment.id, assignment.harness_id
         bearer = await rotate_system_token(agent_id)
         _, visible_bearer = await create_token_for_agent(agent_id, AgentMcpTokenCreate(label="Synthetic external client"))
         principal = await runtime_principal_port().for_agent(agent_id)
     request = replace(_request(), task_id=None, driver_code="openai_messages",
         agent=AgentSnapshot(id=agent_id, code="synthetic", first_name="Synthetic", last_name="Runtime", driver_code="openai_messages"),
-        target=ResolvedExecutionTarget(provider_code="openai_messages", target_ref=f"harness:{assignment_id}", revision="1"))
+        target=ResolvedExecutionTarget(provider_code=provider, target_ref=f"harness:{assignment_id}", revision="1"))
     credential = await issue_runtime_run_grant(request)
     grant = await resolve_runtime_run_grant(credential, principal=principal)
     from httpx import ASGITransport, AsyncClient
@@ -256,14 +254,17 @@ async def test_runtime_run_grant_is_scoped_renewable_and_revoked_by_assignment_c
         await renew_runtime_run_grant(credential, replace(resumed, resume_checkpoint=None))
     from app.tools import runtime_authorization
     changed_configuration = AsyncMock(return_value={"terminal_signature": "changed-governed-connection"})
-    monkeypatch.setitem(runtime_authorization._runtime_configurations, "openai_messages", changed_configuration)
+    monkeypatch.setitem(runtime_authorization._runtime_configurations, provider, changed_configuration)
     with pytest.raises(PermissionError, match="context changed"):
         await resolve_runtime_run_grant(credential, principal=principal)
     with pytest.raises(PermissionError, match="context changed"):
         await renew_runtime_run_grant(credential, resumed)
-    monkeypatch.delitem(runtime_authorization._runtime_configurations, "openai_messages")
-    async with get_db_session() as db:
-        (await db.get(Harness, harness_id)).enabled = False
+    monkeypatch.delitem(runtime_authorization._runtime_configurations, provider)
+    if harness_id is not None:
+        async with get_db_session() as db:
+            (await db.get(Harness, harness_id)).enabled = False
+    else:
+        monkeypatch.setitem(params_service._params_cache, provider_spec.enabled_param, "false")
     with pytest.raises(PermissionError):
         await resolve_runtime_run_grant(credential, principal=principal)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://localhost") as client:
@@ -271,8 +272,12 @@ async def test_runtime_run_grant_is_scoped_renewable_and_revoked_by_assignment_c
         assert (await client.post(f"/api/mcp/{agent.code}",
             headers={**headers, "Accept": "application/json, text/event-stream"},
             json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"})).status_code == 403
+    if harness_id is not None:
+        async with get_db_session() as db:
+            (await db.get(Harness, harness_id)).enabled = True
+    else:
+        monkeypatch.setitem(params_service._params_cache, provider_spec.enabled_param, "true")
     async with get_db_session() as db:
-        (await db.get(Harness, harness_id)).enabled = True
         (await db.get(AgentHarness, assignment_id)).revision += 1
     with pytest.raises(PermissionError):
         await resolve_runtime_run_grant(credential, principal=principal)
