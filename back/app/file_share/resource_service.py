@@ -815,37 +815,37 @@ async def resource_list(
         )
         offset = max(0, int(cursor or "0"))
         attachments = cast(list[dict[str, object]], data["attachments"])
-        page = attachments[offset : offset + limit]
         can_write = bool(data["can_write"])
+        entries = [ResourceDescriptor(
+            uri=_uri("document", f"{document_id}/attachments/{attachment['id']}"),
+            name=str(attachment["name"]), media_type=str(attachment["media_type"]),
+            size=_as_int(attachment["size_bytes"]), modified_at=str(attachment["created_at"]),
+            capabilities=_attachment_capabilities(can_write), metadata={
+                "document_id": str(document_id), "attachment_id": str(attachment["id"]),
+                "memory_item_id": attachment.get("memory_item_id"),
+            }) for attachment in attachments]
+        for attached in cast(list[dict[str, str]], data.get("datasets", [])):
+            try:
+                descriptor = await resource_info(ctx, attached["uri"])
+            except (FileNotFoundError, PermissionError):
+                continue
+            # This is a reference to another resource, not a file owned by the Document.
+            entries.append(descriptor.model_copy(update={
+                "capabilities": [value for value in descriptor.capabilities if value in {"info", "read", "copy"}],
+                "metadata": {**descriptor.metadata, "document_id": str(document_id), "relation": "dataset_attachment"},
+            }))
+        page = entries[offset : offset + limit]
         return ResourceListing(
             uri=_uri(
                 "document",
                 f"{document_id}/attachments",
                 collection=True,
             ),
-            entries=[
-                ResourceDescriptor(
-                    uri=_uri(
-                        "document",
-                        f"{document_id}/attachments/{attachment['id']}",
-                    ),
-                    name=str(attachment["name"]),
-                    media_type=str(attachment["media_type"]),
-                    size=_as_int(attachment["size_bytes"]),
-                    modified_at=str(attachment["created_at"]),
-                    capabilities=_attachment_capabilities(can_write),
-                    metadata={
-                        "document_id": str(document_id),
-                        "attachment_id": str(attachment["id"]),
-                        "memory_item_id": attachment.get("memory_item_id"),
-                    },
-                )
-                for attachment in page
-            ],
-            truncated=offset + len(page) < len(attachments),
+            entries=page,
+            truncated=offset + len(page) < len(entries),
             next_cursor=(
                 str(offset + len(page))
-                if offset + len(page) < len(attachments)
+                if offset + len(page) < len(entries)
                 else None
             ),
         )

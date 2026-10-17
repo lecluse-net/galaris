@@ -115,7 +115,6 @@
             :rules="[value => Boolean(value.trim()) || t('documents.required')]"
             @keyup.enter="createDocument"
           />
-          <q-select v-model="createDocumentType" outlined emit-value map-options :label="t('documents.documentType')" :options="documentTypeOptions" />
         </q-card-section>
         <q-separator />
         <q-card-actions class="galaris-dialog-actions" align="right">
@@ -142,9 +141,8 @@ import { useQuasar } from 'quasar'
 import { AgentAvatar, useAgentStore } from '@/app/agent'
 import { documentIdFromRouteQuery, documentResourceHref, PageHeader } from '@/core/util'
 import { websocket } from '@/core/websocket'
-import { memoryService } from '../services/memoryService'
+import { DatasetDocumentRedirect, memoryService } from '../services/memoryService'
 import type {
-  DocumentType,
   DocumentTag,
   DocumentLibraryEntry,
   DocumentOwnerKind,
@@ -200,10 +198,8 @@ const creatingDocument = ref(false)
 const createDocumentOwner = ref('')
 const createDocumentActorAgentId = ref<number | null>(null)
 const createDocumentTitle = ref('')
-const createDocumentType = ref<DocumentType>('html')
 const createDocumentTag = ref<DocumentTag | null>(null)
 const createDocumentParent = ref<DocumentLibraryEntry | null>(null)
-const documentTypeOptions = computed(() => ['html', 'dataset'].map(value => ({ value, label: t(`documents.types.${value}`) })))
 const createOwnerOptions = ref<DocumentOwnerOptions>({ agents: [], users: [] })
 const filteredCreateOwnerOptions = ref<CreateOwnerSelectOption[]>([])
 const createOwnerOptionsLoading = ref(false)
@@ -309,7 +305,6 @@ async function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEnt
   createDocumentParent.value = parent ?? null
   createDocumentActorAgentId.value = selectedAgentId.value ?? agentStore.sortedAgents[0]?.id ?? null
   createDocumentTitle.value = ''
-  createDocumentType.value = 'html'
   createDocumentOwner.value = ''
   createOwnerOptions.value = { agents: [], users: [] }
   filteredCreateOwnerOptions.value = []
@@ -317,6 +312,7 @@ async function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEnt
   createOwnerOptionsLoading.value = true
   try {
     createOwnerOptions.value = await memoryService.listDocumentOwnerOptions()
+    createDocumentActorAgentId.value ??= createOwnerOptions.value.agents[0]?.id ?? null
     filteredCreateOwnerOptions.value = sectionCreateOwnerOptions(createOwnerChoices.value)
     const currentUser = createOwnerOptions.value.users.find(option => option.is_current_user)
     if (currentUser) createDocumentOwner.value = createOwnerValue('user', currentUser.id)
@@ -336,7 +332,7 @@ async function createDocument(): Promise<void> {
   creatingDocument.value = true
   try {
     const document = await memoryService.createDocument({
-      document_type: createDocumentType.value,
+      document_type: 'html',
       owner_kind: owner.kind,
       owner_id: owner.id,
       actor_agent_id: actorAgentId,
@@ -398,7 +394,11 @@ async function openRouteDocument(id: string): Promise<void> {
     if (disposed || leavingPage || selection !== selectionGeneration) return
     if ($q.screen.lt.md) openMobileDocument(id, detail.agent_id, detail.item)
     else await selectDocument(id, detail.agent_id, detail.item)
-  } catch { if (!disposed && selection === selectionGeneration) $q.notify({ type: 'negative', message: t('documents.loadError') }) }
+  } catch (error) {
+    if (disposed || leavingPage || selection !== selectionGeneration) return
+    if (error instanceof DatasetDocumentRedirect) await router.replace(error.href)
+    else $q.notify({ type: 'negative', message: t('documents.loadError') })
+  }
 }
 
 function flushMobileDocumentEditor(): void {

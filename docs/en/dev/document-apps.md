@@ -24,12 +24,13 @@ Use ordinary HTML for new documents.
 
 ## Shared Dataset example
 
-Create a Dataset containing `[]` with `file_create(path="document://", name="Responses",
-document_type="dataset", content="[]")`, then use its actual URI:
+Create a Dataset containing `[]` with `file_create(path="data://", name="Responses",
+content="[]")`, then use its actual URI. The HTML Document and Dataset remain separate
+resources with independent permissions and revisions:
 
 ```html
 <p>Prose editable through the usual toolbar.</p>
-<form id="entry" data-dataset="document://11111111-1111-4111-8111-111111111111">
+<form id="entry" data-dataset="data://11111111-1111-4111-8111-111111111111">
   <label>Answer <input name="answer" required></label>
   <button>Save</button>
   <output id="status"></output>

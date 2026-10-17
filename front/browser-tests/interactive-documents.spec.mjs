@@ -23,3 +23,10 @@ test('explicit full HTML source stays available without running scripts in the e
  await expect(page.locator('.ck-source-editing-area textarea')).toHaveValue(/window.ran=true/)
  expect(await page.evaluate(()=>window.ran)).toBeUndefined()
 })
+
+test('Dataset links remain distinct canonical references in authored HTML', async ({ page }) => {
+  const id = '00000000-0000-4000-8000-000000000005'
+  const content = `<p><a href="data://${id}">Synthetic Dataset</a></p>`
+  await mount(page, 'core/util/components/RichText.vue', { props: { profile: 'document', content } })
+  await expect(page.getByRole('link', { name: 'Synthetic Dataset', exact: true })).toHaveAttribute('href', `/dataset/${id}`)
+})

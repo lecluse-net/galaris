@@ -622,6 +622,30 @@ class ManagedDocumentDetail(BaseModel):
     agent_id: int | None = Field(default=None, gt=0)
 
 
+class DocumentResourceRedirect(BaseModel):
+    """A verified historical document reference now owned by another domain."""
+
+    resource_type: Literal["dataset"] = "dataset"
+    resource_uri: str = Field(pattern=r"^data://[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$")
+
+
+class DocumentDatasetAttachment(BaseModel):
+    uri: str
+    title: str | None
+    available: bool
+
+
+class DocumentDatasetAttachments(BaseModel):
+    items: list[DocumentDatasetAttachment]
+    lock_version: int
+
+
+class DocumentDatasetAttachmentWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    dataset_id: UUID
+    expected_lock_version: int = Field(ge=1)
+
+
 class DocumentCollaborator(BaseModel):
     kind: Literal["agent", "user", "team"]
     id: int = Field(gt=0)
@@ -689,7 +713,7 @@ class DocumentCreate(BaseModel):
     owner_id: int = Field(gt=0)
     actor_agent_id: int = Field(gt=0)
     title: str = Field(min_length=1, max_length=500)
-    document_type: DocumentType = "html"
+    document_type: Literal["html", "process"] = "html"
     folder: str = Field(default="", max_length=500)
 
     @model_validator(mode="after")

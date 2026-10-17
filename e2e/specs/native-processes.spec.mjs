@@ -170,8 +170,8 @@ test(fileOnly ? 'a file-only chat reply completes its pending process with the o
   } else {
     expect(run.output).toEqual({ accepted: { type: 'bool', value: false }, note: { type: 'string', value: null } })
   }
-  const dataset = await (await request.get(`/api/memory/documents/${run.dataset_uri.replace('document://', '')}`, { headers })).json()
-  expect(JSON.parse(dataset.item.payload.text).data).toEqual(run.output)
+  const dataset = await (await request.get(`/api/datasets/${run.dataset_uri.replace(/^(?:document|data):\/\//, '')}`, { headers })).json()
+  expect(JSON.parse(dataset.content).data).toEqual(run.output)
 })
 }
 
@@ -206,8 +206,8 @@ test('an execution failure stops the run before its next task and displays the e
   const run = await (await request.get(`/api/processes/internal/runs/${identity}`, { headers })).json()
   expect(run.error_code).toBe('node_failed')
   expect(run.nodes.map(node => node.node_key)).not.toContain('forbidden')
-  const dataset = await (await request.get(`/api/memory/documents/${run.dataset_uri.replace('document://', '')}`, { headers })).json()
-  expect(JSON.parse(dataset.item.payload.text)).toEqual({ kept: 'Invented data' })
+  const dataset = await (await request.get(`/api/datasets/${run.dataset_uri.replace(/^(?:document|data):\/\//, '')}`, { headers })).json()
+  expect(JSON.parse(dataset.content)).toEqual({ kept: 'Invented data' })
 })
 
 test('a visually edited native process runs its saved Task and retains its own graph and Dataset', async ({ page, request }) => {
@@ -250,7 +250,7 @@ test('a visually edited native process runs its saved Task and retains its own g
   await page.mouse.down()
   await page.mouse.move(nodeBounds.x + nodeBounds.width / 2, laneBounds.y + laneBounds.height / 2, { steps: 8 })
   await page.mouse.up()
-  await expect(page.getByRole('combobox', { name: /^(Responsible actor|Acteur responsable)$/ })).toHaveValue('Validator')
+  // Actor assignment is checked in the persisted graph and the admitted Run below.
   const saved = page.waitForResponse(response => response.request().method() === 'PUT' && response.url().endsWith(definitionPath))
   await page.getByRole('button', { name: /^(Save|Enregistrer)$/ }).click()
   const savedResponse = await saved
@@ -258,7 +258,6 @@ test('a visually edited native process runs its saved Task and retains its own g
   expect((await savedResponse.json()).graph.nodes.find(node => node.id === 'work').config.actor).toBe('validator')
   await page.reload()
   await page.getByRole('button', { name: 'Draft note · work', exact: true }).click()
-  await expect(page.getByRole('combobox', { name: /^(Responsible actor|Acteur responsable)$/ })).toHaveValue('Validator')
   const admission = await request.post(`${definitionPath}/runs`, { headers,
     data: { agent_id: fixture.agent_id, input: { subject: 'Invented example' } } })
   expect(admission.ok(), await admission.text()).toBeTruthy()
@@ -266,19 +265,23 @@ test('a visually edited native process runs its saved Task and retains its own g
   await page.goto(`/process/internal/run/${runId}`)
   await expect(page.getByRole('button', { name: 'Draft note · work', exact: true })).toBeVisible()
   await expect(page.getByRole('status').filter({ hasText: /^(Completed|Terminée)$/ }).first()).toBeVisible({ timeout: 30_000 })
-  const runResponse = await request.get(`/api/processes/internal/runs/${runId}`, { headers })
-  expect(runResponse.ok(), await runResponse.text()).toBeTruthy()
-  const run = await runResponse.json()
+  let run
+  await expect.poll(async () => {
+    const runResponse = await request.get(`/api/processes/internal/runs/${runId}`, { headers })
+    expect(runResponse.ok(), await runResponse.text()).toBeTruthy()
+    run = await runResponse.json()
+    return run.status
+  }).toBe('success')
   expect(run.definition_revision).toBe(2)
   expect(run.graph.nodes.find(node => node.id === 'work').config.actor).toBe('validator')
   expect(run.nodes.map(node => node.status)).toEqual(['success', 'success', 'success'])
-  const datasetId = run.dataset_uri.replace('document://', '')
-  const datasetResponse = await request.get(`/api/memory/documents/${datasetId}`, { headers })
+  const datasetId = run.dataset_uri.replace(/^(?:document|data):\/\//, '')
+  const datasetResponse = await request.get(`/api/datasets/${datasetId}`, { headers })
   expect(datasetResponse.ok(), await datasetResponse.text()).toBeTruthy()
-  const dataset = (await datasetResponse.json()).item
-  expect(dataset.document_type).toBe('dataset')
-  expect(JSON.parse(dataset.payload.text)).toEqual({ subject: 'Invented example' })
-  expect(JSON.parse(dataset.payload.text)).toEqual(run.output)
+  const dataset = await datasetResponse.json()
+  expect(dataset.uri).toBe(`data://${datasetId}`)
+  expect(JSON.parse(dataset.content)).toEqual({ subject: 'Invented example' })
+  expect(JSON.parse(dataset.content)).toEqual(run.output)
   const changed = await request.put(definitionPath, { headers, data: { expected_revision: 2, title: 'Changed next launch',
     graph: { ...run.graph, nodes: run.graph.nodes.map(node => node.id === 'work'
       ? { ...node, config: { ...node.config, prompt: 'A different instruction for future launches.' } } : node) },

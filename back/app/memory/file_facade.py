@@ -46,8 +46,14 @@ async def list_document_attachment_file_resources(
     if item.node_kind != "document":
         raise service.MemoryConflictError("The selected memory is not a document.")
     attachments = await document_attachment_service.attachment_companions(document_attachment_service.attachments_from_item(item))
+    datasets: list[dict[str, str]] = []
+    if item.document_type == "html" and item.content_profile == "document":
+        from .dataset_attachments import list_references
+        references, _version = await list_references(document_id, agent_id, dataset_actor=agent_id)
+        datasets = [{"uri": reference.uri} for reference in references if reference.available]
     return {
         "attachments": [value.model_dump(mode="json") for value in attachments],
+        "datasets": datasets,
         "can_write": access.can_write,
     }
 

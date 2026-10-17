@@ -84,7 +84,7 @@ def valid_link(value: str) -> bool:
         return bool(uri.path) and not uri.netloc
     if uri.scheme == "document" and attachment_reference(value) is not None:
         return True
-    if uri.scheme in {"document", "memory"}:
+    if uri.scheme in {"document", "memory", "data"}:
         try:
             identity = UUID(uri.netloc)
         except ValueError:
@@ -546,7 +546,7 @@ def normalize_html(content: str, *, profile: ContentProfile = "rich-text") -> st
         tags=(TAGS - {"img"}) if profile == "rich-text" else TAGS | {"script"},
         attributes={**ATTRIBUTES, "script": {"src", "type", "async", "defer"}} if profile == "document" else ATTRIBUTES,
         clean_content_tags=set() if profile == "document" else {"script", "style"},
-        url_schemes={"https", "http", "mailto", "document", "memory", "galaris"},
+        url_schemes={"https", "http", "mailto", "document", "memory", "data", "galaris"},
         link_rel=None,
         strip_comments=True,
         filter_style_properties=STYLE_PROPERTIES,

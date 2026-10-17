@@ -39,6 +39,29 @@ async def approve(document, scope, *, revision=1, app_key="form", alias="entries
 
 
 @pytest.mark.asyncio
+async def test_html_reads_current_native_dataset_value_without_a_dataset_document(db, agents, memory_storage):
+    from app.dataset import service as datasets
+    from app.memory.models import Document
+
+    owner, _ = agents
+    human = UserModel(email=f"native-values-{uuid4()}@example.test", hashed_password="unused", is_active=True)
+    db.add(human)
+    await db.flush()
+    dataset = await datasets.create(owner.id, title="Synthetic amount", content='{"amount":100}')
+    scope = AgentManagementScope(user_id=human.id, agent_ids=frozenset({owner.id}))
+    source = f'<p>Synthetic report</p><div data-dataset="data://{dataset.id}" data-dataset-alias="budget" data-dataset-access="read"></div>'
+    document = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic report", content=source, task_id=None)
+    with pytest.raises(service.MemoryPermissionError):
+        await app_dataset(document.id, "document-html", "budget", AppDatasetRequest(document_revision=1), scope)
+    await approve(document, scope, app_key="document-html", alias="budget", access="read")
+    assert (await app_dataset(document.id, "document-html", "budget", AppDatasetRequest(document_revision=1), scope)).data == {"amount": 100}
+    await datasets.replace(dataset.id, owner.id, content='{"amount":200}', expected_revision=1)
+    assert (await app_dataset(document.id, "document-html", "budget", AppDatasetRequest(document_revision=1), scope)).data == {"amount": 200}
+    assert document.revision == 1
+    assert await db.get(Document, dataset.id) is None
+
+
+@pytest.mark.asyncio
 async def test_generated_html_cannot_authorize_itself_even_for_dataset_owner(db, agents, memory_storage):
     document, dataset, scope, _ = await setup(db, agents)
     for operation in ("read", "replace", "append"):

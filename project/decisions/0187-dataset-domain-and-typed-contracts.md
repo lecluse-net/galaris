@@ -63,6 +63,24 @@ compatibility lifetime and must not be removed together with metadata projection
 
 ## Architecture review
 
+### Public Document/Dataset separation (2026-10-17)
+
+Public Document reads of verified historical Datasets return a canonical Dataset
+reference without a Document payload. The Document editor no longer edits Dataset JSON;
+legacy URLs navigate to the native Dataset editor. Current document libraries, Memory
+search and graph omit historical Dataset projections. Original migration rows and the
+remaining Process compatibility consumers retain their existing lifetime.
+
+An authored Document may read Dataset values through the consent-bound HTML bridge or
+attach a live Dataset URI. This membership belongs to the Document and has independent
+optimistic locking; JSON, revisions, permissions and deletion remain Dataset-owned.
+Detaching a reference never deletes its target, and Document sharing never grants Dataset
+access. Dataset contributes an authorized metadata reader through a Memory-owned port;
+Memory and File Sharing gain no backend dependency on Dataset. File Sharing lists readable
+attachments under their canonical data URI. Usage discovery includes these references.
+The frontend attachment picker uses the shared rich-content search contribution scoped
+to `data`; it adds no static Memory-to-Dataset dependency.
+
 The reviewed static graph adds Dataset to the existing application component that
 already contains Agent, Process, Memory, Tools and File Sharing. Process imports the
 lightweight public value codec; loading that surface does not load Dataset services
@@ -70,4 +88,5 @@ or models. Dataset consumes the public Agent, Memory and File Sharing surfaces.
 Memory and File Sharing delegate through registered ports and do not import Dataset.
 This review admits that bounded component expansion during additive compatibility;
 it does not admit private imports or additional domain dependencies. The frontend
-adds only Dataset's Core dependencies and Process's public Dataset contract import.
+adds Dataset's Core dependencies and Process's public Dataset contract import. Memory
+selects attached references through the shared rich-content contribution contract.

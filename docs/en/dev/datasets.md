@@ -25,6 +25,21 @@ source text remain exact. The typed codec remains available for process variable
 owns their declarations and validation. Document applications use the Dataset bridge under
 the viewer's permissions and personal consent. Free writes and restores check JSON,
 permissions and revisions without imposing a business structure.
+The Documents library excludes Datasets, including historical projections, before
+counting, pagination and filter catalogues. `POST /memory/documents` rejects the
+`dataset` type; creation uses `POST /datasets` or `file_create(path="data://", ...)`.
+Reading an old Dataset through `GET /memory/documents/{id}` returns only
+`{resource_type: "dataset", resource_uri: "data://…"}` after authorization, without
+a Document payload. Old links open the Dataset editor. Memory search and graph exclude
+these historical projections from current Documents. HTML `data://` links remain Dataset
+references and are searched through their owning domain.
+
+A Document can attach live Dataset references through its `dataset-attachments`. Its
+manifest stores only URIs, without copying JSON or granting Dataset access. Mutations
+check Document write access and lock version, plus independent Dataset read access on
+attachment. Unavailable references no longer reveal their title. Detaching preserves the
+Dataset. `file_list` on attachments returns readable `data://` references without offering
+deletion of the attached resource. Dataset usages include these references under Document ACLs.
 Writes require `expected_revision`; sharing requires `expected_lock_version`. File Sharing's
 registered `data://` provider uses these same services.
 

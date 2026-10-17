@@ -327,8 +327,8 @@ Sur ordinateur, lorsqu’un document est ouvert à côté de la conversation, ch
 transmet aussi à l’agent la dernière sélection de texte dans ce document, la dernière position
 du curseur et un extrait de la zone visible au moment de l’envoi. Vous pouvez sélectionner
 un passage, puis écrire « reformule ce passage » sans perdre ce repère en passant au champ
-de message. Cela fonctionne en lecture seule, dans le contenu HTML, dans Source et dans les
-jeux de données JSON. Les extraits longs sont tronqués et accompagnés de la révision du document.
+de message. Cela fonctionne en lecture seule, dans le contenu HTML et dans Source.
+Les jeux de données ont leur propre éditeur. Les extraits longs sont tronqués et accompagnés de la révision du document.
 Un changement de document ou de contenu invalide les anciens repères ; fermer le panneau
 cesse de transmettre ce contexte. Les zones internes des applications intégrées ne sont pas
 inspectées. Les droits de l’agent sur le document restent inchangés.
@@ -675,7 +675,7 @@ Dans **Mémoire**, les comptes autorisés peuvent :
 - consulter contenu, révisions, provenance, relations et usages ;
 - corriger ou archiver un souvenir ordinaire ;
 - partager un document en lecture ou édition depuis son éditeur ;
-- créer des documents HTML de travail ou des jeux de données JSON qui évoluent sur plusieurs Tasks ;
+- créer des documents HTML de travail qui évoluent sur plusieurs Tasks ;
 - explorer le graphe sur une période donnée ;
 - oublier définitivement un élément, action irréversible réservée aux droits adéquats.
 

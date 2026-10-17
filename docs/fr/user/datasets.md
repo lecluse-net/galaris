@@ -3,6 +3,14 @@
 # Jeux de données
 
 Ouvrez **Connaissances → Jeux de données** pour créer un ensemble de données JSON.
+Les jeux de données se gèrent dans cette bibliothèque dédiée ; ils ne figurent plus
+dans la bibliothèque Documents ni dans sa création.
+Un ancien lien documentaire vers un jeu de données ouvre désormais son éditeur dédié.
+Un document HTML peut lire ses valeurs pour les afficher ou les utiliser, avec les droits
+et l'autorisation de son lecteur. Dans le document, **Joindre un jeu de données** ajoute
+une PJ liée aux données courantes. Le jeu conserve son adresse, son historique et son partage.
+**Détacher** retire ce lien sans supprimer les données ; partager le document ne partage pas
+ses jeux de données. Un jeu devenu inaccessible reste signalé sans révéler son titre.
 Sur ordinateur, la liste à gauche permet de sélectionner le jeu de données affiché à droite,
 sans arborescence. La recherche et la page courante restent en place lors du changement de
 sélection. Sur petit écran, **Retour à la liste** permet de quitter l'éditeur. Les modifications

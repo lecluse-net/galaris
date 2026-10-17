@@ -28,6 +28,7 @@ from . import (
     document_service,
     document_export,
     document_attachment_service,
+    dataset_attachments,
     document_thumbnail_service,
     facade,
     maintenance,
@@ -70,6 +71,10 @@ from .schemas import (
     DocumentOwnerOptions,
     DocumentOwnerUpdate,
     ManagedDocumentDetail,
+    DocumentResourceRedirect,
+    DocumentDatasetAttachment,
+    DocumentDatasetAttachments,
+    DocumentDatasetAttachmentWrite,
     MemoryDuplicatePreview,
     DocumentAttachmentPublic,
     MemoryForgetResult,
@@ -255,7 +260,7 @@ async def create_managed_document(data: DocumentCreate) -> MemoryItemPublic:
                 owner_agent_id=data.owner_id,
                 title=data.title,
                 document_type=data.document_type,
-                content="{}" if data.document_type == "dataset" else "",
+                content="",
                 task_id=None,
                 folder=data.folder,
             )
@@ -277,7 +282,7 @@ async def create_managed_document(data: DocumentCreate) -> MemoryItemPublic:
                 editor_agent_id=data.actor_agent_id,
                 title=data.title,
                 document_type=data.document_type,
-                content="{}" if data.document_type == "dataset" else "",
+                content="",
                 folder=data.folder,
             )
         return service.item_to_public(
@@ -1091,7 +1096,44 @@ async def read_document_thumbnail(
         raise _http_error(exc) from exc
 
 
-@router.get("/documents/{document_id}", response_model=ManagedDocumentDetail)
+@router.get("/documents/{document_id}/dataset-attachments", response_model=DocumentDatasetAttachments)
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
+async def read_document_datasets(document_id: UUID, agent_id: int | None = Query(default=None, gt=0)) -> DocumentDatasetAttachments:
+    try:
+        actor = await _document_request_actor(document_id, agent_id)
+        items, version = await dataset_attachments.list_references(document_id, actor, dataset_actor=await current_management_scope())
+        return DocumentDatasetAttachments(items=[DocumentDatasetAttachment(uri=item.uri, title=item.title, available=item.available) for item in items], lock_version=version)
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.put("/documents/{document_id}/dataset-attachments", response_model=DocumentDatasetAttachments)
+@authorize(privileges=Privileges.MEMORY_EDIT)
+async def attach_document_dataset(document_id: UUID, data: DocumentDatasetAttachmentWrite,
+    actor_agent_id: int | None = Query(default=None, gt=0)) -> DocumentDatasetAttachments:
+    try:
+        actor = await _document_request_actor(document_id, actor_agent_id)
+        items, version = await dataset_attachments.change_reference(document_id, data.dataset_id, actor,
+            dataset_actor=await current_management_scope(), expected_lock_version=data.expected_lock_version)
+        return DocumentDatasetAttachments(items=[DocumentDatasetAttachment(uri=item.uri, title=item.title, available=item.available) for item in items], lock_version=version)
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.delete("/documents/{document_id}/dataset-attachments/{dataset_id}", response_model=DocumentDatasetAttachments)
+@authorize(privileges=Privileges.MEMORY_EDIT)
+async def detach_document_dataset(document_id: UUID, dataset_id: UUID, expected_lock_version: int = Query(ge=1),
+    actor_agent_id: int | None = Query(default=None, gt=0)) -> DocumentDatasetAttachments:
+    try:
+        actor = await _document_request_actor(document_id, actor_agent_id)
+        items, version = await dataset_attachments.change_reference(document_id, dataset_id, actor,
+            dataset_actor=await current_management_scope(), expected_lock_version=expected_lock_version, remove=True)
+        return DocumentDatasetAttachments(items=[DocumentDatasetAttachment(uri=item.uri, title=item.title, available=item.available) for item in items], lock_version=version)
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.get("/documents/{document_id}", response_model=ManagedDocumentDetail | DocumentResourceRedirect)
 @authorize(
     privileges=[
         Privileges.MEMORY_ACCESS,
@@ -1100,7 +1142,7 @@ async def read_document_thumbnail(
     ],
     assertion=ManagedDocumentAccessAssertion,
 )
-async def read_managed_document(document_id: UUID, agent_id: Annotated[int | None, Query(gt=0)] = None) -> ManagedDocumentDetail:
+async def read_managed_document(document_id: UUID, agent_id: Annotated[int | None, Query(gt=0)] = None) -> ManagedDocumentDetail | DocumentResourceRedirect:
     try:
         scope = await current_management_scope()
         if agent_id is not None:
@@ -1111,6 +1153,8 @@ async def read_managed_document(document_id: UUID, agent_id: Annotated[int | Non
         item, content, access, content_type, media_type = await service.get_item(
             document_id, agent_id=actor, include_revisions=False,
         )
+        if item.document_type == "dataset":
+            return DocumentResourceRedirect(resource_uri=f"data://{item.id}")
         return ManagedDocumentDetail(
             item=await service.item_to_detail(item, content, access, content_type=content_type, media_type=media_type),
             agent_id=actor if isinstance(actor, int) else None,

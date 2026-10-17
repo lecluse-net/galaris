@@ -174,6 +174,15 @@ def test_links_reject_unsupported_identity(uri):
     assert not valid_link(uri)
 
 
+@pytest.mark.parametrize("scheme", ["document", "data"])
+def test_editorial_references_preserve_distinct_resource_schemes(scheme):
+    uri = f"{scheme}://{DOCUMENT}"
+    content = f'<p><a href="{uri}">Synthetic resource</a></p>'
+    assert valid_link(uri)
+    assert f'href="{uri}"' in normalize_html(content, profile="document")
+    assert not valid_link(uri + "/other")
+
+
 def test_empty_tables_and_separators_are_visible_structures():
     table = "<table><tbody><tr><td><p></p></td></tr></tbody></table>"
     assert normalize_html(table) == table

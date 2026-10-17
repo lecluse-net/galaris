@@ -5,6 +5,7 @@ from .document_app_security import AppConsentRequired, AppWriteLimitError
 from .dataset_port import register_dataset_compatibility, refresh_dataset_projection, legacy_dataset_access, budget_reserved as dataset_budget_reserved
 from .dataset_migration import legacy_dataset_ids, legacy_dataset_snapshot, legacy_dataset_exists
 from .dataset_references import list_selectable_documents
+from .dataset_attachments import DatasetAttachmentReference, register_dataset_attachment_reader
 from .document_attachment_service import validate_attachment_content
 from .document_types import register_document_validator
 from .schemas import DocumentCollaborator, DocumentSharing, DocumentSharingLevelUpdate
@@ -122,6 +123,7 @@ __all__ = [
     "legacy_dataset_access",
     "list_selectable_documents",
     "register_dataset_compatibility", "refresh_dataset_projection", "legacy_dataset_ids", "legacy_dataset_snapshot", "legacy_dataset_exists", "validate_attachment_content",
+    "DatasetAttachmentReference", "register_dataset_attachment_reader",
     "DocumentSharingLevelUpdate", "DocumentSharing", "DocumentCollaborator", "resource_sharing_directory", "find_dataset_document_usages",
     "register_document_validator", "create_workflow_document", "read_workflow_document", "write_workflow_document", "integrate_workflow_values",
     "workflow_document_actor", "workflow_document_access", "workflow_document_readable_ids", "prepare_workflow_document_read", "workflow_history", "workflow_revision", "delete_workflow_revision",

@@ -69,7 +69,7 @@
             </q-chip>
           </div>
         </q-toolbar-title>
-        <DocumentAppPermissions v-if="!isDataset && !isProcess" :document-id="currentDocument.id" :revision="currentDocument.revision"
+        <DocumentAppPermissions v-if="!isProcess" :document-id="currentDocument.id" :revision="currentDocument.revision"
           :disabled="hasUnsavedChanges || !!conflictDocument"
           :can-write="privilegeStore.hasPrivilege(privileges.MEMORY_EDIT) || privilegeStore.hasPrivilege(privileges.MEMORY_ADMIN)"
           @changed="appPermissionsGeneration++" />
@@ -205,21 +205,10 @@
         <div class="col-12">
           <q-banner v-if="currentDocument.content_type !== 'text'" dense>{{ t('memory.binaryContent') }}</q-banner>
           <q-btn v-else-if="isProcess && currentDocument.metadata?.process_code" icon="account_tree" :label="t('nativeProcesses.visual')" :to="`/process/internal/${currentDocument.metadata.process_code}`" />
-          <q-input v-else-if="!isDataset && !currentDocument.media_type.startsWith('text/')"
+          <q-input v-else-if="!currentDocument.media_type.startsWith('text/')"
             :model-value="editorContent" type="textarea" outlined readonly autogrow :label="t('documents.content')" />
-          <CodeEditor
-            v-else-if="isDataset"
-            :key="documentId + ':' + agentId"
-            v-model="editorContent"
-            language="json"
-            :label="t('documents.content')"
-            :readonly="!canEditDocument"
-            :min-lines="20"
-            :visible-lines="35"
-          />
-          <div v-if="isDataset && !validDataset" role="alert" class="text-negative q-mt-sm">{{ t('documents.invalidDataset') }}</div>
           <RichTextEditor
-            v-else-if="!isDataset && currentDocument.content_type === 'text' && currentDocument.media_type.startsWith('text/')"
+            v-else-if="currentDocument.content_type === 'text' && currentDocument.media_type.startsWith('text/')"
             ref="richEditor"
             :key="documentId + ':' + agentId"
             v-model="editorContent"
@@ -247,12 +236,11 @@
             </template>
           </RichTextEditor>
         </div>
-        <div class="col-12" :class="{ 'document-editor-attachments': !isDataset }">
+        <div class="col-12 document-editor-attachments">
           <DocumentAttachments
-            :allow-insertion="!isDataset"
             @insert="insertAttachment"
             ref="attachmentPanel"
-            :content="isDataset ? '' : editorContent"
+            :content="editorContent"
             :document-id="currentDocument.id"
             :agent-id="agentId"
             :attachments="attachments"
@@ -261,6 +249,8 @@
             @added="onAttachmentAdded"
             @removed="onAttachmentRemoved"
           />
+          <DocumentDatasetAttachments v-if="!isGoalDocument(currentDocument) && !isProcess" :key="currentDocument.id"
+            :document-id="currentDocument.id" :agent-id="agentId" :editable="canEditDocument" @changed="onSharingChanged" />
         </div>
       </q-card-section>
       <DocumentHistoryDialog
@@ -302,10 +292,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { CodeEditor, RichTextEditor, richLinkHref, documentResourceHtml, documentResourceHref } from '@/core/util'
+import { RichTextEditor, richLinkHref, documentResourceHtml, documentResourceHref } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { AgentAvatar, useAgentStore } from '@/app/agent'
-import { memoryService } from '../services/memoryService'
+import { DatasetDocumentRedirect, memoryService } from '../services/memoryService'
 import { useDocumentMutations } from '../stores/documentMutations'
 import { reconcileLibrarySnapshot } from '../librarySnapshot'
 import type {
@@ -321,6 +311,7 @@ import type {
 } from '../types'
 import MemorySharingPanel from './MemorySharingPanel.vue'
 import DocumentAttachments from './DocumentAttachments.vue'
+import DocumentDatasetAttachments from './DocumentDatasetAttachments.vue'
 import DocumentHistoryDialog from './DocumentHistoryDialog.vue'
 
 type DocumentShareAccess = 'none' | 'read' | 'edit'
@@ -404,12 +395,7 @@ const autosaveState = ref<AutosaveState>('saved')
 const editorTitle = ref('')
 const editorOwner = ref('')
 const editorContent = ref('')
-const isDataset = computed(() => currentDocument.value?.document_type === 'dataset')
 const isProcess = computed(() => currentDocument.value?.document_type === 'process')
-const validDataset = computed(() => {
-  if (!isDataset.value) return true
-  try { JSON.parse(editorContent.value); return true } catch { return false }
-})
 const editorKeywords = ref<string[]>([])
 const keywordOptions = ref<string[]>([])
 const filteredKeywordOptions = ref<string[]>([])
@@ -842,6 +828,7 @@ async function loadDocument(): Promise<void> {
     initialDocument = null
     const document = seed?.id === props.documentId ? seed : await memoryService.getDocument(props.documentId, props.agentId)
     if (generation !== loadGeneration) return
+    if (document.document_type === 'dataset') throw new DatasetDocumentRedirect(`data://${document.id}`)
     if (document.node_kind !== 'document') throw new Error('The resource is not a document.')
     applyDocument(document, 'loaded')
     // Ancillary catalogues must not keep the current document behind a loading screen.
@@ -849,6 +836,7 @@ async function loadDocument(): Promise<void> {
     void Promise.all([loadOwnerOptions(), loadKeywords(), loadAttachments()])
   } catch (error) {
     if (generation !== loadGeneration) return
+    if (error instanceof DatasetDocumentRedirect) { await router.replace(error.href); return }
     handleRefreshError(error)
   } finally {
     if (generation === loadGeneration) loading.value = false
@@ -910,7 +898,7 @@ function scheduleAutosave(delay = 700): void {
   if (deletingDocument.value) return
   if (conflictDocument.value) return
   if (applyingDocument || !canSaveDocument.value || !currentDocument.value) return
-  if (!editorTitle.value.trim() || !editorOwner.value || !validDataset.value) {
+  if (!editorTitle.value.trim() || !editorOwner.value) {
     autosaveState.value = 'invalid'
     return
   }
@@ -1009,7 +997,7 @@ async function persistAutosave(): Promise<void> {
   const document = currentDocument.value
   const base = lastSavedDraft.value
   if (!document || !base || !canSaveDocument.value) return
-  if (!editorTitle.value.trim() || !editorOwner.value || !validDataset.value) {
+  if (!editorTitle.value.trim() || !editorOwner.value) {
     autosaveState.value = 'invalid'
     return
   }
@@ -1029,7 +1017,7 @@ async function persistAutosave(): Promise<void> {
   try {
     const update = canEditDocument.value ? propertyUpdate(document, base, draft) : null
     if (update) {
-      if (update.payload) update.media_type = isDataset.value ? 'application/json' : 'text/html'
+      if (update.payload) update.media_type = 'text/html'
       const updated = await memoryService.updateDocument(document.id, props.agentId, update)
       applyPublicDocument(updated)
       persisted = {

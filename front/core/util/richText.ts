@@ -6,13 +6,14 @@ export type ContentProfile = 'rich-text' | 'document'
 export const CONTENT_PROFILE_VERSION = 1
 export interface RichLinkTarget { uri: string; title: string; context: string }
 export interface RichContentContribution {
+  schemes?: readonly string[]
   search: (query: string) => Promise<RichLinkTarget[]>
   href: (uri: string) => string | null
 }
 interface ContributionModule { default: RichContentContribution }
 const contributions = Object.values(import.meta.glob<ContributionModule>('../../app/*/richContent.ts', { eager: true })).map(value => value.default)
 const uuid = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}'
-const internal = new RegExp(`^(?:(?:document|memory)://${uuid}|galaris://(?:goal|task)/${uuid}|galaris://agent/[1-9][0-9]*)$`)
+const internal = new RegExp(`^(?:(?:document|memory|data)://${uuid}|galaris://(?:goal|task)/${uuid}|galaris://agent/[1-9][0-9]*)$`)
 const attachment = new RegExp(`^document://(${uuid})/attachments/(${uuid})$`)
 export function attachmentReference(uri: string): [string, string] | null {
   const match = attachment.exec(uri)
@@ -32,8 +33,9 @@ export function richLinkHref(uri: string): string | null {
   if (!internal.test(uri)) return uri
   return contributions.map(value => value.href(uri)).find(Boolean) ?? null
 }
-export async function searchRichLinks(query: string): Promise<RichLinkTarget[]> {
-  const results = await Promise.allSettled(contributions.map(value => value.search(query)))
+export async function searchRichLinks(query: string, scheme?: string): Promise<RichLinkTarget[]> {
+  const sources = contributions.filter(value => !scheme || value.schemes?.includes(scheme))
+  const results = await Promise.allSettled(sources.map(value => value.search(query)))
   if (results.length && results.every(value => value.status === 'rejected')) throw new Error('Content search unavailable')
   return results.flatMap(value => value.status === 'fulfilled' ? value.value : [])
 }
@@ -46,7 +48,7 @@ export function sanitizeRichHtml(html: string, profile: ContentProfile = 'rich-t
     FORCE_BODY: true,
     ALLOW_DATA_ATTR: false,
     ADD_URI_SAFE_ATTR: ['start', 'colspan', 'rowspan', 'colwidth', 'width', 'height', 'value', 'data-color', 'data-code-lines', 'data-code-nowrap', 'type', 'async', 'defer'],
-    ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|document:\/\/|memory:\/\/|galaris:\/\/)/,
+    ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|document:\/\/|memory:\/\/|data:\/\/|galaris:\/\/)/,
   })
   const doc = new DOMParser().parseFromString('<body>' + clean, 'text/html')
   for (const element of doc.body.querySelectorAll<HTMLElement>('*')) {

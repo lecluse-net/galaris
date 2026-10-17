@@ -338,6 +338,7 @@ def graph_item_filters(
 ) -> list[ColumnElement[bool]]:
     filters: list[ColumnElement[bool]] = [
         readable_item_clause(request.agent_id),
+        MemoryItem.document_type != "dataset",
         or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
         or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
         or_(
@@ -2918,6 +2919,7 @@ async def search_items(
         .options(*_item_options(revisions=False, contents=False))
         .where(
             readable_item_clause(request.agent_id),
+            MemoryItem.document_type != "dataset",
             or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
             or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
         )

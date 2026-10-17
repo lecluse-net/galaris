@@ -328,7 +328,9 @@ a task with multiple calls may run for hours. Changes apply to new calls.
 
 ## Documents and knowledge
 
-**Knowledge → Documents** (`/documents`) holds authored content and Datasets.
+**Knowledge → Documents** (`/documents`) holds and creates authored content.
+JSON Datasets are created and managed separately under **Knowledge → Datasets**
+(`/dataset`), including those migrated from old documents.
 **Knowledge → Memory** (`/memory`) offers **List** and **Graph**: open the
 page and select the tab without assuming a URL parameter. Contacts are at
 `/memory/contacts`; thematic groupings are under **Knowledge → Thematic dossiers** (`/topic`).

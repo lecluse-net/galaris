@@ -1,4 +1,4 @@
-"""Datasets share the document lifecycle while preserving their JSON contract."""
+"""Legacy document entry points preserve the separate Dataset JSON contract."""
 
 import json
 from uuid import UUID
@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from app.file_share import resource_service as files
 from app.file_share.resource_contracts import ResourceContext
 from app.memory import document_service, service
-from app.memory.schemas import DocumentLibraryRequest, MemoryGrantUpdate, MemoryItemUpdate, MemoryPayload
+from app.memory.schemas import DocumentLibraryRequest, MemoryGrantUpdate, MemoryItemUpdate, MemoryPayload, MemorySearchRequest, MemoryGraphRootsRequest
 from app.dataset import service as datasets
 
 
@@ -92,7 +92,7 @@ async def test_invalid_dataset_never_creates_or_replaces_a_revision(agents, memo
 
 
 @pytest.mark.asyncio
-async def test_document_type_is_fixed_and_library_filters_and_sorts_both_types(agents, memory_storage):
+async def test_legacy_dataset_type_is_fixed_and_stays_out_of_the_document_library(agents, memory_storage):
     owner, _ = agents
     html = await document_service.create_document(owner_agent_id=owner.id, title="A report", content="<p>Report</p>", task_id=None)
     dataset = await document_service.create_document(owner_agent_id=owner.id, title="Z scenarios", content='{"amount":1200}', task_id=None, document_type="dataset")
@@ -103,10 +103,15 @@ async def test_document_type_is_fixed_and_library_filters_and_sorts_both_types(a
         with pytest.raises(ValidationError):
             MemoryItemUpdate.model_validate({"document_type": "html" if item == dataset else "dataset"})
     page = await service.browse_document_library(DocumentLibraryRequest(sort_by="document_type"), managed_agent_ids=frozenset({owner.id}))
-    assert [entry.item.id for entry in page.entries] == [dataset.id, html.id]
+    assert [entry.item.id for entry in page.entries] == [html.id]
     filtered = await service.browse_document_library(DocumentLibraryRequest(document_type="dataset"), managed_agent_ids=frozenset({owner.id}))
-    assert filtered.total == 1
-    assert [entry.item.id for entry in filtered.entries] == [dataset.id]
+    assert filtered.total == 0
+    assert filtered.entries == []
+    searched = await service.search_items(MemorySearchRequest(agent_id=owner.id, query="", node_kinds=["document"]))
+    assert {entry.item.id for entry in searched.hits} == {html.id}
+    graph = await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=owner.id))
+    assert html.id in {entry.id for entry in graph.nodes}
+    assert dataset.id not in {entry.id for entry in graph.nodes}
     updated = await service.update_item(dataset.id, MemoryItemUpdate(title="Renamed scenarios", keywords=["finance"]), actor_agent_id=owner.id)
     assert updated.revision == 1
     assert updated.document_type == "dataset"

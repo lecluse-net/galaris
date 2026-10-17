@@ -1,77 +1,77 @@
 import { test, expect } from '@playwright/test'
+import { collectPageErrors } from '../page-errors.mjs'
 
-test('Dataset documents keep their type, exact JSON and revisions through the real editor', async ({ page, request }) => {
+test('Documents and Datasets use separate libraries and creation paths', async ({ page, request }) => {
+  const pageErrors = collectPageErrors(page)
+  test.setTimeout(120_000)
+  await page.addLocatorHandler(page.locator('.chat-notification-prompt'), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
+  await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }))
   const fixture = await (await request.post('/api/__test/seed')).json()
-  const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
   await page.goto('/user/login')
-  await refresh
   await page.locator('input[type=email]').fill(fixture.email)
   await page.locator('input[type=password]').fill(fixture.password)
-  const authentication = page.waitForResponse(response => response.url().endsWith('/api/auth/login-json'))
+  const login = page.waitForResponse(response => response.url().endsWith('/api/auth/login-json'))
   await page.locator('button[type=submit]').click()
-  const session = await (await authentication).json()
+  const session = await (await login).json()
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
-  const created = await request.post('/api/memory/documents', { headers, data: {
+  const checked = async response => { expect(response.ok(), await response.text()).toBeTruthy(); return response.json() }
+  const dataset = await checked(await request.post('/api/datasets', { headers, data: {
+    title: 'Synthetic separate Dataset', content: '{"amount":125000}',
+  } }))
+  const rejected = await request.post('/api/memory/documents', { headers, data: {
     owner_kind: 'agent', owner_id: fixture.agent_id, actor_agent_id: fixture.agent_id,
-    document_type: 'dataset', title: 'Credit scenarios E2E',
+    document_type: 'dataset', title: 'Synthetic rejected Dataset',
   } })
-  expect(created.ok(), await created.text()).toBeTruthy()
-  const item = await created.json()
-  expect(item.document_type).toBe('dataset')
-  expect(item.media_type).toBe('application/json')
-  const itemUrl = `/api/memory/documents/${item.id}`
-  await page.goto(`/memory/documents?document_id=${item.id}`)
-  const editor = page.getByRole('textbox', { name: /^(Content|Contenu)$/, exact: true })
-  await expect(editor).toHaveValue('{}')
-  const source = '{\n  "amount": 125000,\n  "label": "<b>Literal</b>",\n  "scenarios": [12, 24]\n}\n'
-  const saved = page.waitForResponse(response => response.request().method() === 'PATCH' && response.url().includes(itemUrl))
-  await editor.fill(source)
-  expect((await saved).ok()).toBeTruthy()
-  const persisted = (await (await request.get(`${itemUrl}?agent_id=${fixture.agent_id}`, { headers })).json()).item
-  expect(persisted.document_type).toBe('dataset')
-  expect(persisted.payload.text).toBe(source)
-  expect(persisted.revision).toBe(2)
-  const memoryUrl = `/api/memory/items/${item.id}?agent_id=${fixture.agent_id}`
-  const emptySynthesis = await (await request.get(memoryUrl, { headers })).json()
-  expect(emptySynthesis.document_id).toBe(item.id)
-  expect(emptySynthesis.payload.text).toBe('')
-  expect(emptySynthesis.revision).toBe(1)
-  const summarized = await request.put(`/api/memory/items/${item.id}?actor_agent_id=${fixture.agent_id}`, {
-    headers, data: { expected_revision: 1, payload: { text: '<p>Dataset credit overview.</p>' } },
-  })
-  expect(summarized.ok(), await summarized.text()).toBeTruthy()
-  const summary = await (await request.get(memoryUrl, { headers })).json()
-  expect(summary.payload.text).toBe('<p>Dataset credit overview.</p>')
-  expect(summary.revision).toBe(2)
-  const searchable = await request.post('/api/memory/search', { headers, data: { agent_id: fixture.agent_id, query: '125000' } })
-  expect(searchable.ok(), await searchable.text()).toBeTruthy()
-  expect((await searchable.json()).map(entry => entry.id)).toEqual([item.id])
-  await page.reload()
-  await expect(editor).toHaveValue(source)
+  expect(rejected.status()).toBe(422)
 
-  for (const data of [
-    { document_type: 'html' },
-    { media_type: 'text/html', payload: { text: '<p>Changed</p>' } },
-    { payload: { text: '{' } },
-  ]) {
-    const response = await request.patch(`${itemUrl}?actor_agent_id=${fixture.agent_id}`, {
-      headers, data: { expected_revision: 2, ...data },
-    })
-    expect([409, 422]).toContain(response.status())
-  }
-  const stable = (await (await request.get(`${itemUrl}?agent_id=${fixture.agent_id}`, { headers })).json()).item
-  expect(stable.payload.text).toBe(source)
-  expect(stable.revision).toBe(2)
-  const library = await request.post('/api/memory/documents/library', { headers, data: { document_type: 'dataset', sort_by: 'document_type' } })
-  expect(library.ok(), await library.text()).toBeTruthy()
-  expect((await library.json()).entries.map(entry => entry.item.id)).toContain(item.id)
-  const restored = await request.post(`/api/memory/documents/${item.id}/content-revisions/1/restore`, { headers, data: { expected_revision: 2 } })
-  expect(restored.ok(), await restored.text()).toBeTruthy()
-  expect((await restored.json()).document_type).toBe('dataset')
+  await page.goto('/documents')
+  await page.getByRole('button', { name: /^(Créer un document|Create document)$/, exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('combobox', { name: /^(Type de document|Document type)$/, exact: true })).toHaveCount(0)
+  await dialog.getByRole('textbox', { name: /^(Titre|Title)$/, exact: true }).fill('Synthetic separate document')
+  const created = page.waitForResponse(response => response.url().endsWith('/memory/documents') && response.request().method() === 'POST')
+  await dialog.getByRole('button', { name: /^(Créer|Create)$/, exact: true }).click()
+  const document = await checked(await created)
+  expect(document.document_type).toBe('html')
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByRole('textbox', { name: /^(Titre|Title)$/, exact: true })).toHaveValue(document.title)
+  await expect(page.locator('.ck-editor__editable')).toBeVisible()
+  const library = await checked(await request.post('/api/memory/documents/library', { headers, data: {} }))
+  expect(library.entries.map(entry => entry.item.id)).toContain(document.id)
+  expect(library.entries.map(entry => entry.item.id)).not.toContain(dataset.id)
+  expect(library.entries.every(entry => entry.item.document_type !== 'dataset')).toBe(true)
+  await page.getByRole('button', { name: /^(Joindre un jeu de données|Attach a Dataset)$/ }).click()
+  await page.getByRole('dialog').getByRole('combobox', { name: /^(Jeu de données|Dataset)$/ }).click()
+  await page.getByRole('option', { name: dataset.title, exact: true }).click()
+  const attached = page.waitForResponse(response => response.url().includes('/dataset-attachments') && response.request().method() === 'PUT')
+  await page.getByRole('dialog').getByRole('button', { name: /^(Joindre|Attach)$/, exact: true }).click()
+  expect((await attached).ok()).toBeTruthy()
+  await expect(page.getByRole('link', { name: dataset.title, exact: true })).toHaveAttribute('href', `/dataset/${dataset.id}`)
   await page.reload()
-  await expect(editor).toHaveValue('{}')
-  const retained = await (await request.get(memoryUrl, { headers })).json()
-  expect(retained.payload.text).toBe('<p>Dataset credit overview.</p>')
-  expect(retained.summary_outdated).toBe(true)
+  await expect(page.getByRole('link', { name: dataset.title, exact: true })).toBeVisible()
+  const usages = await checked(await request.get(`/api/datasets/${dataset.id}/usages?kind=documents`, { headers }))
+  expect(usages.items.map(item => item.id)).toContain(`document:${document.id}`)
+  await page.getByRole('link', { name: dataset.title, exact: true }).scrollIntoViewIfNeeded()
+  await page.screenshot({ path: test.info().outputPath('documents-library.png'), fullPage: true, animations: 'disabled' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.reload()
+  await page.getByRole('link', { name: dataset.title, exact: true }).scrollIntoViewIfNeeded()
+  await page.screenshot({ path: test.info().outputPath('document-dataset-mobile.png'), fullPage: true, animations: 'disabled' })
+
+  // Historical source rows are retained, while their public Document URL resolves to Dataset.
+  const legacy = await checked(await request.post('/api/memory/items', { headers, data: {
+    owner_agent_id: fixture.agent_id, title: 'Synthetic migrated Dataset', node_kind: 'document',
+    document_type: 'dataset', media_type: 'application/json', payload: { text: '{"legacy":true}' },
+  } }))
+  const reference = await checked(await request.get(`/api/memory/documents/${legacy.id}`, { headers }))
+  expect(reference).toEqual({ resource_type: 'dataset', resource_uri: `data://${legacy.id}` })
+  await page.goto(`/memory/documents?document_id=${legacy.id}`)
+  await expect(page).toHaveURL(new RegExp(`/dataset/${legacy.id}$`))
+  await expect(page.getByRole('textbox', { name: /^(JSON content|Contenu JSON)$/ })).toHaveValue('{"legacy":true}')
+
+  await page.goto(`/dataset/${dataset.id}`)
+  await expect(page.getByRole('textbox', { name: /^(Titre|Title)$/, exact: true })).toHaveValue(dataset.title)
+  expect((await checked(await request.get(`/api/datasets/${dataset.id}`, { headers }))).content).toBe('{"amount":125000}')
+  expect(pageErrors()).toEqual([])
 })

@@ -1,6 +1,5 @@
-import type { DocumentLibraryFilters, DocumentOwnerKind, DocumentType } from './types'
+import type { DocumentLibraryFilters, DocumentOwnerKind } from './types'
 export interface LibraryFilterState {
-  document_type: DocumentType | null
   keyword: string | null
   owner_kind: DocumentOwnerKind | null
   owner: number | null
@@ -8,11 +7,11 @@ export interface LibraryFilterState {
   created_until: string
   updated_from: string
   updated_until: string
-  sort_by: 'position' | 'title' | 'created_at' | 'updated_at' | 'document_type'
+  sort_by: 'position' | 'title' | 'created_at' | 'updated_at'
   sort_desc: boolean
 }
 export function defaultLibraryFilters(): LibraryFilterState {
-  return { document_type: null, keyword: null, owner_kind: null, owner: null, created_from: '', created_until: '', updated_from: '', updated_until: '', sort_by: 'position', sort_desc: false }
+  return { keyword: null, owner_kind: null, owner: null, created_from: '', created_until: '', updated_from: '', updated_until: '', sort_by: 'position', sort_desc: false }
 }
 export function libraryRequestFilters(filters: LibraryFilterState): DocumentLibraryFilters {
   function boundary(value: string, exclusive: boolean): string | null {

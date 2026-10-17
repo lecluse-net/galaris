@@ -233,6 +233,14 @@ async def test_library_unites_owned_and_granted_documents(
         actor_agent_id=peer.id,
     )
 
+    # Migrated datasets remain addressable, but belong to the Dataset library.
+    from app.memory import document_service
+
+    dataset = await document_service.create_document(
+        owner_agent_id=managed.id, title="Synthetic legacy dataset", content="{}",
+        task_id=None, document_type="dataset", keywords=["dataset-only"],
+    )
+
     if legacy_form:
         from sqlalchemy import text
 
@@ -244,12 +252,21 @@ async def test_library_unites_owned_and_granted_documents(
         db.expire(owned, ["document"])
 
     page = await service.browse_document_library(
-        DocumentLibraryRequest(),
+        DocumentLibraryRequest(include_keywords=True),
         managed_agent_ids=frozenset({managed.id}),
     )
     by_id = {entry.item.id: entry for entry in page.entries}
 
     assert set(by_id) == {owned.id, shared.id}
+    assert page.total == 2
+    assert "dataset-only" not in page.keywords
+    assert "dataset-only" not in await service.list_document_keywords(managed.id)
+    dataset_page = await service.browse_document_library(
+        DocumentLibraryRequest(document_type="dataset"),
+        managed_agent_ids=frozenset({managed.id}),
+    )
+    assert dataset_page.total == 0 and dataset_page.entries == []
+    assert (await service.get_item(dataset.id, agent_id=managed.id))[1] == b"{}"
     assert by_id[owned.id].agent_ids == [managed.id]
     assert by_id[owned.id].writable_agent_ids == [managed.id]
     assert by_id[shared.id].agent_ids == [managed.id]
@@ -403,13 +420,11 @@ async def test_pdf_export_requires_read_access_and_preserves_the_saved_revision(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("document_type", ["html", "dataset"])
 async def test_user_owned_document_is_created_with_a_writable_agent(
     agents: tuple[Agent, Agent],
     db: AsyncSession,
     memory_storage: Path,
     monkeypatch: pytest.MonkeyPatch,
-    document_type,
 ) -> None:
     from app.memory import router as memory_router
 
@@ -440,7 +455,6 @@ async def test_user_owned_document_is_created_with_a_writable_agent(
             owner_id=user.id,
             actor_agent_id=editor.id,
             title="My document",
-            document_type=document_type,
             folder="Projects",
         )
     )
@@ -457,9 +471,40 @@ async def test_user_owned_document_is_created_with_a_writable_agent(
     assert document.grants == []
     assert not (await service.effective_access(document, editor.id)).can_read
     assert access.can_write is True
-    assert document.document_type == document_type
-    assert _content == (b"{}" if document_type == "dataset" else b"")
-    assert created.document_type == document_type
+    assert document.document_type == "html"
+    assert _content == b""
+    assert created.document_type == "html"
+
+
+def test_document_creation_rejects_dataset_type() -> None:
+    with pytest.raises(ValidationError):
+        DocumentCreate.model_validate({
+            "owner_kind": "agent", "owner_id": 1, "actor_agent_id": 1,
+            "title": "Synthetic data", "document_type": "dataset",
+        })
+
+
+@pytest.mark.asyncio
+async def test_legacy_dataset_document_read_resolves_to_dataset_without_document_payload(
+    agents, memory_storage, monkeypatch,
+):
+    from app.memory import document_service, router
+
+    owner, other = agents
+    dataset = await document_service.create_document(
+        owner_agent_id=owner.id, title="Synthetic legacy data", content='{"amount":1200}',
+        task_id=None, document_type="dataset",
+    )
+    monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(
+        user_id=1, agent_ids=frozenset({owner.id, other.id}),
+    )))
+    result = await read_managed_document(dataset.id, agent_id=owner.id)
+    assert result.model_dump(mode="json") == {
+        "resource_type": "dataset", "resource_uri": f"data://{dataset.id}",
+    }
+    with pytest.raises(HTTPException) as denied:
+        await read_managed_document(dataset.id, agent_id=other.id)
+    assert denied.value.status_code in {403, 404}
 
 
 @pytest.mark.asyncio

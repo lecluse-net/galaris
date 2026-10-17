@@ -252,7 +252,7 @@ On desktop, when a document is open alongside the conversation, each message als
 Agent the last text selection in that document, the last cursor position, and an excerpt of
 the area visible when you send. Select a passage, then write “rephrase this passage”; moving
 to the message field preserves that reference. This works in read-only documents, HTML content,
-Source, and JSON Datasets. Long excerpts are truncated and include the document revision.
+and Source. Datasets have their own editor. Long excerpts are truncated and include the document revision.
 Switching documents or replacing content invalidates previous positions; closing the pane stops
 sending this context. The internals of embedded applications are not inspected. The Agent’s
 document permissions remain unchanged.
@@ -540,7 +540,7 @@ In **Memory**, authorized accounts can:
 - view content, revisions, provenance, relationships, and uses;
 - correct or archive an ordinary memory;
 - share a document for reading or editing from its editor;
-- create HTML working documents or JSON Datasets that evolve across multiple Tasks;
+- create HTML working documents that evolve across multiple Tasks;
 - explore the graph over a given period;
 - permanently forget an item, an irreversible action reserved for the appropriate permissions.
 

@@ -356,8 +356,10 @@ Les changements s’appliquent aux nouveaux appels.
 
 ## Documents et connaissances
 
-**Connaissances → Documents** (`/documents`) sert à retrouver les contenus rédigés
-et les jeux de données. **Connaissances → Mémoire** (`/memory`) propose **Liste**
+**Connaissances → Documents** (`/documents`) sert à retrouver et créer les contenus rédigés.
+Les jeux de données JSON se créent et se gèrent séparément dans
+**Connaissances → Jeux de données** (`/dataset`), y compris ceux issus d'anciens documents.
+**Connaissances → Mémoire** (`/memory`) propose **Liste**
 et **Graphe** : ouvrez la page puis choisissez l’onglet, sans supposer un paramètre d’URL.
 Les contacts sont dans `/memory/contacts` ; les regroupements thématiques dans
 **Connaissances → Sujets** (`/topic`). Le partage d’un lien ne donne pas accès au contenu.

@@ -399,6 +399,12 @@ export default {
         denied: 'Accès refusé ou révoqué. L’application a été arrêtée.', failed: 'Opération impossible. Vérifiez les droits, le format des données et la connexion avant de réessayer.',
       },
       types: { html: 'HTML', dataset: 'Jeu de données', process: 'Process' },
+      datasetAttachments: {
+        title: 'Jeux de données joints', add: 'Joindre un jeu de données', select: 'Jeu de données', attach: 'Joindre',
+        hint: 'Le lien utilise les données courantes. Le partage du document ne donne pas accès au jeu de données.',
+        empty: 'Aucun jeu de données joint.', unavailable: 'Jeu de données inaccessible',
+        remove: 'Détacher {name}', error: 'Impossible de charger ou modifier les jeux de données joints. Rechargez puis réessayez.',
+      },
       invalidDataset: 'Le JSON doit être valide pour être enregistré. Votre brouillon est conservé.',
       autosaveError: 'Échec de l’enregistrement automatique',
       title: 'Titre',
@@ -884,6 +890,12 @@ export default {
         denied: 'Access denied or revoked. The application has been stopped.', failed: 'Operation failed. Check permissions, data format and connection before retrying.',
       },
       types: { html: 'HTML', dataset: 'Dataset', process: 'Processus' },
+      datasetAttachments: {
+        title: 'Attached Datasets', add: 'Attach a Dataset', select: 'Dataset', attach: 'Attach',
+        hint: 'The link uses current data. Sharing this Document does not grant Dataset access.',
+        empty: 'No attached Datasets.', unavailable: 'Unavailable Dataset',
+        remove: 'Detach {name}', error: 'Unable to load or change attached Datasets. Reload and try again.',
+      },
       invalidDataset: 'JSON must be valid before saving. Your draft is preserved.',
       autosaveError: 'Automatic save failed',
       title: 'Title',
@@ -1146,6 +1158,12 @@ export default {
         denied: '访问被拒绝或撤销。应用已停止。', failed: '操作失败。重试前请检查权限、数据格式和连接。',
       },
       types: { html: 'HTML', dataset: '数据集', process: '流程' },
+      datasetAttachments: {
+        title: '已附加的数据集', add: '附加数据集', select: '数据集', attach: '附加',
+        hint: '链接使用当前数据。共享文档不会授予数据集访问权限。',
+        empty: '没有附加的数据集。', unavailable: '数据集不可用',
+        remove: '分离 {name}', error: '无法加载或更改附加的数据集。请重新加载后重试。',
+      },
       invalidDataset: '保存前 JSON 必须有效。草稿已保留。',
       title: '标题', folder: '文件夹', folderInvalid: '文件夹不能包含“.”或“..”，且最多 500 个字符。', folderRoot: '根目录', folderEmpty: '尚无文件夹。', createSubfolder: '创建子文件夹',
       folderAppearance: {

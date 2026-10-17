@@ -25,6 +25,8 @@ import type {
   DocumentOwnerKind,
   DocumentOwnerOptions,
   ManagedDocumentDetail,
+  DocumentResourceRedirect,
+  DocumentDatasetAttachments,
   MemoryItem,
   MemoryItemCreate,
   MemoryItemDetail,
@@ -43,7 +45,32 @@ import type {
   MemorySortField,
 } from '../types'
 
+export class DatasetDocumentRedirect extends Error {
+  constructor(readonly uri: string) { super('This resource is a Dataset.') }
+  get href(): string { return `/dataset/${encodeURIComponent(this.uri.slice('data://'.length))}` }
+}
+
+function editorialDocument(detail: ManagedDocumentDetail | DocumentResourceRedirect): ManagedDocumentDetail {
+  if ('resource_type' in detail) throw new DatasetDocumentRedirect(detail.resource_uri)
+  // Also handle responses/seeds retained by a client during the transition.
+  if (detail.item.document_type === 'dataset') throw new DatasetDocumentRedirect(`data://${detail.item.id}`)
+  return detail
+}
+
 export const memoryService = {
+  async documentDatasets(id: string, agentId: number | null): Promise<DocumentDatasetAttachments> {
+    return (await api.get<DocumentDatasetAttachments>(`/memory/documents/${id}/dataset-attachments`, { params: { agent_id: agentId } })).data
+  },
+  async attachDataset(id: string, datasetId: string, agentId: number | null, version: number): Promise<DocumentDatasetAttachments> {
+    return (await api.put<DocumentDatasetAttachments>(`/memory/documents/${id}/dataset-attachments`, {
+      dataset_id: datasetId, expected_lock_version: version,
+    }, { params: { actor_agent_id: agentId } })).data
+  },
+  async detachDataset(id: string, datasetId: string, agentId: number | null, version: number): Promise<DocumentDatasetAttachments> {
+    return (await api.delete<DocumentDatasetAttachments>(`/memory/documents/${id}/dataset-attachments/${datasetId}`, {
+      params: { actor_agent_id: agentId, expected_lock_version: version },
+    })).data
+  },
   async readGraphState(context: GraphContext): Promise<GraphState> {
     return (await api.post<GraphState>('/memory/graph/state/read', context)).data
   },
@@ -137,10 +164,11 @@ export const memoryService = {
     }, { signal })).data
   },
   async documentThumbnailSnapshot(id: string, agentId: number | null, signal: AbortSignal): Promise<{ html: string; revision: number; lock_version: number } | null> {
-    const item = (await api.get<ManagedDocumentDetail>(`/memory/documents/${id}`, {
+    const detail = (await api.get<ManagedDocumentDetail | DocumentResourceRedirect>(`/memory/documents/${id}`, {
       params: { agent_id: agentId ?? undefined }, signal,
-    })).data.item
-    if (item.document_type === 'dataset') return null
+    })).data
+    if ('resource_type' in detail || detail.item.document_type === 'dataset') return null
+    const item = detail.item
     const { preparePortableDocumentSnapshot } = await import('@/core/util/facade')
     const html = await preparePortableDocumentSnapshot(item.payload.text ?? '', item.title, signal,
       (documentId, attachmentId) => memoryService.documentAttachmentBlob(documentId, attachmentId, agentId, signal))
@@ -228,8 +256,8 @@ export const memoryService = {
   },
 
   async getManagedDocument(id: string): Promise<ManagedDocumentDetail> {
-    const response = await api.get<ManagedDocumentDetail>(`/memory/documents/${id}`)
-    return response.data
+    const response = await api.get<ManagedDocumentDetail | DocumentResourceRedirect>(`/memory/documents/${id}`)
+    return editorialDocument(response.data)
   },
 
   async listDocumentContentRevisions(id: string, limit = 50, offset = 0): Promise<DocumentContentRevisionPage> {
@@ -472,9 +500,9 @@ export const memoryService = {
   },
 
   async getDocument(id: string, agentId?: number | null): Promise<MemoryItemDetail> {
-    return (await api.get<{ item: MemoryItemDetail }>(`/memory/documents/${id}`, {
+    return editorialDocument((await api.get<ManagedDocumentDetail | DocumentResourceRedirect>(`/memory/documents/${id}`, {
       params: { agent_id: agentId ?? undefined },
-    })).data.item
+    })).data).item
   },
 
   async updateDocument(id: string, agentId: number | null, data: MemoryItemUpdate): Promise<MemoryItem> {

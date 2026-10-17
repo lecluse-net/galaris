@@ -6,7 +6,6 @@
       <q-form class="library-filters q-pa-md q-gutter-sm" @submit="apply">
         <div class="text-subtitle2">{{ t('documents.library.filters') }}</div>
         <q-toggle v-model="onlyUnclassified" dense :label="t('documents.library.unclassified')" />
-        <q-select v-model="draft.document_type" dense outlined clearable emit-value map-options :label="t('documents.documentType')" :options="documentTypes" />
         <q-select v-model="draft.keyword" dense outlined clearable :label="t('documents.keywordFilter')" :options="keywords" />
         <q-select v-model="draft.owner_kind" dense outlined clearable emit-value map-options :label="t('documents.library.ownerKind')" :options="ownerKinds" @update:model-value="draft.owner = null" />
         <q-select v-model="draft.owner" dense outlined clearable emit-value map-options use-input input-debounce="0" :label="t('documents.library.owner')" :options="ownerOptions" @filter="filterOwners" :disable="!draft.owner_kind" />
@@ -47,14 +46,12 @@ const datePairs = [{ label: 'created', fields: dateFields.slice(0, 2) }, { label
 const invalidDates = computed(() => Boolean((draft.value.created_from && draft.value.created_until && draft.value.created_from > draft.value.created_until)
   || (draft.value.updated_from && draft.value.updated_until && draft.value.updated_from > draft.value.updated_until)))
 const ownerKinds = computed(() => ['agent', 'user'].map(value => ({ value, label: t(`documents.library.${value}`) })))
-const documentTypes = computed(() => ['html', 'dataset'].map(value => ({ value, label: t(`documents.types.${value}`) })))
 const sortOptions = computed(() => [
   { value: 'position', label: t('documents.library.manualOrder') },
-  { value: 'document_type', label: t('documents.documentType') },
   { value: 'title', label: t('documents.library.title') }, { value: 'created_at', label: t('documents.library.created') }, { value: 'updated_at', label: t('documents.library.updated') },
 ])
 const ownerOptions = computed(() => props.owners.filter(owner => owner.kind === draft.value.owner_kind && owner.label.toLocaleLowerCase().includes(ownerSearch.value)).map(owner => ({ value: owner.id, label: owner.label })))
-const activeCount = computed(() => Number(onlyUnclassified.value) + Number(Boolean(model.value.document_type)) + Number(Boolean(model.value.owner_kind)) + Number(Boolean(model.value.keyword))
+const activeCount = computed(() => Number(onlyUnclassified.value) + Number(Boolean(model.value.owner_kind)) + Number(Boolean(model.value.keyword))
   + dateFields.filter(field => model.value[field.key]).length + Number(model.value.sort_by !== 'position' || model.value.sort_desc))
 function filterOwners(value: string, update: (callback: () => void) => void): void { update(() => { ownerSearch.value = value.toLocaleLowerCase() }) }
 function apply(): void { if (!invalidDates.value) model.value = { ...draft.value } }

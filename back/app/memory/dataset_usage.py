@@ -18,7 +18,8 @@ async def find_dataset_document_usages(uris: tuple[str, ...], actor: AgentManage
     query = select(Document, MemoryItem).join(MemoryItem, MemoryItem.id == Document.memory_item_id).where(
         Document.document_type == document_type,
         or_(human_document_clause(actor.user_id), readable_item_for_agents_clause(actor.agent_ids)),
-        or_(*(Document.content.contains(uri, autoescape=True) for uri in uris)))
+        or_(*(Document.content.contains(uri, autoescape=True) for uri in uris),
+            *(MemoryItem.metadata_["dataset_attachments"].contains([uri]) for uri in uris)))
     if document_type == "process":
         from .workflow_documents import workflow_document_policy_ids
         query = query.where(Document.id.in_(workflow_document_policy_ids(actor)))

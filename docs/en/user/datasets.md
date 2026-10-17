@@ -2,7 +2,14 @@
 
 # Datasets
 
-Open **Knowledge → Datasets** to create JSON data. Each Dataset has its own `data://`
+Open **Knowledge → Datasets** to create JSON data. Datasets belong to this dedicated
+library and no longer appear in the Documents library or its creation dialog.
+An old Document link to a Dataset now opens its dedicated editor. An HTML Document can
+read its values for display or computation with the viewer's permissions and consent.
+**Attach a Dataset** in a Document adds a live attachment. The Dataset retains its own
+URI, history and sharing. **Detach** removes the link without deleting data; sharing the
+Document does not share its Datasets. Unavailable attachments no longer reveal their title.
+Each Dataset has its own `data://`
 address, sharing and revision history. Content can be an object, array or scalar value,
 without an associated schema. Invalid JSON and conflicts preserve your local draft;
 keep any edits you need before reloading.

@@ -28,6 +28,22 @@ variables des processus ; leur définition et leur validation appartiennent à P
 Les applications documentaires utilisent le pont Dataset avec les droits du lecteur et
 son consentement personnel. Les écritures libres et les restaurations vérifient le JSON,
 les droits et la révision, sans imposer de structure métier.
+La bibliothèque Documents exclut les Datasets, y compris les projections historiques,
+avant comptage, pagination et calcul des filtres. `POST /memory/documents` refuse le type
+`dataset` ; la création passe par `POST /datasets` ou `file_create(path="data://", ...)`.
+La lecture d'un ancien Dataset par `GET /memory/documents/{id}` renvoie uniquement
+`{resource_type: "dataset", resource_uri: "data://…"}` après contrôle des droits,
+sans contenu documentaire. Les anciens liens ouvrent l'éditeur Dataset. La recherche
+Memory et son graphe excluent ces anciennes projections des Documents courants.
+Les liens HTML `data://` restent des références Dataset et se recherchent dans son domaine.
+
+Un Document peut joindre des références Dataset vivantes via ses `dataset-attachments`.
+Le manifeste documentaire conserve uniquement des URI ; ni copie JSON, ni droits Dataset
+ne sont créés. Les mutations vérifient l'écriture du Document et sa version de verrouillage,
+ainsi que la lecture indépendante du Dataset à l'ajout. Les références devenues inaccessibles
+n'exposent plus leur titre. La suppression du lien conserve le Dataset. `file_list` sur les
+PJ renvoie les URI `data://` lisibles, sans proposer de suppression de la ressource jointe.
+Les utilisations Dataset incluent ces références après filtrage des droits du Document.
 Les écritures utilisent `expected_revision` ; le partage utilise `expected_lock_version`.
 Le provider `data://` enregistré dans File Sharing utilise les mêmes services.
 
@@ -60,7 +76,7 @@ métadonnées, version, empreinte et grants, sans contenu ni historique. La supp
 retire la projection des lecteurs courants, en conservant les sources et l'alias comme
 preuves de migration. La lecture de cet état passe par une requête async explicite.
 
-Les anciens appels Memory restent des adaptateurs vers Dataset pour les éditeurs,
+Les anciens appels métier Memory restent des adaptateurs vers Dataset pour les consommateurs historiques,
 applications HTML, pièces jointes et Process encore raccordés. Les nouveaux consommateurs
 utilisent `app.dataset.facade` ou File Sharing avec `data://`.
 

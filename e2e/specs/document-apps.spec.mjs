@@ -11,14 +11,13 @@ test('two document applications collect into the same Dataset with isolated Java
   const session = await (await authentication).json()
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
-  const datasetResponse = await request.post('/api/memory/items', { headers, data: {
-    owner_agent_id: fixture.agent_id, title: 'Synthetic responses', node_kind: 'document',
-    document_type: 'dataset', media_type: 'application/json', payload: { text: '[]' },
+  const datasetResponse = await request.post('/api/datasets', { headers, data: {
+    title: 'Synthetic responses', content: '[]',
   } })
   expect(datasetResponse.ok(), await datasetResponse.text()).toBeTruthy()
   const dataset = await datasetResponse.json()
   const definition = {
-    id: 'form', title: 'Response form', datasets: { entries: { uri: `document://${dataset.id}`, access: 'write' } },
+    id: 'form', title: 'Response form', datasets: { entries: { uri: `data://${dataset.id}`, access: 'write' } },
     html: '<form><label>Answer <input name="answer" required></label><button>Submit</button></form><p id="result" role="status"></p><button id="navigate">Navigate</button>',
     javascript: `
       document.querySelector('form').onsubmit = async event => {
@@ -54,7 +53,7 @@ test('two document applications collect into the same Dataset with isolated Java
     await page.goto(`/memory/documents?document_id=${documents[index].id}`)
     if (index === 0) {
       await page.getByRole('button', { name: 'Source', exact: true }).click()
-      await page.locator('.ck-source-editing-area textarea').fill('<p>Data collection</p>' + photo + definition.html.replace('<form>', `<form data-dataset="document://${dataset.id}">`) + '<script>' + definition.javascript + '</script>')
+      await page.locator('.ck-source-editing-area textarea').fill('<p>Data collection</p>' + photo + definition.html.replace('<form>', `<form data-dataset="data://${dataset.id}">`) + '<script>' + definition.javascript + '</script>')
       await page.getByRole('button', { name: 'Source', exact: true }).click()
     }
     await expect(page.getByRole('button', { name: 'Source', exact: true })).toBeVisible()
@@ -66,7 +65,7 @@ test('two document applications collect into the same Dataset with isolated Java
     await app.getByRole('textbox').fill('Unapproved')
     await app.getByRole('button', { name: /^(Submit|Save|Enregistrer)$/ }).click()
     await expect(app.getByRole('status')).toContainText(/Authorize|Autorisez/)
-    const unchanged = (await (await request.get(`/api/memory/documents/${dataset.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
+    const unchanged = await (await request.get(`/api/datasets/${dataset.id}`, { headers })).json()
     expect(unchanged.revision).toBe(index + 1)
     await page.getByRole('button', { name: /^(Application permissions|Permissions des applications)$/ }).click()
     await page.getByRole('combobox', { name: /^(My permission|Mon autorisation)$/ }).click()
@@ -100,15 +99,15 @@ test('two document applications collect into the same Dataset with isolated Java
     const grants = await (await request.get(`/api/memory/documents/${documents[index].id}/app-permissions`, { headers })).json()
     expect(grants.grants[0].access).toBe('write')
   }
-  const stored = (await (await request.get(`/api/memory/documents/${dataset.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
-  expect(stored.document_type).toBe('dataset')
+  const stored = await (await request.get(`/api/datasets/${dataset.id}`, { headers })).json()
+  expect(stored.uri).toBe(`data://${dataset.id}`)
   expect(stored.revision).toBe(3)
-  expect(JSON.parse(stored.payload.text)).toEqual([{ answer: 'Response 0' }, { answer: 'Response 1' }])
+  expect(JSON.parse(stored.content)).toEqual([{ answer: 'Response 0' }, { answer: 'Response 1' }])
   const escaped = []
   await page.route('https://leak.example.test/**', route => { escaped.push(route.request().url()); return route.fulfill({ body: 'Unexpected access' }) })
   await page.frameLocator('.document-application iframe').frameLocator('iframe').getByRole('button', { name: 'Navigate' }).click()
   await expect(page.locator('.document-application iframe')).toHaveCount(0)
   expect(escaped).toEqual([])
-  await page.goto(`/memory/documents?document_id=${dataset.id}`)
-  await expect(page.getByRole('textbox', { name: /^(Content|Contenu)$/ })).toHaveValue(stored.payload.text)
+  await page.goto(`/dataset/${dataset.id}`)
+  await expect(page.getByRole('textbox', { name: /^(JSON content|Contenu JSON)$/ })).toHaveValue(stored.content)
 })

@@ -218,6 +218,21 @@ export interface ManagedDocumentDetail {
   agent_id: number | null
 }
 
+export interface DocumentResourceRedirect {
+  resource_type: 'dataset'
+  resource_uri: string
+}
+
+export interface DocumentDatasetAttachment {
+  uri: string
+  title: string | null
+  available: boolean
+}
+export interface DocumentDatasetAttachments {
+  items: DocumentDatasetAttachment[]
+  lock_version: number
+}
+
 export type DocumentOwnerKind = 'agent' | 'user'
 
 export interface DocumentOwnerOption {
@@ -235,7 +250,7 @@ export interface DocumentOwnerOptions {
 }
 
 export interface DocumentCreate {
-  document_type?: DocumentType
+  document_type?: Exclude<DocumentType, 'dataset'>
   owner_kind: DocumentOwnerKind
   owner_id: number
   actor_agent_id: number

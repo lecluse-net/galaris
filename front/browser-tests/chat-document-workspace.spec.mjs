@@ -170,20 +170,10 @@ test('document attention bounds long selections and clears positions after a rem
   expect(state.writes[1].document_focus.revision).toBeGreaterThan(state.writes[0].document_focus.revision)
 })
 
-for (const surface of ['source', 'dataset']) {
-  test(`document attention captures ${surface} text without markup conversion`, async ({ page }) => {
+  test('document attention captures source text without markup conversion', async ({ page }) => {
     const state = await workspace(page)
-    if (surface === 'dataset') {
-      await jsonRoute(page, '**/api/memory/documents/doc-b', { item: {
-        ...documentFixture, id: 'doc-b', title: 'Off-list document', document_type: 'dataset', media_type: 'application/json',
-        payload: { text: JSON.stringify({ label: 'Initial document body', literal: '<b>keep literal</b>', rows: Array.from({ length: 100 }, (_, i) => `Row ${i}`) }, null, 2) },
-      }, agent_id: null })
-      await page.getByRole('button', { name: 'Search accessible documents', exact: true }).click()
-      await page.getByLabel('Open document Off-list document', { exact: true }).click()
-    } else {
       await openFromSearch(page)
       await page.locator('.chat-document-pane').getByRole('button', { name: 'Source', exact: true }).click()
-    }
     const input = page.locator('.chat-document-pane .document-editor-fields textarea')
     await expect(input).toBeVisible()
     await input.evaluate(element => {
@@ -192,21 +182,12 @@ for (const surface of ['source', 'dataset']) {
       element.setSelectionRange(start, start + 'document body'.length)
       element.dispatchEvent(new Event('select', { bubbles: true }))
     })
-    if (surface === 'dataset') {
-      // Scrolling independently of the selection must report what is on screen.
-      await input.evaluate(element => {
-        element.scrollTop = element.scrollHeight
-        element.dispatchEvent(new Event('scroll'))
-      })
-    }
     await page.locator('.conversation-pane textarea').fill('Review this text')
     await page.getByRole('button', { name: 'Post', exact: true }).click()
     await expect.poll(() => state.writes.length).toBe(1)
-    expect(state.writes[0].document_focus).toMatchObject({ surface, selection: { text: 'document body' } })
-    expect(state.writes[0].document_focus.viewport.text).toContain(surface === 'dataset' ? '"Row 99"' : 'Initial document body')
-    if (surface === 'dataset') expect(state.writes[0].document_focus.viewport.text).not.toContain('Initial document body')
+    expect(state.writes[0].document_focus).toMatchObject({ surface: 'source', selection: { text: 'document body' } })
+    expect(state.writes[0].document_focus.viewport.text).toContain('Initial document body')
   })
-}
 
 test('document dialogs cover the split editor toolbar and keep their own formatting usable', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })

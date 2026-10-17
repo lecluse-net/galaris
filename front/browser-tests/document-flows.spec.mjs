@@ -128,31 +128,26 @@ test('a saved title updates every occurrence before the authoritative list and f
 })
 
 for (const mobile of [false, true]) {
-test(`a direct Dataset link reads editor content once and still refreshes remotely (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
-  const state = await library(page)
+test(`a historical Dataset link resolves once to its own editor (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+  await library(page)
   if (mobile) await page.setViewportSize({ width: 390, height: 844 })
   const id = '00000000-0000-4000-8000-000000000001'
-  // Dataset has no thumbnail capture: count editor reads independently of previews.
-  state.item = { ...state.item, id, document_type: 'dataset', media_type: 'application/json', payload: { text: '{"value":1}' } }
   let reads = 0, release
   const gate = new Promise(resolve => { release = resolve })
   await page.route('**/api/memory/documents/library', async route => { await gate; return route.fallback() })
   await jsonRoute(page, `**/api/memory/documents/${id}/attachments*`, [])
   await page.route(`**/api/memory/documents/${id}`, route => {
     reads++
-    return route.fulfill({ json: { item: state.item, agent_id: null } })
+    return route.fulfill({ json: { resource_type: 'dataset', resource_uri: `data://${id}` } })
   })
   await mount(page, 'app/memory/components/DocumentLibraryPage.vue', {
     route: `/documents?document_id=${id}`, privileges: ['MEMORY_EDIT'],
   })
   try {
-    await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Test document')
+    await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe(`/dataset/${id}`)
     expect(reads).toBe(1)
+    await expect(page.locator('.document-editor-fields')).toHaveCount(0)
   } finally { release() }
-  state.item = { ...state.item, title: 'Remote title', revision: state.item.revision + 1, lock_version: state.item.lock_version + 1 }
-  await page.evaluate(item => window.testApp.emitSocket('memory.update', { data: item }), state.item)
-  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Remote title')
-  expect(reads).toBe(2)
 })
 }
 
