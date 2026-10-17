@@ -1,7 +1,7 @@
 """RBAC-protected administration API for governed memory."""
 
 from __future__ import annotations
-from core.util import require_editorial_client, local_timezone_name
+from core.util import require_editorial_client, local_timezone_name, source_code_response_headers
 from fastapi import Depends
 
 from typing import Annotated, Any
@@ -1490,6 +1490,7 @@ async def read_document_attachment(
             headers={
                 "Cache-Control": "private, no-store",
                 "X-Content-Type-Options": "nosniff",
+                **source_code_response_headers(attachment.name, attachment.media_type),
             },
         )
     except Exception as exc:

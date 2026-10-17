@@ -19254,7 +19254,8 @@
           "front/app/memory/richContent.ts",
           "front/app/memory/services/contactService.ts",
           "front/app/memory/services/memoryService.ts",
-          "front/app/memory/stores/documentIcons.ts"
+          "front/app/memory/stores/documentIcons.ts",
+          "front/app/memory/stores/documentMutations.ts"
         ],
         "source": "app/memory",
         "target": "core/api"

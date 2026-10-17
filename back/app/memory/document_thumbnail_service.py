@@ -23,6 +23,7 @@ from core.preview import render_html_pdf, thumbnails
 from core.preview import render_model_thumbnail, supports_model
 from core.preview import render_svg_thumbnail
 from core.params import runtime_settings
+from core.util import source_code_media_type
 
 from . import document_attachment_service, document_thumbnail_cache, service
 from .schemas import DocumentAttachmentPublic, DocumentThumbnailRender
@@ -180,6 +181,8 @@ async def render_file_thumbnail(path: Path, name: str, media_type: str) -> bytes
     """Reuse bounded attachment renderers for an authorized catalogue source."""
     async with _document_capture_slots:
         media_type = media_type.split(";", 1)[0].strip().casefold()
+        if source_code_media_type(name, media_type):
+            return await asyncio.to_thread(_text_thumbnail, path)
         if supports_model(media_type, name):
             return await render_model_thumbnail(path, name, media_type)
         if Path(name).suffix.casefold() in OFFICE_EXTENSIONS:
@@ -305,7 +308,9 @@ async def _generate(
                 result = await _web_thumbnail_capture(actor_agent_id, web_url, refresh=True) if force else await _web_thumbnail_capture(actor_agent_id, web_url)
                 return result[0] if result else None
             return None
-        if media_type == "text/html" or attachment.name.casefold().endswith((".html", ".htm")):
+        if not source_code_media_type(attachment.name, media_type) and (
+            media_type == "text/html" or attachment.name.casefold().endswith((".html", ".htm"))
+        ):
             if _html_thumbnail_capture is not None:
                 content = await asyncio.to_thread(_read_html, path)
                 if content is not None:

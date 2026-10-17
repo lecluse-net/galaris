@@ -13,7 +13,7 @@ export default {
       for (const { item } of page.hits) found.set(item.id, { uri: `${item.node_kind === 'document' ? 'document' : 'memory'}://${item.id}`, title: item.title, context: `${item.owner_agent_id ?? item.owner_user_id ?? ''}` })
     }
     try {
-      const library = await memoryService.browseDocumentLibrary({ query, limit: 50 })
+      const library = await memoryService.browseDocumentLibrary({ query, limit: 50, include_keywords: false })
       for (const entry of library.entries) found.set(entry.item.id, { uri: `document://${entry.item.id}`, title: entry.item.title, context: String(entry.item.owner_agent_id ?? entry.item.owner_user_id ?? '') })
     } catch { /* Library visibility is governed independently. */ }
     return [...found.values()]

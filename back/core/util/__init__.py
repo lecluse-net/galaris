@@ -47,6 +47,7 @@ from .rich_text import (
     visible_text,
 )
 from .editorial_client import require_editorial_client
+from .source_files import source_code_media_type, source_code_response_headers
 
 __all__ = [
     "ContentProfile",
@@ -62,6 +63,8 @@ __all__ = [
     "replace_visible_text",
     "visible_text",
     "require_editorial_client",
+    "source_code_media_type",
+    "source_code_response_headers",
     "complete_io",
     "complete_await",
     "post_buffered",

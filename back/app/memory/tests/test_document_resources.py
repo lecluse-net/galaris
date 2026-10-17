@@ -164,3 +164,108 @@ async def test_generated_native_image_can_be_copied_and_embedded_in_a_document(
     with pytest.raises(service.MemoryPermissionError):
         await resource_copy(ResourceContext(agent_id=reader.id, runtime="internal", console_resource=object()),
                             "console://gallery/scene.png", f"document://{item.id}/attachments/")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["bytes", "upload", "copy", "create"])
+async def test_animated_svg_attachment_preserves_source_and_document_access(
+    agents, memory_storage, monkeypatch, tmp_path, method,
+):
+    from fastapi import UploadFile
+    from starlette.datastructures import Headers
+
+    from app.file_share import ResourceContext, resource_service
+    from app.file_share.tests.local_file_transport import TemporaryFileTransport
+    from app.memory.schemas import MemoryItemUpdate
+
+    owner, reader = agents
+    item = await document(owner)
+    await service.set_item_grant(item.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    source = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">'
+        '<title>Synthetic animated drawing</title>'
+        '<desc>' + 'Synthetic description. ' * 1600 + '</desc>'
+        '<circle cx="10" cy="10" r="8"><animate attributeName="opacity" '
+        'values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/></circle></svg>'
+    ).encode()
+    destination = f"document://{item.id}/attachments/"
+    ctx = ResourceContext(agent_id=owner.id, runtime="internal", console_resource=object())
+    if method == "bytes":
+        await attachments.add_document_attachment_bytes(item.id, actor_agent_id=owner.id,
+            name="drawing.svg", media_type="image/svg+xml", content=source)
+    elif method == "upload":
+        await attachments.add_document_attachment(item.id, actor_agent_id=owner.id,
+            upload=UploadFile(filename="drawing.svg", file=BytesIO(source),
+                headers=Headers({"content-type": "image/svg+xml; charset=utf-8"})))
+    elif method == "create":
+        await resource_service.resource_create(ctx, destination, source, name="drawing.svg")
+    else:
+        console = TemporaryFileTransport(tmp_path / "console")
+        console.resolve_path("drawing.svg").write_bytes(source)
+
+        async def resolve(_ctx):
+            return console
+
+        monkeypatch.setattr(resource_service, "_console_transport", resolve)
+        await resource_service.resource_copy(ctx, "console://drawing.svg", destination)
+
+    attachment, = await attachments.list_document_attachments(item.id, actor_agent_id=reader.id)
+    assert (attachment.name, attachment.media_type, attachment.size_bytes) == (
+        "drawing.svg", "image/svg+xml", len(source),
+    )
+    _, stored = await attachments.read_document_attachment(item.id, attachment.id, actor_agent_id=reader.id)
+    assert stored == source
+    current, *_ = await service.get_item(item.id, agent_id=reader.id)
+    assert current.revision == 1
+    uri = f"{destination}{attachment.id}"
+    await service.update_item(item.id, MemoryItemUpdate(
+        expected_revision=item.revision, expected_lock_version=item.lock_version,
+        payload=MemoryPayload(text=f'<p>Report</p><p><img src="{uri}" alt="Animated drawing"></p>'),
+    ), actor_agent_id=owner.id)
+    current, content, access, *_ = await service.get_item(item.id, agent_id=reader.id)
+    assert current.revision == 2 and uri.encode() in content
+    assert access.can_read and not access.can_write
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name,mime,source", [
+    ("drawing.svg", "image/svg+xml", b'<svg xmlns="http://www.w3.org/2000/svg"><script>window.parent.svgRan=true</script><circle r="5"/></svg>'),
+    ("module.js", "application/javascript", b'window.sourceExecuted = true;\nexport const answer = 42;\n'),
+    ("script.sh", "application/x-sh", b'#!/bin/sh\nprintf "synthetic source\\n"\n'),
+    ("script.py", "application/octet-stream", b'#!/usr/bin/env python3\nprint("synthetic source")\n'),
+    ("component.vue", "text/html", b'<script>window.sourceExecuted = true</script><template><b>Source</b></template>'),
+    ("module.ts", "video/mp2t", b'export const answer: number = 42;\n'),
+    ("source", "text/javascript", b'window.sourceExecuted = true;\n'),
+    ("Dockerfile", "text/html", b'FROM alpine\nRUN echo "synthetic source"\n'),
+])
+async def test_attachment_http_upload_round_trips_with_inert_source_reads(client, name, mime, source):
+    credentials = {"email": "svg-owner@example.com", "password": "Synthetic-svg-password-123"}
+    assert (await client.post("/api/auth/register", json=credentials)).status_code == 201
+    login = await client.post("/api/auth/login-json", json=credentials)
+    headers = {
+        "Authorization": "Bearer " + login.json()["access_token"],
+        "X-Editorial-Profile-Version": "1",
+    }
+    choices = (await client.get("/api/agents/selection", headers=headers)).json()
+    agent_id = choices[0]["id"]
+    created = await client.post("/api/memory/documents", headers=headers, json={
+        "title": "Synthetic vector document", "owner_kind": "agent",
+        "owner_id": agent_id, "actor_agent_id": agent_id,
+    })
+    assert created.status_code == 201, created.text
+    path = f"/api/memory/documents/{created.json()['id']}/attachments"
+    uploaded = await client.post(path, params={"actor_agent_id": agent_id}, headers=headers,
+        files={"file": (name, source, mime)})
+    assert uploaded.status_code == 201, uploaded.text
+    response = await client.get(f"{path}/{uploaded.json()['id']}", params={"agent_id": agent_id}, headers=headers)
+    assert response.status_code == 200 and response.content == source
+    assert response.headers["content-type"] == ("image/svg+xml" if name.endswith(".svg") else "text/plain; charset=utf-8")
+    if not name.endswith(".svg"):
+        assert response.headers["content-disposition"].startswith("attachment;")
+    assert response.headers["x-content-type-options"] == "nosniff"
+    policy = response.headers["content-security-policy"]
+    assert "sandbox" in policy.split("; ") and "default-src 'none'" in policy
+    assert "allow-scripts" not in policy and "allow-same-origin" not in policy
+    client.cookies.clear()
+    assert (await client.get(f"{path}/{uploaded.json()['id']}", params={"agent_id": agent_id})).status_code == 401

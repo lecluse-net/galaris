@@ -178,6 +178,10 @@ def create_app(lifespan: Callable[[FastAPI], AbstractAsyncContextManager[None]])
         response.headers.setdefault("Referrer-Policy", "same-origin")
         # Content Security Policy (Basic)
         response.headers.setdefault("Content-Security-Policy", "default-src 'self'; img-src 'self' data: https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;")
+        if response.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() == "image/svg+xml":
+            # Preserve SVG files and animations without giving direct navigation
+            # script/network access or the application's origin, for every file route.
+            response.headers["Content-Security-Policy"] = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:"
         # Disable sensitive browser sensors.
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), browsing-topics=()"
         return response

@@ -1,5 +1,5 @@
 import { model3dFormat } from './model3d.ts'
-import { resourceTextLanguage } from './resourceText.ts'
+import { resourceTextLanguage, resourceSourceLanguage } from './resourceText.ts'
 
 /** Preview formats shared by chat resources and document attachments. */
 export type BrowserResourceKind = 'audio' | 'html' | 'image' | 'pdf' | 'video' | 'model3d' | 'markdown' | 'text'
@@ -21,6 +21,7 @@ export function browserResourceKind(mediaType: string, name = ''): BrowserResour
   const normalized = normalizedMediaType(mediaType)
   const filename = name.trim().toLowerCase()
   if (normalized === 'text/rtf' || /\.(doc|docx|odt|rtf|odg|odp|ppt|pptx|xls|xlsx|ods)$/.test(filename)) return null
+  if (resourceSourceLanguage(name, mediaType)) return 'text'
   if (model3dFormat(normalized, filename)) return 'model3d'
   if (normalized.startsWith('image/') || filename.endsWith('.svg')) return 'image'
   if (normalized === 'text/html' || normalized === 'application/xhtml+xml' || /\.x?html?$/.test(filename)) return 'html'
@@ -48,6 +49,9 @@ export async function isolatedBrowserResourceUrl(
   mediaType: string,
   name: string,
 ): Promise<string> {
+  if (browserResourceKind(mediaType, name) === 'text') {
+    return URL.createObjectURL(new Blob([blob], { type: 'text/plain;charset=utf-8' }))
+  }
   const htmlMediaTypes = ['text/html', 'application/xhtml+xml']
   if (!htmlMediaTypes.includes(normalizedMediaType(blob.type))
       && !htmlMediaTypes.includes(normalizedMediaType(mediaType))
@@ -69,7 +73,11 @@ export async function isolatedBrowserResourceUrl(
 }
 
 export function saveBlobAsResource(blob: Blob, name: string): void {
-  const url = URL.createObjectURL(blob)
+  // Browsers may append a MIME-derived extension to names such as Dockerfile.
+  // A source download is opaque bytes with its authored name, never a document.
+  const source = resourceSourceLanguage(name, blob.type)
+    ? new Blob([blob], { type: 'application/octet-stream' }) : blob
+  const url = URL.createObjectURL(source)
   const link = document.createElement('a')
   link.href = url
   link.download = name.trim() || 'resource'

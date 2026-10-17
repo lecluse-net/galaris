@@ -358,6 +358,20 @@ async def browse_document_library(
             )
         )
 
+    keywords: list[str] = []
+    if request.include_keywords:
+        keywords = await _library_keywords(scope_clause, now)
+    return DocumentLibraryPage(
+        owners=owner_options,
+        query=normalized,
+        entries=entries,
+        keywords=keywords,
+        total=total,
+        has_more=has_more,
+    )
+
+
+async def _library_keywords(scope_clause: ColumnElement[bool], now: datetime) -> list[str]:
     keyword_query = (
         select(func.jsonb_array_elements_text(MemoryItem.keywords).label("keyword"))
         .where(
@@ -369,13 +383,5 @@ async def browse_document_library(
         .subquery()
     )
     keyword_value = func.trim(keyword_query.c.keyword)
-    keyword_rows = await db.scalars(select(keyword_value).where(keyword_value != "").distinct())
-    keywords = sorted(keyword_rows.all(), key=str.casefold)
-    return DocumentLibraryPage(
-        owners=owner_options,
-        query=normalized,
-        entries=entries,
-        keywords=keywords,
-        total=total,
-        has_more=has_more,
-    )
+    keyword_rows = await get_db().scalars(select(keyword_value).where(keyword_value != "").distinct())
+    return sorted(keyword_rows.all(), key=str.casefold)

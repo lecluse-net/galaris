@@ -43,6 +43,19 @@ Le moteur `core.preview.thumbnails`, sa racine `/data/thumbnails` et ses rendus 
 inchangés. La nouvelle façade emploie `file://<uuid>` comme référence de cache. Les
 routes et caches historiques des PJ continuent de fonctionner.
 
+## Pièces jointes de code source
+
+Documents et Discussion acceptent les fichiers de code source, notamment JavaScript,
+TypeScript, Python et shell, y compris les scripts avec shebang. Leurs octets restent
+inchangés. L'aperçu commun utilise `CodeEditor` en lecture seule avec coloration syntaxique,
+copie et téléchargement ; ouvrir une source ne l'exécute jamais. Un nom de fichier source
+reconnu reste du code même si son type MIME indique HTML ou un média.
+
+Les routes de lecture des pièces jointes et fichiers sources répondent en `text/plain`,
+avec téléchargement forcé, `nosniff` et une CSP sans scripts ni accès réseau. Les règles
+d'accès et les limites de taille restent applicables. Les fichiers HTML et SVG conservent
+leurs lecteurs isolés existants.
+
 ## Migration DbAdmin
 
 La composition `file_storage_composition` déclare un transfert `AFTER_EXPAND` et un

@@ -39,6 +39,18 @@ The `core.preview.thumbnails` engine, `/data/thumbnails` root and rendering rema
 unchanged. The new facade uses `file://<uuid>` as its cache reference. Historical
 attachment routes and caches continue to work.
 
+## Source code attachments
+
+Documents and Chat accept source code files, including JavaScript, TypeScript, Python
+and shell scripts with shebangs. Their bytes remain unchanged. The shared preview uses
+the internal read-only `CodeEditor` with syntax highlighting, copy and download actions;
+opening a source never executes it. A recognized source filename remains code even when
+its MIME type claims HTML or a media format.
+
+Attachment and source file read routes serve `text/plain` with forced download, `nosniff`
+and a CSP that permits neither scripts nor network access. Access rules and size limits
+still apply. HTML and SVG files keep their existing isolated viewers.
+
 ## DbAdmin migration
 
 `file_storage_composition` declares an `AFTER_EXPAND` transfer and an `AFTER_CONTRACT`

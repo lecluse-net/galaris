@@ -824,6 +824,13 @@ user infrastructure adds neither private imports nor cycles.
 
 ### Personal document classification
 
+`front/browser-tests/document-flows.spec.mjs` holds ancillary and deletion responses to verify
+usable content before catalogues, early row removal and restoration of the current row on refusal,
+saved titles appearing in both tree and list before rereads, coalesced notifications during slow
+reads, and catalogue reuse. `test_library_performance.py` compares SQL reads with/without
+catalogues while preserving results, across 100 and 1,000 documents and up to 100,000 revisions;
+its counter includes `WITH`.
+
 - `back/app/memory/tests/test_goal_folders.py`: automatic filing per user and Goal, preserving
   manual folders and current access; paginated global catch-up, duplicate Goal names, renames,
   deletion/recreation, Goal/User/sharing/provenance triggers, concurrent manual moves, rollback

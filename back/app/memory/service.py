@@ -1886,7 +1886,7 @@ async def update_item(
                 allowed = {
                     str(value.id)
                     for value in attachments_from_item(item, include_retained=True)
-                    if value.media_type in {"image/png", "image/jpeg", "image/webp", "image/gif"}
+                    if value.media_type in {"image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"}
                 }
                 for uri in image_references(content.decode("utf-8")):
                     reference = attachment_reference(uri)
