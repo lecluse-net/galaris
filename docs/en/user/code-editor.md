@@ -4,9 +4,22 @@
 
 When an agent presents its repository with `repository_show`, the work pane displays
 code-server, based on VS Code OSS. The pane alternates between a Document and a repository,
-while the conversation stays usable. **Git repositories** lists previously presented
+while the conversation stays usable. **Source code** lists previously presented
 repositories so that you can reopen them after reconnecting. It sits directly below
 **Documents** in the right sidebar.
+
+Open this section to also discover repositories in the agent’s SSH home without asking the
+agent to present them. Paths are relative to that home, such as `work/galaris`, without the
+`console://` prefix. Click a path to link the repository to the discussion and open it in
+VS Code. **Refresh repositories** runs discovery again. Discovery requires an active Console
+owned by your account; previously authorized repositories remain accessible if discovery
+fails or you do not own the Console.
+
+Discovery recognizes both `.git` directories and worktree `.git` files. It skips hidden
+directories, `node_modules`, `__pycache__` and symbolic links. The scan is limited to eight
+subdirectory levels, 10,000 entries, 100 repositories and 20 seconds; a message reports partial
+results or inaccessible folders. The checkout and permissions are rechecked when clicked.
+An external Console needs the editor runtime configured before it can open a repository.
 
 Clicking a `console://…/` folder card also opens the agent’s repository editor,
 provided you have editor and repository access. The folder must belong

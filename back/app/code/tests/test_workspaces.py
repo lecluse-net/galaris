@@ -79,6 +79,75 @@ async def repository_scope(db, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_discovery_is_owner_only_and_full_paths_distinguish_checkouts(repository_scope, db):
+    from app.code.contracts import RepositoryCandidates
+
+    users, agent, _, target, runtime = repository_scope
+    runtime.repositories.return_value = RepositoryCandidates(paths=["work/project", "archive/project"])
+    with pytest.raises(PermissionError):
+        await service.human_repository_candidates(agent.id, users[1].id)
+    runtime.repositories.assert_not_awaited()
+    result = await service.human_repository_candidates(agent.id, users[0].id)
+    assert result.paths == ["work/project", "archive/project"]
+    # Discovery itself neither registers a workspace nor starts an IDE.
+    assert (await db.scalars(select(CodeWorkspace))).all() == []
+    runtime.open.assert_not_awaited()
+    target.root = "/home/developer/work/project"
+    first = await service.register_repository("console://work/project/", agent.id)
+    target.root = "/home/developer/archive/project"
+    second = await service.register_repository("console://archive/project/", agent.id)
+    assert first.id != second.id
+    assert service.info(first, "edit").label == "work/project"
+    assert service.info(second, "edit").label == "archive/project"
+
+
+@pytest.mark.asyncio
+async def test_chat_repository_discovery_and_opening_check_room_and_console_rights(repository_scope, db, monkeypatch):
+    from httpx import ASGITransport, AsyncClient
+    from main import app
+    from app.code import contracts
+    from app.code.contracts import RepositoryCandidates
+    from app.messenger import create_internal_room
+    from core.database import database, middleware
+    from core.user.auth_service import create_access_token_for_user
+    from core.user.refresh_session_service import create_refresh_session, family_for_token
+
+    users, agent, _, target, runtime = repository_scope
+    chat_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
+    assert chat_tool is not None
+    db.add(Connection(agent_id=agent.id, tool_id=chat_tool.id, active=True))
+    await db.flush()
+    room = await create_internal_room(actor_user_id=users[0].id, agent_id=agent.id)
+    assert room is not None
+    target.root = "/home/developer/work/project"
+    runtime.repositories.return_value = RepositoryCandidates(paths=["work/project"])
+    monkeypatch.setattr(contracts, "_runtime", runtime)
+    monkeypatch.setattr(middleware, "AsyncSessionLocal", database.AsyncSessionLocal)
+    headers = []
+    for user in users[:2]:
+        refresh = await create_refresh_session(user.id)
+        token = await create_access_token_for_user(user, db, session_family=await family_for_token(refresh))
+        headers.append({"Authorization": "Bearer " + token})
+    url = f"/api/chat/rooms/{room.id}/repositories"
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="https://localhost:8484") as http:
+        for method in (http.get, http.post):
+            denied = await method(url, headers=headers[1], params={"uri": "console://work/project/"})
+            assert denied.status_code == 403, denied.text
+        runtime.repositories.assert_not_awaited()
+        listing = await http.get(url, headers=headers[0])
+        assert listing.status_code == 200, listing.text
+        assert listing.json() == {"paths": ["work/project"], "truncated": False}
+        assert (await db.scalars(select(CodeWorkspace))).all() == []
+        opened = await http.post(url, headers=headers[0], params={"uri": "console://work/project/"})
+        assert opened.status_code == 200, opened.text
+        assert opened.json()["label"] == "work/project"
+        # Existing room lists now contain the same path and durable identity.
+        linked = await http.get(f"/api/code/rooms/{room.id}", headers=headers[0])
+        assert linked.json() == [opened.json()]
+        runtime.open.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_registration_deduplicates_and_neither_room_nor_agent_management_grants_access(repository_scope, db):
     from app.file_share import resource_service
     from app.file_share.resource_contracts import ResourceContext

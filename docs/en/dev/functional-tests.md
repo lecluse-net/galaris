@@ -46,6 +46,13 @@ between providers, expiry and retry after an outage.
 
 ## Git repositories in conversations
 
+`back/app/console/tests/test_repository_listing.py` covers bounded SFTP discovery,
+home-relative paths, worktrees, symbolic links and partial results.
+`back/app/code/tests/test_workspaces.py` also covers owner-only discovery, HTTP denials
+outside the discussion and explicit linking without starting the IDE.
+`front/browser-tests/chat-code-workspace.spec.mjs` exercises opening from the list without
+an agent message, keyboard and mobile use, retry, partial results and late responses.
+
 `back/app/code/tests/test_workspaces.py` uses real PostgreSQL for exact grants,
 deduplication, ticket expiry, revocation and changed-target refusal.
 Console deployment covers management permissions, tunnel verification before publishing

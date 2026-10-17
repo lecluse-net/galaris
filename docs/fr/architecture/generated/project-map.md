@@ -17,7 +17,7 @@ tests restent l’autorité sur le comportement.
 - 26 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 661 handlers HTTP/WebSocket détectés ;
+- 663 handlers HTTP/WebSocket détectés ;
 - 167 tables SQLAlchemy détectées ;
 - 247 outils MCP natifs détectés ;
 - 43 pages Vue détectées.
@@ -1268,36 +1268,38 @@ tests restent l’autorité sur le comportement.
 | POST | `/chat/rooms` | `app.chat` | `create_room` | oui | `back/app/chat/router.py:444` |
 | GET | `/chat/rooms/{room_id}` | `app.chat` | `read_room` | oui | `back/app/chat/router.py:472` |
 | PATCH | `/chat/rooms/{room_id}` | `app.chat` | `update_room_preferences` | oui | `back/app/chat/router.py:489` |
-| GET | `/chat/rooms/{room_id}/activity` | `app.chat` | `read_activity` | oui | `back/app/chat/router.py:902` |
-| GET | `/chat/rooms/{room_id}/activity/{round_id}` | `app.chat` | `read_activity_detail` | oui | `back/app/chat/router.py:917` |
-| POST | `/chat/rooms/{room_id}/activity/{round_id}/control` | `app.chat` | `control_response` | oui | `back/app/chat/router.py:931` |
+| GET | `/chat/rooms/{room_id}/activity` | `app.chat` | `read_activity` | oui | `back/app/chat/router.py:937` |
+| GET | `/chat/rooms/{room_id}/activity/{round_id}` | `app.chat` | `read_activity_detail` | oui | `back/app/chat/router.py:952` |
+| POST | `/chat/rooms/{room_id}/activity/{round_id}/control` | `app.chat` | `control_response` | oui | `back/app/chat/router.py:966` |
 | PATCH | `/chat/rooms/{room_id}/archive` | `app.chat` | `update_room_archive` | oui | `back/app/chat/router.py:507` |
-| POST | `/chat/rooms/{room_id}/attachments` | `app.chat` | `create_attachment_message` | oui | `back/app/chat/router.py:1154` |
-| POST | `/chat/rooms/{room_id}/calls` | `app.chat` | `start_call` | oui | `back/app/chat/router.py:1323` |
-| GET | `/chat/rooms/{room_id}/calls/active` | `app.chat` | `read_active_call` | oui | `back/app/chat/router.py:1382` |
-| GET | `/chat/rooms/{room_id}/calls/status` | `app.chat` | `read_voice_call_status` | oui | `back/app/chat/router.py:1296` |
-| DELETE | `/chat/rooms/{room_id}/calls/{call_id}` | `app.chat` | `stop_call` | oui | `back/app/chat/router.py:1441` |
-| POST | `/chat/rooms/{room_id}/calls/{call_id}/candidates` | `app.chat` | `add_call_candidate` | oui | `back/app/chat/router.py:1406` |
+| POST | `/chat/rooms/{room_id}/attachments` | `app.chat` | `create_attachment_message` | oui | `back/app/chat/router.py:1189` |
+| POST | `/chat/rooms/{room_id}/calls` | `app.chat` | `start_call` | oui | `back/app/chat/router.py:1358` |
+| GET | `/chat/rooms/{room_id}/calls/active` | `app.chat` | `read_active_call` | oui | `back/app/chat/router.py:1417` |
+| GET | `/chat/rooms/{room_id}/calls/status` | `app.chat` | `read_voice_call_status` | oui | `back/app/chat/router.py:1331` |
+| DELETE | `/chat/rooms/{room_id}/calls/{call_id}` | `app.chat` | `stop_call` | oui | `back/app/chat/router.py:1476` |
+| POST | `/chat/rooms/{room_id}/calls/{call_id}/candidates` | `app.chat` | `add_call_candidate` | oui | `back/app/chat/router.py:1441` |
 | GET | `/chat/rooms/{room_id}/commands` | `app.chat` | `read_room_commands` | oui | `back/app/chat/router.py:548` |
-| POST | `/chat/rooms/{room_id}/dictation` | `app.chat` | `transcribe_dictation` | oui | `back/app/chat/router.py:1103` |
-| GET | `/chat/rooms/{room_id}/documents` | `app.chat` | `read_room_documents` | oui | `back/app/chat/router.py:969` |
-| POST | `/chat/rooms/{room_id}/documents` | `app.chat` | `create_room_document` | oui | `back/app/chat/router.py:999` |
-| GET | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `download_file` | oui | `back/app/chat/router.py:1251` |
-| GET | `/chat/rooms/{room_id}/interactions/{interaction_id}` | `app.chat` | `read_interaction` | oui | `back/app/chat/router.py:1045` |
-| POST | `/chat/rooms/{room_id}/interactions/{interaction_id}/answer` | `app.chat` | `answer_interaction` | oui | `back/app/chat/router.py:1054` |
+| POST | `/chat/rooms/{room_id}/dictation` | `app.chat` | `transcribe_dictation` | oui | `back/app/chat/router.py:1138` |
+| GET | `/chat/rooms/{room_id}/documents` | `app.chat` | `read_room_documents` | oui | `back/app/chat/router.py:1004` |
+| POST | `/chat/rooms/{room_id}/documents` | `app.chat` | `create_room_document` | oui | `back/app/chat/router.py:1034` |
+| GET | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `download_file` | oui | `back/app/chat/router.py:1286` |
+| GET | `/chat/rooms/{room_id}/interactions/{interaction_id}` | `app.chat` | `read_interaction` | oui | `back/app/chat/router.py:1080` |
+| POST | `/chat/rooms/{room_id}/interactions/{interaction_id}/answer` | `app.chat` | `answer_interaction` | oui | `back/app/chat/router.py:1089` |
 | GET | `/chat/rooms/{room_id}/messages` | `app.chat` | `read_messages` | oui | `back/app/chat/router.py:562` |
-| POST | `/chat/rooms/{room_id}/messages` | `app.chat` | `create_message` | oui | `back/app/chat/router.py:1070` |
+| POST | `/chat/rooms/{room_id}/messages` | `app.chat` | `create_message` | oui | `back/app/chat/router.py:1105` |
 | GET | `/chat/rooms/{room_id}/messages/{message_id}/previews` | `app.chat` | `read_message_previews` | oui | `back/app/chat/router.py:712` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/content` | `app.chat` | `read_message_preview_content` | oui | `back/app/chat/router.py:856` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/image` | `app.chat` | `read_message_preview_image` | oui | `back/app/chat/router.py:803` |
-| POST | `/chat/rooms/{room_id}/messages/{message_id}/previews/repository` | `app.chat` | `open_message_directory_repository` | oui | `back/app/chat/router.py:772` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/content` | `app.chat` | `read_message_preview_content` | oui | `back/app/chat/router.py:891` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/image` | `app.chat` | `read_message_preview_image` | oui | `back/app/chat/router.py:838` |
+| POST | `/chat/rooms/{room_id}/messages/{message_id}/previews/repository` | `app.chat` | `open_message_directory_repository` | oui | `back/app/chat/router.py:807` |
 | POST | `/chat/rooms/{room_id}/messages/{message_id}/speech` | `app.chat` | `read_message_speech` | oui | `back/app/chat/router.py:613` |
 | PATCH | `/chat/rooms/{room_id}/messages/{message_id}/topic` | `app.chat` | `update_message_topic` | oui | `back/app/chat/router.py:681` |
-| POST | `/chat/rooms/{room_id}/mute` | `app.chat` | `set_muted` | oui | `back/app/chat/router.py:1243` |
-| GET | `/chat/rooms/{room_id}/processes` | `app.chat` | `read_room_processes` | oui | `back/app/chat/router.py:1027` |
-| POST | `/chat/rooms/{room_id}/read` | `app.chat` | `mark_read` | oui | `back/app/chat/router.py:1235` |
+| POST | `/chat/rooms/{room_id}/mute` | `app.chat` | `set_muted` | oui | `back/app/chat/router.py:1278` |
+| GET | `/chat/rooms/{room_id}/processes` | `app.chat` | `read_room_processes` | oui | `back/app/chat/router.py:1062` |
+| POST | `/chat/rooms/{room_id}/read` | `app.chat` | `mark_read` | oui | `back/app/chat/router.py:1270` |
+| GET | `/chat/rooms/{room_id}/repositories` | `app.chat` | `discover_room_repositories` | oui | `back/app/chat/router.py:768` |
+| POST | `/chat/rooms/{room_id}/repositories` | `app.chat` | `open_room_repository` | oui | `back/app/chat/router.py:784` |
 | GET | `/chat/rooms/{room_id}/speech/status` | `app.chat` | `read_message_speech_status` | oui | `back/app/chat/router.py:587` |
-| GET | `/chat/rooms/{room_id}/tasks` | `app.chat` | `read_room_tasks` | oui | `back/app/chat/router.py:948` |
+| GET | `/chat/rooms/{room_id}/tasks` | `app.chat` | `read_room_tasks` | oui | `back/app/chat/router.py:983` |
 | PATCH | `/chat/rooms/{room_id}/topic` | `app.chat` | `update_room_topic` | oui | `back/app/chat/router.py:524` |
 | GET | `/chat/status` | `app.chat` | `read_status` | oui | `back/app/chat/router.py:270` |
 | GET | `/chat/viewer-agents` | `app.chat` | `read_viewer_agents` | oui | `back/app/chat/router.py:391` |

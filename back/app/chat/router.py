@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
-from app.code import workspace_context, human_repository_info, human_directory_repository, CodeRuntimeNotConfiguredError, WorkspaceInfo
+from app.code import workspace_context, human_repository_info, human_directory_repository, human_repository_candidates, RepositoryCandidates, CodeRuntimeNotConfiguredError, WorkspaceInfo
 from pydantic import Json
 from starlette.background import BackgroundTask
 
@@ -761,6 +761,41 @@ async def read_message_previews(
         ):
             schedule_html_thumbnail(agent_id=room.agent_id, uri=preview.uri)
     return previews
+
+
+@router.get("/rooms/{room_id}/repositories", response_model=RepositoryCandidates)
+@authorize(privileges="CODE_ACCESS", assertion=ChatRoomAccessAssertion)
+async def discover_room_repositories(room_id: UUID) -> RepositoryCandidates:
+    user_id = await _user_id()
+    room = await get_chat_room(user_id, room_id)
+    if room is None:
+        raise _not_found()
+    try:
+        return await human_repository_candidates(room.agent_id, user_id)
+    except (PermissionError, FileNotFoundError):
+        raise HTTPException(403, "code_discovery_forbidden") from None
+    except (RuntimeError, OSError):
+        raise HTTPException(503, "code_discovery_unavailable") from None
+
+
+@router.post("/rooms/{room_id}/repositories", response_model=WorkspaceInfo,
+    dependencies=[Depends(require_web_session)])
+@authorize(privileges="CODE_ACCESS", assertion=ChatRoomAccessAssertion)
+async def open_room_repository(room_id: UUID, uri: str = Query(max_length=4096)) -> WorkspaceInfo:
+    user_id = await _user_id()
+    room = await get_chat_room(user_id, room_id)
+    if room is None:
+        raise _not_found()
+    try:
+        return await human_directory_repository(uri, room.agent_id, user_id, room_id)
+    except (PermissionError, FileNotFoundError):
+        raise HTTPException(403, "Repository unavailable") from None
+    except CodeRuntimeNotConfiguredError:
+        raise HTTPException(503, "code_runtime_not_configured") from None
+    except ValueError:
+        raise HTTPException(422, "code_directory_not_repository") from None
+    except (RuntimeError, OSError):
+        raise HTTPException(503, "Code editor unavailable") from None
 
 
 @router.post(

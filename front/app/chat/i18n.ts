@@ -3,6 +3,10 @@ export default {
     privilege: { CODE_ACCESS: 'Accéder aux dépôts Git autorisés' },
     code: {
       title: 'Dépôt Git', repositories: 'Code source',
+      refreshRepositories: 'Actualiser les dépôts', noRepositories: 'Aucun dépôt Git trouvé.',
+      partialRepositories: 'Recherche partielle : certains dossiers n’ont pas pu être parcourus ou la limite de recherche a été atteinte.',
+      discoveryError: 'Impossible de rechercher les dépôts. Réessayez avec Actualiser.',
+      discoveryForbidden: 'La découverte nécessite une Console active appartenant à votre compte. Les dépôts déjà autorisés restent accessibles.',
       openDirectory: 'Ouvrir {title} dans l’éditeur de code',
       directoryNotRepository: 'Ce dossier doit appartenir à un dépôt Git pour être ouvert dans l’éditeur de code.',
       hide: 'Masquer l’éditeur',
@@ -372,6 +376,10 @@ export default {
     privilege: { CODE_ACCESS: 'Access authorized Git repositories' },
     code: {
       title: 'Git repository', repositories: 'Source code',
+      refreshRepositories: 'Refresh repositories', noRepositories: 'No Git repositories found.',
+      partialRepositories: 'Partial search: some folders could not be scanned or the search limit was reached.',
+      discoveryError: 'Unable to discover repositories. Try Refresh again.',
+      discoveryForbidden: 'Discovery requires an active Console owned by your account. Previously authorized repositories remain accessible.',
       openDirectory: 'Open {title} in the code editor',
       directoryNotRepository: 'This folder must belong to a Git repository to open in the code editor.',
       hide: 'Hide editor',
@@ -739,6 +747,10 @@ export default {
     privilege: { CODE_ACCESS: '访问获授权的 Git 仓库' },
     code: {
       title: 'Git 仓库', repositories: '源代码', hide: '隐藏编辑器',
+      refreshRepositories: '刷新仓库', noRepositories: '未找到 Git 仓库。',
+      partialRepositories: '搜索不完整：部分文件夹无法扫描或已达到搜索限制。',
+      discoveryError: '无法发现仓库，请点击刷新重试。',
+      discoveryForbidden: '发现仓库需要您拥有的活动控制台。已授权的仓库仍然可用。',
       recoveredWindow: '编辑器已重启。原窗口及其中未保存的草稿仍然保留。',
       previousWindow: '原窗口：请将未保存的修改复制到恢复后的编辑器。',
       showPrevious: '查看原窗口', showRecovered: '查看恢复后的编辑器',

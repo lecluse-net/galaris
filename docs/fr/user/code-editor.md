@@ -4,9 +4,22 @@
 
 Lorsqu’un agent présente son dépôt avec `repository_show`, le panneau de travail affiche
 un éditeur code-server, fondé sur VS Code OSS. Le panneau accueille alternativement un
-Document ou un dépôt ; la discussion reste utilisable. La liste **Dépôts Git** permet
+Document ou un dépôt ; la discussion reste utilisable. La rubrique **Code source** permet
 de rouvrir les dépôts déjà présentés, même après une reconnexion. Elle se trouve juste
 sous **Documents** dans la barre de droite.
+
+Ouvrez cette rubrique pour rechercher aussi les dépôts présents dans le home SSH de l’agent,
+sans lui demander de les présenter. Les chemins sont affichés depuis ce home, par exemple
+`work/galaris`, sans préfixe `console://`. Cliquez sur un chemin pour associer le dépôt à
+la discussion et l’ouvrir dans VS Code. **Actualiser les dépôts** relance la découverte.
+La recherche exige une Console active appartenant à votre compte ; les dépôts déjà autorisés
+restent accessibles si la recherche échoue ou si vous n’êtes pas propriétaire de la Console.
+
+La découverte reconnaît les dossiers `.git` et les fichiers `.git` des worktrees. Elle ignore
+les dossiers cachés, `node_modules`, `__pycache__` et les liens symboliques. Le parcours est
+limité à huit niveaux de sous-dossiers, 10 000 entrées, 100 dépôts et 20 secondes ; un message
+signale les résultats partiels ou les dossiers inaccessibles. Le checkout et les droits sont
+revérifiés au clic. Une Console externe doit disposer du runtime de l’éditeur pour l’ouvrir.
 
 Un clic sur une carte de dossier `console://…/` ouvre aussi l’éditeur du dépôt de l’agent,
 si vous avez accès à l’éditeur et au dépôt.

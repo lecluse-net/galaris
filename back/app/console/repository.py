@@ -2,12 +2,72 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import asyncio
+from collections import deque
 import hashlib
 import json
 import shlex
+from pathlib import PurePosixPath
 
-from .contracts import RepositoryTarget, SshConnectionConfig
+from asyncssh import SFTPError
+from asyncssh.constants import FILEXFER_TYPE_DIRECTORY, FILEXFER_TYPE_REGULAR
+
+from .contracts import RepositoryListing, RepositoryTarget, SshConnectionConfig
 from .ssh_client import SshExecutionTransport
+
+
+async def list_repositories(config: SshConnectionConfig) -> RepositoryListing:
+    """Bounded, read-only SFTP discovery without following directory symlinks."""
+    transport = SshExecutionTransport(config)
+    listing = RepositoryListing()
+    try:
+        async with asyncio.timeout(20):
+            home, _ = await transport.resolve_path(".")
+            connection = await transport.persistent_connection()
+            sftp = await connection.start_sftp_client()
+            try:
+                pending = deque([(home, 0)])
+                visited = 0
+                while pending:
+                    directory, depth = pending.popleft()
+                    try:
+                        # Revalidate before scanning: directories can change during discovery.
+                        if str(await sftp.realpath(directory)) != directory:
+                            listing.truncated = True
+                            continue
+                        async for entry in sftp.scandir(directory):
+                            name = str(entry.filename)
+                            if name in {".", ".."}:
+                                continue
+                            visited += 1
+                            if visited > 10000:
+                                listing.truncated = True
+                                return listing
+                            if "/" in name or "\\" in name or any(ord(character) < 32 for character in name):
+                                listing.truncated = True
+                                continue
+                            if name == ".git" and entry.attrs.type in {FILEXFER_TYPE_DIRECTORY, FILEXFER_TYPE_REGULAR}:
+                                if directory != home:
+                                    listing.paths.append(PurePosixPath(directory).relative_to(home).as_posix())
+                                    if len(listing.paths) >= 100:
+                                        listing.truncated = True
+                                        return listing
+                            elif (entry.attrs.type == FILEXFER_TYPE_DIRECTORY and not name.startswith(".")
+                                  and name not in {"node_modules", "__pycache__"}):
+                                if depth >= 8:
+                                    listing.truncated = True
+                                else:
+                                    pending.append((str(PurePosixPath(directory) / name), depth + 1))
+                    except SFTPError:
+                        listing.truncated = True
+            finally:
+                sftp.exit()
+    except TimeoutError:
+        listing.truncated = True
+    finally:
+        listing.paths.sort()
+        await transport.close()
+    return listing
 
 
 def connection_generation(config: SshConnectionConfig) -> str:

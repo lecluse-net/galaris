@@ -3,7 +3,7 @@
 from typing import AsyncContextManager, Literal, Protocol
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 Mode = Literal["read", "edit"]
 RUNTIME_CONFIGURATION_LOCK_OFFSET = 8100000000
@@ -40,10 +40,16 @@ class WorkspaceTarget(BaseModel):
     head: str | None = None
 
 
+class RepositoryCandidates(BaseModel):
+    paths: list[str] = Field(default_factory=list)
+    truncated: bool = False
+
+
 class CodeRuntime(Protocol):
     async def connection_for_agent(self, agent_id: int) -> CodeConnection: ...
     async def connection(self, connection_id: int) -> CodeConnection: ...
     async def discover(self, connection: CodeConnection, path: str) -> WorkspaceTarget: ...
+    async def repositories(self, connection: CodeConnection) -> RepositoryCandidates: ...
     def endpoint(self, reference: CodeConnection) -> AsyncContextManager[RuntimeEndpoint]: ...
     async def open(self, config: CodeConnection, target: WorkspaceTarget, session: UUID, mode: Mode) -> None: ...
     async def close(self, config: CodeConnection, session: UUID, *, discard: bool = False) -> None: ...

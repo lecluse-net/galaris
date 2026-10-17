@@ -279,7 +279,10 @@ invalidates its cache; signing out clears it.
 
 In chat, deleting a document immediately removes it from the **Documents** section and closes
 its pane or dialog, preserving the message draft. The **Source code** section groups
-repositories linked to the discussion and collapses like the other sidebar sections.
+repositories linked to the discussion and discovers those in the agent’s SSH home when opened,
+provided you own its active Console. Full paths from the home, such as `work/galaris`, distinguish
+repositories with the same name. Click to open the internal VS Code editor; **Refresh repositories**
+runs discovery again. The section collapses like the other sidebar sections.
 
 Agent lists are reused for one minute; titles, groups and parameters for five minutes.
 Saving these resources invalidates the corresponding cache. To immediately see a change

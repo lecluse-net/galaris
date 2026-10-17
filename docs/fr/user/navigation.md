@@ -303,8 +303,11 @@ une suppression effectués dans l’application invalident leur cache ; la déco
 
 Dans la discussion, supprimer un document le retire immédiatement de la rubrique **Documents**
 et ferme son panneau ou sa modale, sans effacer le message en cours de rédaction.
-La rubrique **Code source** regroupe les dépôts associés à la discussion et se replie
-comme les autres rubriques de la colonne latérale.
+La rubrique **Code source** regroupe les dépôts associés à la discussion et recherche à
+l’ouverture ceux du home SSH de l’agent si vous possédez sa Console active. Les chemins
+complets depuis le home, tels que `work/galaris`, permettent de distinguer les dépôts de même
+nom. Un clic ouvre le VS Code interne ; **Actualiser les dépôts** relance la recherche.
+La rubrique se replie comme les autres rubriques de la colonne latérale.
 
 Les listes d’agents sont réutilisées pendant une minute ; les titres, groupes et paramètres
 pendant cinq minutes. Les sauvegardes correspondantes invalident le cache concerné.

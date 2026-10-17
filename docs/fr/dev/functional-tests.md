@@ -55,6 +55,13 @@ publics, leur cache séparé par fournisseur, son expiration et le réessai apr�
 
 ## Dépôts Git dans la discussion
 
+`back/app/console/tests/test_repository_listing.py` couvre la découverte SFTP bornée,
+les chemins depuis le home, les worktrees, les liens symboliques et les résultats partiels.
+`back/app/code/tests/test_workspaces.py` couvre aussi la découverte réservée au propriétaire,
+les refus HTTP hors discussion et l’association explicite sans démarrer l’IDE.
+`front/browser-tests/chat-code-workspace.spec.mjs` exerce l’ouverture depuis la liste sans
+message de l’agent, au clavier et sur mobile, le retry, les résultats partiels et les réponses tardives.
+
 `back/app/code/tests/test_workspaces.py` vérifie les grants exacts, la déduplication,
 les tickets expirés, la révocation et le refus de changer de cible avec PostgreSQL réel.
 Le déploiement Console couvre les droits de gestion, la vérification du tunnel avant publication
