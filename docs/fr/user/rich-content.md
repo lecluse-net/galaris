@@ -207,6 +207,11 @@ interrompue. Si deux personnes modifient le même contenu, un message conserve v
 et vous laisse choisir entre votre version et la version distante. Aucun choix automatique
 ne remplace une modification concurrente.
 
+Dans Documents, une sauvegarde actualise le titre dans la liste et l'arbre sans attendre leur
+rafraîchissement. Après confirmation d'une suppression, la ligne disparaît pendant le traitement
+serveur ; un refus la réaffiche et conserve le contenu ouvert. La reconnexion actualise les
+documents et les filtres disponibles sans fermer les dossiers ouverts.
+
 L’historique présente les versions dans leur format d’origine et permet de comparer contenu,
 liens, tableaux et images. Restaurer une version crée une nouvelle révision ; cela ne rétablit
 pas les anciens partages. La fiche de poste et la personnalité sont également conservées en

@@ -562,6 +562,7 @@ class DocumentLibraryRequest(BaseModel):
     parent_document_id: UUID | None = None
     include_descendants: bool = True
     include_owners: bool = False
+    include_keywords: bool = True
     classification: Literal["all", "classified", "unclassified"] = "all"
     owner_kind: Literal["agent", "user"] | None = None
     owner: int | None = Field(default=None, gt=0)

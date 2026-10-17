@@ -201,6 +201,7 @@ export interface DocumentLibraryFilters {
   parent_document_id?: string | null
   include_descendants?: boolean
   include_owners?: boolean
+  include_keywords?: boolean
   classification?: 'all' | 'classified' | 'unclassified'
   owner_kind?: DocumentOwnerKind | null
   owner?: number | null

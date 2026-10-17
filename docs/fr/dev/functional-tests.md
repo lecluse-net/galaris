@@ -836,6 +836,13 @@ applicative vers l’infrastructure utilisateur n’ajoute ni import privé ni c
 
 ### Classement personnel des documents
 
+`front/browser-tests/document-flows.spec.mjs` retient les réponses annexes et de suppression :
+contenu utilisable avant les catalogues, retrait anticipé et restauration de la ligne courante
+en cas de refus, propagation d'un titre sauvegardé dans l'arbre et la liste avant relecture,
+regroupement des notifications pendant une lecture lente et réutilisation des catalogues.
+`test_library_performance.py` compare les lectures SQL avec/sans catalogues, à résultats identiques,
+sur 100 puis 1 000 documents et jusqu'à 100 000 révisions ; le compteur inclut `WITH`.
+
 - `back/app/memory/tests/test_goal_folders.py` : classement automatique par utilisateur et Goal,
   respect des dossiers manuels et des droits courants, reprise globale par lots, homonymes,
   renommage, suppression/recréation, déclencheurs Goal/User/partage/provenance, concurrence avec

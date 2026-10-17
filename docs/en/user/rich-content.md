@@ -193,6 +193,11 @@ also retained within the tab so interrupted editing can be recovered. If two peo
 same content, a message preserves your draft and offers a choice between your version and the
 latest remote version. No automatic choice overwrites a concurrent edit.
 
+In Documents, saving updates the title in the list and tree before their refresh completes.
+After you confirm deletion, the row disappears while the server processes the request; a refusal
+restores the row and preserves the open content. Reconnecting refreshes documents and available
+filters without closing expanded folders.
+
 History displays versions in their original format and compares content, links, tables and
 images. Restoring creates a new revision without restoring old sharing permissions. Agent job
 descriptions and personalities also remain HTML inside system prompts. Inspection offers the
