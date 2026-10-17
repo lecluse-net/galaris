@@ -584,8 +584,6 @@ async def send_outgoing(
     if prepared is not None:
         if prepared.action.connection_id != config.connection_id or prepared.action.agent_id != config.agent_id:
             raise PermissionError("Mail authorization targets a different connection")
-        from app.agent import authorization_policy
-        manager = await authorization_policy(config.agent_id)
         # The durable MIME is frozen before asking, and is the only MIME submitted.
         await get_db().commit()
         identifier = await claim_prepared_action(snapshot={
@@ -595,8 +593,7 @@ async def send_outgoing(
             "to": delivery.to_addresses, "cc": delivery.cc_addresses, "bcc": delivery.bcc_addresses,
             "subject": delivery.subject, "body": delivery.body, "html_body": delivery.html_body,
             "attachments": delivery.attachment_metadata,
-        }, approver_user_id=config.approver_user_id,
-           allow_yolo=config.approver_user_id in (None, manager.manager_user_id))
+        }, approver_user_id=config.approver_user_id)
     try:
         receipt = await _submit_delivery(config, delivery)
     except BaseException:

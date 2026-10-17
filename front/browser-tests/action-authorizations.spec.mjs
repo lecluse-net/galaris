@@ -1,35 +1,9 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
-for (const [locale, toggleName, activateName, reviewName, allowName] of [
-  ['en', 'YOLO mode', 'Enable YOLO', 'Review request', 'Allow this action'],
-  ['fr', 'Mode YOLO', 'Activer YOLO', 'Examiner la demande', 'Autoriser cette action'],
+for (const [locale, reviewName, allowName] of [
+  ['en', 'Review request', 'Allow this action'],
+  ['fr', 'Examiner la demande', 'Autoriser cette action'],
 ]) {
-  test(`YOLO needs an explicit acknowledgement and deactivation is immediate (${locale})`, async ({ page }, testInfo) => {
-    const writes = []
-    await page.route('**/api/agents/7/yolo', route => {
-      writes.push(route.request().postDataJSON())
-      return route.fulfill({ json: { yolo: writes.at(-1).enabled, authorization_version: 3 } })
-    })
-    await mount(page, 'app/agent/components/AgentYoloControl.vue', {
-      locale, dark: locale === 'fr', props: { agent: { id: 7, yolo: false, authorization_version: 2 } },
-    })
-    await page.getByRole('switch', { name: new RegExp(toggleName) }).click()
-    await expect(page.getByRole('dialog')).toBeVisible()
-    await testInfo.attach(`yolo-${locale === 'fr' ? 'dark' : 'light'}`, { body: await page.getByRole('dialog').screenshot({ animations: 'disabled' }), contentType: 'image/png' })
-    expect(writes).toEqual([])
-    await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
-    await expect(page.getByRole('dialog')).toHaveCount(0)
-    expect(writes).toEqual([])
-    await page.getByRole('switch').focus()
-    await page.keyboard.press('Space')
-    await page.getByRole('dialog').getByRole('button', { name: activateName, exact: true }).click()
-    await expect.poll(() => writes).toEqual([{ enabled: true, acknowledged: true, expected_version: 2 }])
-    await page.evaluate(() => window.testApp.setProps({ agent: { id: 7, yolo: true, authorization_version: 3 } }))
-    await page.getByRole('switch').click()
-    await expect.poll(() => writes.at(-1)).toEqual({ enabled: false, acknowledged: false, expected_version: 3 })
-    await expect(page.getByRole('dialog')).toHaveCount(0)
-  })
-
   test(`an action is reviewed and answered once without changing remembered permissions (${locale})`, async ({ page }) => {
     const row = { id: 'action-a', agent_id: 7, approver_user_id: 1, source: 'mcp',
       capability_kind: 'tool', capability_name: 'file_write', status: 'pending',

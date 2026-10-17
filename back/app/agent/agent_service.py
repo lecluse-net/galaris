@@ -326,11 +326,6 @@ async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | Non
     if "user_id" in fields_set:
         agent_update.user_id = await _validate_manager(agent_update.user_id)
         if agent_update.user_id != agent.user_id:
-            from .models import AgentAuthorizationChange
-            from core.user import user_service
-            db.add(AgentAuthorizationChange(agent_id=agent.id, actor_user_id=user_service.get_current_user_id(),
-                old_yolo=agent.yolo, new_yolo=False, version=agent.authorization_version + 1, reason="manager_changed"))
-            agent.yolo = False
             agent.authorization_version += 1
 
     # Verify title exists if provided

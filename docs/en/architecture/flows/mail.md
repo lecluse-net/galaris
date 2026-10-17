@@ -71,8 +71,7 @@ reconciliation by `Message-ID` in Sent.
 
 New MCP calls use Enabled/Disabled/Ask modes and the common authorization journal. The final
 MIME and attachments are prepared before asking; after agreement, only those persisted bytes
-are submitted. The configured Mail approver takes precedence. When distinct from the agent
-manager, YOLO cannot answer on their behalf. One visible request suffices; the SMTP journal
+are submitted. Only the designated Mail approver may answer. One visible request suffices; the SMTP journal
 still handles duplicates and unknown outcomes.
 
 For historical requests created with `approval_required`, the first claim transitions to

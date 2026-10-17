@@ -98,9 +98,6 @@
                     <!-- Name & Title -->
                     <div class="agent-name text-h6 text-weight-bold">
                       {{ agent.first_name }} {{ agent.last_name }}
-                      <q-badge v-if="agent.yolo" :style="{ background: 'var(--solaire-red-light)', color: 'var(--solaire-red-accent)' }">
-                        {{ $t('agent.yolo.active') }}
-                      </q-badge>
                     </div>
                     <div class="agent-meta-row row items-baseline no-wrap">
                       <div
@@ -532,7 +529,7 @@
                 :hint="$t('agent.jobTitleHint')"
               />
 
-              <!-- Runtime and authorization settings follow the agent's identity. -->
+              <!-- Runtime selection follows the agent's identity. -->
               <template v-if="isAgentEdit">
                 <q-select
                   v-model="selectedHarnessId"
@@ -544,8 +541,6 @@
                   :loading="harnessSelectionLoading"
                   :disable="!canManageCurrentAgent || !harnessSelectionLoaded"
                 />
-                <AgentYoloControl v-if="editedAgent" :agent="editedAgent" :disabled="!canManageCurrentAgent"
-                  @changed="agentStore.fetchAgents(true)" />
               </template>
 
               <!-- Personality and job description are edited after creation. -->
@@ -916,7 +911,6 @@ import { RichTextEditor, richTextExcerpt, PageHeader, startVisiblePolling } from
 import { invalidateSessionReads } from '@/core/util/facade'
 import { useHarnessLogs } from '../composables/useHarnessLogs'
 import AgentAuxiliaryDialogs from '../components/AgentAuxiliaryDialogs.vue'
-import AgentYoloControl from '../components/AgentYoloControl.vue'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { TeamManager } from '@/core/team'
 

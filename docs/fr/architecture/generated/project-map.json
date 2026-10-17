@@ -185,7 +185,6 @@
           "back/app/agent/admin_authorization.py",
           "back/app/agent/admin_service.py",
           "back/app/agent/agent_service.py",
-          "back/app/agent/authorization.py",
           "back/app/agent/avatar_generation.py",
           "back/app/agent/dbadmin.py",
           "back/app/agent/defaults.py",
@@ -9208,18 +9207,6 @@
     ],
     "models": [
       {
-        "class_name": "AgentAuthorizationChange",
-        "file": "back/app/agent/models.py",
-        "foreign_keys": [
-          "agents.id",
-          "users.id"
-        ],
-        "history_mixin": false,
-        "line": 18,
-        "module": "app.agent",
-        "table": "agent_authorization_changes"
-      },
-      {
         "class_name": "Team",
         "file": "back/core/team/models.py",
         "foreign_keys": [],
@@ -9283,7 +9270,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 31,
+        "line": 17,
         "module": "app.agent",
         "table": "agent_teams"
       },
@@ -9299,7 +9286,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 51,
+        "line": 37,
         "module": "app.agent",
         "table": "agents"
       },
@@ -11095,7 +11082,7 @@
         "file": "back/app/agent/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 41,
+        "line": 27,
         "module": "app.agent",
         "table": "titles"
       },
@@ -12853,7 +12840,7 @@
         "declared_path": "/agents",
         "file": "back/app/agent/router.py",
         "handler": "read_agents",
-        "line": 223,
+        "line": 202,
         "method": "GET",
         "module": "app.agent"
       },
@@ -12862,7 +12849,7 @@
         "declared_path": "/agents",
         "file": "back/app/agent/router.py",
         "handler": "create_agent",
-        "line": 282,
+        "line": 261,
         "method": "POST",
         "module": "app.agent"
       },
@@ -12871,7 +12858,7 @@
         "declared_path": "/agents/avatar-generation",
         "file": "back/app/agent/router.py",
         "handler": "read_avatar_generation_availability",
-        "line": 262,
+        "line": 241,
         "method": "GET",
         "module": "app.agent"
       },
@@ -12880,7 +12867,7 @@
         "declared_path": "/agents/drivers",
         "file": "back/app/agent/router.py",
         "handler": "read_executor_drivers",
-        "line": 193,
+        "line": 172,
         "method": "GET",
         "module": "app.agent"
       },
@@ -12889,7 +12876,7 @@
         "declared_path": "/agents/groups",
         "file": "back/app/agent/router.py",
         "handler": "read_groups",
-        "line": 136,
+        "line": 115,
         "method": "GET",
         "module": "app.agent"
       },
@@ -12898,7 +12885,7 @@
         "declared_path": "/agents/groups",
         "file": "back/app/agent/router.py",
         "handler": "create_group",
-        "line": 156,
+        "line": 135,
         "method": "POST",
         "module": "app.agent"
       },
@@ -12907,7 +12894,7 @@
         "declared_path": "/agents/groups/{id}",
         "file": "back/app/agent/router.py",
         "handler": "delete_group",
-        "line": 178,
+        "line": 157,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -12916,7 +12903,7 @@
         "declared_path": "/agents/groups/{id}",
         "file": "back/app/agent/router.py",
         "handler": "read_group",
-        "line": 145,
+        "line": 124,
         "method": "GET",
         "module": "app.agent"
       },
@@ -12925,7 +12912,7 @@
         "declared_path": "/agents/groups/{id}",
         "file": "back/app/agent/router.py",
         "handler": "update_group",
-        "line": 165,
+        "line": 144,
         "method": "PUT",
         "module": "app.agent"
       },
@@ -12934,7 +12921,7 @@
         "declared_path": "/agents/managers",
         "file": "back/app/agent/router.py",
         "handler": "read_agent_managers",
-        "line": 239,
+        "line": 218,
         "method": "GET",
         "module": "app.agent"
       },
@@ -12943,7 +12930,7 @@
         "declared_path": "/agents/selection",
         "file": "back/app/agent/router.py",
         "handler": "read_agent_selection",
-        "line": 68,
+        "line": 47,
         "method": "GET",
         "module": "app.agent"
       },
@@ -12970,7 +12957,7 @@
         "declared_path": "/agents/titles",
         "file": "back/app/agent/router.py",
         "handler": "read_titles",
-        "line": 79,
+        "line": 58,
         "method": "GET",
         "module": "app.agent"
       },
@@ -12979,7 +12966,7 @@
         "declared_path": "/agents/titles",
         "file": "back/app/agent/router.py",
         "handler": "create_title",
-        "line": 99,
+        "line": 78,
         "method": "POST",
         "module": "app.agent"
       },
@@ -12988,7 +12975,7 @@
         "declared_path": "/agents/titles/{id}",
         "file": "back/app/agent/router.py",
         "handler": "delete_title",
-        "line": 121,
+        "line": 100,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -12997,7 +12984,7 @@
         "declared_path": "/agents/titles/{id}",
         "file": "back/app/agent/router.py",
         "handler": "read_title",
-        "line": 88,
+        "line": 67,
         "method": "GET",
         "module": "app.agent"
       },
@@ -13006,7 +12993,7 @@
         "declared_path": "/agents/titles/{id}",
         "file": "back/app/agent/router.py",
         "handler": "update_title",
-        "line": 108,
+        "line": 87,
         "method": "PUT",
         "module": "app.agent"
       },
@@ -13051,7 +13038,7 @@
         "declared_path": "/agents/{id}",
         "file": "back/app/agent/router.py",
         "handler": "delete_agent",
-        "line": 337,
+        "line": 316,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -13060,7 +13047,7 @@
         "declared_path": "/agents/{id}",
         "file": "back/app/agent/router.py",
         "handler": "read_agent",
-        "line": 270,
+        "line": 249,
         "method": "GET",
         "module": "app.agent"
       },
@@ -13069,7 +13056,7 @@
         "declared_path": "/agents/{id}",
         "file": "back/app/agent/router.py",
         "handler": "update_agent",
-        "line": 310,
+        "line": 289,
         "method": "PUT",
         "module": "app.agent"
       },
@@ -13078,7 +13065,7 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "delete_avatar",
-        "line": 449,
+        "line": 428,
         "method": "DELETE",
         "module": "app.agent"
       },
@@ -13087,7 +13074,7 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "download_avatar",
-        "line": 415,
+        "line": 394,
         "method": "GET",
         "module": "app.agent"
       },
@@ -13096,7 +13083,7 @@
         "declared_path": "/agents/{id}/avatar",
         "file": "back/app/agent/router.py",
         "handler": "upload_avatar",
-        "line": 377,
+        "line": 356,
         "method": "POST",
         "module": "app.agent"
       },
@@ -13105,17 +13092,8 @@
         "declared_path": "/agents/{id}/avatar/generate",
         "file": "back/app/agent/router.py",
         "handler": "generate_agent_avatar",
-        "line": 351,
+        "line": 330,
         "method": "POST",
-        "module": "app.agent"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/agents/{id}/yolo",
-        "file": "back/app/agent/router.py",
-        "handler": "update_agent_yolo",
-        "line": 39,
-        "method": "PUT",
         "module": "app.agent"
       },
       {

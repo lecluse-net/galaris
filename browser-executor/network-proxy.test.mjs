@@ -85,7 +85,7 @@ test('real Chromium checks every request, redirect and WebSocket; revocation and
   assert.equal(await post(), 403, 'unavailable authorization never opens access');
   assert.ok(proxy.issues().some(issue => issue.code === 'authorization_unavailable'));
   assert.ok(checks.some(check => new URL(check.url).pathname === '/save'), 'authorization receives the exact target path');
-  assert.ok(checks.every(check => !('body' in check)), 'authorization receives a fingerprint rather than the raw body');
+  assert.ok(checks.every(check => !('body' in check)), 'network authorization never receives the raw body');
 });
 
 test('HTTPS POST is inspected, trusted destinations work and untrusted certificates remain rejected', { timeout: 15000 }, async t => {
@@ -112,7 +112,7 @@ test('HTTPS POST is inspected, trusted destinations work and untrusted certifica
   const page = await context.newPage();
   await page.setContent(`<form action="${base}/save" method="post"><button>Submit</button></form>`);
   await Promise.all([page.waitForURL(base + '/save'), page.getByRole('button').click()]);
-  assert.ok(checks.some(check => check.method === 'POST' && check.url === base + '/save' && /^[a-f0-9]{64}$/.test(check.body_sha256)), 'TLS preserves the exact target, method and body fingerprint for authorization');
+  assert.ok(checks.some(check => check.method === 'POST' && check.url === base + '/save'), 'TLS preserves the exact target and method for authorization');
   assert.equal(hits, 0, 'upstream TLS certificate verification remains enabled');
   tls.setDefaultCACertificates([...roots, await readFile(join(directory, 'cert'), 'utf8')]);
   const submit = async () => {

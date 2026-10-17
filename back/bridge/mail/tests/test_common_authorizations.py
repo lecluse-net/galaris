@@ -7,7 +7,6 @@ import pytest
 from sqlalchemy import select
 
 from app.connection import facade as connections
-from app.agent.authorization import set_yolo
 from app.tools.authorization import (
     AuthorizationAction, AuthorizationClosed, AuthorizationRequired, answer_action,
     prepared_authorization,
@@ -56,10 +55,9 @@ async def test_common_approval_binds_frozen_mime_and_sends_once(committed_databa
 
 
 @pytest.mark.asyncio
-async def test_yolo_does_not_answer_for_a_distinct_mail_approver(committed_database, monkeypatch):
+async def test_only_the_designated_mail_approver_can_answer(committed_database, monkeypatch):
     async with get_db_session() as db:
         config, manager, reviewer, smtp = await _setup_mail_chat(db, monkeypatch)
-        await set_yolo(config.agent_id, enabled=True, acknowledged=True)
         config = config.model_copy(update={"approver_user_id": reviewer.id})
         connection = await connections.get_connection(config.connection_id)
         await connections.set_connection_function_state(connection.id, "mail_send", "ask")

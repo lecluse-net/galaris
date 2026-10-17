@@ -85,7 +85,7 @@ for (const [mode, width] of [['create', 1440], ['edit', 390]]) {
   test(`agent ${mode} form opens while its selectors are still loading (${width}px)`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
     await agentFixtures(page)
-    await jsonRoute(page, '**/api/agents?*', [{ ...agent, agent_driver: 'internal', yolo: false, authorization_version: 1 }])
+    await jsonRoute(page, '**/api/agents?*', [{ ...agent, agent_driver: 'internal' }])
     await jsonRoute(page, '**/api/agents/drivers', [{ name: 'internal', manages_runtime: false }])
     await jsonRoute(page, '**/api/agents/titles?*', [{ id: 1, label: 'agent_titles.ms', gender: 'F' }])
     const pending = []
@@ -119,7 +119,6 @@ for (const [mode, width] of [['create', 1440], ['edit', 390]]) {
       await expect(dialog.getByLabel('Human manager *', { exact: true })).toHaveValue(/Test User/)
       await expect(dialog.getByLabel('First name *', { exact: true })).toHaveValue('Lyra')
       if (mode === 'edit') {
-        await expect(dialog.getByRole('switch', { name: /YOLO mode/ })).toBeVisible()
         await testInfo.attach('agent-form', { body: await dialog.screenshot(), contentType: 'image/png' })
         await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
         await expect(dialog).toHaveCount(0)

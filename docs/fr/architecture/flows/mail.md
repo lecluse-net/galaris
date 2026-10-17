@@ -71,8 +71,8 @@ l’état `submitting` au lieu de lancer un deuxième SMTP. Une coupure dont l�
 
 Les nouveaux appels MCP utilisent les modes Actif/Bloqué/Sur demande et le journal commun
 d’autorisation. Le MIME final et ses pièces jointes sont préparés avant la demande ; après accord,
-seuls ces octets persistés sont envoyés. Le responsable Mail reste prioritaire. S’il diffère du
-responsable de l’agent, YOLO n’approuve pas à sa place. Une seule demande visible suffit ;
+seuls ces octets persistés sont envoyés. Seul le responsable Mail désigné peut répondre.
+Une seule demande visible suffit ;
 le journal SMTP continue de gérer les doublons et résultats incertains.
 
 Pour les demandes historiques créées avec `approval_required`, la première réclamation passe en

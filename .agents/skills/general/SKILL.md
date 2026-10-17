@@ -89,7 +89,7 @@ ou HTML concurrents. Galaris, Conversation, Memory et File Sharing sont des serv
 obligatoires dont les connexions restent actives. Leurs fonctions ont les mêmes modes
 Actif/Bloqué/Sur demande et héritage global/local que les autres Tools ; seules leurs
 définitions sont protégées. Les ACL des ressources et les restrictions de contexte restent
-applicables, y compris avec YOLO. Le contrat complet est dans
+applicables après tout accord. Le contrat complet est dans
 la section « Documents comme pivot de l'information » de `docs/fr/dev/editorial-html.md`.
 
 ## Valider proportionnellement

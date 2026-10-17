@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0199 — Retrait du mode YOLO des agents](0199-remove-agent-yolo.md)
+
 - [0195 — Autorisations bornées des lancements conversationnels de processus](0195-conversation-process-launch-permissions.md)
 
 - [0194 — Préanalyse décisionnelle des messages conversationnels](0194-conversation-decision-routing.md)

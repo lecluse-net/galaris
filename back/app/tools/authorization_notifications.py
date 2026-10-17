@@ -75,7 +75,7 @@ async def _still_usable(row: ActionAuthorization) -> bool:
         user = await get_db().get(UserModel, row.approver_user_id, populate_existing=True)
         if user is None or not user.is_active or (row.source != "domain" and row.approver_user_id != policy.manager_user_id):
             return False
-        if row.decision_source == "agent_yolo" and (not policy.yolo or row.policy_version != policy.version):
+        if row.status == "approved" and row.decision_source not in ("human", "runtime_policy"):
             return False
         from .runtime_permissions import permission_still_valid
         if not await permission_still_valid(row):

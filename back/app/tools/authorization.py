@@ -159,7 +159,6 @@ class AuthorizationAction:
     approver_user_id: int | None = None
     preview: str = ""
     continuation: str | None = None
-    allow_yolo: bool = True
     policy_name: str | None = None
     runtime_grant_id: UUID | None = None
 
@@ -239,8 +238,7 @@ async def claim_deferred_dispatch(identifier: UUID, *, agent_id: int, payload: o
         ):
             raise AuthorizationClosed(identifier, "outcome_unknown")
         valid = row.expires_at > datetime.now(timezone.utc) and row.deferred_payload_fingerprint == fingerprint(payload)
-        if row.decision_source == "agent_yolo":
-            valid = valid and policy.yolo and row.policy_version == policy.version
+        valid = valid and row.decision_source in ("human", "runtime_policy")
         valid = valid and row.approver_user_id == policy.manager_user_id
         responsible = await db.get(UserModel, row.approver_user_id, populate_existing=True)
         valid = valid and responsible is not None and responsible.is_active
@@ -308,14 +306,13 @@ def prepared_authorization(action: AuthorizationAction) -> Generator[PreparedAut
         _prepared_authorization.reset(token)
 
 
-async def claim_prepared_action(*, snapshot: dict[str, Any], approver_user_id: int | None = None,
-                                allow_yolo: bool = True) -> UUID | None:
+async def claim_prepared_action(*, snapshot: dict[str, Any], approver_user_id: int | None = None) -> UUID | None:
     state = current_prepared_authorization()
     if state is None:
         raise ToolCallRejectedError("No trusted authorization context for this prepared action")
     state.request_id = await claim_action(replace(state.action, arguments={**state.action.arguments, "prepared": snapshot},
         source="domain" if approver_user_id is not None else state.action.source,
-        approver_user_id=approver_user_id, allow_yolo=allow_yolo))
+        approver_user_id=approver_user_id))
     state.claimed = True
     return state.request_id
 
@@ -496,9 +493,7 @@ async def claim_action(action: AuthorizationAction) -> UUID | None:
                 preview=_action_preview(action, origin),
                 encrypted_arguments=get_encryption_service().encrypt(serialized),
                 expires_at=now + timedelta(hours=24), notification_due_at=now,
-                status="approved" if policy.yolo and action.allow_yolo else "pending",
-                decision_source="agent_yolo" if policy.yolo and action.allow_yolo else None,
-                decided_at=now if policy.yolo and action.allow_yolo else None,
+                status="pending",
             )
             if action.source == "runtime" and action.kind == "tool" and action.connection_id is None:
                 from .runtime_permissions import matching_permission
@@ -519,13 +514,11 @@ async def claim_action(action: AuthorizationAction) -> UUID | None:
                   row.mode != mode or row.policy_source != origin or
                   row.approver_user_id != approver or
                   not await permission_still_valid(row) or
-                  (row.decision_source == "agent_yolo" and
-                   (not policy.yolo or row.policy_version != policy.version))):
+                  (row.status == "approved" and row.decision_source not in ("human", "runtime_policy"))):
                 row.status = "invalidated"
         if row.fingerprint != arguments_fingerprint or row.configuration_fingerprint != configuration_fingerprint:
             closed = (row.id, "invalidated")
         elif row.status == "pending":
-            # Enabling YOLO later never answers an already pending human question.
             pending = row.id
         elif row.status == "approved":
             if not await _dispatch_available(action.agent_id, action.context_key):

@@ -341,29 +341,16 @@ et définitions restent protégées. Les permissions des ressources et prompts M
 de celles d’un outil portant le même nom. Les anciennes interfaces binaires doivent être mises
 à jour : Sur demande ne signifie pas Actif.
 
-## Configurer YOLO
+## Autorisations explicites
 
-Dans la fiche d’un agent, onglet **Général**, le réglage **Mode YOLO — approuver automatiquement
-les autorisations** se trouve sous le choix du harnais, après les champs d’identité. Il est
-désactivé par défaut. L’activer ouvre un avertissement sur les commandes, suppressions,
-messages, dépenses et divulgations possibles. Annuler ou fermer la fenêtre laisse le mode
-désactivé ; le bouton orange **Activer YOLO** confirme son activation. La fiche s’affiche dès
-l’ouverture ; les listes de gestionnaires et de harnais se chargent ensuite. Les profils et
-voix sont actualisés à l’ouverture de l’onglet **Modèles**. L’état actif est visible sur l’agent et
-les accords automatiques sont identifiés dans les demandes.
+Les actions Sur demande exigent un accord humain ou une autorisation permanente correspondante
+par fonction ou type d’action de harnais. Il n’existe plus de mode global d’approbation automatique.
+Le changement de responsable invalide les autorisations mémorisées de harnais. Les blocages,
+droits métier et restrictions de contexte restent applicables après tout accord.
 
-YOLO approuve les nouvelles demandes de cet agent, y compris celles de son harnais. Les demandes
-humaines déjà ouvertes restent humaines. Il ne lève aucun blocage ni droit métier. Le désactiver
-retire les accords automatiques encore non consommés et rétablit la demande humaine pour les
-actions suivantes. Un changement de responsable le remet à faux. Un agent, une Task ou `@approve`
-ne peut pas l’activer. Mail conserve son responsable métier lorsqu’il est distinct.
-
-Pour la mise à niveau, préparer les images backend, frontend et harnais compatibles, arrêter
-les anciens runs encore actifs, puis utiliser la synchronisation DbAdmin normale. Les exceptions
-binaires effectives sont conservées ; les anciennes restrictions système ignorées sont archivées.
-Les anciens opt-ins Mail deviennent Sur demande sans réactiver de fonction bloquée. Aucun ancien
-accord de Task ou de session ne devient YOLO. Conserver l’audit lors d’un retour de version ;
-ne pas utiliser un ancien runtime qui interprète Sur demande comme autorisé.
+La synchronisation DbAdmin normale supprime la colonne `agents.yolo` et la table
+`agent_authorization_changes`. Les anciens accords automatiques encore non consommés
+sont invalidés avant exécution ; l’historique des actions terminées reste conservé.
 
 | Besoin | Fonctions |
 |---|---|

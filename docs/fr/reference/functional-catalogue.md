@@ -329,9 +329,9 @@ des connexions administratives. Les services système restent protégés et une 
 aussi pour un serveur MCP déjà ouvert.
 
 La fiche s’ouvre immédiatement, puis charge ses sélecteurs ; les civilités sont parcourues
-au-delà de la première page. Le **mode YOLO**, désactivé par défaut, se confirme explicitement
-après avertissement. Il approuve les nouvelles demandes sans lever un blocage de fonction,
-un droit sur une ressource ou une restriction de contexte ; changer de responsable le désactive.
+au-delà de la première page. Les actions Sur demande exigent un accord humain explicite ou
+une autorisation permanente correspondante. Changer de responsable invalide les autorisations
+mémorisées de harnais.
 
 Un avatar peut être téléversé, lu depuis une URI autorisée ou généré à partir de l’identité et
 de la personnalité de la cible. La génération utilise le modèle image du profil de l’appelant,
@@ -2707,11 +2707,10 @@ une source modifiée après l’accord empêche l’opération initiale, même s
 
 La page **Permissions** permet aussi de traiter une demande sans canal privé disponible.
 Une réponse expirée, dupliquée ou relative à une configuration modifiée ne lance pas une seconde
-opération. Le mode YOLO de l’agent ne répond pas aux demandes humaines déjà ouvertes et ne lève
-aucun blocage. Un résultat externe incertain exige une réconciliation.
+opération. Un résultat externe incertain exige une réconciliation.
 
 Sources : [demandes et préconditions](../../../back/app/tools/tests/test_action_authorizations.py),
-[permissions et YOLO](../admin/tool-administration.md).
+[permissions](../admin/tool-administration.md).
 
 ### Arguments d’outils et aide à la correction
 
@@ -4033,7 +4032,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Services système | Galaris, Conversation, Memory et File Sharing sont obligatoires ; cette activation n’accorde pas de nouveaux droits sur les ressources. |
 | Assistant initial | Galaris est proposé une seule fois, avec le harnais interne et Galaris Admin, AgentAdmin et ToolAdmin actifs à sa création ; modifications, révocations et suppression sont conservées. Un modèle utilisable reste requis. |
 | Administration déléguée | AgentAdmin suit les droits et le périmètre actuels du responsable ; ToolAdmin délègue le catalogue global. L’agent ne peut attribuer des capacités administratives. |
-| Autorisation permanente | Active une seule fonction sur une connexion, sans lever les ACL, blocages ou préconditions de la ressource. YOLO exige un choix humain explicite. |
+| Autorisation permanente | Active une seule fonction sur une connexion, sans lever les ACL, blocages ou préconditions de la ressource. |
 | Indexation des fichiers | Catalogue privé par agent, accès source actuel, regroupement des copies par SHA-256 ; découverte dépendante du provider, sans garantie de couverture exhaustive d’un parcours partiel. |
 | Graphe mémoire | 3D uniquement, chargement spatial client, représentants des éléments masqués et actualisation préservant la navigation ; WebGL requis. Carte serveur encore prévue. |
 | Analyse documentaire | Lots reprenables dans app.llm, sans Process ; couverture des unités fournie distincte de la justesse des réponses et aucun rejeu automatique d’une inférence interrompue. |

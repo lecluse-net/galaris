@@ -44,7 +44,7 @@ async def test_binary_expansion_and_mail_conversion_are_idempotent_and_transacti
         db.add_all([enabled, blocked, ignored, mail_enabled, mail_blocked])
         await db.flush()
         identifiers = enabled.id, blocked.id, ignored.id, mail_enabled.id, mail_blocked.id
-        connection_id, agent_id, mail_id = connection.id, agent.id, mail.id
+        connection_id, mail_id = connection.id, mail.id
     # Rolling back the action also rolls back its audit and completion marker.
     async with get_db_session() as db:
         await _retire_mail_setting(db, delta)
@@ -65,7 +65,6 @@ async def test_binary_expansion_and_mail_conversion_are_idempotent_and_transacti
         assert send.state == "ask" and send.enabled is False
         assert (await db.get(ConnectionFunctionState, identifiers[4])).state == "disabled"
         assert (await db.get(Connection, connection_id)).active is False
-        assert (await db.get(Agent, agent_id)).yolo is False
         assert await _complete(db, delta)
         assert await _mail_setting_retired(db, delta)
         assert (await db.get(ToolModel, mail_id)).global_params == {"synthetic_keep": {"value": "preserved"}}

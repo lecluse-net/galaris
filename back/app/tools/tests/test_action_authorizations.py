@@ -10,7 +10,6 @@ import pytest_asyncio
 from sqlalchemy import select
 
 from app.agent import Agent, Title
-from app.agent.authorization import set_yolo
 from app.harnesses.registry import all_providers
 from app.tools.authorization import (
     AuthorizationAction, AuthorizationClosed, AuthorizationRequired,
@@ -41,6 +40,14 @@ async def pending(action):
     with pytest.raises(AuthorizationRequired) as caught:
         await claim_action(action)
     return caught.value.request_id
+
+
+async def approve_and_claim(action):
+    identifier = await pending(action)
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        assert await answer_action(identifier, user_id=row.approver_user_id, approved=True)
+    return await claim_action(action)
 
 
 @pytest.mark.asyncio
@@ -488,10 +495,8 @@ async def test_notification_failure_stays_visible_and_retries_without_dispatch(a
 async def test_retention_preserves_unknown_evidence_and_accepts_late_authoritative_receipt(action):
     from datetime import datetime, timedelta, timezone
     from app.tools.authorization_notifications import reconcile_authorizations
-    async with get_db_session():
-        await set_yolo(action.agent_id, enabled=True, acknowledged=True)
-    unknown = await claim_action(action)
-    closed = await claim_action(replace(action, callback_key=str(uuid4()), arguments={"command": "other synthetic command"}))
+    unknown = await approve_and_claim(action)
+    closed = await approve_and_claim(replace(action, callback_key=str(uuid4()), arguments={"command": "other synthetic command"}))
     await finish_action(unknown, outcome="outcome_unknown", receipt={"delivery": "unknown"})
     await finish_action(closed, receipt={"delivery": "confirmed"})
     async with get_db_session() as db:
@@ -843,17 +848,15 @@ async def test_approval_cannot_execute_changed_arguments(action):
 
 
 @pytest.mark.asyncio
-async def test_yolo_does_not_answer_existing_human_question_and_new_effects_are_audited(action):
+async def test_each_new_action_requires_explicit_approval_and_effects_are_audited(action):
     identifier = await pending(action)
-    async with get_db_session():
-        await set_yolo(action.agent_id, enabled=True, acknowledged=True)
     assert await pending(action) == identifier
-    receipt = await claim_action(replace(action, callback_key=str(uuid4())))
+    receipt = await approve_and_claim(replace(action, callback_key=str(uuid4())))
     async with get_db_session() as db:
         row = await db.get(ActionAuthorization, receipt)
         assert row.status == "executing"
-        assert row.decision_source == "agent_yolo"
-        assert row.policy_version == 1
+        assert row.decision_source == "human"
+    assert await pending(action) == identifier
     await finish_action(receipt, outcome="outcome_unknown")
     async with get_db_session() as db:
         row = await db.get(ActionAuthorization, receipt)
@@ -861,19 +864,35 @@ async def test_yolo_does_not_answer_existing_human_question_and_new_effects_are_
 
 
 @pytest.mark.asyncio
-async def test_refusal_survives_yolo_and_unknown_outcome_never_replays(action):
+async def test_refusal_and_unknown_outcome_never_replay(action):
     identifier = await pending(action)
     async with get_db_session() as db:
         row = await db.get(ActionAuthorization, identifier)
         assert await answer_action(identifier, user_id=row.approver_user_id, approved=False)
-        await set_yolo(action.agent_id, enabled=True, acknowledged=True)
     with pytest.raises(AuthorizationClosed, match="denied"):
         await claim_action(action)
-    unknown = replace(action, callback_key=str(uuid4()))
-    receipt = await claim_action(unknown)
+    unknown = replace(action, callback_key=str(uuid4()), arguments={"command": "another synthetic command"})
+    receipt = await approve_and_claim(unknown)
     await finish_action(receipt, outcome="outcome_unknown")
     with pytest.raises(AuthorizationClosed, match="outcome_unknown"):
         await claim_action(unknown)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reconcile", [False, True])
+async def test_retired_automatic_approval_cannot_dispatch(action, reconcile):
+    from datetime import datetime, timezone
+    from app.tools.authorization_notifications import reconcile_authorizations
+    identifier = await pending(action)
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        row.status = "approved"
+        row.decision_source = "agent_yolo"
+        row.decided_at = datetime.now(timezone.utc)
+    if reconcile:
+        await reconcile_authorizations()
+    with pytest.raises(AuthorizationClosed, match="invalidated"):
+        await claim_action(action)
 
 
 @pytest.mark.asyncio

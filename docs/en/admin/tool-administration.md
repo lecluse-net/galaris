@@ -326,27 +326,16 @@ Humans can configure mandatory service functions; their connections and definiti
 protected. MCP resource and prompt policies are distinct from same-named tools. Update old
 binary clients: Ask does not mean Enabled.
 
-## Configure YOLO
+## Explicit permissions
 
-On an agent's form, in the **General** tab, **YOLO mode — automatically approve authorizations**
-appears below the Harness selection, after the identity fields, and defaults to off.
-Enabling it opens a warning about commands, deletions, messages, costs and disclosures.
-Cancel or dismiss the dialog to leave it off; the orange **Enable YOLO** button confirms activation.
-The form appears as soon as it opens; manager and Harness lists load afterward. Profiles and
-voices refresh when the **Models** tab opens. Active
-mode is visible on the agent, and automatic decisions are identified in action requests.
+Ask actions require a human decision or a matching remembered permission per function or
+runtime action type. There is no global automatic approval mode. Reassigning the manager
+invalidates remembered runtime permissions. Blocks, domain rights and context restrictions
+remain enforced after any agreement.
 
-YOLO approves new requests for this agent, including runtime actions. Existing human questions
-remain human. Disabled capabilities and domain access rights still apply. Turning it off
-withdraws unconsumed automatic agreements and restores human approval for subsequent actions.
-Reassigning the manager resets it. An agent, Task or `@approve` cannot enable it. Mail retains
-its domain approver when distinct from the agent manager.
-
-For an upgrade, prepare compatible backend, frontend and runtime images, stop old active runs,
-then use normal DbAdmin synchronization. Effective binary overrides are preserved; previously
-ignored system restrictions are archived. Old Mail opt-ins become Ask without enabling blocked
-functions. Previous Task/session approval never becomes YOLO. Preserve the audit when rolling
-back; do not use an older runtime that treats Ask as authorization.
+Normal DbAdmin synchronization removes `agents.yolo` and `agent_authorization_changes`.
+Unconsumed legacy automatic approvals are invalidated before execution; completed action
+history is retained.
 
 | Need | Functions |
 |---|---|

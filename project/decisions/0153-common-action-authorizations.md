@@ -2,6 +2,9 @@
 
 Accepted on 2026-10-01.
 
+The agent YOLO provisions below are superseded by
+[0199 — Retrait du mode YOLO des agents](0199-remove-agent-yolo.md).
+
 `app.tools` owns durable authorization requests, one-use claims, private payloads,
 receipts and notification/wake outboxes. `app.agent` owns the human manager and
 versioned agent YOLO policy. Task, conversation and voice contribute lifecycle

@@ -125,7 +125,7 @@ and generation uses the caller's image model.
 Replacement and reopening through Vue navigation were verified on desktop and mobile,
 comparing the displayed portrait's digest with the registered JPEG's digest.
 
-YOLO was disabled: no provider call before approval or after denial, and no additional call
+No provider call before approval or after denial, and no additional call
 when replaying completed continuations. The fictional account was disabled, its agents archived
 and its tokens revoked after acceptance. A `WebSocket closed without opened.` message occurs
 during login; no API failure or browser error occurs during the portrait journey.

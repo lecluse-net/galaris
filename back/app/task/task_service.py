@@ -934,7 +934,7 @@ async def _force_termination_followup(task: Task, operation: str) -> AsyncGenera
 async def is_auto_approved(task: Task) -> bool:
     """Historical Task flags never grant permission to dispatch an action.
 
-    Only the common authorization service may consume a current human or YOLO grant.
+    Only the common authorization service may consume a current explicit grant.
     Keep this compatibility function while old callers and snapshots are migrated.
     """
     return False

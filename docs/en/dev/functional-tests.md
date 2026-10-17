@@ -2,6 +2,10 @@
 
 # Functional guarantees catalogue
 
+`app/tools/tests/test_action_authorizations.py` also checks that unconsumed legacy automatic
+approvals are invalidated before execution, directly or through reconciliation.
+`app/agent/tests/test_agents.py` rejects legacy approval settings in API writes.
+
 `tests/test_module_loading.py` checks required Task imports, several loading orders and injected
 jobs, including Process refresh. The LLM embedding, Tools search and Memory suites protect index
 identity and fallbacks. Scenarios in `app/memory/tests/test_mcp.py` use `file_search`/`file_read`
@@ -453,7 +457,7 @@ policy version. Browser scenarios `action-authorizations.spec.mjs` and `permissi
 cover the choice and revocation.
 The internal Harness is explicitly excluded from these runtime consents.
 It also covers concurrent claims, non-repeatable denial, expiry, quotas, context or configuration
-revocation, YOLO, and file preconditions. Permanent consent rejects changed MCP configuration,
+revocation, explicit approvals, and file preconditions. Permanent consent rejects changed MCP configuration,
 including changes between call preparation and creation of its question.
 Expiry scenarios compare a late answer, another invocation and reconciliation:
 each releases a real waiting task without dispatching the action. Cancellation and timeout
@@ -499,7 +503,7 @@ ToolAdmin diagnostics use successive synthetic HTTP/SSE servers and check catalo
 without executing its functions. Each server starts with a reset SSE shutdown flag, which
 the library retains at the test process level.
 `e2e/specs/tool-authorizations.spec.mjs` checks agreement and denial, reopening, keyboard use,
-YOLO and blocked functions in the assembled application at 390 and 1440 pixels.
+explicit approvals and blocked functions in the assembled application at 390 and 1440 pixels.
 `front/browser-tests/action-authorizations.spec.mjs` covers the permanent choice with its explicit
 scope, all three languages, keyboard use, mobile layouts, and retry after an HTTP rejection.
 

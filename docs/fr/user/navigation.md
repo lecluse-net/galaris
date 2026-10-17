@@ -124,7 +124,7 @@ Vous pouvez personnaliser ou supprimer son avatar ; les mises à jour conservent
 Les onglets de cette fiche ne sont pas les onglets de la page : ils regroupent notamment
 le général, les modèles et le MCP selon les droits. Le choix du moteur des Tasks appartient
 à la fiche de l’agent. Elle s’affiche dès l’ouverture ; les sélecteurs se chargent ensuite.
-Dans **Général**, le choix du harnais et le réglage **Mode YOLO** sont regroupés après l’identité.
+Dans **Général**, le choix du harnais suit les champs d’identité.
 Les profils et les voix sont actualisés à l’ouverture de **Modèles**. L’administration des harnais se trouve dans
 **Administrer → Préférences → Harnais** (`/params/harnesses`). Les entrées de harnais
 dépendent du catalogue serveur : utilisez le lien affiché, sans inventer leur identifiant.

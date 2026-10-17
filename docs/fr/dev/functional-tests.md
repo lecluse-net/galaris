@@ -2,6 +2,10 @@
 
 # Catalogue des garanties fonctionnelles
 
+`app/tools/tests/test_action_authorizations.py` vérifie aussi que les anciens accords
+automatiques non consommés sont invalidés avant exécution, directement ou par réconciliation.
+`app/agent/tests/test_agents.py` refuse les anciens réglages d’approbation dans les écritures API.
+
 `tests/test_module_loading.py` vérifie les imports obligatoires Task, plusieurs ordres de
 chargement et les jobs injectés, y compris le rafraîchissement Process. Les suites embedding LLM,
 recherche Tools et Memory protègent l'identité des index et les replis. Les scénarios
@@ -473,7 +477,7 @@ de configuration, d’affectation, de responsable et de version de politique. Le
 `action-authorizations.spec.mjs` et `permissions.spec.mjs` couvrent le choix et sa révocation.
 Le harnais interne est explicitement exclu de ces accords de runtime.
 Elle couvre aussi le claim concurrent, le refus non répétable, l’expiration, les quotas,
-la révocation du contexte ou de la configuration, YOLO et les préconditions des fichiers.
+la révocation du contexte ou de la configuration, les accords explicites et les préconditions des fichiers.
 Les scénarios d’expiration comparent réponse tardive, nouvel appel et réconciliation :
 ils libèrent une vraie tâche en attente sans exécuter l’action. L’annulation et le timeout
 d’un outil natif après son envoi conservent un résultat incertain et interdisent son rejeu.
@@ -521,7 +525,7 @@ Les diagnostics ToolAdmin utilisent des serveurs HTTP/SSE synthétiques successi
 les bornes du catalogue sans exécuter ses fonctions. Chaque serveur repart avec son indicateur
 d'arrêt SSE réinitialisé, car la bibliothèque le conserve au niveau du processus de test.
 `e2e/specs/tool-authorizations.spec.mjs` vérifie dans l’application assemblée l’accord et le
-refus, la réouverture, le clavier, YOLO et les fonctions bloquées à 390 et 1440 pixels.
+refus, la réouverture, le clavier, les accords explicites et les fonctions bloquées à 390 et 1440 pixels.
 `front/browser-tests/action-authorizations.spec.mjs` couvre le choix permanent avec sa portée
 explicite, les trois langues, le clavier, le mobile et le réessai après un refus HTTP.
 

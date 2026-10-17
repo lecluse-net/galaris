@@ -131,7 +131,7 @@ HTML sont conservés et le modèle utilisé est celui de l'appelant.
 Le remplacement et la réouverture par navigation Vue sont vérifiés sur ordinateur et mobile,
 avec comparaison de l'empreinte du portrait affiché à celle du JPEG enregistré.
 
-YOLO était désactivé : aucun appel fournisseur avant accord ni après refus, et aucun
+Aucun appel fournisseur avant accord ni après refus, et aucun
 appel supplémentaire au rejeu des continuations terminées. Le compte fictif a été désactivé,
 ses agents archivés et ses jetons révoqués après recette. Un message
 `WebSocket closed without opened.` est observé pendant la connexion ; aucun échec API ni

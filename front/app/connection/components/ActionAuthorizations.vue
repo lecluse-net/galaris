@@ -33,7 +33,7 @@
           <div>{{ t(`permissions.actionStatus.${selected.status}`) }}</div>
           <div>{{ t('permissions.expiresAt') }}: {{ selected.expires_at }}</div>
           <p v-if="selected.notification_failed" role="status">{{ t('permissions.notificationFailed') }}</p>
-          <div>{{ selected.decision_source === 'agent_yolo' ? t('permissions.automaticYolo') : t('permissions.approver') + ': ' + selected.approver_user_id }}</div>
+          <div>{{ t('permissions.approver') }}: {{ selected.approver_user_id }}</div>
           <pre v-if="selected.arguments" class="action-arguments">{{ JSON.stringify(selected.arguments, null, 2) }}</pre>
           <p v-if="selected.can_remember">{{ t(selected.source === 'runtime' ? 'permissions.runtimeScope' : 'permissions.functionScope', { function: selected.capability_name, runtime: selected.runtime }) }}</p>
         </q-card-section>

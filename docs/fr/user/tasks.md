@@ -36,7 +36,7 @@ Dans le Chat natif, `@task` placé n’importe où dans le message crée immédi
 avec le texte restant comme objectif, sans appel au LLM de conversation. Pour le harnais interne
 Galaris, `@plan` suffit lui aussi à créer la Task et à forcer sa planification, sans ajouter `@task`.
 Ces directives se combinent, sans ordre imposé, avec `@standard` et `@high`. `@approve` ne donne
-aucun accord. Les actions sensibles utilisent [les autorisations et le mode YOLO](../admin/tool-administration.md). Le Chat
+aucun accord. Les actions sensibles utilisent [les autorisations](../admin/tool-administration.md). Le Chat
 conserve le round et publie aussitôt une confirmation déterministe
 dans la room ; le résultat de la Task y sera publié à sa terminaison. Le bouton `@` du composeur
 affiche uniquement les directives compatibles avec le driver de l’agent sélectionné.

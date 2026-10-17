@@ -12,8 +12,8 @@ Le journal `tool_action_authorizations` porte les états `pending`, `approved`, 
 
 | Événement | Source | Cible |
 |---|---|---|
-| Préparation committée, YOLO inactif | absent | `pending` |
-| Nouvelle action, YOLO courant actif | absent | `approved`, puis claim `executing` |
+| Préparation committée, accord requis | absent | `pending` |
+| Autorisation mémorisée de harnais correspondante | absent | `approved`, puis claim `executing` |
 | Réponse humaine habilitée | `pending` | `approved` ou `denied` |
 | Échéance ou perte d’autorité avant effet | `pending` / `approved` | `expired` / `invalidated` |
 | Claim atomique après revalidation | `approved` | `executing` |

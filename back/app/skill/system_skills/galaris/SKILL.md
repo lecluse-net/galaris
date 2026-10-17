@@ -32,9 +32,9 @@ administration and resource ACLs still apply.
 An authorization control response suspends the operation; it is neither a successful effect
 nor a tool incident. Resume the same opaque continuation with unchanged arguments. Do not
 create a new call to evade a refusal or repeat an executing/unknown effect. Managed runtimes
-retain the pending callback. An agent's YOLO setting can automatically approve new requests,
-with an audit entry; it never overrides blocked functions, ACLs, existing refusals or pending
-human questions. Only an authenticated human can change YOLO, after acknowledging its risk.
+retain the pending callback. Requests require an explicit human decision or a matching
+remembered permission. Blocked functions, ACLs, existing refusals and pending human
+questions remain enforced.
 
 ## AI Labs
 
@@ -107,7 +107,7 @@ credential-free configuration. `agent_connection_create`, `agent_connection_upda
 `agent_connection_param_delete` alter parameters under the existing secret-reference rules.
 `agent_connection_function_list` and `agent_connection_function_set` inspect and configure
 optional function policy. AgentAdmin cannot change mandatory or administrative grants,
-approve as a human, or enable YOLO.
+or approve as a human.
 
 ## Delegated Tool administration
 

@@ -156,6 +156,13 @@ def test_agent_update_rejects_removing_the_human_manager() -> None:
         AgentUpdate(user_id=None)
 
 
+@pytest.mark.parametrize("schema", [AgentCreate, AgentUpdate])
+@pytest.mark.parametrize("field,value", [("yolo", True), ("authorization_version", 10)])
+def test_agent_api_rejects_approval_settings(schema, field, value) -> None:
+    with pytest.raises(ValidationError, match="approval settings cannot be changed"):
+        schema.model_validate({"title_id": 1, "code": "synthetic", "first_name": "Synthetic", field: value})
+
+
 @pytest.mark.asyncio
 async def test_manager_defaults_to_the_authenticated_creator(
     monkeypatch: pytest.MonkeyPatch,

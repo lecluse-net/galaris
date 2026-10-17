@@ -73,7 +73,7 @@ class TaskCreate(TaskBase):
     @classmethod
     def reject_legacy_auto_approval(cls, value: bool) -> bool:
         if value:
-            raise ValueError("Task auto-approval is retired; configure the agent's YOLO policy")
+            raise ValueError("Task auto-approval is retired; configure function permissions instead")
         return False
 
 

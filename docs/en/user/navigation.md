@@ -113,7 +113,7 @@ to permissions. To create an agent, open **Agents**, then **New Agent**. Open an
 agent's record from the list to edit it. Tabs in that record differ from page tabs:
 they include general settings, models and MCP according to permissions. Choose the Task
 engine in the agent's record. The form appears as soon as it opens; selectors load afterward.
-In **General**, the Harness selection and **YOLO mode** follow the identity fields.
+In **General**, the Harness selection follows the identity fields.
 Profiles and voices refresh when **Models** opens. Administer harnesses under
 **Administer → Preferences → Harnesses** (`/params/harnesses`). Harness entries depend
 on the server catalog: use the displayed link without inventing an identifier.

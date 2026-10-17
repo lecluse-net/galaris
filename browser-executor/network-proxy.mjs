@@ -8,7 +8,6 @@ import { promisify } from 'node:util';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createHash, randomUUID } from 'node:crypto';
 import { BrowserRequestError, resolveTarget } from './lib.mjs';
 
 let certificate;
@@ -36,16 +35,14 @@ export async function startNetworkProxy({ owner, token, authorizationUrl = 'http
   const issues = new Map();
   const secureContext = tls.createSecureContext(await localCertificate());
   let closed = false;
-  async function authorize(raw, method, connectedTarget = null, bodySha256 = null) {
+  async function authorize(raw, method, connectedTarget = null) {
     if (closed) throw new BrowserRequestError('session_not_found', 'Session closed', 404);
     const target = connectedTarget ?? await resolveTarget(raw);
     let decision;
     try {
       const response = await fetch(authorizationUrl, {
         method: 'POST', headers: { 'content-type': 'application/json', 'x-galaris-browser-token': token },
-        body: JSON.stringify({ owner, url: target.url.href, method, addresses: target.addresses,
-          operation_key: randomUUID(), body_sha256: bodySha256,
-          authorization_generation: connectedTarget?.authorizationGeneration ?? null }),
+        body: JSON.stringify({ owner, url: target.url.href, method, addresses: target.addresses }),
         signal: AbortSignal.timeout(15000), redirect: 'error',
       });
       if (!response.ok) throw new Error('Authorization unavailable');
@@ -64,7 +61,6 @@ export async function startNetworkProxy({ owner, token, authorizationUrl = 'http
       throw new BrowserRequestError('blocked_url', 'Destination blocked by browser policy', 403);
     }
     if (closed) throw new BrowserRequestError('session_not_found', 'Session closed', 404);
-    if (Number.isInteger(decision.authorization_generation)) target.authorizationGeneration = decision.authorization_generation;
     return target;
   }
   function track(socket) {
@@ -91,8 +87,7 @@ export async function startNetworkProxy({ owner, token, authorizationUrl = 'http
         chunks.push(chunk);
       }
       const body = Buffer.concat(chunks);
-      const { url, address } = await authorize(targetUrl(request), request.method, null,
-        createHash('sha256').update(body).digest('hex'));
+      const { url, address } = await authorize(targetUrl(request), request.method);
       const secure = url.protocol === 'https:';
       const upstream = (secure ? https : http).request({
         host: address, port: url.port || (secure ? 443 : 80), servername: url.hostname.replace(/^\[|\]$/g, ''),

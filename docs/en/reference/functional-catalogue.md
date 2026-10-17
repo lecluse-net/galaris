@@ -263,9 +263,9 @@ or assign administrative connections. System services stay protected and revocat
 to already mounted MCP servers.
 
 The form opens immediately while selectors load; title catalogues include subsequent pages.
-**YOLO mode** starts disabled and requires explicit human confirmation after a warning. It
-approves new requests without bypassing blocked functions, resource rights or context limits;
-changing the manager disables it. Temporary notifications can be dismissed before their expiry
+Ask actions require an explicit human decision or a matching remembered permission.
+Changing the manager invalidates remembered runtime permissions.
+Temporary notifications can be dismissed before their expiry
 and tooltips use readable contrast.
 
 Avatars can be uploaded, read from an authorised URI or generated from the target's identity
@@ -2040,11 +2040,10 @@ not offer this choice. Rights and resource preconditions are still checked on re
 source invalidates the original operation even after permanent consent.
 
 **Permissions** also handles requests without an available private channel. Expired, duplicate or
-configuration-invalidated answers do not dispatch another operation. Agent YOLO does not answer
-existing human requests or bypass a block. Unknown external outcomes require reconciliation.
+configuration-invalidated answers do not dispatch another operation. Unknown external outcomes require reconciliation.
 
 Sources: [requests and preconditions](../../../back/app/tools/tests/test_action_authorizations.py),
-[permissions and YOLO](../admin/tool-administration.md).
+[permissions](../admin/tool-administration.md).
 
 ### Tool arguments and correction advice
 
@@ -3037,7 +3036,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | System services | Galaris, Conversation, Memory and File Sharing are mandatory without granting new resource rights. |
 | Initial assistant | Created once with internal harness, Galaris Admin, AgentAdmin and ToolAdmin; later edits/revocation/deletion persist. A usable model is still required. |
 | Delegated administration | AgentAdmin follows the manager's current rights/scope; ToolAdmin delegates the global catalogue. Agents cannot assign administrative capabilities. |
-| Permanent consent | Enables one connection function without bypassing ACLs, blocks or resource preconditions. YOLO requires explicit human choice. |
+| Permanent consent | Enables one connection function without bypassing ACLs, blocks or resource preconditions. |
 | File indexing | Private per-agent catalogue with current source access and SHA-256 copy identity; discovery depends on providers and partial traversals are not exhaustive. |
 | Memory graph | 3D only, client spatial loading, hidden-item representatives and updates preserving navigation; WebGL required. Server map remains planned. |
 | Document analysis | Resumable app.llm batches without a Process; supplied-unit coverage is separate from answer accuracy and interrupted inference is never automatically replayed. |

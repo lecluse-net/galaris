@@ -30,7 +30,7 @@ export interface ActionAuthorization {
   capability_name: string
   status: 'pending' | 'approved' | 'denied' | 'expired' | 'invalidated' | 'executing' | 'completed' | 'failed' | 'outcome_unknown'
   preview: string
-  decision_source: 'human' | 'agent_yolo' | 'runtime_policy' | null
+  decision_source: string | null
   created_at: string
   expires_at: string
   notification_failed?: boolean

@@ -89,7 +89,7 @@ class HumanApprovalFields(BaseModel):
     @classmethod
     def reject_approval_settings(cls, value: object) -> object:
         if isinstance(value, dict) and ("yolo" in value or "authorization_version" in value):
-            raise ValueError("Approval settings require the dedicated human policy endpoint")
+            raise ValueError("Agent approval settings cannot be changed through the Agent API")
         return cast(object, value)
 
 
@@ -185,8 +185,6 @@ class LlmProfileInfo(BaseModel):
 
 
 class Agent(AgentBase):
-    yolo: bool = False
-    authorization_version: int = 0
     team_ids: list[int] = Field(default_factory=list[int])
     profile_media_type: str = "text/html"
     content_profile: str = "rich-text"

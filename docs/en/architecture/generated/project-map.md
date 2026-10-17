@@ -17,8 +17,8 @@ tests remain authoritative for behavior.
 - 27 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 695 detected HTTP/WebSocket handlers;
-- 171 detected SQLAlchemy tables;
+- 694 detected HTTP/WebSocket handlers;
+- 170 detected SQLAlchemy tables;
 - 272 detected native MCP tools;
 - 49 detected Vue pages.
 
@@ -163,7 +163,7 @@ tests remain authoritative for behavior.
 | `app.agent` | `core.i18n` | `back/app/agent/agent_service.py`, `back/app/agent/contracts.py`, `back/app/agent/dispatcher.py`, `back/app/agent/dispatcher_service.py`, `back/app/agent/executor_service.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_schemas.py`, `back/app/agent/openai_service.py`, `back/app/agent/planner_service.py`, `back/app/agent/router.py`, `back/app/agent/tools.py` |
 | `app.agent` | `core.params` | `back/app/agent/dispatcher.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/planner_collection.py`, `back/app/agent/planner_contracts.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/registry.py` |
 | `app.agent` | `core.team` | `back/app/agent/admin_service.py`, `back/app/agent/agent_group_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/mcp.py`, `back/app/agent/models.py`, `back/app/agent/team_router.py` |
-| `app.agent` | `core.user` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/authorization.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/dbadmin.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py` |
+| `app.agent` | `core.user` | `back/app/agent/admin_authorization.py`, `back/app/agent/admin_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/dbadmin.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/janus.py`, `back/app/agent/management_scope.py`, `back/app/agent/models.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py` |
 | `app.agent` | `core.util` | `back/app/agent/avatar_generation.py`, `back/app/agent/html_migration.py`, `back/app/agent/models.py`, `back/app/agent/planner_service.py`, `back/app/agent/router.py`, `back/app/agent/schemas.py` |
 | `app.audio` | `app.file_share` | `back/app/audio/mcp.py` |
 | `app.audio` | `app.llm` | `back/app/audio/mcp.py`, `back/app/audio/summary_service.py` |
@@ -1165,36 +1165,35 @@ tests remain authoritative for behavior.
 | POST | `/action-authorizations/{identifier}/cancel` | `app.tools` | `cancel_request` | yes | `back/app/tools/authorization_router.py:115` |
 | POST | `/agent/openai/chat/completions` | `app.agent` | `agent_chat_completions` | yes | `back/app/agent/openai_router.py:77` |
 | GET | `/agent/openai/models` | `app.agent` | `get_agent_models` | yes | `back/app/agent/openai_router.py:66` |
-| GET | `/agents` | `app.agent` | `read_agents` | yes | `back/app/agent/router.py:223` |
-| POST | `/agents` | `app.agent` | `create_agent` | yes | `back/app/agent/router.py:282` |
-| GET | `/agents/avatar-generation` | `app.agent` | `read_avatar_generation_availability` | yes | `back/app/agent/router.py:262` |
-| GET | `/agents/drivers` | `app.agent` | `read_executor_drivers` | yes | `back/app/agent/router.py:193` |
-| GET | `/agents/groups` | `app.agent` | `read_groups` | yes | `back/app/agent/router.py:136` |
-| POST | `/agents/groups` | `app.agent` | `create_group` | yes | `back/app/agent/router.py:156` |
-| DELETE | `/agents/groups/{id}` | `app.agent` | `delete_group` | yes | `back/app/agent/router.py:178` |
-| GET | `/agents/groups/{id}` | `app.agent` | `read_group` | yes | `back/app/agent/router.py:145` |
-| PUT | `/agents/groups/{id}` | `app.agent` | `update_group` | yes | `back/app/agent/router.py:165` |
-| GET | `/agents/managers` | `app.agent` | `read_agent_managers` | yes | `back/app/agent/router.py:239` |
-| GET | `/agents/selection` | `app.agent` | `read_agent_selection` | yes | `back/app/agent/router.py:68` |
+| GET | `/agents` | `app.agent` | `read_agents` | yes | `back/app/agent/router.py:202` |
+| POST | `/agents` | `app.agent` | `create_agent` | yes | `back/app/agent/router.py:261` |
+| GET | `/agents/avatar-generation` | `app.agent` | `read_avatar_generation_availability` | yes | `back/app/agent/router.py:241` |
+| GET | `/agents/drivers` | `app.agent` | `read_executor_drivers` | yes | `back/app/agent/router.py:172` |
+| GET | `/agents/groups` | `app.agent` | `read_groups` | yes | `back/app/agent/router.py:115` |
+| POST | `/agents/groups` | `app.agent` | `create_group` | yes | `back/app/agent/router.py:135` |
+| DELETE | `/agents/groups/{id}` | `app.agent` | `delete_group` | yes | `back/app/agent/router.py:157` |
+| GET | `/agents/groups/{id}` | `app.agent` | `read_group` | yes | `back/app/agent/router.py:124` |
+| PUT | `/agents/groups/{id}` | `app.agent` | `update_group` | yes | `back/app/agent/router.py:144` |
+| GET | `/agents/managers` | `app.agent` | `read_agent_managers` | yes | `back/app/agent/router.py:218` |
+| GET | `/agents/selection` | `app.agent` | `read_agent_selection` | yes | `back/app/agent/router.py:47` |
 | GET | `/agents/teams/agents` | `app.agent` | `agents` | yes | `back/app/agent/team_router.py:16` |
 | PUT | `/agents/teams/{team_id}/members/{agent_id}` | `app.agent` | `update_membership` | yes | `back/app/agent/team_router.py:23` |
-| GET | `/agents/titles` | `app.agent` | `read_titles` | yes | `back/app/agent/router.py:79` |
-| POST | `/agents/titles` | `app.agent` | `create_title` | yes | `back/app/agent/router.py:99` |
-| DELETE | `/agents/titles/{id}` | `app.agent` | `delete_title` | yes | `back/app/agent/router.py:121` |
-| GET | `/agents/titles/{id}` | `app.agent` | `read_title` | yes | `back/app/agent/router.py:88` |
-| PUT | `/agents/titles/{id}` | `app.agent` | `update_title` | yes | `back/app/agent/router.py:108` |
+| GET | `/agents/titles` | `app.agent` | `read_titles` | yes | `back/app/agent/router.py:58` |
+| POST | `/agents/titles` | `app.agent` | `create_title` | yes | `back/app/agent/router.py:78` |
+| DELETE | `/agents/titles/{id}` | `app.agent` | `delete_title` | yes | `back/app/agent/router.py:100` |
+| GET | `/agents/titles/{id}` | `app.agent` | `read_title` | yes | `back/app/agent/router.py:67` |
+| PUT | `/agents/titles/{id}` | `app.agent` | `update_title` | yes | `back/app/agent/router.py:87` |
 | GET | `/agents/{agent_id}/mcp-tokens` | `app.mcp` | `list_agent_mcp_tokens` | yes | `back/app/mcp/router.py:70` |
 | POST | `/agents/{agent_id}/mcp-tokens` | `app.mcp` | `create_agent_mcp_token` | yes | `back/app/mcp/router.py:92` |
 | DELETE | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `delete_agent_mcp_token` | yes | `back/app/mcp/router.py:146` |
 | PUT | `/agents/{agent_id}/mcp-tokens/{token_id}` | `app.mcp` | `update_agent_mcp_token` | yes | `back/app/mcp/router.py:120` |
-| DELETE | `/agents/{id}` | `app.agent` | `delete_agent` | yes | `back/app/agent/router.py:337` |
-| GET | `/agents/{id}` | `app.agent` | `read_agent` | yes | `back/app/agent/router.py:270` |
-| PUT | `/agents/{id}` | `app.agent` | `update_agent` | yes | `back/app/agent/router.py:310` |
-| DELETE | `/agents/{id}/avatar` | `app.agent` | `delete_avatar` | yes | `back/app/agent/router.py:449` |
-| GET | `/agents/{id}/avatar` | `app.agent` | `download_avatar` | yes | `back/app/agent/router.py:415` |
-| POST | `/agents/{id}/avatar` | `app.agent` | `upload_avatar` | yes | `back/app/agent/router.py:377` |
-| POST | `/agents/{id}/avatar/generate` | `app.agent` | `generate_agent_avatar` | yes | `back/app/agent/router.py:351` |
-| PUT | `/agents/{id}/yolo` | `app.agent` | `update_agent_yolo` | yes | `back/app/agent/router.py:39` |
+| DELETE | `/agents/{id}` | `app.agent` | `delete_agent` | yes | `back/app/agent/router.py:316` |
+| GET | `/agents/{id}` | `app.agent` | `read_agent` | yes | `back/app/agent/router.py:249` |
+| PUT | `/agents/{id}` | `app.agent` | `update_agent` | yes | `back/app/agent/router.py:289` |
+| DELETE | `/agents/{id}/avatar` | `app.agent` | `delete_avatar` | yes | `back/app/agent/router.py:428` |
+| GET | `/agents/{id}/avatar` | `app.agent` | `download_avatar` | yes | `back/app/agent/router.py:394` |
+| POST | `/agents/{id}/avatar` | `app.agent` | `upload_avatar` | yes | `back/app/agent/router.py:356` |
+| POST | `/agents/{id}/avatar/generate` | `app.agent` | `generate_agent_avatar` | yes | `back/app/agent/router.py:330` |
 | GET | `/api/docs` | `core.api` | `public_swagger_ui_html` | no | `back/core/api.py:239` |
 | GET | `/api/health` | `core.api` | `health_check` | no | `back/core/api.py:270` |
 | GET | `/api/health/live` | `core.api` | `liveness_check` | no | `back/core/api.py:275` |
@@ -1857,14 +1856,13 @@ tests remain authoritative for behavior.
 
 | Table | Class | Module | Versioned | Foreign Keys | Source |
 |---|---|---|---:|---|---|
-| `agent_authorization_changes` | `AgentAuthorizationChange` | `app.agent` | no | `agents.id`, `users.id` | `back/app/agent/models.py:18` |
 | `agent_groups` | `Team` | `core.team` | yes | — | `back/core/team/models.py:10` |
 | `agent_harnesses` | `AgentHarness` | `app.harnesses` | no | `agents.id`, `harnesses.id` | `back/app/harnesses/models.py:69` |
 | `agent_mcp_tokens` | `AgentMcpToken` | `app.mcp` | no | `agents.id` | `back/app/mcp/models.py:17` |
 | `agent_skill_categories` | `AgentSkillCategory` | `app.skill` | no | `agents.id`, `skill_categories.id` | `back/app/skill/models.py:115` |
 | `agent_skills` | `AgentSkill` | `app.skill` | no | `agents.id`, `skills.id` | `back/app/skill/models.py:86` |
-| `agent_teams` | `AgentTeam` | `app.agent` | no | `agent_groups.id`, `agents.id` | `back/app/agent/models.py:31` |
-| `agents` | `Agent` | `app.agent` | yes | `agent_groups.id`, `harnesses.id`, `llm_profiles.id`, `memory_items.id`, `titles.id`, `users.id` | `back/app/agent/models.py:51` |
+| `agent_teams` | `AgentTeam` | `app.agent` | no | `agent_groups.id`, `agents.id` | `back/app/agent/models.py:17` |
+| `agents` | `Agent` | `app.agent` | yes | `agent_groups.id`, `harnesses.id`, `llm_profiles.id`, `memory_items.id`, `titles.id`, `users.id` | `back/app/agent/models.py:37` |
 | `assignments` | `Assignment` | `core.authorize` | yes | `roles.id`, `users.id` | `back/core/authorize/models.py:69` |
 | `calendar_feeds` | `CalendarFeed` | `bridge.calendar` | yes | `connections.id` | `back/bridge/calendar/models.py:15` |
 | `calendar_triggers` | `CalendarTrigger` | `bridge.calendar` | no | `calendar_feeds.id`, `process_runs.id`, `tasks.id` | `back/bridge/calendar/models.py:60` |
@@ -2015,7 +2013,7 @@ tests remain authoritative for behavior.
 | `tasks` | `Task` | `app.task` | yes | `agents.id`, `connections.id`, `goals.id`, `memory_items.id`, `messenger_messages.id`, `tasks.id`, `topics.id`, `users.id` | `back/app/task/models.py:80` |
 | `team_audit` | `TeamAudit` | `core.team` | yes | — | `back/core/team/models.py:28` |
 | `team_users` | `TeamUser` | `core.team` | no | `agent_groups.id`, `users.id` | `back/core/team/models.py:19` |
-| `titles` | `Title` | `app.agent` | no | — | `back/app/agent/models.py:41` |
+| `titles` | `Title` | `app.agent` | no | — | `back/app/agent/models.py:27` |
 | `tool_action_authorizations` | `ActionAuthorization` | `app.tools` | no | `agents.id`, `connections.id`, `messenger_interactions.id`, `runtime_action_permissions.id`, `runtime_run_grants.id`, `tools.id`, `users.id` | `back/app/tools/authorization_models.py:13` |
 | `tool_function_state` | `ToolFunctionState` | `app.connection` | no | `tools.id` | `back/app/connection/models.py:81` |
 | `tool_search_documents` | `ToolSearchDocument` | `app.tools` | no | — | `back/app/tools/models.py:75` |

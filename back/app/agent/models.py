@@ -1,8 +1,7 @@
 from typing import Optional, TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import String, Text, ForeignKey, CHAR, LargeBinary, Boolean, Integer, UniqueConstraint, DateTime, func, text
-from datetime import datetime
+from sqlalchemy import String, Text, ForeignKey, CHAR, LargeBinary, Boolean, Integer, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from core.util import normalize_html
@@ -13,19 +12,6 @@ if TYPE_CHECKING:
     from app.llm.profile_models import LlmProfile
     from app.skill.models import AgentSkill
     from core.user import UserModel as User
-
-
-class AgentAuthorizationChange(Base):
-    """Immutable audit of human policy changes and manager resets."""
-    __tablename__ = "agent_authorization_changes"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), index=True)
-    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    old_yolo: Mapped[bool] = mapped_column(Boolean)
-    new_yolo: Mapped[bool] = mapped_column(Boolean)
-    version: Mapped[int] = mapped_column(Integer)
-    reason: Mapped[str] = mapped_column(String(32))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class AgentTeam(Base):
@@ -57,7 +43,7 @@ class Agent(HistoryMixin, Base):
         nullable=False,
         index=True,
     )
-    yolo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Invalidate remembered permissions when responsibility changes, including A → B → A.
     authorization_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     memory_item_id: Mapped[Optional[UUID]] = mapped_column(
         PGUUID(as_uuid=True),

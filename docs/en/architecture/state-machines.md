@@ -11,8 +11,8 @@ The `tool_action_authorizations` journal has `pending`, `approved`, `denied`, `e
 
 | Event | Source | Target |
 |---|---|---|
-| Committed preparation with YOLO off | absent | `pending` |
-| New action with current YOLO on | absent | `approved`, then claim `executing` |
+| Committed preparation requiring agreement | absent | `pending` |
+| Matching remembered runtime permission | absent | `approved`, then claim `executing` |
 | Authorized human answer | `pending` | `approved` or `denied` |
 | Expiry or loss of authority before effect | `pending` / `approved` | `expired` / `invalidated` |
 | Atomic claim after revalidation | `approved` | `executing` |

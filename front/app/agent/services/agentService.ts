@@ -71,8 +71,6 @@ export interface AgentManagerInfo {
 // Agent interfaces
 export interface Agent {
     id: number
-    yolo: boolean
-    authorization_version: number
     user_id: number
     user: AgentManagerInfo
     is_owner: boolean
@@ -192,11 +190,6 @@ export const agentService = {
         invalidateSessionReads('agent-selection')
         invalidateSessionReads('agent-catalogue')
         return response
-    },
-    async setYolo(id: number, enabled: boolean, expectedVersion: number, acknowledged = false) {
-        const response = await api.put<{ yolo: boolean; authorization_version: number }>(`/agents/${id}/yolo`, { enabled, acknowledged, expected_version: expectedVersion })
-        invalidateSessionReads('agent-catalogue')
-        return response.data
     },
     getAgents(force = false): Promise<AxiosResponse<Agent[]>> {
       return agents.read(async signal => {
