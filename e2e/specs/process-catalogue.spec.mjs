@@ -34,9 +34,10 @@ test('the process catalogue loads summaries and opens its editor with the real A
   const runs = page.waitForResponse(response => new URL(response.url()).pathname === '/api/processes/internal/runs')
   const started = Date.now()
   await page.goto('/process')
-  const link = page.getByRole('link', { name: 'Synthetic catalogue process', exact: true })
+  const link = page.getByRole('link', { name: /^(Edit|Modifier): Synthetic catalogue process$/ })
   await expect(link).toBeVisible()
   const catalogueMs = Date.now() - started
+  await page.getByLabel(/^(Runs|Exécutions): Synthetic catalogue process$/, { exact: true }).click()
   expect((await runs).ok()).toBeTruthy()
   for (const id of runIds) await expect(page.locator('.native-runs-table').getByRole('link', { name: new RegExp(id) })).toBeVisible()
   const executionsMs = Date.now() - started
@@ -48,5 +49,34 @@ test('the process catalogue loads summaries and opens its editor with the real A
   await link.click()
   await expect(page).toHaveURL(new RegExp(`/process/internal/${definition.code}$`))
   await expect(page.getByRole('textbox', { name: /^(Title|Titre)$/ })).toHaveValue('Synthetic catalogue process')
+
+  const headers = { Authorization: `Bearer ${session.access_token}` }
+  const tools = await (await request.get('/api/processes/tools', { headers })).json()
+  const externalResponse = await request.post('/api/processes/definitions', { headers, data: {
+    agent_id: fixture.agent_id, tool_id: tools.find(tool => tool.code === 'n8n').id,
+    engine_process_id: 'synthetic-external-catalogue', label: 'Synthetic external catalogue process', description: 'Synthetic original description',
+  } })
+  expect(externalResponse.ok(), await externalResponse.text()).toBeTruthy()
+  const external = await externalResponse.json()
+  await page.goto('/process')
+  await expect(page.getByRole('link', { name: /^(Edit|Modifier): Synthetic catalogue process$/ })).toBeVisible()
+  const externalRow = page.getByLabel(/^(Runs|Exécutions): Synthetic external catalogue process$/, { exact: true })
+  await expect(externalRow).toHaveAttribute('aria-expanded', 'false')
+  await externalRow.click()
+  await expect(externalRow).toHaveAttribute('aria-expanded', 'true')
+  await page.getByRole('link', { name: /^(Edit|Modifier): Synthetic external catalogue process$/ }).click()
+  await expect(page).toHaveURL(new RegExp(`/process/external/${external.id}$`))
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const description = page.getByRole('textbox', { name: 'Description', exact: true })
+  await expect(description).toHaveValue('Synthetic original description')
+  await description.fill('Synthetic saved description')
+  const saved = page.waitForResponse(response => new URL(response.url()).pathname === `/api/processes/definitions/${external.id}` && response.request().method() === 'PUT')
+  await page.getByRole('button', { name: /^(Save|Enregistrer)$/ }).click()
+  expect((await saved).ok()).toBeTruthy()
+  await page.reload()
+  await expect(description).toHaveValue('Synthetic saved description')
+  await expect(page.getByRole('button', { name: /^(Save|Enregistrer)$/ })).toBeVisible()
+  await expect(page.getByRole('main').getByRole('link', { name: /^(Back to list|Retour à la liste)$/ })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('external-process-editor.png'), animations: 'disabled' })
   expect(errors()).toEqual([])
 })

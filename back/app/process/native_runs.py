@@ -192,6 +192,8 @@ async def list_runs(actor: int | AgentManagementScope, *, code: str | None = Non
     rows = list(await get_db().scalars(query.order_by(ProcessRun.created_at.desc(), ProcessRun.id).offset((page - 1) * page_size).limit(page_size)))
     return {"items": [{"id": str(run.id), "status": run.status, "process_label": run.launch_snapshot.get("process_label", ""),
         "result_preview": _run_result_preview(run),
+        "started_at": run.started_at.isoformat() if run.started_at else None,
+        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
         "created_at": run.created_at.isoformat(), "engine_code": run.engine_code} for run in rows],
         "total": total or 0, "page": page, "page_size": page_size}
 

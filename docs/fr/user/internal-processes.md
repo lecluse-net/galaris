@@ -2,8 +2,22 @@
 
 # Processus métier internes
 
-La page **Processus** conserve n8n et ajoute une bibliothèque interne. Chaque processus
-a un propriétaire humain ou agent et des droits de lecture ou d'écriture attribués aux
+La page **Processus** réunit les processus internes et externes, dont n8n, dans une seule liste.
+Cliquez sur la ligne d’un processus pour charger et déplier ses exécutions ; un second
+clic replie la sous-liste. L’icône de modification à droite ouvre sa page d’édition,
+qu’il soit interne ou externe. L’ajout d’un processus externe utilise également une page dédiée.
+Dans chaque éditeur, **Retour à la liste** se trouve sous le titre, en haut à gauche.
+La recherche porte sur la liste commune ; le filtre par agent concerne les processus externes.
+Les exécutions internes et externes présentent la date et l’heure de début, la durée,
+l’identifiant, le statut, puis le résultat avant les actions. Le bouton **Rafraîchir**
+en haut de page recharge aussi les sous-listes ouvertes. Les boutons d’ajout sont regroupés
+sur la ligne suivante. La durée exclut l’attente avant
+le démarrage, évolue pendant l’exécution et se fige à la fin. Une date de début absente
+laisse la durée indisponible. Les exécutions externes n’ont pas de filtre supplémentaire.
+**Synchroniser n8n** ouvre une modale avec l’état de l’API et les compteurs d’exploitation.
+Sur la page, seul un échec de connexion à une instance n8n configurée affiche un bandeau
+d’erreur ; une intégration non configurée n’affiche pas ce bandeau.
+Chaque processus interne a un propriétaire humain ou agent et des droits de lecture ou d'écriture attribués aux
 utilisateurs, agents et groupes ; il peut aussi être partagé publiquement. Les utilisateurs voient aussi les
 processus des agents gérés. Sans propriétaire actif, la définition est réservée aux
 administrateurs humains PROCESS_ADMIN.

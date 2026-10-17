@@ -20,7 +20,7 @@ tests remain authoritative for behavior.
 - 692 detected HTTP/WebSocket handlers;
 - 171 detected SQLAlchemy tables;
 - 272 detected native MCP tools;
-- 47 detected Vue pages.
+- 49 detected Vue pages.
 
 ## Backend Modules
 
@@ -130,7 +130,7 @@ tests remain authoritative for behavior.
 | `app/dataset` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
 | `app/lab` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 4 |
 | `app/incident` | yes | `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
-| `app/process` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 4 |
+| `app/process` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 6 |
 | `app/console` | yes | `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `bridge/nextcloud` | yes | `i18n.ts` | 0 |
 | `bridge/matrix` | yes | `i18n.ts` | 0 |
@@ -849,14 +849,14 @@ tests remain authoritative for behavior.
 | `app/onboarding` | `core/authorize` | `front/app/onboarding/components/WelcomePage.vue` |
 | `app/onboarding` | `core/params` | `front/app/onboarding/components/WelcomePage.vue` |
 | `app/onboarding` | `core/user` | `front/app/onboarding/components/WelcomePage.vue` |
-| `app/process` | `app/agent` | `front/app/process/components/ProcessAgentSelect.vue`, `front/app/process/components/ProcessLaneHeader.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/pages/index.vue`, `front/app/process/services/processService.ts` |
+| `app/process` | `app/agent` | `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/ProcessAgentSelect.vue`, `front/app/process/components/ProcessLaneHeader.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/pages/index.vue`, `front/app/process/services/processService.ts` |
 | `app/process` | `app/dataset` | `front/app/process/services/nativeProcessService.ts` |
 | `app/process` | `app/memory` | `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/services/nativeProcessService.ts` |
 | `app/process` | `app/task` | `front/app/process/components/ProcessRunDetailContent.vue` |
 | `app/process` | `core/api` | `front/app/process/services/nativeProcessService.ts`, `front/app/process/services/processService.ts` |
-| `app/process` | `core/authorize` | `front/app/process/components/NativeActivityDetails.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/NativeProcessLibrary.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/navigation.ts`, `front/app/process/pages/index.vue` |
-| `app/process` | `core/navigation` | `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/navigation.ts`, `front/app/process/pages/index.vue` |
-| `app/process` | `core/util` | `front/app/process/components/BpmnCanvas.vue`, `front/app/process/components/NativeActivityDetails.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/components/NativeRunsTable.vue`, `front/app/process/components/ProcessRunDetailContent.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/pages/index.vue`, `front/app/process/pages/internal/run/[id].vue` |
+| `app/process` | `core/authorize` | `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/NativeActivityDetails.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/navigation.ts`, `front/app/process/pages/index.vue` |
+| `app/process` | `core/navigation` | `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/navigation.ts`, `front/app/process/pages/index.vue` |
+| `app/process` | `core/util` | `front/app/process/components/BpmnCanvas.vue`, `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/NativeActivityDetails.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/components/NativeRunsTable.vue`, `front/app/process/components/ProcessRunDetailContent.vue`, `front/app/process/components/ProcessRunStatusBadge.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/pages/index.vue`, `front/app/process/pages/internal/run/[id].vue` |
 | `app/process` | `core/websocket` | `front/app/process/components/NativeRunPanel.vue`, `front/app/process/components/ProcessRunsPanel.vue` |
 | `app/skill` | `app/agent` | `front/app/skill/components/LearnedSkillManager.vue`, `front/app/skill/components/SkillAuthorizationManager.vue` |
 | `app/skill` | `core/api` | `front/app/skill/services/skillService.ts` |
@@ -2430,8 +2430,10 @@ tests remain authoritative for behavior.
 | `/params/:section` | `core/params` | `front/core/params/pages/[section].vue` |
 | `/params/harnesses/:provider` | `core/params` | `front/core/params/pages/harnesses/[provider].vue` |
 | `/process` | `app/process` | `front/app/process/pages/index.vue` |
+| `/process/external/:id` | `app/process` | `front/app/process/pages/external/[id].vue` |
 | `/process/internal/:code` | `app/process` | `front/app/process/pages/internal/[code].vue` |
 | `/process/internal/run/:id` | `app/process` | `front/app/process/pages/internal/run/[id].vue` |
+| `/process/new-external` | `app/process` | `front/app/process/pages/new-external.vue` |
 | `/process/new-internal` | `app/process` | `front/app/process/pages/new-internal.vue` |
 | `/skill` | `app/skill` | `front/app/skill/pages/index.vue` |
 | `/task` | `app/task` | `front/app/task/pages/index.vue` |

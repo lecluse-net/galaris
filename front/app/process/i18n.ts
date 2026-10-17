@@ -7,6 +7,7 @@ export default {
     },
     nav: { processes: 'Processus', processes_desc: 'Processus métier et exécutions externes' },
     processes: {
+      backToList: 'Retour à la liste',
       title: 'Processus métier', definitions: 'Définitions', runs: 'Exécutions',
       tracking: {
         title: 'Vue d’ensemble des processus',
@@ -33,7 +34,7 @@ export default {
           clear: 'Effacer la période',
         },
       },
-      newDefinition: 'Nouveau processus', syncN8n: 'Synchroniser n8n', noDiscovery: 'Aucun workflow découvert', import: 'Importer',
+      newDefinition: 'Nouveau processus', importExternal: 'Ajouter un processus externe', externalAgentFilter: 'Agent des processus externes', syncN8n: 'Synchroniser n8n', noDiscovery: 'Aucun workflow découvert', import: 'Importer',
       engineProcessId: 'Identifiant du workflow n8n', label: 'Libellé', description: 'Description', tool: 'Outil', actions: 'Actions', filter: 'Filtrer les processus…',
       workflow: 'Processus disponible', workflowHint: 'Choisissez un processus récupéré depuis l’outil.', noWorkflow: 'Aucun processus synchronisé pour cet outil.',
       creationNotice: 'L’outil, le processus et l’agent sont fixés à la création. Seule la description pourra ensuite être modifiée.',
@@ -59,6 +60,7 @@ export default {
     },
     nav: { processes: 'Processes', processes_desc: 'Business processes and external runs' },
     processes: {
+      backToList: 'Back to list',
       title: 'Business processes', definitions: 'Definitions', runs: 'Runs',
       tracking: {
         title: 'Process overview',
@@ -85,7 +87,7 @@ export default {
           clear: 'Clear date range',
         },
       },
-      newDefinition: 'New process', syncN8n: 'Sync n8n', noDiscovery: 'No workflow discovered', import: 'Import',
+      newDefinition: 'New process', importExternal: 'Add an external process', externalAgentFilter: 'External process agent', syncN8n: 'Sync n8n', noDiscovery: 'No workflow discovered', import: 'Import',
       engineProcessId: 'n8n workflow ID', label: 'Label', description: 'Description', tool: 'Tool', actions: 'Actions', filter: 'Filter processes…',
       workflow: 'Available process', workflowHint: 'Choose a process retrieved from the tool.', noWorkflow: 'No process synchronized for this tool.',
       creationNotice: 'The tool, process and agent are fixed on creation. Only the description can be changed afterwards.',
@@ -111,6 +113,7 @@ export default {
     },
     nav: { processes: '流程', processes_desc: '业务流程和外部运行记录' },
     processes: {
+      backToList: '返回列表',
       title: '业务流程', definitions: '定义', runs: '运行记录',
       tracking: {
         title: '流程概览', subtitle: '所有流程启动记录，实时更新', live: '实时', recentActivity: '最近启动', search: '搜索',
@@ -118,7 +121,7 @@ export default {
         metrics: { active: '运行中', completed: '已完成', cancelled: '已取消', errors: '错误' },
         period: { fromLabel: '开始日期', toLabel: '结束日期', between: '显示从 {from} 到 {to} 的记录', since: '显示自 {date} 起的记录', until: '显示截至 {date} 的记录', clear: '清除日期范围' },
       },
-      newDefinition: '新建流程', syncN8n: '同步 n8n', noDiscovery: '未发现工作流', import: '导入',
+      newDefinition: '新建流程', importExternal: '添加外部流程', externalAgentFilter: '外部流程智能体', syncN8n: '同步 n8n', noDiscovery: '未发现工作流', import: '导入',
       engineProcessId: 'n8n 工作流 ID', label: '标签', description: '描述', tool: '工具', actions: '操作', filter: '筛选流程…',
       workflow: '可用流程', workflowHint: '选择从工具获取的流程。', noWorkflow: '此工具没有已同步的流程。',
       creationNotice: '工具、流程和智能体在创建时固定，之后只能修改描述。', sectionGeneral: '常规信息', sectionTool: '执行工具',

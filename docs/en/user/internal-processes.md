@@ -2,8 +2,21 @@
 
 # Internal business processes
 
-The **Processes** page preserves n8n and adds an internal library. Each process has
-a human or agent owner and read or write access granted to users, agents and groups;
+The **Processes** page brings internal and external processes, including n8n, into a single list.
+Click a process row to load and expand its runs; click again to collapse the sublist.
+The edit icon on the right opens its editor page for both internal and external processes.
+Adding an external process also uses a dedicated page.
+In each editor, **Back to list** is below the title, at the top left.
+Search applies to the combined list; the agent filter applies to external processes.
+Internal and external runs show their start date and time, duration, identifier, status,
+then the result before the actions. **Refresh** at the top of the page also reloads open
+sublists. The add buttons are grouped on the following row. Duration excludes time spent waiting to start,
+updates during execution and stops at completion. A missing start time leaves duration
+unavailable. External runs have no additional filter.
+**Sync n8n** opens a dialog with API health and operational counters. On the page,
+an error banner appears only when connection to a configured n8n instance fails;
+an unconfigured integration does not display this banner.
+Each internal process has a human or agent owner and read or write access granted to users, agents and groups;
 it can also be shared publicly. Users also see managed agents' processes.
 Definitions without an active owner are restricted to human PROCESS_ADMIN administrators.
 

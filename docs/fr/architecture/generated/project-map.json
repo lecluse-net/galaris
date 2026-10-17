@@ -20024,6 +20024,7 @@
       },
       {
         "files": [
+          "front/app/process/components/ExternalProcessEditor.vue",
           "front/app/process/components/ProcessAgentSelect.vue",
           "front/app/process/components/ProcessLaneHeader.vue",
           "front/app/process/components/ProcessRunsPanel.vue",
@@ -20067,9 +20068,9 @@
       },
       {
         "files": [
+          "front/app/process/components/ExternalProcessEditor.vue",
           "front/app/process/components/NativeActivityDetails.vue",
           "front/app/process/components/NativeProcessEditor.vue",
-          "front/app/process/components/NativeProcessLibrary.vue",
           "front/app/process/components/NativeRunPanel.vue",
           "front/app/process/navigation.ts",
           "front/app/process/pages/index.vue"
@@ -20079,6 +20080,7 @@
       },
       {
         "files": [
+          "front/app/process/components/ExternalProcessEditor.vue",
           "front/app/process/components/NativeProcessEditor.vue",
           "front/app/process/navigation.ts",
           "front/app/process/pages/index.vue"
@@ -20089,11 +20091,13 @@
       {
         "files": [
           "front/app/process/components/BpmnCanvas.vue",
+          "front/app/process/components/ExternalProcessEditor.vue",
           "front/app/process/components/NativeActivityDetails.vue",
           "front/app/process/components/NativeProcessEditor.vue",
           "front/app/process/components/NativeRunPanel.vue",
           "front/app/process/components/NativeRunsTable.vue",
           "front/app/process/components/ProcessRunDetailContent.vue",
+          "front/app/process/components/ProcessRunStatusBadge.vue",
           "front/app/process/components/ProcessRunsPanel.vue",
           "front/app/process/components/ProcessSharingDraft.vue",
           "front/app/process/pages/index.vue",
@@ -21767,6 +21771,11 @@
         "name": "app/process",
         "pages": [
           {
+            "file": "front/app/process/pages/external/[id].vue",
+            "module": "app/process",
+            "route_hint": "/process/external/:id"
+          },
+          {
             "file": "front/app/process/pages/index.vue",
             "module": "app/process",
             "route_hint": "/process"
@@ -21780,6 +21789,11 @@
             "file": "front/app/process/pages/internal/run/[id].vue",
             "module": "app/process",
             "route_hint": "/process/internal/run/:id"
+          },
+          {
+            "file": "front/app/process/pages/new-external.vue",
+            "module": "app/process",
+            "route_hint": "/process/new-external"
           },
           {
             "file": "front/app/process/pages/new-internal.vue",
@@ -22100,6 +22114,11 @@
         "route_hint": "/process"
       },
       {
+        "file": "front/app/process/pages/external/[id].vue",
+        "module": "app/process",
+        "route_hint": "/process/external/:id"
+      },
+      {
         "file": "front/app/process/pages/internal/[code].vue",
         "module": "app/process",
         "route_hint": "/process/internal/:code"
@@ -22108,6 +22127,11 @@
         "file": "front/app/process/pages/internal/run/[id].vue",
         "module": "app/process",
         "route_hint": "/process/internal/run/:id"
+      },
+      {
+        "file": "front/app/process/pages/new-external.vue",
+        "module": "app/process",
+        "route_hint": "/process/new-external"
       },
       {
         "file": "front/app/process/pages/new-internal.vue",

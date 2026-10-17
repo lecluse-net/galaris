@@ -7,6 +7,9 @@
         <q-badge v-if="definition && !editable" outline>{{ t('nativeProcesses.readOnly') }}</q-badge>
       </template>
     </PageHeader>
+    <div class="row q-mb-md">
+      <q-btn color="warning" icon="arrow_back" :label="t('processes.backToList')" to="/process" />
+    </div>
     <div class="editor-content">
       <q-banner v-if="error" role="alert">{{ error }}<template #action><q-btn flat :label="t('nativeProcesses.retry')" @click="sharingPending ? save() : load()" /></template></q-banner>
       <q-spinner v-if="loading" />

@@ -55,12 +55,25 @@ publics, leur cache séparé par fournisseur, son expiration et le réessai apr�
 
 ## Processus métier internes
 
+`test_run_observation.py` protège les dates de début et de fin de la liste native.
+`front/app/process/runTiming.test.mjs` vérifie que la durée commune aux deux moteurs
+exclut l’attente initiale, se fige en fin d’exécution et reste indisponible sans début.
+
 `front/browser-tests/process-loading.spec.mjs` vérifie que le catalogue s'affiche sans
-télécharger les fiches d'exécution ni attendre les agents et le contrôle n8n. Les fiches
+télécharger les fiches d'exécution ni attendre les agents et le contrôle n8n. Les runs
+ne sont chargés qu'au dépliage du processus ; les sous-listes restent isolées et une erreur
+de chargement permet un réessai, sur ordinateur et mobile. La pagination conserve les totaux
+serveur et les pages indépendantes ; le rafraîchissement global recharge les sous-listes
+ouvertes sans changer leur page. Les diagnostics n8n restent dans une modale refermable
+pendant la synchronisation ; le bandeau distingue une connexion cassée d’une intégration
+non configurée. La ligne déplie les exécutions,
+l’icône d’édition navigue sans déplier ; l’éditeur externe conserve les brouillons après
+échec, respecte la lecture seule et ignore une réponse tardive d’un autre processus. Les fiches
 retardées restent refermables et se rouvrent sur ordinateur/mobile. Le scénario de mesure
 joint les requêtes de modules, leur volume décodé et le délai d'affichage, sans seuil temporel
 fragile. `e2e/specs/process-catalogue.spec.mjs` ouvre la liste puis l'éditeur avec les vraies
-API, affiche cinq exécutions réellement lancées et interdit le chargement des profils complets des agents. `storeConcurrency.test.mjs`
+API, déplie cinq exécutions réellement lancées, enregistre une description externe puis la
+relit après rechargement et interdit le chargement des profils complets des agents. `storeConcurrency.test.mjs`
 protège l'affichage indépendant des définitions et la conservation des agents lors d'un filtre.
 
 `back/app/process/tests/test_catalogue_performance.py` mesure les listes autorisées sur une

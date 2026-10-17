@@ -1,6 +1,7 @@
 """Participants see durable evidence; only launchers and Process administrators control runs."""
 
 from uuid import UUID, uuid4
+from datetime import datetime, timedelta, timezone
 import json
 
 import pytest
@@ -56,6 +57,23 @@ async def test_run_list_exposes_bounded_result_and_prioritizes_error(db, native)
         assert page["items"][0]["id"] == str(identity)
         assert page["items"][0]["result_preview"] == expected
         assert (await inspect_run(identity, owner.id))["output"] == output
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("started", [False, True])
+async def test_run_list_exposes_actual_execution_times(db, native, started):
+    owner, _ = native
+    definition = await create(actor_agent_id=owner.id, title="Synthetic run timing", graph=graph())
+    identity = (await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})).run_id
+    run = await db.get(ProcessRun, identity)
+    start = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+    run.started_at = start if started else None
+    run.finished_at = start + timedelta(seconds=65) if started else None
+    run.status = "success" if started else "queued"
+    await db.commit()
+    item = (await list_runs(owner.id, code=definition.code))["items"][0]
+    assert item["started_at"] == (start.isoformat() if started else None)
+    assert item["finished_at"] == ((start + timedelta(seconds=65)).isoformat() if started else None)
 
 
 @pytest.mark.asyncio

@@ -156,6 +156,9 @@ export const processService = {
   async createDefinition(data: ProcessDefinitionCreate): Promise<ProcessDefinition> {
     return (await api.post('/processes/definitions', data)).data
   },
+  async definition(id: number): Promise<ProcessDefinition> {
+    return (await api.get(`/processes/definitions/${id}`)).data
+  },
   async updateDefinition(id: number, data: ProcessDefinitionUpdate): Promise<ProcessDefinition> {
     return (await api.put(`/processes/definitions/${id}`, data)).data
   },

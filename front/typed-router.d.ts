@@ -269,6 +269,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '//process/external/[id]': RouteRecordInfo<
+      '//process/external/[id]',
+      '/process/external/:id',
+      { id: ParamValue<true> },
+      { id: ParamValue<false> },
+      | never
+    >,
     '//process/internal/[code]': RouteRecordInfo<
       '//process/internal/[code]',
       '/process/internal/:code',
@@ -281,6 +288,13 @@ declare module 'vue-router/auto-routes' {
       '/process/internal/run/:id',
       { id: ParamValue<true> },
       { id: ParamValue<false> },
+      | never
+    >,
+    '//process/new-external': RouteRecordInfo<
+      '//process/new-external',
+      '/process/new-external',
+      Record<never, never>,
+      Record<never, never>,
       | never
     >,
     '//process/new-internal': RouteRecordInfo<
@@ -645,6 +659,14 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | never
     }
+    'app/process/pages/external/[id].vue': {
+      routes:
+        | '//process/external/[id]'
+      views:
+        | never
+      pathParamNames:
+        | 'id'
+    }
     'app/process/pages/internal/[code].vue': {
       routes:
         | '//process/internal/[code]'
@@ -660,6 +682,14 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | 'id'
+    }
+    'app/process/pages/new-external.vue': {
+      routes:
+        | '//process/new-external'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'app/process/pages/new-internal.vue': {
       routes:

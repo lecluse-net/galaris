@@ -46,12 +46,23 @@ between providers, expiry and retry after an outage.
 
 ## Internal business processes
 
+`test_run_observation.py` protects start and finish timestamps in the native run list.
+`front/app/process/runTiming.test.mjs` checks that duration for both engines excludes
+initial queueing, stops on completion and remains unavailable without a start time.
+
 `front/browser-tests/process-loading.spec.mjs` verifies that the catalogue displays without
-downloading execution views or waiting for agents and n8n health. Delayed views can close and
-reopen on desktop/mobile. The measurement scenario attaches module requests, decoded bytes
+downloading execution views or waiting for agents and n8n health. Runs load only when their
+process is expanded; sublists remain isolated and failed loads can be retried on desktop
+and mobile. Pagination preserves server totals and independent pages; the global refresh
+reloads open sublists without changing their page. n8n diagnostics stay in a dialog that
+can close during synchronization; the banner distinguishes a broken connection from an
+unconfigured integration. Clicking a row expands runs; the edit icon navigates without expanding.
+The external editor preserves drafts after failed saves, respects read-only access and
+ignores late responses from another process. Delayed views can close and reopen on desktop/mobile.
+The measurement scenario attaches module requests, decoded bytes
 and display time without a fragile timing threshold. `e2e/specs/process-catalogue.spec.mjs`
-opens the list and editor with real APIs, displays five executions launched through the API and
-prohibits loading full agent profiles.
+opens the list and editor with real APIs, expands five executions launched through the API,
+saves an external description and reads it after reloading, and prohibits loading full agent profiles.
 `storeConcurrency.test.mjs` protects independent definition display and agent options surviving
 a filter change.
 

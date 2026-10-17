@@ -58,7 +58,7 @@ export interface NativeRun {
 export interface Accounting { calls: number; cost: number | null; inference_cost: number | null; tokens: number | null; estimated_calls: number; duration_seconds?: number | null }
 export interface NativeMetrics { direct: Accounting; inclusive: Accounting; tasks: Record<string, Accounting>; nodes: Record<string, Accounting>; partial: boolean
   occurrences?: Record<string, { node_key: string; direct: Accounting; inclusive: Accounting; duration_seconds: number | null }> }
-export interface NativeRunSummary { id: string; status: string; process_label: string; engine_code: string; result_preview?: string }
+export interface NativeRunSummary { id: string; status: string; process_label: string; engine_code: string; result_preview?: string; started_at?: string | null; finished_at?: string | null }
 export interface NativeChildren { items: NativeRunSummary[]; total: number; page: number; page_size: number }
 export interface ProcessHistory { items: { revision: number; created_at: string; author_agent_id: number | null }[]; total: number; has_more: boolean }
 
