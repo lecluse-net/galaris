@@ -18,15 +18,13 @@ from loguru import logger
 from core.params import runtime_settings
 from core.settings import settings
 from core.storage import file_path, sync_directory
+from core.util import source_code_media_type
 
 
 _CHUNK_SIZE = 1024 * 1024
 _ACTIVE_MIME_TYPES = {
     "image/svg+xml",
-    "application/javascript",
-    "text/javascript",
     "application/x-msdownload",
-    "application/x-sh",
 }
 
 
@@ -75,6 +73,10 @@ def _validated_content_type(
     declared = _validate_mime(declared_type)
     guessed = _validate_mime(mimetypes.guess_type(filename)[0] or declared)
     normalized = prefix[:8_192].lstrip().lower()
+    if source_type := source_code_media_type(filename, declared):
+        return source_type
+    if normalized.startswith(b"#!"):
+        return "text/plain"
     is_html = declared in {"text/html", "application/xhtml+xml"} or guessed in {"text/html", "application/xhtml+xml"}
     if not is_html and (
         normalized.startswith((b"<!doctype html", b"<html", b"<script", b"#!"))

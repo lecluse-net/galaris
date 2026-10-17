@@ -18,6 +18,9 @@ from core.settings import settings
     ('../../unsafe.html', 'text/html', b'<!doctype html><script>const ready = true</script><img src="https://example.invalid/photo.png">'),
     ('diagram.html', 'text/html', b'<svg xmlns="http://www.w3.org/2000/svg"><text>Diagram</text></svg>'),
     ('report.xhtml', 'application/xhtml+xml', b'<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml"><p>Report</p></html>'),
+    ('module.js', 'text/javascript', b'window.sourceExecuted = true;\n'),
+    ('module.sh', 'application/x-sh', b'#!/bin/sh\necho "synthetic source"\n'),
+    ('module.py', 'text/x-python', b'#!/usr/bin/env python3\nprint("synthetic source")\n'),
 ])
 async def test_upload_uses_uuid_path_and_round_trips(
     tmp_path: object, monkeypatch: pytest.MonkeyPatch, name, media_type, content,

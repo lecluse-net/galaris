@@ -675,6 +675,28 @@ def test_text_thumbnail_is_bounded_webp(tmp_path: Path) -> None:
         assert thumbnail.size == (320, 320)
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name,mime", [("module.js", "application/javascript"), ("component.vue", "text/html"), ("module.ts", "video/mp2t")])
+async def test_source_thumbnail_never_uses_a_browser_renderer(tmp_path, monkeypatch, name, mime):
+    source = tmp_path / name
+    original = b'<script>window.sourceExecuted = true</script>'
+    source.write_bytes(original)
+    attachment = _attachment(name, mime)
+    document_id = uuid4()
+    capture = AsyncMock()
+    monkeypatch.setattr(document_thumbnail_service, "render_html_pdf", capture)
+    monkeypatch.setattr(document_thumbnail_service, "_html_thumbnail_capture", capture)
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path / "thumbnails"))
+    monkeypatch.setattr(document_thumbnail_service.document_attachment_service, "document_attachment_path",
+        AsyncMock(return_value=(attachment, source)))
+    result = await document_thumbnail_service.generate_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7)
+    assert result is not None
+    with Image.open(BytesIO(result)) as image:
+        assert image.format == "WEBP"
+    assert source.read_bytes() == original
+    capture.assert_not_awaited()
+
+
 def test_video_thumbnail_extracts_an_early_frame(tmp_path: Path) -> None:
     source = tmp_path / "preview.mkv"
     with av.open(str(source), mode="w", format="matroska") as container:

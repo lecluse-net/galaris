@@ -1,5 +1,6 @@
 export { createSessionReadCache, createSessionResponseCache, invalidateSessionReads, onSessionReadInvalidation } from './sessionReadCache'
 export { queuePreview } from './previewQueue'
+export { saveBlobAsResource } from './resourceViewer'
 export { attachmentReference } from './richText'
 
 /** Keep document export independent of the utility component catalogue. */

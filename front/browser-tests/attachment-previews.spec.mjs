@@ -199,6 +199,14 @@ for (const surface of ['document', 'message', 'resource']) {
     ['notes.txt', 'text/plain', 'Plain text\n  Preserve indentation\n<script>literal source</script>\n', null],
     ['report.py', 'application/octet-stream', '# Report\ndef report():\n    return "ready"\n', 'def'],
     ['main.rs', 'text/plain', 'fn main() {\n    let ready = true;\n}\n', 'fn'],
+    ['module.js', 'text/javascript', 'window.sourceExecuted = true;\nconst markup = "<script>window.sourceExecuted = true</script>";\n', 'const'],
+    ['script.sh', 'application/x-sh', '#!/bin/sh\nif true; then\n  echo "synthetic source"\nfi\n', 'if'],
+    ['component.vue', 'text/html', '<script>window.sourceExecuted = true</script><template><b>Source</b></template>', null],
+    ['module.ts', 'video/mp2t', 'const answer: number = 42;\n', 'const'],
+    ['script.ps1', 'application/octet-stream', '$answer = 42\nWrite-Output $answer\n', '42'],
+    ['script.bat', 'application/octet-stream', 'if exist synthetic.txt echo ready\n', 'if'],
+    ['main.dart', 'application/octet-stream', 'void main() { final answer = 42; print(answer); }\n', '42'],
+    ['Dockerfile', 'text/html', 'FROM alpine\nRUN echo "synthetic source"\n', 'FROM'],
   ]) {
     test(`${surface} ${name} opens as readonly source with copy and original download`, async ({ page }, testInfo) => {
       const { open, dialog } = await setup(page, surface, { name, mime, respond: route => route.fulfill({ contentType: mime, body: content }) })
@@ -206,6 +214,8 @@ for (const surface of ['document', 'message', 'resource']) {
       const editor = dialog.getByRole('textbox', { name, exact: true })
       await expect(editor).toHaveValue(content)
       await expect(editor).toHaveAttribute('readonly', '')
+      expect(await page.evaluate(() => window.sourceExecuted)).toBeUndefined()
+      await expect(dialog.locator('iframe, script')).toHaveCount(0)
       await editor.focus()
       await editor.press('Control+End')
       await editor.press('Enter')

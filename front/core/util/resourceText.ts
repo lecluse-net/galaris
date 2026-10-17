@@ -4,10 +4,10 @@ const languagesByExtension: Record<string, string> = {
   py: 'python', pyi: 'python', sql: 'sql', json: 'json', jsonl: 'json', ipynb: 'json',
   yaml: 'yaml', yml: 'yaml', xml: 'xml', xsd: 'xml', xsl: 'xml', svg: 'xml',
   css: 'css', scss: 'scss', less: 'less', vue: 'html', svelte: 'html',
-  sh: 'bash', bash: 'bash', zsh: 'bash', ps1: 'powershell',
+  sh: 'bash', bash: 'bash', zsh: 'bash', fish: 'bash', csh: 'bash', ps1: 'powershell', psm1: 'powershell', bat: 'dos', cmd: 'dos',
   c: 'c', h: 'c', cpp: 'cpp', cc: 'cpp', cxx: 'cpp', hpp: 'cpp',
   cs: 'csharp', java: 'java', kt: 'kotlin', kts: 'kotlin',
-  go: 'go', rs: 'rust', rb: 'ruby', php: 'php', swift: 'swift',
+  go: 'go', rs: 'rust', rb: 'ruby', php: 'php', swift: 'swift', pl: 'perl', pm: 'perl', lua: 'lua', r: 'r', dart: 'dart', pyw: 'python',
   ini: 'ini', toml: 'ini', conf: 'ini', diff: 'diff', patch: 'diff',
   txt: 'text', log: 'text', csv: 'text', tsv: 'text', rst: 'text', env: 'bash',
 }
@@ -15,14 +15,27 @@ const languagesByExtension: Record<string, string> = {
 const languagesByMime: Record<string, string> = {
   'application/json': 'json', 'application/ld+json': 'json', 'application/x-ndjson': 'json',
   'application/javascript': 'javascript', 'text/javascript': 'javascript',
+  'application/ecmascript': 'javascript', 'text/ecmascript': 'javascript', 'application/x-javascript': 'javascript',
   'application/typescript': 'typescript', 'text/typescript': 'typescript',
   'text/x-python': 'python', 'application/x-python': 'python',
   'application/xml': 'xml', 'text/xml': 'xml',
   'application/yaml': 'yaml', 'application/x-yaml': 'yaml', 'text/yaml': 'yaml', 'text/x-yaml': 'yaml',
   'application/sql': 'sql', 'text/x-sql': 'sql', 'text/css': 'css',
-  'application/x-sh': 'bash', 'text/x-shellscript': 'bash',
+  'application/x-sh': 'bash', 'text/x-shellscript': 'bash', 'application/x-shellscript': 'bash', 'application/x-csh': 'bash',
   'text/x-c': 'c', 'text/x-c++': 'cpp', 'text/x-java-source': 'java',
   'application/x-httpd-php': 'php',
+}
+
+/** Explicit source filenames must not become executable previews due to a MIME guess. */
+export function resourceSourceLanguage(name: string, mediaType = ''): string | null {
+  const filename = name.trim().toLowerCase().split(/[\\/]/).at(-1) ?? ''
+  if (filename === 'dockerfile' || filename.startsWith('dockerfile.')) return 'dockerfile'
+  if (filename === 'makefile' || filename === 'gnumakefile') return 'makefile'
+  const extension = filename.split('.').at(-1) ?? ''
+  if (extension === 'svg') return null
+  const mime = mediaType.split(';', 1)[0]?.trim().toLowerCase() ?? ''
+  const language = languagesByExtension[extension] ?? languagesByMime[mime]
+  return language && language !== 'text' ? language : null
 }
 
 /** Only classify known text formats; unknown binary files keep their download action. */

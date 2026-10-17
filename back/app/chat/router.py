@@ -16,6 +16,7 @@ from starlette.background import BackgroundTask
 from core.authorize import authorize, check_privilege
 from core import websocket
 from core.database import get_db
+from core.util import source_code_response_headers
 from core.i18n import current_language, tr
 from core.params import runtime_settings
 from core.user import user_service, require_web_session
@@ -890,6 +891,7 @@ async def read_message_preview_content(
         headers={
             "Cache-Control": "private, no-store",
             "X-Content-Type-Options": "nosniff",
+            **source_code_response_headers(resource.name, resource.media_type),
         },
         background=BackgroundTask(resource.cleanup),
     )
@@ -1271,7 +1273,8 @@ async def download_file(
         path = storage.attachment_path(file_id)
         if not path.is_file() or path.is_symlink():
             raise _not_found()
-        return FileResponse(Path(path), media_type=access.mime_type, filename=access.name)
+        return FileResponse(Path(path), media_type=access.mime_type, filename=access.name,
+            headers=source_code_response_headers(access.name, access.mime_type))
     fetched = await fetch_chat_file_bytes(
         user_id,
         room_id,
@@ -1284,6 +1287,7 @@ async def download_file(
     return Response(
         content=content,
         media_type=access.mime_type or "application/octet-stream",
+        headers=source_code_response_headers(access.name, access.mime_type or "application/octet-stream"),
     )
 
 

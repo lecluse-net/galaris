@@ -15,6 +15,7 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from core.database import get_db
 from core.storage import register_file
+from core.util import source_code_media_type
 
 from core.user import HumanActor
 
@@ -31,11 +32,7 @@ ATTACHMENT_METADATA_KEY = "document_attachments"
 _CHUNK_SIZE = 1024 * 1024
 _MAX_ATTACHMENTS = 50
 _ACTIVE_MEDIA_TYPES = {
-    "application/javascript",
     "application/x-msdownload",
-    "application/x-sh",
-    "image/svg+xml",
-    "text/javascript",
 }
 
 
@@ -55,8 +52,16 @@ def validate_attachment_content(declared: str | None, name: str, content: bytes)
     if media_type == "application/octet-stream":
         media_type = fallback.casefold()
     prefix = content[:8_192].lstrip().lower()
+    if source_type := source_code_media_type(name, media_type):
+        return source_type
+    if prefix.startswith(b"#!") and media_type not in _ACTIVE_MEDIA_TYPES:
+        return "text/plain"
     if media_type in {"text/html", "application/xhtml+xml"} or prefix.startswith((b"<!doctype html", b"<html")):
         return "text/html"
+    # Vector files retain their source (including declarative animations). The
+    # viewer renders them as images; HTTP reads are sandboxed by the API middleware.
+    if media_type == "image/svg+xml":
+        return media_type
     if (
         media_type in _ACTIVE_MEDIA_TYPES
         or prefix.startswith((b"<!doctype html", b"<html", b"<script", b"#!", b"<svg"))

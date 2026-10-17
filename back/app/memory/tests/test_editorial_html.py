@@ -153,7 +153,11 @@ async def test_interactive_content_remains_forbidden_outside_regular_documents(a
 
 
 @pytest.mark.asyncio
-async def test_inline_images_history_and_current_access(agents, memory_storage, db):
+@pytest.mark.parametrize("media_type,source", [
+    ("image/png", png()),
+    ("image/svg+xml", b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 4"><rect width="4" height="4" fill="blue"/></svg>'),
+])
+async def test_inline_images_history_and_current_access(agents, memory_storage, db, media_type, source):
     owner, peer = agents
     document = await create_document(
         owner_agent_id=owner.id, title="Image document", content="<p>Before</p>", task_id=None
@@ -161,9 +165,9 @@ async def test_inline_images_history_and_current_access(agents, memory_storage, 
     attachment = await attachments.add_document_attachment_bytes(
         document.id,
         actor_agent_id=owner.id,
-        name="image.png",
-        media_type="image/png",
-        content=png(),
+        name="image.svg" if media_type == "image/svg+xml" else "image.png",
+        media_type=media_type,
+        content=source,
     )
     uri = f"document://{document.id}/attachments/{attachment.id}"
     body = f'<p>After</p><img src="{uri}" alt="blue" width="400">'
@@ -200,7 +204,7 @@ async def test_inline_images_history_and_current_access(agents, memory_storage, 
         await attachments.read_document_attachment(
             document.id, attachment.id, actor_agent_id=peer.id
         )
-    )[1] == png()
+    )[1] == source
     await service.remove_item_grant(document.id, peer.id, actor_agent_id=owner.id)
     with pytest.raises(service.MemoryPermissionError):
         await attachments.read_document_attachment(

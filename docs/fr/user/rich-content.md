@@ -175,6 +175,17 @@ Les documents s’ouvrent en **Largeur fixe** : une page A4 avec des marges de 1
 sur de grands tableaux ; il est activé en pleine largeur. Il fonctionne aussi en plein écran et ne modifie pas
 le contenu enregistré. Sur mobile, la page s’adapte à la largeur de l’écran.
 
+## Fichiers de code source
+
+Vous pouvez joindre des sources JavaScript, TypeScript, Python, shell et d'autres langages
+dans un document ou une discussion. Cliquez sur le fichier pour ouvrir l'aperçu : le
+composant CodeEditor affiche le code en lecture seule avec coloration syntaxique. Vous
+pouvez sélectionner et copier le texte, puis télécharger le fichier original. L'aperçu
+et la création de sa miniature n'exécutent jamais la source, même si elle contient des
+balises HTML ou un shebang. Le téléchargement ne lance pas le fichier.
+
+Les fichiers HTML et SVG conservent leurs aperçus isolés habituels.
+
 ## Images des documents
 
 Les documents de travail ordinaires permettent de choisir une image locale, de la coller ou
