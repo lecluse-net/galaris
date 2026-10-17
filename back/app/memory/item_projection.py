@@ -61,7 +61,7 @@ def item_to_public(
         "access": MemoryAccessPublic(can_read=access.can_read, can_write=access.can_write),
         "grants": [
             {"agent_id": grant.agent_id, "can_write": grant.can_write}
-            for grant in sorted(item.grants, key=lambda value: value.agent_id)
+            for grant in sorted(item.grants, key=lambda value: value.agent_id or 0) if grant.agent_id is not None
         ],
     }
     if memory_content and item.document is not None:

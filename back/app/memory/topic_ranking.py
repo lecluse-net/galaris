@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from app.share import ShareGrant
+
 import math
 from collections.abc import Sequence
 from typing import cast
@@ -21,7 +23,7 @@ from .embedding import (
     embed_query,
     resolve_embedding_model,
 )
-from .models import MemoryEmbeddingChunk, MemoryItem, MemoryItemGrant, MemoryLink
+from .models import MemoryEmbeddingChunk, MemoryItem, MemoryLink
 
 
 async def rank_topic_projection_embeddings(
@@ -73,9 +75,9 @@ async def rank_topic_projection_embeddings(
     if agent_id is not None:
         related_item = aliased(MemoryItem)
         direct_grant = exists(
-            select(MemoryItemGrant.id).where(
-                MemoryItemGrant.item_id == related_item.id,
-                MemoryItemGrant.agent_id == agent_id,
+            select(ShareGrant.id).where(
+                ShareGrant.share_id == related_item.share_id,
+                ShareGrant.agent_id == agent_id,
             )
         )
         query = query.where(

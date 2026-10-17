@@ -81,8 +81,8 @@ async def human_work(scope: AgentManagementScope, *, page: int, page_size: int) 
             if local_graph(run, occurrence).typed else None,
         "outputs": [variable.model_dump(mode="json") for variable in local_graph(run, occurrence).node(occurrence.node_key).outputs or []]
             if local_graph(run, occurrence).typed else None,
-        "dataset_uri": f"document://{run.dataset_document_id}",
-        "attachments_uri": f"document://{run.dataset_document_id}/attachments/"}
+        "data_uri": f"galaris://processes/runs/{run.id}/data",
+        "attachments_uri": f"galaris://processes/runs/{run.id}/attachments/"}
         for attempt, occurrence, run in rows], "total": total or 0, "page": page, "page_size": page_size}
 
 

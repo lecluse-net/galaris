@@ -1,4 +1,5 @@
 const en = {
+  resources: { parentDiagram: 'Parent diagram', run: 'Execution', attachments: 'Processes and executions', attach: 'Attach a process or execution', search: 'Find a process or execution', open: 'Open preview', asLink: 'Insert a title link', asDiagram: 'Insert the diagram', detach: 'Detach the reference', empty: 'No process or execution is attached.', unavailable: 'Process or execution unavailable', error: 'Unable to load or update Process references.', rights: 'Readers need access to the Process independently of this Document.' },
   title: 'Internal business processes', newProcess: 'Create an internal process', editor: 'Process editor', diagram: 'BPMN process diagram',
   runUrl: 'Run URL', copyRunUrl: 'Copy run URL', runResult: 'Execution result', processTitle: 'Process title',
   empty: 'No internal process is available', readOnly: 'Read-only access',
@@ -71,7 +72,7 @@ const en = {
   confirmStop: 'Stop this run and its child processes? Active tasks will be interrupted and pending human requests closed. This run cannot be resumed after it stops.',
   phases: { queued: 'Queued', running: 'Running', waiting: 'Waiting', pausing: 'Pausing', paused: 'Paused', cancelling: 'Stopping', blocked: 'Blocked: reconciliation required', success: 'Completed', error: 'Failed', cancelled: 'Stopped', unknown: 'Unknown outcome' },
   waitKinds: { ready: 'Ready to start', engine: 'Engine processing', human_reply: 'Waiting for a reply in messaging', authorization: 'Waiting for authorization', child_process: 'Waiting for a child process', agent_task: 'Agent working', task_queue: 'Task queued', task_paused: 'Task paused', task_wait: 'Task waiting for a response', external_operation: 'External operation in progress', code_execution: 'Code running' },
-  dataset: 'Run Dataset', nodeDetails: 'Activity occurrence', children: 'Child processes', parent: 'Parent run',
+  runData: 'Run data', runFiles: 'Attachments', downloadFile: 'Download attachment', nodeDetails: 'Activity occurrence', children: 'Child processes', parent: 'Parent run',
   directCost: 'Direct billed cost', inclusiveCost: 'Billed cost including children', inferenceCost: 'Inference value including children', duration: 'Elapsed time', unknown: 'Unavailable',
   partial: 'Accounting is partial', occurrences: 'Activity occurrences', error: 'Unable to complete this action', retry: 'Retry',
   estimated: '{count} calls have estimated costs',
@@ -79,6 +80,7 @@ const en = {
     call: 'Call process', if: 'Conditional choice', parallel: 'Parallel gateway', for: 'FOR loop', while: 'WHILE loop' },
 }
 const fr: typeof en = {
+  resources: { parentDiagram: 'Diagramme parent', run: 'Exécution', attachments: 'Processus et exécutions', attach: 'Joindre un processus ou une exécution', search: 'Rechercher un processus ou une exécution', open: 'Ouvrir l’aperçu', asLink: 'Insérer un lien avec le titre', asDiagram: 'Insérer le diagramme', detach: 'Détacher la référence', empty: 'Aucun processus ni aucune exécution joint.', unavailable: 'Processus ou exécution indisponible', error: 'Impossible de charger ou modifier les références Process.', rights: 'Les lecteurs doivent avoir accès au processus indépendamment de ce document.' },
   title: 'Processus métier internes', newProcess: 'Créer un processus interne', editor: 'Éditeur de processus', diagram: 'Diagramme BPMN du processus',
   runUrl: 'URL du run', copyRunUrl: 'Copier l’URL du run', runResult: 'Résultat de l’exécution', processTitle: 'Titre du processus',
   empty: 'Aucun processus interne accessible', readOnly: 'Accès en lecture seule',
@@ -151,7 +153,7 @@ const fr: typeof en = {
   confirmStop: 'Arrêter cette exécution et ses sous-processus ? Les tâches actives seront interrompues et les demandes humaines en attente fermées. Cette exécution ne pourra plus être reprise après son arrêt.',
   phases: { queued: 'En file', running: 'En cours', waiting: 'En attente', pausing: 'Mise en pause', paused: 'En pause', cancelling: 'Arrêt en cours', blocked: 'Bloqué : réconciliation nécessaire', success: 'Terminée', error: 'En échec', cancelled: 'Arrêtée', unknown: 'Résultat inconnu' },
   waitKinds: { ready: 'Prête à démarrer', engine: 'Traitement par le moteur', human_reply: 'En attente d’une réponse dans la messagerie', authorization: 'En attente d’autorisation', child_process: 'En attente d’un sous-processus', agent_task: 'Agent au travail', task_queue: 'Tâche en file', task_paused: 'Tâche en pause', task_wait: 'Tâche en attente d’une réponse', external_operation: 'Opération externe en cours', code_execution: 'Code en cours d’exécution' },
-  dataset: 'Dataset du run', nodeDetails: 'Occurrence d’activité', children: 'Sous-processus', parent: 'Run parent',
+  runData: 'Données du run', runFiles: 'Pièces jointes', downloadFile: 'Télécharger la pièce jointe', nodeDetails: 'Occurrence d’activité', children: 'Sous-processus', parent: 'Run parent',
   directCost: 'Coût facturé direct', inclusiveCost: 'Coût facturé avec les sous-processus', inferenceCost: 'Valeur d’inférence avec les sous-processus', duration: 'Temps écoulé', unknown: 'Indisponible',
   partial: 'Les métriques sont partielles', occurrences: 'Occurrences des activités', error: 'Impossible de terminer cette action', retry: 'Réessayer',
   estimated: '{count} appels ont un coût estimé',

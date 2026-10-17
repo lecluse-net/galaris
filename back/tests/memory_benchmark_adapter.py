@@ -18,6 +18,7 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import insert
+from tests.sharing_fixtures import bind_private_shares
 
 from app.agent import context as agent_context
 from app.agent.contracts import AgentContextRequest, AgentSnapshot
@@ -141,6 +142,7 @@ async def load_world(memories: tuple[Memory, ...], queries: tuple[Query, ...], r
                 contacts.append(dict(item_id=identity, owner_agent_id=owner, contact_item_id=UUID(m.contact_scope),
                                      source_kind="synthetic-benchmark", source_ref=m.source["id"]))
         await asyncio.to_thread(_write_resources, root, resources)
+        await bind_private_shares(db, rows)
         await db.execute(insert(MemoryItem), rows)
         await db.execute(insert(MemoryRevision), revisions)
         await db.execute(insert(MemorySource), sources)

@@ -178,6 +178,17 @@ A stable cross-module interface is exposed through the root package or a public 
 service or ORM model. Composition imports during bootstrap are an exception, not a precedent
 for business logic.
 
+### Resource domain boundaries
+
+Documents are editorial HTML owned by Memory. Datasets are JSON owned by `app.dataset`.
+Native Process definitions are BPMN stored directly in `process_definitions.bpmn_xml`,
+with Process-owned history and grants. Never create a Document to persist a Dataset or
+Process definition, and never add their editors or resource types to the Documents library.
+A Document may reference Dataset values or attach a Dataset URI with independent rights;
+that reference does not change either resource's domain. Legacy transfer adapters are
+migration mechanisms, never a template for new consumers. Cover these boundaries with
+persistence and API tests whenever resource creation, storage or listing changes.
+
 ### Agent execution
 
 - `app.agent` is the single facade and contract: drivers, registry, dispatcher, planner,
@@ -245,9 +256,11 @@ immutable. Consult the `galaris-process-tools` skill.
   Any palette change must be reflected in this shared reference.
 - Keep components and pages focused; place API calls in services and shared state in Pinia.
 - Use standard Quasar `QBtn` components and their native styles for action buttons. Buttons
-  must have a clearly visible boundary: use the default filled style or `outline`, not `flat`
-  or borderless controls unless explicitly requested. Deletion buttons use the default filled
-  style with `color="negative"`. Do not recreate button styling with custom CSS or HTML buttons.
+  with a visible text label must have a clearly visible boundary: use the default filled style
+  or `outline`, not `flat`, unless explicitly requested. Icon-only action buttons use `flat`
+  with no border unless explicitly requested, and retain an accessible label. Labeled deletion
+  buttons use the default filled style with `color="negative"`; icon-only deletion actions use
+  `flat` with `color="negative"`. Do not recreate button styling with custom CSS or HTML buttons.
 - Routes are derived from `pages/`; do not maintain a second route table.
 - `mobile` mode means exclusively a viewport width below 1024 CSS px (`$q.screen.lt.md`);
   `desktop` mode starts at 1024 px, regardless of orientation or device type.

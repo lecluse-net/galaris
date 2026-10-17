@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from app.share import ShareGrant
+
 from collections.abc import Collection
 from uuid import UUID
 
@@ -18,16 +20,16 @@ from .contracts import MemoryAccess
 from .document_policy import document_policy_clause, orphan_process_clause
 from core.authorize import privilege_clause
 from .source_access import source_access_clause, source_is_readable
-from .models import MemoryItem, MemoryItemGrant, DocumentUserGrant, DocumentTeamGrant, DocumentAttachment, DocumentTag, DocumentTagAssignment
+from .models import MemoryItem, DocumentAttachment, DocumentTag, DocumentTagAssignment
 
 
 def _direct_readable_item_clause(agent_id: int) -> ColumnElement[bool]:
     """Build the SQL predicate applied before ranking or reading payloads."""
 
     item_grant = exists(
-        select(MemoryItemGrant.id).where(
-            MemoryItemGrant.item_id == MemoryItem.id,
-            MemoryItemGrant.agent_id == agent_id,
+        select(ShareGrant.id).where(
+            ShareGrant.share_id == MemoryItem.share_id,
+            ShareGrant.agent_id == agent_id,
         )
     )
     return or_(
@@ -46,8 +48,8 @@ def _direct_readable_item_for_agents_clause(
 
     if agent_ids is None:
         granted_item = exists(
-            select(MemoryItemGrant.id).where(
-                MemoryItemGrant.item_id == MemoryItem.id
+            select(ShareGrant.id).where(
+                ShareGrant.share_id == MemoryItem.share_id, ShareGrant.agent_id.is_not(None)
             )
         )
         return or_(
@@ -55,19 +57,19 @@ def _direct_readable_item_for_agents_clause(
             MemoryItem.global_access >= 1,
             MemoryItem.group_access >= 1,
             granted_item,
-            exists(select(DocumentTeamGrant.id).join(TeamModel, TeamModel.id == DocumentTeamGrant.team_id).where(DocumentTeamGrant.item_id == MemoryItem.id, TeamModel.deleted_at.is_(None))),
+            exists(select(ShareGrant.id).join(TeamModel, TeamModel.id == ShareGrant.team_id).where(ShareGrant.share_id == MemoryItem.share_id, TeamModel.deleted_at.is_(None))),
         )
     normalized_ids = tuple(sorted(set(agent_ids)))
     if not normalized_ids:
         return MemoryItem.id.is_(None)
-    granted_item_ids = select(MemoryItemGrant.item_id).where(
-        MemoryItemGrant.agent_id.in_(normalized_ids)
+    granted_item_ids = select(ShareGrant.share_id).where(
+        ShareGrant.agent_id.in_(normalized_ids)
     )
     return or_(
         MemoryItem.owner_agent_id.in_(normalized_ids),
         and_(MemoryItem.source_managed.is_(True), MemoryItem.visibility == "public"),
         and_(MemoryItem.node_kind == "document", or_(
-            MemoryItem.global_access >= 1, MemoryItem.id.in_(granted_item_ids),
+            MemoryItem.global_access >= 1, MemoryItem.share_id.in_(granted_item_ids),
             agent_team_grant_clause(normalized_ids),
         )),
     )
@@ -143,7 +145,7 @@ async def managed_item_agent_ids(
     candidates = {
         grant.agent_id
         for grant in item.grants
-        if scoped_ids is None or grant.agent_id in scoped_ids
+        if grant.agent_id is not None and (scoped_ids is None or grant.agent_id in scoped_ids)
     }
     if item.owner_agent_id is not None and (
         scoped_ids is None or item.owner_agent_id in scoped_ids
@@ -270,8 +272,8 @@ def owner_team_clause(
 
 def document_team_permissions(item_ids: Collection[UUID] | None = None) -> Subquery:
     """Explicit teams plus live teams of the document's Agent or human owner."""
-    explicit = select(DocumentTeamGrant.item_id, DocumentTeamGrant.team_id, DocumentTeamGrant.can_write).join(
-        TeamModel, TeamModel.id == DocumentTeamGrant.team_id,
+    explicit = select(MemoryItem.id.label("item_id"), ShareGrant.team_id, ShareGrant.can_write).join(ShareGrant, ShareGrant.share_id == MemoryItem.share_id).join(
+        TeamModel, TeamModel.id == ShareGrant.team_id,
     ).where(TeamModel.deleted_at.is_(None))
     inherited = select(
         MemoryItem.id.label("item_id"), TeamModel.id.label("team_id"),
@@ -280,7 +282,7 @@ def document_team_permissions(item_ids: Collection[UUID] | None = None) -> Subqu
         MemoryItem.group_access > 0, MemoryItem.deleted_at.is_(None), TeamModel.deleted_at.is_(None),
     )
     if item_ids is not None:
-        explicit = explicit.where(DocumentTeamGrant.item_id.in_(item_ids))
+        explicit = explicit.where(MemoryItem.id.in_(item_ids))
         inherited = inherited.where(MemoryItem.id.in_(item_ids))
     return union_all(explicit, inherited).subquery()
 
@@ -303,15 +305,15 @@ def agent_team_grant_clause(
 
 
 def _direct_human_item_clause(user_id: int, *, write: bool = False) -> ColumnElement[bool]:
-    direct = select(DocumentUserGrant.id).where(
-        DocumentUserGrant.item_id == MemoryItem.id, DocumentUserGrant.user_id == user_id,
+    direct = select(ShareGrant.id).where(
+        ShareGrant.share_id == MemoryItem.share_id, ShareGrant.user_id == user_id,
     )
     permissions = document_team_permissions()
     teams = select(permissions.c.item_id).join(
         TeamUserModel, TeamUserModel.team_id == permissions.c.team_id,
     ).where(permissions.c.item_id == MemoryItem.id, TeamUserModel.user_id == user_id)
     if write:
-        direct = direct.where(DocumentUserGrant.can_write.is_(True))
+        direct = direct.where(ShareGrant.can_write.is_(True))
         teams = teams.where(permissions.c.can_write.is_(True))
     return and_(
         exists(select(UserModel.id).where(UserModel.id == user_id, UserModel.is_active.is_(True))),

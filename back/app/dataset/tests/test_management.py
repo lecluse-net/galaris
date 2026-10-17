@@ -78,7 +78,8 @@ async def test_document_sharing_contract_is_atomic_and_does_not_give_editors_own
 
 
 @pytest.mark.asyncio
-async def test_dataset_usages_find_current_documents_processes_and_agent_traces_without_leaking_private_sources(db, agents, memory_storage, monkeypatch):
+@pytest.mark.parametrize("reference_source", ["snapshot", "data", "files"])
+async def test_dataset_usages_find_current_documents_processes_and_agent_traces_without_leaking_private_sources(db, agents, memory_storage, monkeypatch, reference_source):
     owner, other = agents
     scope = AgentManagementScope(user_id=owner.user_id, agent_ids=frozenset({owner.id}))
     privileges = list(await db.scalars(select(Privilege).where(Privilege.code.in_(["MEMORY_ACCESS", "PROCESS_READ", "AGENT_ACCESS"]))))
@@ -93,11 +94,17 @@ async def test_dataset_usages_find_current_documents_processes_and_agent_traces_
         await document_service.create_document(owner_agent_id=agent.id, title=label, task_id=None,
             content=f'<form data-dataset="{uri}"><p>Synthetic Dataset application</p></form>')
     tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris"))
-    definition = ProcessDefinition(tool_id=tool.id, engine_process_id=f"synthetic-{uuid4()}", label="Synthetic workflow")
+    definition = ProcessDefinition(agent_id=owner.id, code="synthetic_" + uuid4().hex, tool_id=tool.id, engine_process_id=f"synthetic-{uuid4()}", label="Synthetic workflow")
     db.add(definition); await db.flush()
     run = ProcessRun(process_id=definition.id, launcher_agent_id=owner.id, engine_code="galaris", correlation_id=str(uuid4()),
-        callback_token=str(uuid4()), launch_snapshot={"input": {"dataset": {"type": "Dataset", "value": uri}}})
+        callback_token=str(uuid4()),
+        launch_snapshot={"input": {"dataset": {"type": "Dataset", "value": uri}}} if reference_source == "snapshot" else {},
+        data={"dataset": {"type": "Dataset", "value": uri}} if reference_source == "data" else {})
     db.add(run)
+    if reference_source == "files":
+        from app.process.models import ProcessRunFile
+        await db.flush()
+        db.add(ProcessRunFile(run_id=run.id, uri=uri))
     for agent in (owner, other):
         db.add(LLMCall(agent_id=agent.id, tool_calls=[{"name": "file_read", "arguments": {"uri": uri}}]))
     await db.flush()

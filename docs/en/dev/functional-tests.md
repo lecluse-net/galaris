@@ -2,9 +2,18 @@
 
 # Functional guarantees catalogue
 
+`app/share/tests` verifies exclusive configurations, isolation between resources and owners, read/write access and denial of resharing by ordinary editors. PostgreSQL migration tests cover Documents, Dataset and Process, all three principal types, global and team access, tombstones, replay after revocation and rollback of interrupted copies. Common frontend sharing scenarios also include Dataset.
+
+
 `app/tools/tests/test_action_authorizations.py` also checks that unconsumed legacy automatic
 approvals are invalidated before execution, directly or through reconciliation.
 `app/agent/tests/test_agents.py` rejects legacy approval settings in API writes.
+
+`app/process/tests/test_definition_storage.py` checks Process-owned BPMN storage without
+creating Documents, legacy content/history/grant transfer, retries and invalid-batch rollback.
+`test_document_library.py` rejects Process and Dataset types during Document creation.
+The Process E2E journey also checks that the definition is absent from the Documents
+library before editing and executing it.
 
 `tests/test_module_loading.py` checks required Task imports, several loading orders and injected
 jobs, including Process refresh. The LLM embedding, Tools search and Memory suites protect index
@@ -58,6 +67,13 @@ audio uploads from bytes or disk and handle cleanup after errors or cancellation
 between providers, expiry and retry after an outage.
 
 ## Internal business processes
+
+`back/app/process/tests/test_run_execution_state.py` verifies atomic functional data and
+run receipts, idempotent replay, rollbacks and rejection of late writes after a terminal
+state. Existing `test_native_bpmn.py` scenarios cover disjoint
+merges, lost acknowledgements and files forwarded to child runs. Storage coverage also
+checks that no Dataset/Document is created and that Process sharing and revocation apply
+to variables and managed file bytes.
 
 `test_run_observation.py` protects start and finish timestamps in the native run list.
 `front/app/process/runTiming.test.mjs` checks that duration for both engines excludes
@@ -1041,6 +1057,11 @@ its counter includes `WITH`.
   `test_document_structure.py` verifies that an attachment description notifies only its memory.
 - `e2e/specs/document-refresh.spec.mjs`: remote API edits and real websocket events refresh only
   the affected folder and visible page while preserving rows in the tree and list.
+- `e2e/specs/resource-sharing.spec.mjs`: Document/Process sharing across two sessions,
+  a recipient without administrator privileges, reading then editing without resharing,
+  mobile reload, reopening and revocation. `app/share/tests/test_concurrency.py`
+  checks conflicts across PostgreSQL connections and independent resource locks;
+  `test_upgrade.py` upgrades a populated historical schema, interrupts the transfer and verifies recovery.
 - `front/browser-tests/document-deletion.spec.mjs`: confirmed deletion immediately removes
   the document from the desktop/mobile library during slow reads; responses captured before
   deletion cannot restore it, and notifications coalesce into one list refresh after deletion.

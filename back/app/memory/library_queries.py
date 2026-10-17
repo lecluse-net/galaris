@@ -69,7 +69,7 @@ async def list_document_keywords(agent_id: int) -> list[str]:
         select(MemoryItem.keywords).where(
             readable_item_clause(agent_id),
             MemoryItem.node_kind == "document",
-            MemoryItem.document_type != "dataset",
+            MemoryItem.document_type == "html",
             or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
             or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
         )
@@ -159,7 +159,7 @@ async def browse_document_library(
     base_filters: list[ColumnElement[bool]] = [
         scope_clause,
         MemoryItem.node_kind == "document",
-        MemoryItem.document_type != "dataset",
+        MemoryItem.document_type == "html",
         or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
         or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
     ]
@@ -379,7 +379,7 @@ async def _library_keywords(scope_clause: ColumnElement[bool], now: datetime) ->
         .where(
             scope_clause,
             MemoryItem.node_kind == "document",
-            MemoryItem.document_type != "dataset",
+            MemoryItem.document_type == "html",
             or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
             or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
         )

@@ -116,9 +116,11 @@ def test_reserved_tool_codes_are_rejected(code: str) -> None:
         validate_external_tool_code(code, file_share=True)
 
 
-def test_process_run_scheme_is_reserved_for_native_resources() -> None:
+def test_process_runs_use_galaris_and_the_retired_scheme_stays_reserved() -> None:
     identity = uuid4()
-    assert str(parse_resource_uri(f"processus://run/{identity}")) == f"processus://run/{identity}"
+    assert str(parse_resource_uri(f"galaris://processes/runs/{identity}")) == f"galaris://processes/runs/{identity}"
+    with pytest.raises(ResourceUriError, match="galaris://processes/runs/"):
+        parse_resource_uri(f"processus://run/{identity}")
     with pytest.raises(ValueError, match="reserved"):
         validate_external_tool_code("processus", file_share=True)
 

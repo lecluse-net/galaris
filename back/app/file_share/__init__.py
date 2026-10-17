@@ -7,9 +7,6 @@ services are registered bridges and Messenger attachments keep their provider id
 
 from . import file_share_service
 from .native_providers import register_native_provider, register_resource_aliases
-from .process_provider import ProcessRunProvider
-
-register_native_provider("processus", ProcessRunProvider())
 from .models import FileCatalogEntry, FileIndexRun, FileObservationRepair
 from .indexing import indexing_tick, repair_tick, start_index_run, cancel_index_run, prune_index_history, refresh_known_tick
 from .catalogue import annotate_catalogue_entry, catalogue_access_clause, catalogue_source_readable, catalogue_sources_readable

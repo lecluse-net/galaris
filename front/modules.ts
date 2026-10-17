@@ -18,6 +18,7 @@ export const modules = [
     'app/dream',
     'app/topic',
     'app/goal',
+    'app/share',
     'app/memory',
     'app/file_share',
     'app/dataset',

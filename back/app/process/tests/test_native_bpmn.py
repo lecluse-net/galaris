@@ -1,4 +1,7 @@
+from app.process.models import ProcessDefinition
 """Business guarantees of the executable profile and durable native admission."""
+
+from app.share import set_grant
 
 import json
 from uuid import UUID, uuid4
@@ -16,12 +19,19 @@ from app.process import process_service, registry
 from app.process.bpmn import Flow, Node, Workflow, compile_bpmn, to_bpmn
 from app.process.bpmn import Actor, validate_graph
 from app.process.expressions import evaluate, ExpressionError
-from app.process.models import ProcessDefinition, ProcessRun, ProcessNodeRun, ProcessNodeAttempt
-from app.process.native_definitions import create, read, update, restore
+from app.process.models import ProcessDefinition, ProcessRun, ProcessNodeRun, ProcessNodeAttempt, ProcessRunFile
+from app.process.run_resources import read_run_data, write_run_data
+from app.process.run_data import run_files, RunDataConflictError
+from app.process.native_definitions import create, read, update, restore, DefinitionConflictError
 from app.process.native_engine import NativeProcessEngine
 from app.task import TaskStatus, task_service
 from app.task.workflow import TaskEvent, transition
 from app.tools.tests.test_rest import api_server
+
+
+
+async def write_run_json(identity, actor, content, *, expected_revision):
+    return await write_run_data(identity, actor, json.loads(content), expected_revision=expected_revision)
 
 
 def graph(prompt="Prepare the synthetic result"):
@@ -184,9 +194,11 @@ async def test_human_activity_waits_for_assignee_and_replays_one_receipt(db, nat
         await complete_human_work(identity, foreign, {"approved": True})
     from core.user import HumanActor
     run = await db.get(ProcessRun, response.run_id)
-    shared = await read_workflow_document(run.dataset_document_id, HumanActor(user.id))
+    await set_grant(definition.share_id, "user", user.id, True)
+    await db.commit()
+    shared = await read_run_data(run.id, scope)
     assert shared["can_write"]
-    await write_workflow_document(run.dataset_document_id, HumanActor(user.id), '{"approved": true}', expected_revision=shared["revision"])
+    await write_run_json(run.id, scope, '{"approved": true}', expected_revision=shared["revision"])
     user.is_active = False; await db.commit()
     with pytest.raises(PermissionError, match="inactive"):
         await complete_human_work(identity, scope, {"approved": True})
@@ -300,10 +312,12 @@ async def test_assigned_agent_is_forced_with_shared_writable_dataset_and_scope_c
     task = await task_service.get_by_id(attempt.task_id)
     assert task.agent_id == executor.id and task.forced_route == "EXEC"
     run = await db.get(ProcessRun, response.run_id)
-    assert (await read_workflow_document(run.dataset_document_id, executor.id))["can_write"]
-    shared = await read_workflow_document(run.dataset_document_id, executor.id)
-    await write_workflow_document(run.dataset_document_id, executor.id, '{"executor": "synthetic"}', expected_revision=shared["revision"])
-    assert json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"]) == {"executor": "synthetic"}
+    await set_grant(definition.share_id, "agent", executor.id, True)
+    await db.commit()
+    assert (await read_run_data(run.id, executor.id))["can_write"]
+    shared = await read_run_data(run.id, executor.id)
+    await write_run_json(run.id, executor.id, '{"executor": "synthetic"}', expected_revision=shared["revision"])
+    assert (await read_run_data(run.id, owner.id))["data"] == {"executor": "synthetic"}
     task_identity = task.id
     attempt.task_id = None; attempt.status = "intent"; await db.commit()
     await process_service.refresh_run(run.id)
@@ -325,7 +339,7 @@ def test_expressions_have_missing_null_and_short_circuit_semantics():
 
 
 @pytest.mark.asyncio
-async def test_http_native_and_lab_pagination_accepts_encoded_sizes_with_real_authorization(client, inference_db, committed_native):
+async def test_http_native_and_lab_pagination_accepts_encoded_sizes_with_real_authorization(client, inference_db, committed_native, tmp_path):
     from core.user import UserModel
     from core.user.user_service import encrypt_password
     from core.authorize.models import Assignment, Role, Privilege
@@ -370,7 +384,29 @@ async def test_http_native_and_lab_pagination_accepts_encoded_sizes_with_real_au
     assert admission.status_code == 202, admission.text
     run_id = UUID(admission.json()["run_id"])
     await process_service.process_start_jobs(engine_code="galaris")
+    from app.process.run_data import create_workflow_attachment
+    source = tmp_path / "report.txt"
+    source.write_bytes(b"Entirely synthetic HTTP attachment")
+    attached = await create_workflow_attachment(run_id, key="http-report", source_uri="https://example.test/report.txt",
+        path=source, name="report.txt", media_type="text/plain")
+    file_path = f"/api/processes/internal/runs/{run_id}/files/{attached['uri'].rsplit('/', 1)[-1]}"
+    downloaded = await client.get(file_path, headers=headers)
+    assert downloaded.status_code == 200 and downloaded.content == source.read_bytes()
+    assert downloaded.headers["cache-control"] == "private, no-store"
+    outsider = UserModel(email=f"process-reader-{uuid4().hex}@example.com",
+        hashed_password=encrypt_password("synthetic-reader-password"), is_active=True)
+    db.add(outsider); await db.flush()
+    db.add(Assignment(user_id=outsider.id, role_id=role.id, is_default=True))
+    await db.commit()
+    from httpx import ASGITransport, AsyncClient
+    from main import app
+    async with AsyncClient(transport=ASGITransport(app=app, raise_app_exceptions=False), base_url=client.base_url) as outsider_client:
+        outsider_login = await outsider_client.post("/api/auth/login-json", json={"email": outsider.email, "password": "synthetic-reader-password"})
+        assert outsider_login.status_code == 200, outsider_login.text
+        outsider_headers = {"Authorization": f"Bearer {outsider_login.json()['access_token']}"}
+        assert (await outsider_client.get(file_path, headers=outsider_headers)).status_code == 403
     await finish_run(db, run_id)
+    assert (await client.get(file_path, headers=headers)).content == source.read_bytes()
     scope = AgentManagementScope(user_id, frozenset({owner_id}))
     dataset = await create_synthetic_dataset(scope, agent_id=owner_id, title="Synthetic HTTP inputs",
         cases=[ProcessCaseInput(input={})], invocation_key=uuid4().hex)
@@ -392,6 +428,13 @@ async def test_http_native_and_lab_pagination_accepts_encoded_sizes_with_real_au
         json={"expected_revision": 1, "graph": definition_graph.model_dump(mode="json")})
     assert updated.status_code == 200, updated.text
     assert updated.json()["description"] == created.json()["description"]
+    definition_path = f"/api/processes/internal/definitions/{code}"
+    for description in ("Updated synthetic description", ""):
+        metadata = {"expected_revision": 2, "graph": definition_graph.model_dump(mode="json"), "description": description}
+        assert (await client.put(definition_path, headers=outsider_headers, json=metadata)).status_code == 403
+        response = await client.put(definition_path, headers=headers, json=metadata)
+        assert response.status_code == 200, response.text
+        assert (await client.get(definition_path, headers=headers)).json()["description"] == description
     history_path = f"/api/processes/internal/definitions/{code}/history"
     assert (await client.delete(f"{history_path}/2", headers=headers)).status_code == 409
     foreign = await create(actor_agent_id=other_agent_id, title="Synthetic private history", graph=graph())
@@ -451,11 +494,11 @@ async def test_recursive_current_calls_finish_after_restart_with_distinct_datase
             break
     assert root.status == "success" and root.output == {"remaining": 2}, root.error_message
     runs = list(await db.scalars(select(ProcessRun)))
-    assert len(runs) == len({run.dataset_document_id for run in runs}) == 4
+    assert len(runs) == len({run.id for run in runs}) == 4
     assert all(run.status == "success" for run in runs)
     assert all(run.root_run_id == launched.run_id for run in runs if run.id != launched.run_id)
     for run in runs:
-        dataset = json.loads((await read_workflow_document(run.dataset_document_id, owner_id))["content"])
+        dataset = (await read_run_data(run.id, owner_id))["data"]
         assert dataset == run.output == {"remaining": max(0, run.input["remaining"] - 1)}
 
 
@@ -527,15 +570,15 @@ async def test_definition_acl_current_save_history_restore_and_frozen_run(db, na
     definition = await create(actor_agent_id=owner.id, title="Synthetic workflow", graph=graph())
     with pytest.raises(PermissionError):
         await read(definition.code, reader.id)
-    with pytest.raises(memory.MemoryPermissionError):
-        await memory.delete_document(definition.document_id, actor_agent_id=owner.id)
-    await memory.set_item_grant(definition.document_id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    assert definition.document_id is None and definition.bpmn_xml
+    from app.process.native_sharing import grant_agent
+    await grant_agent(definition.code, owner.id, reader.id)
     assert not (await read(definition.code, reader.id))["can_write"]
     with pytest.raises(PermissionError):
         await update(definition.code, reader.id, expected_revision=1, graph=graph("Unauthorized"))
     first = await process_service.start_process(agent_id=reader.id, workflow_id=definition.code, input_data={})
     saved = await update(definition.code, owner.id, expected_revision=1, graph=graph("Updated instructions"))
-    with pytest.raises(memory.MemoryConflictError):
+    with pytest.raises(DefinitionConflictError):
         await update(definition.code, owner.id, expected_revision=1, graph=graph("Stale"))
     second = await process_service.start_process(agent_id=reader.id, workflow_id=definition.code, input_data={})
     first_run = await db.get(ProcessRun, first.run_id)
@@ -552,26 +595,26 @@ async def test_definition_acl_current_save_history_restore_and_frozen_run(db, na
     await finish_run(db, first.run_id)
     from app.process import mcp
     from app.tools.mcp_loader import McpToolContext
-    caller = McpToolContext(agent_id=reader.id, runtime="internal")
+    caller = McpToolContext(agent_id=owner.id, runtime="internal")
     retry = await mcp.process_run_retry(caller, str(first.run_id), "synthetic-retry")
     assert (await mcp.process_run_retry(caller, str(first.run_id), "synthetic-retry"))["run_id"] == retry["run_id"]
     from uuid import UUID
     assert (await db.get(ProcessRun, UUID(retry["run_id"]))).launch_snapshot["definition"]["revision"] == 3
     with pytest.raises(PermissionError):
-        await mcp.process_run_retry(McpToolContext(agent_id=owner.id, runtime="internal"), str(first.run_id), "foreign-retry")
+        await mcp.process_run_retry(McpToolContext(agent_id=reader.id, runtime="internal"), str(first.run_id), "foreign-retry")
     from app.process.native_definitions import delete_revision, history, revision_detail
     with pytest.raises(PermissionError):
         await delete_revision(definition.code, reader.id, 2)
-    with pytest.raises(memory.MemoryConflictError):
+    with pytest.raises(DefinitionConflictError):
         await delete_revision(definition.code, owner.id, 3)
     await delete_revision(definition.code, owner.id, 2)
     assert [entry["revision"] for entry in (await history(definition.code, owner.id))["items"]] == [3, 1]
     past_only = await history(definition.code, owner.id, limit=1, exclude_current=True)
     assert [entry["revision"] for entry in past_only["items"]] == [1]
     assert past_only["total"] == 1 and not past_only["has_more"]
-    with pytest.raises(memory.MemoryNotFoundError):
+    with pytest.raises(LookupError):
         await revision_detail(definition.code, owner.id, 2)
-    with pytest.raises(memory.MemoryNotFoundError):
+    with pytest.raises(LookupError):
         await restore(definition.code, owner.id, 2, 3)
     assert (await read(definition.code, owner.id))["revision"] == 3
     assert second_run.launch_snapshot["definition"]["revision"] == 2
@@ -609,9 +652,8 @@ async def test_activity_inspection_is_independent_of_global_pagination_and_scope
     assert detail["attempts"][0]["receipt"]["output"] == {"sample": "result"}
     with pytest.raises(PermissionError):
         await activity_occurrences(launched.run_id, "work", stranger.id)
-    # A frozen participant can inspect the activity; Dataset grants are independent.
-    run = await db.get(ProcessRun, launched.run_id)
-    run.launch_snapshot = {**run.launch_snapshot, "participant_agents": [owner.id, stranger.id]}
+    # Sharing the Process immediately authorizes inspection of its existing run.
+    await set_grant(definition.share_id, "agent", stranger.id, False)
     await db.commit()
     assert (await activity_occurrences(launched.run_id, "work", stranger.id))["total"] == 1
 
@@ -635,23 +677,22 @@ async def test_task_admission_restart_reattaches_and_shared_dataset_preserves_re
     await process_service.refresh_run(run.id)
     assert (await db.scalar(select(ProcessNodeAttempt.task_id).where(ProcessNodeAttempt.id == attempt.id))) == task_id
     assert await db.scalar(select(func.count()).select_from(ProcessNodeAttempt).where(ProcessNodeAttempt.node_run_id == attempt.node_run_id)) == 1
-    dataset = await read_workflow_document(run.dataset_document_id, owner.id)
-    assert json.loads(dataset["content"]) == {"amount": 3}
-    with pytest.raises(memory.MemoryPermissionError):
-        await read_workflow_document(run.dataset_document_id, stranger.id)
-    # Sharing a Dataset never makes an unrelated agent a run participant.
-    from app.process.native_runs import inspect_run, list_runs
-    await memory.set_item_grant(run.dataset_document_id, stranger.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    dataset = await read_run_data(run.id, owner.id)
+    assert dataset["data"] == {"amount": 3}
     with pytest.raises(PermissionError):
-        await inspect_run(run.id, stranger.id)
-    assert (await list_runs(stranger.id))["items"] == []
-    await write_workflow_document(run.dataset_document_id, owner.id, '{"amount": 3, "kept": true}', expected_revision=dataset["revision"])
-    with pytest.raises(memory.MemoryConflictError):
-        await write_workflow_document(run.dataset_document_id, owner.id, "{}", expected_revision=dataset["revision"])
-    with pytest.raises(memory.MemoryPermissionError):
-        await write_workflow_document(run.dataset_document_id, stranger.id, "{}", expected_revision=dataset["revision"] + 1)
-    with pytest.raises(memory.MemoryPermissionError):
-        await memory.delete_document(run.dataset_document_id, actor_agent_id=owner.id)
+        await read_run_data(run.id, stranger.id)
+    # Runs inherit read access from their Process, without any separate grants.
+    from app.process.native_runs import inspect_run, list_runs
+    await set_grant(definition.share_id, "agent", stranger.id, False)
+    await db.commit()
+    assert not (await inspect_run(run.id, stranger.id))["can_control"]
+    assert (await list_runs(stranger.id))["total"] == 1
+    await write_run_json(run.id, owner.id, '{"amount": 3, "kept": true}', expected_revision=dataset["revision"])
+    from app.file_share import ResourceRevisionConflict
+    with pytest.raises(ResourceRevisionConflict):
+        await write_run_json(run.id, owner.id, "{}", expected_revision=dataset["revision"])
+    with pytest.raises(PermissionError):
+        await write_run_json(run.id, stranger.id, "{}", expected_revision=dataset["revision"] + 1)
     # Cancellation must also recover an admitted Task whose receipt was lost.
     attempt.task_id = None
     attempt.status = "intent"
@@ -678,9 +719,9 @@ async def tick_run(db, run_id, *, result=None, fail_first=False, fail_always=Fal
             failed = fail_always or fail_first and attempt.number == 1
             if not failed and workspace_update is not None:
                 run = await db.get(ProcessRun, run_id)
-                document = await read_workflow_document(run.dataset_document_id, task.agent_id)
-                updated = workspace_update(attempt, json.loads(document["content"]))
-                await write_workflow_document(run.dataset_document_id, task.agent_id, json.dumps(updated), expected_revision=document["revision"])
+                document = await read_run_data(run.id, task.agent_id)
+                updated = workspace_update(attempt, document["data"])
+                await write_run_json(run.id, task.agent_id, json.dumps(updated), expected_revision=document["revision"])
             emitted = result(attempt) if callable(result) else result if result is not None else attempt.input
             task.execution_result = {"prompt": "Synthetic driver result", "success": not failed, "result": json.dumps(emitted), "error": "Synthetic failure" if failed else ""}
             task.last_error = "Synthetic failure" if failed else None
@@ -720,15 +761,17 @@ async def test_typed_task_local_values_defaults_and_engine_only_global_integrati
     run = await finish_run(db, launched.run_id, result={})
     assert run.status == "success", run.error_message
     assert run.output == {"accepted": {"type": "bool", "value": False}}
+    assert not {"integrations", "integration_results", "attachments", "execution_state"}.intersection(run.data)
+    assert run.execution_state["integrations"]
     attempt = await db.scalar(select(ProcessNodeAttempt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id))
     assert attempt.input == {"amount": {"type": "int", "value": 7}, "reviewer": {"type": "User", "value": None}}
     assert "Shared run Dataset (read/write)" not in attempt.prompt
-    content = await read_workflow_document(run.dataset_document_id, owner.id)
-    assert json.loads(content["content"]) == {"data": {
+    content = await read_run_data(run.id, owner.id)
+    assert {"data": content["data"], "files": content["files"]} == {"data": {
         "amount": {"type": "int", "value": 7}, "accepted": {"type": "bool", "value": False},
         "note": {"type": "string", "value": None}}, "files": []}
-    with pytest.raises(memory.MemoryPermissionError, match="workflow engine"):
-        await write_workflow_document(run.dataset_document_id, owner.id, '{}', expected_revision=content["revision"])
+    with pytest.raises(RunDataConflictError, match="stopped run"):
+        await write_run_json(run.id, owner.id, '{}', expected_revision=content["revision"])
 
 
 @pytest.mark.asyncio
@@ -749,7 +792,7 @@ async def test_typed_invalid_input_never_admits_an_activity_or_partial_output(db
     assert run.status == "error" and "work.input.missing" in run.error_message
     assert await db.scalar(select(func.count()).select_from(ProcessNodeAttempt).join(ProcessNodeRun)
         .where(ProcessNodeRun.run_id == run.id)) == 0
-    assert json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"])["data"] == {"amount": {"type": "int", "value": 7}}
+    assert (await read_run_data(run.id, owner.id))["data"] == {"amount": {"type": "int", "value": 7}}
 
 
 @pytest.mark.asyncio
@@ -763,7 +806,7 @@ async def test_typed_invalid_output_is_not_integrated_and_does_not_launch_succes
     assert run.status == "error" and "work.output" in run.error_message
     assert "process_activity_complete" in run.error_message
     assert not await db.scalar(select(ProcessNodeRun.id).where(ProcessNodeRun.run_id == run.id, ProcessNodeRun.node_key == "end"))
-    assert json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"])["data"] == {"amount": {"type": "int", "value": 7}}
+    assert (await read_run_data(run.id, owner.id))["data"] == {"amount": {"type": "int", "value": 7}}
 
 
 @pytest.mark.asyncio
@@ -783,28 +826,32 @@ async def test_typed_file_manifests_keep_source_uris_without_transferring_bytes(
     await process_service.process_start_jobs(engine_code="galaris")
     run = await finish_run(db, launched.run_id, result={})
     assert run.status == "success", run.error_message
-    content = json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"])
+    content = await read_run_data(run.id, owner.id)
     assert [entry["uri"] for entry in content["files"]] == [f"document://{source.id}"]
-    assert "workflow_attachments" not in (await memory.item_record(run.dataset_document_id)).metadata_
+    assert "workflow_attachments" not in run.data
 
 
 @pytest.mark.asyncio
 async def test_typed_integrations_preserve_disjoint_writes_and_deduplicate_receipts(db, native):
-    from app.memory import create_workflow_document, integrate_workflow_values
+    from app.process.run_data import integrate_workflow_values
     owner, _ = native
-    document = await create_workflow_document(owner_agent_id=owner.id, title="Synthetic merge",
-        content='{"data": {}, "files": []}', kind="dataset", command=f"synthetic:{uuid4()}",
-        engine_dataset=True, engine_managed=True)
+    definition = await create(actor_agent_id=owner.id, title="Synthetic merge", graph=typed_graph())
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
+    await process_service.process_start_jobs(engine_code="galaris")
+    run = await db.get(ProcessRun, launched.run_id)
     first = {"a": {"type": "int", "value": 1}}
-    result = await integrate_workflow_values(document.id, engine_agent_id=owner.id, command="first", baseline={}, changes=first, files=[])
-    replay = await integrate_workflow_values(document.id, engine_agent_id=owner.id, command="first", baseline={}, changes=first, files=[])
+    result = await integrate_workflow_values(run.id, command="first", baseline={}, changes=first, files=[])
+    replay = await integrate_workflow_values(run.id, command="first", baseline={}, changes=first, files=[])
     assert replay["revision"] == result["revision"]
     second = {"b": {"type": "int", "value": 2}}
-    merged = await integrate_workflow_values(document.id, engine_agent_id=owner.id, command="second", baseline={}, changes=second, files=[])
-    assert json.loads(merged["content"])["data"] == {**first, **second}
-    with pytest.raises(memory.MemoryConflictError, match="variable a"):
-        await integrate_workflow_values(document.id, engine_agent_id=owner.id, command="conflict", baseline={},
+    merged = await integrate_workflow_values(run.id, command="second", baseline={}, changes=second, files=[])
+    assert merged["data"] == {"amount": {"type": "int", "value": 7}, **first, **second}
+    with pytest.raises(RunDataConflictError, match="variable a"):
+        await integrate_workflow_values(run.id, command="conflict", baseline={},
             changes={"a": {"type": "int", "value": 3}}, files=[])
+    assert set(run.execution_state["integrations"]) == {"first", "second"}
+    with pytest.raises(RunDataConflictError, match="different result"):
+        await integrate_workflow_values(run.id, command="first", baseline={}, changes=second, files=[])
 
 
 @pytest.mark.asyncio
@@ -850,7 +897,7 @@ async def test_native_poll_before_admission_does_not_skip_the_start_job(db, nati
     definition = await create(actor_agent_id=owner.id, title="Synthetic early observation", graph=typed_graph())
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
     observed = await process_service.refresh_run(launched.run_id)
-    assert observed.status == "queued" and observed.dataset_document_id is None
+    assert observed.status == "queued" and observed.data == {}
     await process_service.process_start_jobs(engine_code="galaris")
     assert (await finish_run(db, launched.run_id, result={})).status == "success"
 
@@ -981,7 +1028,7 @@ async def test_typed_rest_activity_uses_the_live_connection_and_retains_remote_d
 @pytest.mark.asyncio
 async def test_typed_result_integration_recovers_a_lost_ack_without_reexecuting_the_task(db, native, monkeypatch):
     import asyncio
-    import app.memory as facade
+    import app.process.native_engine as facade
     owner, _ = native
     definition = await create(actor_agent_id=owner.id, title="Synthetic lost integration reply", graph=typed_graph())
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
@@ -1024,7 +1071,7 @@ async def test_inline_code_has_no_backend_fallback_without_a_qualified_runner(db
     await process_service.process_start_jobs(engine_code="galaris")
     run = await finish_run(db, launched.run_id)
     assert run.status == "error" and run.error_code == "isolated_runner_unavailable"
-    assert json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"])["data"] == {"amount": {"type": "int", "value": 7}}
+    assert (await read_run_data(run.id, owner.id))["data"] == {"amount": {"type": "int", "value": 7}}
 
 
 @pytest.mark.asyncio
@@ -1167,7 +1214,7 @@ async def test_slow_rest_activity_does_not_block_its_human_branch_or_allow_doubl
         await complete_human_work(UUID(work[0]["attempt_id"]), scope, {})
         await asyncio.wait_for(process_service.refresh_run(launched.run_id), 5)
         run = await db.get(ProcessRun, launched.run_id)
-        assert json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"])["data"] == {"fast": {"type": "bool", "value": True}}
+        assert (await read_run_data(run.id, owner.id))["data"] == {"fast": {"type": "bool", "value": True}}
         assert not worker.done()
         release.set()
         await asyncio.wait_for(worker, 5)
@@ -1209,7 +1256,6 @@ async def test_wide_frontier_admits_all_humans_even_when_earlier_activities_wait
 
 @pytest.mark.asyncio
 async def test_tasks_share_writable_run_json_and_attachments_without_mappings(db, native):
-    from app.memory.document_attachment_service import list_document_attachments
     owner, stranger = native
     value = Workflow(nodes=[Node(id="start", kind="start"),
         Node(id="prepare", kind="task", config={"prompt": "Prepare shared data"}),
@@ -1222,38 +1268,36 @@ async def test_tasks_share_writable_run_json_and_attachments_without_mappings(db
     for _ in range(3):
         await process_service.refresh_run(launched.run_id)
     run = await db.get(ProcessRun, launched.run_id)
-    document = await read_workflow_document(run.dataset_document_id, owner.id)
+    document = await read_run_data(run.id, owner.id)
     assert document["can_write"]
-    assert json.loads(document["content"]) == {"amount": 3}
-    with pytest.raises(memory.MemoryPermissionError):
-        await read_workflow_document(run.dataset_document_id, stranger.id)
+    assert document["data"] == {"amount": 3}
+    with pytest.raises(PermissionError):
+        await read_run_data(run.id, stranger.id)
     from app.file_share import ResourceContext, resource_write, resource_create
     context = ResourceContext(agent_id=owner.id, runtime="internal")
-    await resource_write(context, f"document://{run.dataset_document_id}", b'{"amount": 3, "approved": true}',
+    await resource_write(context, f"galaris://processes/runs/{run.id}/data", b'{"amount": 3, "approved": true}',
         expected_revision=document["revision"])
-    attachment = await resource_create(context, f"document://{run.dataset_document_id}/attachments/",
+    attachment = await resource_create(context, f"galaris://processes/runs/{run.id}/attachments/",
         b"Synthetic shared report", name="report.txt")
     await tick_run(db, run.id)
     for _ in range(3):
         await process_service.refresh_run(run.id)
     attempts = list(await db.scalars(select(ProcessNodeAttempt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id)))
     assert len(attempts) == 2
-    assert all(f"document://{run.dataset_document_id}" in attempt.prompt for attempt in attempts)
+    assert all(f"galaris://processes/runs/{run.id}/data" in attempt.prompt for attempt in attempts)
     review = next(attempt for attempt in attempts if "Review shared data" in attempt.prompt)
     assert review.input == {"amount": 3, "approved": True}
-    assert f"document://{run.dataset_document_id}/attachments/" in review.prompt
-    from app.dataset.facade import dataset_attachments
-    assert [item["uri"] for item in await dataset_attachments(run.dataset_document_id, owner.id)] == [attachment.uri]
-    assert await list_document_attachments(run.dataset_document_id, actor_agent_id=owner.id)
+    assert f"galaris://processes/runs/{run.id}/attachments/" in review.prompt
+    assert [item["uri"] for item in await run_files(run.id)] == [attachment.uri]
     finished = await finish_run(db, run.id)
     assert finished.status == "success" and finished.output == {"amount": 3, "approved": True}
-    assert json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"]) == finished.output
+    assert (await read_run_data(run.id, owner.id))["data"] == finished.output
     second = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={"amount": 9})
     await process_service.process_start_jobs(engine_code="galaris")
     other_run = await db.get(ProcessRun, second.run_id)
-    assert other_run.dataset_document_id != run.dataset_document_id
-    assert json.loads((await read_workflow_document(other_run.dataset_document_id, owner.id))["content"]) == {"amount": 9}
-    assert not await list_document_attachments(other_run.dataset_document_id, actor_agent_id=owner.id)
+    assert other_run.id != run.id
+    assert (await read_run_data(other_run.id, owner.id))["data"] == {"amount": 9}
+    assert not await run_files(other_run.id)
 
 
 @pytest.mark.asyncio
@@ -1272,7 +1316,7 @@ async def test_parallel_tasks_merge_disjoint_data_and_wait_for_all(db, native):
         return {**data, **({"left": 1} if attempt.prompt.startswith("Left") else {"right": 2})}
     run = await finish_run(db, launched.run_id, workspace_update=write_branch)
     assert run.status == "success" and run.output == {"left": 1, "right": 2}, run.error_message
-    dataset = json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"])
+    dataset = (await read_run_data(run.id, owner.id))["data"]
     assert dataset == run.output
     assert await db.scalar(select(func.count()).select_from(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id)) >= 6
 
@@ -1335,22 +1379,18 @@ async def test_shared_files_are_copied_once_and_forwarded_to_child_run_workspace
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=parent.code, input_data={"value": 7}, files=[reference])
     await process_service.process_start_jobs(engine_code="galaris")
     root = await db.get(ProcessRun, launched.run_id)
-    frozen = next(iter((await memory.item_record(root.dataset_document_id)).metadata_["workflow_attachments"].values()))
-    assert frozen["origin_uri"] == reference.uri and frozen["uri"].startswith(f"document://{root.dataset_document_id}/attachments/")
+    frozen = next(iter(root.execution_state["attachments"].values()))
+    assert "workflow_attachments" not in root.data
+    assert frozen["origin_uri"] == reference.uri and frozen["uri"].startswith(f"galaris://processes/runs/{root.id}/attachments/")
     from app.file_share import ResourceContext, materialize_resource, resource_list
     context = ResourceContext(agent_id=owner.id, runtime="internal")
-    manifest = await resource_list(context, f"document://{root.dataset_document_id}/attachments/")
+    manifest = await resource_list(context, f"galaris://processes/runs/{root.id}/attachments/")
     assert len(manifest.entries) == 1
-    from app.memory.schemas import MemoryItemUpdate
-    item, *_ = await memory.get_item(root.dataset_document_id, agent_id=owner.id)
-    with pytest.raises(memory.MemoryPermissionError, match="server-owned"):
-        await memory.update_item(root.dataset_document_id,
-            MemoryItemUpdate(metadata={**item.metadata_, "workflow_attachments": {}}), actor_agent_id=owner.id)
     # Replay startup after a lost reply: the completed copy receipt is reused.
     from app.process.schemas import ProcessStartPayload
     engine = NativeProcessEngine()
     await engine.start_run(parent.code, process_service._engine_run_reference(root), ProcessStartPayload())
-    assert len((await resource_list(context, f"document://{root.dataset_document_id}/attachments/")).entries) == 1
+    assert len((await resource_list(context, f"galaris://processes/runs/{root.id}/attachments/")).entries) == 1
     await write_workflow_document(source.id, owner.id, '{"value": 9}', expected_revision=source.revision)
     await process_service.refresh_run(launched.run_id)
     await process_service.refresh_run(launched.run_id)
@@ -1358,9 +1398,9 @@ async def test_shared_files_are_copied_once_and_forwarded_to_child_run_workspace
     await process_service.process_start_jobs(engine_code="galaris")
     await finish_run(db, nested.id)
     assert (await finish_run(db, launched.run_id)).output == {"value": 7}
-    nested_file = next(iter((await memory.item_record(nested.dataset_document_id)).metadata_["workflow_attachments"].values()))
+    nested_file = next(iter(nested.execution_state["attachments"].values()))
     assert nested_file["origin_uri"] == manifest.entries[0].uri
-    assert nested_file["uri"].startswith(f"document://{nested.dataset_document_id}/attachments/")
+    assert nested_file["uri"].startswith(f"galaris://processes/runs/{nested.id}/attachments/")
     assert "download_url" not in nested_file
     prompt = await db.scalar(select(ProcessNodeAttempt.prompt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == nested.id))
     from app.file_share import resource_info
@@ -1384,19 +1424,20 @@ async def test_revoked_source_file_access_prevents_any_node_admission(db, native
         content='{"value": 7}', task_id=None, document_type="dataset")
     value = graph()
     definition = await create(actor_agent_id=owner.id, title="Synthetic revocable file process", graph=value)
-    for document_id in (source.id, definition.document_id):
-        await memory.set_item_grant(document_id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    await memory.set_item_grant(source.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    from app.process.native_sharing import grant_agent
+    await grant_agent(definition.code, owner.id, reader.id)
     launched = await process_service.start_process(agent_id=reader.id, workflow_id=definition.code, input_data={},
         files=[ProcessFileInput(uri=f"document://{source.id}", slot="data")])
     await memory.remove_item_grant(source.id, reader.id, actor_agent_id=owner.id)
     await process_service.process_start_jobs(engine_code="galaris")
     run = await db.get(ProcessRun, launched.run_id)
-    assert run.dataset_document_id is not None
+    assert run.execution_state["data_initialized"]
     assert not run.engine_metadata.get("native", {}).get("initialized")
     assert run.status == "error" and run.error_code == "process_start_failed"
     assert await db.scalar(select(func.count()).select_from(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id)) == 0
     assert not (await resource_list(ResourceContext(agent_id=reader.id, runtime="internal"),
-        f"document://{run.dataset_document_id}/attachments/")).entries
+        f"galaris://processes/runs/{run.id}/attachments/")).entries
 
 
 @pytest.mark.asyncio
@@ -1427,7 +1468,7 @@ async def test_cancellation_during_file_materialization_prevents_copy_and_node_a
     assert not run.engine_metadata.get("native", {}).get("initialized")
     assert await db.scalar(select(func.count()).select_from(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id)) == 0
     assert not (await resource_list(ResourceContext(agent_id=owner.id, runtime="internal"),
-        f"document://{run.dataset_document_id}/attachments/")).entries
+        f"galaris://processes/runs/{run.id}/attachments/")).entries
 
 
 @pytest.mark.asyncio
@@ -1527,14 +1568,14 @@ async def test_managed_human_can_still_launch_an_assigned_external_process(db, n
         engine_process_id="synthetic-external-" + uuid4().hex, label="Synthetic external process"))
     native_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris"))
     from app.process.schemas import ProcessDefinitionUpdate
-    with pytest.raises(ValueError, match="Document contract"):
+    with pytest.raises(ValueError):
         await process_service.update_definition(definition.id, ProcessDefinitionUpdate(tool_id=native_tool.id))
     saved = await process_service.update_definition(definition.id, ProcessDefinitionUpdate(tool_id=tool.id, label="Synthetic external renamed"))
     assert saved.tool_id == tool.id and saved.document_id is None and saved.label == "Synthetic external renamed"
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.engine_process_id,
         input_data={"synthetic": True}, requester_user_id=human.id)
     run = await db.get(ProcessRun, launched.run_id)
-    assert run.engine_code == "fake" and run.requester_user_id == human.id and run.dataset_document_id is None
+    assert run.engine_code == "fake" and run.requester_user_id == human.id and run.data == {}
     with pytest.raises(PermissionError):
         await process_service.start_process(agent_id=colleague.id, workflow_id=definition.engine_process_id,
             input_data={}, requester_user_id=human.id)
@@ -1555,10 +1596,10 @@ async def test_task_launched_process_preserves_causality_and_rejects_callbacks_o
     owner, reader = native
     parent = await create(actor_agent_id=owner.id, title="Synthetic task parent", graph=graph())
     child = await create(actor_agent_id=owner.id, title="Synthetic task child", graph=graph())
-    with pytest.raises(ValueError, match="Document contract"):
+    with pytest.raises(ValueError):
         await process_service.create_definition(ProcessDefinitionCreate(agent_id=owner.id, tool_id=parent.tool_id,
             engine_process_id="legacy-native", label="Synthetic bypass"))
-    with pytest.raises(ValueError, match="Document contract"):
+    with pytest.raises(ValueError):
         await process_service.update_definition(parent.id, ProcessDefinitionUpdate(label="Synthetic bypass"))
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=parent.code, input_data={})
     await process_service.process_start_jobs(engine_code="galaris")
@@ -1597,11 +1638,10 @@ async def test_task_launched_process_preserves_causality_and_rejects_callbacks_o
     assert occurrence["inclusive"]["inference_cost"] == pytest.approx(0.8)
     assert not metrics["partial"]
     root = await db.get(ProcessRun, launched.run_id)
-    await memory.set_item_grant(root.dataset_document_id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
     with pytest.raises(PermissionError):
         await run_metrics(launched.run_id, reader.id)
-    # Model distinct frozen participation scopes for parent and child runs.
-    root.launch_snapshot = {**root.launch_snapshot, "participant_agents": [owner.id, reader.id]}
+    # Sharing the parent does not expose a private child process.
+    await set_grant((await db.get(ProcessDefinition, root.process_id)).share_id, "agent", reader.id, False)
     await db.commit()
     restricted = await run_metrics(launched.run_id, reader.id)
     assert restricted["partial"] and restricted["inclusive"]["cost"] == pytest.approx(0.3)
@@ -1610,16 +1650,15 @@ async def test_task_launched_process_preserves_causality_and_rejects_callbacks_o
     assert (await children(launched.run_id, reader.id))["total"] == 0
     assert all(entry["child_run_id"] is None for entry in
         (await inspect_occurrence(launched.run_id, attempt.node_run_id, reader.id))["attempts"])
-    await memory.set_item_grant(nested.dataset_document_id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
     assert (await run_metrics(launched.run_id, reader.id))["partial"]
-    nested.launch_snapshot = {**nested.launch_snapshot, "participant_agents": [owner.id, reader.id]}
+    await set_grant((await db.get(ProcessDefinition, nested.process_id)).share_id, "agent", reader.id, False)
     await db.commit()
     shared = await run_metrics(launched.run_id, reader.id)
     assert not shared["partial"] and shared["inclusive"]["cost"] == pytest.approx(0.3)
     assert shared["inclusive"]["inference_cost"] == pytest.approx(0.8)
     assert (await children(launched.run_id, reader.id))["total"] == 1
     # Seeing a child does not reveal its unrelated parent.
-    root.launch_snapshot = {**root.launch_snapshot, "participant_agents": [owner.id]}
+    await set_grant((await db.get(ProcessDefinition, root.process_id)).share_id, "agent", reader.id, None)
     await db.commit()
     assert (await inspect_run(nested.id, reader.id))["parent_run_id"] is None
     for run_id in (nested.id, launched.run_id):
@@ -1850,7 +1889,7 @@ async def test_first_failure_stops_run_without_legacy_retry_or_recovery(db, nati
     assert inspected["error_code"] == "node_failed" and inspected["error"] == "Synthetic failure"
     assert await db.scalar(select(func.count()).select_from(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id, ProcessNodeRun.node_key == "handler")) == 0
     assert await db.scalar(select(func.count()).select_from(ProcessNodeAttempt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id)) == 1
-    assert json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"]) == {"items": [1, 2]}
+    assert (await read_run_data(run.id, owner.id))["data"] == {"items": [1, 2]}
     assert (await process_service.refresh_run(run.id)).status == "error"
 
 
@@ -1885,7 +1924,7 @@ async def test_failure_cancels_other_parallel_tasks_and_never_admits_successors(
     assert (await task_service.get_by_id(bindings["active"])).status == TaskStatus.ERROR
     assert await db.scalar(select(func.count()).select_from(ProcessNodeRun).where(
         ProcessNodeRun.run_id == run.id, ProcessNodeRun.node_key == "forbidden")) == 0
-    assert json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"]) == {"kept": True}
+    assert (await read_run_data(run.id, owner.id))["data"] == {"kept": True}
 
 
 @pytest.mark.asyncio
@@ -1998,7 +2037,9 @@ async def test_pause_step_breakpoint_resume_and_child_current_definition(db, nat
 async def test_human_ownership_readonly_sharing_run_dataset_and_orphans(db, native, monkeypatch):
     from datetime import datetime, timezone
     from app.agent import AgentManagementScope
-    from app.memory import update_workflow_sharing, workflow_document_readable_ids, workflow_sharing, workflow_sharing_preview
+    from app.memory import update_workflow_sharing
+    from app.process.native_sharing import read as process_sharing, preview as process_sharing_preview, update as update_process_sharing
+    from app.process.native_access import accessible_clause
     from app.memory.schemas import DocumentSharingLevelUpdate
     from app.memory import service as document_service
     from core.user import UserModel
@@ -2013,23 +2054,23 @@ async def test_human_ownership_readonly_sharing_run_dataset_and_orphans(db, nati
     scope = AgentManagementScope(user_id=human.id, agent_ids=frozenset({owner.id}))
     viewer_scope = AgentManagementScope(user_id=viewer.id, agent_ids=frozenset())
     process_count = await db.scalar(select(func.count()).select_from(ProcessDefinition))
-    preview = await workflow_sharing_preview(scope, owner_agent_id=None)
+    preview = await process_sharing_preview(scope, owner_agent_id=None)
     assert preview.owner.kind == "user" and preview.owner.id == human.id
-    agent_preview = await workflow_sharing_preview(scope, owner_agent_id=owner.id)
+    agent_preview = await process_sharing_preview(scope, owner_agent_id=owner.id)
     assert agent_preview.owner.kind == "agent" and agent_preview.owner.id == owner.id
     assert await db.scalar(select(func.count()).select_from(ProcessDefinition)) == process_count
     with pytest.raises(PermissionError):
-        await workflow_sharing_preview(viewer_scope, owner_agent_id=owner.id)
+        await process_sharing_preview(viewer_scope, owner_agent_id=owner.id)
     definition = await create(actor_agent_id=owner.id, owner_user_id=human.id, title="Synthetic human-owned workflow", graph=graph())
-    assert (await workflow_sharing(definition.document_id, scope)).options == preview.options
+    assert (await process_sharing(definition.code, scope)).options == preview.options
     assert (await read(definition.code, scope))["can_write"]
-    item = await document_service.document_record(definition.document_id)
-    await update_workflow_sharing(item.id, scope, DocumentSharingLevelUpdate(level="private", expected_lock_version=item.lock_version,
+    item = definition
+    await update_process_sharing(definition.code, scope, DocumentSharingLevelUpdate(level="private", expected_lock_version=item.lock_version,
         grants=[{"kind": "user", "id": viewer.id, "can_write": False}]))
     assert not (await read(definition.code, viewer_scope))["can_write"]
     with pytest.raises(PermissionError):
         await update(definition.code, viewer_scope, expected_revision=1, graph=graph("Unauthorized"))
-    await update_workflow_sharing(item.id, scope, DocumentSharingLevelUpdate(level="private", expected_lock_version=item.lock_version,
+    await update_process_sharing(definition.code, scope, DocumentSharingLevelUpdate(level="private", expected_lock_version=item.lock_version,
         grants=[{"kind": "user", "id": viewer.id, "can_write": True}]))
     assert (await read(definition.code, viewer_scope))["can_write"]
     shared_update = await update(definition.code, viewer_scope, expected_revision=1, graph=graph("Synthetic shared edit"))
@@ -2037,14 +2078,10 @@ async def test_human_ownership_readonly_sharing_run_dataset_and_orphans(db, nati
     response = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={}, requester_user_id=human.id)
     await process_service.process_start_jobs(engine_code="galaris")
     run = await db.get(ProcessRun, response.run_id)
-    # The execution agent can edit its Human-owned run workspace.
-    assert (await read_workflow_document(run.dataset_document_id, owner.id))["content"]
-    with pytest.raises(PermissionError):
-        await inspect_run(run.id, viewer_scope)
-    dataset = await document_service.document_record(run.dataset_document_id)
-    await update_workflow_sharing(dataset.id, scope, DocumentSharingLevelUpdate(level="private",
-        expected_lock_version=dataset.lock_version,
-        grants=[{"kind": "user", "id": viewer.id, "can_write": False}]))
+    assert (await inspect_run(run.id, viewer_scope))["can_control"]
+    await write_run_data(run.id, viewer_scope, {"approved": True}, expected_revision=run.data_revision)
+    await update_process_sharing(definition.code, scope, DocumentSharingLevelUpdate(level="private",
+        expected_lock_version=definition.lock_version, grants=[{"kind": "user", "id": viewer.id, "can_write": False}]))
     assert (await inspect_run(run.id, viewer_scope))["can_control"] is False
     from app.process import router
     from unittest.mock import AsyncMock
@@ -2055,8 +2092,6 @@ async def test_human_ownership_readonly_sharing_run_dataset_and_orphans(db, nati
         with pytest.raises(HTTPException) as denied:
             await operation(run.id)
         assert denied.value.status_code == 404
-    # Management alone must not list a Human Dataset whose execution-agent
-    # grant was revoked. Counting and inspection obey the same policy.
     observer = UserModel(email=f"workflow-{uuid4()}@example.invalid", hashed_password="synthetic", is_active=True)
     db.add(observer)
     await db.flush()
@@ -2070,7 +2105,7 @@ async def test_human_ownership_readonly_sharing_run_dataset_and_orphans(db, nati
     for actor in (agent_reader.id, viewer_scope):
         with pytest.raises((PermissionError, LookupError)):
             await read(definition.code, actor)
-    assert definition.document_id not in list(await db.scalars(workflow_document_readable_ids(viewer_scope)))
+    assert definition.id not in list(await db.scalars(select(ProcessDefinition.id).where(accessible_clause(viewer_scope))))
     assert (await list_runs(viewer_scope))["total"] == 0
     assert (await process_service.paginate_runs(native_actor=viewer_scope))[1] == 0
     admin_role = Role(code="workflow-admin-" + uuid4().hex)
@@ -2080,9 +2115,7 @@ async def test_human_ownership_readonly_sharing_run_dataset_and_orphans(db, nati
     db.add_all([RolePrivilege(role_id=admin_role.id, privilege_id=privilege.id), Assignment(user_id=viewer.id, role_id=admin_role.id)])
     await db.commit()
     assert (await read(definition.code, viewer_scope))["can_write"]
-    # Even a former agent grant cannot expose an orphan via generic Memory APIs.
-    with pytest.raises(memory.MemoryPermissionError):
-        await memory.get_item(definition.document_id, agent_id=agent_reader.id, administrative=True)
+    assert definition.document_id is None
 
 
 @pytest.mark.asyncio

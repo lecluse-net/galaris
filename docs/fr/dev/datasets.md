@@ -73,8 +73,12 @@ Dataset n'importe pas leurs modèles. Les requêtes portent sur les contenus doc
 natifs courants, les références de runs et snapshots, et les traces d'outils conservées.
 Les permissions du module source et ses ACL s'appliquent avant comptage et pagination.
 Ce relevé décrit des références observées et ne constitue pas un graphe exhaustif de dépendances.
-La suppression reste logique, sous verrou et version attendue ; le moteur conserve la
-propriété du cycle de vie de ses datasets.
+La suppression reste logique, sous verrou et version attendue.
+
+Les runs Process stockent leurs variables dans `process_runs.data` et leurs fichiers
+via `process_run_files`, sans Dataset. Les données, liens et reçus d'exécution sont
+atomiques ; les droits sont ceux du processus parent. Dataset ne fournit que le codec
+typé partagé, sans posséder le stockage des runs.
 
 ## Projection historique et conditions de retrait
 

@@ -390,9 +390,14 @@ __all__ = [
     "unregister_terminal_task_observer",
     "notify_agent_profile",
     "get_current_task",
+    "sharing_directory",
+    "sharing_principals",
+    "sharing_owner_teams",
 ]
 
 from .resource_facade import read_agent_resource, list_agent_resources, require_delegated_resource_access
 
 from .models import AgentTeam as AgentTeamModel
 from .facade import record_scope_preflight as record_scope_preflight
+
+from .share_directory import directory as sharing_directory, sharing_principals, sharing_owner_teams

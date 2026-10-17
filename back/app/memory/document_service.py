@@ -450,7 +450,7 @@ async def share_document(
                 "agent_id": grant.agent_id,
                 "access": "edit" if grant.can_write else "read",
             }
-            for grant in sorted(updated.grants, key=lambda value: value.agent_id)
+            for grant in sorted(updated.grants, key=lambda value: value.agent_id or 0) if grant.agent_id is not None
         ],
     }
 

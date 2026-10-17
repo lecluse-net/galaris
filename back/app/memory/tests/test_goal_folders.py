@@ -1,3 +1,5 @@
+from app.share import ShareGrant
+from app.memory.models import MemoryItem
 """Goal filing follows personal access and never replaces a human's classification."""
 
 from contextlib import asynccontextmanager
@@ -11,7 +13,7 @@ from app.goal.tests.factories import make_goal
 from app.memory import document_tags, service
 from app.memory import goal_folders as filing
 from app.memory.goal_document_adapter import register_goal_document_adapter
-from app.memory.models import DocumentTag, DocumentTagAssignment, DocumentUserGrant, MemoryAutomationJob, MemoryItem
+from app.memory.models import DocumentTag, DocumentTagAssignment, MemoryAutomationJob, MemoryItem
 from app.memory.schemas import DocumentTagWrite, MemorySourceCreate
 from core.user import UserModel
 
@@ -109,7 +111,7 @@ async def test_background_filing_notifies_only_its_owner_and_changed_folder(db, 
 async def test_filing_is_personal_idempotent_and_preserves_manual_classification(db, agents, memory_storage):
     goal, user, other = await setup_goal(db, agents)
     for identity in (goal.description_document_id, goal.tracking_document_id):
-        db.add(DocumentUserGrant(item_id=identity, user_id=other.id, can_write=False))
+        db.add(ShareGrant(share_id=MemoryItem.share_for(identity), user_id=other.id, can_write=False))
     await db.commit()
     manual = await document_tags.write_tag(user.id, DocumentTagWrite(name="Mes projets"))
     await document_tags.move_document(
@@ -141,7 +143,7 @@ async def test_filing_is_personal_idempotent_and_preserves_manual_classification
 @pytest.mark.asyncio
 async def test_filing_renames_generated_folders_and_recreates_deleted_branches(db, agents, memory_storage):
     goal, user, other = await setup_goal(db, agents)
-    db.add(DocumentUserGrant(item_id=goal.tracking_document_id, user_id=other.id, can_write=False))
+    db.add(ShareGrant(share_id=MemoryItem.share_for(goal.tracking_document_id), user_id=other.id, can_write=False))
     await db.commit()
     await filing.enqueue_goal_folder_reconciliation(goal_id=goal.id)
     await drain(db)
@@ -176,15 +178,15 @@ async def test_global_filing_handles_late_access_rechecks_revocation_and_skips_e
     await filing.enqueue_goal_folder_reconciliation()
     await drain(db)
     assert await db.scalar(select(DocumentTag.id).where(DocumentTag.goal_id == goal.id)) is None
-    db.add(DocumentUserGrant(item_id=goal.description_document_id, user_id=other.id, can_write=False))
+    db.add(ShareGrant(share_id=MemoryItem.share_for(goal.description_document_id), user_id=other.id, can_write=False))
     await db.commit()
     await filing.enqueue_goal_folder_reconciliation(user_id=other.id, goal_id=goal.id)
     # Permissions are evaluated at execution, not when enqueuing.
-    await db.execute(delete(DocumentUserGrant).where(DocumentUserGrant.user_id == other.id))
+    await db.execute(delete(ShareGrant).where(ShareGrant.user_id == other.id))
     await db.commit()
     await drain(db)
     assert await locations(db, other.id) == {}
-    db.add(DocumentUserGrant(item_id=goal.description_document_id, user_id=other.id, can_write=False))
+    db.add(ShareGrant(share_id=MemoryItem.share_for(goal.description_document_id), user_id=other.id, can_write=False))
     await db.commit()
     await filing.on_user_change(other.id)
     await drain(db)

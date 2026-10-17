@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from app.share import ShareGrant
+
 import re
 from uuid import UUID
 
@@ -21,7 +23,7 @@ from core.user import UserModel
 
 from . import service
 from .document_service import create_document
-from .models import MemoryItem, MemoryItemGrant
+from .models import MemoryItem
 from .schemas import MemoryItemUpdate
 from .storage import get_storage
 
@@ -214,7 +216,7 @@ class MemoryGoalDocumentStore(GoalDocumentStore):
         if owner_agent_id is not None and owner_agent_id != item.owner_agent_id:
             item.owner_agent_id = owner_agent_id
             await get_db().execute(
-                delete(MemoryItemGrant).where(MemoryItemGrant.item_id == document_id)
+                delete(ShareGrant).where(ShareGrant.share_id == MemoryItem.share_for(document_id))
             )
             await get_db().commit()
 

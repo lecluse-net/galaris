@@ -19,7 +19,12 @@
             <q-input v-model="title" outlined dense hide-bottom-space :readonly="!editable" :label="t('nativeProcesses.titleField')" />
           </div>
           <div class="col-12 col-md-6">
-            <MemorySharingPanel v-if="definition && !sharingPending" :item-id="definition.document_id" resource-kind="document" :editable="editable" :reader="readSharing" :writer="writeSharing" />
+            <ResourceSharingPanel v-if="definition && !sharingPending" :item-id="String(definition.id)" :editable="editable" :reader="readSharing" :writer="writeSharing">
+              <template #avatar="{ recipient, size }">
+                <AgentAvatar v-if="recipient.kind === 'agent'" :agent-id="recipient.id" :name="recipient.label" :has-avatar="recipient.has_avatar" :size="size" />
+                <PersonAvatar v-else :name="recipient.label" :avatar-url="recipient.avatar_url" :size="size" />
+              </template>
+            </ResourceSharingPanel>
             <template v-else>
             <ProcessSharingDraft v-model="sharingDraft" :agent-id="launcherAgentId" :owner="owner" :editable="editable && !saving" />
             <div v-if="!definition" class="row q-col-gutter-sm q-mt-sm">
@@ -175,8 +180,9 @@ import { useRouter } from 'vue-router'
 import { useQuasar, type QTableColumn } from 'quasar'
 import { usePrivilegeStore } from '@/core/authorize'
 import { navigationIcon } from '@/core/navigation'
-import { CodeEditor, PageHeader, showConfirmationDialog, type SharingDraft } from '@/core/util'
-import { MemorySharingPanel, type DocumentSharing, type DocumentSharingLevelUpdate } from '@/app/memory'
+import { CodeEditor, PageHeader, PersonAvatar, showConfirmationDialog } from '@/core/util'
+import { AgentAvatar } from '@/app/agent'
+import { ResourceSharingPanel, type SharingDraft, type SharingState as DocumentSharing, type SharingUpdate as DocumentSharingLevelUpdate } from '@/app/share'
 import BpmnCanvas from './BpmnCanvas.vue'
 import NativeRunsTable from './NativeRunsTable.vue'
 import ProcessAgentSelect from './ProcessAgentSelect.vue'

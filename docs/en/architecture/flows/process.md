@@ -3,10 +3,10 @@
 # Tool and Process Flow
 
 Native inspection and `processus_get` share persisted operational evidence: activities,
-waits, last activity and available commands. Agents are scoped to frozen run participation
-unless they have an active dedicated `process_admin` connection; Dataset grants remain
-independent. Filtering precedes counts and pagination and covers children and metrics.
-See [decision 0193](../../../../project/decisions/0193-process-run-observation-and-participation.md).
+waits, last activity and available commands. Runs, variables and attachments inherit the
+parent Process's existing policy; dedicated `process_admin` access remains available.
+Filtering precedes counts and pagination and covers children and metrics.
+See [decision 0198](../../../../project/decisions/0198-process-run-data-and-files.md).
 
 [Human activities](../../dev/native-processes.md) use messaging exclusively. Process persists
 the wait and calls an injected port; Conversation sends a Messenger interaction, retrieves
@@ -16,7 +16,8 @@ and response receipt are atomic; no Process form accepts human replies. See
 
 The native engine adds the [v2 data profile](../../dev/native-processes.md): per-activity
 input/output declarations, omission/default normalization, validation before effects and
-integration, and an engine-managed global Dataset. File references travel between
+integration, business variables in `process_runs.data` and links in `process_run_files`,
+without a Dataset. File references travel between
 activities without transfers; bytes are requested only for explicit File Sharing
 operations. Historical v1 remains interpreted under its original contract. Python phases
 use the runner port and a fresh Monty worker for pure computations without host capabilities.

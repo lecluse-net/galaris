@@ -12,6 +12,7 @@ from app.memory.models import MemoryEmbeddingChunk, MemoryEmbeddingManifest, Mem
 from app.memory.schemas import MemorySearchRequest
 from app.memory.semantic_index import SEMANTIC_INDEX_VERSION
 from tests.sql_reads import measured_reads
+from tests.sharing_fixtures import bind_private_shares
 
 
 @pytest.mark.asyncio
@@ -20,10 +21,12 @@ async def test_exact_vector_page_and_duplicate_count_on_many_passages(db, agents
     model = EmbeddingModel(key="synthetic-cost", code="synthetic-cost", model_name="synthetic-cost",
         base_url="http://unused.invalid", api_key=None)
     identities = [uuid4() for _ in range(81)]
-    await db.execute(MemoryItem.__table__.insert(), [dict(id=identity,
+    rows = [dict(id=identity,
         owner_agent_id=owner.id if index < 80 else peer.id, title=f"Synthetic vector {index}",
         resource_id=f"synthetic:{identity}", content_hash=str(index), semantic_fingerprint=str(index))
-        for index, identity in enumerate(identities)])
+        for index, identity in enumerate(identities)]
+    await bind_private_shares(db, rows)
+    await db.execute(MemoryItem.__table__.insert(), rows)
     await db.execute(MemoryEmbeddingManifest.__table__.insert(), [dict(item_id=identity,
         source_fingerprint=str(index), model_key=model.key, dimensions=3,
         index_version=SEMANTIC_INDEX_VERSION, chunk_count=12, source_word_count=12, indexed_word_count=12)

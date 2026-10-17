@@ -8,12 +8,14 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     DateTime,
+    CheckConstraint,
     BigInteger,
     ForeignKey,
     Index,
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
     text as sql_text,
 )
@@ -21,9 +23,11 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base, HistoryMixin
+from app.share import Shareable
 
 
-class ProcessDefinition(HistoryMixin, Base):
+class ProcessDefinition(Shareable, HistoryMixin, Base):
+    __share_kind__ = "process"
     __tablename__ = "process_definitions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -42,9 +46,21 @@ class ProcessDefinition(HistoryMixin, Base):
     document_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("documents.id", ondelete="RESTRICT"), unique=True, nullable=True
     )
+    # The old Document FK is a migration source only; native definitions own BPMN.
+    bpmn_xml: Mapped[str | None] = mapped_column(Text, nullable=True, deferred=True)
+    revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    lock_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    owner_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
+    legacy_global_access: Mapped[int] = mapped_column("global_access", Integer, default=0, server_default="0")
+    legacy_group_access: Mapped[int] = mapped_column("group_access", Integer, default=0, server_default="0")
     archived: Mapped[bool] = mapped_column(default=False, server_default="false")
 
     __table_args__ = (
+        *Shareable.share_constraints("process_definitions", "process"),
+        CheckConstraint("bpmn_xml IS NULL OR (code IS NOT NULL AND document_id IS NULL)", name="ck_process_definition_native_storage"),
+        CheckConstraint("agent_id IS NULL OR owner_user_id IS NULL", name="ck_process_definition_exclusive_owner"),
+        CheckConstraint("revision > 0 AND lock_version > 0", name="ck_process_definition_versions"),
+        CheckConstraint("global_access IN (0,1,2) AND group_access IN (0,1,2)", name="ck_process_definition_access"),
         Index(
             "uq_process_definitions_active_engine_process",
             "tool_id",
@@ -53,6 +69,32 @@ class ProcessDefinition(HistoryMixin, Base):
             postgresql_where=sql_text("deleted_at IS NULL"),
         ),
     )
+
+
+class ProcessDefinitionGrant(Base):
+    __tablename__ = "process_definition_grants"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    process_id: Mapped[int] = mapped_column(ForeignKey("process_definitions.id", ondelete="CASCADE"), index=True)
+    agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("agent_groups.id", ondelete="CASCADE"), index=True)
+    can_write: Mapped[bool] = mapped_column(default=False, server_default="false")
+    __table_args__ = (
+        CheckConstraint("num_nonnulls(agent_id, user_id, team_id) = 1", name="ck_process_definition_grant_principal"),
+        UniqueConstraint("process_id", "agent_id"), UniqueConstraint("process_id", "user_id"),
+        UniqueConstraint("process_id", "team_id"),
+    )
+
+
+class ProcessDefinitionRevision(Base):
+    __tablename__ = "process_definition_revisions"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    process_id: Mapped[int] = mapped_column(ForeignKey("process_definitions.id", ondelete="CASCADE"), index=True)
+    revision: Mapped[int] = mapped_column(Integer)
+    bpmn_xml: Mapped[str] = mapped_column(Text, deferred=True)
+    author_agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (UniqueConstraint("process_id", "revision"),)
 
 
 class ProcessRun(HistoryMixin, Base):
@@ -64,9 +106,10 @@ class ProcessRun(HistoryMixin, Base):
     process_id: Mapped[int] = mapped_column(
         ForeignKey("process_definitions.id"), nullable=False, index=True
     )
-    dataset_document_id: Mapped[UUID | None] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("documents.id", ondelete="RESTRICT"), nullable=True
+    data: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=sql_text("'{}'::jsonb")
     )
+    data_revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     parent_run_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("process_runs.id", ondelete="RESTRICT"), nullable=True, index=True
     )
@@ -105,6 +148,9 @@ class ProcessRun(HistoryMixin, Base):
     engine_metadata: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=sql_text("'{}'::jsonb")
     )
+    execution_state: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=sql_text("'{}'::jsonb")
+    )
     raw_snapshot: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     analysis: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     error_code: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -114,6 +160,7 @@ class ProcessRun(HistoryMixin, Base):
     await_resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
+        CheckConstraint("jsonb_typeof(data) = 'object' AND data_revision > 0", name="ck_process_run_data"),
         Index(
             "uq_process_runs_engine_execution",
             "engine_code",
@@ -130,6 +177,22 @@ class ProcessRun(HistoryMixin, Base):
             postgresql_where=sql_text("idempotency_key IS NOT NULL"),
         ),
     )
+
+
+class ProcessRunFile(HistoryMixin, Base):
+    """Run-owned manifest; managed bytes remain in core.storage, external URIs stay external."""
+
+    __tablename__ = "process_run_files"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(ForeignKey("process_runs.id", ondelete="CASCADE"), index=True)
+    file_id: Mapped[UUID | None] = mapped_column(ForeignKey("files.id", ondelete="RESTRICT"), index=True)
+    uri: Mapped[str] = mapped_column(Text)
+    name: Mapped[str | None] = mapped_column(String(512))
+    description: Mapped[str | None] = mapped_column(Text)
+    origin_uri: Mapped[str | None] = mapped_column(Text)
+    position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    __table_args__ = (Index("uq_process_run_files_uri", "run_id", "uri", unique=True,
+        postgresql_where=sql_text("deleted_at IS NULL")),)
 
 
 class ProcessRunEvent(Base):

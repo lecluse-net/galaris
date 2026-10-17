@@ -56,7 +56,14 @@ from .transport import FileTransport, VersionedFileTransport, transfer, upload_f
 from .file_contracts import FileResourceTransport, FileEntry
 from .web_transport import PublicHttpsFileTransport
 from .resource_observation import observe_operation
-from .native_providers import native_provider, native_descriptions, resolve_native_alias
+from .native_providers import NativeResourceProvider, native_provider, native_descriptions, resolve_native_alias
+from .process_provider import ProcessRunProvider
+
+
+def _resource_provider(reference: ResourceUri) -> NativeResourceProvider | ProcessRunProvider | None:
+    if reference.scheme == "galaris" and reference.segments[:2] == ("processes", "runs") and (len(reference.segments) >= 3 or reference.is_collection):
+        return ProcessRunProvider()
+    return native_provider(reference.scheme)
 
 
 _LIST_LIMIT = 500
@@ -144,6 +151,10 @@ _GALARIS_CAPABILITIES: list[ResourceCapability] = [
     "list",
     "read",
     "search",
+    "create",
+    "delete",
+    "edit",
+    "write",
 ]
 _MAIL_CAPABILITIES: list[ResourceCapability] = ["copy", "info", "list", "read"]
 
@@ -516,7 +527,7 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
 
     galaris_capabilities = list(_GALARIS_CAPABILITIES)
     if ctx.skill_management:
-        galaris_capabilities.extend(("append", "create", "delete", "edit", "move", "write"))
+        galaris_capabilities.extend(("append", "move"))
     schemes = [*native_descriptions(),
         ResourceSchemeDescription(
             scheme="file", label="Galaris managed file", example="file://<uuid>",
@@ -626,7 +637,7 @@ async def resource_info(
     include_checksum: bool = False,
 ) -> ResourceDescriptor:
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri, allow_empty=True))
-    if provider := native_provider(reference.scheme):
+    if provider := _resource_provider(reference):
         return await provider.info(ctx, reference, include_checksum=include_checksum)
     if reference.scheme == "file":
         from .managed_files import managed_file_info
@@ -774,7 +785,7 @@ async def resource_list(
     cursor: str | None = None,
 ) -> ResourceListing:
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri, allow_empty=True))
-    if provider := native_provider(reference.scheme):
+    if provider := _resource_provider(reference):
         return await provider.list(ctx, reference, recursive=recursive, max_entries=max_entries, cursor=cursor)
     limit = max(1, min(max_entries, _LIST_LIMIT))
     if reference.scheme == "file":
@@ -991,7 +1002,7 @@ async def _materialize_resource(
     if max_bytes <= 0:
         raise ValueError("max_bytes must be positive")
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
-    if provider := native_provider(reference.scheme):
+    if provider := _resource_provider(reference):
         return await provider.materialize(ctx, reference, destination, max_bytes=max_bytes)
     descriptor = await resource_info(ctx, reference)
     if descriptor.is_collection:
@@ -1098,7 +1109,7 @@ async def resource_read(
     """Read UTF-8 text by page, or return a small binary resource as base64."""
 
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
-    if provider := native_provider(reference.scheme):
+    if provider := _resource_provider(reference):
         return await provider.read(ctx, reference, offset=offset, max_chars=max_chars)
     start = max(0, offset)
     limit = max(1, min(max_chars, 2_000_000 if reference.scheme in {"memory", "document"} else _TEXT_READ_LIMIT))
@@ -1254,7 +1265,7 @@ async def resource_write_text(
     if len(content) > _TEXT_WRITE_LIMIT:
         raise ValueError(f"Text content exceeds {_TEXT_WRITE_LIMIT} characters.")
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
-    if provider := native_provider(reference.scheme):
+    if provider := _resource_provider(reference):
         if not overwrite:
             raise FileExistsError("Replacement must be explicit")
         current = await provider.info(ctx, reference)
@@ -1379,7 +1390,7 @@ async def resource_create(
         raise ValueError("document_type is only accepted when creating at document://.")
     if document_type == "dataset" and (provider := native_provider("data")):
         return await provider.create(ctx, parse_resource_uri("data://", allow_empty=True), content, name=name)
-    if provider := native_provider(reference.scheme):
+    if provider := _resource_provider(reference):
         return await provider.create(ctx, reference, content, name=name)
     clean_name = name.strip()
     if reference.scheme == "file":
@@ -1563,7 +1574,7 @@ async def resource_write(
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
     if reference.is_collection:
         raise ResourceUriError("file_write requires an exact destination file URI.")
-    if provider := native_provider(reference.scheme):
+    if provider := _resource_provider(reference):
         return await provider.write(ctx, reference, content, expected_revision=expected_revision, expected_etag=expected_etag)
     if reference.scheme == "document":
         if _document_attachment_ids(reference) is not None:
@@ -1699,7 +1710,7 @@ async def resource_append(
     if len(content) > _TEXT_WRITE_LIMIT:
         raise ResourceValidationError(f"Text content exceeds {_TEXT_WRITE_LIMIT} characters.")
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
-    if provider := native_provider(reference.scheme):
+    if provider := _resource_provider(reference):
         return await provider.append(ctx, reference, content, expected_revision=expected_revision, expected_etag=expected_etag)
     if reference.scheme == "console":
         transport, path = await _console_reference(ctx, reference)
@@ -1905,7 +1916,7 @@ async def resource_edit(
     if len(content) > _TEXT_WRITE_LIMIT:
         raise ResourceValidationError(f"Text content exceeds {_TEXT_WRITE_LIMIT} characters.")
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
-    if provider := native_provider(reference.scheme):
+    if provider := _resource_provider(reference):
         return await provider.edit(ctx, reference, start_line=start_line, end_line=end_line, content=content, expected_revision=expected_revision, expected_etag=expected_etag)
     if reference.scheme == "document" and expected_revision is None:
         raise ResourceValidationError("Document edits require expected_revision from file_read.")
@@ -1973,7 +1984,7 @@ async def resource_copy(
 ) -> ResourceTransfer:
     source_ref = await resolve_native_alias(ctx, parse_resource_uri(source))
     destination_ref = await resolve_native_alias(ctx, parse_resource_uri(destination, allow_empty=True))
-    if native_provider(destination_ref.scheme):
+    if _resource_provider(destination_ref):
         descriptor = await resource_info(ctx, source_ref)
         data = await _materialize_complete_bytes(ctx, source_ref)
         if destination_ref.is_collection:
@@ -2247,7 +2258,7 @@ async def resource_copy(
 @observe_operation
 async def resource_delete(ctx: ResourceContext, uri: object, *, expected_etag: str | None = None) -> ResourceMutation:
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
-    if provider := native_provider(reference.scheme):
+    if provider := _resource_provider(reference):
         return await provider.delete(ctx, reference, expected_etag=expected_etag)
     if reference.scheme == "console":
         transport, path = await _console_reference(ctx, reference)
@@ -2350,7 +2361,7 @@ async def resource_move(
         raise PermissionError(
             "galaris:// resources cannot be moved; copy a readable resource to another scheme."
         )
-    if source_ref.scheme in {"memory", "document", "data", "processus", "http", "https"}:
+    if source_ref.scheme in {"memory", "document", "data", "http", "https"}:
         raise PermissionError(
             f"{source_ref.scheme}:// resources cannot be moved because generic file tools "
             "cannot delete the source; use file_copy instead."
@@ -2532,7 +2543,7 @@ async def resource_search(
     cursor: str | None = None,
 ) -> ResourceSearchResult:
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri, allow_empty=True))
-    if provider := native_provider(reference.scheme):
+    if provider := _resource_provider(reference):
         return await provider.search(ctx, reference, query, mode=mode, recursive=recursive, max_results=max_results, cursor=cursor)
     normalized_query = query.strip()
     if not normalized_query:

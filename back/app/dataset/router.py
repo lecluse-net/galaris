@@ -9,7 +9,8 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.agent import current_management_scope
-from app.memory import MemoryNotFoundError, MemoryPermissionError, MemoryConflictError, DocumentSharingLevelUpdate
+from app.memory import MemoryNotFoundError, MemoryPermissionError, MemoryConflictError
+from app.share import SharingUpdate as DocumentSharingLevelUpdate
 from core.authorize import authorize
 from core.database import get_db
 

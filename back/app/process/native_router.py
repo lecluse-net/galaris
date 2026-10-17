@@ -1,4 +1,4 @@
-"""Human WYSIWYG and live-run API, sharing the canonical Document ACL."""
+"""Human WYSIWYG and live-run API using Process-owned definitions and ACLs."""
 
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -6,30 +6,41 @@ from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.agent import current_management_scope
-from app.memory import (MemoryConflictError, MemoryPermissionError, MemoryNotFoundError,
-    workflow_sharing, workflow_sharing_preview, update_workflow_sharing)
-from app.memory import DocumentSharingLevelUpdate
+from app.agent import AgentManagementScope, current_management_scope
+from app.memory import MemoryConflictError, MemoryPermissionError, MemoryNotFoundError
+from app.share import SharingUpdate as DocumentSharingLevelUpdate
 from core.authorize import authorize, Privileges
+from core.util import source_code_response_headers
 
 from . import native_definitions as definitions, native_runs as runs, process_service
+from . import native_sharing as definition_sharing
 from .bpmn import Workflow, compile_bpmn, to_bpmn, validate_graph
 from .schemas import ProcessFileInput
+from .run_data import RunDataConflictError
 
 routes = APIRouter(prefix="/internal")
+
+
+async def _preview_actor(agent_id: int | None) -> int | AgentManagementScope:
+    scope = await current_management_scope()
+    if agent_id is not None:
+        scope.require(agent_id)
+        return agent_id
+    return scope
 
 
 @contextmanager
 def domain_errors() -> Generator[None]:
     try:
         yield
-    except MemoryConflictError as error:
+    except (MemoryConflictError, definitions.DefinitionConflictError, RunDataConflictError) as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     except (PermissionError, MemoryPermissionError) as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
-    except (LookupError, MemoryNotFoundError) as error:
+    except (LookupError, FileNotFoundError, MemoryNotFoundError) as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
@@ -91,7 +102,7 @@ async def native_sharing_options(agent_id: int = Query(..., gt=0), owner: Litera
     with domain_errors():
         scope = await current_management_scope()
         scope.require(agent_id)
-        return (await workflow_sharing_preview(scope, owner_agent_id=agent_id if owner == "agent" else None)).model_dump(mode="json")
+        return (await definition_sharing.preview(scope, owner_agent_id=agent_id if owner == "agent" else None)).model_dump(mode="json")
 
 
 @routes.post("/validate")
@@ -176,9 +187,7 @@ async def native_delete_revision(code: str, revision: int) -> None:
 async def native_sharing(code: str) -> dict[str, Any]:
     with domain_errors():
         scope = await current_management_scope()
-        record, _ = await definitions.get(code, scope)
-        assert record.document_id is not None
-        return (await workflow_sharing(record.document_id, scope)).model_dump(mode="json")
+        return (await definition_sharing.read(code, scope)).model_dump(mode="json")
 
 
 @routes.put("/definitions/{code}/sharing")
@@ -186,9 +195,7 @@ async def native_sharing(code: str) -> dict[str, Any]:
 async def native_update_sharing(code: str, data: DocumentSharingLevelUpdate) -> dict[str, Any]:
     with domain_errors():
         scope = await current_management_scope()
-        record, _ = await definitions.get(code, scope, write=True)
-        assert record.document_id is not None
-        return (await update_workflow_sharing(record.document_id, scope, data)).model_dump(mode="json")
+        return (await definition_sharing.update(code, scope, data)).model_dump(mode="json")
 
 
 @routes.post("/definitions/{code}/archive")
@@ -217,40 +224,57 @@ async def native_run_list(code: str | None = None, page: int = Query(1, ge=1),
 
 
 @routes.get("/runs/{identity}")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
 async def native_inspect_run(identity: UUID, page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500),
-                      after_event: int = Query(0, ge=0)) -> dict[str, Any]:
+                      after_event: int = Query(0, ge=0), agent_id: int | None = Query(default=None, gt=0)) -> dict[str, Any]:
     with domain_errors():
-        return await runs.inspect_run(identity, await current_management_scope(), page=page, page_size=page_size, after_event=after_event)
+        scope = await current_management_scope()
+        if agent_id is not None:
+            scope.require(agent_id)
+        return await runs.inspect_run(identity, agent_id if agent_id is not None else scope,
+            page=page, page_size=page_size, after_event=after_event)
 
 
 @routes.get("/runs/{identity}/nodes/{node_identity}")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
-async def native_inspect_node(identity: UUID, node_identity: UUID) -> dict[str, Any]:
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+async def native_inspect_node(identity: UUID, node_identity: UUID, agent_id: int | None = None) -> dict[str, Any]:
     with domain_errors():
-        return await runs.inspect_occurrence(identity, node_identity, await current_management_scope())
+        return await runs.inspect_occurrence(identity, node_identity, await _preview_actor(agent_id))
+
+
+@routes.get("/runs/{identity}/files/{file_id}", response_class=FileResponse)
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+async def native_run_file(identity: UUID, file_id: UUID, agent_id: int | None = None) -> FileResponse:
+    from .run_resources import run_file_path
+    with domain_errors():
+        metadata, path = await run_file_path(identity, file_id, await _preview_actor(agent_id))
+        if not path.is_file():
+            raise HTTPException(404, "Run attachment not found")
+        return FileResponse(path, filename=metadata["name"], media_type=metadata["media_type"],
+            headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                **source_code_response_headers(metadata["name"], metadata["media_type"])})
 
 
 @routes.get("/runs/{identity}/activities/{node_key}")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
 async def native_activity_occurrences(identity: UUID, node_key: str, body_path: list[str] | None = Query(None),
-                                      page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500)) -> dict[str, Any]:
+                                      page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500), agent_id: int | None = None) -> dict[str, Any]:
     with domain_errors():
-        return await runs.activity_occurrences(identity, node_key, await current_management_scope(), body_path=body_path, page=page, page_size=page_size)
+        return await runs.activity_occurrences(identity, node_key, await _preview_actor(agent_id), body_path=body_path, page=page, page_size=page_size)
 
 
 @routes.get("/runs/{identity}/children")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
-async def native_run_children(identity: UUID, page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500)) -> dict[str, Any]:
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+async def native_run_children(identity: UUID, page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500), agent_id: int | None = None) -> dict[str, Any]:
     with domain_errors():
-        return await runs.children(identity, await current_management_scope(), page=page, page_size=page_size)
+        return await runs.children(identity, await _preview_actor(agent_id), page=page, page_size=page_size)
 
 
 @routes.get("/runs/{identity}/metrics")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
-async def native_metrics(identity: UUID) -> dict[str, Any]:
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+async def native_metrics(identity: UUID, agent_id: int | None = None) -> dict[str, Any]:
     with domain_errors():
-        return await runs.run_metrics(identity, await current_management_scope())
+        return await runs.run_metrics(identity, await _preview_actor(agent_id))
 
 
 @routes.post("/runs/{identity}/control")

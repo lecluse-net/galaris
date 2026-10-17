@@ -13,6 +13,8 @@ the verified migration of Document and Chat attachments.
 
 The [native BPMN profile](native-processes.md) documents internal process contracts.
 
+[Resource sharing](sharing.md) describes exclusive configurations, common contracts and migration of existing permissions.
+
 See [Testing behavior](testing.md) for test commands, real Vue component scenarios,
 concurrency fixtures and the limits of local bridge validation.
 

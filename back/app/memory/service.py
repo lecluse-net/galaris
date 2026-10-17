@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from app.share import ShareGrant
+
 from core.user import HumanActor
 
 import base64
@@ -69,12 +71,9 @@ from .models import (
     MemoryContactItem,
     MemoryFinding,
     MemoryItem,
-    MemoryItemGrant,
     Document,
     DocumentRevision,
     MemorySummaryRevision,
-    DocumentUserGrant,
-    DocumentTeamGrant,
     MemoryLink,
     MemoryRevision,
     MemorySource,
@@ -338,7 +337,7 @@ def graph_item_filters(
 ) -> list[ColumnElement[bool]]:
     filters: list[ColumnElement[bool]] = [
         readable_item_clause(request.agent_id),
-        MemoryItem.document_type != "dataset",
+        MemoryItem.document_type.not_in(("dataset", "process")),
         or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
         or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
         or_(
@@ -376,9 +375,9 @@ def _topic_related_to_agent_clause(agent_id: int) -> ColumnElement[bool]:
 
     related_item = aliased(MemoryItem)
     direct_grant = exists(
-        select(MemoryItemGrant.id).where(
-            MemoryItemGrant.item_id == related_item.id,
-            MemoryItemGrant.agent_id == agent_id,
+        select(ShareGrant.id).where(
+            ShareGrant.share_id == related_item.share_id,
+            ShareGrant.agent_id == agent_id,
         )
     )
     return exists(
@@ -659,9 +658,9 @@ async def commit_item_sharing(item: MemoryItem) -> None:
         # collection. Copy the actual grants, never revive a revoked Agent.
         await get_db().flush()
         await get_db().refresh(item, attribute_names=["grants"])
-        user_grants = await get_db().scalars(select(DocumentUserGrant).where(DocumentUserGrant.item_id == item.id))
-        from .models import DocumentTeamGrant
-        team_grants = await get_db().scalars(select(DocumentTeamGrant).where(DocumentTeamGrant.item_id == item.id))
+        user_grants = await get_db().scalars(select(ShareGrant).where(ShareGrant.share_id == item.share_id, ShareGrant.user_id.is_not(None)))
+
+        team_grants = await get_db().scalars(select(ShareGrant).where(ShareGrant.share_id == item.share_id, ShareGrant.team_id.is_not(None)))
         await adapter.sharing(item.id, {"owner_agent_id": item.owner_agent_id, "owner_user_id": item.owner_user_id,
             "global_access": item.global_access, "group_access": item.group_access, "lock_version": item.lock_version,
             "grants": [*[{"agent_id": grant.agent_id, "can_write": grant.can_write} for grant in item.grants],
@@ -831,7 +830,7 @@ async def create_item(
 ) -> tuple[MemoryItem, bool]:
     """Create a logical memory and immutable first resource revision."""
     if not workflow_metadata and any(key in data.metadata for key in (
-        "creation_command", "engine_dataset", "engine_managed", "engine_agent", "dataset_sequence", "dataset_command_hash", "process_code", "workflow_attachments", "workflow_integrations")):
+        "creation_command", "engine_dataset", "engine_managed", "engine_agent", "process_code")):
         raise MemoryPermissionError("Workflow metadata is server-owned")
 
     if owner_user_id is not None and data.node_kind != "document":
@@ -954,8 +953,7 @@ async def create_item(
             ))
         if initial_editor_agent_id is not None:
             db.add(
-                MemoryItemGrant(
-                    item_id=item.id,
+                ShareGrant(share_id=MemoryItem.share_for(item.id),
                     agent_id=initial_editor_agent_id,
                     can_write=True,
                 )
@@ -1221,7 +1219,7 @@ async def upsert_source_managed_item(
     item.source_managed = True
     item.managed_source_kind = source_kind
     item.managed_source_ref = source_ref
-    await db.execute(delete(MemoryItemGrant).where(MemoryItemGrant.item_id == item.id))
+    await db.execute(delete(ShareGrant).where(ShareGrant.share_id == item.share_id))
     await _upsert_managed_source(item, document, content_hash=digest)
     if item.document is not None:
         await refresh_document_search(item)
@@ -1817,16 +1815,16 @@ async def update_item(
             raise MemoryPermissionError("Run data is integrated by the workflow engine; submit the activity output instead")
     if "metadata" in fields and data.metadata is not None:
         from .document_policy import dataset_writer_active
-        protected_workflow = ("creation_command", "engine_dataset", "engine_managed", "engine_agent", "dataset_sequence", "dataset_command_hash", "process_code", "workflow_attachments", "workflow_integrations")
+        protected_workflow = ("creation_command", "engine_dataset", "engine_managed", "engine_agent", "process_code")
         if not dataset_writer_active(item.id) and any(data.metadata.get(key) != item.metadata_.get(key) for key in protected_workflow):
             raise MemoryPermissionError("Workflow metadata is server-owned")
     if item.document_type == "process" and "metadata" in fields and data.metadata is not None and data.metadata.get("process_code") != item.metadata_.get("process_code"):
         raise MemoryPermissionError("The process code is immutable")
     if item.metadata_.get("engine_dataset") and "metadata" in fields and data.metadata is not None:
-        protected = ("engine_dataset", "engine_agent", "creation_command", "dataset_sequence", "dataset_command_hash")
+        protected = ("engine_dataset", "engine_agent", "creation_command")
         from .document_policy import dataset_writer_active
         if not dataset_writer_active(item.id) and any(data.metadata.get(key) != item.metadata_.get(key) for key in protected):
-            raise MemoryPermissionError("Run Dataset checkpoints are server-owned")
+            raise MemoryPermissionError("Run Dataset ownership is server-owned")
     if item.node_kind == "memory" and not item.source_managed:
         if "title" in fields:
             raise MemoryPermissionError("A memory has no editable title.")
@@ -2221,7 +2219,7 @@ async def _forget_item_record(
             if companion.content is not None and companion.resource_id:
                 inline_resources.add((companion.provider_code, companion.resource_id))
             await delete_item_embeddings(companion.id)
-            for model in (MemoryRevision, MemorySource, MemoryItemGrant, MemoryUsage):
+            for model in (MemoryRevision, MemorySource, MemoryUsage):
                 await get_db().execute(delete(model).where(model.item_id == companion.id))
             await get_db().execute(delete(MemoryURL).where(MemoryURL.memory_node_id == companion.id))
             await get_db().execute(delete(MemoryLink).where(or_(
@@ -2231,6 +2229,7 @@ async def _forget_item_record(
                 MemoryAssociation.item_a_id == companion.id, MemoryAssociation.item_b_id == companion.id,
             )))
             set_committed_value(companion, "revisions", [])
+            await get_db().execute(delete(ShareGrant).where(ShareGrant.share_id == companion.share_id))
             set_committed_value(companion, "grants", [])
             set_committed_value(companion, "url_relations", [])
             companion.primary_url = None
@@ -2295,12 +2294,13 @@ async def _forget_item_record(
 
     await delete_item_embeddings(item_id)
     await db.execute(delete(MemorySummaryRevision).where(MemorySummaryRevision.item_id == item_id))
-    for model in (MemoryRevision, MemorySource, MemoryItemGrant, MemoryUsage):
+    for model in (MemoryRevision, MemorySource, MemoryUsage):
         await db.execute(delete(model).where(model.item_id == item_id))
     await db.execute(delete(MemoryURL).where(MemoryURL.memory_node_id == item_id))
     # Bulk DELETE bypasses relationship collections. Forgetting and then physically
     # deleting the same item must not cascade a second DELETE from stale loaded rows.
     set_committed_value(item, "revisions", [])
+    await db.execute(delete(ShareGrant).where(ShareGrant.share_id == item.share_id))
     set_committed_value(item, "grants", [])
     set_committed_value(item, "url_relations", [])
     await db.execute(
@@ -2679,13 +2679,13 @@ async def set_item_grant(
         raise MemoryConflictError("The owner already has direct access to this memory.")
     db = get_db()
     grant = await db.scalar(
-        select(MemoryItemGrant).where(
-            MemoryItemGrant.item_id == item_id,
-            MemoryItemGrant.agent_id == agent_id,
+        select(ShareGrant).where(
+            ShareGrant.share_id == MemoryItem.share_for(item_id),
+            ShareGrant.agent_id == agent_id,
         )
     )
     if grant is None:
-        db.add(MemoryItemGrant(item_id=item_id, agent_id=agent_id, can_write=data.can_write))
+        db.add(ShareGrant(share_id=MemoryItem.share_for(item_id), agent_id=agent_id, can_write=data.can_write))
     else:
         grant.can_write = data.can_write
     if item.visibility != "public":
@@ -2715,9 +2715,9 @@ async def set_item_grant(
 
 async def has_document_grants(item_id: UUID) -> bool:
     return bool(await get_db().scalar(select(or_(
-        exists(select(MemoryItemGrant.id).where(MemoryItemGrant.item_id == item_id)),
-        exists(select(DocumentUserGrant.id).where(DocumentUserGrant.item_id == item_id)),
-        exists(select(DocumentTeamGrant.id).where(DocumentTeamGrant.item_id == item_id)),
+        exists(select(ShareGrant.id).where(ShareGrant.share_id == MemoryItem.share_for(item_id))),
+        exists(select(ShareGrant.id).where(ShareGrant.share_id == MemoryItem.share_for(item_id))),
+        exists(select(ShareGrant.id).where(ShareGrant.share_id == MemoryItem.share_for(item_id))),
     ))))
 
 
@@ -2796,9 +2796,9 @@ async def remove_item_grant(
         )
     db = get_db()
     grant = await db.scalar(
-        select(MemoryItemGrant).where(
-            MemoryItemGrant.item_id == item_id,
-            MemoryItemGrant.agent_id == agent_id,
+        select(ShareGrant).where(
+            ShareGrant.share_id == MemoryItem.share_for(item_id),
+            ShareGrant.agent_id == agent_id,
         )
     )
     if grant is not None:
@@ -2919,7 +2919,7 @@ async def search_items(
         .options(*_item_options(revisions=False, contents=False))
         .where(
             readable_item_clause(request.agent_id),
-            MemoryItem.document_type != "dataset",
+            MemoryItem.document_type.not_in(("dataset", "process")),
             or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
             or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
         )
@@ -3292,9 +3292,9 @@ async def transfer_document_owner(
         item.owner_agent_id = data.id
         item.owner_user_id = None
         await db.execute(
-            delete(MemoryItemGrant).where(
-                MemoryItemGrant.item_id == document_id,
-                MemoryItemGrant.agent_id == data.id,
+            delete(ShareGrant).where(
+                ShareGrant.share_id == MemoryItem.share_for(document_id),
+                ShareGrant.agent_id == data.id,
             )
         )
     else:
@@ -3303,22 +3303,21 @@ async def transfer_document_owner(
 
     if isinstance(actor_agent_id, HumanActor):
         if data.kind != "user" or data.id != actor_agent_id.user_id:
-            human_grant = await db.scalar(select(DocumentUserGrant).where(DocumentUserGrant.item_id == document_id, DocumentUserGrant.user_id == actor_agent_id.user_id))
+            human_grant = await db.scalar(select(ShareGrant).where(ShareGrant.share_id == MemoryItem.share_for(document_id), ShareGrant.user_id == actor_agent_id.user_id))
             if human_grant is None:
-                db.add(DocumentUserGrant(item_id=document_id, user_id=actor_agent_id.user_id, can_write=True))
+                db.add(ShareGrant(share_id=MemoryItem.share_for(document_id), user_id=actor_agent_id.user_id, can_write=True))
             else:
                 human_grant.can_write = True
     elif data.kind != "agent" or data.id != actor_agent_id:
         actor_grant = await db.scalar(
-            select(MemoryItemGrant).where(
-                MemoryItemGrant.item_id == document_id,
-                MemoryItemGrant.agent_id == actor_agent_id,
+            select(ShareGrant).where(
+                ShareGrant.share_id == MemoryItem.share_for(document_id),
+                ShareGrant.agent_id == actor_agent_id,
             )
         )
         if actor_grant is None:
             db.add(
-                MemoryItemGrant(
-                    item_id=document_id,
+                ShareGrant(share_id=MemoryItem.share_for(document_id),
                     agent_id=actor_agent_id,
                     can_write=True,
                 )

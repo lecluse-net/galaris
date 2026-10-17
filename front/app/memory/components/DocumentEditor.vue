@@ -69,7 +69,7 @@
             </q-chip>
           </div>
         </q-toolbar-title>
-        <DocumentAppPermissions v-if="!isProcess" :document-id="currentDocument.id" :revision="currentDocument.revision"
+        <DocumentAppPermissions :document-id="currentDocument.id" :revision="currentDocument.revision"
           :disabled="hasUnsavedChanges || !!conflictDocument"
           :can-write="privilegeStore.hasPrivilege(privileges.MEMORY_EDIT) || privilegeStore.hasPrivilege(privileges.MEMORY_ADMIN)"
           @changed="appPermissionsGeneration++" />
@@ -204,7 +204,6 @@
         </div>
         <div class="col-12">
           <q-banner v-if="currentDocument.content_type !== 'text'" dense>{{ t('memory.binaryContent') }}</q-banner>
-          <q-btn v-else-if="isProcess && currentDocument.metadata?.process_code" icon="account_tree" :label="t('nativeProcesses.visual')" :to="`/process/internal/${currentDocument.metadata.process_code}`" />
           <q-input v-else-if="!currentDocument.media_type.startsWith('text/')"
             :model-value="editorContent" type="textarea" outlined readonly autogrow :label="t('documents.content')" />
           <RichTextEditor
@@ -250,7 +249,7 @@
             @added="onAttachmentAdded"
             @removed="onAttachmentRemoved"
           />
-          <DocumentDatasetAttachments v-if="!isGoalDocument(currentDocument) && !isProcess" :key="currentDocument.id"
+          <DocumentDatasetAttachments v-if="!isGoalDocument(currentDocument)" :key="currentDocument.id"
             :document-id="currentDocument.id" :agent-id="agentId" :editable="canEditDocument" @changed="onSharingChanged" />
         </div>
       </q-card-section>
@@ -396,7 +395,6 @@ const autosaveState = ref<AutosaveState>('saved')
 const editorTitle = ref('')
 const editorOwner = ref('')
 const editorContent = ref('')
-const isProcess = computed(() => currentDocument.value?.document_type === 'process')
 const editorKeywords = ref<string[]>([])
 const keywordOptions = ref<string[]>([])
 const filteredKeywordOptions = ref<string[]>([])
@@ -830,6 +828,7 @@ async function loadDocument(): Promise<void> {
     const document = seed?.id === props.documentId ? seed : await memoryService.getDocument(props.documentId, props.agentId)
     if (generation !== loadGeneration) return
     if (document.document_type === 'dataset') throw new DatasetDocumentRedirect(`data://${document.id}`)
+    if (document.document_type !== "html") throw new Error("This resource is not an HTML Document.")
     if (document.node_kind !== 'document') throw new Error('The resource is not a document.')
     applyDocument(document, 'loaded')
     // Ancillary catalogues must not keep the current document behind a loading screen.

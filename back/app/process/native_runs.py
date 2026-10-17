@@ -8,68 +8,39 @@ import json
 from typing import Any, Literal
 from uuid import UUID
 
-from sqlalchemy import func, select, true, or_, and_, literal
+from sqlalchemy import func, select, true, literal
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.agent import AgentManagementScope
-from app.memory import workflow_document_actor, workflow_document_readable_ids
-from app.memory import workflow_document_policy_ids
-from app.memory import prepare_workflow_document_read
+from .query_policy import prepare_process_read
 from app.tools import has_process_admin_access
 from sqlalchemy.sql.elements import ColumnElement
 from core.database import get_db
 
 from .models import ProcessDefinition, ProcessNodeAttempt, ProcessNodeRun, ProcessRun, ProcessRunEvent
 from .process_service import TERMINAL_STATUSES
-
-
-def _definition_policy(actor: int | AgentManagementScope) -> ColumnElement[bool]:
-    allowed = select(ProcessDefinition.id).where(or_(ProcessDefinition.document_id.is_(None),
-        ProcessDefinition.document_id.in_(workflow_document_policy_ids(actor))))
-    return ProcessRun.process_id.in_(allowed)
+from .run_data import run_files
 
 
 def readable_run_clause(actor: int | AgentManagementScope, *, administrative: bool = False) -> ColumnElement[bool]:
-    """Filter agent participation or human Dataset policy before counting and pagination."""
-    if isinstance(actor, int):
-        return true() if administrative else or_(ProcessRun.launcher_agent_id == actor,
-            ProcessRun.launch_snapshot["participant_agents"].contains([actor]))
-    owner = and_(
-        ProcessRun.dataset_document_id.is_(None), or_(ProcessRun.requester_user_id == actor.user_id,
-            ProcessRun.launcher_agent_id.in_(actor.agent_ids) if actor.agent_ids is not None else true()))
-    return and_(_definition_policy(actor), or_(owner,
-        ProcessRun.dataset_document_id.in_(workflow_document_readable_ids(actor))))
+    """Runs inherit their process's existing access policy, before pagination."""
+    from .native_access import accessible_clause
+    return true() if administrative else ProcessRun.process_id.in_(
+        select(ProcessDefinition.id).where(accessible_clause(actor)))
 
 
 async def require_run(identity: UUID, actor: int | AgentManagementScope, *, control: bool = False) -> ProcessRun:
     # Single-run views compose the same ACLs as lists. Bound compilation work
     # before authorization, including the generic run-detail route.
-    await prepare_workflow_document_read()
+    await prepare_process_read()
     run = await get_db().get(ProcessRun, identity)
     if run is None or run.engine_code != "galaris":
         raise LookupError("Internal run not found")
-    if isinstance(actor, int):
-        administrative = await has_process_admin_access(actor)
-        clause = ProcessRun.launcher_agent_id == actor if control and not administrative else readable_run_clause(actor, administrative=administrative)
-        if not await get_db().scalar(select(ProcessRun.id).where(ProcessRun.id == identity, clause)):
-            raise PermissionError("Run not found in this agent's participation scope")
+    from .native_access import accessible_clause
+    if isinstance(actor, int) and await has_process_admin_access(actor):
         return run
-    definition = await get_db().get(ProcessDefinition, run.process_id)
-    if definition is not None and definition.document_id is not None:
-        from app.memory import workflow_document_is_orphan
-        if await workflow_document_is_orphan(definition.document_id):
-            from .native_definitions import get
-            await get(definition.code or "", actor)
-    if control:
-        if not actor.allows(run.launcher_agent_id) and run.requester_user_id != actor.user_id:
-            raise PermissionError("Run control access denied")
-    elif run.dataset_document_id is not None:
-        from app.memory import MemoryNotFoundError, MemoryPermissionError
-        try:
-            await workflow_document_actor(run.dataset_document_id, actor)
-        except (MemoryNotFoundError, MemoryPermissionError) as error:
-            raise PermissionError("Run access denied") from error
-    elif not actor.allows(run.launcher_agent_id) and run.requester_user_id != actor.user_id:
+    if not await get_db().scalar(select(ProcessDefinition.id).where(
+        ProcessDefinition.id == run.process_id, accessible_clause(actor, write=control))):
         raise PermissionError("Run access denied")
     return run
 
@@ -147,7 +118,11 @@ async def inspect_run(identity: UUID, actor: int | AgentManagementScope, *, page
     events = list(await get_db().scalars(select(ProcessRunEvent).where(ProcessRunEvent.run_id == identity,
         ProcessRunEvent.id > after_event).order_by(ProcessRunEvent.id).limit(page_size)))
     state: dict[str, Any] = run.engine_metadata.get("native", {})
-    can_control = (run.launcher_agent_id == actor or await has_process_admin_access(actor)) if isinstance(actor, int) else actor.allows(run.launcher_agent_id) or run.requester_user_id == actor.user_id
+    from .native_access import accessible_clause
+    can_control = bool(await get_db().scalar(select(ProcessDefinition.id).where(
+        ProcessDefinition.id == run.process_id, accessible_clause(actor, write=True))))
+    if isinstance(actor, int) and await has_process_admin_access(actor):
+        can_control = True
     latest = select(ProcessNodeRun.node_key, ProcessNodeRun.status,
         func.row_number().over(partition_by=ProcessNodeRun.node_key, order_by=(ProcessNodeRun.admission_order.desc(), ProcessNodeRun.id.desc())).label("rank")
     ).where(ProcessNodeRun.run_id == identity).subquery()
@@ -164,7 +139,9 @@ async def inspect_run(identity: UUID, actor: int | AgentManagementScope, *, page
         "operational": operational,
         "can_control": can_control, "node_statuses": statuses,
         "definition_revision": run.launch_snapshot.get("definition", {}).get("revision"),
-        "dataset_uri": f"document://{run.dataset_document_id}" if run.dataset_document_id else None,
+        "data": deepcopy(run.data), "data_revision": run.data_revision,
+        "data_uri": f"galaris://processes/runs/{run.id}/data",
+        "files": await run_files(run.id), "attachments_uri": f"galaris://processes/runs/{run.id}/attachments/",
         "output": run.output, "error": run.error_message, "error_code": run.error_code, "paused": state.get("paused", False),
         "breakpoints": state.get("breakpoints", []), "debugger_revision": int(state.get("debugger_revision", 0)),
         "parent_run_id": str(visible_parent) if visible_parent else None,
@@ -183,9 +160,8 @@ def _run_result_preview(run: ProcessRun) -> str:
 
 async def list_runs(actor: int | AgentManagementScope, *, code: str | None = None,
                     page: int = 1, page_size: int = 50) -> dict[str, Any]:
-    await prepare_workflow_document_read()
-    # Definition visibility never grants Dataset visibility. Orphan definitions
-    # are filtered before counting and paging through the Document policy.
+    await prepare_process_read()
+    # The parent process policy applies before counting and pagination.
     query = select(ProcessRun).join(ProcessDefinition, ProcessDefinition.id == ProcessRun.process_id).where(
         ProcessRun.engine_code == "galaris", readable_run_clause(actor,
             administrative=await has_process_admin_access(actor) if isinstance(actor, int) else False))
@@ -240,7 +216,7 @@ def _inspection_receipt(receipt: dict[str, Any] | None) -> dict[str, Any] | None
 
 
 async def children(identity: UUID, actor: int | AgentManagementScope, *, page: int = 1, page_size: int = 50) -> dict[str, Any]:
-    await prepare_workflow_document_read()
+    await prepare_process_read()
     await require_run(identity, actor)
     query = select(ProcessRun).where(ProcessRun.parent_run_id == identity, readable_run_clause(actor,
         administrative=await has_process_admin_access(actor) if isinstance(actor, int) else False))

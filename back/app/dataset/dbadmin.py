@@ -6,6 +6,8 @@ from core.dbadmin import DbAdminAction, DbAdminPhase, DbAdminRegistry, SchemaTra
 
 
 async def transfer(_session: AsyncSession, _delta: SchemaTransitionSet) -> None:
+    from app.share import transfer_legacy_sharing as transfer_shares
+    await transfer_shares(_session)
     from .migration import migrate_legacy
     await migrate_legacy()
 

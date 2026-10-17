@@ -1,5 +1,7 @@
 """Participants see durable evidence; only launchers and Process administrators control runs."""
 
+from app.share import set_grant
+
 from uuid import UUID, uuid4
 from datetime import datetime, timedelta, timezone
 import json
@@ -9,7 +11,6 @@ from sqlalchemy import select
 
 from app.agent import Agent
 from app.connection import Connection
-from app.dataset.facade import set_dataset_grant, dataset_record
 from app.process import process_service
 from app.process.bpmn import Actor
 from app.process.dbadmin import _backfill_run_participants
@@ -77,7 +78,7 @@ async def test_run_list_exposes_actual_execution_times(db, native, started):
 
 
 @pytest.mark.asyncio
-async def test_frozen_participants_and_revocable_dedicated_admin_apply_to_every_run_read(db, native, tmp_path):
+async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_read(db, native, tmp_path):
     from app.file_share import ResourceContext, resource_info, resource_read, resource_write, resource_move, materialize_resource, list_schemes
     owner, participant = native
     observer = Agent(title_id=owner.title_id, code=f"observer-{uuid4().hex}", first_name="Observer", last_name="Example", agent_driver="internal")
@@ -89,14 +90,17 @@ async def test_frozen_participants_and_revocable_dedicated_admin_apply_to_every_
         Actor(id="unused", name="Unused role", kind="agent", agent_id=observer.id)]
     value.nodes[1].config["actor"] = "worker"
     definition = await create(actor_agent_id=owner.id, title="Synthetic scoped progress", graph=value)
+    await set_grant(definition.share_id, "agent", participant.id, False)
+    await db.commit()
     run_id = (await process_service.start_process(agent_id=owner.id, workflow_id=definition.code,
         input_data={}, requester_user_id=human.id)).run_id
     run = await db.get(ProcessRun, run_id)
     assert run.launch_snapshot["participant_agents"] == sorted([owner.id, participant.id])
     ctx = McpToolContext(agent_id=participant.id, runtime="internal")
-    uri = f"processus://run/{run_id}"
+    uri = f"galaris://processes/runs/{run_id}"
     file_ctx = ResourceContext(agent_id=participant.id, runtime="internal")
-    assert "processus" in {scheme.scheme for scheme in await list_schemes(file_ctx)}
+    schemes = [scheme.scheme for scheme in await list_schemes(file_ctx)]
+    assert "processus" not in schemes and schemes.count("galaris") == 1
     info = await resource_info(file_ctx, uri)
     assert info.uri == uri and set(info.capabilities) == {"info", "read", "copy"}
     snapshot = json.loads((await resource_read(file_ctx, uri, max_chars=200_000)).content)
@@ -126,9 +130,6 @@ async def test_frozen_participants_and_revocable_dedicated_admin_apply_to_every_
     await process_service.process_start_jobs(engine_code="galaris")
     await process_service.refresh_run(run_id)
     await db.refresh(run)
-    dataset = await dataset_record(run.dataset_document_id, HumanActor(human.id))
-    await set_dataset_grant(dataset.id, HumanActor(human.id), kind="agent", principal=observer.id,
-        can_write=False, expected_lock_version=dataset.lock_version)
     occurrence = await db.scalar(select(ProcessNodeRun).where(ProcessNodeRun.run_id == run_id).order_by(ProcessNodeRun.admission_order.desc()))
     assert (await list_runs(observer.id))["total"] == 0
     assert await process_list_runs(McpToolContext(agent_id=observer.id, runtime="internal")) == []

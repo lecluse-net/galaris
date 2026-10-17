@@ -7,6 +7,7 @@ from .fake_engine import FakeProcessEngine
 from .models import (
     ProcessDefinition,
     ProcessRun,
+    ProcessRunFile,
     ProcessRunEvent,
     ProcessStartJob,
     ProcessNodeRun,
@@ -25,7 +26,8 @@ from .schemas import (
 )
 from .sanitizer import sanitize as sanitize_process_payload
 from .agent_capabilities import build_agent_process_advertisement, agent_process_dispatch_candidates
-from .resource_facade import list_process_resources, read_process_resource, read_process_run_resource
+from .resource_facade import list_process_resources, list_process_run_resources, read_process_resource, read_process_run_resource
+from .run_resources import read_run_data, write_run_data, run_file_path, add_run_file, delete_run_file
 from .process_service import has_process_definitions, list_run_summaries_page_for_scope
 from . import process_service, registry
 from .retention import register_retention_guard
@@ -34,9 +36,6 @@ from .program_contracts import ProgramExecutor, register_program_executor
 from .isolated_code import CodeInvocation, CodeObservation, IsolatedCodeRunner, register_isolated_code_runner
 
 registry.register(FakeProcessEngine())
-from app.memory import register_document_validator
-from .bpmn import compile_bpmn
-register_document_validator("process", compile_bpmn)
 from .native_engine import NativeProcessEngine
 registry.register(NativeProcessEngine())
 
@@ -103,6 +102,8 @@ __all__ = [
     "ProcessEngine",
     "ProcessEngineError",
     "ProcessRun",
+    "ProcessRunFile",
+    "read_run_data", "write_run_data", "run_file_path", "add_run_file", "delete_run_file",
     "ProcessRunEvent",
     "ProcessStartJob",
     "ProcessNodeRun",
@@ -123,6 +124,7 @@ __all__ = [
     "list_run_summaries_page_for_scope",
     "read_process_resource",
     "read_process_run_resource",
+    "list_process_run_resources",
     "process_service",
     "registry",
     "configure_default_engine",

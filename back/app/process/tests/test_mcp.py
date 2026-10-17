@@ -100,7 +100,7 @@ async def test_process_admin_can_create_update_and_delete_for_another_agent(
     tool = SimpleNamespace(id=5, code="n8n")
     definition = SimpleNamespace(
         id=8,
-        document_id=None,
+        code=None,
         agent_id=77,
         tool_id=tool.id,
         engine_process_id="invoice-workflow",

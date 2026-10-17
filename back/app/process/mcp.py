@@ -42,7 +42,7 @@ async def processus_get(ctx: McpToolContext, run_id: str | None = None) -> dict[
 
 def _run_id(value: str) -> UUID:
     try:
-        return UUID(value.strip().removeprefix("processus://run/"))
+        return UUID(value.strip().removeprefix("galaris://processes/runs/"))
     except (AttributeError, ValueError) as exc:
         raise ValueError(f"Invalid process-run UUID: {value}") from exc
 
@@ -67,7 +67,7 @@ async def _process_tool_codes() -> dict[int, str]:
 
 async def _admin_native_definition(ctx: McpToolContext, identity: int, *, write: bool = False) -> None:
     record = await process_service.get_definition(identity)
-    if record is not None and record.document_id is not None:
+    if record is not None and record.code is not None:
         await native_definitions.get(record.code or "", ctx.agent_id, write=write)
 
 
@@ -117,7 +117,7 @@ async def process_get(ctx: McpToolContext, workflow_id: str) -> dict[str, Any]:
         "description": process.description,
         "tool_id": process.tool_id,
     }
-    if process.document_id is not None:
+    if process.code is not None:
         definition = await native_definitions.read(workflow_id, ctx.agent_id)
         graph = Workflow.model_validate(definition["graph"])
         result["schema_version"] = graph.schema_version
@@ -193,16 +193,16 @@ async def process_validate(ctx: McpToolContext, graph: dict[str, Any] | None = N
     return {"valid": True, "diagnostics": [], "graph": validated.model_dump(mode="json")}
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Resource-authorized Document history", effect_policy="read",
-    name="process_history", description="Read a process Document's history for review. Launches have no selectable version.")
+@mcp_tool("galaris", approval="enabled", approval_reason="Resource-authorized Process history", effect_policy="read",
+    name="process_history", description="Read a Process definition's saved BPMN history for review. Launches have no selectable version.")
 async def process_history(ctx: McpToolContext, process_code: str, page: int = 1, page_size: int = 50) -> dict[str, Any]:
     if page < 1 or page_size not in {10, 20, 50, 100, 500}:
         raise ValueError("Invalid history pagination")
     return await native_definitions.history(process_code, ctx.agent_id, limit=page_size, offset=(page - 1) * page_size)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Restore Document content",
-    name="process_restore", description="Restore a readable Document revision as a new current save, if you may edit the process.")
+@mcp_tool("galaris", approval="ask", approval_reason="Restore Process BPMN",
+    name="process_restore", description="Restore a readable Process revision as a new current BPMN save, if you may edit the process.")
 async def process_restore(ctx: McpToolContext, process_code: str, revision: int, expected_revision: int) -> dict[str, Any]:
     return await native_definitions.restore(process_code, ctx.agent_id, revision, expected_revision)
 
@@ -213,19 +213,17 @@ async def process_archive(ctx: McpToolContext, process_code: str, archived: bool
     return await native_definitions.archive(process_code, ctx.agent_id, archived)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Change canonical Document sharing",
-    name="process_share", description="As the process Document owner, grant an agent read/edit access or remove its grant, using the Documents sharing system.")
+@mcp_tool("galaris", approval="ask", approval_reason="Change Process definition sharing",
+    name="process_share", description="As the Process definition owner, grant an agent read/edit access or remove its Process grant.")
 async def process_share(ctx: McpToolContext, process_code: str, target_agent_id: int,
                         access: Literal["read", "edit", "none"]) -> dict[str, object]:
-    from app.memory import share_workflow_document
-    record, _ = await native_definitions.get(process_code, ctx.agent_id)
-    assert record.document_id is not None
-    return await share_workflow_document(record.document_id, owner_agent_id=ctx.agent_id,
-        target_agent_id=target_agent_id, access=access, task_id=ctx.task_id)
+    from .native_sharing import grant_agent
+    return await grant_agent(process_code, ctx.agent_id, target_agent_id,
+        can_write=access == "edit", revoke=access == "none")
 
 
 @mcp_tool("galaris", approval="enabled", approval_reason="Resource-scoped live run read", effect_policy="read",
-    name="process_run_inspect", description="Inspect a readable native run, its frozen graph, occurrences, Dataset URI and event cursor.")
+    name="process_run_inspect", description="Inspect a readable native run, its frozen graph, occurrences, run data and event cursor.")
 async def process_run_inspect(ctx: McpToolContext, run_id: str, page: int = 1, page_size: int = 50, after_event: int = 0) -> dict[str, Any]:
     if page < 1 or page_size not in {10, 20, 50, 100, 500} or after_event < 0:
         raise ValueError("Invalid run pagination")
@@ -350,7 +348,7 @@ async def process_list_runs(
 @mcp_tool("galaris", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_get_run",
-    description="Return a run in the agent's participation or dedicated Process administration scope and refresh it when needed.",
+    description="Return a run allowed by its Process sharing policy or dedicated Process administration and refresh it when needed.",
 )
 async def process_get_run(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
     await _require_visible_run(ctx, _run_id(run_id))
@@ -363,7 +361,7 @@ async def process_get_run(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
 @mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_analyze_run",
-    description="Explain the result and errors of a run in the agent's participation or dedicated Process administration scope.",
+    description="Explain the result and errors of a run allowed by its Process sharing policy or dedicated Process administration.",
 )
 async def process_analyze_run(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
     await _require_visible_run(ctx, _run_id(run_id))
@@ -431,7 +429,7 @@ async def process_admin_list(
     tool_codes = await _process_tool_codes()
     visible: list[dict[str, Any]] = []
     for item in definitions:
-        if item.document_id is not None:
+        if item.code is not None:
             try:
                 await native_definitions.get(item.code or "", ctx.agent_id)
             except (PermissionError, LookupError):
@@ -579,7 +577,7 @@ async def process_admin_start(
     if agent_id <= 0:
         raise ValueError("agent_id must be greater than zero")
     definition = await process_service.get_for_agent(agent_id, workflow_id)
-    if definition is not None and definition.document_id is not None and agent_id != ctx.agent_id:
+    if definition is not None and definition.code is not None and agent_id != ctx.agent_id:
         raise PermissionError("An Agent administrator cannot impersonate another internal process launcher")
     if refs and agent_id != ctx.agent_id:
         raise ValueError(

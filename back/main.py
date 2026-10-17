@@ -259,12 +259,12 @@ setup_public_docs(app)
 setup_api_routers(app)
 from app.dataset import register_dataset, register_dataset_usage_source
 register_dataset()
-from functools import partial
 from app.memory import find_dataset_document_usages
 from app.process.facade import find_dataset_run_usages
 from app.llm.facade import find_dataset_agent_usages
 register_dataset_usage_source("documents", "documents", find_dataset_document_usages)
-register_dataset_usage_source("processes", "definitions", partial(find_dataset_document_usages, document_type="process"))
+from app.process.facade import find_dataset_definition_usages
+register_dataset_usage_source("processes", "definitions", find_dataset_definition_usages)
 register_dataset_usage_source("processes", "runs", find_dataset_run_usages)
 register_dataset_usage_source("agents", "agents", find_dataset_agent_usages)
 
@@ -366,6 +366,10 @@ from app.task import register_working_set_context
 register_working_set_context()
 from app.conversation import register_recent_conversation_document_context
 register_recent_conversation_document_context()
+
+from app.share import register_sharing_directory
+from app.agent import sharing_directory
+register_sharing_directory(sharing_directory)
 
 # Mount Socket.IO as an ASGI application.
 app = websocket.start(app)

@@ -54,7 +54,7 @@
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { SharingChoice, SharingRecipient } from '../sharing'
-import PersonAvatar from './PersonAvatar.vue'
+import { PersonAvatar } from '@/core/util'
 
 const props = defineProps<{ options: SharingChoice[]; disabled: boolean }>()
 const emit = defineEmits<{ grant: [recipient: SharingRecipient, write: boolean] }>()

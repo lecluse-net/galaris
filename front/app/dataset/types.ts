@@ -1,4 +1,4 @@
-import type { SharingState } from '@/core/util'
+import type { SharingState } from '@/app/share'
 export const valueTypes = ['int', 'float', 'string', 'bool', 'Agent', 'File', 'User', 'Document', 'Dataset', 'array', 'object'] as const
 export type ValueType = typeof valueTypes[number]
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
@@ -10,6 +10,6 @@ export interface Dataset {
   global_access: number; group_access: number; keywords: string[]
 }
 export interface Page<T> { items: T[]; total: number }
-export interface DatasetSharing extends SharingState { lock_version: number; can_manage: boolean }
+export type DatasetSharing = SharingState
 export type UsageKind = 'documents' | 'processes' | 'agents'
 export interface DatasetUsage { id: string; label: string; relation: 'document_reference' | 'process_definition' | 'process_run' | 'agent_trace'; url: string; uri?: string; last_used_at: string | null }

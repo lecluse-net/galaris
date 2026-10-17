@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from app.share import ShareGrant
+
 from copy import deepcopy
 from datetime import datetime
 import hashlib
@@ -19,7 +21,7 @@ from core.user import HumanActor
 
 from .access import accessible_clause, access, is_administrator
 from .contracts import DataActor, DatasetAccess, DatasetConflictError, DatasetNotFoundError, DatasetPermissionError, DatasetWriteLimitError
-from .models import Dataset, DatasetGrant, DatasetRevision, DatasetWriteBudget
+from .models import Dataset, DatasetRevision, DatasetWriteBudget
 
 MAX_BYTES = 2_000_000
 MAX_WRITES = 30
@@ -142,7 +144,7 @@ async def create(actor: DataActor, *, title: str, content: str = "[]", owner_age
             await record(existing.id, actor)
             return existing
     controlled = dict(metadata or {})
-    if any(key in controlled for key in ("engine_managed", "engine_agent", "workflow_integrations", "creation_command")):
+    if any(key in controlled for key in ("engine_managed", "engine_agent", "creation_command")):
         raise ValueError("Dataset engine metadata is server-owned")
     if engine_managed:
         if not isinstance(actor, int):
@@ -239,14 +241,8 @@ async def set_grant(identity: UUID, actor: DataActor, *, kind: Literal["agent", 
         }[kind])
         if target is None:
             raise DatasetNotFoundError("Collaborator not found")
-    column = {"agent": DatasetGrant.agent_id, "user": DatasetGrant.user_id, "team": DatasetGrant.team_id}[kind]
-    grant = await get_db().scalar(select(DatasetGrant).where(DatasetGrant.dataset_id == identity, column == principal))
-    if grant is not None and can_write is None:
-        await get_db().delete(grant)
-    elif grant is not None:
-        grant.can_write = bool(can_write)
-    elif can_write is not None:
-        get_db().add(DatasetGrant(dataset_id=identity, can_write=can_write, **{kind + "_id": principal}))
+    from app.share import set_grant as set_share_grant
+    await set_share_grant(dataset.share_id, kind, principal, can_write)
     dataset.lock_version += 1
     await get_db().flush()
     from .projection import changed
@@ -271,7 +267,7 @@ async def metadata(identity: UUID, actor: DataActor, *, expected_lock_version: i
             raise DatasetPermissionError("Run Dataset metadata belongs to its engine")
     if "metadata" in values:
         updated: dict[str, Any] = values["metadata"]
-        protected = {"engine_managed", "engine_dataset", "engine_agent", "creation_command", "workflow_integrations", "process_code", "workflow_attachments"}
+        protected = {"engine_managed", "engine_dataset", "engine_agent", "creation_command", "process_code"}
         if not engine and any(updated.get(key) != dataset.metadata_.get(key) for key in protected):
             raise DatasetPermissionError("Dataset engine metadata is server-owned")
         dataset.metadata_ = deepcopy(updated)
@@ -333,7 +329,7 @@ async def list_datasets(actor: DataActor, *, page: int = 1, page_size: int = 50,
 
 async def sharing(identity: UUID, actor: DataActor) -> dict[str, Any]:
     dataset = await record(identity, actor)
-    grants = await get_db().scalars(select(DatasetGrant).where(DatasetGrant.dataset_id == identity))
+    grants = await get_db().scalars(select(ShareGrant).where(ShareGrant.share_id == Dataset.share_for(identity)))
     permissions = await access(dataset, actor)
     return {"lock_version": dataset.lock_version, "global_access": dataset.global_access,
         "group_access": dataset.group_access, "can_manage": permissions.can_manage,

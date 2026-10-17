@@ -334,7 +334,7 @@ def _item_filters(
     now = datetime.now(timezone.utc)
     filters: list[ColumnElement[bool]] = [
         readable_item_clause(request.agent_id),
-        MemoryItem.document_type != "dataset",
+        MemoryItem.document_type.not_in(("dataset", "process")),
         or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
         or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
     ]

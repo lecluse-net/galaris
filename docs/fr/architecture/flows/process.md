@@ -3,10 +3,10 @@
 # Flux des outils et processus
 
 L'inspection native et `processus_get` partagent l'état opérationnel persisté : activités,
-attentes, dernière activité et commandes disponibles. Les agents sont limités aux runs
-de leur participation figée, sauf connexion dédiée `process_admin` active ; les grants
-Dataset restent indépendants. Le filtrage précède comptage/pagination et couvre enfants
-et métriques. Voir la [décision 0193](../../../../project/decisions/0193-process-run-observation-and-participation.md).
+attentes, dernière activité et commandes disponibles. Les runs, leurs variables et leurs
+fichiers héritent des droits du processus parent ; la connexion dédiée `process_admin`
+conserve l'administration globale. Le filtrage précède comptage/pagination et couvre enfants
+et métriques. Voir la [décision 0198](../../../../project/decisions/0198-process-run-data-and-files.md).
 
 Les [activités humaines](../../dev/native-processes.md) utilisent exclusivement la messagerie.
 Process persiste l'attente et appelle un port injecté ; Conversation envoie une interaction
@@ -16,7 +16,8 @@ de réponse humaine. Voir la [décision 0192](../../../../project/decisions/0192
 
 Le moteur natif ajoute le [profil de données v2](../../dev/native-processes.md) :
 entrées/sorties déclarées par tâche, normalisation des omissions et défauts, validation
-avant effet/intégration et Dataset global administré par le moteur. Les références de
+avant effet/intégration et variables dans `process_runs.data`, liées aux fichiers par
+`process_run_files`, sans Dataset. Les références de
 fichiers passent entre activités sans transfert ; les octets ne sont demandés que pour
 une opération explicite via File Sharing. Le profil historique v1 reste interprété tel quel.
 Les phases Python utilisent le port de runner et un worker Monty neuf pour les computations

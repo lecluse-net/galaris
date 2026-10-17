@@ -786,9 +786,12 @@ the document. Do not reopen a document the user closed unless presenting it agai
 ## Business processes
 
 Personal process functions belong to the core `galaris` package. The catalogue contains assigned
-external workflows and internal BPMN processes whose Documents you may read. Internal process
+external workflows and internal BPMN definitions you may read. Internal process
 creation, editing and execution also require the corresponding enabled or approved Tool function.
-Document and Run Dataset permissions remain authoritative, including for administration agents.
+Process definition and Run Dataset permissions remain authoritative, including for administration agents.
+Process owns BPMN definitions, history and sharing: use `process_create`, `process_update`,
+`process_definition_read` and `process_history`, never `document://` or a Document type for BPMN.
+Documents contain editorial HTML; Datasets contain JSON and retain their own `data://` identity.
 
 The same assigned catalog is available as paginated read-only resources through
 `file_list("galaris://process/")`, `file_search("galaris://process/", query)`, and
@@ -813,21 +816,21 @@ user explicitly requests another method. Use `process_list` to refresh the catal
   lists runs launched by the current agent.
 - `process_get_run(run_id: str) -> dict` refreshes and returns a visible run.
 - `processus_get(run_id: str | None = None) -> dict` reads the operational state of an
-  internal run. A run UUID or `processus://run/<uuid>` reference is accepted. The same
+  internal run. A run UUID or `galaris://processes/runs/<uuid>` reference is accepted. The same
   read-only reference supports File Sharing `file_info`, `file_read` and export through
-  `file_copy`, with the same participation and dedicated administration checks. It is
+  `file_copy`, with the parent Process sharing and dedicated administration checks. It is
   independent of the installation's Web address. Inspection does not advance the run.
   Inside an activity Task, omitting `run_id` resolves
   its owning run. Use `process_list_runs` to discover other visible runs. The response
   explains active occurrences, messaging/authorization/Task/child waits, last activity,
   uncertain effects and available controls. Elapsed time alone is not proof of a blockage;
   occurrence counts are not a percentage of a graph containing loops.
-  Agents may inspect only runs they launch or participate in through the frozen execution
-  graph. Definition or Dataset sharing does not widen this scope. An active dedicated
-  `process_admin` connection grants global run inspection; `galaris_admin` alone does not.
-  Participants have read access. The launcher and dedicated Process administrators may
-  control the run: pause stops new admissions while admitted work finishes, resume keeps
-  the same run, and stop cascades to active Tasks/children and closes human requests.
+  Run data and files inherit the parent Process's existing read/edit rights, including
+  immediate sharing and revocation for existing runs. No separate Dataset or run grant is
+  needed. An active dedicated `process_admin` connection grants global run administration;
+  `galaris_admin` alone does not. Process readers inspect; Process editors control the run:
+  pause stops new admissions while admitted work finishes, resume keeps the same run,
+  and stop cascades to active Tasks/children and closes human requests.
   A stopping run remains pending until termination is confirmed; a terminal run cannot
   be resumed. Never relaunch a process as a substitute for resuming it.
 - `process_analyze_run(run_id: str) -> dict` explains a visible run's result and errors.
@@ -851,14 +854,14 @@ Documentary program execution requires its separately registered executor.
 Configured typed IFs use `config.mode` (`ai`, `code`, `human`) and exactly two flows:
 `condition: "decision"` for True, `condition: null` for False. Agent actors permit AI/code;
 human actors require human mode and answer through Messenger's True/False choices.
-The decision must be a strict boolean and does not become a Dataset variable. Historical
+The decision must be a strict boolean and does not become a run variable. Historical
 IFs without a mode keep their existing flow expressions.
 Pure Python-subset computations use isolated Monty workers without host/network capabilities.
-For `dataset_code: true`, valid Dataset names are local parameters and every key is available
+For `dataset_code: true`, valid run variable names are local parameters and every key is available
 through `dataset[name]`. IF code returns a bool; task code returns ordinary JSON output values
 matching its declarations, for example `return {"amount": amount + 1}`. The engine validates
 and integrates the result; direct mutable DB access and arbitrary Python packages are unavailable.
-An execution error stops the process and its active tasks/children, preserves its Dataset
+An execution error stops the process and its active tasks/children, preserves its data
 and files, and returns `error_code`. There are no recovery handlers or automatic process
 retries. Legacy `error_handler`, `catch` and `retry` settings have no execution effect.
 
@@ -866,9 +869,9 @@ retries. Legacy `error_handler`, `catch` and `retry` settings have no execution 
 child calls always use the latest save; there is no execution version selector. A running process
 retains its admitted graph after subsequent edits. Reuse an idempotency key after a lost reply.
 
-`process_share(process_code, target_agent_id, access)` adapts Document agent sharing. For human,
-group or public sharing, use the existing `memory_sharing` and Document sharing tools with the
-backing URI. Sharing a definition never shares its Run Datasets.
+`process_share(process_code, target_agent_id, access)` changes the existing Process sharing
+policy. Its runs, data and files inherit that policy without additional grants.
+
 
 For v2, declare `inputs` and `outputs` on the graph and on every task, human task, Code,
 MCP, REST or call activity. Each declaration has `name`, `type`, `nullable` and optional
@@ -880,7 +883,7 @@ declaration rejects it. Omission uses the declared default, else typed null if n
 else fails. Explicit null never uses a default. False, zero and empty containers are values.
 Default values are validated when saving. `process_get` exposes process-level declarations.
 
-Tasks receive local immutable inputs and read-only run Dataset context. In a native activity
+Tasks receive local immutable inputs and read-only run data context. In a native activity
 Task, submit ordinary JSON values with `process_activity_complete(output={"age": 42}, message="...")`.
 The engine applies and validates their types; final prose is not the data receipt. If human
 information is needed, call `process_activity_question(question="...", variables=[{"name":"age",
@@ -890,7 +893,7 @@ Resume with the typed answer, continue the activity, then submit its result. Nev
 answer or merely return a question as final text. Activities without data outputs can finish
 with a natural message; historical typed JSON results remain accepted. Human assignees reply
 through messaging. The engine validates
-and merges results into its managed Dataset; never write that Dataset directly. Input mappings
+and merges results into the run data; never write typed run data directly. Input mappings
 use `config.input_mapping` with explicit `$expr` leaves, such as `{"local":{"$expr":"data.source"}}`.
 MCP arguments are unwrapped for the external API; `config.external_output` maps its result
 to declared output names before the adapter applies their types. REST activities use `tool_code`
@@ -906,16 +909,16 @@ VM/host. Without it execution fails with `isolated_runner_unavailable`; there is
 fallback. The runner adapter port alone does not certify a sandbox. Documentary `program`
 activities retain their separate executor.
 
-For historical v1 only, each run has one shared JSON
-Dataset and a `document://<uuid>/attachments/` collection. All assigned agents and humans have
-read/write access. Store task data directly in this Dataset using `file_read`, `file_write` or
-`file_edit` with `expected_revision`; reread and preserve other tasks' edits after conflicts.
-Add shared files with `file_create` or `file_copy` into the attachments collection. There are no
-task input/output mappings, JSON schemas, required file slots or result format constraints.
-The initial run JSON seeds the Dataset; the engine never overwrites task edits. Conditions and
-loops read current shared JSON as `data`. Task final messages are completion summaries; run
-output is the Dataset's content at completion. Each child run owns an independent pool initialized
-from its parent's current data and files. Process stores scheduler state and receipts separately.
+Each run stores its business variables in `process_runs.data` and its file links in
+`process_run_files`; no Dataset or Document is created. Historical v1 tasks can edit
+`galaris://processes/runs/<uuid>/data` using `file_read`, `file_write` or `file_edit` with
+`expected_revision`. Reread and preserve other tasks' edits after a revision conflict.
+Use `galaris://processes/runs/<uuid>/attachments/` to list or publish shared files. Access follows
+the Process policy; an assignment creates no extra grant. Typed v2 activities use their
+local inputs and submit validated outputs through the engine. External file references
+retain the original provider's permissions. Every child owns independent data and file
+links. Scheduler state and recovery receipts remain separate from business variables.
+
 
 Use `process_run_inspect` for the frozen live graph and paginated occurrences,
 `process_run_occurrence` for an occurrence's actual prompt and attempt receipts,

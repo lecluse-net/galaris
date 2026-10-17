@@ -16,6 +16,7 @@ export const test = base.extend({
     await page.route('**/api/agents/selection?scope=management', route => route.fulfill({ json: [{ id: 7, label: 'Alice Example', has_avatar: false }] }))
     await page.route('**/api/memory/documents/*/sharing', route => route.fulfill({ json: { lock_version: 1, can_manage: true, grants: [], options: [], level: 'private', can_write: false, owner: { kind: 'agent', id: 7, label: 'Alice', can_write: true }, owner_groups: [] } }))
     await page.route('**/api/memory/documents/*/dataset-attachments*', route => route.fulfill({ json: { items: [], lock_version: 1 } }))
+    await page.route('**/api/memory/documents/*/process-attachments*', route => route.fulfill({ json: { items: [], lock_version: 1 } }))
     await page.route('**/api/datasets?*', route => route.fulfill({ json: { items: [], total: 0 } }))
     // Most documents use the standard icon. Icon scenarios override this explicit default.
     await page.route('**/api/memory/documents/icons/resolve', route => route.fulfill({ json: {} }))

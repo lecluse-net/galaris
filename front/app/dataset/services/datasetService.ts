@@ -1,5 +1,5 @@
 import { api } from '@/core/api'
-import type { SharingDraft } from '@/core/util'
+import type { SharingDraft } from '@/app/share'
 import type { Dataset, Page, DatasetSharing, DatasetUsage, UsageKind } from '../types'
 const base = '/datasets'
 export const datasetService = {

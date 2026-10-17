@@ -1,5 +1,7 @@
 """Explicit adapters for historical Memory Dataset entry points."""
 
+from app.share import ShareGrant
+
 from contextlib import contextmanager
 from collections.abc import Generator
 import hashlib
@@ -17,7 +19,7 @@ from app.agent import AgentManagementScope
 from . import service
 from .access import access
 from .migration import adopt_legacy
-from .models import Dataset, DatasetAlias, DatasetGrant, DatasetAttachment
+from .models import Dataset, DatasetAlias, DatasetAttachment
 
 
 @contextmanager
@@ -134,9 +136,9 @@ class LegacyDatasetAdapter:
             dataset = await service.record(identity, actor, manage=True, lock=True)
             dataset.global_access, dataset.group_access = state["global_access"], state["group_access"]
             dataset.owner_agent_id, dataset.owner_user_id = state["owner_agent_id"], state["owner_user_id"]
-            await get_db().execute(delete(DatasetGrant).where(DatasetGrant.dataset_id == identity))
+            await get_db().execute(delete(ShareGrant).where(ShareGrant.share_id == Dataset.share_for(identity)))
             for entry in state["grants"]:
-                get_db().add(DatasetGrant(dataset_id=identity, **entry))
+                get_db().add(ShareGrant(share_id=Dataset.share_for(identity), **entry))
             dataset.lock_version = max(dataset.lock_version + 1, state["lock_version"])
             await get_db().flush()
             from .projection import changed
@@ -146,11 +148,6 @@ class LegacyDatasetAdapter:
         with legacy_errors():
             dataset = await service.record(identity, actor, manage=True, lock=True)
             await service.remove(identity, actor, expected_lock_version=dataset.lock_version)
-
-    async def integrate(self, identity: UUID, parameters: dict[str, Any]) -> dict[str, Any]:
-        from .engine import integrate_workflow_values
-        with legacy_errors():
-            return await integrate_workflow_values(identity, **parameters)
 
     async def application(self, operation: str, actor: AgentManagementScope, context: dict[str, Any]) -> dict[str, Any]:
         from .apps import application

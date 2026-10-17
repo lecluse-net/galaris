@@ -2,6 +2,10 @@
 
 # Internal business processes
 
+Processes are managed exclusively in **Processes**. They own their BPMN definitions and
+history and never appear in the **Documents** library, which contains HTML. Their JSON
+run variables and attachment links belong directly to Process.
+
 The **Processes** page brings internal and external processes, including n8n, into a single list.
 Click a process row to open its editor page for both internal and external processes.
 The arrow area on the left loads and expands its runs; click again to collapse the sublist.
@@ -94,7 +98,7 @@ and enter instructions, or **Code** and enter a Python program. On a human lane,
 is automatic: the assignee receives the question in messaging and chooses True or False.
 The run waits and follows exactly one branch. Historical IFs without a mode keep their
 existing conditions. Tasks offer the same processing modes according to their actor.
-Code receives run Dataset variables directly: `return variable_2 != "pas mon projet"` for
+Code receives run data variables directly: `return variable_2 != "pas mon projet"` for
 an IF, or `return {"variable_1": variable_1 + 1}` to update a declared task output. The editor
 starts with a commented example; only valid outputs are integrated.
 Splits create
@@ -102,7 +106,7 @@ branches; an activity waits for all its ordinary predecessors and starts once wi
 requiring an extra gateway.
 The harness determines how many Tasks can actually execute concurrently.
 An execution error stops the process and its active branches. The observer returns the
-error code and message; the Dataset and files are preserved. There are no recovery
+error code and message; the run data and files are preserved. There are no recovery
 activities or automatic retries to configure.
 
 Validate checks the executable profile. Save creates a saved process revision. Invalid JSON
@@ -126,15 +130,17 @@ Ask the agent to launch the process from Chat. The agent gathers the required in
 and files, prepares the declared inputs and launches the latest saved version.
 The process page provides editing and observation without a manual launch form.
 Calls forward their local inputs and
-integrate validated outputs. Children own independent Datasets and have no fixed business depth.
+integrate validated outputs. Children own independent data and have no fixed business depth.
 
-Each run retains its starting graph and owns a private Dataset independent of the
-definition. The engine manages global data and the file manifest; activities work on local
-inputs and return validated outputs. Invalid output is never integrated. Disjoint changes
+Each run retains its admitted graph and stores business variables in its `data` field.
+A run file table holds attachment links. No Dataset is created. Data and files inherit
+the parent Process's read/edit rights, including immediate revocation for existing runs.
+Tracking exposes **Run data** and **Attachments**, with downloads for managed files.
+The engine integrates validated outputs and keeps technical receipts separate from variables.
+Invalid output is never integrated. Disjoint changes
 are preserved and conflicting variable updates are reported. File references travel without
 automatic downloads or copies; operations on contents enforce resource access.
-Run output follows the variables declared on End. Sharing a definition never publishes
-its run Datasets. Different runs own independent data. Only historical profiles retain
+Run output follows the variables declared on End. Sharing a Process also shares its runs. Different runs own independent data. Only historical profiles retain
 direct shared-pool editing and copy initial files into their attachments.
 
 Opening a run from Chat's **Processes** panel, a process's execution list or process tracking in Tasks shows
@@ -157,14 +163,14 @@ In the dialog opened from the process catalogue, the title groups the status, th
 activity, then elapsed time and the total cost of the process and its child processes.
 The clickable UUID with a transparent background sits to the left of the inspection hint
 in the diagram toolbar. Clicking the UUID copies the internal
-`processus://run/<uuid>` reference. The diagram replaces occurrence counters and lists of
+`galaris://processes/runs/<uuid>` reference. The diagram replaces occurrence counters and lists of
 occurrences or child processes; the calling activity's details open its child process.
 In other views, the **Run URL** field and its copy button share the same reference for
 debugging, including from Chat. Agents can read it through `file_info`, `file_read` or
-`processus_get`, within their participation scope
+`processus_get`, according to the parent Process rights
 or with dedicated Process administration access.
 
-The observer shows the graph, occurrences, actual prompts, errors, Dataset, children
+The observer shows the graph, occurrences, actual prompts, errors, run data, children
 and available metrics. Loop bodies and children open on demand. Pause suspends new
 admissions while observing accepted effects. Step admits one occurrence and lets its
 composite descendants progress until completion. Pause and breakpoints survive restarts.
@@ -177,10 +183,9 @@ interrupts active tasks and children. A stopped run cannot be resumed. An uncert
 operation requires reconciliation before resuming; elapsed time alone does not prove
 that a run is blocked.
 
-Agents use `processus_get` for this view. They see only runs they participate in through
-the frozen launch graph, unless they have active dedicated `process_admin` access.
-Definition or Dataset sharing does not extend this scope. Participants may inspect;
-the launcher and Process administrators may control the run.
+Agents use `processus_get` for this view. The Process's read policy authorizes its
+runs, data and files; its edit policy authorizes controls. Existing dedicated
+`process_admin` access remains available. Sharing a Process also shares its existing runs.
 
 A reply to an activity's question belongs to the existing run; it does not request a new
 launch. The agent replies briefly by default; ask for any details you need.
@@ -212,13 +217,13 @@ children and retain estimated-cost information. Recovery reattaches admitted Tas
 Tool effects without certain receipts are never blindly replayed.
 Billed cost and inference value are separate, including subscription calls. The table
 details these measurements for each occurrence, including loops and retries. Archiving
-a definition preserves its Documents and run links.
+a definition preserves its BPMN, history and run links.
 
 ## Audit and test
 
 Authorized agents inspect complete definitions, prompts, actors and history
 through MCP, then propose or apply changes according to their rights. Tool capabilities
-never replace access to the corresponding Document or Dataset.
+never replace access to the corresponding Process and its data.
 
 **Lab → Processes** prepares invented cases, optionally generated by the Lab model,
 and launches real campaigns. Cases retain actual runs, measurements and optional exact
@@ -230,3 +235,5 @@ stop the activity. Code and optional preparation/integration scripts use an isol
 subset with no filesystem, network or third-party package access, bounded by time and memory.
 Documentary programs require their separately qualified
 executor; its absence is reported. See the [native BPMN profile](../dev/native-processes.md).
+
+Each Document, Dataset and process definition retains independent sharing. Changing access to one resource does not change access to another linked resource. Upgrades preserve existing permissions, including team access. See the [sharing mechanism](../dev/sharing.md).

@@ -54,6 +54,13 @@
       },
       {
         "files": [
+          "back/app/agent/share_directory.py"
+        ],
+        "source": "app.agent",
+        "target": "app.share"
+      },
+      {
+        "files": [
           "back/app/agent/__init__.py",
           "back/app/agent/agent_service.py",
           "back/app/agent/defaults.py",
@@ -111,6 +118,7 @@
           "back/app/agent/planner_service.py",
           "back/app/agent/resource_facade.py",
           "back/app/agent/router.py",
+          "back/app/agent/share_directory.py",
           "back/app/agent/team_router.py",
           "back/app/agent/title_service.py"
         ],
@@ -175,6 +183,7 @@
           "back/app/agent/dialogue_service.py",
           "back/app/agent/mcp.py",
           "back/app/agent/models.py",
+          "back/app/agent/share_directory.py",
           "back/app/agent/team_router.py"
         ],
         "source": "app.agent",
@@ -193,7 +202,8 @@
           "back/app/agent/management_scope.py",
           "back/app/agent/models.py",
           "back/app/agent/openai_service.py",
-          "back/app/agent/router.py"
+          "back/app/agent/router.py",
+          "back/app/agent/share_directory.py"
         ],
         "source": "app.agent",
         "target": "core.user"
@@ -1035,11 +1045,25 @@
           "back/app/dataset/migration.py",
           "back/app/dataset/projection.py",
           "back/app/dataset/provider.py",
-          "back/app/dataset/router.py",
-          "back/app/dataset/sharing.py"
+          "back/app/dataset/router.py"
         ],
         "source": "app.dataset",
         "target": "app.memory"
+      },
+      {
+        "files": [
+          "back/app/dataset/access.py",
+          "back/app/dataset/compatibility.py",
+          "back/app/dataset/dbadmin.py",
+          "back/app/dataset/migration.py",
+          "back/app/dataset/models.py",
+          "back/app/dataset/projection.py",
+          "back/app/dataset/router.py",
+          "back/app/dataset/service.py",
+          "back/app/dataset/sharing.py"
+        ],
+        "source": "app.dataset",
+        "target": "app.share"
       },
       {
         "files": [
@@ -1057,7 +1081,6 @@
           "back/app/dataset/attachments.py",
           "back/app/dataset/bootstrap.py",
           "back/app/dataset/compatibility.py",
-          "back/app/dataset/engine.py",
           "back/app/dataset/migration.py",
           "back/app/dataset/models.py",
           "back/app/dataset/organization.py",
@@ -1096,7 +1119,6 @@
       },
       {
         "files": [
-          "back/app/dataset/access.py",
           "back/app/dataset/service.py"
         ],
         "source": "app.dataset",
@@ -2621,6 +2643,25 @@
       },
       {
         "files": [
+          "back/app/memory/access.py",
+          "back/app/memory/dataset_migration.py",
+          "back/app/memory/dataset_port.py",
+          "back/app/memory/deduplication.py",
+          "back/app/memory/document_migration.py",
+          "back/app/memory/goal_document_adapter.py",
+          "back/app/memory/item_sharing.py",
+          "back/app/memory/maintenance.py",
+          "back/app/memory/models.py",
+          "back/app/memory/process_migration.py",
+          "back/app/memory/schemas.py",
+          "back/app/memory/service.py",
+          "back/app/memory/topic_ranking.py"
+        ],
+        "source": "app.memory",
+        "target": "app.share"
+      },
+      {
+        "files": [
           "back/app/memory/automation.py",
           "back/app/memory/goal_folders.py",
           "back/app/memory/link_reconciliation.py",
@@ -2708,6 +2749,7 @@
           "back/app/memory/maintenance.py",
           "back/app/memory/messenger_contact.py",
           "back/app/memory/models.py",
+          "back/app/memory/process_migration.py",
           "back/app/memory/process_projection.py",
           "back/app/memory/query_policy.py",
           "back/app/memory/retrieval.py",
@@ -2808,8 +2850,7 @@
       {
         "files": [
           "back/app/memory/access.py",
-          "back/app/memory/bootstrap.py",
-          "back/app/memory/item_sharing.py"
+          "back/app/memory/bootstrap.py"
         ],
         "source": "app.memory",
         "target": "core.team"
@@ -2865,8 +2906,7 @@
           "back/app/memory/source_projection.py",
           "back/app/memory/storage.py",
           "back/app/memory/storage_reconciliation.py",
-          "back/app/memory/temporal.py",
-          "back/app/memory/workflow_documents.py"
+          "back/app/memory/temporal.py"
         ],
         "source": "app.memory",
         "target": "core.util"
@@ -3215,13 +3255,17 @@
           "back/app/process/events.py",
           "back/app/process/facade.py",
           "back/app/process/mcp.py",
+          "back/app/process/native_access.py",
           "back/app/process/native_actors.py",
           "back/app/process/native_definitions.py",
           "back/app/process/native_engine.py",
           "back/app/process/native_router.py",
           "back/app/process/native_runs.py",
+          "back/app/process/native_sharing.py",
           "back/app/process/process_service.py",
-          "back/app/process/router.py"
+          "back/app/process/resource_facade.py",
+          "back/app/process/router.py",
+          "back/app/process/run_resources.py"
         ],
         "source": "app.process",
         "target": "app.agent"
@@ -3246,7 +3290,9 @@
         "files": [
           "back/app/process/native_engine.py",
           "back/app/process/process_service.py",
-          "back/app/process/router.py"
+          "back/app/process/router.py",
+          "back/app/process/run_data.py",
+          "back/app/process/run_resources.py"
         ],
         "source": "app.process",
         "target": "app.file_share"
@@ -3264,19 +3310,28 @@
       },
       {
         "files": [
-          "back/app/process/__init__.py",
+          "back/app/process/definition_migration.py",
           "back/app/process/events.py",
-          "back/app/process/mcp.py",
           "back/app/process/native_actors.py",
-          "back/app/process/native_definitions.py",
-          "back/app/process/native_engine.py",
           "back/app/process/native_router.py",
           "back/app/process/native_runs.py",
-          "back/app/process/process_service.py",
-          "back/app/process/router.py"
+          "back/app/process/router.py",
+          "back/app/process/run_data.py",
+          "back/app/process/run_resources.py"
         ],
         "source": "app.process",
         "target": "app.memory"
+      },
+      {
+        "files": [
+          "back/app/process/definition_migration.py",
+          "back/app/process/models.py",
+          "back/app/process/native_access.py",
+          "back/app/process/native_router.py",
+          "back/app/process/native_sharing.py"
+        ],
+        "source": "app.process",
+        "target": "app.share"
       },
       {
         "files": [
@@ -3299,7 +3354,8 @@
           "back/app/process/native_engine.py",
           "back/app/process/native_runs.py",
           "back/app/process/process_service.py",
-          "back/app/process/resource_facade.py"
+          "back/app/process/resource_facade.py",
+          "back/app/process/run_resources.py"
         ],
         "source": "app.process",
         "target": "app.tools"
@@ -3308,6 +3364,7 @@
         "files": [
           "back/app/process/dataset_usage.py",
           "back/app/process/facade.py",
+          "back/app/process/native_access.py",
           "back/app/process/native_router.py",
           "back/app/process/router.py"
         ],
@@ -3330,11 +3387,16 @@
           "back/app/process/native_definitions.py",
           "back/app/process/native_engine.py",
           "back/app/process/native_runs.py",
+          "back/app/process/native_sharing.py",
           "back/app/process/process_service.py",
           "back/app/process/progress.py",
+          "back/app/process/query_policy.py",
           "back/app/process/replacement.py",
+          "back/app/process/resource_facade.py",
           "back/app/process/retention.py",
+          "back/app/process/run_data.py",
           "back/app/process/run_observation.py",
+          "back/app/process/run_resources.py",
           "back/app/process/workers.py"
         ],
         "source": "app.process",
@@ -3342,7 +3404,8 @@
       },
       {
         "files": [
-          "back/app/process/dbadmin.py"
+          "back/app/process/dbadmin.py",
+          "back/app/process/definition_migration.py"
         ],
         "source": "app.process",
         "target": "core.dbadmin"
@@ -3364,6 +3427,7 @@
           "back/app/process/process_service.py",
           "back/app/process/retention.py",
           "back/app/process/router.py",
+          "back/app/process/run_data.py",
           "back/app/process/workers.py"
         ],
         "source": "app.process",
@@ -3378,12 +3442,21 @@
       },
       {
         "files": [
+          "back/app/process/process_service.py",
+          "back/app/process/run_data.py",
+          "back/app/process/run_resources.py"
+        ],
+        "source": "app.process",
+        "target": "core.storage"
+      },
+      {
+        "files": [
           "back/app/process/activity_controls.py",
           "back/app/process/dataset_usage.py",
           "back/app/process/events.py",
           "back/app/process/facade.py",
+          "back/app/process/native_access.py",
           "back/app/process/native_actors.py",
-          "back/app/process/native_definitions.py",
           "back/app/process/native_engine.py",
           "back/app/process/process_service.py"
         ],
@@ -3392,10 +3465,28 @@
       },
       {
         "files": [
-          "back/app/process/process_service.py"
+          "back/app/process/native_router.py",
+          "back/app/process/process_service.py",
+          "back/app/process/run_data.py",
+          "back/app/process/run_resources.py"
         ],
         "source": "app.process",
         "target": "core.util"
+      },
+      {
+        "files": [
+          "back/app/share/models.py",
+          "back/app/share/service.py"
+        ],
+        "source": "app.share",
+        "target": "core.database"
+      },
+      {
+        "files": [
+          "back/app/share/dbadmin.py"
+        ],
+        "source": "app.share",
+        "target": "core.dbadmin"
       },
       {
         "files": [
@@ -5890,7 +5981,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 280,
+      "domain_edges": 284,
       "fan_in": [
         {
           "count": 43,
@@ -6249,6 +6340,16 @@
         },
         {
           "count": 4,
+          "module": "app.share",
+          "modules": [
+            "app.agent",
+            "app.dataset",
+            "app.memory",
+            "app.process"
+          ]
+        },
+        {
+          "count": 4,
           "module": "app.topic",
           "modules": [
             "app.chat",
@@ -6413,6 +6514,22 @@
           ]
         },
         {
+          "count": 10,
+          "module": "app.memory",
+          "modules": [
+            "app.agent",
+            "app.conversation",
+            "app.goal",
+            "app.llm",
+            "app.process",
+            "app.share",
+            "app.task",
+            "app.tools",
+            "app.topic",
+            "app.voice"
+          ]
+        },
+        {
           "count": 9,
           "module": "app.conversation",
           "modules": [
@@ -6459,17 +6576,17 @@
         },
         {
           "count": 9,
-          "module": "app.memory",
+          "module": "app.process",
           "modules": [
             "app.agent",
-            "app.conversation",
-            "app.goal",
+            "app.console",
+            "app.dataset",
+            "app.file_share",
             "app.llm",
-            "app.process",
+            "app.memory",
+            "app.share",
             "app.task",
-            "app.tools",
-            "app.topic",
-            "app.voice"
+            "app.tools"
           ]
         },
         {
@@ -6519,6 +6636,20 @@
         },
         {
           "count": 8,
+          "module": "app.agent",
+          "modules": [
+            "app.file_share",
+            "app.image",
+            "app.llm",
+            "app.messenger",
+            "app.process",
+            "app.share",
+            "app.skill",
+            "app.tools"
+          ]
+        },
+        {
+          "count": 8,
           "module": "app.messenger",
           "modules": [
             "app.agent",
@@ -6528,33 +6659,6 @@
             "app.llm",
             "app.memory",
             "app.task",
-            "app.tools"
-          ]
-        },
-        {
-          "count": 8,
-          "module": "app.process",
-          "modules": [
-            "app.agent",
-            "app.console",
-            "app.dataset",
-            "app.file_share",
-            "app.llm",
-            "app.memory",
-            "app.task",
-            "app.tools"
-          ]
-        },
-        {
-          "count": 7,
-          "module": "app.agent",
-          "modules": [
-            "app.file_share",
-            "app.image",
-            "app.llm",
-            "app.messenger",
-            "app.process",
-            "app.skill",
             "app.tools"
           ]
         },
@@ -6732,6 +6836,16 @@
         },
         {
           "count": 4,
+          "module": "app.dataset",
+          "modules": [
+            "app.agent",
+            "app.file_share",
+            "app.memory",
+            "app.share"
+          ]
+        },
+        {
+          "count": 4,
           "module": "app.multimedia",
           "modules": [
             "app.agent",
@@ -6767,15 +6881,6 @@
             "app.agent",
             "app.llm",
             "app.task"
-          ]
-        },
-        {
-          "count": 3,
-          "module": "app.dataset",
-          "modules": [
-            "app.agent",
-            "app.file_share",
-            "app.memory"
           ]
         },
         {
@@ -7848,7 +7953,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_analyze_run",
-        "line": 368,
+        "line": 366,
         "module": "app.process",
         "name": "process_analyze_run",
         "namespace": "galaris"
@@ -7888,7 +7993,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_get_run",
-        "line": 355,
+        "line": 353,
         "module": "app.process",
         "name": "process_get_run",
         "namespace": "galaris"
@@ -7912,7 +8017,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_list_runs",
-        "line": 331,
+        "line": 329,
         "module": "app.process",
         "name": "process_list_runs",
         "namespace": "galaris"
@@ -7928,7 +8033,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_cancel",
-        "line": 266,
+        "line": 264,
         "module": "app.process",
         "name": "process_run_cancel",
         "namespace": "galaris"
@@ -7936,7 +8041,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_children",
-        "line": 237,
+        "line": 235,
         "module": "app.process",
         "name": "process_run_children",
         "namespace": "galaris"
@@ -7944,7 +8049,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_control",
-        "line": 257,
+        "line": 255,
         "module": "app.process",
         "name": "process_run_control",
         "namespace": "galaris"
@@ -7952,7 +8057,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_inspect",
-        "line": 229,
+        "line": 227,
         "module": "app.process",
         "name": "process_run_inspect",
         "namespace": "galaris"
@@ -7960,7 +8065,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_metrics",
-        "line": 251,
+        "line": 249,
         "module": "app.process",
         "name": "process_run_metrics",
         "namespace": "galaris"
@@ -7968,7 +8073,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_occurrence",
-        "line": 245,
+        "line": 243,
         "module": "app.process",
         "name": "process_run_occurrence",
         "namespace": "galaris"
@@ -7976,7 +8081,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_retry",
-        "line": 274,
+        "line": 272,
         "module": "app.process",
         "name": "process_run_retry",
         "namespace": "galaris"
@@ -7992,7 +8097,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_start",
-        "line": 296,
+        "line": 294,
         "module": "app.process",
         "name": "process_start",
         "namespace": "galaris"
@@ -8864,7 +8969,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_analyze_run",
-        "line": 705,
+        "line": 703,
         "module": "app.process",
         "name": "process_admin_analyze_run",
         "namespace": "process_admin"
@@ -8872,7 +8977,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_cancel_run",
-        "line": 677,
+        "line": 675,
         "module": "app.process",
         "name": "process_admin_cancel_run",
         "namespace": "process_admin"
@@ -8880,7 +8985,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_create",
-        "line": 468,
+        "line": 466,
         "module": "app.process",
         "name": "process_admin_create",
         "namespace": "process_admin"
@@ -8888,7 +8993,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete",
-        "line": 546,
+        "line": 544,
         "module": "app.process",
         "name": "process_admin_delete",
         "namespace": "process_admin"
@@ -8896,7 +9001,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete_run",
-        "line": 719,
+        "line": 717,
         "module": "app.process",
         "name": "process_admin_delete_run",
         "namespace": "process_admin"
@@ -8904,7 +9009,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_engines",
-        "line": 382,
+        "line": 380,
         "module": "app.process",
         "name": "process_admin_engines",
         "namespace": "process_admin"
@@ -8912,7 +9017,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get",
-        "line": 448,
+        "line": 446,
         "module": "app.process",
         "name": "process_admin_get",
         "namespace": "process_admin"
@@ -8920,7 +9025,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get_run",
-        "line": 643,
+        "line": 641,
         "module": "app.process",
         "name": "process_admin_get_run",
         "namespace": "process_admin"
@@ -8928,7 +9033,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list",
-        "line": 417,
+        "line": 415,
         "module": "app.process",
         "name": "process_admin_list",
         "namespace": "process_admin"
@@ -8936,7 +9041,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list_runs",
-        "line": 606,
+        "line": 604,
         "module": "app.process",
         "name": "process_admin_list_runs",
         "namespace": "process_admin"
@@ -8944,7 +9049,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_refresh_run",
-        "line": 663,
+        "line": 661,
         "module": "app.process",
         "name": "process_admin_refresh_run",
         "namespace": "process_admin"
@@ -8952,7 +9057,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_retry_run",
-        "line": 691,
+        "line": 689,
         "module": "app.process",
         "name": "process_admin_retry_run",
         "namespace": "process_admin"
@@ -8960,7 +9065,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_start",
-        "line": 568,
+        "line": 566,
         "module": "app.process",
         "name": "process_admin_start",
         "namespace": "process_admin"
@@ -8968,7 +9073,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_sync",
-        "line": 401,
+        "line": 399,
         "module": "app.process",
         "name": "process_admin_sync",
         "namespace": "process_admin"
@@ -8976,7 +9081,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_update",
-        "line": 498,
+        "line": 496,
         "module": "app.process",
         "name": "process_admin_update",
         "namespace": "process_admin"
@@ -9579,7 +9684,7 @@
           "documents.id"
         ],
         "history_mixin": false,
-        "line": 66,
+        "line": 69,
         "module": "app.dataset",
         "table": "dataset_aliases"
       },
@@ -9592,7 +9697,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 141,
+        "line": 134,
         "module": "app.dataset",
         "table": "dataset_app_consents"
       },
@@ -9604,7 +9709,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 112,
+        "line": 105,
         "module": "app.dataset",
         "table": "dataset_appearances"
       },
@@ -9617,7 +9722,7 @@
           "files.id"
         ],
         "history_mixin": true,
-        "line": 77,
+        "line": 80,
         "module": "app.dataset",
         "table": "dataset_attachments"
       },
@@ -9631,20 +9736,9 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 52,
+        "line": 55,
         "module": "app.dataset",
         "table": "dataset_grants"
-      },
-      {
-        "class_name": "DatasetIntegration",
-        "file": "back/app/dataset/models.py",
-        "foreign_keys": [
-          "datasets.id"
-        ],
-        "history_mixin": false,
-        "line": 90,
-        "module": "app.dataset",
-        "table": "dataset_integrations"
       },
       {
         "class_name": "DatasetRevision",
@@ -9656,7 +9750,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 39,
+        "line": 42,
         "module": "app.dataset",
         "table": "dataset_revisions"
       },
@@ -9668,7 +9762,7 @@
           "datasets.id"
         ],
         "history_mixin": false,
-        "line": 132,
+        "line": 125,
         "module": "app.dataset",
         "table": "dataset_tag_assignments"
       },
@@ -9680,7 +9774,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 122,
+        "line": 115,
         "module": "app.dataset",
         "table": "dataset_tags"
       },
@@ -9692,7 +9786,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 101,
+        "line": 94,
         "module": "app.dataset",
         "table": "dataset_write_budgets"
       },
@@ -9704,7 +9798,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 14,
+        "line": 15,
         "module": "app.dataset",
         "table": "datasets"
       },
@@ -9756,7 +9850,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 147,
+        "line": 148,
         "module": "app.memory",
         "table": "document_app_grants"
       },
@@ -9768,7 +9862,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 165,
+        "line": 166,
         "module": "app.memory",
         "table": "document_app_write_budgets"
       },
@@ -9779,7 +9873,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 190,
+        "line": 191,
         "module": "app.memory",
         "table": "document_attachments"
       },
@@ -9791,7 +9885,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 135,
+        "line": 136,
         "module": "app.memory",
         "table": "document_icons"
       },
@@ -9803,7 +9897,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 178,
+        "line": 179,
         "module": "app.memory",
         "table": "document_list_positions"
       },
@@ -9815,7 +9909,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 119,
+        "line": 120,
         "module": "app.memory",
         "table": "document_nesting"
       },
@@ -9827,7 +9921,7 @@
           "memory_revisions.id"
         ],
         "history_mixin": false,
-        "line": 638,
+        "line": 650,
         "module": "app.memory",
         "table": "document_revisions"
       },
@@ -9839,7 +9933,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 109,
+        "line": 110,
         "module": "app.memory",
         "table": "document_tag_assignments"
       },
@@ -9850,7 +9944,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 98,
+        "line": 99,
         "module": "app.memory",
         "table": "document_tag_icons"
       },
@@ -9864,7 +9958,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 71,
+        "line": 72,
         "module": "app.memory",
         "table": "document_tags"
       },
@@ -9876,7 +9970,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 707,
+        "line": 719,
         "module": "app.memory",
         "table": "document_team_grants"
       },
@@ -9888,7 +9982,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 696,
+        "line": 708,
         "module": "app.memory",
         "table": "document_user_grants"
       },
@@ -9908,7 +10002,7 @@
           "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 589,
+        "line": 600,
         "module": "app.memory",
         "table": "documents"
       },
@@ -10453,7 +10547,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1260,
+        "line": 1272,
         "module": "app.memory",
         "table": "memory_associations"
       },
@@ -10462,7 +10556,7 @@
         "file": "back/app/memory/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 1442,
+        "line": 1454,
         "module": "app.memory",
         "table": "memory_automation_jobs"
       },
@@ -10475,7 +10569,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 1172,
+        "line": 1184,
         "module": "app.memory",
         "table": "memory_candidates"
       },
@@ -10488,7 +10582,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 978,
+        "line": 990,
         "module": "app.memory",
         "table": "memory_contact_identities"
       },
@@ -10500,7 +10594,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 940,
+        "line": 952,
         "module": "app.memory",
         "table": "memory_contact_items"
       },
@@ -10512,7 +10606,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 903,
+        "line": 915,
         "module": "app.memory",
         "table": "memory_context_edges"
       },
@@ -10523,7 +10617,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 848,
+        "line": 860,
         "module": "app.memory",
         "table": "memory_context_nodes"
       },
@@ -10534,7 +10628,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1317,
+        "line": 1329,
         "module": "app.memory",
         "table": "memory_embedding_chunks"
       },
@@ -10545,7 +10639,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1294,
+        "line": 1306,
         "module": "app.memory",
         "table": "memory_embedding_manifests"
       },
@@ -10557,7 +10651,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 1371,
+        "line": 1383,
         "module": "app.memory",
         "table": "memory_findings"
       },
@@ -10568,7 +10662,7 @@
           "memory_graph_views.id"
         ],
         "history_mixin": false,
-        "line": 58,
+        "line": 59,
         "module": "app.memory",
         "table": "memory_graph_positions"
       },
@@ -10580,7 +10674,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 44,
+        "line": 45,
         "module": "app.memory",
         "table": "memory_graph_views"
       },
@@ -10592,7 +10686,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 672,
+        "line": 684,
         "module": "app.memory",
         "table": "memory_item_grants"
       },
@@ -10605,7 +10699,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 271,
+        "line": 272,
         "module": "app.memory",
         "table": "memory_items"
       },
@@ -10617,7 +10711,7 @@
           "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 796,
+        "line": 808,
         "module": "app.memory",
         "table": "memory_links"
       },
@@ -10630,7 +10724,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 718,
+        "line": 730,
         "module": "app.memory",
         "table": "memory_revisions"
       },
@@ -10643,7 +10737,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 1122,
+        "line": 1134,
         "module": "app.memory",
         "table": "memory_sources"
       },
@@ -10656,7 +10750,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 649,
+        "line": 661,
         "module": "app.memory",
         "table": "memory_summary_revisions"
       },
@@ -10668,7 +10762,7 @@
           "memory_topic_contact_scopes.id"
         ],
         "history_mixin": false,
-        "line": 1083,
+        "line": 1095,
         "module": "app.memory",
         "table": "memory_topic_contact_items"
       },
@@ -10680,7 +10774,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1042,
+        "line": 1054,
         "module": "app.memory",
         "table": "memory_topic_contact_scopes"
       },
@@ -10691,7 +10785,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 778,
+        "line": 790,
         "module": "app.memory",
         "table": "memory_urls"
       },
@@ -10704,7 +10798,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 1225,
+        "line": 1237,
         "module": "app.memory",
         "table": "memory_usages"
       },
@@ -10885,15 +10979,42 @@
         "table": "privileges"
       },
       {
+        "class_name": "ProcessDefinitionGrant",
+        "file": "back/app/process/models.py",
+        "foreign_keys": [
+          "agent_groups.id",
+          "agents.id",
+          "process_definitions.id",
+          "users.id"
+        ],
+        "history_mixin": false,
+        "line": 74,
+        "module": "app.process",
+        "table": "process_definition_grants"
+      },
+      {
+        "class_name": "ProcessDefinitionRevision",
+        "file": "back/app/process/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "process_definitions.id"
+        ],
+        "history_mixin": false,
+        "line": 89,
+        "module": "app.process",
+        "table": "process_definition_revisions"
+      },
+      {
         "class_name": "ProcessDefinition",
         "file": "back/app/process/models.py",
         "foreign_keys": [
           "agents.id",
           "documents.id",
-          "tools.id"
+          "tools.id",
+          "users.id"
         ],
         "history_mixin": true,
-        "line": 26,
+        "line": 29,
         "module": "app.process",
         "table": "process_definitions"
       },
@@ -10906,7 +11027,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 195,
+        "line": 258,
         "module": "app.process",
         "table": "process_node_attempts"
       },
@@ -10917,7 +11038,7 @@
           "process_runs.id"
         ],
         "history_mixin": false,
-        "line": 178,
+        "line": 241,
         "module": "app.process",
         "table": "process_node_runs"
       },
@@ -10928,16 +11049,27 @@
           "process_runs.id"
         ],
         "history_mixin": false,
-        "line": 135,
+        "line": 198,
         "module": "app.process",
         "table": "process_run_events"
+      },
+      {
+        "class_name": "ProcessRunFile",
+        "file": "back/app/process/models.py",
+        "foreign_keys": [
+          "files.id",
+          "process_runs.id"
+        ],
+        "history_mixin": true,
+        "line": 182,
+        "module": "app.process",
+        "table": "process_run_files"
       },
       {
         "class_name": "ProcessRun",
         "file": "back/app/process/models.py",
         "foreign_keys": [
           "agents.id",
-          "documents.id",
           "process_definitions.id",
           "process_node_attempts.id",
           "process_runs.id",
@@ -10945,7 +11077,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 58,
+        "line": 100,
         "module": "app.process",
         "table": "process_runs"
       },
@@ -10956,7 +11088,7 @@
           "process_runs.id"
         ],
         "history_mixin": false,
-        "line": 157,
+        "line": 220,
         "module": "app.process",
         "table": "process_start_jobs"
       },
@@ -11004,6 +11136,29 @@
         "line": 81,
         "module": "app.tools",
         "table": "runtime_run_grants"
+      },
+      {
+        "class_name": "ShareConfig",
+        "file": "back/app/share/models.py",
+        "foreign_keys": [],
+        "history_mixin": true,
+        "line": 23,
+        "module": "app.share",
+        "table": "share_configs"
+      },
+      {
+        "class_name": "ShareGrant",
+        "file": "back/app/share/models.py",
+        "foreign_keys": [
+          "agent_groups.id",
+          "agents.id",
+          "share_configs.id",
+          "users.id"
+        ],
+        "history_mixin": false,
+        "line": 46,
+        "module": "app.share",
+        "table": "share_grants"
       },
       {
         "class_name": "SkillCategory",
@@ -11378,6 +11533,18 @@
         "layer": "app",
         "name": "app.agent",
         "path": "back/app/agent"
+      },
+      {
+        "capabilities": [
+          "contracts.py",
+          "models.py",
+          "tests/"
+        ],
+        "conditional": false,
+        "exists": true,
+        "layer": "app",
+        "name": "app.share",
+        "path": "back/app/share"
       },
       {
         "capabilities": [
@@ -14658,7 +14825,7 @@
         "declared_path": "/datasets",
         "file": "back/app/dataset/router.py",
         "handler": "list_datasets",
-        "line": 95,
+        "line": 96,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14667,7 +14834,7 @@
         "declared_path": "/datasets",
         "file": "back/app/dataset/router.py",
         "handler": "create_dataset",
-        "line": 102,
+        "line": 103,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -14676,7 +14843,7 @@
         "declared_path": "/datasets/tags",
         "file": "back/app/dataset/router.py",
         "handler": "list_tags",
-        "line": 112,
+        "line": 113,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14685,7 +14852,7 @@
         "declared_path": "/datasets/tags",
         "file": "back/app/dataset/router.py",
         "handler": "create_tag",
-        "line": 119,
+        "line": 120,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -14694,7 +14861,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "delete_dataset",
-        "line": 162,
+        "line": 163,
         "method": "DELETE",
         "module": "app.dataset"
       },
@@ -14703,7 +14870,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "read_dataset",
-        "line": 128,
+        "line": 129,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14712,7 +14879,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "update_dataset",
-        "line": 151,
+        "line": 152,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -14721,7 +14888,7 @@
         "declared_path": "/datasets/{identity}/attachments",
         "file": "back/app/dataset/router.py",
         "handler": "attachments",
-        "line": 230,
+        "line": 231,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14730,7 +14897,7 @@
         "declared_path": "/datasets/{identity}/attachments",
         "file": "back/app/dataset/router.py",
         "handler": "attach",
-        "line": 238,
+        "line": 239,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -14739,7 +14906,7 @@
         "declared_path": "/datasets/{identity}/classification",
         "file": "back/app/dataset/router.py",
         "handler": "classify",
-        "line": 248,
+        "line": 249,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -14748,7 +14915,7 @@
         "declared_path": "/datasets/{identity}/content",
         "file": "back/app/dataset/router.py",
         "handler": "write_dataset",
-        "line": 136,
+        "line": 137,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -14757,7 +14924,7 @@
         "declared_path": "/datasets/{identity}/revisions",
         "file": "back/app/dataset/router.py",
         "handler": "read_history",
-        "line": 170,
+        "line": 171,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14766,7 +14933,7 @@
         "declared_path": "/datasets/{identity}/revisions/{number}",
         "file": "back/app/dataset/router.py",
         "handler": "read_revision",
-        "line": 177,
+        "line": 178,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14775,7 +14942,7 @@
         "declared_path": "/datasets/{identity}/revisions/{number}/restore",
         "file": "back/app/dataset/router.py",
         "handler": "restore_revision",
-        "line": 185,
+        "line": 186,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -14784,7 +14951,7 @@
         "declared_path": "/datasets/{identity}/sharing",
         "file": "back/app/dataset/router.py",
         "handler": "sharing",
-        "line": 195,
+        "line": 196,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14793,7 +14960,7 @@
         "declared_path": "/datasets/{identity}/sharing",
         "file": "back/app/dataset/router.py",
         "handler": "set_grant",
-        "line": 220,
+        "line": 221,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -14802,7 +14969,7 @@
         "declared_path": "/datasets/{identity}/sharing-level",
         "file": "back/app/dataset/router.py",
         "handler": "sharing_level",
-        "line": 202,
+        "line": 203,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -14811,7 +14978,7 @@
         "declared_path": "/datasets/{identity}/usages",
         "file": "back/app/dataset/router.py",
         "handler": "usages",
-        "line": 211,
+        "line": 212,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -16152,7 +16319,7 @@
         "declared_path": "/internal/agents",
         "file": "back/app/process/native_router.py",
         "handler": "native_execution_agents",
-        "line": 107,
+        "line": 118,
         "method": "GET",
         "module": "app.process"
       },
@@ -16161,7 +16328,7 @@
         "declared_path": "/internal/definitions",
         "file": "back/app/process/native_router.py",
         "handler": "native_list_definitions",
-        "line": 114,
+        "line": 125,
         "method": "GET",
         "module": "app.process"
       },
@@ -16170,7 +16337,7 @@
         "declared_path": "/internal/definitions",
         "file": "back/app/process/native_router.py",
         "handler": "native_create_definition",
-        "line": 121,
+        "line": 132,
         "method": "POST",
         "module": "app.process"
       },
@@ -16179,7 +16346,7 @@
         "declared_path": "/internal/definitions/{code}",
         "file": "back/app/process/native_router.py",
         "handler": "native_read_definition",
-        "line": 133,
+        "line": 144,
         "method": "GET",
         "module": "app.process"
       },
@@ -16188,7 +16355,7 @@
         "declared_path": "/internal/definitions/{code}",
         "file": "back/app/process/native_router.py",
         "handler": "native_update_definition",
-        "line": 140,
+        "line": 151,
         "method": "PUT",
         "module": "app.process"
       },
@@ -16197,7 +16364,7 @@
         "declared_path": "/internal/definitions/{code}/archive",
         "file": "back/app/process/native_router.py",
         "handler": "native_archive_definition",
-        "line": 196,
+        "line": 203,
         "method": "POST",
         "module": "app.process"
       },
@@ -16206,7 +16373,7 @@
         "declared_path": "/internal/definitions/{code}/history",
         "file": "back/app/process/native_router.py",
         "handler": "native_definition_history",
-        "line": 148,
+        "line": 159,
         "method": "GET",
         "module": "app.process"
       },
@@ -16215,7 +16382,7 @@
         "declared_path": "/internal/definitions/{code}/history/{revision}",
         "file": "back/app/process/native_router.py",
         "handler": "native_delete_revision",
-        "line": 169,
+        "line": 180,
         "method": "DELETE",
         "module": "app.process"
       },
@@ -16224,7 +16391,7 @@
         "declared_path": "/internal/definitions/{code}/history/{revision}",
         "file": "back/app/process/native_router.py",
         "handler": "native_history_detail",
-        "line": 155,
+        "line": 166,
         "method": "GET",
         "module": "app.process"
       },
@@ -16233,7 +16400,7 @@
         "declared_path": "/internal/definitions/{code}/restore",
         "file": "back/app/process/native_router.py",
         "handler": "native_restore_definition",
-        "line": 162,
+        "line": 173,
         "method": "POST",
         "module": "app.process"
       },
@@ -16242,7 +16409,7 @@
         "declared_path": "/internal/definitions/{code}/runs",
         "file": "back/app/process/native_router.py",
         "handler": "native_launch",
-        "line": 203,
+        "line": 210,
         "method": "POST",
         "module": "app.process"
       },
@@ -16251,7 +16418,7 @@
         "declared_path": "/internal/definitions/{code}/sharing",
         "file": "back/app/process/native_router.py",
         "handler": "native_sharing",
-        "line": 176,
+        "line": 187,
         "method": "GET",
         "module": "app.process"
       },
@@ -16260,7 +16427,7 @@
         "declared_path": "/internal/definitions/{code}/sharing",
         "file": "back/app/process/native_router.py",
         "handler": "native_update_sharing",
-        "line": 186,
+        "line": 195,
         "method": "PUT",
         "module": "app.process"
       },
@@ -16269,7 +16436,7 @@
         "declared_path": "/internal/humans",
         "file": "back/app/process/native_router.py",
         "handler": "native_human_options",
-        "line": 81,
+        "line": 92,
         "method": "GET",
         "module": "app.process"
       },
@@ -16278,7 +16445,7 @@
         "declared_path": "/internal/runs",
         "file": "back/app/process/native_router.py",
         "handler": "native_run_list",
-        "line": 213,
+        "line": 220,
         "method": "GET",
         "module": "app.process"
       },
@@ -16287,7 +16454,7 @@
         "declared_path": "/internal/runs/{identity}",
         "file": "back/app/process/native_router.py",
         "handler": "native_inspect_run",
-        "line": 221,
+        "line": 228,
         "method": "GET",
         "module": "app.process"
       },
@@ -16296,7 +16463,7 @@
         "declared_path": "/internal/runs/{identity}/activities/{node_key}",
         "file": "back/app/process/native_router.py",
         "handler": "native_activity_occurrences",
-        "line": 236,
+        "line": 260,
         "method": "GET",
         "module": "app.process"
       },
@@ -16305,7 +16472,7 @@
         "declared_path": "/internal/runs/{identity}/cancel",
         "file": "back/app/process/native_router.py",
         "handler": "native_cancel",
-        "line": 266,
+        "line": 290,
         "method": "POST",
         "module": "app.process"
       },
@@ -16314,7 +16481,7 @@
         "declared_path": "/internal/runs/{identity}/children",
         "file": "back/app/process/native_router.py",
         "handler": "native_run_children",
-        "line": 244,
+        "line": 268,
         "method": "GET",
         "module": "app.process"
       },
@@ -16323,8 +16490,17 @@
         "declared_path": "/internal/runs/{identity}/control",
         "file": "back/app/process/native_router.py",
         "handler": "native_control",
-        "line": 258,
+        "line": 282,
         "method": "POST",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/runs/{identity}/files/{file_id}",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_run_file",
+        "line": 247,
+        "method": "GET",
         "module": "app.process"
       },
       {
@@ -16332,7 +16508,7 @@
         "declared_path": "/internal/runs/{identity}/metrics",
         "file": "back/app/process/native_router.py",
         "handler": "native_metrics",
-        "line": 251,
+        "line": 275,
         "method": "GET",
         "module": "app.process"
       },
@@ -16341,7 +16517,7 @@
         "declared_path": "/internal/runs/{identity}/nodes/{node_identity}",
         "file": "back/app/process/native_router.py",
         "handler": "native_inspect_node",
-        "line": 229,
+        "line": 240,
         "method": "GET",
         "module": "app.process"
       },
@@ -16350,7 +16526,7 @@
         "declared_path": "/internal/runs/{identity}/retry",
         "file": "back/app/process/native_router.py",
         "handler": "native_retry",
-        "line": 275,
+        "line": 299,
         "method": "POST",
         "module": "app.process"
       },
@@ -16359,7 +16535,7 @@
         "declared_path": "/internal/sharing-options",
         "file": "back/app/process/native_router.py",
         "handler": "native_sharing_options",
-        "line": 90,
+        "line": 101,
         "method": "GET",
         "module": "app.process"
       },
@@ -16368,7 +16544,7 @@
         "declared_path": "/internal/validate",
         "file": "back/app/process/native_router.py",
         "handler": "native_validate_definition",
-        "line": 99,
+        "line": 110,
         "method": "POST",
         "module": "app.process"
       },
@@ -19517,6 +19693,15 @@
       },
       {
         "files": [
+          "front/app/dataset/components/DatasetSharing.vue",
+          "front/app/dataset/services/datasetService.ts",
+          "front/app/dataset/types.ts"
+        ],
+        "source": "app/dataset",
+        "target": "app/share"
+      },
+      {
+        "files": [
           "front/app/dataset/services/datasetService.ts"
         ],
         "source": "app/dataset",
@@ -19540,11 +19725,8 @@
       {
         "files": [
           "front/app/dataset/components/DatasetEditor.vue",
-          "front/app/dataset/components/DatasetSharing.vue",
           "front/app/dataset/pages/[[id]].vue",
-          "front/app/dataset/richContent.ts",
-          "front/app/dataset/services/datasetService.ts",
-          "front/app/dataset/types.ts"
+          "front/app/dataset/richContent.ts"
         ],
         "source": "app/dataset",
         "target": "core/util"
@@ -20035,6 +20217,14 @@
       },
       {
         "files": [
+          "front/app/memory/components/MemorySharingPanel.vue",
+          "front/app/memory/types.ts"
+        ],
+        "source": "app/memory",
+        "target": "app/share"
+      },
+      {
+        "files": [
           "front/app/memory/components/DocumentLibraryNavigation.vue",
           "front/app/memory/components/DocumentThumbnail.vue",
           "front/app/memory/components/MemoryFileResources.vue",
@@ -20148,6 +20338,7 @@
       {
         "files": [
           "front/app/process/components/ExternalProcessEditor.vue",
+          "front/app/process/components/NativeProcessEditor.vue",
           "front/app/process/components/ProcessAgentSelect.vue",
           "front/app/process/components/ProcessLaneHeader.vue",
           "front/app/process/components/ProcessRunsPanel.vue",
@@ -20172,7 +20363,7 @@
           "front/app/process/services/nativeProcessService.ts"
         ],
         "source": "app/process",
-        "target": "app/memory"
+        "target": "app/share"
       },
       {
         "files": [
@@ -20236,6 +20427,16 @@
         ],
         "source": "app/process",
         "target": "core/websocket"
+      },
+      {
+        "files": [
+          "front/app/share/components/ResourceSharingPanel.vue",
+          "front/app/share/components/SharingPanel.vue",
+          "front/app/share/components/SharingRecipients.vue",
+          "front/app/share/panel.ts"
+        ],
+        "source": "app/share",
+        "target": "core/util"
       },
       {
         "files": [
@@ -21005,7 +21206,7 @@
           "app/voice"
         ]
       ],
-      "domain_edges": 48,
+      "domain_edges": 50,
       "fan_in": [
         {
           "count": 14,
@@ -21073,6 +21274,15 @@
           ]
         },
         {
+          "count": 3,
+          "module": "app/share",
+          "modules": [
+            "app/dataset",
+            "app/memory",
+            "app/process"
+          ]
+        },
+        {
           "count": 2,
           "module": "app/connection",
           "modules": [
@@ -21085,14 +21295,6 @@
           "module": "app/conversation",
           "modules": [
             "app/chat",
-            "app/task"
-          ]
-        },
-        {
-          "count": 2,
-          "module": "app/memory",
-          "modules": [
-            "app/process",
             "app/task"
           ]
         },
@@ -21115,6 +21317,13 @@
           "module": "app/harnesses",
           "modules": [
             "app/agent"
+          ]
+        },
+        {
+          "count": 1,
+          "module": "app/memory",
+          "modules": [
+            "app/task"
           ]
         },
         {
@@ -21209,7 +21418,7 @@
           "modules": [
             "app/agent",
             "app/dataset",
-            "app/memory",
+            "app/share",
             "app/task"
           ]
         },
@@ -21247,10 +21456,25 @@
           ]
         },
         {
+          "count": 2,
+          "module": "app/memory",
+          "modules": [
+            "app/agent",
+            "app/share"
+          ]
+        },
+        {
           "count": 1,
           "module": "app/browser",
           "modules": [
             "app/connection"
+          ]
+        },
+        {
+          "count": 1,
+          "module": "app/dataset",
+          "modules": [
+            "app/share"
           ]
         },
         {
@@ -21272,13 +21496,6 @@
           "module": "app/lab",
           "modules": [
             "app/task"
-          ]
-        },
-        {
-          "count": 1,
-          "module": "app/memory",
-          "modules": [
-            "app/agent"
           ]
         },
         {
@@ -21782,6 +21999,16 @@
           }
         ],
         "path": "front/app/goal"
+      },
+      {
+        "capabilities": [
+          "components"
+        ],
+        "exists": true,
+        "layer": "app",
+        "name": "app/share",
+        "pages": [],
+        "path": "front/app/share"
       },
       {
         "capabilities": [

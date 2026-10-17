@@ -26,6 +26,9 @@ from app.memory.schemas import (
     MemorySourceCreate,
 )
 from core.params.runtime_settings import runtime_settings
+from app.share import ShareGrant
+from core.team import TeamModel
+from core.user import UserModel
 
 
 @pytest.mark.asyncio
@@ -177,6 +180,20 @@ async def test_manual_duplicate_finding_compares_revisions_and_merges_sources(
         )
     )
     primary, related = sorted((first, second), key=lambda item: str(item.id))
+    human = UserModel(email="synthetic-merge-recipient@example.test", hashed_password="unused", is_active=True)
+    team = TeamModel(name="Synthetic merge recipients")
+    db.add_all([human, team])
+    await db.flush()
+    # Trusted historical policies can contain every principal kind. Merging
+    # them must not confuse user/team rows whose agent_id is NULL.
+    db.add_all([
+        ShareGrant(share_id=primary.share_id, user_id=human.id, can_write=False),
+        ShareGrant(share_id=primary.share_id, team_id=team.id, can_write=False),
+        ShareGrant(share_id=related.share_id, user_id=human.id, can_write=True),
+        ShareGrant(share_id=related.share_id, agent_id=_peer.id, can_write=True),
+    ])
+    await db.flush()
+    user_id, team_id, peer_id, share_id = human.id, team.id, _peer.id, primary.share_id
 
     async def candidates(
         item: MemoryItem, *, minimum_similarity: float, limit: int = 10
@@ -220,6 +237,11 @@ async def test_manual_duplicate_finding_compares_revisions_and_merges_sources(
         ).all()
     )
     assert source_refs == {"test:first", "test:second"}
+    assert set((await db.execute(select(
+        ShareGrant.agent_id, ShareGrant.user_id, ShareGrant.team_id, ShareGrant.can_write,
+    ).where(ShareGrant.share_id == share_id))).all()) == {
+        (None, user_id, None, True), (None, None, team_id, False), (peer_id, None, None, True),
+    }
 
 
 @pytest.mark.asyncio

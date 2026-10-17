@@ -72,6 +72,8 @@ async def test_paired_admission_benchmark(request, db, agents, memory_storage):
                                search_title=f"Synthetic measurement {index}", memory_resource_id=f"synthetic-{index}",
                                search_text=content, memory_content_hash=hashlib.sha256(content.encode()).hexdigest(),
                                memory_media_type="text/html"))
+    from tests.sharing_fixtures import bind_private_shares
+    await bind_private_shares(db, background)
     await db.execute(insert(MemoryItem), background)
     owned = list((await db.scalars(select(MemoryItem).options(selectinload(MemoryItem.grants))
                                  .where(MemoryItem.owner_agent_id == owner.id)

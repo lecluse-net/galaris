@@ -1,22 +1,22 @@
 """Atomic sharing of memory items and documents, independent of Agent identity."""
 
-from uuid import UUID, uuid4
+from app.share import sharing_directory as principal_directory, sharing_state, replace_sharing, set_grant
+
+from uuid import UUID
 from typing import Literal
 
-from sqlalchemy import delete, select
-from sqlalchemy.orm import defer
+from sqlalchemy import select
 
-from app.agent import Agent, AgentManagementScope, AgentTeamModel
+from app.agent import AgentManagementScope
 from app.tools.contracts import current_tool_execution
 from core.authorize import Privileges, check_privilege
 from core.database import get_db
-from core.team import TeamModel, TeamUserModel
-from core.user import HumanActor, UserModel, get_user_record
+from core.user import HumanActor, get_user_record
 
 from . import service
-from .access import human_item_access, managed_item_agent_ids, owner_team_clause
-from .models import DocumentTeamGrant, DocumentUserGrant, MemoryItem, MemoryItemGrant
-from .schemas import DocumentCollaborator, DocumentSharing, DocumentSharingUpdate, DocumentSharingLevelUpdate
+from .access import human_item_access, managed_item_agent_ids
+from .models import MemoryItem
+from .schemas import DocumentSharing, DocumentSharingUpdate, DocumentSharingLevelUpdate
 
 
 async def item_actor(
@@ -63,105 +63,31 @@ async def sharing(document_id: UUID, scope: AgentManagementScope) -> DocumentSha
 
 
 async def _sharing_state(item: MemoryItem, *, manage: bool) -> DocumentSharing:
-    # Agent.user_id is a human manager, not an Agent service account.
-    agents = (await get_db().scalars(select(Agent).options(defer(Agent.avatar)).order_by(Agent.id))).all()
-    agent_avatar_ids = set(await get_db().scalars(select(Agent.id).where(Agent.avatar.is_not(None))))
-    users = (await get_db().scalars(select(UserModel).where(
-        UserModel.is_active.is_(True),
-    ).order_by(UserModel.id))).all()
-    teams = (await get_db().scalars(select(TeamModel).order_by(TeamModel.order, TeamModel.id))).all()
-    agent_groups: dict[int, list[int]] = {}
-    for agent_id, team_id in (await get_db().execute(select(AgentTeamModel.agent_id, AgentTeamModel.team_id))).all():
-        agent_groups.setdefault(agent_id, []).append(team_id)
-    user_groups: dict[int, list[int]] = {}
-    for user_id, team_id in (await get_db().execute(select(TeamUserModel.user_id, TeamUserModel.team_id))).all():
-        user_groups.setdefault(user_id, []).append(team_id)
-    catalog = [
-        *[DocumentCollaborator(kind="agent", id=a.id, label=f"{a.first_name} {a.last_name}".strip() or a.code, group_ids=agent_groups.get(a.id, []), has_avatar=a.id in agent_avatar_ids) for a in agents if a.id != item.owner_agent_id],
-        *[DocumentCollaborator(kind="user", id=u.id, label=u.display_name or u.email, group_ids=user_groups.get(u.id, []), avatar_url=u.avatar_url, has_avatar=u.avatar_url is not None) for u in users if u.id != item.owner_user_id],
-        *[DocumentCollaborator(kind="team", id=t.id, label=t.name) for t in teams],
-    ]
-    grants: dict[tuple[Literal["agent", "user", "team"], int], bool] = {("agent", g.agent_id): g.can_write for g in item.grants}
-    grants.update({("user", g.user_id): g.can_write for g in (await get_db().scalars(select(DocumentUserGrant).where(DocumentUserGrant.item_id == item.id))).all()})
-    grants.update({("team", g.team_id): g.can_write for g in (await get_db().scalars(select(DocumentTeamGrant).where(DocumentTeamGrant.item_id == item.id))).all()})
-    owner_groups = set(await get_db().scalars(select(TeamModel.id).where(owner_team_clause(
-        TeamModel.id, owner_agent_id=item.owner_agent_id, owner_user_id=item.owner_user_id,
-    ))))
-    # Present legacy owner-relative access as explicit groups. The next save
-    # freezes this selection, while membership within each group stays dynamic.
-    if item.group_access:
-        for team_id in owner_groups:
-            grants[("team", team_id)] = grants.get(("team", team_id), False) or item.group_access == 2
-    if item.owner_agent_id is not None:
-        agent_owner = next((a for a in agents if a.id == item.owner_agent_id), None)
-        owner = DocumentCollaborator(kind="agent", id=item.owner_agent_id,
-            label=(f"{agent_owner.first_name} {agent_owner.last_name}".strip() or agent_owner.code) if agent_owner else f"#{item.owner_agent_id}")
-    elif item.owner_user_id is not None:
-        human_owner = next((u for u in users if u.id == item.owner_user_id), None)
-        owner = DocumentCollaborator(kind="user", id=item.owner_user_id,
-            label=(human_owner.display_name or human_owner.email) if human_owner else f"#{item.owner_user_id}")
-    else:
-        owner = None
-    return DocumentSharing(
-        lock_version=item.lock_version, can_manage=manage,
-        level="public" if item.global_access or item.visibility == "public" else "groups" if any(kind == "team" for kind, _ in grants) else "private",
-        can_write=item.global_access == 2,
-        owner=owner,
-        owner_groups=[o for o in catalog if o.kind == "team" and o.id in owner_groups],
-        grants=[next((o for o in catalog if (o.kind, o.id) == (kind, target_id)), DocumentCollaborator(kind=kind, id=target_id, label=f"#{target_id}")).model_copy(update={"can_write": write}) for (kind, target_id), write in grants.items()],
-        # The generic picker uses memberships to hide direct and inherited access.
-        # Keep the complete catalog for atomic replacement and level changes.
-        options=catalog if manage else [],
-    )
+    result = await sharing_state(item.share_id, owner_agent_id=item.owner_agent_id,
+        owner_user_id=item.owner_user_id, can_manage=manage, lock_version=item.lock_version)
+    if item.source_managed and item.visibility == "public":
+        result = result.model_copy(update={"level": "public", "can_write": False})
+    return result
 
 
 async def sharing_preview(scope: AgentManagementScope, *, owner_agent_id: int | None) -> DocumentSharing:
-    """Build the canonical sharing picker without creating a document."""
     if owner_agent_id is not None:
         scope.require(owner_agent_id)
-    item = MemoryItem(id=uuid4(), owner_agent_id=owner_agent_id,
-        owner_user_id=scope.user_id if owner_agent_id is None else None,
-        lock_version=1, grants=[], visibility="private", global_access=0, group_access=0)
-    return await _sharing_state(item, manage=True)
+    return await principal_directory(owner_agent_id=owner_agent_id, owner_user_id=scope.user_id if owner_agent_id is None else None)
 
 
 async def sharing_directory(*, owner_agent_id: int | None, owner_user_id: int | None) -> DocumentSharing:
-    """Same directory and owner groups for another already authorized resource."""
-    item = MemoryItem(id=uuid4(), owner_agent_id=owner_agent_id, owner_user_id=owner_user_id,
-        lock_version=1, grants=[], visibility="private", global_access=0, group_access=0)
-    return await _sharing_state(item, manage=True)
+    return await principal_directory(owner_agent_id=owner_agent_id, owner_user_id=owner_user_id)
 
 
 async def update_level(document_id: UUID, data: DocumentSharingLevelUpdate, scope: AgentManagementScope) -> DocumentSharing:
     item = await _editable_sharing(document_id, data.expected_lock_version, scope)
-    recipients = {(grant.kind, grant.id): grant for grant in data.grants}
-    if len(recipients) != len(data.grants):
-        raise ValueError("Duplicate document collaborators")
-    has_teams = any(kind == "team" for kind, _ in recipients)
-    if data.level == "groups" and not has_teams:
-        raise ValueError("Select at least one group")
-    if data.level == "private" and has_teams:
-        raise ValueError("Group sharing requires the groups level")
-    # Validate the complete selection before replacing anything. One lock,
-    # transaction and version cover the entire sharing form.
     current = await sharing(document_id, scope)
-    available = {(option.kind, option.id) for option in current.options}
-    existing = {(grant.kind, grant.id) for grant in current.grants}
-    if any(key not in available and key not in existing for key in recipients):
-        raise service.MemoryNotFoundError("Collaborator not found")
-    for model in (MemoryItemGrant, DocumentUserGrant, DocumentTeamGrant):
-        await get_db().execute(delete(model).where(model.item_id == item.id))
-    for grant in recipients.values():
-        if grant.kind == "agent":
-            get_db().add(MemoryItemGrant(item_id=item.id, agent_id=grant.id, can_write=grant.can_write))
-        elif grant.kind == "user":
-            get_db().add(DocumentUserGrant(item_id=item.id, user_id=grant.id, can_write=grant.can_write))
-        else:
-            get_db().add(DocumentTeamGrant(item_id=item.id, team_id=grant.id, can_write=grant.can_write))
-    value = 2 if data.can_write else 1
-    item.global_access = value if data.level == "public" else 0
-    item.group_access = 0
-    item.visibility = "shared" if item.global_access or recipients else "private"
+    try:
+        await replace_sharing(item.share_id, data, current)
+    except LookupError as error:
+        raise service.MemoryNotFoundError(str(error)) from error
+    item.visibility = "shared" if data.level == "public" or data.grants else "private"
     item.lock_version += 1
     await service.commit_item_sharing(item)
     return await sharing(document_id, scope)
@@ -186,32 +112,10 @@ async def update_sharing(document_id: UUID, data: DocumentSharingUpdate, scope: 
 
 
 async def _update_grant(item: MemoryItem, data: DocumentSharingUpdate) -> None:
-    if data.kind == "agent":
-        target = await get_db().scalar(select(Agent.id).where(Agent.id == data.id))
-        if data.id == item.owner_agent_id:
-            raise ValueError("The owner already has access")
-        model, field = MemoryItemGrant, MemoryItemGrant.agent_id
-    elif data.kind == "user":
-        target = await get_db().scalar(select(UserModel.id).where(UserModel.id == data.id, UserModel.is_active.is_(True)))
-        if data.id == item.owner_user_id:
-            raise ValueError("The owner already has access")
-        model, field = DocumentUserGrant, DocumentUserGrant.user_id
-    else:
-        target = await get_db().scalar(select(TeamModel.id).where(TeamModel.id == data.id))
-        model, field = DocumentTeamGrant, DocumentTeamGrant.team_id
-    if target is None and data.can_write is not None:
+    directory = await principal_directory(owner_agent_id=item.owner_agent_id, owner_user_id=item.owner_user_id)
+    if data.can_write is not None and not any(p.kind == data.kind and p.id == data.id for p in directory.options):
         raise service.MemoryNotFoundError("Collaborator not found")
-    grant = await get_db().scalar(select(model).where(model.item_id == item.id, field == data.id))
-    if data.can_write is None:
-        if grant is not None:
-            await get_db().delete(grant)
-    elif grant is not None:
-        grant.can_write = data.can_write
-    else:
-        grant = model(item_id=item.id, can_write=data.can_write)
-        setattr(grant, field.key, data.id)
-        get_db().add(grant)
-    await get_db().flush()
+    await set_grant(item.share_id, data.kind, data.id, data.can_write)
     if item.visibility != "public":
         item.visibility = "shared" if item.global_access or item.group_access or await service.has_document_grants(item.id) else "private"
     item.lock_version += 1

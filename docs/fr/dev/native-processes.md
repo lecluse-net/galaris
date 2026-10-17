@@ -2,6 +2,20 @@
 
 # Profils BPMN natifs et contrats de données
 
+## Propriété des ressources
+
+Le BPMN courant est stocké directement dans `process_definitions.bpmn_xml`.
+Process possède ses révisions (`process_definition_revisions`) et ses droits
+(`process_definition_grants`). Créer, modifier, partager ou restaurer une définition
+ne crée ni ne modifie de Document. Les Documents sont du HTML et les Datasets du JSON.
+Les lancements figent le BPMN, le graphe et la révision sans référence documentaire.
+
+L'action DbAdmin `app.process.native_definition_storage` transfère les anciennes
+définitions, leurs révisions et leurs droits par lots transactionnels. Elle détache
+l'ancien FK documentaire et archive les sources uniquement après copie. Un échec
+conserve les sources du lot ; le rejeu ne duplique ni historique ni droits. L'ancien
+champ nullable `document_id` reste réservé à cette reprise de migration.
+
 ## Profil typé v2
 
 Les nouvelles définitions de l'éditeur utilisent `galaris.bpmn/v2`. Les profils sont figés
@@ -20,13 +34,14 @@ False, zéro et vides sont conservés ; les entiers restent dans la plage exacte
 Le codec borne taille/profondeur et refuse les clés JSON dupliquées et les conversions implicites.
 
 Le moteur prépare et fige les entrées locales, contrôle les sorties avant intégration,
-puis écrit un delta et son reçu atomiquement via Memory. Le Dataset contient `data` et
-`files` ; son contenu est administré par le moteur. Les tâches IA remettent leurs résultats
+puis écrit atomiquement le delta fonctionnel dans `process_runs.data`, les liens dans
+`process_run_files` et son reçu dans `process_runs.execution_state`.
+Les tâches IA remettent leurs résultats
 avec `process_activity_complete(output={...}, message="...")` : les valeurs JSON ordinaires
 sont converties et validées selon les sorties déclarées, indépendamment du texte final du driver.
 Une activité sans sortie peut terminer avec un message naturel. Les anciennes réponses JSON
 typées restent acceptées. Les humains répondent par la messagerie. Les écritures
-directes du Dataset sont refusées. Un reçu d'intégration permet la reprise sans réexécution ;
+directes des données typées du run sont refusées. Un reçu d'intégration permet la reprise sans réexécution ;
 les changements disjoints sont préservés et les conflits d'une variable sont explicites.
 
 `process_activity_question` ouvre une demande au lanceur humain authentifié, dans la
@@ -50,7 +65,7 @@ JSON ordinaire contenant `type` et `value` reste sinon un objet métier.
 La réponse et le reçu Messenger sont atomiques, y compris pour les doublons et les réponses
 arrivées avant la fin du tour IA. Une pause utilisateur reste prioritaire. Chaque
 question est corrélée et idempotente. L'activité termine après la reprise et la remise
-des résultats. Le contexte en lecture seule contient aussi le Dataset du run, même sans
+des résultats. Le contexte en lecture seule contient aussi les données du run, même sans
 entrées locales déclarées. Les couloirs d'acteurs inutilisés ne bloquent pas le lancement.
 Les anciennes Tasks d'attente inertes sont retirées lors de l'observation du run ou de la
 réponse ; la question et sa référence restent conservées, sans nouvelle exécution.
@@ -86,7 +101,7 @@ passage entre tâches. Un lien ne confère aucun droit sur la ressource.
 Les IF configurés possèdent exactement deux sorties : `decision` pour True et une sortie
 sans condition pour False. `config.mode` vaut `ai`, `code` ou `human`. Un acteur IA autorise
 IA ou code ; un acteur humain impose humain. Les tentatives durables exigent un booléen
-`decision`, sans l'intégrer au Dataset. Le choix humain passe par les boutons True/False
+`decision`, sans l'intégrer aux variables du run. Le choix humain passe par les boutons True/False
 de Messenger, sans Task IA d'attente. Les IF historiques sans mode conservent leurs expressions.
 
 Les phases `preprocess`, `code` et `postprocess` utilisent `IsolatedCodeRunner`. L'adapter
@@ -94,10 +109,10 @@ Monty démarre un worker neuf par invocation : sous-ensemble Python sans montage
 fonction externe ni objet hôte. Limites : 32 Mo par VM, une seconde d'exécution, trois secondes
 par requête et deux workers simultanés. Le worker est fermé avant l'utilisation du résultat.
 Les intentions et reçus sont persistés ; seule une computation pure peut être recalculée
-après perte de son résultat. L'intégration Memory reste idempotente. Une phase absente conserve
+après perte de son résultat. L'intégration Process reste idempotente. Une phase absente conserve
 son comportement par défaut ; une phase enregistrée vide prépare ou intègre des valeurs vides.
 
-Avec `dataset_code: true`, la tâche reçoit un snapshot JSON détaché du Dataset du run. Les clés
+Avec `dataset_code: true`, la tâche reçoit un snapshot JSON détaché des données du run. Les clés
 utilisables comme identifiants Python deviennent des paramètres locaux ; toutes les clés restent
 accessibles par `dataset["nom"]`. Un IF peut utiliser `return variable_2 != "pas mon projet"` ;
 une tâche retourne un dictionnaire de sorties ordinaires, converties et validées avant intégration.
@@ -124,23 +139,22 @@ brut. Les cycles métier utilisent FOR/WHILE structurés.
 | `call` | `process_code` ; données et fichiers actuels copiés vers le run enfant, dernière sauvegarde à l'admission. |
 | `tool_call` | Opération MCP déclarée `tool`, arguments `input`, gouvernance commune. |
 | `program` | `program_uri` et exécuteur qualifié enregistré par son module propriétaire. |
-| `end` | Termine le flux ; sortie égale au JSON courant du Dataset. |
+| `end` | Termine le flux ; sortie égale au JSON courant du run. |
 
 Les arguments des outils peuvent utiliser `{"$expr": "data.amount"}`. Le contexte contient
 `input`, `data`, `results`, `files`, puis selon l'activité `output`, `error`, `item`,
 `index`. Arithmétique simple, booléens, comparaisons et accès JSON sont autorisés ;
 appels, attributs privés, comprehensions et exponentiation sont refusés. Un champ absent
 est nul ; même les branches court-circuitées sont validées. `data` est relu dans le
-Dataset avant chaque activité et condition. Les anciens schémas, affectations et
+run avant chaque activité et condition. Les anciens schémas, affectations et
 formats de résultat sont retirés à la lecture d'une définition, sans effet caché.
 
-Chaque run possède un Dataset contenant uniquement les données métier JSON initiales,
-librement modifiables par toutes ses tâches, et une collection `document://<uuid>/attachments/`
-commune. Aucun slot, schéma ou affectation de données n'est déclaré. Les participants
-reçoivent les droits d'écriture via Memory ; les révisions attendues protègent les
-écritures concurrentes. Le moteur ne réécrit jamais le JSON après création. Les états,
-résultats d'occurrences et reçus restent dans Process. Les prompts exposent les URI
-canoniques, jamais les tokens/URL de transport.
+Chaque run possède son JSON métier dans `process_runs.data` et ses liens de fichiers dans
+`process_run_files`, sans Dataset ni Document. Les données et pièces jointes héritent des
+droits du processus. Les tâches v1 peuvent écrire `galaris://processes/runs/<uuid>/data` avec
+`expected_revision` et utiliser `galaris://processes/runs/<uuid>/attachments/` pour les fichiers.
+Le moteur ne réécrit pas les modifications v1. États et reçus restent séparés des variables.
+Les URI canoniques ne contiennent jamais de token ou d'URL de transport.
 La première erreur d'exécution interdit toute nouvelle admission et demande l'arrêt
 des tâches et Runs enfants actifs. Une fois les arrêts confirmés, le run termine en
 `error`. `error_code` est renvoyé dans l'inspection et affiché dans le suivi ; un code
@@ -164,13 +178,12 @@ Les commandes de debugger acceptent `command_key` (UUID) et `expected_revision`.
 La projection `operational` de l'inspection est partagée avec `processus_get` : phases,
 compteurs d'occurrences, attentes documentées, dernière activité et actions disponibles.
 La lecture n'avance pas le moteur et ne déduit aucun blocage d'un simple délai.
-`launch_snapshot.participant_agents` fige le lanceur et les exécutants utilisés, y compris
-dans les boucles. DbAdmin complète les anciens snapshots depuis leur graphe. Les ACL
-Dataset ne constituent plus un accès agentique au run ; la connexion dédiée active
-`process_admin` donne l'administration globale, révocable immédiatement. Les filtres
-précèdent comptage/pagination et s'appliquent aux enfants et métriques. Les participants
-lisent ; le lanceur et les administrateurs contrôlent. Voir la
-[décision 0193](../../../project/decisions/0193-process-run-observation-and-participation.md).
+Les droits de lecture et d'écriture du processus s'appliquent à ses runs, données et
+pièces jointes. Partage et révocation sont immédiats, y compris pour les runs existants.
+Aucun nouveau privilège ni grant de run n'est créé. La connexion dédiée `process_admin`
+conserve son rôle d'administration. Les filtres précèdent comptage/pagination, enfants
+et métriques inclusives. Les snapshots de participants décrivent les affectations sans
+constituer une ACL distincte. Voir la [décision 0198](../../../project/decisions/0198-process-run-data-and-files.md).
 Leur reçu est enregistré avec la modification ; retransmettre la même commande après
 une réponse perdue rend ce reçu sans effectuer un second pas. L'interface conserve
 la clé tant que la réponse est incertaine et détecte les commandes concurrentes.
@@ -182,18 +195,26 @@ non autorisés sont exclus et le total visible est marqué partiel. Le temps éc
 run part de l'admission ; les durées cumulées d'appels LLM restent une mesure séparée,
 sans prétendre mesurer les traitements distants non corrélés.
 
-Le port public Memory crée les vrais Documents/Datasets avec une identité idempotente.
-Les fichiers entrants sont matérialisés par File Sharing avec ses contrôles d'accès,
-puis copiés dans les pièces jointes du Dataset avant toute admission de nœud. Manifeste
-et reçu de copie sont enregistrés ensemble ; une reprise réutilise chaque reçu, sans
-dupliquer les fichiers. Les références figées conservent URI d'origine, MIME et SHA-256.
-Une révocation d'accès ou une annulation pendant la préparation ne lance aucune tâche.
+L'initialisation des données du run est idempotente. En v1, les fichiers entrants sont
+matérialisés via File Sharing puis publiés dans `core.storage` et liés par
+`process_run_files.file_id`. Liens et reçus de copie sont atomiques ; une reprise
+réutilise les reçus. Les URI exposées sont `galaris://processes/runs/<uuid>/attachments/<file-uuid>`.
+Les références conservent URI d'origine, MIME et SHA-256. En v2, les références externes
+conservent leur provider sans copie. Une révocation ou annulation pendant la préparation
+n'admet aucune tâche.
 Les métadonnées moteur sont réservées au serveur. Les leases et quanta courts ne sont
 pas des budgets métier ; il n'y a pas de plafond Process de coût, tokens, durée,
 itérations ou profondeur. Les programmes documentaires restent conditionnels à leur
 exécuteur. Les runs natifs/enfants sont exclus de la purge automatique externe.
 
-Voir la [décision 0174](../../../project/decisions/0174-native-document-backed-business-processes.md)
+Les reçus d'intégration et de préparation des fichiers sont
+propres au run : aucun état d'exécution n'est écrit dans le contenu ou les métadonnées
+des variables métier. Les processus internes n'ont jamais été déployés : aucune migration
+de reçus ni table de transition n'est conservée.
+Voir la [décision 0196](../../../project/decisions/0196-process-run-execution-state.md).
+
+Voir la [décision 0197 sur le stockage BPMN](../../../project/decisions/0197-process-owned-bpmn-storage.md)
+et la [décision 0174 sur le socle d'exécution](../../../project/decisions/0174-native-document-backed-business-processes.md)
 et le [parcours utilisateur](../user/internal-processes.md).
 
 ## Acteurs et activités humaines
@@ -210,9 +231,8 @@ si renseigné ; `human_task` exige un acteur humain. Le XML conserve ces affecta
 et exporte des `laneSet/lane/flowNodeRef` ainsi que `userTask`. Le type d'une activité
 ne se convertit pas lors d'une affectation. Les anciens graphes sans acteurs restent valides.
 L'admission vérifie le périmètre des agents et l'activité des utilisateurs ; le moteur
-revérifie ces droits avant un nouvel effet. Tous les exécutants et humains affectés, y
-compris dans les boucles, reçoivent des grants Dataset en écriture par le port public
-Memory, contrôlé par les métadonnées moteur.
+revérifie ces droits avant un nouvel effet. Les droits de données et fichiers sont ceux du processus parent ; l'affectation ne crée
+aucun grant supplémentaire.
 
 Une tentative humaine persiste `human_waiting`, ses instructions, entrées et son utilisateur
 affecté avant toute réponse. L'outbox Process appelle un port de messagerie enregistré au

@@ -1,5 +1,7 @@
 """Legacy Dataset adapter port. Dataset remains the sole data authority."""
 
+from app.share import ShareGrant
+
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any, Protocol
@@ -22,7 +24,6 @@ class DatasetCompatibility(Protocol):
     async def budget(self, identity: UUID, user_id: int, size: int) -> None: ...
     async def sharing(self, identity: UUID, state: dict[str, Any]) -> None: ...
     async def remove(self, identity: UUID, actor: int | HumanActor) -> None: ...
-    async def integrate(self, identity: UUID, parameters: dict[str, Any]) -> dict[str, Any]: ...
     async def application(self, operation: str, actor: AgentManagementScope, context: dict[str, Any]) -> dict[str, Any]: ...
     async def attachments(self, identity: UUID, actor: int | HumanActor) -> list[dict[str, Any]]: ...
     async def read_attachment(self, identity: UUID, attachment_id: UUID, actor: int | HumanActor) -> tuple[dict[str, Any], bytes] | None: ...
@@ -64,7 +65,7 @@ async def refresh_dataset_projection(identity: UUID, state: DatasetDocumentProje
     """Refresh legacy metadata/ACL projections; never write Dataset content here."""
     from sqlalchemy import delete, select
     from core.database import get_db
-    from .models import DocumentTeamGrant, DocumentUserGrant, MemoryItem, MemoryItemGrant
+    from .models import MemoryItem
 
     item = await get_db().scalar(select(MemoryItem).where(MemoryItem.id == identity).with_for_update())
     if item is None or item.document_type != "dataset":
@@ -81,14 +82,14 @@ async def refresh_dataset_projection(identity: UUID, state: DatasetDocumentProje
     item.visibility = "shared" if item.global_access or item.group_access else "private"
     item.read_only, item.keywords = state.read_only, list(state.keywords)
     item.metadata_ = {**state.metadata, "dataset_migrated": True, "dataset_uri": f"data://{identity}"}
-    for model in (MemoryItemGrant, DocumentUserGrant, DocumentTeamGrant):
-        await get_db().execute(delete(model).where(model.item_id == identity))
+    for model in (ShareGrant,):
+        await get_db().execute(delete(model).where(ShareGrant.share_id == item.share_id))
     for grant in state.grants:
         if grant.agent_id is not None:
-            get_db().add(MemoryItemGrant(item_id=identity, agent_id=grant.agent_id, can_write=grant.can_write))
+            get_db().add(ShareGrant(share_id=MemoryItem.share_for(identity), agent_id=grant.agent_id, can_write=grant.can_write))
         elif grant.user_id is not None:
-            get_db().add(DocumentUserGrant(item_id=identity, user_id=grant.user_id, can_write=grant.can_write))
+            get_db().add(ShareGrant(share_id=MemoryItem.share_for(identity), user_id=grant.user_id, can_write=grant.can_write))
         else:
-            get_db().add(DocumentTeamGrant(item_id=identity, team_id=grant.team_id, can_write=grant.can_write))
+            get_db().add(ShareGrant(share_id=MemoryItem.share_for(identity), team_id=grant.team_id, can_write=grant.can_write))
     await get_db().flush()
     await get_db().refresh(item, attribute_names=["grants"])

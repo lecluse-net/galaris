@@ -14,7 +14,7 @@ from app.connection import Connection
 from app.conversation import ProcessHumanMessenger, ConversationTurn
 from app.conversation.models import ConversationRound, ConversationRoundMessage, ConversationProcessLink
 from app.conversation.mcp import conversation_process_respond, conversation_process_start
-from app.memory import read_workflow_document
+from app.process.run_resources import read_run_data
 from app.messenger import Room, RoomUser, Message, MessengerUser, Interaction
 from app.process import human_directory, process_service
 from app.process.bpmn import Workflow, Node, Flow, Actor
@@ -197,7 +197,7 @@ async def test_ai_activity_asks_in_origin_room_resumes_and_passes_data_to_next_t
     assert run.status == "success", run.error_message
     assert run.output == {}
     assert run.engine_metadata["native"]["summary"] == "The synthetic person is 37."
-    assert json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"])["data"] == output
+    assert (await read_run_data(run.id, owner.id))["data"] == output
     assert await db.scalar(select(func.count()).select_from(ProcessNodeAttempt).where(ProcessNodeAttempt.node_run_id == attempt.node_run_id)) == 1
 
 
@@ -622,7 +622,7 @@ async def test_managed_activity_continues_after_human_reply_with_a_new_runtime_r
     run = await db.get(ProcessRun, run_id)
     assert run.status == "success", run.error_message
     assert run.engine_metadata["native"]["summary"] == "The synthetic person is 37."
-    assert json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"])["data"] == {"age": {"type": "int", "value": 37}}
+    assert (await read_run_data(run.id, owner.id))["data"] == {"age": {"type": "int", "value": 37}}
     assert len(set(started)) == len(started) == (4 if followup else 3)
     assert "_agent_run_checkpoint" not in task.data
     assert not await scheduler.run_once()

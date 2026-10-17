@@ -67,8 +67,12 @@
         <q-chip v-if="metrics?.partial" icon="info">{{ t('nativeProcesses.partial') }}</q-chip>
         <q-chip v-if="metrics?.inclusive.estimated_calls" icon="info">{{ t('nativeProcesses.estimated', { count: metrics.inclusive.estimated_calls }) }}</q-chip>
       </div>
-      <div v-if="run.dataset_uri" class="row items-center q-gutter-sm"><span>{{ t('nativeProcesses.dataset') }}</span>
-        <q-btn flat no-caps icon="description" :label="run.dataset_uri" :to="datasetLink" /></div>
+      <CodeEditor :model-value="JSON.stringify(run.data ?? {}, null, 2)" language="json" readonly :label="t('nativeProcesses.runData')" />
+      <section :aria-label="t('nativeProcesses.runFiles')">
+        <div class="text-subtitle2 text-weight-bold q-mb-sm">{{ t('nativeProcesses.runFiles') }}</div>
+        <ResourceAttachments :key="runId" :resource-id="runId" :attachments="attachments"
+          :resource-source="attachmentSource" :show-heading="false" :editable="false" :empty-label="t('documents.noAttachments')" />
+      </section>
       <q-banner v-if="run.error || run.error_code" role="alert"><strong v-if="run.error_code">{{ run.error_code }}</strong><div v-if="run.error">{{ run.error }}</div></q-banner>
       <q-expansion-item v-if="!summaryInHeader" :label="t('nativeProcesses.children')" icon="account_tree" @show="loadChildren">
         <q-list bordered><q-item v-for="child in childPage?.items" :key="child.id" clickable :to="child.engine_code === 'galaris' ? `/process/internal/run/${child.id}` : undefined">
@@ -92,20 +96,33 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTem
 import { useI18n } from 'vue-i18n'
 import { isAxiosError } from 'axios'
 import { copyToClipboard, useQuasar, type QTableColumn } from 'quasar'
-import { richLinkHref, showConfirmationDialog } from '@/core/util'
+import { CodeEditor, ResourceAttachments, showConfirmationDialog } from '@/core/util'
 import { usePrivilegeStore } from '@/core/authorize'
 import { websocket } from '@/core/websocket'
 import BpmnCanvas from './BpmnCanvas.vue'
 import NativeActivityDetails from './NativeActivityDetails.vue'
 import ProcessRunReference from './ProcessRunReference.vue'
 import { nativeProcessService as service, type NativeRun, type NativeMetrics, type NativeChildren, type NodeOccurrence, type NodeExecutionDetail, type NodeOccurrencePage, type RunActivity } from '../services/nativeProcessService'
-const props = defineProps<{ runId: string; embedded?: boolean; summaryInHeader?: boolean }>()
+const props = defineProps<{ runId: string; embedded?: boolean; summaryInHeader?: boolean; agentId?: number | null }>()
 const emit = defineEmits<{ loaded: [run: NativeRun]; metricsLoaded: [metrics: NativeMetrics] }>()
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const runUrl = computed(() => service.runUrl(props.runId))
 const privileges = usePrivilegeStore()
 const run = shallowRef<NativeRun | null>(null), metrics = ref<NativeMetrics | null>(null), childPage = ref<NativeChildren | null>(null)
+const attachments = computed(() => (run.value?.files ?? []).map(file => ({
+  id: file.uri, uri: file.uri, name: file.filename || file.uri,
+  media_type: file.content_type || 'application/octet-stream', size_bytes: file.size ?? 0,
+})))
+const attachmentSource = computed(() => {
+  const id = props.runId, prefix = run.value?.attachments_uri
+  return {
+    content: (attachment: { id: string }) => {
+      if (!prefix || !attachment.id.startsWith(prefix)) return Promise.reject(new Error(t('documents.attachmentError')))
+      return service.file(id, attachment.id.slice(prefix.length), props.agentId)
+    },
+  }
+})
 const loading = ref(false), mutating = ref(false), error = ref(''), selectedNode = ref<string | null>(null), selectedOccurrence = ref<string | null>(null)
 const metricsError = ref('')
 const nodeDetail = shallowRef<NodeExecutionDetail | null>(null), childNumber = ref(1)
@@ -120,7 +137,6 @@ let metricsLoading = false, metricsPending = false
 const pendingCommands = new Map<string, { key: string; revision: number }>()
 const canControl = computed(() => Boolean(run.value?.can_control) && (privileges.hasPrivilege('PROCESS_LAUNCH') || privileges.hasPrivilege('PROCESS_ADMIN')))
 const terminal = computed(() => ['success', 'error', 'cancelled'].includes(run.value?.status ?? ''))
-const datasetLink = computed(() => richLinkHref(run.value?.dataset_uri ?? '') ?? '')
 const statuses = computed(() => Object.fromEntries(Object.entries(run.value?.node_statuses ?? {}).map(([key, value]) => [key, value === 'ready' ? 'queued' : value])))
 const displayGraph = computed(() => { let graph = run.value?.graph; for (const key of bodyPath.value) { const body = graph?.nodes.find(node => node.id === key)?.body; if (!body) break; graph = body }; return graph })
 const selectedBody = computed(() => displayGraph.value?.nodes.find(node => node.id === selectedNode.value)?.body)
@@ -160,7 +176,7 @@ async function refresh(): Promise<void> {
   loading.value = true
   void refreshMetrics()
   try {
-    const next = await service.run(id, pagination.value.page, pagination.value.rowsPerPage, run.value?.event_cursor ?? 0)
+    const next = await service.run(id, pagination.value.page, pagination.value.rowsPerPage, run.value?.event_cursor ?? 0, props.agentId)
     if (token !== generation || id !== props.runId) return
     run.value = next; pagination.value.rowsNumber = next.total
     emit('loaded', next)
@@ -180,7 +196,7 @@ async function refreshMetrics(): Promise<void> {
   const token = generation, id = props.runId
   metricsLoading = true
   try {
-    const next = await service.metrics(id)
+    const next = await service.metrics(id, props.agentId)
     if (token === generation && id === props.runId) { metrics.value = next; metricsError.value = ''; emit('metricsLoaded', next) }
   } catch (cause) { if (token === generation) metricsError.value = message(cause) }
   finally {
@@ -260,7 +276,7 @@ async function loadActivity(page: number, preferred: string | null = null, backg
   activityPending.value = true
   nodeError.value = false
   try {
-    const result = await service.activityOccurrences(id, node, path, page, activitySize.value)
+    const result = await service.activityOccurrences(id, node, path, page, activitySize.value, props.agentId)
     if (token !== generation || request !== activityGeneration) return
     activityPage.value = result
     selectedOccurrence.value = preferred ?? result.items[0]?.id ?? null
@@ -277,13 +293,13 @@ async function loadNode(background = false): Promise<void> {
   nodeError.value = false; nodeLoading.value = false
   if (!id) return
   if (!background) nodeLoading.value = true
-  try { const detail = await service.node(runId, id); if (token === nodeGeneration && runId === props.runId) nodeDetail.value = detail }
+  try { const detail = await service.node(runId, id, props.agentId); if (token === nodeGeneration && runId === props.runId) nodeDetail.value = detail }
   catch { if (token === nodeGeneration) nodeError.value = true }
   finally { if (token === nodeGeneration) nodeLoading.value = false }
 }
 async function loadChildren(): Promise<void> {
   const token = generation, id = props.runId
-  try { const next = await service.children(id, childNumber.value, childSize.value); if (token === generation && id === props.runId) childPage.value = next }
+  try { const next = await service.children(id, childNumber.value, childSize.value, props.agentId); if (token === generation && id === props.runId) childPage.value = next }
   catch (cause) { if (token === generation) error.value = message(cause) }
 }
 function requestPage(value: { pagination: { page: number; rowsPerPage: number } }): void {
@@ -291,7 +307,7 @@ function requestPage(value: { pagination: { page: number; rowsPerPage: number } 
 }
 watch(bodyPath, clearInspection, { flush: 'sync' })
 watch([activityPending, nodeLoading], refreshInspection)
-watch(() => props.runId, () => { generation++; clearInspection(); clearTimeout(timer); clearTimeout(eventTimer); eventTimer = undefined; refreshPending = false; loading.value = false; mutating.value = false; run.value = null; bodyPath.value = []; childSize.value = 50;
+watch(() => [props.runId, props.agentId], () => { generation++; clearInspection(); clearTimeout(timer); clearTimeout(eventTimer); eventTimer = undefined; refreshPending = false; loading.value = false; mutating.value = false; run.value = null; bodyPath.value = []; childSize.value = 50;
   pendingCommands.clear();
   metricsLoading = false; metricsPending = false; metricsError.value = '';
   metrics.value = null; childPage.value = null; nodeDetail.value = null; selectedNode.value = null; selectedOccurrence.value = null;

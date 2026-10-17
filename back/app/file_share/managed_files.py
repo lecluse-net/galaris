@@ -35,7 +35,7 @@ async def managed_file_info(ctx: ResourceContext, file_id: UUID) -> ResourceDesc
         if accessible:
             break
         # Only local domain references can grant access. Never resolve an external URI here.
-        if not alias.startswith(("document://", "data://", "chat://")):
+        if not alias.startswith(("document://", "data://", "chat://", "galaris://processes/runs/")):
             continue
         try:
             await resource_info(ctx, alias)

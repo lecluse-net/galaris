@@ -3,6 +3,10 @@
 - Date : 2026-10-11.
 - Statut : accepté pour le socle v1 ; qualification en cours.
 
+Le choix de stockage documentaire ci-dessous est remplacé depuis le 2026-10-17 par la
+[décision 0197](0197-process-owned-bpmn-storage.md) : BPMN, historique et droits sont
+possédés par Process ; les Documents sont exclusivement éditoriaux HTML.
+
 ### Décisions binaires et calculs Python purs — 2026-10-16
 
 Les IF configurés ont deux sorties True/False et trois modes dépendant de l'acteur :

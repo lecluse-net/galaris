@@ -54,7 +54,7 @@ async def _definition_or_404(process_id: int) -> Any:
     record = await process_service.get_definition(process_id)
     if record is None:
         raise _not_found(await tr("process.errors.process_not_found"))
-    if getattr(record, "document_id", None) is not None:
+    if getattr(record, "code", None) is not None:
         from .native_definitions import get
         try:
             await get(record.code or "", scope)
@@ -145,7 +145,7 @@ async def read_definitions(
         agent_id=agent_id,
         agent_ids=scope.agent_ids,
     )
-    return [record for record in records if record.document_id is None]
+    return [record for record in records if record.code is None]
 
 
 @routes.post("/definitions", response_model=ProcessDefinitionRead, status_code=201)
@@ -197,7 +197,7 @@ async def update_definition(process_id: int, data: ProcessDefinitionUpdate) -> A
 @authorize(privileges=Privileges.PROCESS_ADMIN)
 async def delete_definition(process_id: int) -> None:
     record = await _definition_or_404(process_id)
-    if getattr(record, "document_id", None) is not None:
+    if getattr(record, "code", None) is not None:
         from .native_definitions import get
         try:
             await get(record.code or "", await current_management_scope(), write=True)

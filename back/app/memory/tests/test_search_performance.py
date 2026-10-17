@@ -12,6 +12,7 @@ from app.memory.models import MemoryItem, MemorySource
 from app.memory.schemas import MemorySearchRequest
 from app.memory.service import search_items
 from app.memory.storage import get_storage
+from tests.sharing_fixtures import bind_private_shares
 
 
 @pytest.mark.asyncio
@@ -29,6 +30,7 @@ async def test_multilingual_search_has_bounded_queries_and_preserves_private_sco
         "content_hash": hashlib.sha256(str(index).encode()).hexdigest(),
         "metadata": {"evidence_validator": "conversation"} if derived else {},
     } for index in range(6000)]
+    await bind_private_shares(db, rows)
     await db.execute(MemoryItem.__table__.insert(), rows)
     await db.flush()
     await db.execute(text("ANALYZE memory_items"))

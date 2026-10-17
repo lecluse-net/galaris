@@ -177,8 +177,7 @@ test(fileOnly ? 'a file-only chat reply completes its pending process with the o
   } else {
     expect(run.output).toEqual({ accepted: { type: 'bool', value: false }, note: { type: 'string', value: null } })
   }
-  const dataset = await (await request.get(`/api/datasets/${run.dataset_uri.replace(/^(?:document|data):\/\//, '')}`, { headers })).json()
-  expect(JSON.parse(dataset.content).data).toEqual(run.output)
+  expect(run.data).toEqual(run.output)
 })
 }
 
@@ -213,11 +212,10 @@ test('an execution failure stops the run before its next task and displays the e
   const run = await (await request.get(`/api/processes/internal/runs/${identity}`, { headers })).json()
   expect(run.error_code).toBe('node_failed')
   expect(run.nodes.map(node => node.node_key)).not.toContain('forbidden')
-  const dataset = await (await request.get(`/api/datasets/${run.dataset_uri.replace(/^(?:document|data):\/\//, '')}`, { headers })).json()
-  expect(JSON.parse(dataset.content)).toEqual({ kept: 'Invented data' })
+  expect(run.data).toEqual({ kept: 'Invented data' })
 })
 
-test('a visually edited native process runs its saved Task and retains its own graph and Dataset', async ({ page, request }) => {
+test('a visually edited native process runs its saved Task and retains its own graph and data', async ({ page, request }) => {
   const fixture = await (await request.post('/api/__test/seed')).json()
   const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
   await page.goto('/user/login')
@@ -244,6 +242,22 @@ test('a visually edited native process runs its saved Task and retains its own g
   expect(created.ok(), await created.text()).toBeTruthy()
   const definition = await created.json()
   const definitionPath = `/api/processes/internal/definitions/${definition.code}`
+  expect(definition).not.toHaveProperty('document_id')
+  for (const kind of ['process', 'dataset']) {
+    const invalidDocument = await request.post('/api/memory/documents', { headers, data: {
+      title: 'Synthetic invalid resource', owner_kind: 'agent', owner_id: fixture.agent_id,
+      actor_agent_id: fixture.agent_id, document_type: kind,
+    } })
+    expect(invalidDocument.status()).toBe(422)
+  }
+  const invalidMemory = await request.post('/api/memory/items', { headers: { ...headers, 'X-Editorial-Profile-Version': '1' }, data: {
+    owner_agent_id: fixture.agent_id, title: 'Synthetic invalid JSON document', node_kind: 'document',
+    document_type: 'dataset', media_type: 'application/json', payload: { text: '{}' },
+  } })
+  expect(invalidMemory.status()).toBe(422)
+  const documents = await request.post('/api/memory/documents/library', { headers, data: { query: definition.title, limit: 50 } })
+  expect(documents.ok(), await documents.text()).toBeTruthy()
+  expect((await documents.json()).entries).toEqual([])
   await page.goto(`/process/internal/${definition.code}`)
   await page.getByRole('button', { name: 'Draft note · work', exact: true }).click()
   const instructions = page.getByRole('textbox', { name: /^(Task instructions|Instructions de la tâche)$/ })
@@ -282,13 +296,10 @@ test('a visually edited native process runs its saved Task and retains its own g
   expect(run.definition_revision).toBe(2)
   expect(run.graph.nodes.find(node => node.id === 'work').config.actor).toBe('validator')
   expect(run.nodes.map(node => node.status)).toEqual(['success', 'success', 'success'])
-  const datasetId = run.dataset_uri.replace(/^(?:document|data):\/\//, '')
-  const datasetResponse = await request.get(`/api/datasets/${datasetId}`, { headers })
-  expect(datasetResponse.ok(), await datasetResponse.text()).toBeTruthy()
-  const dataset = await datasetResponse.json()
-  expect(dataset.uri).toBe(`data://${datasetId}`)
-  expect(JSON.parse(dataset.content)).toEqual({ subject: 'Invented example' })
-  expect(JSON.parse(dataset.content)).toEqual(run.output)
+  expect(run.data).toEqual({ subject: 'Invented example' })
+  expect(run.data).toEqual(run.output)
+  await page.getByText(/^(Run data|Données du run)$/, { exact: true }).click()
+  await expect(page.getByRole('main')).toContainText('Invented example')
   const changed = await request.put(definitionPath, { headers, data: { expected_revision: 2, title: 'Changed next launch',
     graph: { ...run.graph, nodes: run.graph.nodes.map(node => node.id === 'work'
       ? { ...node, config: { ...node.config, prompt: 'A different instruction for future launches.' } } : node) },

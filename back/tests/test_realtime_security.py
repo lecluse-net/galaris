@@ -1,3 +1,5 @@
+from app.share import ShareGrant
+from app.memory.models import MemoryItem
 """Real authorization boundaries with equally privileged, distinct managers."""
 
 from datetime import timedelta
@@ -58,7 +60,7 @@ async def test_task_events_and_run_rooms_obey_manager_scope(db, monkeypatch, sub
     from app.goal.models import Goal
     from app.llm.models import LLMCall
     from app.llm import llm_call_service
-    from app.memory.models import MemoryItem, MemoryItemGrant
+    from app.memory.models import MemoryItem
     from app.messenger.models import Room
     from app.process.models import ProcessDefinition, ProcessRun
     from app.tools.models import Tool
@@ -102,7 +104,7 @@ async def test_task_events_and_run_rooms_obey_manager_scope(db, monkeypatch, sub
     assert await llm_call_service.delete_call(call.id)
     assert [c.kwargs["room"] for c in server.emit.await_args_list] == ["0"]
 
-    grant = MemoryItemGrant(item_id=documents[0].id, agent_id=agents[1].id, can_write=False)
+    grant = ShareGrant(share_id=documents[0].share_id, agent_id=agents[1].id, can_write=False)
     db.add(grant)
     await db.commit()
     server.emit.reset_mock()

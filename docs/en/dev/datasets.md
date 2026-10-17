@@ -68,8 +68,12 @@ The composition root registers public Memory, Process and LLM providers; Dataset
 none of their models. Queries cover current native Document content, run references and
 snapshots, and retained tool traces. Source-module permissions and ACLs apply before counts
 and pagination. These are observed references, not an exhaustive dependency graph.
-Deletion remains logical, with a lock and expected version; the engine retains ownership
-of its Datasets' lifecycle.
+Deletion remains logical, with a lock and expected version.
+
+Process runs store variables in `process_runs.data` and file links in
+`process_run_files`, without a Dataset. Variables, links and execution receipts commit
+atomically. Access follows the parent Process's existing policy. Dataset provides the
+shared typed codec without owning run storage.
 
 ## Historical projection and retirement criteria
 

@@ -182,6 +182,10 @@
     },
     {
       "source": "app/dataset",
+      "target": "app/share"
+    },
+    {
+      "source": "app/dataset",
       "target": "core/api"
     },
     {
@@ -406,6 +410,10 @@
     },
     {
       "source": "app/memory",
+      "target": "app/share"
+    },
+    {
+      "source": "app/memory",
       "target": "core/api"
     },
     {
@@ -450,7 +458,7 @@
     },
     {
       "source": "app/process",
-      "target": "app/memory"
+      "target": "app/share"
     },
     {
       "source": "app/process",
@@ -475,6 +483,10 @@
     {
       "source": "app/process",
       "target": "core/websocket"
+    },
+    {
+      "source": "app/share",
+      "target": "core/util"
     },
     {
       "source": "app/skill",

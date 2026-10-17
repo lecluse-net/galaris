@@ -4,7 +4,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.tools import ToolModel
-from core.dbadmin import DbAdminReconciler, DbAdminRegistry
+from core.dbadmin import DbAdminAction, DbAdminPhase, DbAdminReconciler, DbAdminRegistry
 
 from .models import ProcessDefinition, ProcessRun
 from .process_service import TERMINAL_STATUSES, apply_engine_snapshot, refresh_run
@@ -53,6 +53,12 @@ async def _purge_technical_processes(session: AsyncSession, tool_code: str, oper
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    from .definition_migration import needs_transfer, transfer_complete, transfer_definitions
+    registry.register_action(DbAdminAction(
+        key="app.process.native_definition_storage", phase=DbAdminPhase.AFTER_EXPAND,
+        checksum="process-owned-bpmn-and-history-v1", predicate=needs_transfer,
+        handler=transfer_definitions, postcondition=transfer_complete,
+    ))
     registry.register_reconciler(DbAdminReconciler(
         key="app.process.run_participants", handler=_backfill_run_participants,
     ))

@@ -1,9 +1,11 @@
+from app.share import ShareGrant
+from app.memory.models import MemoryItem
 """Shared search results must not hydrate their revision corpus or query per hit."""
 
 import pytest
 
 from app.memory import document_service, service
-from app.memory.models import MemoryItemGrant, MemoryRevision
+from app.memory.models import MemoryRevision
 from app.memory.schemas import MemorySearchRequest
 from tests.sql_reads import measured_reads
 
@@ -14,7 +16,7 @@ async def test_shared_document_search_bounds_permissions_and_does_not_load_histo
     documents = [await document_service.create_document(owner_agent_id=owner.id,
         title=f"Synthetic searchable corpus {index}", content="<p>Synthetic searchable evidence.</p>", task_id=None)
         for index in range(12)]
-    db.add_all([MemoryItemGrant(item_id=item.id, agent_id=reader.id, can_write=index % 2 == 0)
+    db.add_all([ShareGrant(share_id=MemoryItem.share_for(item.id), agent_id=reader.id, can_write=index % 2 == 0)
                 for index, item in enumerate(documents)])
     await db.flush()
     await db.execute(MemoryRevision.__table__.insert(), [{

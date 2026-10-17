@@ -51,6 +51,7 @@ MODULES = [
     "app.tools",
     "app.documentation",
     "app.agent",
+    "app.share",
     "app.harness",
     "app.harnesses",
     "app.connection",

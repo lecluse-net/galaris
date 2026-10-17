@@ -143,8 +143,8 @@ class MemoryItemCreate(BaseModel):
             raise ValueError("A document title is required.")
         if self.document_type == "dataset" and self.media_type != "application/json":
             raise ValueError("A Dataset document must use application/json.")
-        if self.document_type == "process" and self.media_type != "application/bpmn+xml":
-            raise ValueError("A Process document must use application/bpmn+xml.")
+        if self.document_type == "process":
+            raise ValueError("BPMN definitions belong to Process, never to Documents.")
         if self.content_type != "text" or (self.document_type == "html" and not self.media_type.startswith("text/")):
             raise ValueError("A document must contain text.")
         if self.visibility != "private":
@@ -646,45 +646,17 @@ class DocumentDatasetAttachmentWrite(BaseModel):
     expected_lock_version: int = Field(ge=1)
 
 
-class DocumentCollaborator(BaseModel):
-    kind: Literal["agent", "user", "team"]
-    id: int = Field(gt=0)
-    label: str
-    can_write: bool = False
-    group_ids: list[int] = Field(default_factory=list[int])
-    avatar_url: str | None = None
-    has_avatar: bool = False
 
 
-class DocumentSharing(BaseModel):
-    lock_version: int
-    can_manage: bool
-    grants: list[DocumentCollaborator]
-    options: list[DocumentCollaborator]
-    level: Literal["private", "groups", "public"]
-    can_write: bool
-    owner: DocumentCollaborator | None
-    owner_groups: list[DocumentCollaborator]
 
 
-class DocumentSharingGrantUpdate(BaseModel):
-    kind: Literal["agent", "user", "team"]
-    id: int = Field(gt=0)
-    can_write: bool = False
+from app.share import Collaborator, SharingState, GrantUpdate, SharingUpdate, SingleGrantUpdate
 
-
-class DocumentSharingLevelUpdate(BaseModel):
-    level: Literal["private", "groups", "public"]
-    can_write: bool = False
-    grants: list[DocumentSharingGrantUpdate]
-    expected_lock_version: int = Field(ge=1)
-
-
-class DocumentSharingUpdate(BaseModel):
-    kind: Literal["agent", "user", "team"]
-    id: int = Field(gt=0)
-    can_write: bool | None
-    expected_lock_version: int = Field(ge=1)
+DocumentCollaborator = Collaborator
+DocumentSharing = SharingState
+DocumentSharingGrantUpdate = GrantUpdate
+DocumentSharingLevelUpdate = SharingUpdate
+DocumentSharingUpdate = SingleGrantUpdate
 
 
 DocumentOwnerKind = Literal["agent", "user"]
@@ -713,7 +685,7 @@ class DocumentCreate(BaseModel):
     owner_id: int = Field(gt=0)
     actor_agent_id: int = Field(gt=0)
     title: str = Field(min_length=1, max_length=500)
-    document_type: Literal["html", "process"] = "html"
+    document_type: Literal["html"] = "html"
     folder: str = Field(default="", max_length=500)
 
     @model_validator(mode="after")

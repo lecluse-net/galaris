@@ -1,3 +1,5 @@
+from app.share import ShareGrant
+from app.memory.models import MemoryItem
 """Foreground Dream actions preserve ACLs and concurrent user edits."""
 
 import asyncio
@@ -198,9 +200,9 @@ async def test_manual_description_denies_scope_and_read_only_sharing(
         await manual.run_action(
             source.item_id, owner.id, "describe", AgentManagementScope(123, frozenset({peer.id}))
         )
-    from app.memory.models import MemoryItemGrant
 
-    db.add(MemoryItemGrant(item_id=source.document_id, agent_id=peer.id, can_write=False))
+
+    db.add(ShareGrant(share_id=MemoryItem.share_for(source.document_id), agent_id=peer.id, can_write=False))
     await db.commit()
     with pytest.raises(MemoryPermissionError):
         await manual.run_action(

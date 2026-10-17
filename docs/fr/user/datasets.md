@@ -50,3 +50,5 @@ Voir les [applications documentaires](../dev/document-apps.md).
 Pour un processus métier, l'agent recueille les informations manquantes et prépare les
 variables au format attendu par le processus. Le moteur valide ces variables avant
 l'exécution. Les pièces jointes conservent leurs URI de fichiers autorisées.
+
+Chaque document, jeu de données et définition de processus conserve un partage indépendant. Modifier les droits d’une ressource ne modifie pas ceux d’une autre ressource liée. La mise à jour conserve les partages existants, y compris les accès par groupe. Voir le [mécanisme de partage](../dev/sharing.md).

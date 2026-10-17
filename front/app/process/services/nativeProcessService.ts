@@ -1,5 +1,5 @@
 import { api } from '@/core/api'
-import type { DocumentSharing, DocumentSharingLevelUpdate } from '@/app/memory'
+import type { SharingState as DocumentSharing, SharingUpdate as DocumentSharingLevelUpdate } from '@/app/share'
 
 export type NodeKind = 'start' | 'end' | 'task' | 'human_task' | 'tool_call' | 'rest' | 'code' | 'program' | 'call' | 'if' | 'parallel' | 'for' | 'while'
 export const valueTypes = ['int', 'float', 'string', 'bool', 'Agent', 'File', 'User', 'Document', 'array', 'object'] as const
@@ -21,10 +21,10 @@ export interface BpmnGraph {
   execution_agent_id?: number | null
 }
 export interface NativeDefinition {
-  id: number; code: string; title: string; description: string | null; document_id: string; revision: number; archived: boolean; can_write: boolean
+  id: number; code: string; title: string; description: string | null; revision: number; archived: boolean; can_write: boolean
   graph: BpmnGraph; xml: string; diagnostics: { node: string; code: string; severity: string; message: string }[]
 }
-export type NativeDefinitionSummary = Pick<NativeDefinition, 'id' | 'code' | 'title' | 'document_id' | 'archived'>
+export type NativeDefinitionSummary = Pick<NativeDefinition, 'id' | 'code' | 'title' | 'archived'>
 export interface DefinitionPage { items: NativeDefinitionSummary[]; total: number; page: number; page_size: number }
 export interface NodeOccurrence {
   id: string; node_key: string; status: string; started_at: string | null; finished_at: string | null
@@ -48,10 +48,13 @@ export interface RunObservation {
   available_actions: ('pause' | 'resume' | 'step' | 'cancel')[]
 }
 export interface NativeRun {
+  label?: string
   id: string; status: string; graph: BpmnGraph | null; definition_revision: number
   operational?: RunObservation
   can_control: boolean; node_statuses: Record<string, string>; debugger_revision: number
-  dataset_uri: string | null; paused: boolean; breakpoints: string[]; output: Record<string, unknown> | null
+  data: Record<string, unknown>; data_revision: number; data_uri: string; attachments_uri: string
+  files: { uri: string; filename?: string; description?: string; content_type?: string; size?: number }[]
+  paused: boolean; breakpoints: string[]; output: Record<string, unknown> | null
   error: string | null; error_code: string | null; parent_run_id: string | null; nodes: NodeOccurrence[]; total: number; page: number; page_size: number
   event_cursor: number; events: { id: number; type: string; payload: Record<string, unknown> }[]; duration_seconds: number | null
 }
@@ -69,7 +72,7 @@ export const emptyGraph = (): BpmnGraph => ({ schema_version: 'galaris.bpmn/v2',
 
 const base = '/processes/internal'
 export const nativeProcessService = {
-  runUrl(id: string): string { return `processus://run/${encodeURIComponent(id)}` },
+  runUrl(id: string): string { return `galaris://processes/runs/${encodeURIComponent(id)}` },
   async agents(): Promise<ProcessAgentOption[]> { return (await api.get(`${base}/agents`)).data },
   async sharingOptions(agentId: number, owner: 'user' | 'agent'): Promise<DocumentSharing> {
     return (await api.get(`${base}/sharing-options`, { params: { agent_id: agentId, owner } })).data
@@ -107,22 +110,25 @@ export const nativeProcessService = {
   },
   async sharing(code: string): Promise<DocumentSharing> { return (await api.get(`${base}/definitions/${encodeURIComponent(code)}/sharing`)).data },
   async share(code: string, data: DocumentSharingLevelUpdate): Promise<DocumentSharing> { return (await api.put(`${base}/definitions/${encodeURIComponent(code)}/sharing`, data)).data },
-  async run(id: string, page = 1, pageSize = 50, afterEvent = 0): Promise<NativeRun> {
-    return (await api.get(`${base}/runs/${id}`, { params: { page, page_size: pageSize, after_event: afterEvent } })).data
+  async run(id: string, page = 1, pageSize = 50, afterEvent = 0, agentId?: number | null): Promise<NativeRun> {
+    return (await api.get(`${base}/runs/${id}`, { params: { page, page_size: pageSize, after_event: afterEvent, agent_id: agentId ?? undefined } })).data
+  },
+  async file(id: string, fileId: string, agentId?: number | null): Promise<Blob> {
+    return (await api.get<Blob>(`${base}/runs/${id}/files/${fileId}`, { responseType: 'blob', params: { agent_id: agentId ?? undefined } })).data
   },
   async runs(code?: string, page = 1, pageSize = 50): Promise<NativeChildren> {
     return (await api.get(`${base}/runs`, { params: { code, page, page_size: pageSize } })).data
   },
-  async metrics(id: string): Promise<NativeMetrics> { return (await api.get(`${base}/runs/${id}/metrics`)).data },
-  async node(id: string, nodeId: string): Promise<NodeExecutionDetail> { return (await api.get(`${base}/runs/${id}/nodes/${nodeId}`)).data },
-  async activityOccurrences(id: string, nodeKey: string, bodyPath: string[], page = 1, pageSize = 50): Promise<NodeOccurrencePage> {
+  async metrics(id: string, agentId?: number | null): Promise<NativeMetrics> { return (await api.get(`${base}/runs/${id}/metrics`, { params: { agent_id: agentId ?? undefined } })).data },
+  async node(id: string, nodeId: string, agentId?: number | null): Promise<NodeExecutionDetail> { return (await api.get(`${base}/runs/${id}/nodes/${nodeId}`, { params: { agent_id: agentId ?? undefined } })).data },
+  async activityOccurrences(id: string, nodeKey: string, bodyPath: string[], page = 1, pageSize = 50, agentId?: number | null): Promise<NodeOccurrencePage> {
     return (await api.get(`${base}/runs/${id}/activities/${encodeURIComponent(nodeKey)}`, {
-      params: { page, page_size: pageSize, ...(bodyPath.length ? { body_path: bodyPath } : {}) },
+      params: { page, page_size: pageSize, agent_id: agentId ?? undefined, ...(bodyPath.length ? { body_path: bodyPath } : {}) },
       paramsSerializer: { indexes: null },
     })).data
   },
-  async children(id: string, page = 1, pageSize = 50): Promise<NativeChildren> {
-    return (await api.get(`${base}/runs/${id}/children`, { params: { page, page_size: pageSize } })).data
+  async children(id: string, page = 1, pageSize = 50, agentId?: number | null): Promise<NativeChildren> {
+    return (await api.get(`${base}/runs/${id}/children`, { params: { page, page_size: pageSize, agent_id: agentId ?? undefined } })).data
   },
   async control(id: string, action: 'pause' | 'resume' | 'step' | 'breakpoints', nodes: string[] = [], commandKey?: string, expectedRevision?: number): Promise<void> {
     await api.post(`${base}/runs/${id}/control`, { action, nodes, command_key: commandKey ?? crypto.randomUUID(), expected_revision: expectedRevision })

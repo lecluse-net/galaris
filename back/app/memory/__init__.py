@@ -4,6 +4,7 @@ from .temporal import MemoryTemporalAnchor
 from .document_app_security import AppConsentRequired, AppWriteLimitError
 from .dataset_port import register_dataset_compatibility, refresh_dataset_projection, legacy_dataset_access, budget_reserved as dataset_budget_reserved
 from .dataset_migration import legacy_dataset_ids, legacy_dataset_snapshot, legacy_dataset_exists
+from .process_migration import legacy_process_snapshot as legacy_process_snapshot, retire_legacy_process_document as retire_legacy_process_document
 from .dataset_references import list_selectable_documents
 from .dataset_attachments import DatasetAttachmentReference, register_dataset_attachment_reader
 from .document_attachment_service import validate_attachment_content
@@ -12,15 +13,13 @@ from .schemas import DocumentCollaborator, DocumentSharing, DocumentSharingLevel
 from .item_sharing import sharing_directory as resource_sharing_directory
 from .dataset_usage import find_dataset_document_usages
 from .workflow_documents import (
-    create_workflow_document, read_workflow_document, write_workflow_document, integrate_workflow_values,
+    create_workflow_document, read_workflow_document, write_workflow_document,
     workflow_document_actor, workflow_document_access, workflow_document_readable_ids, prepare_workflow_document_read,
     workflow_history, workflow_revision, restore_workflow_document, delete_workflow_revision, workflow_sharing, workflow_sharing_preview, update_workflow_sharing,
     share_workflow_document,
-    grant_workflow_dataset_access, read_run_workspace,
     workflow_document_is_orphan,
     workflow_document_policy_ids,
     workflow_document_titles,
-    workflow_attachment_receipt, create_workflow_attachment,
 )
 from .catalogue_projection import project_catalogue_entry, link_catalogue_entries, catalogue_projection_write, detach_catalogue_parent_links
 from .catalogue_projection import identify_catalogue_file as identify_catalogue_file, update_catalogue_file_locations as update_catalogue_file_locations, catalogue_file_summary as catalogue_file_summary
@@ -125,15 +124,13 @@ __all__ = [
     "register_dataset_compatibility", "refresh_dataset_projection", "legacy_dataset_ids", "legacy_dataset_snapshot", "legacy_dataset_exists", "validate_attachment_content",
     "DatasetAttachmentReference", "register_dataset_attachment_reader",
     "DocumentSharingLevelUpdate", "DocumentSharing", "DocumentCollaborator", "resource_sharing_directory", "find_dataset_document_usages",
-    "register_document_validator", "create_workflow_document", "read_workflow_document", "write_workflow_document", "integrate_workflow_values",
+    "register_document_validator", "create_workflow_document", "read_workflow_document", "write_workflow_document",
     "workflow_document_actor", "workflow_document_access", "workflow_document_readable_ids", "prepare_workflow_document_read", "workflow_history", "workflow_revision", "delete_workflow_revision",
     "restore_workflow_document", "workflow_sharing", "workflow_sharing_preview", "update_workflow_sharing",
     "share_workflow_document",
-    "grant_workflow_dataset_access", "read_run_workspace",
     "workflow_document_is_orphan",
     "workflow_document_policy_ids",
     "workflow_document_titles",
-    "workflow_attachment_receipt", "create_workflow_attachment",
     "project_catalogue_entry", "link_catalogue_entries", "catalogue_projection_write", "register_source_access",
     "detach_catalogue_parent_links",
     "MemoryTemporalAnchor",

@@ -174,7 +174,7 @@ async def test_reference_upgrade_preserves_locations_and_orphan_audit(console_ca
     valid_task = await create_memory_task(db, ctx.agent_id)
     orphan_task, usage_id, duplicate_url_id = uuid4(), uuid4(), uuid4()
     async with db.begin_nested() as schema_savepoint:
-        await db.execute(text("SET CONSTRAINTS fk_memory_items_primary_url IMMEDIATE"))
+        await db.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
         await db.execute(text("ALTER TABLE memory_items DROP CONSTRAINT fk_memory_items_primary_url"))
         await db.execute(text("DROP INDEX uq_memory_urls_node_url"))
         await db.execute(text("ALTER TABLE memory_usages DROP CONSTRAINT memory_usages_task_id_fkey"))

@@ -2,6 +2,10 @@
 
 # Processus métier internes
 
+Les processus sont gérés exclusivement dans **Processus**. Leur définition BPMN et leur
+historique leur appartiennent ; ils ne figurent jamais dans la bibliothèque **Documents**,
+qui contient du HTML. Les variables et les pièces jointes de chaque run sont stockées directement dans Process.
+
 La page **Processus** réunit les processus internes et externes, dont n8n, dans une seule liste.
 Cliquez sur la ligne d’un processus pour ouvrir sa page d’édition, qu’il soit interne ou externe.
 La zone de la flèche à gauche charge et déplie ses exécutions ; un second clic replie la sous-liste.
@@ -103,7 +107,7 @@ Une ancienne définition conserve son pool partagé ; **Configurer les entrées 
 typées** prépare une conversion explicite à compléter avant sauvegarde. Les runs déjà
 lancés conservent leur profil d'origine.
 Une erreur d'exécution arrête le processus et ses branches actives. Le suivi renvoie
-le code d'erreur, avec son message ; le Dataset et les fichiers sont conservés.
+le code d'erreur, avec son message ; les données du run et les fichiers sont conservés.
 Il n'y a aucun traitement de secours ni réessai automatique à configurer.
 Un IF possède deux poignées de sortie, **True** et **False**. Sur la ligne d'un acteur IA,
 choisir **IA** et saisir les instructions, ou **Code** et saisir un programme Python.
@@ -111,7 +115,7 @@ Sur une ligne humaine, le mode humain est automatique : la personne affectée re
 question dans sa messagerie et choisit True ou False. Le run attend ce choix et poursuit
 une seule branche. Les IF historiques sans mode conservent leurs anciennes conditions.
 Les tâches proposent les mêmes modes selon leur acteur. Le code reçoit les variables du
-Dataset du run directement : `return variable_2 != "pas mon projet"` pour un IF, ou
+run directement : `return variable_2 != "pas mon projet"` pour un IF, ou
 `return {"variable_1": variable_1 + 1}` pour mettre à jour une sortie déclarée d'une tâche.
 Le champ est prérempli avec un exemple commenté ; seules les sorties valides sont intégrées.
 Une bifurcation crée plusieurs branches ; une tâche à plusieurs prédécesseurs attend leur
@@ -141,18 +145,22 @@ Demandez à l'agent de lancer le processus depuis le Chat. L'agent recueille les
 et les fichiers nécessaires, prépare les variables d'entrée déclarées et lance la dernière
 version enregistrée. La page des processus sert à l'édition et au suivi, sans formulaire
 de lancement manuel. Un appel transmet ses entrées locales à
-l'enfant et intègre ses sorties validées. Chaque enfant conserve son propre Dataset.
+l'enfant et intègre ses sorties validées. Chaque enfant conserve ses propres données.
 Les sous-processus n'ont pas de
 profondeur métier maximale.
 
-Chaque run conserve son graphe de départ et possède un Dataset privé indépendant de
-la définition. Le moteur administre ses données globales et son manifeste de fichiers ;
-les activités travaillent sur leurs entrées locales et rendent des sorties contrôlées.
+Chaque run conserve son graphe de départ et ses variables dans son champ `data`.
+Une table de pièces jointes relie les fichiers à ce run. Aucun Dataset n'est créé.
+Les données et fichiers suivent les droits de lecture et d'écriture du processus,
+sans partage supplémentaire. Une révocation s'applique aussi aux runs existants.
+Le suivi affiche **Données du run** et **Pièces jointes** ; les fichiers gérés peuvent
+être téléchargés. Le moteur intègre les sorties validées et conserve les reçus techniques
+séparément des variables métier.
 Une sortie invalide n'est pas intégrée. Les changements disjoints sont conservés et un
 conflit de variable est signalé. Les références de fichiers circulent sans téléchargement
 ni copie automatique ; les droits sont contrôlés lors des opérations sur leur contenu.
-La sortie du run correspond aux variables déclarées sur Fin. Partager une définition ne
-publie jamais les Datasets de ses runs. Deux runs possèdent des données distinctes.
+La sortie du run correspond aux variables déclarées sur Fin. Le partage du processus
+s’applique aussi à ses runs. Deux runs possèdent des données distinctes.
 Dans l'ancien profil uniquement, les participants continuent à éditer le JSON partagé et
 les fichiers initiaux sont copiés dans ses pièces jointes, selon le contrat historique.
 
@@ -178,14 +186,14 @@ Dans la modale ouverte depuis le catalogue de processus, le titre regroupe l'ét
 la dernière activité, puis le temps écoulé et le coût total du processus avec ses
 sous-processus. L'UUID cliquable sur fond transparent se trouve à gauche du conseil de
 consultation dans la barre du graphique. Cliquer l'UUID copie la référence interne
-`processus://run/<uuid>`. Le graphique remplace les compteurs et listes d'occurrences ou de
+`galaris://processes/runs/<uuid>`. Le graphique remplace les compteurs et listes d'occurrences ou de
 sous-processus ; la fiche de l'activité appelante permet d'ouvrir le sous-processus lancé.
 Dans les autres vues, le champ **URL du run** et son bouton de copie transmettent la même
 référence pour le diagnostic, y compris depuis le Chat.
-Les agents peuvent la lire avec `file_info`, `file_read` ou `processus_get`, dans leur portée
-de participation ou avec le droit dédié d'administration Process.
+Les agents peuvent la lire avec `file_info`, `file_read` ou `processus_get`, selon les droits
+du processus ou avec le droit dédié d'administration Process.
 
-Le suivi montre le graphe, les occurrences, les prompts réels, erreurs, Dataset,
+Le suivi montre le graphe, les occurrences, les prompts réels, erreurs, données,
 sous-processus et métriques disponibles. Les corps de boucle et les enfants s'ouvrent
 à la demande. Pause suspend les nouvelles admissions tout en observant les effets
 acceptés. Pas à pas admet une occurrence et laisse ses descendants composites avancer
@@ -200,10 +208,10 @@ et interrompt les tâches et enfants. Une exécution arrêtée ne peut plus êtr
 Un résultat d'opération incertain exige une réconciliation avant reprise ; une longue
 attente ne suffit pas à déclarer un blocage.
 
-Les agents utilisent `processus_get` pour ce suivi. Ils voient uniquement les exécutions
-auxquelles ils participent selon le graphe figé au lancement, sauf droit dédié actif
-`process_admin`. Le partage de la définition ou du Dataset n'étend pas cette portée.
-Un participant peut consulter ; le lanceur et les administrateurs Process peuvent agir.
+Les agents utilisent `processus_get` pour cette vue. Les droits du processus autorisent
+la lecture de ses runs et de leurs données ; son droit d'écriture autorise les contrôles.
+L'administration dédiée `process_admin` reste disponible. Le partage d'un processus
+s'applique à ses exécutions existantes.
 
 Une réponse à la question d'une activité concerne l'exécution existante : elle ne demande
 pas un nouveau lancement. L'agent répond brièvement par défaut ; demandez les détails utiles.
@@ -237,13 +245,13 @@ et conserve la distinction des coûts estimés. Une reprise réattache les Tasks
 un effet Tool sans reçu certain n'est pas rejoué automatiquement.
 Le montant facturé et la valeur d'inférence sont séparés, notamment sous abonnement.
 La table détaille ces mesures pour chaque occurrence, y compris les boucles et retries.
-Archiver une définition conserve ses Documents et les liens de ses runs.
+Archiver une définition conserve son BPMN, son historique et les liens de ses runs.
 
 ## Auditer et tester
 
 Les agents autorisés inspectent la définition complète par MCP, ses prompts, acteurs et
 historique, puis proposent ou appliquent une correction selon leurs droits.
-Une capacité Tool ne remplace pas l'accès au Document ou au Dataset.
+Une capacité Tool ne remplace pas l'accès au processus et à ses données.
 
 **Lab → Processus** prépare des cas inventés, éventuellement générés par le modèle Lab,
 puis lance une campagne réelle. Chaque cas conserve son run, ses mesures et un contrôle
@@ -258,3 +266,5 @@ sans accès aux fichiers, au réseau ou aux packages tiers, avec des limites de 
 Les programmes
 documentaires nécessitent leur exécuteur qualifié séparé ; son absence est signalée.
 Les conventions sont détaillées dans le [profil BPMN natif](../dev/native-processes.md).
+
+Chaque document, jeu de données et définition de processus conserve un partage indépendant. Modifier les droits d’une ressource ne modifie pas ceux d’une autre ressource liée. La mise à jour conserve les partages existants, y compris les accès par groupe. Voir le [mécanisme de partage](../dev/sharing.md).

@@ -1,11 +1,13 @@
 """Optional metadata projection; it never provides a competing write path."""
 
+from app.share import ShareGrant
+
 import hashlib
 
 from sqlalchemy import select
 from app.memory.contracts import DatasetDocumentGrant, DatasetDocumentProjection, DatasetProjectionWriter
 from core.database import get_db
-from .models import Dataset, DatasetAlias, DatasetGrant
+from .models import Dataset, DatasetAlias
 
 _writer: DatasetProjectionWriter | None = None
 
@@ -32,7 +34,7 @@ async def changed(dataset: Dataset) -> None:
     if alias.deleted_at is not None:
         await _writer(legacy, None)
         return
-    grants = await get_db().scalars(select(DatasetGrant).where(DatasetGrant.dataset_id == dataset.id))
+    grants = await get_db().scalars(select(ShareGrant).where(ShareGrant.share_id == dataset.share_id))
     content = dataset.content.encode("utf-8")
     await _writer(legacy, DatasetDocumentProjection(
         title=dataset.title, revision=dataset.revision, lock_version=dataset.lock_version,

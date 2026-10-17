@@ -2,6 +2,20 @@
 
 # Native BPMN profiles and data contracts
 
+## Resource ownership
+
+Current BPMN is stored directly in `process_definitions.bpmn_xml`. Process owns its
+revisions (`process_definition_revisions`) and access grants (`process_definition_grants`).
+Creating, editing, sharing or restoring a definition never creates or modifies a Document.
+Documents contain HTML and Datasets contain JSON. Launches freeze BPMN, graph and revision
+without a Document reference.
+
+The `app.process.native_definition_storage` DbAdmin action transfers former definitions,
+revisions and grants in transactional batches. It detaches the former Document FK and
+archives sources only after copying. Failure preserves the batch's sources; retries
+never duplicate history or grants. The nullable legacy `document_id` field remains
+reserved for migration recovery.
+
 ## Typed v2 profile
 
 New definitions in the editor use `galaris.bpmn/v2`. Snapshots freeze their profile;
@@ -20,12 +34,12 @@ are preserved; integers stay in the exact ±(2^53−1) range. The codec bounds s
 rejects duplicate JSON keys and performs no implicit conversions.
 
 The engine freezes local inputs, validates output before integration, and commits a
-targeted delta and its receipt atomically through Memory. The engine manages the Dataset's
-`data` and `files`. AI tasks submit ordinary JSON values with
+functional delta in `process_runs.data`, file links in `process_run_files` and its receipt
+in `process_runs.execution_state` atomically. AI tasks submit ordinary JSON values with
 `process_activity_complete(output={...}, message="...")`. The engine converts and validates
 them against declared outputs, independently of the driver's final prose. Activities without
 data outputs may finish with a natural message; historical typed JSON responses remain accepted.
-Humans reply through messaging. Direct Dataset writes are rejected. Integration receipts support recovery without
+Humans reply through messaging. Direct typed run data writes are rejected. Integration receipts support recovery without
 reexecution, preserve disjoint updates and report conflicting writes to a variable.
 
 `process_activity_question` asks the authenticated human launcher in the originating
@@ -48,7 +62,7 @@ containing `type` and `value` otherwise remains a business object.
 The answer and Messenger receipt commit atomically, including duplicates and answers arriving
 before the AI turn finishes. User holds remain effective. Questions are
 correlated and idempotent; the activity completes after resumption and result submission.
-Read-only context includes the run Dataset even without declared local inputs. Unused
+Read-only context includes run data even without declared local inputs. Unused
 actor lanes do not block admission.
 Historical inert wait Tasks are retired when observing the run or recording a reply;
 the question and its reference are preserved without a new execution.
@@ -79,19 +93,18 @@ source URI without automatic transfers between activities. A link grants no reso
 
 Configured IFs have exactly two outputs: `decision` for True and an unconditional False output.
 `config.mode` is `ai`, `code` or `human`. AI actors permit AI or code; human actors require human
-processing. Durable attempts require a boolean `decision`, without integrating it into the
-Dataset. Human decisions use Messenger's True/False buttons without an AI Task just to wait.
+processing. Durable attempts require a boolean `decision`, without integrating it into run variables. Human decisions use Messenger's True/False buttons without an AI Task just to wait.
 Historical IFs without a mode retain their expressions.
 
 `preprocess`, `code` and `postprocess` use `IsolatedCodeRunner`. The Monty adapter starts a fresh
 worker per invocation: a Python subset without mounts, networking, external functions or host
 objects. Limits are 32 MB per VM, one second of execution, three seconds per request and two
 concurrent workers. The worker closes before its result becomes usable. Intent and receipts
-are durable; only pure computation may repeat after a lost result. Memory integration remains
+are durable; only pure computation may repeat after a lost result. Process integration remains
 idempotent. Absent scripts retain default behavior; explicitly empty scripts prepare or
 integrate empty values.
 
-With `dataset_code: true`, a code task receives a detached JSON snapshot of its run Dataset.
+With `dataset_code: true`, a code task receives a detached JSON snapshot of its run data.
 Keys valid as Python identifiers become local parameters; every key remains accessible via
 `dataset["name"]`. An IF may use `return variable_2 != "pas mon projet"`; a task returns an ordinary
 output dictionary, converted and validated before integration. Data never interpolates into source.
@@ -116,22 +129,23 @@ one end, no unreachable nodes and no raw cycles. Business loops use structured F
 | `call` | `process_code`; current data and files copied into the child run, latest save at child admission. |
 | `tool_call` | Declared MCP operation `tool`, arguments `input`, common governance. |
 | `program` | `program_uri` and a qualified executor registered by its owning module. |
-| `end` | Completes the flow; output is the current Dataset JSON. |
+| `end` | Completes the flow; output is the current run JSON. |
 
 Tool arguments may use `{"$expr": "data.amount"}`. Context contains `input`, `data`,
 `results`, `files`, and activity-specific `output`, `error`, `item`, `index`.
 Simple arithmetic, boolean operators, comparisons and JSON access are allowed;
 calls, private attributes, comprehensions and exponentiation are rejected. Missing
 fields are null; even short-circuited branches are validated. `data` is reread from the
-Dataset before every activity and condition. Legacy schemas, data mappings and result
+run before every activity and condition. Legacy schemas, data mappings and result
 formats are discarded when reading a definition and have no hidden effect.
 
-Each run owns a Dataset containing only its initial business JSON, freely editable by
-all its tasks, and a shared `document://<uuid>/attachments/` collection. No file slots,
-schemas or data mappings are declared. Memory grants participants write access; expected
-revisions protect concurrent writes. The engine never overwrites the JSON after creation.
-Process stores scheduler state, occurrence results and receipts separately. Prompts contain
-canonical URIs, never transport tokens/URLs. The first execution failure prevents new
+Each run owns business JSON in `process_runs.data` and file links in `process_run_files`.
+No Dataset or Document is created. Data and attachments inherit the parent Process's
+existing read/edit policy. Historical v1 tasks can edit `galaris://processes/runs/<uuid>/data`
+with `expected_revision` and use `galaris://processes/runs/<uuid>/attachments/` for files.
+The engine preserves v1 task edits. Scheduler state and receipts remain separate from
+business variables. Prompts contain canonical URIs without transport tokens or URLs.
+The first execution failure prevents new
 admissions and requests cancellation of active tasks and child runs. After confirmed
 stops, the run becomes `error`. Inspection returns `error_code`, also shown in the UI.
 A child's error code is preserved; an ordinary activity failure uses `node_failed`.
@@ -153,12 +167,11 @@ these operations, including `process_definition_read` for audits.
 The inspection's `operational` projection is shared with `processus_get`: phases,
 occurrence counts, documented waits, last activity and available actions. Reading it
 does not advance the engine or infer a blockage from elapsed time.
-`launch_snapshot.participant_agents` freezes the launcher and assigned execution agents,
-including loop bodies. DbAdmin backfills old snapshots from their frozen graph. Dataset
-ACLs no longer grant agents run access; an active dedicated `process_admin` connection
-grants global administration and is checked live. Filters precede counts and pagination
-and apply to children and metrics. Participants read; the launcher and administrators
-control. See [decision 0193](../../../project/decisions/0193-process-run-observation-and-participation.md).
+The Process's existing read/edit policy applies to its runs, data and attachments.
+Sharing and revocation apply immediately to existing runs, without new privileges or run
+grants. Dedicated `process_admin` access remains available. Filters precede counts,
+pagination, child reads and inclusive metrics. Participant snapshots describe assignments
+without granting an independent ACL. See [decision 0198](../../../project/decisions/0198-process-run-data-and-files.md).
 
 Debugger commands accept `command_key` (UUID) and `expected_revision`. Their receipt
 is saved with the state change; resending the same command after a lost reply returns
@@ -172,18 +185,25 @@ descendants are excluded and the visible total is marked partial. Run elapsed ti
 starts at admission; cumulative LLM call durations remain a separate measurement,
 without claiming to measure uncorrelated remote work.
 
-Memory's public port creates actual Documents/Datasets with idempotent creation identities.
-File Sharing materializes incoming files with its access controls; the engine copies
-them into Dataset attachments before admitting any node. Manifest and copy receipt
-are saved together. Recovery reuses each receipt without duplicating files. Frozen
-references retain the origin URI, MIME type and SHA-256. Access revocation or
-cancellation during preparation admits no task.
+Run data initialization is idempotent. For v1, File Sharing materializes incoming files;
+the engine publishes managed bytes to `core.storage` and links them through
+`process_run_files.file_id`. File links and copy receipts commit atomically; recovery
+reuses receipts. Exposed URIs are `galaris://processes/runs/<uuid>/attachments/<file-uuid>`.
+References retain origin URI, MIME type and SHA-256. Typed v2 external references keep
+their original provider without a copy. Revocation or cancellation during preparation
+admits no task.
 Engine metadata is server-owned. Leases and short scheduling passes are not business
 budgets; Process has no cost, token, duration, iteration or depth ceiling. Documentary
 programs remain conditional on their executor. Native/linked runs are excluded from
 automatic external retention purges.
 
-See [decision 0174](../../../project/decisions/0174-native-document-backed-business-processes.md)
+Integration and file preparation receipts belong to the run: no execution state is
+mixed into business variables. Internal processes have never been deployed:
+no receipt migration or transitional table is retained.
+See [decision 0196](../../../project/decisions/0196-process-run-execution-state.md).
+
+See [decision 0197 on BPMN storage](../../../project/decisions/0197-process-owned-bpmn-storage.md)
+and [decision 0174 on execution foundations](../../../project/decisions/0174-native-document-backed-business-processes.md)
 and the [user workflow](../user/internal-processes.md).
 
 ## Actors and human activities
@@ -199,9 +219,8 @@ or `user_id`. `config.actor` references a role. When assigned, `task` requires a
 actor; `human_task` requires a human actor. XML retains these assignments and exports
 `laneSet/lane/flowNodeRef` and `userTask`. Assignment never converts an activity's type.
 Existing graphs without actors remain valid. Admission checks managed agent scope and
-active users; the engine rechecks these rights before each new effect. All executors and
-assigned humans, including loop participants, receive Dataset write access through
-Memory's public engine metadata guard.
+active users; the engine rechecks these rights before each new effect. Data and file access follows the parent Process's policy; assignment creates no
+additional grant.
 
 A human attempt persists `human_waiting`, instructions, inputs and its assignee before a
 reply. The Process outbox calls a messaging port registered at bootstrap. Conversation uses

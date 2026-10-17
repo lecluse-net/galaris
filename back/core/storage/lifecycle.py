@@ -5,6 +5,7 @@ from uuid import UUID
 
 from loguru import logger
 from sqlalchemy import delete, select
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
@@ -23,12 +24,23 @@ async def retire_file_references(prefix: str, *, session: AsyncSession | None = 
     """
     if not prefix.endswith("/") or not prefix.partition("://")[2].strip("/"):
         raise ValueError("File reference retirement requires an explicit domain scope")
+    return await _retire(FileAlias.uri.startswith(prefix, autoescape=True), session=session)
+
+
+async def retire_file_reference(uri: str, *, session: AsyncSession | None = None) -> list[UUID]:
+    """Retire one exact alias without matching adjacent attachment identities."""
+    if uri.endswith("/") or not uri.partition("://")[2].strip("/"):
+        raise ValueError("File reference retirement requires an exact resource URI")
+    return await _retire(FileAlias.uri == uri, session=session)
+
+
+async def _retire(clause: ColumnElement[bool], *, session: AsyncSession | None) -> list[UUID]:
     db = session if session is not None else get_db()
     await ensure_disk_identity(db)
     identifiers = list(await db.scalars(select(FileAlias.file_id).where(
-        FileAlias.uri.startswith(prefix, autoescape=True),
+        clause,
     ).distinct()))
-    await db.execute(delete(FileAlias).where(FileAlias.uri.startswith(prefix, autoescape=True)))
+    await db.execute(delete(FileAlias).where(clause))
     retired: list[UUID] = []
     for identifier in sorted(identifiers):
         if await db.scalar(select(FileAlias.id).where(FileAlias.file_id == identifier).limit(1)) is not None:

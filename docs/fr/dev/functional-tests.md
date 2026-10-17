@@ -2,9 +2,18 @@
 
 # Catalogue des garanties fonctionnelles
 
+`app/share/tests` vérifie l’exclusivité des configurations, l’isolation entre ressources et propriétaires, les droits de lecture/écriture et l’interdiction de repartager comme simple éditeur. La migration PostgreSQL couvre Documents, Dataset et Process, les trois types de destinataires, les accès généraux et de groupes, les suppressions logiques, le rejeu après révocation et le rollback d’une copie interrompue. Les scénarios de partage frontend communs incluent aussi Dataset.
+
+
 `app/tools/tests/test_action_authorizations.py` vérifie aussi que les anciens accords
 automatiques non consommés sont invalidés avant exécution, directement ou par réconciliation.
 `app/agent/tests/test_agents.py` refuse les anciens réglages d’approbation dans les écritures API.
+
+`app/process/tests/test_definition_storage.py` vérifie que le BPMN est stocké dans Process,
+sans création de Document, ainsi que le transfert des anciens contenus, historiques et
+droits, le rejeu et le rollback d'un lot invalide. `test_document_library.py` refuse les
+types Process et Dataset à la création documentaire. Le parcours E2E Process vérifie aussi
+l'absence de la définition dans la bibliothèque Documents avant de la modifier et l'exécuter.
 
 `tests/test_module_loading.py` vérifie les imports obligatoires Task, plusieurs ordres de
 chargement et les jobs injectés, y compris le rafraîchissement Process. Les suites embedding LLM,
@@ -67,6 +76,14 @@ erreur ou annulation. `tests/test_audio_resource_discovery.py` couvre les catalo
 publics, leur cache séparé par fournisseur, son expiration et le réessai après panne.
 
 ## Processus métier internes
+
+`back/app/process/tests/test_run_execution_state.py` vérifie l'atomicité des données
+fonctionnelles et des reçus du run, le rejeu idempotent, les rollbacks et le refus des
+écritures tardives après un état terminal. Les scénarios existants de
+`test_native_bpmn.py` couvrent les fusions concurrentes, la perte d'accusé de réception
+et les fichiers transmis aux sous-processus. Le test de stockage vérifie aussi l’absence
+de création de Dataset/Document et l’héritage puis la révocation des droits du processus
+sur les variables et les fichiers gérés.
 
 `test_run_observation.py` protège les dates de début et de fin de la liste native.
 `front/app/process/runTiming.test.mjs` vérifie que la durée commune aux deux moteurs
@@ -1070,6 +1087,11 @@ sur 100 puis 1 000 documents et jusqu'à 100 000 révisions ; le compteur inclut
   ouverture mobile, création et sauvegarde avec l'identité humaine.
 - `e2e/specs/document-refresh.spec.mjs` : modification distante via l'API et les vrais événements
   websocket, requêtes limitées au dossier concerné et à la page visible, lignes conservées dans l'arbre et la liste.
+- `e2e/specs/resource-sharing.spec.mjs` : partage Documents/Processus entre deux sessions,
+  destinataire sans privilège administrateur, lecture puis écriture sans droit de repartager,
+  rechargement mobile, réouverture et révocation. `app/share/tests/test_concurrency.py`
+  vérifie les conflits entre connexions PostgreSQL et l'indépendance des ressources ;
+  `test_upgrade.py` migre un ancien schéma peuplé, interrompt le transfert et vérifie sa reprise.
 - `front/browser-tests/document-deletion.spec.mjs` : suppression confirmée retirée immédiatement
   de la bibliothèque desktop/mobile, même pendant une lecture lente ; les réponses capturées
   avant suppression ne réintroduisent pas le document et les notifications se regroupent en

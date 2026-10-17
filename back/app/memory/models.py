@@ -34,6 +34,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import Base, HistoryMixin
+from app.share import Shareable, ShareReference, ShareGrant
 from core.util import ContentProfile
 
 from .vector import Vector
@@ -268,7 +269,8 @@ def _document_attribute[T](name: str, memory_name: str, default: T) -> hybrid_pr
     return attribute
 
 
-class MemoryItem(HistoryMixin, Base):
+class MemoryItem(Shareable, HistoryMixin, Base):
+    __share_kind__ = "memory"
     """Stable logical memory whose payload lives in a resource provider."""
 
     __tablename__ = "memory_items"
@@ -405,6 +407,7 @@ class MemoryItem(HistoryMixin, Base):
 
     document: Mapped[Document | None] = relationship(
         back_populates="memory_item", uselist=False, lazy="selectin",
+        foreign_keys="Document.memory_item_id",
         cascade="all, delete-orphan", single_parent=True,
     )
 
@@ -442,6 +445,7 @@ class MemoryItem(HistoryMixin, Base):
         # SQLAlchemy's constructor is a dynamic boundary. Set provenance first
         # and metadata before filename so canonical construction is order neutral.
         metadata = kwargs.pop("metadata_", {})
+        kwargs.setdefault("share_kind", "document" if kwargs.get("node_kind") == "document" else "memory")
         super().__init__(metadata_=metadata, **kwargs)
         if self.node_kind == "document" and self.__dict__.get("document") is None:
             self.attach_document()
@@ -452,6 +456,7 @@ class MemoryItem(HistoryMixin, Base):
         from hashlib import sha256
         self.id = self.id or uuid4()
         self.document = Document(
+            share=self.share, share_id=self.share_id, share_kind="document",
             id=self.id, memory_item_id=self.id, title=self.search_title or "",
             provider_code=self.memory_provider_code or "native", resource_id=self.memory_resource_id or "",
             content=self.memory_content,
@@ -498,11 +503,17 @@ class MemoryItem(HistoryMixin, Base):
         passive_deletes=True,
         order_by="MemoryRevision.revision",
     )
-    grants: Mapped[list["MemoryItemGrant"]] = relationship(
-        "MemoryItemGrant", cascade="all, delete-orphan", passive_deletes=True
+    grants: Mapped[list[ShareGrant]] = relationship(
+        ShareGrant, primaryjoin="and_(MemoryItem.share_id == foreign(ShareGrant.share_id), ShareGrant.agent_id.is_not(None))",
+        viewonly=True,
     )
 
     __table_args__ = (
+        UniqueConstraint("id", "share_id"),
+        ForeignKeyConstraint(["share_id", "share_kind"], ["share_configs.id", "share_configs.resource_kind"], name="fk_memory_items_share_kind", deferrable=True, initially="DEFERRED"),
+        # Memory holds the stable identity of Documents as well as their former
+        # representation during the atomic document split.
+        CheckConstraint("share_kind IN ('memory', 'document')", name="ck_memory_items_share_kind"),
         Index("ix_memory_items_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
         ForeignKeyConstraint(
             ["id", "primary_url"], ["memory_urls.memory_node_id", "memory_urls.url"],
@@ -586,7 +597,8 @@ class MemoryItem(HistoryMixin, Base):
     __mapper_args__ = {"version_id_col": lock_version}
 
 
-class Document(HistoryMixin, Base):
+class Document(ShareReference, HistoryMixin, Base):
+    __share_kind__ = "document"
     """Authoritative working content, linked one-to-one to its Memory summary.
 
     The same UUID preserves existing document URIs; the explicit FK preserves
@@ -614,13 +626,15 @@ class Document(HistoryMixin, Base):
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
     visibility: Mapped[str] = mapped_column(String(20), nullable=False, default="private", server_default="private")
-    global_access: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
-    group_access: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    legacy_global_access: Mapped[int] = mapped_column("global_access", Integer, nullable=False, default=0, server_default="0")
+    legacy_group_access: Mapped[int] = mapped_column("group_access", Integer, nullable=False, default=0, server_default="0")
     read_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     summary_initialized: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
-    memory_item: Mapped[MemoryItem] = relationship(back_populates="document")
+    memory_item: Mapped[MemoryItem] = relationship(back_populates="document", foreign_keys=[memory_item_id])
 
     __table_args__ = (
+        *ShareReference.share_constraints("documents", "document"),
+        ForeignKeyConstraint(["memory_item_id", "share_id"], ["memory_items.id", "memory_items.share_id"], name="fk_documents_share_identity"),
         Index("ix_documents_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
         CheckConstraint("id = memory_item_id", name="ck_documents_stable_identity"),
         CheckConstraint("document_type IN ('html', 'dataset', 'process', 'form')", name="ck_documents_type"),
@@ -630,8 +644,6 @@ class Document(HistoryMixin, Base):
         CheckConstraint("(document_type = 'dataset' AND content_type = 'text' AND media_type = 'application/json' AND content_profile_version IS NULL) OR (document_type = 'process' AND content_type = 'text' AND media_type = 'application/bpmn+xml' AND content_profile_version IS NULL) OR document_type IN ('html', 'form')", name="ck_documents_content_type"),
         CheckConstraint("visibility IN ('private', 'shared')", name="ck_documents_visibility"),
         CheckConstraint("global_access IN (0, 1, 2) AND group_access IN (0, 1, 2)", name="ck_documents_access"),
-        CheckConstraint("global_access = 0 OR visibility = 'shared'", name="ck_documents_global_visibility"),
-        CheckConstraint("group_access = 0 OR (global_access = 0 AND visibility = 'shared')", name="ck_documents_group_visibility"),
     )
 
 

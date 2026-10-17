@@ -3,13 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-import json
-from typing import Any, Literal, cast
+from typing import Any, Literal
 from uuid import UUID
-from pathlib import Path
-from copy import deepcopy
-from fastapi import UploadFile
-from starlette.datastructures import Headers
 
 from sqlalchemy import func, select
 from sqlalchemy.sql.selectable import Select
@@ -17,14 +12,12 @@ from sqlalchemy.sql.selectable import Select
 from app.agent import AgentManagementScope
 from core.database import get_db
 from core.user import HumanActor
-from core.util import complete_io
 
 from . import document_service, document_sharing, service
 from .access import effective_access, readable_workflow_document_clause
-from .document_policy import dataset_write_scope
 from .query_policy import prepare_memory_read
 from .document_types import DocumentType
-from .models import MemoryItem, DocumentUserGrant
+from .models import MemoryItem
 from .schemas import MemoryItemUpdate, MemoryPayload, DocumentContentRevisionPage, DocumentSharing, DocumentSharingLevelUpdate
 from .schemas import MemoryGrantUpdate
 
@@ -74,36 +67,6 @@ async def read_workflow_document(document_id: UUID, actor: int | HumanActor,
             "type": item.document_type, "content": content.decode("utf-8"), "can_write": access.can_write}
 
 
-async def workflow_attachment_receipt(document_id: UUID, actor: int | HumanActor, key: str) -> dict[str, Any] | None:
-    item, _, access, _, _ = await service.get_item(document_id, agent_id=actor)
-    if not item.metadata_.get("engine_dataset") or not access.can_write:
-        raise service.MemoryPermissionError("Only the run Dataset owner can prepare its attachments")
-    receipt = item.metadata_.get("workflow_attachments", {}).get(key)
-    return dict(receipt) if receipt is not None else None
-
-
-async def create_workflow_attachment(document_id: UUID, actor: int | HumanActor, *, key: str,
-                                     source_uri: str, path: Path, name: str, media_type: str) -> dict[str, Any]:
-    """Register immutable bytes and their command receipt in the same metadata write."""
-    lock = int.from_bytes(hashlib.sha256(f"workflow-file:{document_id}:{key}".encode()).digest()[:8], "big", signed=True)
-    await get_db().execute(select(func.pg_advisory_xact_lock(lock)))
-    existing = await workflow_attachment_receipt(document_id, actor, key)
-    if existing is not None:
-        return existing
-    def checksum() -> str:
-        with path.open("rb") as stream:
-            return hashlib.file_digest(stream, "sha256").hexdigest()
-    digest = await complete_io(checksum)
-    from .document_attachment_service import add_document_attachment
-    with path.open("rb") as stream, dataset_write_scope(document_id):
-        upload = UploadFile(stream, filename=name, headers=Headers({"content-type": media_type}))
-        await add_document_attachment(document_id, actor_agent_id=actor, upload=upload,
-            workflow_receipt=(key, {"origin_uri": source_uri, "filename": name, "sha256": digest}))
-    receipt = await workflow_attachment_receipt(document_id, actor, key)
-    assert receipt is not None
-    return receipt
-
-
 async def write_workflow_document(document_id: UUID, actor: int | HumanActor, content: str,
                                   *, expected_revision: int, title: str | None = None) -> MemoryItem:
     data = MemoryItemUpdate(expected_revision=expected_revision, payload=MemoryPayload(text=content))
@@ -114,67 +77,6 @@ async def write_workflow_document(document_id: UUID, actor: int | HumanActor, co
 
 async def workflow_document_actor(document_id: UUID, scope: AgentManagementScope, *, write: bool = False) -> int | HumanActor:
     return await document_sharing.document_actor(document_id, scope, write=write)
-
-
-async def integrate_workflow_values(document_id: UUID, *, engine_agent_id: int, command: str,
-                                    baseline: dict[str, Any], changes: dict[str, Any],
-                                    files: list[dict[str, Any]], remove: list[str] | None = None,
-                                    files_mode: Literal["append", "replace"] = "append",
-                                    baseline_files: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-    """Atomically persist a targeted merge and receipt in the owning domain."""
-    from .dataset_port import dataset_compatibility
-    adapter = dataset_compatibility()
-    if adapter is not None and await adapter.contains(document_id):
-        await adapter.integrate(document_id, {"engine_agent_id": engine_agent_id, "command": command,
-            "baseline": baseline, "changes": changes, "files": files, "remove": remove,
-            "files_mode": files_mode, "baseline_files": baseline_files})
-        return await read_workflow_document(document_id, engine_agent_id)
-    lock = int.from_bytes(hashlib.sha256(f"workflow-data:{document_id}".encode()).digest()[:8], "big", signed=True)
-    await get_db().execute(select(func.pg_advisory_xact_lock(lock)))
-    item = await get_db().scalar(select(MemoryItem).where(MemoryItem.id == document_id)
-        .with_for_update().execution_options(populate_existing=True))
-    if item is None or not item.metadata_.get("engine_managed") or item.metadata_.get("engine_agent") != engine_agent_id:
-        raise service.MemoryPermissionError("Only the owning engine can integrate run values")
-    deletions = sorted(set(remove or []))
-    if set(deletions).intersection(changes):
-        raise ValueError("A variable cannot be changed and deleted in the same integration")
-    fingerprint = hashlib.sha256(json.dumps({"changes": changes, "files": files, "remove": deletions, "files_mode": files_mode}, ensure_ascii=False,
-        sort_keys=True, allow_nan=False, separators=(",", ":")).encode()).hexdigest()
-    receipts: dict[str, str] = dict(item.metadata_.get("workflow_integrations", {}))
-    if command in receipts:
-        if receipts[command] != fingerprint:
-            raise service.MemoryConflictError("This integration command already has a different result")
-        return await read_workflow_document(document_id, engine_agent_id)
-    document = await read_workflow_document(document_id, engine_agent_id)
-    current: dict[str, Any] = json.loads(document["content"])
-    data: dict[str, Any] = current["data"]
-    for name, value in changes.items():
-        same_baseline = (name in data) == (name in baseline) and data.get(name) == baseline.get(name)
-        if not same_baseline and (name not in data or data[name] != value):
-            raise service.MemoryConflictError(f"Concurrent workflow writes conflict on variable {name}")
-    for name in deletions:
-        if name in data and (name not in baseline or data[name] != baseline[name]):
-            raise service.MemoryConflictError(f"Concurrent workflow writes conflict on variable {name}")
-    merged_files: list[dict[str, Any]] = deepcopy(current.get("files", []))
-    known: set[str] = {str(entry["uri"]) for entry in merged_files}
-    if files_mode == "replace":
-        if merged_files != baseline_files and merged_files != files:
-            raise service.MemoryConflictError("Concurrent workflow changes conflict on the file manifest")
-        merged_files = []
-        known = set[str]()
-    for entry in files:
-        if entry["uri"] not in known:
-            merged_files.append(deepcopy(entry))
-            known.add(entry["uri"])
-    updated: dict[str, Any] = {"data": {**data, **deepcopy(changes)}, "files": merged_files}
-    for name in deletions:
-        updated["data"].pop(name, None)
-    receipts[command] = fingerprint
-    with dataset_write_scope(document_id):
-        await service.update_item(document_id, MemoryItemUpdate(expected_revision=item.revision,
-            payload=MemoryPayload(text=json.dumps(updated, ensure_ascii=False, allow_nan=False)),
-            metadata={**item.metadata_, "workflow_integrations": receipts}), actor_agent_id=engine_agent_id)
-    return await read_workflow_document(document_id, engine_agent_id)
 
 
 async def workflow_document_access(document_id: UUID, actor: int | HumanActor) -> bool:
@@ -191,51 +93,6 @@ async def share_workflow_document(document_id: UUID, *, owner_agent_id: int, tar
                                   access: Literal["read", "edit", "none"], task_id: UUID | None) -> dict[str, object]:
     return await document_service.share_document(document_id, owner_agent_id=owner_agent_id,
         target_agent_id=target_agent_id, access=access, task_id=task_id)
-
-
-async def grant_workflow_dataset_access(document_id: UUID, *, engine_agent_id: int, actor: int | HumanActor) -> None:
-    """Give every run participant access to the same editable JSON and attachments."""
-    item = await service.document_record(document_id, revisions=False)
-    if item is None or not item.metadata_.get("engine_dataset") or item.metadata_.get("engine_agent") != engine_agent_id:
-        raise service.MemoryPermissionError("Only the owning workflow engine can grant Dataset participants")
-    if isinstance(actor, int):
-        if item.owner_agent_id != actor:
-            await service.set_item_grant(document_id, actor, MemoryGrantUpdate(can_write=True))
-    elif item.owner_user_id != actor.user_id:
-        from .dataset_port import dataset_compatibility
-        adapter = dataset_compatibility()
-        if adapter is not None and await adapter.contains(document_id):
-            await adapter.grant(document_id, engine_agent_id, "user", actor.user_id, True)
-            return
-        grant = await get_db().scalar(select(DocumentUserGrant).where(
-            DocumentUserGrant.item_id == document_id, DocumentUserGrant.user_id == actor.user_id))
-        if grant is None:
-            get_db().add(DocumentUserGrant(item_id=document_id, user_id=actor.user_id, can_write=True))
-        else:
-            grant.can_write = True
-        if item.visibility != "public":
-            item.visibility = "shared"
-        item.lock_version += 1
-        await get_db().commit()
-
-
-async def read_run_workspace(document_id: UUID, actor: int | HumanActor) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Read current data and attachment references; scheduler state stays in Process."""
-    document = await read_workflow_document(document_id, actor)
-    value = json.loads(document["content"])
-    if not isinstance(value, dict):
-        raise ValueError("The shared run Dataset must contain a JSON object")
-    from .dataset_port import dataset_compatibility
-    adapter = dataset_compatibility()
-    if adapter is not None and await adapter.contains(document_id):
-        files = [{"uri": item["uri"], "filename": item["name"], "content_type": item["media_type"], "size": item["size_bytes"]}
-            for item in await adapter.attachments(document_id, actor)]
-        return cast(dict[str, Any], value), files
-    from .document_attachment_service import list_document_attachments
-    files = [{"uri": f"document://{document_id}/attachments/{attachment.id}",
-        "filename": attachment.name, "content_type": attachment.media_type, "size": attachment.size_bytes}
-        for attachment in await list_document_attachments(document_id, actor_agent_id=actor)]
-    return cast(dict[str, Any], value), files
 
 
 async def prepare_workflow_document_read() -> None:

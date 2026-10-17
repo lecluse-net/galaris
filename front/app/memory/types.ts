@@ -228,6 +228,7 @@ export interface DocumentDatasetAttachment {
   title: string | null
   available: boolean
 }
+
 export interface DocumentDatasetAttachments {
   items: DocumentDatasetAttachment[]
   lock_version: number
@@ -250,7 +251,7 @@ export interface DocumentOwnerOptions {
 }
 
 export interface DocumentCreate {
-  document_type?: Exclude<DocumentType, 'dataset'>
+  document_type?: 'html'
   owner_kind: DocumentOwnerKind
   owner_id: number
   actor_agent_id: number
@@ -493,9 +494,8 @@ export interface MemoryFinding {
   resolved_at: string | null
 }
 
-export interface DocumentCollaborator { kind: 'agent' | 'user' | 'team'; id: number; label: string; can_write: boolean; group_ids?: number[]; avatar_url?: string | null; has_avatar?: boolean }
-export interface DocumentSharing { lock_version: number; can_manage: boolean; grants: DocumentCollaborator[]; options: DocumentCollaborator[]; level: DocumentSharingLevel; can_write: boolean; owner: DocumentCollaborator | null; owner_groups: DocumentCollaborator[] }
-export interface DocumentSharingUpdate { kind: DocumentCollaborator['kind']; id: number; can_write: boolean | null; expected_lock_version: number }
-
+export type {
+  Collaborator as DocumentCollaborator, SharingState as DocumentSharing,
+  SharingUpdate as DocumentSharingLevelUpdate, SingleGrantUpdate as DocumentSharingUpdate,
+} from '@/app/share'
 export type DocumentSharingLevel = 'private' | 'groups' | 'public'
-export interface DocumentSharingLevelUpdate { level: DocumentSharingLevel; can_write: boolean; grants: Pick<DocumentCollaborator, 'kind' | 'id' | 'can_write'>[]; expected_lock_version: number }

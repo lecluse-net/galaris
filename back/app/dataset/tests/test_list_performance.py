@@ -1,3 +1,5 @@
+from app.share import ShareGrant
+from app.dataset.models import Dataset
 """Dataset pages preserve live ACLs without fetching every JSON payload."""
 
 import hashlib
@@ -6,7 +8,6 @@ import pytest
 from sqlalchemy import inspect, select
 
 from app.dataset import service
-from app.dataset.models import Dataset, DatasetGrant
 from app.agent import AgentManagementScope
 from core.user import HumanActor, UserModel
 from tests.sql_reads import measured_reads
@@ -20,7 +21,7 @@ async def test_dataset_page_batches_permissions_and_keeps_content_unloaded(db, a
                         global_access=1 if index % 2 else 0) for index in range(30)]
     db.add_all(datasets)
     await db.flush()
-    db.add_all([DatasetGrant(dataset_id=item.id, agent_id=reader.id, can_write=True)
+    db.add_all([ShareGrant(share_id=Dataset.share_for(item.id), agent_id=reader.id, can_write=True)
                 for index, item in enumerate(datasets) if index % 2 == 0])
     hidden = Dataset(owner_agent_id=owner.id, title="Synthetic hidden", content="null")
     db.add(hidden)
@@ -40,8 +41,8 @@ async def test_dataset_page_batches_permissions_and_keeps_content_unloaded(db, a
     assert "content" not in reads.result_columns
     assert all("content" in inspect(item).unloaded for item in db.identity_map.values() if isinstance(item, Dataset))
     # Reopening after revocation must use current permissions, never a cached page decision.
-    grant = await db.scalar(select(DatasetGrant).where(DatasetGrant.agent_id == reader_id).limit(1))
-    removed_id = str(grant.dataset_id)
+    grant = await db.scalar(select(ShareGrant).where(ShareGrant.agent_id == reader_id).limit(1))
+    removed_id = str(await db.scalar(select(Dataset.id).where(Dataset.share_id == grant.share_id)))
     await db.delete(grant)
     await db.flush()
     reopened = await service.list_datasets(reader_id, page_size=50)
@@ -61,7 +62,7 @@ async def test_dataset_page_keeps_human_and_managed_agent_scopes_separate(db, ag
     hidden = Dataset(owner_agent_id=other.id, title="Synthetic private data", content="{}")
     db.add_all([mine, shared, managed, hidden])
     await db.flush()
-    grant = DatasetGrant(dataset_id=shared.id, user_id=human.id, can_write=True)
+    grant = ShareGrant(share_id=Dataset.share_for(shared.id), user_id=human.id, can_write=True)
     db.add(grant)
     await db.flush()
     page = await service.list_datasets(HumanActor(human.id))

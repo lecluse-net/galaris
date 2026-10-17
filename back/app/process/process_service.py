@@ -307,7 +307,7 @@ async def _process_tool(tool_id: int) -> ToolModel:
 async def create_definition(data: ProcessDefinitionCreate) -> ProcessDefinition:
     tool = await _process_tool(data.tool_id)
     if tool.code == "galaris":
-        raise ValueError("Create internal BPMN definitions through the Document contract")
+        raise ValueError("Create internal BPMN definitions through the Process contract")
     await _validate_agent(data.agent_id)
     existing_engine_process = (
         await get_db().execute(
@@ -334,15 +334,15 @@ async def update_definition(
     if record is None:
         return None
     changes = data.model_dump(exclude_unset=True)
-    if record.document_id is not None:
-        raise ValueError("Internal definitions are edited through their Document contract")
+    if record.code is not None:
+        raise ValueError("Internal definitions are edited through their Process contract")
     for required_field in ("tool_id", "engine_process_id", "label"):
         if required_field in changes and changes[required_field] is None:
             raise ValueError(f"{required_field} cannot be null")
     if "tool_id" in changes:
         tool = await _process_tool(cast(int, changes["tool_id"]))
         if tool.code == "galaris":
-            raise ValueError("Internal definitions are created through their Document contract")
+            raise ValueError("Internal definitions are created through their Process contract")
     if "agent_id" in changes:
         await _validate_agent(cast(int | None, changes["agent_id"]))
 
@@ -374,7 +374,7 @@ async def delete_definition(process_id: int) -> bool:
     record = await get_definition(process_id)
     if record is None:
         return False
-    if record.document_id is not None:
+    if record.code is not None:
         record.archived = True
     else:
         record.soft_delete()
@@ -411,11 +411,12 @@ async def list_resource_definitions_for_agent(
     query: str = "",
     offset: int = 0,
     limit: int = 100,
+    management_scope: "AgentManagementScope | None" = None,
 ) -> list[ProcessDefinition]:
     """Return one bounded page of definitions visible to an agent."""
 
     statement = select(ProcessDefinition).where(
-        _agent_definition_clause(agent_id),
+        _agent_definition_clause(agent_id, management_scope),
         ProcessDefinition.archived.is_(False),
         ~ProcessDefinition.engine_process_id.startswith("agent_admin:"),
     )
@@ -451,11 +452,11 @@ async def get_for_agent(agent_id: int, workflow_id: str) -> Optional[ProcessDefi
     return result.scalar_one_or_none()
 
 
-def _agent_definition_clause(agent_id: int) -> ColumnElement[bool]:
-    from app.memory import workflow_document_readable_ids
+def _agent_definition_clause(agent_id: int, management_scope: "AgentManagementScope | None" = None) -> ColumnElement[bool]:
+    from .native_access import accessible_clause
     return or_(
-        and_(ProcessDefinition.document_id.is_(None), ProcessDefinition.agent_id == agent_id),
-        ProcessDefinition.document_id.in_(workflow_document_readable_ids(agent_id)),
+        and_(ProcessDefinition.code.is_(None), ProcessDefinition.agent_id == agent_id),
+        accessible_clause(management_scope or agent_id),
     )
 
 
@@ -672,7 +673,7 @@ async def _ensure_process_wait(run: ProcessRun, process: ProcessDefinition) -> N
         parent=parent,
         run_id=current.id,
         process_label=process.label,
-        timeout_seconds=None if process.document_id is not None else runtime_settings.PROCESS_WAIT_MAX_SECONDS,
+        timeout_seconds=None if process.code is not None else runtime_settings.PROCESS_WAIT_MAX_SECONDS,
     )
     locked = await _locked_run(current.id)
     if locked is None:
@@ -726,10 +727,10 @@ async def start_process(
                     raise PermissionError("An active human launcher is required")
                 actor = await management_scope_for(user, get_db())
                 actor.require(agent_id)
-            await require_run(admitted.id, actor, control=True)
             definition = await get_definition(admitted.process_id)
             if definition is None:
                 raise LookupError("Admitted process definition not found")
+            await require_run(admitted.id, actor)
             if wait_for_completion:
                 await _ensure_process_wait(admitted, definition)
             return await _start_response(admitted, definition, deduplicated=True)
@@ -743,7 +744,7 @@ async def start_process(
             raise PermissionError("An active human launcher is required")
         human_scope = await management_scope_for(user, get_db())
         human_scope.require(agent_id)
-        if allowed is None or allowed.document_id is not None:
+        if allowed is None or allowed.code is not None:
             from .native_definitions import get
             allowed, _ = await get(workflow_id, human_scope)
             if allowed.archived:
@@ -793,7 +794,7 @@ async def start_process(
 
     native_definition: dict[str, Any] | None = None
     typed_native = False
-    if process.document_id is not None:
+    if process.code is not None:
         from .native_definitions import read
         from .bpmn import Workflow
         from .native_actors import validate_assignments
@@ -847,7 +848,7 @@ async def start_process(
     }
     if native_definition is not None:
         definition = native_definition
-        launch_snapshot["definition"] = {key: definition[key] for key in ("xml", "graph", "revision", "document_id")}
+        launch_snapshot["definition"] = {key: definition[key] for key in ("xml", "graph", "revision")}
         launch_snapshot["process_label"] = definition["title"]
         from .run_participants import participant_agents
         launch_snapshot["participant_agents"] = participant_agents(launch_snapshot, agent_id)
@@ -935,6 +936,9 @@ async def delete_run(run_id: UUID) -> bool:
     if run.parent_run_id is not None or await get_db().scalar(select(ProcessRun.id).where(ProcessRun.parent_run_id == run.id).limit(1)):
         raise ValueError("A run referenced by process ancestry must retain its durable history")
     db = get_db()
+    if run.engine_code == "galaris":
+        from core.storage import retire_file_references
+        await retire_file_references(f"galaris://processes/runs/{run.id}/attachments/")
     await db.delete(run)
     await db.commit()
     await websocket.emit("process_run", "delete", {
@@ -987,8 +991,8 @@ async def paginate_runs(
     native_actor: AgentManagementScope | None = None,
 ) -> tuple[list[ProcessRun], int]:
     if native_actor is not None:
-        from app.memory import prepare_workflow_document_read
-        await prepare_workflow_document_read()
+        from .query_policy import prepare_process_read
+        await prepare_process_read()
     base = select(ProcessRun.id).join(
         ProcessDefinition,
         ProcessDefinition.id == ProcessRun.process_id,
@@ -1252,9 +1256,9 @@ async def _apply_snapshot(run: ProcessRun, snapshot: EngineRunSnapshot, event_ty
         return
     run.engine_run_id = snapshot.engine_run_id or run.engine_run_id
     if snapshot.output is not None:
-        # Exact business JSON is owned by the internal run Dataset. Diagnostic
+        # Exact business JSON is owned by the internal run. Diagnostic
         # sanitization remains mandatory for external callbacks and telemetry.
-        run.output = snapshot.output if run.engine_code == "galaris" and run.dataset_document_id else cast(dict[str, Any], await _sanitize(snapshot.output))
+        run.output = snapshot.output if run.engine_code == "galaris" else cast(dict[str, Any], await _sanitize(snapshot.output))
     run.raw_snapshot = cast(Optional[dict[str, Any]], await _sanitize(snapshot.raw))
     run.engine_metadata = {
         **(run.engine_metadata or {}),

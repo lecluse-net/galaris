@@ -12,8 +12,6 @@ from uuid import UUID, uuid4, uuid5
 from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.memory import (create_workflow_document, workflow_attachment_receipt, create_workflow_attachment,
-                        read_run_workspace, grant_workflow_dataset_access)
 from app.task import TaskCreate, TaskStatus, task_service, get_task_outcome_observation
 from core.database import get_db
 
@@ -23,6 +21,8 @@ from .values import normalize, validate_values, loads_values, unwrap, external_o
 from .expressions import evaluate, resolve
 from .engine import ProcessEngineError
 from .models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun
+from .run_data import (integrate_workflow_values, workflow_attachment_receipt,
+    create_workflow_attachment, read_run_workspace, initialize_run_data)
 from .schemas import (EngineError, EngineProcessDefinition, EngineRunReference, EngineRunSnapshot,
                       EngineStartResult, ProcessEngineHealth, ProcessStartPayload, ProcessFileInput)
 
@@ -114,25 +114,13 @@ class NativeProcessEngine:
         graph = Workflow.model_validate(record.launch_snapshot["definition"]["graph"])
         initial_files = [{key: item[key] for key in ("uri", "description") if key in item}
             for item in record.launch_snapshot.get("files", [])] if graph.typed else []
-        initial_data = {"data": record.input, "files": initial_files} if graph.typed else record.input
-        document = await create_workflow_document(owner_agent_id=record.launcher_agent_id,
-            title=f"{record.launch_snapshot['process_label']} · {record.id}",
-            content=json.dumps(initial_data, ensure_ascii=False, allow_nan=False),
-            kind="dataset", command=f"process-dataset:{record.id}", engine_dataset=True, engine_managed=graph.typed,
-            owner_user_id=record.requester_user_id)
-        record.dataset_document_id = document.id
-        await get_db().commit()
-        files = initial_files if graph.typed else await self._prepare_files(record, document.id)
+        await initialize_run_data(record.id, initial_files)
+        files = initial_files if graph.typed else await self._prepare_files(record)
         record = await self._lock(run.id)
         if files is None or record.status in process_service.TERMINAL_STATUSES or record.engine_metadata.get("native", {}).get("cancel_requested"):
             await get_db().commit()
             return EngineStartResult(accepted=True, engine_run_id=str(run.id))
-        await self._share_workspace(record, graph)
-        record = await self._lock(run.id)
-        if record.status in process_service.TERMINAL_STATUSES or record.engine_metadata.get("native", {}).get("cancel_requested"):
-            return EngineStartResult(accepted=True, engine_run_id=str(run.id))
         if not record.engine_metadata.get("native", {}).get("initialized"):
-            record.dataset_document_id = document.id
             controls: dict[str, Any] = record.engine_metadata.get("native", {})
             record.engine_metadata = {**record.engine_metadata, "native": {"schema": 1, "status": "running",
                 "paused": False, "breakpoints": [], **controls, "initialized": True,
@@ -143,53 +131,19 @@ class NativeProcessEngine:
             await get_db().commit()
         return EngineStartResult(accepted=True, engine_run_id=str(run.id))
 
-    async def _share_workspace(self, run: ProcessRun, graph: Workflow) -> None:
-        if graph.typed:
-            return
-        from core.user import HumanActor
-        from .native_actors import execution_agent
-        assert run.dataset_document_id is not None
-        graphs = [graph]
-        agents = {run.launcher_agent_id}
-        humans: set[int] = set()
-        while graphs:
-            current = graphs.pop()
-            for node in current.nodes:
-                if node.kind in {"task", "tool_call", "program"}:
-                    agents.add(execution_agent(current, node, run.launcher_agent_id))
-                if node.kind == "human_task":
-                    actor = next(actor for actor in current.actors if actor.id == node.config["actor"])
-                    if actor.user_id is not None:
-                        humans.add(actor.user_id)
-                if node.body is not None:
-                    body = node.body.model_copy(deep=True)
-                    if body.execution_agent_id is None:
-                        body.execution_agent_id = current.execution_agent_id
-                    graphs.append(body)
-        for agent_id in sorted(agents):
-            await grant_workflow_dataset_access(run.dataset_document_id,
-                engine_agent_id=run.launcher_agent_id, actor=agent_id)
-        for user_id in sorted(humans):
-            await grant_workflow_dataset_access(run.dataset_document_id,
-                engine_agent_id=run.launcher_agent_id, actor=HumanActor(user_id))
-
     async def _workspace_values(self, run: ProcessRun, occurrence: ProcessNodeRun) -> dict[str, Any]:
-        assert run.dataset_document_id is not None
-        data, files = await read_run_workspace(run.dataset_document_id, run.launcher_agent_id)
+        data, files = await read_run_workspace(run.id)
         if local_graph(run, occurrence).typed:
-            files = data["files"]
-            data = validate_values(data["data"], path="process.data")
+            data = validate_values(data, path="process.data")
         values = {**expression_context(occurrence), "input": run.input, "data": data, "files": files}
         occurrence.context = {**occurrence.context, "values": values}
         return values
 
-    async def _prepare_files(self, record: ProcessRun, document_id: UUID) -> list[dict[str, Any]] | None:
+    async def _prepare_files(self, record: ProcessRun) -> list[dict[str, Any]] | None:
         from pathlib import Path
         from tempfile import TemporaryDirectory
         from app.file_share import ResourceContext, materialize_resource, parse_resource_uri
-        from core.user import HumanActor
         from app.console import build_run_resource
-        actor = HumanActor(record.requester_user_id) if record.requester_user_id is not None else record.launcher_agent_id
         prepared: list[dict[str, Any]] = []
         for item in record.launch_snapshot.get("files", []):
             record = await self._lock(record.id)
@@ -198,7 +152,7 @@ class NativeProcessEngine:
             if stopped:
                 return None
             key = str(item["id"])
-            receipt = await workflow_attachment_receipt(document_id, actor, key)
+            receipt = await workflow_attachment_receipt(record.id, key)
             if receipt is None:
                 console = await build_run_resource(record.launcher_agent_id) if parse_resource_uri(item["uri"]).scheme == "console" else None
                 try:
@@ -211,7 +165,7 @@ class NativeProcessEngine:
                         if record.status in process_service.TERMINAL_STATUSES or record.engine_metadata.get("native", {}).get("cancel_requested"):
                             await get_db().commit()
                             return None
-                        receipt = await create_workflow_attachment(document_id, actor, key=key, source_uri=item["uri"],
+                        receipt = await create_workflow_attachment(record.id, key=key, source_uri=item["uri"],
                             path=path, name=source.name, media_type=source.media_type)
                 finally:
                     if console is not None:
@@ -399,8 +353,6 @@ class NativeProcessEngine:
                     current = await self._fenced(run.id, claim)
                     if current is None or current.engine_metadata.get("native", {}).get("cancel_requested"):
                         return
-                    from app.memory import integrate_workflow_values
-                    assert run.dataset_document_id is not None
                     changes = result
                     output_files: list[dict[str, Any]] = occurrence.context.get("output_files", [])
                     remove: list[str] = []
@@ -426,7 +378,7 @@ class NativeProcessEngine:
                     for name in remove:
                         candidate.pop(name, None)
                     validate_values(candidate, path=f"{node.id}.data")
-                    await integrate_workflow_values(run.dataset_document_id, engine_agent_id=run.launcher_agent_id,
+                    await integrate_workflow_values(run.id,
                         command=f"activity:{occurrence.id}", baseline=occurrence.context["integration_baseline"],
                         changes=changes, files=output_files, remove=remove, files_mode=files_mode,
                         baseline_files=occurrence.context.get("input_files", []))
@@ -540,7 +492,7 @@ class NativeProcessEngine:
                     if node.kind != "task":
                         prompt += "\nWork only on these local inputs. Return only the typed JSON object of output variables, without prose or Markdown fences."
                     if node.kind == "task":
-                        prompt += "\nRun Dataset context (typed JSON, read-only):\n" + json.dumps(workspace["data"], ensure_ascii=False)
+                        prompt += "\nRun data context (typed JSON, read-only):\n" + json.dumps(workspace["data"], ensure_ascii=False)
                         prompt += ("\nUse process_activity_complete(output={...}, message='...') to submit ordinary JSON values "
                             "matching the declared outputs; the engine applies their types. Do not encode the result in final prose. "
                             "If human information is needed, call process_activity_question(question='...', variables=[...]) "
@@ -569,10 +521,10 @@ class NativeProcessEngine:
         return await self._execute_effect(run, occurrence, node, attempt, claim)
 
     def _legacy_prompt(self, prompt: str, run: ProcessRun, node: Node, inputs: dict[str, Any], workspace: dict[str, Any]) -> str:
-        prompt += f"\n\nShared run Dataset (read/write): document://{run.dataset_document_id}"
-        prompt += f"\nShared attachments (read/write): document://{run.dataset_document_id}/attachments/"
+        prompt += f"\n\nShared run data: galaris://processes/runs/{run.id}/data"
+        prompt += f"\nShared attachments: galaris://processes/runs/{run.id}/attachments/"
         if node.kind == "human_task":
-            prompt += "\nOpen the shared Dataset to edit its JSON and attachments. All tasks in this run use this same workspace. Store your work there and submit a completion summary."
+            prompt += "\nAll tasks in this run share its data and attachments. Submit the activity result through the process response."
         else:
             prompt += "\nAll tasks in this run use this same workspace. Read its current JSON with file_read and update it with file_write or file_edit, using expected_revision. If a revision conflicts, reread and preserve other tasks' changes before retrying. Add or read shared files in the attachments collection. Store your work there; your final message is only a completion summary."
         prompt += "\nCurrent shared data (JSON):\n" + json.dumps(inputs, ensure_ascii=False)
@@ -742,9 +694,9 @@ class NativeProcessEngine:
             result = child.output or {}
             if graph.typed:
                 child_typed = child.launch_snapshot.get("definition", {}).get("graph", {}).get("schema_version") == "galaris.bpmn/v2"
-                if child_typed and child.dataset_document_id is not None:
-                    workspace, _ = await read_run_workspace(child.dataset_document_id, child.launcher_agent_id)
-                    occurrence.context = {**occurrence.context, "output_files": deepcopy(workspace["files"])}
+                if child_typed:
+                    _, child_files = await read_run_workspace(child.id)
+                    occurrence.context = {**occurrence.context, "output_files": deepcopy(child_files)}
                 else:
                     assert node.outputs is not None
                     mapped = resolve(node.config.get("external_output", {"$expr": "result"}), {"result": result})

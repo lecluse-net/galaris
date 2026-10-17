@@ -9,8 +9,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { AgentAvatar } from '@/app/agent'
-import { PersonAvatar, SharingPanel, type SharingDraft, type SharingState } from '@/core/util'
-import type { DocumentSharing } from '@/app/memory'
+import { PersonAvatar } from '@/core/util'
+import { SharingPanel, type SharingDraft, type SharingPresentation as SharingState } from '@/app/share'
+import type { SharingState as DocumentSharing } from '@/app/share'
 import { nativeProcessService as service } from '../services/nativeProcessService'
 const props = defineProps<{ modelValue: SharingDraft; editable: boolean; agentId: number | null; owner: 'user' | 'agent' }>()
 const emit = defineEmits<{ 'update:modelValue': [draft: SharingDraft] }>()

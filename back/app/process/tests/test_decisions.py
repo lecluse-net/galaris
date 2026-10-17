@@ -83,7 +83,7 @@ async def test_human_if_waits_for_assignee_and_replays_one_boolean_receipt(db, n
 
 @pytest.mark.asyncio
 async def test_code_task_integrates_plain_returned_variables_into_run_dataset(db, native):
-    from app.memory import read_workflow_document
+    from app.process.run_resources import read_run_data
     owner, _ = native
     graph = decision_graph("code")
     graph.nodes = [graph.nodes[0], Node(id="work", kind="code", config={"dataset_code": True,
@@ -96,7 +96,7 @@ async def test_code_task_integrates_plain_returned_variables_into_run_dataset(db
     await process_service.process_start_jobs(engine_code="galaris")
     run = await finish_run(db, launched.run_id)
     assert run.status == "success", run.error_message
-    data = json.loads((await read_workflow_document(run.dataset_document_id, owner.id))["content"])["data"]
+    data = (await read_run_data(run.id, owner.id))["data"]
     assert data == {"variable_1": {"type": "int", "value": 124}, "variable_2": {"type": "string", "value": "MON PROJET"}}
 
 

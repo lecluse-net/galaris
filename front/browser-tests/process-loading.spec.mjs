@@ -56,7 +56,7 @@ for (const width of [1440, 390]) {
     } finally { release(); await mounted }
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.getByLabel('Show details: Synthetic execution', { exact: true }).click()
-    await expect(page.getByRole('dialog').getByRole('link', { name: 'Copy run URL: synthetic-run', exact: true })).toHaveAttribute('href', 'processus://run/synthetic-run')
+    await expect(page.getByRole('dialog').getByRole('link', { name: 'Copy run URL: synthetic-run', exact: true })).toHaveAttribute('href', 'galaris://processes/runs/synthetic-run')
     await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
     await page.getByLabel('Runs: Synthetic process', { exact: true }).click()
     await expect(page.getByLabel('Show details: Synthetic execution', { exact: true })).toHaveCount(0)

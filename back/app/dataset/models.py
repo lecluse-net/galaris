@@ -9,9 +9,11 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base, HistoryMixin
+from app.share import Shareable
 
 
-class Dataset(HistoryMixin, Base):
+class Dataset(Shareable, HistoryMixin, Base):
+    __share_kind__ = "dataset"
     __tablename__ = "datasets"
     __mapper_args__ = {"eager_defaults": True}
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -21,14 +23,15 @@ class Dataset(HistoryMixin, Base):
     content: Mapped[str] = mapped_column(Text)
     revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     lock_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
-    global_access: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    group_access: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    legacy_global_access: Mapped[int] = mapped_column("global_access", Integer, default=0, server_default="0")
+    legacy_group_access: Mapped[int] = mapped_column("group_access", Integer, default=0, server_default="0")
     read_only: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     keywords: Mapped[list[str]] = mapped_column(JSONB, default=list, server_default="[]")
     metadata_: Mapped[dict[str, Any]] = mapped_column("metadata", JSONB, default=dict, server_default="{}")
     creation_key: Mapped[str | None] = mapped_column(String(255), unique=True)
     creation_fingerprint: Mapped[str | None] = mapped_column(String(64))
     __table_args__ = (
+        *Shareable.share_constraints("datasets", "dataset"),
         CheckConstraint("owner_agent_id IS NULL OR owner_user_id IS NULL"),
         CheckConstraint("global_access IN (0,1,2) AND group_access IN (0,1,2)"),
         CheckConstraint("global_access = 0 OR group_access = 0"),
@@ -86,16 +89,6 @@ class DatasetAttachment(HistoryMixin, Base):
     file_id: Mapped[UUID | None] = mapped_column(ForeignKey("files.id", ondelete="RESTRICT"), index=True)
     legacy_attachment_id: Mapped[UUID | None] = mapped_column(ForeignKey("document_attachments.id", ondelete="RESTRICT"), unique=True)
 
-
-class DatasetIntegration(Base):
-    __tablename__ = "dataset_integrations"
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    dataset_id: Mapped[UUID] = mapped_column(ForeignKey("datasets.id", ondelete="RESTRICT"), index=True)
-    command: Mapped[str] = mapped_column(String(255))
-    fingerprint: Mapped[str] = mapped_column(String(64))
-    result: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    __table_args__ = (UniqueConstraint("dataset_id", "command"),)
 
 
 class DatasetWriteBudget(Base):

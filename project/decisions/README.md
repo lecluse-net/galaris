@@ -1,6 +1,14 @@
 # Décisions d'architecture
 
+- [0200 — Configurations exclusives de partage des ressources](0200-exclusive-resource-sharing.md)
+
 - [0199 — Retrait du mode YOLO des agents](0199-remove-agent-yolo.md)
+
+- [0198 — Données et fichiers des runs dans Process](0198-process-run-data-and-files.md)
+
+- [0197 — Définitions BPMN dans les tables Process](0197-process-owned-bpmn-storage.md)
+
+- [0196 — États techniques des processus dans leurs runs](0196-process-run-execution-state.md)
 
 - [0195 — Autorisations bornées des lancements conversationnels de processus](0195-conversation-process-launch-permissions.md)
 

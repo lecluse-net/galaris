@@ -49,3 +49,5 @@ revision. Share the page and its Datasets separately. See
 For a business process, the agent gathers missing information and prepares the variables
 in the format expected by that process. The engine validates them before execution.
 Attachments retain their authorized file URIs.
+
+Each Document, Dataset and process definition retains independent sharing. Changing access to one resource does not change access to another linked resource. Upgrades preserve existing permissions, including team access. See the [sharing mechanism](../dev/sharing.md).

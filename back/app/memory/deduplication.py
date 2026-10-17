@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from app.share import ShareGrant
+
 import math
 from collections.abc import Sequence
 from datetime import datetime, timezone
@@ -24,14 +26,7 @@ from .embedding import (
     embed_many,
     resolve_embedding_model,
 )
-from .models import (
-    MemoryContactItem,
-    MemoryEmbeddingChunk,
-    MemoryItem,
-    MemoryItemGrant,
-    MemoryTopicContactItem,
-    MemoryTopicContactScope,
-)
+from .models import MemoryContactItem, MemoryEmbeddingChunk, MemoryItem, MemoryTopicContactItem, MemoryTopicContactScope
 from .schemas import (
     MemoryDuplicatePreview,
     MemoryDuplicatePreviewPair,
@@ -76,9 +71,9 @@ async def _candidates_for_embedding(
             MemoryItem.owner_agent_id == agent_id,
             MemoryItem.visibility == "public",
             exists(
-                select(MemoryItemGrant.id).where(
-                    MemoryItemGrant.item_id == MemoryItem.id,
-                    MemoryItemGrant.agent_id == agent_id,
+                select(ShareGrant.id).where(
+                    ShareGrant.share_id == MemoryItem.share_id,
+                    ShareGrant.agent_id == agent_id,
                 )
             ),
         ),

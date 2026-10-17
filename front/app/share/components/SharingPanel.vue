@@ -79,7 +79,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import type { SharingChoice, SharingDraft, SharingRecipient, SharingState } from '../sharing'
 import SharingRecipients from './SharingRecipients.vue'
-import PersonAvatar from './PersonAvatar.vue'
+import { PersonAvatar } from '@/core/util'
 
 const props = withDefaults(defineProps<{
   state: SharingState | null

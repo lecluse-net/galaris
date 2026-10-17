@@ -59,16 +59,12 @@ test('Documents and Datasets use separate libraries and creation paths', async (
   await page.getByRole('link', { name: dataset.title, exact: true }).scrollIntoViewIfNeeded()
   await page.screenshot({ path: test.info().outputPath('document-dataset-mobile.png'), fullPage: true, animations: 'disabled' })
 
-  // Historical source rows are retained, while their public Document URL resolves to Dataset.
-  const legacy = await checked(await request.post('/api/memory/items', { headers, data: {
-    owner_agent_id: fixture.agent_id, title: 'Synthetic migrated Dataset', node_kind: 'document',
+  // Public creation must not manufacture historical Dataset Documents.
+  const rejectedMemory = await request.post('/api/memory/items', { headers, data: {
+    owner_agent_id: fixture.agent_id, title: 'Synthetic rejected JSON document', node_kind: 'document',
     document_type: 'dataset', media_type: 'application/json', payload: { text: '{"legacy":true}' },
-  } }))
-  const reference = await checked(await request.get(`/api/memory/documents/${legacy.id}`, { headers }))
-  expect(reference).toEqual({ resource_type: 'dataset', resource_uri: `data://${legacy.id}` })
-  await page.goto(`/memory/documents?document_id=${legacy.id}`)
-  await expect(page).toHaveURL(new RegExp(`/dataset/${legacy.id}$`))
-  await expect(page.getByRole('textbox', { name: /^(JSON content|Contenu JSON)$/ })).toHaveValue('{"legacy":true}')
+  } })
+  expect(rejectedMemory.status()).toBe(422)
 
   await page.goto(`/dataset/${dataset.id}`)
   await expect(page.getByRole('textbox', { name: /^(Titre|Title)$/, exact: true })).toHaveValue(dataset.title)

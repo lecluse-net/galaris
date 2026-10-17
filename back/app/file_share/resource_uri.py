@@ -65,11 +65,10 @@ NATIVE_RESOURCE_SCHEMES = frozenset(
         "document",
         "galaris",
         "memory",
-        "processus",
         "resource",
     }
 )
-RETIRED_RESOURCE_SCHEMES = frozenset({"workspace"})
+RETIRED_RESOURCE_SCHEMES = frozenset({"workspace", "processus"})
 SYSTEM_TOOL_CODES = frozenset(
     {
         "audio",
@@ -225,6 +224,10 @@ def parse_resource_uri(
     if not RESOURCE_SCHEME_PATTERN.fullmatch(scheme):
         raise ResourceUriError(f"Invalid resource scheme: {scheme!r}.")
     if scheme in RETIRED_RESOURCE_SCHEMES:
+        if scheme == "processus":
+            raise ResourceUriError(
+                "Process run URIs now use galaris://processes/runs/<uuid>."
+            )
         raise ResourceUriError(
             "workspace:// has been removed; use console:// or an exact provider URI."
         )

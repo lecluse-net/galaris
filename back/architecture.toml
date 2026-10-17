@@ -41,8 +41,8 @@ allowed_dependencies = []
 max_domain_fan_out = 0
 
 [module."app.agent"]
-allowed_dependencies = ["app.file_share", "app.image", "app.llm", "app.messenger", "app.process", "app.skill", "app.tools"]
-max_domain_fan_out = 7
+allowed_dependencies = ["app.file_share", "app.image", "app.llm", "app.messenger", "app.process", "app.share", "app.skill", "app.tools"]
+max_domain_fan_out = 8
 
 [module."app.harness"]
 allowed_dependencies = ["app.agent", "app.console", "app.conversation", "app.file_share", "app.llm", "app.messenger", "app.process", "app.skill", "app.tools"]
@@ -73,8 +73,8 @@ allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.
 max_domain_fan_out = 9
 
 [module."app.memory"]
-allowed_dependencies = ["app.agent", "app.conversation", "app.goal", "app.llm", "app.process", "app.task", "app.tools", "app.topic", "app.voice"]
-max_domain_fan_out = 9
+allowed_dependencies = ["app.agent", "app.conversation", "app.goal", "app.llm", "app.process", "app.share", "app.task", "app.tools", "app.topic", "app.voice"]
+max_domain_fan_out = 10
 
 [module."app.contact"]
 allowed_dependencies = ["app.agent", "app.conversation", "app.memory", "app.messenger", "app.task"]
@@ -149,12 +149,12 @@ allowed_dependencies = ["app.agent", "app.code", "app.console", "app.file_share"
 max_domain_fan_out = 4
 
 [module."app.process"]
-allowed_dependencies = ["app.agent", "app.console", "app.dataset", "app.file_share", "app.llm", "app.memory", "app.task", "app.tools"]
-max_domain_fan_out = 8
+allowed_dependencies = ["app.agent", "app.console", "app.dataset", "app.file_share", "app.llm", "app.memory", "app.share", "app.task", "app.tools"]
+max_domain_fan_out = 9
 
 [module."app.dataset"]
-allowed_dependencies = ["app.agent", "app.file_share", "app.memory"]
-max_domain_fan_out = 3
+allowed_dependencies = ["app.agent", "app.file_share", "app.memory", "app.share"]
+max_domain_fan_out = 4
 
 [module."app.multimedia"]
 allowed_dependencies = ["app.agent", "app.file_share", "app.llm", "app.tools"]
@@ -307,3 +307,7 @@ max_domain_fan_out = 1
 [module."bridge.ollama"]
 allowed_dependencies = ["app.llm"]
 max_domain_fan_out = 1
+
+[module."app.share"]
+allowed_dependencies = []
+max_domain_fan_out = 0

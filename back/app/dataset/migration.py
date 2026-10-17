@@ -1,5 +1,7 @@
 """Additive, resumable migration. Original rows and bytes are retained for audit."""
 
+from app.share import ShareGrant
+
 from copy import deepcopy
 import hashlib
 from uuid import UUID
@@ -10,8 +12,7 @@ from app.memory import legacy_dataset_ids, legacy_dataset_snapshot
 from core.database import get_db
 from core.storage import FileAlias, StoredFile
 
-from .models import (Dataset, DatasetAlias, DatasetAppConsent, DatasetAppearance, DatasetAttachment,
-    DatasetGrant, DatasetIntegration, DatasetRevision, DatasetTag, DatasetTagAssignment, DatasetWriteBudget)
+from .models import Dataset, DatasetAlias, DatasetAppConsent, DatasetAppearance, DatasetAttachment, DatasetRevision, DatasetTag, DatasetTagAssignment, DatasetWriteBudget
 
 
 async def adopt_legacy(identity: UUID) -> Dataset:
@@ -46,7 +47,7 @@ async def adopt_legacy(identity: UUID) -> Dataset:
     if record.revision not in numbers:
         db.add(DatasetRevision(dataset_id=identity, revision=record.revision, content=record.content))
     for grant in source["grants"]:
-        db.add(DatasetGrant(dataset_id=identity, **grant))
+        db.add(ShareGrant(share_id=Dataset.share_for(identity), **grant))
     for attachment in source["attachments"]:
         alias = f"document://{identity}/attachments/{attachment['id']}"
         file_id = await db.scalar(select(FileAlias.file_id).where(FileAlias.uri == alias))
@@ -80,8 +81,6 @@ async def adopt_legacy(identity: UUID) -> Dataset:
         db.add(DatasetTagAssignment(dataset_id=identity, tag_id=tag_id))
     for user_id in set(source["icons"]) | set(source["positions"]):
         db.add(DatasetAppearance(dataset_id=identity, user_id=user_id, icon=source["icons"].get(user_id), position=source["positions"].get(user_id, 0)))
-    for command, digest in source["metadata"].get("workflow_integrations", {}).items():
-        db.add(DatasetIntegration(dataset_id=identity, command=command, fingerprint=digest, result={"revision": record.revision}))
     source_hash = hashlib.sha256(record.content.encode()).hexdigest()
     db.add(DatasetAlias(legacy_document_id=identity, dataset_id=identity, source_revision=record.revision,
         source_hash=source_hash, manifest={"revisions": hashes, "grants": len(source["grants"]),

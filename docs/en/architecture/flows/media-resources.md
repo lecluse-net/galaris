@@ -168,7 +168,9 @@ Once uploading begins, or during direct streaming, an error retains an uncertain
 prevents blind replay. The staging file is removed in either case.
 
 The reference exchanged between tools, Tasks, and providers is canonical: `console://path`,
-`processus://run/<uuid>` for a read-only JSON run snapshot,
+`galaris://processes/runs/<uuid>` for a read-only JSON run snapshot,
+`galaris://processes/runs/<uuid>/data` for its variables and
+`galaris://processes/runs/<uuid>/attachments/<file-uuid>` for managed run attachments,
 `<code-tool>://room-provider/attachment-uuid`, `memory://uuid`, `document://uuid`,
 `document://uuid/attachments/attachment-uuid`,
 `galaris://process/workflow-id`, `galaris://skill/skill-code/SKILL.md`, `https://host/path`, or

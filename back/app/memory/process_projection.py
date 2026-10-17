@@ -74,7 +74,7 @@ async def sync_process_definition_projection(
         definition is None
         or definition.deleted_at is not None
         or definition.agent_id is None
-        or definition.document_id is not None
+        or definition.code is not None
     ):
         await forget_source_managed_item(
             source_kind="process_definition",

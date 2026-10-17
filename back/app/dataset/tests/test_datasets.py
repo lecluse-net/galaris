@@ -1,3 +1,5 @@
+from app.share import ShareGrant
+from app.memory.models import MemoryItem
 from uuid import UUID
 
 import pytest
@@ -109,7 +111,7 @@ async def test_legacy_public_sharing_and_revocation_apply_to_the_canonical_uri(d
         await service.record(legacy.id, other.id)
     # Canonical writes refresh legacy readers without reviving revoked grants.
     from app.memory import MemoryItem
-    from app.memory.models import MemoryItemGrant
+
     dataset = await service.record(legacy.id, owner.id)
     await service.set_grant(dataset.id, owner.id, kind="agent", principal=other.id,
         can_write=False, expected_lock_version=dataset.lock_version)
@@ -123,7 +125,7 @@ async def test_legacy_public_sharing_and_revocation_apply_to_the_canonical_uri(d
     assert projected.title == dataset.title and projected.keywords == dataset.keywords
     assert projected.revision == dataset.revision and projected.lock_version == dataset.lock_version
     assert projected.size_bytes == len(dataset.content.encode())
-    assert await db.scalar(select(MemoryItemGrant.id).where(MemoryItemGrant.item_id == legacy.id)) is None
+    assert await db.scalar(select(ShareGrant.id).where(ShareGrant.share_id == MemoryItem.share_for(legacy.id))) is None
     with pytest.raises(memory.MemoryPermissionError):
         await memory.get_item(legacy.id, agent_id=other.id)
     if delete_via_file:

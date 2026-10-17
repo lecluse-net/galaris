@@ -70,6 +70,25 @@ async def _split_documents(
     if await session.scalar(text("SELECT transferred FROM galaris_migration.memory_document_split_manifest")):
         return  # A later replay must not touch newly authored documents or summaries.
     await verify_unchanged_sources(session)
+    from app.share import transfer_resource_acl
+    await transfer_resource_acl(session, "memory_items")
+    # Former shared memories become documents, retaining the same logical object
+    # and policy. Composite policy FKs are deferred until both types agree.
+    await session.execute(text("""
+        UPDATE share_configs cfg SET resource_kind = 'document'
+        FROM memory_items node, galaris_migration.memory_document_split_rows archived
+        WHERE cfg.id = node.share_id AND archived.table_name = 'memory_items'
+            AND archived.row_key = node.id::text AND (node.node_kind = 'document' OR
+                (node.node_kind = 'memory' AND NOT node.source_managed AND (
+                    archived.snapshot->>'visibility' <> 'private' OR
+                    coalesce((archived.snapshot->>'global_access')::integer, 0) <> 0 OR
+                    coalesce((archived.snapshot->>'group_access')::integer, 0) <> 0 OR
+                    EXISTS (SELECT 1 FROM memory_item_grants WHERE item_id = node.id) OR
+                    EXISTS (SELECT 1 FROM document_user_grants WHERE item_id = node.id) OR
+                    EXISTS (SELECT 1 FROM document_team_grants WHERE item_id = node.id))))
+    """))
+    await session.execute(text("""UPDATE memory_items node SET share_kind = 'document'
+        FROM share_configs cfg WHERE cfg.id = node.share_id AND cfg.resource_kind = 'document'"""))
     # Copy pointers, not bytes: every historical revision and attachment keeps its
     # original resource identity. Include tombstones for historical Chat previews.
     await session.execute(text("""
@@ -79,6 +98,7 @@ async def _split_documents(
         ), locked_sources AS (
             SELECT (jsonb_populate_record(NULL::public.documents, snapshot || jsonb_build_object(
                 'memory_item_id', snapshot->'id', 'summary_initialized', false,
+                'share_id', node.share_id, 'share_kind', 'document',
                 'visibility', CASE WHEN snapshot->>'visibility' = 'public' THEN 'shared'
                     ELSE snapshot->>'visibility' END,
                 'global_access', CASE WHEN snapshot->>'visibility' = 'public' THEN 1
@@ -93,11 +113,11 @@ async def _split_documents(
                 OR EXISTS (SELECT 1 FROM document_team_grants WHERE item_id = node.id)))
             ORDER BY node.id
         )
-        INSERT INTO documents (id, memory_item_id, title, provider_code, resource_id, revision,
+        INSERT INTO documents (id, memory_item_id, share_id, share_kind, title, provider_code, resource_id, revision,
             document_type, content_type, media_type, content_profile_version, filename,
             content_hash, size_bytes, visibility, global_access, group_access, read_only,
             summary_initialized, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by)
-        SELECT id, id, title, provider_code, resource_id, revision, document_type,
+        SELECT id, id, share_id, share_kind, title, provider_code, resource_id, revision, document_type,
             content_type, media_type, content_profile_version, filename, content_hash, size_bytes,
             CASE WHEN visibility = 'public' THEN 'shared' ELSE visibility END,
             CASE WHEN visibility = 'public' THEN 1 ELSE global_access END, group_access, read_only,

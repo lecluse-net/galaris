@@ -13,6 +13,8 @@ et la migration vérifiée des PJ Documents et Chat.
 
 Le [profil BPMN natif](native-processes.md) décrit les processus internes et leurs contrats.
 
+Le [partage des ressources](sharing.md) décrit les configurations exclusives, les contrats communs et la migration des droits existants.
+
 Ce document décrit l’architecture qui existe dans le dépôt. Il sert de contrat de
 contribution : lorsqu’une implémentation impose un autre flux, corrigez soit le code soit ce
 guide, mais ne créez pas une seconde architecture implicite.

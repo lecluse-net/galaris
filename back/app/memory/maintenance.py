@@ -6,6 +6,8 @@ index, while contradiction classification and aging are deterministic.
 
 from __future__ import annotations
 
+from app.share import ShareGrant
+
 import hashlib
 import re
 from datetime import datetime, timedelta, timezone
@@ -28,7 +30,6 @@ from .models import (
     MemoryEmbeddingChunk,
     MemoryFinding,
     MemoryItem,
-    MemoryItemGrant,
     MemoryLink,
     MemorySource,
     MemoryTopicContactItem,
@@ -122,8 +123,8 @@ async def file_pair_compatible(first: MemoryItem, second: MemoryItem) -> bool:
         ))) for item in (first, second)]
         if not parents[0] or parents[0] != parents[1]:
             return False
-    grants = [set((await db.execute(select(MemoryItemGrant.agent_id, MemoryItemGrant.can_write).where(
-        MemoryItemGrant.item_id == item.id,
+    grants = [set((await db.execute(select(ShareGrant.agent_id, ShareGrant.user_id, ShareGrant.team_id, ShareGrant.can_write).where(
+        ShareGrant.share_id == item.share_id,
     ))).all()) for item in (first, second)]
     return grants[0] == grants[1]
 
@@ -601,24 +602,24 @@ async def _merge_items(canonical: MemoryItem, duplicate: MemoryItem, finding_id:
             existing_sources.add((row.source_kind, row.source_ref))
 
     existing_grants = {
-        row.agent_id: row
+        (row.agent_id, row.user_id, row.team_id): row
         for row in (
             await db.scalars(
-                select(MemoryItemGrant).where(MemoryItemGrant.item_id == canonical.id)
+                select(ShareGrant).where(ShareGrant.share_id == canonical.share_id)
             )
         ).all()
     }
     for row in (
         await db.scalars(
-            select(MemoryItemGrant).where(MemoryItemGrant.item_id == duplicate.id)
+            select(ShareGrant).where(ShareGrant.share_id == duplicate.share_id)
         )
     ).all():
-        existing = existing_grants.get(row.agent_id)
+        existing = existing_grants.get((row.agent_id, row.user_id, row.team_id))
         if existing is not None:
             existing.can_write = existing.can_write or row.can_write
             await db.delete(row)
         else:
-            row.item_id = canonical.id
+            row.share_id = canonical.share_id
 
     await db.execute(delete(MemoryContactItem).where(MemoryContactItem.item_id == duplicate.id))
     await db.execute(

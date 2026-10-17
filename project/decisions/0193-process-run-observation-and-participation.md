@@ -2,6 +2,10 @@
 
 Statut : accepté — 2026-10-16.
 
+La [décision 0198](0198-process-run-data-and-files.md) remplace la politique
+d'accès indépendante des runs par les droits du processus parent et ajoute
+les ressources de données et pièces jointes sous `galaris://processes/runs/`.
+
 ## Décision
 
 Le détail d'une exécution et l'outil agentique `processus_get` partagent une projection
@@ -11,8 +15,8 @@ erreurs et dernière activité. Un délai sans événement n'établit pas un blo
 compteurs d'occurrences ne prétendent pas mesurer un pourcentage pour un graphe à boucles.
 L'inspection ne fait pas avancer le moteur.
 
-La référence copiable d'un run est `processus://run/<uuid>`, indépendante de l'adresse
-Web de l'installation. File Sharing expose ce schéma natif en lecture seule : info,
+La référence copiable d'un run est `galaris://processes/runs/<uuid>`, indépendante de l'adresse
+Web de l'installation. File Sharing expose cette projection native en lecture seule : info,
 lecture JSON paginée et export par copie, sans liste ni recherche générique. Process
 possède la projection et les autorisations ; le provider ne fait pas avancer le moteur.
 Les commandes métier acceptent aussi cette référence à la place de l'UUID brut.

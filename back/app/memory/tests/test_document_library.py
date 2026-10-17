@@ -180,6 +180,8 @@ async def test_document_schema_preserves_retired_forms(
     constraints = [constraint for constraint in Document.__table__.constraints
                    if isinstance(constraint, CheckConstraint)
                    and constraint.name in {"ck_documents_type", "ck_documents_content_type"}]
+    # Validate deferred sharing identities before changing this isolated schema.
+    await db.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
     for constraint in constraints:
         await db.execute(text(f"ALTER TABLE documents DROP CONSTRAINT {constraint.name}"))
     # Both representations existed before forms were retired. Tombstones still
@@ -198,6 +200,7 @@ async def test_document_schema_preserves_retired_forms(
         await db.execute(AddConstraint(constraint))
     after = (await db.execute(query, {"id": item.id})).mappings().one()
     assert dict(after) == dict(before)
+    await db.execute(text("SET CONSTRAINTS ALL DEFERRED"))
 
 
 @pytest.mark.asyncio
@@ -246,9 +249,11 @@ async def test_library_unites_owned_and_granted_documents(
 
         # Reproduce a database predating the retirement of the HTML form type.
         # The test transaction restores the constraint along with its data.
+        await db.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
         await db.execute(text("ALTER TABLE documents DROP CONSTRAINT ck_documents_type"))
         await db.execute(text("ALTER TABLE documents DROP CONSTRAINT ck_documents_content_type"))
         await db.execute(text("UPDATE documents SET document_type = 'form' WHERE id = :id"), {"id": owned.id})
+        await db.execute(text("SET CONSTRAINTS ALL DEFERRED"))
         db.expire(owned, ["document"])
 
     page = await service.browse_document_library(
@@ -476,11 +481,12 @@ async def test_user_owned_document_is_created_with_a_writable_agent(
     assert created.document_type == "html"
 
 
-def test_document_creation_rejects_dataset_type() -> None:
+@pytest.mark.parametrize("kind", ["dataset", "process"])
+def test_document_creation_rejects_non_html_types(kind: str) -> None:
     with pytest.raises(ValidationError):
         DocumentCreate.model_validate({
             "owner_kind": "agent", "owner_id": 1, "actor_agent_id": 1,
-            "title": "Synthetic data", "document_type": "dataset",
+            "title": "Synthetic resource", "document_type": kind,
         })
 
 

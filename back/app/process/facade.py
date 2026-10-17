@@ -11,6 +11,7 @@ from core.user import get_user_record
 from . import native_definitions, native_runs, process_service
 from .schemas import ProcessFileInput
 from .dataset_usage import find_dataset_run_usages as find_dataset_run_usages
+from .dataset_usage import find_dataset_definition_usages as find_dataset_definition_usages
 from .values import ValueContractError as ValueContractError
 
 
@@ -126,7 +127,7 @@ async def run_evidence(identity: UUID, actor: int | AgentManagementScope) -> dic
     run = await native_runs.require_run(identity, actor)
     return {"id": str(run.id), "status": run.status, "output": run.output, "error": run.error_message,
         "definition_revision": run.launch_snapshot.get("definition", {}).get("revision"),
-        "dataset_uri": f"document://{run.dataset_document_id}" if run.dataset_document_id else None,
+        "data": run.data, "data_uri": f"galaris://processes/runs/{run.id}/data",
         "duration_seconds": ((run.finished_at - run.started_at).total_seconds() if run.finished_at and run.started_at else None),
         "metrics": await native_runs.run_metrics(identity, actor)}
 

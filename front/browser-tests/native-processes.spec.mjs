@@ -171,12 +171,13 @@ test('a new workflow can be built from its start handle and retains typed human 
   await page.getByText('Human task', { exact: true }).click()
   await page.getByRole('dialog', { name: 'Activity settings', exact: true }).getByRole('textbox', { name: 'Title', exact: true }).fill('Review invented result')
   await page.getByRole('textbox', { name: 'Task instructions', exact: true }).fill('Approve an invented result.')
+  await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   const writes = []
   const shareWrites = []
   let definition
   await page.route('**/api/processes/internal/definitions', async route => {
     writes.push(route.request().postDataJSON())
-    definition = { ...writes[0], id: 1, code: 'synthetic_saved', document_id: '11111111-1111-4111-8111-111111111111',
+    definition = { ...writes[0], id: 1, code: 'synthetic_saved',
       revision: 1, can_write: true, archived: false, xml: '', diagnostics: [] }
     await route.fulfill({ status: 201, json: definition })
   })
@@ -255,7 +256,7 @@ test('typed actor lanes preserve task assignment when editing and saving', async
     const update = saving ? route.request().postDataJSON() : {}
     if (saving) writes.push(update)
     await route.fulfill({ json: { id: 1, code: 'invented_process', title: 'Synthetic actor workflow',
-      document_id: 'invented-document', revision: saving ? 2 : 1, archived: false, can_write: true,
+      revision: saving ? 2 : 1, archived: false, can_write: true,
       graph: value, xml: '<synthetic/>', diagnostics: [], ...update } })
   })
   await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
@@ -285,7 +286,7 @@ test('typed actor lanes preserve task assignment when editing and saving', async
 })
 
 async function definitionFixtures(page, writable, kind = 'task', typed = false, declarations = {}, definitionRevision = 1) {
-  const definition = { id: 1, code: 'invented_process', title: 'Invented workflow', description: 'Synthetic existing description', document_id: 'invented-document',
+  const definition = { id: 1, code: 'invented_process', title: 'Invented workflow', description: 'Synthetic existing description',
     revision: definitionRevision, archived: false, can_write: writable, graph: graph(), xml: '<synthetic/>', diagnostics: [] }
   const writes = []
   definition.graph.nodes[1].kind = kind
@@ -473,7 +474,7 @@ test(`binary IF exposes two branches and processing follows its actor (${initial
   await page.route('**/api/processes/internal/definitions/invented_process', async route => {
     const saving = route.request().method() === 'PUT', update = saving ? route.request().postDataJSON() : {}
     if (saving) writes.push(update)
-    await route.fulfill({ json: { id: 1, code: 'invented_process', title: 'Synthetic decision', document_id: 'invented-document', revision: saving ? 2 : 1,
+    await route.fulfill({ json: { id: 1, code: 'invented_process', title: 'Synthetic decision', revision: saving ? 2 : 1,
       archived: false, can_write: true, graph: value, xml: '<synthetic/>', diagnostics: [], ...update } })
   })
   await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
@@ -742,7 +743,7 @@ test('archiving requires confirmation and reactivation preserves unsaved process
   expect(writes[0].title).toBe('Unsaved synthetic title')
 })
 
-test('a document read-only grant keeps the process visible without mutation controls', async ({ page }) => {
+test('a process read-only grant keeps the definition visible without mutation controls', async ({ page }) => {
   const writes = await definitionFixtures(page, false)
   await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
   await expect(page.getByText('Read-only access', { exact: true })).toBeVisible()
@@ -768,7 +769,10 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
     output: { integrated: 'synthetic data' }, started_at: '2026-01-01T12:00:00Z', finished_at: null }
   const previous = { ...active, id: 'previous-step', node_key: 'start', status: 'success', output: { previous: true } }
   const run = { id: 'synthetic-live-run', status: 'running', graph: value, definition_revision: 1, can_control: false,
-    node_statuses: { start: 'success', work: 'running', end: 'queued' }, dataset_uri: null, paused: false, breakpoints: [],
+    node_statuses: { start: 'success', work: 'running', end: 'queued' },
+    data: { kept: false, result: 'Synthetic business value' },
+    files: [{ uri: 'galaris://processes/runs/synthetic-live-run/attachments/11111111-1111-4111-8111-111111111111', filename: 'report.txt', content_type: 'text/plain', size: 25 }],
+    data_revision: 1, data_uri: 'galaris://processes/runs/synthetic-live-run/data', attachments_uri: 'galaris://processes/runs/synthetic-live-run/attachments/', paused: false, breakpoints: [],
     output: null, error: null, error_code: null, parent_run_id: null, nodes: [previous], total: 55,
     page: 1, page_size: 50, event_cursor: 0, events: [], duration_seconds: 4, debugger_revision: 0,
     operational: { phase: 'running', last_activity_at: '2026-01-01T12:00:04Z',
@@ -784,6 +788,8 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
   page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/processes/') && request.method() !== 'GET') mutations.push(request.method()) })
   await jsonRoute(page, '**/api/processes/internal/runs?**', { items: [{ id: run.id, status: run.status, process_label: summary.process_label, engine_code: 'galaris', result_preview: 'Synthetic execution result\nMore result details' }], total: 1, page: 1, page_size: 50 })
   await jsonRoute(page, '**/api/processes/internal/runs/synthetic-live-run?**', run)
+  await page.route('**/api/processes/internal/runs/synthetic-live-run/files/*', route =>
+    route.fulfill({ contentType: 'text/plain', body: 'Entirely synthetic report' }))
   await jsonRoute(page, '**/api/processes/internal/runs/synthetic-live-run/metrics', { direct: accounting, inclusive: { ...accounting, cost: 0.375 }, tasks: {}, nodes: {}, partial: true })
   let delayedMetrics
   if (host === 'shared') {
@@ -809,9 +815,9 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
     await expect(page.getByText('Synthetic execution result', { exact: false })).toBeVisible()
     await test.info().attach('run-list', { body: await page.screenshot(), contentType: 'image/png' })
     const runLink = page.getByRole('link', { name: `Copy run URL: ${run.id}`, exact: true })
-    await expect(runLink).toHaveAttribute('href', `processus://run/${run.id}`)
+    await expect(runLink).toHaveAttribute('href', `galaris://processes/runs/${run.id}`)
     await runLink.click()
-    await expect.poll(() => page.evaluate(() => window.copiedRunUrl)).toBe(`processus://run/${run.id}`)
+    await expect.poll(() => page.evaluate(() => window.copiedRunUrl)).toBe(`galaris://processes/runs/${run.id}`)
     await expect(page.getByRole('dialog')).toHaveCount(0)
     const row = page.getByLabel(`Show details: ${summary.process_label}`, { exact: true })
     if (width < 1024) { await row.focus(); await page.keyboard.press('Enter') }
@@ -844,7 +850,7 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
     test.info().annotations.push({ type: 'diagram-with-accounting-pending-ms', description: String(Math.round(performance.now() - openedAt)) })
     await delayedMetrics.fulfill({ status: 503, json: { detail: 'Synthetic metrics unavailable' } })
   }
-  const runUrl = `processus://run/${run.id}`
+  const runUrl = `galaris://processes/runs/${run.id}`
   if (host === 'definition') {
     const reference = page.getByRole('dialog').getByRole('link', { name: `Copy run URL: ${run.id}`, exact: true })
     await expect(reference).toHaveAttribute('href', runUrl)
@@ -860,6 +866,22 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
     await expect(error).toBeVisible()
     await error.getByRole('button', { name: 'Retry', exact: true }).click()
     await expect(error).toHaveCount(0)
+    const data = page.getByRole('textbox', { name: 'Run data', exact: true })
+    await expect(data).toHaveValue(JSON.stringify(run.data, null, 2))
+    await expect(data).toHaveAttribute('readonly', '')
+    await expect(page.getByText('report.txt', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Add attachments', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Remove report.txt', exact: true })).toHaveCount(0)
+    await page.locator('.document-attachments .resource-preview-main').click()
+    const preview = page.getByRole('dialog', { name: 'Open preview of report.txt', exact: true })
+    await expect(preview).toContainText('Entirely synthetic report')
+    await preview.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(preview).toHaveCount(0)
+    await page.locator('.document-attachments__item').hover()
+    const pendingDownload = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Download report.txt', exact: true }).click()
+    expect((await pendingDownload).suggestedFilename()).toBe('report.txt')
+    await page.screenshot({ path: test.info().outputPath('run-data-and-files.png'), animations: 'disabled' })
   }
   await work.click()
   const inspector = page.getByRole('dialog', { name: 'Activity execution', exact: true })
@@ -904,11 +926,12 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
 }
 
 test('live run events refresh the diagram and open results without losing in-flight updates', async ({ page }) => {
-  await page.clock.install()
+  await page.clock.install({ time: new Date('2026-01-01T12:00:00Z') })
+  await page.clock.pauseAt(new Date('2026-01-01T12:01:00Z'))
   const active = { id: 'live-step', node_key: 'work', status: 'running', body_path: [], iteration: null,
     output: { progress: 'Initial synthetic result' }, started_at: '2026-01-01T12:00:00Z', finished_at: null, attempts: [] }
   const run = { id: 'event-run', status: 'running', graph: graph(), can_control: false,
-    node_statuses: { work: 'running' }, dataset_uri: null, paused: false, breakpoints: [],
+    node_statuses: { work: 'running' }, data: {}, files: [], data_revision: 1, data_uri: "", attachments_uri: "", paused: false, breakpoints: [],
     output: null, error: null, parent_run_id: null, nodes: [active], total: 1,
     page: 1, page_size: 50, event_cursor: 0, events: [], duration_seconds: 3 }
   let reads = 0, pendingRun, pendingNode, holdNextRun = false
@@ -935,7 +958,6 @@ test('live run events refresh the diagram and open results without losing in-fli
   await expect(work).toHaveAttribute('aria-current', 'step')
   await work.click()
   await expect.poll(() => Boolean(pendingNode)).toBe(true)
-  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1))
   const baseline = reads
   await page.evaluate(() => window.testApp.emitSocket('process_run.update', { data: { id: 'another-run' } }))
   await page.clock.runFor(150)
@@ -974,7 +996,7 @@ test('live run navigation discards a late response from the previous run', async
   let pending, pendingMetrics
   await page.route('**/api/processes/internal/runs/old-run?*', route => { pending = route })
   const fresh = { id: 'new-run', status: 'success', graph: graph(), definition_revision: 1,
-    can_control: true, node_statuses: { work: 'success' }, dataset_uri: null, paused: false,
+    can_control: true, node_statuses: { work: 'success' }, data: {}, files: [], data_revision: 1, data_uri: "", attachments_uri: "", paused: false,
     breakpoints: [], output: { synthetic: true }, error: null, parent_run_id: null,
     nodes: [], total: 0, page: 1, page_size: 50, event_cursor: 0, events: [], duration_seconds: 3 }
   fresh.graph.nodes[1].title = 'Fresh synthetic result'
@@ -1004,7 +1026,7 @@ test('retrying a debugger command after a lost reply retains its admission ident
   const commands = []
   await page.route('**/api/processes/internal/runs/debug-run?*', route => route.fulfill({ json: {
     id: 'debug-run', status: 'running', graph: graph(), can_control: true, node_statuses: {},
-    dataset_uri: null, paused: true, breakpoints: [], output: null, error: null, parent_run_id: null,
+    data: {}, files: [], data_revision: 1, data_uri: "", attachments_uri: "", paused: true, breakpoints: [], output: null, error: null, parent_run_id: null,
     nodes: [], total: 0, page: 1, page_size: 50, event_cursor: 0, events: [], duration_seconds: 3,
     debugger_revision: revision,
   } }))
@@ -1033,7 +1055,7 @@ test('run progress explains messaging waits and controls the same run through co
   const commands = []
   await page.route('**/api/processes/internal/runs/observed-run?*', route => route.fulfill({ json: {
     id: 'observed-run', status: stopped ? 'cancelled' : 'running', graph: graph(), can_control: allowed,
-    node_statuses: {}, dataset_uri: null, paused, breakpoints: [], output: null, error: null,
+    node_statuses: {}, data: {}, files: [], data_revision: 1, data_uri: "", attachments_uri: "", paused, breakpoints: [], output: null, error: null,
     parent_run_id: null, nodes: [], total: 0, page: 1, page_size: 50, event_cursor: 0, events: [], debugger_revision: commands.length,
     operational: { phase: stopped ? 'cancelled' : paused ? 'paused' : 'waiting', last_activity_at: '2026-01-01T12:00:00Z',
       progress: { completed: 1, active: stopped ? 0 : 1, ready: 0, failed: 0 },

@@ -14,7 +14,8 @@ const privateState = () => ({
 })
 async function sharingFixture(page, resourceKind, state = privateState()) {
   const writes = []
-  const base = resourceKind === 'document' ? '/api/memory/documents/doc-a' : '/api/memory/items/doc-a'
+  const base = resourceKind === 'dataset' ? '/api/datasets/doc-a'
+    : resourceKind === 'document' ? '/api/memory/documents/doc-a' : '/api/memory/items/doc-a'
   await page.route('**' + base + '/sharing', route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: state })
     return save(route)
@@ -29,9 +30,9 @@ async function sharingFixture(page, resourceKind, state = privateState()) {
     })
     return route.fulfill({ json: state })
   }
-  if (resourceKind === 'document') await page.route('**' + base + '/sharing-level', save)
-  await mount(page, 'app/memory/components/MemorySharingPanel.vue', {
-    props: { itemId: 'doc-a', resourceKind, editable: true },
+  if (resourceKind !== 'memory') await page.route('**' + base + '/sharing-level', save)
+  await mount(page, resourceKind === 'dataset' ? 'app/dataset/components/DatasetSharing.vue' : 'app/memory/components/MemorySharingPanel.vue', {
+    props: resourceKind === 'dataset' ? { id: 'doc-a', lockVersion: 1, editable: true } : { itemId: 'doc-a', resourceKind, editable: true },
   })
   return { state, writes }
 }
@@ -139,7 +140,7 @@ test(`changing rights reconciles the library and open document without remountin
 })
 }
 
-for (const resourceKind of ['document', 'memory']) {
+for (const resourceKind of ['document', 'memory', 'dataset']) {
   test(resourceKind + ' sharing adds recipients directly, toggles rights and removes access', async ({ page }) => {
     const { state, writes } = await sharingFixture(page, resourceKind)
     await expect(picker(page)).toContainText('Private')
@@ -215,7 +216,7 @@ test('search and category filtering reach recipients beyond the first page of 20
     can_write: false, has_avatar: false,
   }))
   state.owner_groups = []
-  await mount(page, 'core/util/components/SharingPanel.vue', { props: { state, editable: true } })
+  await mount(page, 'app/share/components/SharingPanel.vue', { props: { state, editable: true } })
   await picker(page).click()
   await expect(page.getByText('1–10 of 2000', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: /Recipient .*: Read/ })).toHaveCount(10)

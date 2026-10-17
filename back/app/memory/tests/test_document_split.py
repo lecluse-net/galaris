@@ -29,6 +29,10 @@ def test_document_split_is_triggered_by_its_schema_expansion():
 async def legacy_items(db):
     """Historical SQL storage, with no canonical Document constructed by the ORM."""
     await db.execute(text("DROP TABLE IF EXISTS galaris_migration.memory_document_split_manifest, galaris_migration.memory_document_split_rows"))
+    await db.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
+    await db.execute(text("ALTER TABLE memory_items ALTER COLUMN share_id DROP NOT NULL"))
+    await db.execute(text("ALTER TABLE memory_items ALTER COLUMN share_kind DROP NOT NULL"))
+    await db.execute(text("SET CONSTRAINTS ALL DEFERRED"))
     await db.execute(text("""
         ALTER TABLE memory_items
         ADD COLUMN document_type varchar(30) NOT NULL DEFAULT 'html',
@@ -45,8 +49,11 @@ async def legacy_items(db):
         ) if key in kwargs}
         item = MemoryItem(node_kind="memory", title_is_projection=False, **kwargs)
         item.node_kind = kind
+        item.share_kind = "document" if kind == "document" else "memory"
+        item.share.resource_kind = item.share_kind
         db.add(item)
         await db.flush()
+        await db.execute(text("UPDATE memory_items SET share_id = NULL, share_kind = NULL WHERE id = :id"), {"id": item.id})
         for column, value in legacy.items():
             await db.execute(text(f"UPDATE memory_items SET {column} = :value WHERE id = :identity"),
                 {"value": value, "identity": item.id})
@@ -299,12 +306,17 @@ async def test_failed_transfer_rolls_back_then_replays_without_losing_original_t
     db.expire_all()
     monkeypatch.setattr(get_storage(), "read", original_read)
     assert await db.get(Document, doc_id) is None
-    original = await db.get(MemoryItem, doc_id)
-    assert original.memory_resource_id == resource
+    # Before the ACL backfill, historical rows intentionally have no share_id;
+    # inspect their physical storage rather than the current ORM inner join.
+    original = (await db.execute(text(
+        "SELECT resource_id, keywords FROM memory_items WHERE id = :id"
+    ), {"id": doc_id})).one()
+    assert original.resource_id == resource
     assert original.keywords == ["preserved-keyword"]
     assert await get_storage().read(resource) == body
-    memory = await db.get(MemoryItem, memory_id)
-    original_memory_resource = memory.resource_id
+    original_memory_resource = await db.scalar(text(
+        "SELECT resource_id FROM memory_items WHERE id = :id"
+    ), {"id": memory_id})
     await split_documents(db, SchemaTransitionSet())
     await db.commit()
     db.expire_all()
@@ -418,6 +430,7 @@ async def test_dbadmin_detects_new_documents_archives_then_contracts_and_resumes
     from app.agent.models import Agent, Title
     from app.memory.document_backup import OBSOLETE_COLUMNS
     from app.memory.document_migration import register_document_split
+    from app.share.dbadmin import register_dbadmin as register_sharing
     from core import settings
     from core.user import UserModel
     from core.dbadmin import DbAdminRegistry, DbAdminVerdict
@@ -447,6 +460,15 @@ async def test_dbadmin_detects_new_documents_archives_then_contracts_and_resumes
             # process/campaign references did not exist before the split; Atlas
             # restores their constraints together with the Documents tables.
             await session.execute(text("DROP TABLE document_revisions, documents CASCADE"))
+        # Historical resources predate the exclusive sharing references. Let
+        # real Atlas recreate them as nullable expansion columns for the backfill.
+        await session.execute(text(
+            "ALTER TABLE memory_items DROP COLUMN share_id CASCADE, DROP COLUMN share_kind CASCADE"
+        ))
+        if already_expanded:
+            await session.execute(text(
+                "ALTER TABLE documents DROP COLUMN share_id CASCADE, DROP COLUMN share_kind CASCADE"
+            ))
         await session.execute(text("""
             ALTER TABLE memory_items
             ADD COLUMN document_type varchar(30) NOT NULL DEFAULT 'html',
@@ -477,6 +499,7 @@ async def test_dbadmin_detects_new_documents_archives_then_contracts_and_resumes
 
     registry = DbAdminRegistry()
     register_document_split(registry)
+    register_sharing(registry)
     if failure:
         action = next(action for action in registry.actions if action.key == (
             "app.memory.document_split_backup" if failure == "backup" else "app.memory.document_split"

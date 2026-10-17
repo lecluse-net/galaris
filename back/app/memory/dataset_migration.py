@@ -1,14 +1,14 @@
 """Public export of legacy Dataset sources; this module never writes the target."""
 
+from app.share import ShareGrant
+
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
 from core.database import get_db
 
-from .models import (Document, DocumentAppGrant, DocumentAppWriteBudget, DocumentIcon,
-    DocumentListPosition, DocumentRevision, DocumentTag, DocumentTagAssignment,
-    DocumentTeamGrant, DocumentUserGrant, MemoryItem, MemoryItemGrant, MemoryRevision)
+from .models import Document, DocumentAppGrant, DocumentAppWriteBudget, DocumentIcon, DocumentListPosition, DocumentRevision, DocumentTag, DocumentTagAssignment, MemoryItem, MemoryRevision
 from .storage import get_storage
 
 
@@ -42,8 +42,8 @@ async def legacy_dataset_snapshot(identity: UUID) -> dict[str, Any]:
             "content": (await get_storage(entry.provider_code).read(entry.resource_id)).decode("utf-8"),
             "author_agent_id": entry.author_agent_id, "created_at": entry.created_at})
     grants: list[dict[str, Any]] = []
-    for model, key in ((MemoryItemGrant, "agent_id"), (DocumentUserGrant, "user_id"), (DocumentTeamGrant, "team_id")):
-        for grant in await db.scalars(select(model).where(model.item_id == identity)):
+    for model, key in ((ShareGrant, "agent_id"), (ShareGrant, "user_id"), (ShareGrant, "team_id")):
+        for grant in await db.scalars(select(model).where(ShareGrant.share_id == item.share_id, getattr(ShareGrant, key).is_not(None))):
             grants.append({key: getattr(grant, key), "can_write": grant.can_write})
     from .document_attachment_service import attachments_from_item
     attachments = [entry.model_dump(mode="python") for entry in attachments_from_item(item, include_retained=True)]

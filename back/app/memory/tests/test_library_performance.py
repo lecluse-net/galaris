@@ -15,6 +15,7 @@ from app.memory import service
 from app.memory.models import Document, DocumentRevision, MemoryItem, MemoryRevision
 from app.memory.schemas import DocumentLibraryRequest
 from app.memory.storage import get_storage
+from tests.sharing_fixtures import bind_private_shares
 
 
 @pytest.mark.asyncio
@@ -30,9 +31,11 @@ async def test_library_page_cost_does_not_materialize_the_revision_corpus(db, ag
                  "node_kind": "document", "search_text": "body " * 4000,
                  "keywords": ["visible" if index % 2 == 0 else "private"],
                  "content_hash": hashlib.sha256(b"").hexdigest()} for index in range(start, stop)]
+        await bind_private_shares(db, rows, kind="document")
         await db.execute(MemoryItem.__table__.insert(), rows)
         await db.execute(Document.__table__.insert(), [{
             "id": row["id"], "memory_item_id": row["id"], "title": row["title"],
+            "share_id": row["share_id"], "share_kind": "document",
             "provider_code": "native", "resource_id": resource,
             "content_hash": hashlib.sha256(str(start + offset).encode()).hexdigest(),
         } for offset, row in enumerate(rows)])
