@@ -1,4 +1,4 @@
-"""Explicit per-account deployment, uploaded by the Console administration action.
+"""Per-account deployment and automatic maintenance of the packaged editor.
 
 Only the approved account home is mounted. The receipt never contains a credential.
 """
@@ -75,7 +75,8 @@ def verify_service(container: str, uid: int, gid: int, token: str) -> int:
     raise RuntimeError("The deployed editor did not become ready")
 
 
-def deploy(bundle: Path, home: Path, *, upgrade: bool = False) -> dict:
+def deploy(bundle: Path, home: Path, *, upgrade: bool = False, check_only: bool = False, require_existing: bool = False) -> dict:
+    require_existing = require_existing or check_only
     uid, gid = os.getuid(), os.getgid()
     if uid < 1000 or not home.is_dir() or home.stat().st_uid != uid:
         raise RuntimeError("Deploy the editor through a non-system SSH account owning its home")
@@ -83,7 +84,6 @@ def deploy(bundle: Path, home: Path, *, upgrade: bool = False) -> dict:
     marker = root / "upgrade-in-progress"
     if root.resolve() != root or bundle.resolve() != bundle or not bundle.is_relative_to(root):
         raise RuntimeError("The editor deployment directory must stay inside the account home")
-    token = credential(root)
     project = f"galaris-code-u{uid}"
     container = f"{project}-runtime"
     revision = hashlib.sha256()
@@ -95,6 +95,14 @@ def deploy(bundle: Path, home: Path, *, upgrade: bool = False) -> dict:
     docker("info", "--format", "{{.OSType}}")
     docker("compose", "version")
     identifiers = docker("ps", "-a", "--filter", f"name=^/{container}$", "--format", "{{.ID}}")
+    if check_only and require_existing and not identifiers and not (root / "credential").exists():
+        # A manually administered broker is outside this controller's ownership.
+        return {"managed": False, "update_required": False, "port": None}
+    if require_existing and not (root / "credential").is_file():
+        raise RuntimeError("Automatic updates require an existing managed editor credential")
+    if require_existing and not identifiers:
+        raise RuntimeError("Automatic updates require an existing managed editor")
+    token = credential(root)
     already_installed = False
     previous = None
     published_port = None
@@ -103,6 +111,10 @@ def deploy(bundle: Path, home: Path, *, upgrade: bool = False) -> dict:
         labels = inspection["Config"].get("Labels") or {}
         if labels.get("galaris.code.home") != hashlib.sha256(str(home).encode()).hexdigest():
             raise RuntimeError("The existing editor belongs to a different home")
+        if check_only:
+            return {"managed": True, "update_required": labels.get("galaris.code.bundle") != digest
+                    or not inspection["State"]["Running"] or bool(inspection["State"].get("Paused")),
+                    "port": int(inspection["NetworkSettings"]["Ports"]["8766/tcp"][0]["HostPort"])}
         if labels.get("galaris.code.bundle") != digest:
             if not upgrade:
                 raise RuntimeError("An older editor is already deployed; preserve its sessions before replacing it")
@@ -176,7 +188,8 @@ def main() -> None:
     descriptor = os.open(root / "deploy.lock", os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW, 0o600)
     with os.fdopen(descriptor, "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        print(json.dumps(deploy(bundle, home, upgrade="--upgrade" in sys.argv[1:])))
+        print(json.dumps(deploy(bundle, home, upgrade="--upgrade" in sys.argv[1:],
+            check_only="--check" in sys.argv[1:], require_existing="--require-existing" in sys.argv[1:])))
 
 
 if __name__ == "__main__":

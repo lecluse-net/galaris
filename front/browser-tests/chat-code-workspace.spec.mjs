@@ -1,9 +1,9 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
 
-async function setup(page, { directory = false, codeAccess = true } = {}) {
+async function setup(page, { directory = false, codeAccess = true, workspaceLabel = 'Synthetic repository' } = {}) {
   const room = { id: 'room-a', label: 'Synthetic code discussion', agent_id: 7, agent_name: 'Alice', agent_active: false, source: null, writable: true, members: [], muted: false, archived: false, unread_count: 0, conversation_type: 'text' }
-  const workspace = { id: 'code-a', uri: 'galaris://code/code-a', label: 'Synthetic repository', mode: 'edit' }
+  const workspace = { id: 'code-a', uri: 'galaris://code/code-a', label: workspaceLabel, mode: 'edit' }
   const message = { id: 'message-a', room_id: room.id, text: `Synthetic discussion remains available${directory ? ' console://synthetic-project/' : ''}`, files: [], sender: null, created_at: '2026-10-01T12:00:00Z', is_mine: true, status: 'sent' }
   const directoryRequests = []
   if (directory) {
@@ -31,6 +31,7 @@ async function setup(page, { directory = false, codeAccess = true } = {}) {
     ['**/api/memory/documents/doc-a/attachments*', []], ['**/api/memory/documents/keywords*', []],
     ['**/api/memory/documents/folders*', []], ['**/api/memory/documents/owner-options?*', { agents: [], users: [] }],
     ['**/api/code/rooms/room-a', [workspace]], ['**/api/code/sessions/*/heartbeat', { state: 'ready' }],
+    ['**/api/chat/rooms/room-a/repositories', { paths: [], truncated: false }],
     ['**/api/code/sessions/*/navigate', { state: 'requested' }],
   ]) await jsonRoute(page, url, data)
   const opens = []
@@ -185,6 +186,72 @@ async function show(page, id = 'code-a', sequence = '1', room = 'room-a') {
   await page.evaluate(data => window.testApp.emitSocket('chat.repository_show', { data }), { room_id: room, workspace_id: id, sequence, view: 'changes' })
 }
 
+for (const width of [1280, 390]) {
+test(`discovery opens a home-relative path without needing a message from the agent (${width})`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 844 })
+  // A previous checkout at this path must not hide its newly discovered identity.
+  const state = await setup(page, { workspaceLabel: 'work/project #1' })
+  const registered = []
+  await page.route('**/api/chat/rooms/room-a/repositories*', route => {
+    if (route.request().method() === 'POST') {
+      registered.push(new URL(route.request().url()).searchParams.get('uri'))
+      return route.fulfill({ json: { id: 'code-new', label: 'work/project #1', mode: 'edit' } })
+    }
+    return route.fulfill({ json: { paths: ['work/project #1', 'archive/project #1'], truncated: false } })
+  })
+  if (width < 1024) await page.getByRole('button', { name: 'Details', exact: true }).click()
+  await page.getByText('Source code', { exact: true }).click()
+  await expect(page.getByText('archive/project #1', { exact: true })).toBeVisible()
+  const repository = page.getByRole('button', { name: 'work/project #1', exact: true })
+  await repository.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: testInfo.outputPath('repository-list.png'), animations: 'disabled' })
+  await repository.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('iframe.code-editor-frame')).toBeVisible()
+  expect(registered).toEqual(['console://work/project%20%231/'])
+  expect(state.opens).toEqual(['code-new'])
+  await page.screenshot({ path: testInfo.outputPath('discovered-repository.png'), animations: 'disabled' })
+})
+}
+
+test('failed discovery preserves linked repositories and refresh recovers a partial search', async ({ page }) => {
+  await setup(page)
+  let calls = 0
+  await page.route('**/api/chat/rooms/room-a/repositories', route => {
+    calls += 1
+    return route.fulfill(calls === 1 ? { status: 503, json: { detail: 'code_discovery_unavailable' } }
+      : { json: { paths: ['work/project'], truncated: true } })
+  })
+  await page.getByText('Source code', { exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Unable to discover repositories')
+  await expect(page.getByText('Synthetic repository', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Refresh repositories', exact: true }).click()
+  await expect(page.getByText('work/project', { exact: true })).toBeVisible()
+  await expect(page.getByRole('status')).toContainText('Partial search')
+})
+
+test('a collapsed discovery ignores its late response when reopened', async ({ page }) => {
+  await setup(page)
+  let release
+  const pending = new Promise(resolve => { release = resolve })
+  let calls = 0
+  await page.route('**/api/chat/rooms/room-a/repositories', async route => {
+    calls += 1
+    if (calls === 1) {
+      await pending
+      await route.fulfill({ json: { paths: ['stale/project'], truncated: false } })
+    } else await route.fulfill({ json: { paths: ['fresh/project'], truncated: false } })
+  })
+  const started = page.waitForRequest('**/api/chat/rooms/room-a/repositories')
+  await page.getByText('Source code', { exact: true }).click()
+  await started
+  await page.getByText('Source code', { exact: true }).click()
+  await page.getByText('Source code', { exact: true }).click()
+  await expect(page.getByText('fresh/project', { exact: true })).toBeVisible()
+  release()
+  await expect(page.getByText('stale/project', { exact: true })).toHaveCount(0)
+})
+
 test('an unprepared external Console explains the failure and can be opened after configuration', async ({ page }) => {
   const state = await setup(page)
   const failures = []
@@ -274,6 +341,7 @@ test('hiding and reopening a repository preserves the editor without navigating 
   })
   await page.getByRole('button', { name: 'Hide editor', exact: true }).click()
   await expect(iframe).toBeHidden()
+  await page.getByText('Source code', { exact: true }).click()
   await page.locator('#chat-sidebar-content').getByText('Synthetic repository', { exact: true }).click()
   await expect(iframe).toBeVisible()
   await expect(source).toHaveValue('Synthetic retained repository draft')

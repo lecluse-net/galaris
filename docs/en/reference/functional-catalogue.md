@@ -87,8 +87,8 @@ Quality controls appear under [operations](#exploitation).
 | **Process** | External processing definition | Describes workflow, engine and assignment; every launch creates a tracked execution. |
 | **Run / attempt** | A concrete execution | Distinguishes a try, recovery and new execution, with costs and errors. |
 | **Memory** | Durable, governed knowledge | Searchable, revisable, sourced and access-controlled. |
-| **Document** | Durable HTML or Dataset resource | Stable URI, title, owner, versions and shares; HTML may combine text, media and interactive applications. |
-| **Dataset** | JSON document | Organized/shared in the library; multiple pages can read/update it with required rights and consent. |
+| **Document** | Editorial HTML resource under `document://` | Title, owner, versions and shares; a page may combine text, media and interactive applications. |
+| **Dataset** | Independent JSON resource under `data://` | Its own library, rights and history; multiple pages can read/update it with required permissions and consent. |
 | **Application in a document** | HTML, CSS and JavaScript running in the page | Forms, simulators and visualizations; Dataset access requires reader rights and personal consent for the document revision. |
 | **Personal document folder** | User-specific classification | Organizes accessible documents without changing content, rights or anyone else's organization. |
 | **Attachment memory** | A file's textual/documentary companion | Retains attachment identity, metadata, descriptions and links to documents using it. |
@@ -1436,11 +1436,11 @@ Additional references: [Memory acquisition](../../../back/app/memory/acquisition
 ## 13. Documents, Datasets and applications
 
 Documents are shared working material: text, multimedia or an application page combining editable
-explanations, forms, calculations and charts. Separate Dataset documents can hold durable data used
-by several pages. Both retain library membership, filing, icons, ownership, access, history and
-stable references.
+explanations, forms, calculations and charts. Independent Datasets can hold durable data used
+by several pages. Memory owns HTML Documents; the Dataset domain owns JSON resources with
+their own rights, history and library.
 
-| Immutable type, chosen at creation | Content | Editor |
+| Resource | Content | Editor |
 |---|---|---|
 | HTML | Rich text, media, forms, CSS and JavaScript; reports, simulators and small applications. | CKEditor, with code available through Source. |
 | Dataset | JSON values, response arrays, simulation parameters, reference data and structured results. | JSON CodeEditor. |
@@ -1473,11 +1473,12 @@ This policy neither converts old files nor changes their permissions.
 
 ### Library, ownership and deletion
 
-Users can create either type, select an authorised human/agent owner (retaining an editor agent
-where required), search titles/content, filter by type and access, browse folders, move documents,
+Users can create HTML Documents, select an authorised human/agent owner (retaining an editor agent
+where required), search titles/content, filter by access, browse folders, move documents,
 change ownership subject to its own rules, and find conversation/Goal-related documents. The library
 shows owner, sharing, revision and collaborators; supports existing/new keywords; and provides
 canonical `document://<uuid>` links. Protected business documents retain their restrictions.
+Datasets are created and browsed separately under **Knowledge → Datasets**.
 
 The library unites human access and managed-agent access without duplicating shared documents.
 Displayed ownership is the actual owner, not the agent through which access is obtained. Personal
@@ -1558,20 +1559,21 @@ sharing actions wrap as compact icons rather than an overflow menu. Find/replace
 controls remain desktop features. Width changes preserve typing/dictation; fixed toolbars follow
 panel resizing and dialogs/backdrops appear above them.
 
-### Datasets: shared data in real documents
+### Datasets: independent JSON resources
 
-A Dataset has its own title, personal icon, owner, keywords, filing, sharing, history and
-`document://` URI, independent from pages that use it. Multiple pages can share responses or
+A Dataset has its own title, owner, sharing, history and `data://` URI under **Knowledge → Datasets**,
+independent from HTML Documents that use it. Multiple pages can share responses or
 parameters without duplication. Content is validated UTF-8 JSON: array, object or another JSON
 value; appendable collections use a root array, usually `[]`.
 
-CodeEditor also renders historical versions. Autosave waits for valid JSON, retaining invalid drafts
-without replacing saved data. Revision conflicts, history and restoration retain document protections.
-Agents create one with `file_create(path="document://", name="Responses", document_type="dataset",
-content="[]")`, then read/edit through file operations using the expected revision. Pagination and
-edits address actual JSON lines, not HTML. Writes, copies into an existing document and restoration
-cannot change its type. Copying `application/json` into the Documents collection creates a Dataset;
-an existing target keeps its type and validates incoming content.
+The JSON editor retains invalid drafts without replacing saved data. Revision conflicts,
+history and restoration retain Dataset access and version checks.
+Agents create one with `file_create(path="data://", name="Responses",
+content="[]")`, then read/edit through file operations using the expected revision.
+Reads count characters and edits address actual JSON lines, not HTML. Copying JSON to `data://`
+creates a Dataset; existing targets validate incoming content. The old `document_type="dataset"`
+option at `document://` remains an adapter returning `data://`. Only verified old Document aliases
+remain valid: replacing a URI's scheme does not create an alias.
 
 Agents may reuse a relevant Dataset for structured data shared across documents, calculations or
 Tasks, searching before creating a new one and retaining its URI. They read current data and
@@ -2140,7 +2142,8 @@ controlling access; a display name is not its identity.
 | URI/family | Resources |
 |---|---|
 | `console://` | Active agent console home; advertised only when that console exists. |
-| `document://` | HTML documents, JSON Datasets and `document://<uuid>/attachments/`. |
+| `document://` | HTML Documents and `document://<uuid>/attachments/`; verified old Dataset aliases only. |
+| `data://` | Independent JSON Datasets with their own rights and revisions. |
 | `memory://` | Authorised knowledge search/read. |
 | `galaris://` | Exposed projections of Tasks, text rounds, voice turns, Goals, cycles and Processes. |
 | `galaris://skill/` | Managed skill files with the specialised connection active. |
@@ -2161,8 +2164,9 @@ attachments with edit rights, and export business projections into writable prov
 
 HTML pages/offsets address complete blocks; edits require the previously read revision. Dataset
 reads paginate by character; edits use real JSON lines and validate the whole result. `file_append` concatenates text under
-that validation; application collection insertion uses the Dataset SDK. `file_create` accepts
-`document_type="dataset"`; HTML remains the default and existing types are immutable. Other formats
+that validation; application collection insertion uses the Dataset SDK. `file_create(path="data://",
+content=..., name=...)` creates a Dataset and requires complete JSON in `content`. HTML Documents
+are created separately at `document://`. Other formats
 and units depend on providers. Business snapshots are read-only and use business commands for
 mutation. Memory/document removal uses business forgetting, not a bypass through `file_delete`.
 
@@ -2967,8 +2971,8 @@ explicitly acquired or extracted by Dream under policy.
 ### Multi-document simulator and data collection
 
 For a credit simulator retaining scenarios, an agent creates an assumptions Dataset and an empty-array
-scenario Dataset, plus an explanatory HTML form/calculator and a comparison page. All are ordinary
-library documents; Datasets are visible/fileable/JSON-editable. The agent shares pages and data;
+scenario Dataset, plus an explanatory HTML form/calculator and a comparison page. HTML pages live
+in Documents; JSON resources are edited separately in Datasets. The agent shares pages and data;
 each reader separately authorises application access. Simulation reads assumptions and appends
 scenarios; comparison reads the same results. Revisions handle concurrency and history retains writes.
 
@@ -3053,7 +3057,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Native chat | Human–agent; external group rooms do not imply universal native human messaging. |
 | Learned skills | Off by default; explicit observation/learning with thresholds and evidence. |
 | Document collaboration | Saves, revisions, conflicts and sharing, not keystroke-level concurrent editing. |
-| Document types | HTML and JSON Dataset; creation fixes type, other types inactive. |
+| Documents and Datasets | Memory owns HTML Documents `document://`; Dataset owns JSON resources `data://`, with independent rights and history. |
 | Document applications | Automatically rendered isolated HTML/CSS/JS, editable prose and Source code; ordinary external loading blocked, browser CPU/memory not capped. |
 | Dataset application access | Reader ACLs plus personal content-version consent, denied by default; write includes replacement, not a separate append-only permission. |
 | Data quotas | Bounded JSON without business schema; 30 writes/4,000,000 resulting bytes per minute per user–Dataset across apps. |
@@ -3265,11 +3269,11 @@ management needs the specialised connection; ordinary actions stay within the ag
 | `file_info` | `file_sharing` | Read metadata/capabilities. |
 | `file_search` | `file_sharing` | Search collection names/content; Memory uses hybrid recall and authorised structural paths. |
 | `file_read` | `file_sharing` | Read paginated text/HTML blocks, Dataset JSON by character or bounded binary, with continuation/revision. |
-| `file_create` | `file_sharing` | Create text/binary, attachment or HTML/Dataset; `document_type="dataset"` selects JSON at creation. |
+| `file_create` | `file_sharing` | Create text/binary, attachments, HTML Documents `document://` or JSON Datasets `data://`, with complete content. |
 | `file_write` | `file_sharing` | Replace under preconditions/expected revision; retain type and validate Dataset JSON. |
 | `file_append` | `file_sharing` | Append text/HTML to compatible resources; complete Dataset result must remain valid JSON. |
 | `file_edit` | `file_sharing` | Replace HTML-block or JSON/text-line ranges with required revision checks. |
-| `file_copy` | `file_sharing` | Copy URIs, including name-preserving collection destinations; JSON into Documents creates a Dataset. |
+| `file_copy` | `file_sharing` | Copy URIs, preserving names into collection destinations; JSON into `data://` creates a Dataset. |
 | `file_move` | `file_sharing` | Move/rename with supported provider mutations. |
 | `file_delete` | `file_sharing` | Delete resources supporting generic deletion; protected objects use their domain. |
 
@@ -3397,7 +3401,7 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 
 ### Lab: discovery, datasets and cases
 
-Lab datasets are mechanism-specific experiments, distinct from JSON Dataset documents. All fifty
+Lab datasets are mechanism-specific experiments, distinct from independent JSON Datasets. All fifty
 functions below belong to optional `lab`.
 
 | Function | Family | Action/result |
@@ -3516,7 +3520,8 @@ All **72 declared modules** map to one or more sections; runtime activation/conf
 | `app.webhook` | [No active generic endpoint; dedicated integration input](#processus) |
 | `app.llm` | [Models, profiles, gateways, credits and durable inference](#modeles), [document reading/analysis](#harnais), [traces/costs](#supervision) |
 | `app.topic` | [Topics and classification](#sujets) |
-| `app.memory` | [Knowledge, document structure and attachments](#memoire), [HTML/Datasets/apps/permissions/filing/sharing](#documents), [Goal filing](#objectifs) |
+| `app.memory` | [Knowledge, document structure and attachments](#memoire), [HTML/apps/permissions/filing/sharing](#documents), [Goal filing](#objectifs) |
+| `app.dataset` | [Independent JSON Datasets, revisions and sharing](#documents) |
 | `app.contact` | [Contacts and cross-channel identities](#messageries) |
 | `app.dream` | [Extraction, reuse of acquired evidence, classification and maintenance](#dream) |
 | `app.task` | [Durable work, milestones, scope, coordinated replacement, scheduler, attempts, controls and budgets](#taches) |
@@ -3599,7 +3604,7 @@ rather than independent applications.
 | `app/dream` | Tracking, history, file indexing and immediate Memory-node actions |
 | `app/topic` | Topic list/detail/reorganisation |
 | `app/goal` | Objectives, tree, cycles, referrers, schedules and follow-up |
-| `app/memory` | Unified list/search, temporal simulation, graph with folded branches, file locations, contacts, separate documents/syntheses, HTML/Dataset library, apps, permissions, personal folders, WebP thumbnails and sharing |
+| `app/memory` | Unified list/search, temporal simulation, graph with folded branches, file locations, contacts, separate documents/syntheses, HTML library, apps, permissions, personal folders, WebP thumbnails and sharing |
 | `app/lab` | Task diagnosis, contextual synthetic datasets, mechanism evaluation, consistency and attributed reviews |
 | `app/incident` | Incidents, families and review |
 | `app/process` | Definitions, execution, diagnostics/administration |

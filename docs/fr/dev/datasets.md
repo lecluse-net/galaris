@@ -47,6 +47,15 @@ Les utilisations Dataset incluent ces références après filtrage des droits du
 Les écritures utilisent `expected_revision` ; le partage utilise `expected_lock_version`.
 Le provider `data://` enregistré dans File Sharing utilise les mêmes services.
 
+Les inventaires de collections du planner se créent directement avec
+`file_create(path="data://", name=..., content=...)`. Le reçu conserve l'URI exacte retournée
+et doit correspondre à une opération réussie de l'étape de découverte. Le planner relit le
+JSON complet sous les droits de l'agent avant de figer la liste ; les anciens reçus en
+`document://` restent utilisables uniquement via un alias Dataset vérifié. Un Document HTML
+ne peut pas servir d'inventaire JSON. L'inventaire interne n'est pas un livrable à transmettre.
+Omettre le JSON dans `content` est un refus avant effet, avec une indication du paramètre à
+corriger, et ne crée aucune ressource.
+
 La migration DbAdmin `app.dataset.legacy_documents` conserve les sources et crée
 des alias vérifiés. Les anciens accès Memory délèguent au nouveau domaine.
 Le pont HTML conserve le consentement personnel par révision documentaire et le

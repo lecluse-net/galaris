@@ -26,7 +26,8 @@ Use ordinary HTML for new documents.
 
 Create a Dataset containing `[]` with `file_create(path="data://", name="Responses",
 content="[]")`, then use its actual URI. The HTML Document and Dataset remain separate
-resources with independent permissions and revisions:
+resources with independent permissions, revisions and history; verified legacy Document
+aliases remain readable:
 
 ```html
 <p>Prose editable through the usual toolbar.</p>

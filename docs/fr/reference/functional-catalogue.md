@@ -93,8 +93,8 @@ qualité figurent dans [l’exploitation](#exploitation).
 | **Process / processus** | Une définition de traitement externe | Décrit un workflow, son moteur et son affectation ; chaque lancement crée une exécution suivie. |
 | **Run / tentative** | Une exécution concrète | Permet de distinguer un essai, une reprise et une nouvelle exécution, avec leurs coûts et erreurs. |
 | **Mémoire** | Une connaissance durable et gouvernée | Est recherchable, révisable, attribuée à une source et soumise à des droits. |
-| **Document** | Une ressource durable de type HTML ou Dataset | Conserve une URI stable, un titre, un propriétaire, des versions et des partages ; sa page HTML peut associer texte, médias et application interactive. |
-| **Dataset** | Un document contenant des données JSON | Se classe et se partage dans la même bibliothèque ; plusieurs pages peuvent lire ou alimenter le même jeu de données selon les droits et autorisations accordés. |
+| **Document** | Une ressource éditoriale HTML `document://` | Conserve un titre, un propriétaire, des versions et des partages ; sa page peut associer texte, médias et application interactive. |
+| **Dataset** | Une ressource JSON indépendante `data://` | Possède sa bibliothèque, ses droits et son historique ; plusieurs pages peuvent lire ou alimenter les mêmes données selon les autorisations accordées. |
 | **Application dans un document** | Du HTML, du CSS et du JavaScript exécutés dans la page | Permet formulaires, simulateurs et visualisations ; son accès aux Datasets exige les droits du lecteur et son accord personnel pour la version du document. |
 | **Dossier documentaire personnel** | Un classement propre à un utilisateur | Organise les documents déjà accessibles sans changer leur contenu, leurs droits ni le classement des autres utilisateurs. |
 | **Mémoire de pièce jointe** | Le compagnon textuel et documentaire d’un fichier joint | Conserve l’identité de la pièce jointe, ses métadonnées, les descriptions acquises et les liens avec les documents qui l’utilisent. |
@@ -1898,13 +1898,13 @@ Sources : [API Memory](../../../back/app/memory/router.py), [schémas](../../../
 
 Un document peut servir de texte de travail, de support multimédia ou de **page applicative**.
 Une même page HTML peut réunir une explication éditable, un formulaire, un calculateur et un
-graphique. Ses données durables peuvent vivre dans des documents **Dataset** distincts, partagés
-avec d’autres pages. L’ensemble conserve les fonctions documentaires : bibliothèque, classement,
-icônes, propriétaire, droits, historique et liens stables.
+graphique. Ses données durables peuvent vivre dans des **Datasets** indépendants, partagés
+avec d’autres pages. Les Documents HTML appartiennent à Memory ; les Datasets JSON appartiennent
+au domaine Dataset, avec leurs propres droits, historique et bibliothèque.
 
-Deux types sont disponibles, choisis à la création et **immuables ensuite** :
+Deux ressources complémentaires sont disponibles :
 
-| Type de document | Contenu et usages | Éditeur |
+| Ressource | Contenu et usages | Éditeur |
 |---|---|---|
 | **HTML** | Texte enrichi, médias, formulaires, CSS et JavaScript ; rapports, simulateurs et petites applications. | CKEditor pour le texte HTML, avec accès au code par le bouton Source. |
 | **Dataset** | Données JSON : tableau de réponses, paramètres de simulation, référentiel ou résultats structurés. | CodeEditor avec coloration syntaxique JSON. |
@@ -1942,12 +1942,12 @@ concurrent. Cette politique ne convertit pas les anciens fichiers et ne modifie 
 
 ### Bibliothèque documentaire
 
-- Créer un document HTML ou Dataset, le nommer et choisir son propriétaire humain ou agent dans le
+- Créer un document HTML, le nommer et choisir son propriétaire humain ou agent dans le
   périmètre autorisé ; les contrats maintiennent un agent éditeur lorsque nécessaire.
 - Rechercher dans les titres et contenus, filtrer les documents accessibles et parcourir les
   dossiers/sous-dossiers.
-- Retrouver HTML et Datasets dans la même liste, avec leur type visible et un filtre par type ;
-  appliquer aux deux les mêmes possibilités de classement et d’ordre.
+- Retrouver les Documents HTML dans cette bibliothèque ; créer et consulter les Datasets
+  séparément dans **Connaissances → Jeux de données**.
 - Déplacer un document dans un dossier et changer son propriétaire selon les règles d’accès.
 - Retrouver les documents liés à une conversation ou à un Goal ; les documents métier protégés
   conservent leurs restrictions.
@@ -2067,27 +2067,27 @@ sans menu de débordement. Recherche/remplacement et commande de plein écran re
 desktop. Une variation de largeur conserve la saisie et la dictée. Les barres fixes suivent le
 redimensionnement de leur panneau ; les dialogues et leur fond passent au-dessus des barres d’outils.
 
-### Datasets : des données partagées dans de vrais documents
+### Datasets : des ressources JSON indépendantes
 
-Un Dataset possède son propre titre, son icône personnelle, son propriétaire, ses mots-clés,
-son classement, ses partages et son historique. Il utilise une URI `document://` comme un document
-HTML et reste indépendant des pages qui le consultent. Plusieurs documents peuvent donc partager
+Un Dataset possède son propre titre, son propriétaire, ses partages et son historique.
+Il utilise une URI `data://` dans **Connaissances → Jeux de données** et reste indépendant
+des Documents HTML qui le consultent. Plusieurs documents peuvent donc partager
 le même jeu de données sans dupliquer leurs réponses ou leurs paramètres.
 
 Son contenu est du **JSON UTF-8 validé**. Il peut être un tableau, un objet ou une autre valeur JSON ;
 une collection à alimenter par ajouts successifs utilise un tableau racine, généralement `[]`.
-CodeEditor remplace l’éditeur riche, y compris dans l’historique. L’autosauvegarde attend un JSON
-valide : un brouillon incorrect reste dans l’éditeur sans remplacer les données enregistrées.
+L’éditeur JSON conserve un brouillon incorrect sans remplacer les données enregistrées.
 Les conflits de révision, la consultation des anciennes versions et la restauration conservent
-les protections documentaires habituelles.
+les contrôles de droits et de version du domaine Dataset.
 
 Les agents créent par exemple un Dataset avec
-`file_create(path="document://", name="Réponses", document_type="dataset", content="[]")`.
+`file_create(path="data://", name="Réponses", content="[]")`.
 Ils utilisent ensuite les opérations de fichiers existantes pour lire ou modifier son contenu,
-avec la révision attendue. La lecture et l’édition paginées portent sur les lignes JSON réelles,
-sans conversion en HTML. Le type ne peut pas être changé par une écriture, une copie vers le
-document existant ou une restauration. Une copie de ressource `application/json` vers la collection
-Documents crée un Dataset ; une cible existante conserve son type et valide le contenu reçu.
+avec la révision attendue. La lecture pagine en caractères et l’édition porte sur les lignes JSON
+réelles, sans conversion en HTML. Une copie JSON vers `data://` crée un Dataset ; une cible
+existante valide le contenu reçu. Le paramètre historique `document_type="dataset"` sur
+`document://` reste un adaptateur qui renvoie `data://`. Seuls les anciens alias documentaires
+vérifiés restent valides : remplacer le schéma d’une URI ne crée pas un alias.
 
 Pour des données structurées réutilisées entre documents, calculs ou Tasks, les agents peuvent
 rechercher un Dataset pertinent avant d’en créer un et réutiliser son URI. Ils relisent les données
@@ -2827,7 +2827,8 @@ contrôle l’accès** ; le nom affiché ne remplace pas son identité.
 | URI / famille | Ce qu’elle rend accessible |
 |---|---|
 | `console://` | Fichiers du home de la console active de l’agent ; ce schéma n’est annoncé que si cette console existe. |
-| `document://` | Documents HTML, Datasets JSON et collection de pièces jointes `document://<uuid>/attachments/`. |
+| `document://` | Documents HTML et collection de pièces jointes `document://<uuid>/attachments/` ; anciens alias Dataset vérifiés seulement. |
+| `data://` | Datasets JSON indépendants, avec leurs droits et révisions propres. |
 | `memory://` | Recherche et lecture des connaissances autorisées. |
 | `galaris://` | Projections d’objets métier : Tasks, rounds texte, tours vocaux, Goals, cycles et processus selon les collections exposées. |
 | `galaris://skill/` | Fichiers des skills administrées, uniquement avec la connexion spécialisée active. |
@@ -2854,8 +2855,8 @@ Pour les documents HTML, les pages et offsets correspondent à des **blocs compl
 utilise la révision lue au préalable. Pour un Dataset, la lecture pagine en caractères et
 l’édition utilise les lignes JSON réelles ; chaque mutation valide le résultat complet. `file_append` reste une concaténation
 de texte, soumise à cette validation ; l’ajout d’une entrée de collection par une application utilise
-le SDK Dataset. `file_create` accepte `document_type="dataset"` pour créer ce type dans la collection
-Documents ; le défaut reste HTML et le type d’une ressource existante est immuable.
+le SDK Dataset. `file_create(path="data://", content=..., name=...)` crée un Dataset et exige le
+JSON complet dans `content`. Les Documents HTML se créent séparément dans `document://`.
 Pour les autres fichiers, le format et les unités sont ceux du
 provider. Les snapshots métier sont en lecture seule ; leur modification passe par les commandes
 métier. La suppression d’une mémoire ou d’un document utilise l’oubli métier, pas un `file_delete`
@@ -3942,11 +3943,11 @@ retenues explicitement ou extraites par Dream selon sa politique.
 
 ### Simulateur et collecte de données dans plusieurs documents
 
-Un humain demande un simulateur de crédit avec conservation des scénarios. L’agent crée un document
-Dataset pour les hypothèses et un autre, contenant `[]`, pour les simulations enregistrées.
+Un humain demande un simulateur de crédit avec conservation des scénarios. L’agent crée un
+Dataset `data://` pour les hypothèses et un autre, contenant `[]`, pour les simulations enregistrées.
 Il produit une page HTML avec les explications, les champs montant/taux/durée et le calcul
 JavaScript, puis une page de consultation des scénarios. Chaque page reste un document ordinaire
-dans la bibliothèque ; les Datasets sont visibles, classables et éditables en JSON au même endroit.
+dans la bibliothèque Documents ; les Datasets s’éditent séparément dans Jeux de données.
 
 L’agent partage les pages et les Datasets avec les destinataires prévus. Chaque lecteur autorise
 ensuite les accès applicatifs nécessaires depuis les permissions du document. La page de simulation
@@ -4049,7 +4050,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Chat natif | Humain–agent ; les salons de groupe de transports externes ne constituent pas une messagerie native universelle entre humains. |
 | Apprentissage de skills | Off par défaut ; observation et apprentissage explicites avec preuves et seuils. |
 | Collaboration documentaire | Sauvegarde, révisions, conflits et partage ; pas une promesse de coédition simultanée caractère par caractère. |
-| Types documentaires | HTML et Dataset JSON dans la même bibliothèque ; type fixé à la création. Les autres types de documents ne sont pas encore activés. |
+| Documents et Datasets | Documents HTML `document://` dans Memory et ressources JSON `data://` dans Dataset ; droits et historiques indépendants. |
 | Applications documentaires | Affichage automatique de HTML/CSS/JavaScript isolés, texte éditable et Source pour le code ; les ressources externes ordinaires sont bloquées. Le CPU et la mémoire du navigateur ne sont pas plafonnés par ce mécanisme. |
 | Accès applicatif aux Datasets | Droits actuels du lecteur et accord personnel pour la version du document ; refus par défaut. L’accès en écriture permet aussi un remplacement complet, sans permission « ajout uniquement » distincte. |
 | Données et quotas applicatifs | JSON borné, sans schéma métier imposé ; 30 écritures et 4 000 000 octets résultants par minute et couple utilisateur–Dataset, partagés entre applications. |
@@ -4270,11 +4271,11 @@ ordinaires restent dans le périmètre de l’agent.
 | `file_info` | `file_sharing` | Lire les métadonnées et les capacités d’une ressource. |
 | `file_search` | `file_sharing` | Rechercher noms/contenus sous une collection ; appliquer le rappel hybride et les chemins structurels autorisés pour Memory. |
 | `file_read` | `file_sharing` | Lire une page de texte/blocs HTML, le JSON d’un Dataset paginé en caractères ou un binaire borné, avec suite de lecture et révision. |
-| `file_create` | `file_sharing` | Créer une ressource texte/binaire, une pièce jointe ou un document HTML/Dataset ; `document_type="dataset"` choisit le JSON à la création du document. |
+| `file_create` | `file_sharing` | Créer une ressource texte/binaire, une pièce jointe, un Document HTML `document://` ou un Dataset JSON `data://`, avec son contenu complet. |
 | `file_write` | `file_sharing` | Remplacer le contenu selon ses préconditions et la révision attendue ; conserver le type du document et valider le JSON d’un Dataset. |
 | `file_append` | `file_sharing` | Ajouter du texte ou des blocs HTML à une ressource compatible ; le résultat complet d’un Dataset doit rester du JSON valide. |
 | `file_edit` | `file_sharing` | Remplacer une plage de blocs HTML ou de lignes JSON/texte avec contrôle de révision si requis. |
-| `file_copy` | `file_sharing` | Copier entre URI, y compris vers une collection conservant le nom source ; une source JSON copiée vers Documents crée un Dataset. |
+| `file_copy` | `file_sharing` | Copier entre URI, y compris vers une collection conservant le nom source ; une source JSON copiée vers `data://` crée un Dataset. |
 | `file_move` | `file_sharing` | Déplacer/renommer si les providers supportent les mutations requises. |
 | `file_delete` | `file_sharing` | Supprimer les ressources autorisant la suppression générique ; les objets protégés utilisent leur domaine. |
 
@@ -4404,7 +4405,7 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 ### Lab : découverte, jeux et cas
 
 Les jeux de tests du Lab sont des expériences propres à un mécanisme ; ils sont distincts des
-documents JSON de type Dataset de la bibliothèque documentaire. Les cinquante fonctions ci-dessous
+ressources JSON indépendantes du domaine Dataset. Les cinquante fonctions ci-dessous
 appartiennent toutes au Tool optionnel `lab`.
 
 | Fonction | Famille | Action et résultat |
@@ -4528,7 +4529,8 @@ d’activation et de configuration restent celles du runtime.
 | `app.webhook` | [Module sans endpoint générique actif ; entrées externes via les intégrations dédiées](#processus) |
 | `app.llm` | [Modèles, profils, passerelles, crédits et inférences durables](#modeles), [lecture et analyses documentaires](#harnais), [traces et coûts](#supervision) |
 | `app.topic` | [Dossiers thématiques et classement](#sujets) |
-| `app.memory` | [Connaissances, structure documentaire et pièces jointes](#memoire), [documents HTML, Datasets, applications, autorisations, classement et partage](#documents), [classement des Goals](#objectifs) |
+| `app.memory` | [Connaissances, structure documentaire et pièces jointes](#memoire), [documents HTML, applications, autorisations, classement et partage](#documents), [classement des Goals](#objectifs) |
+| `app.dataset` | [Datasets JSON indépendants, révisions et partage](#documents) |
 | `app.contact` | [Contacts et identités multicanaux](#messageries) |
 | `app.dream` | [Extraction, réutilisation des preuves acquises, classement et entretien de fond](#dream) |
 | `app.task` | [Travail durable, jalons, portée, remplacement coordonné, scheduler, tentatives, commandes et budgets](#taches) |
@@ -4611,7 +4613,7 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 | `app/dream` | Suivi, historique, indexation des fichiers et actions immédiates sur les nœuds Memory |
 | `app/topic` | Liste, détail et réorganisation des sujets |
 | `app/goal` | Objectifs, arbre, cycles, référents, horaires et suivi |
-| `app/memory` | Liste/recherche unifiée, temporalité et simulation, graphe à branches repliables, fichiers et emplacements, contacts, documents et synthèses distincts, bibliothèque HTML/Dataset, applications, permissions, dossiers personnels, miniatures WebP et partage |
+| `app/memory` | Liste/recherche unifiée, temporalité et simulation, graphe à branches repliables, fichiers et emplacements, contacts, documents et synthèses distincts, bibliothèque HTML, applications, permissions, dossiers personnels, miniatures WebP et partage |
 | `app/lab` | Analyse de tâches, jeux synthétiques contextualisés, évaluation par mécanisme, cohérence et revues attribuées |
 | `app/incident` | Incidents, familles et revue |
 | `app/process` | Définitions, exécutions, diagnostic et administration |

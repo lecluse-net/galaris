@@ -8,9 +8,11 @@ import binascii
 from typing import Any, Literal
 
 from app.tools import RecoverableToolError
+from app.tools.contracts import ToolCallRejectedError
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
 
 from .resource_contracts import ResourceContext
+from .resource_uri import parse_resource_uri
 from .resource_service import (
     _json_model,
     require_complete_content,
@@ -264,6 +266,8 @@ async def read_file(
         "For path providers, pass an exact file path or a collection path plus name. Use path='document://' to let Galaris assign "
         "a new document URI. Use path='data://' for an independent Dataset with valid UTF-8 JSON; "
         "its canonical URI is data://UUID and its content remains free JSON. "
+        "Dataset creation requires the content argument containing complete valid JSON, "
+        "for example '[]' or '{}'; omitting content is rejected before creation. "
         "document_type remains immutable; the deprecated dataset option at document:// returns data:// too. "
         "For an HTML document, content must be an editorial HTML fragment "
         "with encoding='utf-8', for example '<h1>Report</h1><p>Findings.</p>', not Markdown "
@@ -290,11 +294,21 @@ async def create_file(
 ) -> str:
     """Create a complete resource without overwriting an existing one."""
 
+    payload = _decode_content(content, encoding)
+    if not payload.strip():
+        reference = parse_resource_uri(path, allow_empty=True)
+        if ((reference.scheme == "data" and not reference.locator)
+                or (reference.scheme == "document" and not reference.locator and document_type == "dataset")):
+            raise ToolCallRejectedError(
+                "Dataset creation requires the content argument containing valid JSON, "
+                "for example content='[]' or content='{}'. Create at path='data://' "
+                "and return its exact data:// URI. No Dataset was created."
+            )
     return _json_model(
         await resource_create(
             await _resource_context(ctx),
             path,
-            _decode_content(content, encoding),
+            payload,
             name=name,
             document_type=document_type,
         )
@@ -308,8 +322,8 @@ async def create_file(
     authorization_preflight=_file_preflight,
     description=(
         "Replace one existing complete file. Pass text with encoding='utf-8' or binary bytes "
-        "as base64. document:// and galaris://skill/ files accept expected_revision from "
-        "file_read (mandatory for documents); Dataset replacements must remain valid JSON. "
+        "as base64. document://, data:// and galaris://skill/ files accept expected_revision from "
+        "file_read (mandatory for Documents and Datasets); Dataset replacements must remain valid JSON. "
         "For prose documents, read all content needed for a complete replacement first; "
         "prefer file_edit for a focused update. Galaris document-content changes retain prior revisions. "
         "Document types cannot change. Use file_create for new resources. Skill definitions are validated and "
@@ -347,7 +361,7 @@ async def write_file(
         "Append UTF-8 text to a resource URI when its provider supports append. HTML documents require complete valid blocks and expected_revision. "
         "For prose documents, append distinct new content or intended chronological entries; "
         "use file_edit to integrate corrections or overlapping information into existing passages. "
-        "Dataset appends must leave the complete document valid JSON; normally use file_write or file_edit instead. Use it to "
+        "Dataset appends must leave the complete data:// resource valid JSON; normally use file_write or file_edit instead. Use it to "
         "extend local files, document:// resources, and authorized galaris://skill/ files "
         "without resending existing content. Nextcloud supports conditional append; pass expected_etag from file_read when known."
     ),
@@ -370,7 +384,7 @@ async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revi
         "start_line/end_line identify complete blocks returned by file_read, content is valid HTML, "
         "and expected_revision is mandatory. Use this for focused prose corrections or consolidation, "
         "preserving useful detail and sources; Galaris document-content changes retain prior revisions. "
-        "Dataset documents use actual lines and require "
+        "data:// Datasets use actual lines and require "
         "expected_revision; the complete result must remain valid JSON. For "
         "example start_line=10 and end_line=14 rewrites lines 10 through 14. Binary resources "
         "are rejected. Pass expected_revision for document:// or galaris://skill/ when one is "
@@ -409,8 +423,10 @@ async def edit_file(
         "Copy bytes between any two resource URIs with bounded memory. An existing collection "
         "or provider space keeps the source name even when its trailing / is omitted; use / "
         "to identify a collection that does not exist yet. Use console://... to copy "
-        "files into or out of the local console filesystem. For document://, use the empty "
-        "collection to create a document (application/json sources become Dataset documents), an existing UUID with overwrite=true, or "
+        "files into or out of the local console filesystem. Copy JSON to data:// to create "
+        "an independent Dataset and keep the returned data:// URI. The legacy JSON copy into "
+        "document:// also returns data://. For HTML at document://, use the empty "
+        "collection to create a Document, an existing UUID with overwrite=true, or "
         "document://<uuid>/attachments/ to add the source as an attachment."
     ),
 )

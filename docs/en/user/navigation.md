@@ -34,7 +34,7 @@ theme preferences are separate from the instance's administrative **Preferences*
 |---|---|
 | **Configure** | Providers & models, Agents, Tools & connections, Skills |
 | **Act** | Chat, Goals, Processes |
-| **Knowledge** | Documents, Memory, Contacts, Thematic dossiers |
+| **Knowledge** | Documents, Datasets, Memory, Contacts, Thematic dossiers |
 | **Monitor** | Dashboard, Activity, Dream, Mail journal, Failure journal |
 | **Administer** | Preferences, Laboratory, Console, Users, Teams, Roles & permissions |
 
@@ -283,7 +283,10 @@ invalidates its cache; signing out clears it.
 
 In chat, deleting a document immediately removes it from the **Documents** section and closes
 its pane or dialog, preserving the message draft. The **Source code** section groups
-repositories linked to the discussion and collapses like the other sidebar sections.
+repositories linked to the discussion and discovers those in the agent’s SSH home when opened,
+provided you own its active Console. Full paths from the home, such as `work/galaris`, distinguish
+repositories with the same name. Click to open the internal VS Code editor; **Refresh repositories**
+runs discovery again. The section collapses like the other sidebar sections.
 
 Agent lists are reused for one minute; titles, groups and parameters for five minutes.
 Saving these resources invalidates the corresponding cache. To immediately see a change
@@ -328,8 +331,8 @@ a task with multiple calls may run for hours. Changes apply to new calls.
 
 ## Documents and knowledge
 
-**Knowledge → Documents** (`/documents`) holds and creates authored content.
-JSON Datasets are created and managed separately under **Knowledge → Datasets**
+**Knowledge → Documents** (`/documents`) holds and creates authored HTML content.
+Independent JSON Datasets are created and managed separately under **Knowledge → Datasets**
 (`/dataset`), including those migrated from old documents.
 **Knowledge → Memory** (`/memory`) offers **List** and **Graph**: open the
 page and select the tab without assuming a URL parameter. Contacts are at

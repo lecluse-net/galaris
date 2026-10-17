@@ -233,6 +233,10 @@ the current foreground/Task action policy and resource access rights. A referenc
 does not automatically refresh existing prose.
 
 Create one with `file_create(path="data://", name="Scenarios", content='{"scenarios": []}')`.
+Always pass the complete JSON in `content`; an omitted or empty content argument cannot create
+a Dataset. Correct a rejected call's arguments before retrying. Do not create an HTML Document
+or a temporary console file solely to work around Dataset creation. For a collection inventory,
+return the exact `data://` URI from the successful operation; do not rewrite its scheme.
 Use `file_list("data://")` to discover readable Datasets. The deprecated Document creation
 option returns a canonical Dataset URI too. Read MIME, metadata and revision before editing.
 Dataset reads paginate by character; `file_edit` uses actual lines. The complete result of
@@ -240,7 +244,7 @@ write/edit/append must remain valid JSON; prefer write/edit to concatenating JSO
 `expected_revision` from the read. Invalid JSON and non-finite numbers are rejected without
 changing the saved version. Dataset content is limited to 2,000,000 UTF-8 bytes, subject to
 the configured storage quota. Preserve JSON source; do not wrap it in HTML or code fences.
-Copying an `application/json` source to `document://` creates a new private Dataset;
+Copying an `application/json` source to `data://` creates a new private Dataset;
 copying into an existing document keeps its type. Restore changes content, not sharing.
 
 The Dataset module also owns typed JSON contracts. Each value uses `{type, value}`;
@@ -315,7 +319,7 @@ Files are addressed by canonical resource URIs. Preserve and reuse the URI retur
 is no local filesystem or implicit fallback. Relative paths are rejected. Common forms are
 `console://project/script.py`,
 `nextcloud://room-token/attachment-uuid`, `telegram://chat-id/attachment-uuid`,
-`memory://uuid`, `document://uuid`, `document://uuid/attachments/`,
+`memory://uuid`, `document://uuid`, `data://uuid`, `document://uuid/attachments/`,
 `document://uuid/attachments/attachment-uuid`,
 `galaris://task/`, `galaris://task/uuid`, `galaris://text/uuid`, `galaris://voice/uuid`,
 `galaris://goal/uuid`, `galaris://goal_cycle/uuid`, `galaris://process/workflow-id`,
@@ -383,7 +387,7 @@ with `encoding="base64"`. A binary larger than 1 MiB must stay out of model cont
 directly to a specialized tool, or copy it to `console://` only when console software must process
 it. Use `file_create` for a new URI, `file_write` to replace an existing complete
 resource, `file_append` to add content, and `file_edit` to replace a 1-based inclusive line range
-(HTML blocks for HTML documents, actual lines for Dataset documents, as described above).
+(HTML blocks for HTML Documents, actual lines for `data://` Datasets, as described above).
 Never delete a `galaris://` URI: the returned error explains which owning domain must
 perform the business operation, when such an operation exists.
 
@@ -1143,14 +1147,18 @@ the durable identity.
   then applies normal Memory acquisition and deduplication. It does not replace a room’s memories
   wholesale. A model failure stores nothing; there is no raw-transcript fallback. Use it only
   when retaining that conversation is explicitly useful, never automatically for ordinary turns.
-- `file_create(path="document://", content=..., name=..., document_type="html")` creates a
-  private mutable HTML document; `document_type="dataset"` creates a JSON document.
-  Both return a complete `document://<uuid>` URI and share the same access controls.
+- `file_create(path="document://", content=..., name=...)` creates a private mutable HTML
+  Document and returns `document://<uuid>`.
+- `file_create(path="data://", content='[]', name=...)` creates an independent private JSON
+  Dataset and returns `data://<uuid>`, with its own rights and history. The deprecated
+  `document_type="dataset"` option at `document://` also returns `data://`; new callers use
+  `data://` directly. Verified legacy aliases remain readable, but changing a URI's scheme
+  does not create an alias or grant access.
 - Use `file_search("document://", query)` to discover documents and
   `file_read("document://<uuid>", offset=..., max_chars=...)` to read one bounded passage.
 - `file_edit("document://<uuid>", start_line, end_line, content, expected_revision=...)` replaces
-  one inclusive top-level HTML block range, or actual lines for a Dataset. Read it first;
-  a stale revision is never guessed.
+  one inclusive top-level HTML block range. On `data://<uuid>`, ranges count actual JSON lines.
+  Read the resource first; a stale revision is never guessed.
 - `file_append("document://<uuid>", content, expected_revision=...)` adds distinct HTML content
   or chronological entries when appropriate. For corrections or overlapping findings, use
   `file_edit` on the relevant blocks. Read the current revision first.

@@ -49,6 +49,13 @@ class RepositoryTarget(BaseModel):
     model_config = ConfigDict(frozen=True)
 
 
+class RepositoryListing(BaseModel):
+    """Home-relative Git checkout candidates; opening validates the Git identity."""
+
+    paths: list[str] = Field(default_factory=list)
+    truncated: bool = False
+
+
 class ConsoleFile(BaseModel):
     path: str
     size: int | None = None

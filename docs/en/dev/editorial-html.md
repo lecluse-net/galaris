@@ -17,21 +17,24 @@ in the library. `agent_list`, `agent_get` and the Agent API's `resource_uri` fie
 this URI. `file_read` reads the current personality and job description directly, preserving
 their `rich-text` HTML inside the JSON snapshot and applying existing access rights.
 
-Documents have an immutable type: `html` (the default, including existing documents) or
-`dataset`. A Dataset is a JSON document in the same library, with the same title, icon,
-classification, sharing and history. The library filters and sorts by type. CodeEditor in
-JSON mode replaces CKEditor. UTF-8 JSON is validated before saving without rewriting its
-formatting; invalid input remains a recoverable draft and is never converted to HTML.
-Any JSON root value is supported; NaN and Infinity are rejected. The limit is 2,000,000 bytes,
-subject to the storage quota. See [decision 0124](../../../project/decisions/0124-document-types-and-datasets.md).
+Memory owns editorial HTML Documents under `document://`. Dataset owns independent JSON
+resources under `data://`, with their own rights and history in **Knowledge → Datasets**.
+Native Dataset creation does not create a Memory Document. Old Document links are aliases
+only for verified migrated Datasets. UTF-8 JSON is validated before saving without rewriting
+its formatting; invalid input remains a recoverable draft and is never converted to HTML.
+Any valid JSON root is supported; NaN and Infinity are rejected. The limit is 2,000,000 bytes,
+subject to the storage quota. See [decision 0187](../../../project/decisions/0187-dataset-domain-and-typed-contracts.md)
+and the [Dataset contract](datasets.md).
 
-Creation APIs and `file_create` accept `document_type="dataset"`; updates reject this field
-and incompatible MIME changes. Example:
-`file_create(path="document://", name="Scenarios", document_type="dataset", content='{"scenarios": []}')`.
+Create directly with
+`file_create(path="data://", name="Scenarios", content='{"scenarios": []}')`.
+The `content` argument must contain complete JSON; omitted or empty content is rejected before
+creation. The old `document_type="dataset"` option at `document://` remains an adapter and
+also returns `data://`, never a new Dataset Document.
 Dataset `file_read` offsets count characters; `file_edit` ranges count lines. The complete
 result must remain valid JSON. `file_write`, `file_edit` and `file_append` require the observed
 revision. Prefer replacement or line editing to JSON concatenation. Copying an
-`application/json` source to `document://` creates a new private Dataset.
+`application/json` source to `data://` creates a new private Dataset.
 PDF/HTML exports remain specific to HTML documents. Other document types remain out of scope.
 [Interactive HTML](document-apps.md) now allows forms and declared Dataset access inside
 an isolated document runtime; history and exports remain inert.

@@ -174,6 +174,13 @@ Unexpected executor exceptions are covered too.
 
 ## Git repositories in conversations
 
+`back/app/console/tests/test_repository_listing.py` covers bounded SFTP discovery,
+home-relative paths, worktrees, symbolic links and partial results.
+`back/app/code/tests/test_workspaces.py` also covers owner-only discovery, HTTP denials
+outside the discussion and explicit linking without starting the IDE.
+`front/browser-tests/chat-code-workspace.spec.mjs` exercises opening from the list without
+an agent message, keyboard and mobile use, retry, partial results and late responses.
+
 `back/app/code/tests/test_workspaces.py` uses real PostgreSQL for exact grants,
 deduplication, ticket expiry, revocation and changed-target refusal.
 Console deployment covers management permissions, tunnel verification before publishing
@@ -186,8 +193,11 @@ saved activation across unsaved changes, cancellation and reopening, for both ac
 intentionally inactive Consoles.
 Pane coverage also checks Galaris theme changes without an IDE synchronization API,
 delayed responses and explicit navigation without replacing buffers. Native qualification
-exercises file diffs and staged/unstaged views. Explicit updates reject live sessions and preserve
-the port and credential.
+exercises file diffs and staged/unstaged views. Automatic maintenance selects only active,
+configured external Consoles, verifies a current service even with live sessions, refuses
+replacement with live sessions and preserves access parameters. Failures expose no secrets
+and do not prevent checking other targets. `make tests-update` protects execution after
+backend readiness and propagation of maintenance failures to `make update`.
 `code-executor/tests/test_deployment.py` checks orchestration with a simulated Docker boundary;
 the native suites below separately exercise actual code-server and its mounts.
 `front/browser-tests/chat-code-workspace.spec.mjs` exercises the shared pane components,
@@ -329,6 +339,10 @@ substantial work or oversized/unknown batches, one Task per collection item,
 bounded waves, Dataset inventory validation with access rights, rejection of incomplete or
 ambiguous lists, progress and recovery after reload without replaying successful items.
 The PostgreSQL journey preserves the frozen inventory even if its Dataset changes later.
+It covers native `data://` creation and verified old Document aliases, without requiring
+delivery of an internal inventory. `app/dataset/tests/test_datasets.py` verifies rejection
+of creation without JSON before effect, followed by a corrected call without extra resources
+or a substitute HTML Document.
 
 These scenarios also cover requested durable closing actions after error or blockage:
 report execution without resuming dependencies, retained overall failure, reloads,
@@ -666,7 +680,7 @@ unavailability), using a real DB.
 | Process → waiting task | An authenticated callback releases the wait; duplicates and late events preserve the outcome | `back/app/process/tests/test_recovery.py`, `test_worker_concurrency.py` |
 | Process → human → messaging | Private internal or external request, plain JSON reply converted to typed values, file-only message with source URI, retried delivery failure, rejection of another sender or a late reply; unrelated messages never complete the activity. An AI activity waits without an auxiliary Task, resumes even after an early answer, and preserves user holds; historical waits are retired, duplicates stay idempotent, and the Dataset and final message are preserved | `back/app/process/tests/test_human_messaging.py`, `back/app/process/tests/test_activity_controls.py`, `back/app/harness/tests/test_conversation_prompt.py`, `e2e/specs/native-processes.spec.mjs` |
 | Document → file → agent | Content, revision, canonical URIs and ACLs agree across readers and writers | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
-| Datasets and document compatibility | Separate libraries and creation; legacy aliases preserve type, JSON, ACLs, revisions, restoration and conflicts; CodeEditor preserves invalid drafts. The native Dataset journey covers editing, replacing the former Dataset creation in Documents | `back/app/memory/tests/test_dataset_documents.py`, `test_document_library.py`, `back/app/dataset/tests/test_datasets.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs`, `e2e/specs/datasets.spec.mjs` |
+| Datasets and document compatibility | Separate libraries and creation, native `data://` identity, exact JSON source and errors without extra resources/revisions; independent rights/history, copy/restore and conflicts; legacy aliases and invalid drafts preserved. The native Dataset journey replaces Dataset creation in Documents | `back/app/memory/tests/test_dataset_documents.py`, `test_document_library.py`, `back/app/dataset/tests/test_datasets.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs`, `e2e/specs/datasets.spec.mjs` |
 | Interactive document HTML | Ordinary HTML forms using shared Datasets, viewer ACLs and personal revision-bound consent; revocation, unapproved cross-Dataset copies, JSON validation and quotas across workers; editable prose and usual toolbar, code only in Source; static print/PDF with resource filtering; isolation, WebRTC, bridge saturation and late responses | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
 | Restart / concurrency | Stale workers cannot replace current owners; ambiguous effects are not blindly replayed | `back/app/task/tests/test_active_lease.py`, `back/app/harness/tests/test_checkpoint.py`, `back/tests/test_durable_concurrency.py` |
 | Lost tool acknowledgement | An SSH command remains unique after a lost response and PostgreSQL reload; MCP timeouts after effects block replay; retry preserves the journal | `make tests-recovery`, `back/app/harness/tests/test_ssh_checkpoint_recovery.py`, `back/app/harness/tests/test_execution_evidence.py`, `back/app/console/tests/test_durable_operations.py` |

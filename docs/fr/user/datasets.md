@@ -16,6 +16,10 @@ sans arborescence. La recherche et la page courante restent en place lors du cha
 sélection. Sur petit écran, **Retour à la liste** permet de quitter l'éditeur. Les modifications
 non enregistrées demandent confirmation avant de changer de jeu de données.
 Chaque jeu de données possède une adresse `data://`, un partage et un historique propres.
+Les nouveaux jeux de données se créent ici, séparément des Documents HTML. Un agent utilise
+`file_create(path="data://", name="Réponses", content="[]")` et conserve l'adresse retournée.
+Le contenu JSON complet est obligatoire ; il ne faut pas fabriquer une adresse `document://`
+en remplaçant le début de l'adresse obtenue.
 Les anciens liens documentaires de jeux de données migrés continuent de viser ces mêmes
 données ; les modifications et révocations de partage s'appliquent aux deux adresses.
 Son contenu peut être un objet, un tableau ou une valeur simple, sans schéma associé.

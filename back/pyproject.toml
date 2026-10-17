@@ -131,6 +131,7 @@ include = [
     "main.py",
     "modules.py",
     "file_storage_composition.py",
+    "code_editor_update.py",
     "conftest.py",
 ]
 

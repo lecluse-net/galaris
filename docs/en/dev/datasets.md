@@ -43,6 +43,14 @@ deletion of the attached resource. Dataset usages include these references under
 Writes require `expected_revision`; sharing requires `expected_lock_version`. File Sharing's
 registered `data://` provider uses these same services.
 
+Planner collection inventories are created directly with
+`file_create(path="data://", name=..., content=...)`. The receipt retains the exact returned
+URI and must match a successful operation by the discovery step. The planner rereads complete
+JSON under the agent's permissions before freezing the list; old `document://` receipts
+remain usable only through verified Dataset aliases. An HTML Document cannot serve as a
+JSON inventory. The internal inventory is not a deliverable to send. Missing JSON in `content`
+is rejected before effect, with guidance naming the argument to correct, and creates no resource.
+
 The resumable DbAdmin action `app.dataset.legacy_documents` retains original rows
 and files and creates verified aliases. Legacy Memory entry points delegate to the
 Dataset authority. The HTML bridge preserves personal consent for the exact document

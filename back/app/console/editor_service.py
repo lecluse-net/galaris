@@ -3,8 +3,10 @@
 from collections.abc import Awaitable, Callable
 
 from app.connection.facade import get_connection, set_params_bulk, validate_params
+from app.connection.facade import get_params_as_dict
 from app.connection import Connection
 from app.agent import current_management_scope
+from app.tools import tool_service
 from sqlalchemy import select
 from core.database import get_db
 
@@ -14,6 +16,22 @@ from .schemas import ConsoleEditorInstallResult
 
 EditorInstaller = Callable[[int, bool], Awaitable[ConsoleEditorInstallResult]]
 _installer: EditorInstaller | None = None
+
+
+async def configured_external_editor_connections() -> list[int]:
+    """Update only active Consoles whose administrator already configured an editor."""
+    tool = await tool_service.get_tool_record("console")
+    if tool is None:
+        return []
+    connections = (await get_db().scalars(select(Connection).where(
+        Connection.tool_id == tool.id, Connection.active.is_(True),
+    ).order_by(Connection.id))).all()
+    identifiers: list[int] = []
+    for connection in connections:
+        _, params = await get_params_as_dict(connection, decrypt_passwords=False)
+        if params.get("host") != "ssh-executor" and (params.get("code_runtime_port") or params.get("code_runtime_token")):
+            identifiers.append(connection.id)
+    return identifiers
 
 
 def register_editor_installer(installer: EditorInstaller) -> None:

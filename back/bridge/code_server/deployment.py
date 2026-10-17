@@ -3,6 +3,7 @@
 import hashlib
 from pathlib import Path, PurePosixPath
 import shlex
+from typing import cast
 from uuid import uuid4
 
 import httpx
@@ -11,7 +12,7 @@ from pydantic import BaseModel, Field, SecretStr, ValidationError
 
 from app.code import CodeConnection, WorkspaceTarget, RUNTIME_CONFIGURATION_LOCK_OFFSET, prepare_runtime_configuration, finish_runtime_configuration, lock_runtime_upgrade
 from app.console import (ConsoleEditorInstallResult, SshExecutionTransport, code_runtime_tunnel,
-    configure_editor_runtime, connection_generation, discover_repository, resolve_connection)
+    configure_editor_runtime, connection_generation, discover_repository, resolve_connection, resolve_active_connection)
 from core.database import get_db
 from sqlalchemy import text
 
@@ -22,6 +23,12 @@ class DeploymentReceipt(BaseModel):
     already_installed: bool
 
 
+class DeploymentCheck(BaseModel):
+    managed: bool = True
+    update_required: bool
+    port: int | None = Field(default=None, ge=1, le=65535)
+
+
 def deployment_files() -> dict[str, bytes]:
     source = Path("/opt/galaris-code-deployment")
     if not source.is_dir():
@@ -30,17 +37,45 @@ def deployment_files() -> dict[str, bytes]:
     return {name: (source / name).read_bytes() for name in paths}
 
 
+async def _deployment_credential(sftp: asyncssh.SFTPClient, home: str) -> str:
+    path = home + "/.galaris/code-editor/credential"
+    if str(await sftp.realpath(path)) != path:
+        raise ValueError("The editor credential must stay in the deployment directory")
+    async with sftp.open(path, "rb", encoding=None) as secret:
+        payload = cast(object, await secret.read(129))
+        if not isinstance(payload, bytes):
+            raise RuntimeError("Invalid editor deployment credential encoding")
+        try:
+            token = payload.decode("ascii").strip()
+        except UnicodeError:
+            raise RuntimeError("Invalid editor deployment credential") from None
+    if not 32 <= len(token) <= 128 or any(character not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" for character in token):
+        raise RuntimeError("Invalid editor deployment credential")
+    return token
+
+
+async def update_connection_code_editor(connection_id: int) -> ConsoleEditorInstallResult | None:
+    """Maintain an already configured managed service without changing its access."""
+    return await _deploy(connection_id, upgrade=True, update_only=True)
+
+
 async def deploy_connection_code_editor(connection_id: int, upgrade: bool = False) -> ConsoleEditorInstallResult:
-    config = await resolve_connection(connection_id)
+    result = await _deploy(connection_id, upgrade=upgrade)
+    assert result is not None
+    return result
+
+
+async def _deploy(connection_id: int, *, upgrade: bool, update_only: bool = False) -> ConsoleEditorInstallResult | None:
+    config = await (resolve_active_connection(connection_id) if update_only else resolve_connection(connection_id))
     if config.host == "ssh-executor":
         raise ValueError("The embedded Console editor is deployed with Galaris")
+    if update_only and (not config.code_runtime_port or not config.code_runtime_token):
+        raise ValueError("Automatic updates require configured editor access")
     previous = CodeConnection(connection_id=connection_id, fingerprint=connection_generation(config))
     async def original_target(path: str) -> WorkspaceTarget:
         return WorkspaceTarget.model_validate((await discover_repository(config, path)).model_dump())
-    verified = await prepare_runtime_configuration(previous, original_target)
+    verified = {} if update_only else await prepare_runtime_configuration(previous, original_target)
     await get_db().commit()
-    if upgrade:
-        await lock_runtime_upgrade(previous)
     transport = SshExecutionTransport(config)
     try:
         status = await transport.status()
@@ -85,26 +120,38 @@ async def deploy_connection_code_editor(connection_id: int, upgrade: bool = Fals
                         await sftp.remove(temporary)
                     except asyncssh.SFTPNoSuchFile:
                         pass
-            result = await transport.exec("python3 " + shlex.quote(bundle + "/deploy.py") + (" --upgrade" if upgrade else ""), timeout_s=960)
+            command = "python3 " + shlex.quote(bundle + "/deploy.py")
+            if upgrade:
+                checked = await transport.exec(command + " --check --require-existing", timeout_s=30)
+                if checked.exit_code != 0 or checked.stdout_truncated:
+                    raise ValueError("Unable to inspect the existing managed editor")
+                check = DeploymentCheck.model_validate_json(checked.stdout)
+                if not check.managed:
+                    if update_only:
+                        return None
+                    raise ValueError("This editor is administered manually")
+                if check.port is None:
+                    raise ValueError("Invalid managed editor port")
+                if update_only and check.port != config.code_runtime_port:
+                    raise ValueError("The managed editor does not match its configured port")
+                if update_only and SecretStr(await _deployment_credential(sftp, home)) != config.code_runtime_token:
+                    raise ValueError("The managed editor does not match its configured credential")
+                if check.update_required:
+                    await lock_runtime_upgrade(previous)
+            result = await transport.exec(command + (" --upgrade" if upgrade else "")
+                + (" --require-existing" if update_only else ""), timeout_s=960)
             if result.exit_code != 0 or result.stdout_truncated:
                 raise ValueError("Editor deployment failed: verify Docker/Compose access, Linux user namespaces and the account home")
             try:
                 receipt = DeploymentReceipt.model_validate_json(result.stdout)
             except ValidationError:
                 raise RuntimeError("Invalid editor deployment receipt") from None
-            credential_path = home + "/.galaris/code-editor/credential"
-            if str(await sftp.realpath(credential_path)) != credential_path:
-                raise ValueError("The editor credential must stay in the deployment directory")
-            async with sftp.open(credential_path, "rb", encoding=None) as secret:
-                try:
-                    token = (await secret.read(129)).decode("ascii").strip()
-                except UnicodeError:
-                    raise RuntimeError("Invalid editor deployment credential") from None
-            if not 32 <= len(token) <= 128 or any(character not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" for character in token):
-                raise RuntimeError("Invalid editor deployment credential")
+            token = await _deployment_credential(sftp, home)
         finally:
             sftp.exit()
         candidate = config.model_copy(update={"code_runtime_port": receipt.port, "code_runtime_token": SecretStr(token)})
+        if update_only and candidate != config:
+            raise ValueError("Automatic updates cannot change configured editor access")
         async with code_runtime_tunnel(candidate) as endpoint:
             async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
                 response = await client.get(endpoint + "/health", headers={"Authorization": "Bearer " + token})
@@ -114,7 +161,11 @@ async def deploy_connection_code_editor(connection_id: int, upgrade: bool = Fals
         await get_db().execute(text("SELECT pg_advisory_xact_lock(:key)"), {
             "key": RUNTIME_CONFIGURATION_LOCK_OFFSET + connection_id,
         })
-        await configure_editor_runtime(config, receipt.port, token)
+        if update_only:
+            if await resolve_active_connection(connection_id) != config:
+                raise ValueError("Console configuration changed during the editor update")
+        else:
+            await configure_editor_runtime(config, receipt.port, token)
         current = CodeConnection(connection_id=connection_id, fingerprint=connection_generation(candidate))
         if current.fingerprint != previous.fingerprint:
             async def configured_target(path: str) -> WorkspaceTarget:

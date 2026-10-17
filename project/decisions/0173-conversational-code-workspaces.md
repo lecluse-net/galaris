@@ -48,6 +48,16 @@ their URIs only when the target is unchanged. Concurrent connection changes prev
 an existing live IDE prevents changing its runtime so that unsaved buffers remain recoverable. This technical operation stays
 in Console and the bridge; no business Process is introduced.
 
+As amended on 2026-10-17 at the user's request, maintenance of already configured managed
+editors on active external SSH connections runs automatically at the end of every `make update`,
+including prepared releases. The initial deployment action remains; the manual update button
+is removed. Bundle fingerprints decide whether replacement is necessary. A current runtime
+can be checked with live sessions, while replacement keeps the existing session interlocks,
+port, credential, profiles and rollback. Maintenance never changes configured access or installs
+an unconfigured target. Manually administered brokers are reported without modification.
+Independent targets continue after a failure, but the update command fails until all managed
+targets pass. No remote software is installed by `repository_show` or by an agent tool.
+
 As amended on 2026-10-12 at the user's request, the gateway uses the application's single
 public origin under `/api/code/gateway/`. Vite forwards HTTP and WebSockets in development;
 Nginx does so in production, with a dedicated location that preserves IDE response headers

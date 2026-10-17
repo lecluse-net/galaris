@@ -20,7 +20,8 @@ product behavior; it does not prove a particular user's rights or an installatio
 - A **Process** is a predefined business workflow. Agents can launch their assigned processes;
   administrative process management is a separate capability.
 - **Memory** preserves governed information. **Documents** hold authored content, revisions
-  and sharing; **Datasets** are documents containing validated JSON. A **Topic** groups context.
+  and sharing under `document://`; **Datasets** are independent validated JSON resources under
+  `data://`, with their own library, rights and history. A **Topic** groups context.
   Sharing a link does not grant access to its resource.
 - **Connections** attach Tools to agents. Tool/function permissions, conversation availability,
   resource ACLs and runtime compatibility can independently affect what is available.

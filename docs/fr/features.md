@@ -77,7 +77,8 @@ Un document peut contenir un formulaire, un calculateur, un graphique ou une pet
 L’agent écrit la page ; l’humain garde un texte explicatif éditable et accède au code par Source.
 On peut ainsi conserver une méthode et son outil de calcul dans le même espace documentaire.
 
-Des documents Dataset stockent les données JSON séparément. Plusieurs pages peuvent partager
+Des Datasets indépendants `data://` stockent les données JSON dans **Connaissances → Jeux de données**.
+Ils conservent leurs propres droits et leur historique. Plusieurs pages peuvent partager
 un référentiel, recueillir des réponses ou consulter les mêmes résultats. Par exemple, une équipe
 peut utiliser une page de saisie et une page de suivi autour d’un jeu de données commun.
 

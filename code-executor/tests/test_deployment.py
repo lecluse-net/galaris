@@ -64,7 +64,13 @@ class DeploymentTests(unittest.TestCase):
                 self.assertNotIn(token, json.dumps(first))
                 self.assertEqual((root / "credential").stat().st_mode & 0o777, 0o600)
                 self.assertEqual(sum(call[:2] == ("compose", "-p") for call in records), 1)
+                active_editor = True
+                self.assertFalse(deploy.deploy(bundle, home, check_only=True, require_existing=True)["update_required"])
+                self.assertTrue(deploy.deploy(bundle, home, upgrade=True, require_existing=True)["already_installed"])
+                self.assertFalse(paused)
+                self.assertEqual(sum(call[:2] == ("compose", "-p") for call in records), 1)
                 (bundle / "Dockerfile").write_text("A changed runtime")
+                self.assertTrue(deploy.deploy(bundle, home, check_only=True, require_existing=True)["update_required"])
                 with self.assertRaisesRegex(RuntimeError, "preserve its sessions"):
                     deploy.deploy(bundle, home)
                 active_editor = True
@@ -104,3 +110,21 @@ class DeploymentTests(unittest.TestCase):
             with self.assertRaises(OSError):
                 deploy.credential(root)
             self.assertEqual(outside.read_text(), "Synthetic unrelated content")
+
+    def test_automatic_maintenance_never_installs_an_unmanaged_editor(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary) / "developer"
+            bundle = home / ".galaris/code-editor/bundle-synthetic"
+            bundle.mkdir(parents=True)
+            os.chown(home, 20000, 20000)
+            with patch.object(deploy.os, "getuid", return_value=20000), patch.object(deploy.os, "getgid", return_value=20000), \
+                 patch.object(deploy, "docker", return_value="") as docker:
+                with self.assertRaisesRegex(RuntimeError, "existing managed editor credential"):
+                    deploy.deploy(bundle, home, upgrade=True, require_existing=True)
+                self.assertFalse(deploy.deploy(bundle, home, check_only=True)["managed"])
+                self.assertFalse((bundle.parent / "credential").exists())
+                deploy.credential(bundle.parent)
+                with self.assertRaisesRegex(RuntimeError, "existing managed editor$"):
+                    deploy.deploy(bundle, home, upgrade=True, require_existing=True)
+                self.assertFalse(any(call.args[:1] == ("compose",) and len(call.args) > 1 and call.args[1] == "-p"
+                                     for call in docker.call_args_list))

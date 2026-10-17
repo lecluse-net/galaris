@@ -4,6 +4,10 @@
 - Date : 2026-09-19
 - Complète : [0124](0124-document-types-and-datasets.md)
 
+Dataset ownership and URI examples are superseded by
+[ADR 0187](0187-dataset-domain-and-typed-contracts.md). New bindings use independent `data://`
+resources; the HTML execution, personal consent and access guarantees below remain applicable.
+
 ## Décision
 
 Les agents écrivent directement du HTML avec formulaires, CSS et JavaScript dans les documents

@@ -129,13 +129,18 @@
             </template>
             <div class="sidebar-section-content"><ConversationDocumentsPanel embedded :displayed-document-id="selectedDocument?.id === displayedDocumentId ? displayedDocumentId : null" @has-items="documentsExpanded = $event" @open="openConversationDocument" @deleted="onDocumentDeleted" ref="conversationDocumentsPanel" :room-id="store.selectedRoom.id" :from-message-id="visibleFromMessageId" :conversation-agent-id="store.selectedRoom.agent_id" :viewer-agent-id="store.viewerAgentId" :can-read="canReadDocuments" :can-edit="canEditDocuments" /></div>
           </q-expansion-item>
-          <q-expansion-item v-if="repositories.length" v-model="repositoriesExpanded" dense-toggle expand-separator icon="code" :label="t('code.repositories')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': repositoriesExpanded }" header-class="sidebar-accordion-header">
+          <q-expansion-item v-if="store.selectedRoom && privilegeStore.hasPrivilege('CODE_ACCESS')" v-model="repositoriesExpanded" dense-toggle expand-separator icon="code" :label="t('code.repositories')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': repositoriesExpanded }" header-class="sidebar-accordion-header">
+            <template #header>
+              <q-item-section avatar><q-icon name="code" /></q-item-section>
+              <q-item-section>{{ t('code.repositories') }}</q-item-section>
+              <q-item-section v-if="store.viewerAgentId === null" side>
+                <q-btn flat round dense icon="refresh" :aria-label="t('code.refreshRepositories')" :loading="repositoryBrowser?.loading" @click.stop="refreshRepositories" @keydown.stop>
+                  <q-tooltip>{{ t('code.refreshRepositories') }}</q-tooltip>
+                </q-btn>
+              </q-item-section>
+            </template>
             <div class="sidebar-section-content">
-              <q-list>
-                <q-item v-for="repository in repositories" :key="repository.id" clickable @click="openRepository(repository.id)">
-                  <q-item-section><q-item-label>{{ repository.label }}</q-item-label></q-item-section>
-                </q-item>
-              </q-list>
+              <RepositoryBrowser v-if="repositoriesExpanded" ref="repositoryBrowser" :room-id="store.selectedRoom.id" :repositories="repositories" :can-discover="store.viewerAgentId === null" @open="openRepository" @discover-open="openDetectedRepository" />
             </div>
           </q-expansion-item>
           <q-expansion-item v-if="store.selectedRoom" v-model="tasksExpanded" dense-toggle expand-separator icon="account_tree" :label="t('chat.tasks')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': tasksExpanded }" header-class="sidebar-accordion-header">
@@ -180,7 +185,7 @@ import ConversationDocumentsPanel from '../components/ConversationDocumentsPanel
 import ConversationDocumentDialog from '../components/ConversationDocumentDialog.vue'
 import ConversationProcessesPanel from '../components/ConversationProcessesPanel.vue'
 import ChatDocumentPane from '../components/ChatDocumentPane.vue'
-import { CodeWorkspacePane, codeService, codeErrorTranslationKey, useCodeStore, type CodeWorkspace } from '../code'
+import { CodeWorkspacePane, RepositoryBrowser, codeService, codeErrorTranslationKey, useCodeStore, type CodeWorkspace } from '../code'
 import ChatDocumentSearchDialog from '../components/ChatDocumentSearchDialog.vue'
 import type { WorkingDocumentReference } from '@/core/util'
 import type { ConversationDocumentReference } from '../types'
@@ -223,7 +228,12 @@ const selectedDocument = computed({
 const selectedCodeId = computed(() => selectedWorkTarget.value?.kind === 'code' ? selectedWorkTarget.value.id : null)
 const codeStore = useCodeStore()
 const repositories = ref<CodeWorkspace[]>([])
-const repositoriesExpanded = ref(true)
+const repositoriesExpanded = ref(false)
+const repositoryBrowser = ref<InstanceType<typeof RepositoryBrowser> | null>(null)
+function refreshRepositories(): void {
+  if (!repositoriesExpanded.value) repositoriesExpanded.value = true
+  else void repositoryBrowser.value?.refresh()
+}
 const integratedWorkspace = computed(() => !$q.screen.lt.md && selectedWorkTarget.value !== null)
 const mobileCodeOpen = computed({ get: () => $q.screen.lt.md && selectedCodeId.value !== null,
   set: (open: boolean) => { if (!open) selectedWorkTarget.value = null },
@@ -340,6 +350,11 @@ async function openDirectory(uri: string, messageId: string): Promise<void> {
   const roomId = store.selectedRoom?.id
   if (!roomId || store.viewerAgentId !== null || !privilegeStore.hasPrivilege('CODE_ACCESS')) return
   await openRepository(uri, undefined, undefined, () => service.messageDirectoryRepository(roomId, messageId, uri))
+}
+async function openDetectedRepository(path: string): Promise<void> {
+  const roomId = store.selectedRoom?.id
+  if (!roomId || store.viewerAgentId !== null || !privilegeStore.hasPrivilege('CODE_ACCESS')) return
+  await openRepository(path, undefined, undefined, () => codeService.register(roomId, path))
 }
 async function openRepository(id: string, file?: string, view?: string, resolve?: () => Promise<CodeWorkspace>): Promise<void> {
   const roomId = store.selectedRoom?.id

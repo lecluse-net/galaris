@@ -79,6 +79,75 @@ async def repository_scope(db, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_discovery_is_owner_only_and_full_paths_distinguish_checkouts(repository_scope, db):
+    from app.code.contracts import RepositoryCandidates
+
+    users, agent, _, target, runtime = repository_scope
+    runtime.repositories.return_value = RepositoryCandidates(paths=["work/project", "archive/project"])
+    with pytest.raises(PermissionError):
+        await service.human_repository_candidates(agent.id, users[1].id)
+    runtime.repositories.assert_not_awaited()
+    result = await service.human_repository_candidates(agent.id, users[0].id)
+    assert result.paths == ["work/project", "archive/project"]
+    # Discovery itself neither registers a workspace nor starts an IDE.
+    assert (await db.scalars(select(CodeWorkspace))).all() == []
+    runtime.open.assert_not_awaited()
+    target.root = "/home/developer/work/project"
+    first = await service.register_repository("console://work/project/", agent.id)
+    target.root = "/home/developer/archive/project"
+    second = await service.register_repository("console://archive/project/", agent.id)
+    assert first.id != second.id
+    assert service.info(first, "edit").label == "work/project"
+    assert service.info(second, "edit").label == "archive/project"
+
+
+@pytest.mark.asyncio
+async def test_chat_repository_discovery_and_opening_check_room_and_console_rights(repository_scope, db, monkeypatch):
+    from httpx import ASGITransport, AsyncClient
+    from main import app
+    from app.code import contracts
+    from app.code.contracts import RepositoryCandidates
+    from app.messenger import create_internal_room
+    from core.database import database, middleware
+    from core.user.auth_service import create_access_token_for_user
+    from core.user.refresh_session_service import create_refresh_session, family_for_token
+
+    users, agent, _, target, runtime = repository_scope
+    chat_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
+    assert chat_tool is not None
+    db.add(Connection(agent_id=agent.id, tool_id=chat_tool.id, active=True))
+    await db.flush()
+    room = await create_internal_room(actor_user_id=users[0].id, agent_id=agent.id)
+    assert room is not None
+    target.root = "/home/developer/work/project"
+    runtime.repositories.return_value = RepositoryCandidates(paths=["work/project"])
+    monkeypatch.setattr(contracts, "_runtime", runtime)
+    monkeypatch.setattr(middleware, "AsyncSessionLocal", database.AsyncSessionLocal)
+    headers = []
+    for user in users[:2]:
+        refresh = await create_refresh_session(user.id)
+        token = await create_access_token_for_user(user, db, session_family=await family_for_token(refresh))
+        headers.append({"Authorization": "Bearer " + token})
+    url = f"/api/chat/rooms/{room.id}/repositories"
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="https://localhost:8484") as http:
+        for method in (http.get, http.post):
+            denied = await method(url, headers=headers[1], params={"uri": "console://work/project/"})
+            assert denied.status_code == 403, denied.text
+        runtime.repositories.assert_not_awaited()
+        listing = await http.get(url, headers=headers[0])
+        assert listing.status_code == 200, listing.text
+        assert listing.json() == {"paths": ["work/project"], "truncated": False}
+        assert (await db.scalars(select(CodeWorkspace))).all() == []
+        opened = await http.post(url, headers=headers[0], params={"uri": "console://work/project/"})
+        assert opened.status_code == 200, opened.text
+        assert opened.json()["label"] == "work/project"
+        # Existing room lists now contain the same path and durable identity.
+        linked = await http.get(f"/api/code/rooms/{room.id}", headers=headers[0])
+        assert linked.json() == [opened.json()]
+        runtime.open.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_registration_deduplicates_and_neither_room_nor_agent_management_grants_access(repository_scope, db):
     from app.file_share import resource_service
     from app.file_share.resource_contracts import ResourceContext
@@ -513,7 +582,8 @@ async def test_editor_deployment_endpoint_requires_edit_rights_and_agent_ownersh
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("forwarding_works,management_works", [(False, True), (True, True), (True, False)])
-async def test_console_editor_deployment_only_publishes_verified_credentials_and_preserves_links(repository_scope, db, monkeypatch, forwarding_works, management_works):
+@pytest.mark.parametrize("automatic", [False, "current", "changed", "busy", "wrong_port", "wrong_credential", "unmanaged"])
+async def test_console_editor_deployment_only_publishes_verified_credentials_and_preserves_links(repository_scope, db, monkeypatch, forwarding_works, management_works, automatic):
     import json
     from contextlib import asynccontextmanager
     from types import SimpleNamespace
@@ -529,8 +599,14 @@ async def test_console_editor_deployment_only_publishes_verified_credentials_and
     await set_params_bulk(config.connection_id, {"host": config.host, "username": config.username,
         "private_key": config.private_key.get_secret_value(), "known_host_key": config.known_host_key})
     workspace = await service.register_repository("console://project/", agent.id)
-    await db.commit()
     synthetic_token = "synthetic-editor-deployment-credential-0000001"
+    configured_token = "synthetic-different-credential-0000000001" if automatic == "wrong_credential" else synthetic_token
+    if automatic:
+        await set_params_bulk(config.connection_id, {"code_runtime_port": "32124" if automatic == "wrong_port" else "32123", "code_runtime_token": configured_token})
+        if automatic in ("current", "busy"):
+            # Current runtimes remain usable; upgrades must preserve live buffers.
+            await service.open_session(workspace.id, None)
+    await db.commit()
     files = {}
 
     class RemoteFile:
@@ -570,6 +646,12 @@ async def test_console_editor_deployment_only_publishes_verified_credentials_and
         home=AsyncMock(return_value=target.home), close=AsyncMock(),
         exec=AsyncMock(return_value=ConsoleResult(status="completed", exit_code=0,
             stdout=json.dumps({"port": 32123, "version": "4.141.0", "already_installed": False}))))
+    if automatic:
+        transport.exec.side_effect = [
+            ConsoleResult(status="completed", exit_code=0, stdout=json.dumps({
+                "managed": automatic != "unmanaged", "update_required": automatic != "current", "port": 32123})),
+            transport.exec.return_value,
+        ]
     monkeypatch.setattr(deployment, "SshExecutionTransport", lambda config: transport)
     async def discover(config, path):
         return RepositoryTarget.model_validate(target.model_copy(update={
@@ -588,18 +670,92 @@ async def test_console_editor_deployment_only_publishes_verified_credentials_and
             json={"ready": True, "protocol": 1, "version": "4.141.0"})))
     monkeypatch.setattr(deployment.httpx, "AsyncClient", client)
     monkeypatch.setattr(editor_service, "_installer", deployment.deploy_connection_code_editor)
-    if forwarding_works and management_works:
-        result = await editor_service.install_connection_editor(config.connection_id)
+    succeeded = forwarding_works and (management_works or automatic) and automatic not in ("busy", "wrong_port", "wrong_credential", "unmanaged")
+    install = deployment.update_connection_code_editor if automatic else editor_service.install_connection_editor
+    if automatic == "unmanaged":
+        assert await install(config.connection_id) is None
+    elif succeeded:
+        result = await install(config.connection_id)
         assert result.ready and result.port == 32123
         assert synthetic_token not in result.model_dump_json()
     else:
-        with pytest.raises(ValueError, match="forwarding verification failed" if not forwarding_works else "management access changed"):
-            await editor_service.install_connection_editor(config.connection_id)
+        message = ("configured port" if automatic == "wrong_port" else
+                   "configured credential" if automatic == "wrong_credential" else
+                   "wait for sessions to expire" if automatic == "busy" else
+                   "forwarding verification failed" if not forwarding_works else "management access changed")
+        with pytest.raises(ValueError, match=message):
+            await install(config.connection_id)
     _, params = await get_params_as_dict(config.connection_id, decrypt_passwords=True)
-    assert params.get("code_runtime_token") == (synthetic_token if forwarding_works and management_works else None)
-    assert workspace.generation == ("c" * 64 if forwarding_works and management_works else target.generation)
+    assert params.get("code_runtime_token") == (configured_token if automatic else synthetic_token if succeeded else None)
+    assert workspace.generation == ("c" * 64 if succeeded and not automatic else target.generation)
     assert workspace.id in (await db.scalars(select(CodeWorkspace.id))).all()
     transport.close.assert_awaited_once()
+    if automatic in ("busy", "wrong_port", "wrong_credential", "unmanaged"):
+        assert transport.exec.await_count == 1  # Inspection only, no replacement.
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["configured", "embedded", "unconfigured", "partial", "inactive"])
+async def test_editor_maintenance_selects_only_active_configured_external_consoles(repository_scope, db, kind):
+    from app.console import configured_external_editor_connections
+    from app.connection.facade import set_params_bulk
+
+    _, _, config, _, _ = repository_scope
+    params = {"host": "ssh-executor" if kind == "embedded" else "synthetic.test"}
+    if kind != "unconfigured":
+        params["code_runtime_port"] = "32123"
+    if kind not in ("unconfigured", "partial"):
+        params["code_runtime_token"] = "synthetic-editor-credential-00000001"
+    await set_params_bulk(config.connection_id, params)
+    if kind == "inactive":
+        connection = await db.get(Connection, config.connection_id)
+        connection.active = False
+        await db.commit()
+    selected = await configured_external_editor_connections()
+    assert (config.connection_id in selected) == (kind in ("configured", "partial"))
+
+
+@pytest.mark.asyncio
+async def test_editor_update_reports_failures_without_secrets_and_continues_other_targets(repository_scope, db, monkeypatch, capsys):
+    import code_editor_update
+    from bridge.code_server import deployment
+    from app.connection.facade import set_params_bulk
+    from app.console import ConsoleEditorInstallResult
+
+    _, agent, config, _, _ = repository_scope
+    other = Agent(title_id=agent.title_id, user_id=agent.user_id, first_name="Synthetic", last_name="Other developer",
+                  code=f"code-{uuid4().hex[:12]}", agent_driver="internal")
+    db.add(other)
+    await db.flush()
+    first = await db.get(Connection, config.connection_id)
+    second = Connection(agent_id=other.id, tool_id=first.tool_id, active=True)
+    db.add(second)
+    await db.flush()
+    identifiers = [first.id, second.id]
+    for identifier in identifiers:
+        await set_params_bulk(identifier, {"host": "synthetic.test", "code_runtime_port": "32123",
+            "code_runtime_token": "synthetic-private-editor-credential-00001"})
+    await db.commit()
+    updater = AsyncMock(side_effect=[RuntimeError("synthetic-private-editor-credential-00001"),
+        ConsoleEditorInstallResult(connection_id=second.id, port=32123, version="4.141.0", ready=True, already_installed=True)])
+    monkeypatch.setattr(deployment, "update_connection_code_editor", updater)
+    assert not await code_editor_update.update_editors()
+    assert [call.args[0] for call in updater.await_args_list] == identifiers
+    output = capsys.readouterr()
+    assert "update failed" in output.err and "rerun make update" in output.err
+    assert "verified" in output.out
+    assert "synthetic-private-editor-credential-00001" not in output.err + output.out
+
+
+@pytest.mark.asyncio
+async def test_editor_update_cli_boots_without_an_authenticated_request(db):
+    import asyncio
+    import subprocess
+    import sys
+
+    result = await asyncio.to_thread(subprocess.run, [sys.executable, "-m", "code_editor_update"],
+        capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.asyncio

@@ -28,7 +28,8 @@ redimensionne pas le document ouvert. Une capture est annulée si son document c
 
 Créer un Dataset contenant `[]` avec `file_create(path="data://", name="Réponses",
 content="[]")`, puis utiliser son URI réelle. Le document HTML et le Dataset restent deux
-ressources distinctes, avec leurs propres droits et révisions :
+ressources distinctes, avec leurs propres droits, révisions et historique ; les anciens alias
+documentaires vérifiés restent lisibles :
 
 ```html
 <p>Texte modifiable dans l'éditeur habituel.</p>

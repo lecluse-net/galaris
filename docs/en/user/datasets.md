@@ -14,6 +14,11 @@ address, sharing and revision history. Content can be an object, array or scalar
 without an associated schema. Invalid JSON and conflicts preserve your local draft;
 keep any edits you need before reloading.
 
+Create new Datasets here, separately from HTML Documents. An agent uses
+`file_create(path="data://", name="Responses", content="[]")` and retains the returned URI.
+Complete JSON content is required; replacing the returned URI's scheme with `document://`
+does not create a valid reference.
+
 On desktop, select a Dataset in the flat list on the left to open its editor on the right.
 Search and the current page remain in place when switching Datasets. On small screens,
 use **Back to list** to leave the editor. Unsaved changes require confirmation before

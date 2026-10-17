@@ -1541,7 +1541,8 @@ async def _working_set_completion_error(task: Task) -> str | None:
             inventory_uris.add(str(inventory_uri))
         if any(step.get("collection") or step.get("steps") for step in as_list(group_plan.get("steps"))):
             pending_groups.extend(child for child in await task_service.get_children(group.id) if child.plan)
-    produced_files = [resource for resource in working_set.active() if _is_produced_file(resource)]
+    produced_files = [resource for resource in working_set.active()
+                      if resource.reference not in inventory_uris and _is_produced_file(resource)]
     contract = _result_contract(task)
     active_documents = [
         resource

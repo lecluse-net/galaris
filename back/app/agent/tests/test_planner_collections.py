@@ -230,8 +230,9 @@ async def test_single_work_unit_executes_without_inventory_or_replanning(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("organization", ["direct", "tracked"])
+@pytest.mark.parametrize("inventory_scheme", ["data", "document"])
 async def test_collection_journey_survives_restart_and_retries_only_failed_items(
-    db, agents, memory_storage, monkeypatch, organization,
+    db, agents, memory_storage, monkeypatch, organization, inventory_scheme,
 ) -> None:
     from app.file_share import ResourceContext, resource_create, resource_write
 
@@ -257,14 +258,24 @@ async def test_collection_journey_survives_restart_and_retries_only_failed_items
     ctx = ResourceContext(agent_id=worker.id, task_id=discovery.id, runtime="internal")
     manifest = inventory(group.id)
     manifest["items"][0]["key"] = "inventory"  # Item keys cannot collide with discovery.
-    created = await resource_create(ctx, "document://", json.dumps(manifest).encode(),
-                                    name="Synthetic inventory", document_type="dataset")
+    if inventory_scheme == "data":
+        created = await resource_create(ctx, "data://", json.dumps(manifest).encode(),
+                                       name="Synthetic inventory")
+        inventory_uri = created.uri
+    else:
+        # Persisted pre-migration discovery results retain verified Document aliases.
+        from app.memory import document_service
+        legacy = await document_service.create_document(owner_agent_id=worker.id,
+            title="Synthetic legacy inventory", content=json.dumps(manifest),
+            task_id=discovery.id, document_type="dataset")
+        inventory_uri = f"document://{legacy.id}"
     # The harness records successful file operations in the canonical Working Set.
     await upsert_working_resource(discovery.id, WorkingResource(
-        resource_type="memory_document", role="primary_working_document", reference=created.uri,
+        resource_type="artifact" if inventory_scheme == "data" else "memory_document",
+        role="collection_inventory", reference=inventory_uri,
         producer_task_id=discovery.id, metadata={"produced": True},
     ))
-    await complete(discovery, result=json.dumps({"inventory_uri": created.uri}))
+    await complete(discovery, result=json.dumps({"inventory_uri": inventory_uri}))
     await planner_service.advance(group)
     children = sorted(await task_service.get_children(group.id), key=lambda t: t.data["plan_step"])
     assert await planner_service._working_set_completion_error(root) is not None
@@ -297,7 +308,7 @@ async def test_collection_journey_survives_restart_and_retries_only_failed_items
     cost_before_retry = root.cost
 
     # A later edit cannot silently replace the frozen work list.
-    await resource_write(ctx, created.uri, json.dumps(inventory(group_id, 1)).encode(), expected_revision=1)
+    await resource_write(ctx, inventory_uri, json.dumps(inventory(group_id, 1)).encode(), expected_revision=1)
     await db.commit()
     db.expunge_all()
     root = await task_service.get_by_id(root_id)
@@ -334,11 +345,12 @@ async def test_collection_journey_survives_restart_and_retries_only_failed_items
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("record_receipt", [False, True])
+@pytest.mark.parametrize("source_kind", ["foreign_dataset", "html"])
 async def test_inventory_requires_both_resource_receipt_and_read_permission(
-    db, agents, memory_storage, monkeypatch, record_receipt,
+    db, agents, memory_storage, monkeypatch, record_receipt, source_kind,
 ) -> None:
     from app.file_share import ResourceContext, resource_create
-    from app.memory.service import MemoryPermissionError
+    from app.dataset.facade import DatasetNotFoundError
 
     worker, other = agents
     group = Task(label="Restricted collection", agent_id=worker.id, status=TaskStatus.PLAN,
@@ -349,20 +361,28 @@ async def test_inventory_requires_both_resource_receipt_and_read_permission(
                      status=TaskStatus.SUCCESS)
     db.add(discovery)
     await db.commit()
-    created = await resource_create(
-        ResourceContext(agent_id=other.id, runtime="internal"), "document://",
-        json.dumps(inventory(group.id)).encode(), document_type="dataset",
-    )
+    content = json.dumps(inventory(group.id))
+    if source_kind == "foreign_dataset":
+        created = await resource_create(
+            ResourceContext(agent_id=other.id, runtime="internal"), "data://", content.encode(),
+        )
+    else:
+        from html import escape
+        created = await resource_create(
+            ResourceContext(agent_id=worker.id, runtime="internal"), "document://",
+            f"<pre>{escape(content)}</pre>".encode(),
+        )
     discovery.set_execution_result(ExecutionResult(
         prompt="", result=json.dumps({"inventory_uri": created.uri}), success=True,
     ))
     monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
     if record_receipt:
         await upsert_working_resource(discovery.id, WorkingResource(
-            resource_type="memory_document", role="collection_inventory", reference=created.uri,
+            resource_type="artifact", role="collection_inventory", reference=created.uri,
             producer_task_id=discovery.id, metadata={"produced": True},
         ))
-    with pytest.raises(MemoryPermissionError if record_receipt else ValueError):
+    expected = DatasetNotFoundError if record_receipt and source_kind == "foreign_dataset" else ValueError
+    with pytest.raises(expected):
         await planner_collection.freeze_inventory(group, discovery)
     assert "inventory" not in group.plan
     assert await task_service.get_children(discovery.id) == []

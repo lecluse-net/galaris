@@ -10,6 +10,35 @@ from app.memory import document_service
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("path,options", [("data://", {}), ("document://", {"document_type": "dataset"})])
+@pytest.mark.parametrize("empty", [None, "   "])
+async def test_missing_dataset_content_is_rejected_then_corrected_without_extra_resources(db, agents, path, options, empty):
+    from sqlalchemy import func
+    from app.file_share.mcp import create_file
+    from app.tools.contracts import ToolCallRejectedError
+    from app.tools.mcp_loader import McpToolContext
+    import json
+
+    owner, _ = agents
+    tool_context = McpToolContext(agent_id=owner.id, runtime="internal")
+    count = select(func.count()).select_from(Dataset).where(Dataset.owner_agent_id == owner.id)
+    before = await db.scalar(count)
+    with pytest.raises(ToolCallRejectedError, match="content"):
+        if empty is None:
+            await create_file(tool_context, path, **options)
+        else:
+            await create_file(tool_context, path, content=empty, **options)
+    assert await db.scalar(count) == before
+    created = json.loads(await create_file(tool_context, path,
+        content='{"items":[]}', name="Synthetic corrected inventory", **options))
+    assert created["uri"].startswith("data://")
+    assert await db.scalar(count) == before + 1
+    from app.memory import MemoryItem
+    assert await db.get(MemoryItem, UUID(created["uri"].removeprefix("data://"))) is None
+    assert (await resource_read(ResourceContext(agent_id=owner.id, runtime="internal"), created["uri"])).content == '{"items":[]}'
+
+
+@pytest.mark.asyncio
 async def test_dataset_uri_lifecycle_preserves_exact_json_revisions_and_denies_other_actors(db, agents):
     owner, other = agents
     ctx = ResourceContext(agent_id=owner.id, runtime="internal")

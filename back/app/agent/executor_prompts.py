@@ -210,7 +210,7 @@ def build_executor_prompt_tree(
                 "it when a shared reference reduces inconsistent copies. Keep "
                 "self-contained answers and isolated facts in the simplest suitable "
                 "medium. With the required tools authorized, look for a relevant "
-                "existing Dataset before creating one and reuse its document:// URI. "
+                "existing Dataset before creating one and reuse its canonical data:// URI. "
                 "Read current data before drafting dependent prose; preserve units, "
                 "dates, sources, and uncertainty without inventing missing values. "
                 "Authoritative business records remain the source of truth. This is "

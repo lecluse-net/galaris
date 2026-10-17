@@ -195,6 +195,13 @@ pas à elles seules les effets d'un harnais ou d'un serveur n8n réel.
 
 ## Dépôts Git dans la discussion
 
+`back/app/console/tests/test_repository_listing.py` couvre la découverte SFTP bornée,
+les chemins depuis le home, les worktrees, les liens symboliques et les résultats partiels.
+`back/app/code/tests/test_workspaces.py` couvre aussi la découverte réservée au propriétaire,
+les refus HTTP hors discussion et l’association explicite sans démarrer l’IDE.
+`front/browser-tests/chat-code-workspace.spec.mjs` exerce l’ouverture depuis la liste sans
+message de l’agent, au clavier et sur mobile, le retry, les résultats partiels et les réponses tardives.
+
 `back/app/code/tests/test_workspaces.py` vérifie les grants exacts, la déduplication,
 les tickets expirés, la révocation et le refus de changer de cible avec PostgreSQL réel.
 Le déploiement Console couvre les droits de gestion, la vérification du tunnel avant publication
@@ -209,7 +216,11 @@ réouverture, pour une Console active comme pour une Console volontairement inac
 Le panneau vérifie aussi les changements de thème Galaris sans API de synchronisation IDE,
 les réponses retardées et la navigation explicite sans remplacer un buffer. La qualification
 native exerce le diff d’un fichier et les vues de changements indexés/non indexés.
-La mise à jour explicite refuse les sessions actives et conserve le port et le credential.
+La maintenance automatique sélectionne uniquement les Consoles externes actives déjà configurées,
+vérifie un service à jour même avec des sessions ouvertes, refuse un remplacement avec sessions
+actives et conserve les paramètres d’accès. Une panne ne divulgue pas de secret et n’empêche pas
+les autres cibles d’être vérifiées. `make tests-update` protège l’exécution après disponibilité
+du backend et la propagation d’un échec de maintenance à `make update`.
 `code-executor/tests/test_deployment.py` vérifie l’orchestration avec une frontière Docker
 simulée ; les suites natives ci-dessous vérifient séparément code-server réel et ses montages.
 `front/browser-tests/chat-code-workspace.spec.mjs` exerce les composants du panneau partagé,
@@ -332,6 +343,10 @@ décomposition des traitements substantiels ou des lots trop grands/inconnus, un
 par élément de collection, vagues bornées, inventaire Dataset vérifié avec les ACL, refus des listes
 incomplètes ou ambiguës, progression et reprise après rechargement sans rejouer les succès.
 Le parcours PostgreSQL conserve l'inventaire figé même si le Dataset est modifié ensuite.
+Il couvre les créations natives `data://` et les anciens alias documentaires vérifiés,
+sans exiger la livraison d'un inventaire interne. `app/dataset/tests/test_datasets.py`
+vérifie le refus d'un appel de création sans JSON avant effet, puis sa correction sans
+ressource supplémentaire ni Document HTML de substitution.
 
 Ces scénarios couvrent aussi les clôtures durables demandées après erreur ou blocage :
 rapport exécuté sans reprendre les dépendances, échec global conservé, rechargement,
@@ -693,7 +708,7 @@ du fournisseur (succès, abonnement disparu, refus et indisponibilité), avec un
 | Process → tâche en attente | Un callback autorisé libère l’attente ; doublons et événements tardifs préservent résultat et erreur | `back/app/process/tests/test_recovery.py`, `test_worker_concurrency.py` |
 | Process → humain → messagerie | Demande privée interne ou externe, réponse JSON simple convertie en valeurs typées, fichier seul avec URI source, échec de livraison repris, refus d'un autre auteur ou d'une réponse tardive ; aucun message sans rapport ne termine l'étape. Une activité IA attend sans Task auxiliaire, reprend même après une réponse rapide et conserve une pause utilisateur ; anciennes attentes retirées, doublons idempotents, Dataset et message final conservés | `back/app/process/tests/test_human_messaging.py`, `back/app/process/tests/test_activity_controls.py`, `back/app/harness/tests/test_conversation_prompt.py`, `e2e/specs/native-processes.spec.mjs` |
 | Document → fichier → agent | Le contenu, sa révision, ses URI et ses ACL restent cohérents entre lecture et écriture | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
-| Datasets et compatibilité documentaire | Les bibliothèques et créations sont séparées ; les anciens alias préservent type, JSON, droits, révisions, restauration et conflits ; CodeEditor conserve le brouillon invalide. L'édition native est couverte par le parcours Datasets, remplaçant l'ancienne création Dataset dans Documents | `back/app/memory/tests/test_dataset_documents.py`, `test_document_library.py`, `back/app/dataset/tests/test_datasets.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs`, `e2e/specs/datasets.spec.mjs` |
+| Datasets et compatibilité documentaire | Bibliothèques et créations séparées, identité native `data://`, JSON source préservé et erreurs sans nouvelle ressource/révision ; droits et historique propres, copie/restauration et conflits ; anciens alias et brouillons invalides préservés. Le parcours Datasets remplace la création Dataset dans Documents | `back/app/memory/tests/test_dataset_documents.py`, `test_document_library.py`, `back/app/dataset/tests/test_datasets.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs`, `e2e/specs/datasets.spec.mjs` |
 | HTML interactif dans un document | Formulaires HTML directs vers Dataset partagé, ACL et accords personnels liés à la révision ; révocation, copie non autorisée entre Datasets, validation JSON et quotas entre workers ; texte éditable et barre habituelle, code uniquement dans Source ; impression et PDF statiques avec filtrage des ressources ; isolation, WebRTC, saturation du pont et réponses tardives | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
 | Arrêt / reprise / concurrence | Un ancien worker ne remplace pas le propriétaire courant ; les effets ambigus ne sont pas rejoués aveuglément | `back/app/task/tests/test_active_lease.py`, `back/app/harness/tests/test_checkpoint.py`, `back/tests/test_durable_concurrency.py` |
 | Accusé d’outil perdu | Une commande SSH reste unique après perte de réponse et relecture PostgreSQL ; un timeout MCP après effet bloque le rejeu ; le retry conserve le journal | `make tests-recovery`, `back/app/harness/tests/test_ssh_checkpoint_recovery.py`, `back/app/harness/tests/test_execution_evidence.py`, `back/app/console/tests/test_durable_operations.py` |

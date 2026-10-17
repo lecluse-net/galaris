@@ -17,7 +17,7 @@ from core.database import get_db
 from core.settings import settings
 from core.user import current_web_session_family, get_current_user, get_user_record, web_session_active
 
-from .contracts import CodeConnection, CodeRuntimeNotConfiguredError, CodeSessionUnavailableError, WorkspaceTarget, Mode, RUNTIME_CONFIGURATION_LOCK_OFFSET, runtime
+from .contracts import CodeConnection, CodeRuntimeNotConfiguredError, CodeSessionUnavailableError, RepositoryCandidates, WorkspaceTarget, Mode, RUNTIME_CONFIGURATION_LOCK_OFFSET, runtime
 from .models import CodeConversationLink, CodeDisplayRequest, CodeGrant, CodeSession, CodeWorkspace
 from .schemas import SessionInfo, WorkspaceInfo
 
@@ -67,7 +67,14 @@ async def human_mode(workspace: CodeWorkspace, user_id: int) -> Mode:
 
 def info(workspace: CodeWorkspace, mode: Mode) -> WorkspaceInfo:
     return WorkspaceInfo(id=workspace.id, uri=f"galaris://code/{workspace.id}",
-        label=workspace.label, mode=mode)
+        label=PurePosixPath(workspace.root).relative_to(workspace.home).as_posix(), mode=mode)
+
+
+async def human_repository_candidates(agent_id: int, user_id: int) -> RepositoryCandidates:
+    config = await runtime().connection_for_agent(agent_id)
+    if config.owner_user_id != user_id:
+        raise PermissionError("Only the Console owner can discover repositories")
+    return await runtime().repositories(config)
 
 
 async def workspace_for_agent(identifier: UUID, agent_id: int) -> CodeWorkspace:

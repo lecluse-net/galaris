@@ -11,8 +11,8 @@ from core.database import get_db
 from app.agent import Agent
 
 from app.code import CodeConnection, CodeRuntimeNotConfiguredError, WorkspaceTarget, Mode, RuntimeEndpoint
-from app.code.contracts import CodeSessionUnavailableError
-from app.console import SshConnectionConfig, code_runtime_tunnel, connection_generation, discover_repository, resolve_active_connection, resolve_ssh_connection
+from app.code.contracts import CodeSessionUnavailableError, RepositoryCandidates
+from app.console import SshConnectionConfig, code_runtime_tunnel, connection_generation, discover_repository, list_repositories, resolve_active_connection, resolve_ssh_connection
 
 
 class CodeServerRuntime:
@@ -42,6 +42,13 @@ class CodeServerRuntime:
         except (SshError, OSError, TimeoutError):
             raise RuntimeError("Console repository discovery unavailable") from None
         return WorkspaceTarget.model_validate(target.model_dump())
+
+    async def repositories(self, connection: CodeConnection) -> RepositoryCandidates:
+        try:
+            listing = await list_repositories(await self._config(connection))
+        except (SshError, OSError, TimeoutError):
+            raise RuntimeError("Console repository discovery unavailable") from None
+        return RepositoryCandidates.model_validate(listing.model_dump())
 
     @asynccontextmanager
     async def endpoint(self, reference: CodeConnection) -> AsyncGenerator[RuntimeEndpoint]:

@@ -37,7 +37,7 @@ distinctes des **Préférences** d’administration de l’instance.
 |---|---|
 | **Configurer** | Fournisseurs & modèles, Agents, Outils & connexions, Compétences |
 | **Agir** | Discussion, Objectifs, Processus |
-| **Connaissances** | Documents, Mémoire, Contacts, Sujets |
+| **Connaissances** | Documents, Jeux de données, Mémoire, Contacts, Sujets |
 | **Superviser** | Tableau de bord, Activité, Dream, Journal des mails, Journal des échecs |
 | **Administrer** | Préférences, Laboratoire, Console, Utilisateurs, Équipes, Rôles & autorisations |
 
@@ -307,8 +307,11 @@ une suppression effectués dans l’application invalident leur cache ; la déco
 
 Dans la discussion, supprimer un document le retire immédiatement de la rubrique **Documents**
 et ferme son panneau ou sa modale, sans effacer le message en cours de rédaction.
-La rubrique **Code source** regroupe les dépôts associés à la discussion et se replie
-comme les autres rubriques de la colonne latérale.
+La rubrique **Code source** regroupe les dépôts associés à la discussion et recherche à
+l’ouverture ceux du home SSH de l’agent si vous possédez sa Console active. Les chemins
+complets depuis le home, tels que `work/galaris`, permettent de distinguer les dépôts de même
+nom. Un clic ouvre le VS Code interne ; **Actualiser les dépôts** relance la recherche.
+La rubrique se replie comme les autres rubriques de la colonne latérale.
 
 Les listes d’agents sont réutilisées pendant une minute ; les titres, groupes et paramètres
 pendant cinq minutes. Les sauvegardes correspondantes invalident le cache concerné.
@@ -356,8 +359,8 @@ Les changements s’appliquent aux nouveaux appels.
 
 ## Documents et connaissances
 
-**Connaissances → Documents** (`/documents`) sert à retrouver et créer les contenus rédigés.
-Les jeux de données JSON se créent et se gèrent séparément dans
+**Connaissances → Documents** (`/documents`) sert à retrouver et créer les contenus rédigés HTML.
+Les jeux de données JSON indépendants se créent et se gèrent séparément dans
 **Connaissances → Jeux de données** (`/dataset`), y compris ceux issus d'anciens documents.
 **Connaissances → Mémoire** (`/memory`) propose **Liste**
 et **Graphe** : ouvrez la page puis choisissez l’onglet, sans supposer un paramètre d’URL.
