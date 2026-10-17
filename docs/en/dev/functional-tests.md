@@ -193,6 +193,10 @@ substantial work or oversized/unknown batches, one Task per collection item,
 bounded waves, Dataset inventory validation with access rights, rejection of incomplete or
 ambiguous lists, progress and recovery after reload without replaying successful items.
 The PostgreSQL journey preserves the frozen inventory even if its Dataset changes later.
+It covers native `data://` creation and verified old Document aliases, without requiring
+delivery of an internal inventory. `app/dataset/tests/test_datasets.py` verifies rejection
+of creation without JSON before effect, followed by a corrected call without extra resources
+or a substitute HTML Document.
 
 These scenarios also cover requested durable closing actions after error or blockage:
 report execution without resuming dependencies, retained overall failure, reloads,
@@ -529,7 +533,7 @@ unavailability), using a real DB.
 | Choices loaded on demand | Empty agent/topic selectors load nothing before opening; cancellation, agent changes and closing do not create false errors; actual failures remain visible and a new search allows retry | `front/browser-tests/filter-loading.spec.mjs`, `front/browser-tests/goals.spec.mjs`, `front/browser-tests/topics.spec.mjs`, `front/core/api.test.mjs` |
 | Process → waiting task | An authenticated callback releases the wait; duplicates and late events preserve the outcome | `back/app/process/tests/test_recovery.py`, `test_worker_concurrency.py` |
 | Document → file → agent | Content, revision, canonical URIs and ACLs agree across readers and writers | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
-| Dataset document | Immutable type, exact JSON source, invalid writes leave no revision, shared classification/icons/ACLs, copy/restore and conflicts; CodeEditor preserves invalid drafts | `back/app/memory/tests/test_dataset_documents.py`, `test_document_classification.py`, `test_document_library.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs` |
+| JSON Dataset and Document compatibility | Native `data://` identity, exact JSON source, errors leave no extra resource/revision, independent rights/history, copy/restore and conflicts; migrated Document aliases and invalid drafts preserved | `back/app/dataset/tests/test_datasets.py`, `back/app/memory/tests/test_dataset_documents.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs` |
 | Interactive document HTML | Ordinary HTML forms using shared Datasets, viewer ACLs and personal revision-bound consent; revocation, unapproved cross-Dataset copies, JSON validation and quotas across workers; editable prose and usual toolbar, code only in Source; static print/PDF with resource filtering; isolation, WebRTC, bridge saturation and late responses | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
 | Restart / concurrency | Stale workers cannot replace current owners; ambiguous effects are not blindly replayed | `back/app/task/tests/test_active_lease.py`, `back/app/harness/tests/test_checkpoint.py`, `back/tests/test_durable_concurrency.py` |
 | Lost tool acknowledgement | An SSH command remains unique after a lost response and PostgreSQL reload; MCP timeouts after effects block replay; retry preserves the journal | `make tests-recovery`, `back/app/harness/tests/test_ssh_checkpoint_recovery.py`, `back/app/harness/tests/test_execution_evidence.py`, `back/app/console/tests/test_durable_operations.py` |

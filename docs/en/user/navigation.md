@@ -34,7 +34,7 @@ theme preferences are separate from the instance's administrative **Preferences*
 |---|---|
 | **Configure** | Providers & models, Agents, Tools & connections, Skills |
 | **Act** | Chat, Goals, Processes |
-| **Knowledge** | Documents, Memory, Contacts, Thematic dossiers |
+| **Knowledge** | Documents, Datasets, Memory, Contacts, Thematic dossiers |
 | **Monitor** | Dashboard, Activity, Dream, Mail journal, Failure journal |
 | **Administer** | Preferences, Laboratory, Console, Users, Teams, Roles & permissions |
 
@@ -324,7 +324,8 @@ a task with multiple calls may run for hours. Changes apply to new calls.
 
 ## Documents and knowledge
 
-**Knowledge → Documents** (`/documents`) holds authored content and Datasets.
+**Knowledge → Documents** (`/documents`) holds authored HTML content.
+**Knowledge → Datasets** (`/dataset`) manages independent JSON resources.
 **Knowledge → Memory** (`/memory`) offers **List** and **Graph**: open the
 page and select the tab without assuming a URL parameter. Contacts are at
 `/memory/contacts`; thematic groupings are under **Knowledge → Thematic dossiers** (`/topic`).

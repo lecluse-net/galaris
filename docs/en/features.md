@@ -69,7 +69,8 @@ A document can contain a form, calculator, chart or small application. The agent
 the human retains editable explanations and opens code through Source. A method and the calculator
 that applies it can occupy the same documentary space.
 
-Dataset documents store JSON separately. Several pages can share reference data, collect responses
+Independent `data://` Datasets store JSON under **Knowledge → Datasets**, with their own rights
+and history. Several pages can share reference data, collect responses
 or inspect common results—for example, an input page and a monitoring page used by one team.
 
 Page rights, data rights and personal consent for the application are separate. Exports retain a

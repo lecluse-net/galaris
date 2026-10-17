@@ -50,8 +50,10 @@ tentative, le lease, la décision du dispatcher et l’événement terminal avan
 
 Les champs éditoriaux du run suivent `docs/fr/dev/editorial-html.md` : l'agent lit et rédige
 du HTML pour les objectifs Task, les descriptions/suivis Goal, sa personnalité/fiche de poste,
-les contenus Memory et les documents HTML. Les documents de type immuable `dataset` contiennent
-du JSON valide, créé avec `file_create(..., document_type="dataset")`, sans normalisation HTML.
+les contenus Memory et les documents HTML. Les Datasets sont des ressources JSON indépendantes
+`data://`, créées avec `file_create(path="data://", content=..., name=...)`, sans normalisation HTML.
+Le planner utilise cette URI pour les nouveaux inventaires ; seuls les anciens alias documentaires
+vérifiés restent lisibles. Toujours fournir le JSON complet dans `content`.
 Les formulaires et petites applications sont du HTML ordinaire avec `form`, `style` et
 `script`, décrit dans `docs/fr/dev/document-apps.md`. Le runtime les isole sans ajouter de
 mode d'édition ou d'habillage ; seul Source affiche le code. Les lecteurs génériques restent inertes.

@@ -3,6 +3,10 @@
 - Statut : Accepted
 - Date : 2026-09-19
 
+Dataset ownership, URI and library rules below are superseded by
+[ADR 0187](0187-dataset-domain-and-typed-contracts.md): new Datasets are independent `data://`
+resources. The original decision remains as history; its HTML consent guarantees are preserved.
+
 ## Décision
 
 Un Dataset est un document, avec la même URI `document://`, le même `node_kind=document`,

@@ -37,7 +37,7 @@ distinctes des **Préférences** d’administration de l’instance.
 |---|---|
 | **Configurer** | Fournisseurs & modèles, Agents, Outils & connexions, Compétences |
 | **Agir** | Discussion, Objectifs, Processus |
-| **Connaissances** | Documents, Mémoire, Contacts, Sujets |
+| **Connaissances** | Documents, Jeux de données, Mémoire, Contacts, Sujets |
 | **Superviser** | Tableau de bord, Activité, Dream, Journal des mails, Journal des échecs |
 | **Administrer** | Préférences, Laboratoire, Console, Utilisateurs, Équipes, Rôles & autorisations |
 
@@ -352,8 +352,9 @@ Les changements s’appliquent aux nouveaux appels.
 
 ## Documents et connaissances
 
-**Connaissances → Documents** (`/documents`) sert à retrouver les contenus rédigés
-et les jeux de données. **Connaissances → Mémoire** (`/memory`) propose **Liste**
+**Connaissances → Documents** (`/documents`) sert à retrouver les contenus rédigés HTML.
+**Connaissances → Jeux de données** (`/dataset`) gère les ressources JSON indépendantes.
+**Connaissances → Mémoire** (`/memory`) propose **Liste**
 et **Graphe** : ouvrez la page puis choisissez l’onglet, sans supposer un paramètre d’URL.
 Les contacts sont dans `/memory/contacts` ; les regroupements thématiques dans
 **Connaissances → Sujets** (`/topic`). Le partage d’un lien ne donne pas accès au contenu.

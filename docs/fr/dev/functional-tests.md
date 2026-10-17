@@ -183,6 +183,10 @@ décomposition des traitements substantiels ou des lots trop grands/inconnus, un
 par élément de collection, vagues bornées, inventaire Dataset vérifié avec les ACL, refus des listes
 incomplètes ou ambiguës, progression et reprise après rechargement sans rejouer les succès.
 Le parcours PostgreSQL conserve l'inventaire figé même si le Dataset est modifié ensuite.
+Il couvre les créations natives `data://` et les anciens alias documentaires vérifiés,
+sans exiger la livraison d'un inventaire interne. `app/dataset/tests/test_datasets.py`
+vérifie le refus d'un appel de création sans JSON avant effet, puis sa correction sans
+ressource supplémentaire ni Document HTML de substitution.
 
 Ces scénarios couvrent aussi les clôtures durables demandées après erreur ou blocage :
 rapport exécuté sans reprendre les dépendances, échec global conservé, rechargement,
@@ -543,7 +547,7 @@ du fournisseur (succès, abonnement disparu, refus et indisponibilité), avec un
 | Choix chargés à la demande | Les sélecteurs agents/sujets vides ne chargent rien avant ouverture ; une annulation, un changement d’agent ou une fermeture de formulaire ne produit pas de fausse erreur ; une panne réelle reste visible et permet une nouvelle recherche | `front/browser-tests/filter-loading.spec.mjs`, `front/browser-tests/goals.spec.mjs`, `front/browser-tests/topics.spec.mjs`, `front/core/api.test.mjs` |
 | Process → tâche en attente | Un callback autorisé libère l’attente ; doublons et événements tardifs préservent résultat et erreur | `back/app/process/tests/test_recovery.py`, `test_worker_concurrency.py` |
 | Document → fichier → agent | Le contenu, sa révision, ses URI et ses ACL restent cohérents entre lecture et écriture | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
-| Document Dataset | Type immuable, JSON source préservé, erreurs sans révision, partage/classement/icône communs, copie/restauration et conflits ; CodeEditor conserve le brouillon invalide | `back/app/memory/tests/test_dataset_documents.py`, `test_document_classification.py`, `test_document_library.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs` |
+| Dataset JSON et compatibilité documentaire | Identité native `data://`, JSON source préservé, erreurs sans nouvelle ressource/révision, droits et historique propres, copie/restauration et conflits ; alias documentaires migrés et brouillons invalides préservés | `back/app/dataset/tests/test_datasets.py`, `back/app/memory/tests/test_dataset_documents.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs` |
 | HTML interactif dans un document | Formulaires HTML directs vers Dataset partagé, ACL et accords personnels liés à la révision ; révocation, copie non autorisée entre Datasets, validation JSON et quotas entre workers ; texte éditable et barre habituelle, code uniquement dans Source ; impression et PDF statiques avec filtrage des ressources ; isolation, WebRTC, saturation du pont et réponses tardives | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
 | Arrêt / reprise / concurrence | Un ancien worker ne remplace pas le propriétaire courant ; les effets ambigus ne sont pas rejoués aveuglément | `back/app/task/tests/test_active_lease.py`, `back/app/harness/tests/test_checkpoint.py`, `back/tests/test_durable_concurrency.py` |
 | Accusé d’outil perdu | Une commande SSH reste unique après perte de réponse et relecture PostgreSQL ; un timeout MCP après effet bloque le rejeu ; le retry conserve le journal | `make tests-recovery`, `back/app/harness/tests/test_ssh_checkpoint_recovery.py`, `back/app/harness/tests/test_execution_evidence.py`, `back/app/console/tests/test_durable_operations.py` |

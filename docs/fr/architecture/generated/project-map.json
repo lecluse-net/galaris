@@ -7536,7 +7536,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "append_file",
-        "line": 355,
+        "line": 369,
         "module": "app.file_share",
         "name": "file_append",
         "namespace": "file_sharing"
@@ -7544,7 +7544,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "copy_file",
-        "line": 417,
+        "line": 433,
         "module": "app.file_share",
         "name": "file_copy",
         "namespace": "file_sharing"
@@ -7552,7 +7552,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "create_file",
-        "line": 283,
+        "line": 287,
         "module": "app.file_share",
         "name": "file_create",
         "namespace": "file_sharing"
@@ -7560,7 +7560,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "delete_file",
-        "line": 479,
+        "line": 495,
         "module": "app.file_share",
         "name": "file_delete",
         "namespace": "file_sharing"
@@ -7568,7 +7568,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "edit_file",
-        "line": 380,
+        "line": 394,
         "module": "app.file_share",
         "name": "file_edit",
         "namespace": "file_sharing"
@@ -7576,7 +7576,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_info",
-        "line": 167,
+        "line": 169,
         "module": "app.file_share",
         "name": "file_info",
         "namespace": "file_sharing"
@@ -7584,7 +7584,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "list_files",
-        "line": 139,
+        "line": 141,
         "module": "app.file_share",
         "name": "file_list",
         "namespace": "file_sharing"
@@ -7592,7 +7592,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "move_file",
-        "line": 449,
+        "line": 465,
         "module": "app.file_share",
         "name": "file_move",
         "namespace": "file_sharing"
@@ -7600,7 +7600,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "read_file",
-        "line": 241,
+        "line": 243,
         "module": "app.file_share",
         "name": "file_read",
         "namespace": "file_sharing"
@@ -7608,7 +7608,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_schemes",
-        "line": 118,
+        "line": 120,
         "module": "app.file_share",
         "name": "file_schemes",
         "namespace": "file_sharing"
@@ -7616,7 +7616,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "search_files",
-        "line": 199,
+        "line": 201,
         "module": "app.file_share",
         "name": "file_search",
         "namespace": "file_sharing"
@@ -7624,7 +7624,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "write_file",
-        "line": 320,
+        "line": 334,
         "module": "app.file_share",
         "name": "file_write",
         "namespace": "file_sharing"

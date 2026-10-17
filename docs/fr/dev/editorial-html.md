@@ -17,22 +17,25 @@ ni dossier dans la bibliothèque. `agent_list`, `agent_get` et le champ API `res
 fournissent cette URI. `file_read` renvoie directement la personnalité et la fiche de poste
 actuelles, en HTML `rich-text` dans leur enveloppe JSON, avec les droits d'accès existants.
 
-Les documents possèdent un type immuable : `html` (défaut, y compris les documents existants)
-ou `dataset`. Un Dataset est un document JSON, visible, filtrable et triable dans la même
-bibliothèque, avec titre, icône, classement, partage et historique identiques. CodeEditor
-en mode JSON remplace CKEditor. Le JSON UTF-8 est validé avant enregistrement, sans modifier
-sa mise en forme ; une saisie invalide reste un brouillon. Il n'est jamais converti en HTML.
-Le corps peut être toute valeur JSON valide ; NaN et Infinity sont refusés. La limite est
-2 000 000 octets, sous réserve du quota de stockage. Voir la
-[décision 0124](../../../project/decisions/0124-document-types-and-datasets.md).
+Memory possède les documents éditoriaux HTML `document://`. Dataset possède les ressources
+JSON indépendantes `data://`, leurs droits et leur historique, dans **Connaissances → Jeux de données**.
+Une création native de Dataset ne crée pas de Document dans Memory. Les anciens liens
+documentaires ne fonctionnent comme alias que pour les Datasets migrés et vérifiés.
+Le JSON UTF-8 est validé avant enregistrement, sans modifier sa mise en forme ; une saisie
+invalide reste un brouillon et n'est jamais convertie en HTML. Toute racine JSON valide est
+admise ; NaN et Infinity sont refusés. La limite est 2 000 000 octets, sous réserve du quota
+de stockage. Voir la [décision 0187](../../../project/decisions/0187-dataset-domain-and-typed-contracts.md)
+et le [contrat Dataset](datasets.md).
 
-L'API de création et `file_create` acceptent `document_type="dataset"` ; les mises à jour
-refusent ce champ et les changements de MIME incompatibles. Exemple :
-`file_create(path="document://", name="Scénarios", document_type="dataset", content='{"scenarios": []}')`.
+Créer directement avec
+`file_create(path="data://", name="Scénarios", content='{"scenarios": []}')`.
+Le champ `content` doit contenir le JSON complet ; une omission ou un contenu vide est refusé
+avant création. L'ancienne option `document_type="dataset"` sur `document://` reste un
+adaptateur et renvoie aussi `data://`, jamais un nouveau Dataset documentaire.
 Pour un Dataset, `file_read` pagine en caractères et `file_edit` édite des lignes ; le JSON
 complet après modification doit être valide. `file_write`, `file_edit` et `file_append`
 exigent la révision lue. Préférer remplacement ou édition à la concaténation de JSON.
-Copier une source `application/json` vers `document://` crée un nouveau Dataset privé.
+Copier une source `application/json` vers `data://` crée un nouveau Dataset privé.
 Les exports PDF/HTML restent propres aux documents HTML. Les autres types de documents
 restent hors périmètre. Le [HTML interactif](document-apps.md) permet désormais
 aux documents HTML de contenir des formulaires et d'accéder à des datasets déclarés via un

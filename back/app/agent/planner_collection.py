@@ -48,7 +48,9 @@ class CollectionInventory(BaseModel):
 
 class InventoryReceipt(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    inventory_uri: str = Field(pattern=r"^document://[0-9a-fA-F-]{36}$")
+    # Historical receipts may use a verified Document alias. The resource reader
+    # still requires an authorized JSON Dataset; an HTML Document cannot qualify.
+    inventory_uri: str = Field(pattern=r"^(?:data|document)://[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
 def inventory_step(task: AgentTask) -> dict[str, Any]:
@@ -63,7 +65,8 @@ def inventory_step(task: AgentTask) -> dict[str, Any]:
         "Derive the count from the verified inventory, not from historical estimates. "
         "Do not invent identifiers or silently truncate pagination. If discovery is incomplete, "
         "report BLOCKED instead of claiming success. Create exactly one JSON Dataset using "
-        "file_create(path='document://', document_type='dataset', name=..., content=...). "
+        "file_create(path='data://', name=..., content=...). Pass the complete JSON in "
+        "the content argument; omitting it does not create an inventory. "
         "Its JSON schema is: "
         '{"schema_version":"galaris.collection/v1","collection_task":'
         + json.dumps(f"galaris://task/{task.id}")
@@ -74,7 +77,7 @@ def inventory_step(task: AgentTask) -> dict[str, Any]:
         f"items and {MAX_INVENTORY_CHARS} JSON characters. Inputs are strings, at most 32 "
         "fields of 4000 characters per item. Keep only identifiers and bounded context, never "
         "document bodies. Empty items are valid only after verifying there is no remaining work. "
-        "Finish with ONLY the JSON object {\"inventory_uri\":\"document://<returned UUID>\"}. "
+        "Finish with ONLY the JSON object {\"inventory_uri\":\"data://<returned UUID>\"}. "
         "The server verifies this receipt against recorded resource operations."
     )
     return PlanStep(

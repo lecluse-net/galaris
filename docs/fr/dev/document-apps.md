@@ -26,12 +26,13 @@ redimensionne pas le document ouvert. Une capture est annulée si son document c
 
 ## Exemple avec Dataset partagé
 
-Créer un Dataset contenant `[]` avec `file_create(path="document://", name="Réponses",
-document_type="dataset", content="[]")`, puis utiliser son URI réelle :
+Créer un Dataset contenant `[]` avec `file_create(path="data://", name="Réponses",
+content="[]")`, puis utiliser son URI réelle. Le document HTML et le Dataset ont des droits
+et un historique indépendants ; les anciens alias documentaires vérifiés restent lisibles :
 
 ```html
 <p>Texte modifiable dans l'éditeur habituel.</p>
-<form id="entry" data-dataset="document://11111111-1111-4111-8111-111111111111">
+<form id="entry" data-dataset="data://11111111-1111-4111-8111-111111111111">
   <label>Réponse <input name="answer" required></label>
   <button>Enregistrer</button>
   <output id="status"></output>
