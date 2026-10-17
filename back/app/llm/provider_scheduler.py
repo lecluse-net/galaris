@@ -153,7 +153,7 @@ class ProviderScheduler:
                 eligible = [ticket for ticket in queue.waiting if ticket.priority in allowed]
                 if not eligible:
                     break
-                def rank(ticket: Ticket) -> tuple[int, int, float]:
+                def rank(ticket: Ticket, owners: Counter[str] = owners) -> tuple[int, int, float]:
                     age = int((now - ticket.queued_at) / 30)
                     concurrent = owners[ticket.owner] if ticket.owner else 0
                     return max(0, ticket.priority - age), concurrent, ticket.queued_at

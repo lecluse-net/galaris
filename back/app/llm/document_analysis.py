@@ -1,6 +1,7 @@
 """Bounded, resumable document analysis owned by the LLM domain."""
 
 import base64
+from functools import partial
 import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -22,6 +23,10 @@ from .document_store import document_checkpoint, submit_batch
 from .document_contracts import DocumentAnalysisSnapshot, DocumentAnalysisError
 
 _conversions: dict[UUID, set[asyncio.Task[Any]]] = {}
+
+
+def _encode_image(path: Path) -> str:
+    return base64.b64encode(path.read_bytes()).decode("ascii")
 
 
 @asynccontextmanager
@@ -204,7 +209,7 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
                     for part in plan[completed]:
                         if "_image" in part:
                             image = Path(str(part["_image"]))
-                            encoded = await complete_io(lambda: base64.b64encode(image.read_bytes()).decode("ascii"))
+                            encoded = await complete_io(partial(_encode_image, image))
                             parts.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + encoded, "detail": "high"}})
                         else:
                             parts.append(part)
