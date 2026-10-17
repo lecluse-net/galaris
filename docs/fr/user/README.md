@@ -81,6 +81,7 @@ La barre latérale ne montre que les écrans autorisés par votre rôle :
 | Objectifs | suivre les missions de fond, leurs cycles, preuves et résultats |
 | Dossiers thématiques | retrouver les sujets globaux et les connaissances liées entre plusieurs canaux |
 | Mémoire | rechercher, lire et corriger les souvenirs privés d’un agent et les synthèses des documents autorisés ; oublier uniquement les souvenirs autonomes |
+| [Fichiers](files.md) | choisir un agent, explorer ses emplacements et répertoires et ouvrir les fichiers ou leurs vues métier ; chargement au défilement |
 | Dream | suivre le travail de fond, consulter son historique et gérer l’indexation des fichiers par agent |
 | Lab IA | analyser une tâche et mesurer les mécanismes IA sur des jeux de cas reproductibles |
 | Processus | lancer et suivre un workflow externe, par exemple n8n |

@@ -1265,6 +1265,18 @@ figées, sans leur ajouter les champs d'organisation.
 
 ## Règle de maintenance
 
+Le navigateur **Connaissances → Fichiers** est couvert par
+`front/browser-tests/file-browser.spec.mjs` : navigation, chargement au défilement,
+reprise après erreur sans perte des entrées, aperçu au clavier et changement d’agent
+pendant une réponse tardive. `app/file_share/tests/test_managed_http.py` vérifie ses
+routes HTTP assemblées, les refus de portée et de ressource, le contenu autorisé et
+la continuation des fichiers indépendants. `app/console/tests/test_file_listing.py`
+vérifie plusieurs pages SFTP non ordonnées, sans doublon ni omission, les curseurs
+liés au répertoire et l’exclusion des symlinks et chemins extérieurs au home.
+`e2e/specs/file-browser.spec.mjs` vérifie la page assemblée sur mobile et bureau
+avec les vraies API : sélection d’agent, fichiers internes, réouverture des aperçus
+et modale documentaire sous le bon périmètre.
+
 Une garantie a une preuve principale et, si nécessaire, une preuve d’assemblage E2E.
 Une nouvelle fonction interne n’exige pas automatiquement un nouveau test. Une nouvelle
 branche métier, un refus, une perte de donnée possible ou un effet rejouable exige une preuve.

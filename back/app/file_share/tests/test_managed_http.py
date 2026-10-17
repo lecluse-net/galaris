@@ -61,3 +61,32 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
     assert renamed.status_code == 200 and renamed.json()["uri"] == uri and renamed.json()["name"] == "Official.txt"
     # A manager of another agent cannot access this private owner binding either.
     assert (await client.get(download, params={"agent_id": other_id}, headers=admin)).status_code == 404
+
+    # The browser uses the agent's canonical provider context and rechecks both scopes.
+    browser = "/api/file-share/browser"
+    params = {"agent_id": owner_id, "uri": uri}
+    schemes = await client.get(f"{browser}/schemes", params={"agent_id": owner_id}, headers=human)
+    assert schemes.status_code == 200, schemes.text
+    assert "list" in next(item for item in schemes.json() if item["scheme"] == "file")["capabilities"]
+    assert (await client.get(f"{browser}/schemes", params={"agent_id": other_id}, headers=human)).status_code == 404
+    assert (await client.get(f"{browser}/info", params=params, headers=human)).json()["name"] == "Official.txt"
+    content = await client.get(f"{browser}/content", params={**params, "preview": False}, headers=human)
+    assert content.status_code == 200 and content.content == b"Synthetic HTTP bytes"
+    assert content.headers["cache-control"] == "private, no-store"
+    for endpoint in ["info", "content", "thumbnail"]:
+        assert (await client.get(f"{browser}/{endpoint}", params={**params, "agent_id": other_id}, headers=human)).status_code == 404
+        assert (await client.get(f"{browser}/{endpoint}", params={**params, "agent_id": other_id}, headers=admin)).status_code == 404
+    second = await client.post("/api/file-share/files", params={"agent_id": owner_id}, headers=human,
+        files={"upload": ("Official.txt", b"Another independent file", "text/plain")})
+    assert second.status_code == 201
+    first_page = await client.get(f"{browser}/entries", params={"agent_id": owner_id, "uri": "file://", "limit": 1}, headers=human)
+    assert first_page.status_code == 200, first_page.text
+    assert first_page.json()["truncated"] and first_page.json()["next_cursor"]
+    second_page = await client.get(f"{browser}/entries", params={"agent_id": owner_id, "uri": "file://", "limit": 1,
+        "cursor": first_page.json()["next_cursor"]}, headers=human)
+    assert second_page.status_code == 200 and not second_page.json()["truncated"]
+    assert {first_page.json()["entries"][0]["uri"], second_page.json()["entries"][0]["uri"]} == {uri, second.json()["uri"]}
+    assert (await client.get(f"{browser}/entries", params={"agent_id": other_id, "uri": "file://"}, headers=admin)).json()["entries"] == []
+    assert (await client.get(f"{browser}/entries", params={"agent_id": owner_id, "uri": "file://", "cursor": "invalid"}, headers=human)).status_code == 422
+    client.cookies.clear()
+    assert (await client.get(f"{browser}/schemes", params={"agent_id": owner_id})).status_code in {401, 403}

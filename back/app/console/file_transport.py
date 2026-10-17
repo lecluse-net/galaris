@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import codecs
 import hashlib
+import json
 import mimetypes
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
@@ -293,6 +294,55 @@ class SshAgentFileTransport:
                     break
             entries.sort(key=lambda entry: entry.path)
             return FileListing(base_relative, tuple(entries[:limit]), truncated)
+        finally:
+            sftp.exit()
+
+    async def resource_list(self, path: str, *, recursive: bool, limit: int) -> FileListing:
+        return await self.resource_list_page(path, recursive=recursive, limit=limit)
+
+    async def resource_list_page(self, path: str, *, recursive: bool, limit: int,
+        cursor: str | None = None) -> FileListing:
+        """Keep only one page in memory, using canonical paths as continuation keys."""
+        if recursive:
+            if cursor:
+                raise ValueError("Recursive console listing does not support cursors")
+            return await self.file_list(path, recursive=True, limit=limit)
+        sftp = await self._client()
+        try:
+            base, relative = await self._resolve_existing(sftp, path or ".")
+            binding_key = hashlib.sha256(base.encode()).hexdigest()
+            after = ""
+            if cursor:
+                try:
+                    binding, after = json.loads(cursor)
+                    if binding != binding_key or not isinstance(after, str):
+                        raise ValueError
+                except (ValueError, TypeError) as exc:
+                    raise ValueError("Invalid console listing cursor") from exc
+            home = str(await sftp.realpath(await self._execution.home())).rstrip("/") or "/"
+            selected: list[FileEntry] = []
+            async for item in sftp.scandir(base):
+                name = str(item.filename)
+                if name in {".", ".."}:
+                    continue
+                candidate = str(PurePosixPath(base) / name)
+                attrs = await sftp.lstat(candidate)
+                if attrs.type == _SFTP_TYPE_SYMLINK:
+                    continue
+                real = str(await sftp.realpath(candidate))
+                if not self._inside(home, real):
+                    continue
+                entry_path = PurePosixPath(real).relative_to(PurePosixPath(home)).as_posix()
+                if entry_path <= after:
+                    continue
+                selected.append(self._entry(real, attrs, entry_path))
+                selected.sort(key=lambda entry: entry.path)
+                if len(selected) > limit + 1:
+                    selected.pop()
+            truncated = len(selected) > limit
+            page = selected[:limit]
+            next_cursor = json.dumps([binding_key, page[-1].path]) if truncated else None
+            return FileListing(relative, tuple(page), truncated, next_cursor)
         finally:
             sftp.exit()
 

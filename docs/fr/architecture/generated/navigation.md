@@ -72,6 +72,14 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 - Conditions supplémentaires : —
 - Sources : `front/app/memory/navigation.ts`
 
+## Connaissances → Fichiers
+
+- Route : `/files`
+- Usage : Explorer les fichiers et ressources accessibles à chaque agent
+- Visibilité du menu (privilèges) : (MEMORY_ACCESS)
+- Conditions supplémentaires : —
+- Sources : `front/app/file_share/navigation.ts`
+
 ## Connaissances → Jeux de données
 
 - Route : `/dataset`

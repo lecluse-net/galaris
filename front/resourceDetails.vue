@@ -9,6 +9,7 @@
     <TaskDetail v-else-if="target.kind === 'task'" :task-id="taskId"
       @task-change="taskId = $event" @refresh="emit('changed')" @delete="taskToDelete = $event" />
     <NativeRunPanel v-else-if="target.kind === 'process_run'" :key="target.id" :run-id="target.id" embedded />
+    <DatasetEditor v-else-if="target.kind === 'dataset'" :key="target.id" :id="target.id" @updated="emit('changed')" @deleted="changedAndClose" />
     <ConversationRoundDetailView v-else-if="round && message" :message="message" :round="round"
       :calls="calls" :loading="false" error="" :calls-loading="callsLoading" :calls-error="callsError"
       @deleted="changedAndClose" @topic-updated="round = $event; emit('changed')"
@@ -17,7 +18,7 @@
       @deleted="changedAndClose" @stopped="changedAndClose" @topic-updated="emit('changed')" />
     <RoomDiscussion v-else-if="room" :room="room" />
     <DocumentEditor v-else-if="target.kind === 'document'" :document-id="target.id"
-      :agent-id="null" :editable="false" @unavailable="error = t('topic.detail.targetLoadError')" />
+      :agent-id="target.agentId ?? null" :editable="false" @unavailable="error = t('topic.detail.targetLoadError')" />
     <div v-else-if="memory" class="q-pa-md">
       <EditorialContent v-if="memory.payload.text != null" :content="memory.payload.text" :media-type="memory.media_type" />
       <q-banner v-else>{{ t('memory.binaryContent') }}</q-banner>
@@ -58,6 +59,7 @@ import type { LLMCall } from '@/app/llm'
 
 const TaskDetail = defineAsyncView(async () => (await import('@/app/task')).TaskDetail)
 const NativeRunPanel = defineAsyncView(async () => (await import('@/app/process')).NativeRunPanel)
+const DatasetEditor = defineAsyncView(async () => (await import('@/app/dataset')).DatasetEditor)
 const DocumentEditor = defineAsyncView(async () => (await import('@/app/memory')).DocumentEditor)
 const ConversationRoundDetailView = defineAsyncView(async () => (await import('@/app/conversation')).ConversationRoundDetailView)
 const VoiceConversationDetailView = defineAsyncView(async () => (await import('@/app/voice')).VoiceConversationDetailView)
@@ -65,7 +67,7 @@ const RoomDiscussion = defineAsyncView(async () => (await import('@/app/chat/int
 const props = defineProps<{ target: ResourceDetailTarget }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
 const { t } = useI18n()
-const icons: Record<string, string> = { task: 'task_alt', process_run: 'account_tree', round: 'forum', voice: 'record_voice_over', room: 'hub', document: 'description', memory: 'memory' }
+const icons: Record<string, string> = { task: 'task_alt', process_run: 'account_tree', dataset: 'data_object', round: 'forum', voice: 'record_voice_over', room: 'hub', document: 'description', memory: 'memory' }
 const retry = ref(0)
 const taskId = ref<string | null>(null)
 const taskToDelete = ref<TaskFull | null>(null)
@@ -122,7 +124,7 @@ watch([() => props.target, retry], async ([target], _, onCleanup) => {
   memory.value = null
   room.value = null
   taskId.value = target.id
-  loading.value = !['task', 'document', 'process_run'].includes(target.kind)
+  loading.value = !['task', 'document', 'process_run', 'dataset'].includes(target.kind)
   try {
     if (target.kind === 'round') {
       const { conversationService } = await import('@/app/conversation')

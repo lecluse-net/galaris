@@ -84,7 +84,9 @@ for (const width of [1440, 390]) test(`topic rows open their target dialogs with
     await page.keyboard.press('Enter')
     await expect(dialog.getByText(expected, { exact: true })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath(`topic-${line.replaceAll(' ', '-')}-dialog.png`) })
-    if (width === 390 && line === 'Synthetic document') {
+    // Mobile details may fill the viewport and leave no exposed backdrop. The
+    // accessible close action remains usable; desktop still exercises dismissal.
+    if (width === 390) {
       await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
     } else {
       await page.locator('.q-dialog__backdrop').last().click({ position: { x: 5, y: 5 } })

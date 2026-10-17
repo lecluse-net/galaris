@@ -71,6 +71,7 @@ The sidebar shows only the screens authorized by your role:
 | Goals | track long-running missions, their cycles, evidence, and results |
 | Topics | find global topics and related knowledge across multiple channels |
 | Memory | search, read and correct an Agent’s private memories and authorised document syntheses; forget only standalone memories |
+| [Files](files.md) | choose an Agent, browse their locations and directories, and open files or their domain views; loading on scroll |
 | Dream | track background work, inspect its history, and manage file indexing per agent |
 | AI Lab | analyze a Task and measure AI mechanisms on reproducible case sets |
 | Processes | launch and track an external workflow, such as n8n |

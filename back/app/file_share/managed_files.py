@@ -16,7 +16,7 @@ from core.storage import ensure_disk_identity
 from core.params import runtime_settings
 from core.util import complete_io
 
-from .resource_contracts import ResourceContext, ResourceDescriptor
+from .resource_contracts import ResourceContext, ResourceDescriptor, ResourceListing
 from .models import ManagedFileOwner
 
 
@@ -52,6 +52,21 @@ async def managed_file_info(ctx: ResourceContext, file_id: UUID) -> ResourceDesc
             capabilities=["info", "read", "copy"],
         )
     raise PermissionError("Managed file unavailable")
+
+
+async def list_managed_files(ctx: ResourceContext, *, limit: int, cursor: str | None) -> ResourceListing:
+    """List independent files owned by the agent; domain attachments stay in their domain."""
+    query = select(StoredFile).join(ManagedFileOwner, ManagedFileOwner.file_id == StoredFile.id).where(
+        ManagedFileOwner.agent_id == ctx.agent_id, StoredFile.backend == "disk")
+    if cursor:
+        query = query.where(StoredFile.id > UUID(cursor))
+    records = list(await get_db().scalars(query.order_by(StoredFile.id).limit(limit + 1)))
+    page = records[:limit]
+    return ResourceListing(uri="file://", entries=[ResourceDescriptor(
+        uri=f"file://{record.id}", name=record.name, media_type=record.media_type,
+        size=record.size_bytes, checksum=record.sha256, capabilities=["info", "read", "copy"],
+    ) for record in page], truncated=len(records) > limit,
+        next_cursor=str(page[-1].id) if len(records) > limit else None)
 
 
 async def upload_managed_file(ctx: ResourceContext, upload: UploadFile) -> ResourceDescriptor:

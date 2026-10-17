@@ -270,3 +270,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0167 — Samba via la façade de fichiers canonique](0167-samba-file-share.md)
 
 - [0168 — Graphe mémoire exclusivement en 3D et représentants visibles](0168-memory-graph-3d-only.md)
+- [0201 — Agent-scoped virtual file browser](0201-agent-file-browser.md)

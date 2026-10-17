@@ -169,6 +169,7 @@ class ResourceSchemeDescription(BaseModel):
     example: str
     capabilities: list[ResourceCapability]
     native: bool
+    root_listable: bool = True
     file_indexing_mode: FileIndexingMode = "excluded"
 
 

@@ -239,6 +239,7 @@
         <div class="col-12 document-editor-attachments">
           <DocumentAttachments
             @insert="insertAttachment"
+            allow-insertion
             ref="attachmentPanel"
             :content="editorContent"
             :document-id="currentDocument.id"

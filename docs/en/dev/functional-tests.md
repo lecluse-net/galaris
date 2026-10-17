@@ -1225,6 +1225,18 @@ resolution of frozen v4 inferences without adding organization fields to their s
 
 ## Maintenance rule
 
+The **Knowledge → Files** browser is covered by
+`front/browser-tests/file-browser.spec.mjs`: navigation, loading on scroll, retry
+without losing entries, keyboard preview and agent changes during a late response.
+`app/file_share/tests/test_managed_http.py` checks the assembled HTTP routes, scope
+and resource denials, authorized content and continuation of independent files.
+`app/console/tests/test_file_listing.py` checks multiple unordered SFTP pages without
+duplicates or omissions, directory-bound cursors and exclusion of symlinks and paths
+outside the home directory.
+`e2e/specs/file-browser.spec.mjs` exercises the assembled desktop/mobile page with
+real APIs: Agent selection, internal files, reopening previews and the Document
+dialog under the selected Agent's scope.
+
 A guarantee has a primary proof and, when useful, an E2E assembly proof. A new private function
 does not automatically need a test. A new business branch, denied operation, possible data loss
 or replayable effect needs evidence. Intentional changes explain before/after behavior;

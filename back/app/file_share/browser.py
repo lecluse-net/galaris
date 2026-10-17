@@ -1,0 +1,68 @@
+"""Read-only browsing through the same provider context as the selected agent."""
+
+import asyncio
+import hashlib
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from app.console import ConsoleRunResource, resolve_ssh_connection
+from app.skill import can_manage_skill_resources
+from core.preview import PreviewFile, prepare_preview, thumbnails
+
+from .resource_contracts import ResourceContext
+from .resource_service import materialize_resource, resource_info
+
+
+@asynccontextmanager
+async def browser_context(agent_id: int) -> AsyncGenerator[ResourceContext]:
+    config = await resolve_ssh_connection(agent_id)
+    console = ConsoleRunResource(config) if config is not None else None
+    try:
+        yield ResourceContext(agent_id=agent_id, runtime="internal", console_resource=console,
+            skill_management=await can_manage_skill_resources(agent_id))
+    finally:
+        if console is not None:
+            await console.close()
+
+
+@asynccontextmanager
+async def browser_content(ctx: ResourceContext, uri: str, *, preview: bool) -> AsyncGenerator[PreviewFile]:
+    info = await resource_info(ctx, uri)
+    if info.is_collection:
+        raise IsADirectoryError(uri)
+    with TemporaryDirectory(prefix="galaris-file-browser-") as temporary:
+        path = Path(temporary) / "source"
+        source = await materialize_resource(ctx, uri, path, max_bytes=512 * 1024**2)
+        await resource_info(ctx, uri)
+        file = PreviewFile(path=path, name=source.name, media_type=source.media_type)
+        if preview:
+            async with prepare_preview(file) as prepared:
+                await resource_info(ctx, uri)
+                yield prepared
+        else:
+            yield file
+
+
+async def browser_thumbnail(ctx: ResourceContext, uri: str) -> bytes | None:
+    from app.memory import render_file_thumbnail
+
+    info = await resource_info(ctx, uri)
+    if info.is_collection or (info.size is not None and info.size > 50 * 1024**2):
+        return None
+    version = info.model_dump_json(exclude={"indexing_status", "metadata", "capabilities"})
+    key = f"file-browser:v1:{ctx.agent_id}:{hashlib.sha256(version.encode()).hexdigest()}"
+    path = thumbnails.cache_path(key)
+    async with thumbnails.generation(key):
+        cached = await asyncio.to_thread(thumbnails.read, path)
+        if cached is not None:
+            return cached
+        async with browser_content(ctx, uri, preview=False) as source:
+            image = await render_file_thumbnail(source.path, source.name, source.media_type)
+        current = await resource_info(ctx, uri)
+        if current.model_dump_json(exclude={"indexing_status", "metadata", "capabilities"}) != version:
+            raise ValueError("Resource changed")
+        if image is not None:
+            await asyncio.to_thread(thumbnails.write, path, image)
+        return image

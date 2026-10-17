@@ -11,6 +11,8 @@ export { startVisiblePolling } from './visiblePolling'
 export { isPrivateHostname } from './networkAddress'
 export { default as NetworkAccessNotice } from './components/NetworkAccessNotice.vue'
 export const CodeEditor = defineAsyncView(() => import('./components/CodeEditor.vue'))
+export { default as ResourceAttachments } from './components/ResourceAttachments.vue'
+export type { AttachmentSource, ResourceAttachment } from './resourceAttachments'
 export { default as ExecutionDateFilters } from './components/ExecutionDateFilters.vue'
 export const FullscreenPreview = defineAsyncView(() => import('./components/FullscreenPreview.vue'))
 export { default as ResourcePreviewBlock } from './components/ResourcePreviewBlock.vue'

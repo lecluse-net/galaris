@@ -10,17 +10,17 @@ tests restent l’autorité sur le comportement.
 ## Résumé
 
 - 76 modules backend déclarés ;
-- 37 modules frontend déclarés ;
+- 38 modules frontend déclarés ;
 - 590 arêtes de dépendance backend ;
-- 201 arêtes de dépendance frontend ;
+- 207 arêtes de dépendance frontend ;
 - 280 arêtes entre domaines `app`/`bridge` ;
 - 27 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 696 handlers HTTP/WebSocket détectés ;
+- 701 handlers HTTP/WebSocket détectés ;
 - 170 tables SQLAlchemy détectées ;
 - 272 outils MCP natifs détectés ;
-- 49 pages Vue détectées.
+- 50 pages Vue détectées.
 
 ## Modules backend
 
@@ -127,6 +127,7 @@ tests restent l’autorité sur le comportement.
 | `app/topic` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 2 |
 | `app/goal` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/memory` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 4 |
+| `app/file_share` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services` | 1 |
 | `app/dataset` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
 | `app/lab` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 4 |
 | `app/incident` | oui | `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
@@ -285,29 +286,29 @@ tests restent l’autorité sur le comportement.
 | `app.dream` | `core.preview` | `back/app/dream/manual.py`, `back/app/dream/mechanisms/file_thumbnails.py` |
 | `app.dream` | `core.user` | `back/app/dream/events.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/file_thumbnails.py` |
 | `app.dream` | `core.util` | `back/app/dream/attachment_processing.py`, `back/app/dream/contracts.py` |
-| `app.file_share` | `app.agent` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/mcp.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/planner_adapter.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/router.py` |
+| `app.file_share` | `app.agent` | `back/app/file_share/browser_router.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/mcp.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/planner_adapter.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/router.py` |
 | `app.file_share` | `app.connection` | `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/indexing.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/thumbnail_service.py` |
-| `app.file_share` | `app.console` | `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/resource_service.py` |
+| `app.file_share` | `app.console` | `back/app/file_share/browser.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `app.conversation` | `back/app/file_share/galaris_provider.py` |
 | `app.file_share` | `app.documentation` | `back/app/file_share/documentation_provider.py` |
 | `app.file_share` | `app.goal` | `back/app/file_share/galaris_provider.py` |
 | `app.file_share` | `app.image` | `back/app/file_share/file_share_service.py` |
-| `app.file_share` | `app.memory` | `back/app/file_share/__init__.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py` |
+| `app.file_share` | `app.memory` | `back/app/file_share/__init__.py`, `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `app.messenger` | `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py` |
 | `app.file_share` | `app.process` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/process_provider.py` |
-| `app.file_share` | `app.skill` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/mcp.py` |
+| `app.file_share` | `app.skill` | `back/app/file_share/browser.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/mcp.py` |
 | `app.file_share` | `app.task` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/messenger_transport.py` |
 | `app.file_share` | `app.tools` | `back/app/file_share/bridges.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/documentation_provider.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/indexing.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/transport.py` |
 | `app.file_share` | `bridge.affine` | `back/app/file_share/bridges.py` |
-| `app.file_share` | `core.authorize` | `back/app/file_share/router.py` |
+| `app.file_share` | `core.authorize` | `back/app/file_share/browser_router.py`, `back/app/file_share/router.py` |
 | `app.file_share` | `core.database` | `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/thumbnail_service.py` |
 | `app.file_share` | `core.dbadmin` | `back/app/file_share/dbadmin.py` |
 | `app.file_share` | `core.document` | `back/app/file_share/document_facade.py`, `back/app/file_share/thumbnail_service.py` |
 | `app.file_share` | `core.i18n` | `back/app/file_share/bridges.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/messenger_transport.py` |
 | `app.file_share` | `core.params` | `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_delivery.py`, `back/app/file_share/resource_service.py` |
-| `app.file_share` | `core.preview` | `back/app/file_share/__init__.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/web_preview.py` |
+| `app.file_share` | `core.preview` | `back/app/file_share/__init__.py`, `back/app/file_share/browser.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/web_preview.py` |
 | `app.file_share` | `core.storage` | `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py` |
-| `app.file_share` | `core.util` | `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
+| `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
 | `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.connection` | `back/app/goal/mcp.py`, `back/app/goal/models.py`, `back/app/goal/resource_facade.py` |
 | `app.goal` | `app.llm` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
@@ -800,6 +801,11 @@ tests restent l’autorité sur le comportement.
 | `app/dream` | `core/navigation` | `front/app/dream/navigation.ts`, `front/app/dream/pages/index.vue` |
 | `app/dream` | `core/util` | `front/app/dream/pages/index.vue` |
 | `app/dream` | `core/websocket` | `front/app/dream/pages/index.vue` |
+| `app/file_share` | `app/agent` | `front/app/file_share/pages/index.vue` |
+| `app/file_share` | `core/api` | `front/app/file_share/pages/index.vue`, `front/app/file_share/services/fileBrowserService.ts` |
+| `app/file_share` | `core/authorize` | `front/app/file_share/navigation.ts` |
+| `app/file_share` | `core/navigation` | `front/app/file_share/navigation.ts` |
+| `app/file_share` | `core/util` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/presentation.ts` |
 | `app/goal` | `app/agent` | `front/app/goal/pages/index.vue` |
 | `app/goal` | `core/api` | `front/app/goal/pages/index.vue`, `front/app/goal/services/goalService.ts`, `front/app/goal/stores/goalStore.ts` |
 | `app/goal` | `core/authorize` | `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue` |
@@ -840,7 +846,7 @@ tests restent l’autorité sur le comportement.
 | `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/pages/index.vue`, `front/app/llm/useEditorVoice.ts` |
 | `app/llm` | `core/websocket` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue` |
 | `app/memory` | `app/agent` | `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
-| `app/memory` | `core/api` | `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/documentIcons.ts`, `front/app/memory/stores/documentMutations.ts` |
+| `app/memory` | `core/api` | `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/documentIcons.ts`, `front/app/memory/stores/documentMutations.ts` |
 | `app/memory` | `core/authorize` | `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/MemoryDreamActions.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/navigation` | `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/util` | `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentApplicationBlock.vue`, `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentDatasetAttachments.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentFolderSelect.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentTagIcon.vue`, `front/app/memory/components/DocumentTagIconPicker.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/documentAppResources.ts`, `front/app/memory/documentEditor.ts`, `front/app/memory/documentFolders.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
@@ -944,6 +950,7 @@ tests restent l’autorité sur le comportement.
 | `core/user` | `core/navigation` | `front/core/user/navigation.ts`, `front/core/user/pages/tokens.vue`, `front/core/user/pages/users.vue` |
 | `core/user` | `core/settings` | `front/core/user/pages/login.vue`, `front/core/user/pages/register.vue` |
 | `core/user` | `core/util` | `front/core/user/components/UserAvatar.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/contextHelp.ts`, `front/core/user/pages/tokens.vue`, `front/core/user/pages/users.vue` |
+| `core/util` | `core/api` | `front/core/util/components/ResourceAttachments.vue` |
 | `core/websocket` | `core/api` | `front/core/websocket.ts` |
 
 ## Métriques de couplage des domaines backend
@@ -1107,6 +1114,7 @@ tests restent l’autorité sur le comportement.
 | `app/dream` | 2 | `app/agent`, `app/llm` |
 | `app/llm` | 2 | `app/agent`, `app/task` |
 | `app/browser` | 1 | `app/connection` |
+| `app/file_share` | 1 | `app/agent` |
 | `app/goal` | 1 | `app/agent` |
 | `app/lab` | 1 | `app/task` |
 | `app/memory` | 1 | `app/agent` |
@@ -1119,7 +1127,7 @@ tests restent l’autorité sur le comportement.
 
 | Module | Nombre | Dépendants |
 |---|---:|---|
-| `app/agent` | 13 | `app/chat`, `app/connection`, `app/conversation`, `app/dream`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
+| `app/agent` | 14 | `app/chat`, `app/connection`, `app/conversation`, `app/dream`, `app/file_share`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
 | `app/llm` | 7 | `app/agent`, `app/conversation`, `app/dream`, `app/index`, `app/task`, `app/voice`, `bridge/ollama` |
 | `app/task` | 7 | `app/chat`, `app/conversation`, `app/index`, `app/lab`, `app/llm`, `app/process`, `app/voice` |
 | `app/topic` | 4 | `app/chat`, `app/conversation`, `app/task`, `app/voice` |
@@ -1251,8 +1259,13 @@ tests restent l’autorité sur le comportement.
 | POST | `/authorize/roles/{role_id}/privileges` | `core.authorize` | `add_privileges_to_role` | oui | `back/core/authorize/router.py:211` |
 | POST | `/authorize/switch-role` | `core.authorize` | `switch_role` | oui | `back/core/authorize/router.py:366` |
 | GET | `/authorize/users/{user_id}/assignments` | `core.authorize` | `get_user_assignments` | oui | `back/core/authorize/router.py:307` |
+| GET | `/browser/content` | `app.file_share` | `content` | oui | `back/app/file_share/browser_router.py:74` |
+| GET | `/browser/entries` | `app.file_share` | `entries` | oui | `back/app/file_share/browser_router.py:48` |
+| GET | `/browser/info` | `app.file_share` | `info` | oui | `back/app/file_share/browser_router.py:57` |
 | POST | `/browser/network/authorize` | `app.browser` | `network_authorization` | non | `back/app/browser/router.py:17` |
+| GET | `/browser/schemes` | `app.file_share` | `schemes` | oui | `back/app/file_share/browser_router.py:41` |
 | GET | `/browser/status` | `app.browser` | `status` | oui | `back/app/browser/router.py:34` |
+| GET | `/browser/thumbnail` | `app.file_share` | `thumbnail` | oui | `back/app/file_share/browser_router.py:64` |
 | GET | `/calendars` | `bridge.calendar` | `read_calendars` | oui | `back/bridge/calendar/router.py:54` |
 | POST | `/calendars` | `bridge.calendar` | `create_calendar` | oui | `back/bridge/calendar/router.py:61` |
 | DELETE | `/calendars/{calendar_id}` | `bridge.calendar` | `delete_calendar` | oui | `back/bridge/calendar/router.py:89` |
@@ -1456,18 +1469,18 @@ tests restent l’autorité sur le comportement.
 | POST | `/evaluation/{mechanism}/runs/{run_id}/human-review` | `app.lab` | `submit_human_review` | oui | `back/app/lab/router.py:144` |
 | POST | `/evaluation/{mechanism}/runs/{run_id}/rejudge` | `app.lab` | `rejudge_benchmark` | oui | `back/app/lab/router.py:170` |
 | POST | `/evaluation/{mechanism}/runs/{run_id}/resume` | `app.lab` | `resume_benchmark` | oui | `back/app/lab/router.py:183` |
-| GET | `/file-share/bridges` | `app.file_share` | `list_bridges` | oui | `back/app/file_share/router.py:90` |
-| POST | `/file-share/files` | `app.file_share` | `create_managed_file` | oui | `back/app/file_share/router.py:30` |
-| PATCH | `/file-share/files/{file_id}` | `app.file_share` | `rename_file` | oui | `back/app/file_share/router.py:42` |
-| GET | `/file-share/files/{file_id}/content` | `app.file_share` | `read_managed_file` | oui | `back/app/file_share/router.py:56` |
-| GET | `/file-share/files/{file_id}/thumbnail` | `app.file_share` | `read_managed_file_thumbnail` | oui | `back/app/file_share/router.py:75` |
-| GET | `/file-share/indexing` | `app.file_share` | `read_indexing` | oui | `back/app/file_share/router.py:143` |
-| POST | `/file-share/indexing` | `app.file_share` | `create_indexing` | oui | `back/app/file_share/router.py:150` |
-| POST | `/file-share/indexing/repairs/retry` | `app.file_share` | `retry_index_repairs` | oui | `back/app/file_share/router.py:175` |
-| POST | `/file-share/indexing/{run_id}/cancel` | `app.file_share` | `cancel_indexing` | oui | `back/app/file_share/router.py:165` |
-| GET | `/file-share/items/{item_id}/resources` | `app.file_share` | `read_item_resources` | oui | `back/app/file_share/router.py:102` |
-| GET | `/file-share/items/{item_id}/resources/{entry_id}/content` | `app.file_share` | `read_item_resource_content` | oui | `back/app/file_share/router.py:122` |
-| GET | `/file-share/items/{item_id}/resources/{entry_id}/thumbnail` | `app.file_share` | `read_item_resource_thumbnail` | oui | `back/app/file_share/router.py:109` |
+| GET | `/file-share/bridges` | `app.file_share` | `list_bridges` | oui | `back/app/file_share/router.py:94` |
+| POST | `/file-share/files` | `app.file_share` | `create_managed_file` | oui | `back/app/file_share/router.py:34` |
+| PATCH | `/file-share/files/{file_id}` | `app.file_share` | `rename_file` | oui | `back/app/file_share/router.py:46` |
+| GET | `/file-share/files/{file_id}/content` | `app.file_share` | `read_managed_file` | oui | `back/app/file_share/router.py:60` |
+| GET | `/file-share/files/{file_id}/thumbnail` | `app.file_share` | `read_managed_file_thumbnail` | oui | `back/app/file_share/router.py:79` |
+| GET | `/file-share/indexing` | `app.file_share` | `read_indexing` | oui | `back/app/file_share/router.py:147` |
+| POST | `/file-share/indexing` | `app.file_share` | `create_indexing` | oui | `back/app/file_share/router.py:154` |
+| POST | `/file-share/indexing/repairs/retry` | `app.file_share` | `retry_index_repairs` | oui | `back/app/file_share/router.py:179` |
+| POST | `/file-share/indexing/{run_id}/cancel` | `app.file_share` | `cancel_indexing` | oui | `back/app/file_share/router.py:169` |
+| GET | `/file-share/items/{item_id}/resources` | `app.file_share` | `read_item_resources` | oui | `back/app/file_share/router.py:106` |
+| GET | `/file-share/items/{item_id}/resources/{entry_id}/content` | `app.file_share` | `read_item_resource_content` | oui | `back/app/file_share/router.py:126` |
+| GET | `/file-share/items/{item_id}/resources/{entry_id}/thumbnail` | `app.file_share` | `read_item_resource_thumbnail` | oui | `back/app/file_share/router.py:113` |
 | WEBSOCKET | `/gateway/{identifier}/editor/{path:path}` | `app.code` | `editor_ws` | non | `back/app/code/gateway.py:188` |
 | GET | `/gateway/{identifier}/launch` | `app.code` | `launch_page` | non | `back/app/code/gateway.py:47` |
 | POST | `/gateway/{identifier}/launch` | `app.code` | `launch` | non | `back/app/code/gateway.py:71` |
@@ -2411,6 +2424,7 @@ tests restent l’autorité sur le comportement.
 | `/dataset/:id?` | `app/dataset` | `front/app/dataset/pages/[[id]].vue` |
 | `/documents` | `app/memory` | `front/app/memory/pages/documents.vue` |
 | `/dream` | `app/dream` | `front/app/dream/pages/index.vue` |
+| `/files` | `app/file_share` | `front/app/file_share/pages/index.vue` |
 | `/goal` | `app/goal` | `front/app/goal/pages/index.vue` |
 | `/harnesses/:id` | `app/harnesses` | `front/app/harnesses/pages/[id].vue` |
 | `/incident` | `app/incident` | `front/app/incident/pages/index.vue` |

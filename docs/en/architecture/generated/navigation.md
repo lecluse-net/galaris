@@ -72,6 +72,14 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 - Additional conditions : —
 - Sources : `front/app/memory/navigation.ts`
 
+## Knowledge → Files
+
+- Route : `/files`
+- Purpose : Browse files and resources available to each agent
+- Menu visibility (privileges) : (MEMORY_ACCESS)
+- Additional conditions : —
+- Sources : `front/app/file_share/navigation.ts`
+
 ## Knowledge → Datasets
 
 - Route : `/dataset`

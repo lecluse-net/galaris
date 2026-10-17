@@ -520,7 +520,7 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
     schemes = [*native_descriptions(),
         ResourceSchemeDescription(
             scheme="file", label="Galaris managed file", example="file://<uuid>",
-            capabilities=["create", "info", "read", "copy"], native=True,
+            capabilities=["create", "info", "list", "read", "copy"], native=True,
         ),
         ResourceSchemeDescription(
             scheme="https",
@@ -602,6 +602,7 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
                 example=example,
                 capabilities=capabilities,
                 native=False,
+                root_listable=bool(target["has_file_share"]),
             )
         )
     unique = {item.scheme: item for item in schemes}
@@ -632,7 +633,7 @@ async def resource_info(
 
         if not reference.locator:
             return ResourceDescriptor(uri="file://", name="files", is_collection=True,
-                media_type="inode/directory", capabilities=["create"])
+                media_type="inode/directory", capabilities=["create", "info", "list"])
         return await managed_file_info(ctx, UUID(reference.locator))
     if reference.scheme == "galaris":
         from .galaris_provider import galaris_resource_info
@@ -776,6 +777,12 @@ async def resource_list(
     if provider := native_provider(reference.scheme):
         return await provider.list(ctx, reference, recursive=recursive, max_entries=max_entries, cursor=cursor)
     limit = max(1, min(max_entries, _LIST_LIMIT))
+    if reference.scheme == "file":
+        from .managed_files import list_managed_files
+
+        if reference.locator:
+            raise NotADirectoryError(str(reference))
+        return await list_managed_files(ctx, limit=limit, cursor=cursor)
     if reference.scheme == "galaris":
         from .galaris_provider import galaris_resource_list
 
@@ -786,12 +793,13 @@ async def resource_list(
             cursor=cursor,
         )
     if reference.scheme == "console":
-        if cursor:
-            raise NotImplementedError(
-                f"{reference.scheme}:// does not expose paginated listing cursors."
-            )
         transport, path = await _console_reference(ctx, reference)
-        listing = await transport.file_list(path, recursive=recursive, limit=limit)
+        if isinstance(transport, ResourcePaginatedListingTransport):
+            listing = await transport.resource_list_page(path, recursive=recursive, limit=limit, cursor=cursor)
+        else:
+            if cursor:
+                raise NotImplementedError(f"{reference.scheme}:// does not expose paginated listing cursors.")
+            listing = await transport.file_list(path, recursive=recursive, limit=limit)
         entries: list[ResourceDescriptor] = []
         for entry in listing.entries:
             descriptor = _entry_descriptor(reference.scheme, entry)
@@ -801,6 +809,7 @@ async def resource_list(
             uri=_console_uri(listing.path, collection=reference.is_collection),
             entries=entries,
             truncated=listing.truncated,
+            next_cursor=listing.next_cursor,
         )
     attachment_ids = _document_attachment_ids(reference)
     if attachment_ids is not None:

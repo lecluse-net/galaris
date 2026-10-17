@@ -1381,6 +1381,7 @@
       },
       {
         "files": [
+          "back/app/file_share/browser_router.py",
           "back/app/file_share/galaris_provider.py",
           "back/app/file_share/mcp.py",
           "back/app/file_share/messenger_transport.py",
@@ -1405,6 +1406,7 @@
       },
       {
         "files": [
+          "back/app/file_share/browser.py",
           "back/app/file_share/catalogue.py",
           "back/app/file_share/file_share_service.py",
           "back/app/file_share/resource_service.py"
@@ -1443,6 +1445,8 @@
       {
         "files": [
           "back/app/file_share/__init__.py",
+          "back/app/file_share/browser.py",
+          "back/app/file_share/browser_router.py",
           "back/app/file_share/catalogue.py",
           "back/app/file_share/catalogue_resources.py",
           "back/app/file_share/enrichment.py",
@@ -1475,6 +1479,7 @@
       },
       {
         "files": [
+          "back/app/file_share/browser.py",
           "back/app/file_share/galaris_provider.py",
           "back/app/file_share/mcp.py"
         ],
@@ -1516,6 +1521,7 @@
       },
       {
         "files": [
+          "back/app/file_share/browser_router.py",
           "back/app/file_share/router.py"
         ],
         "source": "app.file_share",
@@ -1576,6 +1582,7 @@
       {
         "files": [
           "back/app/file_share/__init__.py",
+          "back/app/file_share/browser.py",
           "back/app/file_share/catalogue_resources.py",
           "back/app/file_share/managed_files.py",
           "back/app/file_share/thumbnail_service.py",
@@ -1595,6 +1602,7 @@
       },
       {
         "files": [
+          "back/app/file_share/browser_router.py",
           "back/app/file_share/fingerprinting.py",
           "back/app/file_share/indexing.py",
           "back/app/file_share/managed_files.py",
@@ -13611,6 +13619,33 @@
         "module": "core.authorize"
       },
       {
+        "authorized": true,
+        "declared_path": "/browser/content",
+        "file": "back/app/file_share/browser_router.py",
+        "handler": "content",
+        "line": 74,
+        "method": "GET",
+        "module": "app.file_share"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/browser/entries",
+        "file": "back/app/file_share/browser_router.py",
+        "handler": "entries",
+        "line": 48,
+        "method": "GET",
+        "module": "app.file_share"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/browser/info",
+        "file": "back/app/file_share/browser_router.py",
+        "handler": "info",
+        "line": 57,
+        "method": "GET",
+        "module": "app.file_share"
+      },
+      {
         "authorized": false,
         "declared_path": "/browser/network/authorize",
         "file": "back/app/browser/router.py",
@@ -13621,12 +13656,30 @@
       },
       {
         "authorized": true,
+        "declared_path": "/browser/schemes",
+        "file": "back/app/file_share/browser_router.py",
+        "handler": "schemes",
+        "line": 41,
+        "method": "GET",
+        "module": "app.file_share"
+      },
+      {
+        "authorized": true,
         "declared_path": "/browser/status",
         "file": "back/app/browser/router.py",
         "handler": "status",
         "line": 34,
         "method": "GET",
         "module": "app.browser"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/browser/thumbnail",
+        "file": "back/app/file_share/browser_router.py",
+        "handler": "thumbnail",
+        "line": 64,
+        "method": "GET",
+        "module": "app.file_share"
       },
       {
         "authorized": true,
@@ -15460,7 +15513,7 @@
         "declared_path": "/file-share/bridges",
         "file": "back/app/file_share/router.py",
         "handler": "list_bridges",
-        "line": 90,
+        "line": 94,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15469,7 +15522,7 @@
         "declared_path": "/file-share/files",
         "file": "back/app/file_share/router.py",
         "handler": "create_managed_file",
-        "line": 30,
+        "line": 34,
         "method": "POST",
         "module": "app.file_share"
       },
@@ -15478,7 +15531,7 @@
         "declared_path": "/file-share/files/{file_id}",
         "file": "back/app/file_share/router.py",
         "handler": "rename_file",
-        "line": 42,
+        "line": 46,
         "method": "PATCH",
         "module": "app.file_share"
       },
@@ -15487,7 +15540,7 @@
         "declared_path": "/file-share/files/{file_id}/content",
         "file": "back/app/file_share/router.py",
         "handler": "read_managed_file",
-        "line": 56,
+        "line": 60,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15496,7 +15549,7 @@
         "declared_path": "/file-share/files/{file_id}/thumbnail",
         "file": "back/app/file_share/router.py",
         "handler": "read_managed_file_thumbnail",
-        "line": 75,
+        "line": 79,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15505,7 +15558,7 @@
         "declared_path": "/file-share/indexing",
         "file": "back/app/file_share/router.py",
         "handler": "read_indexing",
-        "line": 143,
+        "line": 147,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15514,7 +15567,7 @@
         "declared_path": "/file-share/indexing",
         "file": "back/app/file_share/router.py",
         "handler": "create_indexing",
-        "line": 150,
+        "line": 154,
         "method": "POST",
         "module": "app.file_share"
       },
@@ -15523,7 +15576,7 @@
         "declared_path": "/file-share/indexing/repairs/retry",
         "file": "back/app/file_share/router.py",
         "handler": "retry_index_repairs",
-        "line": 175,
+        "line": 179,
         "method": "POST",
         "module": "app.file_share"
       },
@@ -15532,7 +15585,7 @@
         "declared_path": "/file-share/indexing/{run_id}/cancel",
         "file": "back/app/file_share/router.py",
         "handler": "cancel_indexing",
-        "line": 165,
+        "line": 169,
         "method": "POST",
         "module": "app.file_share"
       },
@@ -15541,7 +15594,7 @@
         "declared_path": "/file-share/items/{item_id}/resources",
         "file": "back/app/file_share/router.py",
         "handler": "read_item_resources",
-        "line": 102,
+        "line": 106,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15550,7 +15603,7 @@
         "declared_path": "/file-share/items/{item_id}/resources/{entry_id}/content",
         "file": "back/app/file_share/router.py",
         "handler": "read_item_resource_content",
-        "line": 122,
+        "line": 126,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15559,7 +15612,7 @@
         "declared_path": "/file-share/items/{item_id}/resources/{entry_id}/thumbnail",
         "file": "back/app/file_share/router.py",
         "handler": "read_item_resource_thumbnail",
-        "line": 109,
+        "line": 113,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -19552,6 +19605,45 @@
       },
       {
         "files": [
+          "front/app/file_share/pages/index.vue"
+        ],
+        "source": "app/file_share",
+        "target": "app/agent"
+      },
+      {
+        "files": [
+          "front/app/file_share/pages/index.vue",
+          "front/app/file_share/services/fileBrowserService.ts"
+        ],
+        "source": "app/file_share",
+        "target": "core/api"
+      },
+      {
+        "files": [
+          "front/app/file_share/navigation.ts"
+        ],
+        "source": "app/file_share",
+        "target": "core/authorize"
+      },
+      {
+        "files": [
+          "front/app/file_share/navigation.ts"
+        ],
+        "source": "app/file_share",
+        "target": "core/navigation"
+      },
+      {
+        "files": [
+          "front/app/file_share/components/AgentFileBrowser.vue",
+          "front/app/file_share/components/FileTile.vue",
+          "front/app/file_share/pages/index.vue",
+          "front/app/file_share/presentation.ts"
+        ],
+        "source": "app/file_share",
+        "target": "core/util"
+      },
+      {
+        "files": [
           "front/app/goal/pages/index.vue"
         ],
         "source": "app/goal",
@@ -19943,7 +20035,6 @@
       },
       {
         "files": [
-          "front/app/memory/components/DocumentAttachments.vue",
           "front/app/memory/components/DocumentLibraryNavigation.vue",
           "front/app/memory/components/DocumentThumbnail.vue",
           "front/app/memory/components/MemoryFileResources.vue",
@@ -20870,6 +20961,13 @@
       },
       {
         "files": [
+          "front/core/util/components/ResourceAttachments.vue"
+        ],
+        "source": "core/util",
+        "target": "core/api"
+      },
+      {
+        "files": [
           "front/core/websocket.ts"
         ],
         "source": "core/websocket",
@@ -20907,16 +21005,17 @@
           "app/voice"
         ]
       ],
-      "domain_edges": 47,
+      "domain_edges": 48,
       "fan_in": [
         {
-          "count": 13,
+          "count": 14,
           "module": "app/agent",
           "modules": [
             "app/chat",
             "app/connection",
             "app/conversation",
             "app/dream",
+            "app/file_share",
             "app/goal",
             "app/index",
             "app/llm",
@@ -21152,6 +21251,13 @@
           "module": "app/browser",
           "modules": [
             "app/connection"
+          ]
+        },
+        {
+          "count": 1,
+          "module": "app/file_share",
+          "modules": [
+            "app/agent"
           ]
         },
         {
@@ -21719,6 +21825,27 @@
           "i18n.ts",
           "navigation.ts",
           "pages",
+          "presentation.ts",
+          "services"
+        ],
+        "exists": true,
+        "layer": "app",
+        "name": "app/file_share",
+        "pages": [
+          {
+            "file": "front/app/file_share/pages/index.vue",
+            "module": "app/file_share",
+            "route_hint": "/files"
+          }
+        ],
+        "path": "front/app/file_share"
+      },
+      {
+        "capabilities": [
+          "components",
+          "i18n.ts",
+          "navigation.ts",
+          "pages",
           "services"
         ],
         "exists": true,
@@ -22034,6 +22161,11 @@
         "file": "front/app/dream/pages/index.vue",
         "module": "app/dream",
         "route_hint": "/dream"
+      },
+      {
+        "file": "front/app/file_share/pages/index.vue",
+        "module": "app/file_share",
+        "route_hint": "/files"
       },
       {
         "file": "front/app/goal/pages/index.vue",

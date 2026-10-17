@@ -225,6 +225,26 @@
       "target": "core/websocket"
     },
     {
+      "source": "app/file_share",
+      "target": "app/agent"
+    },
+    {
+      "source": "app/file_share",
+      "target": "core/api"
+    },
+    {
+      "source": "app/file_share",
+      "target": "core/authorize"
+    },
+    {
+      "source": "app/file_share",
+      "target": "core/navigation"
+    },
+    {
+      "source": "app/file_share",
+      "target": "core/util"
+    },
+    {
       "source": "app/goal",
       "target": "app/agent"
     },
@@ -799,6 +819,10 @@
     {
       "source": "core/user",
       "target": "core/util"
+    },
+    {
+      "source": "core/util",
+      "target": "core/api"
     },
     {
       "source": "core/websocket",
