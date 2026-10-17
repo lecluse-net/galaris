@@ -91,7 +91,7 @@ export function connectActivities(graph: BpmnGraph, source: string, target: stri
 export const laneHeaderWidth = 240
 export const nodeStartX = laneHeaderWidth + 52
 
-export function graphLayout(graph: BpmnGraph, extraBottomSpace = 0): { positions: Record<string, { x: number; y: number }>; lanes: string[]; laneHeight: number } {
+export function graphLayout(graph: BpmnGraph): { positions: Record<string, { x: number; y: number }>; lanes: string[]; laneHeight: number } {
   const lanes = ['', ...(graph.actors ?? []).map(actor => actor.id)]
   const depths = new Map<string, number>()
   // Bounded relaxation also makes malformed, disconnected drafts editable.
@@ -115,10 +115,10 @@ export function graphLayout(graph: BpmnGraph, extraBottomSpace = 0): { positions
     const slot = buckets.get(key) ?? 0; buckets.set(key, slot + 1)
     return { node, lane, depth, slot, key }
   })
-  let laneHeight = Math.max(168 + extraBottomSpace, ...Array.from(buckets.values(), count => count * 112 + 56 + extraBottomSpace))
+  let laneHeight = Math.max(168, ...Array.from(buckets.values(), count => count * 112 + 56))
   if (!graph.actors?.length) {
     laneHeight = Math.max(laneHeight, ...slots.map(({ node, slot }) =>
-      (node.y > 0 ? node.y : 48 + slot * 112) + (['start', 'end', 'if', 'parallel'].includes(node.kind) ? 116 : 88) + 4 + extraBottomSpace))
+      (node.y > 0 ? node.y : 48 + slot * 112) + (['start', 'end', 'if', 'parallel'].includes(node.kind) ? 116 : 88) + 4))
   }
   return { lanes, laneHeight, positions: Object.fromEntries(slots.map(({ node, lane, depth, slot, key }) => [node.id,
     { x: nodeStartX + depth * 280, y: lane * laneHeight + (laneHeight - (buckets.get(key) ?? 1) * 112) / 2 + slot * 112 + 12 }])) }

@@ -142,17 +142,23 @@ update preserves the position. Diagram code is prepared in the background when a
 run is present, and other resource screens load only when opened.
 Active activities are highlighted, including parallel branches. Clicking a node opens its read-only execution details:
 output data, task or operation result, input data, attempts, executed instructions and
-available errors. Its execution selector also reaches occurrences outside the global
-table's first page. Activities that have not run show an explicit message. Closing the
+available errors. Its execution selector reaches an activity's executions, with pagination
+when needed. Activities that have not run show an explicit message. Closing the
 dialog stops its refresh loop.
 The diagram and open activity details follow run events in real time while preserving
 the selection. Reconnecting catches up on missed changes; a check every two seconds
 remains active while the run is in progress.
 The graph and activity details remain usable while costs and statistics load and
 refresh independently.
-The **Run URL** field displays the internal `processus://run/<uuid>` reference. Use its
-copy button to share this reference for debugging, including from Chat. Agents can read
-it through `file_info`, `file_read` or `processus_get`, within their participation scope
+In the dialog opened from the process catalogue, the title groups the status, the last
+activity, then elapsed time and the total cost of the process and its child processes.
+The clickable UUID with a transparent background sits to the left of the inspection hint
+in the diagram toolbar. Clicking the UUID copies the internal
+`processus://run/<uuid>` reference. The diagram replaces occurrence counters and lists of
+occurrences or child processes; the calling activity's details open its child process.
+In other views, the **Run URL** field and its copy button share the same reference for
+debugging, including from Chat. Agents can read it through `file_info`, `file_read` or
+`processus_get`, within their participation scope
 or with dedicated Process administration access.
 
 The observer shows the graph, occurrences, actual prompts, errors, Dataset, children

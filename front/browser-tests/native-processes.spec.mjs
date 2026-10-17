@@ -22,6 +22,10 @@ for (const kind of ['task', 'human_task']) {
     await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
     const work = page.getByRole('button', { name: kind === 'task' ? 'Task · work' : 'Human task · work', exact: true })
     const lastGraph = () => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)
+    const layout = () => page.locator('.diagram-board').evaluate(board => ({
+      laneHeights: [...board.querySelectorAll('.swimlane')].map(lane => lane.offsetHeight),
+      positions: [...board.querySelectorAll('[data-process-node]')].map(node => ({ id: node.dataset.processNode, x: node.offsetLeft, y: node.offsetTop })),
+    }))
     async function moveTo(name) {
       const source = await work.boundingBox(), lane = await page.locator('.swimlane').filter({ has: page.getByRole('button', { name: `Remove actor ${name}`, exact: true }) }).boundingBox()
       expect(source).toBeTruthy(); expect(lane).toBeTruthy()
@@ -48,10 +52,12 @@ for (const kind of ['task', 'human_task']) {
     await work.dispatchEvent('pointercancel', { pointerId: 1 })
     await page.mouse.up()
     expect(await lastGraph()).toBeUndefined()
+    const editingLayout = await layout()
     await moveTo(kind === 'task' ? 'Executor' : 'Requester')
-    await page.evaluate(() => window.testApp.setProps({ readonly: true }))
+    await page.evaluate(() => window.testApp.setProps({ readonly: true, overlays: { work: '4 s · $0.375' } }))
     await page.mouse.up()
     expect(await lastGraph()).toBeUndefined()
+    expect(await layout()).toEqual(editingLayout)
   })
 }
 
@@ -90,6 +96,55 @@ test('the diagram connects activities, supports keyboard movement and enforces r
   await work.focus(); await page.keyboard.press('ArrowRight'); await page.keyboard.press('Delete')
   await expect(page.getByRole('button', { name: 'Output of Start', exact: true })).toHaveCount(0)
   expect(await page.evaluate(() => window.testApp.events.filter(event => ['update:modelValue', 'remove'].includes(event.name)))).toEqual([])
+})
+
+for (const readonly of [false, true]) test(`sequence arrows meet ${readonly ? 'element boundaries without handles' : 'visible connection handles'}`, async ({ page }) => {
+  const value = graph()
+  value.nodes = [
+    { ...value.nodes[0], x: 60, y: 100 },
+    { ...value.nodes[1], x: 300, y: 100 },
+    { ...value.nodes[1], id: 'decision', kind: 'if', x: 600, y: 100, config: { mode: 'code' } },
+    { ...value.nodes[1], id: 'parallel', kind: 'parallel', x: 850, y: 100, config: {} },
+    { ...value.nodes[2], x: 1120, y: 100 },
+  ]
+  value.flows = [
+    { id: 'start-work', source: 'start', target: 'work', condition: null },
+    { id: 'work-decision', source: 'work', target: 'decision', condition: null },
+    { id: 'yes', source: 'decision', target: 'parallel', condition: 'decision' },
+    { id: 'no', source: 'decision', target: 'end', condition: null },
+    { id: 'parallel-end', source: 'parallel', target: 'end', condition: null },
+  ]
+  await mount(page, 'app/process/components/BpmnCanvas.vue', { props: { modelValue: value, readonly, overlays: { work: '4 s · $0.375' } } })
+  await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
+  const gaps = await page.locator('.diagram-editor').evaluate((diagram, { flows, readonly }) => {
+    return flows.flatMap((flow, index) => {
+      const line = diagram.querySelectorAll('.flow-surface .flow-line')[index]
+      const length = line.getTotalLength(), matrix = line.getScreenCTM()
+      const first = line.getPointAtLength(0), last = line.getPointAtLength(length)
+      const before = line.getPointAtLength(Math.max(0, length - 0.1))
+      const marker = diagram.querySelector('marker'), box = marker.querySelector('path').getBBox()
+      const tipExtension = (box.x + box.width - marker.refX.baseVal.value) * marker.markerWidth.baseVal.value / marker.viewBox.baseVal.width * Number.parseFloat(getComputedStyle(line).strokeWidth)
+      const tailLength = Math.hypot(last.x - before.x, last.y - before.y)
+      const tip = new DOMPoint(last.x + tipExtension * (last.x - before.x) / tailLength, last.y + tipExtension * (last.y - before.y) / tailLength)
+      return [['source', flow.source, first], ['target', flow.target, tip]].map(([side, id, point]) => {
+        const node = diagram.querySelector(`[data-process-node="${id}"]`), card = node.querySelector('.node-card')
+        const bounds = card.getBoundingClientRect(), screenPoint = new DOMPoint(point.x, point.y).matrixTransform(matrix)
+        let expectedX
+        if (!readonly) {
+          const port = node.querySelector(side === 'target' ? '.port.input' : id === 'decision' ? `.port.output-${flow.condition !== null ? 'true' : 'false'}` : '.port.output')
+          const handle = port.getBoundingClientRect(), scale = handle.width / port.offsetWidth
+          const radius = Number.parseFloat(getComputedStyle(port, '::before').width) * scale / 2
+          expectedX = handle.x + handle.width / 2 + (side === 'source' ? radius : -radius)
+        } else if (node.classList.contains('if') || node.classList.contains('parallel')) {
+          const halfWidth = bounds.width / 2 - Math.abs(screenPoint.y - (bounds.y + bounds.height / 2))
+          expectedX = bounds.x + bounds.width / 2 + (side === 'source' ? halfWidth : -halfWidth)
+        } else expectedX = side === 'source' ? bounds.right : bounds.left
+        return { flow: flow.id, side, gap: Math.abs(screenPoint.x - expectedX) }
+      })
+    })
+  }, { flows: value.flows, readonly })
+  for (const result of gaps) expect(result.gap, `${result.flow} ${result.side}`).toBeLessThan(0.75)
+  await page.screenshot({ path: test.info().outputPath(`sequence-arrows-${readonly ? 'elements' : 'handles'}.png`), animations: 'disabled' })
 })
 
 test('a new workflow can be built from its start handle and retains typed human assignments', async ({ page }) => {
@@ -703,30 +758,34 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
   await page.setViewportSize({ width, height: 1000 })
   const value = graph()
   value.nodes[1].title = 'Synthetic running task'
+  if (host === 'definition') { value.nodes[1].kind = 'call'; value.nodes[1].config = { process_code: 'synthetic_child' } }
   const active = { id: 'active-step', node_key: 'work', status: 'running', body_path: [], iteration: null,
     output: { integrated: 'synthetic data' }, started_at: '2026-01-01T12:00:00Z', finished_at: null }
   const previous = { ...active, id: 'previous-step', node_key: 'start', status: 'success', output: { previous: true } }
   const run = { id: 'synthetic-live-run', status: 'running', graph: value, definition_revision: 1, can_control: false,
     node_statuses: { start: 'success', work: 'running', end: 'queued' }, dataset_uri: null, paused: false, breakpoints: [],
     output: null, error: null, error_code: null, parent_run_id: null, nodes: [previous], total: 55,
-    page: 1, page_size: 50, event_cursor: 0, events: [], duration_seconds: 4, debugger_revision: 0 }
+    page: 1, page_size: 50, event_cursor: 0, events: [], duration_seconds: 4, debugger_revision: 0,
+    operational: { phase: 'running', last_activity_at: '2026-01-01T12:00:04Z',
+      progress: { occurrences: 55, completed: 53, active: 1, ready: 1, failed: 0, cancelled: 0 },
+      activities: [], activities_truncated: false, blocker: null, available_actions: [] } }
   const summary = { id: run.id, status: run.status, tool_code: 'galaris', process_id: 1, workflow_id: 'synthetic_flow',
     process_label: 'Synthetic inspection workflow', summary: 'Synthetic inspection workflow', input: {}, output: null,
     engine_metadata: {}, launcher_agent_id: 7, launcher_agent_code: 'synthetic_agent', created_at: '2026-01-01T12:00:00Z',
     started_at: '2026-01-01T12:00:00Z', finished_at: null, error_message: null, error_code: null, events: [], task_ids: [] }
-  const accounting = { calls: 0, cost: null, inference_cost: null, tokens: null, estimated_calls: 0 }
+  const accounting = { calls: 0, cost: 0.125, inference_cost: 0.5, tokens: null, estimated_calls: 0 }
   const mutations = []
   const unrelatedDownloads = []
   page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/processes/') && request.method() !== 'GET') mutations.push(request.method()) })
   await jsonRoute(page, '**/api/processes/internal/runs?**', { items: [{ id: run.id, status: run.status, process_label: summary.process_label, engine_code: 'galaris', result_preview: 'Synthetic execution result\nMore result details' }], total: 1, page: 1, page_size: 50 })
   await jsonRoute(page, '**/api/processes/internal/runs/synthetic-live-run?**', run)
-  await jsonRoute(page, '**/api/processes/internal/runs/synthetic-live-run/metrics', { direct: accounting, inclusive: accounting, tasks: {}, nodes: {}, partial: true })
+  await jsonRoute(page, '**/api/processes/internal/runs/synthetic-live-run/metrics', { direct: accounting, inclusive: { ...accounting, cost: 0.375 }, tasks: {}, nodes: {}, partial: true })
   let delayedMetrics
   if (host === 'shared') {
     let metricsFailed = false
     await page.route('**/api/processes/internal/runs/synthetic-live-run/metrics', route => {
       if (!metricsFailed) { metricsFailed = true; delayedMetrics = route; return }
-      return route.fulfill({ json: { direct: accounting, inclusive: accounting, tasks: {}, nodes: {}, partial: true } })
+      return route.fulfill({ json: { direct: accounting, inclusive: { ...accounting, cost: 0.375 }, tasks: {}, nodes: {}, partial: true } })
     })
   }
   await page.route('**/api/processes/internal/runs/synthetic-live-run/activities/*?**', route => {
@@ -736,7 +795,8 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
   })
   await jsonRoute(page, '**/api/processes/internal/runs/synthetic-live-run/nodes/active-step', { ...active,
     attempts: [{ id: 'synthetic-attempt', number: 1, status: 'accepted', input: { amount: 42 }, prompt: 'Synthetic executed prompt',
-      receipt: { output: { answer: 'synthetic task result' } }, task_uri: null, child_run_id: null, error: null }] })
+      receipt: { output: { answer: 'synthetic task result' } }, task_uri: null,
+      child_run_id: host === 'definition' ? 'synthetic-child-run' : null, error: null }] })
   let late
   await page.route('**/api/processes/internal/runs/synthetic-live-run/nodes/previous-step', route => { late = route })
   if (host === 'definition') {
@@ -780,8 +840,15 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
     await delayedMetrics.fulfill({ status: 503, json: { detail: 'Synthetic metrics unavailable' } })
   }
   const runUrl = `processus://run/${run.id}`
-  await expect(page.getByRole('textbox', { name: 'Run URL', exact: true })).toHaveValue(runUrl)
-  await page.getByRole('button', { name: 'Copy run URL', exact: true }).click()
+  if (host === 'definition') {
+    const reference = page.getByRole('dialog').getByRole('link', { name: `Copy run URL: ${run.id}`, exact: true })
+    await expect(reference).toHaveAttribute('href', runUrl)
+    await reference.focus()
+    await page.keyboard.press('Enter')
+  } else {
+    await expect(page.getByRole('textbox', { name: 'Run URL', exact: true })).toHaveValue(runUrl)
+    await page.getByRole('button', { name: 'Copy run URL', exact: true }).click()
+  }
   await expect.poll(() => page.evaluate(() => window.copiedRunUrl)).toBe(runUrl)
   if (host === 'shared') {
     const error = page.getByRole('alert').filter({ has: page.getByRole('button', { name: 'Retry', exact: true }) })
@@ -806,20 +873,16 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
   await expect(inspector).not.toContainText('Discard this late activity result')
   await expect(inspector).toContainText('This activity has not run yet.')
   await inspector.getByRole('button', { name: 'Close execution details', exact: true }).click()
-  if (host === 'definition') {
-    late = null
-    const occurrences = page.locator('.q-table__container').filter({ has: page.getByRole('columnheader', { name: 'Activity occurrence', exact: true }) })
-    await occurrences.getByRole('row').filter({ has: page.getByRole('cell', { name: 'start', exact: true }) }).click()
-    await expect.poll(() => Boolean(late)).toBe(true)
-    await late.fulfill({ json: { ...previous, output: { tableSelection: 'Synthetic selected occurrence' }, attempts: [] } })
-    await expect(inspector.getByRole('textbox', { name: 'Output data', exact: true })).toHaveValue(/Synthetic selected occurrence/)
-    await inspector.getByRole('button', { name: 'Close execution details', exact: true }).click()
-  }
   if (host === 'shared') {
     run.status = 'success'; run.node_statuses.work = 'success'
     await expect(work).not.toHaveAttribute('aria-current', 'step')
   }
-  if (host !== 'shared') {
+  if (host === 'definition') {
+    await work.click()
+    await inspector.getByRole('link', { name: 'Open child process', exact: true }).click()
+    await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/process/internal/run/synthetic-child-run')
+    await expect(work).toHaveCount(0)
+  } else if (host !== 'shared') {
     const modal = page.getByRole('dialog').filter({ has: work })
     await modal.getByRole('button', { name: 'Close', exact: true }).click()
     await expect(work).toHaveCount(0)

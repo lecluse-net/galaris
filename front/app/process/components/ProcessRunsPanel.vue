@@ -226,7 +226,7 @@
           <q-card-section v-else-if="detailError">
             <q-banner role="alert">{{ t('nativeProcesses.error') }}<template #action><q-btn outline :label="t('nativeProcesses.retry')" @click="selectedRun && openRun($event, selectedRun)" /></template></q-banner>
           </q-card-section>
-          <q-card-section v-else-if="selectedRun?.tool_code === 'galaris'">
+          <q-card-section v-else-if="selectedRun?.tool_code === 'galaris'" class="q-pa-none">
             <NativeRunPanel v-if="detailDialogOpen" :key="selectedRun.id" :run-id="selectedRun.id" />
             <q-expansion-item icon="input" :label="t('processes.input')"><CodeEditor :model-value="pretty(selectedRun.input)" language="json" readonly :label="t('processes.input')" :min-lines="3" :visible-lines="8" /></q-expansion-item>
             <q-expansion-item icon="output" :label="t('processes.output')"><CodeEditor :model-value="pretty(selectedRun.output)" language="json" readonly :label="t('processes.output')" :min-lines="3" :visible-lines="8" /></q-expansion-item>

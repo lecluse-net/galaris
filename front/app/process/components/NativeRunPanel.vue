@@ -1,23 +1,24 @@
 <template>
-  <section class="q-gutter-y-md">
+  <section class="native-run-panel q-gutter-y-md">
     <div v-if="!embedded" class="row items-center q-gutter-sm">
       <div class="text-h6">{{ t('nativeProcesses.run') }}</div><q-badge>{{ run ? t(`processes.statuses.${run.status}`, t('nativeProcesses.unknown')) : t('nativeProcesses.unknown') }}</q-badge>
       <q-badge v-if="run?.paused" outline>{{ t('nativeProcesses.paused') }}</q-badge>
       <q-btn flat round icon="refresh" :loading="loading" :aria-label="t('nativeProcesses.refresh')" @click="refresh" />
-      <q-btn v-if="run?.parent_run_id" flat icon="arrow_upward" :label="t('nativeProcesses.parent')" :to="`/process/internal/run/${run.parent_run_id}`" />
     </div>
-    <q-input :model-value="runUrl" outlined dense readonly :label="t('nativeProcesses.runUrl')">
+    <q-btn v-if="run?.parent_run_id" outline icon="arrow_upward" :label="t('nativeProcesses.parent')" :to="`/process/internal/run/${run.parent_run_id}`" />
+    <q-input v-if="!summaryInHeader" :model-value="runUrl" outlined dense readonly :label="t('nativeProcesses.runUrl')">
       <template #append><q-btn outline dense color="primary" icon="content_copy" :aria-label="t('nativeProcesses.copyRunUrl')" @click="copyRunUrl" /></template>
     </q-input>
+    <q-badge v-else-if="!displayGraph" outline color="primary" class="native-run-id"><ProcessRunReference :id="runId" /></q-badge>
     <q-banner v-if="error || metricsError" role="alert">{{ error || metricsError }}<template #action><q-btn flat :label="t('nativeProcesses.retry')" @click="refresh" /></template></q-banner>
     <q-spinner v-if="loading && !run" />
     <template v-if="run">
-      <q-card v-if="run.operational" bordered flat>
-        <q-card-section>
-          <div class="row items-center q-gutter-sm"><div class="text-subtitle1">{{ t('nativeProcesses.followUp') }}</div>
+      <q-card v-if="run.operational && (!summaryInHeader || run.paused || run.operational.blocker?.requires_reconciliation || run.operational.activities.length || run.operational.activities_truncated)" bordered flat>
+        <q-card-section v-if="!summaryInHeader || run.paused">
+          <div v-if="!summaryInHeader" class="row items-center q-gutter-sm"><div class="text-subtitle1">{{ t('nativeProcesses.followUp') }}</div>
             <q-badge>{{ t(`nativeProcesses.phases.${run.operational.phase}`, run.operational.phase) }}</q-badge></div>
-          <div>{{ t('nativeProcesses.progressOccurrences', run.operational.progress) }}</div>
-          <div class="text-caption">{{ t('nativeProcesses.lastActivity', { date: formatDate(run.operational.last_activity_at) }) }}</div>
+          <div v-if="!summaryInHeader">{{ t('nativeProcesses.progressOccurrences', run.operational.progress) }}</div>
+          <div v-if="!summaryInHeader" class="text-caption">{{ t('nativeProcesses.lastActivity', { date: formatDate(run.operational.last_activity_at) }) }}</div>
           <div v-if="run.paused" class="q-mt-sm">{{ t('nativeProcesses.pauseExplanation') }}</div>
         </q-card-section>
         <q-banner v-if="run.operational.blocker?.requires_reconciliation" role="alert">{{ t('nativeProcesses.reconciliationRequired') }}</q-banner>
@@ -45,6 +46,9 @@
       <BpmnCanvas v-if="displayGraph" ref="canvas" :key="bodyPath.join('/')" :model-value="displayGraph" readonly auto-fit
         :inspector-label="t('nativeProcesses.execution.details')" :selected="selectedNode" :statuses="statuses" :overlays="overlays"
         @select="selectNode" @dismiss="dismissInspection">
+        <template v-if="summaryInHeader" #toolbar-leading>
+          <q-badge outline color="primary" class="native-run-id"><ProcessRunReference :id="runId" /></q-badge>
+        </template>
         <template #inspector>
           <NativeActivityDetails v-if="selectedNode" :title="selectedTitle" :detail="nodeDetail" :occurrences="activityPage"
             :selected-occurrence="selectedOccurrence" :page-size="activitySize" :loading="activityLoading || nodeLoading" :error="nodeError"
@@ -55,7 +59,7 @@
           </NativeActivityDetails>
         </template>
       </BpmnCanvas>
-      <div class="row q-gutter-sm">
+      <div v-if="!summaryInHeader" class="row q-gutter-sm">
         <q-chip>{{ t('nativeProcesses.duration') }}: {{ run.duration_seconds == null ? t('nativeProcesses.unknown') : `${run.duration_seconds.toFixed(1)} s` }}</q-chip>
         <q-chip>{{ t('nativeProcesses.directCost') }}: {{ cost(metrics?.direct.cost) }}</q-chip>
         <q-chip>{{ t('nativeProcesses.inclusiveCost') }}: {{ cost(metrics?.inclusive.cost) }}</q-chip>
@@ -66,7 +70,7 @@
       <div v-if="run.dataset_uri" class="row items-center q-gutter-sm"><span>{{ t('nativeProcesses.dataset') }}</span>
         <q-btn flat no-caps icon="description" :label="run.dataset_uri" :to="datasetLink" /></div>
       <q-banner v-if="run.error || run.error_code" role="alert"><strong v-if="run.error_code">{{ run.error_code }}</strong><div v-if="run.error">{{ run.error }}</div></q-banner>
-      <q-expansion-item :label="t('nativeProcesses.children')" icon="account_tree" @show="loadChildren">
+      <q-expansion-item v-if="!summaryInHeader" :label="t('nativeProcesses.children')" icon="account_tree" @show="loadChildren">
         <q-list bordered><q-item v-for="child in childPage?.items" :key="child.id" clickable :to="child.engine_code === 'galaris' ? `/process/internal/run/${child.id}` : undefined">
           <q-item-section>{{ child.process_label }}<q-item-label caption>{{ child.id }} · {{ child.status }}</q-item-label></q-item-section></q-item>
           <q-item v-if="!childPage?.items.length"><q-item-section>{{ t('processes.noRows') }}</q-item-section></q-item>
@@ -74,7 +78,7 @@
         <q-select v-model="childSize" :options="[10, 20, 50, 100, 500]" :label="t('nativeProcesses.children')" @update:model-value="childNumber = 1; loadChildren()" />
         <q-pagination v-if="childPage && childPage.total > childSize" v-model="childNumber" :max="Math.ceil(childPage.total / childSize)" @update:model-value="loadChildren" />
       </q-expansion-item>
-      <q-table :title="t('nativeProcesses.occurrences')" :rows="run.nodes" :columns="columns" row-key="id" :loading="loading"
+      <q-table v-if="!summaryInHeader" :title="t('nativeProcesses.occurrences')" :rows="run.nodes" :columns="columns" row-key="id" :loading="loading"
         v-model:pagination="pagination" :rows-per-page-options="[10, 20, 50, 100, 500]" @request="requestPage" @row-click="selectOccurrence">
         <template #body-cell-cost="scope"><q-td :props="scope">{{ cost(metrics?.occurrences?.[scope.row.id]?.inclusive.cost) }}</q-td></template>
         <template #body-cell-inference="scope"><q-td :props="scope">{{ cost(metrics?.occurrences?.[scope.row.id]?.inclusive.inference_cost) }}</q-td></template>
@@ -93,8 +97,10 @@ import { usePrivilegeStore } from '@/core/authorize'
 import { websocket } from '@/core/websocket'
 import BpmnCanvas from './BpmnCanvas.vue'
 import NativeActivityDetails from './NativeActivityDetails.vue'
+import ProcessRunReference from './ProcessRunReference.vue'
 import { nativeProcessService as service, type NativeRun, type NativeMetrics, type NativeChildren, type NodeOccurrence, type NodeExecutionDetail, type NodeOccurrencePage, type RunActivity } from '../services/nativeProcessService'
-const props = defineProps<{ runId: string; embedded?: boolean }>()
+const props = defineProps<{ runId: string; embedded?: boolean; summaryInHeader?: boolean }>()
+const emit = defineEmits<{ loaded: [run: NativeRun]; metricsLoaded: [metrics: NativeMetrics] }>()
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const runUrl = computed(() => service.runUrl(props.runId))
@@ -119,8 +125,9 @@ const statuses = computed(() => Object.fromEntries(Object.entries(run.value?.nod
 const displayGraph = computed(() => { let graph = run.value?.graph; for (const key of bodyPath.value) { const body = graph?.nodes.find(node => node.id === key)?.body; if (!body) break; graph = body }; return graph })
 const selectedBody = computed(() => displayGraph.value?.nodes.find(node => node.id === selectedNode.value)?.body)
 const selectedTitle = computed(() => { const node = displayGraph.value?.nodes.find(node => node.id === selectedNode.value); return node?.title || (node ? t('nativeProcesses.kinds.' + node.kind) : '') })
-const overlays = computed(() => Object.fromEntries(Object.entries(statuses.value).map(([key, value]) => [key,
-  `${t(`processes.statuses.${value}`, value)} · ${metrics.value?.nodes[key]?.duration_seconds?.toFixed(1) ?? '…'} s · ${cost(metrics.value?.nodes[key]?.cost)}`])))
+const overlays = computed(() => Object.fromEntries((displayGraph.value?.nodes ?? [])
+  .filter(node => node.kind !== 'start' && node.kind !== 'end' && statuses.value[node.id])
+  .map(node => [node.id, `${metrics.value?.nodes[node.id]?.duration_seconds?.toFixed(1) ?? '…'} s · ${cost(metrics.value?.nodes[node.id]?.cost)}`])))
 const columns = computed<QTableColumn[]>(() => [
   { name: 'node', label: t('nativeProcesses.nodeDetails'), field: 'node_key', align: 'left' },
   { name: 'status', label: t('processes.status'), field: 'status', align: 'left' },
@@ -128,7 +135,7 @@ const columns = computed<QTableColumn[]>(() => [
   { name: 'cost', label: t('nativeProcesses.inclusiveCost'), field: 'id', align: 'right' },
   { name: 'inference', label: t('nativeProcesses.inferenceCost'), field: 'id', align: 'right' },
 ])
-function cost(value: number | null | undefined): string { return value == null ? t('nativeProcesses.unknown') : new Intl.NumberFormat(locale.value, { style: 'currency', currency: 'USD', maximumFractionDigits: 6 }).format(value) }
+function cost(value: number | null | undefined): string { return value == null ? t('nativeProcesses.unknown') : new Intl.NumberFormat(locale.value, { style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol', maximumFractionDigits: 6 }).format(value) }
 function formatDate(value: string): string { return new Date(value).toLocaleString(locale.value) }
 async function copyRunUrl(): Promise<void> {
   try { await copyToClipboard(runUrl.value); $q.notify({ type: 'positive', message: t('common.copied'), timeout: 1500 }) }
@@ -156,6 +163,7 @@ async function refresh(): Promise<void> {
     const next = await service.run(id, pagination.value.page, pagination.value.rowsPerPage, run.value?.event_cursor ?? 0)
     if (token !== generation || id !== props.runId) return
     run.value = next; pagination.value.rowsNumber = next.total
+    emit('loaded', next)
     error.value = ''
     if (selectedNode.value) { inspectionRefreshPending = true; refreshInspection() }
   } catch (cause) { if (token === generation) error.value = message(cause) }
@@ -173,7 +181,7 @@ async function refreshMetrics(): Promise<void> {
   metricsLoading = true
   try {
     const next = await service.metrics(id)
-    if (token === generation && id === props.runId) { metrics.value = next; metricsError.value = '' }
+    if (token === generation && id === props.runId) { metrics.value = next; metricsError.value = ''; emit('metricsLoaded', next) }
   } catch (cause) { if (token === generation) metricsError.value = message(cause) }
   finally {
     if (token === generation) {
@@ -302,3 +310,8 @@ onBeforeUnmount(() => {
 })
 defineExpose({ refresh })
 </script>
+
+<style scoped>
+.native-run-panel :deep(.diagram-editor) { border-radius: 0; }
+.native-run-id { max-width: 100%; padding: 3px 6px; border-radius: 4px; font-size: 12px; font-weight: normal; line-height: 16px; white-space: normal; }
+</style>

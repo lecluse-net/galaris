@@ -35,7 +35,7 @@ const en = {
   execution: {
     details: 'Activity execution', close: 'Close execution details', occurrence: 'Execution', pageSize: 'Executions per page',
     started: 'Started: {date}', finished: 'Finished: {date}', output: 'Output data', input: 'Input data',
-    result: 'Task or operation result', prompt: 'Executed instructions', task: 'Open task', attempt: 'Attempt {number}',
+    result: 'Task or operation result', prompt: 'Executed instructions', task: 'Open task', childRun: 'Open child process', attempt: 'Attempt {number}',
     noResult: 'No result is available yet.', notStarted: 'This activity has not run yet.',
   },
   variables: {
@@ -115,7 +115,7 @@ const fr: typeof en = {
   execution: {
     details: 'Exécution de l’activité', close: 'Fermer les détails d’exécution', occurrence: 'Exécution', pageSize: 'Exécutions par page',
     started: 'Début : {date}', finished: 'Fin : {date}', output: 'Données de sortie', input: 'Données d’entrée',
-    result: 'Retour de tâche ou d’opération', prompt: 'Instructions exécutées', task: 'Ouvrir la tâche', attempt: 'Tentative {number}',
+    result: 'Retour de tâche ou d’opération', prompt: 'Instructions exécutées', task: 'Ouvrir la tâche', childRun: 'Ouvrir le sous-processus', attempt: 'Tentative {number}',
     noResult: 'Aucun résultat disponible pour le moment.', notStarted: 'Cette activité n’a pas encore été exécutée.',
   },
   variables: {

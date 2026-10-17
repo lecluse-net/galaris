@@ -21,7 +21,7 @@
     </div>
   </q-card-section>
   <q-separator />
-  <q-card-section v-if="run.tool_code === 'galaris'">
+  <q-card-section v-if="run.tool_code === 'galaris'" class="q-pa-none">
     <NativeRunPanel ref="nativePanel" :key="run.id" :run-id="run.id" embedded />
     <q-expansion-item icon="input" :label="t('processes.input')"><CodeEditor :model-value="pretty(run.input)" language="json" readonly :label="t('processes.input')" :min-lines="3" :visible-lines="8" /></q-expansion-item>
     <q-expansion-item icon="output" :label="t('processes.output')"><CodeEditor :model-value="pretty(run.output)" language="json" readonly :label="t('processes.output')" :min-lines="3" :visible-lines="8" /></q-expansion-item>

@@ -164,15 +164,21 @@ Les activités en cours sont mises en évidence, y compris les branches parallè
 Cliquer un nœud ouvre sa fiche d'exécution en lecture seule : données de sortie,
 retour de tâche ou d'opération, données d'entrée, tentatives, instructions réellement
 exécutées et erreurs disponibles. Le sélecteur de la fiche permet de consulter les
-différentes exécutions d'une activité, même hors de la première page du tableau général.
+différentes exécutions d'une activité, avec pagination si nécessaire.
 Une activité non exécutée l'indique explicitement. Fermer la modale arrête son rafraîchissement.
 Le diagramme et la fiche d'activité ouverte suivent les événements du run en temps réel,
 sans perdre la sélection. Après une reconnexion, l'affichage rattrape les changements
 manqués ; un contrôle toutes les deux secondes reste actif tant que le run est en cours.
 Le graphe et les détails restent consultables pendant le chargement des coûts et
 statistiques, qui se mettent à jour séparément.
-Le champ **URL du run** affiche la référence interne `processus://run/<uuid>`. Son bouton
-de copie permet de transmettre cette référence pour le diagnostic, y compris depuis le Chat.
+Dans la modale ouverte depuis le catalogue de processus, le titre regroupe l'état,
+la dernière activité, puis le temps écoulé et le coût total du processus avec ses
+sous-processus. L'UUID cliquable sur fond transparent se trouve à gauche du conseil de
+consultation dans la barre du graphique. Cliquer l'UUID copie la référence interne
+`processus://run/<uuid>`. Le graphique remplace les compteurs et listes d'occurrences ou de
+sous-processus ; la fiche de l'activité appelante permet d'ouvrir le sous-processus lancé.
+Dans les autres vues, le champ **URL du run** et son bouton de copie transmettent la même
+référence pour le diagnostic, y compris depuis le Chat.
 Les agents peuvent la lire avec `file_info`, `file_read` ou `processus_get`, dans leur portée
 de participation ou avec le droit dédié d'administration Process.
 

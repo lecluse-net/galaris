@@ -8,7 +8,7 @@
     </q-banner>
     <TaskDetail v-else-if="target.kind === 'task'" :task-id="taskId"
       @task-change="taskId = $event" @refresh="emit('changed')" @delete="taskToDelete = $event" />
-    <NativeRunPanel v-else-if="target.kind === 'process_run'" :key="target.id" :run-id="target.id" embedded class="q-pa-md" />
+    <NativeRunPanel v-else-if="target.kind === 'process_run'" :key="target.id" :run-id="target.id" embedded />
     <ConversationRoundDetailView v-else-if="round && message" :message="message" :round="round"
       :calls="calls" :loading="false" error="" :calls-loading="callsLoading" :calls-error="callsError"
       @deleted="changedAndClose" @topic-updated="round = $event; emit('changed')"

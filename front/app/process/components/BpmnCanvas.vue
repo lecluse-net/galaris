@@ -1,7 +1,10 @@
 <template>
   <section class="diagram-editor" :class="{ fullscreen: isFullscreen, readonly }" :aria-label="t('nativeProcesses.diagram')">
     <div class="diagram-toolbar">
-      <div v-if="showGuide" class="diagram-guide"><q-icon name="touch_app" size="18px" />{{ t(readonly ? 'nativeProcesses.diagramReadHint' : 'nativeProcesses.handleHint') }}</div>
+      <div v-if="showGuide || $slots['toolbar-leading']" class="diagram-toolbar-context">
+        <slot name="toolbar-leading" />
+        <div v-if="showGuide" class="diagram-guide"><q-icon name="touch_app" size="18px" />{{ t(readonly ? 'nativeProcesses.diagramReadHint' : 'nativeProcesses.handleHint') }}</div>
+      </div>
       <div class="row items-center q-gutter-sm">
         <slot v-if="!readonly" name="toolbar-actions" />
         <q-btn v-if="!readonly" outline color="warning" icon="auto_fix_high" :label="t('nativeProcesses.arrange')" @click="arrange" />
@@ -37,7 +40,7 @@
               @reorder-start="beginLaneDrag($event, lane)" @reorder-cancel="cancelLaneDrag" @reorder="shiftActor(lane, $event)" />
           </div>
           <svg class="flow-surface" :width="width" :height="height" :viewBox="`0 0 ${width} ${height}`" aria-hidden="true">
-            <defs><marker :id="arrowId" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="9" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" /></marker></defs>
+            <defs><marker :id="arrowId" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="10" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" /></marker></defs>
             <g v-for="flow in modelValue.flows" :key="flow.id" class="flow" :class="{ 'flow-selected': selectedFlow === flow.id }">
               <path class="flow-line" :d="flowPath(flow)" :marker-end="`url(#${arrowId})`" />
             </g>
@@ -52,9 +55,9 @@
               <slot name="inspector" />
             </q-menu>
           </button>
-          <div v-for="node in modelValue.nodes" :key="node.id" class="node-wrap" :class="[node.kind, statusClass(node.id), { selected: selected === node.id, dragging: drag?.id === node.id && drag.moved, 'invalid-drop': drag?.id === node.id && drag.moved && !dropTarget?.allowed }]"
+          <div v-for="node in modelValue.nodes" :key="node.id" class="node-wrap" :class="[node.kind, statusClass(node), { selected: selected === node.id, dragging: drag?.id === node.id && drag.moved, 'invalid-drop': drag?.id === node.id && drag.moved && !dropTarget?.allowed }]"
             :data-process-node="node.id" :style="{ left: `${position(node).x}px`, top: `${position(node).y}px`, width: `${nodeWidth(node)}px` }">
-            <button class="node-card" :class="{ 'connect-target': connecting && canConnect(node) }" :aria-label="`${node.title || t('nativeProcesses.kinds.' + node.kind)} · ${node.id}`" :aria-pressed="selected === node.id" :aria-current="['running', 'waiting'].includes(statuses[node.id] ?? '') ? 'step' : undefined"
+            <button class="node-card" :class="{ 'connect-target': connecting && canConnect(node) }" :aria-label="`${node.title || t('nativeProcesses.kinds.' + node.kind)} · ${node.id}`" :aria-pressed="selected === node.id" :aria-current="node.kind !== 'start' && ['running', 'waiting'].includes(statuses[node.id] ?? '') ? 'step' : undefined"
               @pointerdown="begin($event, node.id)" @lostpointercapture="cancelDrag" @keydown="key($event, node.id)" @click="choose(node.id)">
               <span class="node-symbol"><q-icon :name="nodeIcons[node.kind]" :size="isEvent(node) ? '28px' : isGateway(node) ? '22px' : '14px'" /></span>
               <span v-if="!isEvent(node) && !isGateway(node)" class="node-copy"><strong>{{ node.title || t('nativeProcesses.untitledActivity') }}</strong><span class="node-kind">{{ t('nativeProcesses.kinds.' + node.kind) }}</span></span>
@@ -66,7 +69,7 @@
               </q-menu>
             </button>
             <div v-if="isEvent(node) || isGateway(node)" class="event-title">{{ node.title || t('nativeProcesses.kinds.' + node.kind) }}</div>
-            <span v-if="statuses[node.id]" class="node-badge" role="status"><q-icon v-if="['running', 'waiting'].includes(statuses[node.id] ?? '')" :name="statuses[node.id] === 'running' ? 'play_circle' : 'hourglass_top'" size="14px" class="q-mr-xs" />{{ t(`processes.statuses.${statuses[node.id]}`, statuses[node.id]!) }}</span>
+            <ProcessRunStatusBadge v-if="node.kind !== 'start' && statuses[node.id]" class="node-badge" :status="statuses[node.id]!" variant="diagram" />
             <template v-if="!readonly">
               <button v-for="port in ports(node)" :key="`${port.side}-${port.outcome}`"
                 class="port" :class="[port.side, { 'output-true': port.outcome === true, 'output-false': port.outcome === false }]" :aria-label="t(port.outcome === true ? 'nativeProcesses.trueOutput' : port.outcome === false ? 'nativeProcesses.falseOutput' : port.side === 'input' ? 'nativeProcesses.inputHandle' : 'nativeProcesses.outputHandle', { title: node.title || t('nativeProcesses.kinds.' + node.kind) })"
@@ -93,7 +96,7 @@
                 </q-menu>
               </button>
             </template>
-            <div v-if="overlays[node.id]" class="overlay">{{ overlays[node.id] }}</div>
+            <div v-if="overlays[node.id]" class="overlay" :style="{ top: `${overlayTop(node)}px` }">{{ overlays[node.id] }}</div>
           </div>
         </div>
       </div>
@@ -113,14 +116,14 @@
     <div v-if="drag?.moved && dropTarget?.create" role="status" class="drop-message"><q-icon name="group_add" />{{ t('nativeProcesses.dropToCreateActor') }}</div>
     <div v-if="dropError" role="status" class="drop-message"><q-icon name="block" />{{ t('nativeProcesses.incompatibleActorDrop') }}</div>
     <Teleport to="body">
-      <div v-if="drag?.moved && draggedNode" class="node-wrap drag-preview selected" :class="[draggedNode.kind, statusClass(draggedNode.id), { 'invalid-drop': !dropTarget?.allowed }]" :style="dragPreviewStyle" aria-hidden="true">
+      <div v-if="drag?.moved && draggedNode" class="node-wrap drag-preview selected" :class="[draggedNode.kind, statusClass(draggedNode), { 'invalid-drop': !dropTarget?.allowed }]" :style="dragPreviewStyle" aria-hidden="true">
         <div class="node-card">
           <span class="node-symbol"><q-icon :name="nodeIcons[draggedNode.kind]" :size="isEvent(draggedNode) ? '28px' : isGateway(draggedNode) ? '22px' : '14px'" /></span>
           <span v-if="!isEvent(draggedNode) && !isGateway(draggedNode)" class="node-copy"><strong>{{ draggedNode.title || t('nativeProcesses.untitledActivity') }}</strong><span class="node-kind">{{ t('nativeProcesses.kinds.' + draggedNode.kind) }}</span></span>
           <span v-if="draggedNode.body" class="body-indicator"><q-icon name="add_box" size="16px" /></span>
         </div>
         <div v-if="isEvent(draggedNode) || isGateway(draggedNode)" class="event-title">{{ draggedNode.title || t('nativeProcesses.kinds.' + draggedNode.kind) }}</div>
-        <span v-if="statuses[draggedNode.id]" class="node-badge">{{ t(`processes.statuses.${statuses[draggedNode.id]}`, statuses[draggedNode.id]!) }}</span>
+        <ProcessRunStatusBadge v-if="draggedNode.kind !== 'start' && statuses[draggedNode.id]" class="node-badge" :status="statuses[draggedNode.id]!" variant="diagram" />
         <template v-if="!readonly">
           <span v-for="side in draggedNode.kind === 'start' ? ['output'] : draggedNode.kind === 'end' ? ['input'] : ['input', 'output']" :key="side" class="port" :class="side" />
         </template>
@@ -133,6 +136,7 @@
 import { computed, ref, shallowRef, useId, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { GraphViewControls } from '@/core/util'
+import ProcessRunStatusBadge from './ProcessRunStatusBadge.vue'
 import type { BpmnGraph, BpmnNode, BpmnFlow, NodeKind, ProcessActor, ProcessAgentOption } from '../services/nativeProcessService'
 import { activityKinds, nodeIcons, graphLayout, insertActivity, canConnectActivities, connectActivities, assignActivityActor, laneHeaderWidth, nodeStartX } from '../graphEditing'
 import ProcessLaneHeader from './ProcessLaneHeader.vue'
@@ -157,8 +161,7 @@ const drag = shallowRef<{ id: string; dx: number; dy: number; pointer: number; e
 const laneDrag = shallowRef<{ id: string; pointer: number; element: HTMLElement; originY: number; target: number; moved: boolean } | null>(null)
 const dropError = ref(false)
 const lanes = computed(() => ['', ...(props.modelValue.actors ?? []).map(actor => actor.id)])
-const layout = computed(() => graphLayout(laneDrag.value?.moved ? { ...props.modelValue, actors: orderedActors(laneDrag.value.id, laneDrag.value.target) } : props.modelValue,
-  Object.values(props.overlays).some(Boolean) ? 52 : 0))
+const layout = computed(() => graphLayout(laneDrag.value?.moved ? { ...props.modelValue, actors: orderedActors(laneDrag.value.id, laneDrag.value.target) } : props.modelValue))
 const horizontalOffset = computed(() => { const saved = props.modelValue.nodes.filter(node => node.x > 0); return saved.length ? Math.max(0, nodeStartX - Math.min(...saved.map(node => node.x))) : 0 })
 const isEvent = (node: BpmnNode): boolean => node.kind === 'start' || node.kind === 'end'
 const isGateway = (node: BpmnNode): boolean => node.kind === 'if' || node.kind === 'parallel'
@@ -245,24 +248,48 @@ const dropTarget = computed(() => {
 const contentWidth = computed(() => Math.max(laneHeaderWidth, ...props.modelValue.nodes.map(node => savedPosition(node).x + nodeWidth(node) + 48)))
 const width = computed(() => Math.max(contentWidth.value, viewportWidth.value / zoom.value))
 const tableHeight = computed(() => layout.value.lanes.length * layout.value.laneHeight)
-const height = tableHeight
+const height = computed(() => Math.max(tableHeight.value, ...props.modelValue.nodes
+  .filter(node => props.overlays[node.id])
+  .map(node => savedPosition(node).y + overlayTop(node) + 16)))
+function overlayTop(node: BpmnNode): number {
+  return isGateway(node) ? 118 : 88 + (['running', 'waiting'].includes(props.statuses[node.id] ?? '') ? 8 : 2)
+}
 function endpoint(id: string): { x: number; y: number; width: number } {
   const node = props.modelValue.nodes.find(item => item.id === id)
   return node ? { ...position(node), width: nodeWidth(node) } : { x: 0, y: 0, width: 0 }
 }
+function connectionPoint(id: string, side: 'input' | 'output', outcome?: boolean): { x: number; y: number } {
+  const node = props.modelValue.nodes.find(item => item.id === id)
+  if (!node) return { x: 0, y: 0 }
+  const point = position(node), width = nodeWidth(node), output = side === 'output'
+  const offsetY = node.kind === 'if' && output ? outcome ? 28 : 60 : 44
+  let offsetX = output ? width : 0
+  if (!props.readonly) offsetX += output ? 5 : -5
+  else if (isEvent(node)) offsetX += output ? -4 : 4
+  else if (isGateway(node)) {
+    // A 58px square rotated by 45°; intersect its edge at the branch's height.
+    const halfWidth = 58 / Math.SQRT2 - Math.abs(offsetY - 44)
+    offsetX = width / 2 + (output ? halfWidth : -halfWidth)
+  }
+  return { x: point.x + offsetX, y: point.y + offsetY }
+}
 function title(id: string): string { const node = props.modelValue.nodes.find(node => node.id === id); return node?.title || t('nativeProcesses.kinds.' + (node?.kind ?? 'task')) }
 function flowPath(flow: BpmnFlow): string {
-  const a = endpoint(flow.source), b = endpoint(flow.target), start = a.x + a.width, end = b.x, y1 = a.y + (props.modelValue.nodes.find(node => node.id === flow.source)?.kind === 'if' ? flow.condition === null ? 60 : 28 : 44), y2 = b.y + 44
-  if (Math.abs(y1 - y2) < 1 && end > start) return `M${start} ${y1} H${end - 3}`
+  const a = connectionPoint(flow.source, 'output', flow.condition !== null), b = connectionPoint(flow.target, 'input')
+  const start = a.x, end = b.x, y1 = a.y, y2 = b.y
+  if (Math.abs(y1 - y2) < 1 && end > start) return `M${start} ${y1} H${end}`
   const mid = end > start + 48 ? (start + end) / 2 : start + 36
-  return `M${start} ${y1} H${mid - 8} Q${mid} ${y1} ${mid} ${y1 + (y2 > y1 ? 8 : -8)} V${y2 + (y2 > y1 ? -8 : 8)} Q${mid} ${y2} ${mid + (end > mid ? 8 : -8)} ${y2} H${end - 3}`
+  return `M${start} ${y1} H${mid - 8} Q${mid} ${y1} ${mid} ${y1 + (y2 > y1 ? 8 : -8)} V${y2 + (y2 > y1 ? -8 : 8)} Q${mid} ${y2} ${mid + (end > mid ? 8 : -8)} ${y2} H${end}`
 }
-function flowMidpoint(flow: BpmnFlow): { x: number; y: number } { const a = endpoint(flow.source), b = endpoint(flow.target); return { x: (a.x + a.width + b.x) / 2, y: (a.y + b.y) / 2 + (props.modelValue.nodes.find(node => node.id === flow.source)?.kind === 'if' ? flow.condition === null ? 34 : 18 : 26) } }
+function flowMidpoint(flow: BpmnFlow): { x: number; y: number } {
+  const a = connectionPoint(flow.source, 'output', flow.condition !== null), b = connectionPoint(flow.target, 'input')
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - 18 }
+}
 function ports(node: BpmnNode): { side: 'input' | 'output'; outcome?: boolean }[] {
   return node.kind === 'start' ? [{ side: 'output' }] : node.kind === 'end' ? [{ side: 'input' }] : node.kind === 'if' ? [{ side: 'input' }, { side: 'output', outcome: true }, { side: 'output', outcome: false }] : [{ side: 'input' }, { side: 'output' }]
 }
 function adjacent(id: string, side: 'input' | 'output', outcome?: boolean): BpmnFlow[] { return props.modelValue.flows.filter(flow => side === 'input' ? flow.target === id : flow.source === id && (outcome === undefined || (flow.condition !== null) === outcome)) }
-function statusClass(id: string): string { return `state-${props.statuses[id] ?? 'idle'}` }
+function statusClass(node: BpmnNode): string { return node.kind === 'start' ? '' : `state-${props.statuses[node.id] ?? 'idle'}` }
 function canConnect(node: BpmnNode): boolean {
   const current = connecting.value
   return Boolean(current && canConnectActivities(props.modelValue, current.side === 'input' ? node.id : current.id, current.side === 'input' ? current.id : node.id, current.outcome))
@@ -270,9 +297,8 @@ function canConnect(node: BpmnNode): boolean {
 const connectionPreviewPath = computed(() => {
   const current = linkDrag.value
   if (!current) return ''
-  const anchor = endpoint(current.id), target = current.target ? endpoint(current.target) : null
-  const fixed = { x: anchor.x + (current.side === 'output' ? anchor.width : 0), y: anchor.y + (current.outcome === undefined ? 44 : current.outcome ? 28 : 60) }
-  const loose = target ? { x: target.x + (current.side === 'input' ? target.width : 0), y: target.y + 44 } : current.point
+  const fixed = connectionPoint(current.id, current.side, current.outcome)
+  const loose = current.target ? connectionPoint(current.target, current.side === 'input' ? 'output' : 'input') : current.point
   const from = current.side === 'output' ? fixed : loose, to = current.side === 'output' ? loose : fixed
   const bend = Math.max(40, Math.abs(to.x - from.x) / 2)
   return `M${from.x} ${from.y} C${from.x + bend} ${from.y} ${to.x - bend} ${to.y} ${to.x} ${to.y}`
@@ -542,6 +568,7 @@ onBeforeUnmount(() => {
 }
 .diagram-editor { border: 1px solid var(--diagram-separator); border-radius: 10px; overflow: hidden; background: var(--diagram-surface); }
 .diagram-toolbar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--q-separator-color, rgba(128, 128, 128, .24)); }
+.diagram-toolbar-context { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .diagram-guide { display: flex; gap: 8px; align-items: center; font-size: 12px; opacity: .75; }
 .diagram-editor.fullscreen { position: fixed; z-index: 5999; inset: 0; width: 100vw; height: 100dvh; display: flex; flex-direction: column; border: 0; border-radius: 0; }
 .diagram-editor.fullscreen .bpmn-scroll { flex: 0 1 auto; min-height: 0; max-height: none; }
@@ -595,8 +622,8 @@ marker path { fill: var(--diagram-line); }
 .port:hover::before, .port:focus-visible::before { background: currentColor; }
 .port:focus-visible { outline: 2px solid var(--node-accent); outline-offset: 1px; }
 .body-indicator { position: absolute; right: 8px; bottom: 6px; opacity: .55; }
-.overlay { font-size: 10px; position: absolute; top: 118px; width: 220px; left: 50%; transform: translateX(-50%); text-align: center; }
-.node-badge { position: absolute; top: -10px; right: 4px; z-index: 1; min-height: 20px; padding: 2px 7px; border: 1.2px solid var(--status-accent, var(--diagram-gray-border)); border-radius: 10px; background: var(--status-fill, var(--diagram-gray-fill)); color: var(--status-text, var(--diagram-line)); font-size: 10.5px; font-weight: 700; line-height: 14px; white-space: nowrap; pointer-events: none; }
+.overlay { font-size: 10px; line-height: 16px; position: absolute; width: 220px; left: 50%; transform: translateX(-50%); text-align: center; }
+.node-badge { position: absolute; top: -10px; right: 4px; z-index: 1; pointer-events: none; }
 .state-success, .state-completed { --status-accent: var(--diagram-green-border); --status-fill: var(--diagram-green-fill); --status-text: var(--diagram-green-border); }
 .state-error, .state-failed { --status-accent: var(--diagram-red-border); --status-fill: var(--diagram-red-fill); --status-text: var(--diagram-red-border); }
 .state-waiting, .state-running { --status-accent: var(--diagram-yellow-border); --status-fill: var(--diagram-yellow-fill); --status-text: var(--diagram-badge-yellow-text); }

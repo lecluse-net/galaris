@@ -35,6 +35,7 @@
           <div class="q-pa-sm q-gutter-y-md">
             <q-banner v-if="attempt.error" role="alert">{{ attempt.error }}</q-banner>
             <q-btn v-if="attempt.task_uri && canReadTasks" outline icon="task_alt" :label="t('nativeProcesses.execution.task')" :to="richLinkHref(attempt.task_uri) ?? ''" />
+            <q-btn v-if="attempt.child_run_id" outline icon="account_tree" :label="t('nativeProcesses.execution.childRun')" :to="`/process/internal/run/${attempt.child_run_id}`" />
             <CodeEditor v-if="attempt.receipt !== null" :model-value="pretty(attempt.receipt)" language="json" readonly
               :label="t('nativeProcesses.execution.result')" :min-lines="3" :visible-lines="8" />
             <CodeEditor :model-value="pretty(attempt.input)" language="json" readonly :label="t('nativeProcesses.execution.input')" :min-lines="3" :visible-lines="8" />
