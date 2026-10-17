@@ -42,6 +42,9 @@ def readable_run_clause(actor: int | AgentManagementScope, *, administrative: bo
 
 
 async def require_run(identity: UUID, actor: int | AgentManagementScope, *, control: bool = False) -> ProcessRun:
+    # Single-run views compose the same ACLs as lists. Bound compilation work
+    # before authorization, including the generic run-detail route.
+    await prepare_workflow_document_read()
     run = await get_db().get(ProcessRun, identity)
     if run is None or run.engine_code != "galaris":
         raise LookupError("Internal run not found")
