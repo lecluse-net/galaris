@@ -257,6 +257,8 @@ endif
 	@bash bin/finalize-internal-secrets.sh $(COMPOSE_FILES)
 	@echo "📚 Updating the shared documentation search index..."
 	@bash bin/refresh-documentation.sh $(COMPOSE_FILES)
+	@echo "Checking configured external code editors..."
+	docker compose $(COMPOSE_FILES) exec -T backend python -m code_editor_update
 	@echo "✅ Update complete ($(APP_ENV))."
 	@echo "Open $(APP_HOST) in your browser."
 endif

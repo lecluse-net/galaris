@@ -72,12 +72,20 @@ build can take several minutes and needs access to the pinned image and its pack
 
 Each Unix account receives a private service with a Docker-assigned loopback port and retained
 profiles. Only its home is mounted in the broker; IDE processes retain their approved repository
-mounts. Another click reuses the same service and credential. A different version does not
-automatically replace an existing service, preserving its sessions. The button becomes
-**Update code editor** once access is configured.
-Save files and end editor sessions before clicking; hidden sessions remain open. An explicit
-update preserves the private port, credential and retained profiles, and restores the previous
-image if building or verification fails. Session creation waits until the operation finishes.
+mounts. After initial installation, the deployment button disappears. Every `make update`,
+in development, production and prepared releases, checks editors on active external SSH
+connections that already have editor access configured. It compares the packaged bundle
+with the installed bundle: a current service is verified without rebuilding or interrupting
+sessions; a changed bundle is upgraded automatically. Inactive connections and those without
+configured editors are not equipped automatically. A manually administered broker remains
+your responsibility and is reported without modification.
+
+Save files and end editor sessions before an upgrade; hidden sessions remain open. A live
+session blocks replacement, and SSH, Docker or verification failures fail the overall update
+instead of reporting incomplete success. Other independent targets are still checked. Correct
+the problem and rerun `make update`. Upgrades preserve the private port, credential and retained
+profiles, and restore the previous image if building or local verification fails. Session creation
+waits during replacement. Automation never changes the configured access parameters.
 A live IDE session also
 prevents changing its runtime access; save its buffers and end it before that change. Previously presented
 repositories retain their URI when their verified identity is unchanged; a replaced checkout

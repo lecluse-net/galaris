@@ -133,7 +133,7 @@ test('the code editor deploys directly without a prior SSH test, retries failure
     },
   })
   await page.evaluate(() => window.testApp.setProps({ persistForAction: async payload => ({ id: 42, ...payload.data }) }))
-  const deploy = page.getByRole('button', { name: /^(Deploy|Update) code editor$/ })
+  const deploy = page.getByRole('button', { name: 'Deploy code editor', exact: true })
   await expect(deploy).toBeEnabled()
   await deploy.hover()
   await expect(page.getByRole('tooltip')).toBeVisible()
@@ -150,7 +150,13 @@ test('the code editor deploys directly without a prior SSH test, retries failure
   const submitted = await page.evaluate(() => window.testApp.events.filter(event => event.name === 'submit').at(-1))
   expect(submitted.args[0].params.code_runtime_port).toBe('32123')
   expect(submitted.args[0].params).not.toHaveProperty('code_runtime_token')
-  await expect(page.getByRole('button', { name: 'Update code editor', exact: true })).toBeVisible()
+  await expect(deploy).toHaveCount(0)
+  await expect(page.getByText('Editors on active SSH connections are checked on every Galaris update', { exact: false })).toBeVisible()
+  // A configured editor is maintained by deployment; a new connection can still install it.
+  await page.evaluate(() => window.testApp.setProps({
+    connection: { id: 42, agent_id: 7, tool_id: 8, active: true },
+    connectionParams: { host: 'console.example.test' },
+  }))
   const pending = page.waitForRequest('**/api/console/connections/42/install-editor*')
   await deploy.click()
   await pending
@@ -171,5 +177,5 @@ test('the code editor deploys directly without a prior SSH test, retries failure
   await setPrivileges(page, ['CONNECTION_ACCESS'])
   await expect(deploy).toHaveCount(0)
   expect(installs).toBe(3)
-  expect(upgradeRequests).toEqual([null, null, 'true'])
+  expect(upgradeRequests).toEqual([null, null, null])
 })

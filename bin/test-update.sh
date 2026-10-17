@@ -50,6 +50,7 @@ case " $* " in
         printf '%064d\n' 1 ;;
     *" app.documentation refresh "*) [[ "${UPDATE_TEST_FAILURE:-}" != documentation ]] ;;
     *" app.documentation check "*) [[ "${UPDATE_TEST_FAILURE:-}" != documentation_sources ]] ;;
+    *" code_editor_update "*) [[ "${UPDATE_TEST_FAILURE:-}" != editors ]] ;;
     *" config --services "*)
         [[ "${UPDATE_TEST_FAILURE:-}" != config ]] || exit 1
         printf '%s\n' backend frontend browser-secrets browser-executor search ssh-executor
@@ -180,12 +181,13 @@ for app_mode in dev prod demo pp test custom DEV ''; do
         / build( --pull)?$/ { build = NR }
         / up -d --wait / { ready = NR }
         /app.documentation refresh --expected-revision/ { refresh = NR }
-        END { exit !(pull && build > pull && ready > build && refresh > ready) }
+        /python -m code_editor_update/ { editors = NR }
+        END { exit !(pull && build > pull && ready > build && refresh > ready && editors > refresh) }
     ' "$UPDATE_TEST_LOG"
 done
 
 for app_mode in dev prod; do
-    for failure in pull build data_permissions reset readiness documentation documentation_revision; do
+    for failure in pull build data_permissions reset readiness documentation documentation_revision editors; do
         export UPDATE_TEST_FAILURE="$failure"
         if run_update APP_ENV="$app_mode"; then
             echo "FAIL: $app_mode update hid a $failure failure" >&2
@@ -215,6 +217,34 @@ for app_mode in dev prod; do
     done
 done
 unset UPDATE_TEST_FAILURE
+
+# Prepared releases must maintain editors using the deployed release's backend too.
+release_case="$case_dir/release-case"
+release_fixture="$release_case/prepared"
+mkdir -p "$release_case/bin" "$release_fixture"
+cp "$repo_dir/bin/update-release.sh" "$release_case/bin/"
+for script in load-release init-data-volume finalize-internal-secrets; do
+    printf '#!/usr/bin/env bash\nexit 0\n' > "$release_case/bin/$script.sh"
+done
+printf 'sha256:synthetic galaris-release-back:synthetic\n' > "$release_fixture/IMAGE_IDS"
+cp "$release_fixture/IMAGE_IDS" "$release_fixture/TESTED_IMAGE_IDS"
+for failure in none editors; do
+    : > "$UPDATE_TEST_LOG"
+    if UPDATE_TEST_FAILURE="$failure" bash "$release_case/bin/update-release.sh" "$release_fixture" -f compose.yaml \
+        > "$case_dir/output.log" 2>&1; then
+        test "$failure" = none
+    else
+        test "$failure" = editors
+    fi
+    grep -q -- "-f $release_fixture/compose.release.yaml exec -T backend python -m code_editor_update" "$UPDATE_TEST_LOG"
+    awk '
+        / up -d --no-build --pull never --wait / { ready = NR }
+        /app.documentation refresh --expected-revision/ { refresh = NR }
+        /python -m code_editor_update/ { editors = NR }
+        END { exit !(ready && refresh > ready && editors > refresh) }
+    ' "$UPDATE_TEST_LOG"
+done
+echo 'PASS: prepared releases maintain external editors after readiness and propagate failure'
 
 # The documentation-only workflow never recreates services or grants new capabilities.
 : > "$UPDATE_TEST_LOG"

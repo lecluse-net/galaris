@@ -14,7 +14,7 @@ from .contracts import (
 from .console_service import ConsoleRunResource, build_run_resource
 from .connection_service import resolve_ssh_connection, resolve_connection, resolve_active_connection
 from .repository import discover_repository, code_runtime_tunnel, connection_generation
-from .editor_service import register_editor_installer, configure_editor_runtime
+from .editor_service import register_editor_installer, configure_editor_runtime, configured_external_editor_connections
 from .schemas import ConsoleEditorInstallResult
 from .ssh_client import SshExecutionTransport
 from .provisioning import provision_new_agent_console
@@ -33,4 +33,5 @@ __all__ = [
     "resolve_ssh_connection",
     "RepositoryTarget", "resolve_connection", "resolve_active_connection", "discover_repository", "code_runtime_tunnel", "connection_generation",
     "register_editor_installer", "configure_editor_runtime", "ConsoleEditorInstallResult", "SshExecutionTransport",
+    "configured_external_editor_connections",
 ]

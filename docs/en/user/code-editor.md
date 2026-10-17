@@ -83,3 +83,7 @@ repository after configuration.
 
 If `repository_show` reports a permission refusal, also check that the agent’s Console
 connection is active. Testing or deploying the editor preserves its saved activation state.
+
+After initial deployment, managed editors on active SSH connections are checked and upgraded
+when necessary during every Galaris update. No update button is needed. Save files and end
+sessions before an upgrade: an open session, including a hidden one, blocks editor replacement.

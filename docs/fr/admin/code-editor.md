@@ -77,13 +77,21 @@ minutes et nécessite l’accès aux images et paquets de l’image épinglée.
 
 Chaque compte Unix reçoit un service privé, avec un port loopback attribué par Docker et
 un profil conservé. Seul son home est monté dans le broker ; les processus IDE gardent leurs
-montages limités aux dépôts approuvés. Un nouveau clic réutilise le même service et le même
-credential. Une version différente ne remplace pas automatiquement un service déjà déployé,
-afin de préserver ses sessions. Le bouton devient **Mettre à jour l’éditeur de code** quand
-le service est configuré. Enregistrez vos fichiers et terminez les sessions de l’éditeur
-avant de cliquer ; les sessions masquées restent ouvertes. Une mise à jour explicite conserve
-le port privé, le credential et les profils retenus, et restaure l’image précédente si la
-construction ou la vérification échoue. La création de sessions est bloquée pendant cette opération.
+montages limités aux dépôts approuvés. Après l’installation initiale, le bouton de déploiement
+disparaît. Chaque `make update`, en développement comme en production et depuis une release,
+vérifie les éditeurs des connexions SSH externes actives déjà configurées. Le bundle livré avec
+Galaris est comparé au bundle installé : un service à jour est vérifié sans reconstruction ni
+interruption de ses sessions ; un bundle différent est mis à niveau automatiquement.
+Les connexions inactives et sans éditeur configuré ne sont pas équipées automatiquement.
+Un broker administré manuellement reste sous votre responsabilité et est signalé sans modification.
+
+Enregistrez vos fichiers et terminez les sessions avant une mise à niveau ; les sessions masquées
+restent ouvertes. Une session active bloque le remplacement, et une panne SSH, Docker ou de
+vérification fait échouer la mise à jour globale, sans annoncer un succès incomplet. Les autres
+cibles indépendantes sont tout de même vérifiées. Corrigez le problème puis relancez `make update`.
+La mise à niveau conserve le port privé, le credential et les profils retenus, et restaure l’image
+précédente si la construction ou la vérification locale échoue. La création de sessions est bloquée
+pendant le remplacement. L’automatisation ne modifie jamais les paramètres d’accès enregistrés.
 Une session IDE ouverte empêche aussi de changer son accès
 au runtime ; enregistrez ses buffers et terminez-la avant cette modification.
 Les dépôts présentés avant le déploiement conservent leur URI

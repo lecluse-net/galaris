@@ -69,7 +69,11 @@ réouverture, pour une Console active comme pour une Console volontairement inac
 Le panneau vérifie aussi les changements de thème Galaris sans API de synchronisation IDE,
 les réponses retardées et la navigation explicite sans remplacer un buffer. La qualification
 native exerce le diff d’un fichier et les vues de changements indexés/non indexés.
-La mise à jour explicite refuse les sessions actives et conserve le port et le credential.
+La maintenance automatique sélectionne uniquement les Consoles externes actives déjà configurées,
+vérifie un service à jour même avec des sessions ouvertes, refuse un remplacement avec sessions
+actives et conserve les paramètres d’accès. Une panne ne divulgue pas de secret et n’empêche pas
+les autres cibles d’être vérifiées. `make tests-update` protège l’exécution après disponibilité
+du backend et la propagation d’un échec de maintenance à `make update`.
 `code-executor/tests/test_deployment.py` vérifie l’orchestration avec une frontière Docker
 simulée ; les suites natives ci-dessous vérifient séparément code-server réel et ses montages.
 `front/browser-tests/chat-code-workspace.spec.mjs` exerce les composants du panneau partagé,

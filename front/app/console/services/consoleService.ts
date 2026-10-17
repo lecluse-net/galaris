@@ -129,8 +129,8 @@ export const consoleService = {
   installHelper(connectionId: number): Promise<AxiosResponse<ConsoleHelperInstallResult>> {
     return api.post(`/console/connections/${connectionId}/install-helper`)
   },
-  installEditor(connectionId: number, upgrade = false): Promise<AxiosResponse<ConsoleEditorInstallResult>> {
-    return api.post(`/console/connections/${connectionId}/install-editor`, undefined, { params: upgrade ? { upgrade: true } : undefined })
+  installEditor(connectionId: number): Promise<AxiosResponse<ConsoleEditorInstallResult>> {
+    return api.post(`/console/connections/${connectionId}/install-editor`)
   },
   scanHostKey(host: string, port: number): Promise<AxiosResponse<{ host: string; port: number; key: string; fingerprint: string }>> {
     return api.post('/console/host-key/scan', { host, port })

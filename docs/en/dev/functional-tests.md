@@ -58,8 +58,11 @@ saved activation across unsaved changes, cancellation and reopening, for both ac
 intentionally inactive Consoles.
 Pane coverage also checks Galaris theme changes without an IDE synchronization API,
 delayed responses and explicit navigation without replacing buffers. Native qualification
-exercises file diffs and staged/unstaged views. Explicit updates reject live sessions and preserve
-the port and credential.
+exercises file diffs and staged/unstaged views. Automatic maintenance selects only active,
+configured external Consoles, verifies a current service even with live sessions, refuses
+replacement with live sessions and preserves access parameters. Failures expose no secrets
+and do not prevent checking other targets. `make tests-update` protects execution after
+backend readiness and propagation of maintenance failures to `make update`.
 `code-executor/tests/test_deployment.py` checks orchestration with a simulated Docker boundary;
 the native suites below separately exercise actual code-server and its mounts.
 `front/browser-tests/chat-code-workspace.spec.mjs` exercises the shared pane components,

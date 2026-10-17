@@ -663,6 +663,7 @@
       {
         "files": [
           "back/app/console/connection_service.py",
+          "back/app/console/editor_service.py",
           "back/app/console/file_transport.py",
           "back/app/console/mcp.py",
           "back/app/console/provisioning.py",

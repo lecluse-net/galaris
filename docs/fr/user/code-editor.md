@@ -90,3 +90,8 @@ rouvrir le dépôt après cette configuration.
 
 Si `repository_show` signale un refus de permission, vérifiez aussi que la connexion
 Console de l’agent est active. Tester ou déployer l’éditeur conserve son état enregistré.
+
+Après le déploiement initial, les éditeurs gérés des connexions SSH actives sont vérifiés et
+mis à niveau si nécessaire lors de chaque mise à jour de Galaris. Aucun bouton de mise à jour
+n’est nécessaire. Enregistrez les fichiers et terminez les sessions avant une mise à niveau :
+une session ouverte, même masquée, empêche le remplacement de l’éditeur.

@@ -180,12 +180,13 @@
             @click="testConsole"
           />
           <q-btn v-if="canEdit && canInstallHelper" outline color="primary" icon="system_update_alt" :label="t('connection.console.installHelper')" :loading="consoleAction === 'install'" :disable="consoleAction !== null" @click="installHelper" />
-          <q-btn v-if="canEdit" outline color="primary" icon="code" :label="t(editorRuntimeConfigured ? 'connection.console.updateEditor' : 'connection.console.installEditor')"
+          <q-btn v-if="canEdit && !editorRuntimeConfigured" outline color="primary" icon="code" :label="t('connection.console.installEditor')"
             :loading="consoleAction === 'editor'" :disable="consoleAction !== null" @click="installEditor">
             <q-tooltip>{{ t('connection.console.editorDeploymentTooltip') }}</q-tooltip>
           </q-btn>
         </div>
         <div class="text-caption q-mt-sm">{{ t('connection.console.editorDeploymentHint') }}</div>
+        <div v-if="editorRuntimeConfigured" class="text-caption q-mt-sm">{{ t('connection.console.editorAutomaticUpdates') }}</div>
         <q-banner v-if="editorDeployed" dense class="q-mt-sm" role="status">{{ t('connection.console.editorReady') }}</q-banner>
         <q-banner v-if="generatedPublicKey" dense rounded class="bg-blue-1 text-blue-9 q-mt-md">
           <div>{{ t('connection.console.installPublicKey') }}</div>
@@ -347,7 +348,7 @@
           :loading="consoleAction === 'install'"
           @click="installHelper"
         />
-        <q-btn v-if="canEdit && consoleTarget === 'external'" outline color="primary" icon="code" :label="t(editorRuntimeConfigured ? 'connection.console.updateEditor' : 'connection.console.installEditor')"
+        <q-btn v-if="canEdit && consoleTarget === 'external' && !editorRuntimeConfigured" outline color="primary" icon="code" :label="t('connection.console.installEditor')"
           :loading="consoleAction === 'editor'" :disable="consoleAction !== null" @click="installEditor">
           <q-tooltip>{{ t('connection.console.editorDeploymentTooltip') }}</q-tooltip>
         </q-btn>
@@ -993,11 +994,10 @@ async function installEditor(): Promise<void> {
     return
   }
   const context = consoleContext
-  const upgrade = editorRuntimeConfigured.value
   consoleAction.value = 'editor'
   try {
     const connection = await persistConsoleDraft(props.connection?.active ?? false)
-    const { data } = await consoleService.installEditor(connection.id, upgrade)
+    const { data } = await consoleService.installEditor(connection.id)
     if (context !== consoleContext || form.value.id !== data.connection_id) return
     paramValues.value.code_runtime_port = String(data.port)
     paramValues.value.code_runtime_token = ''

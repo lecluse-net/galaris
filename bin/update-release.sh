@@ -42,3 +42,5 @@ bash bin/finalize-internal-secrets.sh "$@" -f "$release_directory/compose.releas
 echo 'Updating the shared documentation search index from the deployed release...'
 docker compose "$@" -f "$release_directory/compose.release.yaml" exec -T backend \
   python -m app.documentation refresh --expected-revision "$expected_docs"
+echo 'Checking configured external code editors from the deployed release...'
+docker compose "$@" -f "$release_directory/compose.release.yaml" exec -T backend python -m code_editor_update
