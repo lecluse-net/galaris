@@ -24,7 +24,9 @@ administrateurs humains PROCESS_ADMIN.
 
 ## Construire et enregistrer
 
-Créer un processus et saisir son titre dans la barre compacte. Le propriétaire y est choisi
+Créer un processus et saisir son titre dans la barre compacte. Le champ **Description**
+permet d'ajouter un texte facultatif, modifiable puis conservé avec **Enregistrer**.
+En lecture seule, la description reste consultable. Le propriétaire est choisi
 à la création. Le champ **Partage** est disponible dès
 la création pour donner des droits **Lecture** ou **Écriture** aux utilisateurs, agents
 et groupes, ou choisir un partage public. Enregistrer applique ces choix au nouveau

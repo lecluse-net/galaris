@@ -47,11 +47,15 @@ test(`a real ${mode} IF follows its boolean branch after Dataset code execution`
   ], flows: [{ id: 'a', source: 'start', target: 'work' }, { id: 'b', source: 'work', target: 'check' },
     { id: 'c', source: 'check', target: 'yes', condition: 'decision' }, { id: 'd', source: 'check', target: 'no' }] }
   const created = await request.post('/api/processes/internal/definitions', { headers, data: {
-    agent_id: fixture.agent_id, title: 'Synthetic sandbox and decision workflow', owner: 'user', graph,
+    agent_id: fixture.agent_id, title: 'Synthetic sandbox and decision workflow',
+    description: 'Synthetic decision workflow description', owner: 'user', graph,
   } })
   expect(created.ok(), await created.text()).toBeTruthy()
   const definition = await created.json()
   await page.goto(`/process/internal/${definition.code}`)
+  const description = page.getByRole('textbox', { name: 'Description', exact: true })
+  await expect(description).toHaveValue('Synthetic decision workflow description')
+  await description.fill('Updated synthetic decision workflow description')
   await expect(page.getByRole('button', { name: /^(True output of|Sortie True de) Synthetic project decision$/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /^(False output of|Sortie False de) Synthetic project decision$/ })).toBeVisible()
   await page.getByRole('button', { name: 'Update the counter · work', exact: true }).click()
@@ -60,6 +64,9 @@ test(`a real ${mode} IF follows its boolean branch after Dataset code execution`
   const saving = page.waitForResponse(response => response.url().endsWith(`/definitions/${definition.code}`) && response.request().method() === 'PUT')
   await page.getByRole('button', { name: /^(Save|Enregistrer)$/, exact: true }).click()
   expect((await saving).ok()).toBeTruthy()
+  await page.reload()
+  await expect(description).toHaveValue('Updated synthetic decision workflow description')
+  await page.screenshot({ path: test.info().outputPath('process-description.png'), fullPage: true, animations: 'disabled' })
   const launched = await request.post(`/api/processes/internal/definitions/${definition.code}/runs`, { headers, data: { agent_id: fixture.agent_id, input: {} } })
   expect(launched.ok(), await launched.text()).toBeTruthy()
   const { run_id: identity } = await launched.json()

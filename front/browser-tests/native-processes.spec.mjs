@@ -194,6 +194,7 @@ test('a new workflow can be built from its start handle and retains typed human 
     return route.fulfill({ json: sharing })
   })
   await page.locator('.editor-content').getByRole('textbox', { name: 'Title', exact: true }).fill('Synthetic review')
+  await page.getByRole('textbox', { name: 'Description', exact: true }).fill('Review an entirely invented result.')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.poll(() => writes.length).toBe(1)
   await expect(page.getByRole('alert')).toContainText('Synthetic sharing failure')
@@ -204,6 +205,8 @@ test('a new workflow can be built from its start handle and retains typed human 
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
   await expect.poll(() => shareWrites.length).toBe(3)
   expect(writes).toHaveLength(1)
+  expect(writes[0].description).toBe('Review an entirely invented result.')
+  await expect(page.getByRole('textbox', { name: 'Description', exact: true })).toHaveValue('Review an entirely invented result.')
   expect(shareWrites[2]).toMatchObject({ level: 'private', grants: [{ kind: 'user', id: 11, can_write: true }, { kind: 'agent', id: 7, can_write: false }] })
   await expect(page.getByRole('alert')).toHaveCount(0)
   const submitted = writes[0].graph
@@ -282,7 +285,7 @@ test('typed actor lanes preserve task assignment when editing and saving', async
 })
 
 async function definitionFixtures(page, writable, kind = 'task', typed = false, declarations = {}, definitionRevision = 1) {
-  const definition = { id: 1, code: 'invented_process', title: 'Invented workflow', document_id: 'invented-document',
+  const definition = { id: 1, code: 'invented_process', title: 'Invented workflow', description: 'Synthetic existing description', document_id: 'invented-document',
     revision: definitionRevision, archived: false, can_write: writable, graph: graph(), xml: '<synthetic/>', diagnostics: [] }
   const writes = []
   definition.graph.nodes[1].kind = kind
@@ -743,6 +746,8 @@ test('a document read-only grant keeps the process visible without mutation cont
   const writes = await definitionFixtures(page, false)
   await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
   await expect(page.getByText('Read-only access', { exact: true })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Description', exact: true })).toHaveValue('Synthetic existing description')
+  await expect(page.getByRole('textbox', { name: 'Description', exact: true })).not.toBeEditable()
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Task · work', exact: true }).click()
   await expect(page.getByRole('textbox', { name: 'Task instructions', exact: true })).not.toBeEditable()

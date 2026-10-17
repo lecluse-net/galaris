@@ -24,7 +24,7 @@ from .models import ProcessDefinition
 
 async def create(*, actor_agent_id: int, title: str, graph: Workflow | None = None,
                  xml: str | None = None, code: str | None = None,
-                 owner_user_id: int | None = None) -> ProcessDefinition:
+                 owner_user_id: int | None = None, description: str | None = None) -> ProcessDefinition:
     if (graph is None) == (xml is None):
         raise ValueError("Provide either a graph or BPMN XML")
     identifier = code or "proc_" + uuid4().hex
@@ -42,7 +42,7 @@ async def create(*, actor_agent_id: int, title: str, graph: Workflow | None = No
     document = await create_workflow_document(owner_agent_id=actor_agent_id, title=title,
         content=content, kind="process", command=f"process-definition:{actor_agent_id}:{identifier}", owner_user_id=owner_user_id, process_code=identifier)
     record = ProcessDefinition(agent_id=actor_agent_id if owner_user_id is None else None,
-        tool_id=tool.id, engine_process_id=identifier, code=identifier, label=title, document_id=document.id)
+        tool_id=tool.id, engine_process_id=identifier, code=identifier, label=title, description=description, document_id=document.id)
     get_db().add(record)
     await get_db().commit()
     return record
@@ -94,12 +94,13 @@ async def read(code: str, actor: int | AgentManagementScope) -> dict[str, Any]:
         can_write = False
     return {"id": record.id, "code": record.code, "archived": record.archived,
             "document_id": str(record.document_id), "title": document["title"],
-            "revision": document["revision"], "can_write": can_write,
+            "description": record.description, "revision": document["revision"], "can_write": can_write,
             "xml": document["content"], "graph": graph.model_dump(mode="json"), "diagnostics": diagnostics}
 
 
 async def update(code: str, actor: int | AgentManagementScope, *, expected_revision: int,
-                 graph: Workflow | None = None, xml: str | None = None, title: str | None = None) -> dict[str, Any]:
+                 graph: Workflow | None = None, xml: str | None = None, title: str | None = None,
+                 description: str | None = None) -> dict[str, Any]:
     record, resolved = await get(code, actor, write=True)
     assert record.document_id is not None
     if (graph is None) == (xml is None):
@@ -109,6 +110,8 @@ async def update(code: str, actor: int | AgentManagementScope, *, expected_revis
     document = await write_workflow_document(record.document_id, resolved, content,
         expected_revision=expected_revision, title=title)
     record.label = document.title
+    if description is not None:
+        record.description = description
     await get_db().commit()
     return await read(code, actor)
 

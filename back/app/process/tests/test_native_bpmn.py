@@ -361,8 +361,10 @@ async def test_http_native_and_lab_pagination_accepts_encoded_sizes_with_real_au
     definition_graph = Workflow(nodes=[Node(id="begin", kind="start"), Node(id="finish", kind="end")],
         flows=[Flow(id="a", source="begin", target="finish")])
     created = await client.post("/api/processes/internal/definitions", headers=headers, json={
-        "agent_id": owner_id, "owner": "user", "title": "Synthetic HTTP definition", "graph": definition_graph.model_dump(mode="json")})
+        "agent_id": owner_id, "owner": "user", "title": "Synthetic HTTP definition",
+        "description": "Synthetic plain text description\nSecond line.", "graph": definition_graph.model_dump(mode="json")})
     assert created.status_code == 201, created.text
+    assert created.json()["description"] == "Synthetic plain text description\nSecond line."
     code = created.json()["code"]
     admission = await client.post(f"/api/processes/internal/definitions/{code}/runs", headers=headers, json={"agent_id": owner_id})
     assert admission.status_code == 202, admission.text
@@ -389,6 +391,7 @@ async def test_http_native_and_lab_pagination_accepts_encoded_sizes_with_real_au
     updated = await client.put(f"/api/processes/internal/definitions/{code}", headers=headers,
         json={"expected_revision": 1, "graph": definition_graph.model_dump(mode="json")})
     assert updated.status_code == 200, updated.text
+    assert updated.json()["description"] == created.json()["description"]
     history_path = f"/api/processes/internal/definitions/{code}/history"
     assert (await client.delete(f"{history_path}/2", headers=headers)).status_code == 409
     foreign = await create(actor_agent_id=other_agent_id, title="Synthetic private history", graph=graph())

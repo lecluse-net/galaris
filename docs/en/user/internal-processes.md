@@ -22,7 +22,9 @@ Definitions without an active owner are restricted to human PROCESS_ADMIN admini
 
 ## Build and save
 
-Create a process and enter its title in the compact toolbar. Choose its owner there when
+Create a process and enter its title in the compact toolbar. The **Description** field
+accepts optional plain text, which can be edited and saved with **Save**.
+The description remains visible with read-only access. Choose its owner when
 creating it. The **Sharing** field is available from creation
 to grant **Read** or **Write** access to users, agents and groups, or choose public access.
 Saving applies these choices to the new process; sharing changes to an existing process

@@ -21,7 +21,7 @@ export interface BpmnGraph {
   execution_agent_id?: number | null
 }
 export interface NativeDefinition {
-  id: number; code: string; title: string; document_id: string; revision: number; archived: boolean; can_write: boolean
+  id: number; code: string; title: string; description: string | null; document_id: string; revision: number; archived: boolean; can_write: boolean
   graph: BpmnGraph; xml: string; diagnostics: { node: string; code: string; severity: string; message: string }[]
 }
 export type NativeDefinitionSummary = Pick<NativeDefinition, 'id' | 'code' | 'title' | 'document_id' | 'archived'>
@@ -81,10 +81,10 @@ export const nativeProcessService = {
     return (await api.get(`${base}/definitions`, { params: { page, page_size: pageSize } })).data
   },
   async get(code: string): Promise<NativeDefinition> { return (await api.get(`${base}/definitions/${encodeURIComponent(code)}`)).data },
-  async create(data: { title: string; agent_id: number; owner: 'user' | 'agent'; graph?: BpmnGraph; xml?: string }): Promise<NativeDefinition> {
+  async create(data: { title: string; description?: string; agent_id: number; owner: 'user' | 'agent'; graph?: BpmnGraph; xml?: string }): Promise<NativeDefinition> {
     return (await api.post(`${base}/definitions`, data)).data
   },
-  async save(code: string, data: { title: string; expected_revision: number; graph?: BpmnGraph; xml?: string }): Promise<NativeDefinition> {
+  async save(code: string, data: { title: string; description?: string; expected_revision: number; graph?: BpmnGraph; xml?: string }): Promise<NativeDefinition> {
     return (await api.put(`${base}/definitions/${encodeURIComponent(code)}`, data)).data
   },
   async validate(data: { graph?: BpmnGraph; xml?: string }): Promise<{ graph: BpmnGraph; xml: string }> {

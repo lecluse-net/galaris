@@ -34,6 +34,7 @@
           </div>
         </div>
         <q-banner v-if="sharingPending && !saving" role="status">{{ t('nativeProcesses.sharingPending') }}</q-banner>
+        <q-input v-model="description" outlined dense hide-bottom-space :readonly="!editable" :label="t('nativeProcesses.description')" />
         <q-banner v-if="graph.schema_version === 'galaris.bpmn/v1'">
           {{ t('nativeProcesses.variables.legacy') }}
           <template v-if="editable" #action><q-btn flat :label="t('nativeProcesses.variables.upgrade')" @click="upgradeProfile" /></template>
@@ -186,6 +187,7 @@ import { emptyGraph, nativeProcessService as service, type BpmnGraph, type BpmnN
 const props = withDefaults(defineProps<{ code?: string | null }>(), { code: null })
 const { t, locale } = useI18n(), router = useRouter(), $q = useQuasar(), privileges = usePrivilegeStore()
 const definition = shallowRef<NativeDefinition | null>(null), graph = shallowRef(emptyGraph()), title = ref('')
+const description = ref('')
 const agents = ref<ProcessAgentOption[]>([]), launcherAgentId = ref<number | null>(null), owner = ref<'user' | 'agent'>('user')
 const humans = ref<{ id: number; label: string }[]>([])
 const sharingDraft = ref<SharingDraft>({ level: 'private', can_write: false, grants: [] })
@@ -289,7 +291,7 @@ function report(cause: unknown): void {
   const response = cause as { response?: { data?: { detail?: unknown } } }
   error.value = typeof response.response?.data?.detail === 'string' ? response.response.data.detail : cause instanceof Error ? cause.message : t('nativeProcesses.error')
 }
-function apply(value: NativeDefinition): void { definition.value = value; graph.value = value.graph; title.value = value.title; bodyPath.value = []; selectedNode.value = null; selectedFlow.value = null; invalidDrafts.value = {}; drafts.value = {}; declarationDrafts.value = {}; pastRevision.value = null; selectedRevision.value = null; revisionLoading.value = false; revisionError.value = false; revisionGeneration++; error.value = '' }
+function apply(value: NativeDefinition): void { definition.value = value; graph.value = value.graph; title.value = value.title; description.value = value.description ?? ''; bodyPath.value = []; selectedNode.value = null; selectedFlow.value = null; invalidDrafts.value = {}; drafts.value = {}; declarationDrafts.value = {}; pastRevision.value = null; selectedRevision.value = null; revisionLoading.value = false; revisionError.value = false; revisionGeneration++; error.value = '' }
 async function load(): Promise<void> {
   const token = ++generation, code = props.code
   sharingPending.value = false; sharingDraft.value = { level: 'private', can_write: false, grants: [] }
@@ -300,7 +302,7 @@ async function load(): Promise<void> {
   declarationDrafts.value = {}
   try {
     if (code) { const value = await service.get(code); if (token !== generation) return; apply(value) }
-    else { graph.value = emptyGraph(); title.value = ''; bodyPath.value = [] }
+    else { graph.value = emptyGraph(); title.value = ''; description.value = ''; bodyPath.value = [] }
     const options = await service.agents(); if (token !== generation) return; agents.value = options; launcherAgentId.value = options[0]?.id ?? null
   } catch (cause) { if (token === generation) report(cause) }
   finally { if (token === generation) loading.value = false }
@@ -338,8 +340,8 @@ async function save(): Promise<void> {
   try {
     assertDrafts()
     const creating = !definition.value
-    const result = definition.value ? await service.save(definition.value.code, { title: title.value, expected_revision: definition.value.revision,
-      graph: persistLayout(graph.value) }) : await service.create({ title: title.value,
+    const result = definition.value ? await service.save(definition.value.code, { title: title.value, description: description.value, expected_revision: definition.value.revision,
+      graph: persistLayout(graph.value) }) : await service.create({ title: title.value, description: description.value,
         graph: persistLayout(graph.value), agent_id: launcherAgentId.value!, owner: owner.value })
     if (token !== generation) return
     definition.value = result

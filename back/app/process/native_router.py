@@ -43,6 +43,7 @@ class DefinitionContent(BaseModel):
 
 class DefinitionCreate(DefinitionContent):
     title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
     agent_id: int = Field(gt=0)
     owner: Literal["user", "agent"] = "user"
     code: str | None = None
@@ -51,6 +52,7 @@ class DefinitionCreate(DefinitionContent):
 class DefinitionUpdate(DefinitionContent):
     expected_revision: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
 
 
 class RestoreRequest(BaseModel):
@@ -121,7 +123,8 @@ async def native_create_definition(data: DefinitionCreate) -> dict[str, Any]:
         scope = await current_management_scope()
         scope.require(data.agent_id)
         record = await definitions.create(actor_agent_id=data.agent_id, title=data.title, graph=data.graph,
-            xml=data.xml, code=data.code, owner_user_id=scope.user_id if data.owner == "user" else None)
+            xml=data.xml, code=data.code, owner_user_id=scope.user_id if data.owner == "user" else None,
+            description=data.description)
         return await definitions.read(record.code or "", scope)
 
 
@@ -137,7 +140,7 @@ async def native_read_definition(code: str) -> dict[str, Any]:
 async def native_update_definition(code: str, data: DefinitionUpdate) -> dict[str, Any]:
     with domain_errors():
         return await definitions.update(code, await current_management_scope(), expected_revision=data.expected_revision,
-            graph=data.graph, xml=data.xml, title=data.title)
+            graph=data.graph, xml=data.xml, title=data.title, description=data.description)
 
 
 @routes.get("/definitions/{code}/history")
