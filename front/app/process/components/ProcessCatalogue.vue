@@ -10,11 +10,15 @@
       :rows-per-page-options="[10, 20, 50, 100, 500]" :no-data-label="t('processes.noRows')"
     >
       <template #body="scope">
-        <q-tr :props="scope" class="process-row" tabindex="0" :aria-expanded="scope.expand"
-          :aria-label="t('processes.executions') + ': ' + scope.row.label" @click="scope.expand = !scope.expand"
-          @keydown.enter.self="scope.expand = !scope.expand" @keydown.space.self.prevent="scope.expand = !scope.expand">
+        <q-tr :props="scope" class="process-row" tabindex="0"
+          :aria-label="scope.row.label" @click="router.push(scope.row.editorUrl)"
+          @keydown.enter.self="router.push(scope.row.editorUrl)" @keydown.space.self.prevent="router.push(scope.row.editorUrl)">
+          <q-td key="expand" :props="scope" auto-width @click.stop="scope.expand = !scope.expand">
+            <q-btn flat round dense :icon="scope.expand ? 'expand_less' : 'expand_more'"
+              :aria-expanded="scope.expand" :aria-label="t('processes.executions') + ': ' + scope.row.label"
+              @click.stop="scope.expand = !scope.expand" />
+          </q-td>
           <q-td key="label" :props="scope">
-            <q-icon :name="scope.expand ? 'expand_less' : 'expand_more'" class="q-mr-sm" aria-hidden="true" />
             <span class="text-weight-medium">{{ scope.row.label }}</span>
             <q-badge v-if="scope.row.native?.archived" outline class="q-ml-sm">{{ t('nativeProcesses.archive') }}</q-badge>
           </q-td>
@@ -39,10 +43,14 @@
         <div class="col-12 q-py-xs">
           <q-card flat bordered>
             <q-card-section class="process-row row items-start no-wrap q-gutter-sm" tabindex="0" role="button"
-              :aria-label="t('processes.executions') + ': ' + scope.row.label" :aria-expanded="scope.expand"
-              @click="scope.expand = !scope.expand" @keydown.enter.self="scope.expand = !scope.expand"
-              @keydown.space.self.prevent="scope.expand = !scope.expand">
-              <q-icon :name="scope.expand ? 'expand_less' : 'expand_more'" size="sm" aria-hidden="true" />
+              :aria-label="scope.row.label"
+              @click="router.push(scope.row.editorUrl)" @keydown.enter.self="router.push(scope.row.editorUrl)"
+              @keydown.space.self.prevent="router.push(scope.row.editorUrl)">
+              <div class="self-stretch" @click.stop="scope.expand = !scope.expand">
+                <q-btn flat round dense :icon="scope.expand ? 'expand_less' : 'expand_more'"
+                  :aria-expanded="scope.expand" :aria-label="t('processes.executions') + ': ' + scope.row.label"
+                  @click.stop="scope.expand = !scope.expand" />
+              </div>
               <div class="col process-identity">
                 <div class="text-subtitle2">{{ scope.row.label }}</div>
                 <q-badge v-if="scope.row.native?.archived" outline>{{ t('nativeProcesses.archive') }}</q-badge>
@@ -71,6 +79,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import type { QTableColumn } from 'quasar'
 import { nativeProcessService, type NativeDefinitionSummary } from '../services/nativeProcessService'
 import type { AgentOption, ProcessDefinition, ProcessRun, ProcessTool } from '../services/processService'
@@ -83,6 +92,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ openRun: [run: ProcessRun] }>()
 const { t } = useI18n()
+const router = useRouter()
 const nativeDefinitions = ref<NativeDefinitionSummary[]>([])
 const loading = ref(false), error = ref(false)
 const pagination = ref({ page: 1, rowsPerPage: 50 })
@@ -94,6 +104,7 @@ const rows = computed(() => [
     agent: props.agents.find(agent => agent.id === external.agent_id)?.label ?? '—', description: external.description ?? '', editorUrl: `/process/external/${external.id}`, native: null, external })),
 ])
 const columns = computed<QTableColumn[]>(() => [
+  { name: 'expand', label: '', field: 'key', align: 'left' },
   { name: 'label', label: t('processes.label'), field: 'label', align: 'left', sortable: true },
   { name: 'tool', label: t('processes.tool'), field: 'tool', align: 'left', sortable: true },
   { name: 'agent', label: t('processes.agent'), field: 'agent', align: 'left', sortable: true },

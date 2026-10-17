@@ -69,7 +69,8 @@ process is expanded; sublists remain isolated and failed loads can be retried on
 and mobile. Pagination preserves server totals and independent pages; the global refresh
 reloads open sublists without changing their page. n8n diagnostics stay in a dialog that
 can close during synchronization; the banner distinguishes a broken connection from an
-unconfigured integration. Clicking a row expands runs; the edit icon navigates without expanding.
+unconfigured integration. The row and edit icon open the process without expanding runs;
+the arrow area on the left expands runs without navigating, with keyboard access.
 The external editor preserves drafts after failed saves, respects read-only access and
 ignores late responses from another process. Delayed views can close and reopen on desktop/mobile.
 The measurement scenario attaches module requests, decoded bytes

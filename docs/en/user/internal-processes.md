@@ -3,8 +3,9 @@
 # Internal business processes
 
 The **Processes** page brings internal and external processes, including n8n, into a single list.
-Click a process row to load and expand its runs; click again to collapse the sublist.
-The edit icon on the right opens its editor page for both internal and external processes.
+Click a process row to open its editor page for both internal and external processes.
+The arrow area on the left loads and expands its runs; click again to collapse the sublist.
+The edit icon on the right also opens its editor page.
 Adding an external process also uses a dedicated page.
 In each editor, **Back to list** is below the title, at the top left.
 Search applies to the combined list; the agent filter applies to external processes.

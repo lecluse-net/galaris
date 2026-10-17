@@ -79,8 +79,9 @@ de chargement permet un réessai, sur ordinateur et mobile. La pagination conser
 serveur et les pages indépendantes ; le rafraîchissement global recharge les sous-listes
 ouvertes sans changer leur page. Les diagnostics n8n restent dans une modale refermable
 pendant la synchronisation ; le bandeau distingue une connexion cassée d’une intégration
-non configurée. La ligne déplie les exécutions,
-l’icône d’édition navigue sans déplier ; l’éditeur externe conserve les brouillons après
+non configurée. La ligne et l’icône d’édition ouvrent le processus sans déplier les exécutions ;
+la zone de la flèche à gauche déplie les exécutions sans naviguer, avec accès au clavier.
+L’éditeur externe conserve les brouillons après
 échec, respecte la lecture seule et ignore une réponse tardive d’un autre processus. Les fiches
 retardées restent refermables et se rouvrent sur ordinateur/mobile. Le scénario de mesure
 joint les requêtes de modules, leur volume décodé et le délai d'affichage, sans seuil temporel

@@ -83,12 +83,23 @@ test('external definitions display before slow auxiliary catalogues and engine h
 })
 
 for (const width of [1440, 390]) {
-  test(`process edit icons navigate without expanding runs at ${width}px`, async ({ page }) => {
+  test(`process rows and edit icons navigate independently of run expansion at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     await fixtures(page)
     const requests = []
     page.on('request', request => { if (/\/processes\/(internal\/)?runs/.test(new URL(request.url()).pathname)) requests.push(request.url()) })
     await mount(page, 'app/process/pages/index.vue', { privileges: ['PROCESS_READ', 'PROCESS_ADMIN'] })
+    for (const [label, path] of [['Synthetic n8n workflow', '/process/external/1'], ['Synthetic process', '/process/internal/synthetic']]) {
+      await page.getByText(label, { exact: true }).click()
+      await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(path)
+      await expect(page.getByRole('button', { name: `Runs: ${label}`, exact: true })).toHaveAttribute('aria-expanded', 'false')
+      await page.evaluate(() => window.testApp.router.push('/'))
+      const row = page.getByLabel(label, { exact: true })
+      await row.focus()
+      await page.keyboard.press('Enter')
+      await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(path)
+      await expect(page.getByRole('button', { name: `Runs: ${label}`, exact: true })).toHaveAttribute('aria-expanded', 'false')
+    }
     const external = page.getByRole('link', { name: 'Edit: Synthetic n8n workflow', exact: true })
     await expect(external).toHaveAttribute('href', '/process/external/1')
     await external.click()
@@ -121,9 +132,12 @@ for (const width of [1440, 390]) {
     const external = page.getByLabel('Runs: Synthetic n8n workflow', { exact: true })
     await expect(external).toBeVisible()
     expect(requestedProcesses).toEqual([])
-    await internal.click()
+    // The whole left-hand area expands runs, including the space around the arrow.
+    await internal.locator('..').click({ position: { x: 2, y: 2 } })
+    await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/')
     await expect(page.getByLabel('Show details: Synthetic execution', { exact: true })).toBeVisible()
     await external.click()
+    await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/')
     const error = page.getByRole('alert').filter({ hasText: 'An error occurred' })
     await expect(error).toBeVisible()
     failed = false

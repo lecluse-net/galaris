@@ -3,9 +3,10 @@
 # Processus métier internes
 
 La page **Processus** réunit les processus internes et externes, dont n8n, dans une seule liste.
-Cliquez sur la ligne d’un processus pour charger et déplier ses exécutions ; un second
-clic replie la sous-liste. L’icône de modification à droite ouvre sa page d’édition,
-qu’il soit interne ou externe. L’ajout d’un processus externe utilise également une page dédiée.
+Cliquez sur la ligne d’un processus pour ouvrir sa page d’édition, qu’il soit interne ou externe.
+La zone de la flèche à gauche charge et déplie ses exécutions ; un second clic replie la sous-liste.
+L’icône de modification à droite ouvre également sa page d’édition.
+L’ajout d’un processus externe utilise également une page dédiée.
 Dans chaque éditeur, **Retour à la liste** se trouve sous le titre, en haut à gauche.
 La recherche porte sur la liste commune ; le filtre par agent concerne les processus externes.
 Les exécutions internes et externes présentent la date et l’heure de début, la durée,
