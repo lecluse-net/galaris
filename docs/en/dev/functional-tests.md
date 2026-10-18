@@ -1027,8 +1027,12 @@ and ignoring requests for a different conversation.
 ## Shared infrastructure and UI
 
 For Android system bar colours, the DOM/CSS assertions in
-`front/browser-tests/presentation.spec.mjs` verify the web canvas theme and that the page imposes
-no colour; the manifest defines neither `theme_color` nor `background_color`.
+`front/browser-tests/presentation.spec.mjs` verify the web canvas theme and the `theme-color`
+hint after preference changes, reopening, `pageshow` and returning to the foreground. A missing
+hint is recreated. The manifest supplies a dark native fallback through `theme_color` and
+`background_color`; this fallback stays dark in the light theme.
+The build checks that both fields are explicitly present and nonempty in the generated manifest;
+`front/scripts/report-build.test.mjs` covers their removal or emptying.
 An emulated mobile viewport does not validate native rendering. Check the installed Android PWA
 with three-button navigation, on launch and after returning to the foreground, in light and
 dark system themes, including with an opposite Galaris theme; also check an existing installation

@@ -66,8 +66,9 @@ async function expectBrowserTheme(page, dark) {
   await expect(page.locator('html')).toHaveCSS('color-scheme', dark ? 'dark' : 'light')
   const background = await page.locator('body').evaluate(body => getComputedStyle(body).backgroundColor)
   await expect(page.locator('html')).toHaveCSS('background-color', background)
-  // The app theme paints the web canvas without overriding native system bars.
-  await expect(page.locator('meta[name="theme-color"]')).toHaveCount(0)
+  const themeColor = page.locator('meta[name="theme-color"]')
+  await expect(themeColor).toHaveCount(1)
+  await expect(themeColor).toHaveAttribute('content', background)
 }
 
 test('user preferences persist each theme and save a selected profile language', async ({ page }) => {
@@ -100,6 +101,14 @@ test('user preferences persist each theme and save a selected profile language',
   await expectBrowserTheme(page, true)
   await page.emulateMedia({ colorScheme: 'light' })
   await expectBrowserTheme(page, true)
+  for (const event of ['pageshow', 'visibilitychange']) {
+    await page.evaluate(name => {
+      document.querySelector('meta[name="theme-color"]').remove()
+      const target = name === 'pageshow' ? window : document
+      target.dispatchEvent(new Event(name))
+    }, event)
+    await expectBrowserTheme(page, true)
+  }
   await page.getByRole('button', { name: 'My account', exact: true }).click()
   await page.locator('.q-item').filter({ hasText: 'Language' }).click()
   await expect(page.locator('.language-menu-list .q-item')).toHaveCount(3)

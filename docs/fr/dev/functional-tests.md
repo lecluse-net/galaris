@@ -1061,8 +1061,12 @@ et `filter-loading.spec.mjs` dans `front/browser-tests/`.
 ## Infrastructure et interface commune
 
 Pour les couleurs des barres système Android, les assertions DOM/CSS de
-`front/browser-tests/presentation.spec.mjs` vérifient le thème du canevas web et l’absence de
-couleur imposée par la page ; le manifeste ne définit ni `theme_color` ni `background_color`.
+`front/browser-tests/presentation.spec.mjs` vérifient le thème du canevas web et l’indication
+`theme-color`, y compris après changement de préférence, réouverture, `pageshow` et retour au
+premier plan. Une indication absente est recréée. Le manifeste fournit un repli natif sombre
+avec `theme_color` et `background_color` ; ce repli reste sombre en thème clair.
+La compilation vérifie que ces deux champs sont explicitement présents et non vides dans le
+manifeste généré ; `front/scripts/report-build.test.mjs` couvre leur suppression ou leur vidage.
 Un viewport mobile émulé ne valide pas leur rendu natif. Vérifier la PWA installée sur Android
 avec navigation à trois boutons, au lancement et après retour au premier plan, dans les thèmes
 clair et sombre du système, y compris avec un thème Galaris opposé ; contrôler aussi une

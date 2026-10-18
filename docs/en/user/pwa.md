@@ -72,15 +72,20 @@ Clear the site data only as a last resort: this action deletes the local session
 requires you to sign in again.
 
 The web interface and the installed Android window have separate update cycles.
-Galaris lets Android/Chrome choose system bar colours according to their theme.
-They can differ from the interface if you force a light or dark theme in Galaris.
-An existing installation can retain a previously imposed colour, including a fixed black
-background, after the interface reloads: Chrome must also update its manifest
-and installation package (WebAPK). Chrome controls this update and can defer it; reloading
-Galaris cannot force it.
+Galaris declares a dark launch background and native fallback colour in its manifest.
+This fallback stays dark even when the interface is light, to keep a readable background behind
+Android's buttons. The page also sends its current colour to Chrome when the theme changes and
+when returning to the foreground. This hint does not guarantee that native bars follow the
+interface: Chrome may use the manifest colour for three-button navigation.
+See [Chromium's documented behaviour](https://chromium.googlesource.com/chromium/src/+/0a6ab4f0e2ce17e572b05400ae6eacd7fc5389f0).
+An older installation may retain previous colours after the interface reloads: Chrome must also
+update its manifest and installation package (WebAPK). Chrome manages this renewal and may defer
+it; reloading Galaris cannot force it.
 See [Chrome's Android update conditions](https://web.dev/articles/manifest-updates).
-To apply this change without waiting, uninstall Galaris in Android settings, then reinstall it
-from Chrome. Do not clear site data; conversations remain stored on the server.
+If the bar stays light in dark mode, record the Chrome and Android versions, the system and
+Galaris themes, and whether the problem appears on launch or after returning to the foreground.
+Reinstalling alone does not prove that the problem is resolved. Do not clear site data;
+conversations remain stored on the server.
 
 ## Troubleshooting
 

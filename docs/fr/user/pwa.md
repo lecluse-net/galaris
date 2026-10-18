@@ -72,16 +72,21 @@ N’effacez les données du site qu’en dernier recours : cette action supprime
 impose une nouvelle connexion.
 
 L’interface web et la fenêtre Android installée ont des cycles de mise à jour distincts.
-Galaris laisse Android/Chrome choisir les couleurs des barres système selon leur thème.
-Elles peuvent différer de l’interface si vous forcez un thème clair ou sombre dans Galaris.
-Une ancienne installation peut conserver une couleur précédemment imposée, notamment un fond
-noir fixe, après le rechargement de l’interface : Chrome doit aussi
-actualiser son manifeste et son paquet d’installation (WebAPK). Ce renouvellement est géré par
-Chrome et peut être différé ; il ne peut pas être forcé par un rechargement de Galaris.
+Galaris déclare un fond de lancement et une couleur native de secours sombres dans son manifeste.
+Ce repli reste sombre même lorsque l’interface est claire, pour conserver un fond lisible derrière
+les boutons Android. La page transmet aussi sa couleur actuelle à Chrome au changement de thème
+et au retour au premier plan. Cette indication ne garantit pas que la barre native change avec
+l’interface : Chrome peut utiliser la couleur du manifeste pour la navigation à trois boutons.
+Voir le [fonctionnement déclaré par Chromium](https://chromium.googlesource.com/chromium/src/+/0a6ab4f0e2ce17e572b05400ae6eacd7fc5389f0).
+Une ancienne installation peut conserver les anciennes couleurs après le rechargement de
+l’interface : Chrome doit aussi actualiser son manifeste et son paquet d’installation (WebAPK).
+Ce renouvellement est géré par Chrome et peut être différé ; il ne peut pas être forcé par un
+rechargement de Galaris.
 Voir les [conditions de mise à jour Android décrites par Chrome](https://web.dev/articles/manifest-updates).
-Pour appliquer ce changement sans attendre, désinstallez Galaris dans les paramètres Android,
-puis réinstallez-le depuis Chrome. N’effacez pas les données du site ; les conversations restent
-stockées sur le serveur.
+Si la barre reste claire en mode sombre, relever les versions de Chrome et d’Android, les thèmes
+du système et de Galaris, et si le problème apparaît au lancement ou après un retour au premier
+plan. Une réinstallation seule ne prouve pas que le problème est résolu. N’effacez pas les données
+du site ; les conversations restent stockées sur le serveur.
 
 ## Dépannage
 

@@ -111,11 +111,11 @@ export default defineConfig({
                 start_url: '/',
                 scope: '/',
                 display: 'standalone',
-                // Leave native window/system bar colours to Android/Chrome.
-                // Explicitly unset the plugin's white/green defaults so these
-                // optional members are omitted from the generated manifest.
-                background_color: undefined,
-                theme_color: undefined,
+                // Chrome can use the installed manifest for three-button navigation,
+                // independently of the page's live theme-color. Keep this static
+                // native-window fallback dark and readable in either app theme.
+                background_color: '#101010',
+                theme_color: '#101010',
                 icons: [
                     {
                         src: '/pwa/icon-192.png',

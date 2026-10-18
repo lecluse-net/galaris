@@ -2,8 +2,16 @@
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { gzipSync } from 'node:zlib'
+import assert from 'node:assert/strict'
 
 const directory = resolve(process.argv[2] ?? 'dist')
+// Installed Android windows may retain their manifest colours independently of
+// the live page. Keep these hints explicit instead of silently using defaults.
+const pwa = JSON.parse(await readFile(resolve(directory, 'manifest.webmanifest'), 'utf8'))
+for (const field of ['theme_color', 'background_color']) {
+  assert.equal(typeof pwa[field], 'string', `Installed PWA requires an explicit ${field}`)
+  assert.ok(pwa[field].trim(), `Installed PWA requires a nonempty ${field}`)
+}
 const manifest = JSON.parse(await readFile(resolve(directory, '.vite/manifest.json'), 'utf8'))
 const visited = new Set()
 const eager = new Set()
