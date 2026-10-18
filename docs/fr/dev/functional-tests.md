@@ -1293,11 +1293,15 @@ Le navigateur **Connaissances → Fichiers** est couvert par
 reprise après erreur sans perte des entrées, aperçu au clavier et changement d’agent
 pendant une réponse tardive. `app/file_share/tests/test_managed_http.py` vérifie ses
 routes HTTP assemblées, les refus de portée et de ressource, le contenu autorisé et
-la continuation des fichiers indépendants. `app/console/tests/test_file_listing.py`
+la continuation des fichiers indépendants. `app/memory/tests/test_managed_files.py`
+vérifie que la liste et la recherche `file://` incluent les pièces jointes Document et
+Chat autorisées, réappliquent les droits après révocation et continuent sans doublon
+ni fuite à travers des pages de fichiers refusés. `app/console/tests/test_file_listing.py`
 vérifie plusieurs pages SFTP non ordonnées, sans doublon ni omission, les curseurs
 liés au répertoire et l’exclusion des symlinks et chemins extérieurs au home.
 `e2e/specs/file-browser.spec.mjs` vérifie la page assemblée sur mobile et bureau
-avec les vraies API : sélection d’agent, fichiers internes, réouverture des aperçus
+avec les vraies API : sélection d’agent, fichiers internes et pièces jointes depuis
+`file://`, réouverture des aperçus
 et modale documentaire sous le bon périmètre.
 
 Une garantie a une preuve principale et, si nécessaire, une preuve d’assemblage E2E.

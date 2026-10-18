@@ -32,7 +32,9 @@ Navigate using locations, directories and breadcrumbs. Providers without a root
 listing or a continuation cursor report that limitation; open an available
 subdirectory to continue.
 
-The `file://` root contains independent internal files owned by the selected agent.
-Attachments remain in their owning domain. The console appears only when the agent
+The `file://` root contains independent internal files owned by the selected agent
+and attachments they can access. Each file appears once, even when it has several
+references. Attachments retain their owning domain’s permissions; revoked access
+takes effect on the next load. The console appears only when the agent
 has an active SSH connection and stays inside its home directory. This page adds
 no permissions and creates no persistent file copies.

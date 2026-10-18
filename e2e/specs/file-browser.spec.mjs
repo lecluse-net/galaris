@@ -29,6 +29,9 @@ for (const width of [1440, 390]) test(`Files browses real agent resources and re
     },
   }))
   expect(document.id).toBeTruthy()
+  await checked(await request.post(`/api/memory/documents/${document.id}/attachments?actor_agent_id=${fixture.agent_id}`, {
+    headers, multipart: { file: { name: 'Synthetic appendix.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic assembled attachment content') } },
+  }))
   await errors.settle()
   await page.goto('/files')
   await expect(page.getByRole('heading', { name: 'Fichiers', exact: true })).toBeVisible()
@@ -49,6 +52,10 @@ for (const width of [1440, 390]) test(`Files browses real agent resources and re
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
   }
+  await page.locator('.file-main').getByRole('button', { name: 'Ouvrir Synthetic appendix.txt', exact: true }).click()
+  await expect(page.getByRole('dialog').getByText('Synthetic assembled attachment content', { exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.screenshot({ path: testInfo.outputPath('files-page.png'), fullPage: true })
   if (width < 1024 && !(await page.getByText('Galaris document', { exact: true }).isVisible())) {
     await page.getByRole('button', { name: 'Afficher les emplacements', exact: true }).click()

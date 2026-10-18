@@ -2549,6 +2549,16 @@ async def resource_search(
     if not normalized_query:
         raise ValueError("A non-empty file search query is required.")
     limit = 50 if max_results is None else max(1, min(max_results, 500))
+    if reference.scheme == "file":
+        if reference.locator:
+            raise NotADirectoryError(str(reference))
+        if mode != "name":
+            raise NotImplementedError("Managed files expose name search")
+        from .managed_files import list_managed_files
+        listing = await list_managed_files(ctx, limit=limit, cursor=cursor, name_query=normalized_query)
+        return ResourceSearchResult(uri=listing.uri, query=normalized_query, mode=mode,
+            hits=[ResourceSearchHit(resource=entry) for entry in listing.entries],
+            truncated=listing.truncated, next_cursor=listing.next_cursor)
     if reference.scheme == "galaris":
         from .galaris_provider import galaris_resource_search
 

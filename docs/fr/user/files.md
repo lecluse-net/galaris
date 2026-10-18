@@ -36,7 +36,10 @@ La navigation se fait par les emplacements, les répertoires et le fil d’Arian
 Les fournisseurs sans liste à leur racine ou sans curseur de continuation
 signalent cette limite ; ouvrez un sous-répertoire disponible pour poursuivre.
 
-La racine `file://` contient les fichiers internes indépendants de l’agent sélectionné.
-Les pièces jointes restent dans leur domaine propriétaire. La console n’apparaît
+La racine `file://` contient les fichiers internes indépendants de l’agent sélectionné
+et les pièces jointes auxquelles il a accès. Chaque fichier apparaît une seule fois,
+même s’il porte plusieurs références. Les droits des pièces jointes restent ceux de
+leur domaine propriétaire ; un retrait d’accès s’applique au prochain chargement.
+La console n’apparaît
 que si l’agent possède une connexion SSH active ; elle est limitée à son répertoire
 personnel. Cette page n’ajoute aucun droit ni aucune copie persistante de fichier.

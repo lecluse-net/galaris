@@ -1,13 +1,14 @@
 """Authorize managed files through their live domain references."""
 
 import mimetypes
+from collections.abc import Iterable
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import UUID, uuid4
 
 from fastapi import UploadFile
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from core.database import get_db
 from core.storage import FileAlias, StoredFile
@@ -20,53 +21,84 @@ from .resource_contracts import ResourceContext, ResourceDescriptor, ResourceLis
 from .models import ManagedFileOwner
 
 
-async def managed_file_info(ctx: ResourceContext, file_id: UUID) -> ResourceDescriptor:
+_DOMAIN_FILE_PREFIXES = ("document://", "data://", "chat://", "galaris://processes/runs/")
+_LIST_SCAN_LIMIT = 500
+
+
+async def _can_read_file(ctx: ResourceContext, owner: int | None, aliases: Iterable[str]) -> bool:
     from .resource_service import resource_info
     from app.memory import MemoryNotFoundError, MemoryPermissionError
 
-    db = get_db()
-    record = await db.get(StoredFile, file_id)
-    if record is None:
-        raise FileNotFoundError("Managed file unavailable")
-    owner = await db.scalar(select(ManagedFileOwner.agent_id).where(ManagedFileOwner.file_id == file_id))
-    accessible = owner == ctx.agent_id
-    aliases = await db.scalars(select(FileAlias.uri).where(FileAlias.file_id == file_id).order_by(FileAlias.uri))
+    if owner == ctx.agent_id:
+        return True
     for alias in aliases:
-        if accessible:
-            break
         # Only local domain references can grant access. Never resolve an external URI here.
-        if not alias.startswith(("document://", "data://", "chat://", "galaris://processes/runs/")):
+        if not alias.startswith(_DOMAIN_FILE_PREFIXES):
             continue
         try:
             await resource_info(ctx, alias)
         except (PermissionError, FileNotFoundError, ValueError, MemoryNotFoundError, MemoryPermissionError):
             continue
-        accessible = True
-        break
-    if accessible:
-        if record.backend != "disk":
-            raise ValueError("Unsupported managed file storage backend")
-        return ResourceDescriptor(
-            uri=f"file://{record.id}", name=record.name, media_type=record.media_type,
-            size=record.size_bytes, checksum=record.sha256,
-            capabilities=["info", "read", "copy"],
-        )
-    raise PermissionError("Managed file unavailable")
+        return True
+    return False
 
 
-async def list_managed_files(ctx: ResourceContext, *, limit: int, cursor: str | None) -> ResourceListing:
-    """List independent files owned by the agent; domain attachments stay in their domain."""
-    query = select(StoredFile).join(ManagedFileOwner, ManagedFileOwner.file_id == StoredFile.id).where(
-        ManagedFileOwner.agent_id == ctx.agent_id, StoredFile.backend == "disk")
-    if cursor:
-        query = query.where(StoredFile.id > UUID(cursor))
-    records = list(await get_db().scalars(query.order_by(StoredFile.id).limit(limit + 1)))
-    page = records[:limit]
-    return ResourceListing(uri="file://", entries=[ResourceDescriptor(
+def _descriptor(record: StoredFile) -> ResourceDescriptor:
+    if record.backend != "disk":
+        raise ValueError("Unsupported managed file storage backend")
+    return ResourceDescriptor(
         uri=f"file://{record.id}", name=record.name, media_type=record.media_type,
         size=record.size_bytes, checksum=record.sha256, capabilities=["info", "read", "copy"],
-    ) for record in page], truncated=len(records) > limit,
-        next_cursor=str(page[-1].id) if len(records) > limit else None)
+    )
+
+
+async def managed_file_info(ctx: ResourceContext, file_id: UUID) -> ResourceDescriptor:
+    db = get_db()
+    record = await db.get(StoredFile, file_id)
+    if record is None:
+        raise FileNotFoundError("Managed file unavailable")
+    owner = await db.scalar(select(ManagedFileOwner.agent_id).where(ManagedFileOwner.file_id == file_id))
+    aliases = await db.scalars(select(FileAlias.uri).where(FileAlias.file_id == file_id).order_by(FileAlias.uri))
+    if not await _can_read_file(ctx, owner, aliases):
+        raise PermissionError("Managed file unavailable")
+    return _descriptor(record)
+
+
+async def list_managed_files(ctx: ResourceContext, *, limit: int, cursor: str | None, name_query: str | None = None) -> ResourceListing:
+    """List owned files and attachments readable through a live domain reference."""
+    domain_reference = select(FileAlias.id).where(
+        FileAlias.file_id == StoredFile.id,
+        or_(*(FileAlias.uri.startswith(prefix) for prefix in _DOMAIN_FILE_PREFIXES)),
+    ).exists()
+    query = select(StoredFile, ManagedFileOwner.agent_id).outerjoin(
+        ManagedFileOwner, ManagedFileOwner.file_id == StoredFile.id,
+    ).where(StoredFile.backend == "disk", or_(ManagedFileOwner.agent_id == ctx.agent_id, domain_reference))
+    if name_query:
+        escaped = name_query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.where(StoredFile.name.ilike(f"%{escaped}%", escape="\\"))
+    if cursor:
+        query = query.where(StoredFile.id > UUID(cursor))
+    db = get_db()
+    records = (await db.execute(query.order_by(StoredFile.id).limit(_LIST_SCAN_LIMIT + 1))).all()
+    candidates = records[:_LIST_SCAN_LIMIT]
+    aliases: dict[UUID, list[str]] = {}
+    if candidates:
+        for file_id, uri in await db.execute(select(FileAlias.file_id, FileAlias.uri).where(
+            FileAlias.file_id.in_([record.id for record, _owner in candidates]),
+        ).order_by(FileAlias.uri)):
+            aliases.setdefault(file_id, []).append(uri)
+    entries: list[ResourceDescriptor] = []
+    for record, owner in candidates:
+        if not await _can_read_file(ctx, owner, aliases.get(record.id, ())):
+            continue
+        if len(entries) == limit:
+            return ResourceListing(uri="file://", entries=entries, truncated=True,
+                next_cursor=entries[-1].uri.removeprefix("file://"))
+        entries.append(_descriptor(record))
+    # Bound authorization work per request, even when an entire batch is denied.
+    more = len(records) > _LIST_SCAN_LIMIT
+    return ResourceListing(uri="file://", entries=entries, truncated=more,
+        next_cursor=str(candidates[-1][0].id) if more else None)
 
 
 async def upload_managed_file(ctx: ResourceContext, upload: UploadFile) -> ResourceDescriptor:

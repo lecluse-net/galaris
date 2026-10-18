@@ -7,9 +7,9 @@ import pytest
 from sqlalchemy import delete, select
 
 from app.file_share.resource_contracts import ResourceContext
-from app.file_share.resource_service import resource_info, resource_read, materialize_resource
+from app.file_share.resource_service import resource_info, resource_list, resource_search, resource_read, materialize_resource
 from app.memory import document_attachment_service as attachments, service
-from app.memory.schemas import MemoryItemCreate, MemoryPayload
+from app.memory.schemas import MemoryGrantUpdate, MemoryItemCreate, MemoryPayload
 from core.settings import settings
 from core.storage import FileAlias, StoredFile, file_path
 from core.storage.migration import cleanup_legacy_files, transfer_legacy_files
@@ -67,10 +67,21 @@ async def test_document_attachment_registry_keeps_acl_retained_bytes_and_old_lin
     ctx = ResourceContext(agent_id=owner.id, runtime="internal")
     uri = f"file://{attachment.id}"
     assert (await resource_read(ctx, uri)).content == "synthetic appendix"
+    assert uri in {entry.uri for entry in (await resource_list(ctx, "file://")).entries}
+    assert [hit.resource.uri for hit in (await resource_search(ctx, "file://", "Synthetic appendix", mode="name")).hits] == [uri]
+    denied = ResourceContext(agent_id=stranger.id, runtime="internal")
+    assert uri not in {entry.uri for entry in (await resource_list(denied, "file://")).entries}
+    assert not (await resource_search(denied, "file://", "Synthetic appendix", mode="name")).hits
+    await service.set_item_grant(item.id, stranger.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    assert uri in {entry.uri for entry in (await resource_list(denied, "file://")).entries}
+    await service.remove_item_grant(item.id, stranger.id, actor_agent_id=owner.id)
+    assert uri not in {entry.uri for entry in (await resource_list(denied, "file://")).entries}
+    assert not (await resource_search(denied, "file://", "Synthetic appendix", mode="name")).hits
     with pytest.raises(PermissionError):
         await resource_info(ResourceContext(agent_id=stranger.id, runtime="internal"), uri)
     await attachments.delete_document_attachment(item.id, attachment.id, actor_agent_id=owner.id)
     assert (await resource_read(ctx, uri)).content == "synthetic appendix"
+    assert uri in {entry.uri for entry in (await resource_list(ctx, "file://")).entries}
     assert (await resource_read(ctx, f"document://{item.id}/attachments/{attachment.id}")).content == "synthetic appendix"
     destination = tmp_path / "materialized.txt"
     result = await materialize_resource(ctx, uri, destination, max_bytes=100)
@@ -79,6 +90,8 @@ async def test_document_attachment_registry_keeps_acl_retained_bytes_and_old_lin
     assert file_path(attachment.id).is_file()
     await service.delete_document(item.id, actor_agent_id=owner.id)
     assert not file_path(attachment.id).exists()
+    assert uri not in {entry.uri for entry in (await resource_list(ctx, "file://")).entries}
+    assert not (await resource_search(ctx, "file://", "Synthetic appendix", mode="name")).hits
     with pytest.raises((PermissionError, FileNotFoundError)):
         await resource_read(ctx, uri)
     with pytest.raises(service.MemoryNotFoundError):
@@ -86,6 +99,56 @@ async def test_document_attachment_registry_keeps_acl_retained_bytes_and_old_lin
     assert str(attachment.id) not in {source.uuid for source in await legacy_inventory(db)}, (
         "Forgotten document pointers must not become missing legacy migration sources"
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scan_limit", [1, 500])
+async def test_file_root_paginates_accessible_attachments_without_duplicates_or_leaks(
+    agents, memory_storage, db, monkeypatch, scan_limit,
+):
+    from app.file_share import managed_files
+    from app.file_share.resource_service import resource_create
+
+    owner, stranger = agents
+    ctx = ResourceContext(agent_id=owner.id, runtime="internal")
+    monkeypatch.setattr(managed_files, "_LIST_SCAN_LIMIT", scan_limit)
+    standalone = await resource_create(ctx, "file://", b"Synthetic independent bytes", name="Same_%.txt")
+    decoy = await resource_create(ctx, "file://", b"Synthetic different name", name="SameXX.txt")
+    expected = {standalone.uri}
+    for agent in (owner, stranger):
+        document, _ = await service.create_item(MemoryItemCreate(
+            owner_agent_id=agent.id, title="Synthetic paginated files", node_kind="document", media_type="text/html",
+            payload=MemoryPayload(text="<p>Synthetic body</p>"),
+        ))
+        for index in range(3):
+            attachment = await attachments.add_document_attachment_bytes(document.id, actor_agent_id=agent.id,
+                name="Same_%.txt", media_type="text/plain", content=f"Synthetic appendix {index}".encode())
+            # A stale reference must neither hide the valid alias nor duplicate the file.
+            db.add(FileAlias(file_id=attachment.id, uri=f"document://{UUID(int=1)}/attachments/{attachment.id}"))
+            if agent.id == owner.id:
+                expected.add(f"file://{attachment.id}")
+    await db.flush()
+
+    for searching in (False, True):
+        cursor, seen, cursors = None, [], set()
+        for _ in range(20):
+            if searching:
+                page = await resource_search(ctx, "file://", "Same_%", mode="name", max_results=1, cursor=cursor)
+                seen.extend(hit.resource.uri for hit in page.hits)
+            else:
+                page = await resource_list(ctx, "file://", max_entries=1, cursor=cursor)
+                seen.extend(entry.uri for entry in page.entries)
+            if not page.truncated:
+                assert page.next_cursor is None
+                break
+            assert page.next_cursor and page.next_cursor not in cursors
+            cursors.add(page.next_cursor)
+            cursor = page.next_cursor
+        else:
+            pytest.fail("File pagination did not terminate")
+        visible = expected if searching else expected | {decoy.uri}
+        assert set(seen) == visible and len(seen) == len(visible)
+    assert not (await resource_search(ctx, "file://", "SameX%", mode="name")).hits
 
 
 @pytest.mark.asyncio
@@ -215,6 +278,10 @@ async def test_native_chat_migration_preserves_journal_and_provider_alias(agents
     assert not old.source.exists()
     ctx = ResourceContext(agent_id=owner.id, runtime="internal")
     assert (await resource_read(ctx, f"file://{identifier}")).content == "synthetic legacy chat"
+    assert f"file://{identifier}" in {entry.uri for entry in (await resource_list(ctx, "file://")).entries}
+    assert [hit.resource.uri for hit in (await resource_search(ctx, "file://", "Legacy.txt", mode="name")).hits] == [f"file://{identifier}"]
+    denied = ResourceContext(agent_id=stranger.id, runtime="internal")
+    assert f"file://{identifier}" not in {entry.uri for entry in (await resource_list(denied, "file://")).entries}
     assert (await resource_read(ctx, alias)).content == "synthetic legacy chat"
     with pytest.raises(PermissionError):
         await resource_info(ResourceContext(agent_id=stranger.id, runtime="internal"), f"file://{identifier}")
@@ -328,9 +395,10 @@ async def test_populated_upgrade_through_dbadmin_preserves_content_and_resumes_a
     file_path(attachment.id).replace(old_attachment)
     # Reconstruct the schema immediately before the file registry was introduced.
     async with isolated_engine.begin() as connection:
-        # Dataset's later references did not exist in this historical schema.
+        # Dataset and Process references did not exist in this historical schema.
         # Keep its rows/tables; Atlas restores these constraints with the registry.
         await connection.execute(text("ALTER TABLE dataset_attachments DROP CONSTRAINT dataset_attachments_file_id_fkey"))
+        await connection.execute(text("ALTER TABLE process_run_files DROP CONSTRAINT process_run_files_file_id_fkey"))
         await connection.execute(text("DROP TABLE file_owners, file_aliases, files, file_stores"))
         await connection.execute(text("DELETE FROM dbadmin_actions WHERE key LIKE 'core.storage.%'"))
 
