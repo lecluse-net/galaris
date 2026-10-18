@@ -557,8 +557,8 @@ async def get_provider_catalog() -> ProviderCatalogResponse:
 
     users = list(
         (
-            await get_db().scalars(
-                select(UserModel)
+            await get_db().execute(
+                select(UserModel.id, UserModel.display_name, UserModel.email)
                 .where(UserModel.is_active.is_(True))
                 .order_by(UserModel.display_name, UserModel.email)
             )
@@ -567,8 +567,8 @@ async def get_provider_catalog() -> ProviderCatalogResponse:
     return ProviderCatalogResponse(
         items=items,
         users=[
-            ProviderUserOption(id=user.id, label=user.display_name or user.email)
-            for user in users
+            ProviderUserOption(id=identifier, label=display_name or email)
+            for identifier, display_name, email in users
         ],
         active_user_count=len(users),
     )

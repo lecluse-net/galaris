@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, delete, or_, func, exists, update
 from sqlalchemy.sql.selectable import Exists
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, defer
 
 from app.connection import Connection
 from app.tools import ToolModel
@@ -31,7 +31,7 @@ def now() -> datetime:
 
 async def index_progress(agent_id: int, page: int, page_size: int) -> FileIndexPage:
     db = get_db()
-    runs = await db.scalars(select(FileIndexRun).where(FileIndexRun.agent_id == agent_id)
+    runs = await db.scalars(select(FileIndexRun).options(defer(FileIndexRun.frontier, raiseload=True)).where(FileIndexRun.agent_id == agent_id)
         .order_by(FileIndexRun.updated_at.desc(), FileIndexRun.id).offset((page - 1) * page_size).limit(page_size))
     total = int(await db.scalar(select(func.count()).select_from(FileIndexRun).where(FileIndexRun.agent_id == agent_id)) or 0)
     counts: dict[str, int] = {str(row[0]): int(row[1]) for row in (await db.execute(select(FileObservationRepair.status, func.count()).where(

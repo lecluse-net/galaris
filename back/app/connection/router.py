@@ -490,7 +490,7 @@ async def create_or_update_params_bulk(connection_id: int, bulk_data: Connection
     connection = await connection_service.get_connection(connection_id)
     if connection is not None:
         await _refresh_agent_indexes([connection.agent_id])
-    return [await connection_service.redact_param(param) for param in saved]
+    return await connection_service.redact_params(saved)
 
 
 @router.patch("/{connection_id}/params/{param_name}", response_model=ConnectionParamSchema)

@@ -8,7 +8,7 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select, func
-from sqlalchemy.orm import undefer
+from sqlalchemy.orm import defer, undefer
 
 from app.agent import AgentManagementScope
 from app.tools import ToolModel
@@ -55,8 +55,10 @@ async def create(*, actor_agent_id: int, title: str, graph: Workflow | None = No
     return record
 
 
-async def get(code: str, actor: ProcessActor, *, write: bool = False, lock: bool = False) -> tuple[ProcessDefinition, ProcessActor]:
-    query = select(ProcessDefinition).options(undefer(ProcessDefinition.bpmn_xml)).where(
+async def get(code: str, actor: ProcessActor, *, write: bool = False, lock: bool = False,
+              content: bool = True) -> tuple[ProcessDefinition, ProcessActor]:
+    content_option = undefer(ProcessDefinition.bpmn_xml) if content else defer(ProcessDefinition.bpmn_xml, raiseload=True)
+    query = select(ProcessDefinition).options(content_option).where(
         ProcessDefinition.code == code, ProcessDefinition.bpmn_xml.is_not(None)).execution_options(populate_existing=True)
     if lock:
         query = query.with_for_update().execution_options(populate_existing=True)
@@ -158,7 +160,7 @@ async def archive(code: str, actor: int | AgentManagementScope, value: bool) -> 
 
 
 async def history(code: str, actor: int | AgentManagementScope, *, limit: int = 50, offset: int = 0, exclude_current: bool = False) -> dict[str, Any]:
-    record, _ = await get(code, actor)
+    record, _ = await get(code, actor, content=False)
     if not 1 <= limit <= 500 or offset < 0:
         raise ValueError("Invalid revision pagination")
     query = select(ProcessDefinitionRevision).where(ProcessDefinitionRevision.process_id == record.id)

@@ -173,10 +173,12 @@ async def describe_targets(
 ) -> list[dict[str, Any]]:
     """Describe available file-sharing targets for an agent."""
     targets: list[dict[str, Any]] = []
-    for connection in await connection_service.get_connections_by_agent(agent_id):
+    connections = await connection_service.get_connections_by_agent(agent_id)
+    tools = await tool_service.get_tools_by_ids({connection.tool_id for connection in connections if connection.active})
+    for connection in connections:
         if not connection.active:
             continue
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
+        tool = tools.get(connection.tool_id)
         if not tool:
             continue
         if tool.code == "console":

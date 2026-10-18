@@ -11,6 +11,7 @@ from typing import Any, cast
 from uuid import UUID
 
 from sqlalchemy import and_, exists, func, or_, select
+from sqlalchemy.orm import defer, load_only
 
 from app.agent import Agent
 from app.agent.evaluation import (
@@ -61,6 +62,7 @@ from app.topic.sequential_detection import MAX_MESSAGES
 from app.voice import inspect_voice_turn
 from core.database import get_db
 from .transactions import publish
+from .dataset_counts import load_case_counts
 from core.i18n import tr
 
 from .mechanism_registry import (
@@ -207,21 +209,11 @@ def list_mechanisms() -> list[MechanismDescriptorRead]:
     ]
 
 
-async def dataset_read(dataset: LabEvaluationDataset) -> EvaluationDatasetRead:
-    counts = (
-        await get_db().execute(
-            select(
-                func.count(LabEvaluationCase.id),
-                func.count(LabEvaluationCase.id).filter(
-                    LabEvaluationCase.readiness == "ready",
-                    LabEvaluationCase.enabled.is_(True),
-                ),
-            ).where(
-                LabEvaluationCase.dataset_id == dataset.id,
-                LabEvaluationCase.deleted_at.is_(None),
-            )
-        )
-    ).one()
+async def dataset_read(
+    dataset: LabEvaluationDataset, *, counts: tuple[int, int] | None = None,
+) -> EvaluationDatasetRead:
+    if counts is None:
+        counts = (await load_case_counts([dataset.id])).get(dataset.id, (0, 0))
     configuration = dataset.configuration
     if dataset.mechanism == "planner":
         configuration = _planner_configuration_dump(await _planner_configuration(dataset))
@@ -292,7 +284,8 @@ async def list_datasets(mechanism: EvaluationMechanism) -> list[EvaluationDatase
             )
         ).all()
     )
-    return [await dataset_read(row) for row in rows]
+    counts = await load_case_counts([row.id for row in rows])
+    return [await dataset_read(row, counts=counts.get(row.id, (0, 0))) for row in rows]
 
 
 async def create_dataset(
@@ -561,9 +554,19 @@ async def list_source_candidates(
         LLMCall.system_prompt.ilike(f"%{marker}%")
         for marker in (definition.marker, *definition.marker_aliases)
     ]
-    query = select(LLMCall).where(
-        LLMCall.status.in_(_SUCCESS_CALL_STATUSES),
-        or_(*marker_filters),
+    query = (
+        select(LLMCall, Task.label)
+        .outerjoin(Task, Task.id == LLMCall.task_id)
+        .options(load_only(
+            LLMCall.id, LLMCall.task_id, LLMCall.created_at,
+            LLMCall.prompt, LLMCall.response_text, LLMCall.tool_calls,
+            LLMCall.requested_model, LLMCall.effective_model,
+            raiseload=True,
+        ))
+        .where(
+            LLMCall.status.in_(_SUCCESS_CALL_STATUSES),
+            or_(*marker_filters),
+        )
     )
     if agent_ids is not None:
         query = query.where(
@@ -593,21 +596,20 @@ async def list_source_candidates(
         )
     calls = list(
         (
-            await get_db().scalars(
+            await get_db().execute(
                 query.order_by(LLMCall.created_at.desc()).limit(min(500, limit * 4))
             )
         ).all()
     )
     result: list[MechanismSourceCandidate] = []
-    for call in calls:
+    for call, task_label in calls:
         try:
             _source_input(mechanism, call.prompt)
             definition.validate_output(_source_output(call))
         except ValueError:
             continue
-        task = await get_db().get(Task, call.task_id) if call.task_id else None
         label = (
-            task.label if task is not None else f"{mechanism} · {call.created_at:%Y-%m-%d %H:%M}"
+            task_label if task_label is not None else f"{mechanism} · {call.created_at:%Y-%m-%d %H:%M}"
         )
         result.append(
             MechanismSourceCandidate(
@@ -636,7 +638,9 @@ async def _list_memory_extraction_candidates(
 
     normalized = (search or "").strip()
     pattern = f"%{normalized}%"
-    task_query = select(Task).where(
+    task_query = select(Task).options(load_only(
+        Task.id, Task.label, Task.objective, Task.created_at, raiseload=True,
+    )).where(
         Task.status == TaskStatus.SUCCESS,
         Task.agent_id.is_not(None),
         Task.topic_id.is_not(None),
@@ -664,7 +668,12 @@ async def _list_memory_extraction_candidates(
         .scalar_subquery()
     )
     round_query = (
-        select(ConversationRound, Room, first_input_text)
+        select(ConversationRound, Room.label, first_input_text)
+        .options(load_only(
+            ConversationRound.id, ConversationRound.voice_session_id,
+            ConversationRound.effective_objective, ConversationRound.created_at,
+            ConversationRound.finished_at, raiseload=True,
+        ))
         .join(Room, Room.id == ConversationRound.room_id)
         .join(Connection, Connection.id == Room.connection_id)
         .where(
@@ -714,8 +723,8 @@ async def _list_memory_extraction_candidates(
             source_id=round_.id,
             source_kind="conversation_round",
             label=(
-                f"Messenger · {room.label}"
-                if room is not None
+                f"Messenger · {room_label}"
+                if room_label is not None
                 else f"Voice · {str(round_.effective_objective or '')[:120]}"
             ),
             model="Voice" if round_.voice_session_id is not None else "Conversation",
@@ -724,7 +733,7 @@ async def _list_memory_extraction_candidates(
                 :300
             ],
         )
-        for round_, room, input_text in rounds
+        for round_, room_label, input_text in rounds
     )
     result.sort(key=lambda item: item.created_at, reverse=True)
     return result[:limit]
@@ -2219,6 +2228,7 @@ async def list_runs(
         (
             await get_db().scalars(
                 LabEvaluationRun.histo_filter(select(LabEvaluationRun))
+                .options(defer(LabEvaluationRun.case_snapshots, raiseload=True))
                 .where(LabEvaluationRun.dataset_id == dataset_id)
                 .order_by(LabEvaluationRun.created_at.desc())
                 .limit(limit)
@@ -2228,10 +2238,15 @@ async def list_runs(
     return [EvaluationRunRead.model_validate(row) for row in rows]
 
 
-async def _run(mechanism: EvaluationMechanism, run_id: UUID) -> LabEvaluationRun:
+async def _run(
+    mechanism: EvaluationMechanism, run_id: UUID, *, include_case_snapshots: bool = True,
+) -> LabEvaluationRun:
+    query = select(LabEvaluationRun)
+    if not include_case_snapshots:
+        query = query.options(defer(LabEvaluationRun.case_snapshots, raiseload=True))
     row = await get_db().scalar(
         LabEvaluationRun.histo_filter(
-            select(LabEvaluationRun)
+            query
             .join(LabEvaluationDataset, LabEvaluationDataset.id == LabEvaluationRun.dataset_id)
             .where(
                 LabEvaluationRun.id == run_id,
@@ -2246,7 +2261,7 @@ async def _run(mechanism: EvaluationMechanism, run_id: UUID) -> LabEvaluationRun
 
 async def get_run(mechanism: EvaluationMechanism, run_id: UUID) -> EvaluationRunDetail | None:
     try:
-        run = await _run(mechanism, run_id)
+        run = await _run(mechanism, run_id, include_case_snapshots=False)
     except LookupError:
         return None
     results = list(

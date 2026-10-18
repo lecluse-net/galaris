@@ -12,7 +12,6 @@ import asyncssh
 import pytest
 from pydantic import SecretStr
 
-from app.console import connection_service as console_connection_service
 from app.console import router as console_router
 from app.console.contracts import ConsoleResult, ConsoleStatus, SshConnectionConfig
 from app.console.helper_service import HELPER_VERSION, helper_payload
@@ -297,55 +296,6 @@ async def test_install_helper_route_returns_the_verified_result(
     assert result == expected
     install.assert_awaited_once_with(42)
     managed.assert_awaited_once_with(42)
-
-
-@pytest.mark.asyncio
-async def test_embedded_executor_is_in_use_for_active_internal_harness(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        console_connection_service.tool_service,
-        "get_tool_record",
-        AsyncMock(return_value=SimpleNamespace(id=7)),
-    )
-    monkeypatch.setattr(
-        console_connection_service.connection_service,
-        "get_connections_by_param",
-        AsyncMock(return_value=[SimpleNamespace(agent_id=12, active=True)]),
-    )
-    monkeypatch.setattr(
-        console_connection_service.agent_service,
-        "get",
-        AsyncMock(return_value=SimpleNamespace(agent_driver="internal")),
-    )
-
-    assert await console_connection_service.is_embedded_executor_in_use() is True
-
-
-@pytest.mark.asyncio
-async def test_embedded_executor_ignores_inactive_and_non_internal_harnesses(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        console_connection_service.tool_service,
-        "get_tool_record",
-        AsyncMock(return_value=SimpleNamespace(id=7)),
-    )
-    monkeypatch.setattr(
-        console_connection_service.connection_service,
-        "get_connections_by_param",
-        AsyncMock(
-            return_value=[
-                SimpleNamespace(agent_id=10, active=False),
-                SimpleNamespace(agent_id=11, active=True),
-            ]
-        ),
-    )
-    get_agent = AsyncMock(return_value=SimpleNamespace(agent_driver="hermes"))
-    monkeypatch.setattr(console_connection_service.agent_service, "get", get_agent)
-
-    assert await console_connection_service.is_embedded_executor_in_use() is False
-    get_agent.assert_awaited_once_with(11)
 
 
 @pytest.mark.asyncio

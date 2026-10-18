@@ -78,7 +78,7 @@ async def _record(skill_id: int) -> Skill:
 @router.get("", response_model=list[SkillPublic])
 @authorize(privileges=[Privileges.SKILL_ACCESS, Privileges.SKILL_EDIT, Privileges.SKILL_ASSIGN])
 async def list_skills() -> list[SkillPublic]:
-    return [skill_service.to_public(record) for record in await skill_service.get_all()]
+    return [skill_service.to_public(record) for record in await skill_service.get_catalogue()]
 
 
 @router.post("/rescan", response_model=SkillRescanResult)

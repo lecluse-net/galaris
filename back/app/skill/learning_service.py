@@ -9,7 +9,7 @@ from typing import Literal, Sequence
 from uuid import UUID
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import defer, selectinload
 
 from app.agent import Agent
 from core.database import get_db
@@ -276,7 +276,7 @@ async def list_records(
     page_size: int,
     agent_ids: Collection[int] | None = None,
 ) -> tuple[Sequence[LearnedSkill], int]:
-    statement = select(LearnedSkill)
+    statement = select(LearnedSkill).options(defer(LearnedSkill.markdown, raiseload=True))
     count_statement = select(func.count(LearnedSkill.id))
     if agent_id is not None:
         statement = statement.where(LearnedSkill.agent_id == agent_id)

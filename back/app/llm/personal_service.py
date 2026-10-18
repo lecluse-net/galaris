@@ -1,6 +1,7 @@
 """Human-owned model selections and document speech, independent of agents."""
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
+from sqlalchemy.orm import contains_eager, load_only
 from sqlalchemy.dialects.postgresql import insert
 from typing import Literal, Self
 import httpx
@@ -12,7 +13,7 @@ from core.util import visible_text
 
 from . import llm_service, llm_provider_service, profile_service, tts_service
 from .profile_models import UserLlmPreferences
-from .provider_models import LLM
+from .provider_models import LLM, LLMProvider
 
 
 class PersonalPreferences(BaseModel):
@@ -93,7 +94,18 @@ class PersonalOptions(BaseModel):
 
 
 async def selection_options() -> PersonalOptions:
-    resources = [r for r in await llm_service.list_llms() if r.provider.is_active]
+    resources = (await get_db().scalars(
+        select(LLM).join(LLM.provider)
+        .where(LLMProvider.is_active.is_(True), or_(
+            LLM.service_capabilities.contains(["speech"]),
+            LLM.service_capabilities.contains(["realtime_conversation"]),
+        ))
+        .options(
+            load_only(LLM.id, LLM.label, LLM.llm_provider_id, LLM.service_capabilities, raiseload=True),
+            contains_eager(LLM.provider).load_only(LLMProvider.id, LLMProvider.name, LLMProvider.is_active, raiseload=True),
+        )
+        .order_by(LLM.label)
+    )).all()
     native: list[NativeVoiceOption] = []
     native_error = False
     providers: dict[int, list[LLM]] = {}

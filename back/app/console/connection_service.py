@@ -5,11 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 from pydantic import SecretStr, ValidationError
+from sqlalchemy import select
 
-from app.agent import agent_service
+from app.agent import Agent
 from app.connection import Connection
 from app.connection import connection_service
 from app.tools import tool_service
+from core.database import get_db
 from core.i18n import render_prompt, tr
 
 from .contracts import SshConnectionConfig
@@ -99,12 +101,17 @@ async def resolve_active_connection(connection_id: int) -> SshConnectionConfig:
 
 async def resolve_ssh_connection(agent_id: int) -> SshConnectionConfig | None:
     """Return the active console connection, decrypted once for the current run."""
-    for connection in await connection_service.get_connections_by_agent(agent_id):
-        tool = await tool_service.get_tool_by_id(connection.tool_id)
-        if tool is None or tool.code != "console" or not connection.active:
-            continue
-        return await _config_from_connection(connection)
-    return None
+    tool = await tool_service.get_tool_record("console")
+    if tool is None:
+        return None
+    connection = await get_db().scalar(
+        select(Connection).where(
+            Connection.agent_id == agent_id,
+            Connection.tool_id == tool.id,
+            Connection.active.is_(True),
+        ).execution_options(populate_existing=True)
+    )
+    return await _config_from_connection(connection) if connection is not None else None
 
 
 async def require_ssh_connection(agent_id: int) -> SshConnectionConfig:
@@ -125,10 +132,13 @@ async def is_embedded_executor_in_use() -> bool:
         param_name="host",
         param_value="ssh-executor",
     )
-    for connection in connections:
-        if not connection.active:
-            continue
-        agent = await agent_service.get(connection.agent_id)
-        if agent is not None and agent.agent_driver == "internal":
+    agent_ids = [connection.agent_id for connection in connections if connection.active]
+    for offset in range(0, len(agent_ids), 500):
+        if await get_db().scalar(
+            select(Agent.id).where(
+                Agent.id.in_(agent_ids[offset:offset + 500]),
+                Agent.agent_driver == "internal",
+            ).limit(1)
+        ) is not None:
             return True
     return False

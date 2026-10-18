@@ -5,7 +5,7 @@ from typing import Any, Literal, cast
 from uuid import UUID
 
 from sqlalchemy import and_, case, false, func, or_, select, true
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, defer
 from sqlalchemy.sql.selectable import CTE
 
 from core.database import get_db
@@ -16,15 +16,19 @@ from .comparison_schemas import ComparisonFocus
 from .comparison_evidence import assessed, critical_regression, dimension_evidence, first_output, paired_evidence, summarize_evidence, verdict_regression
 
 
-async def _run(mechanism: EvaluationMechanism, identifier: UUID) -> LabEvaluationRun:
-    row = await get_db().scalar(
+async def _runs(
+    mechanism: EvaluationMechanism, left_id: UUID, right_id: UUID,
+) -> tuple[LabEvaluationRun, LabEvaluationRun]:
+    rows = await get_db().scalars(
         select(LabEvaluationRun)
         .join(LabEvaluationDataset)
-        .where(LabEvaluationRun.id == identifier, LabEvaluationDataset.mechanism == mechanism)
+        .where(LabEvaluationRun.id.in_((left_id, right_id)), LabEvaluationDataset.mechanism == mechanism)
+        .options(defer(LabEvaluationRun.case_snapshots, raiseload=True))
     )
-    if row is None:
+    by_id = {row.id: row for row in rows}
+    if left_id not in by_id or right_id not in by_id:
         raise LookupError("Lab run not found.")
-    return row
+    return by_id[left_id], by_id[right_id]
 
 
 def _ambiguous_pairings(left_id: UUID, right_id: UUID) -> CTE:
@@ -79,7 +83,7 @@ async def compare(
 ) -> dict[str, Any]:
     if focus == "dimension" and not dimension:
         raise ValueError("A dimension code is required for the dimension filter.")
-    left, right = await _run(mechanism, left_id), await _run(mechanism, right_id)
+    left, right = await _runs(mechanism, left_id, right_id)
     differences: list[str] = []
     left_fp, right_fp = (
         left.configuration_snapshot.get("fingerprints", {}),
@@ -89,15 +93,13 @@ async def compare(
         if not left_fp.get(key) or left_fp.get(key) != right_fp.get(key):
             differences.append(key)
     # A rejudgment changes the effective campaign, not the original run fingerprint.
-    judges: list[dict[str, Any] | None] = []
-    for item in (left, right):
-        latest = await get_db().scalar(
-            select(LabJudgmentCampaign)
-            .where(LabJudgmentCampaign.run_id == item.id)
-            .order_by(LabJudgmentCampaign.sequence.desc())
-            .limit(1)
-        )
-        judges.append(latest.configuration if latest else None)
+    latest_judges = dict((await get_db().execute(
+        select(LabJudgmentCampaign.run_id, LabJudgmentCampaign.configuration)
+        .where(LabJudgmentCampaign.run_id.in_((left_id, right_id)))
+        .distinct(LabJudgmentCampaign.run_id)
+        .order_by(LabJudgmentCampaign.run_id, LabJudgmentCampaign.sequence.desc())
+    )).tuples().all())
+    judges = [latest_judges.get(item.id) for item in (left, right)]
     if judges[0] is None or judges[0] != judges[1]:
         differences.append("judge")
     configurations = [deepcopy(item.configuration_snapshot) for item in (left, right)]

@@ -211,7 +211,20 @@ async def _validate_label(label: str, exclude_id: Optional[int] = None) -> str:
 
 async def _validate_profile_values(values: dict[str, Optional[str]]) -> None:
     """Validate profile field names and stored model identifiers."""
-    from . import llm_service
+    from .provider_models import LLM
+
+    identifiers: set[int] = set()
+    for field, raw in values.items():
+        if field in PROFILE_MODEL_FIELDS and raw is not None and raw.strip():
+            try:
+                identifier = int(raw.strip())
+                # The model primary key is a PostgreSQL Integer. An oversized
+                # later value must not preempt an earlier validation error.
+                if -(2**31) <= identifier < 2**31:
+                    identifiers.add(identifier)
+            except ValueError:
+                pass  # Report errors below in the caller's field order.
+    capabilities: dict[int, set[str]] | None = None
 
     for model_field, raw_value in values.items():
         if model_field == "decision_fallback_policy":
@@ -247,7 +260,17 @@ async def _validate_profile_values(values: dict[str, Optional[str]]) -> None:
                     "profile_value_invalid", parameter=model_field, value=value
                 )
             ) from e
-        resource = await llm_service.get_llm(llm_id)
+        if capabilities is None:
+            capabilities = {
+                identifier: {primary, *services}
+                for identifier, primary, services in (
+                    await get_db().execute(
+                        select(LLM.id, LLM.primary_capability, LLM.service_capabilities)
+                        .where(LLM.id.in_(identifiers))
+                    )
+                ).tuples()
+            } if identifiers else {}
+        resource = capabilities.get(llm_id)
         generation_capability = {
             **{field: "chat" for field in model_usages.TEXT_TIERS},
             "decision_llm_id": "decision",
@@ -255,9 +278,7 @@ async def _validate_profile_values(values: dict[str, Optional[str]]) -> None:
             "music_generation_llm_id": "music_generation",
             "video_generation_llm_id": "video_generation",
         }.get(model_field)
-        if resource is None or (generation_capability is not None and generation_capability not in {
-            resource.primary_capability, *resource.service_capabilities,
-        }):
+        if resource is None or (generation_capability is not None and generation_capability not in resource):
             raise ValueError(
                 await _profile_message(
                     "profile_value_invalid", parameter=model_field, value=value

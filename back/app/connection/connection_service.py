@@ -25,7 +25,10 @@ if TYPE_CHECKING:
 async def _get_tool_schema(tool_id: int) -> Optional[Dict[str, Any]]:
     """Return a tool's connection schema from the database."""
     from app.tools import facade as tool_service
-    tool = await tool_service.get_tool_by_id(tool_id)
+    return _tool_schema(await tool_service.get_tool_by_id(tool_id))
+
+
+def _tool_schema(tool: Tool | None) -> Optional[Dict[str, Any]]:
     if not tool or not tool.connection:
         return None
     return {
@@ -348,6 +351,27 @@ async def redact_param(param: ConnectionParam) -> ConnectionParam:
     )
 
 
+async def redact_params(params: Collection[ConnectionParam]) -> List[ConnectionParam]:
+    """Resolve each connection and Tool once for a whole API response."""
+    if not params:
+        return []
+    from app.tools.facade import get_tools_by_ids
+
+    rows = (await get_db().execute(select(Connection.id, Connection.tool_id).where(
+        Connection.id.in_({param.connection_id for param in params}),
+    ))).all()
+    tool_ids = {identity: tool_id for identity, tool_id in rows}
+    tools = await get_tools_by_ids(set(tool_ids.values()))
+    schemas = {tool_id: _tool_schema(tool) for tool_id, tool in tools.items()}
+    return [
+        ConnectionParam(id=param.id, connection_id=param.connection_id,
+                        param_name=param.param_name, param_value=None)
+        if _is_password_field(param.param_name, schemas.get(tool_ids.get(param.connection_id, -1)))
+        else param
+        for param in params
+    ]
+
+
 async def find_agents_by_param(
     tool_id: int,
     param_name: str,
@@ -477,14 +501,51 @@ async def set_params_bulk(
     connection = await get_connection(connection_id)
     if connection is None:
         raise ValueError("Connection not found")
-    await validate_params(connection.tool_id, params)
-    saved = [await set_param(connection_id, k, v, commit=False) for k, v in params.items()]
+    tool = await _validated_tool_params(connection.tool_id, params)
+    schema = _tool_schema(tool)
+    existing: Dict[str, ConnectionParam] = {}
+    names = list(params)
+    for offset in range(0, len(names), 500):
+        rows = (await get_db().scalars(
+            select(ConnectionParam).where(
+                ConnectionParam.connection_id == connection_id,
+                ConnectionParam.param_name.in_(names[offset:offset + 500]),
+            ).execution_options(populate_existing=True)
+        )).all()
+        existing.update((row.param_name, row) for row in rows)
+    from core.util import SECRET_MASK
+
+    # Prepare the complete batch before changing tracked rows: a missing masked
+    # secret must not leave earlier values dirty in the caller's transaction.
+    values: Dict[str, Optional[str]] = {}
+    for name, value in params.items():
+        if value == SECRET_MASK and _is_password_field(name, schema):
+            row = existing.get(name)
+            if row is None or not row.param_value:
+                raise ValueError("A masked value requires an existing secret")
+            values[name] = row.param_value
+        else:
+            values[name] = _encrypt_if_needed(name, value, schema)
+
+    saved: List[ConnectionParam] = []
+    for name, value in values.items():
+        row = existing.get(name)
+        if row is None:
+            row = ConnectionParam(connection_id=connection_id, param_name=name, param_value=value)
+            get_db().add(row)
+        else:
+            row.param_value = value
+        saved.append(row)
     await finish_write(commit=commit, db=get_db())
     return saved
 
 
 async def validate_params(tool_id: int, params: Dict[str, Optional[str]]) -> None:
     """Validate a whole parameter batch before writing any EAV row."""
+    await _validated_tool_params(tool_id, params)
+
+
+async def _validated_tool_params(tool_id: int, params: Dict[str, Optional[str]]) -> Tool:
     from app.tools.facade import get_tool_by_id, get_runtime_global_params
 
     tool = await get_tool_by_id(tool_id)
@@ -503,6 +564,7 @@ async def validate_params(tool_id: int, params: Dict[str, Optional[str]]) -> Non
         validate_param_value(definition.type, value)
         if definition.options and value not in {option.value for option in definition.options}:
             raise ValueError("Connection parameter must be one of the fixed options")
+    return tool
 
 
 def validate_param_value(type_name: str, value: str) -> None:

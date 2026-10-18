@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -165,6 +166,7 @@ async def test_messenger_without_files_does_not_expose_a_resource_scheme(
     )
 
     assert await file_share_service.list_tool_codes(7) == []
+    monkeypatch.setattr(file_share_service.tool_service, "get_tools_by_ids", AsyncMock(return_value={42: tool}))
     assert await file_share_service.describe_targets(7) == []
     with pytest.raises(ValueError):
         await file_share_service.resolve_resource_transport_with_service(
@@ -201,6 +203,7 @@ async def test_retired_file_share_does_not_hide_other_schemes(monkeypatch):
     monkeypatch.setattr(file_share_service.connection_service, "get_connections_by_agent", connections)
     monkeypatch.setattr(file_share_service.tool_service, "get_tool_by_id", get_tool)
     monkeypatch.setattr(file_share_service.connection_service, "get_params_as_dict", params)
+    monkeypatch.setattr(file_share_service.tool_service, "get_tools_by_ids", AsyncMock(return_value=tools))
 
     schemes = await resource_service.list_schemes(ResourceContext(agent_id=7, runtime="internal"))
     by_scheme = {scheme.scheme: scheme for scheme in schemes}
@@ -244,6 +247,7 @@ async def test_console_file_share_capability_remains_one_native_provider(
     monkeypatch.setattr(console_module, "build_run_resource", build_run_resource)
 
     assert await file_share_service.list_tool_codes(7) == ["console"]
+    monkeypatch.setattr(file_share_service.tool_service, "get_tools_by_ids", AsyncMock(return_value={42: tool}))
     assert await file_share_service.describe_targets(7) == []
     transport, service = await file_share_service.resolve_transport_with_service(
         7,

@@ -5,7 +5,8 @@ These helpers inspect the configuration state of individual modules.
 """
 from collections.abc import Collection
 
-from sqlalchemy import func, select
+from sqlalchemy import select
+from sqlalchemy.orm import load_only
 
 from core.database import get_db
 
@@ -30,7 +31,11 @@ async def check_llm_status() -> bool:
     db = get_db()
 
     query = (
-        select(LLMProvider)
+        select(
+            LLMProvider.catalog_code, LLMProvider.base_url,
+            (LLMProvider.api_key.is_not(None) & (LLMProvider.api_key != "")).label("api_key_configured"),
+            (LLMProvider.oauth_credentials.is_not(None) & (LLMProvider.oauth_credentials != "")).label("oauth_connected"),
+        )
         .select_from(LLM)
         .join(LLMProvider, LLM.llm_provider_id == LLMProvider.id)
         .where(
@@ -41,7 +46,7 @@ async def check_llm_status() -> bool:
     )
     query = LLM.histo_filter(query)
     query = LLMProvider.histo_filter(query)
-    providers = (await db.execute(query)).scalars().all()
+    providers = (await db.execute(query)).all()
     for provider in providers:
         profile = resolve_provider_profile(
             catalog_code=provider.catalog_code, base_url=provider.base_url,
@@ -67,13 +72,11 @@ async def check_agent_status(
     db = get_db()
 
     # Apply the standard history filter to exclude deleted agents.
-    query = select(func.count()).select_from(Agent)
+    query = select(Agent.id).limit(1)
     query = Agent.histo_filter(query)
     if agent_ids is not None:
         query = query.where(Agent.id.in_(agent_ids))
-    result = await db.execute(query)
-    count = result.scalar() or 0
-    return count > 0
+    return await db.scalar(query) is not None
 
 
 async def check_messaging_status(
@@ -94,6 +97,7 @@ async def check_messaging_status(
 
     query = (
         select(ToolModel)
+            .options(load_only(ToolModel.id, ToolModel.messenger_config, raiseload=True))
             .join(Connection, ToolModel.id == Connection.tool_id)
             .where(Connection.active.is_(True))
             .distinct()
@@ -114,10 +118,7 @@ async def check_tools_status() -> bool:
     Returns:
         Whether the database contains a configured tool.
     """
-    from app.tools import tool_service
-
-    tools = await tool_service.get_all_tools()
-    return len(tools) > 0
+    return await get_db().scalar(select(ToolModel.id).limit(1)) is not None
 
 
 async def check_skills_status() -> bool:

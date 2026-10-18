@@ -412,18 +412,13 @@ async def list_llms(
 
     if provider_id is not None:
         query = query.where(LLM.llm_provider_id == provider_id)
+    if capability is not None:
+        query = query.where(LLM.service_capabilities.contains([capability]))
 
     query = query.order_by(LLM.label)
 
     result = await db.execute(query)
-    resources = list(result.scalars().all())
-    if capability is not None:
-        resources = [
-            resource
-            for resource in resources
-            if capability in resource.service_capabilities
-        ]
-    return resources
+    return list(result.scalars().all())
 
 
 async def update_llm(llm_id: int, data: LLMUpdate) -> Optional[LLM]:

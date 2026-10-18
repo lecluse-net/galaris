@@ -202,10 +202,15 @@ async def reserve_budget(user_id: int, identity: UUID, size: int) -> None:
 async def history(identity: UUID, actor: DataActor, *, page: int = 1, page_size: int = 50) -> dict[str, Any]:
     await record(identity, actor)
     total = await get_db().scalar(select(func.count()).select_from(DatasetRevision).where(DatasetRevision.dataset_id == identity))
-    revisions = list(await get_db().scalars(select(DatasetRevision).where(DatasetRevision.dataset_id == identity)
-        .order_by(DatasetRevision.revision.desc()).limit(page_size).offset((page - 1) * page_size)))
-    return {"total": total or 0, "items": [{"revision": item.revision, "size": len(item.content.encode()),
-        "created_at": item.created_at.isoformat(), "author_user_id": item.author_user_id, "author_agent_id": item.author_agent_id} for item in revisions]}
+    revisions = await get_db().execute(select(
+        DatasetRevision.revision,
+        func.octet_length(func.convert_to(DatasetRevision.content, "UTF8")),
+        DatasetRevision.created_at, DatasetRevision.author_user_id, DatasetRevision.author_agent_id,
+    ).where(DatasetRevision.dataset_id == identity)
+        .order_by(DatasetRevision.revision.desc()).limit(page_size).offset((page - 1) * page_size))
+    return {"total": total or 0, "items": [{"revision": number, "size": size,
+        "created_at": created_at.isoformat(), "author_user_id": user_id, "author_agent_id": agent_id}
+        for number, size, created_at, user_id, agent_id in revisions]}
 
 
 async def revision(identity: UUID, actor: DataActor, number: int) -> DatasetRevision:

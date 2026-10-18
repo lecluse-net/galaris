@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable, Sequence
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import load_only
 
 from core.database import get_db
 from core.user import UserModel
@@ -13,6 +14,8 @@ from .models import Team, TeamAudit, TeamUser
 
 
 _access_observers: dict[str, Callable[[], Awaitable[None]]] = {}
+_HUMAN_FIELDS = (UserModel.id, UserModel.display_name, UserModel.email,
+                 UserModel.is_active, UserModel.avatar_key, UserModel.avatar_mime_type)
 
 
 def register_team_access_observer(key: str, callback: Callable[[], Awaitable[None]]) -> None:
@@ -55,6 +58,7 @@ async def _team_summaries(teams: Sequence[Team]) -> list[TeamInfo]:
     if small_teams:
         rows = await get_db().execute(
             select(TeamUser.team_id, UserModel).join(UserModel, UserModel.id == TeamUser.user_id)
+            .options(load_only(*_HUMAN_FIELDS, raiseload=True))
             .where(TeamUser.team_id.in_(small_teams)).order_by(UserModel.id)
         )
         for team_id, user in rows:
@@ -119,7 +123,7 @@ async def move_team(team_id: int, target_team_id: int, *, after: bool) -> None:
 
 
 async def search_humans(search: str = "", limit: int = 500) -> list[HumanInfo]:
-    statement = select(UserModel).order_by(UserModel.id).limit(limit)
+    statement = select(UserModel).options(load_only(*_HUMAN_FIELDS, raiseload=True)).order_by(UserModel.id).limit(limit)
     if search.strip():
         term = f"%{search.strip()}%"
         statement = statement.where(UserModel.display_name.ilike(term) | UserModel.email.ilike(term))
@@ -138,6 +142,7 @@ async def human_memberships() -> dict[int, set[int]]:
 async def team_humans(team_id: int) -> list[HumanInfo]:
     await require_team(team_id)
     rows = (await get_db().scalars(select(UserModel).join(TeamUser, TeamUser.user_id == UserModel.id)
+                                  .options(load_only(*_HUMAN_FIELDS, raiseload=True))
                                   .where(TeamUser.team_id == team_id).order_by(UserModel.id))).all()
     return [_human_info(u) for u in rows]
 

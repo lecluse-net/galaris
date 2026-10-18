@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 from typing import List
 
 from core.database import get_db
@@ -280,8 +280,8 @@ async def list_assignments(
     query = (
         select(Assignment)
         .options(
-            selectinload(Assignment.role),
-            selectinload(Assignment.user)
+            joinedload(Assignment.role),
+            joinedload(Assignment.user)
         )
         .offset(skip)
         .limit(limit)
@@ -309,8 +309,8 @@ async def get_user_assignments(user_id: int, db: AsyncSession = Depends(get_db))
         select(Assignment)
         .where(Assignment.user_id == user_id)
         .options(
-            selectinload(Assignment.role),
-            selectinload(Assignment.user)
+            joinedload(Assignment.role),
+            joinedload(Assignment.user)
         )
     )
     return result.scalars().all()

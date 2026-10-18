@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, func, or_
+from sqlalchemy.orm import load_only
 
 from app.agent import AgentManagementScope, management_scope_for
 from app.memory import create_workflow_document, read_workflow_document, workflow_document_actor
@@ -122,7 +123,10 @@ async def require_campaign(identity: UUID, actor: int | AgentManagementScope) ->
 
 async def inspect_campaign(identity: UUID, actor: int | AgentManagementScope, *, page: int = 1, page_size: int = 50) -> dict[str, Any]:
     campaign = await require_campaign(identity, actor)
-    rows = list(await get_db().scalars(select(LabProcessCase).where(LabProcessCase.campaign_id == identity).order_by(LabProcessCase.position).offset((page - 1) * page_size).limit(page_size)))
+    rows = list(await get_db().scalars(select(LabProcessCase).options(load_only(
+        LabProcessCase.id, LabProcessCase.position, LabProcessCase.status, LabProcessCase.run_id, LabProcessCase.evidence,
+        raiseload=True,
+    )).where(LabProcessCase.campaign_id == identity).order_by(LabProcessCase.position).offset((page - 1) * page_size).limit(page_size)))
     total = await get_db().scalar(select(func.count()).select_from(LabProcessCase).where(LabProcessCase.campaign_id == identity))
     return {"id": str(campaign.id), "title": campaign.title, "code": campaign.process_code, "status": campaign.status,
         "dataset_uri": f"document://{campaign.dataset_document_id}", "total": total, "page": page, "page_size": page_size,

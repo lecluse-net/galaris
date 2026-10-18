@@ -56,7 +56,7 @@ async def list_skill_resources(
     await require_skill_management_access(actor_agent_id)
     folded_query = query.strip().casefold()
     summaries: list[SkillResourceSummary] = []
-    for record in await skill_service.get_all():
+    for record in await skill_service.get_catalogue():
         inspection = storage.inspect(record.code)
         if folded_query and folded_query not in " ".join(
             (record.code, record.label, inspection.description or "")
@@ -90,7 +90,7 @@ async def get_skill_resource(
 ) -> SkillResourceSummary | None:
     await require_skill_management_access(actor_agent_id)
     normalized = storage.validate_code(code)
-    record = await skill_service.get_by_code(normalized)
+    record = await skill_service.get_by_code(normalized, load_authorizations=False)
     if record is None:
         return None
     inspection = storage.inspect(normalized)

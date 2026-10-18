@@ -129,9 +129,9 @@ async def read_recent_incidents(
 ) -> FailureIncidentSummaryPage:
     """Return a small error log without messages, traces, or correlations."""
 
-    rows, total = await service.list_incidents(page=1, page_size=page_size)
+    rows, total = await service.list_recent_incidents(page_size=page_size)
     return FailureIncidentSummaryPage(
-        items=[_incident_summary(incident) for incident, _pattern in rows],
+        items=[_incident_summary(incident) for incident in rows],
         total=total,
         page=1,
         page_size=page_size,

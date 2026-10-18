@@ -219,7 +219,7 @@ async def read_agent_managers() -> List[AgentManagerInfo]:
     """List active human managers available for agent ownership."""
     scope = await current_management_scope()
     users = (
-        await user_service.get_users(skip=0, limit=500)
+        await user_service.get_users(skip=0, limit=500, public_only=True)
         if scope.is_global
         else [await user_service.get_current_user()]
     )

@@ -10,6 +10,7 @@ Usage:
 
 from contextvars import ContextVar
 from sqlalchemy import select, func, delete as sqlalchemy_delete, text
+from sqlalchemy.orm import load_only
 from sqlalchemy.exc import IntegrityError
 from typing import List, Literal, Optional
 from uuid import UUID, uuid4
@@ -165,10 +166,17 @@ async def get_users(
     skip: int = 0, limit: int = 50, search: Optional[str] = None,
     *, sort_by: Literal["id", "email", "display_name", "is_active", "created_at"] = "id",
     descending: bool = False, active_only: bool = False,
+    public_only: bool = False,
 ) -> List[User]:
     """Return all users with optional search filtering."""
     db = get_db()
     query = select(User)
+    if public_only:
+        query = query.options(load_only(
+            User.id, User.email, User.display_name, User.language, User.document_open_mode,
+            User.is_active, User.avatar_key, User.avatar_mime_type, User.created_at,
+            raiseload=True,
+        ))
     if active_only:
         query = query.where(User.is_active.is_(True))
 

@@ -10,15 +10,16 @@ from datetime import datetime, timezone
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import or_, select
+from sqlalchemy.orm import defer, joinedload, load_only, selectinload
 
-from app.agent import evaluate_dispatcher_input, resolve_pipeline_policy
+from app.agent import Agent, evaluate_dispatcher_input, resolve_pipeline_policy
 from app.llm import LLM, LLMCall, LLMCallPurpose, llm_service
 from app.llm.structured_service import run_structured
 from app.task import Task
 from core.database import get_db
 from .transactions import publish
+from .dataset_counts import load_case_counts
 from core.i18n import tr
 
 from .capture_service import check_capture
@@ -91,20 +92,11 @@ def _case_read(case: LabEvaluationCase) -> EvaluationCaseRead:
     return EvaluationCaseRead.model_validate(case)
 
 
-async def _dataset_read(dataset: LabEvaluationDataset) -> EvaluationDatasetRead:
-    counts = (
-        await get_db().execute(
-            select(
-                func.count(LabEvaluationCase.id),
-                func.count(LabEvaluationCase.id).filter(
-                    LabEvaluationCase.readiness == "ready",
-                    LabEvaluationCase.enabled.is_(True),
-                ),
-            )
-            .where(LabEvaluationCase.dataset_id == dataset.id)
-            .where(LabEvaluationCase.deleted_at.is_(None))
-        )
-    ).one()
+async def _dataset_read(
+    dataset: LabEvaluationDataset, *, counts: tuple[int, int] | None = None,
+) -> EvaluationDatasetRead:
+    if counts is None:
+        counts = (await load_case_counts([dataset.id])).get(dataset.id, (0, 0))
     return EvaluationDatasetRead(
         id=dataset.id,
         revision=dataset.revision,
@@ -134,7 +126,8 @@ async def list_datasets() -> list[EvaluationDatasetRead]:
             )
         ).all()
     )
-    return [await _dataset_read(row) for row in rows]
+    counts = await load_case_counts([row.id for row in rows])
+    return [await _dataset_read(row, counts=counts.get(row.id, (0, 0))) for row in rows]
 
 
 async def create_dataset(data: EvaluationDatasetCreate) -> EvaluationDatasetRead:
@@ -277,7 +270,12 @@ async def list_task_candidates(
     limit: int = 50,
     agent_ids: Collection[int] | None = None,
 ) -> list[DispatcherTaskCandidate]:
-    query = select(Task).options(selectinload(Task.agent)).where(Task.dispatch_result.is_not(None))
+    query = select(Task).options(
+        load_only(Task.id, Task.revision, Task.label, Task.objective, Task.status,
+                  Task.agent_id, Task.created_at, raiseload=True),
+        joinedload(Task.agent).load_only(Agent.id, Agent.first_name, Agent.last_name,
+                                        Agent.agent_driver, raiseload=True),
+    ).where(Task.dispatch_result.is_not(None))
     normalized = (search or "").strip()
     if agent_ids is not None:
         query = query.where(Task.agent_id.in_(agent_ids))
@@ -683,6 +681,7 @@ async def list_runs(dataset_id: UUID, *, limit: int = 50) -> list[EvaluationRunR
         (
             await get_db().scalars(
                 LabEvaluationRun.histo_filter(select(LabEvaluationRun))
+                .options(defer(LabEvaluationRun.case_snapshots, raiseload=True))
                 .where(LabEvaluationRun.dataset_id == dataset_id)
                 .order_by(LabEvaluationRun.created_at.desc())
                 .limit(limit)
@@ -695,6 +694,7 @@ async def list_runs(dataset_id: UUID, *, limit: int = 50) -> list[EvaluationRunR
 async def get_run(run_id: UUID) -> EvaluationRunDetail | None:
     run = await get_db().scalar(
         LabEvaluationRun.histo_filter(select(LabEvaluationRun).where(LabEvaluationRun.id == run_id))
+        .options(defer(LabEvaluationRun.case_snapshots, raiseload=True))
     )
     if run is None:
         return None

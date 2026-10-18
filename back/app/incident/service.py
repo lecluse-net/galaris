@@ -11,6 +11,7 @@ from loguru import logger
 from sqlalchemy import Select, case, delete as sa_delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 
 from core.database import get_db, get_db_session
 
@@ -310,7 +311,10 @@ async def list_incidents(
     )
     total = int((await get_db().scalar(count_query)) or 0)
     query = _incident_filters(
-        select(FailureIncident, FailurePattern).join(
+        select(FailureIncident, FailurePattern).options(load_only(
+            FailurePattern.id, FailurePattern.status, FailurePattern.occurrence_count,
+            raiseload=True,
+        )).join(
             FailurePattern, FailurePattern.id == FailureIncident.pattern_id
         ),
         kind=kind,
@@ -329,6 +333,24 @@ async def list_incidents(
         )
     ).all()
     return [(incident, pattern) for incident, pattern in rows], total
+
+
+async def list_recent_incidents(
+    *, page_size: int,
+) -> tuple[list[FailureIncident], int]:
+    """Read only the compact journal fields; detailed diagnostics stay on demand."""
+    total = int(await get_db().scalar(select(func.count(FailureIncident.id))) or 0)
+    rows = await get_db().scalars(
+        select(FailureIncident)
+        .options(load_only(
+            FailureIncident.id, FailureIncident.kind,
+            FailureIncident.recovered_at, FailureIncident.occurred_at,
+            raiseload=True,
+        ))
+        .order_by(FailureIncident.occurred_at.desc(), FailureIncident.id.desc())
+        .limit(page_size)
+    )
+    return list(rows), total
 
 
 async def get_incident(
@@ -429,6 +451,7 @@ __all__ = [
     "cleanup_all",
     "get_incident",
     "list_incidents",
+    "list_recent_incidents",
     "list_patterns",
     "mark_run_recovered",
     "mark_run_recovered_isolated",

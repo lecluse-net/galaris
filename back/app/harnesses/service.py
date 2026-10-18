@@ -10,7 +10,7 @@ from typing import Any, cast
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from loguru import logger
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.agent import Agent, agent_has_open_tasks, get_agent_record, normalize_capabilities
@@ -157,6 +157,32 @@ async def _assignments_for(
     return list((await get_db().scalars(query.order_by(AgentHarness.agent_id))).all())
 
 
+async def _assignment_counts(
+    harnesses: Collection[Harness],
+    *,
+    agent_ids: Collection[int] | None = None,
+) -> dict[UUID, int]:
+    """Count visible selections in SQL without materializing runtime payloads."""
+    if not harnesses or (agent_ids is not None and not agent_ids):
+        return {}
+    catalogue_ids = [row.id for row in harnesses if row.provider_code == "openai_messages"]
+    bridge_codes = [row.provider_code for row in harnesses if row.provider_code != "openai_messages"]
+    query = select(
+        AgentHarness.harness_id, AgentHarness.provider_code, func.count(),
+    ).where(or_(
+        AgentHarness.harness_id.in_(catalogue_ids),
+        and_(AgentHarness.harness_id.is_(None), AgentHarness.provider_code.in_(bridge_codes)),
+    ))
+    if agent_ids is not None:
+        query = query.where(AgentHarness.agent_id.in_(agent_ids))
+    rows = await get_db().execute(query.group_by(AgentHarness.harness_id, AgentHarness.provider_code))
+    counts = {(harness_id, provider_code): int(count) for harness_id, provider_code, count in rows}
+    return {
+        row.id: counts.get((row.id if row.provider_code == "openai_messages" else None, row.provider_code), 0)
+        for row in harnesses
+    }
+
+
 def _request(
     assignment: AgentHarness,
     harness: Harness,
@@ -284,20 +310,12 @@ async def list_catalogue(
             )
         ).all()
     )
-    rows = sorted([*bridges, *openai_rows], key=lambda item: item.name.lower())
-    result: list[HarnessCatalogRead] = []
-    for row in rows:
-        if enabled_only and not row.enabled:
-            continue
-        result.append(
-            _catalogue_read(
-                row,
-                assigned_agents=len(
-                    await _assignments_for(row, agent_ids=agent_ids)
-                ),
-            )
-        )
-    return result
+    rows = sorted(
+        [row for row in [*bridges, *openai_rows] if not enabled_only or row.enabled],
+        key=lambda item: item.name.lower(),
+    )
+    counts = await _assignment_counts(rows, agent_ids=agent_ids)
+    return [_catalogue_read(row, assigned_agents=counts.get(row.id, 0)) for row in rows]
 
 
 async def get_catalogue_harness(
@@ -308,10 +326,8 @@ async def get_catalogue_harness(
     row = await _catalogue_choice(harness_id)
     if row is None:
         raise LookupError("Harness not found.")
-    return _catalogue_read(
-        row,
-        assigned_agents=len(await _assignments_for(row, agent_ids=agent_ids)),
-    )
+    counts = await _assignment_counts([row], agent_ids=agent_ids)
+    return _catalogue_read(row, assigned_agents=counts.get(row.id, 0))
 
 
 async def _validated_catalogue_values(

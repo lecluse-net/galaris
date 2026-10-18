@@ -10,7 +10,7 @@ from typing import Any, cast as type_cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import Date, cast, func, or_, select, union_all, update
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, load_only
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -758,6 +758,10 @@ async def get_content(
         )
         .outerjoin(Agent, Agent.id == Task.agent_id)
         .where(Task.topic_id == topic_id)
+        .options(load_only(
+            Task.id, Task.label, Task.objective, Task.status, Task.agent_id,
+            Task.created_at, raiseload=True,
+        ))
     )
     if agent_ids is not None:
         task_query = task_query.where(Task.agent_id.in_(agent_ids))
@@ -839,6 +843,11 @@ async def get_content(
     )
     text_round_query = (
         select(*round_columns)
+            .options(load_only(
+                ConversationRound.id, ConversationRound.room_id, ConversationRound.status,
+                ConversationRound.effective_objective, ConversationRound.created_at,
+                raiseload=True,
+            ))
             .join(Room, Room.id == ConversationRound.room_id)
             .join(Connection, Connection.id == Room.connection_id)
             .where(
@@ -850,6 +859,11 @@ async def get_content(
     )
     voice_turn_query = (
         select(*round_columns)
+            .options(load_only(
+                ConversationRound.id, ConversationRound.room_id, ConversationRound.status,
+                ConversationRound.effective_objective, ConversationRound.created_at,
+                ConversationRound.voice_session_id, ConversationRound.sequence, raiseload=True,
+            ))
             .join(Room, Room.id == ConversationRound.room_id)
             .join(Connection, Connection.id == Room.connection_id)
             .where(
@@ -1013,6 +1027,10 @@ async def list_items(
     if "task" in requested:
         task_query = Task.histo_filter(
             select(Task).where(Task.topic_id == topic_id)
+            .options(load_only(
+                Task.id, Task.label, Task.objective, Task.status, Task.agent_id,
+                Task.revision, Task.created_at, raiseload=True,
+            ))
         )
         total += int(
             await get_db().scalar(
@@ -1049,6 +1067,10 @@ async def list_items(
     if "message" in requested:
         message_query = Message.histo_filter(
             select(Message).where(Message.topic_id == topic_id)
+            .options(load_only(
+                Message.id, Message.text, Message.direction, Message.platform,
+                Message.status, Message.connection_id, Message.created_at, raiseload=True,
+            ))
         )
         total += int(
             await get_db().scalar(
@@ -1107,6 +1129,12 @@ async def list_items(
                 await get_db().scalars(
                     select(ConversationRound)
                     .where(ConversationRound.topic_id == topic_id, voice_clause)
+                    .options(load_only(
+                        ConversationRound.id, ConversationRound.effective_objective,
+                        ConversationRound.created_at, ConversationRound.status,
+                        ConversationRound.room_id, ConversationRound.voice_session_id,
+                        ConversationRound.sequence, raiseload=True,
+                    ))
                     .order_by(ConversationRound.created_at.desc(), ConversationRound.id.desc())
                     .limit(fetch_limit)
                 )
@@ -1806,7 +1834,11 @@ async def _related_users(
         message_references,
     ).subquery()
     rows = await get_db().execute(
-        select(references.c.topic_id, MemoryItem)
+        select(
+            references.c.topic_id, MemoryItem.id, MemoryItem.title,
+            MemoryItem.search_title,
+            MemoryItem.metadata_["display_name"], MemoryItem.metadata_["user_id"],
+        )
         .join(MemoryItem, MemoryItem.id == references.c.contact_item_id)
         .where(
             MemoryItem.deleted_at.is_(None),
@@ -1818,17 +1850,17 @@ async def _related_users(
     )
     related: dict[UUID, list[TopicRelatedUser]] = {}
     seen: set[tuple[UUID, UUID]] = set()
-    for topic_id, item in rows:
-        key = (topic_id, item.id)
+    for topic_id, item_id, title, _search_title, name, external_user in rows:
+        key = (topic_id, item_id)
         if key in seen:
             continue
         seen.add(key)
-        display_name = str(item.metadata_.get("display_name") or "").strip()
-        user_id = str(item.metadata_.get("user_id") or "").strip()
+        display_name = str(name or "").strip()
+        user_id = str(external_user or "").strip()
         related.setdefault(topic_id, []).append(
             TopicRelatedUser(
-                id=item.id,
-                display_name=display_name or user_id or item.title,
+                id=item_id,
+                display_name=display_name or user_id or title,
                 user_id=user_id,
             )
         )

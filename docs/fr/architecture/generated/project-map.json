@@ -692,6 +692,7 @@
       },
       {
         "files": [
+          "back/app/console/connection_service.py",
           "back/app/console/editor_service.py"
         ],
         "source": "app.console",
@@ -2026,6 +2027,7 @@
         "files": [
           "back/app/lab/contracts.py",
           "back/app/lab/dispatcher_evaluation_service.py",
+          "back/app/lab/evaluation_service.py",
           "back/app/lab/evidence_service.py",
           "back/app/lab/executor_prompt_service.py",
           "back/app/lab/mechanism_evaluation_service.py",
@@ -2192,6 +2194,7 @@
           "back/app/lab/comparison_evidence.py",
           "back/app/lab/comparison_service.py",
           "back/app/lab/comparison_summary.py",
+          "back/app/lab/dataset_counts.py",
           "back/app/lab/diagnosis_service.py",
           "back/app/lab/dispatcher_evaluation_service.py",
           "back/app/lab/evaluation_service.py",

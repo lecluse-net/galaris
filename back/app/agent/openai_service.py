@@ -79,15 +79,15 @@ async def list_agent_models(
 ) -> ModelListResponse:
     """List agents exposed as OpenAI-compatible models."""
     db = get_db()
-    query = select(Agent)
+    query = select(Agent.code)
     if agent_ids is not None:
         query = query.where(Agent.id.in_(agent_ids))
     result = await db.execute(query)
-    agents = result.scalars().all()
+    codes = result.scalars().all()
 
     return ModelListResponse(
         data=[
-            *[ModelObject(id=agent.code, owned_by="galaris") for agent in agents],
+            *[ModelObject(id=code, owned_by="galaris") for code in codes],
         ]
     )
 

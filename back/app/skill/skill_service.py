@@ -8,7 +8,7 @@ from typing import Sequence, TypedDict
 
 from loguru import logger
 from sqlalchemy import and_, func, or_, select, update as sql_update
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, load_only, raiseload, selectinload
 
 from app.agent.models import Agent
 from app.agent import list_driver_specs
@@ -63,15 +63,16 @@ async def get(skill_id: int) -> Skill | None:
     return result.scalar_one_or_none()
 
 
-async def get_by_code(code: str, include_historized: bool = False) -> Skill | None:
+async def get_by_code(code: str, include_historized: bool = False, *, load_authorizations: bool = True) -> Skill | None:
     db = get_db()
     query = (
         select(Skill)
-        .options(
-            selectinload(Skill.category).selectinload(SkillCategory.authorizations),
-        )
         .where(Skill.code == code)
     )
+    if load_authorizations:
+        query = query.options(selectinload(Skill.category).selectinload(SkillCategory.authorizations))
+    else:
+        query = query.options(raiseload(Skill.category), raiseload(Skill.assignments))
     if include_historized:
         query = query.execution_options(include_historized=True)
     result = await db.execute(query)
@@ -89,6 +90,15 @@ async def get_all() -> Sequence[Skill]:
         .order_by(Skill.label, Skill.code)
     )
     return result.scalars().all()
+
+
+async def get_catalogue() -> Sequence[Skill]:
+    """Read public metadata without the agent/category authorization matrix."""
+    return (await get_db().scalars(
+        select(Skill)
+        .options(joinedload(Skill.category), raiseload(Skill.assignments))
+        .order_by(Skill.label, Skill.code)
+    )).all()
 
 
 async def has_configured_skills() -> bool:
@@ -698,6 +708,10 @@ async def list_skill_agents(
     db = get_db()
     query = (
         select(Agent)
+        .options(load_only(
+            Agent.id, Agent.code, Agent.first_name, Agent.last_name, Agent.agent_driver,
+            raiseload=True,
+        ))
         .where(Agent.agent_driver.in_(_skill_agent_drivers()))
         .order_by(Agent.first_name, Agent.last_name)
     )

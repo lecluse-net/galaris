@@ -556,7 +556,7 @@ async def list_users(
     descending: bool = False,
 ):
     response.headers["X-Total-Count"] = str(await user_service.count_users(search))
-    return await user_service.get_users(skip, limit, search, sort_by=sort_by, descending=descending)
+    return await user_service.get_users(skip, limit, search, sort_by=sort_by, descending=descending, public_only=True)
 
 
 @router.post(

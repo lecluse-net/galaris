@@ -9,10 +9,11 @@ from datetime import datetime
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import String, cast as sa_cast, exists, or_, select
+from sqlalchemy import Select, String, cast as sa_cast, exists, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, load_only, selectinload
 
+from app.agent import Agent
 from app.llm import llm_service
 from app.task import Task
 from core.database import get_db
@@ -69,6 +70,21 @@ async def get_task(
     return await get_db().scalar(Task.histo_filter(query))
 
 
+def _task_summary_query() -> Select[tuple[Task]]:
+    return select(Task).options(
+        load_only(
+            Task.id, Task.revision, Task.label, Task.objective, Task.status, Task.paused,
+            Task.effort, Task.forced_route, Task.forced_effort, Task.feedback, Task.last_error,
+            Task.cost, Task.attempt_count, Task.agent_id, Task.created_at, Task.updated_at,
+            raiseload=True,
+        ),
+        joinedload(Task.agent).load_only(
+            Agent.id, Agent.first_name, Agent.last_name, Agent.code, Agent.agent_driver,
+            raiseload=True,
+        ),
+    )
+
+
 async def list_candidates(
     *,
     limit: int = 50,
@@ -77,7 +93,7 @@ async def list_candidates(
 ) -> list[LabTaskSummary]:
     """Return recent canonical tasks that are not already referenced by the Lab."""
 
-    query = select(Task).options(selectinload(Task.agent)).where(
+    query = _task_summary_query().where(
         ~exists(select(LabTask.task_id).where(LabTask.task_id == Task.id))
     )
     normalized = (search or "").strip()
@@ -107,8 +123,7 @@ async def list_tasks(
     if not task_ids:
         return []
     query = (
-        select(Task)
-        .options(selectinload(Task.agent))
+        _task_summary_query()
         .where(Task.id.in_(task_ids))
     )
     if agent_ids is not None:

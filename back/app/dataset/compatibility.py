@@ -111,12 +111,16 @@ class LegacyDatasetAdapter:
             from .models import DatasetRevision
             from sqlalchemy import func
             total = await get_db().scalar(select(func.count()).select_from(DatasetRevision).where(DatasetRevision.dataset_id == identity)) or 0
-            rows = await get_db().scalars(select(DatasetRevision).where(DatasetRevision.dataset_id == identity)
+            rows = await get_db().execute(select(
+                DatasetRevision.revision,
+                func.encode(func.sha256(func.convert_to(DatasetRevision.content, "UTF8")), "hex"),
+                DatasetRevision.author_agent_id, DatasetRevision.created_at,
+            ).where(DatasetRevision.dataset_id == identity)
                 .order_by(DatasetRevision.revision.desc()).limit(limit).offset(offset))
             return {"total": total, "limit": limit, "offset": offset, "has_more": offset + limit < total,
-                "items": [{"revision": entry.revision, "task_id": None, "content_hash": hashlib.sha256(entry.content.encode()).hexdigest(),
-                    "media_type": "application/json", "content_profile_version": None, "author_agent_id": entry.author_agent_id,
-                    "created_at": entry.created_at} for entry in rows]}
+                "items": [{"revision": revision, "task_id": None, "content_hash": digest,
+                    "media_type": "application/json", "content_profile_version": None, "author_agent_id": agent_id,
+                    "created_at": created_at} for revision, digest, agent_id, created_at in rows]}
 
     async def restore(self, identity: UUID, actor: int | HumanActor, number: int, expected_revision: int) -> None:
         with legacy_errors():

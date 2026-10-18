@@ -8,7 +8,7 @@ from typing import Any, cast
 from uuid import UUID
 
 from sqlalchemy import case, func, or_, select, true
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, defer, load_only
 
 from app.agent import Agent
 from app.agent.contracts import TaskMessage
@@ -43,17 +43,18 @@ def _payload(
     sender_display_name: str | None,
     sender_agent_id: int | None,
     sender_is_ai: bool | None,
+    fallback_sender_id: Any,
+    fallback_sender_name: Any,
 ) -> dict[str, object]:
-    metadata = message.metadata_
     return {
         "id": message.remote_message_id,
         "local_id": str(message.id),
         "platform": message.platform,
         "sender": {
             "local_id": str(message.messenger_user_id or ""),
-            "id": str(sender_external_id or metadata.get("sender_id") or ""),
+            "id": str(sender_external_id or fallback_sender_id or ""),
             "display_name": str(
-                sender_display_name or metadata.get("sender_display_name") or ""
+                sender_display_name or fallback_sender_name or ""
             ),
             "agent_id": sender_agent_id,
             "is_ai": bool(sender_is_ai),
@@ -199,7 +200,7 @@ async def list_messages(
         filters.append(matched.c.round_status == "ERROR_RESOLVED")
 
     base = (
-        select(Message)
+        select(Message.id)
         .select_from(Message)
         .join(matched, true())
         .join(Room, Room.id == Message.messenger_room_id)
@@ -263,6 +264,16 @@ async def list_messages(
                 matched.c.responded_at,
                 matched.c.input_sequence,
                 aggregated_count,
+                Message.metadata_["sender_id"],
+                Message.metadata_["sender_display_name"],
+            )
+            .options(
+                load_only(
+                    Message.id, Message.remote_message_id, Message.platform,
+                    Message.messenger_user_id, Message.text, Message.reply_to,
+                    Message.created_at, raiseload=True,
+                ),
+                load_only(Room.id, Room.connection_id, raiseload=True),
             )
             .select_from(Message)
             .join(matched, true())
@@ -297,6 +308,8 @@ async def list_messages(
                     sender_display_name=sender_display_name,
                     sender_agent_id=sender_agent_id,
                     sender_is_ai=sender_is_ai,
+                    fallback_sender_id=fallback_sender_id,
+                    fallback_sender_name=fallback_sender_name,
                 ),
                 created_at=message.created_at,
                 round_id=round_id,
@@ -326,6 +339,8 @@ async def list_messages(
                 responded_at,
                 sequence,
                 message_count,
+                fallback_sender_id,
+                fallback_sender_name,
             ) in rows
         ],
         total=total,
@@ -349,6 +364,10 @@ async def get_round(round_id: UUID) -> ConversationRoundDetail | None:
                 Connection,
                 Agent.first_name,
                 Agent.last_name,
+            )
+            .options(
+                defer(ConversationRound.encrypted_checkpoint, raiseload=True),
+                defer(ConversationRound.process_launch_admission, raiseload=True),
             )
             .join(Room, Room.id == ConversationRound.room_id)
             .join(Connection, Connection.id == Room.connection_id)

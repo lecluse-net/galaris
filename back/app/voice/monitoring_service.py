@@ -9,6 +9,7 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.orm import defer
 
 from app.agent import Agent
 from app.connection import Connection
@@ -247,6 +248,11 @@ async def _turns_by_session(
     rows = (
         await get_db().execute(
             select(ConversationRound, func.coalesce(llm_counts.c.llm_call_count, 0))
+            .options(
+                defer(ConversationRound.execution_result, raiseload=True),
+                defer(ConversationRound.encrypted_checkpoint, raiseload=True),
+                defer(ConversationRound.process_launch_admission, raiseload=True),
+            )
             .outerjoin(llm_counts, llm_counts.c.round_id == ConversationRound.id)
             .where(ConversationRound.voice_session_id.in_(session_ids))
             .order_by(

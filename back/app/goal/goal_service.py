@@ -12,8 +12,9 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import Select, case, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import aliased, selectinload
+from sqlalchemy.orm import aliased, joinedload, load_only, raiseload, selectinload
 from sqlalchemy.orm.exc import StaleDataError
+from sqlalchemy.sql.selectable import ScalarSelect
 from pydantic import ValidationError
 
 from app.agent.models import Agent
@@ -274,7 +275,8 @@ def _serialize_referrer(goal: Goal) -> GoalReferrerRead | None:
 
 
 def _serialize_goal(
-    goal: Goal, metrics: GoalMetrics, markdown: GoalMarkdown
+    goal: Goal, metrics: GoalMetrics, markdown: GoalMarkdown,
+    *, children_count: int | None = None,
 ) -> GoalRead:
     return GoalRead.model_validate(
         {
@@ -292,7 +294,7 @@ def _serialize_goal(
             "last_task_finished_at": metrics.last_task_finished_at,
             "last_verdict": metrics.last_verdict,
             "parent_title": goal.parent.title if goal.parent is not None else None,
-            "children_count": len(goal.children),
+            "children_count": len(goal.children) if children_count is None else children_count,
         }
     )
 
@@ -467,6 +469,16 @@ async def tracking_llm_configured() -> bool:
     return await get_tracking_llm() is not None
 
 
+def _children_count() -> ScalarSelect[int]:
+    child = aliased(Goal)
+    return select(func.count(child.id)).where(
+        child.parent_goal_id == Goal.id, child.deleted_at.is_(None),
+    ).correlate(Goal).scalar_subquery()
+
+
+_AGENT_SUMMARY_FIELDS = (Agent.id, Agent.title_id, Agent.first_name, Agent.last_name, Agent.code)
+
+
 async def list_page(
     *,
     skip: int = 0,
@@ -487,16 +499,16 @@ async def list_page(
         agent_ids=agent_ids,
         document_matches=document_matches,
     )
-    goals = list(
+    rows = list(
         (
-            await db.scalars(
+            await db.execute(
                 _apply_filters(
-                    select(Goal)
+                    select(Goal, _children_count())
                     .options(
-                        selectinload(Goal.agent).selectinload(Agent.title),
-                        selectinload(Goal.referrer_agent).selectinload(Agent.title),
-                        selectinload(Goal.parent),
-                        selectinload(Goal.children),
+                        joinedload(Goal.agent).load_only(*_AGENT_SUMMARY_FIELDS, raiseload=True).joinedload(Agent.title),
+                        joinedload(Goal.referrer_agent).load_only(*_AGENT_SUMMARY_FIELDS, raiseload=True).joinedload(Agent.title),
+                        joinedload(Goal.parent).load_only(Goal.id, Goal.title, raiseload=True),
+                        raiseload(Goal.children),
                     )
                     .order_by(Goal.updated_at.desc().nullslast(), Goal.created_at.desc())
                     .offset(skip)
@@ -510,6 +522,7 @@ async def list_page(
             )
         ).all()
     )
+    goals = [goal for goal, _count in rows]
     metrics = await _metrics_for([goal.id for goal in goals])
     markdown_by_goal = await _read_markdown_batch(goals)
 
@@ -545,8 +558,9 @@ async def list_page(
                 goal,
                 metrics.get(goal.id, GoalMetrics()),
                 markdown_by_goal[goal.id],
+                children_count=int(children_count),
             )
-            for goal in goals
+            for goal, children_count in rows
         ],
         total=total,
         summary=summary,
@@ -604,16 +618,18 @@ async def list_tree(*, agent_ids: Collection[int] | None = None) -> GoalTreePage
     """Return the lightweight Goal hierarchy visible to the current management scope."""
 
     query = (
-        select(Goal)
+        select(Goal, _children_count())
         .options(
-            selectinload(Goal.agent).selectinload(Agent.title),
-            selectinload(Goal.children),
+            load_only(Goal.id, Goal.parent_goal_id, Goal.title, Goal.agent_id, Goal.status,
+                      Goal.cycle_delay_seconds, Goal.next_cycle_at, raiseload=True),
+            joinedload(Goal.agent).load_only(*_AGENT_SUMMARY_FIELDS, raiseload=True).joinedload(Agent.title),
+            raiseload(Goal.children),
         )
         .order_by(Goal.title.asc(), Goal.id.asc())
     )
     if agent_ids is not None:
         query = query.where(Goal.agent_id.in_(agent_ids))
-    goals = list((await get_db().scalars(Goal.histo_filter(query))).all())
+    rows = list((await get_db().execute(Goal.histo_filter(query))).all())
     return GoalTreePage(
         items=[
             GoalTreeNode(
@@ -626,11 +642,11 @@ async def list_tree(*, agent_ids: Collection[int] | None = None) -> GoalTreePage
                 status=goal.status,
                 cycle_delay_seconds=goal.cycle_delay_seconds,
                 next_cycle_at=goal.next_cycle_at,
-                children_count=len(goal.children),
+                children_count=int(children_count),
             )
-            for goal in goals
+            for goal, children_count in rows
         ],
-        total=len(goals),
+        total=len(rows),
     )
 
 
