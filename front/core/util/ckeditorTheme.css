@@ -117,6 +117,16 @@ body {
 .ck.ck-editor__editable_inline { color: var(--ck-color-base-text); background: var(--ck-color-base-background); }
 /* Focusing the document keeps its neutral border; toolbar keyboard focus stays native. */
 .ck.ck-editor__editable.ck-focused:not(.ck-editor__nested-editable) { border-color: var(--ck-color-base-border); box-shadow: none; }
+/* Card insertion controls extend outside the grouped content. */
+.ck-content blockquote.galaris-link-card.ck-widget {
+  --ck-color-widget-hover-border: var(--solaire-yellow-accent);
+  --ck-color-widget-blurred-border: var(--solaire-yellow-accent);
+  --ck-color-widget-type-around-button: var(--solaire-yellow-accent);
+  --ck-color-widget-type-around-button-active: var(--solaire-yellow-accent);
+  --ck-color-widget-type-around-button-icon: #292c30;
+  overflow: visible;
+}
+.ck-content blockquote.galaris-link-card.ck-widget.ck-widget_selected { outline-color: var(--solaire-yellow-accent); }
 .ck.ck-heading-dropdown .ck-heading_heading1 .ck-button__label { font-size: 28px; }
 .ck.ck-heading-dropdown .ck-heading_heading2 .ck-button__label { font-size: 24px; }
 .ck.ck-heading-dropdown .ck-heading_heading3 .ck-button__label { font-size: 21px; }

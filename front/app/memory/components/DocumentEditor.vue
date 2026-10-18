@@ -212,6 +212,8 @@
             :key="documentId + ':' + agentId"
             v-model="editorContent"
             :attachments="documentResources"
+            :resource-agent-id="agentId"
+            :pick-resources="isGoalDocument(currentDocument) ? undefined : pickInternalResources"
             :create-link-card="createLinkCard"
             :upload-file="uploadDocumentFile"
             :export-bundle="exportCurrentBundle"
@@ -249,8 +251,9 @@
             @added="onAttachmentAdded"
             @removed="onAttachmentRemoved"
           />
-          <DocumentDatasetAttachments v-if="!isGoalDocument(currentDocument)" :key="currentDocument.id"
-            :document-id="currentDocument.id" :agent-id="agentId" :editable="canEditDocument" @changed="onSharingChanged" />
+          <DocumentResourceReferences v-if="canEditDocument && !isGoalDocument(currentDocument)" :key="currentDocument.id + ':' + agentId"
+            v-model:picker-open="internalPickerOpen" @picked="finishInternalPick"
+            :document-id="currentDocument.id" :agent-id="agentId" :editable="canEditDocument" />
         </div>
       </q-card-section>
       <DocumentHistoryDialog
@@ -311,7 +314,7 @@ import type {
 } from '../types'
 import MemorySharingPanel from './MemorySharingPanel.vue'
 import DocumentAttachments from './DocumentAttachments.vue'
-import DocumentDatasetAttachments from './DocumentDatasetAttachments.vue'
+import { DocumentResourceReferences, richLinkTarget, richLinkCard } from '@/core/util'
 import DocumentHistoryDialog from './DocumentHistoryDialog.vue'
 
 type DocumentShareAccess = 'none' | 'read' | 'edit'
@@ -407,6 +410,15 @@ function insertAttachment(attachment: DocumentAttachment): void {
   richEditor.value?.insertResource(documentResourceHtml({ uri: 'document://' + props.documentId + '/attachments/' + attachment.id, name: attachment.name, size: attachment.size_bytes, mediaType: attachment.media_type }))
 }
 const attachmentPanel = ref<InstanceType<typeof DocumentAttachments>>()
+const internalPickerOpen = ref(false)
+let resolveInternalPick: ((html: string) => void) | undefined
+function finishInternalPick(html: string): void { resolveInternalPick?.(html); resolveInternalPick = undefined }
+function pickInternalResources(): Promise<string> {
+  finishInternalPick(''); internalPickerOpen.value = true
+  return new Promise(resolve => { resolveInternalPick = resolve })
+}
+onBeforeUnmount(() => finishInternalPick(''))
+watch(() => [props.documentId, props.agentId], () => { internalPickerOpen.value = false; finishInternalPick('') })
 const documentResources = computed(() => attachments.value.map(value => ({ uri: 'document://' + props.documentId + '/attachments/' + value.id, name: value.name, size: value.size_bytes, mediaType: value.media_type })))
 async function openAttachment(documentId: string, attachmentId: string): Promise<void> {
   if (documentId === props.documentId) await attachmentPanel.value?.openById(attachmentId)
@@ -417,6 +429,11 @@ watch(() => [route.query.attachment_id, attachmentPanel.value, attachments.value
 }, { flush: 'post' })
 async function createLinkCard(url: string): Promise<string> {
   const documentId = props.documentId
+  if (richLinkTarget(url)) {
+    const html = await richLinkCard(url, props.agentId)
+    if (props.documentId !== documentId) throw new Error('Document changed')
+    return html
+  }
   const result = await memoryService.createDocumentLinkCard(documentId, props.agentId, url)
   if (props.documentId !== documentId) throw new Error('Document changed')
   if (result.attachment) onAttachmentAdded(result.attachment)
@@ -828,7 +845,7 @@ async function loadDocument(): Promise<void> {
     const document = seed?.id === props.documentId ? seed : await memoryService.getDocument(props.documentId, props.agentId)
     if (generation !== loadGeneration) return
     if (document.document_type === 'dataset') throw new DatasetDocumentRedirect(`data://${document.id}`)
-    if (document.document_type !== "html") throw new Error("This resource is not an HTML Document.")
+    if (document.document_type !== 'html') throw new Error('This resource is not an HTML Document.')
     if (document.node_kind !== 'document') throw new Error('The resource is not a document.')
     applyDocument(document, 'loaded')
     // Ancillary catalogues must not keep the current document behind a loading screen.

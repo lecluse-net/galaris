@@ -70,15 +70,24 @@ y compris lorsqu’une recherche masque une partie des documents.
 
 ## Liens
 
-Le bouton **Lien Galaris** ouvre une recherche de contenus accessibles : saisissez au moins
-deux caractères, filtrez par nature de ressource, sélectionnez une cible, puis ajustez le texte du lien avant
-de l’insérer. La sélection de texte et sa mise en forme sont conservées. La modale se ferme
-aussi en cliquant sur l’arrière-plan.
-Utilisez le bouton de lien natif pour saisir une URL ou une référence Galaris. Le libellé appartient à votre texte ; renommer la cible ne
+Le menu **Insérer un lien ou un fichier** regroupe **Lien**, **Ajouter une PJ interne**
+et l'upload. Dans un Document, l'action interne ouvre le sélecteur file_share :
+arborescence, fichiers compacts, recherche dans l'emplacement et sélection multiple.
+Elle insère des citations dans le texte, sans ajouter de PJ ni copier les fichiers existants.
+Un fichier déjà présent s'ouvre depuis sa source dans Fichiers, avec les droits du lecteur.
+La liste de PJ sous le document contient uniquement les fichiers téléversés ; son bouton
+**Téléverser** et le glisser-déposer permettent d'en ajouter. Dans les autres champs éditoriaux, la recherche interne propose les contenus
+accessibles avec un filtre par nature. La sélection de texte et sa mise en forme sont
+conservées lors de l'insertion d'un seul lien. Le clic sur l'arrière-plan ferme la modale.
+Utilisez **Lien** pour saisir une URL ou une référence Galaris. Le libellé appartient à votre texte ; renommer la cible ne
 casse pas la référence. Un lien ne partage pas sa cible : les droits sont vérifiés à l’ouverture.
-En lecture, cliquez pour ouvrir dans un nouvel onglet en conservant le document affiché.
-En édition, le clic place le curseur et Ctrl/Cmd-clic ouvre la cible dans un nouvel onglet. Le menu du lien
-propose explicitement Ouvrir, modifier et retirer le lien.
+En lecture, cliquez pour ouvrir la cible. Les agents, tâches, objectifs, processus, runs, Datasets,
+documents et mémoires s'ouvrent dans leur modale sans quitter le document. Les liens externes
+s'ouvrent dans un nouvel onglet. En édition, le clic place le curseur ; Ctrl/Cmd-clic ou
+Alt+Entrée ouvre la cible. Le menu du lien propose aussi Ouvrir, modifier et retirer le lien.
+Pour un agent, **Afficher une carte** présente son avatar, son nom et son poste dans le texte.
+Cliquez sur son avatar ou son nom pour ouvrir sa carte complète. **Afficher l'URL** rétablit
+le lien avec son libellé.
 
 ## Encadrés et pièces jointes
 
@@ -101,17 +110,17 @@ Pour insérer de nouveaux fichiers directement dans le texte, déposez-les à l�
 ou placez le curseur puis collez les fichiers copiés. Plusieurs fichiers peuvent être envoyés
 ensemble ; leur insertion suit l’ordre choisi et la position reste conservée pendant l’envoi.
 Une progression permet d’annuler l’envoi. Les images gardent également les commandes natives de CKEditor.
-Le bouton **Insérer une PJ** de la barre d’outils ouvre le sélecteur de fichiers et intègre
+L'action **Insérer une PJ** du menu **Insérer un lien ou un fichier** ouvre le sélecteur de fichiers et intègre
 les fichiers envoyés à la position du curseur. La zone de pièces jointes sous le contenu
-reste accessible même lorsqu’elle est vide : déposez-y des fichiers ou utilisez **Ajouter**,
+reste accessible même lorsqu’elle est vide : déposez-y des fichiers ou utilisez **Téléverser**,
 puis l’icône **Insérer dans le document** dans les actions de l’aperçu pour les intégrer au texte.
-Cette icône apparaît uniquement pour les fichiers absents du contenu.
+Vous pouvez également glisser une PJ déjà téléversée vers l'endroit voulu dans le texte.
+L'action d'insertion reste disponible pour afficher plusieurs fois le même fichier, sans nouvel envoi.
 Les images s’affichent dans le texte ; les vidéos, sons et PDF disposent d’un lecteur intégré,
 en édition comme en lecture. Les autres fichiers deviennent des cartouches cliquables ouvrant
 leur visionneuse. Toutes les pièces jointes restent listées sous le texte, même lorsqu’une image
 ou un lien les référence dans le contenu, avec leurs actions d’ouverture, de téléchargement
-et de suppression. Retirer leur insertion du texte ne supprime pas le fichier et rend à nouveau
-l’action **Insérer dans le document** disponible. Chaque envoi
+et de suppression. Retirer une insertion du texte ne supprime pas le fichier. Chaque envoi
 affiche sa progression et peut être annulé. Une page HTML complète collée dans l'éditeur
 ou sa source déclenche un choix : joindre la page intacte, récupérer seulement son texte
 enrichi, ou annuler. Les scripts des anciennes versions restent lisibles comme code.

@@ -919,6 +919,14 @@ local inputs and submit validated outputs through the engine. External file refe
 retain the original provider's permissions. Every child owns independent data and file
 links. Scheduler state and recovery receipts remain separate from business variables.
 
+Cite an internal definition as `galaris://processes/<code>` and an execution as
+`galaris://processes/runs/<uuid>`. A normal titled HTML anchor opens its authorized
+Process or Run modal. To display the BPMN diagram in a Document, write
+`<blockquote class="galaris-link-card galaris-process-diagram"><p><a href="URI">Title</a></p></blockquote>`
+with `file_append` or `file_edit` and the revision read beforehand. Preserve the
+canonical URI; never store BPMN or run JSON in a Document to embed its diagram.
+The viewer supplies zoom controls. Run diagrams retain their frozen definition.
+Readers still need independent access to the Process.
 
 Use `process_run_inspect` for the frozen live graph and paginated occurrences,
 `process_run_occurrence` for an occurrence's actual prompt and attempt receipts,

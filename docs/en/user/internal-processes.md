@@ -237,3 +237,24 @@ Documentary programs require their separately qualified
 executor; its absence is reported. See the [native BPMN profile](../dev/native-processes.md).
 
 Each Document, Dataset and process definition retains independent sharing. Changing access to one resource does not change access to another linked resource. Upgrades preserve existing permissions, including team access. See the [sharing mechanism](../dev/sharing.md).
+
+## Cite a Process in a Document
+
+In the Document toolbar, **Insert a link or file** then **Add an internal attachment**
+opens the file_share resource picker. Its tree, compact files and search within the
+current location support multiple selections, including internal definitions and runs.
+Use the checkboxes or Shift to select multiple files; double-click to open a folder.
+The toolbar's **Insert a link or file** command groups web links, internal resources
+and uploads. Selected resources are cited in the text without becoming attachments.
+Below the document, **Upload** adds files only; existing references are not listed there.
+The picker thumbnail represents the Process; a play badge
+distinguishes executions. Opening a definition displays its read-only modal, while
+opening a run displays its tracking modal.
+
+In the editor, the link appearance action switches between a title link and a diagram. Hover over the
+diagram frame, or move keyboard focus into it, to show zoom and fullscreen controls
+at the top right. These controls remain available on touch screens. A run diagram
+uses the definition frozen at launch.
+
+Citing a resource grants no Process access. Each reader needs access independently
+of the Document. Removing its citation from the text leaves the Process and run intact.

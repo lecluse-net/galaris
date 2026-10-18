@@ -27,6 +27,7 @@ import type {
   ManagedDocumentDetail,
   DocumentResourceRedirect,
   DocumentDatasetAttachments,
+  DocumentProcessAttachments,
   MemoryItem,
   MemoryItemCreate,
   MemoryItemDetail,
@@ -54,10 +55,28 @@ function editorialDocument(detail: ManagedDocumentDetail | DocumentResourceRedir
   if ('resource_type' in detail) throw new DatasetDocumentRedirect(detail.resource_uri)
   // Also handle responses/seeds retained by a client during the transition.
   if (detail.item.document_type === 'dataset') throw new DatasetDocumentRedirect(`data://${detail.item.id}`)
+  if (detail.item.document_type !== 'html') throw new Error('This resource is not an HTML Document.')
   return detail
 }
 
+export interface DocumentInternalAttachments {
+  items: { uri: string; name: string; is_collection: boolean; media_type: string; size: number | null; capabilities: string[]; metadata?: Record<string, unknown>; available: boolean }[]
+  lock_version: number
+}
+
 export const memoryService = {
+  async internalAttachments(id: string, agentId: number | null, resourceAgentId: number, signal?: AbortSignal): Promise<DocumentInternalAttachments> {
+    return (await api.get<DocumentInternalAttachments>(`/memory/documents/${id}/internal-attachments`, { params: { agent_id: agentId, resource_agent_id: resourceAgentId }, signal })).data
+  },
+  async changeInternalAttachments(id: string, uris: string[], agentId: number | null, resourceAgentId: number, version: number, remove = false): Promise<DocumentInternalAttachments> {
+    return (await api.put<DocumentInternalAttachments>(`/memory/documents/${id}/internal-attachments`, { uris, remove, resource_agent_id: resourceAgentId, expected_lock_version: version }, { params: { actor_agent_id: agentId } })).data
+  },
+  async documentProcesses(id: string, agentId: number | null, signal?: AbortSignal): Promise<DocumentProcessAttachments> {
+    return (await api.get(`/memory/documents/${id}/process-attachments`, { params: { agent_id: agentId }, signal })).data
+  },
+  async changeDocumentProcess(id: string, uri: string, agentId: number | null, version: number, remove = false): Promise<DocumentProcessAttachments> {
+    return (await api.put(`/memory/documents/${id}/process-attachments`, { uri, expected_lock_version: version, remove }, { params: { actor_agent_id: agentId } })).data
+  },
   async documentDatasets(id: string, agentId: number | null): Promise<DocumentDatasetAttachments> {
     return (await api.get<DocumentDatasetAttachments>(`/memory/documents/${id}/dataset-attachments`, { params: { agent_id: agentId } })).data
   },

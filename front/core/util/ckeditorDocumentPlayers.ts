@@ -1,19 +1,17 @@
-import { GeneralHtmlSupport, type Editor, type ModelElement, type ViewUIElement } from 'ckeditor5'
+import { type Editor, type ModelElement, type ViewUIElement } from 'ckeditor5'
 import { createDocumentPlayer, documentPlayer, type DocumentMediaResolver, type DocumentPlayer, type PdfPreviewSource } from './documentMedia'
 import type { DocumentResource } from './documentResources'
 
 /** Players live in CKEditor UI elements; the saved card keeps its portable thumbnail. */
 export function attachDocumentPlayers(editor: Editor, resolve: DocumentMediaResolver, resources: () => DocumentResource[], translate: (key: string) => string, openPdf: (source: PdfPreviewSource) => void): void {
-  const attribute = editor.plugins.get(GeneralHtmlSupport).getGhsAttributeNameForElement('blockquote')
   const players = new Map<ModelElement, { src: string; kind: string; view: ViewUIElement; dispose: () => void }>()
   editor.ui.on('update', () => {
     const root = editor.model.document.getRoot()
     if (!root) return
     const cards = new Map<ModelElement, DocumentPlayer>()
     for (const node of editor.model.createRangeIn(root).getItems()) {
-      if (!node.is('element', 'blockQuote')) continue
-      const classes = (node.getAttribute(attribute) as { classes?: string[] } | undefined)?.classes ?? []
-      if (!classes.includes('galaris-link-card')) continue
+      if (!node.is('element', 'resourceCard')) continue
+      const classes = node.getAttribute('cardClasses') as string[]
       for (const item of editor.model.createRangeIn(node).getItems()) {
         const href = item.getAttribute('linkHref')
         if (typeof href !== 'string') continue

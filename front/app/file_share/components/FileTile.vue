@@ -1,12 +1,14 @@
 <template>
-  <q-btn ref="tile" flat no-caps :ripple="false" class="file-tile" :aria-label="t('files.openItem', { name: entry.name })" @click="emit('open', entry)">
+  <q-btn ref="tile" :flat="!selectable" :outline="selectable" no-caps :ripple="false" class="file-tile" :class="{ 'file-tile--compact': compact, 'file-tile--selected': selected }" :aria-pressed="selectable ? selected : undefined" :aria-label="t(selectable ? 'files.selectItem' : 'files.openItem', { name: displayName })" @click="emit('open', entry, $event)" @dblclick="emit('activate', entry)">
     <div class="file-tile-content">
+      <q-icon v-if="selectable && !entry.is_collection" class="file-tile-check" :name="selected ? 'check_box' : 'check_box_outline_blank'" color="primary" size="18px" />
       <div class="file-tile-preview">
         <FolderIcon v-if="entry.is_collection" size="88px" tone="orange" />
+        <ResourceThumbnail v-else-if="process || resourceAgent !== null" :uri="entry.uri" :agent-id="selectable ? null : agentId" :title="displayName" />
         <img v-else-if="thumbnail" class="file-tile-image" :src="thumbnail" :alt="entry.name" loading="lazy" />
         <q-icon v-else class="file-tile-image" :name="icon" size="88px" color="primary" />
       </div>
-      <div class="file-tile-name">{{ entry.name }}</div>
+      <div class="file-tile-name">{{ displayName }}</div>
       <div v-if="!entry.is_collection" class="file-tile-meta text-caption">{{ entry.size === null ? entry.media_type : formatFileSize(entry.size, locale) }}</div>
       <q-tooltip>{{ entry.uri }}</q-tooltip>
     </div>
@@ -17,15 +19,19 @@
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { QBtn } from 'quasar'
-import { FolderIcon, browserResourceKind, formatFileSize, queuePreview } from '@/core/util'
+import { FolderIcon, ResourceThumbnail, browserResourceKind, formatFileSize, queuePreview } from '@/core/util'
+import { agentResourceId } from '@/app/agent'
 import { fileBrowserService, type FileEntry } from '../services/fileBrowserService'
 import { resourceTarget } from '../presentation'
 
-const { entry, agentId } = defineProps<{ entry: FileEntry; agentId: number }>()
-const emit = defineEmits<{ open: [entry: FileEntry] }>()
+const { entry, agentId, compact = false, selectable = false, selected = false } = defineProps<{ entry: FileEntry; agentId: number; compact?: boolean; selectable?: boolean; selected?: boolean }>()
+const emit = defineEmits<{ open: [entry: FileEntry, event: Event]; activate: [entry: FileEntry] }>()
 const { t, locale } = useI18n()
 const tile = useTemplateRef<QBtn>('tile')
 const thumbnail = ref('')
+const process = computed(() => ['process', 'process_run'].includes(resourceTarget(entry, agentId)?.kind ?? ''))
+const resourceAgent = computed(() => agentResourceId(entry.uri))
+const displayName = computed(() => (process.value || resourceAgent.value !== null) && typeof entry.metadata?.label === 'string' ? entry.metadata.label : entry.name)
 let request: AbortController | undefined
 let observer: IntersectionObserver | undefined
 const icon = computed(() => {
@@ -35,7 +41,7 @@ const icon = computed(() => {
   return ({ image: 'image', pdf: 'picture_as_pdf', audio: 'audio_file', video: 'movie', html: 'html', model3d: 'view_in_ar', markdown: 'article', text: 'description' })[kind ?? 'text']
 })
 onMounted(() => {
-  if (entry.is_collection || !entry.capabilities.includes('read')) return
+  if (entry.is_collection || resourceAgent.value !== null || !entry.capabilities.includes('read')) return
   const target = resourceTarget(entry, agentId)
   if (target && target.kind !== 'document') return
   if (entry.media_type.startsWith('audio/')) return
@@ -65,4 +71,13 @@ onBeforeUnmount(() => { request?.abort(); observer?.disconnect(); if (thumbnail.
 :global(body.body--dark .file-tile-image) { filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .32)); }
 .file-tile-name { font-weight: 400; overflow-wrap: anywhere; line-height: 1.4; }
 .file-tile-meta { color: var(--solaire-gray-accent); font-weight: 400; }
+.file-tile--compact .file-tile-content { padding: 4px 0; }
+.file-tile--compact .file-tile-preview { height: 64px; margin-bottom: 6px; }
+.file-tile--compact .file-tile-preview :deep(svg), .file-tile--compact .file-tile-preview :deep(img) { max-height: 64px; }
+.file-tile--compact .file-tile-preview :deep(.q-icon) { font-size: 48px !important; }
+.file-tile--compact .file-tile-name { font-size: 12px; }
+.file-tile--compact .file-tile-meta { display: none; }
+.file-tile-check { position: absolute; top: 4px; right: 4px; }
+.file-tile--selected { background: var(--solaire-blue-light); color: var(--solaire-blue-accent); }
+:global(body.body--dark .file-tile--selected) { background: var(--solaire-blue-dark); }
 </style>

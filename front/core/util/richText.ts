@@ -1,6 +1,7 @@
 import DOMPurify from 'dompurify'
 import { editorialClasses, validEditorialStyle } from './editorialHtmlStyle'
 import { hideInteractiveSource, protectInteractiveHtml } from './interactiveHtml'
+import type { ResourceDetailTarget } from './resourceDetail'
 
 export type ContentProfile = 'rich-text' | 'document'
 export const CONTENT_PROFILE_VERSION = 1
@@ -9,11 +10,13 @@ export interface RichContentContribution {
   schemes?: readonly string[]
   search: (query: string) => Promise<RichLinkTarget[]>
   href: (uri: string) => string | null
+  target?: (uri: string, title?: string, agentId?: number | null) => ResourceDetailTarget | null
+  card?: (uri: string, agentId: number | null) => Promise<string>
 }
 interface ContributionModule { default: RichContentContribution }
 const contributions = Object.values(import.meta.glob<ContributionModule>('../../app/*/richContent.ts', { eager: true })).map(value => value.default)
 const uuid = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}'
-const internal = new RegExp(`^(?:(?:document|memory|data)://${uuid}|galaris://(?:goal|task)/${uuid}|galaris://agent/[1-9][0-9]*)$`)
+const internal = new RegExp(`^(?:(?:document|memory|data)://${uuid}|galaris://(?:goal|task)/${uuid}|galaris://agent/[1-9][0-9]*|galaris://process(?:es)?/[A-Za-z_][A-Za-z0-9_.-]{0,254}|galaris://processes/runs/${uuid})$`)
 const attachment = new RegExp(`^document://(${uuid})/attachments/(${uuid})$`)
 export function attachmentReference(uri: string): [string, string] | null {
   const match = attachment.exec(uri)
@@ -32,6 +35,17 @@ export function richLinkHref(uri: string): string | null {
   if (attachment.test(uri)) return contributions.map(value => value.href(uri)).find(Boolean) ?? null
   if (!internal.test(uri)) return uri
   return contributions.map(value => value.href(uri)).find(Boolean) ?? null
+}
+export function richLinkTarget(uri: string, title = '', agentId: number | null = null): ResourceDetailTarget | null {
+  return validRichLink(uri) ? contributions.map(value => value.target?.(uri, title, agentId)).find(Boolean) ?? null : null
+}
+export function richLinkHasCard(uri: string): boolean {
+  return validRichLink(uri) && contributions.some(value => value.target?.(uri) && value.card)
+}
+export async function richLinkCard(uri: string, agentId: number | null): Promise<string> {
+  const contribution = contributions.find(value => value.target?.(uri) && value.card)
+  if (!contribution?.card) throw new Error('Resource card unavailable')
+  return contribution.card(uri, agentId)
 }
 export async function searchRichLinks(query: string, scheme?: string): Promise<RichLinkTarget[]> {
   const sources = contributions.filter(value => !scheme || value.schemes?.includes(scheme))

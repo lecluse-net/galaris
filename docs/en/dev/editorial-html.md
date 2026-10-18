@@ -2,6 +2,20 @@
 
 # Editorial HTML contract
 
+An internal Process citation uses a titled link to `galaris://processes/<code>` or
+`galaris://processes/runs/<uuid>`. To display its diagram in a Document, retain the
+link inside
+`<blockquote class="galaris-link-card galaris-process-diagram"><p><a href="URI">Title</a></p></blockquote>`.
+The canvas, zoom controls and thumbnails are supplied at rendering time, never saved
+in the HTML. Process owns definitions, runs and their access policy. Citations are stored
+in HTML without attachment membership or a copy of the target. The attachment list and
+Document file collection expose uploaded files only. Historical internal manifests
+remain readable through their compatibility APIs.
+An agent card stores `galaris://agent/<id>`, its name and job title inside
+`blockquote.galaris-link-card.galaris-agent-card`. Its avatar loads at rendering time
+with the reader's access rights, without a saved blob or new attachment. Opening a modal
+and providing a card are independent contribution capabilities.
+
 [Decision 0080](../../../project/decisions/0080-editorial-html.md) defines the scope.
 For editorial fields and `html` documents, the authoritative body is a UTF-8 `text/html` fragment with `content_profile_version: 1`.
 The `rich-text` profile covers all six Memory categories, Goal descriptions/tracking,

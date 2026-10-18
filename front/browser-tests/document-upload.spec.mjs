@@ -40,6 +40,7 @@ async function drop(page, files) {
 test('Insert attachment opens a file picker and inserts the uploaded file at the cursor', async ({ page }) => {
   await setup(page)
   const picker = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Insert a link or file', exact: true }).first().click()
   await page.getByRole('button', { name: 'Insert attachment', exact: true }).click()
   await (await picker).setFiles(file('picked.txt'))
   await expect(page.getByRole('dialog')).toHaveCount(0)

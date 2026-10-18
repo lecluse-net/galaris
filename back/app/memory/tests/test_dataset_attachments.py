@@ -21,16 +21,22 @@ async def test_attached_dataset_remains_independent_live_and_does_not_inherit_do
     from app.file_share import ResourceContext, resource_list
     collection = f"document://{document.id}/attachments/"
     listed = await resource_list(ResourceContext(agent_id=owner.id, runtime="internal"), collection)
-    assert [entry.uri for entry in listed.entries] == [f"data://{dataset.id}"]
-    assert "delete" not in listed.entries[0].capabilities
+    assert listed.entries == []
     # An identical retry creates no extra reference and does not need a fresh lock.
     duplicate, same_version = await dataset_attachments.change_reference(document.id, dataset.id, owner.id,
         dataset_actor=owner.id, expected_lock_version=1)
     assert duplicate == refs and same_version == version
+    # Legacy live references remain readable through their API, never as uploaded files.
+    from app.memory.document_attachment_service import add_document_attachment_bytes
+    upload = await add_document_attachment_bytes(document.id, actor_agent_id=owner.id,
+        name="Synthetic notes.txt", media_type="text/plain", content=b"Synthetic uploaded notes")
+    listed = await resource_list(ResourceContext(agent_id=owner.id, runtime="internal"), collection)
+    assert [entry.uri for entry in listed.entries] == [f"{collection}{upload.id}"]
+    assert listed.entries[0].name == "Synthetic notes.txt"
     await service.set_item_grant(document.id, reader.id, MemoryGrantUpdate(can_write=True), actor_agent_id=owner.id)
     hidden, _ = await dataset_attachments.list_references(document.id, reader.id, dataset_actor=reader.id)
     assert hidden[0].title is None and not hidden[0].available
-    assert (await resource_list(ResourceContext(agent_id=reader.id, runtime="internal"), collection)).entries == []
+    assert [entry.uri for entry in (await resource_list(ResourceContext(agent_id=reader.id, runtime="internal"), collection)).entries] == [f"{collection}{upload.id}"]
     with pytest.raises(datasets.DatasetNotFoundError):
         await datasets.record(dataset.id, reader.id)
     await datasets.set_grant(dataset.id, owner.id, kind="agent", principal=reader.id, can_write=False, expected_lock_version=dataset.lock_version)

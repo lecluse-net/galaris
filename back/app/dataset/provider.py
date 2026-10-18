@@ -55,8 +55,8 @@ class DatasetProvider:
         if not uri.locator:
             return ResourceDescriptor(uri="data://", name="Datasets", is_collection=True,
                 media_type="inode/directory", capabilities=["create", "info", "list", "search"])
-        dataset = await service.record(UUID(uri.segments[0]), ctx.agent_id)
-        state = await service.describe(dataset, ctx.agent_id, content=False)
+        dataset = await service.record(UUID(uri.segments[0]), ctx.management_scope or ctx.agent_id)
+        state = await service.describe(dataset, ctx.management_scope or ctx.agent_id, content=False)
         if len(uri.segments) > 1:
             if len(uri.segments) == 2:
                 return ResourceDescriptor(uri=f"data://{dataset.id}/attachments/", name="attachments", is_collection=True,
@@ -75,7 +75,7 @@ class DatasetProvider:
                 "lock_version": dataset.lock_version, "can_manage": state["can_manage"], "can_write": state["can_write"]})
 
     async def _attachment(self, uri: ResourceUri, ctx: ResourceContext) -> DatasetAttachment:
-        await service.record(UUID(uri.segments[0]), ctx.agent_id)
+        await service.record(UUID(uri.segments[0]), ctx.management_scope or ctx.agent_id)
         attachment = await get_db().scalar(select(DatasetAttachment).where(DatasetAttachment.dataset_id == UUID(uri.segments[0]), DatasetAttachment.id == UUID(uri.segments[2])))
         if attachment is None:
             raise service.DatasetNotFoundError("Dataset attachment not found")
@@ -84,9 +84,9 @@ class DatasetProvider:
     async def list(self, ctx: ResourceContext, uri: ResourceUri, **options: Any) -> ResourceListing:
         limit = min(500, max(1, int(options.get("max_entries", 50))))
         cursor = options.get("cursor")
-        query = select(Dataset).where(accessible_clause(ctx.agent_id)).order_by(Dataset.id)
+        query = select(Dataset).where(accessible_clause(ctx.management_scope or ctx.agent_id)).order_by(Dataset.id)
         if uri.locator:
-            await service.record(UUID(uri.segments[0]), ctx.agent_id)
+            await service.record(UUID(uri.segments[0]), ctx.management_scope or ctx.agent_id)
             if len(uri.segments) != 2:
                 raise NotADirectoryError(str(uri))
             statement = select(DatasetAttachment).where(DatasetAttachment.dataset_id == UUID(uri.segments[0]))
@@ -123,7 +123,7 @@ class DatasetProvider:
                     start=start, end=end, total=len(text), next_offset=end if end < len(text) else None)
             return await resource_read(ctx, attachment.uri,
                 offset=options.get("offset", 0), max_chars=options.get("max_chars", 20000))
-        dataset = await service.record(root_id(uri), ctx.agent_id)
+        dataset = await service.record(root_id(uri), ctx.management_scope or ctx.agent_id)
         start, limit = min(len(dataset.content), max(0, int(options.get("offset", 0)))), min(service.MAX_BYTES, max(1, int(options.get("max_chars", 20000))))
         end = min(len(dataset.content), start + limit)
         return ResourceRead(uri=f"data://{dataset.id}", content=dataset.content[start:end], media_type="application/json",
@@ -185,9 +185,9 @@ class DatasetProvider:
             raise NotImplementedError("Datasets currently support name and text search")
         if len(uri.segments) <= 1:
             limit = min(500, max(1, int(options.get("max_results") or 50)))
-            statement = select(Dataset).where(accessible_clause(ctx.agent_id))
+            statement = select(Dataset).where(accessible_clause(ctx.management_scope or ctx.agent_id))
             if uri.locator:
-                await service.record(root_id(uri), ctx.agent_id)
+                await service.record(root_id(uri), ctx.management_scope or ctx.agent_id)
                 statement = statement.where(Dataset.id == root_id(uri))
             condition = Dataset.title.icontains(query, autoescape=True)
             if options.get("mode") == "text":
@@ -205,7 +205,7 @@ class DatasetProvider:
         for entry in page.entries:
             text = entry.name
             if options.get("mode") == "text" and entry.uri.startswith("data://"):
-                text += "\n" + (await service.record(UUID(entry.uri.removeprefix("data://")), ctx.agent_id)).content
+                text += "\n" + (await service.record(UUID(entry.uri.removeprefix("data://")), ctx.management_scope or ctx.agent_id)).content
             if query.casefold() in text.casefold():
                 hits.append(ResourceSearchHit(resource=entry, excerpt=text[:500]))
         return ResourceSearchResult(uri=str(uri), query=query, mode=options.get("mode", "name"), hits=hits,
@@ -226,7 +226,7 @@ class DatasetProvider:
                 await complete_io(destination.write_bytes, content)
                 return MaterializedResource(uri=str(uri), name=attachment.name, media_type=attachment.media_type, size=len(content))
             return await materialize_resource(ctx, attachment.uri, destination, max_bytes=int(options["max_bytes"]))
-        dataset = await service.record(root_id(uri), ctx.agent_id)
+        dataset = await service.record(root_id(uri), ctx.management_scope or ctx.agent_id)
         content = dataset.content.encode("utf-8")
         if len(content) > int(options["max_bytes"]):
             raise ValueError("Dataset exceeds materialization limit")

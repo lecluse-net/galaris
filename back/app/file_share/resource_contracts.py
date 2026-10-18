@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 from uuid import UUID
 
 from pydantic import BaseModel, Field, computed_field
@@ -13,6 +13,9 @@ from app.agent.contracts import RuntimeName
 from app.tools.contracts import FileIndexingMode
 
 from .resource_uri import parse_resource_uri
+
+if TYPE_CHECKING:
+    from app.agent import AgentManagementScope
 
 
 ResourceCapability = Literal[
@@ -54,6 +57,7 @@ class ResourceContext:
     language: str | None = None
     skill_management: bool = False
     conversation_turn: object | None = None
+    management_scope: AgentManagementScope | None = None
 
 
 class ResourceDescriptor(BaseModel):

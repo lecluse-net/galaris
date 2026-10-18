@@ -183,6 +183,16 @@ def test_editorial_references_preserve_distinct_resource_schemes(scheme):
     assert not valid_link(uri + "/other")
 
 
+@pytest.mark.parametrize(("uri", "card_class"), [("galaris://processes/synthetic_process", "galaris-process-diagram"), (f"galaris://processes/runs/{DOCUMENT}", "galaris-process-diagram"), ("galaris://agent/7", "galaris-agent-card")])
+def test_resource_references_keep_the_card_choice_and_validate_the_exact_target(uri, card_class):
+    html = f'<blockquote class="galaris-link-card {card_class}"><p><a href="{uri}">Synthetic resource</a></p></blockquote>'
+    assert valid_link(uri)
+    assert uri in normalize_html(html, profile="document")
+    assert card_class in normalize_html(html, profile="document")
+    for suffix in ["/data", "/attachments/", "?other=1", "#fragment"]:
+        assert not valid_link(uri + suffix)
+
+
 def test_empty_tables_and_separators_are_visible_structures():
     table = "<table><tbody><tr><td><p></p></td></tr></tbody></table>"
     assert normalize_html(table) == table

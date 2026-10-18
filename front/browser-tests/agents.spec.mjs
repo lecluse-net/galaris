@@ -10,6 +10,98 @@ async function agentFixtures(page) {
   await jsonRoute(page, '**/api/harnesses/agents/7', { containerized: true })
 }
 
+for (const width of [1440, 390]) test(`an agent citation switches to an avatar card and survives saving and reading (${width}px)`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  await agentFixtures(page)
+  await jsonRoute(page, '**/api/agents/7', agent)
+  await jsonRoute(page, '**/api/harnesses/agents/7/status', { status: 'stopped', managed: false, containerized: false, capabilities: [], available_actions: [] })
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII=', 'base64')
+  await page.route('**/api/agents/7/avatar?*', route => route.fulfill({ contentType: 'image/png', body: png }))
+  await mount(page, 'core/util/components/RichTextEditor.vue')
+  await page.evaluate(async () => {
+    const { richLinkCard } = await import('/core/util/richText.ts')
+    await window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
+      profile: 'document', modelValue: '<p><a href="galaris://agent/7">Alice Example</a></p>',
+      createLinkCard: uri => richLinkCard(uri, null),
+    } })
+  })
+  const editor = page.locator('.ck-editor__editable')
+  await editor.getByRole('link', { name: 'Alice Example', exact: true }).click()
+  await page.getByRole('button', { name: 'Show card', exact: true }).click()
+  const card = editor.locator('.galaris-agent-card')
+  await expect(card).toContainText(agent.job_title)
+  await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
+  await card.screenshot({ path: testInfo.outputPath('agent-citation-card.png') })
+  await card.locator('p a').click()
+  await page.getByRole('button', { name: 'Show URL', exact: true }).click()
+  await expect(card).toHaveCount(0)
+  await editor.getByRole('link', { name: 'Alice Example', exact: true }).click()
+  await page.getByRole('button', { name: 'Show card', exact: true }).click()
+  await expect(card).toHaveCount(1)
+  const source = await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1).value)
+  expect(source).toContain('galaris-agent-card'); expect(source).toContain('galaris://agent/7')
+  expect(source).not.toContain('blob:'); expect(source).not.toContain('galaris-resource-embed')
+  await mount(page, 'core/util/components/RichText.vue', { props: { content: source, profile: 'document' }, privileges: ['AGENT_ACCESS'] })
+  await expect(page.locator('.galaris-agent-card img')).toHaveJSProperty('naturalWidth', 1)
+  await page.locator('.agent-citation-avatar').click()
+  await expect(page.getByRole('dialog').locator('.agent-card')).toContainText('Alice Example')
+  await page.keyboard.press('Escape')
+  await page.locator('.galaris-agent-card p a').click()
+  await expect(page.getByRole('dialog').locator('.agent-card')).toBeVisible()
+})
+
+for (const source of ['file', 'citation']) for (const width of [1440, 390]) test(`an agent ${source} opens its card and keeps its management actions in the modal (${width}px)`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  await agentFixtures(page)
+  await jsonRoute(page, '**/api/agents/managers', [agent.user])
+  await jsonRoute(page, '**/api/harnesses/catalog?*', [])
+  await page.route('**/api/agents/7/avatar?*', route => route.fulfill({ status: 404 }))
+  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'galaris', label: 'Galaris', capabilities: ['list', 'read', 'info'], native: true }])
+  const file = { uri: 'galaris://agent/7', name: '7.json', metadata: { label: 'Alice Example' }, is_collection: false, media_type: 'application/json', size: null, capabilities: ['read', 'info'] }
+  let deleted = false, denied = true, reads = 0
+  await page.route('**/api/memory/documents/doc-a/internal-attachments?*', route => route.fulfill({ json: { items: deleted ? [] : [{ ...file, available: true }], lock_version: 1 } }))
+  await page.route('**/api/agents/7', route => {
+    if (route.request().method() === 'DELETE') { deleted = true; return route.fulfill({ status: 204 }) }
+    reads++
+    return route.fulfill(denied ? { status: 403, json: { detail: 'Synthetic denied agent' } } : { json: { ...agent, agent_driver: 'hermes' } })
+  })
+  await page.route('**/api/file-share/browser/entries?*', route => route.fulfill({ json: { entries: deleted ? [] : [file], truncated: false, next_cursor: null } }))
+  await jsonRoute(page, '**/api/harnesses/agents/7/status', { status: 'running', managed: true, lifecycle_status: 'ready', capabilities: ['restart', 'stop'], available_actions: ['restart', 'stop'], last_error: null })
+  let restarts = 0
+  await page.route('**/api/harnesses/agents/7/actions/restart', route => { restarts++; return route.fulfill({ json: { status: 'queued', output: '' } }) })
+  if (source === 'file') {
+    await mount(page, 'app/file_share/components/AgentFileBrowser.vue', { props: { agentId: 7 }, privileges: ['AGENT_EDIT'] })
+    if (width < 1024) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
+    await page.getByText('Galaris', { exact: true }).click()
+  } else await mount(page, 'core/util/components/RichText.vue', { props: { content: '<p><a href="galaris://agent/7">Alice Example</a></p>', profile: 'document' }, privileges: ['AGENT_EDIT'] })
+  const open = () => source === 'file' ? page.getByRole('button', { name: 'Open Alice Example', exact: true }).click() : page.getByRole('link', { name: 'Alice Example', exact: true }).click()
+  await open()
+  await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible()
+  denied = false
+  await page.getByRole('dialog').getByRole('button', { name: 'Retry', exact: true }).click()
+  const card = page.getByRole('dialog').locator('.agent-card')
+  await expect(card).toHaveCount(1)
+  await expect(card.getByText('Alice Example', { exact: true })).toBeVisible()
+  await expect(card.getByText('An agent for testing', { exact: true })).toBeVisible()
+  await card.getByRole('button', { name: 'Restart', exact: true }).click()
+  await expect.poll(() => restarts).toBe(1)
+  await card.getByRole('button', { name: 'Edit agent', exact: true }).click()
+  const edit = page.getByRole('dialog').last()
+  await expect(edit.getByLabel('First name *', { exact: true })).toHaveValue('Alice')
+  await edit.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(1)
+  await page.getByRole('dialog').screenshot({ path: testInfo.outputPath('agent-preview.png') })
+  if (width < 1024) await page.keyboard.press('Escape')
+  else await page.locator('.q-dialog__backdrop').last().click({ position: { x: 5, y: 5 } })
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await open()
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete agent', exact: true }).click()
+  await page.getByRole('dialog').last().getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(deleted).toBe(true)
+  expect(reads).toBe(3)
+})
+
 for (const width of [390, 1440]) {
   test(`avatar generation recovers from errors and keeps late results with their agent (${width}px)`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })

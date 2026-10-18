@@ -6,7 +6,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
-test('type-check and build reject errors in application, bridges and Vite configuration', async () => {
+test('type-check and build reject errors in application, bridges, composition and Vite configuration', async () => {
   const source = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
   const directory = await mkdtemp(path.join(tmpdir(), 'galaris-typecheck-'))
   try {
@@ -25,6 +25,12 @@ test('type-check and build reject errors in application, bridges and Vite config
       }
       await rm(probe)
     }
+    const composition = path.join(directory, 'typecheck_canary.vue')
+    await writeFile(composition, '<script setup lang="ts">const typecheckCanary: number = "must fail"</script><template>{{ typecheckCanary }}</template>')
+    const compositionResult = spawnSync('npm', ['run', 'type-check'], { cwd: directory, encoding: 'utf8', timeout: 60_000 })
+    assert.equal(compositionResult.status, 2, compositionResult.stdout + compositionResult.stderr)
+    assert.match(compositionResult.stdout, /typecheck_canary\.vue.*TS2322/)
+    await rm(composition)
     await writeFile(path.join(directory, 'vite.config.ts'), 'export const typecheckCanary: number = "must fail"\n', { flag: 'a' })
     const result = spawnSync('npm', ['run', 'type-check'], { cwd: directory, encoding: 'utf8', timeout: 60_000 })
     assert.equal(result.status, 2, result.stdout + result.stderr)

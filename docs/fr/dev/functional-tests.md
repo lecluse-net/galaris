@@ -2,6 +2,28 @@
 
 # Catalogue des garanties fonctionnelles
 
+`app/memory/tests/test_process_references.py` protège les références Process et Run :
+droits indépendants et révocation, manifeste borné, concurrence et diagrammes de runs
+figés. Les scénarios `process-references.spec.mjs` couvrent miniatures, modales,
+choix lien/diagramme, zoom et sauvegarde HTML sans UI injectée.
+`e2e/specs/process-document-references.spec.mjs` exerce le parcours avec les vraies API.
+`internal-file-picker.spec.mjs` couvre la sélection multiple à travers les dossiers et
+les recherches, sur mobile et bureau. `dataset-documents.spec.mjs` vérifie l'insertion
+de citations sans écriture de manifeste ni copie des fichiers existants, avec conservation
+de la sélection mise en forme. `file-browser.spec.mjs` couvre leur ouverture par URI,
+le refus d'accès et la reprise. La collection de PJ exclut les anciens manifestes internes ;
+les tests de références backend conservent leurs garanties de droits, concurrence et rejeu.
+Les anciens scénarios d'ajout/détachement dans la liste de PJ sont remplacés par ce contrat.
+Les menus fusionnés conservent les liens web, la sélection de texte et l'upload dans
+`galaris-links.spec.mjs`, `mobile-editor-toolbar.spec.mjs` et `document-upload.spec.mjs`.
+`agents.spec.mjs` couvre la carte insérée, son avatar, le choix lien/carte, la sauvegarde
+sans UI injectée et l'ouverture de la carte complète. `galaris-links.spec.mjs` vérifie que
+les tâches s'ouvrent et se rouvrent en modale sans navigation, en lecture et en édition.
+`goals.spec.mjs` vérifie la même garantie pour les objectifs, avec leurs actions et sans
+modifier la sélection d'un objectif déjà ouverte ailleurs.
+`document-resources.spec.mjs` couvre l'insertion répétée et le glisser-déposer de PJ
+existantes sans nouvel envoi ; l'ancienne contrainte masquant l'insertion est supprimée.
+
 `app/share/tests` vérifie l’exclusivité des configurations, l’isolation entre ressources et propriétaires, les droits de lecture/écriture et l’interdiction de repartager comme simple éditeur. La migration PostgreSQL couvre Documents, Dataset et Process, les trois types de destinataires, les accès généraux et de groupes, les suppressions logiques, le rejeu après révocation et le rollback d’une copie interrompue. Les scénarios de partage frontend communs incluent aussi Dataset.
 
 

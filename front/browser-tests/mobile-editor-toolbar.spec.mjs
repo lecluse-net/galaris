@@ -35,7 +35,8 @@ for (const profile of ['document', 'rich-text']) {
     await expect(editor.locator('blockquote')).toContainText('Keep this text on mobile')
     if (profile === 'document') {
       const picker = page.waitForEvent('filechooser')
-      await command(page, 'Insert attachment')
+      await command(page, 'Insert a link or file')
+      await page.getByRole('button', { name: 'Insert attachment', exact: true }).click()
       await (await picker).setFiles([])
       await expect(page.getByRole('dialog')).toHaveCount(0)
     }
@@ -47,7 +48,8 @@ for (const profile of ['document', 'rich-text']) {
     await page.setViewportSize({ width: 1023, height: 900 })
     await expect(editor).toContainText('Keep this text on mobile')
     await expect(editor.locator('strong')).toContainText('desktop')
-    await command(page, 'Galaris link')
+    await command(page, 'Insert a link or file')
+    await page.getByRole('button', { name: 'Add an internal attachment', exact: true }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
     await expect(editor).toContainText('Keep this text on mobile')

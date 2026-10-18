@@ -1,6 +1,7 @@
 <template>
-  <ConversationTurnDialog :model-value="true" :title="target.title" :icon="icons[target.kind] || 'info'"
-    :close-label="t('common.close')" @update:model-value="!$event && emit('close')">
+  <GoalPreview v-if="target.kind === 'goal'" :key="target.id" :preview-goal-id="target.id" @close="emit('close')" />
+  <ConversationTurnDialog v-else :model-value="true" :title="resolvedTitle || target.title" :icon="icons[target.kind] || 'info'"
+    :width="target.kind === 'agent' ? '700px' : undefined" :close-label="t('common.close')" @update:model-value="!$event && emit('close')">
     <div v-if="loading" class="flex flex-center q-pa-xl"><q-spinner color="primary" size="42px" /></div>
     <q-banner v-else-if="error" class="q-ma-md">
       {{ error }}
@@ -8,7 +9,9 @@
     </q-banner>
     <TaskDetail v-else-if="target.kind === 'task'" :task-id="taskId"
       @task-change="taskId = $event" @refresh="emit('changed')" @delete="taskToDelete = $event" />
-    <NativeRunPanel v-else-if="target.kind === 'process_run'" :key="target.id" :run-id="target.id" embedded />
+    <AgentPreview v-else-if="target.kind === 'agent'" :key="target.id" :agent-id="Number(target.id)" @loaded="resolvedTitle = $event" @deleted="changedAndClose" />
+    <NativeRunPanel v-else-if="target.kind === 'process_run'" :key="target.id + ':' + target.agentId" :run-id="target.id" :agent-id="target.agentId" embedded @loaded="resolvedTitle = $event.label || ''" />
+    <ProcessPreview v-else-if="target.kind === 'process'" :key="target.id" :uri="`galaris://processes/${target.id}`" :agent-id="target.agentId" @loaded="resolvedTitle = $event.title" />
     <DatasetEditor v-else-if="target.kind === 'dataset'" :key="target.id" :id="target.id" @updated="emit('changed')" @deleted="changedAndClose" />
     <ConversationRoundDetailView v-else-if="round && message" :message="message" :round="round"
       :calls="calls" :loading="false" error="" :calls-loading="callsLoading" :calls-error="callsError"
@@ -42,7 +45,7 @@
 
 <script lang="ts">
 export async function preload(kind: string): Promise<void> {
-  if (kind === 'process_run') await import('@/app/process')
+  if (kind === 'process_run' || kind === 'process') await import('@/app/process')
 }
 </script>
 
@@ -58,7 +61,10 @@ import type { MemoryItemDetail } from '@/app/memory'
 import type { LLMCall } from '@/app/llm'
 
 const TaskDetail = defineAsyncView(async () => (await import('@/app/task')).TaskDetail)
+const AgentPreview = defineAsyncView(async () => (await import('@/app/agent')).AgentPreview)
+const GoalPreview = defineAsyncView(async () => (await import('@/app/goal')).GoalPreview)
 const NativeRunPanel = defineAsyncView(async () => (await import('@/app/process')).NativeRunPanel)
+const ProcessPreview = defineAsyncView(async () => (await import('@/app/process')).ProcessPreview)
 const DatasetEditor = defineAsyncView(async () => (await import('@/app/dataset')).DatasetEditor)
 const DocumentEditor = defineAsyncView(async () => (await import('@/app/memory')).DocumentEditor)
 const ConversationRoundDetailView = defineAsyncView(async () => (await import('@/app/conversation')).ConversationRoundDetailView)
@@ -67,8 +73,9 @@ const RoomDiscussion = defineAsyncView(async () => (await import('@/app/chat/int
 const props = defineProps<{ target: ResourceDetailTarget }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
 const { t } = useI18n()
-const icons: Record<string, string> = { task: 'task_alt', process_run: 'account_tree', dataset: 'data_object', round: 'forum', voice: 'record_voice_over', room: 'hub', document: 'description', memory: 'memory' }
+const icons: Record<string, string> = { agent: 'person', task: 'task_alt', process_run: 'account_tree', dataset: 'data_object', round: 'forum', voice: 'record_voice_over', room: 'hub', document: 'description', memory: 'memory' }
 const retry = ref(0)
+const resolvedTitle = ref('')
 const taskId = ref<string | null>(null)
 const taskToDelete = ref<TaskFull | null>(null)
 const deleting = ref(false)
@@ -114,6 +121,7 @@ watch([() => props.target, retry], async ([target], _, onCleanup) => {
   let active = true
   onCleanup(() => { active = false; generation++ })
   error.value = ''
+  resolvedTitle.value = ''
   callsError.value = ''
   calls.value = []
   callsLoading.value = false
@@ -124,7 +132,7 @@ watch([() => props.target, retry], async ([target], _, onCleanup) => {
   memory.value = null
   room.value = null
   taskId.value = target.id
-  loading.value = !['task', 'document', 'process_run', 'dataset'].includes(target.kind)
+  loading.value = !['agent', 'goal', 'task', 'document', 'process', 'process_run', 'dataset'].includes(target.kind)
   try {
     if (target.kind === 'round') {
       const { conversationService } = await import('@/app/conversation')

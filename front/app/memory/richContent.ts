@@ -11,7 +11,7 @@ export default {
       if (result.status !== 'fulfilled') continue
       const page: MemorySearchPage = result.value
       for (const { item } of page.hits) {
-        if (item.document_type === 'dataset') continue
+        if (item.node_kind === 'document' && item.document_type !== 'html') continue
         found.set(item.id, { uri: `${item.node_kind === 'document' ? 'document' : 'memory'}://${item.id}`, title: item.title, context: `${item.owner_agent_id ?? item.owner_user_id ?? ''}` })
       }
     }
@@ -28,5 +28,9 @@ export default {
     const match = /^(document|memory):\/\/([0-9a-f-]{36})$/.exec(uri)
     if (match) return match[1] === 'document' ? `/documents?document_id=${match[2]}` : `/memory?item_id=${match[2]}`
     return null
+  },
+  target(uri, title = '', agentId = null) {
+    const match = /^(document|memory):\/\/([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/.exec(uri)
+    return match ? { kind: match[1]!, id: match[2]!, title, agentId } : null
   },
 } satisfies RichContentContribution

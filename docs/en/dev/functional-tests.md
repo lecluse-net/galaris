@@ -2,6 +2,28 @@
 
 # Functional guarantees catalogue
 
+`app/memory/tests/test_process_references.py` covers Process and Run references:
+independent access and revocation, bounded membership, concurrency and frozen run
+diagrams. `process-references.spec.mjs` covers thumbnails, modals, link/diagram
+choices, zoom and HTML round trips without injected UI.
+`e2e/specs/process-document-references.spec.mjs` exercises the real API journey.
+`internal-file-picker.spec.mjs` covers multiple selection across folders and searches
+on mobile and desktop. `dataset-documents.spec.mjs` checks citation insertion without
+membership writes or copies of existing files, preserving the formatted selection.
+`file-browser.spec.mjs` covers opening by URI, denied access and retry. The attachment
+collection excludes historical internal manifests; backend reference tests retain their
+access, concurrency and replay guarantees. Former list attachment/detachment scenarios
+are replaced by this contract. The merged menus
+preserve web links, text selection and uploads in `galaris-links.spec.mjs`,
+`mobile-editor-toolbar.spec.mjs` and `document-upload.spec.mjs`.
+`agents.spec.mjs` covers inserted cards, avatars, link/card switching, saving without
+injected UI and opening the complete agent card. `galaris-links.spec.mjs` checks that
+Task citations open and reopen in a modal without navigation in reading and editing modes.
+`goals.spec.mjs` checks the same guarantee for Goals, preserving their actions and another
+Goal selection already open elsewhere.
+`document-resources.spec.mjs` covers repeated insertion and drag and drop of existing
+attachments without another upload; the former insertion-hiding constraint is removed.
+
 `app/share/tests` verifies exclusive configurations, isolation between resources and owners, read/write access and denial of resharing by ordinary editors. PostgreSQL migration tests cover Documents, Dataset and Process, all three principal types, global and team access, tombstones, replay after revocation and rollback of interrupted copies. Common frontend sharing scenarios also include Dataset.
 
 

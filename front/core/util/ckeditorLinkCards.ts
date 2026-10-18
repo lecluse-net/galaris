@@ -1,5 +1,5 @@
-import { ButtonView, ContextualBalloon, GeneralHtmlSupport, IconBoxWithMarker, IconLink, ModelLiveRange, ToolbarView, findAttributeRange, type Editor, type ModelElement, type ModelRange } from 'ckeditor5'
-import { sanitizeRichHtml, validRichLink } from './richText'
+import { ButtonView, ContextualBalloon, IconBoxWithMarker, IconLink, ModelLiveRange, ToolbarView, findAttributeRange, type Editor, type ModelElement, type ModelRange } from 'ckeditor5'
+import { sanitizeRichHtml, validRichLink, richLinkTarget, richLinkHasCard } from './richText'
 
 interface LinkTarget { url: string; range: ModelRange; card?: ModelElement }
 
@@ -8,24 +8,24 @@ export function attachLinkCards(editor: Editor, createCard: (url: string) => Pro
   const balloon = editor.plugins.get(ContextualBalloon)
   const buttons = new Set<ButtonView>()
   const savedCards = new Map<string, string>()
-  const cardAttribute = editor.plugins.get(GeneralHtmlSupport).getGhsAttributeNameForElement('blockquote')
   let busy = false, destroyed = false
   const target = (): LinkTarget | undefined => {
     const selection = editor.model.document.selection
     const position = selection.getFirstPosition()
     if (!position) return
-    const card = position.getAncestors().find(node => node.is('element', 'blockQuote')
-      && (node.getAttribute(cardAttribute) as { classes?: string[] } | undefined)?.classes?.includes('galaris-link-card'))
+    const selected = selection.getSelectedElement()
+    const card = selected?.is('element', 'resourceCard') ? selected
+      : position.getAncestors().find(node => node.is('element', 'resourceCard'))
     if (card?.is('element')) {
       for (const node of editor.model.createRangeIn(card).getItems()) {
         const href = node.getAttribute('linkHref')
-        if (typeof href === 'string' && /^https?:\/\//i.test(href) && validRichLink(href)) {
+        if (typeof href === 'string' && (/^https?:\/\//i.test(href) || richLinkHasCard(href)) && validRichLink(href)) {
           return { url: href, range: editor.model.createRangeOn(card), card }
         }
       }
     }
     const href = selection.getSelectedElement()?.getAttribute('linkHref') ?? selection.getAttribute('linkHref')
-    if (typeof href === 'string' && /^https:\/\//i.test(href) && validRichLink(href)) {
+    if (typeof href === 'string' && (/^https:\/\//i.test(href) || richLinkHasCard(href)) && validRichLink(href)) {
       return { url: href, range: findAttributeRange(position, 'linkHref', href, editor.model) }
     }
   }
@@ -50,8 +50,9 @@ export function attachLinkCards(editor: Editor, createCard: (url: string) => Pro
       if (selected.card) {
         // Preserve the existing thumbnail and authored text across appearance
         // changes, instead of fetching the page and duplicating its attachment.
-        if (original.includes('<img ')) savedCards.set(selected.url, original)
-        const link = document.createElement('a'); link.href = selected.url; link.textContent = selected.url
+        if (original.includes('<img ') || richLinkTarget(selected.url)) savedCards.set(selected.url, original)
+        const link = document.createElement('a'); link.href = selected.url
+        link.textContent = richLinkTarget(selected.url) ? new DOMParser().parseFromString(original, 'text/html').querySelector('a')?.textContent ?? selected.url : selected.url
         html = '<p>' + link.outerHTML + '</p>'
       } else html = savedCards.get(selected.url) ?? await createCard(selected.url)
       if (destroyed || editor.isReadOnly || live.root.rootName === '$graveyard' || live.isCollapsed || content() !== original) return

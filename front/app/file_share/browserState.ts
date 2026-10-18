@@ -10,7 +10,7 @@ export interface DirectoryState {
   incomplete: boolean
   version: number
 }
-export function useFileDirectories(agentId: number) {
+export function useFileDirectories(agentId: number, management = false) {
   const directories = reactive(new Map<string, DirectoryState>())
   const requests = new Map<string, AbortController>()
   function directory(uri: string): DirectoryState {
@@ -27,7 +27,7 @@ export function useFileDirectories(agentId: number) {
     state.loading = true
     state.error = false
     try {
-      const result = await fileBrowserService.list(agentId, uri, more ? state.cursor : null, request.signal)
+      const result = await fileBrowserService.list(agentId, uri, more ? state.cursor : null, request.signal, management)
       if (request.signal.aborted) return
       const entries = new Map((more ? state.entries : []).map(entry => [entry.uri, entry]))
       for (const entry of result.entries) entries.set(entry.uri, entry)

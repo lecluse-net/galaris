@@ -33,7 +33,7 @@ export default {
     richEditor: {
       shortcuts: { paragraph: 'Texte normal', inlineCode: 'Code en ligne', indent: 'Augmenter le retrait', outdent: 'Réduire le retrait' },
       resources: {
-        documentAttachments: 'Pièces jointes', insertAttachment: 'Insérer dans le document',
+        insert: 'Insérer un lien ou un fichier', documentAttachments: 'Pièces jointes', insertAttachment: 'Insérer dans le document',
         asUrl: 'Afficher l’URL', asCard: 'Afficher une carte',
         cardUnavailable: 'Aperçu indisponible pour ce lien.',
         retryMedia: 'Chargement du média impossible. Réessayer',
@@ -52,7 +52,7 @@ export default {
       embeddedApplication: "Application intégrée",
 contentType: "Type de contenu",
 unavailable: "Ce contenu est indisponible.",
-targetTypes: {"all":"Tous","document":"Document","memory":"Mémoire","goal":"Objectif durable","task":"Tâche","agent":"Agent"},
+targetTypes: {"all":"Tous","document":"Document","memory":"Mémoire","goal":"Objectif durable","task":"Tâche","agent":"Agent","process":"Processus"},
       exactSource: "Source exacte", preview: "Aperçu riche",
       copyImageReference: "Référence de la pièce jointe source", copyImage: "Copier cette image dans ce document",
       conflict: "Ce document a changé ailleurs. Votre brouillon est conservé. Choisissez la version à enregistrer.", keepDraft: "Enregistrer mon brouillon sur la dernière version", useRemote: "Utiliser la dernière version",
@@ -223,7 +223,7 @@ targetTypes: {"all":"Tous","document":"Document","memory":"Mémoire","goal":"Obj
     richEditor: {
       shortcuts: { paragraph: 'Normal text', inlineCode: 'Inline code', indent: 'Increase indent', outdent: 'Decrease indent' },
       resources: {
-        documentAttachments: 'Attachments', insertAttachment: 'Insert into document',
+        insert: 'Insert a link or file', documentAttachments: 'Attachments', insertAttachment: 'Insert into document',
         asUrl: 'Show URL', asCard: 'Show card',
         cardUnavailable: 'Preview unavailable for this link.',
         retryMedia: 'Could not load the media. Retry',
@@ -242,7 +242,7 @@ targetTypes: {"all":"Tous","document":"Document","memory":"Mémoire","goal":"Obj
       embeddedApplication: "Embedded application",
 contentType: "Content type",
 unavailable: "This content is unavailable.",
-targetTypes: {"all":"All","document":"Document","memory":"Memory","goal":"Goal","task":"Task","agent":"Agent"},
+targetTypes: {"all":"All","document":"Document","memory":"Memory","goal":"Goal","task":"Task","agent":"Agent","process":"Process"},
       exactSource: "Exact source", preview: "Rich preview",
       copyImageReference: "Source attachment reference", copyImage: "Copy this image into this document",
       conflict: "This document changed elsewhere. Your draft is preserved. Choose which version to save.", keepDraft: "Save my draft over the latest version", useRemote: "Use the latest version",
@@ -413,7 +413,7 @@ targetTypes: {"all":"All","document":"Document","memory":"Memory","goal":"Goal",
     richEditor: {
       shortcuts: { paragraph: '正文', inlineCode: '行内代码', indent: '增加缩进', outdent: '减少缩进' },
       resources: {
-        documentAttachments: '附件', insertAttachment: '插入文档',
+        insert: '插入链接或文件', documentAttachments: '附件', insertAttachment: '插入文档',
         asUrl: '显示网址', asCard: '显示卡片',
         cardUnavailable: '此链接无法预览。',
         retryMedia: '无法加载媒体。重试',
@@ -432,7 +432,7 @@ targetTypes: {"all":"All","document":"Document","memory":"Memory","goal":"Goal",
       embeddedApplication: "嵌入式应用",
 contentType: "内容类型",
 unavailable: "此内容不可用。",
-targetTypes: {"all":"全部","document":"文档","memory":"记忆","goal":"目标","task":"任务","agent":"智能体"},
+targetTypes: {"all":"全部","document":"文档","memory":"记忆","goal":"目标","task":"任务","agent":"智能体","process":"流程"},
       "exactSource": "原始内容",
       "preview": "富文本预览",
       "copyImageReference": "来源附件引用",

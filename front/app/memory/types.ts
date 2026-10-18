@@ -228,6 +228,10 @@ export interface DocumentDatasetAttachment {
   title: string | null
   available: boolean
 }
+export interface DocumentProcessAttachments {
+  items: { uri: string; title: string | null; kind?: 'process' | 'process_run'; available: boolean }[]
+  lock_version: number
+}
 
 export interface DocumentDatasetAttachments {
   items: DocumentDatasetAttachment[]

@@ -39,7 +39,8 @@ function reconcileGoalList(current: Goal[], incoming: Goal[]): Goal[] {
   })
 }
 
-export const useGoalStore = defineStore('goal', () => {
+/** Shared behavior with isolated state for a modal opened from another resource. */
+export function createGoalState() {
   const goals = ref<Goal[]>([])
   const currentGoal = ref<GoalDetail | null>(null)
   const treeGoals = ref<GoalTreeNode[]>([])
@@ -372,4 +373,6 @@ export const useGoalStore = defineStore('goal', () => {
     subscribe,
     unsubscribe,
   }
-})
+}
+
+export const useGoalStore = defineStore('goal', createGoalState)

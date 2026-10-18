@@ -1,7 +1,8 @@
 <template>
-  <ResourceAttachments ref="list" :resource-id="documentId" :agent-id="agentId" :attachments="attachments"
+  <ResourceAttachments ref="list" :resource-id="documentId" :agent-id="agentId" :attachments="files"
     :editable="editable" :loading="loading" :content="content" :allow-insertion="allowInsertion"
     :preview-only="previewOnly" :show-heading="showHeading" :resource-source="source"
+    :drag-html="resourceSource ? undefined : attachmentHtml"
     :heading="t(resourceSource ? 'memory.fileLocations' : 'documents.attachments')"
     :empty-label="t(resourceSource ? 'memory.noFileLocations' : 'documents.noAttachments')"
     @insert="emit('insert', $event)" @added="emit('added', $event)" @removed="emit('removed', $event)" />
@@ -10,7 +11,7 @@
 <script setup lang="ts">
 import { computed, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ResourceAttachments, type AttachmentSource } from '@/core/util'
+import { ResourceAttachments, documentResourceHtml, type AttachmentSource } from '@/core/util'
 import { memoryService } from '../services/memoryService'
 import type { DocumentAttachment } from '../types'
 
@@ -32,6 +33,10 @@ const emit = defineEmits<{
   removed: [attachmentId: string]
 }>()
 const { t } = useI18n()
+const files = computed(() => props.resourceSource ? props.attachments : props.attachments.map(attachment => ({ ...attachment, uri: `file://${attachment.id}` })))
+function attachmentHtml(attachment: DocumentAttachment): string {
+  return documentResourceHtml({ uri: `document://${props.documentId}/attachments/${attachment.id}`, name: attachment.name, size: attachment.size_bytes, mediaType: attachment.media_type })
+}
 const list = useTemplateRef<{ openById: (id: string) => Promise<void> }>('list')
 const source = computed<AttachmentSource<DocumentAttachment>>(() => {
   const id = props.documentId, agent = props.agentId

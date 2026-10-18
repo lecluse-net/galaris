@@ -1,4 +1,6 @@
 export { default as AgentAvatar } from './components/AgentAvatar.vue'
+export { default as AgentPreview } from './components/AgentPreview.vue'
+export { agentResourceId } from './resourceUri'
 export { default as AgentSelect } from './components/AgentSelect.vue'
 export { useAgentStore } from './stores/agentStore'
 export { useAgentSelectionStore } from './stores/agentSelectionStore'

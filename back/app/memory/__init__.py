@@ -115,8 +115,10 @@ from .file_facade import (
     search_file_resources,
     write_document_resource_text,
 )
+from .internal_attachments import register_internal_attachment_reader
 
 __all__ = [
+    "register_internal_attachment_reader",
     "AppConsentRequired", "AppWriteLimitError",
     "dataset_budget_reserved",
     "legacy_dataset_access",

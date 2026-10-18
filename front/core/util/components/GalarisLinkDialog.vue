@@ -72,9 +72,9 @@ const open = defineModel<boolean>({ default: false })
 const { initialLabel = '' } = defineProps<{ initialLabel?: string }>()
 const emit = defineEmits<{ insert: [uri: string, label: string]; hide: [] }>()
 const { t } = useI18n()
-const kinds = ['all', 'document', 'memory', 'goal', 'task', 'agent'] as const
+const kinds = ['all', 'document', 'memory', 'goal', 'task', 'agent', 'process'] as const
 type TargetKind = Exclude<typeof kinds[number], 'all'>
-const icons: Record<TargetKind, string> = { document: 'description', memory: 'psychology', goal: 'flag', task: 'task_alt', agent: 'smart_toy' }
+const icons: Record<TargetKind, string> = { document: 'description', memory: 'psychology', goal: 'flag', task: 'task_alt', agent: 'smart_toy', process: 'account_tree' }
 const query = ref<string | null>(''), filter = ref<typeof kinds[number]>('all')
 const targets = ref<RichLinkTarget[]>([]), selected = ref<RichLinkTarget>()
 const label = ref(''), labelEdited = ref(false), searching = ref(false), error = ref(false)
@@ -83,6 +83,7 @@ const results = computed(() => targets.value.filter(target => filter.value === '
 let generation = 0, timer: ReturnType<typeof setTimeout> | undefined
 
 function targetKind(uri: string): TargetKind {
+  if (uri.startsWith('galaris://process')) return 'process'
   if (uri.startsWith('document://')) return 'document'
   if (uri.startsWith('memory://')) return 'memory'
   return uri.split('/')[2] as TargetKind

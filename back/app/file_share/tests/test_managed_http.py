@@ -25,7 +25,7 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
     assert created.status_code == 201, created.text
     human_id = created.json()["id"]
     async with get_db_session() as db:
-        permissions = list(await db.scalars(select(Privilege).where(Privilege.code.in_(["MEMORY_ACCESS", "MEMORY_EDIT"]))))
+        permissions = list(await db.scalars(select(Privilege).where(Privilege.code.in_(["MEMORY_ACCESS", "MEMORY_EDIT", "DATASET_EDIT"]))))
         role = Role(code=f"file-owner-{uuid4()}", display_name="Synthetic file owner", privileges=permissions)
         title = Title(label="Synthetic files", gender="X")
         db.add_all([role, title])
@@ -87,6 +87,35 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
     assert second_page.status_code == 200 and not second_page.json()["truncated"]
     assert {first_page.json()["entries"][0]["uri"], second_page.json()["entries"][0]["uri"]} == {uri, second.json()["uri"]}
     assert (await client.get(f"{browser}/entries", params={"agent_id": other_id, "uri": "file://"}, headers=admin)).json()["entries"] == []
+    search = await client.get(f"{browser}/search", params={"agent_id": owner_id, "uri": "file://", "query": "Official"}, headers=human)
+    assert search.status_code == 200, search.text
+    assert {hit["resource"]["uri"] for hit in search.json()["hits"]} == {uri, second.json()["uri"]}
+    assert (await client.get(f"{browser}/search", params={"agent_id": other_id, "uri": "file://", "query": "Official"}, headers=human)).status_code == 404
+    document = await client.post("/api/memory/documents", headers=human, json={"owner_kind": "agent", "owner_id": owner_id,
+        "actor_agent_id": owner_id, "document_type": "html", "title": "Synthetic internal attachments"})
+    assert document.status_code == 201, document.text
+    endpoint = f"/api/memory/documents/{document.json()['id']}/internal-attachments"
+    body = {"uris": [uri, second.json()["uri"]], "resource_agent_id": owner_id,
+        "expected_lock_version": document.json()["lock_version"]}
+    attached = await client.put(endpoint, headers=human, json=body, params={"actor_agent_id": owner_id})
+    assert attached.status_code == 200, attached.text
+    assert {item["uri"] for item in attached.json()["items"]} == set(body["uris"])
+    assert all(item["available"] for item in attached.json()["items"])
+    personal = await client.post("/api/datasets", headers=human, json={"title": "Synthetic personal Dataset", "content": '{"value":42}'})
+    assert personal.status_code == 200, personal.text
+    personal_uri = f"data://{personal.json()['id']}"
+    agent_view = await client.get(f"{browser}/entries", headers=human, params={"agent_id": owner_id, "uri": "data://"})
+    assert personal_uri not in {item["uri"] for item in agent_view.json()["entries"]}
+    management_view = await client.get(f"{browser}/search", headers=human,
+        params={"agent_id": owner_id, "uri": "data://", "query": "personal", "management": True})
+    assert management_view.status_code == 200, management_view.text
+    assert [hit["resource"]["uri"] for hit in management_view.json()["hits"]] == [personal_uri]
+    combined = await client.put(endpoint, headers=human, params={"actor_agent_id": owner_id}, json={**body,
+        "uris": [*body["uris"], personal_uri], "expected_lock_version": attached.json()["lock_version"]})
+    assert combined.status_code == 200, combined.text
+    assert all(item["available"] for item in combined.json()["items"])
+    assert (await client.get(endpoint, headers=human, params={"resource_agent_id": other_id})).status_code == 404
+    assert (await client.put(endpoint, headers=admin, json={**body, "resource_agent_id": other_id})).status_code in {403, 404}
     assert (await client.get(f"{browser}/entries", params={"agent_id": owner_id, "uri": "file://", "cursor": "invalid"}, headers=human)).status_code == 422
     client.cookies.clear()
     assert (await client.get(f"{browser}/schemes", params={"agent_id": owner_id})).status_code in {401, 403}

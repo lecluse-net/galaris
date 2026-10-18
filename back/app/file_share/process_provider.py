@@ -42,7 +42,7 @@ class ProcessRunProvider:
             raise ResourceUriError("A process run requires a valid UUID") from error
         from app.process import read_process_run_resource
 
-        payload = await read_process_run_resource(identity, actor_agent_id=ctx.agent_id)
+        payload = await read_process_run_resource(identity, actor_agent_id=ctx.agent_id, management_scope=ctx.management_scope)
         canonical = f"galaris://processes/runs/{identity}"
         return canonical, payload, json.dumps(payload, ensure_ascii=False, indent=2, default=str)
 
@@ -126,7 +126,7 @@ class ProcessRunProvider:
         if self._root(uri):
             from app.process import list_process_run_resources
             start, limit = max(0, int(options.get("cursor") or 0)), min(500, max(1, int(options.get("max_entries", 50))))
-            rows = await list_process_run_resources(actor_agent_id=ctx.agent_id, offset=start, limit=limit + 1)
+            rows = await list_process_run_resources(actor_agent_id=ctx.management_scope or ctx.agent_id, offset=start, limit=limit + 1)
             return ResourceListing(uri=str(uri), entries=[ResourceDescriptor(uri=row["uri"], name=row["name"],
                 media_type="application/json", capabilities=["info", "read", "copy"], modified_at=row["created_at"]) for row in rows[:limit]],
                 truncated=len(rows) > limit, next_cursor=str(start + limit) if len(rows) > limit else None)
@@ -203,7 +203,7 @@ class ProcessRunProvider:
             raise NotImplementedError("Run name search requires the runs collection")
         from app.process import list_process_run_resources
         start, limit = max(0, int(options.get("cursor") or 0)), min(500, max(1, int(options.get("max_results") or 50)))
-        rows = await list_process_run_resources(actor_agent_id=ctx.agent_id, query=query, offset=start, limit=limit + 1)
+        rows = await list_process_run_resources(actor_agent_id=ctx.management_scope or ctx.agent_id, query=query, offset=start, limit=limit + 1)
         return ResourceSearchResult(uri=str(uri), query=query, mode="name", hits=[ResourceSearchHit(resource=ResourceDescriptor(
             uri=row["uri"], name=row["name"], media_type="application/json", capabilities=["info", "read", "copy"])) for row in rows[:limit]],
             truncated=len(rows) > limit, next_cursor=str(start + limit) if len(rows) > limit else None)

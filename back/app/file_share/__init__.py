@@ -5,6 +5,10 @@ directly with bounded memory; legacy transports retain a temporary-file fallback
 services are registered bridges and Messenger attachments keep their provider identity.
 """
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.agent import AgentManagementScope
+
 from . import file_share_service
 from .native_providers import register_native_provider, register_resource_aliases
 from .models import FileCatalogEntry, FileIndexRun, FileObservationRepair
@@ -93,6 +97,13 @@ from .file_contracts import (
     FileText,
 )
 from .web_transport import PublicHttpsContent, read_public_https_bytes
+
+from app.memory import register_internal_attachment_reader
+async def read_internal_attachment(uri: str, agent_id: int, scope: "AgentManagementScope | None") -> dict[str, object]:
+    from .browser import read_internal_attachment as read
+    return await read(uri, agent_id, scope)
+
+register_internal_attachment_reader(read_internal_attachment)
 
 __all__ = [
     "register_native_provider", "register_resource_aliases",

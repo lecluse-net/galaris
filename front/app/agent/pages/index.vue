@@ -1,14 +1,14 @@
 <template>
-  <q-page class="agent-page q-pa-md">
-    <PageHeader help-key="agents" :help-text="$t('contextHelpPages.agents')" :icon="navigationIcon('people')" :title="$t('nav.agent')" :description="$t('nav.agent_desc')" />
+  <component :is="previewAgentId ? 'div' : QPage" class="agent-page q-pa-md" :class="{ 'agent-page--preview': previewAgentId !== undefined }">
+    <PageHeader v-if="!previewAgentId" help-key="agents" :help-text="$t('contextHelpPages.agents')" :icon="navigationIcon('people')" :title="$t('nav.agent')" :description="$t('nav.agent_desc')" />
 
-    <q-tabs v-model="activeTab" class="text-primary" active-color="primary" indicator-color="primary" align="left">
+    <q-tabs v-if="!previewAgentId" v-model="activeTab" class="text-primary" active-color="primary" indicator-color="primary" align="left">
       <q-tab v-if="canViewAgents" name="agents" :label="$t('agent.tabAgents')" icon="people" />
       <q-tab v-if="canViewTeams" name="groups" :label="$t('team.title')" icon="groups" />
       <q-tab v-if="canViewAgents" name="titles" :label="$t('agent.tabTitles')" icon="badge" />
     </q-tabs>
 
-    <q-separator />
+    <q-separator v-if="!previewAgentId" />
 
     <q-tab-panels v-model="activeTab" animated>
       <!-- AGENTS TAB -->
@@ -26,7 +26,7 @@
         </q-banner>
 
         <!-- One nested tab per group. -->
-        <template v-if="groupTabs.length > 1">
+        <template v-if="!previewAgentId && groupTabs.length > 1">
           <q-tabs
             v-model="activeGroupTab"
             class="text-primary q-mb-sm"
@@ -47,7 +47,7 @@
           <q-separator class="q-mb-md" />
         </template>
 
-        <div class="agent-page-actions row justify-end q-mb-md q-gutter-sm">
+        <div v-if="!previewAgentId" class="agent-page-actions row justify-end q-mb-md q-gutter-sm">
           <q-btn
             v-if="canEdit && managedAgents.length"
             color="deep-purple"
@@ -66,7 +66,7 @@
             :key="agent.id"
             class="agent-card-wrapper"
           >
-            <q-card class="agent-card" flat bordered>
+            <q-card class="agent-card" flat :bordered="!previewAgentId">
               <q-card-section horizontal class="agent-card-horizontal">
                 <!-- Avatar Section (Left) -->
                 <q-card-section class="bg-grey-2 agent-avatar-section">
@@ -876,7 +876,7 @@
       @refresh-harness-logs="fetchHarnessLogs"
       @confirm-delete="confirmDelete"
     />
-  </q-page>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -903,7 +903,7 @@ import llmProviderService from '@/app/llm/services/llmProviderService'
 import type { LLMModelInfo } from '@/app/llm/services/llmProviderService'
 import { useParamsStore } from '@/core/params/stores/paramsStore'
 import { useLLMProfileStore } from '@/app/llm/stores/llmProfileStore'
-import { useQuasar, type QTableColumn } from 'quasar'
+import { QPage, useQuasar, type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { isAxiosError } from 'axios'
 import { apiErrorDetail } from '@/core/api'
@@ -914,6 +914,8 @@ import AgentAuxiliaryDialogs from '../components/AgentAuxiliaryDialogs.vue'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { TeamManager } from '@/core/team'
 
+const { previewAgentId } = defineProps<{ previewAgentId?: number }>()
+const emit = defineEmits<{ deleted: [] }>()
 const $q = useQuasar()
 const { t } = useI18n()
 const agentStore = useAgentStore()
@@ -1110,7 +1112,7 @@ const agentInitials = (agent: Pick<Agent, 'first_name' | 'last_name' | 'code'>) 
 // Load avatars for agents
 const loadAvatars = async () => {
   const generation = ++avatarLoadGeneration
-  for (const agent of agentStore.agents) {
+  for (const agent of agentStore.agents.filter(agent => !previewAgentId || agent.id === previewAgentId)) {
     if (pageDisposed || generation !== avatarLoadGeneration) return
     const revision = agent.avatar_revision ?? 0
     if (!agent.has_avatar || avatarRevisions[agent.id] !== revision) {
@@ -1193,7 +1195,7 @@ const managedAgents = computed(() => agentStore.agents.filter(agent => (
   isManagedRuntime(agent) && canManageAgent(agent)
 )))
 
-const managedRuntimeAgents = computed(() => agentStore.agents.filter(isManagedRuntime))
+const managedRuntimeAgents = computed(() => agentStore.agents.filter(agent => (!previewAgentId || agent.id === previewAgentId) && isManagedRuntime(agent)))
 
 const harnessManagerUnavailable = computed(() => managedRuntimeAgents.value.some(
   agent => unavailableHarnessManagerAgentIds.has(agent.id),
@@ -1466,6 +1468,7 @@ const groupTabs = computed(() => {
 
 const displayedAgents = computed(() => {
   const list = agentStore.sortedAgents
+  if (previewAgentId) return list.filter(agent => agent.id === previewAgentId)
   if (activeGroupTab.value === 'none') {
     return list.filter(agent => !agent.team_ids?.length)
   }
@@ -1833,6 +1836,7 @@ const confirmDelete = async () => {
   try {
     if (deleteType.value === 'agent') {
       await agentStore.deleteAgent(itemToDelete.value.id)
+      if (itemToDelete.value.id === previewAgentId) emit('deleted')
       $q.notify({ type: 'positive', message: t('agent.notify.agentDeleted') })
     } else if (deleteType.value === 'group') {
       await agentStore.deleteGroup(itemToDelete.value.id)
@@ -2152,7 +2156,7 @@ const richRoute = useRoute()
 // once on opening so its concurrent readers still share a single fresh request.
 for (const group of ['agent-catalogue', 'agent-titles', 'agent-groups']) invalidateSessionReads(group)
 watch(() => richRoute.query.agent_id, async value => {
-  if (typeof value !== 'string' || !/^[1-9][0-9]*$/.test(value)) return
+  if (previewAgentId || typeof value !== 'string' || !/^[1-9][0-9]*$/.test(value)) return
   try { await agentStore.fetchAgents(); const agent = agentStore.agents.find(valueAgent => valueAgent.id === Number(value)); if (agent) await openAgentDialog(agent); else $q.notify({ type: 'negative', message: t('richEditor.unavailable') }) } catch { $q.notify({ type: 'negative', message: t('richEditor.unavailable') }) }
 }, { immediate: true })
 watch(canViewAgents, async allowed => {
@@ -2166,7 +2170,7 @@ watch(canViewAgents, async allowed => {
   await fetchDrivers()
   // The shared network driver can represent container runtimes. Exclude only
   // the known local driver; inspect it too if its metadata could not load.
-  const agentsToInspect = agentStore.agents.filter(agent => (
+  const agentsToInspect = agentStore.agents.filter(agent => (!previewAgentId || agent.id === previewAgentId) && (
     agent.agent_driver !== 'internal'
     || drivers.value.find(driver => driver.name === agent.agent_driver)?.manages_runtime !== false
   ))
@@ -2195,6 +2199,11 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.agent-page--preview { padding: 0; }
+.agent-page--preview :deep(.q-tab-panel) { padding: 0; }
+.agent-page--preview .agent-cards-grid { display: block; }
+.agent-page--preview .agent-card { border: 0; border-radius: 0; box-shadow: none; }
+
 .agent-dialog-card {
   width: 800px;
   max-width: 90vw;

@@ -1,5 +1,6 @@
 <template>
-  <q-page class="goal-page q-pa-md">
+  <component :is="previewGoalId ? 'div' : QPage" class="goal-page" :class="{ 'q-pa-md': !previewGoalId }">
+    <template v-if="!previewGoalId">
     <PageHeader help-key="goals" :help-text="$t('contextHelpPages.goals')" :icon="navigationIcon('flag_circle')" :title="t('nav.goal')" :description="t('nav.goal_desc')" />
 
     <div class="goal-page-heading row items-start justify-between q-mb-lg">
@@ -605,6 +606,7 @@
       </q-card>
     </q-dialog>
 
+    </template>
     <q-dialog
       v-model="goalDialogOpen"
       allow-focus-outside
@@ -1270,7 +1272,7 @@
         </q-tab-panels>
       </q-card>
     </q-dialog>
-  </q-page>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -1278,7 +1280,7 @@ import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useInterval, useQuasar, type QTableColumn } from 'quasar'
+import { QPage, useInterval, useQuasar, type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import {
   RichText,
@@ -1299,7 +1301,7 @@ import {
   goalScheduleWindowsToSlots,
   type GoalScheduleSlots,
 } from '../scheduleGrid'
-import { useGoalStore } from '../stores/goalStore'
+import { createGoalState, useGoalStore } from '../stores/goalStore'
 import type {
   Goal,
   GoalCycle,
@@ -1343,7 +1345,9 @@ const $q = useQuasar()
 const router = useRouter()
 const route = useRoute()
 
-const store = useGoalStore()
+const { previewGoalId } = defineProps<{ previewGoalId?: string }>()
+const emit = defineEmits<{ close: [] }>()
+const store = previewGoalId ? reactive(createGoalState()) : useGoalStore()
 const agentStore = useAgentStore()
 const agentSelectionStore = useAgentSelectionStore()
 const privilegeStore = usePrivilegeStore()
@@ -1367,7 +1371,7 @@ const { registerInterval: registerSettingsRefresh } = useInterval()
 let disposed = false
 
 const goalDialogOpen = ref(false)
-watch(goalDialogOpen, open => { if (!open) store.clearSelection() })
+watch(goalDialogOpen, open => { if (!open) { store.clearSelection(); if (previewGoalId) emit('close') } })
 const goalDialogTab = ref<GoalDialogTab>('overview')
 const goalDialogTitle = ref('')
 const globalScheduleDialogOpen = ref(false)
@@ -2107,7 +2111,7 @@ onMounted(async () => {
   store.subscribe()
   try {
     await Promise.all([
-      store.fetchGoals(0),
+      ...(!previewGoalId ? [store.fetchGoals(0)] : []),
       store.fetchTree(),
       store.fetchSettings(),
       agentStore.fetchAgents(),
@@ -2127,7 +2131,7 @@ onUnmounted(() => {
   invalidateMessengerSearch()
   store.unsubscribe()
 })
-watch(() => route.query.goal_id, value => { if (typeof value === 'string' && /^[0-9a-f-]{36}$/.test(value)) void openGoalDetailsById(value) }, { immediate: true })
+watch(() => previewGoalId ?? route.query.goal_id, value => { if (typeof value === 'string' && /^[0-9a-f-]{36}$/.test(value)) void openGoalDetailsById(value) }, { immediate: true })
 </script>
 
 <style scoped>

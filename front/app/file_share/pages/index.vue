@@ -13,7 +13,7 @@
       {{ t('files.agentError') }}
       <template #action><q-btn outline :label="t('common.retry')" @click="loadAgents" /></template>
     </q-banner>
-    <AgentFileBrowser v-if="agentId !== null" ref="browser" :key="`${agentId}:${session}`" :agent-id="agentId" />
+    <AgentFileBrowser v-if="agentId !== null" ref="browser" :key="`${agentId}:${session}:${resourceUri}`" :agent-id="agentId" :initial-uri="resourceUri" />
     <section v-else class="file-agent-picker" :aria-label="t('files.chooseAgent')">
       <p class="text-body1">{{ t('files.chooseAgent') }}</p>
       <div v-if="loading" class="row items-center q-gutter-sm" role="status">
@@ -33,14 +33,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { AgentAvatar, AgentSelect, getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 import { FolderIcon, PageHeader } from '@/core/util'
 import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
 import AgentFileBrowser from '../components/AgentFileBrowser.vue'
 
 const { t } = useI18n()
+const route = useRoute()
+const resourceUri = computed(() => typeof route.query.uri === 'string' && route.query.uri.length <= 4096 ? route.query.uri : null)
 function pageStyle(offset: number, height: number): { height: string } {
   return { height: `${Math.max(0, height - offset)}px` }
 }
@@ -49,6 +52,9 @@ const loading = ref(false), error = ref(false), session = ref(0)
 const browser = useTemplateRef<InstanceType<typeof AgentFileBrowser>>('browser')
 let controller: AbortController | undefined
 const agentOptions = computed(() => agents.value.map(agent => ({ value: agent.id, label: agent.label, hasAvatar: agent.has_avatar })))
+watch(() => route.query.agent_id, value => {
+  if (typeof value === 'string') agentId.value = agents.value.find(agent => String(agent.id) === value)?.id ?? null
+})
 async function loadAgents(): Promise<void> {
   controller?.abort()
   const request = new AbortController(); controller = request
@@ -58,6 +64,9 @@ async function loadAgents(): Promise<void> {
     if (request.signal.aborted) return
     agents.value = result
     if (agentId.value !== null && !result.some(agent => agent.id === agentId.value)) agentId.value = null
+    if (agentId.value === null && typeof route.query.agent_id === 'string') {
+      agentId.value = result.find(agent => String(agent.id) === route.query.agent_id)?.id ?? null
+    }
   } catch { if (!request.signal.aborted) error.value = true }
   finally { if (!request.signal.aborted) loading.value = false }
 }

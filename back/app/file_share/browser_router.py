@@ -13,8 +13,8 @@ from app.memory import MemoryNotFoundError, MemoryPermissionError
 from core.authorize import Privileges, authorize
 from core.util import source_code_response_headers
 from .browser import browser_content, browser_context, browser_thumbnail
-from .resource_contracts import ResourceDescriptor, ResourceListing, ResourceSchemeDescription
-from .resource_service import list_schemes, resource_info, resource_list
+from .resource_contracts import ResourceDescriptor, ResourceListing, ResourceSchemeDescription, ResourceSearchResult
+from .resource_service import list_schemes, resource_info, resource_list, resource_search
 
 router = APIRouter(prefix="/browser")
 
@@ -47,22 +47,31 @@ async def schemes(agent_id: int) -> list[ResourceSchemeDescription]:
 @authorize(privileges=Privileges.MEMORY_ACCESS)
 async def entries(agent_id: int, uri: str = Query(max_length=4096),
     cursor: str | None = Query(default=None, max_length=8192),
-    limit: int = Query(default=50, ge=1, le=500)) -> ResourceListing:
-    async with _access(agent_id), browser_context(agent_id) as ctx:
+    limit: int = Query(default=50, ge=1, le=500), management: bool = False) -> ResourceListing:
+    async with _access(agent_id), browser_context(agent_id, management=management) as ctx:
         return await resource_list(ctx, uri, max_entries=limit, cursor=cursor)
+
+
+@router.get("/search", response_model=ResourceSearchResult)
+@authorize(privileges=Privileges.MEMORY_ACCESS)
+async def search(agent_id: int, uri: str = Query(max_length=4096),
+    query: str = Query(min_length=1, max_length=500),
+    cursor: str | None = Query(default=None, max_length=8192), management: bool = False) -> ResourceSearchResult:
+    async with _access(agent_id), browser_context(agent_id, management=management) as ctx:
+        return await resource_search(ctx, uri, query, mode="name", recursive=True, max_results=50, cursor=cursor)
 
 
 @router.get("/info", response_model=ResourceDescriptor)
 @authorize(privileges=Privileges.MEMORY_ACCESS)
-async def info(agent_id: int, uri: str = Query(max_length=4096)) -> ResourceDescriptor:
-    async with _access(agent_id), browser_context(agent_id) as ctx:
+async def info(agent_id: int, uri: str = Query(max_length=4096), management: bool = False) -> ResourceDescriptor:
+    async with _access(agent_id), browser_context(agent_id, management=management) as ctx:
         return await resource_info(ctx, uri)
 
 
 @router.get("/thumbnail", response_class=Response)
 @authorize(privileges=Privileges.MEMORY_ACCESS)
-async def thumbnail(agent_id: int, uri: str = Query(max_length=4096)) -> Response:
-    async with _access(agent_id), browser_context(agent_id) as ctx:
+async def thumbnail(agent_id: int, uri: str = Query(max_length=4096), management: bool = False) -> Response:
+    async with _access(agent_id), browser_context(agent_id, management=management) as ctx:
         image = await browser_thumbnail(ctx, uri)
         if image is None:
             raise HTTPException(404, "Thumbnail unavailable")
@@ -71,8 +80,8 @@ async def thumbnail(agent_id: int, uri: str = Query(max_length=4096)) -> Respons
 
 @router.get("/content", response_class=FileResponse)
 @authorize(privileges=Privileges.MEMORY_ACCESS)
-async def content(agent_id: int, uri: str = Query(max_length=4096), preview: bool = True) -> FileResponse:
-    async with _access(agent_id), browser_context(agent_id) as ctx:
+async def content(agent_id: int, uri: str = Query(max_length=4096), preview: bool = True, management: bool = False) -> FileResponse:
+    async with _access(agent_id), browser_context(agent_id, management=management) as ctx:
         manager = browser_content(ctx, uri, preview=preview)
         source = await manager.__aenter__()
         try:

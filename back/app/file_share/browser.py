@@ -6,6 +6,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from app.agent import AgentManagementScope
 
 from app.console import ConsoleRunResource, resolve_ssh_connection
 from app.skill import can_manage_skill_resources
@@ -15,13 +16,23 @@ from .resource_contracts import ResourceContext
 from .resource_service import materialize_resource, resource_info
 
 
+async def read_internal_attachment(uri: str, agent_id: int, scope: AgentManagementScope | None) -> dict[str, object]:
+    async with asyncio.timeout(20), browser_context(agent_id, scope=scope) as ctx:
+        descriptor = await resource_info(ctx, uri)
+        if descriptor.is_collection or "read" not in descriptor.capabilities:
+            raise ValueError("Select a readable resource, not a directory")
+        return descriptor.model_dump(mode="json")
+
+
 @asynccontextmanager
-async def browser_context(agent_id: int) -> AsyncGenerator[ResourceContext]:
+async def browser_context(agent_id: int, *, management: bool = False, scope: AgentManagementScope | None = None) -> AsyncGenerator[ResourceContext]:
+    from app.agent import current_management_scope
     config = await resolve_ssh_connection(agent_id)
     console = ConsoleRunResource(config) if config is not None else None
     try:
         yield ResourceContext(agent_id=agent_id, runtime="internal", console_resource=console,
-            skill_management=await can_manage_skill_resources(agent_id))
+            skill_management=await can_manage_skill_resources(agent_id),
+            management_scope=scope or (await current_management_scope() if management else None))
     finally:
         if console is not None:
             await console.close()

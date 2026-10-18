@@ -11,4 +11,8 @@ export default {
     const match = /^data:\/\/([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/.exec(uri)
     return match ? `/dataset/${match[1]}` : null
   },
+  target(uri, title = '', agentId = null) {
+    const match = /^data:\/\/([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/.exec(uri)
+    return match ? { kind: 'dataset', id: match[1]!, title, agentId } : null
+  },
 } satisfies RichContentContribution

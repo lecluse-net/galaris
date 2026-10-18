@@ -646,8 +646,18 @@ class DocumentDatasetAttachmentWrite(BaseModel):
     expected_lock_version: int = Field(ge=1)
 
 
+class DocumentInternalAttachmentWrite(BaseModel):
+    uris: list[str] = Field(min_length=1, max_length=150)
+    resource_agent_id: int = Field(gt=0)
+    expected_lock_version: int = Field(ge=1)
+    remove: bool = False
 
 
+class DocumentProcessAttachmentWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    uri: str = Field(max_length=4096)
+    expected_lock_version: int = Field(ge=1)
+    remove: bool = False
 
 
 from app.share import Collaborator, SharingState, GrantUpdate, SharingUpdate, SingleGrantUpdate

@@ -27,6 +27,7 @@ from .schemas import (
 from .sanitizer import sanitize as sanitize_process_payload
 from .agent_capabilities import build_agent_process_advertisement, agent_process_dispatch_candidates
 from .resource_facade import list_process_resources, list_process_run_resources, read_process_resource, read_process_run_resource
+from .resource_previews import process_reference, process_resource_preview
 from .run_resources import read_run_data, write_run_data, run_file_path, add_run_file, delete_run_file
 from .process_service import has_process_definitions, list_run_summaries_page_for_scope
 from . import process_service, registry
@@ -125,6 +126,8 @@ __all__ = [
     "read_process_resource",
     "read_process_run_resource",
     "list_process_run_resources",
+    "process_reference",
+    "process_resource_preview",
     "process_service",
     "registry",
     "configure_default_engine",

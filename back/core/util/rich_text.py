@@ -100,6 +100,17 @@ def valid_link(value: str) -> bool:
             return str(UUID(locator)) == locator
         except ValueError:
             return False
+    if uri.scheme == "galaris" and uri.netloc in {"process", "processes"}:
+        if uri.query or uri.fragment:
+            return False
+        locator = uri.path.removeprefix("/")
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]{0,254}", locator):
+            return True
+        if uri.netloc == "processes" and locator.startswith("runs/"):
+            try:
+                return locator == f"runs/{UUID(locator[5:])}"
+            except ValueError:
+                return False
     return False
 
 
@@ -146,6 +157,8 @@ EDITORIAL_CLASSES = {
     "galaris-media-audio",
     "galaris-media-video",
     "galaris-media-pdf",
+    "galaris-process-diagram",
+    "galaris-agent-card",
     "galaris-callout",
     "galaris-callout-info",
     "galaris-callout-warning",

@@ -68,6 +68,8 @@ export type { EditorVoiceContext, EditorVoiceSession, EditorVoiceProvider } from
 export const RichText = defineAsyncView(() => import('./components/RichText.vue'))
 export const EditorialContent = defineAsyncView(() => import('./components/EditorialContent.vue'))
 export { attachmentReference, richTextExcerpt, richLinkHref, searchRichLinks, type RichContentContribution } from './richText'
+export { richLinkTarget, richLinkCard } from './richText'
+export { ResourceThumbnail, DocumentResourceReferences } from './resourceContributions'
 export { documentResourceHtml } from './documentResources'
 export { formatFileSize, sizeInMegabytes, sizeFromMegabytes } from './fileSize'
 export type { FileSizeUnit } from './fileSize'

@@ -1,13 +1,17 @@
 <template>
   <div class="rich-content-reader">
-    <div ref="root" class="rich-content ck-content" v-html="rendered" />
+    <div ref="root" class="rich-content ck-content" v-html="rendered" @click="openReference" />
+    <Teleport v-for="target in embeds" :key="target.key" :to="target.element"><ResourceEmbed :uri="target.uri" :title="target.title" /></Teleport>
+    <ResourceDetailDialog v-if="detail" :target="detail" @close="detail = null" />
     <PdfPreview v-model="pdfPreview" />
   </div>
 </template>
 <script setup lang="ts">
 import { ref, shallowRef, watch, onBeforeUnmount, nextTick, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { sanitizeRichHtml, richLinkHref, attachmentReference, type ContentProfile } from '../richText'
+import { sanitizeRichHtml, richLinkHref, richLinkTarget, attachmentReference, type ContentProfile } from '../richText'
+import { ResourceEmbed, type ResourceEmbedTarget } from '../resourceEmbed'
+import { ResourceDetailDialog, type ResourceDetailTarget } from '../resourceDetail'
 import { highlightDocumentCode } from '../codeHighlight'
 import { hideInteractiveSource } from '../interactiveHtml'
 import { createDocumentPlayer, documentPlayer, type PdfPreviewSource } from '../documentMedia'
@@ -19,6 +23,12 @@ const { content, profile = 'rich-text', resolveImage } = defineProps<{
   resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>
 }>()
 const rendered = ref('')
+const embeds = shallowRef<ResourceEmbedTarget[]>([]), detail = shallowRef<ResourceDetailTarget | null>(null)
+function openReference(event: MouseEvent): void {
+  const link = event.target instanceof Element ? event.target.closest('a') : null
+  const target = link && richLinkTarget(link.getAttribute('data-rich-reference') ?? '', link.textContent ?? '')
+  if (target) { event.preventDefault(); detail.value = target }
+}
 const pdfPreview = shallowRef<PdfPreviewSource | null>(null)
 const root = useTemplateRef('root')
 const { t } = useI18n()
@@ -26,6 +36,7 @@ let generation = 0
 let urls: string[] = []
 let players: Array<{ dispose: () => void }> = []
 function revoke(): void {
+  embeds.value = []; detail.value = null
   pdfPreview.value = null
   players.forEach(player => player.dispose()); players = []
   urls.forEach(URL.revokeObjectURL); urls = []
@@ -42,6 +53,7 @@ watch(() => [content, profile, resolveImage] as const, async () => {
     )).find(Boolean),
   )
   doc.body.querySelectorAll('a').forEach(link => {
+    link.setAttribute('data-rich-reference', link.getAttribute('href') ?? '')
     link.setAttribute('target', '_blank')
     const href = richLinkHref(link.getAttribute('href') ?? '')
     if (href) link.setAttribute('href', href)
@@ -66,6 +78,12 @@ watch(() => [content, profile, resolveImage] as const, async () => {
     rendered.value = doc.body.innerHTML
     await nextTick()
     if (current !== generation || profile !== 'document') return
+    embeds.value = [...(root.value?.querySelectorAll<HTMLElement>('blockquote.galaris-process-diagram, blockquote.galaris-agent-card') ?? [])].flatMap((card, key) => {
+      const link = card.querySelector('a'), uri = link?.getAttribute('data-rich-reference') ?? ''
+      if (!richLinkTarget(uri)) return []
+      const element = card.ownerDocument.createElement('div'); element.className = 'galaris-resource-embed'; card.append(element)
+      return [{ key, element, uri, title: link?.textContent ?? '' }]
+    })
     root.value?.querySelectorAll('blockquote.galaris-link-card').forEach((card, index) => {
       const target = targets[index]
       if (!target) return

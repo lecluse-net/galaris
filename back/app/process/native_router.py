@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -144,6 +144,32 @@ async def native_create_definition(data: DefinitionCreate) -> dict[str, Any]:
 async def native_read_definition(code: str) -> dict[str, Any]:
     with domain_errors():
         return await definitions.read(code, await current_management_scope())
+
+
+@routes.get("/resource-preview")
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+async def native_resource_preview(response: Response, uri: str = Query(max_length=4096),
+    agent_id: int | None = Query(default=None, gt=0), thumbnail: bool = False) -> dict[str, Any]:
+    from .resource_previews import process_resource_preview
+    response.headers["Cache-Control"] = "private, no-store"
+    with domain_errors():
+        scope = await current_management_scope()
+        if agent_id is not None:
+            scope.require(agent_id)
+        return await process_resource_preview(uri, agent_id if agent_id is not None else scope, thumbnail=thumbnail)
+
+
+@routes.get("/resource-options")
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+async def native_resource_options(response: Response, query: str = Query(default="", max_length=200),
+    agent_id: int | None = Query(default=None, gt=0)) -> list[dict[str, str]]:
+    from .resource_previews import process_resource_options
+    response.headers["Cache-Control"] = "private, no-store"
+    with domain_errors():
+        scope = await current_management_scope()
+        if agent_id is not None:
+            scope.require(agent_id)
+        return await process_resource_options(query, agent_id if agent_id is not None else scope)
 
 
 @routes.put("/definitions/{code}")

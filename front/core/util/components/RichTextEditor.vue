@@ -4,6 +4,10 @@
     <Teleport v-for="target in embeddedTargets" :key="target.key" :to="target.element">
       <slot name="embedded-code" :source="target.source" :language="target.language" :register-snapshot="(capture: RenderedDocumentCapture | undefined) => registerSnapshot(target.key, capture)"><div class="q-pa-md">{{ t('richEditor.embeddedApplication') }}</div></slot>
     </Teleport>
+    <Teleport v-for="target in resourceEmbeds" :key="target.key" :to="target.element">
+      <ResourceEmbed :uri="target.uri" :title="target.title" :agent-id="resourceAgentId" />
+    </Teleport>
+    <ResourceDetailDialog v-if="resourceDetail" :target="resourceDetail" @close="resourceDetail = null" />
     <audio v-if="personalVoice" ref="playbackElement" hidden />
     <div v-if="personalVoice?.error.value" role="alert" class="q-pa-sm">{{ personalVoice.error.value }}</div>
     <div v-if="fileUploadProgress" class="row items-center q-gutter-sm q-pa-sm" role="status">
@@ -42,12 +46,16 @@ import {
   SpecialCharactersEssentials, SourceEditing, Fullscreen, GeneralHtmlSupport, PasteFromOffice, Style,
   Table, TableToolbar, TableProperties, TableCellProperties, TableColumnResize, TableCaption,
   Image, ImageCaption, ImageStyle, ImageToolbar, ImageResize, ImageUpload, ImageUtils, LinkImage,
-  Plugin, LinkUI, ButtonView, DropdownView, ContextualBalloon, IconBrowseFiles, IconBoxWithMarker, ModelLiveRange, type ModelSelection, type LinkPreviewButtonNavigateEvent, type EditorConfig, type Editor,
+  Plugin, LinkUI, ButtonView, DropdownView, createDropdown, addToolbarToDropdown, ContextualBalloon, IconBrowseFiles, IconBoxWithMarker, ModelLiveRange, type ModelSelection, type LinkPreviewButtonNavigateEvent, type EditorConfig, type Editor,
 } from 'ckeditor5'
 import fr from 'ckeditor5/translations/fr.js'
 import zh from 'ckeditor5/translations/zh-cn.js'
 import { marked } from 'marked'
-import { richLinkHref, sanitizeRichHtml, validRichLink, type ContentProfile } from '../richText'
+import { richLinkHref, richLinkTarget, sanitizeRichHtml, validRichLink, type ContentProfile } from '../richText'
+import { ResourceDetailDialog, type ResourceDetailTarget } from '../resourceDetail'
+import { ResourceEmbed, type ResourceEmbedTarget } from '../resourceEmbed'
+import { attachResourceEmbeds } from '../ckeditorResourceEmbeds'
+import { attachResourceCards } from '../ckeditorResourceCards'
 import { attachDocumentImages } from '../ckeditorAttachments'
 import { pasteDocumentHtml } from '../pasteDocumentHtml'
 import { pastedMarkdownHtml } from '../pasteMarkdown'
@@ -79,12 +87,14 @@ import type { RenderedDocumentCapture, RenderedDocumentResolver } from '../rende
 import { createDocumentPdf, exportDocumentPdf } from '../exportDocumentPdf'
 import { saveBlobAsResource } from '../resourceViewer'
 import '../ckeditorTheme.css'
-const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, importImage, resolveImage, attachments = [], createLinkCard, hiddenToolbarGroups = [], singleRowToolbar = false } = defineProps<{
+const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, importImage, resolveImage, attachments = [], createLinkCard, hiddenToolbarGroups = [], singleRowToolbar = false, resourceAgentId = null, pickResources } = defineProps<{
+  resourceAgentId?: number | null
   modelValue: string; mediaType?: string; profile?: ContentProfile; readonly?: boolean; minHeight?: string; maxHeight?: string; autoGrow?: boolean; ariaLabel?: string
   attachments?: DocumentResource[]
   hiddenToolbarGroups?: readonly EditorToolbarGroupName[]
   singleRowToolbar?: boolean
   createLinkCard?: (url: string) => Promise<string>
+  pickResources?: () => Promise<string>
   exportBundle?: (html: string, signal: AbortSignal) => Promise<Blob>
   uploadFile?: (file: File, signal: AbortSignal, progress: (value: number) => void) => Promise<string>
   documentTitle?: string
@@ -99,6 +109,8 @@ const { t, locale } = useI18n()
 const $q = useQuasar()
 const editor = shallowRef<ClassicEditor>()
 const embeddedTargets = shallowRef<EmbeddedCodeTarget[]>([])
+const resourceEmbeds = shallowRef<ResourceEmbedTarget[]>([])
+const resourceDetail = shallowRef<ResourceDetailTarget | null>(null)
 const captures = new Map<number, RenderedDocumentCapture>()
 const slots = useSlots()
 function registerSnapshot(key: number, capture: RenderedDocumentCapture | undefined): void {
@@ -156,6 +168,7 @@ const personalVoice = editorVoiceProvider?.({
 class GalarisIntegration extends Plugin {
   static get pluginName() { return 'GalarisIntegration' as const }
   init(): void {
+    if (profile === 'document') attachResourceCards(this.editor)
     if (profile === 'document' && createLinkCard) attachLinkCards(this.editor, url => createLinkCard(url), t, () => $q.notify({ type: 'warning', message: t('richEditor.resources.cardUnavailable') }))
     const current = this.editor
     attachEmbeddedCode(current, ['galaris-app', 'galaris-raw-html'], t('richEditor.embeddedApplication'), targets => { embeddedTargets.value = targets })
@@ -178,11 +191,19 @@ class GalarisIntegration extends Plugin {
       return button
     })
     if (profile === 'document') cancelFileUpload = attachDocumentFileUpload(current, {
-      upload: uploadFile, translate: t,
+      available: () => Boolean(uploadFile ?? uploadImage),
+      upload: (file, signal, progress) => {
+        const upload = uploadFile ?? uploadImage
+        if (!upload) return Promise.reject(new Error('Upload unavailable'))
+        return upload(file, signal, progress)
+      }, translate: t,
       progress: value => { fileUploadProgress.value = value },
       failed: name => $q.notify({ type: 'negative', message: t('richEditor.resources.uploadFailed', { name }) }),
     })
-    if (profile === 'document') attachDocumentPlayers(current, (documentId, attachmentId) => resolveImage?.(documentId, attachmentId), () => attachments, t, source => { pdfPreview.value = source })
+    if (profile === 'document') {
+      attachDocumentPlayers(current, (documentId, attachmentId) => resolveImage?.(documentId, attachmentId), () => attachments, t, source => { pdfPreview.value = source })
+      attachResourceEmbeds(current, targets => { resourceEmbeds.value = targets })
+    }
     attachCalloutStyles(current)
     attachCodeTools(current, t, success => $q.notify({ type: success ? 'positive' : 'negative', message: t('richEditor.codeTools.' + (success ? 'copied' : 'copyFailed')) }))
     if (profile === 'document') current.ui.componentFactory.add('documentLayout', locale => {
@@ -272,6 +293,20 @@ class GalarisIntegration extends Plugin {
       button.on('execute', openGalarisLinks)
       return button
     })
+    current.ui.componentFactory.add('resourceInsert', locale => {
+      const dropdown = createDropdown(locale)
+      dropdown.buttonView.set({ label: t('richEditor.resources.insert'), icon: IconBrowseFiles, tooltip: true, withText: false })
+      addToolbarToDropdown(dropdown, () => {
+        const internal = current.ui.componentFactory.create('galarisLink') as ButtonView
+        internal.label = t('documents.internalAttachments.add')
+        const views = [current.ui.componentFactory.create('link'), internal, ...(profile === 'document' ? [current.ui.componentFactory.create('documentUploadFile')] : [])]
+        for (const view of views) if (view instanceof ButtonView) { view.withText = true; view.tooltip = false }
+        return views
+      }, { isVertical: true })
+      dropdown.on('execute', () => { dropdown.isOpen = false })
+      dropdown.bind('isEnabled').to(current, 'isReadOnly', value => !value)
+      return dropdown
+    })
     current.conversion.for('editingDowncast').attributeToElement({
       model: 'linkHref',
       view: (value, { writer }) => {
@@ -350,7 +385,7 @@ const config = computed<EditorConfig>(() => ({
     items: singleRowToolbar
       ? editorToolbarGroups(profile === 'document', Boolean(personalVoice), hiddenToolbarGroups)
         .flatMap((group, index) => [...(index ? ['|'] : []), ...group.items])
-        .concat(profile === 'document' || hiddenToolbarGroups.includes('insert') ? [] : ['|', 'link', 'galarisLink'])
+        .concat(profile === 'document' || hiddenToolbarGroups.includes('insert') ? [] : ['|', 'resourceInsert'])
       : [...editorToolbarGroups(profile === 'document', Boolean(personalVoice), hiddenToolbarGroups).map(group => 'galarisGroup' + group.name), 'galarisMobileToolbar'],
     shouldNotGroupWhenFull: !singleRowToolbar,
   },
@@ -362,17 +397,43 @@ const config = computed<EditorConfig>(() => ({
   list: { properties: { styles: true, startIndex: true, reversed: true } },
   table: { contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells', 'tableProperties', 'tableCellProperties', 'toggleTableCaption'] },
   image: { toolbar: ['documentImagePreview', '|', 'imageTextAlternative', 'toggleImageCaption', '|', 'imageStyle:inline', 'imageStyle:wrapText', 'imageStyle:breakText', '|', 'resizeImage', 'linkImage', ...(createLinkCard ? ['documentLinkAppearance'] : [])], resizeUnit: '%' },
-  htmlSupport: { allow: [{ name: /^(?:p|h[1-6]|span|mark|ol|li|td|th|code)$/, attributes: ['start', 'colwidth', 'data-color'], styles: ['text-align', 'background-color'], classes: [/^language-/] }, { name: 'blockquote', classes: ['galaris-link-card', 'galaris-media-audio', 'galaris-media-video', 'galaris-media-pdf'] }] },
+  htmlSupport: { allow: [{ name: /^(?:p|h[1-6]|span|mark|ol|li|td|th|code)$/, attributes: ['start', 'colwidth', 'data-color'], styles: ['text-align', 'background-color'], classes: [/^language-/] }, { name: 'blockquote', classes: ['galaris-link-card', 'galaris-media-audio', 'galaris-media-video', 'galaris-media-pdf', 'galaris-process-diagram', 'galaris-agent-card'] }] },
 }))
 function navigate(uri: string): void {
+  const target = richLinkTarget(uri, '', resourceAgentId)
+  if (target) { resourceDetail.value = target; return }
   const attachment = attachmentReference(uri)
   if (attachment) { emit('open-attachment', ...attachment); return }
   const href = richLinkHref(uri)
   if (href) window.open(href, '_blank', 'noopener,noreferrer')
 }
-function openGalarisLinks(): void {
+async function openGalarisLinks(): Promise<void> {
   const current = editor.value
   if (!current || readonly) return
+  if (pickResources) {
+    const ranges = [...current.model.document.selection.getRanges()].map(range => ModelLiveRange.fromRange(range))
+    try {
+      const html = await pickResources()
+      if (!html || current !== editor.value || current.isReadOnly || ranges.some(range => range.root.rootName === '$graveyard')) return
+      const content = sanitizeRichHtml(html, profile)
+      const parsed = new DOMParser().parseFromString(content, 'text/html')
+      const paragraph = parsed.body.children.length === 1 ? parsed.body.firstElementChild : null
+      const anchor = paragraph?.tagName === 'P' && paragraph.childElementCount === 1 ? paragraph.querySelector('a') : null
+      const href = anchor?.getAttribute('href')
+      current.model.change(writer => {
+        writer.setSelection(ranges.map(range => range.toRange()))
+        if (href && !anchor?.querySelector('img') && !current.model.document.selection.isCollapsed) {
+          current.execute('link', href)
+        } else {
+          const fragment = current.data.toModel(current.data.processor.toView(content))
+          current.model.insertContent(fragment)
+        }
+      })
+      current.editing.view.focus()
+    } catch { $q.notify({ type: 'negative', message: t('richEditor.resources.failed') }) }
+    finally { ranges.forEach(range => range.detach()) }
+    return
+  }
   linkSelection = current.model.createSelection(current.model.document.selection)
   linkLabel.value = [...(linkSelection.getFirstRange()?.getItems() ?? [])].map(item => item.is('$textProxy') ? item.data : '').join('')
   linkOpen.value = true
@@ -452,6 +513,34 @@ function ready(current: ClassicEditor): void {
   }
   current.ui.on('update', wireLinkPreview)
   current.plugins.get(ContextualBalloon).on('change:visibleView', wireLinkPreview)
+  // CKEditor's click observer ignores links inside non-editable widget content.
+  const editable = current.ui.getEditableElement()
+  const cardNavigation = (event: MouseEvent): void => {
+    const target = event.target instanceof Element ? event.target.closest('a') : null
+    if (!target?.closest('blockquote.galaris-link-card.ck-widget')) return
+    event.preventDefault()
+    if (event.ctrlKey || event.metaKey || readonly) {
+      event.stopImmediatePropagation()
+      navigate(target.getAttribute('data-rich-reference') ?? target.getAttribute('href') ?? '')
+    }
+  }
+  const cardKeydown = (event: KeyboardEvent): void => {
+    if (!event.altKey || event.key !== 'Enter') return
+    const selected = current.model.document.selection.getSelectedElement()
+    if (!selected?.is('element', 'resourceCard')) return
+    for (const node of current.model.createRangeIn(selected).getItems()) {
+      const href = node.getAttribute('linkHref')
+      if (typeof href !== 'string') continue
+      event.preventDefault(); event.stopImmediatePropagation(); navigate(href)
+      break
+    }
+  }
+  editable?.addEventListener('click', cardNavigation, true)
+  editable?.addEventListener('keydown', cardKeydown, true)
+  current.on('destroy', () => {
+    editable?.removeEventListener('click', cardNavigation, true)
+    editable?.removeEventListener('keydown', cardKeydown, true)
+  })
   // Resolve only navigation; the canonical link in the model is retained.
   const navigationOptions = { priority: 'highest', context: '$capture' } as const
   current.editing.view.document.on('click', (event, data) => {

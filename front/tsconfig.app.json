@@ -42,7 +42,7 @@
         "bridge/**/*.ts",
         "bridge/**/*.vue",
         "modules.ts",
-        "resourceDetails.vue",
+        "*.vue",
         "env.d.ts"
     ],
     "exclude": [

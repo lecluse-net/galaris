@@ -65,14 +65,23 @@ folder picker, including when a search hides some documents.
 
 ## Links
 
-The **Galaris link** button opens accessible content search: enter at least two characters,
-filter by resource kind, select a target, then adjust the link text before inserting it. Selected text
-and its formatting are preserved. Clicking the backdrop also closes the dialog.
-Use the native link button to enter a URL or Galaris reference. The label belongs to your text; renaming the target does not break its reference. A link
-does not share the target: access is checked when it opens. In reading mode, click to open;
-links open in a new tab while the document stays open. In editing mode, click positions the cursor
-and Ctrl/Cmd-click opens the target in a new tab. The link dialog offers explicit Open, edit,
-and remove actions.
+The **Insert a link or file** menu groups **Link**, **Add an internal attachment** and
+uploads. In Documents, the internal action opens a file_share tree with compact files,
+search within the location and multiple selection. It inserts citations in the text without
+adding attachments or copying existing files. An existing file opens at its source in Files,
+with the reader's access rights. The attachment list below the document contains uploaded
+files only; use **Upload** or drag and drop to add them.
+Other editorial fields keep accessible content search with a resource kind filter.
+Selected text and its formatting are preserved when inserting a single link.
+Clicking the backdrop closes the dialog.
+Use **Link** to enter a URL or Galaris reference. The label belongs to your text; renaming the target does not break its reference. A link
+does not share the target: access is checked when it opens. In reading mode, click to open.
+Agents, tasks, goals, processes, runs, Datasets, documents and memories open in their modal without
+leaving the document. External links open in a new tab. In editing mode, click positions the
+cursor; Ctrl/Cmd-click or Alt+Enter opens the target. The link menu also offers Open, edit
+and remove actions. For an agent, **Show card** displays its avatar, name and job title in the
+text. Click its avatar or name to open the complete agent card. **Show URL** restores the
+link with its label.
 
 ## Callouts and attachments
 
@@ -94,14 +103,16 @@ The document body remains rich text. Interactive HTML pages, 3D scenes, videos a
 content are attachments opened with their resource viewer. HTML files use the same attachment
 and thumbnail mechanisms as other files and also open from Chat without creating another copy.
 Import keeps the supplied file; images, styles and other resources referenced by URLs inside
-it are neither downloaded nor added as attachments. The toolbar’s **Insert attachment** button
+it are neither downloaded nor added as attachments. **Insert attachment** in the toolbar's **Insert a link or file** menu
 opens a file picker and inserts uploaded files at the cursor. The attachment area below the content
-remains available even when empty: drop files there or use **Add**, then the **Insert into document**
-icon in the preview actions to insert them into the text. Images appear in the text; audio, video and PDF files have inline
+remains available even when empty: drop files there or use **Upload**, then the **Insert into document**
+icon in the preview actions to insert them into the text. You can also drag an uploaded
+attachment to the desired position in the text. Insertion remains available to show the same
+file several times without uploading it again. Images appear in the text; audio, video and PDF files have inline
 players. Other files become clickable cards opening their viewer.
 All attachments remain listed below the text, including files referenced by images or links
 in the content, with actions to open, download and remove them. Removing an insertion from
-the text preserves its file and makes **Insert into document** available again.
+the text preserves its file.
 Each upload shows progress and can be cancelled. Pasting a complete HTML page
 into the editor or its source offers a choice: attach the intact page, extract rich text,
 or cancel. Scripts in historical versions remain readable as literal code.

@@ -83,7 +83,7 @@ def _route(reference: ResourceUri) -> _Route:
     segments = reference.segments
     if not segments:
         return _Route(kind=None)
-    raw_kind = segments[0]
+    raw_kind = "process" if segments[0] == "processes" else segments[0]
     if raw_kind == "documentation":
         raise PermissionError("Official Galaris documentation is read-only; use documentation_search or file_read.")
     if raw_kind not in _KINDS:
@@ -242,12 +242,13 @@ def _descriptor(
             "goal_id",
             "task_id",
             "tool_code",
+            "native_code",
         )
         if payload.get(key) is not None
     }
     metadata["label"] = label
     return ResourceDescriptor(
-        uri=f"galaris://{kind}/{encoded_identifier}",
+        uri=f"galaris://{'processes' if kind == 'process' and payload.get('native_code') else kind}/{encoded_identifier}",
         name=f"{kind}-{identifier}.json",
         media_type=f"application/vnd.galaris.{kind}+json",
         size=len(content.encode("utf-8")) if include_size else None,
@@ -275,7 +276,7 @@ def _collection_descriptor(kind: GalarisResourceKind) -> ResourceDescriptor:
         "skill": "Skills",
     }
     return ResourceDescriptor(
-        uri=f"galaris://{kind}/",
+        uri=f"galaris://{'processes' if kind == 'process' else kind}/",
         name=labels[kind],
         is_collection=True,
         media_type="application/vnd.galaris.collection+json",
@@ -354,6 +355,7 @@ async def _read_payload(
     ctx: ResourceContext,
     kind: GalarisResourceKind,
     identifier: UUID | str,
+    *, native_process: bool = False,
 ) -> dict[str, Any] | None:
     if kind == "code":
         assert isinstance(identifier, UUID)
@@ -384,6 +386,9 @@ async def _read_payload(
         from app.process import read_process_resource
 
         assert isinstance(identifier, str)
+        if native_process:
+            return await read_process_resource(identifier, actor_agent_id=ctx.agent_id, native=True,
+                management_scope=ctx.management_scope)
         return await read_process_resource(
             identifier,
             actor_agent_id=ctx.agent_id,
@@ -439,6 +444,9 @@ async def _list_payloads(
     if kind == "process":
         from app.process import list_process_resources
 
+        if ctx.management_scope is not None:
+            return await list_process_resources(actor_agent_id=ctx.agent_id, query=query, offset=offset,
+                limit=limit, management_scope=ctx.management_scope)
         return await list_process_resources(
             actor_agent_id=ctx.agent_id,
             query=query,
@@ -513,7 +521,7 @@ async def galaris_resource_info(
             descriptor.name = "Goal cycles"
         return descriptor
     assert route.identifier is not None
-    payload = await _read_payload(ctx, route.kind, route.identifier)
+    payload = await _read_payload(ctx, route.kind, route.identifier, native_process=reference.segments[:1] == ("processes",))
     if payload is None:
         raise FileNotFoundError(str(reference))
     return _descriptor(route.kind, payload, include_size=True)
@@ -591,6 +599,15 @@ async def galaris_resource_list(
     if not route.is_collection:
         raise ResourceUriError("file_list requires a galaris:// collection URI.")
     limit = max(1, min(max_entries, 500))
+    if route.kind == "process" and reference.segments[:1] == ("processes",):
+        # The first row is a real subcollection; subsequent cursors address definitions.
+        available = limit - (1 if offset == 0 else 0)
+        payloads = await _list_payloads(ctx, "process", offset=max(0, offset - 1), limit=available + 1)
+        entries = ([ResourceDescriptor(uri="galaris://processes/runs/", name="Runs", is_collection=True,
+            capabilities=["info", "list"])] if offset == 0 else [])
+        entries.extend(_descriptor("process", item) for item in payloads[:available])
+        return ResourceListing(uri=str(reference), entries=entries, truncated=len(payloads) > available,
+            next_cursor=str(offset + len(entries)) if len(payloads) > available else None)
     payloads = await _list_payloads(
         ctx,
         route.kind,
@@ -664,7 +681,7 @@ async def galaris_resource_read(
         )
     if route.kind is None or route.is_collection or route.identifier is None:
         raise ResourceUriError("file_read requires one exact galaris:// resource.")
-    payload = await _read_payload(ctx, route.kind, route.identifier)
+    payload = await _read_payload(ctx, route.kind, route.identifier, native_process=reference.segments[:1] == ("processes",))
     if payload is None:
         raise FileNotFoundError(str(reference))
     content = _json(payload)

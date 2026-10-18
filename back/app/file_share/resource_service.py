@@ -844,16 +844,6 @@ async def resource_list(
                 "document_id": str(document_id), "attachment_id": str(attachment["id"]),
                 "memory_item_id": attachment.get("memory_item_id"),
             }) for attachment in attachments]
-        for attached in cast(list[dict[str, str]], data.get("datasets", [])):
-            try:
-                descriptor = await resource_info(ctx, attached["uri"])
-            except (FileNotFoundError, PermissionError):
-                continue
-            # This is a reference to another resource, not a file owned by the Document.
-            entries.append(descriptor.model_copy(update={
-                "capabilities": [value for value in descriptor.capabilities if value in {"info", "read", "copy"}],
-                "metadata": {**descriptor.metadata, "document_id": str(document_id), "relation": "dataset_attachment"},
-            }))
         page = entries[offset : offset + limit]
         return ResourceListing(
             uri=_uri(

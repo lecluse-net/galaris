@@ -268,3 +268,28 @@ documentaires nécessitent leur exécuteur qualifié séparé ; son absence est 
 Les conventions sont détaillées dans le [profil BPMN natif](../dev/native-processes.md).
 
 Chaque document, jeu de données et définition de processus conserve un partage indépendant. Modifier les droits d’une ressource ne modifie pas ceux d’une autre ressource liée. La mise à jour conserve les partages existants, y compris les accès par groupe. Voir le [mécanisme de partage](../dev/sharing.md).
+
+## Citer un processus dans un document
+
+Dans la barre d'outils du document, **Insérer un lien ou un fichier** puis
+**Ajouter une PJ interne** ouvre le sélecteur de ressources file_share. Son arborescence,
+ses fichiers compacts et sa recherche dans l'emplacement permettent de sélectionner
+plusieurs ressources, y compris des définitions internes et des runs. Les cases et
+Maj permettent la sélection multiple ; un double-clic ouvre un dossier.
+La commande **Insérer un lien ou un fichier** de la barre d'outils regroupe les liens
+web, les ressources internes et le téléversement. Les ressources sélectionnées sont citées
+dans le texte sans rejoindre les PJ. Sous le document, **Téléverser** ajoute uniquement
+des fichiers ; les références existantes n'y sont pas listées.
+La miniature représente le processus ;
+un badge de lecture distingue ses exécutions. Ouvrir une définition affiche sa modale
+en lecture seule ; ouvrir un run affiche sa modale de suivi.
+
+Dans l'éditeur, l'action de présentation du lien permet de passer du lien au
+diagramme et de revenir au lien. Survoler le cadre du diagramme, ou y déplacer le
+focus au clavier, affiche les commandes de zoom et de plein écran en haut à droite.
+Ces commandes restent accessibles sur écran tactile. Le diagramme d'un run correspond
+à la définition figée lors de son lancement.
+
+Citer une ressource ne donne aucun droit sur le processus. Chaque lecteur doit y
+avoir accès indépendamment du document. Retirer sa citation du texte ne supprime
+ni le processus ni son exécution.

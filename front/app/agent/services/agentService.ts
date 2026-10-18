@@ -205,8 +205,8 @@ export const agentService = {
         return { ...response, data: agents }
       }, force)
     },
-    getAgent(id: number): Promise<AxiosResponse<Agent>> {
-        return api.get(`/agents/${id}`)
+    getAgent(id: number, signal?: AbortSignal): Promise<AxiosResponse<Agent>> {
+        return api.get(`/agents/${id}`, { signal })
     },
     getManagers(): Promise<AxiosResponse<AgentManagerInfo[]>> {
         return api.get('/agents/managers')

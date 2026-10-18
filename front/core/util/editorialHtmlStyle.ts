@@ -5,6 +5,8 @@ const length = (value: string, maximum = 1600): boolean => {
 }
 export const editorialClasses = new Set('galaris-link-card galaris-media-audio galaris-media-video galaris-media-pdf image image-inline image_resized table table_resized image-style-side image-style-align-left image-style-align-center image-style-align-right image-style-block-align-left image-style-block-align-right marker-yellow marker-green marker-pink marker-blue pen-red pen-green'.split(' '))
 for (const kind of ['', '-info', '-warning', '-question', '-error', '-stop', '-forbidden', '-search']) editorialClasses.add('galaris-callout' + kind)
+editorialClasses.add('galaris-process-diagram')
+editorialClasses.add('galaris-agent-card')
 export function validEditorialStyle(key: string, value: string): boolean {
   const raw = value.trim().toLowerCase()
   switch (key) {

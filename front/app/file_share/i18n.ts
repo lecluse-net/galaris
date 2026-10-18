@@ -2,6 +2,7 @@ export default {
   fr: {
     nav: { files: 'Fichiers', files_desc: 'Explorer les fichiers et ressources accessibles à chaque agent' },
     files: {
+      selectItem: 'Sélectionner {name}', searchLocation: 'Rechercher dans cet emplacement', selection: 'Fichiers sélectionnés', selectedCount: '{count} élément(s) sélectionné(s)', selectFiles: 'Sélectionner',
       title: 'Fichiers', chooseAgent: 'Choisissez un agent pour explorer ses fichiers.',
       openAgent: 'Explorer les fichiers de {name}',
       roots: 'Emplacements', resize: 'Redimensionner les emplacements et les fichiers', empty: 'Ce répertoire est vide.', selectRoot: 'Choisissez un emplacement dans l’arborescence.',
@@ -18,6 +19,7 @@ export default {
   en: {
     nav: { files: 'Files', files_desc: 'Browse files and resources available to each agent' },
     files: {
+      selectItem: 'Select {name}', searchLocation: 'Search this location', selection: 'Selected files', selectedCount: '{count} item(s) selected', selectFiles: 'Select',
       title: 'Files', chooseAgent: 'Choose an agent to browse their files.',
       openAgent: 'Browse files for {name}',
       roots: 'Locations', resize: 'Resize locations and files', empty: 'This directory is empty.', selectRoot: 'Choose a location in the tree.',
@@ -34,6 +36,7 @@ export default {
   zh: {
     nav: { files: '文件', files_desc: '浏览每个智能体可访问的文件和资源' },
     files: {
+      selectItem: '选择 {name}', searchLocation: '搜索此位置', selection: '已选文件', selectedCount: '已选择 {count} 项', selectFiles: '选择',
       title: '文件', chooseAgent: '请选择一个智能体以浏览其文件。',
       openAgent: '浏览 {name} 的文件',
       roots: '位置', resize: '调整位置与文件面板大小', empty: '此目录为空。', selectRoot: '请在树中选择一个位置。',

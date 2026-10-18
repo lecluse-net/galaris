@@ -1,18 +1,47 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { result } from './data.mjs'
+
+for (const mode of ['read', 'edit']) test(`a Task citation opens its modal without navigation in ${mode} mode`, async ({ page }) => {
+  const id = '00000000-0000-0000-0000-000000000003'
+  const task = { id, label: 'Synthetic cited task', objective: '<p>Synthetic task objective</p>', status: 'SUCCESS', paused: false, agent_id: null, parent_id: null, topic_id: null, data: {}, execution_result: result, revision: 1, created_at: '2026-09-01T12:00:00Z', updated_at: null, effort: 'standard', ai: true, cost: 0, messages: [] }
+  await jsonRoute(page, `**/api/tasks/${id}/full`, task)
+  await jsonRoute(page, `**/api/tasks/${id}`, task)
+  await jsonRoute(page, `**/api/tasks/${id}/children`, [])
+  await jsonRoute(page, `**/api/tasks/${id}/budget`, { enabled: false })
+  await jsonRoute(page, '**/api/tasks/activity', [])
+  const html = `<p><a href="galaris://task/${id}">Synthetic cited task</a></p>`
+  await mount(page, `core/util/components/${mode === 'edit' ? 'RichTextEditor' : 'RichText'}.vue`, { props: mode === 'edit' ? { modelValue: html, profile: 'document' } : { content: html, profile: 'document' }, privileges: ['TASK_ACCESS'] })
+  const url = page.url(), popups = []
+  page.on('popup', popup => popups.push(popup))
+  const open = async () => {
+    await page.getByRole('link', { name: 'Synthetic cited task', exact: true }).click()
+    if (mode === 'edit') await page.keyboard.press('Alt+Enter')
+    await expect(page.getByRole('dialog').locator('.task-detail')).toContainText('Synthetic task objective')
+    expect(page.url()).toBe(url); expect(popups).toHaveLength(0)
+  }
+  await open()
+  await page.locator('.q-dialog__backdrop').click({ position: { x: 5, y: 5 } })
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await open()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})
 
 const goalId = '00000000-0000-0000-0000-000000000123'
 const lastValue = page => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)
 async function searchFixtures(page) {
+  await jsonRoute(page, '**/api/processes/internal/resource-options?*', [])
   await jsonRoute(page, '**/api/agents**', [])
   await jsonRoute(page, '**/api/memory/documents/library', { entries: [] })
   await jsonRoute(page, '**/api/tasks/recent**', { items: [{ id: goalId, label: 'Project task', agent_id: 1 }] })
   await jsonRoute(page, '**/api/goals**', { items: [{ id: goalId, title: 'Project goal', agent_id: 1 }] })
 }
 async function openSearch(page) {
-  if (!await page.getByRole('button', { name: 'Galaris link', exact: true }).isVisible()) {
+  if (!await page.getByRole('button', { name: 'Insert a link or file', exact: true }).first().isVisible()) {
     await page.getByRole('button', { name: 'Show more items', exact: true }).click()
   }
-  await page.getByRole('button', { name: 'Galaris link', exact: true }).click()
+  await page.getByRole('button', { name: 'Insert a link or file', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Add an internal attachment', exact: true }).click()
   const search = page.getByRole('textbox', { name: 'Search accessible content', exact: true })
   await expect(search).toBeFocused()
   await search.fill('Project')
@@ -83,12 +112,13 @@ test('Galaris dialog supports dismissal, retry and ignores stale search results'
   await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
   await expect(page.locator('.galaris-link-dialog')).toHaveCount(0)
   expect(await lastValue(page)).toBeUndefined()
-  await page.route(/\/api\/(agents|goals|tasks\/recent)/, route => route.fulfill({ status: 503, json: { detail: 'Unavailable' } }))
-  await page.getByRole('button', { name: 'Galaris link', exact: true }).click()
+  await page.route(/\/api\/(agents|datasets|goals|tasks\/recent|processes\/internal\/resource-options)/, route => route.fulfill({ status: 503, json: { detail: 'Unavailable' } }))
+  await page.getByRole('button', { name: 'Insert a link or file', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Add an internal attachment', exact: true }).click()
   const search = page.getByRole('textbox', { name: 'Search accessible content', exact: true })
   await search.fill('Project')
   await expect(page.getByRole('alert')).toContainText('Search is temporarily unavailable.')
-  await page.unroute(/\/api\/(agents|goals|tasks\/recent)/)
+  await page.unroute(/\/api\/(agents|datasets|goals|tasks\/recent|processes\/internal\/resource-options)/)
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
   await expect(page.getByText('Project goal', { exact: true })).toBeVisible()
   let release

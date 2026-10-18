@@ -98,34 +98,54 @@ test('an unauthorized legacy reference stays denied without exposing a Dataset t
   expect(await page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/')
 })
 
-test('a live Dataset attachment keeps its identity and recovers a concurrent Document update', async ({ page }) => {
-  const id = '00000000-0000-4000-8000-000000000003'
-  let state = { items: [], lock_version: 3 }, fail = true
-  const writes = []
-  await jsonRoute(page, '**/api/datasets?*', { items: [{ id, uri: `data://${id}`, title: 'Synthetic budget' }], total: 1 })
-  await page.route('**/api/memory/documents/doc-a/dataset-attachments**', route => {
-    const method = route.request().method()
-    if (method === 'PUT') {
-      const body = route.request().postDataJSON(); writes.push(body)
-      if (fail) { fail = false; state.lock_version = 4; return route.fulfill({ status: 409, json: { detail: 'Document changed' } }) }
-      state = { items: [{ uri: `data://${id}`, title: 'Synthetic budget', available: true }], lock_version: 5 }
-    } else if (method === 'DELETE') state = { items: [], lock_version: 6 }
-    return route.fulfill({ json: state })
-  })
-  await mount(page, 'app/memory/components/DocumentDatasetAttachments.vue', { props: { documentId: 'doc-a', agentId: 7, editable: true } })
-  await page.getByRole('button', { name: 'Attach a Dataset', exact: true }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByRole('combobox', { name: 'Dataset', exact: true }).click()
-  await page.getByRole('option', { name: 'Synthetic budget', exact: true }).click()
-  await dialog.getByRole('button', { name: 'Attach', exact: true }).click()
-  await expect(dialog.getByRole('alert')).toBeVisible()
-  await dialog.getByRole('button', { name: 'Retry', exact: true }).click()
-  await dialog.getByRole('button', { name: 'Attach', exact: true }).click()
-  await expect(dialog).toHaveCount(0)
-  expect(writes).toEqual([{ dataset_id: id, expected_lock_version: 3 }, { dataset_id: id, expected_lock_version: 4 }])
-  await expect(page.getByRole('link', { name: 'Synthetic budget', exact: true })).toHaveAttribute('href', `/dataset/${id}`)
-  await page.getByRole('button', { name: 'Detach Synthetic budget', exact: true }).click()
-  await expect(page.getByRole('link', { name: 'Synthetic budget', exact: true })).toHaveCount(0)
+test('internal insertion preserves citations and existing files without creating attachments', async ({ page }) => {
+  const editorState = await fixture(page)
+  editorState.remote({ document_type: 'html', media_type: 'text/html', content_profile_version: 1,
+    payload: { text: '<p>Synthetic document</p>' },
+    metadata: { dataset_attachments: ['00000000-0000-4000-8000-000000000003'], process_attachments: ['galaris://processes/legacy'] } })
+  const uri = 'data://00000000-0000-4000-8000-000000000003'
+  const existingFile = 'file://00000000-0000-4000-8000-000000000004'
+  const item = { uri, name: 'Synthetic budget', is_collection: false, media_type: 'application/json', size: 20, capabilities: ['read', 'info'] }
+  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [
+    { scheme: 'data', label: 'Galaris Datasets', capabilities: ['list'], native: true },
+    { scheme: 'file', label: 'Existing files', capabilities: ['list'], native: true },
+  ])
+  await page.route('**/api/file-share/browser/entries?*', route => route.fulfill({ json: {
+    entries: new URL(route.request().url()).searchParams.get('uri') === 'data://' ? [item] : [{ ...item, uri: existingFile, name: 'Existing notes.txt', media_type: 'text/plain' }],
+    truncated: false, next_cursor: null,
+  } }))
+  await page.route('**/api/file-share/browser/thumbnail?*', route => route.fulfill({ status: 404 }))
+  const attachmentRequests = []
+  page.on('request', request => { if (/\/(internal|dataset|process)-attachments/.test(request.url()) || request.url().includes('/attachments') && request.method() === 'POST') attachmentRequests.push(request.url()) })
+  await mount(page, 'app/memory/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7, editable: true }, privileges: ['MEMORY_EDIT'] })
+  const attachments = page.locator('.document-editor-attachments')
+  await expect(attachments.getByRole('button', { name: 'Upload', exact: true })).toBeVisible()
+  await expect(attachments.getByRole('button', { name: 'Add an internal attachment', exact: true })).toHaveCount(0)
+  await expect(attachments.locator('.resource-preview-card')).toHaveCount(0)
+  const editor = page.locator('.ck-editor__editable')
+  await editor.click(); await page.keyboard.press('Control+a')
+  await page.getByRole('button', { name: 'Bold', exact: true }).first().click()
+  const choose = async (location, name) => {
+    await page.getByRole('button', { name: 'Insert a link or file', exact: true }).first().click()
+    await page.locator('.ck-dropdown__panel').getByRole('button', { name: 'Add an internal attachment', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByText(location, { exact: true }).click()
+    await dialog.locator('.file-main').getByRole('button', { name: 'Select ' + name, exact: true }).click()
+    await dialog.getByRole('button', { name: 'Select', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+  }
+  await choose('Galaris Datasets', 'Synthetic budget')
+  await expect(editor.getByRole('link', { name: 'Synthetic document', exact: true })).toHaveAttribute('data-rich-reference', uri)
+  await expect(editor.locator('a strong')).toHaveText('Synthetic document')
+  await editor.click(); await page.keyboard.press('Control+End'); await page.keyboard.press('Enter')
+  await choose('Existing files', 'Existing notes.txt')
+  const href = await editor.getByRole('link', { name: 'Existing notes.txt', exact: true }).getAttribute('href')
+  const target = new URL(href)
+  expect(target.pathname).toBe('/files')
+  expect(target.searchParams.get('uri')).toBe(existingFile)
+  expect(target.searchParams.get('agent_id')).toBe('7')
+  await expect(attachments.locator('.resource-preview-card')).toHaveCount(0)
+  expect(attachmentRequests).toEqual([])
 })
 
 test('the native Dataset editor preserves invalid JSON drafts and writes valid source through Dataset API', async ({ page }) => {

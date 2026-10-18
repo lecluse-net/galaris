@@ -31,6 +31,31 @@ async function selectAgent(page, name) {
   await expect(page.getByRole('listbox')).toHaveCount(0)
 }
 
+test('an existing file citation opens through authorized file sharing and retries denied access', async ({ page }) => {
+  await setup(page)
+  const uri = 'file://00000000-0000-4000-8000-000000000004'
+  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'file', label: 'Existing files', capabilities: ['list', 'info', 'read'], native: true }])
+  await jsonRoute(page, '**/api/file-share/browser/entries?*', pageOf('file://', []))
+  let denied = true, reads = 0
+  await page.route('**/api/file-share/browser/info?*', route => {
+    const params = new URL(route.request().url()).searchParams
+    expect(params.get('agent_id')).toBe('7'); expect(params.get('uri')).toBe(uri)
+    return route.fulfill(denied ? { status: 403, json: { detail: 'Synthetic unavailable file' } } : { json: entry(uri, 'Existing notes.txt') })
+  })
+  await page.route('**/api/file-share/browser/content?*', route => {
+    reads++
+    expect(new URL(route.request().url()).searchParams.get('uri')).toBe(uri)
+    return route.fulfill({ contentType: 'text/plain', body: 'Existing source content' })
+  })
+  await mount(page, component, { route: `/files?agent_id=7&uri=${encodeURIComponent(uri)}`, privileges: ['MEMORY_ACCESS'] })
+  await expect(page.getByRole('alert')).toBeVisible()
+  expect(reads).toBe(0)
+  denied = false
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page.getByRole('dialog').getByText('Existing source content', { exact: true })).toBeVisible()
+  expect(reads).toBe(1)
+})
+
 for (const width of [1440, 390]) test(`browse folders, scroll, retry and preview with the keyboard at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   await setup(page)

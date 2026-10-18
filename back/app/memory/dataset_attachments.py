@@ -60,7 +60,7 @@ def _identities(document: MemoryItem) -> list[UUID]:
     return targets
 
 
-async def _document(identity: UUID, actor: int | HumanActor, *, write: bool = False) -> MemoryItem:
+async def document_for_references(identity: UUID, actor: int | HumanActor, *, write: bool = False) -> MemoryItem:
     if write:
         await get_db().scalar(select(MemoryItem.id).where(MemoryItem.id == identity).with_for_update())
     document = await service.document_record(identity, revisions=False)
@@ -71,7 +71,7 @@ async def _document(identity: UUID, actor: int | HumanActor, *, write: bool = Fa
 
 
 async def list_references(identity: UUID, actor: int | HumanActor, *, dataset_actor: DatasetAttachmentActor) -> tuple[list[DatasetAttachmentReference], int]:
-    document = await _document(identity, actor)
+    document = await document_for_references(identity, actor)
     references: list[DatasetAttachmentReference] = []
     for target in _identities(document):
         try:
@@ -83,7 +83,7 @@ async def list_references(identity: UUID, actor: int | HumanActor, *, dataset_ac
 
 async def change_reference(identity: UUID, target: UUID, actor: int | HumanActor, *, dataset_actor: DatasetAttachmentActor,
     expected_lock_version: int, remove: bool = False) -> tuple[list[DatasetAttachmentReference], int]:
-    document = await _document(identity, actor, write=True)
+    document = await document_for_references(identity, actor, write=True)
     targets = _identities(document)
     changed = (target in targets) if remove else (target not in targets)
     if not changed:

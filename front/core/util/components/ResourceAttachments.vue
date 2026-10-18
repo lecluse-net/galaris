@@ -14,6 +14,7 @@
         :loading="uploading"
         @click="fileInput?.click()"
       />
+      <slot name="actions" />
       <input
         ref="fileInput"
         type="file"
@@ -41,6 +42,8 @@
         :key="attachment.id"
         :ref="element => registerPreviewElement(attachment.id, element)"
         class="document-attachments__item"
+        :draggable="Boolean(editable && allowInsertion && dragHtml)"
+        @dragstart="dragAttachment($event, attachment)"
         placement="below-page"
         :title="attachment.name"
         :subtitle="formatSize(attachment.size_bytes)"
@@ -60,7 +63,7 @@
         </template>
         <template #actions>
             <q-btn
-              v-if="editable && allowInsertion && !embeddedAttachmentIds.has(attachment.id.toLowerCase())"
+              v-if="editable && allowInsertion"
               flat
               round
               dense
@@ -214,7 +217,6 @@ import { apiErrorDetail } from '@/core/api'
 import {
   browserResourceKind,
   formatFileSize,
-  attachmentReference,
   FullscreenPreview,
   ResourcePreviewBlock,
   AudioResourcePlayer,
@@ -227,7 +229,8 @@ import {
 import type { BrowserResourceKind, Model3dSource } from '@/core/util'
 import type { AttachmentSource, ResourceAttachment } from '../resourceAttachments'
 
-const { resourceId, agentId = null, attachments, editable = false, loading = false, content = '', allowInsertion = false, previewOnly = false, showHeading = true, resourceSource, emptyLabel, heading } = defineProps<{
+const { resourceId, agentId = null, attachments, editable = false, loading = false, content = '', allowInsertion = false, previewOnly = false, showHeading = true, resourceSource, emptyLabel, heading, dragHtml } = defineProps<{
+  dragHtml?: (attachment: T) => string
   emptyLabel?: string
   heading?: string
   resourceSource: AttachmentSource<T>
@@ -249,16 +252,12 @@ const emit = defineEmits<{
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const attachmentsTitle = computed(() => heading || t('documents.attachments'))
-const embeddedAttachmentIds = computed(() => {
-  const html = new DOMParser().parseFromString(content, 'text/html')
-  const embedded = new Set<string>()
-  for (const element of html.querySelectorAll('img[src],a[href]')) {
-    if (element.closest('pre,code')) continue
-    const reference = attachmentReference(element.getAttribute(element.tagName === 'IMG' ? 'src' : 'href') ?? '')
-    if (reference?.[0].toLowerCase() === resourceId.toLowerCase()) embedded.add(reference[1].toLowerCase())
-  }
-  return embedded
-})
+function dragAttachment(event: DragEvent, attachment: T): void {
+  if (!editable || !allowInsertion || !dragHtml || !event.dataTransfer) { event.preventDefault(); return }
+  event.dataTransfer.effectAllowed = 'copy'
+  event.dataTransfer.setData('text/html', dragHtml(attachment))
+  event.dataTransfer.setData('text/plain', attachment.name)
+}
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 const objectUrls = reactive<Record<string, string>>({})
 const thumbnailUrls = reactive<Record<string, string>>({})

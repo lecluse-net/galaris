@@ -29,6 +29,8 @@ from . import (
     document_export,
     document_attachment_service,
     dataset_attachments,
+    process_references,
+    internal_attachments,
     document_thumbnail_service,
     facade,
     maintenance,
@@ -39,6 +41,8 @@ from . import (
 from .assertions import ManagedDocumentAccessAssertion
 from .contracts import MemorySearchItem
 from .schemas import (
+    DocumentProcessAttachmentWrite,
+    DocumentInternalAttachmentWrite,
     GoalFolderReconciliationRequest,
     GoalFolderReconciliationResult,
     DocumentSharing, DocumentSharingUpdate, DocumentSharingLevelUpdate,
@@ -233,6 +237,8 @@ def _http_error(exc: Exception) -> HTTPException:
 @authorize(privileges=Privileges.MEMORY_EDIT)
 async def create_memory_item(data: MemoryItemCreate) -> MemoryItemPublic:
     try:
+        if data.node_kind == "document" and data.document_type != "html":
+            raise ValueError("Documents contain HTML; use the Dataset or Process API for other resources")
         await _require_agent_scope(data.owner_agent_id)
         item = await acquisition_service.create_manual_item(data)
         return service.item_to_public(
@@ -1107,6 +1113,55 @@ async def read_document_datasets(document_id: UUID, agent_id: int | None = Query
         raise _http_error(exc) from exc
 
 
+@router.get("/documents/{document_id}/internal-attachments")
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
+async def read_internal_attachments(document_id: UUID, resource_agent_id: int = Query(gt=0),
+    agent_id: int | None = Query(default=None, gt=0)) -> dict[str, Any]:
+    try:
+        await _require_agent_scope(resource_agent_id)
+        actor = await _document_request_actor(document_id, agent_id)
+        return await internal_attachments.references(document_id, actor, resource_agent_id, scope=await current_management_scope())
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.put("/documents/{document_id}/internal-attachments")
+@authorize(privileges=Privileges.MEMORY_EDIT)
+async def change_internal_attachments(document_id: UUID, data: DocumentInternalAttachmentWrite,
+    actor_agent_id: int | None = Query(default=None, gt=0)) -> dict[str, Any]:
+    try:
+        await _require_agent_scope(data.resource_agent_id)
+        actor = await _document_request_actor(document_id, actor_agent_id)
+        return await internal_attachments.change_references(document_id, actor, data.resource_agent_id,
+            uris=data.uris, expected_lock_version=data.expected_lock_version, remove=data.remove, scope=await current_management_scope())
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.get("/documents/{document_id}/process-attachments")
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
+async def read_document_processes(document_id: UUID, agent_id: int | None = Query(default=None, gt=0)) -> dict[str, Any]:
+    try:
+        actor = await _document_request_actor(document_id, agent_id)
+        return await process_references.references(document_id, actor,
+            agent_id if agent_id is not None else await current_management_scope())
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.put("/documents/{document_id}/process-attachments")
+@authorize(privileges=Privileges.MEMORY_EDIT)
+async def attach_document_process(document_id: UUID, data: DocumentProcessAttachmentWrite,
+    actor_agent_id: int | None = Query(default=None, gt=0)) -> dict[str, Any]:
+    try:
+        actor = await _document_request_actor(document_id, actor_agent_id)
+        return await process_references.change_reference(document_id, actor,
+            actor_agent_id if actor_agent_id is not None else await current_management_scope(),
+            uri=data.uri, expected_lock_version=data.expected_lock_version, remove=data.remove)
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
 @router.put("/documents/{document_id}/dataset-attachments", response_model=DocumentDatasetAttachments)
 @authorize(privileges=Privileges.MEMORY_EDIT)
 async def attach_document_dataset(document_id: UUID, data: DocumentDatasetAttachmentWrite,
@@ -1155,6 +1210,8 @@ async def read_managed_document(document_id: UUID, agent_id: Annotated[int | Non
         )
         if item.document_type == "dataset":
             return DocumentResourceRedirect(resource_uri=f"data://{item.id}")
+        if item.document_type != "html":
+            raise service.MemoryNotFoundError("HTML Document not found")
         return ManagedDocumentDetail(
             item=await service.item_to_detail(item, content, access, content_type=content_type, media_type=media_type),
             agent_id=actor if isinstance(actor, int) else None,

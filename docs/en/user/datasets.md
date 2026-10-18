@@ -6,9 +6,10 @@ Open **Knowledge → Datasets** to create JSON data. Datasets belong to this ded
 library and no longer appear in the Documents library or its creation dialog.
 An old Document link to a Dataset now opens its dedicated editor. An HTML Document can
 read its values for display or computation with the viewer's permissions and consent.
-**Attach a Dataset** in a Document adds a live attachment. The Dataset retains its own
-URI, history and sharing. **Detach** removes the link without deleting data; sharing the
-Document does not share its Datasets. Unavailable attachments no longer reveal their title.
+In the toolbar, **Insert a link or file** then **Add an internal attachment** opens the
+file_share picker: choose `data://` and select the Datasets. Citations are inserted in the
+text without adding attachments. Each Dataset retains its own URI, history and sharing.
+Removing a citation does not delete data; sharing the Document does not share its Datasets.
 Each Dataset has its own `data://`
 address, sharing and revision history. Content can be an object, array or scalar value,
 without an associated schema. Invalid JSON and conflicts preserve your local draft;

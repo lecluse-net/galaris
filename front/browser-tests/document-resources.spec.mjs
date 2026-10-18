@@ -29,6 +29,44 @@ const uri = `document://${documentId}/attachments/${attachmentId}`
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII='
 const component = 'core/util/components/RichTextEditor.vue'
 
+test('a document card stays one object when writing around it, deleting it and undoing', async ({ page }, testInfo) => {
+  const html = '<blockquote class="galaris-link-card"><p><a href="https://example.org/guide"><strong>Synthetic guide</strong></a></p><p>Preserved description</p></blockquote>'
+  await mount(page, component, { props: { profile: 'document', modelValue: html } })
+  const editable = page.locator('.ck-editor__editable')
+  const card = editable.locator('blockquote.galaris-link-card')
+  const popups = []
+  page.on('popup', popup => popups.push(popup))
+  await card.getByRole('link', { name: 'Synthetic guide', exact: true }).click()
+  await page.keyboard.press('Backspace')
+  await expect(card).toHaveCount(0)
+  await page.keyboard.press('Control+z')
+  await card.getByText('Preserved description', { exact: true }).click()
+  await card.getByTitle('Insert paragraph before block', { exact: true }).click()
+  await page.keyboard.type('Before the card')
+  await expect(editable.locator(':scope > p').first()).toHaveText('Before the card')
+  await card.getByText('Preserved description', { exact: true }).click()
+  await card.getByTitle('Insert paragraph after block', { exact: true }).click()
+  await page.keyboard.type('After the card')
+  await expect(editable.locator(':scope > p').last()).toHaveText('After the card')
+  await card.getByText('Preserved description', { exact: true }).click()
+  await page.screenshot({ path: testInfo.outputPath('selected-document-card.png') })
+  await page.keyboard.press('Backspace')
+  await expect(card).toHaveCount(0)
+  await page.keyboard.press('Control+z')
+  await expect(card).toContainText('Preserved description')
+  await page.getByRole('button', { name: 'Source', exact: true }).click()
+  const saved = await page.locator('.ck-source-editing-area textarea').inputValue()
+  const parsed = await page.evaluate(html => {
+    const body = new DOMParser().parseFromString(html, 'text/html').body
+    return [...body.children].map(element => [element.tagName, element.textContent.replace(/\s+/g, ' ').trim()])
+  }, saved)
+  expect(parsed).toEqual([['P', 'Before the card'], ['BLOCKQUOTE', 'Synthetic guide Preserved description'], ['P', 'After the card']])
+  expect(saved).not.toMatch(/ck-widget|contenteditable|type-around/)
+  await page.getByRole('button', { name: 'Source', exact: true }).click()
+  await expect(card).toContainText('Preserved description')
+  expect(popups).toHaveLength(0)
+})
+
 async function paste(page, text) {
   await page.locator('.ck-editor__editable').evaluate((root, text) => {
     const data = new DataTransfer(); data.setData('text/plain', text)
@@ -130,13 +168,16 @@ test('reading a YouTube card embeds only the official player and leaves plain li
   }
 })
 
-test('the card action is hidden for links that cannot become preview cards', async ({ page }) => {
+test('the card action is hidden for attachments and modal targets without a card provider', async ({ page }) => {
   await mount(page, component)
   await page.evaluate(async ({ component, uri }) => window.testApp.mount({ component, props: {
-    profile: 'document', modelValue: `<p><a href="${uri}">Attachment</a></p><p><a href="https://example.org">Website</a></p>`,
+    profile: 'document', modelValue: `<p><a href="${uri}">Attachment</a></p><p><a href="galaris://task/00000000-0000-0000-0000-000000000003">Task</a></p><p><a href="https://example.org">Website</a></p>`,
     createLinkCard: async () => '',
   } }), { component, uri })
   await page.locator('.ck-editor__editable a').first().click()
+  await expect(page.getByRole('button', { name: 'Show card', exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await page.locator('.ck-editor__editable a').nth(1).click()
   await expect(page.getByRole('button', { name: 'Show card', exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
   await page.locator('.ck-editor__editable a').last().click()
@@ -145,15 +186,17 @@ test('the card action is hidden for links that cannot become preview cards', asy
 
 // Direct upload remains covered through paste after removal of its toolbar shortcut.
 for (const directUpload of [false, true]) test(`the document ${directUpload ? 'uploads and inserts a pasted file' : 'inserts an existing attachment from the list below its content'}`, async ({ page }) => {
-  const current = { ...documentFixture, id: documentId, media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Report</p>' } }
+  const current = { ...documentFixture, id: documentId, media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Report</p><p>Closing note</p>' } }
   const attachment = { id: attachmentId, name: 'scene.html', media_type: 'text/html', size_bytes: 850305 }
   await jsonRoute(page, '**/api/agents?*', [agent])
   await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
   await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
   await jsonRoute(page, '**/api/memory/documents/folders?*', [])
   let uploaded = !directUpload
+  let uploads = 0
   await page.route(`**/api/memory/documents/${documentId}/attachments?*`, route => {
     if (route.request().method() === 'POST') {
+      uploads++
       uploaded = true
       return route.fulfill({ json: attachment })
     }
@@ -190,7 +233,22 @@ for (const directUpload of [false, true]) test(`the document ${directUpload ? 'u
   await expect(page.locator('.document-attachments')).toBeVisible()
   await expect(page.locator('.document-attachments')).toContainText('scene.html')
   await expect.poll(() => current.payload.text).toContain(uri)
-  await expect(page.getByRole('button', { name: 'Insert into document', exact: true })).toHaveCount(0)
+  const insert = page.getByRole('button', { name: 'Insert into document', exact: true })
+  await expect(insert).toHaveCount(1)
+  if (directUpload) return
+  await page.locator('.ck-editor__editable p').first().click()
+  await page.keyboard.press('Home')
+  await page.locator('.document-attachments__item').hover()
+  await insert.click()
+  await expect(page.locator('.ck-editor__editable .galaris-link-card')).toHaveCount(2)
+  const item = page.locator('.document-attachments__item')
+  await expect(item).toHaveAttribute('draggable', 'true')
+  // A native drag copies the existing file to the drop position, independently of the cursor.
+  await item.dragTo(page.locator('.ck-editor__editable > p').filter({ hasText: 'Closing note' }), { sourcePosition: { x: 25, y: 40 }, targetPosition: { x: 150, y: 10 } })
+  await expect(page.locator('.ck-editor__editable .galaris-link-card')).toHaveCount(3)
+  await expect.poll(() => (current.payload.text.match(/scene.html/g) ?? []).length).toBe(3)
+  expect(current.payload.text.indexOf('Closing note')).toBeLessThan(current.payload.text.lastIndexOf('scene.html'))
+  expect(uploads).toBe(0)
 })
 
 for (const mode of ['edit', 'read']) for (const kind of ['audio', 'video', 'pdf']) test(`${mode}: attachment ${kind} plays inline without persisting its player`, async ({ page }) => {
@@ -429,7 +487,7 @@ test('document attachments upload below the content, retry after failure and rem
   })
   await drop()
   await expect(page.getByText('Synthetic upload failure', { exact: false })).toBeVisible()
-  await expect(zone.getByRole('button', { name: 'Add', exact: true })).toBeEnabled()
+  await expect(zone.getByRole('button', { name: 'Upload', exact: true })).toBeEnabled()
   await drop()
   await expect(zone).toContainText('report.bin')
   await expect(editor).toHaveText('Report content')
@@ -466,7 +524,7 @@ for (const editable of [true, false]) for (const reference of ['link', 'image'])
   await expect(list).toBeVisible()
   await expect(list).toContainText('remaining.bin')
   await expect(list).toContainText('embedded.png')
-  await expect(list.getByRole('button', { name: 'Insert into document', exact: true })).toHaveCount(editable ? 1 : 0)
+  await expect(list.getByRole('button', { name: 'Insert into document', exact: true })).toHaveCount(editable ? 2 : 0)
   await expect(list.getByRole('button', { name: /^Remove / })).toHaveCount(editable ? 2 : 0)
   await page.setViewportSize({ width: 390, height: 844 })
   await list.getByRole('button', { name: 'Download embedded.png', exact: true }).focus()

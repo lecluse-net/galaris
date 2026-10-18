@@ -1,0 +1,37 @@
+import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+
+const entry = (uri, name, is_collection = false) => ({ uri, name, is_collection, media_type: is_collection ? '' : 'text/plain', size: 10, capabilities: is_collection ? ['list'] : ['read', 'info'] })
+const listing = entries => ({ entries, next_cursor: null, truncated: false })
+
+for (const width of [1440, 390]) test(`internal file picker keeps multiple selections across folders and search at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 })
+  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'file', label: 'Managed files', capabilities: ['list'], native: true }])
+  await page.route('**/api/file-share/browser/thumbnail?*', route => route.fulfill({ status: 404 }))
+  await page.route('**/api/file-share/browser/entries?*', route => {
+    const uri = new URL(route.request().url()).searchParams.get('uri')
+    return route.fulfill({ json: listing(uri === 'file://' ? [entry('file://folder/', 'Synthetic folder', true), entry('file://one', 'One.txt')] : [entry('file://two', 'Two.txt'), entry('file://three', 'Three.txt')]) })
+  })
+  await page.route('**/api/file-share/browser/search?*', route => {
+    expect(new URL(route.request().url()).searchParams.get('query')).toBe('Search')
+    return route.fulfill({ json: { hits: [{ resource: entry('file://search', 'Search.txt') }], truncated: false, next_cursor: null } })
+  })
+  await mount(page, 'resourcePicker.vue', { props: { modelValue: true, agentId: 7 } })
+  if (width < 1024) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
+  await page.getByText('Managed files', { exact: true }).click()
+  const main = page.locator('.file-main')
+  await main.getByRole('button', { name: 'Select One.txt', exact: true }).click()
+  await main.getByRole('button', { name: 'Select Synthetic folder', exact: true }).dblclick()
+  await main.getByRole('button', { name: 'Select Two.txt', exact: true }).click()
+  await main.getByRole('button', { name: 'Select Three.txt', exact: true }).click({ modifiers: ['Shift'] })
+  await expect(page.getByText('3 item(s) selected', { exact: true })).toBeVisible()
+  await page.getByRole('textbox', { name: 'Search this location', exact: true }).fill('Search')
+  await main.getByRole('button', { name: 'Select Search.txt', exact: true }).click()
+  await expect(page.getByText('4 item(s) selected', { exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('internal-picker.png'), fullPage: true })
+  await page.getByRole('button', { name: 'Select', exact: true }).click()
+  const selected = await page.evaluate(() => window.testApp.events.filter(event => event.name === 'select').at(-1).args)
+  expect(selected[0].map(value => value.uri)).toEqual(['file://one', 'file://two', 'file://three', 'file://search'])
+  expect(selected[1]).toBe(7)
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})

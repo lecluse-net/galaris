@@ -6,6 +6,7 @@ export interface DocumentUploadProgress { name: string; index: number; total: nu
 /** Upload through the document's attachment service, then insert at a live model position. */
 export function attachDocumentFileUpload(editor: Editor, options: {
   upload?: (file: File, signal: AbortSignal, progress: (value: number) => void) => Promise<string>
+  available?: () => boolean
   translate: (key: string) => string
   progress: (value: DocumentUploadProgress | null) => void
   failed: (name: string) => void
@@ -13,7 +14,7 @@ export function attachDocumentFileUpload(editor: Editor, options: {
   let request: AbortController | undefined
   let destroyed = false
   let button: FileDialogButtonView | undefined
-  const enabled = (): boolean => Boolean(options.upload) && !editor.isReadOnly && !request
+  const enabled = (): boolean => Boolean(options.upload) && (options.available?.() ?? true) && !editor.isReadOnly && !request
   const refresh = (): void => { if (button) button.isEnabled = enabled() }
   const cancel = (): void => { request?.abort() }
   const upload = async (files: File[], start: ModelPosition): Promise<void> => {
@@ -74,6 +75,7 @@ export function attachDocumentFileUpload(editor: Editor, options: {
     if (position) void upload(files, position)
   }, { priority: 'highest' })
   editor.on('change:isReadOnly', () => { if (editor.isReadOnly) cancel(); refresh() })
+  editor.ui.on('update', refresh)
   editor.data.on('set', cancel, { priority: 'highest' })
   editor.on('destroy', () => { destroyed = true; cancel(); options.progress(null) })
   return cancel

@@ -2,6 +2,20 @@
 
 # Contrat des contenus HTML éditoriaux
 
+Une citation de processus interne utilise un lien titré vers
+`galaris://processes/<code>` ou `galaris://processes/runs/<uuid>`. Pour afficher le
+diagramme dans un document, conserver ce lien dans
+`<blockquote class="galaris-link-card galaris-process-diagram"><p><a href="URI">Titre</a></p></blockquote>`.
+Le canvas, les contrôles de zoom et les miniatures sont fournis au rendu, jamais
+enregistrés dans le HTML. Process conserve la définition, les runs et leurs droits.
+Les citations sont enregistrées dans le HTML, sans manifeste de PJ ni copie de la cible.
+La liste des PJ et la collection documentaire de fichiers n'exposent que les fichiers
+téléversés. Les anciens manifestes internes restent lisibles par leurs API de compatibilité.
+Une carte d'agent conserve `galaris://agent/<id>`, son nom et son poste dans
+`blockquote.galaris-link-card.galaris-agent-card`. Son avatar est chargé au rendu avec
+les droits du lecteur, sans blob enregistré ni nouvelle PJ. L'ouverture en modale et
+la possibilité d'afficher une carte sont deux capacités indépendantes des contributions.
+
 La décision [0080](../../../project/decisions/0080-editorial-html.md) définit le périmètre.
 Pour les contenus éditoriaux et les documents de type `html`, le corps autoritaire est un fragment UTF-8 `text/html`, `content_profile_version: 1`.
 `rich-text` couvre les six catégories Memory, les objectifs et profils ; `document` ajoute
