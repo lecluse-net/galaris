@@ -561,34 +561,50 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* The drawing keeps the reference SVG's paper palette in either application theme. */
 .diagram-editor, .drag-preview {
   --diagram-surface: #FFFFFF;
-  --diagram-text: #0F172A;
+  --diagram-text: #292C30;
   --diagram-muted: #64748B;
   --diagram-line: #475569;
   --diagram-separator: #E2E8F0;
-  --diagram-lane: #FBFCFD;
-  --diagram-lane-alt: #F6F8FB;
-  --diagram-lane-system: #EEF3F8;
+  --diagram-lane: var(--diagram-surface);
+  --diagram-lane-alt: var(--solaire-gray-light);
+  --diagram-lane-system: var(--solaire-blue-light);
   --diagram-actor: #334155;
   --diagram-actor-alt: #3F4B5E;
   --diagram-actor-system: #1E293B;
   --diagram-actor-text: #FFFFFF;
   --diagram-actor-muted: #CBD5E1;
-  --diagram-gray-fill: #F1F5F9;
-  --diagram-gray-border: #94A3B8;
-  --diagram-yellow-fill: #FEF3C7;
-  --diagram-yellow-border: #D97706;
-  --diagram-green-fill: #DDF3EF;
-  --diagram-green-border: #0F766E;
-  --diagram-blue-fill: #DBEAFE;
-  --diagram-blue-border: #1D4ED8;
-  --diagram-red-fill: #FEE2E2;
-  --diagram-red-border: #B91C1C;
-  --diagram-badge-yellow-text: #9A3412;
+  --diagram-gray-fill: var(--solaire-gray-light);
+  --diagram-gray-border: var(--solaire-gray-accent);
+  --diagram-yellow-fill: var(--solaire-yellow-light);
+  --diagram-yellow-border: var(--solaire-yellow-accent);
+  --diagram-green-fill: var(--solaire-green-light);
+  --diagram-green-border: var(--solaire-green-accent);
+  --diagram-blue-fill: var(--solaire-blue-light);
+  --diagram-blue-border: var(--solaire-blue-accent);
+  --diagram-red-fill: var(--solaire-red-light);
+  --diagram-red-border: var(--solaire-red-accent);
+  --diagram-badge-yellow-text: var(--diagram-text);
   color: var(--diagram-text);
   font-family: 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif;
+}
+.body--dark .diagram-editor, .body--dark .drag-preview {
+  --diagram-surface: #101010;
+  --diagram-text: #EEEEF0;
+  --diagram-muted: #CBD5E1;
+  --diagram-line: #CBD5E1;
+  --diagram-separator: rgba(128, 128, 128, .4);
+  --diagram-lane-alt: var(--solaire-gray-dark);
+  --diagram-lane-system: var(--solaire-blue-dark);
+  --diagram-actor: var(--solaire-gray-dark);
+  --diagram-actor-alt: #101010;
+  --diagram-actor-system: var(--solaire-blue-dark);
+  --diagram-gray-fill: var(--solaire-gray-dark);
+  --diagram-yellow-fill: var(--solaire-yellow-dark);
+  --diagram-green-fill: var(--solaire-green-dark);
+  --diagram-blue-fill: var(--solaire-blue-dark);
+  --diagram-red-fill: var(--solaire-red-dark);
 }
 .diagram-editor { border: 1px solid var(--diagram-separator); border-radius: 10px; overflow: hidden; background: var(--diagram-surface); }
 .diagram-toolbar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--q-separator-color, rgba(128, 128, 128, .24)); }
@@ -630,6 +646,7 @@ marker path { fill: var(--diagram-line); }
 .node-copy strong { font-size: 15px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .task { --node-accent: var(--diagram-gray-border); --node-fill: var(--diagram-gray-fill); --node-border-width: 1.5px; }
 .human_task, .for, .while, .if, .parallel { --node-accent: var(--diagram-yellow-border); --node-fill: var(--diagram-yellow-fill); --node-border-width: 2px; }
+.human_task .node-symbol, .for .node-symbol, .while .node-symbol, .if .node-symbol, .parallel .node-symbol { color: var(--diagram-text); }
 .start { --node-accent: var(--diagram-blue-border); --node-fill: var(--diagram-blue-fill); }
 .end { --node-accent: var(--diagram-red-border); --node-fill: var(--diagram-red-fill); }
 .start .node-card, .end .node-card { height: 64px; width: 64px; margin: 12px 4px; border-radius: 50%; border: 2px solid var(--node-accent); padding: 0; justify-content: center; }
@@ -653,8 +670,8 @@ marker path { fill: var(--diagram-line); }
 .state-running { --status-accent: var(--solaire-blue-accent); --status-fill: var(--solaire-blue-light); --status-text: var(--diagram-text); }
 .state-waiting { --status-accent: var(--solaire-yellow-accent); --status-fill: var(--solaire-yellow-light); --status-text: var(--diagram-text); }
 .state-running .node-card, .state-waiting .node-card { background: var(--status-fill); border-color: var(--status-accent); outline: 3px solid var(--status-accent); outline-offset: 4px; }
-:global(body.body--dark) .state-running { --status-fill: var(--solaire-blue-dark); }
-:global(body.body--dark) .state-waiting { --status-fill: var(--solaire-yellow-dark); }
+.body--dark .state-running { --status-fill: var(--solaire-blue-dark); }
+.body--dark .state-waiting { --status-fill: var(--solaire-yellow-dark); }
 .connect-hint { display: flex; gap: 8px; align-items: center; padding: 8px 16px; background: var(--diagram-gray-fill); font-size: 13px; }
 .drop-message { display: flex; gap: 8px; align-items: center; padding: 10px 16px; font-size: 13px; }
 :global(.handle-menu) { background: #fff; color: #292C30; border: 1px solid rgba(128, 128, 128, .24); border-radius: 12px; }
