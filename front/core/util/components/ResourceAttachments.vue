@@ -157,6 +157,7 @@
         :src="objectUrls[previewAttachment.id]"
         controls
         playsinline
+        preload="metadata"
         class="document-attachments__fullscreen-media"
         :class="{ 'document-attachments__fullscreen-media--fit': fit }"
       />
@@ -356,9 +357,17 @@ function audioSource(attachment: T) {
   }
 }
 
+const videoReleases = new Map<string, () => void>()
+
+function releasePreviewUrl(url: string): void {
+  const release = videoReleases.get(url)
+  if (release) { videoReleases.delete(url); release() }
+  else URL.revokeObjectURL(url)
+}
+
 function clearObjectUrls(): void {
   generation += 1
-  for (const url of Object.values(objectUrls)) URL.revokeObjectURL(url)
+  for (const url of Object.values(objectUrls)) releasePreviewUrl(url)
   for (const id of Object.keys(objectUrls)) delete objectUrls[id]
   for (const id of Object.keys(textContents)) delete textContents[id]
   for (const url of Object.values(thumbnailUrls)) URL.revokeObjectURL(url)
@@ -369,6 +378,20 @@ async function loadPreviewContent(attachment: T): Promise<string | null> {
   if (objectUrls[attachment.id]) return objectUrls[attachment.id] ?? null
   try {
     const currentGeneration = generation
+    if (attachmentKind(attachment) === 'video' && resourceSource.videoUrl) {
+      const request = previewGeneration
+      const release = resourceSource.releaseVideoUrl
+      const url = await resourceSource.videoUrl(attachment)
+      if (url) videoReleases.set(url, () => { void release?.(url).catch(() => undefined) })
+      if (currentGeneration !== generation || request !== previewGeneration) {
+        if (url) releasePreviewUrl(url)
+        return null
+      }
+      if (url) {
+        objectUrls[attachment.id] = url
+        return url
+      }
+    }
     const blob = await resourceSource.content(attachment, true)
     const text = ['markdown', 'text'].includes(attachmentKind(attachment) ?? '') ? await blob.text() : undefined
     if (currentGeneration !== generation) return null
@@ -426,7 +449,7 @@ function refreshPreviews(): void {
   const visibleIds = new Set(attachments.map(value => value.id))
   for (const [id, url] of Object.entries(objectUrls)) {
     if (visibleIds.has(id)) continue
-    URL.revokeObjectURL(url)
+    releasePreviewUrl(url)
     delete objectUrls[id]
     delete textContents[id]
   }
@@ -574,7 +597,14 @@ onMounted(() => {
 })
 watch(() => [resourceId, agentId], () => { dragging.value = false; audioOpen.value = false; uploadController?.abort(); previewGeneration++; previewOpen.value = false; clearObjectUrls() })
 watch(() => editable, value => { if (!value) { dragging.value = false; uploadController?.abort() } })
-watch(previewOpen, value => { if (!value) previewGeneration++ })
+watch(previewOpen, value => {
+  if (!value) {
+    previewGeneration++
+    const id = previewAttachment.value?.id
+    const url = id ? objectUrls[id] : undefined
+    if (id && url && videoReleases.has(url)) { releasePreviewUrl(url); delete objectUrls[id] }
+  }
+})
 async function openById(id: string): Promise<void> {
   const sourceDocument = resourceId, sourceAgent = agentId
   try {

@@ -155,6 +155,17 @@ def dav(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_video_range_streams_without_staging_when_dav_ignores_range(dav):
+    server, adapter, ctx = dav
+    server.put("video.mp4", b"header-video-content-tail")
+    result = b"".join([chunk async for chunk in files.resource_byte_range(ctx, "cloud://video.mp4", offset=7, length=5)])
+    assert result == b"video"
+    request = next(request for request in server.requests if request.method == "GET")
+    assert request.headers["range"] == "bytes=7-11"
+    assert request.headers["accept-encoding"] == "identity"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("cancel", [False, True])
 @pytest.mark.parametrize("folder_denied", [False, True])
 async def test_live_metadata_batch_bounds_concurrency_closes_pool_and_rechecks_rights(dav, monkeypatch, cancel, folder_denied):

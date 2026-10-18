@@ -1547,6 +1547,8 @@
       {
         "files": [
           "back/app/file_share/browser_router.py",
+          "back/app/file_share/media_access.py",
+          "back/app/file_share/media_router.py",
           "back/app/file_share/router.py"
         ],
         "source": "app.file_share",
@@ -1560,6 +1562,7 @@
           "back/app/file_share/fingerprinting.py",
           "back/app/file_share/indexing.py",
           "back/app/file_share/managed_files.py",
+          "back/app/file_share/media_access.py",
           "back/app/file_share/models.py",
           "back/app/file_share/resource_description.py",
           "back/app/file_share/resource_observation.py",
@@ -1618,6 +1621,20 @@
       },
       {
         "files": [
+          "back/app/file_share/media_access.py"
+        ],
+        "source": "app.file_share",
+        "target": "core.secrets"
+      },
+      {
+        "files": [
+          "back/app/file_share/media_router.py"
+        ],
+        "source": "app.file_share",
+        "target": "core.settings"
+      },
+      {
+        "files": [
           "back/app/file_share/managed_files.py",
           "back/app/file_share/resource_service.py",
           "back/app/file_share/router.py"
@@ -1627,10 +1644,18 @@
       },
       {
         "files": [
+          "back/app/file_share/media_access.py"
+        ],
+        "source": "app.file_share",
+        "target": "core.user"
+      },
+      {
+        "files": [
           "back/app/file_share/browser_router.py",
           "back/app/file_share/fingerprinting.py",
           "back/app/file_share/indexing.py",
           "back/app/file_share/managed_files.py",
+          "back/app/file_share/media_router.py",
           "back/app/file_share/messenger_transport.py",
           "back/app/file_share/process_provider.py",
           "back/app/file_share/resource_service.py",
@@ -13803,7 +13828,7 @@
         "declared_path": "/browser/content",
         "file": "back/app/file_share/browser_router.py",
         "handler": "content",
-        "line": 83,
+        "line": 84,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -13812,7 +13837,7 @@
         "declared_path": "/browser/entries",
         "file": "back/app/file_share/browser_router.py",
         "handler": "entries",
-        "line": 48,
+        "line": 49,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -13821,7 +13846,7 @@
         "declared_path": "/browser/info",
         "file": "back/app/file_share/browser_router.py",
         "handler": "info",
-        "line": 66,
+        "line": 67,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -13839,7 +13864,7 @@
         "declared_path": "/browser/schemes",
         "file": "back/app/file_share/browser_router.py",
         "handler": "schemes",
-        "line": 41,
+        "line": 42,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -13848,7 +13873,7 @@
         "declared_path": "/browser/search",
         "file": "back/app/file_share/browser_router.py",
         "handler": "search",
-        "line": 57,
+        "line": 58,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -13866,7 +13891,7 @@
         "declared_path": "/browser/thumbnail",
         "file": "back/app/file_share/browser_router.py",
         "handler": "thumbnail",
-        "line": 73,
+        "line": 74,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15702,7 +15727,7 @@
         "declared_path": "/file-share/bridges",
         "file": "back/app/file_share/router.py",
         "handler": "list_bridges",
-        "line": 94,
+        "line": 96,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15711,7 +15736,7 @@
         "declared_path": "/file-share/files",
         "file": "back/app/file_share/router.py",
         "handler": "create_managed_file",
-        "line": 34,
+        "line": 36,
         "method": "POST",
         "module": "app.file_share"
       },
@@ -15720,7 +15745,7 @@
         "declared_path": "/file-share/files/{file_id}",
         "file": "back/app/file_share/router.py",
         "handler": "rename_file",
-        "line": 46,
+        "line": 48,
         "method": "PATCH",
         "module": "app.file_share"
       },
@@ -15729,7 +15754,7 @@
         "declared_path": "/file-share/files/{file_id}/content",
         "file": "back/app/file_share/router.py",
         "handler": "read_managed_file",
-        "line": 60,
+        "line": 62,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15738,7 +15763,7 @@
         "declared_path": "/file-share/files/{file_id}/thumbnail",
         "file": "back/app/file_share/router.py",
         "handler": "read_managed_file_thumbnail",
-        "line": 79,
+        "line": 81,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15747,7 +15772,7 @@
         "declared_path": "/file-share/indexing",
         "file": "back/app/file_share/router.py",
         "handler": "read_indexing",
-        "line": 147,
+        "line": 149,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15756,7 +15781,7 @@
         "declared_path": "/file-share/indexing",
         "file": "back/app/file_share/router.py",
         "handler": "create_indexing",
-        "line": 154,
+        "line": 156,
         "method": "POST",
         "module": "app.file_share"
       },
@@ -15765,7 +15790,7 @@
         "declared_path": "/file-share/indexing/repairs/retry",
         "file": "back/app/file_share/router.py",
         "handler": "retry_index_repairs",
-        "line": 179,
+        "line": 181,
         "method": "POST",
         "module": "app.file_share"
       },
@@ -15774,7 +15799,7 @@
         "declared_path": "/file-share/indexing/{run_id}/cancel",
         "file": "back/app/file_share/router.py",
         "handler": "cancel_indexing",
-        "line": 169,
+        "line": 171,
         "method": "POST",
         "module": "app.file_share"
       },
@@ -15783,7 +15808,7 @@
         "declared_path": "/file-share/items/{item_id}/resources",
         "file": "back/app/file_share/router.py",
         "handler": "read_item_resources",
-        "line": 106,
+        "line": 108,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15792,7 +15817,7 @@
         "declared_path": "/file-share/items/{item_id}/resources/{entry_id}/content",
         "file": "back/app/file_share/router.py",
         "handler": "read_item_resource_content",
-        "line": 126,
+        "line": 128,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15801,7 +15826,7 @@
         "declared_path": "/file-share/items/{item_id}/resources/{entry_id}/thumbnail",
         "file": "back/app/file_share/router.py",
         "handler": "read_item_resource_thumbnail",
-        "line": 113,
+        "line": 115,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -17199,6 +17224,24 @@
         "line": 60,
         "method": "POST",
         "module": "app.harnesses"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/media",
+        "file": "back/app/file_share/media_router.py",
+        "handler": "prepare_media",
+        "line": 38,
+        "method": "POST",
+        "module": "app.file_share"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/media/{identifier}",
+        "file": "back/app/file_share/media_router.py",
+        "handler": "release_media",
+        "line": 116,
+        "method": "DELETE",
+        "module": "app.file_share"
       },
       {
         "authorized": true,

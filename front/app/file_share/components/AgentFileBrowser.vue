@@ -151,6 +151,8 @@ const loadedCount = computed(() => schemesError.value || unlistable.value ? 0 : 
 defineExpose({ loadedCount })
 const previewSource: AttachmentSource = {
   content: (entry, convert, signal) => fileBrowserService.content(agentId, entry.id, convert, signal),
+  videoUrl: entry => fileBrowserService.videoUrl(agentId, entry.id),
+  releaseVideoUrl: fileBrowserService.releaseVideoUrl,
 }
 const breadcrumbs = computed(() => {
   const crumbs: { uri: string; label: string }[] = []

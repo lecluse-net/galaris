@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 import ipaddress
 import socket
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import httpx
-from core.util import DEFAULT_DOWNLOAD_BYTES, copy_download
+from core.util import DEFAULT_DOWNLOAD_BYTES, copy_download, iter_http_range
 
 from .resource_uri import ResourceUriError, parse_resource_uri
 from .file_contracts import FileEntry
@@ -111,6 +112,7 @@ class PublicHttpsFileTransport:
         url: str,
         *,
         stream: bool,
+        headers: dict[str, str] | None = None,
     ) -> tuple[httpx.AsyncClient, httpx.Response, str]:
         current = url
         for _attempt in range(_MAX_REDIRECTS + 1):
@@ -122,7 +124,7 @@ class PublicHttpsFileTransport:
                 request = client.build_request(
                     method,
                     _pinned_url(target, address),
-                    headers={"Host": target.host_header},
+                    headers={**(headers or {}), "Host": target.host_header},
                     extensions={"sni_hostname": target.hostname},
                 )
                 try:
@@ -156,6 +158,17 @@ class PublicHttpsFileTransport:
                 raise last_connect_error
             raise RuntimeError("HTTPS resource has no usable public address.")
         raise RuntimeError("HTTPS resource exceeded the redirect limit.")
+
+    async def iter_range(self, remote: str, *, offset: int, length: int,
+                         target: str = "") -> AsyncIterator[bytes]:
+        headers = {"Range": f"bytes={offset}-{offset + length - 1}", "Accept-Encoding": "identity"}
+        client, response, _url = await self._request("GET", remote, stream=True, headers=headers)
+        try:
+            async for chunk in iter_http_range(response, offset=offset, length=length):
+                yield chunk
+        finally:
+            await response.aclose()
+            await client.aclose()
 
     async def download_to(self, remote: str, dest: Path, *, target: str = "", max_bytes: int = DEFAULT_DOWNLOAD_BYTES) -> int:
         del target
@@ -227,7 +240,7 @@ class PublicHttpsFileTransport:
             return FileEntry(
                 path=path,
                 is_dir=False,
-                size=int(length) if length and length.isdigit() else 0,
+                size=int(length) if length and length.isdigit() else None,
                 modified_at=response.headers.get("last-modified", ""),
                 mime_type=response.headers.get(
                     "content-type", "application/octet-stream"

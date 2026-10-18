@@ -49,6 +49,15 @@ def affine_http(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_affine_range_keeps_provider_authentication_and_reads_selected_bytes(affine_http):
+    payload, requests = affine_http
+    client = AffineFileClient("https://affine.example.test", "reader@example.test", "synthetic")
+    result = b"".join([chunk async for chunk in client.iter_range("image-key=", target="workspace-test", offset=3, length=4)])
+    assert result == payload[3:7]
+    assert requests[-1].headers["range"] == "bytes=3-6"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("remote", ["image-key=", "blob/image-key=", "blobs/image-key="])
 @pytest.mark.parametrize("streamed", [False, True])
 async def test_affine_download_preserves_image_bytes(affine_http, tmp_path, remote, streamed):

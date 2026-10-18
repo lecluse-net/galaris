@@ -11,13 +11,13 @@ tests remain authoritative for behavior.
 
 - 77 declared backend modules;
 - 39 declared frontend modules;
-- 597 backend dependency edges;
+- 600 backend dependency edges;
 - 210 frontend dependency edges;
 - 284 edges between `app`/`bridge` domains;
 - 27 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 709 detected HTTP/WebSocket handlers;
+- 711 detected HTTP/WebSocket handlers;
 - 174 detected SQLAlchemy tables;
 - 272 detected native MCP tools;
 - 50 detected Vue pages.
@@ -304,15 +304,18 @@ tests remain authoritative for behavior.
 | `app.file_share` | `app.task` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/messenger_transport.py` |
 | `app.file_share` | `app.tools` | `back/app/file_share/bridges.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/documentation_provider.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/indexing.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/transport.py` |
 | `app.file_share` | `bridge.affine` | `back/app/file_share/bridges.py` |
-| `app.file_share` | `core.authorize` | `back/app/file_share/browser_router.py`, `back/app/file_share/router.py` |
-| `app.file_share` | `core.database` | `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/thumbnail_service.py` |
+| `app.file_share` | `core.authorize` | `back/app/file_share/browser_router.py`, `back/app/file_share/media_access.py`, `back/app/file_share/media_router.py`, `back/app/file_share/router.py` |
+| `app.file_share` | `core.database` | `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/media_access.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/thumbnail_service.py` |
 | `app.file_share` | `core.dbadmin` | `back/app/file_share/dbadmin.py` |
 | `app.file_share` | `core.document` | `back/app/file_share/document_facade.py`, `back/app/file_share/thumbnail_service.py` |
 | `app.file_share` | `core.i18n` | `back/app/file_share/bridges.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/messenger_transport.py` |
 | `app.file_share` | `core.params` | `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_delivery.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `core.preview` | `back/app/file_share/__init__.py`, `back/app/file_share/browser.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/web_preview.py` |
+| `app.file_share` | `core.secrets` | `back/app/file_share/media_access.py` |
+| `app.file_share` | `core.settings` | `back/app/file_share/media_router.py` |
 | `app.file_share` | `core.storage` | `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py` |
-| `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
+| `app.file_share` | `core.user` | `back/app/file_share/media_access.py` |
+| `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/media_router.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
 | `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.connection` | `back/app/goal/mcp.py`, `back/app/goal/models.py`, `back/app/goal/resource_facade.py` |
 | `app.goal` | `app.llm` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
@@ -1274,14 +1277,14 @@ tests remain authoritative for behavior.
 | POST | `/authorize/roles/{role_id}/privileges` | `core.authorize` | `add_privileges_to_role` | yes | `back/core/authorize/router.py:211` |
 | POST | `/authorize/switch-role` | `core.authorize` | `switch_role` | yes | `back/core/authorize/router.py:366` |
 | GET | `/authorize/users/{user_id}/assignments` | `core.authorize` | `get_user_assignments` | yes | `back/core/authorize/router.py:307` |
-| GET | `/browser/content` | `app.file_share` | `content` | yes | `back/app/file_share/browser_router.py:83` |
-| GET | `/browser/entries` | `app.file_share` | `entries` | yes | `back/app/file_share/browser_router.py:48` |
-| GET | `/browser/info` | `app.file_share` | `info` | yes | `back/app/file_share/browser_router.py:66` |
+| GET | `/browser/content` | `app.file_share` | `content` | yes | `back/app/file_share/browser_router.py:84` |
+| GET | `/browser/entries` | `app.file_share` | `entries` | yes | `back/app/file_share/browser_router.py:49` |
+| GET | `/browser/info` | `app.file_share` | `info` | yes | `back/app/file_share/browser_router.py:67` |
 | POST | `/browser/network/authorize` | `app.browser` | `network_authorization` | no | `back/app/browser/router.py:17` |
-| GET | `/browser/schemes` | `app.file_share` | `schemes` | yes | `back/app/file_share/browser_router.py:41` |
-| GET | `/browser/search` | `app.file_share` | `search` | yes | `back/app/file_share/browser_router.py:57` |
+| GET | `/browser/schemes` | `app.file_share` | `schemes` | yes | `back/app/file_share/browser_router.py:42` |
+| GET | `/browser/search` | `app.file_share` | `search` | yes | `back/app/file_share/browser_router.py:58` |
 | GET | `/browser/status` | `app.browser` | `status` | yes | `back/app/browser/router.py:34` |
-| GET | `/browser/thumbnail` | `app.file_share` | `thumbnail` | yes | `back/app/file_share/browser_router.py:73` |
+| GET | `/browser/thumbnail` | `app.file_share` | `thumbnail` | yes | `back/app/file_share/browser_router.py:74` |
 | GET | `/calendars` | `bridge.calendar` | `read_calendars` | yes | `back/bridge/calendar/router.py:54` |
 | POST | `/calendars` | `bridge.calendar` | `create_calendar` | yes | `back/bridge/calendar/router.py:61` |
 | DELETE | `/calendars/{calendar_id}` | `bridge.calendar` | `delete_calendar` | yes | `back/bridge/calendar/router.py:89` |
@@ -1485,18 +1488,18 @@ tests remain authoritative for behavior.
 | POST | `/evaluation/{mechanism}/runs/{run_id}/human-review` | `app.lab` | `submit_human_review` | yes | `back/app/lab/router.py:144` |
 | POST | `/evaluation/{mechanism}/runs/{run_id}/rejudge` | `app.lab` | `rejudge_benchmark` | yes | `back/app/lab/router.py:170` |
 | POST | `/evaluation/{mechanism}/runs/{run_id}/resume` | `app.lab` | `resume_benchmark` | yes | `back/app/lab/router.py:183` |
-| GET | `/file-share/bridges` | `app.file_share` | `list_bridges` | yes | `back/app/file_share/router.py:94` |
-| POST | `/file-share/files` | `app.file_share` | `create_managed_file` | yes | `back/app/file_share/router.py:34` |
-| PATCH | `/file-share/files/{file_id}` | `app.file_share` | `rename_file` | yes | `back/app/file_share/router.py:46` |
-| GET | `/file-share/files/{file_id}/content` | `app.file_share` | `read_managed_file` | yes | `back/app/file_share/router.py:60` |
-| GET | `/file-share/files/{file_id}/thumbnail` | `app.file_share` | `read_managed_file_thumbnail` | yes | `back/app/file_share/router.py:79` |
-| GET | `/file-share/indexing` | `app.file_share` | `read_indexing` | yes | `back/app/file_share/router.py:147` |
-| POST | `/file-share/indexing` | `app.file_share` | `create_indexing` | yes | `back/app/file_share/router.py:154` |
-| POST | `/file-share/indexing/repairs/retry` | `app.file_share` | `retry_index_repairs` | yes | `back/app/file_share/router.py:179` |
-| POST | `/file-share/indexing/{run_id}/cancel` | `app.file_share` | `cancel_indexing` | yes | `back/app/file_share/router.py:169` |
-| GET | `/file-share/items/{item_id}/resources` | `app.file_share` | `read_item_resources` | yes | `back/app/file_share/router.py:106` |
-| GET | `/file-share/items/{item_id}/resources/{entry_id}/content` | `app.file_share` | `read_item_resource_content` | yes | `back/app/file_share/router.py:126` |
-| GET | `/file-share/items/{item_id}/resources/{entry_id}/thumbnail` | `app.file_share` | `read_item_resource_thumbnail` | yes | `back/app/file_share/router.py:113` |
+| GET | `/file-share/bridges` | `app.file_share` | `list_bridges` | yes | `back/app/file_share/router.py:96` |
+| POST | `/file-share/files` | `app.file_share` | `create_managed_file` | yes | `back/app/file_share/router.py:36` |
+| PATCH | `/file-share/files/{file_id}` | `app.file_share` | `rename_file` | yes | `back/app/file_share/router.py:48` |
+| GET | `/file-share/files/{file_id}/content` | `app.file_share` | `read_managed_file` | yes | `back/app/file_share/router.py:62` |
+| GET | `/file-share/files/{file_id}/thumbnail` | `app.file_share` | `read_managed_file_thumbnail` | yes | `back/app/file_share/router.py:81` |
+| GET | `/file-share/indexing` | `app.file_share` | `read_indexing` | yes | `back/app/file_share/router.py:149` |
+| POST | `/file-share/indexing` | `app.file_share` | `create_indexing` | yes | `back/app/file_share/router.py:156` |
+| POST | `/file-share/indexing/repairs/retry` | `app.file_share` | `retry_index_repairs` | yes | `back/app/file_share/router.py:181` |
+| POST | `/file-share/indexing/{run_id}/cancel` | `app.file_share` | `cancel_indexing` | yes | `back/app/file_share/router.py:171` |
+| GET | `/file-share/items/{item_id}/resources` | `app.file_share` | `read_item_resources` | yes | `back/app/file_share/router.py:108` |
+| GET | `/file-share/items/{item_id}/resources/{entry_id}/content` | `app.file_share` | `read_item_resource_content` | yes | `back/app/file_share/router.py:128` |
+| GET | `/file-share/items/{item_id}/resources/{entry_id}/thumbnail` | `app.file_share` | `read_item_resource_thumbnail` | yes | `back/app/file_share/router.py:115` |
 | WEBSOCKET | `/gateway/{identifier}/editor/{path:path}` | `app.code` | `editor_ws` | no | `back/app/code/gateway.py:188` |
 | GET | `/gateway/{identifier}/launch` | `app.code` | `launch_page` | no | `back/app/code/gateway.py:47` |
 | POST | `/gateway/{identifier}/launch` | `app.code` | `launch` | no | `back/app/code/gateway.py:71` |
@@ -1652,6 +1655,8 @@ tests remain authoritative for behavior.
 | POST | `/mail/outbound/{delivery_id}/reject` | `bridge.mail` | `reject_outbound_mail` | yes | `back/bridge/mail/router.py:145` |
 | GET | `/mail/status` | `bridge.mail` | `read_mail_status` | yes | `back/bridge/mail/router.py:53` |
 | POST | `/mcp/{identifier}` | `app.harnesses` | `mcp` | no | `back/app/harnesses/runtime_web.py:60` |
+| POST | `/media` | `app.file_share` | `prepare_media` | yes | `back/app/file_share/media_router.py:38` |
+| DELETE | `/media/{identifier}` | `app.file_share` | `release_media` | yes | `back/app/file_share/media_router.py:116` |
 | POST | `/memory/browse` | `app.memory` | `browse_memory` | yes | `back/app/memory/router.py:456` |
 | POST | `/memory/documents` | `app.memory` | `create_managed_document` | yes | `back/app/memory/router.py:258` |
 | GET | `/memory/documents/folders` | `app.memory` | `read_document_folders` | yes | `back/app/memory/router.py:861` |

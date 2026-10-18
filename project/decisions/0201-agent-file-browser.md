@@ -21,6 +21,24 @@ Thumbnails share the bounded preview queue and release offscreen object URLs. Kn
 resources open the existing domain dialogs; other files reuse the shared attachment
 viewer, including its isolated HTML rendering.
 
+### Progressive video playback (2026-10-18)
+
+Video playback uses an optional byte-range transport port in the canonical file
+facade. Samba, Nextcloud/WebDAV, AFFiNE, console SFTP, internal files and public HTTPS
+read requested portions without full-file staging or a frontend Blob. Unsupported
+providers keep the existing bounded preview. Downloads and other previews retain
+their original contracts. HTTP sources that ignore Range are scanned sequentially
+with bounded memory; seeking on those sources may transfer preceding bytes again.
+
+An authenticated POST issues a six-hour HttpOnly cookie scoped to one opaque media
+URL, one URI, Agent, role and browser session family. Its signing key is derived for
+this use and cannot authenticate normal API requests. GET and HEAD recheck the live
+account, auth version, family, privilege, managed Agent and resource ACLs. Byte ranges
+return 206 or 416 with the original size. Closing the viewer deletes its scoped
+cookie; context changes and late replies release unused grants. Streaming cleanup
+closes provider handles on completion, failure and interruption. SMB sessions renew
+before their operation deadline and reject a changed version across renewals.
+
 ## Explicit dependency review
 
 The new frontend module requires exactly these public dependencies:

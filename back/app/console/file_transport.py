@@ -153,6 +153,23 @@ class SshAgentFileTransport:
         location, _size = await self.upload_stream(chunks(), filename, target=target)
         return location
 
+    async def iter_range(self, remote: str, *, offset: int, length: int,
+                         target: str = "") -> AsyncIterator[bytes]:
+        sftp = await self._client()
+        try:
+            source, _relative = await self._resolve_existing(sftp, remote, target)
+            async with sftp.open(source, "rb", encoding=None) as input_file:
+                remaining = length
+                while remaining:
+                    chunk = bytes(await input_file.read(min(CHUNK_SIZE, remaining), offset=offset))
+                    if not chunk:
+                        raise OSError("Console file was truncated during playback")
+                    remaining -= len(chunk)
+                    offset += len(chunk)
+                    yield chunk
+        finally:
+            sftp.exit()
+
     async def iter_bytes(
         self,
         remote: str,

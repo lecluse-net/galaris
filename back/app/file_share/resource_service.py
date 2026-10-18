@@ -10,6 +10,8 @@ import mimetypes
 import os
 import re
 import tempfile
+from collections.abc import AsyncGenerator
+from contextlib import aclosing
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, cast
 from urllib.parse import quote, unquote, urlsplit
@@ -52,7 +54,7 @@ from .service_references import (
     normalize_source_reference,
     reference_filename,
 )
-from .transport import FileTransport, VersionedFileTransport, transfer, upload_file
+from .transport import ByteRangeFileTransport, FileTransport, VersionedFileTransport, transfer, upload_file
 from .file_contracts import FileResourceTransport, FileEntry
 from .web_transport import PublicHttpsFileTransport
 from .resource_observation import observe_operation
@@ -970,6 +972,57 @@ async def resource_list(
         truncated=listing.truncated,
         next_cursor=listing.next_cursor,
     )
+
+
+async def resource_supports_byte_ranges(ctx: ResourceContext, uri: object) -> bool:
+    reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
+    if reference.scheme == "file":
+        return True
+    if reference.scheme == "console":
+        transport, _path = await _console_reference(ctx, reference)
+        return isinstance(transport, ByteRangeFileTransport)
+    if _resource_provider(reference) or reference.scheme in {"galaris", "memory", "document"}:
+        return False
+    connected, _service, _remote, _target = await _connected_transport(ctx, reference)
+    return isinstance(connected, ByteRangeFileTransport)
+
+
+async def resource_byte_range(ctx: ResourceContext, uri: object, *, offset: int, length: int) -> AsyncGenerator[bytes]:
+    """Read an authorized range with bounded memory and close on interruption."""
+    if offset < 0 or length <= 0:
+        raise ValueError("Invalid resource byte range")
+    reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
+    descriptor = await resource_info(ctx, reference)
+    if descriptor.is_collection or "read" not in descriptor.capabilities:
+        raise PermissionError("Resource is not readable")
+    if reference.scheme == "file":
+        from core.storage import file_path
+        with file_path(UUID(reference.locator)).open("rb") as source:
+            await complete_io(source.seek, offset)
+            remaining = length
+            while remaining:
+                chunk = await complete_io(source.read, min(64 * 1024, remaining))
+                if not chunk:
+                    raise OSError("File was truncated during playback")
+                remaining -= len(chunk)
+                yield chunk
+        return
+    if reference.scheme == "console":
+        transport, remote = await _console_reference(ctx, reference)
+        target = ""
+    else:
+        transport, _service, remote, target = await _connected_transport(ctx, reference)
+    if not isinstance(transport, ByteRangeFileTransport):
+        raise NotImplementedError("Provider does not support byte ranges")
+    remaining = length
+    async with aclosing(transport.iter_range(remote, offset=offset, length=length, target=target)) as chunks:
+        async for chunk in chunks:
+            if len(chunk) > remaining:
+                raise OSError("Provider exceeded the requested byte range")
+            remaining -= len(chunk)
+            yield chunk
+    if remaining:
+        raise OSError("Provider truncated the requested byte range")
 
 
 async def materialize_resource(

@@ -2,7 +2,7 @@
 import asyncio
 import os
 import threading
-from contextlib import contextmanager
+from contextlib import aclosing, contextmanager
 from uuid import uuid4
 
 import pytest
@@ -188,6 +188,28 @@ def smb(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_large_video_seeks_to_tail_and_closing_releases_the_smb_handle(smb):
+    client, _reader, ctx, folder = smb
+    path = f"{folder}/Synthetic.mp4"
+    uri = f"team-share://{path}"
+    await files.resource_create(ctx, f"team-share://{folder}/", b"head", name="Synthetic.mp4")
+    size = 3 * 1024**3
+
+    def sparse_video(active):
+        with active.open(client._unc(active, path), "r+b") as handle:
+            handle.seek(size - 4)
+            handle.write(b"tail")
+
+    await client._run(sparse_video)
+    assert (await files.resource_info(ctx, uri)).size == size
+    assert b"".join([part async for part in files.resource_byte_range(ctx, uri, offset=size - 4, length=4)]) == b"tail"
+    async with aclosing(files.resource_byte_range(ctx, uri, offset=0, length=size)) as chunks:
+        assert (await anext(chunks))[:4] == b"head"
+    # SMB's read handle denies deletion until its streaming owner closes it.
+    await files.resource_delete(ctx, uri)
+
+
+@pytest.mark.asyncio
 async def test_canonical_file_journey_and_stale_versions(smb, tmp_path):
     client, reader, ctx, folder = smb
     root = f"team-share://{folder}/"
@@ -203,6 +225,7 @@ async def test_canonical_file_journey_and_stale_versions(smb, tmp_path):
     assert info.checksum and info.etag
     read = await files.resource_read(ctx, uri)
     assert read.content == "alpha\nbeta\n" and read.etag == info.etag
+    assert b"".join([chunk async for chunk in files.resource_byte_range(ctx, uri, offset=6, length=4)]) == b"beta"
     await files.resource_append(ctx, uri, "gamma\n", expected_etag=read.etag)
     with pytest.raises(ResourceRevisionConflict):
         await files.resource_write(ctx, uri, b"stale", expected_etag=read.etag)

@@ -21,8 +21,10 @@ from . import catalogue_resources
 router = APIRouter(prefix="/file-share", tags=["file-share"])
 
 from .browser_router import router as browser_router
+from .media_router import router as media_router
 
 router.include_router(browser_router)
+router.include_router(media_router, prefix="/browser")
 
 
 class ManagedFileRename(BaseModel):

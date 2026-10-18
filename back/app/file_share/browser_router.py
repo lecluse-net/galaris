@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
+import httpx
 
 from app.agent import current_management_scope, get_agent_record
 from app.memory import MemoryNotFoundError, MemoryPermissionError
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/browser")
 
 
 @asynccontextmanager
-async def _access(agent_id: int) -> AsyncGenerator[None]:
+async def browser_access(agent_id: int) -> AsyncGenerator[None]:
     if not (await current_management_scope()).allows(agent_id) or await get_agent_record(agent_id) is None:
         raise HTTPException(404, "Agent not found")
     try:
@@ -32,14 +33,14 @@ async def _access(agent_id: int) -> AsyncGenerator[None]:
         raise HTTPException(422, "Unsupported resource operation or invalid reference") from exc
     except TimeoutError as exc:
         raise HTTPException(504, "Resource provider timed out") from exc
-    except OSError as exc:
+    except (OSError, httpx.HTTPError) as exc:
         raise HTTPException(502, "Resource provider unavailable") from exc
 
 
 @router.get("/schemes", response_model=list[ResourceSchemeDescription])
 @authorize(privileges=Privileges.MEMORY_ACCESS)
 async def schemes(agent_id: int) -> list[ResourceSchemeDescription]:
-    async with _access(agent_id), browser_context(agent_id) as ctx:
+    async with browser_access(agent_id), browser_context(agent_id) as ctx:
         return await list_schemes(ctx)
 
 
@@ -48,7 +49,7 @@ async def schemes(agent_id: int) -> list[ResourceSchemeDescription]:
 async def entries(agent_id: int, uri: str = Query(max_length=4096),
     cursor: str | None = Query(default=None, max_length=8192),
     limit: int = Query(default=50, ge=1, le=500), management: bool = False) -> ResourceListing:
-    async with _access(agent_id), browser_context(agent_id, management=management) as ctx:
+    async with browser_access(agent_id), browser_context(agent_id, management=management) as ctx:
         return await resource_list(ctx, uri, max_entries=limit, cursor=cursor)
 
 
@@ -57,21 +58,21 @@ async def entries(agent_id: int, uri: str = Query(max_length=4096),
 async def search(agent_id: int, uri: str = Query(max_length=4096),
     query: str = Query(min_length=1, max_length=500),
     cursor: str | None = Query(default=None, max_length=8192), management: bool = False) -> ResourceSearchResult:
-    async with _access(agent_id), browser_context(agent_id, management=management) as ctx:
+    async with browser_access(agent_id), browser_context(agent_id, management=management) as ctx:
         return await resource_search(ctx, uri, query, mode="name", recursive=True, max_results=50, cursor=cursor)
 
 
 @router.get("/info", response_model=ResourceDescriptor)
 @authorize(privileges=Privileges.MEMORY_ACCESS)
 async def info(agent_id: int, uri: str = Query(max_length=4096), management: bool = False) -> ResourceDescriptor:
-    async with _access(agent_id), browser_context(agent_id, management=management) as ctx:
+    async with browser_access(agent_id), browser_context(agent_id, management=management) as ctx:
         return await resource_info(ctx, uri)
 
 
 @router.get("/thumbnail", response_class=Response)
 @authorize(privileges=Privileges.MEMORY_ACCESS)
 async def thumbnail(agent_id: int, uri: str = Query(max_length=4096), management: bool = False) -> Response:
-    async with _access(agent_id), browser_context(agent_id, management=management) as ctx:
+    async with browser_access(agent_id), browser_context(agent_id, management=management) as ctx:
         image = await browser_thumbnail(ctx, uri)
         if image is None:
             raise HTTPException(404, "Thumbnail unavailable")
@@ -81,7 +82,7 @@ async def thumbnail(agent_id: int, uri: str = Query(max_length=4096), management
 @router.get("/content", response_class=FileResponse)
 @authorize(privileges=Privileges.MEMORY_ACCESS)
 async def content(agent_id: int, uri: str = Query(max_length=4096), preview: bool = True, management: bool = False) -> FileResponse:
-    async with _access(agent_id), browser_context(agent_id, management=management) as ctx:
+    async with browser_access(agent_id), browser_context(agent_id, management=management) as ctx:
         manager = browser_content(ctx, uri, preview=preview)
         source = await manager.__aenter__()
         try:

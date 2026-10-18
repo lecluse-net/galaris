@@ -11,13 +11,13 @@ tests restent l’autorité sur le comportement.
 
 - 77 modules backend déclarés ;
 - 39 modules frontend déclarés ;
-- 597 arêtes de dépendance backend ;
+- 600 arêtes de dépendance backend ;
 - 210 arêtes de dépendance frontend ;
 - 284 arêtes entre domaines `app`/`bridge` ;
 - 27 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 709 handlers HTTP/WebSocket détectés ;
+- 711 handlers HTTP/WebSocket détectés ;
 - 174 tables SQLAlchemy détectées ;
 - 272 outils MCP natifs détectés ;
 - 50 pages Vue détectées.
@@ -304,15 +304,18 @@ tests restent l’autorité sur le comportement.
 | `app.file_share` | `app.task` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/messenger_transport.py` |
 | `app.file_share` | `app.tools` | `back/app/file_share/bridges.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/documentation_provider.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/indexing.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/transport.py` |
 | `app.file_share` | `bridge.affine` | `back/app/file_share/bridges.py` |
-| `app.file_share` | `core.authorize` | `back/app/file_share/browser_router.py`, `back/app/file_share/router.py` |
-| `app.file_share` | `core.database` | `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/thumbnail_service.py` |
+| `app.file_share` | `core.authorize` | `back/app/file_share/browser_router.py`, `back/app/file_share/media_access.py`, `back/app/file_share/media_router.py`, `back/app/file_share/router.py` |
+| `app.file_share` | `core.database` | `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/media_access.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/thumbnail_service.py` |
 | `app.file_share` | `core.dbadmin` | `back/app/file_share/dbadmin.py` |
 | `app.file_share` | `core.document` | `back/app/file_share/document_facade.py`, `back/app/file_share/thumbnail_service.py` |
 | `app.file_share` | `core.i18n` | `back/app/file_share/bridges.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/messenger_transport.py` |
 | `app.file_share` | `core.params` | `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_delivery.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `core.preview` | `back/app/file_share/__init__.py`, `back/app/file_share/browser.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/web_preview.py` |
+| `app.file_share` | `core.secrets` | `back/app/file_share/media_access.py` |
+| `app.file_share` | `core.settings` | `back/app/file_share/media_router.py` |
 | `app.file_share` | `core.storage` | `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py` |
-| `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
+| `app.file_share` | `core.user` | `back/app/file_share/media_access.py` |
+| `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/media_router.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
 | `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.connection` | `back/app/goal/mcp.py`, `back/app/goal/models.py`, `back/app/goal/resource_facade.py` |
 | `app.goal` | `app.llm` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
@@ -1274,14 +1277,14 @@ tests restent l’autorité sur le comportement.
 | POST | `/authorize/roles/{role_id}/privileges` | `core.authorize` | `add_privileges_to_role` | oui | `back/core/authorize/router.py:211` |
 | POST | `/authorize/switch-role` | `core.authorize` | `switch_role` | oui | `back/core/authorize/router.py:366` |
 | GET | `/authorize/users/{user_id}/assignments` | `core.authorize` | `get_user_assignments` | oui | `back/core/authorize/router.py:307` |
-| GET | `/browser/content` | `app.file_share` | `content` | oui | `back/app/file_share/browser_router.py:83` |
-| GET | `/browser/entries` | `app.file_share` | `entries` | oui | `back/app/file_share/browser_router.py:48` |
-| GET | `/browser/info` | `app.file_share` | `info` | oui | `back/app/file_share/browser_router.py:66` |
+| GET | `/browser/content` | `app.file_share` | `content` | oui | `back/app/file_share/browser_router.py:84` |
+| GET | `/browser/entries` | `app.file_share` | `entries` | oui | `back/app/file_share/browser_router.py:49` |
+| GET | `/browser/info` | `app.file_share` | `info` | oui | `back/app/file_share/browser_router.py:67` |
 | POST | `/browser/network/authorize` | `app.browser` | `network_authorization` | non | `back/app/browser/router.py:17` |
-| GET | `/browser/schemes` | `app.file_share` | `schemes` | oui | `back/app/file_share/browser_router.py:41` |
-| GET | `/browser/search` | `app.file_share` | `search` | oui | `back/app/file_share/browser_router.py:57` |
+| GET | `/browser/schemes` | `app.file_share` | `schemes` | oui | `back/app/file_share/browser_router.py:42` |
+| GET | `/browser/search` | `app.file_share` | `search` | oui | `back/app/file_share/browser_router.py:58` |
 | GET | `/browser/status` | `app.browser` | `status` | oui | `back/app/browser/router.py:34` |
-| GET | `/browser/thumbnail` | `app.file_share` | `thumbnail` | oui | `back/app/file_share/browser_router.py:73` |
+| GET | `/browser/thumbnail` | `app.file_share` | `thumbnail` | oui | `back/app/file_share/browser_router.py:74` |
 | GET | `/calendars` | `bridge.calendar` | `read_calendars` | oui | `back/bridge/calendar/router.py:54` |
 | POST | `/calendars` | `bridge.calendar` | `create_calendar` | oui | `back/bridge/calendar/router.py:61` |
 | DELETE | `/calendars/{calendar_id}` | `bridge.calendar` | `delete_calendar` | oui | `back/bridge/calendar/router.py:89` |
@@ -1485,18 +1488,18 @@ tests restent l’autorité sur le comportement.
 | POST | `/evaluation/{mechanism}/runs/{run_id}/human-review` | `app.lab` | `submit_human_review` | oui | `back/app/lab/router.py:144` |
 | POST | `/evaluation/{mechanism}/runs/{run_id}/rejudge` | `app.lab` | `rejudge_benchmark` | oui | `back/app/lab/router.py:170` |
 | POST | `/evaluation/{mechanism}/runs/{run_id}/resume` | `app.lab` | `resume_benchmark` | oui | `back/app/lab/router.py:183` |
-| GET | `/file-share/bridges` | `app.file_share` | `list_bridges` | oui | `back/app/file_share/router.py:94` |
-| POST | `/file-share/files` | `app.file_share` | `create_managed_file` | oui | `back/app/file_share/router.py:34` |
-| PATCH | `/file-share/files/{file_id}` | `app.file_share` | `rename_file` | oui | `back/app/file_share/router.py:46` |
-| GET | `/file-share/files/{file_id}/content` | `app.file_share` | `read_managed_file` | oui | `back/app/file_share/router.py:60` |
-| GET | `/file-share/files/{file_id}/thumbnail` | `app.file_share` | `read_managed_file_thumbnail` | oui | `back/app/file_share/router.py:79` |
-| GET | `/file-share/indexing` | `app.file_share` | `read_indexing` | oui | `back/app/file_share/router.py:147` |
-| POST | `/file-share/indexing` | `app.file_share` | `create_indexing` | oui | `back/app/file_share/router.py:154` |
-| POST | `/file-share/indexing/repairs/retry` | `app.file_share` | `retry_index_repairs` | oui | `back/app/file_share/router.py:179` |
-| POST | `/file-share/indexing/{run_id}/cancel` | `app.file_share` | `cancel_indexing` | oui | `back/app/file_share/router.py:169` |
-| GET | `/file-share/items/{item_id}/resources` | `app.file_share` | `read_item_resources` | oui | `back/app/file_share/router.py:106` |
-| GET | `/file-share/items/{item_id}/resources/{entry_id}/content` | `app.file_share` | `read_item_resource_content` | oui | `back/app/file_share/router.py:126` |
-| GET | `/file-share/items/{item_id}/resources/{entry_id}/thumbnail` | `app.file_share` | `read_item_resource_thumbnail` | oui | `back/app/file_share/router.py:113` |
+| GET | `/file-share/bridges` | `app.file_share` | `list_bridges` | oui | `back/app/file_share/router.py:96` |
+| POST | `/file-share/files` | `app.file_share` | `create_managed_file` | oui | `back/app/file_share/router.py:36` |
+| PATCH | `/file-share/files/{file_id}` | `app.file_share` | `rename_file` | oui | `back/app/file_share/router.py:48` |
+| GET | `/file-share/files/{file_id}/content` | `app.file_share` | `read_managed_file` | oui | `back/app/file_share/router.py:62` |
+| GET | `/file-share/files/{file_id}/thumbnail` | `app.file_share` | `read_managed_file_thumbnail` | oui | `back/app/file_share/router.py:81` |
+| GET | `/file-share/indexing` | `app.file_share` | `read_indexing` | oui | `back/app/file_share/router.py:149` |
+| POST | `/file-share/indexing` | `app.file_share` | `create_indexing` | oui | `back/app/file_share/router.py:156` |
+| POST | `/file-share/indexing/repairs/retry` | `app.file_share` | `retry_index_repairs` | oui | `back/app/file_share/router.py:181` |
+| POST | `/file-share/indexing/{run_id}/cancel` | `app.file_share` | `cancel_indexing` | oui | `back/app/file_share/router.py:171` |
+| GET | `/file-share/items/{item_id}/resources` | `app.file_share` | `read_item_resources` | oui | `back/app/file_share/router.py:108` |
+| GET | `/file-share/items/{item_id}/resources/{entry_id}/content` | `app.file_share` | `read_item_resource_content` | oui | `back/app/file_share/router.py:128` |
+| GET | `/file-share/items/{item_id}/resources/{entry_id}/thumbnail` | `app.file_share` | `read_item_resource_thumbnail` | oui | `back/app/file_share/router.py:115` |
 | WEBSOCKET | `/gateway/{identifier}/editor/{path:path}` | `app.code` | `editor_ws` | non | `back/app/code/gateway.py:188` |
 | GET | `/gateway/{identifier}/launch` | `app.code` | `launch_page` | non | `back/app/code/gateway.py:47` |
 | POST | `/gateway/{identifier}/launch` | `app.code` | `launch` | non | `back/app/code/gateway.py:71` |
@@ -1652,6 +1655,8 @@ tests restent l’autorité sur le comportement.
 | POST | `/mail/outbound/{delivery_id}/reject` | `bridge.mail` | `reject_outbound_mail` | oui | `back/bridge/mail/router.py:145` |
 | GET | `/mail/status` | `bridge.mail` | `read_mail_status` | oui | `back/bridge/mail/router.py:53` |
 | POST | `/mcp/{identifier}` | `app.harnesses` | `mcp` | non | `back/app/harnesses/runtime_web.py:60` |
+| POST | `/media` | `app.file_share` | `prepare_media` | oui | `back/app/file_share/media_router.py:38` |
+| DELETE | `/media/{identifier}` | `app.file_share` | `release_media` | oui | `back/app/file_share/media_router.py:116` |
 | POST | `/memory/browse` | `app.memory` | `browse_memory` | oui | `back/app/memory/router.py:456` |
 | POST | `/memory/documents` | `app.memory` | `create_managed_document` | oui | `back/app/memory/router.py:258` |
 | GET | `/memory/documents/folders` | `app.memory` | `read_document_folders` | oui | `back/app/memory/router.py:861` |

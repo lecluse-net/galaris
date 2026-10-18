@@ -4,8 +4,10 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import time
 import unicodedata
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextlib import ExitStack
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -115,6 +117,40 @@ class SambaFileClient:
                              self.password, self.encrypt) as active:
                 return operation(active)
         return await complete_io(execute)
+
+    async def iter_range(self, remote: str, *, offset: int, length: int,
+                         target: str = "") -> AsyncIterator[bytes]:
+        path = _path(f"{target}/{remote}" if target else remote)
+        if offset < 0 or length < 0:
+            raise ResourceValidationError("Invalid SMB byte range")
+        remaining = length
+        version: str | None = None
+        while remaining:
+            stack = ExitStack()
+            try:
+                active = await complete_io(stack.enter_context, sdk.session(
+                    self.server, self.port, self.share or "IPC$", self.username, self.password, self.encrypt))
+                await complete_io(self._check, active, path)
+                handle = await complete_io(stack.enter_context, active.open(self._unc(active, path), "rb"))
+                metadata = await complete_io(active.fstat, handle)
+                _safe(metadata)
+                if metadata.attributes & _DIRECTORY:
+                    raise IsADirectoryError(path)
+                if version is not None and version != _etag(metadata):
+                    raise ResourceRevisionConflict("SMB file changed during playback")
+                version = _etag(metadata)
+                await complete_io(handle.seek, offset)
+                # Renew before the SDK's operation deadline, even during long playback.
+                renew_at = time.monotonic() + 120
+                while remaining and time.monotonic() < renew_at:
+                    chunk = await complete_io(handle.read, min(_CHUNK, remaining))
+                    if not chunk:
+                        raise OSError("SMB file was truncated during playback")
+                    remaining -= len(chunk)
+                    offset += len(chunk)
+                    yield chunk
+            finally:
+                await complete_io(stack.close)
 
     def _unc(self, active: sdk.SmbSession, path: str) -> str:
         if not self.share:

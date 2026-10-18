@@ -89,6 +89,8 @@ def test_public_route_allowlist_is_exact() -> None:
 def test_independent_auth_route_allowlist_is_exact() -> None:
     expected = {
         ("app.browser.router", "network_authorization"),
+        # Resource-scoped cookies and live rights are exercised in test_read_http.
+        ("app.file_share.media_router", "read_media"),
         ("core.user.router", "logout"),
         ("core.user.router", "refresh_session"),
         # Current repository grant, browser family, role and short-lived IDE capabilities.

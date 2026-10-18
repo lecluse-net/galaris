@@ -15,7 +15,7 @@ import mimetypes
 import tempfile
 from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
-from core.util import DEFAULT_DOWNLOAD_BYTES, complete_io, copy_download
+from core.util import DEFAULT_DOWNLOAD_BYTES, complete_io, copy_download, iter_http_range
 from typing import Any, Literal
 from urllib.parse import quote, unquote, urlsplit
 from xml.etree import ElementTree
@@ -219,6 +219,15 @@ class NextcloudFileClient:
         """Stream a WebDAV file to local ``dest``; ``target`` is ignored."""
         del target
         return (await self.download_versioned(remote, dest, max_bytes=max_bytes)).size or 0
+
+    async def iter_range(self, remote: str, *, offset: int, length: int,
+                         target: str = "") -> AsyncIterator[bytes]:
+        path = f"{target}/{remote}" if target else remote
+        headers = {"Range": f"bytes={offset}-{offset + length - 1}", "Accept-Encoding": "identity"}
+        async with self._client() as http:
+            async with http.stream("GET", self._webdav_url(path), headers=headers) as response:
+                async for chunk in iter_http_range(response, offset=offset, length=length):
+                    yield chunk
 
     async def download_versioned(
         self, remote: str, dest: Path, *, max_bytes: int = DEFAULT_DOWNLOAD_BYTES

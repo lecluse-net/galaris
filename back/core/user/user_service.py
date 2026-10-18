@@ -9,6 +9,8 @@ Usage:
 """
 
 from contextvars import ContextVar
+from contextlib import contextmanager
+from collections.abc import Generator
 from sqlalchemy import select, func, delete as sqlalchemy_delete, text
 from sqlalchemy.orm import load_only
 from sqlalchemy.exc import IntegrityError
@@ -147,6 +149,18 @@ def set_current_raw_token(token_value: Optional[str]) -> None:
 
 def has_current_user() -> bool:
     return get_current_user_id() is not None
+
+
+@contextmanager
+def user_identity_context(user: User) -> Generator[None]:
+    """Temporarily bind an already authenticated identity for domain ACL checks."""
+    user_token = _user_id_ctx.set(user.id)
+    cache_token = _cached_user.set(user)
+    try:
+        yield
+    finally:
+        _cached_user.reset(cache_token)
+        _user_id_ctx.reset(user_token)
 
 
 def set_current_user(user: Optional[User]) -> None:

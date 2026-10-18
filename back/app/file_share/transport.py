@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from typing import Protocol, runtime_checkable
 
 from loguru import logger
@@ -48,6 +48,14 @@ class ShareableFileTransport(FileTransport, Protocol):
         permissions: int = 1,
         share_with: str | None = None,
     ) -> str: ...
+
+
+@runtime_checkable
+class ByteRangeFileTransport(Protocol):
+    """Optional seekable reader; never stages a complete remote file."""
+
+    def iter_range(self, remote: str, *, offset: int, length: int,
+                   target: str = "") -> AsyncGenerator[bytes]: ...
 
 
 @runtime_checkable

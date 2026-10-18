@@ -17,6 +17,40 @@ class _ResolverLoop:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("status", [200, 206])
+async def test_video_range_keeps_dns_pinning_and_reads_only_selected_bytes(monkeypatch, status):
+    requested = []
+    closed = []
+
+    class Body(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            prefix = b"tail" if status == 206 else b"head-tail"
+            yield prefix + b"x" * (64 * 1024 - len(prefix))
+            pytest.fail("The reader consumed bytes beyond the requested range")
+
+        async def aclose(self):
+            closed.append(True)
+
+    async def handle(request):
+        requested.append(request)
+        headers = {"Content-Range": "bytes 5-8/9"} if status == 206 else {}
+        return httpx.Response(status, headers=headers, stream=Body())
+
+    async def resolve(value):
+        return web_transport._ResolvedHttpsTarget(url=value, hostname="files.example",
+            host_header="files.example", addresses=("1.1.1.1",))
+
+    monkeypatch.setattr(web_transport, "_resolve_public_https", resolve)
+    monkeypatch.setattr(web_transport, "_new_client", lambda: httpx.AsyncClient(transport=httpx.MockTransport(handle)))
+    transport = web_transport.PublicHttpsFileTransport()
+    assert b"".join([chunk async for chunk in transport.iter_range("https://files.example/Synthetic.mp4", offset=5, length=4)]) == b"tail"
+    assert requested[0].url.host == "1.1.1.1"
+    assert requested[0].headers["host"] == "files.example"
+    assert requested[0].headers["range"] == "bytes=5-8"
+    assert closed == [True]
+
+
+@pytest.mark.asyncio
 async def test_https_transport_rejects_private_dns_answers(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

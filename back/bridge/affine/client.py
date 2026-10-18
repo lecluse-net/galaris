@@ -15,6 +15,7 @@ when necessary.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 import hashlib
 import json
 from collections import OrderedDict
@@ -26,7 +27,7 @@ from typing import Any, AsyncGenerator
 from urllib.parse import quote
 
 from core.i18n import render_prompt, t
-from core.util import DEFAULT_DOWNLOAD_BYTES, as_dict, copy_download
+from core.util import DEFAULT_DOWNLOAD_BYTES, as_dict, copy_download, iter_http_range
 
 import httpx
 from loguru import logger
@@ -257,6 +258,15 @@ class AffineFileClient:
                 self._check_blob_response(resp)
                 total = await copy_download(resp.aiter_bytes(min(64 * 1024, max_bytes + 1)), dest, max_bytes=max_bytes)
         return total
+
+    async def iter_range(self, remote: str, *, offset: int, length: int,
+                         target: str = "") -> AsyncIterator[bytes]:
+        headers = {"Range": f"bytes={offset}-{offset + length - 1}", "Accept-Encoding": "identity"}
+        async with self._session() as http:
+            async with http.stream("GET", self._blob_url(remote, target), headers=headers) as response:
+                self._check_blob_response(response)
+                async for chunk in iter_http_range(response, offset=offset, length=length):
+                    yield chunk
 
     async def upload_from(self, src: Path, filename: str, *, target: str = "") -> str:
         """Stream local ``src`` as GraphQL multipart data; ``target`` is the workspace."""

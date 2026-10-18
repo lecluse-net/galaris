@@ -1,7 +1,7 @@
 # User module - Authentication and user management
 
 from .models import User as UserModel, UserRefreshSession, UserToken
-from .user_service import encrypt_password, get_current_user, get_current_user_id, verify_password
+from .user_service import encrypt_password, get_current_user, get_current_user_id, verify_password, user_identity_context
 from .auth_service import create_access_token, generate_jwt_token
 from .oauth import oauth2_scheme
 from .dependencies import require_web_session
@@ -55,6 +55,7 @@ __all__ = [
     "encrypt_password",
     "get_current_user_id",
     "get_current_user",
+    "user_identity_context",
     "verify_password",
     "create_access_token",
     "generate_jwt_token",

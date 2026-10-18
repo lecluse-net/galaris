@@ -25,6 +25,14 @@ export interface FileListing {
 }
 
 export const fileBrowserService = {
+  async videoUrl(agent: number, uri: string, management = false): Promise<string | null> {
+    return (await api.post<{ url: string | null }>('/file-share/browser/media', null, {
+      params: { agent_id: agent, uri, management },
+    })).data.url
+  },
+  async releaseVideoUrl(url: string): Promise<void> {
+    await api.delete(url.replace(/^\/api\//, '/'))
+  },
   async search(agent: number, uri: string, query: string, cursor?: string | null, signal?: AbortSignal, management = false): Promise<FileListing> {
     const { data } = await api.get<{ hits: { resource: FileEntry }[]; truncated: boolean; next_cursor: string | null }>('/file-share/browser/search', {
       params: { agent_id: agent, uri, query, cursor: cursor || undefined, management }, signal,

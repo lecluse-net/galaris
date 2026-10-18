@@ -15,6 +15,14 @@ can be rendered and an icon otherwise. Click a file to preview it, or a Document
 Task, Dataset or conversation to open its existing domain view. Formats without an
 integrated viewer are downloaded.
 
+Videos from Samba, Nextcloud/WebDAV, AFFiNE, the SSH console and internal files play
+progressively, without waiting for a complete download. The player can request a
+different portion when seeking; the 512 MiB downloaded-preview limit does not apply
+to this path. Your browser must support the format and codecs. Public HTTPS links
+also use this playback when their size is known; if the remote server ignores byte
+ranges, seeking may require rereading preceding bytes. Other providers keep their
+usual preview.
+
 The list loads as you scroll, without pagination controls. The tree displays only
 the subdirectories received as loading progresses, without messages or pagination
 controls; if there are none, nothing appears below. After an error, **Retry** continues loading while preserving

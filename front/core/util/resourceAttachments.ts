@@ -8,6 +8,8 @@ export interface ResourceAttachment {
 
 export interface AttachmentSource<T extends ResourceAttachment = ResourceAttachment> {
   content: (attachment: T, preview: boolean, signal?: AbortSignal) => Promise<Blob>
+  videoUrl?: (attachment: T) => Promise<string | null>
+  releaseVideoUrl?: (url: string) => Promise<void>
   thumbnail?: (attachment: T, signal?: AbortSignal) => Promise<Blob>
   add?: (file: File, signal: AbortSignal, progress: (value: number) => void) => Promise<T>
   remove?: (attachment: T) => Promise<void>

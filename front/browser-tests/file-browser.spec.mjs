@@ -56,6 +56,68 @@ test('an existing file citation opens through authorized file sharing and retrie
   expect(reads).toBe(1)
 })
 
+test('shared videos play from range URLs, release access on closing and reopen without a full download', async ({ page }) => {
+  await setup(page)
+  await mount(page, component, { privileges: ['MEMORY_ACCESS'] })
+  const bytes = Buffer.from(await page.evaluate(async () => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 64; canvas.height = 64
+    const stream = canvas.captureStream(10)
+    const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' })
+    const chunks = []
+    recorder.ondataavailable = event => chunks.push(event.data)
+    const recording = new Promise(resolve => { recorder.onstop = () => resolve(new Blob(chunks)) })
+    let frame = 0
+    const timer = setInterval(() => {
+      const context = canvas.getContext('2d')
+      context.fillStyle = ++frame % 2 ? '#000000' : '#ffffff'
+      context.fillRect(0, 0, 64, 64)
+    }, 50)
+    recorder.start()
+    setTimeout(() => { clearInterval(timer); recorder.stop() }, 1000)
+    const blob = await recording
+    stream.getTracks().forEach(track => track.stop())
+    return [...new Uint8Array(await blob.arrayBuffer())]
+  }))
+  const uri = 'console://Synthetic.webm'
+  await jsonRoute(page, '**/api/file-share/browser/entries?*', pageOf('console://', [
+    { ...entry(uri, 'Synthetic.webm'), media_type: 'video/webm', size: 3 * 1024 ** 3 },
+  ]))
+  let issued = 0, released = 0, downloads = 0, mediaReads = 0
+  await page.route('**/api/file-share/browser/content?*', route => { downloads++; return route.abort() })
+  await page.route('**/api/file-share/browser/media?*', route => {
+    issued++
+    return route.fulfill({ json: { url: `/api/file-share/browser/media/synthetic-${issued}` } })
+  })
+  await page.route('**/api/file-share/browser/media/synthetic-*', route => {
+    if (route.request().method() === 'DELETE') { released++; return route.fulfill({ status: 204 }) }
+    mediaReads++
+    const selected = route.request().headers().range?.match(/^bytes=(\d+)-(\d*)$/)
+    expect(selected).toBeTruthy()
+    const start = Number(selected[1]), end = selected[2] ? Number(selected[2]) : bytes.length - 1
+    return route.fulfill({ status: 206, body: bytes.subarray(start, end + 1), headers: {
+      'content-type': 'video/webm', 'accept-ranges': 'bytes',
+      'content-range': `bytes ${start}-${end}/${bytes.length}`,
+    } })
+  })
+  await selectAgent(page, 'Alice Example')
+  await page.getByText('Console', { exact: true }).click()
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    await page.getByRole('button', { name: 'Open Synthetic.webm', exact: true }).click()
+    const video = page.getByRole('dialog').locator('video')
+    await expect(video).toBeVisible()
+    await expect.poll(() => video.evaluate(element => element.readyState)).toBeGreaterThanOrEqual(1)
+    await video.evaluate(element => { element.muted = true; return element.play() })
+    await expect.poll(() => video.evaluate(element => element.currentTime)).toBeGreaterThan(0)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect.poll(() => released).toBe(attempt)
+  }
+  expect(issued).toBe(2)
+  expect(mediaReads).toBeGreaterThanOrEqual(2)
+  expect(downloads).toBe(0)
+})
+
 for (const width of [1440, 390]) test(`browse folders, scroll, retry and preview with the keyboard at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   await setup(page)

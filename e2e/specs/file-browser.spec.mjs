@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 import { collectPageErrors } from '../page-errors.mjs'
 
 for (const width of [1440, 390]) test(`Files browses real agent resources and reopens previews at ${width}px`, async ({ page, request }, testInfo) => {
@@ -22,6 +23,10 @@ for (const width of [1440, 390]) test(`Files browses real agent resources and re
   expect(agent).toBeTruthy()
   await checked(await request.post(`/api/file-share/files?agent_id=${fixture.agent_id}`, { headers,
     multipart: { upload: { name: 'Synthetic browser.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic assembled file content') } } }))
+  // Synthetic FFmpeg testsrc2: 160x90, 12 fps, 2 seconds, H.264 baseline/yuv420p, faststart.
+  // Decode a real MP4 rather than inferring codec support from a browser-created WebM.
+  const video = await checked(await request.post(`/api/file-share/files?agent_id=${fixture.agent_id}`, { headers,
+    multipart: { upload: { name: 'Synthetic video.mp4', mimeType: 'video/mp4', buffer: await readFile(new URL('../fixtures/synthetic-video.mp4', import.meta.url)) } } }))
   const document = await checked(await request.post('/api/memory/items', {
     headers: { ...headers, 'X-Editorial-Profile-Version': '1' }, data: {
       owner_agent_id: fixture.agent_id, title: 'Synthetic browser document', node_kind: 'document',
@@ -57,6 +62,32 @@ for (const width of [1440, 390]) test(`Files browses real agent resources and re
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.screenshot({ path: testInfo.outputPath('files-page.png'), fullPage: true })
+  const ranges = []
+  page.on('response', response => {
+    if (response.url().includes('/file-share/browser/media/') && response.request().method() === 'GET') ranges.push(response)
+  })
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.locator('.file-main').getByRole('button', { name: 'Ouvrir Synthetic video.mp4', exact: true }).click()
+    const player = page.getByRole('dialog').locator('video')
+    await expect.poll(() => player.evaluate(element => ({
+      ready: element.readyState >= 1,
+      error: element.error ? { code: element.error.code, message: element.error.message } : null,
+    }))).toEqual({ ready: true, error: null })
+    await player.evaluate(element => { element.muted = true; return element.play() })
+    await expect.poll(() => player.evaluate(element => element.currentTime)).toBeGreaterThan(0)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  }
+  expect(ranges.length).toBeGreaterThanOrEqual(2)
+  for (const response of ranges) {
+    expect(response.status()).toBe(206)
+    expect(response.headers()['content-range']).toMatch(/^bytes /)
+    expect(response.request().headers().authorization).toBeUndefined()
+  }
+  const grant = await checked(await request.post(`/api/file-share/browser/media?agent_id=${fixture.agent_id}&uri=${encodeURIComponent(video.uri)}`, { headers }))
+  const tail = await request.get(grant.url, { headers: { Range: 'bytes=-8' } })
+  expect(tail.status()).toBe(206)
+  expect((await tail.body()).length).toBe(8)
   if (width < 1024 && !(await page.getByText('Galaris document', { exact: true }).isVisible())) {
     await page.getByRole('button', { name: 'Afficher les emplacements', exact: true }).click()
   }

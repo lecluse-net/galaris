@@ -17,6 +17,15 @@ disponible sinon. Cliquez sur un fichier pour afficher son aperçu, sur un Docum
 une Task, un Dataset ou un échange pour ouvrir sa vue métier existante. Les formats
 sans lecteur intégré se téléchargent.
 
+Les vidéos des partages Samba, Nextcloud/WebDAV, AFFiNE, de la console SSH et des
+fichiers internes se lisent progressivement, sans attendre le téléchargement complet.
+Le lecteur peut demander directement une autre portion pour avancer dans la vidéo ;
+la limite de 512 Mio des aperçus téléchargés ne s’applique pas à ce parcours.
+Le format et les codecs doivent être pris en charge par votre navigateur. Les liens
+HTTPS publics utilisent aussi cette lecture lorsque leur taille est connue ; si le
+serveur distant ignore les plages d’octets, un déplacement peut nécessiter de relire
+les octets précédents. Les autres fournisseurs conservent leur aperçu habituel.
+
 La liste se complète en défilant, sans contrôle de pagination. L’arborescence affiche
 uniquement les sous-répertoires reçus au fil du chargement, sans message ni contrôle
 de pagination ; s’il n’y en a aucun, rien n’est affiché dessous. Après une erreur,
