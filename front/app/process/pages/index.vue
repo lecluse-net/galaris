@@ -20,8 +20,8 @@
         <q-btn v-if="canAdmin" color="secondary" icon="sync" :label="t('processes.syncN8n')" :loading="syncingN8n" @click="syncN8n" />
       </div>
     </div>
-    <div v-if="canEdit || canAdmin" class="process-add-actions q-mb-md">
-      <q-btn v-if="canEdit" color="primary" icon="add" :label="t('nativeProcesses.newProcess')" to="/process/new-internal" />
+    <div v-if="(isDev && canEdit) || canAdmin" class="process-add-actions q-mb-md">
+      <q-btn v-if="isDev && canEdit" color="primary" icon="add" :label="t('nativeProcesses.newProcess')" to="/process/new-internal" />
       <q-btn v-if="canAdmin" color="primary" icon="add" :label="t('processes.importExternal')" to="/process/new-external" />
     </div>
 
@@ -90,6 +90,7 @@ import { processService, type ProcessTool } from '../services/processService'
 
 const ExternalRunDialog = defineAsyncView(() => import('../components/ExternalRunDialog.vue'))
 
+const isDev = import.meta.env.VITE_APP_ENV === 'dev'
 const store = useProcessStore()
 const $q = useQuasar()
 const { t } = useI18n()
