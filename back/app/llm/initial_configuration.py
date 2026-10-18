@@ -30,8 +30,8 @@ class InitialModel:
 
 
 INITIAL_MODELS = (
-    InitialModel("deepseek-deepseek-v4.1-flash", "deepseek/deepseek-v4.1-flash",
-                 "DeepSeek: DeepSeek V4.1 Flash", ("vision", "chat"), 1048576, ("text", "image")),
+    InitialModel("deepseek-deepseek-v4.1-flash-1017", "deepseek/deepseek-v4.1-flash-1017",
+                 "DeepSeek: DeepSeek V4.1 Flash 1017", ("vision", "chat"), 1048576, ("text", "image")),
     InitialModel("openai-gpt-5.4-nano", "openai/gpt-5.4-nano", "GPT 5.4 Nano",
                  ("vision", "chat"), 400000, ("text", "image", "file")),
     InitialModel("whisper", "openai/whisper-large-v3", "Whisper", ("transcription",),
@@ -56,11 +56,11 @@ INITIAL_MODELS = (
 )
 
 INITIAL_SELECTIONS = {
-    "text_ultra_low_llm_id": "deepseek-deepseek-v4.1-flash",
-    "text_low_llm_id": "deepseek-deepseek-v4.1-flash",
-    "text_standard_llm_id": "deepseek-deepseek-v4.1-flash",
-    "text_high_llm_id": "deepseek-deepseek-v4.1-flash",
-    "vision_llm_id": "deepseek-deepseek-v4.1-flash",
+    "text_ultra_low_llm_id": "deepseek-deepseek-v4.1-flash-1017",
+    "text_low_llm_id": "deepseek-deepseek-v4.1-flash-1017",
+    "text_standard_llm_id": "deepseek-deepseek-v4.1-flash-1017",
+    "text_high_llm_id": "deepseek-deepseek-v4.1-flash-1017",
+    "vision_llm_id": "deepseek-deepseek-v4.1-flash-1017",
     "document_llm_id": "openai-gpt-5.4-nano",
     "transcription_llm_id": "whisper",
     "video_generation_llm_id": "minimax-hailuo-3-max",

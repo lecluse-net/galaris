@@ -48,6 +48,15 @@ async def test_installation_selects_models_without_credentials_and_preserves_edi
     for field, code in initial_configuration.INITIAL_SELECTIONS.items():
         selected = await llm_service.get_profile_llm(field)
         assert selected is not None and selected.id == models[code].id
+    for field in (
+        "text_ultra_low_llm_id", "text_low_llm_id", "text_standard_llm_id",
+        "text_high_llm_id", "vision_llm_id",
+    ):
+        selected = await llm_service.get_profile_llm(field)
+        assert selected is not None
+        assert selected.llm_name == "deepseek/deepseek-v4.1-flash-1017"
+        assert selected.context_length == 1048576
+        assert selected.input_text and selected.input_image and selected.output_text
     assert profile.sound_generation_llm_id is None
     assert [getattr(profile, f"text_{tier}_reasoning_effort")
             for tier in ("ultra_low", "low", "standard", "high")] == ["none", "low", "medium", "high"]
