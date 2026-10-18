@@ -224,19 +224,18 @@ After your message is admitted, “Thinking” appears as soon as the interface
 receives the queued round, before its first fragments. A response already in
 progress remains visible if you send another request.
 
-Before you select a conversation, the Chat home screen first shows **Recent conversations**
-with a new message within the **last 7 days**, from newest to oldest. The **+** button shows
-all conversations, including older and empty ones, with the usual pagination. The **−** button
-returns to recent conversations. Agents appear below, under **Who would you like to talk to?**.
+Before you select a conversation, the Chat home screen first shows **Conversations**,
+with the same list as the chat window's **Conversations** section, including older and empty
+ones, with the usual pagination. Agents appear below, under **Who would you like to talk to?**.
 Click an agent to open a new conversation with that agent preselected, then confirm its name
 and preferences. The suggested name accounts for your existing conversations with that agent,
 including archived ones: if the name is already taken, Galaris adds **(2)**, **(3)**, and so on.
 You can edit the name; availability is checked again on creation and a suffix is added if needed.
-**Recent conversations** appear as cards with the agent, unread messages and
+**Conversations** appear as cards with the agent, unread messages and
 the date of the last message. Previews respect your privacy preference. On this home screen,
 search and filters remain visible: external conversations, archives and, with the appropriate
 permissions, an agent’s view. Cards adapt to the available width and use one column on phones.
-Agents and recent conversations load in pages of 50. Each list shows pagination only above
+Agents and conversations load in pages of 50. Each list shows pagination only above
 50 results, with a choice of 10, 20, 50, 100 or 500 items per page. Changing a filter returns
 conversations to the first page.
 

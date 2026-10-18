@@ -10,17 +10,9 @@
       <main v-if="!store.selectedRoom" class="chat-home q-pa-md">
         <PageHeader help-key="chat" :help-text="t('contextHelpPages.chat')" :icon="navigationIcon('forum')" :title="t('nav.chat')" :description="t('nav.chat_desc')" />
         <div class="chat-home-content">
-          <section :aria-label="t(showAllHomeRooms ? 'chat.conversations' : 'chat.home.recent')">
+          <section :aria-label="t('chat.conversations')">
             <div class="chat-home-list-header">
-              <div>
-                <h2>{{ t(showAllHomeRooms ? 'chat.conversations' : 'chat.home.recent') }}</h2>
-                <p v-if="!showAllHomeRooms" class="chat-home-list-hint">{{ t('chat.home.recentHint') }}</p>
-              </div>
-              <q-btn flat round color="primary" :icon="showAllHomeRooms ? 'remove' : 'add'"
-                :aria-label="t(showAllHomeRooms ? 'chat.home.showRecent' : 'chat.home.showAll')"
-                :aria-pressed="showAllHomeRooms" @click="showAllHomeRooms = !showAllHomeRooms">
-                <q-tooltip>{{ t(showAllHomeRooms ? 'chat.home.showRecent' : 'chat.home.showAll') }}</q-tooltip>
-              </q-btn>
+              <h2>{{ t('chat.conversations') }}</h2>
             </div>
             <RoomList :search-value="roomSearch" cards show-filters :rooms="homeRooms" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="false" :loading-more="loadingHomeRooms" :error="homeRoomsError" @select="selectRoom" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @view-agent="changeViewerAgent" />
             <div v-if="homeRoomsError" role="alert" class="q-mt-md">
@@ -210,9 +202,8 @@ const homeRoomsTotal = ref(0)
 const loadingHomeRooms = ref(false)
 const homeRoomsError = ref(false)
 const homeRoomsRevision = ref(0)
-const showAllHomeRooms = ref(false)
 watch(agentsPageSize, () => { agentsPage.value = 1 }, { flush: 'sync' })
-watch([homeRoomsPageSize, showAllHomeRooms, roomSearch, () => store.viewerAgentId, () => store.includeExternalRooms, () => store.includeArchivedRooms], () => { homeRoomsPage.value = 1 }, { flush: 'sync' })
+watch([homeRoomsPageSize, roomSearch, () => store.viewerAgentId, () => store.includeExternalRooms, () => store.includeArchivedRooms], () => { homeRoomsPage.value = 1 }, { flush: 'sync' })
 function toggleRoomFilters(): void {
   roomFiltersVisible.value = !roomFiltersVisible.value
   if (roomFiltersVisible.value) conversationsExpanded.value = true
@@ -471,7 +462,7 @@ watch([canCreateRoom, () => store.selectedRoom?.id, recipientsRevision, agentsPa
 }, { immediate: true })
 watch([() => store.enabled, () => store.selectedRoom?.id, () => store.rooms, roomSearch,
   () => store.viewerAgentId, () => store.includeExternalRooms, () => store.includeArchivedRooms,
-  homeRoomsPage, homeRoomsPageSize, showAllHomeRooms, homeRoomsRevision], (_, __, onCleanup) => {
+  homeRoomsPage, homeRoomsPageSize, homeRoomsRevision], (_, __, onCleanup) => {
   let cancelled = false
   onCleanup(() => { cancelled = true })
   loadingHomeRooms.value = false
@@ -480,8 +471,7 @@ watch([() => store.enabled, () => store.selectedRoom?.id, () => store.rooms, roo
   homeRoomsError.value = false
   homeRooms.value = []
   void service.rooms(homeRoomsPage.value, homeRoomsPageSize.value, roomSearch.value,
-    store.viewerAgentId, store.includeExternalRooms, store.includeArchivedRooms,
-    showAllHomeRooms.value ? null : 7).then(result => {
+    store.viewerAgentId, store.includeExternalRooms, store.includeArchivedRooms).then(result => {
     if (cancelled) return
     homeRoomsTotal.value = result.total
     if (result.total <= 50) homeRoomsPageSize.value = 50
@@ -628,7 +618,6 @@ onMounted(()=>{document.addEventListener('visibilitychange',updateChatPageVisibi
 .chat-home-content { min-width: 0; }
 .chat-home-list-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .chat-home-list-header h2 { margin: 0; font-size: 1.15rem; font-weight: 600; line-height: 1.4; }
-.chat-home-list-hint { margin: 4px 0 0; color: var(--chat-text-secondary); }
 .messenger-grid--resizing { cursor: col-resize; user-select: none; }
 .messenger-grid--document { grid-template-columns: minmax(0, var(--conversation-width)) 8px minmax(240px, 1fr); }
 .chat-workspace { display: flex; min-width: 0; min-height: 0; height: 100%; flex-direction: column; overflow: hidden; }

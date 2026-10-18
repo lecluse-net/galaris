@@ -292,9 +292,9 @@ Les traitements de **Processus** utilisent le moteur de leur définition affect�
 un bridge installé. Le [guide des moteurs externes](../dev/process-engines.md)
 explique cette préparation à l'administrateur et au développeur.
 
-L’accueil de **Discussion** présente d’abord les conversations ayant reçu un message durant
-les 7 derniers jours, puis les agents. Le bouton **+** ouvre l’historique complet paginé ;
-**−** revient aux conversations récentes.
+L’accueil de **Discussion** présente toutes les conversations, comme la rubrique
+**Conversations** de la fenêtre de chat, puis les agents. Les conversations anciennes et
+sans message sont incluses, avec les mêmes filtres et la pagination habituelle.
 
 À l’ouverture d’une discussion, les messages s’affichent sans attendre le catalogue des
 commandes ni l’état des appels. Les aperçus de liens et les miniatures de documents se

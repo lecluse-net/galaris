@@ -50,7 +50,7 @@ async function home(page, options = {}) {
   await jsonRoute(page, '**/api/chat/inbox', { unread_count: 0 })
   await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
   await mount(page, 'app/chat/pages/index.vue', { route: '/chat', privileges: options.privileges ?? ['CHAT_MANAGE', 'CHAT_SEND'], dark: options.dark ?? false })
-  await expect(page.getByRole('heading', { name: 'Recent conversations' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Search conversations…' })).toBeVisible()
   return { requests, created, recipientRequests }
 }
 
@@ -106,7 +106,6 @@ for (const count of [50, 51, 1000]) {
     const rooms = Array.from({ length: count }, (_, index) => ({ ...room, id: `room-${index + 1}`, label: `Conversation ${index + 1}` }))
     const state = await home(page, { agents, rooms })
     const agentPages = page.getByRole('navigation', { name: 'Agent pages', exact: true })
-    await page.getByRole('button', { name: 'Show all conversations', exact: true }).click()
     const roomPages = page.getByRole('navigation', { name: 'Conversation pages', exact: true })
     await expect(page.getByRole('button', { name: /^New conversation with Agent / })).toHaveCount(50)
     await expect(page.locator('.room-item--card')).toHaveCount(50)
@@ -145,7 +144,7 @@ for (const count of [50, 51, 1000]) {
   })
 }
 
-test('chat home can retry loading agents while recent conversations remain available', async ({ page }) => {
+test('chat home can retry loading agents while conversations remain available', async ({ page }) => {
   await home(page, { failRecipients: true })
   await expect(page.getByRole('alert')).toContainText('Unable to load agents.')
   await expect(page.getByRole('button', { name: /Project outline Alice/ })).toBeVisible()
@@ -154,43 +153,24 @@ test('chat home can retry loading agents while recent conversations remain avail
   await expect(page.getByRole('alert')).toHaveCount(0)
 })
 
-test('home shows recent activity by default and switches to the full history with the keyboard', async ({ page }) => {
+test('home includes older and empty conversations with the same list as the conversation panel', async ({ page }) => {
   const state = await home(page, { rooms: [room,
     { ...room, id: 'old', label: 'Older exchange', last_message: { ...message, created_at: '2026-09-24T12:00:00Z' } },
     { ...room, id: 'empty', label: 'No messages yet', last_message: null },
   ] })
   await expect(page.getByRole('button', { name: /Project outline Alice/ })).toBeVisible()
-  await expect(page.getByText('Older exchange', { exact: true })).toHaveCount(0)
-  await expect(page.getByText('No messages yet', { exact: true })).toHaveCount(0)
-  await expect.poll(() => state.requests.at(-1)?.recent_days).toBe('7')
-  const all = page.getByRole('button', { name: 'Show all conversations', exact: true })
-  await all.focus()
-  await page.keyboard.press('Enter')
   await expect(page.getByText('Older exchange', { exact: true })).toBeVisible()
   await expect(page.getByText('No messages yet', { exact: true })).toBeVisible()
-  expect(state.requests.at(-1)).not.toHaveProperty('recent_days')
-  await page.getByRole('button', { name: 'Show conversations from the last 7 days', exact: true }).click()
-  await expect(page.getByText('Older exchange', { exact: true })).toHaveCount(0)
-  await expect.poll(() => state.requests.at(-1)?.recent_days).toBe('7')
+  expect(state.requests.every(request => !('recent_days' in request))).toBe(true)
+  const cards = await page.locator('.room-item--card .room-agent-name > span').allTextContents()
+  const conversation = page.getByRole('button', { name: /Project outline Alice/ })
+  await conversation.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.conversation-pane')).toContainText(message.text)
+  await expect(page.locator('.details-pane .room-agent-name > span')).toHaveText(cards)
 })
 
-test('home can open the full history when there is no recent activity and ignore its late response', async ({ page }) => {
-  await home(page, { rooms: [{ ...room, last_message: { ...message, created_at: '2026-09-24T12:00:00Z' } }] })
-  await expect(page.getByText('No conversations to display.')).toBeVisible()
-  let deferredRoute
-  await page.route('**/api/chat/rooms?*', route => {
-    if (new URL(route.request().url()).searchParams.has('recent_days')) return route.fallback()
-    deferredRoute = route
-  })
-  await page.getByRole('button', { name: 'Show all conversations', exact: true }).click()
-  await expect.poll(() => Boolean(deferredRoute)).toBe(true)
-  await page.getByRole('button', { name: 'Show conversations from the last 7 days', exact: true }).click()
-  await expect(page.getByText('No conversations to display.')).toBeVisible()
-  await deferredRoute.fulfill({ json: { items: [room], total: 1, page: 1, page_size: 50 } })
-  await expect(page.getByText('Project outline', { exact: true })).toHaveCount(0)
-})
-
-test('recent conversation pagination recovers from errors and ignores a late page after filtering', async ({ page }) => {
+test('conversation pagination recovers from errors and ignores a late page after filtering', async ({ page }) => {
   const rooms = Array.from({ length: 51 }, (_, index) => ({ ...room, id: `room-${index + 1}`, label: `Conversation ${index + 1}` }))
   await home(page, { rooms })
   const pagination = page.getByRole('navigation', { name: 'Conversation pages', exact: true })

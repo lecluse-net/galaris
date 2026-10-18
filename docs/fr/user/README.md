@@ -298,20 +298,19 @@ absente, et vous pouvez envoyer une nouvelle demande. Ces commandes visent
 la réponse conversationnelle ; les tâches et processus de fond ont leurs propres commandes.
 
 Avant de sélectionner une conversation, l’accueil de **Discussion** affiche d’abord les
-**Conversations récentes** ayant reçu un nouveau message durant les **7 derniers jours**,
-de la plus récente à la plus ancienne. Le bouton **+** affiche toutes les conversations,
-y compris les anciennes et celles sans message, avec la pagination habituelle. Le bouton
-**−** permet de revenir aux conversations récentes. Les agents apparaissent en dessous,
+**Conversations**, avec la même liste que la rubrique **Conversations** de la fenêtre de chat,
+y compris les anciennes et celles sans message, avec la pagination habituelle.
+Les agents apparaissent en dessous,
 sous **Avec qui souhaitez-vous échanger ?**. Cliquez sur un agent pour ouvrir une nouvelle conversation avec cet agent
 présélectionné, puis confirmez son nom et ses préférences. Le nom proposé tient compte de vos
 conversations existantes avec cet agent, y compris les archives : si le nom est déjà pris,
 Galaris ajoute **(2)**, **(3)**, etc. Vous pouvez modifier ce nom ; sa disponibilité est
-revérifiée lors de la création, et un suffixe est ajouté si nécessaire. Les **Conversations récentes**
+revérifiée lors de la création, et un suffixe est ajouté si nécessaire. Les **Conversations**
 apparaissent en cartes avec l’agent, les non-lus et la date du dernier message. L’aperçu respecte
 votre préférence de confidentialité. Sur cet accueil, la recherche et les filtres restent
 visibles : conversations externes, archives et, selon vos droits, vue d’un agent.
 Les cartes s’adaptent à la largeur de l’écran et s’affichent sur une colonne sur téléphone.
-Les agents et les conversations récentes se chargent par pages de 50. Chaque liste affiche
+Les agents et les conversations se chargent par pages de 50. Chaque liste affiche
 sa pagination uniquement au-delà de 50 résultats, avec un choix de 10, 20, 50, 100 ou 500
 éléments par page. Modifier un filtre ramène les conversations à la première page.
 

@@ -2,6 +2,11 @@
 
 # Functional guarantees catalogue
 
+`front/browser-tests/chat-home.spec.mjs` checks that the home screen and Conversations panel
+include the same conversations, including older and empty ones. The former seven-day default
+filter and its toggle are retired; search, pagination, error recovery and rejection of late
+responses after filtering remain covered.
+
 `app/memory/tests/test_process_references.py` covers Process and Run references:
 independent access and revocation, bounded membership, concurrency and frozen run
 diagrams. `process-references.spec.mjs` covers thumbnails, modals, link/diagram

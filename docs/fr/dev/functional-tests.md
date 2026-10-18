@@ -2,6 +2,11 @@
 
 # Catalogue des garanties fonctionnelles
 
+`front/browser-tests/chat-home.spec.mjs` vérifie que l’accueil et le panneau Conversations
+incluent les mêmes conversations, anciennes ou sans message. L’ancien filtre par défaut
+sur sept jours et sa bascule sont retirés ; recherche, pagination, reprise après erreur et
+rejet des réponses tardives après filtrage restent couverts.
+
 `app/memory/tests/test_process_references.py` protège les références Process et Run :
 droits indépendants et révocation, manifeste borné, concurrence et diagrammes de runs
 figés. Les scénarios `process-references.spec.mjs` couvrent miniatures, modales,

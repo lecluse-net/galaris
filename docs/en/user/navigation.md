@@ -269,8 +269,8 @@ you can close its dialog during loading and reopen it.
 installed bridge. The [external engine guide](../dev/process-engines.md)
 explains that preparation for administrators and developers.
 
-The Chat home screen shows conversations with a message in the last 7 days first, then agents.
-The **+** button opens the full paginated history; **−** returns to recent conversations.
+The Chat home screen shows all conversations, like the chat window's **Conversations** section,
+then agents. Older and empty conversations are included, with the same filters and usual pagination.
 
 When opening a conversation, messages appear without waiting for the command catalogue
 or call status. Link previews and document thumbnails load progressively near the visible
