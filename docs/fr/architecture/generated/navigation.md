@@ -416,6 +416,14 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 - Conditions supplémentaires : —
 - Sources : `front/core/authorize/navigation.ts`
 
+## Administrer → Référence graphique
+
+- Route : `/graphic-reference`
+- Usage : Tous les repères visuels de Galaris, réunis pour comparer leur cohérence.
+- Visibilité du menu (privilèges) : —
+- Conditions supplémentaires : admin.graphicReference: dynamic
+- Sources : `front/app/index/navigation.ts`
+
 ## À propos
 
 - Route : `/about`

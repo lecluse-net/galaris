@@ -20,7 +20,7 @@ tests remain authoritative for behavior.
 - 711 detected HTTP/WebSocket handlers;
 - 174 detected SQLAlchemy tables;
 - 272 detected native MCP tools;
-- 50 detected Vue pages.
+- 51 detected Vue pages.
 
 ## Backend Modules
 
@@ -112,7 +112,7 @@ tests remain authoritative for behavior.
 | `core/team` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
 | `core/authorize` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
 | `core/params` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 3 |
-| `app/index` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 6 |
+| `app/index` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 7 |
 | `app/agent` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/harnesses` | yes | `components`, `i18n.ts`, `pages`, `services` | 1 |
 | `app/tools` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 1 |
@@ -841,9 +841,9 @@ tests remain authoritative for behavior.
 | `app/index` | `core/api` | `front/app/index/services/dashboardService.ts`, `front/app/index/services/homeService.ts`, `front/app/index/stores/dashboardStore.ts` |
 | `app/index` | `core/authorize` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/navigation.ts`, `front/app/index/stores/dashboardStore.ts` |
 | `app/index` | `core/navigation` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/navigation.ts` |
-| `app/index` | `core/settings` | `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/components/SidebarFooter.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/pages/about.vue` |
+| `app/index` | `core/settings` | `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/components/SidebarFooter.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/navigation.ts`, `front/app/index/pages/about.vue`, `front/app/index/pages/graphic-reference.vue`, `front/app/index/router.ts` |
 | `app/index` | `core/user` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/pages/index.vue`, `front/app/index/pages/welcome.vue`, `front/app/index/stores/dashboardStore.ts` |
-| `app/index` | `core/util` | `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/pages/about.vue`, `front/app/index/pages/license.vue` |
+| `app/index` | `core/util` | `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/graphic-reference/GalleryForms.vue`, `front/app/index/graphic-reference/GalleryNavigation.vue`, `front/app/index/graphic-reference/GalleryPatterns.vue`, `front/app/index/pages/about.vue`, `front/app/index/pages/graphic-reference.vue`, `front/app/index/pages/license.vue` |
 | `app/index` | `core/websocket` | `front/app/index/components/DashboardLiveActivity.vue` |
 | `app/lab` | `app/task` | `front/app/lab/pages/ai-evaluations.vue` |
 | `app/lab` | `core/api` | `front/app/lab/components/LabComparisonDialog.vue`, `front/app/lab/components/LabHumanReviewDialog.vue`, `front/app/lab/components/LabSyntheticDatasetDialog.vue`, `front/app/lab/components/LabWorkbench.vue`, `front/app/lab/services/dispatcherEvaluationService.ts`, `front/app/lab/services/evaluationService.ts`, `front/app/lab/services/labWorkbenchService.ts`, `front/app/lab/services/mechanismEvaluationService.ts`, `front/app/lab/services/processCampaignService.ts` |
@@ -2458,6 +2458,7 @@ tests remain authoritative for behavior.
 | `/dream` | `app/dream` | `front/app/dream/pages/index.vue` |
 | `/files` | `app/file_share` | `front/app/file_share/pages/index.vue` |
 | `/goal` | `app/goal` | `front/app/goal/pages/index.vue` |
+| `/graphic-reference` | `app/index` | `front/app/index/pages/graphic-reference.vue` |
 | `/harnesses/:id` | `app/harnesses` | `front/app/harnesses/pages/[id].vue` |
 | `/incident` | `app/incident` | `front/app/incident/pages/index.vue` |
 | `/index` | `app/index` | `front/app/index/pages/index.vue` |

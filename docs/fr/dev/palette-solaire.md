@@ -92,3 +92,11 @@ des familles d’usages. Ses tableaux et contrôles conservent les couleurs du t
 Cette référence fixe la cible de tous les changements visuels. Son adoption documentaire ne
 signifie pas que tous les styles historiques ont déjà été remplacés dans le runtime.
 L’harmonisation du code doit reprendre ces valeurs et vérifier le rendu dans les deux thèmes.
+
+En `APP_ENV=dev`, **Administrer → Référence graphique** (`/graphic-reference`) rassemble
+les composants réels, les dossiers à leurs différentes tailles, les glyphes et les éditeurs.
+Consulter cette page avant une modification visuelle pour comparer les éléments entre eux,
+puis vérifier le consommateur concerné dans l’application. Ses interactions restent locales ;
+elle ne charge pas les icônes personnelles des utilisateurs. Les contributions visuelles des
+domaines sont composées dans `front/graphicReferenceContributions.ts`, sur le même principe
+que les autres points de composition frontend.

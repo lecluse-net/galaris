@@ -89,3 +89,10 @@ headings. Its tables and controls retain the interface theme colors.
 This reference sets the target for all visual changes. Documenting its adoption does not mean
 every historical runtime style has already been replaced. Code harmonization must use these
 values and verify rendering in both themes.
+
+With `APP_ENV=dev`, **Administration → Visual reference** (`/graphic-reference`) brings
+together real components, folders at their display sizes, glyphs and editors. Consult this
+page before a visual change to compare elements, then check the affected consumer in the
+application. Its interactions stay local; it does not load personal user icons. Domain
+artwork is composed in `front/graphicReferenceContributions.ts`, following the existing
+frontend composition root pattern.

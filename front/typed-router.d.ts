@@ -45,6 +45,13 @@ declare module 'vue-router/auto-routes' {
       { all: ParamValue<false> },
       | never
     >,
+    '///graphic-reference': RouteRecordInfo<
+      '///graphic-reference',
+      '/graphic-reference',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '///about': RouteRecordInfo<
       '///about',
       '/about',
@@ -409,6 +416,14 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | 'all'
+    }
+    'app/index/pages/graphic-reference.vue': {
+      routes:
+        | '///graphic-reference'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'app/index/pages/about.vue': {
       routes:

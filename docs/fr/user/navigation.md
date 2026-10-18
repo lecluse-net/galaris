@@ -33,6 +33,17 @@ distinctes des **Préférences** d’administration de l’instance.
 
 ## Les cinq sections principales
 
+En mode développement uniquement (`APP_ENV=dev`), **Administrer → Référence graphique**
+ouvre `/graphic-reference`. Cette page réunit la palette Solaire, les contrôles de
+formulaire, les boutons, une mini-modale intégrée et sa version ouvrable, les dossiers
+ouverts/fermés avec leurs tailles, la navigation, les séparateurs redimensionnables,
+les états, les contenus et les éditeurs. Les interactions utilisent des données fictives
+et ne sauvegardent rien. Le changement de thème est temporaire et le bouton Réinitialiser
+rétablit les exemples. Le tableau des glyphes propose une recherche, les illustrations
+embarquées et les catalogues d’icônes de documents ; l’inventaire des composants indique
+leurs fichiers consommateurs. Les icônes personnelles des utilisateurs ne sont pas chargées.
+La route est exclue des constructions des autres environnements.
+
 | Section | Ce qu’on y trouve |
 |---|---|
 | **Configurer** | Fournisseurs & modèles, Agents, Outils & connexions, Compétences |

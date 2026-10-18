@@ -20139,7 +20139,10 @@
           "front/app/index/components/Sidebar.vue",
           "front/app/index/components/SidebarFooter.vue",
           "front/app/index/environmentPresentation.ts",
-          "front/app/index/pages/about.vue"
+          "front/app/index/navigation.ts",
+          "front/app/index/pages/about.vue",
+          "front/app/index/pages/graphic-reference.vue",
+          "front/app/index/router.ts"
         ],
         "source": "app/index",
         "target": "core/settings"
@@ -20162,7 +20165,11 @@
           "front/app/index/components/HomeActionCenter.vue",
           "front/app/index/components/HomeConnected.vue",
           "front/app/index/environmentPresentation.ts",
+          "front/app/index/graphic-reference/GalleryForms.vue",
+          "front/app/index/graphic-reference/GalleryNavigation.vue",
+          "front/app/index/graphic-reference/GalleryPatterns.vue",
           "front/app/index/pages/about.vue",
+          "front/app/index/pages/graphic-reference.vue",
           "front/app/index/pages/license.vue"
         ],
         "source": "app/index",
@@ -21818,6 +21825,11 @@
             "route_hint": "/index/dashboard"
           },
           {
+            "file": "front/app/index/pages/graphic-reference.vue",
+            "module": "app/index",
+            "route_hint": "/graphic-reference"
+          },
+          {
             "file": "front/app/index/pages/index.vue",
             "module": "app/index",
             "route_hint": "/index"
@@ -22526,6 +22538,11 @@
         "file": "front/app/goal/pages/index.vue",
         "module": "app/goal",
         "route_hint": "/goal"
+      },
+      {
+        "file": "front/app/index/pages/graphic-reference.vue",
+        "module": "app/index",
+        "route_hint": "/graphic-reference"
       },
       {
         "file": "front/app/harnesses/pages/[id].vue",

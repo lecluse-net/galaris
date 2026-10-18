@@ -2057,6 +2057,39 @@
       ]
     },
     {
+      "id": "admin.graphicReference",
+      "labels": {
+        "fr": "Référence graphique",
+        "en": "Visual reference"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Référence graphique"
+        ],
+        "en": [
+          "Administer",
+          "Visual reference"
+        ]
+      },
+      "route": "/graphic-reference",
+      "href": null,
+      "description": {
+        "fr": "Tous les repères visuels de Galaris, réunis pour comparer leur cohérence.",
+        "en": "Galaris visual elements together, for a consistency review."
+      },
+      "privilege_groups": [],
+      "conditions": [
+        {
+          "node": "admin.graphicReference",
+          "visibility": "dynamic"
+        }
+      ],
+      "sources": [
+        "front/app/index/navigation.ts"
+      ]
+    },
+    {
       "id": "pageFooter.about",
       "labels": {
         "fr": "À propos",

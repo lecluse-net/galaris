@@ -30,6 +30,15 @@ theme preferences are separate from the instance's administrative **Preferences*
 
 ## The five main sections
 
+In development mode only (`APP_ENV=dev`), **Administration → Visual reference** opens
+`/graphic-reference`. This page brings together the Solaire palette, form controls,
+buttons, an embedded mini dialog and its openable version, open/closed folders at their
+display sizes, navigation, resizable splitters, states, content and editors. Interactions
+use synthetic data and save nothing. Theme changes are temporary, and Reset restores the
+examples. The searchable glyph table includes bundled artwork and document icon catalogues;
+the component inventory lists consumer files. Personal user icons are not loaded.
+The route is excluded from builds for other environments.
+
 | Section | Contents |
 |---|---|
 | **Configure** | Providers & models, Agents, Tools & connections, Skills |

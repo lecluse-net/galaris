@@ -6,6 +6,7 @@ import ts from 'typescript'
 
 // These imports only appear inside availability/badge predicates. Never execute them.
 const runtimeImports = new Set([
+  'core/settings.ts',
   'app/chat/availability.ts', 'app/chat/stores/inbox.ts',
   'app/connection/availability.ts', 'app/console/stores/consoleStore.ts',
   'app/browser/stores/browserSettingsStore.ts',

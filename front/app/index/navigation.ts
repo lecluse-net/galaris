@@ -1,5 +1,6 @@
 import type { NavigationTree } from '@/core/navigation'
 import { privileges } from '@/core/authorize'
+import { settings } from '@/core/settings'
 
 const navigation: NavigationTree = {
     monitor: {
@@ -14,7 +15,18 @@ const navigation: NavigationTree = {
             },
         },
     },
-    admin: {},
+    admin: {
+        children: {
+            graphicReference: {
+                label: 'graphicReference.title',
+                description: 'graphicReference.description',
+                icon: 'palette',
+                to: '/graphic-reference',
+                visible: () => settings.is_dev,
+                order: 90,
+            },
+        },
+    },
     pageFooter: {
         children: {
             about: {
