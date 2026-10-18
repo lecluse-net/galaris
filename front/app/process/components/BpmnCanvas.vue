@@ -73,7 +73,7 @@
             <template v-if="!readonly">
               <button v-for="port in ports(node)" :key="`${port.side}-${port.outcome}`"
                 class="port" :class="[port.side, { 'output-true': port.outcome === true, 'output-false': port.outcome === false }]" :aria-label="t(port.outcome === true ? 'nativeProcesses.trueOutput' : port.outcome === false ? 'nativeProcesses.falseOutput' : port.side === 'input' ? 'nativeProcesses.inputHandle' : 'nativeProcesses.outputHandle', { title: node.title || t('nativeProcesses.kinds.' + node.kind) })"
-                :data-flow-port="port.side" @pointerdown.stop="beginLink($event, node.id, port.side, port.outcome)" @lostpointercapture="cancelLink"
+                :style="portStyle(node, port.side, port.outcome)" :data-flow-port="port.side" @pointerdown.stop="beginLink($event, node.id, port.side, port.outcome)" @lostpointercapture="cancelLink"
                 @click.capture="portClick" @keydown.stop @keydown.esc.prevent="connecting = null; cancelDrag()">
                 <span v-if="port.outcome !== undefined" class="port-outcome">{{ t(port.outcome ? 'nativeProcesses.trueBranch' : 'nativeProcesses.falseBranch') }}</span>
                 <q-menu anchor="bottom middle" self="top middle" class="handle-menu">
@@ -125,7 +125,8 @@
         <div v-if="isEvent(draggedNode) || isGateway(draggedNode)" class="event-title">{{ draggedNode.title || t('nativeProcesses.kinds.' + draggedNode.kind) }}</div>
         <ProcessRunStatusBadge v-if="draggedNode.kind !== 'start' && statuses[draggedNode.id]" class="node-badge" :status="statuses[draggedNode.id]!" variant="diagram" />
         <template v-if="!readonly">
-          <span v-for="side in draggedNode.kind === 'start' ? ['output'] : draggedNode.kind === 'end' ? ['input'] : ['input', 'output']" :key="side" class="port" :class="side" />
+          <span v-for="port in ports(draggedNode)" :key="`${port.side}-${port.outcome}`" class="port"
+            :class="[port.side, { 'output-true': port.outcome === true, 'output-false': port.outcome === false }]" :style="portStyle(draggedNode, port.side, port.outcome)" />
         </template>
       </div>
     </Teleport>
@@ -258,16 +259,30 @@ function endpoint(id: string): { x: number; y: number; width: number } {
   const node = props.modelValue.nodes.find(item => item.id === id)
   return node ? { ...position(node), width: nodeWidth(node) } : { x: 0, y: 0, width: 0 }
 }
+function ifPortPoint(side: 'input' | 'output', outcome?: boolean): { x: number; y: number } {
+  const radius = 58 / Math.SQRT2
+  return side === 'output' && outcome === false ? { x: 44, y: 44 + radius } : { x: 44 + (side === 'output' ? radius : -radius), y: 44 }
+}
+function portStyle(node: BpmnNode, side: 'input' | 'output', outcome?: boolean): { left: string; top: string; right: string } | undefined {
+  if (node.kind !== 'if') return undefined
+  const point = ifPortPoint(side, outcome)
+  return { left: `${point.x - 12}px`, top: `${point.y}px`, right: 'auto' }
+}
 function connectionPoint(id: string, side: 'input' | 'output', outcome?: boolean): { x: number; y: number } {
   const node = props.modelValue.nodes.find(item => item.id === id)
   if (!node) return { x: 0, y: 0 }
   const point = position(node), width = nodeWidth(node), output = side === 'output'
-  const offsetY = node.kind === 'if' && output ? outcome ? 28 : 60 : 44
+  if (node.kind === 'if') {
+    const port = ifPortPoint(side, outcome), gap = props.readonly ? 0 : 5
+    return { x: point.x + port.x + (output && outcome === false ? 0 : output ? gap : -gap),
+      y: point.y + port.y + (output && outcome === false ? gap : 0) }
+  }
+  const offsetY = 44
   let offsetX = output ? width : 0
   if (!props.readonly) offsetX += output ? 5 : -5
   else if (isEvent(node)) offsetX += output ? -4 : 4
   else if (isGateway(node)) {
-    // A 58px square rotated by 45°; intersect its edge at the branch's height.
+    // A 58px square rotated by 45°.
     const halfWidth = 58 / Math.SQRT2 - Math.abs(offsetY - 44)
     offsetX = width / 2 + (output ? halfWidth : -halfWidth)
   }
@@ -276,6 +291,11 @@ function connectionPoint(id: string, side: 'input' | 'output', outcome?: boolean
 function title(id: string): string { const node = props.modelValue.nodes.find(node => node.id === id); return node?.title || t('nativeProcesses.kinds.' + (node?.kind ?? 'task')) }
 function flowPath(flow: BpmnFlow): string {
   const a = connectionPoint(flow.source, 'output', flow.condition !== null), b = connectionPoint(flow.target, 'input')
+  if (flow.condition === null && props.modelValue.nodes.some(node => node.id === flow.source && node.kind === 'if')) {
+    const bottom = Math.max(a.y + 36, b.y), mid = b.x > a.x + 48 ? (a.x + b.x) / 2 : a.x + 36
+    const start = `M${a.x} ${a.y} V${bottom - 8} Q${a.x} ${bottom} ${a.x + 8} ${bottom}`
+    return bottom === b.y ? `${start} H${b.x}` : `${start} H${mid - 8} Q${mid} ${bottom} ${mid} ${bottom - 8} V${b.y + 8} Q${mid} ${b.y} ${mid + (b.x > mid ? 8 : -8)} ${b.y} H${b.x}`
+  }
   const start = a.x, end = b.x, y1 = a.y, y2 = b.y
   if (Math.abs(y1 - y2) < 1 && end > start) return `M${start} ${y1} H${end}`
   const mid = end > start + 48 ? (start + end) / 2 : start + 36
@@ -283,6 +303,8 @@ function flowPath(flow: BpmnFlow): string {
 }
 function flowMidpoint(flow: BpmnFlow): { x: number; y: number } {
   const a = connectionPoint(flow.source, 'output', flow.condition !== null), b = connectionPoint(flow.target, 'input')
+  if (flow.condition === null && props.modelValue.nodes.some(node => node.id === flow.source && node.kind === 'if'))
+    return { x: (a.x + b.x) / 2, y: Math.max(a.y + 36, b.y) - 18 }
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - 18 }
 }
 function ports(node: BpmnNode): { side: 'input' | 'output'; outcome?: boolean }[] {
@@ -301,6 +323,8 @@ const connectionPreviewPath = computed(() => {
   const loose = current.target ? connectionPoint(current.target, current.side === 'input' ? 'output' : 'input') : current.point
   const from = current.side === 'output' ? fixed : loose, to = current.side === 'output' ? loose : fixed
   const bend = Math.max(40, Math.abs(to.x - from.x) / 2)
+  if (current.side === 'output' && current.outcome === false && props.modelValue.nodes.some(node => node.id === current.id && node.kind === 'if'))
+    return `M${from.x} ${from.y} C${from.x} ${from.y + bend} ${to.x - bend} ${to.y} ${to.x} ${to.y}`
   return `M${from.x} ${from.y} C${from.x + bend} ${from.y} ${to.x - bend} ${to.y} ${to.x} ${to.y}`
 })
 function beginLink(event: PointerEvent, id: string, side: 'input' | 'output', outcome?: boolean): void {
@@ -612,12 +636,11 @@ marker path { fill: var(--diagram-line); }
 .if .node-card, .parallel .node-card { width: 58px; height: 58px; margin: 15px; border: var(--node-border-width) solid var(--node-accent); border-radius: 0; transform: rotate(45deg); padding: 0; justify-content: center; }
 .if .node-symbol, .parallel .node-symbol { transform: rotate(-45deg); }
 .event-title { position: absolute; top: 84px; left: 50%; transform: translateX(-50%); width: 180px; text-align: center; font-size: 12px; line-height: 16px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.if .event-title { top: -32px; }
 .port { position: absolute; top: 44px; transform: translateY(-50%); width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; color: var(--node-accent); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; touch-action: none; }
 .port::before { content: ''; width: 10px; height: 10px; box-sizing: border-box; border: 1.5px solid currentColor; border-radius: 50%; background: var(--diagram-surface); }
 .port.input { left: -12px; }
 .port.output { right: -12px; }
-.port.output-true { top: 28px; }
-.port.output-false { top: 60px; }
 .port-outcome { position: absolute; left: 22px; padding: 0 3px; font-size: 11px; color: var(--diagram-text); background: var(--diagram-surface); }
 .port:hover::before, .port:focus-visible::before { background: currentColor; }
 .port:focus-visible { outline: 2px solid var(--node-accent); outline-offset: 1px; }

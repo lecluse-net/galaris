@@ -95,6 +95,12 @@ between providers, expiry and retry after an outage.
 
 ## Internal business processes
 
+The convergence scenario in `test_native_bpmn.py` covers direct and nested splits through
+ordinary activities, all six response orders and a single admission of the successor.
+It also retains a legacy gateway case. The `ordinary activities can branch` journey in
+`native-processes.spec.mjs` builds branches and their join through ordinary handles,
+without adding a parallel block.
+
 `back/app/process/tests/test_run_execution_state.py` verifies atomic functional data and
 run receipts, idempotent replay, rollbacks and rejection of late writes after a terminal
 state. Existing `test_native_bpmn.py` scenarios cover disjoint

@@ -123,7 +123,7 @@ one end, no unreachable nodes and no raw cycles. Business loops use structured F
 |---|---|
 | `task` / `human_task` | `prompt`, optional agent actor; automatic access to the run's shared pool. |
 | `if` | Flow conditions and exactly one unconditional default. |
-| `parallel` | Separate split/join, matched by split and occurrence identity. |
+| `parallel` | Compatibility for existing gateways; unavailable when adding activities. Multiple outputs and activity convergence express parallel execution in the v2 profile. |
 | `for` | Array expression `items`, sequential `body`. |
 | `while` | `condition` checked before every `body` iteration. |
 | `call` | `process_code`; current data and files copied into the child run, latest save at child admission. |

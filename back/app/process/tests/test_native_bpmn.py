@@ -904,7 +904,7 @@ async def test_native_poll_before_admission_does_not_skip_the_start_job(db, nati
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("order", [("a", "b", "c"), ("c", "b", "a"), ("b", "a", "c"), ("b", "c", "a"), ("a", "c", "b"), ("c", "a", "b")])
-@pytest.mark.parametrize("nested", [False, True])
+@pytest.mark.parametrize("nested", ["direct", "activity", "legacy_gateway"])
 async def test_typed_human_branches_converge_once_after_all_predecessors(db, native, order, nested):
     from app.agent import AgentManagementScope
     from core.user import UserModel
@@ -926,8 +926,9 @@ async def test_typed_human_branches_converge_once_after_all_predecessors(db, nat
         flows=[*[Flow(id="start_" + name, source="start", target=name) for name in ("a", "b", "c")],
             *[Flow(id=name + "_join", source=name, target="converge") for name in ("a", "b", "c")],
             Flow(id="done", source="converge", target="end")])
-    if nested:
-        value.nodes.append(Node(id="split", kind="parallel"))
+    if nested != "direct":
+        value.nodes.append(Node(id="split", kind="human_task", config={"prompt": "Start both branches", "actor": "reviewer"}, inputs=[], outputs=[])
+            if nested == "activity" else Node(id="split", kind="parallel"))
         value.flows = [flow for flow in value.flows if flow.id not in {"start_a", "start_b"}]
         value.flows.extend([Flow(id="start_split", source="start", target="split"),
             Flow(id="split_a", source="split", target="a"), Flow(id="split_b", source="split", target="b")])
@@ -937,6 +938,16 @@ async def test_typed_human_branches_converge_once_after_all_predecessors(db, nat
     for _ in range(4):
         await process_service.refresh_run(launched.run_id)
     work = (await human_work(scope, page=1, page_size=50))["items"]
+    if nested == "activity":
+        # The ordinary activity and the independent third branch are both admitted.
+        assert len(work) == 2
+        for item in work:
+            attempt = await db.get(ProcessNodeAttempt, UUID(item["attempt_id"]))
+            if (await db.get(ProcessNodeRun, attempt.node_run_id)).node_key == "split":
+                await complete_human_work(attempt.id, scope, {})
+        for _ in range(4):
+            await process_service.refresh_run(launched.run_id)
+        work = (await human_work(scope, page=1, page_size=50))["items"]
     assert len(work) == 3
     by_name = {str((await db.get(ProcessNodeRun, (await db.get(ProcessNodeAttempt, UUID(item["attempt_id"]))).node_run_id)).node_key): item for item in work}
     for index, name in enumerate(order):

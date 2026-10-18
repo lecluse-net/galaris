@@ -104,6 +104,12 @@ publics, leur cache séparé par fournisseur, son expiration et le réessai apr�
 
 ## Processus métier internes
 
+Le scénario de convergence de `test_native_bpmn.py` couvre les bifurcations directes et
+imbriquées par des activités ordinaires, les six ordres de réponse et une seule admission
+de la tâche suivante. Il conserve aussi un cas de passerelle historique. Le parcours
+`ordinary activities can branch` de `native-processes.spec.mjs` construit les branches et
+leur réunion par les poignées ordinaires, sans bloc de parallélisme à ajouter.
+
 `back/app/process/tests/test_run_execution_state.py` vérifie l'atomicité des données
 fonctionnelles et des reçus du run, le rejeu idempotent, les rollbacks et le refus des
 écritures tardives après un état terminal. Les scénarios existants de

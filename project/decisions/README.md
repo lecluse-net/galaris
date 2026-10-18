@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0204 — Parallélisme implicite par les liaisons des processus](0204-implicit-process-parallelism.md)
+
 - [0200 — Configurations exclusives de partage des ressources](0200-exclusive-resource-sharing.md)
 
 - [0199 — Retrait du mode YOLO des agents](0199-remove-agent-yolo.md)

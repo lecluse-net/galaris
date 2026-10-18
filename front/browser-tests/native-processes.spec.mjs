@@ -134,7 +134,9 @@ for (const readonly of [false, true]) test(`sequence arrows meet ${readonly ? 'e
           const port = node.querySelector(side === 'target' ? '.port.input' : id === 'decision' ? `.port.output-${flow.condition !== null ? 'true' : 'false'}` : '.port.output')
           const handle = port.getBoundingClientRect(), scale = handle.width / port.offsetWidth
           const radius = Number.parseFloat(getComputedStyle(port, '::before').width) * scale / 2
-          expectedX = handle.x + handle.width / 2 + (side === 'source' ? radius : -radius)
+          // Connections meet the circular handle in any direction, including a bottom exit.
+          return { flow: flow.id, side, gap: Math.abs(Math.hypot(screenPoint.x - handle.x - handle.width / 2,
+            screenPoint.y - handle.y - handle.height / 2) - radius) }
         } else if (node.classList.contains('if') || node.classList.contains('parallel')) {
           const halfWidth = bounds.width / 2 - Math.abs(screenPoint.y - (bounds.y + bounds.height / 2))
           expectedX = bounds.x + bounds.width / 2 + (side === 'source' ? halfWidth : -halfWidth)
@@ -238,6 +240,32 @@ test('handle menus insert into an existing flow without losing its condition or 
   // The decision's condition stays on work -> inserted, followed by inserted -> end.
   expect(before.flows.find(flow => flow.id === 'f2')).toMatchObject({ source: 'work', target: before.nodes.at(-1).id, condition: 'input.ready' })
   expect(before.flows.at(-1)).toMatchObject({ source: before.nodes.at(-1).id, target: 'end', condition: null })
+})
+
+test('ordinary activities can branch and converge directly without a dedicated gateway', async ({ page }) => {
+  const value = graph()
+  value.schema_version = 'galaris.bpmn/v2'; value.inputs = []; value.outputs = []
+  await mount(page, 'app/process/components/BpmnCanvas.vue', { props: { modelValue: value } })
+  const lastGraph = () => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)
+  await page.getByRole('button', { name: 'Output of Task', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Parallel gateway', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Add a branch', exact: true }).click()
+  await page.getByRole('button', { name: 'Task', exact: true }).last().click()
+  await expect.poll(lastGraph).toBeTruthy()
+  const branched = await lastGraph(), branch = branched.nodes.at(-1)
+  expect(branch.kind).toBe('task')
+  expect(branched.flows.filter(flow => flow.source === 'work').map(flow => flow.target).sort()).toEqual([branch.id, 'end'].sort())
+  await page.keyboard.press('Escape')
+  await expect(page.getByText('Continue the process', { exact: true })).toHaveCount(0)
+  await page.evaluate(modelValue => window.testApp.setProps({ modelValue }), branched)
+  await page.locator(`[data-process-node="${branch.id}"]`).getByRole('button', { name: 'Output of Task', exact: true }).click()
+  await page.getByRole('button', { name: 'Connect to an activity', exact: true }).click()
+  await page.getByRole('button', { name: 'End · end', exact: true }).click()
+  await expect.poll(async () => (await lastGraph()).flows.filter(flow => flow.target === 'end').map(flow => flow.source).sort()).toEqual(['work', branch.id].sort())
+  const joined = await lastGraph()
+  expect(joined.nodes.every(node => node.kind !== 'parallel')).toBe(true)
+  await page.evaluate(modelValue => window.testApp.setProps({ modelValue }), joined)
+  await page.screenshot({ path: test.info().outputPath('ordinary-parallel-branches.png'), animations: 'disabled' })
 })
 
 test('typed actor lanes preserve task assignment when editing and saving', async ({ page }) => {

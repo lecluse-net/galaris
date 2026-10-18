@@ -101,10 +101,13 @@ existing conditions. Tasks offer the same processing modes according to their ac
 Code receives run data variables directly: `return variable_2 != "pas mon projet"` for
 an IF, or `return {"variable_1": variable_1 + 1}` to update a declared task output. The editor
 starts with a commented example; only valid outputs are integrated.
-Splits create
-branches; an activity waits for all its ordinary predecessors and starts once without
-requiring an extra gateway.
-The harness determines how many Tasks can actually execute concurrently.
+Connecting a task's output to several tasks launches them in parallel. From its output handle,
+**Add a branch** keeps the existing connection and adds another task;
+**Connect to an activity** lets you select an existing task.
+To bring the branches together, connect them directly to the next task: it waits for the
+activated branches to succeed and then starts once. An unselected IF branch does not block
+this wait. No dedicated parallel block needs to be added. The harness determines how many
+Tasks can actually execute concurrently.
 An execution error stops the process and its active branches. The observer returns the
 error code and message; the run data and files are preserved. There are no recovery
 activities or automatic retries to configure.

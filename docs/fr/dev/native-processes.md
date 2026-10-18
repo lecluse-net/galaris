@@ -133,7 +133,7 @@ brut. Les cycles métier utilisent FOR/WHILE structurés.
 |---|---|
 | `task` / `human_task` | `prompt`, acteur facultatif pour l'agent ; accès automatique au pool du run. |
 | `if` | Conditions sur les flows, exactement une sortie par défaut sans condition. |
-| `parallel` | Split/join distincts, appariés par identité de bifurcation et occurrence. |
+| `parallel` | Compatibilité des passerelles existantes ; non proposé à l'ajout. Les sorties multiples et la convergence des activités expriment le parallélisme du profil v2. |
 | `for` | Expression de tableau `items`, `body` séquentiel. |
 | `while` | `condition` testée avant chaque passage du `body`. |
 | `call` | `process_code` ; données et fichiers actuels copiés vers le run enfant, dernière sauvegarde à l'admission. |

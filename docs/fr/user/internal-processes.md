@@ -118,9 +118,13 @@ Les tâches proposent les mêmes modes selon leur acteur. Le code reçoit les va
 run directement : `return variable_2 != "pas mon projet"` pour un IF, ou
 `return {"variable_1": variable_1 + 1}` pour mettre à jour une sortie déclarée d'une tâche.
 Le champ est prérempli avec un exemple commenté ; seules les sorties valides sont intégrées.
-Une bifurcation crée plusieurs branches ; une tâche à plusieurs prédécesseurs attend leur
-réussite avant de démarrer une seule fois, sans imposer de passerelle supplémentaire. Le harnais
-détermine combien de Tasks peuvent réellement s'exécuter ensemble.
+Relier la sortie d'une tâche à plusieurs tâches les lance en parallèle. Depuis sa poignée
+de sortie, **Ajouter une branche** conserve la liaison existante et ajoute une autre tâche ;
+**Relier à une activité** permet de choisir une tâche déjà présente.
+Pour réunir les branches, reliez-les directement à la tâche suivante : elle attend la réussite
+des branches activées puis démarre une seule fois. Une branche IF non choisie ne bloque pas
+cette attente. Aucun bloc de parallélisme dédié n'est à ajouter. Le harnais détermine combien
+de Tasks peuvent réellement s'exécuter ensemble.
 
 Valider vérifie le profil exécutable. Enregistrer crée une sauvegarde du processus.
 Un brouillon JSON invalide reste visible et bloque la sauvegarde. Le diagramme s'affiche

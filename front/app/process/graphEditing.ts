@@ -1,6 +1,7 @@
 import { emptyGraph, type BpmnGraph, type BpmnNode, type NodeKind } from './services/nativeProcessService'
 
-export const activityKinds: NodeKind[] = ['task', 'human_task', 'if', 'parallel', 'for', 'while', 'call', 'tool_call', 'rest', 'code', 'end']
+// Existing parallel nodes remain readable; ordinary links express new splits and joins.
+export const activityKinds: NodeKind[] = ['task', 'human_task', 'if', 'for', 'while', 'call', 'tool_call', 'rest', 'code', 'end']
 export const nodeIcons: Record<NodeKind, string> = { start: 'play_arrow', end: 'stop', task: 'smart_toy', human_task: 'person',
   if: 'alt_route', parallel: 'call_split', for: 'repeat', while: 'loop', call: 'account_tree', tool_call: 'build', rest: 'http', code: 'code', program: 'code' }
 const identity = (prefix: string): string => prefix + '_' + crypto.randomUUID().replaceAll('-', '').slice(0, 12)
