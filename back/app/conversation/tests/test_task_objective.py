@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 from dataclasses import replace
+from html import escape
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -208,6 +209,65 @@ async def test_task_fields_use_standard_model_and_complete_conversation_context(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("source_is_html", [False, True])
+@pytest.mark.parametrize("reference", [
+    "archive-test://<collection>/<asset-key>",
+    "archive-test://sample/<asset-key>",
+    "https://example.test/report?year=2030&not=archived",
+    "https://example.test/report?year=2030&copy;=literal",
+])
+async def test_task_reference_html_encoding_does_not_exhaust_output_retries(
+    monkeypatch, reference, source_is_html,
+):
+    from pydantic_ai.messages import ModelResponse, ToolCallPart
+    from pydantic_ai.models.function import FunctionModel
+    from pydantic_ai.usage import RequestUsage
+    from app.llm import structured_service
+
+    source = f"<code>{escape(reference)}</code>" if source_is_html else reference
+    turn = replace(_turn(), objective=f"Use this reference or URI format: {source}")
+    agent = SimpleNamespace(
+        id=7, code="alice", first_name="Alice", last_name="Agent",
+        agent_driver="internal", title=None, personality=None,
+        job_description=None, job_title=None,
+    )
+    monkeypatch.setattr(task_objective, "get_agent_record", AsyncMock(return_value=agent))
+    monkeypatch.setattr(task_objective.llm_service, "get_profile_llm",
+                        AsyncMock(return_value=SimpleNamespace(id=42)))
+    monkeypatch.setattr(task_objective.params_service, "get_or_default",
+                        AsyncMock(return_value="Return valid editorial HTML."))
+    monkeypatch.setattr(task_objective, "build_agent_run_context",
+                        AsyncMock(return_value=AgentRunContext()))
+
+    requests = 0
+    valid_html = f"<p>Use <code>{escape(reference)}</code>.</p>"
+
+    def respond(messages, info):
+        nonlocal requests
+        requests += 1
+        # Exercise the real HTML retry, then preserve the template as literal text.
+        objective = "<unsupported>Retry this HTML</unsupported>" if requests == 1 else valid_html
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {
+            "label": "Synthetic import", "objective": objective,
+        })])
+
+    model = FunctionModel(respond)
+    monkeypatch.setattr(model, "count_tokens", AsyncMock(return_value=RequestUsage()))
+    monkeypatch.setattr(structured_service, "build_model_for_llm",
+                        AsyncMock(return_value=model))
+    monkeypatch.setattr(structured_service, "estimate_cost_from_usage", lambda *_: 0.0)
+
+    _, context, _ = await task_objective.generate_task_fields(
+        turn, label_hint="Synthetic import", objective_hint=turn.objective,
+    )
+
+    objective = task_objective.compose_task_objective(turn, context)
+    assert requests == 2
+    assert reference in visible_text(objective)
+    assert visible_text(valid_html) in visible_text(objective)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("reference_origin", ["absent", "request", "history", "hint", "continuity"])
 async def test_task_fields_reject_model_invented_resource_references(
     monkeypatch: pytest.MonkeyPatch,
@@ -220,6 +280,9 @@ async def test_task_fields_reject_model_invented_resource_references(
     produced = "https://example.test/published-report"
     attachment = f"document://{uuid4()}/attachments/{uuid4()}"
     linked = dict(turn.linked_work[0])
+    # Terminal work is omitted from the live snapshot; exercise resource filtering
+    # on a task that can actually contribute its working set to this prompt.
+    linked["status"] = "RUNNING"
     linked["working_set"] = [*linked["working_set"],
         {"role": "probe", "resource_type": "artifact", "reference": probe,
          "metadata": {"last_operation": "file_read"}},
@@ -278,6 +341,12 @@ async def test_task_fields_reject_model_invented_resource_references(
         )
         with pytest.raises(StructuredOutputRetry):
             validator(output)
+        for objective in (
+            '<p><a href="https://invented.test/report?a=1&amp;b=2">Report</a></p>',
+            '<p><code>archive-test://invented/real-asset</code></p>',
+        ):
+            with pytest.raises(StructuredOutputRetry):
+                validator(task_objective._GeneratedTaskFields(label="Invented", objective=objective))
         assert source in kwargs["prompt"]
         assert produced in kwargs["prompt"]
         assert attachment in kwargs["prompt"]

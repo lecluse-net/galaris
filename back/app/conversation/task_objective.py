@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping, Sequence
-from html import escape
+from html import escape, unescape
 from typing import Any, cast
 from urllib.parse import urlsplit
 
@@ -341,10 +341,14 @@ async def generate_task_fields(
         )
         if section
     )
-    allowed_references = _references(prompt)
+    # Context mixes plain-text hints and editorial HTML. Keep literal references
+    # as well as decoded ones, so query parameters resembling entities stay exact.
+    allowed_references = _references(prompt) | _references(unescape(prompt))
 
     def validate_references(output: _GeneratedTaskFields) -> _GeneratedTaskFields:
-        unknown = sorted(_references(output.objective) - allowed_references)
+        # Compare the HTML's decoded references, including href attributes. In
+        # particular, escaped URI placeholders must retain their text boundaries.
+        unknown = sorted(_references(unescape(output.objective)) - allowed_references)
         if unknown:
             raise StructuredOutputRetry(
                 "The objective contains references absent from the supplied context: "
