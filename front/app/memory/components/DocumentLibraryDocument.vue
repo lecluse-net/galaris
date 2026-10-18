@@ -14,7 +14,7 @@
       </span>
       <DocumentLibraryEntryRow class="col" :entry="entry" :loading="false" :compact="compact" :selected-document-id="selectedDocumentId"
         @select="emit('select', $event)" @dragstart="(event, id) => emit('dragstart', event, id)" @dragend="emit('dragend')" />
-      <div class="document-actions row no-wrap items-center">
+      <div v-if="treeRow" class="document-actions row no-wrap items-center">
         <q-btn flat round dense size="sm" icon="note_add" :disable="busy" :aria-label="t('documents.library.newSubdocument', { name: entry.item.title })"
           @click.stop="emit('create', entry)">
           <q-tooltip>{{ t('documents.library.newSubdocument', { name: entry.item.title }) }}</q-tooltip>

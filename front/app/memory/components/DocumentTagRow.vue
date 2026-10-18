@@ -15,11 +15,11 @@
       @keydown.f2.prevent.stop="startRename" @keydown.enter.prevent.stop="startRename">{{ tag.name }}</span>
     <div v-if="!renaming" class="tag-toolbar row items-center no-wrap" role="group" :aria-label="t('documents.library.tagActions', { name: tag.name })"
       @click.stop @dblclick.stop @dragstart.prevent.stop>
-      <q-btn flat dense round size="sm" icon="note_add" :disable="busy" :aria-label="t('documents.library.newDocument', { name: tag.name })" @click="emit('createDocument')">
-        <q-tooltip>{{ t('documents.library.newDocument', { name: tag.name }) }}</q-tooltip>
-      </q-btn>
       <q-btn flat dense round size="sm" icon="playlist_add" :disable="busy" :aria-label="t('documents.library.newSibling', { name: tag.name })" @click="createSibling">
         <q-tooltip>{{ t('documents.library.newSibling', { name: tag.name }) }}</q-tooltip>
+      </q-btn>
+      <q-btn flat dense round size="sm" icon="note_add" :disable="busy" :aria-label="t('documents.library.newDocument', { name: tag.name })" @click="emit('createDocument')">
+        <q-tooltip>{{ t('documents.library.newDocument', { name: tag.name }) }}</q-tooltip>
       </q-btn>
       <DocumentTagCreateButton :parent-id="tag.id" :parent-name="tag.name" :busy="busy" :save="create" />
       <q-btn flat dense round size="sm" icon="edit" :disable="busy" :aria-label="t('documents.library.editNamedTag', { name: tag.name })" @click="startRename">
