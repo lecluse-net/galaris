@@ -3,17 +3,20 @@
     <div class="document-branch-row row no-wrap items-center" :class="[dropClass, { 'document-branch-row--compact': compact }]"
       @dragover.stop="emit('dragover', $event, entry, parentDocumentId, tagId, listOnly)"
       @dragleave.stop="emit('dragleave')" @drop.prevent.stop="emit('drop')">
-      <span v-if="!treeRow" class="document-branch-toggle-slot">
-        <button v-if="hasChildren" type="button" class="document-branch-toggle"
-          :aria-label="t(open ? 'documents.library.collapseDocument' : 'documents.library.expandDocument', { name: entry.item.title })"
-          :aria-expanded="open" :aria-busy="Boolean(loading[branchKey])" :disabled="loading[branchKey]" @click.stop="emit('toggle', entry.item.id)"
-          @keydown.enter.stop @keydown.space.stop>
-          <q-spinner v-if="loading[branchKey]" size="16px" />
-          <q-icon v-else :name="$q.iconSet.tree.icon" class="q-tree__arrow" :class="{ 'q-tree__arrow--rotate': open }" />
-        </button>
-      </span>
       <DocumentLibraryEntryRow class="col" :entry="entry" :loading="false" :compact="compact" :selected-document-id="selectedDocumentId"
-        @select="emit('select', $event)" @dragstart="(event, id) => emit('dragstart', event, id)" @dragend="emit('dragend')" />
+        @select="emit('select', $event)" @dragstart="(event, id) => emit('dragstart', event, id)" @dragend="emit('dragend')">
+        <template #toggle>
+          <span v-if="!treeRow" class="document-branch-toggle-slot">
+            <button v-if="hasChildren" type="button" class="document-branch-toggle"
+              :aria-label="t(open ? 'documents.library.collapseDocument' : 'documents.library.expandDocument', { name: entry.item.title })"
+              :aria-expanded="open" :aria-busy="Boolean(loading[branchKey])" :disabled="loading[branchKey]" @click.stop="emit('toggle', entry.item.id)"
+              @keydown.enter.stop @keydown.space.stop>
+              <q-spinner v-if="loading[branchKey]" size="16px" />
+              <q-icon v-else :name="$q.iconSet.tree.icon" class="q-tree__arrow" :class="{ 'q-tree__arrow--rotate': open }" />
+            </button>
+          </span>
+        </template>
+      </DocumentLibraryEntryRow>
       <div v-if="treeRow" class="document-actions row no-wrap items-center">
         <q-btn flat round dense size="sm" icon="note_add" :disable="busy" :aria-label="t('documents.library.newSubdocument', { name: entry.item.title })"
           @click.stop="emit('create', entry)">
@@ -76,9 +79,9 @@ const dropClass = computed(() => props.dropTarget === `doc:${props.entry.item.id
 </script>
 <style scoped>
 .document-branch-row { min-width: 0; }
-.document-branch-toggle-slot { display: inline-flex; align-items: center; flex: 0 0 17px; align-self: flex-start; height: 28px; margin-top: 8px; }
-.document-branch-row--compact > .document-branch-toggle-slot { height: 26px; margin-top: 0; }
-.document-branch-row :deep(> .q-item) { padding-inline: 0; }
+.document-branch-toggle-slot { display: inline-flex; align-items: center; flex: 0 0 17px; align-self: flex-start; height: 28px; }
+.document-branch-row--compact .document-branch-toggle-slot { height: 26px; }
+.document-branch-row--compact :deep(> .q-item) { padding-inline: 0; }
 .document-actions { flex: 0 0 24px; }
 .document-actions > :deep(.q-btn) { flex: 0 0 24px; width: 24px; min-width: 24px; }
 .document-branch-toggle { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 16px; height: 16px; margin: 0 1px 0 0; padding: 0; border: 0; background: transparent; color: var(--solaire-gray-accent); cursor: pointer; }
