@@ -43,6 +43,10 @@ Ne jamais convertir le JSON en HTML. Une autosauvegarde attend un JSON valide et
 le brouillon invalide. Les jeux de données n'ont pas de schéma associé. Les variables des
 processus utilisent le codec typé partagé, avec leurs propres règles de définition et validation.
 Voir `docs/fr/dev/datasets.md` pour les limites actuelles et la transition des projections.
+Les blocs de code des documents (`RichTextEditor`/`RichText`, `richCode.css`) et le champ
+de saisie autonome `CodeEditor.vue` sont deux surfaces distinctes. Identifier le consommateur
+concerné avant toute correction ; ne pas appliquer `rich-content` ni les styles documentaires
+à `CodeEditor`. Une primitive de coloration peut être partagée, sans coupler leurs présentations.
 Les documents acceptent directement formulaires HTML, CSS et JavaScript. Conserver la barre
 d'outils et l'édition habituelles, sans mode lecture/édition ni démarrage supplémentaire.
 Seul Source affiche le code. Tiptap conserve les portions

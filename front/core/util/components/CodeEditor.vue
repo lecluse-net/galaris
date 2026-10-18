@@ -1,6 +1,6 @@
 <template>
     <div
-        class="code-editor-container rich-content"
+        class="code-editor-container"
         :class="{ 'code-editor--fill': fillHeight }"
     >
         <div class="editor-toolbar">
@@ -67,7 +67,6 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { highlightCode } from '../codeHighlight'
-import '../richCode.css'
 
 // Supported languages.
 type Language = string
@@ -532,7 +531,10 @@ const copyContent = async () => {
 
 <style scoped>
 .code-editor-container {
+    /* Standalone source input: document code-block styles must not target this surface. */
     width: 100%;
+    font-size: 16px;
+    color-scheme: dark;
 }
 
 .code-editor-container.code-editor--fill {
@@ -550,16 +552,6 @@ const copyContent = async () => {
 
 .code-editor--fill .code-editor {
     overflow-y: auto;
-}
-
-.editor-header {
-    margin-bottom: 8px;
-}
-
-.editor-label {
-    font-size: 14px;
-    font-weight: 500;
-    color: #aaa;
 }
 
 .editor-toolbar {
@@ -700,20 +692,12 @@ const copyContent = async () => {
 .code-highlight :deep(.syntax-tag) { color: #4ec9b0; }
 .code-highlight :deep(.syntax-heading) { color: #dcdcaa; }
 
-.code-editor-container.rich-content {
-    /* The code editor keeps its dark surface regardless of editorial theme styles. */
-    color-scheme: dark;
-    --rich-background: #1e1e1e;
-    --rich-foreground: #d4d4d4;
-    --code-background: #1e1e1e;
-    --code-foreground: #d4d4d4;
-    --code-keyword: var(--solaire-violet-accent);
-    --code-name: var(--solaire-cyan-accent);
-    --code-string: var(--solaire-green-accent);
-    --code-number: var(--solaire-salmon-accent);
-    --code-attribute: var(--solaire-orange-accent);
-    --code-comment: #b5b5b5;
-}
+.code-highlight :deep(:is(.hljs-keyword, .hljs-meta, .hljs-literal, .hljs-built_in)) { color: var(--solaire-violet-accent); }
+.code-highlight :deep(:is(.hljs-name, .hljs-title, .hljs-selector-tag, .hljs-type, .hljs-section)) { color: var(--solaire-cyan-accent); }
+.code-highlight :deep(:is(.hljs-string, .hljs-regexp, .hljs-addition)) { color: var(--solaire-green-accent); }
+.code-highlight :deep(:is(.hljs-number, .hljs-symbol, .hljs-deletion)) { color: var(--solaire-salmon-accent); }
+.code-highlight :deep(:is(.hljs-attr, .hljs-attribute, .hljs-selector-class, .hljs-variable)) { color: var(--solaire-orange-accent); }
+.code-highlight :deep(:is(.hljs-comment, .hljs-quote)) { color: #b5b5b5; }
 
 .code-editor.scroll-y {
     overflow-y: auto;
