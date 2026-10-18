@@ -24,7 +24,7 @@
           :aria-label="t('files.openAgent', { name: agent.label })" @click="agentId = agent.id">
           <AgentAvatar :agent-id="agent.id" :name="agent.label" :has-avatar="agent.has_avatar" size="44px" />
           <span class="col ellipsis text-left" :title="agent.label">{{ agent.label }}</span>
-          <FolderIcon size="32px" tone="orange" />
+          <FolderIcon size="32px" />
         </q-btn>
         <p v-if="!agents.length" class="text-body2">{{ t('agent.noAgent') }}</p>
       </div>

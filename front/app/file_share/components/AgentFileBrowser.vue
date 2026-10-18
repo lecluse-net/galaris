@@ -28,7 +28,7 @@
                   @update:expanded="expanded = [...$event]" @update:selected="selectTree" @lazy-load="lazyLoad">
                   <template #default-header="scope">
                     <div class="file-tree-entry row items-center no-wrap full-width" :title="scope.node.entry.uri">
-                      <FolderIcon tone="orange" :expanded="scope.expanded" size="26px" class="q-mr-xs" />
+                      <FolderIcon :expanded="scope.expanded" size="26px" class="q-mr-xs" />
                       <span class="ellipsis">{{ scope.node.label }}</span>
                     </div>
                   </template>

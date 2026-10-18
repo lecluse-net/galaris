@@ -3,7 +3,7 @@
     <div class="file-tile-content">
       <q-icon v-if="selectable && !entry.is_collection" class="file-tile-check" :name="selected ? 'check_box' : 'check_box_outline_blank'" color="primary" size="18px" />
       <div class="file-tile-preview">
-        <FolderIcon v-if="entry.is_collection" size="88px" tone="orange" />
+        <FolderIcon v-if="entry.is_collection" size="88px" />
         <ResourceThumbnail v-else-if="process || resourceAgent !== null" :uri="entry.uri" :agent-id="selectable ? null : agentId" :title="displayName" />
         <img v-else-if="thumbnail" class="file-tile-image" :src="thumbnail" :alt="entry.name" loading="lazy" />
         <q-icon v-else class="file-tile-image" :name="icon" size="88px" color="primary" />
