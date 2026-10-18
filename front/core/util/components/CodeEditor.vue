@@ -207,7 +207,8 @@ function highlightSyntax(content: string, language: Language): string {
     }
 
     if (language === 'xml' || language === 'html') {
-        return renderTokens(content, markupTokenPattern, (token) => token.startsWith('<!--') ? 'comment' : 'tag')
+        // Vite's dependency scanner strips HTML comments before parsing Vue scripts.
+        return renderTokens(content, markupTokenPattern, (token) => token.startsWith('\x3c!--') ? 'comment' : 'tag')
     }
 
     if (language === 'markdown') {
