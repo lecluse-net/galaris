@@ -17,7 +17,10 @@ async def library_filters(request: DocumentLibraryRequest, user_id: int | None, 
     nesting = select(DocumentNesting.document_id).where(
         DocumentNesting.user_id == user_id, DocumentNesting.parent_document_id.in_(visible_ids),
     )
-    if request.classification != "all":
+    # A personal folder or a visible document parent already proves that every
+    # result is classified. Rechecking global nesting membership multiplies joins.
+    explicit_branch = request.tag_id is not None or request.parent_document_id is not None
+    if request.classification == "unclassified" or (request.classification == "classified" and not explicit_branch):
         classified = or_(MemoryItem.id.in_(assignments), MemoryItem.id.in_(nesting))
         filters.append(classified if request.classification == "classified" else ~classified)
     if request.tag_id is not None:
@@ -45,7 +48,7 @@ async def library_filters(request: DocumentLibraryRequest, user_id: int | None, 
         from core.database import get_db
         from .service import MemoryNotFoundError
 
-        if user_id is None or await get_db().scalar(visible_ids.where(MemoryItem.id == request.parent_document_id)) is None:
+        if user_id is None or await get_db().scalar(visible_ids.where(visible_ids.selected_columns[0] == request.parent_document_id)) is None:
             raise MemoryNotFoundError("Document not found")
         children = select(DocumentNesting.document_id).where(
             DocumentNesting.user_id == user_id, DocumentNesting.parent_document_id == request.parent_document_id,

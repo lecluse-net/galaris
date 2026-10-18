@@ -22,7 +22,8 @@ async def human(db):
 
 
 @pytest.mark.asyncio
-async def test_subdocuments_are_personal_read_only_safe_and_follow_their_parent(db, agents, memory_storage):
+@pytest.mark.parametrize("classification", ["all", "classified"])
+async def test_subdocuments_are_personal_read_only_safe_and_follow_their_parent(db, agents, memory_storage, classification):
     owner, reader = agents
     user, other = await human(db), await human(db)
     scope = AgentManagementScope(user_id=user.id, agent_ids=frozenset({reader.id}))
@@ -32,6 +33,7 @@ async def test_subdocuments_are_personal_read_only_safe_and_follow_their_parent(
     before = [(item.revision, item.lock_version, item.updated_at) for item in (parent, child, grandchild)]
 
     async def browse(**filters):
+        filters.setdefault("classification", classification)
         return await service.browse_document_library(DocumentLibraryRequest(**filters),
             managed_agent_ids=scope.agent_ids, user_id=user.id)
 
@@ -384,7 +386,8 @@ async def test_nonempty_branch_requires_confirmation_even_when_it_changed_after_
 
 
 @pytest.mark.asyncio
-async def test_filters_apply_before_pagination_and_live_access_hides_classified_documents(db, agents, memory_storage):
+@pytest.mark.parametrize("classification", ["all", "classified"])
+async def test_filters_apply_before_pagination_and_live_access_hides_classified_documents(db, agents, memory_storage, classification):
     owner, reader = agents
     user = await human(db)
     scope = AgentManagementScope(user_id=user.id, agent_ids=frozenset({reader.id}))
@@ -394,7 +397,7 @@ async def test_filters_apply_before_pagination_and_live_access_hides_classified_
         await service.set_item_grant(item.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
         await document_tags.assign_tag(scope, item.id, tag.id)
     now = datetime.now(timezone.utc)
-    request = DocumentLibraryRequest(tag_id=tag.id, query="report", owner_kind="agent", owner=owner.id,
+    request = DocumentLibraryRequest(tag_id=tag.id, classification=classification, query="report", owner_kind="agent", owner=owner.id,
         created_from=now-timedelta(days=1), created_until=now+timedelta(days=1),
         updated_from=now-timedelta(days=1), updated_until=now+timedelta(days=1), limit=1, offset=1)
     page = await service.browse_document_library(request, managed_agent_ids=scope.agent_ids, user_id=user.id)

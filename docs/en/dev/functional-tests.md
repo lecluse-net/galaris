@@ -1106,6 +1106,12 @@ saved titles appearing in both tree and list before rereads, coalesced notificat
 reads, and catalogue reuse. `test_library_performance.py` compares SQL reads with/without
 catalogues while preserving results, across 100 and 1,000 documents and up to 100,000 revisions;
 its counter includes `WITH`.
+It also covers expanding folders and subdocuments across 120 and then 960 synthetic documents, with a human
+user and either a limited or unrestricted agent scope. Results and permissions remain checked;
+a PostgreSQL buffer-access budget detects nested permission rescans even with cached data.
+Measurements are written to `artifacts/memory-tree-benchmark*.json`. Classification scenarios
+verify that the "all" and "classified" filters produce the same branches, permissions and
+pagination; the "unclassified" filter continues to exclude those documents.
 
 - `back/app/memory/tests/test_goal_folders.py`: automatic filing per user and Goal, preserving
   manual folders and current access; paginated global catch-up, duplicate Goal names, renames,

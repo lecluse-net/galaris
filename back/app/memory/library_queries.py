@@ -188,8 +188,19 @@ async def browse_document_library(
                 DocumentOwnerOption(kind="user", id=identity, label=name or email, subtitle="")
             )
     owner_options.sort(key=lambda option: (option.label.casefold(), option.kind, option.id))
-    visible_ids = select(MemoryItem.id).where(*base_filters).correlate(None)
-    base_filters.extend(await library_filters(request, user_id, visible_ids))
+    # Classification reuses this scope for parents, children and descendants.
+    # Keep those joins from multiplying live ACL evaluation inside nested loops.
+    visible_documents = (
+        select(MemoryItem.id).where(*base_filters).correlate(None)
+        .cte("library_visible_documents").prefix_with("MATERIALIZED")
+    )
+    visible_ids = select(visible_documents.c.id)
+    classification_filters = await library_filters(request, user_id, visible_ids)
+    if request.parent_document_id is not None:
+        # Reuse the same live ACL set in the outer query. Expanding the raw ACL
+        # again lets nesting joins repeat its correlated permission subqueries.
+        base_filters = [MemoryItem.id.in_(visible_ids)]
+    base_filters.extend(classification_filters)
     keyword = request.keyword.strip() if request.keyword is not None else ""
     if keyword:
         base_filters.append(MemoryItem.keywords.contains([keyword]))

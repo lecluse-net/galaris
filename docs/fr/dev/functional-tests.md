@@ -1141,6 +1141,13 @@ en cas de refus, propagation d'un titre sauvegardé dans l'arbre et la liste ava
 regroupement des notifications pendant une lecture lente et réutilisation des catalogues.
 `test_library_performance.py` compare les lectures SQL avec/sans catalogues, à résultats identiques,
 sur 100 puis 1 000 documents et jusqu'à 100 000 révisions ; le compteur inclut `WITH`.
+Il couvre aussi le dépliage des dossiers et sous-documents sur 120 puis 960 documents synthétiques,
+avec le contexte utilisateur et les périmètres d'agents limité ou global. Les résultats et les
+droits restent vérifiés ; un budget d'accès aux pages PostgreSQL détecte les réévaluations
+imbriquées des droits, même lorsque les données sont en cache. Les mesures sont écrites dans
+`artifacts/memory-tree-benchmark*.json`. Les scénarios de classement vérifient que les filtres
+« tous » et « classés » donnent les mêmes branches, avec les mêmes droits et la même pagination ;
+le filtre « non classés » continue d'exclure ces documents.
 
 - `back/app/memory/tests/test_goal_folders.py` : classement automatique par utilisateur et Goal,
   respect des dossiers manuels et des droits courants, reprise globale par lots, homonymes,
