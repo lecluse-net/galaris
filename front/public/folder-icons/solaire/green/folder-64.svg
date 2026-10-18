@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Adapted from Modern-Office-Day-Icons, DrMcC0y, GPL-3.0. -->
+  <defs>
+    <linearGradient id="folder-green-64-body" gradientUnits="userSpaceOnUse" x1="30.617" x2="8.633" y1="27.285" y2="9.345">
+      <stop stop-color="#11A653"/><stop stop-color="#ECF8F1" offset="1"/>
+    </linearGradient>
+    <linearGradient id="folder-green-64-back" gradientUnits="userSpaceOnUse" x1="14.186" x2="14.186" y1="10.624" y2="3.686">
+      <stop stop-color="#172C20"/><stop stop-color="#11A653" stop-opacity=".996" offset=".465"/>
+    </linearGradient>
+    <linearGradient id="folder-green-64-shadow" gradientUnits="userSpaceOnUse" x1="30.842" x2=".79" y1="16.793" y2="16.793">
+      <stop stop-color="#172C20"/><stop stop-color="#11A653" offset="1"/>
+    </linearGradient>
+    <linearGradient id="folder-green-64-outline" gradientUnits="userSpaceOnUse" x1="30.452" x2="1.115" y1="14.428" y2="14.428">
+      <stop stop-color="#172C20" stop-opacity=".48"/><stop stop-color="#172C20" stop-opacity=".3" offset="1"/>
+    </linearGradient>
+    <linearGradient id="folder-green-64-lip" gradientUnits="userSpaceOnUse" x1="30.842" x2=".79" y1="17.293" y2="17.293">
+      <stop stop-color="#ECF8F1"/><stop stop-color="#11A653" offset="1"/>
+    </linearGradient>
+    <filter id="folder-green-64-relief" x="0" y="0" width="1" height="1">
+      <feColorMatrix result="tint" values="1 0 0 0.05 0 0 1 0 0.05 0 0 0 1 0.05 0 0 0 0 1 0"/>
+      <feColorMatrix values="0 0 0 -1 0 0 0 0 -1 0 0 0 0 -1 0 0 0 0 1 0"/>
+      <feColorMatrix in="tint" values="1 0 0 0.05 0 0 1 0 0.05 0 0 0 1 0.05 0 0 0 0 1 0"/>
+    </filter>
+  </defs>
+  <g transform="scale(2)">
+  <path d="M.999 25.823v1.189c0 .976.801 1.718 1.783 1.718h26.434c.985 0 1.783-.742 1.783-1.718v-1.189" fill="#11A653" fill-opacity=".996"/>
+  <path d="m15.761 6.6079c-.43988 0-.96075-.25793-1.1582-.57385l-.88477-1.4416c-.19645-.31542-.71731-.57335-1.1572-.57385l-9.6325-.013496c-.97275-.0014997-1.7196.70782-1.7196 1.5826l-.006 19.919h29.601v-17.615c0-.7768-.45688-1.2832-1.2572-1.2832z" fill="url(#folder-green-64-back)" stroke="url(#folder-green-64-outline)" stroke-width=".3" stroke-linejoin="round"/>
+  <path d="M28.964 13.415H3.225V9.8c0-.591.434-1.205 1.259-1.205h23.123c.839 0 1.358.613 1.358 1.205z" fill="#f3ede8"/>
+  <path d="M29.381 10.636H2.631c-.811 0-1.621.737-1.621 1.475v8.768l29.992-.081v-8.686c0-.737-.811-1.475-1.621-1.475" fill="url(#folder-green-64-shadow)" filter="url(#folder-green-64-relief)"/>
+  <path d="M29.383 11.128H2.633c-.811 0-1.617.737-1.617 1.475v8.768l29.972-.081v-8.686c0-.737-.795-1.475-1.605-1.475" fill="url(#folder-green-64-lip)" filter="url(#folder-green-64-relief)"/>
+  <path d="M29.377 11.514H2.627c-.811 0-1.621.737-1.621 1.475v13.295c0 .975.8 1.718 1.783 1.718h26.427c.985 0 1.782-.742 1.782-1.718V12.99c0-.737-.811-1.475-1.621-1.475" fill="url(#folder-green-64-body)" stroke="url(#folder-green-64-outline)" stroke-width=".3" stroke-linejoin="round"/>
+  </g>
+</svg>

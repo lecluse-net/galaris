@@ -5,7 +5,7 @@
   <img v-else-if="value.startsWith('data:image/svg+xml;base64,')" :src="value" alt="" :style="{ width: size, height: size }" draggable="false" />
   <DocumentFileIcon v-else-if="defaultIcon === 'description'" :size="size" />
   <q-icon v-else-if="defaultIcon" :name="defaultIcon" :size="size" class="tag-monochrome-icon" />
-  <FolderIcon v-else tone="gray" :expanded="expanded" :size="size" />
+  <FolderIcon v-else :expanded="expanded" :size="size" />
 </template>
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'

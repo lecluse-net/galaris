@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Adapted from Modern-Office-Day-Icons, DrMcC0y, GPL-3.0. -->
+  <defs>
+    <linearGradient id="folder-violet-16-small-face" x2="0" y2="1">
+      <stop stop-color="#F8EFFD" stop-opacity=".5"/><stop stop-color="#F8EFFD" stop-opacity=".08" offset="1"/>
+    </linearGradient>
+  </defs>
+  <path d="M2.5 2.5H7.5L9.5 4.5H13.5Q14.5 4.5 14.5 5.5V12.5Q14.5 13.5 13.5 13.5H2.5Q1.5 13.5 1.5 12.5V3.5Q1.5 2.5 2.5 2.5Z" fill="#AD3CE6" stroke="#2D1D35" stroke-opacity=".4" stroke-linejoin="round"/>
+  <path d="M3.5 5H12.5V8.5H3.5Z" fill="#f3ede8"/>
+  <path d="M2.5 6.5H13.5Q14.5 6.5 14.5 7.5L14.5 12.5Q14.5 13.5 13.5 13.5H2.5Q1.5 13.5 1.5 12.5L1.5 7.5Q1.5 6.5 2.5 6.5Z" fill="#AD3CE6"/>
+  <path d="M2.5 6.5H13.5Q14.5 6.5 14.5 7.5L14.5 12.5Q14.5 13.5 13.5 13.5H2.5Q1.5 13.5 1.5 12.5L1.5 7.5Q1.5 6.5 2.5 6.5Z" fill="url(#folder-violet-16-small-face)" stroke="#2D1D35" stroke-opacity=".4" stroke-linejoin="round"/>
+</svg>

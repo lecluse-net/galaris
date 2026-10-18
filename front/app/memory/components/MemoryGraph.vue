@@ -648,8 +648,10 @@ function isAudioNode(node: MemoryGraphNode): boolean {
   return nodeResourceKind(node) === 'audio'
 }
 
-function folderImageUrl(role: MemoryGraphEntityKind): string {
-  return `/folder-icons/gnome/${roleAccent(role)}/folder.svg`
+function folderImageUrl(role: MemoryGraphEntityKind, size = 16): string {
+  const grid = size <= 16 ? 16 : size <= 24 ? 24 : size <= 32 ? 32 : 64
+  const suffix = grid === 24 ? '' : `-${grid}`
+  return `/folder-icons/solaire/${roleAccent(role)}/folder${suffix}.svg`
 }
 // Material icons include a transparent viewport path before the visible artwork.
 const documentIconPath = matDescription.split('&&').at(-1) ?? ''
@@ -669,9 +671,9 @@ function nodeSymbol(node: MemoryGraphNode): string {
     case 'contact': return 'roundRect'
     case 'document': return documentSymbol
     case 'attachment': return documentSymbol
-    case 'folder': return `image://${folderImageUrl(node.entity_kind)}`
+    case 'folder': return `image://${folderImageUrl(node.entity_kind, nodeBaseSymbolSize(node))}`
     case 'file': return documentSymbol
-    case 'directory': return `image://${folderImageUrl(node.entity_kind)}`
+    case 'directory': return `image://${folderImageUrl(node.entity_kind, nodeBaseSymbolSize(node))}`
     case 'conversation': return 'roundRect'
     default: return 'circle'
   }

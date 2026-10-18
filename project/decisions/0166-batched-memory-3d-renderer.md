@@ -48,7 +48,7 @@ les épaisseurs sont renforcées d'un facteur de 2,25 au loin et de 1,25 de prè
 lisibilité, en conservant les différences entre types et les pointillés.
 Les formes géométriques ont des bordures explicites et les contacts/conversations des
 angles arrondis. Un atlas de 1024 × 1024 pixels, limité à 64 glyphes publics distincts,
-réutilise les SVG GNOME des dossiers et les chemins Material des documents et médias.
+réutilise les SVG Solaire des dossiers et les chemins Material des documents et médias.
 Il ne dépend ni du nombre d'items ni de leurs miniatures privées. Les chemins sont
 ajustés à leurs limites comme en 2D ; les dossiers conservent leur artwork complet.
 La résolution tardive du type de fichier actualise son glyphe sans relancer le placement.
