@@ -1,9 +1,11 @@
-<template><q-page class="q-pa-md"><PageHeader icon="account_tree" :title="t('nativeProcesses.runs')" /><NativeRunPanel :run-id="String(route.params.id)" /></q-page></template>
+<template>
+  <q-page>
+    <NativeRunDialog :key="String(route.params.id)" :run-id="String(route.params.id)" @close="router.push('/process')" />
+  </q-page>
+</template>
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import { PageHeader } from '@/core/util'
-import NativeRunPanel from '../../../components/NativeRunPanel.vue'
+import { useRoute, useRouter } from 'vue-router'
+import NativeRunDialog from '../../../components/NativeRunDialog.vue'
 const route = useRoute()
-const { t } = useI18n()
+const router = useRouter()
 </script>

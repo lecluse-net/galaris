@@ -147,10 +147,13 @@ Chat, definition and tracking dialogs and the shared detail content: active work
 results/data, unexecuted activities and rejection of a late response after switching
 nodes. The Chat journey also closes and reopens the run on desktop and mobile; its external
 process scenario preserves input/output inspection.
-The real-time scenario checks run-scoped events, updates during in-flight requests,
+Chat, catalogue and tracking reuse the same native dialog, including its header.
+The real-time scenario checks the dialog's status, duration and cost, run-scoped events, updates during in-flight requests,
 open details through the final result, reconnect and subscription cleanup on close.
 Delayed accounting never blocks opening or progress, and late metrics from another run
 are discarded.
+The external scenario in `chat.spec.mjs` also checks the result updated through WebSocket,
+privilege-limited actions, closing and reopening the shared detail view.
 Process dialogs remain usable when another domain's screen cannot download.
 `topic-detail.spec.mjs` preserves reads, errors, retry and dismissal for the other resource
 types. `chat.spec.mjs` checks chronological process pages, reading position when loading

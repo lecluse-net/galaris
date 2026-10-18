@@ -67,12 +67,16 @@ test('refresh failure still notifies after its own detail reload', async t => {
 test('automatic refresh is single flight and stops when the scope is disposed', async () => {
   const pending = deferred()
   let calls = 0
-  const state = setup({ refreshRun: () => { calls++; return pending.promise } })
+  const state = setup({ run: async id => {
+    calls++
+    if (calls > 1) await pending.promise
+    return { id, status: 'running' }
+  } })
   await state.actions.openRun({ id: 'run' })
   await vue.nextTick()
   assert.equal(state.hasTimer(), true)
   state.tick(); state.tick()
-  assert.equal(calls, 1)
+  assert.equal(calls, 2)
   state.scope.stop()
   assert.equal(state.hasTimer(), false)
   pending.resolve()
@@ -89,4 +93,28 @@ test('removal rechecks privileges after confirmation', async t => {
   state.revokeAdmin()
   await state.confirm()
   assert.equal(deletes, 0)
+})
+
+test('live reads coalesce pending updates and preserve analysis until the final result', async t => {
+  const pending = deferred()
+  let reads = 0
+  const state = setup({ run: async id => {
+    reads++
+    if (reads === 2) return pending.promise
+    return { id, status: reads > 2 ? 'success' : 'running' }
+  } })
+  t.after(() => state.scope.stop())
+  await state.actions.openRun({ id: 'run' })
+  state.store.currentAnalysis = { summary: 'Synthetic analysis', recommendations: [] }
+  const first = state.actions.reloadCurrent()
+  await state.actions.reloadCurrent()
+  await state.actions.reloadCurrent()
+  assert.equal(reads, 2)
+  pending.resolve({ id: 'run', status: 'running' })
+  await first
+  await vue.nextTick()
+  assert.equal(reads, 3)
+  assert.equal(state.store.currentRun.status, 'success')
+  assert.equal(state.store.currentAnalysis.summary, 'Synthetic analysis')
+  assert.equal(state.hasTimer(), false)
 })

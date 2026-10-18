@@ -701,6 +701,12 @@ const copyContent = async () => {
 .code-highlight :deep(.syntax-heading) { color: #dcdcaa; }
 
 .code-editor-container.rich-content {
+    /* The code editor keeps its dark surface regardless of editorial theme styles. */
+    color-scheme: dark;
+    --rich-background: #1e1e1e;
+    --rich-foreground: #d4d4d4;
+    --code-background: #1e1e1e;
+    --code-foreground: #d4d4d4;
     --code-keyword: var(--solaire-violet-accent);
     --code-name: var(--solaire-cyan-accent);
     --code-string: var(--solaire-green-accent);
@@ -714,11 +720,6 @@ const copyContent = async () => {
 }
 
 .code-editor::placeholder {
-    color: #6e6e6e;
-    -webkit-text-fill-color: #6e6e6e;
-}
-
-body.body--dark .code-editor::placeholder {
     color: #8f8f8f;
     -webkit-text-fill-color: #8f8f8f;
 }

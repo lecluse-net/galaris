@@ -21,10 +21,11 @@ export function useProcessRunActions(options: RunActionOptions) {
   const runDetailDialog = ref(false)
   const runDetailLoading = ref(false)
   let autoRefreshing = false
+  let reloadPending = false
   let selection = 0
   const terminal = (status: string) => ['success', 'error', 'cancelled'].includes(status)
 
-  async function openRun(row: ProcessRun): Promise<void> {
+  async function openRun(row: Pick<ProcessRun, 'id'>): Promise<void> {
     selection += 1
     runDetailDialog.value = true
     runDetailLoading.value = true
@@ -72,11 +73,24 @@ export function useProcessRunActions(options: RunActionOptions) {
     }
   }
 
+  async function reloadCurrent(): Promise<void> {
+    if (!runDetailDialog.value || !store.currentRun) return
+    if (autoRefreshing) { reloadPending = true; return }
+    autoRefreshing = true
+    try { await store.reloadRun(store.currentRun.id) }
+    catch (error) { console.error('Automatic process refresh failed:', error) }
+    finally {
+      autoRefreshing = false
+      if (reloadPending) { reloadPending = false; void reloadCurrent() }
+    }
+  }
+
   watch(runDetailDialog, (open) => {
     if (!open) {
       selection += 1
       runDetailLoading.value = false
       store.closeRun()
+      reloadPending = false
       removeInterval()
     }
   }, { flush: 'sync' })
@@ -84,23 +98,18 @@ export function useProcessRunActions(options: RunActionOptions) {
   watch(() => store.currentRun?.status, (status) => {
     removeInterval()
     if (!status || terminal(status) || !runDetailDialog.value) return
-    registerInterval(() => {
-      if (!store.currentRun || autoRefreshing) return
-      autoRefreshing = true
-      void store.refreshRun(store.currentRun.id)
-        .catch((error: unknown) => { console.error('Automatic process refresh failed:', error) })
-        .finally(() => { autoRefreshing = false })
-    }, 5000)
+    registerInterval(() => { void reloadCurrent() }, 5000)
   }, { immediate: true })
 
   onScopeDispose(() => {
     selection += 1
+    reloadPending = false
     store.closeRun()
     removeInterval()
   })
 
   return {
-    runDetailDialog, runDetailLoading, openRun, removeRun,
+    runDetailDialog, runDetailLoading, openRun, removeRun, reloadCurrent,
     refreshCurrent: () => act('refreshRun'),
     cancelCurrent: () => act('cancelRun'),
     retryCurrent: () => act('retryRun'),

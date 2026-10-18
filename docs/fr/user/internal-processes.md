@@ -186,14 +186,13 @@ sans perdre la sélection. Après une reconnexion, l'affichage rattrape les chan
 manqués ; un contrôle toutes les deux secondes reste actif tant que le run est en cours.
 Le graphe et les détails restent consultables pendant le chargement des coûts et
 statistiques, qui se mettent à jour séparément.
-Dans la modale ouverte depuis le catalogue de processus, le titre regroupe l'état,
+Le Chat, le catalogue, le suivi dans Tâches et les liens de runs ouvrent la même modale.
+Son titre regroupe l'état,
 la dernière activité, puis le temps écoulé et le coût total du processus avec ses
 sous-processus. L'UUID cliquable sur fond transparent se trouve à gauche du conseil de
 consultation dans la barre du graphique. Cliquer l'UUID copie la référence interne
 `galaris://processes/runs/<uuid>`. Le graphique remplace les compteurs et listes d'occurrences ou de
 sous-processus ; la fiche de l'activité appelante permet d'ouvrir le sous-processus lancé.
-Dans les autres vues, le champ **URL du run** et son bouton de copie transmettent la même
-référence pour le diagnostic, y compris depuis le Chat.
 Les agents peuvent la lire avec `file_info`, `file_read` ou `processus_get`, selon les droits
 du processus ou avec le droit dédié d'administration Process.
 

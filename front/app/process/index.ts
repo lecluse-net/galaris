@@ -1,4 +1,6 @@
 export { default as NativeRunPanel } from './components/NativeRunPanel.vue'
+export { default as NativeRunDialog } from './components/NativeRunDialog.vue'
+export { default as ExternalRunDialog } from './components/ExternalRunDialog.vue'
 export { default as ProcessPreview } from './components/ProcessPreview.vue'
 export { default as ProcessThumbnail } from './components/ProcessThumbnail.vue'
 export { processResourceTarget, processReferenceHtml } from './contracts'

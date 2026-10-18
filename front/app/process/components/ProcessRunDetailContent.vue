@@ -21,16 +21,11 @@
     </div>
   </q-card-section>
   <q-separator />
-  <q-card-section v-if="run.tool_code === 'galaris'" class="q-pa-none">
-    <NativeRunPanel ref="nativePanel" :key="run.id" :run-id="run.id" embedded />
-    <q-expansion-item icon="input" :label="t('processes.input')"><CodeEditor :model-value="pretty(run.input)" language="json" readonly :label="t('processes.input')" :min-lines="3" :visible-lines="8" /></q-expansion-item>
-    <q-expansion-item icon="output" :label="t('processes.output')"><CodeEditor :model-value="pretty(run.output)" language="json" readonly :label="t('processes.output')" :min-lines="3" :visible-lines="8" /></q-expansion-item>
-  </q-card-section>
-  <q-card-section v-if="run.tool_code !== 'galaris' || analysis || run.task_ids?.length || run.llm_calls?.length || run.events?.length" class="q-gutter-md">
+  <q-card-section class="q-gutter-md">
     <q-banner v-if="run.error_message" class="bg-red-1 text-negative">{{ run.error_code }} — {{ run.error_message }}</q-banner>
     <div v-if="run.engine_metadata.failed_node" class="text-caption text-negative">{{ t('processes.failedNode') }} : {{ run.engine_metadata.failed_node }}</div>
     <q-banner v-if="run.engine_metadata.remote_may_continue" class="bg-orange-1 text-warning">{{ t('processes.remoteMayContinue') }}</q-banner>
-    <div v-if="run.tool_code !== 'galaris'" class="run-data-grid">
+    <div class="run-data-grid">
       <CodeEditor :model-value="pretty(run.input)" language="json" :label="t('processes.input')" readonly :show-error="false" :visible-lines="10" :min-lines="5" />
       <CodeEditor :model-value="pretty(run.output)" language="json" :label="t('processes.output')" readonly :show-error="false" :visible-lines="10" :min-lines="5" />
     </div>
@@ -92,12 +87,10 @@
 </template>
 
 <script setup lang="ts">
-import { useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { taskResourceUri } from '@/app/task'
-import { CodeEditor, defineAsyncView } from '@/core/util'
+import { CodeEditor } from '@/core/util'
 import type { ProcessAnalysis, ProcessLLMCall, ProcessRun } from '../services/processService'
-const NativeRunPanel = defineAsyncView(() => import('./NativeRunPanel.vue'))
 
 defineProps<{
   run: ProcessRun
@@ -118,8 +111,7 @@ const emit = defineEmits<{
 }>()
 
 const { t, te, locale } = useI18n()
-const nativePanel = useTemplateRef<InstanceType<typeof NativeRunPanel>>('nativePanel')
-function refreshRun(): void { emit('refresh'); void nativePanel.value?.refresh?.() }
+function refreshRun(): void { emit('refresh') }
 
 function pretty(value: unknown): string { return JSON.stringify(value ?? null, null, 2) }
 function formatDate(value: string | null): string { return value ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(value)) : '—' }

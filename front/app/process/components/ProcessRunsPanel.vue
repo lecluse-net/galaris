@@ -201,107 +201,8 @@
       </q-table>
     </q-card>
 
-    <q-dialog v-model="detailDialogOpen">
-      <q-card class="process-run-dialog galaris-detail-dialog galaris-dialog-card" :class="{ 'process-run-dialog--native': selectedRun?.tool_code === 'galaris' }">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <q-icon name="account_tree" size="sm" />
-          <div class="text-h6 ellipsis q-ml-sm">
-            {{ selectedRun ? processLabel(selectedRun) : t('processes.tracking.details') }}
-          </div>
-          <q-space />
-          <q-btn
-            v-close-popup
-            flat
-            round
-            dense
-            icon="close"
-            :aria-label="t('processes.close')"
-          />
-        </q-card-section>
-
-        <div class="galaris-dialog-body">
-          <q-card-section v-if="detailLoading" class="text-center q-pa-xl">
-            <q-spinner color="primary" size="2.5em" />
-          </q-card-section>
-          <q-card-section v-else-if="detailError">
-            <q-banner role="alert">{{ t('nativeProcesses.error') }}<template #action><q-btn outline :label="t('nativeProcesses.retry')" @click="selectedRun && openRun($event, selectedRun)" /></template></q-banner>
-          </q-card-section>
-          <q-card-section v-else-if="selectedRun?.tool_code === 'galaris'" class="q-pa-none">
-            <NativeRunPanel v-if="detailDialogOpen" :key="selectedRun.id" :run-id="selectedRun.id" />
-            <q-expansion-item icon="input" :label="t('processes.input')"><CodeEditor :model-value="pretty(selectedRun.input)" language="json" readonly :label="t('processes.input')" :min-lines="3" :visible-lines="8" /></q-expansion-item>
-            <q-expansion-item icon="output" :label="t('processes.output')"><CodeEditor :model-value="pretty(selectedRun.output)" language="json" readonly :label="t('processes.output')" :min-lines="3" :visible-lines="8" /></q-expansion-item>
-          </q-card-section>
-          <q-card-section v-else-if="selectedRun" class="q-gutter-md">
-            <div class="row items-center q-gutter-sm">
-              <StatusBadge
-                :tone="statusTone(selectedRun.status)"
-                :label="statusLabel(selectedRun.status)"
-                :icon="statusIcon(selectedRun.status)"
-              />
-              <span v-if="selectedRun.summary" class="text-subtitle1">{{ selectedRun.summary }}</span>
-            </div>
-
-            <div class="process-run-metadata">
-              <div>
-                <div class="metadata-label">{{ t('processes.runId') }}</div>
-                <div class="text-body2 text-mono">{{ selectedRun.id }}</div>
-              </div>
-              <div>
-                <div class="metadata-label">{{ t('processes.agent') }}</div>
-                <div class="text-body2">{{ agentLabel(selectedRun) }}</div>
-              </div>
-              <div>
-                <div class="metadata-label">{{ t('processes.tool') }}</div>
-                <div class="text-body2">{{ selectedRun.tool_code }}</div>
-              </div>
-              <div>
-                <div class="metadata-label">{{ t('processes.createdAt') }}</div>
-                <div class="text-body2">{{ formatDate(selectedRun.created_at) }}</div>
-              </div>
-              <div>
-                <div class="metadata-label">{{ t('processes.finishedAt') }}</div>
-                <div class="text-body2">{{ formatDate(selectedRun.finished_at) }}</div>
-              </div>
-              <div>
-                <div class="metadata-label">{{ t('processes.duration') }}</div>
-                <div class="text-body2">{{ formatRunDuration(selectedRun) }}</div>
-              </div>
-            </div>
-
-            <q-banner v-if="selectedRun.error_message" rounded class="bg-red-1 text-negative">
-              <template #avatar><q-icon name="error" /></template>
-              <span v-if="selectedRun.error_code">{{ selectedRun.error_code }} — </span>
-              {{ selectedRun.error_message }}
-            </q-banner>
-
-            <q-expansion-item bordered icon="input" :label="t('processes.input')">
-              <CodeEditor
-                :model-value="pretty(selectedRun.input)"
-                language="json"
-                :label="t('processes.input')"
-                readonly
-                :show-error="false"
-                :visible-lines="10"
-                :min-lines="5"
-                class="q-pa-md"
-              />
-            </q-expansion-item>
-            <q-expansion-item bordered icon="output" :label="t('processes.output')">
-              <CodeEditor
-                :model-value="pretty(selectedRun.output)"
-                language="json"
-                :label="t('processes.output')"
-                readonly
-                :show-error="false"
-                :visible-lines="10"
-                :min-lines="5"
-                class="q-pa-md"
-              />
-            </q-expansion-item>
-          </q-card-section>
-        </div>
-      </q-card>
-    </q-dialog>
+    <NativeRunDialog v-if="selectedRun?.tool_code === 'galaris'" :run-id="selectedRun.id" :title="processLabel(selectedRun)" @close="selectedRun = null" />
+    <ExternalRunDialog v-else-if="selectedRun" :run-id="selectedRun.id" @close="selectedRun = null" />
   </div>
 </template>
 
@@ -311,13 +212,14 @@ import { useInterval, type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { AgentSelect, useAgentStore } from '@/app/agent'
 import {
-  CodeEditor,
+  defineAsyncView,
   ExecutionDateFilters,
   StatusBadge,
   type StatusBadgeTone,
 } from '@/core/util'
 import { websocket } from '@/core/websocket'
-import NativeRunPanel from './NativeRunPanel.vue'
+const NativeRunDialog = defineAsyncView(() => import('./NativeRunDialog.vue'))
+const ExternalRunDialog = defineAsyncView(() => import('./ExternalRunDialog.vue'))
 import {
   processService,
   type ProcessOperations,
@@ -355,11 +257,7 @@ const selectedStatus = ref<ProcessRunStatus | null>(null)
 const selectedAgentId = ref<number | null>(null)
 const dateFrom = ref<string | null>(null)
 const dateTo = ref<string | null>(null)
-const detailDialogOpen = ref(false)
-const detailLoading = ref(false)
-const detailError = ref(false)
 const selectedRun = ref<ProcessRun | null>(null)
-let detailGeneration = 0
 let runRequestSequence = 0
 let realtimeRefreshTimer: ReturnType<typeof setTimeout> | null = null
 const pagination = ref<RunPagination>({
@@ -544,10 +442,6 @@ function createdBefore(): string | undefined {
   return dateTo.value ? new Date(`${dateTo.value}T23:59:59.999`).toISOString() : undefined
 }
 
-function pretty(value: unknown): string {
-  return JSON.stringify(value ?? null, null, 2)
-}
-
 async function loadRuns(
   page: number = pagination.value.page,
   rowsPerPage: number = pagination.value.rowsPerPage,
@@ -623,22 +517,7 @@ async function onRequest(request: RunsRequest): Promise<void> {
   )
 }
 
-async function openRun(_event: Event, run: ProcessRun): Promise<void> {
-  const request = ++detailGeneration
-  selectedRun.value = run
-  detailDialogOpen.value = true
-  detailLoading.value = true
-  detailError.value = false
-  try {
-    const result = await processService.run(run.id)
-    if (request === detailGeneration && detailDialogOpen.value) selectedRun.value = result
-  } catch (error) {
-    if (request === detailGeneration && detailDialogOpen.value) { detailError.value = true; console.error('Error loading process run details:', error) }
-  } finally {
-    if (request === detailGeneration) detailLoading.value = false
-  }
-}
-watch(detailDialogOpen, open => { if (!open) { detailGeneration++; selectedRun.value = null; detailLoading.value = false; detailError.value = false } })
+function openRun(_event: Event, run: ProcessRun): void { selectedRun.value = run }
 
 watch([search, selectedStatus, dateFrom, dateTo], () => {
   void loadRuns(1)
@@ -669,7 +548,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  detailGeneration++
   if (realtimeRefreshTimer) clearTimeout(realtimeRefreshTimer)
   websocket.offEvent('process_run', 'create', scheduleRealtimeRefresh)
   websocket.offEvent('process_run', 'update', scheduleRealtimeRefresh)
@@ -773,29 +651,6 @@ onUnmounted(() => {
 
 body.body--dark .process-mobile-summary {
   color: #cdd5e0;
-}
-
-.process-run-dialog {
-  width: 900px;
-  max-width: 96vw;
-  max-height: 96vh;
-  overflow-y: auto;
-}
-.process-run-dialog--native { width: 1400px; }
-
-.process-run-metadata {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-}
-
-.metadata-label {
-  color: #667085;
-  font-size: 12px;
-}
-
-body.body--dark .metadata-label {
-  color: #98a2b8;
 }
 
 @media (max-width: 1023px) {

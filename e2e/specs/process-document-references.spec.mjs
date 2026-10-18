@@ -60,7 +60,7 @@ test('native Processes and runs remain live references in authored Documents', a
   await expect(page.locator('.document-editor-attachments .resource-preview-card')).toHaveCount(0)
   await page.locator('.ck-editor__editable').getByRole('link', { name: 'Synthetic cited execution', exact: true }).click()
   await page.keyboard.press('Alt+Enter')
-  await expect(page.getByRole('dialog').getByRole('textbox', { name: /^(Run URL|URL du run)$/, exact: true })).toHaveValue(runUri)
+  await expect(page.getByRole('dialog').getByRole('link', { name: new RegExp(`^(Copy run URL|Copier l’URL du run): ${run.id ?? run.run_id}$`) })).toHaveAttribute('href', runUri)
   await page.getByRole('dialog').getByRole('button', { name: /^(Close|Fermer)$/, exact: true }).click()
   const saved = await checked(await request.get(`/api/memory/documents/${document.id}`, { headers }))
   expect(saved.item.payload.text).toContain(processUri)

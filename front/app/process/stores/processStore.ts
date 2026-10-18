@@ -127,6 +127,11 @@ export const useProcessStore = defineStore('processes', {
       this.currentRun = null
       this.currentAnalysis = null
     },
+    async reloadRun(id: string): Promise<void> {
+      const request = this.detailRequest
+      const run = await processService.run(id)
+      if (request === this.detailRequest && this.currentRun?.id === id) this.currentRun = run
+    },
     async deleteRun(id: string): Promise<void> {
       const request = this.detailRequest
       try { await processService.deleteRun(id) }

@@ -162,14 +162,14 @@ the selection. Reconnecting catches up on missed changes; a check every two seco
 remains active while the run is in progress.
 The graph and activity details remain usable while costs and statistics load and
 refresh independently.
-In the dialog opened from the process catalogue, the title groups the status, the last
+Chat, the catalogue, tracking in Tasks and run links open the same dialog.
+Its title groups the status, the last
 activity, then elapsed time and the total cost of the process and its child processes.
 The clickable UUID with a transparent background sits to the left of the inspection hint
 in the diagram toolbar. Clicking the UUID copies the internal
 `galaris://processes/runs/<uuid>` reference. The diagram replaces occurrence counters and lists of
 occurrences or child processes; the calling activity's details open its child process.
-In other views, the **Run URL** field and its copy button share the same reference for
-debugging, including from Chat. Agents can read it through `file_info`, `file_read` or
+Agents can read the reference through `file_info`, `file_read` or
 `processus_get`, according to the parent Process rights
 or with dedicated Process administration access.
 

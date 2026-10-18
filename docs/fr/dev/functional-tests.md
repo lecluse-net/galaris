@@ -153,10 +153,14 @@ modales du Chat, de la définition et du suivi ainsi que le contenu partagé : a
 résultats/données en lecture seule, activité non exécutée et rejet d'une réponse tardive
 après changement de nœud. Le parcours Chat vérifie aussi fermeture/réouverture sur ordinateur
 et mobile ; son scénario de processus externe conserve la lecture des entrées/sorties.
-Le scénario temps réel vérifie les événements filtrés par run, les mises à jour pendant
+Les entrées Chat, catalogue et suivi réutilisent la même modale native, y compris son en-tête.
+Le scénario temps réel vérifie le statut, la durée et le coût de cette modale,
+les événements filtrés par run, les mises à jour pendant
 des requêtes en cours, la fiche ouverte jusqu'au résultat final, la reconnexion et le
 nettoyage des abonnements à la fermeture. Les statistiques retardées ne bloquent ni
 l'ouverture du graphe ni sa progression, et une réponse tardive d'un autre run est ignorée.
+Le scénario externe de `chat.spec.mjs` vérifie aussi la lecture du résultat actualisé par
+WebSocket, les actions limitées aux privilèges, la fermeture et la réouverture du détail partagé.
 `test_native_bpmn.py` vérifie les permissions et la consultation
 indépendante de la pagination générale, avec isolation des corps de boucle et limite de 500.
 

@@ -39,7 +39,7 @@ test('file previews open a read-only Process modal and a Run modal with their di
   await page.keyboard.press('Escape')
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
   await page.locator('.file-main').getByRole('button', { name: 'Open Synthetic execution', exact: true }).click()
-  await expect(page.getByRole('dialog').getByRole('textbox', { name: 'Run URL', exact: true })).toHaveValue(runUri)
+  await expect(page.getByRole('dialog').getByRole('link', { name: `Copy run URL: ${runId}`, exact: true })).toHaveAttribute('href', runUri)
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
 })
 

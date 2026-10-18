@@ -1,5 +1,8 @@
 <template>
   <GoalPreview v-if="target.kind === 'goal'" :key="target.id" :preview-goal-id="target.id" @close="emit('close')" />
+  <NativeRunDialog v-else-if="target.kind === 'process_run'" :key="target.id + ':' + target.agentId"
+    :run-id="target.id" :agent-id="target.agentId" :title="target.title" @close="emit('close')" />
+  <ExternalRunDialog v-else-if="target.kind === 'external_process_run'" :key="target.id" :run-id="target.id" @close="emit('close')" />
   <ConversationTurnDialog v-else :model-value="true" :title="resolvedTitle || target.title" :icon="icons[target.kind] || 'info'"
     :width="target.kind === 'agent' ? '700px' : undefined" :close-label="t('common.close')" @update:model-value="!$event && emit('close')">
     <div v-if="loading" class="flex flex-center q-pa-xl"><q-spinner color="primary" size="42px" /></div>
@@ -10,7 +13,6 @@
     <TaskDetail v-else-if="target.kind === 'task'" :task-id="taskId"
       @task-change="taskId = $event" @refresh="emit('changed')" @delete="taskToDelete = $event" />
     <AgentPreview v-else-if="target.kind === 'agent'" :key="target.id" :agent-id="Number(target.id)" @loaded="resolvedTitle = $event" @deleted="changedAndClose" />
-    <NativeRunPanel v-else-if="target.kind === 'process_run'" :key="target.id + ':' + target.agentId" :run-id="target.id" :agent-id="target.agentId" embedded @loaded="resolvedTitle = $event.label || ''" />
     <ProcessPreview v-else-if="target.kind === 'process'" :key="target.id" :uri="`galaris://processes/${target.id}`" :agent-id="target.agentId" @loaded="resolvedTitle = $event.title" />
     <DatasetEditor v-else-if="target.kind === 'dataset'" :key="target.id" :id="target.id" @updated="emit('changed')" @deleted="changedAndClose" />
     <ConversationRoundDetailView v-else-if="round && message" :message="message" :round="round"
@@ -45,7 +47,7 @@
 
 <script lang="ts">
 export async function preload(kind: string): Promise<void> {
-  if (kind === 'process_run' || kind === 'process') await import('@/app/process')
+  if (kind === 'process_run' || kind === 'external_process_run' || kind === 'process') await import('@/app/process')
 }
 </script>
 
@@ -63,7 +65,8 @@ import type { LLMCall } from '@/app/llm'
 const TaskDetail = defineAsyncView(async () => (await import('@/app/task')).TaskDetail)
 const AgentPreview = defineAsyncView(async () => (await import('@/app/agent')).AgentPreview)
 const GoalPreview = defineAsyncView(async () => (await import('@/app/goal')).GoalPreview)
-const NativeRunPanel = defineAsyncView(async () => (await import('@/app/process')).NativeRunPanel)
+const NativeRunDialog = defineAsyncView(async () => (await import('@/app/process')).NativeRunDialog)
+const ExternalRunDialog = defineAsyncView(async () => (await import('@/app/process')).ExternalRunDialog)
 const ProcessPreview = defineAsyncView(async () => (await import('@/app/process')).ProcessPreview)
 const DatasetEditor = defineAsyncView(async () => (await import('@/app/dataset')).DatasetEditor)
 const DocumentEditor = defineAsyncView(async () => (await import('@/app/memory')).DocumentEditor)

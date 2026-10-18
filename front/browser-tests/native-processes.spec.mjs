@@ -866,12 +866,15 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
     await page.route(/\/app\/(task|memory|voice|conversation)\/index\.ts(?:\?.*)?$/, route => { unrelatedDownloads.push(route) })
     await page.locator('.conversation-work-list').getByText(summary.process_label, { exact: true }).click()
   } else {
-    await mount(page, 'app/process/components/ProcessRunDetailContent.vue', { props: { run: summary, analysis: null,
-      canOperateRuns: false, canAnalyze: false, canAdmin: false, canReadTasks: false }, privileges: ['PROCESS_READ'] })
+    await mount(page, 'app/process/components/NativeRunDialog.vue', { props: { runId: run.id, title: summary.process_label }, privileges: ['PROCESS_READ'] })
   }
   const work = page.getByRole('button', { name: 'Synthetic running task · work', exact: true })
   const openedAt = performance.now()
   await expect(work).toHaveAttribute('aria-current', 'step')
+  if (host === 'chat') {
+    await expect(page.getByRole('dialog').getByLabel('Elapsed time: 4 s', { exact: true })).toBeVisible()
+    await expect(page.getByRole('dialog').getByLabel('Billed cost including children: $0.375', { exact: true })).toBeVisible()
+  }
   if (host === 'shared') {
     // A slow accounting request must never hide the execution diagram.
     await expect.poll(() => Boolean(delayedMetrics)).toBe(true)
@@ -879,14 +882,11 @@ test(`internal run ${host} ${width}px view highlights active work and opens exec
     await delayedMetrics.fulfill({ status: 503, json: { detail: 'Synthetic metrics unavailable' } })
   }
   const runUrl = `galaris://processes/runs/${run.id}`
-  if (host === 'definition') {
+  {
     const reference = page.getByRole('dialog').getByRole('link', { name: `Copy run URL: ${run.id}`, exact: true })
     await expect(reference).toHaveAttribute('href', runUrl)
     await reference.focus()
     await page.keyboard.press('Enter')
-  } else {
-    await expect(page.getByRole('textbox', { name: 'Run URL', exact: true })).toHaveValue(runUrl)
-    await page.getByRole('button', { name: 'Copy run URL', exact: true }).click()
   }
   await expect.poll(() => page.evaluate(() => window.copiedRunUrl)).toBe(runUrl)
   if (host === 'shared') {
@@ -981,9 +981,10 @@ test('live run events refresh the diagram and open results without losing in-fli
     if (++details === 1) { pendingNode = route; return }
     return route.fulfill({ json: active })
   })
-  await mount(page, 'app/process/components/NativeRunPanel.vue', { props: { runId: run.id }, privileges: ['PROCESS_READ'] })
+  await mount(page, 'resourceDetails.vue', { props: { target: { kind: 'process_run', id: run.id, title: 'Synthetic live process' } }, privileges: ['PROCESS_READ'] })
   const work = page.getByRole('button', { name: 'Task · work', exact: true })
   await expect(work).toHaveAttribute('aria-current', 'step')
+  await page.clock.runFor(500)
   await work.click()
   await expect.poll(() => Boolean(pendingNode)).toBe(true)
   const baseline = reads
@@ -997,6 +998,7 @@ test('live run events refresh the diagram and open results without losing in-fli
   const staleRun = structuredClone(run), staleNode = structuredClone(active)
   run.status = 'success'; run.node_statuses.work = 'success'
   active.status = 'success'; active.output = { progress: 'Final synthetic result' }
+  run.duration_seconds = 8; accounting.cost = 0.25
   await page.evaluate(async () => {
     for (let i = 0; i < 4; i++) await window.testApp.emitSocket('process_run.update', { data: { id: 'event-run' } })
   })
@@ -1011,6 +1013,8 @@ test('live run events refresh the diagram and open results without losing in-fli
   expect(metricsReads).toBe(1)
   await pendingMetrics.fulfill({ json: { direct: accounting, inclusive: accounting, tasks: {}, nodes: {}, partial: true } })
   await expect.poll(() => metricsReads).toBe(2)
+  await expect(page.getByLabel('Elapsed time: 8 s', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Billed cost including children: $0.25', { exact: true })).toBeVisible()
   await page.evaluate(() => window.testApp.emitSocket('connect'))
   await expect.poll(() => reads).toBe(baseline + 3)
   // Terminal runs also catch up after reconnect; closing detaches the subscriber.

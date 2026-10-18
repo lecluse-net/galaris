@@ -20504,6 +20504,7 @@
       {
         "files": [
           "front/app/process/components/ExternalProcessEditor.vue",
+          "front/app/process/components/ExternalRunDialog.vue",
           "front/app/process/components/NativeActivityDetails.vue",
           "front/app/process/components/NativeProcessEditor.vue",
           "front/app/process/components/NativeRunPanel.vue",
@@ -20527,8 +20528,10 @@
         "files": [
           "front/app/process/components/BpmnCanvas.vue",
           "front/app/process/components/ExternalProcessEditor.vue",
+          "front/app/process/components/ExternalRunDialog.vue",
           "front/app/process/components/NativeActivityDetails.vue",
           "front/app/process/components/NativeProcessEditor.vue",
+          "front/app/process/components/NativeRunDialog.vue",
           "front/app/process/components/NativeRunPanel.vue",
           "front/app/process/components/NativeRunsTable.vue",
           "front/app/process/components/ProcessPreview.vue",
@@ -20539,7 +20542,6 @@
           "front/app/process/components/ProcessThumbnail.vue",
           "front/app/process/contracts.ts",
           "front/app/process/pages/index.vue",
-          "front/app/process/pages/internal/run/[id].vue",
           "front/app/process/richContent.ts"
         ],
         "source": "app/process",
@@ -20547,6 +20549,7 @@
       },
       {
         "files": [
+          "front/app/process/components/ExternalRunDialog.vue",
           "front/app/process/components/NativeRunPanel.vue",
           "front/app/process/components/ProcessRunsPanel.vue"
         ],

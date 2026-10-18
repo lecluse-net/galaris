@@ -72,56 +72,23 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="runDetailDialog" :maximized="$q.screen.lt.md">
-      <q-card class="process-run-detail-dialog galaris-dialog-card" :class="{ 'process-run-detail-dialog--native': store.currentRun?.tool_code === 'galaris' }">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <q-icon name="account_tree" size="sm" />
-          <div class="text-subtitle1 text-weight-medium ellipsis q-ml-sm">{{ t('processes.details') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('processes.close')" />
-        </q-card-section>
-        <q-separator />
-        <div class="galaris-dialog-body galaris-dialog-body--layout">
-          <div v-if="runDetailLoading" class="col flex flex-center">
-            <q-spinner color="primary" size="2.5em" />
-          </div>
-          <div v-else-if="store.currentRun" class="process-run-detail-content">
-            <ProcessRunDetailContent
-              :run="store.currentRun"
-              :analysis="store.currentAnalysis"
-              :can-operate-runs="canOperateRuns"
-              :can-analyze="canAnalyze"
-              :can-admin="canAdmin"
-              :can-read-tasks="canReadTasks"
-              @refresh="refreshCurrent"
-              @analyze="analyzeCurrent"
-              @retry="retryCurrent"
-              @cancel="cancelCurrent"
-              @delete="removeRun"
-              @copy-id="copyRunId"
-            />
-          </div>
-        </div>
-      </q-card>
-    </q-dialog>
+    <ExternalRunDialog v-if="selectedRunId" :run-id="selectedRunId" @close="selectedRunId = null; runListRevision++" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
-import { copyToClipboard, useQuasar } from 'quasar'
+import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { AgentSelect } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { PageHeader, defineAsyncView } from '@/core/util'
 import ProcessCatalogue from '../components/ProcessCatalogue.vue'
-import { useProcessRunActions } from '../composables/useProcessRunActions'
 import { useProcessStore } from '../stores/processStore'
 import { processService, type ProcessTool } from '../services/processService'
 
-const ProcessRunDetailContent = defineAsyncView(() => import('../components/ProcessRunDetailContent.vue'))
+const ExternalRunDialog = defineAsyncView(() => import('../components/ExternalRunDialog.vue'))
 
 const store = useProcessStore()
 const $q = useQuasar()
@@ -131,23 +98,8 @@ const canAdmin = computed(() => privilegeStore.hasPrivilege(privileges.PROCESS_A
 const canEdit = computed(() => canAdmin.value || privilegeStore.hasPrivilege(privileges.PROCESS_EDIT))
 const catalogue = useTemplateRef('catalogue')
 const runListRevision = ref(0)
-const canLaunch = computed(() => privilegeStore.hasPrivilege(privileges.PROCESS_LAUNCH))
-const canOperateRuns = computed(() => canLaunch.value || canAdmin.value)
-const canAnalyze = computed(() => privilegeStore.hasPrivilege(privileges.PROCESS_READ) || canAdmin.value)
-const canReadTasks = computed(() => (
-  privilegeStore.hasPrivilege(privileges.TASK_ACCESS)
-  || privilegeStore.hasPrivilege(privileges.TASK_EDIT)
-))
-const { runDetailDialog, runDetailLoading, openRun, removeRun, refreshCurrent, cancelCurrent, retryCurrent, analyzeCurrent } = useProcessRunActions({
-  store,
-  canAdmin: () => canAdmin.value,
-  canOperate: () => canOperateRuns.value,
-  canAnalyze: () => canAnalyze.value,
-  notify, errorDetail, translate: key => t(key),
-  confirmRemoval: proceed => {
-    showConfirmationDialog({ title: t('common.confirm'), message: t('processes.confirmDeleteRun'), cancel: true }).onOk(proceed)
-  },
-})
+const selectedRunId = ref<string | null>(null)
+function openRun(run: { id: string }): void { selectedRunId.value = run.id }
 const definitionFilter = ref('')
 const definitionAgentFilter = ref<number | null>(null)
 const processTools = ref<ProcessTool[]>([])
@@ -186,7 +138,6 @@ function errorDetail(error: unknown): string {
 }
 const healthIcon = computed(() => ({ healthy: 'check_circle', degraded: 'warning', error: 'error' } as const)[store.health?.status ?? 'error'])
 function notify(type: 'positive' | 'negative', message: string): void { $q.notify({ type, message }) }
-async function copyRunId(id: string): Promise<void> { await copyToClipboard(id); notify('positive', t('processes.copied')) }
 async function loadOperations(): Promise<void> {
   const request = ++healthRequest
   healthLoading.value = true; healthError.value = ''
@@ -199,7 +150,6 @@ async function loadOperations(): Promise<void> {
 }
 onBeforeUnmount(() => { disposed = true; healthRequest++ })
 
-watch(runDetailDialog, open => { if (!open) runListRevision.value++ })
 
 async function refreshCatalogue(): Promise<void> {
   runListRevision.value++
@@ -234,16 +184,12 @@ body.body--dark .n8n-error-banner { background: var(--solaire-red-dark); }
 .process-agent-filter { flex: 0 1 260px; min-width: 200px; }
 .process-toolbar-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .process-add-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
-.process-run-detail-dialog { display: flex; flex-direction: column; width: 1100px; max-width: 96vw; height: 90vh; max-height: 900px; }
-.process-run-detail-dialog--native { width: 1400px; }
-.process-run-detail-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .min-width-0 { min-width: 0; }
 @media (max-width: 1023px) {
   .process-toolbar { align-items: stretch; flex-wrap: wrap; }
   .process-definition-filter { flex-basis: 100%; }
   .process-agent-filter { flex: 1 1 260px; }
   .process-toolbar-actions { width: 100%; }
-  .process-run-detail-dialog { width: 100%; max-width: none; height: 100%; max-height: none; }
 }
 @media (max-width: 599px) {
   .process-page { padding: 8px; }

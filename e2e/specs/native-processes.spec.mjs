@@ -102,7 +102,7 @@ test(`a real ${mode} IF follows its boolean branch after Dataset code execution`
   expect(run.nodes.map(node => node.node_key)).not.toContain(mode === 'human' ? 'yes' : 'no')
   if (observer) {
     await expect(observer.getByRole('button', { name: 'Synthetic project decision · check', exact: true })).not.toHaveAttribute('aria-current', 'step')
-    await expect(observer.getByRole('status').filter({ hasText: /^(Completed|Terminée)$/ }).first()).toBeVisible()
+    await expect(observer.getByRole('status').filter({ hasText: /^(Succeeded|Terminée)$/ }).first()).toBeVisible()
     expect(notifications.length).toBeGreaterThan(0)
     // Progress remains usable even while accounting has not responded.
     expect(pendingMetrics).toBeTruthy()
@@ -110,7 +110,7 @@ test(`a real ${mode} IF follows its boolean branch after Dataset code execution`
     await observer.close()
   }
   await page.goto(`/process/internal/run/${identity}`)
-  await expect(page.getByRole('status').filter({ hasText: /^(Completed|Terminée)$/ }).first()).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: /^(Succeeded|Terminée)$/ }).first()).toBeVisible()
 })
 }
 
@@ -207,8 +207,8 @@ test('an execution failure stops the run before its next task and displays the e
   expect(launched.ok(), await launched.text()).toBeTruthy()
   const { run_id: identity } = await launched.json()
   await page.goto(`/process/internal/run/${identity}`)
-  await expect(page.getByRole('main').getByRole('alert')).toContainText('node_failed', { timeout: 30_000 })
-  await expect(page.getByRole('status').filter({ hasText: /^(Failed|En échec)$/ }).first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('node_failed', { timeout: 30_000 })
+  await expect(page.getByRole('dialog').getByRole('status').filter({ hasText: /^(Error|En erreur)$/ }).first()).toBeVisible({ timeout: 30_000 })
   const run = await (await request.get(`/api/processes/internal/runs/${identity}`, { headers })).json()
   expect(run.error_code).toBe('node_failed')
   expect(run.nodes.map(node => node.node_key)).not.toContain('forbidden')
@@ -285,7 +285,7 @@ test('a visually edited native process runs its saved Task and retains its own g
   const { run_id: runId } = await admission.json()
   await page.goto(`/process/internal/run/${runId}`)
   await expect(page.getByRole('button', { name: 'Draft note · work', exact: true })).toBeVisible()
-  await expect(page.getByRole('status').filter({ hasText: /^(Completed|Terminée)$/ }).first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole('status').filter({ hasText: /^(Succeeded|Terminée)$/ }).first()).toBeVisible({ timeout: 30_000 })
   let run
   await expect.poll(async () => {
     const runResponse = await request.get(`/api/processes/internal/runs/${runId}`, { headers })
@@ -299,14 +299,14 @@ test('a visually edited native process runs its saved Task and retains its own g
   expect(run.data).toEqual({ subject: 'Invented example' })
   expect(run.data).toEqual(run.output)
   await page.getByText(/^(Run data|Données du run)$/, { exact: true }).click()
-  await expect(page.getByRole('main')).toContainText('Invented example')
+  await expect(page.getByRole('dialog')).toContainText('Invented example')
   const changed = await request.put(definitionPath, { headers, data: { expected_revision: 2, title: 'Changed next launch',
     graph: { ...run.graph, nodes: run.graph.nodes.map(node => node.id === 'work'
       ? { ...node, config: { ...node.config, prompt: 'A different instruction for future launches.' } } : node) },
   } })
   expect(changed.ok(), await changed.text()).toBeTruthy()
   await page.reload()
-  await expect(page.getByRole('status').filter({ hasText: /^(Completed|Terminée)$/ }).first()).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: /^(Succeeded|Terminée)$/ }).first()).toBeVisible()
   const frozen = await (await request.get(`/api/processes/internal/runs/${runId}`, { headers })).json()
   expect(frozen.graph.nodes.find(node => node.id === 'work').config.prompt).toBe('Invent a synthetic note from the supplied input.')
   expect(frozen.definition_revision).toBe(2)
