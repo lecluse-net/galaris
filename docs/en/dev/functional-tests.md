@@ -300,7 +300,8 @@ Pane coverage also checks Galaris theme changes without an IDE synchronization A
 delayed responses and explicit navigation without replacing buffers. Native qualification
 exercises file diffs and staged/unstaged views. Automatic maintenance selects only active,
 configured external Consoles, verifies a current service even with live sessions, refuses
-replacement with live sessions and preserves access parameters. Failures expose no secrets
+replacement with live sessions and preserves access parameters. Recognized remote failures report
+their stage and reason; unknown reasons and private remote output are never echoed. Failures expose no secrets
 and do not prevent checking other targets. `make tests-update` protects execution after
 backend readiness and propagation of maintenance failures to `make update`.
 `code-executor/tests/test_deployment.py` checks orchestration with a simulated Docker boundary;

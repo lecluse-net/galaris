@@ -83,7 +83,14 @@ your responsibility and is reported without modification.
 Save files and end editor sessions before an upgrade; hidden sessions remain open. A live
 session blocks replacement, and SSH, Docker or verification failures fail the overall update
 instead of reporting incomplete success. Other independent targets are still checked. Correct
-the problem and rerun `make update`. Upgrades preserve the private port, credential and retained
+the problem and rerun `make update`.
+The diagnostic identifies the stage (`inspection` or `upgrade`) and a recognized reason such as
+`sessions_active`, `docker_access` or `user_namespaces`, without exposing remote output or secrets.
+`unknown` means the controller supplied no recognized reason. This step runs after Galaris has
+restarted and become ready: its failure does not mean the application has stopped. For
+`sessions_active`, end sessions on all connections using the same Unix account, including hidden
+sessions.
+Upgrades preserve the private port, credential and retained
 profiles, and restore the previous image if building or local verification fails. Session creation
 waits during replacement. Automation never changes the configured access parameters.
 A live IDE session also

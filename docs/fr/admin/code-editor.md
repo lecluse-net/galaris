@@ -89,6 +89,12 @@ Enregistrez vos fichiers et terminez les sessions avant une mise à niveau ; les
 restent ouvertes. Une session active bloque le remplacement, et une panne SSH, Docker ou de
 vérification fait échouer la mise à jour globale, sans annoncer un succès incomplet. Les autres
 cibles indépendantes sont tout de même vérifiées. Corrigez le problème puis relancez `make update`.
+Le diagnostic indique l’étape (`inspection` ou `upgrade`) et un motif reconnu, par exemple
+`sessions_active`, `docker_access` ou `user_namespaces`, sans afficher les sorties distantes ni
+les secrets. `unknown` signifie que le contrôleur n’a pas fourni de motif reconnu. Cette étape
+vient après le redémarrage et la disponibilité de Galaris : son échec ne signifie pas que
+l’application est arrêtée. Pour `sessions_active`, fermez les sessions de toutes les connexions
+qui utilisent le même compte Unix, y compris les sessions masquées.
 La mise à niveau conserve le port privé, le credential et les profils retenus, et restaure l’image
 précédente si la construction ou la vérification locale échoue. La création de sessions est bloquée
 pendant le remplacement. L’automatisation ne modifie jamais les paramètres d’accès enregistrés.

@@ -1,16 +1,46 @@
 """The deployed controller preserves credentials, profiles and loopback isolation."""
 
 import json
+import io
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
+from contextlib import redirect_stdout, redirect_stderr
 
 import deploy
 
 
 class DeploymentTests(unittest.TestCase):
+    def test_docker_failures_do_not_expose_subprocess_output(self):
+        for arguments, reason in [
+            (("info",), "docker_access"),
+            (("compose", "version"), "compose_unavailable"),
+            (("exec", "synthetic-runtime", "bwrap"), "user_namespaces"),
+            (("compose", "up"), "docker_command_failed"),
+        ]:
+            result = subprocess.CompletedProcess(arguments, 1, "Synthetic private output", "Synthetic private credential")
+            with self.subTest(reason=reason), patch.object(deploy.subprocess, "run", return_value=result):
+                with self.assertRaises(RuntimeError) as failure:
+                    deploy.docker(*arguments)
+                self.assertEqual(deploy.FAILURE_REASONS[str(failure.exception)], reason)
+                self.assertNotIn("Synthetic private", str(failure.exception))
+
+    def test_cli_reports_only_recognized_failure_reasons(self):
+        for message, reason in [
+            ("End existing editor sessions before updating the editor", "sessions_active"),
+            ("Docker daemon access failed", "docker_access"),
+            ("Synthetic private credential and remote output", "unknown"),
+        ]:
+            with self.subTest(reason=reason), patch.object(deploy, "main", side_effect=RuntimeError(message)):
+                stdout, stderr = io.StringIO(), io.StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    self.assertEqual(deploy.run(), 1)
+                self.assertEqual(json.loads(stdout.getvalue()), {"error": reason})
+                self.assertNotIn(message, stderr.getvalue())
+
     def test_deployment_and_retry_reuse_the_private_service_and_do_not_mount_sibling_homes(self):
         with tempfile.TemporaryDirectory() as temporary:
             home = Path(temporary) / "developer"

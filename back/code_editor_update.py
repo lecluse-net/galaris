@@ -14,7 +14,7 @@ async def update_editors() -> bool:
     # Bootstrap mappers before importing composed application services, as in DbAdmin.
     load_models()
     from app.console import configured_external_editor_connections
-    from bridge.code_server.deployment import update_connection_code_editor
+    from bridge.code_server.deployment import EditorDeploymentError, update_connection_code_editor
 
     async with get_db_session():
         connections = await configured_external_editor_connections()
@@ -28,12 +28,13 @@ async def update_editors() -> bool:
                 continue
             action = "verified" if result.already_installed else "updated"
             sys.stdout.write(f"Code editor for Console connection {connection_id}: {action} ({result.version}).\n")
-        except Exception:
+        except Exception as error:
             # SSH/Docker exceptions can contain credentials or remote command output.
             # Report every failed target and still maintain the independent targets.
             succeeded = False
+            detail = f" {error}." if isinstance(error, EditorDeploymentError) else ""
             sys.stderr.write(
-                f"Code editor for Console connection {connection_id}: update failed. "
+                f"Code editor for Console connection {connection_id}: update failed.{detail} "
                 "Save files and close editor sessions, verify SSH/Docker access and the "
                 "configured managed editor, then rerun make update.\n"
             )

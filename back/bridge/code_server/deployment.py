@@ -3,7 +3,7 @@
 import hashlib
 from pathlib import Path, PurePosixPath
 import shlex
-from typing import cast
+from typing import Literal, cast
 from uuid import uuid4
 
 import httpx
@@ -11,7 +11,7 @@ import asyncssh
 from pydantic import BaseModel, Field, SecretStr, ValidationError
 
 from app.code import CodeConnection, WorkspaceTarget, RUNTIME_CONFIGURATION_LOCK_OFFSET, prepare_runtime_configuration, finish_runtime_configuration, lock_runtime_upgrade
-from app.console import (ConsoleEditorInstallResult, SshExecutionTransport, code_runtime_tunnel,
+from app.console import (ConsoleEditorInstallResult, ConsoleResult, SshExecutionTransport, code_runtime_tunnel,
     configure_editor_runtime, connection_generation, discover_repository, resolve_connection, resolve_active_connection)
 from core.database import get_db
 from sqlalchemy import text
@@ -27,6 +27,51 @@ class DeploymentCheck(BaseModel):
     managed: bool = True
     update_required: bool
     port: int | None = Field(default=None, ge=1, le=65535)
+
+
+class DeploymentFailure(BaseModel):
+    error: str
+
+
+_FAILURE_MESSAGES = {
+    "docker_missing": "Docker is not installed or is absent from the SSH command PATH",
+    "docker_timeout": "A Docker command timed out",
+    "docker_access": "The SSH account cannot access the Docker daemon",
+    "compose_unavailable": "Docker Compose is unavailable to the SSH account",
+    "docker_command_failed": "A Docker inspection, build or container command failed",
+    "account_home": "The SSH account must be non-system and own its home directory",
+    "deployment_path": "The deployment directory leaves the SSH account home",
+    "credential_missing": "The managed editor credential file is missing",
+    "editor_missing": "The managed editor container is missing",
+    "credential_invalid": "The retained editor credential is invalid",
+    "home_mismatch": "The existing editor belongs to another home directory",
+    "upgrade_required": "The existing editor requires an explicit upgrade",
+    "sessions_active": "Editor processes are still active; save files and close editor sessions for this SSH account",
+    "port_binding": "The editor control port must be bound only to loopback",
+    "user_namespaces": "The editor Bubblewrap user namespace check failed",
+    "health_verification": "The editor health response does not match the required protocol/version",
+    "health_timeout": "The editor did not become ready",
+}
+
+
+class EditorDeploymentError(ValueError):
+    """A fixed diagnostic safe to print without exposing remote output."""
+
+    def __init__(self, stage: Literal["inspection", "upgrade", "installation"], reason: str = "unknown") -> None:
+        if reason not in _FAILURE_MESSAGES:
+            reason = "unknown"
+        message = _FAILURE_MESSAGES.get(reason, "The remote controller failed without a recognized diagnostic")
+        super().__init__(f"{stage} [{reason}]: {message}")
+
+
+def _deployment_error(result: ConsoleResult, stage: Literal["inspection", "upgrade", "installation"]) -> EditorDeploymentError:
+    reason = "unknown"
+    if not result.stdout_truncated:
+        try:
+            reason = DeploymentFailure.model_validate_json(result.stdout).error
+        except ValidationError:
+            pass
+    return EditorDeploymentError(stage, reason)
 
 
 def deployment_files() -> dict[str, bytes]:
@@ -124,7 +169,7 @@ async def _deploy(connection_id: int, *, upgrade: bool, update_only: bool = Fals
             if upgrade:
                 checked = await transport.exec(command + " --check --require-existing", timeout_s=30)
                 if checked.exit_code != 0 or checked.stdout_truncated:
-                    raise ValueError("Unable to inspect the existing managed editor")
+                    raise _deployment_error(checked, "inspection")
                 check = DeploymentCheck.model_validate_json(checked.stdout)
                 if not check.managed:
                     if update_only:
@@ -141,7 +186,7 @@ async def _deploy(connection_id: int, *, upgrade: bool, update_only: bool = Fals
             result = await transport.exec(command + (" --upgrade" if upgrade else "")
                 + (" --require-existing" if update_only else ""), timeout_s=960)
             if result.exit_code != 0 or result.stdout_truncated:
-                raise ValueError("Editor deployment failed: verify Docker/Compose access, Linux user namespaces and the account home")
+                raise _deployment_error(result, "upgrade" if upgrade else "installation")
             try:
                 receipt = DeploymentReceipt.model_validate_json(result.stdout)
             except ValidationError:

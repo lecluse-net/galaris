@@ -578,11 +578,16 @@ async def test_editor_deployment_endpoint_requires_edit_rights_and_agent_ownersh
         upgraded = await http.post(url + "?upgrade=true", headers=headers)
         assert upgraded.status_code == 200, upgraded.text
         installer.assert_awaited_with(config.connection_id, True)
+        from bridge.code_server.deployment import EditorDeploymentError
+        installer.side_effect = EditorDeploymentError("upgrade", "sessions_active")
+        blocked = await http.post(url + "?upgrade=true", headers=headers)
+        assert blocked.status_code == 400
+        assert "sessions_active" in blocked.json()["detail"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("forwarding_works,management_works", [(False, True), (True, True), (True, False)])
-@pytest.mark.parametrize("automatic", [False, "current", "changed", "busy", "wrong_port", "wrong_credential", "unmanaged"])
+@pytest.mark.parametrize("automatic", [False, "current", "changed", "busy", "wrong_port", "wrong_credential", "unmanaged", "remote_busy", "remote_unknown"])
 async def test_console_editor_deployment_only_publishes_verified_credentials_and_preserves_links(repository_scope, db, monkeypatch, forwarding_works, management_works, automatic):
     import json
     from contextlib import asynccontextmanager
@@ -647,10 +652,15 @@ async def test_console_editor_deployment_only_publishes_verified_credentials_and
         exec=AsyncMock(return_value=ConsoleResult(status="completed", exit_code=0,
             stdout=json.dumps({"port": 32123, "version": "4.141.0", "already_installed": False}))))
     if automatic:
+        deployed = transport.exec.return_value
+        if automatic in ("remote_busy", "remote_unknown"):
+            deployed = ConsoleResult(status="failed", exit_code=1,
+                stdout=json.dumps({"error": "sessions_active" if automatic == "remote_busy" else synthetic_token}),
+                stderr=synthetic_token)
         transport.exec.side_effect = [
             ConsoleResult(status="completed", exit_code=0, stdout=json.dumps({
                 "managed": automatic != "unmanaged", "update_required": automatic != "current", "port": 32123})),
-            transport.exec.return_value,
+            deployed,
         ]
     monkeypatch.setattr(deployment, "SshExecutionTransport", lambda config: transport)
     async def discover(config, path):
@@ -670,10 +680,16 @@ async def test_console_editor_deployment_only_publishes_verified_credentials_and
             json={"ready": True, "protocol": 1, "version": "4.141.0"})))
     monkeypatch.setattr(deployment.httpx, "AsyncClient", client)
     monkeypatch.setattr(editor_service, "_installer", deployment.deploy_connection_code_editor)
-    succeeded = forwarding_works and (management_works or automatic) and automatic not in ("busy", "wrong_port", "wrong_credential", "unmanaged")
+    succeeded = forwarding_works and (management_works or automatic) and automatic not in ("busy", "wrong_port", "wrong_credential", "unmanaged", "remote_busy", "remote_unknown")
     install = deployment.update_connection_code_editor if automatic else editor_service.install_connection_editor
     if automatic == "unmanaged":
         assert await install(config.connection_id) is None
+    elif automatic in ("remote_busy", "remote_unknown"):
+        with pytest.raises(deployment.EditorDeploymentError) as failure:
+            await install(config.connection_id)
+        assert "upgrade" in str(failure.value)
+        assert ("sessions_active" in str(failure.value)) == (automatic == "remote_busy")
+        assert synthetic_token not in str(failure.value)
     elif succeeded:
         result = await install(config.connection_id)
         assert result.ready and result.port == 32123
@@ -716,7 +732,8 @@ async def test_editor_maintenance_selects_only_active_configured_external_consol
 
 
 @pytest.mark.asyncio
-async def test_editor_update_reports_failures_without_secrets_and_continues_other_targets(repository_scope, db, monkeypatch, capsys):
+@pytest.mark.parametrize("recognized", [False, True])
+async def test_editor_update_reports_failures_without_secrets_and_continues_other_targets(repository_scope, db, monkeypatch, capsys, recognized):
     import code_editor_update
     from bridge.code_server import deployment
     from app.connection.facade import set_params_bulk
@@ -736,7 +753,9 @@ async def test_editor_update_reports_failures_without_secrets_and_continues_othe
         await set_params_bulk(identifier, {"host": "synthetic.test", "code_runtime_port": "32123",
             "code_runtime_token": "synthetic-private-editor-credential-00001"})
     await db.commit()
-    updater = AsyncMock(side_effect=[RuntimeError("synthetic-private-editor-credential-00001"),
+    error = (deployment.EditorDeploymentError("upgrade", "sessions_active") if recognized else
+             RuntimeError("synthetic-private-editor-credential-00001"))
+    updater = AsyncMock(side_effect=[error,
         ConsoleEditorInstallResult(connection_id=second.id, port=32123, version="4.141.0", ready=True, already_installed=True)])
     monkeypatch.setattr(deployment, "update_connection_code_editor", updater)
     assert not await code_editor_update.update_editors()
@@ -744,6 +763,7 @@ async def test_editor_update_reports_failures_without_secrets_and_continues_othe
     output = capsys.readouterr()
     assert "update failed" in output.err and "rerun make update" in output.err
     assert "verified" in output.out
+    assert ("sessions_active" in output.err) == recognized
     assert "synthetic-private-editor-credential-00001" not in output.err + output.out
 
 

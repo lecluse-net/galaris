@@ -330,7 +330,9 @@ les réponses retardées et la navigation explicite sans remplacer un buffer. La
 native exerce le diff d’un fichier et les vues de changements indexés/non indexés.
 La maintenance automatique sélectionne uniquement les Consoles externes actives déjà configurées,
 vérifie un service à jour même avec des sessions ouvertes, refuse un remplacement avec sessions
-actives et conserve les paramètres d’accès. Une panne ne divulgue pas de secret et n’empêche pas
+actives et conserve les paramètres d’accès. Les erreurs distantes reconnues indiquent l’étape
+et le motif ; un motif inconnu ou une sortie distante privée ne sont jamais réaffichés.
+Une panne ne divulgue pas de secret et n’empêche pas
 les autres cibles d’être vérifiées. `make tests-update` protège l’exécution après disponibilité
 du backend et la propagation d’un échec de maintenance à `make update`.
 `code-executor/tests/test_deployment.py` vérifie l’orchestration avec une frontière Docker

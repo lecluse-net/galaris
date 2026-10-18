@@ -17,14 +17,44 @@ import urllib.request
 
 VERSION = "4.141.0"
 
+# Only these fixed diagnostics may cross the SSH boundary. Never return the
+# exception text, Docker stderr, paths or credentials to the application.
+FAILURE_REASONS = {
+    "Docker executable is unavailable": "docker_missing",
+    "The Docker command timed out": "docker_timeout",
+    "Docker daemon access failed": "docker_access",
+    "Docker Compose is unavailable": "compose_unavailable",
+    "Docker access, Compose or the code-server build failed": "docker_command_failed",
+    "Deploy the editor through a non-system SSH account owning its home": "account_home",
+    "The editor deployment directory must stay inside the account home": "deployment_path",
+    "Automatic updates require an existing managed editor credential": "credential_missing",
+    "Automatic updates require an existing managed editor": "editor_missing",
+    "The retained editor credential is invalid": "credential_invalid",
+    "The existing editor belongs to a different home": "home_mismatch",
+    "An older editor is already deployed; preserve its sessions before replacing it": "upgrade_required",
+    "End existing editor sessions before updating the editor": "sessions_active",
+    "The editor control port must be loopback-only": "port_binding",
+    "The editor user namespace check failed": "user_namespaces",
+    "The deployed editor did not pass verification": "health_verification",
+    "The deployed editor did not become ready": "health_timeout",
+}
+
 
 def docker(*arguments: str, timeout: int = 30, quiet: bool = False) -> str:
     try:
         result = subprocess.run(["docker", *arguments], check=False, timeout=timeout,
             stdout=subprocess.DEVNULL if quiet else subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        raise RuntimeError("Docker is unavailable or the deployment command timed out") from None
+    except FileNotFoundError:
+        raise RuntimeError("Docker executable is unavailable") from None
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("The Docker command timed out") from None
     if result.returncode:
+        if arguments[0] == "info":
+            raise RuntimeError("Docker daemon access failed")
+        if arguments[:2] == ("compose", "version"):
+            raise RuntimeError("Docker Compose is unavailable")
+        if arguments[0] == "exec" and "bwrap" in arguments:
+            raise RuntimeError("The editor user namespace check failed")
         raise RuntimeError("Docker access, Compose or the code-server build failed")
     return (result.stdout or "").strip()
 
@@ -192,10 +222,17 @@ def main() -> None:
             check_only="--check" in sys.argv[1:], require_existing="--require-existing" in sys.argv[1:])))
 
 
-if __name__ == "__main__":
+def run() -> int:
     try:
         main()
-    except (RuntimeError, OSError, ValueError, KeyError, IndexError):
+    except (RuntimeError, OSError, ValueError, KeyError, IndexError) as error:
+        reason = FAILURE_REASONS.get(str(error), "unknown") if isinstance(error, RuntimeError) else "unknown"
+        print(json.dumps({"error": reason}))
         # No arbitrary Docker or HTTP response is exposed to application logs.
         print("Editor deployment failed: verify Docker/Compose access, Linux user namespaces and the account home", file=sys.stderr)
-        sys.exit(1)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(run())
