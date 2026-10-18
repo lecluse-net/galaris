@@ -3,7 +3,7 @@
     @click.stop="emit('select', entry)" @dragstart.stop="emit('dragstart', $event, entry.item.id)" @dragend.stop="emit('dragend')">
     <slot name="toggle" />
     <q-item-section>
-      <q-item-label class="row items-center no-wrap"><DocumentIcon :document-id="entry.item.id" :title="entry.item.title" :readonly="compact" size="26px" class="library-document-icon" :class="compact ? 'q-mr-xs' : 'q-mr-sm'" /><span class="ellipsis" :title="entry.item.title">{{ entry.item.title }}</span></q-item-label>
+      <q-item-label class="row items-center no-wrap"><DocumentIcon :document-id="entry.item.id" :title="entry.item.title" readonly size="26px" class="library-document-icon" :class="compact ? 'q-mr-xs' : 'q-mr-sm'" /><span class="ellipsis" :title="entry.item.title">{{ entry.item.title }}</span></q-item-label>
       <q-item-label v-if="!compact" caption class="ellipsis"><q-icon :name="entry.item.owner_agent_id !== null ? 'smart_toy' : 'person'" /> {{ entry.owner_label || t('documents.library.noOwner') }}</q-item-label>
       <q-item-label v-if="!compact" caption class="document-dates">{{ t('documents.library.dates', { created: formatDate(entry.item.created_at), updated: formatDate(entry.item.updated_at ?? entry.item.created_at) }) }}</q-item-label>
     </q-item-section>

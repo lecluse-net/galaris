@@ -2,11 +2,11 @@ import { test, expect, mount } from './fixtures.mjs'
 
 const editorComponent = 'core/util/components/RichTextEditor.vue'
 const sourceButton = page => page.getByRole('button', { name: 'Source', exact: true })
-const sourceInput = page => page.locator('.ck-source-editing-area textarea')
+const sourceInput = page => page.locator('.galaris-source-editing-area textarea')
 
 for (const dark of [false, true]) {
   test(`source editing preserves text, undo and inert syntax highlighting in ${dark ? 'dark' : 'light'} mode`, async ({ page }, testInfo) => {
-    await mount(page, editorComponent, { dark, props: { profile: 'document', modelValue: '<p>Original</p>' } })
+    await mount(page, editorComponent, { dark, props: { profile: 'rich-text', modelValue: '<p>Original</p>' } })
     await sourceButton(page).click()
     const input = sourceInput(page)
     const preview = page.locator('.galaris-source-highlight')
@@ -35,7 +35,7 @@ for (const dark of [false, true]) {
     await page.screenshot({ path: testInfo.outputPath(`source-${dark ? 'dark' : 'light'}.png`) })
     await input.fill('<h3>Edited source</h3><p>Content &amp; text</p>')
     await sourceButton(page).click()
-    await expect(page.locator('.ck-editor__editable h3')).toHaveText('Edited source')
+    await expect(page.locator('[data-editor-surface] h3')).toHaveText('Edited source')
     await expect(preview).toHaveCount(0)
     const saved = await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.args[0])
     expect(saved).toContain('<h3>Edited source</h3>')
@@ -50,7 +50,7 @@ for (const dark of [false, true]) {
 }
 
 test('source text and highlighting keep matching geometry for long lines and fullscreen', async ({ page }, testInfo) => {
-  await mount(page, editorComponent, { props: { profile: 'document', modelValue: '<p>Original</p>' } })
+  await mount(page, editorComponent, { props: { profile: 'rich-text', modelValue: '<p>Original</p>' } })
   await sourceButton(page).click()
   const input = sourceInput(page)
   const value = '<p>' + 'a long line &amp; more text '.repeat(80) + '</p>\n\t<p>Indented</p>\n'
@@ -69,14 +69,13 @@ test('source text and highlighting keep matching geometry for long lines and ful
     expect(await page.locator('.galaris-source-highlight').textContent()).toBe(value + ' ')
   }
   await page.setViewportSize({ width: 1440, height: 1000 })
-  // CKEditor disables the fullscreen command while Source mode is active.
   await sourceButton(page).click()
-  await page.getByRole('button', { name: /Enter fullscreen mode/ }).click()
+  await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
   await sourceButton(page).click()
   await input.fill(value)
   await expect(page.locator('.galaris-source-highlight')).toHaveCount(1)
   await expect(input).toHaveValue(value)
   await page.screenshot({ path: testInfo.outputPath('source-fullscreen.png') })
   await sourceButton(page).click()
-  await expect(page.locator('.ck-editor__editable p').last()).toHaveText('Indented')
+  await expect(page.locator('[data-editor-surface] p').last()).toHaveText('Indented')
 })

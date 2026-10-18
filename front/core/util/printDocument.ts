@@ -51,9 +51,14 @@ export async function printDocument(
     await Promise.all([...printed.images].map(image => image.decode()))
     await printed.fonts.ready
     signal.throwIfAborted()
-    target.addEventListener('afterprint', cleanup, { once: true })
-    target.focus()
-    target.print()
+    await new Promise<void>((resolve, reject) => {
+      const aborted = () => { cleanup(); reject(signal.reason) }
+      const finished = () => { signal.removeEventListener('abort', aborted); cleanup(); resolve() }
+      signal.addEventListener('abort', aborted, { once: true })
+      target.addEventListener('afterprint', finished, { once: true })
+      target.focus()
+      target.print()
+    })
   } catch (error) {
     cleanup()
     throw error

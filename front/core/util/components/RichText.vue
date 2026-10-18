@@ -1,6 +1,7 @@
 <template>
   <div class="rich-content-reader">
-    <div ref="root" class="rich-content ck-content" v-html="rendered" @click="openReference" />
+    <div ref="root" class="rich-content" v-html="rendered" @click="openReference" />
+    <Teleport v-for="target in codeCopies" :key="target.key" :to="target.element"><CodeBlockCopyButton :source="target.source" /></Teleport>
     <Teleport v-for="target in embeds" :key="target.key" :to="target.element"><ResourceEmbed :uri="target.uri" :title="target.title" /></Teleport>
     <ResourceDetailDialog v-if="detail" :target="detail" @close="detail = null" />
     <PdfPreview v-model="pdfPreview" />
@@ -16,7 +17,8 @@ import { highlightDocumentCode } from '../codeHighlight'
 import { hideInteractiveSource } from '../interactiveHtml'
 import { createDocumentPlayer, documentPlayer, type PdfPreviewSource } from '../documentMedia'
 import PdfPreview from './PdfPreview.vue'
-import '../ckeditorTheme.css'
+import CodeBlockCopyButton from './CodeBlockCopyButton.vue'
+import '../editorialTheme.css'
 const { content, profile = 'rich-text', resolveImage } = defineProps<{
   content: string
   profile?: ContentProfile
@@ -31,6 +33,17 @@ function openReference(event: MouseEvent): void {
 }
 const pdfPreview = shallowRef<PdfPreviewSource | null>(null)
 const root = useTemplateRef('root')
+const codeCopies = shallowRef<Array<{ key: number; element: HTMLElement; source: () => string }>>([])
+let codeCopyKey = 0
+watch([rendered, root, () => profile], () => {
+  codeCopies.value.forEach(target => target.element.remove())
+  codeCopies.value = profile === 'document' ? [...(root.value?.querySelectorAll('pre > code') ?? [])].map(code => {
+    const element = code.ownerDocument.createElement('span')
+    element.className = 'galaris-code-actions'
+    code.parentElement!.append(element)
+    return { key: ++codeCopyKey, element, source: () => code.textContent ?? '' }
+  }) : []
+}, { flush: 'post' })
 const { t } = useI18n()
 let generation = 0
 let urls: string[] = []

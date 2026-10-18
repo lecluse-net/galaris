@@ -129,7 +129,7 @@ styles. Ordinary documents accept these and forms through an isolated runtime; s
 [interactive HTML](document-apps.md). Iframes and remote images remain forbidden. API writes
 are validated before a revision is created.
 
-CKEditor 5 holds the temporary editing tree. Its HTML passes through the frontend sanitizer before
+Tiptap holds the temporary editing tree. Its HTML passes through the frontend sanitizer before
 emission; backend validation remains authoritative. There is no HTML/Markdown round trip.
 Historical readers use each revision's MIME. Active HTML artifacts remain separate from the
 editorial reader. Existing Markdown readers and files remain available for skills.
@@ -137,16 +137,23 @@ editorial reader. Existing Markdown readers and files remain available for skill
 `RichTextEditor` exposes two modes through `profile`: `rich-text`, the default simple mode
 for enriched multiline fields, and `document`, the full mode with page layout, images,
 attachments and exports. Non-document fields keep the simple mode. Both modes include the
-Reading group with Source and Fullscreen; Full width is available only in document mode,
+Reading group with Fullscreen; Source is limited to `rich-text`. Full width is available only in document mode,
 which has a page layout. The active `app.llm` module's `editorVoice.ts` contribution supplies
 dictation and speech playback to both modes through the `core.util` `EditorVoiceProvider`
 contract. Screens need no additional wiring. Changing the presentation does not emit content
 changes. Replacing the external value, recreating or closing the editor cancels requests and
 releases audio resources.
 
+Table presets use the explicitly allowed classes `galaris-table-{blue,iris,green,orange,salmon,gray}`
+and `galaris-table-{contrast,striped,minimal}` in both frontend and backend filters. Editing,
+reading and PDF/HTML exports share their CSS and the Solaire variables embedded in standalone
+documents. Presets retain column attributes, merged cells and custom cell styles.
+
 ## Source code view
 
-CKEditor's Source view uses a 12 px monospace font. `GalarisSourceEditing` highlights HTML and
+The Source view, available only for `rich-text`, uses a 12 px monospace font.
+Documents expose neither its command nor its mode, including on mobile and in read-only views.
+`EditorialSource` highlights HTML and
 embedded JavaScript/CSS with highlight.js, using the Solaire palette in both themes. Highlighting
 is a separate visual layer over the native input: it changes neither the selection, typing
 history nor saved HTML. The highlighting engine escapes source text, which is never executed
@@ -159,7 +166,7 @@ while editing, reading and printing. The block language guides highlight.js; unl
 and plain-text blocks use automatic detection limited to common languages. Unknown languages
 and blocks exceeding 50,000 characters remain readable without highlighting.
 
-`GalarisCodeHighlight` uses temporary CKEditor markers converted only to the editing view,
+`tiptapContent` uses temporary ProseMirror decorations converted only to the editing view,
 without affecting data or undo history. Only changed blocks are highlighted again. Reading
 and printing highlight a copy of sanitized HTML; syntax classes are never saved in documents.
 
@@ -217,8 +224,8 @@ rendering service when its code changes.
 ## Attachments, link cards and portable export
 
 Documents support forms and scripts in isolation, retaining the usual toolbar and editable
-prose. Source is the only code view; history and exports stay inert. Restoration preserves source.
-Source mode still accepts explicitly authored interactive HTML.
+prose, without a Source view. History and exports stay inert. Restoration and surrounding
+prose edits retain stored HTML/CSS/JavaScript, including content supplied by tools and agents.
 
 Pasting HTML source or content copied from a page into the body directly imports editable
 blocks, without a dialog or isolated page block. Headings, paragraphs, lists, links and tables
@@ -294,7 +301,7 @@ make architecture-check
 make project-context-check
 ```
 
-Browser tests run real CKEditor/Quasar components with explicit mocked APIs. They complement
+Browser tests run real Tiptap/Quasar components with explicit mocked APIs. They complement
 DB persistence, authorization, restoration and concurrency tests; they do not qualify an
 external provider. Check small viewports, both themes, keyboard use and the reference corpus
 before changing the content schema.
@@ -304,8 +311,9 @@ the real API and a compiled frontend. It checks all six categories, rejects an o
 and verifies document persistence after table editing and reloading. Prompt unit tests exercise
 simulated transports and Hermes; they do not claim to run a real external provider.
 
-CKEditor qualification on 9 September 2026: 44 HTML contract/document backend tests,
-27 Chromium editor/Galaris links/Memory tests and the full API workflow in Chromium, Firefox and WebKit
-passed; types, lint and translations checked. The development migration converged with
-523 HTML Memory bodies, no remaining editorial conversion and no exceptions.
-Vector reconstruction follows its usual asynchronous queue.
+Tiptap replacement qualification uses `tiptap-preservation.spec.mjs`, the existing editing,
+attachment, voice, history and export journeys, and
+`make tests-e2e ARGS='editorial-html.spec.mjs document-apps.spec.mjs'` for Chromium,
+Firefox and WebKit with real storage. Reports under `artifacts/` record executed results;
+an older CKEditor qualification does not qualify the replacement editor.
+Replacing the editor requires no rewrite of stored documents or revisions.

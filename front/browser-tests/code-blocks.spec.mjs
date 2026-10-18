@@ -8,7 +8,7 @@ const saved = page => page.evaluate(() => window.testApp.events.filter(event => 
 for (const dark of [false, true]) {
   test(`document code is highlighted while editing and reading in ${dark ? 'dark' : 'light'} mode`, async ({ page }, testInfo) => {
     await mount(page, 'core/util/components/RichTextEditor.vue', { dark, props: { profile: 'document', modelValue: html } })
-    const editor = page.locator('.ck-editor__editable')
+    const editor = page.locator('[data-editor-surface]')
     const code = editor.locator('pre code').first()
     await expect(code.locator('.hljs-keyword').first()).toHaveText('const')
     await expect(code).toHaveCSS('font-family', /monospace/)
@@ -27,11 +27,8 @@ for (const dark of [false, true]) {
     expect(await saved(page)).toContain(js)
     expect(await saved(page)).not.toMatch(/hljs-|codeSyntax/)
 
-    // Source mode remains available, and changing documents removes obsolete markers.
-    await page.getByRole('button', { name: 'Source', exact: true }).click()
-    await expect(page.locator('.galaris-source-highlight')).toBeVisible()
-    await expect(page.locator('.ck-source-editing-area textarea')).not.toHaveValue(/hljs-|codeSyntax/)
-    await page.getByRole('button', { name: 'Source', exact: true }).click()
+    // Highlighting remains view-only, and changing documents removes obsolete markers.
+    await expect(page.getByRole('button', { name: 'Source', exact: true })).toHaveCount(0)
     await expect(code.locator('.hljs-keyword').first()).toHaveText('const')
     await page.evaluate(() => window.testApp.setProps({ modelValue: '<p>Another document</p>' }))
     await expect(editor.locator('pre')).toHaveCount(0)
@@ -95,7 +92,7 @@ test('the actual document screen shows code colors and autosaves only authored c
     return route.fulfill({ json: current })
   })
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7, editable: true }, privileges: ['MEMORY_EDIT'] })
-  const code = page.locator('.ck-editor__editable pre code').first()
+  const code = page.locator('[data-editor-surface] pre code').first()
   await expect(code.locator('.hljs-keyword').first()).toHaveText('const')
   expect(updates).toEqual([])
   await code.locator('.hljs-number').click()

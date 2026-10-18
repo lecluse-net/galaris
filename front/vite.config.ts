@@ -8,6 +8,7 @@ import vue from '@vitejs/plugin-vue'
 import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 import { VitePWA } from 'vite-plugin-pwa'
 import { developmentWorkerRecovery } from './pwa/developmentWorkerRecovery'
+import { documentRuntimeLibraries } from './documentRuntimeLibraries'
 
 interface RouteFolder {
     src: string
@@ -79,6 +80,7 @@ export default defineConfig({
     },
     build: { manifest: true },
     plugins: [
+        documentRuntimeLibraries(),
         developmentWorkerRecovery(),
         VueRouter({
             routesFolder: getRoutesFolders(),

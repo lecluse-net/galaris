@@ -53,7 +53,7 @@ function visibleText(element: HTMLElement, text: string): DocumentTextRange | nu
     return mirror ? visibleText(mirror, text) : null
   }
   const bounds = clip(element)
-  const toolbar = element.closest('.ck-galaris-editor')?.querySelector('.ck-sticky-panel__content')?.getBoundingClientRect()
+  const toolbar = element.closest('.tiptap-galaris-editor')?.querySelector('.editorial-toolbar')?.getBoundingClientRect()
   if (toolbar && toolbar.top <= bounds.top && toolbar.bottom > bounds.top) bounds.top = toolbar.bottom
   if (bounds.top >= bounds.bottom || bounds.left >= bounds.right) return null
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
@@ -89,8 +89,8 @@ export function useDocumentFocus(container: Ref<HTMLElement | null>) {
   let remembered: { element: HTMLElement; text: string; start: number; end: number; cursor: number } | null = null
   function surface(): HTMLElement | null {
     const root = container.value
-    return root?.querySelector<HTMLTextAreaElement>('.document-editor-fields .ck-source-editing-area textarea, .document-editor-fields textarea.code-editor')
-      ?? root?.querySelector<HTMLElement>('.document-editor-fields .ck-editor__editable') ?? null
+    return root?.querySelector<HTMLTextAreaElement>('.document-editor-fields .galaris-source-editing-area textarea, .document-editor-fields textarea.code-editor')
+      ?? root?.querySelector<HTMLElement>('.document-editor-fields [data-editor-surface]') ?? null
   }
   function remember(): void {
     const element = surface()

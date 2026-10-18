@@ -4,7 +4,7 @@ export type MemoryDreamAction = 'describe' | 'read_document' | 'thumbnail' | 'fi
 export interface MemoryDreamActionResult { receipt_id: string; result_count: number }
 import { attachmentReference, browserResourceKind } from '@/core/util'
 import { thumbnailReady } from '../thumbnailEvents'
-import type { AppDatasetRequest, AppDatasetResult, AppGrant, AppPermissions } from '../documentApps'
+import type { AppDatasetRequest, AppDatasetResult } from '../documentApps'
 import type { GraphContext, GraphState, GraphStatePatch } from '../graphState'
 import type {
   DocumentSharing, DocumentSharingUpdate,
@@ -169,14 +169,6 @@ export const memoryService = {
   async temporalDefaults(): Promise<{ timezone: string; lookahead_hours: number }> {
     return (await api.get<{ timezone: string; lookahead_hours: number }>('/memory/temporal/defaults')).data
   },
-  async appPermissions(documentId: string, signal: AbortSignal): Promise<AppPermissions> {
-    return (await api.get<AppPermissions>(`/memory/documents/${documentId}/app-permissions`, { signal })).data
-  },
-  async setAppPermission(documentId: string, revision: number, grant: AppGrant, access: AppGrant['access'], signal: AbortSignal): Promise<AppPermissions> {
-    return (await api.put<AppPermissions>(`/memory/documents/${documentId}/app-permissions/${encodeURIComponent(grant.app_key)}/${encodeURIComponent(grant.alias)}`, {
-      document_revision: revision, access,
-    }, { signal })).data
-  },
   async appDataset(documentId: string, revision: number, appId: string, alias: string, data: AppDatasetRequest, signal: AbortSignal): Promise<AppDatasetResult> {
     return (await api.post<AppDatasetResult>(`/memory/documents/${documentId}/apps/${encodeURIComponent(appId)}/datasets/${encodeURIComponent(alias)}`, {
       ...data, document_revision: revision,
@@ -190,7 +182,7 @@ export const memoryService = {
     const item = detail.item
     const { preparePortableDocumentSnapshot } = await import('@/core/util/facade')
     const html = await preparePortableDocumentSnapshot(item.payload.text ?? '', item.title, signal,
-      (documentId, attachmentId) => memoryService.documentAttachmentBlob(documentId, attachmentId, agentId, signal))
+      (documentId, attachmentId) => memoryService.documentAttachmentBlob(documentId, attachmentId, detail.agent_id, signal))
     return { html, revision: item.revision, lock_version: item.lock_version }
   },
   async documentThumbnail(id: string, agentId: number | null, signal: AbortSignal): Promise<Blob | null> {

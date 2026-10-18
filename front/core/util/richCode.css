@@ -8,6 +8,10 @@
   --code-number: var(--solaire-red-dark);
   --code-attribute: var(--solaire-violet-accent);
   --code-comment: #666666;
+  --code-border: var(--rich-editor-border);
+  --code-header-background: var(--rich-editor-toolbar);
+  --code-header-height: 27px;
+  --code-gutter-width: 3.5em;
 }
 .body--dark .rich-content {
   --code-background: #101010;
@@ -19,8 +23,8 @@
   --code-attribute: var(--solaire-orange-accent);
   --code-comment: #b5b5b5;
 }
-.rich-content.ck-content pre,
-.rich-content.ck-content code {
+.rich-content pre,
+.rich-content code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
   font-weight: 400;
@@ -28,12 +32,36 @@
   line-height: 18px;
   tab-size: 4;
 }
-.rich-content.ck-content pre {
+.rich-content pre {
   position: relative;
+  box-sizing: border-box;
+  margin: 12px 0;
+  padding: calc(var(--code-header-height) + 8px) 10px 8px;
+  border: 1px solid var(--code-border);
+  border-radius: 8px;
   color: var(--code-foreground);
   background: var(--code-background);
 }
-.rich-content.ck-content pre code { color: inherit; }
+.rich-content pre::before {
+  content: '</>  ' attr(data-code-language);
+  position: absolute;
+  inset: 0 0 auto;
+  box-sizing: border-box;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--code-border);
+  border-radius: 7px 7px 0 0;
+  background: var(--code-header-background);
+  color: var(--code-foreground);
+  font-weight: 600;
+  line-height: 18px;
+  white-space: normal;
+  user-select: none;
+  pointer-events: none;
+}
+.rich-content pre code { color: inherit; }
+.rich-content pre:has(.galaris-code-actions)::before { padding-inline-end: 36px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rich-content .galaris-code-actions { position: absolute; inset-block-start: 0; inset-inline-end: 4px; line-height: normal; white-space: normal; user-select: none; }
+@media print { .galaris-code-actions { display: none; } }
 .rich-content pre :is(.hljs-keyword, .hljs-meta, .hljs-literal, .hljs-built_in) { color: var(--code-keyword); }
 .rich-content pre :is(.hljs-name, .hljs-title, .hljs-selector-tag, .hljs-type, .hljs-section) { color: var(--code-name); }
 .rich-content pre :is(.hljs-string, .hljs-regexp, .hljs-addition) { color: var(--code-string); }
@@ -41,14 +69,26 @@
 .rich-content pre :is(.hljs-attr, .hljs-attribute, .hljs-selector-class, .hljs-variable) { color: var(--code-attribute); }
 .rich-content pre :is(.hljs-comment, .hljs-quote) { color: var(--code-comment); }
 
-.rich-content.ck-content pre:has(> code[data-code-lines="true"]) { padding-inline-start: 4.5em; }
-.rich-content.ck-content pre:has(> code[data-code-nowrap="true"]),
-.rich-content.ck-content pre > code[data-code-nowrap="true"] { white-space: pre; overflow-wrap: normal; word-break: normal; }
-.rich-content.ck-content pre:has(> code[data-code-nowrap="true"]) { overflow-x: auto; }
+.rich-content pre:has(> code[data-code-lines="true"]) {
+  padding-inline-start: calc(var(--code-gutter-width) + 10px);
+  background-image: linear-gradient(to right,
+    var(--code-header-background) var(--code-gutter-width),
+    var(--code-border) var(--code-gutter-width),
+    var(--code-border) calc(var(--code-gutter-width) + 1px),
+    transparent calc(var(--code-gutter-width) + 1px));
+}
+.rich-content pre:has(> code[data-code-nowrap="true"]),
+.rich-content pre > code[data-code-nowrap="true"] { white-space: pre; overflow-wrap: normal; word-break: normal; }
+.rich-content pre:has(> code[data-code-nowrap="true"]) { overflow-x: auto; }
 .rich-content .galaris-code-line { user-select: none; pointer-events: none; }
-.rich-content .galaris-code-line::before { content: attr(data-code-line); position: absolute; inset-inline-start: 0; width: 3.5em; text-align: right; color: var(--code-comment); }
-.ck.ck-toolbar.galaris-code-toolbar { max-width: calc(100vw - 24px); }
-.ck.ck-toolbar.galaris-code-toolbar > .ck-toolbar__items { flex-wrap: wrap; }
-.galaris-code-language .ck-list { max-height: min(320px, 45vh); overflow-y: auto; }
-/* CKEditor's return arrow is a stroked icon, unlike the other filled toolbar icons. */
-.galaris-code-toolbar .ck-icon[viewBox="0 0 10 8"] path { fill: none; stroke: currentColor; stroke-width: 1.2; }
+.rich-content .galaris-code-line::before {
+  content: attr(data-code-line);
+  position: absolute;
+  inset-inline-start: 0;
+  box-sizing: border-box;
+  width: var(--code-gutter-width);
+  padding-inline: 8px;
+  text-align: right;
+  color: var(--code-comment);
+  font-variant-numeric: tabular-nums;
+}

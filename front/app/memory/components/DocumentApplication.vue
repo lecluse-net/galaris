@@ -1,13 +1,14 @@
 <template>
   <div class="document-application" :aria-label="app.title">
     <div v-if="error" role="alert" class="text-negative q-mb-sm">{{ error }}</div>
-    <iframe v-if="running" ref="frame" :srcdoc="source" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer" :title="app.title" class="document-application-frame" :style="{ height: height + 'px' }" @load="connect" />
+    <iframe v-if="running" ref="frame" :srcdoc="source" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer" :title="app.title" class="document-application-frame" :style="{ height: height + 'px', colorScheme: $q.dark.isActive ? 'dark' : 'light' }" @load="connect" />
   </div>
 </template>
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch, useTemplateRef } from 'vue'
 import { websocket } from '@/core/websocket'
 import { useI18n } from 'vue-i18n'
+import { useQuasar } from 'quasar'
 import type { RegisterDocumentCapture } from '@/core/util'
 import { memoryService } from '../services/memoryService'
 import { appSandboxDocument } from '../documentAppSandbox'
@@ -16,6 +17,7 @@ import { materializeAppResources, type AppMediaResolver } from '../documentAppRe
 
 const { app, documentId, revision, ready = true, registerSnapshot, resolveMedia } = defineProps<{ app: DocumentApp; documentId: string; revision: number; ready?: boolean; registerSnapshot?: RegisterDocumentCapture; resolveMedia?: AppMediaResolver }>()
 const { t } = useI18n()
+const $q = useQuasar()
 const frame = useTemplateRef('frame')
 const running = ref(false), source = ref(''), error = ref('')
 const height = ref(240)
@@ -63,7 +65,7 @@ async function start(): Promise<void> {
   try {
     const materialized = await materializeAppResources(app, resolveMedia ?? ((id, attachment, signal) => memoryService.documentAttachmentBlob(id, attachment, null, signal)), controller.signal)
     if (current !== generation) return
-    source.value = appSandboxDocument(materialized)
+    source.value = appSandboxDocument(materialized, $q.dark.isActive)
     running.value = true
   } catch {
     if (current === generation) error.value = t('documents.apps.failed')
@@ -71,6 +73,7 @@ async function start(): Promise<void> {
 }
 function connect(): void {
   if (!running.value || !frame.value?.contentWindow || channel) return
+  frame.value.contentWindow.postMessage({ type: 'galaris-host-theme', dark: $q.dark.isActive }, '*')
   const current = generation
   channel = new MessageChannel()
   const port = channel.port1
@@ -112,6 +115,7 @@ function connect(): void {
   frame.value.contentWindow.postMessage('galaris-host-connect', '*', [channel.port2])
 }
 watch(() => [documentId, revision, app, ready, resolveMedia] as const, () => { stop(); if (ready) void start() })
+watch(() => $q.dark.isActive, dark => { frame.value?.contentWindow?.postMessage({ type: 'galaris-host-theme', dark }, '*') })
 function navigated(event: MessageEvent): void {
   if (event.source !== frame.value?.contentWindow) return
   if (event.data === 'galaris-app-navigated') stop()

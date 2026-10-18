@@ -2,7 +2,8 @@
   <span v-if="readonly" class="document-icon document-icon--readonly" role="img" :aria-label="t('documents.library.documentIcon', { name: title })">
     <DocumentTagIcon :icon="store.icons[documentId]" :size="size" default-icon="description" />
   </span>
-  <q-btn v-else flat round dense size="sm" class="document-icon" :aria-label="t('documents.library.documentIcon', { name: title })"
+  <q-btn v-else flat :round="!plain" :square="plain" :ripple="!plain" :padding="plain ? 'none' : undefined" dense size="sm"
+    class="document-icon" :class="{ 'document-icon--plain': plain }" :aria-label="t('documents.library.documentIcon', { name: title })"
     :disable="store.saving[documentId]" @click.stop="showPicker" @dblclick.stop @keydown.enter.stop @keydown.space.stop>
     <DocumentTagIcon :icon="store.icons[documentId]" :size="size" default-icon="description" />
     <q-tooltip>{{ t(store.errors[documentId] ? 'documents.library.iconLoadError' : 'documents.library.iconHint') }}</q-tooltip>
@@ -17,7 +18,9 @@ import { useDocumentIcons } from '../stores/documentIcons'
 import DocumentTagIcon from './DocumentTagIcon.vue'
 import DocumentTagIconPicker from './DocumentTagIconPicker.vue'
 
-const { documentId, title, size = '22px', readonly = false } = defineProps<{ documentId: string; title: string; size?: string; readonly?: boolean }>()
+const { documentId, title, size = '22px', readonly = false, plain = false } = defineProps<{
+  documentId: string; title: string; size?: string; readonly?: boolean; plain?: boolean
+}>()
 const { t } = useI18n()
 const $q = useQuasar()
 const store = useDocumentIcons()
@@ -33,4 +36,6 @@ async function save(icon: string | null): Promise<boolean> {
 <style scoped>
 .document-icon { flex-shrink: 0; vertical-align: middle; color: var(--solaire-gray-accent); }
 .document-icon--readonly { display: inline-flex; align-items: center; justify-content: center; }
+.document-icon--plain :deep(.q-focus-helper) { display: none; }
+.document-icon--plain:focus-visible { outline: 2px solid var(--solaire-blue-accent); outline-offset: 2px; }
 </style>

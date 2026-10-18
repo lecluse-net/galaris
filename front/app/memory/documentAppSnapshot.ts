@@ -3,7 +3,9 @@ export const applicationSnapshotScript = String.raw`
 async function captureRenderedDocument() {
   await document.fonts.ready;
   await Promise.all([...document.images].map(image => image.decode().catch(() => {})));
-  return new Promise((resolve, reject) => requestAnimationFrame(() => {
+  // Chromium suspends animation frames in offscreen iframes. Copy the already
+  // rendered state directly; export must not require scrolling it into view.
+  return new Promise((resolve, reject) => {
     try {
       let count = 0;
       function copy(source) {
@@ -22,7 +24,7 @@ async function captureRenderedDocument() {
         } else {
           target = source.cloneNode(false);
           for (const attribute of [...target.attributes]) {
-            if (/^on/i.test(attribute.name) || ['srcdoc','autofocus','contenteditable'].includes(attribute.name)) target.removeAttribute(attribute.name);
+            if (/^on/i.test(attribute.name) || ['srcdoc','autofocus','contenteditable','data-galaris-readable'].includes(attribute.name)) target.removeAttribute(attribute.name);
           }
           for (const child of source.childNodes) { const node = copy(child); if (node) target.append(node); }
         }
@@ -45,16 +47,18 @@ async function captureRenderedDocument() {
       const head = document.createElement('head');
       for (const sheet of [...document.styleSheets, ...document.adoptedStyleSheets]) {
         if (sheet.disabled) continue;
+        if (sheet.ownerNode instanceof Element && sheet.ownerNode.hasAttribute('data-galaris-contrast')) continue;
         const style = document.createElement('style');
         style.textContent = [...sheet.cssRules].map(rule => rule.cssText).join('\n');
         if (sheet.media.mediaText) style.media = sheet.media.mediaText;
         head.append(style);
       }
       const root = document.documentElement.cloneNode(false);
+      root.removeAttribute('data-galaris-theme');
       root.append(head, body);
       const html = root.outerHTML;
       if (html.length > 12000000) throw new Error('Document rendering too large');
       resolve(html);
     } catch (error) { reject(error); }
-  }));
+  });
 }`

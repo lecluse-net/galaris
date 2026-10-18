@@ -12,17 +12,6 @@ export interface AppDatasetRequest {
   value?: unknown
 }
 export interface AppDatasetResult { revision: number; data: unknown }
-export interface AppGrant {
-  app_key: string
-  app_title: string
-  alias: string
-  dataset_id: string
-  dataset_uri?: string | null
-  dataset_title: string | null
-  requested_access: 'read' | 'write'
-  access: 'read' | 'write' | null
-}
-export interface AppPermissions { document_revision: number; grants: AppGrant[] }
 
 /** Invalid source drafts stay opaque and never enter the runtime. */
 export function parseDocumentApp(source: string): DocumentApp | null {

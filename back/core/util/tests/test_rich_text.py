@@ -193,6 +193,19 @@ def test_resource_references_keep_the_card_choice_and_validate_the_exact_target(
         assert not valid_link(uri + suffix)
 
 
+@pytest.mark.parametrize("palette", ["blue", "iris", "green", "orange", "salmon", "gray"])
+@pytest.mark.parametrize("treatment", ["contrast", "striped", "minimal"])
+def test_table_presets_survive_editorial_normalization(palette: str, treatment: str):
+    source = f'<table class="galaris-table-{palette} galaris-table-{treatment}" style="width: 75%"><tbody><tr><th colspan="2" colwidth="120,180">Summary</th></tr><tr><td>One</td><td>Two</td></tr></tbody></table>'
+    for profile in ["rich-text", "document"]:
+        saved = normalize_html(source, profile=profile)
+        assert f"galaris-table-{palette}" in saved
+        assert f"galaris-table-{treatment}" in saved
+        assert 'colspan="2"' in saved and 'colwidth="120,180"' in saved
+        assert "75%" in saved
+        assert normalize_html(saved, profile=profile) == saved
+
+
 def test_empty_tables_and_separators_are_visible_structures():
     table = "<table><tbody><tr><td><p></p></td></tr></tbody></table>"
     assert normalize_html(table) == table
@@ -222,6 +235,15 @@ def test_ckeditor_figures_captions_table_properties_and_columns_round_trip():
         "border: 1px solid var(--bad)",
     ],
 )
-def test_ckeditor_style_contract_rejects_active_or_unbounded_css(style):
+def test_editorial_style_contract_rejects_active_or_unbounded_css(style):
     with pytest.raises(RichTextError):
         normalize_html(f'<p style="{style}">Safe</p>')
+
+
+@pytest.mark.parametrize("color", ["inherit", "currentcolor"])
+def test_editorial_inherited_colors_survive_normalization(color: str):
+    source = f'<table style="color: {color}; border-color: {color}"><tbody><tr><td>Readable</td></tr></tbody></table>'
+    saved = normalize_html(source)
+    assert normalize_html(saved) == saved
+    assert f"color: {color}" in saved
+    assert f"border-color: {color}" in saved

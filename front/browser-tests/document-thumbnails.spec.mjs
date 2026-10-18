@@ -174,21 +174,38 @@ test('document cards inside messages display and refresh their saved revision th
   await expect(card).toHaveCount(0)
 })
 
-test('thumbnails use the print snapshot with embedded images for the saved revision', async ({ page, context }, testInfo) => {
+for (const { surface, agentId, resolvedAgentId } of [
+  { surface: 'agent', agentId: 7, resolvedAgentId: 7 },
+  { surface: 'managed library', agentId: null, resolvedAgentId: 7 },
+  { surface: 'human library', agentId: null, resolvedAgentId: null },
+]) test(`thumbnails use the print snapshot with embedded images for the saved revision in the ${surface}`, async ({ page, context }, testInfo) => {
   const id = '00000000-0000-0000-0000-000000000001'
   const attachment = '00000000-0000-0000-0000-000000000002'
   const body = '<h1>Rapport de mission</h1><p>Le début du document conserve sa mise en page.</p><table><tbody><tr><th>Élément</th><th>Résultat</th></tr><tr><td>Document long</td><td>Première page</td></tr></tbody></table>'
     + `<figure class="image"><img src="document://${id}/attachments/${attachment}" alt="Illustration"></figure>`
     + '<p>Suite du document</p>'.repeat(300)
-  await jsonRoute(page, `**/api/memory/documents/${id}?agent_id=7`, { item: { ...documentFixture, revision: 12, lock_version: 17, title: 'Rapport de mission', payload: { text: body } } })
+  const item = { ...documentFixture, id, revision: 12, lock_version: 17, title: 'Rapport de mission', payload: { text: body } }
+  const query = agentId === null ? '' : `?agent_id=${agentId}`
+  await jsonRoute(page, `**/api/memory/documents/${id}${query}`, { item, agent_id: resolvedAgentId })
   const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII=', 'base64')
-  await page.route(`**/api/memory/documents/${id}/attachments/${attachment}?agent_id=7`, route => route.fulfill({ contentType: 'image/png', body: image }))
+  await page.route(`**/api/memory/documents/${id}/attachments/${attachment}*`, route => {
+    const requestedAgentId = new URL(route.request().url()).searchParams.get('agent_id')
+    return requestedAgentId === (resolvedAgentId === null ? null : String(resolvedAgentId))
+      ? route.fulfill({ contentType: 'image/png', body: image })
+      : route.fulfill({ status: 403, json: { detail: 'Attachment access denied' } })
+  })
   let snapshot
-  await page.route(`**/api/memory/documents/${id}/thumbnail?agent_id=7`, route => {
+  await page.route(`**/api/memory/documents/${id}/thumbnail${query}`, route => {
     snapshot = route.request().postDataJSON()
     return route.fulfill({ contentType: 'image/webp', body: png })
   })
-  await mount(page, 'app/memory/components/DocumentThumbnail.vue', { props: { documentId: id, agentId: 7, revision: 12 } })
+  if (surface === 'agent') {
+    await mount(page, 'app/memory/components/DocumentThumbnail.vue', { props: { documentId: id, agentId, revision: 12 } })
+  } else {
+    await mount(page, 'app/memory/components/DocumentLibraryEntryRow.vue', {
+      props: { entry: { item, owner_label: 'Synthetic owner', agent_ids: resolvedAgentId === null ? [] : [resolvedAgentId] }, loading: false, selectedDocumentId: null },
+    })
+  }
   await expect(page.locator('.document-thumbnail img')).toHaveJSProperty('naturalWidth', 1)
   expect(snapshot.revision).toBe(12)
   expect(snapshot.lock_version).toBe(17)
@@ -283,11 +300,9 @@ for (const surface of ['chat', 'library']) test(`rendered thumbnail keeps the ${
   await expect(image).toHaveJSProperty('naturalWidth', 1)
   await image.click()
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => ['select', 'open'].includes(event.name)).length)).toBe(1)
-  const icon = page.getByRole(surface === 'chat' ? 'img' : 'button', { name: 'Icon for document Report', exact: true })
+  const icon = page.getByRole('img', { name: 'Icon for document Report', exact: true })
   await expect(icon).toBeVisible()
-  if (surface === 'chat') {
-    await icon.click()
-    await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'open').length)).toBe(2)
-    await expect(page.locator('.tag-icon-picker')).toHaveCount(0)
-  }
+  await icon.click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => ['select', 'open'].includes(event.name)).length)).toBe(2)
+  await expect(page.locator('.tag-icon-picker')).toHaveCount(0)
 })

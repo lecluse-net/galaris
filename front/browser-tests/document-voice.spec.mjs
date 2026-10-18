@@ -34,7 +34,7 @@ async function controls(page, props = {}, html = '<p>Document</p>', simple = fal
       privileges: props.editable === false ? ['MEMORY_ACCESS'] : ['MEMORY_EDIT', 'MEMORY_ACCESS'],
     })
   }
-  await expect(page.locator('.ck-editor__editable')).toBeVisible()
+  await expect(page.locator('[data-editor-surface]')).toBeVisible()
   await page.evaluate(() => {
     const acquire = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
     window.dictationTracks = []
@@ -55,7 +55,7 @@ for (const simple of [false, true]) test(`dictation writes live at the cursor wi
   })
   await controls(page, {}, '<p>Document</p>', simple)
   if (simple) await page.setViewportSize({ width: 390, height: 844 })
-  const editor = page.locator('.ck-editor__editable')
+  const editor = page.locator('[data-editor-surface]')
   await editor.click()
   await page.keyboard.press('Home')
   await page.keyboard.press('ArrowRight')
@@ -90,7 +90,7 @@ for (const simple of [false, true]) test(`a late dictation response cannot inser
     await expect.poll(() => requested).toBe(true)
     await page.evaluate(simple => window.testApp.setProps(simple ? { modelValue: '<p>Other text</p>' } : { documentId: 'doc-b' }), simple)
   } finally { release() }
-  await expect(page.locator('.ck-editor__editable')).toHaveText(simple ? 'Other text' : 'Document')
+  await expect(page.locator('[data-editor-surface]')).toHaveText(simple ? 'Other text' : 'Document')
   await expect.poll(() => page.evaluate(() => window.dictationTracks.every(track => track.readyState === 'ended'))).toBe(true)
 })
 
@@ -110,9 +110,9 @@ test('read-only documents can read and cancel pending speech without dictation',
     await expect(page.getByRole('button', { name: 'Dictate', exact: true })).toHaveCount(0)
     await page.getByRole('button', { name: 'Read text' }).click()
     await expect.poll(() => requested).toBe(true)
-    await expect(page.getByRole('button', { name: 'Stop reading' })).not.toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Stop reading' })).not.toBeVisible()
     await page.getByRole('button', { name: 'Reading controls', exact: true }).click()
-    await page.getByRole('button', { name: 'Stop reading' }).click()
+    await page.getByRole('menuitem', { name: 'Stop reading' }).click()
   } finally { release() }
   await expect(page.getByRole('button', { name: 'Read text' })).toBeEnabled()
   await expect(page.getByRole('alert')).toHaveCount(0)
@@ -127,7 +127,7 @@ for (const simple of [false, true]) for (const editable of [true, false]) test(`
   await controls(page, { editable }, '<p>Avant <strong>premier passage</strong></p><p>second passage après</p>', simple)
   if (!editable) await expect(page.getByRole('button', { name: 'Dictate', exact: true })).toHaveCount(0)
   if (simple) await expect(page.getByRole('button', { name: 'Full width', exact: true })).toHaveCount(0)
-  const editor = page.locator('.ck-editor__editable')
+  const editor = page.locator('[data-editor-surface]')
   await editor.evaluate(element => {
     const paragraphs = element.querySelectorAll('p')
     const range = document.createRange()
@@ -152,14 +152,14 @@ for (const simple of [false, true]) for (const editable of [true, false]) test(`
   await expect.poll(() => requests.length).toBeGreaterThan(1)
   expect(requests[1]).toEqual({ html: requests[0].html, offset: 20 })
   await page.getByRole('button', { name: 'Reading controls', exact: true }).click()
-  await page.getByRole('button', { name: 'Stop reading' }).click()
+  await page.getByRole('menuitem', { name: 'Stop reading' }).click()
   requests.length = 0
   await page.getByRole('button', { name: 'Read text', exact: true }).click()
   await expect.poll(() => requests.length).toBeGreaterThan(0)
   expect(requests[0].html).toContain('Avant ')
   expect(requests[0].html).toContain('second passage après')
   await page.getByRole('button', { name: 'Reading controls', exact: true }).click()
-  await page.getByRole('button', { name: 'Stop reading' }).click()
+  await page.getByRole('menuitem', { name: 'Stop reading' }).click()
 })
 
 test('My profile saves the selected profile and voice without administrative privileges', async ({ page }) => {
@@ -227,7 +227,7 @@ test('dictation enters the real editor as escaped text and autosaves without los
   await mount(page, 'app/memory/components/DocumentEditor.vue', {
     props: { documentId: 'doc-a', agentId: 7, editable: true }, privileges: ['MEMORY_EDIT', 'MEMORY_ACCESS'],
   })
-  const editor = page.locator('.ck-editor__editable[contenteditable="true"]')
+  const editor = page.locator('[data-editor-surface][contenteditable="true"]')
   await expect(editor).toContainText('Existing content.')
   await editor.click()
   await page.keyboard.press('Control+End')
@@ -252,23 +252,23 @@ test('reading pauses, resumes at the same position, plays successive chunks and 
   })
   await controls(page)
   await page.getByRole('button', { name: 'Reading controls', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeDisabled()
+  await expect(page.getByRole('menuitem', { name: 'Pause', exact: true })).toBeDisabled()
   expect(offsets).toEqual([])
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Read text' }).click()
   await expect.poll(() => page.locator('audio[hidden]').evaluate(audio => audio.currentTime)).toBeGreaterThan(0.1)
-  await expect(page.getByRole('button', { name: 'Pause', exact: true })).not.toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Pause', exact: true })).not.toBeVisible()
   await page.getByRole('button', { name: 'Reading controls', exact: true }).click()
-  await page.getByRole('button', { name: 'Pause', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Pause', exact: true }).click()
   const position = await page.locator('audio[hidden]').evaluate(audio => audio.currentTime)
   await expect.poll(() => page.locator('audio[hidden]').evaluate(audio => audio.paused)).toBe(true)
   await page.getByRole('button', { name: 'Reading controls', exact: true }).click()
   expect(await page.locator('audio[hidden]').evaluate(audio => audio.currentTime)).toBe(position)
-  await page.getByRole('button', { name: 'Resume', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Resume', exact: true }).click()
   await expect.poll(() => offsets.length).toBe(2)
   await expect.poll(() => page.locator('audio[hidden]').evaluate(audio => !audio.paused)).toBe(true)
   await page.getByRole('button', { name: 'Reading controls', exact: true }).click()
-  await page.getByRole('button', { name: 'Stop reading' }).click()
+  await page.getByRole('menuitem', { name: 'Stop reading' }).click()
   await expect(page.locator('audio[hidden]')).not.toHaveAttribute('src')
   await expect.poll(() => page.locator('audio[hidden]').evaluate(audio => audio.paused)).toBe(true)
 })
@@ -287,7 +287,7 @@ test('pausing during synthesis keeps incoming audio paused until Resume', async 
     await page.getByRole('button', { name: 'Read text' }).click()
     await expect.poll(() => requested).toBe(true)
     await page.getByRole('button', { name: 'Reading text', exact: true }).click()
-    await expect(page.getByRole('button', { name: 'Resume', exact: true })).not.toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Resume', exact: true })).not.toBeVisible()
   } finally { release() }
   const audio = page.locator('audio[hidden]')
   await expect(audio).toHaveAttribute('src', /^blob:/)
@@ -295,6 +295,6 @@ test('pausing during synthesis keeps incoming audio paused until Resume', async 
   await page.getByRole('button', { name: 'Reading paused', exact: true }).click()
   await expect.poll(() => audio.evaluate(audio => audio.currentTime)).toBeGreaterThan(0)
   await page.getByRole('button', { name: 'Reading controls', exact: true }).click()
-  await page.getByRole('button', { name: 'Stop reading' }).click()
+  await page.getByRole('menuitem', { name: 'Stop reading' }).click()
   await expect(audio).not.toHaveAttribute('src')
 })

@@ -159,6 +159,15 @@ EDITORIAL_CLASSES = {
     "galaris-media-pdf",
     "galaris-process-diagram",
     "galaris-agent-card",
+    "galaris-table-blue",
+    "galaris-table-iris",
+    "galaris-table-green",
+    "galaris-table-orange",
+    "galaris-table-salmon",
+    "galaris-table-gray",
+    "galaris-table-contrast",
+    "galaris-table-striped",
+    "galaris-table-minimal",
     "galaris-callout",
     "galaris-callout-info",
     "galaris-callout-warning",
@@ -192,6 +201,7 @@ def _editorial_color(value: str) -> bool:
         "aqua",
         "fuchsia",
         "transparent",
+        "currentcolor",
     }
 
 
@@ -218,7 +228,10 @@ def _style(value: str) -> str:
         key, raw = key.strip().lower(), raw.strip().lower()
         valid = (
             (key == "text-align" and raw in ALIGNMENTS)
-            or (key in {"color", "background-color", "border-color"} and _editorial_color(raw))
+            or (
+                key in {"color", "background-color", "border-color"}
+                and (raw == "inherit" or _editorial_color(raw))
+            )
             or (key in {"width", "height"} and _editorial_length(raw))
             or (key in {"padding", "border-width", "font-size"} and _editorial_length(raw, 100))
             or (

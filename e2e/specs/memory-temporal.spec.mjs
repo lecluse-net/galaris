@@ -56,7 +56,7 @@ for (const width of [1440, 390]) test(`memory dates use the global timezone thro
   await expect(dialog.getByLabel('Heure', { exact: true })).toHaveValue('9')
   await expect(dialog.getByLabel('Minute', { exact: true })).toHaveValue('30')
   await expect(dialog.getByLabel('Fuseau horaire', { exact: true })).toHaveCount(0)
-  await expect(dialog.locator('.ck-editor__editable')).toContainText('Preserved appointment evidence.')
+  await expect(dialog.locator('[data-editor-surface]')).toContainText('Preserved appointment evidence.')
   await dialog.getByLabel('Heure', { exact: true }).scrollIntoViewIfNeeded()
   await page.screenshot({ path: testInfo.outputPath('memory-global-timezone.png') })
   await dialog.getByRole('button', { name: 'Fermer', exact: true }).click()

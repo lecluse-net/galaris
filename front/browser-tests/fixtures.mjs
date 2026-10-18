@@ -44,6 +44,15 @@ export const test = base.extend({
 })
 export { expect }
 
+// Inspect portable document HTML through the editor serializer, independently of UI controls.
+export async function editorHtml(page) {
+  return page.locator('[data-editor-surface]').evaluate(async element => {
+    const { sanitizeRichHtml } = await import('/core/util/richText.ts')
+    const { restoreInteractiveHtml } = await import('/core/util/interactiveHtml.ts')
+    return restoreInteractiveHtml(sanitizeRichHtml(element.editor.getHTML(), 'document'))
+  })
+}
+
 export async function mount(page, component, options = {}) {
   await page.route('**/api/authorize/my-privileges', route => route.fulfill({ json: options.privileges ?? [] }))
   await page.goto('/test-support/browser/index.html')

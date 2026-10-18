@@ -1,6 +1,19 @@
 import type { ComputedRef, Ref } from 'vue'
 import { modules as activeModules } from '@/modules'
-import type { EditorVoiceControls } from './ckeditorVoice'
+
+/** Application-owned audio controls, independent of the HTML editing engine. */
+export interface EditorVoiceControls {
+  dictating: boolean
+  dictationPending: boolean
+  reading: boolean
+  paused: boolean
+  buffering: boolean
+  labels: { dictate: string; finishDictation: string; processing: string; read: string; reading: string; paused: string; pause: string; resume: string; stop: string; readingControls: string }
+  toggleDictation: () => void
+  read: (selectedHtml?: string) => void
+  togglePause: () => void
+  stop: () => void
+}
 
 export interface EditorVoiceContext {
   html: () => string

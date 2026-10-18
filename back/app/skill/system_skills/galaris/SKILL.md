@@ -279,10 +279,11 @@ blind automatic retries. Report other errors through `error.message`.
 
 Share the page and each Dataset independently with their intended viewers. Bindings grant
 no access: execution uses the connected viewer's current permissions, never the app author's.
-Each viewer must separately approve application–Dataset access through the document toolbar's
-Application permissions icon. Server-stored consent is personal and bound to the exact content
+The document toolbar no longer exposes a permission icon or dialog. Existing server-stored
+consent is personal and bound to the exact content
 revision; edits and restores require new consent. HTML, the SDK and MCP cannot grant it.
-On `permission_required`, explain this step; do not try to bypass it. Write consent allows
+On `permission_required`, report that access is unavailable; do not direct viewers to the removed
+dialog or try to bypass consent. Write consent allows
 both append and full replacement, including at opening. No new launch or editing mode is needed.
 A read-only page can contain a form whose viewer has Dataset edit access. Several documents
 can use the same Dataset. Applications cannot access the host DOM, cookies/localStorage,

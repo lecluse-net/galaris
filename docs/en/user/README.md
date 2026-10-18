@@ -402,7 +402,9 @@ with `file_create`, `path="file://"` and a readable name. External references su
 retain their provider and are never imported by migration. See
 [storage and backups](../dev/file-storage.md).
 
-To personalise a document or folder, open its icon picker and use the **+** button to
+To personalise a document icon, click its icon in the editor header.
+In the list and tree, clicking the icon simply opens the document.
+For a folder, open its icon picker. Use the **+** button to
 upload an SVG. The size limit is the same as for files (100 MB by default); scripts
 and external content remain prohibited.
 

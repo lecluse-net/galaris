@@ -17,7 +17,7 @@ async function setup(page) {
       }),
     } })
   }, { component, uri })
-  await page.locator('.ck-editor__editable p').first().click()
+  await page.locator('[data-editor-surface] p').first().click()
   await page.keyboard.press('Home')
   await page.keyboard.press('End')
 }
@@ -26,7 +26,7 @@ async function drop(page, files) {
   const payload = (Array.isArray(files) ? files : [files]).map(file => ({
     name: file.name, type: file.mimeType, content: file.buffer.toString(),
   }))
-  await page.locator('.ck-editor__editable').evaluate((root, files) => {
+  await page.locator('[data-editor-surface]').evaluate((root, files) => {
     const box = root.querySelector('p:first-child').getBoundingClientRect()
     const data = new DataTransfer()
     for (const file of files) data.items.add(new File([file.content], file.name, { type: file.type }))
@@ -40,14 +40,13 @@ async function drop(page, files) {
 test('Insert attachment opens a file picker and inserts the uploaded file at the cursor', async ({ page }) => {
   await setup(page)
   const picker = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: 'Insert a link or file', exact: true }).first().click()
   await page.getByRole('button', { name: 'Insert attachment', exact: true }).click()
   await (await picker).setFiles(file('picked.txt'))
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByRole('status')).toContainText('picked.txt')
   await page.evaluate(() => window.uploads[0].finish())
   await expect(page.getByRole('status')).toHaveCount(0)
-  const content = page.locator('.ck-editor__editable')
+  const content = page.locator('[data-editor-surface]')
   await expect(content).toContainText('picked.txt')
   const html = await content.innerHTML()
   expect(html.indexOf('Before')).toBeLessThan(html.indexOf('picked.txt'))
@@ -60,14 +59,14 @@ test('dropped files retain their insertion point while typing elsewhere and keep
   await drop(page, [file('first.txt'), file('second.txt')])
   await expect(page.getByRole('status')).toContainText('first.txt · 50% · 1/2')
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await page.locator('.ck-editor__editable p').last().click()
+  await page.locator('[data-editor-surface] p').last().click()
   await page.keyboard.press('End')
   await page.keyboard.type(' edited')
   await page.evaluate(() => window.uploads[0].finish())
   await expect(page.getByRole('status')).toContainText('second.txt')
   await page.evaluate(() => window.uploads[1].finish())
   await expect(page.getByRole('status')).toHaveCount(0)
-  const content = page.locator('.ck-editor__editable')
+  const content = page.locator('[data-editor-surface]')
   await expect(content).toContainText('first.txt')
   await expect(content).toContainText('second.txt')
   const html = await content.innerHTML()
@@ -89,7 +88,7 @@ test('a mixed image and file selection retains its order', async ({ page }) => {
   await expect(page.getByRole('status')).toContainText('second.txt')
   await page.evaluate(() => window.uploads[1].finish())
   await expect(page.getByRole('status')).toHaveCount(0)
-  const html = await page.locator('.ck-editor__editable').innerHTML()
+  const html = await page.locator('[data-editor-surface]').innerHTML()
   expect(html.indexOf('first.png')).toBeLessThan(html.indexOf('second.txt'))
   expect(html.indexOf('second.txt')).toBeLessThan(html.indexOf('After'))
 })
@@ -104,17 +103,17 @@ for (const action of ['cancel', 'switch', 'readonly']) test(`${action} discards 
   await expect.poll(() => page.evaluate(() => window.uploads[0].signal.aborted)).toBe(true)
   await page.evaluate(() => window.uploads[0].finish())
   await expect(page.getByRole('status')).toHaveCount(0)
-  await expect(page.locator('.ck-editor__editable')).not.toContainText('late.txt')
+  await expect(page.locator('[data-editor-surface]')).not.toContainText('late.txt')
   if (action === 'readonly') {
     await drop(page, file('blocked.txt'))
     expect(await page.evaluate(() => window.uploads.length)).toBe(1)
-    await expect(page.locator('.ck-editor__editable')).not.toContainText('blocked.txt')
+    await expect(page.locator('[data-editor-surface]')).not.toContainText('blocked.txt')
   }
 })
 
 test('dropping a file uses the drop location rather than the old cursor position', async ({ page }) => {
   await setup(page)
-  await page.locator('.ck-editor__editable').evaluate(root => {
+  await page.locator('[data-editor-surface]').evaluate(root => {
     const target = root.querySelector('p:last-child')
     const box = target.getBoundingClientRect()
     const data = new DataTransfer()
@@ -123,6 +122,6 @@ test('dropping a file uses the drop location rather than the old cursor position
   })
   await expect(page.getByRole('status')).toContainText('drop.txt')
   await page.evaluate(() => window.uploads[0].finish())
-  const html = await page.locator('.ck-editor__editable').innerHTML()
+  const html = await page.locator('[data-editor-surface]').innerHTML()
   expect(html.indexOf('After')).toBeLessThan(html.indexOf('drop.txt'))
 })

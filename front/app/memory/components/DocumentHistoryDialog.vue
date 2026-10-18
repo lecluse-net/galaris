@@ -17,7 +17,7 @@
         color="primary"
         :label="t('documents.historyBack')"
         @click="emit('close')"
-      />
+      ><q-tooltip>{{ t('documents.historyBack') }}</q-tooltip></q-btn>
     </header>
     <q-separator />
 
@@ -76,7 +76,7 @@
                 :loading="loadingMore"
                 :label="t('documents.historyLoadMore')"
                 @click="loadMoreRevisions"
-              />
+              ><q-tooltip>{{ t('documents.historyLoadMore') }}</q-tooltip></q-btn>
             </q-item>
           </q-list>
         </aside>
@@ -102,7 +102,10 @@
                 color="grey-2"
                 text-color="grey-8"
                 :options="viewOptions"
-              />
+              >
+                <template #preview><q-tooltip>{{ t('documents.historyPreview') }}</q-tooltip></template>
+                <template #diff><q-tooltip>{{ t('documents.historyDiff') }}</q-tooltip></template>
+              </q-btn-toggle>
               <q-space />
               <q-badge color="positive" outline>
                 {{ t('documents.historyAdditions', { count: diff.additions }) }}
@@ -118,7 +121,7 @@
                 icon="restore"
                 :label="t('documents.historyRestore')"
                 @click="restoreOpen = true"
-              />
+              ><q-tooltip>{{ t('documents.historyRestore') }}</q-tooltip></q-btn>
             </div>
             <q-separator />
             <div class="document-history-content scroll col">
@@ -239,8 +242,8 @@ const REVISION_PAGE_SIZE = 50
 const hasMore = computed(() => revisions.value.length < revisionTotal.value)
 
 const viewOptions = computed(() => [
-  { label: t('documents.historyPreview'), value: 'preview', icon: 'visibility' },
-  { label: t('documents.historyDiff'), value: 'diff', icon: 'difference' },
+  { label: t('documents.historyPreview'), value: 'preview', icon: 'visibility', slot: 'preview' },
+  { label: t('documents.historyDiff'), value: 'diff', icon: 'difference', slot: 'diff' },
 ])
 
 function agentLabel(agentId: number): string {

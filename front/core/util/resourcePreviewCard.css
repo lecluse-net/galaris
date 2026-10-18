@@ -1,12 +1,12 @@
 /* Static cards keep the same content in editing, reading and print. */
-:is(.rich-content, .ck-content) blockquote.galaris-link-card { padding: 10px 12px; margin: 12px 0; font-style: normal; break-inside: avoid; }
-:is(.rich-content, .ck-content) blockquote.galaris-link-card p { margin: 4px 0; font-size: 13px; line-height: 1.4; }
-:is(.rich-content, .ck-content) blockquote.galaris-link-card p:has(strong) { font-size: 15px; }
-:is(.rich-content, .ck-content) blockquote.galaris-link-card p:last-of-type { font-size: 11px; opacity: .7; }
-:is(.rich-content, .ck-content) blockquote.galaris-link-card a { color: inherit; text-decoration: none; }
-:is(.rich-content, .ck-content) blockquote.galaris-link-card a:hover { text-decoration: underline; }
-:is(.rich-content, .ck-content) blockquote.galaris-link-card figure.image { float: left; width: 112px; max-width: 35%; margin: 0 12px 0 0; }
-:is(.rich-content, .ck-content) blockquote.galaris-link-card figure.image img { width: 100%; height: 86px; object-fit: contain; }
+.rich-content blockquote.galaris-link-card { padding: 10px 12px; margin: 12px 0; font-style: normal; break-inside: avoid; }
+.rich-content blockquote.galaris-link-card p { margin: 4px 0; font-size: 13px; line-height: 1.4; }
+.rich-content blockquote.galaris-link-card p:has(strong) { font-size: 15px; }
+.rich-content blockquote.galaris-link-card p:last-of-type { font-size: 11px; opacity: .7; }
+.rich-content blockquote.galaris-link-card a { color: inherit; text-decoration: none; }
+.rich-content blockquote.galaris-link-card a:hover { text-decoration: underline; }
+.rich-content blockquote.galaris-link-card figure.image { float: left; width: 112px; max-width: 35%; margin: 0 12px 0 0; }
+.rich-content blockquote.galaris-link-card figure.image img { width: 100%; height: 86px; object-fit: contain; }
 .galaris-youtube-player { clear: both; width: 100%; aspect-ratio: 16 / 9; margin-top: 10px; background: #000; }
 .galaris-youtube-player iframe { display: block; width: 100%; height: 100%; border: 0; }
 .galaris-media-player { clear: both; padding-top: 10px; }
@@ -14,21 +14,21 @@
 .galaris-media-player video { height: auto; max-height: min(480px, 65vh); object-fit: contain; background: #000; }
 .galaris-pdf-frame { position: relative; width: 100%; aspect-ratio: 1.61803398875; }
 .galaris-pdf-player { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 0; background: #fff; }
-:is(.rich-content, .ck-content) blockquote.galaris-link-card:has(.galaris-pdf-frame) > p:first-of-type { display: flex; align-items: center; min-height: 34px; padding-right: 42px; }
+.rich-content blockquote.galaris-link-card:has(.galaris-pdf-frame) > p:first-of-type { display: flex; align-items: center; min-height: 34px; padding-right: 42px; }
 .galaris-pdf-expand { position: absolute; top: 8px; right: 8px; z-index: 1; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid rgba(127, 127, 127, .3); border-radius: 50%; background: #fbfcfe; color: #252b36; cursor: pointer; box-shadow: 0 1px 4px rgba(0, 0, 0, .25); }
 .galaris-pdf-expand:disabled { opacity: .5; cursor: wait; }
 .galaris-pdf-expand:focus-visible { outline: 2px solid var(--q-primary); outline-offset: 2px; }
 .body--dark .galaris-pdf-expand { background: #24282f; color: #e7ebf2; }
-:is(.rich-content, .ck-content) blockquote.galaris-link-card:has(.galaris-youtube-player) figure.image { display: none; }
+.rich-content blockquote.galaris-link-card:has(.galaris-youtube-player) figure.image { display: none; }
 .galaris-media-retry { margin-top: 8px; cursor: pointer; font: inherit; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 4px; padding: 6px 10px; }
 @media print {
   .galaris-youtube-player, .galaris-media-player { display: none; }
-  :is(.rich-content, .ck-content) blockquote.galaris-link-card:has(.galaris-pdf-frame) > p:first-of-type { display: block; min-height: 0; padding-right: 0; }
-  :is(.rich-content, .ck-content) blockquote.galaris-link-card:has(.galaris-youtube-player) figure.image { display: block; }
+  .rich-content blockquote.galaris-link-card:has(.galaris-pdf-frame) > p:first-of-type { display: block; min-height: 0; padding-right: 0; }
+  .rich-content blockquote.galaris-link-card:has(.galaris-youtube-player) figure.image { display: block; }
 }
 
 /* Shared surface for conversation previews and persisted document cards. */
-:is(.resource-preview-card, .rich-content blockquote.galaris-link-card, .ck-content blockquote.galaris-link-card) {
+:is(.resource-preview-card, .rich-content blockquote.galaris-link-card) {
   position: relative;
   width: 100%;
   min-height: 86px;
@@ -40,7 +40,7 @@
   border-radius: 10px;
   box-shadow: 0 2px 7px rgba(31, 45, 61, .05);
 }
-.body--dark :is(.resource-preview-card, .rich-content blockquote.galaris-link-card, .ck-content blockquote.galaris-link-card) {
+.body--dark :is(.resource-preview-card, .rich-content blockquote.galaris-link-card) {
   color: var(--chat-text, #e7ebf2);
   background: var(--chat-surface-raised, #24282f);
   border-color: var(--chat-border-strong, rgba(255, 255, 255, .15));
@@ -64,8 +64,8 @@
 .resource-preview-block .resource-preview-actions .q-btn { font-size: 12px; }
 .resource-preview-block .resource-preview-player { position: relative; z-index: 2; grid-column: 1 / -1; width: 100%; }
 .body--dark .resource-preview-block .resource-preview-actions { color: #ddd; background: rgba(24, 24, 24, .9); }
-:is(.rich-content, .ck-content) blockquote.galaris-agent-card { padding-left: 128px; min-height: 112px; }
-:is(.rich-content, .ck-content) blockquote.galaris-agent-card > .galaris-resource-embed { position: absolute; inset: 0 auto 0 0; width: 112px; overflow: hidden; }
+.rich-content blockquote.galaris-agent-card { padding-left: 128px; min-height: 112px; }
+.rich-content blockquote.galaris-agent-card > .galaris-resource-embed { position: absolute; inset: 0 auto 0 0; width: 112px; overflow: hidden; }
 @media (hover: none), (pointer: coarse) {
   .resource-preview-block .resource-preview-actions { opacity: 1; pointer-events: auto; }
 }

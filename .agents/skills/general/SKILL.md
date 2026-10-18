@@ -45,6 +45,11 @@ configuration, de compose ou de dépendances qui l’exige.
 - Frontend : déclarer dans `front/package.json`, puis utiliser `make upgrade-deps-front`.
 - Conserver `back/uv.lock` et `front/package-lock.json` cohérents avec les manifestes.
 - Ne pas installer une dépendance directement sur l’hôte.
+- Après le remplacement ou le retrait d’une dépendance frontend, redémarrer le service de
+  développement avec `APP_ENV=dev make restart-service SERVICE=frontend`, puis ouvrir un
+  consommateur concerné sur cette instance et inspecter les erreurs réseau et Vite. Le hot
+  reload peut conserver des dépendances supprimées dans son optimiseur ; un build ou un test
+  démarré sur un serveur neuf ne vérifie pas la transition de l’instance déjà en cours.
 
 ## Gérer configuration et données
 
@@ -77,8 +82,9 @@ et l'édition normales restent présentes ; seul le bouton Source montre le code
 de mode lecture/édition, de manifeste à rédiger ou d'assistant de formulaire. Lire
 `docs/fr/dev/document-apps.md` pour l'isolation interne, le pont Dataset et les lecteurs inertes.
 L'accès applicatif aux Datasets exige un accord personnel côté serveur pour la révision
-courante, distinct des ACL et du HTML généré. Cet accord se gère depuis la barre du document,
-jamais depuis le SDK ou MCP. Les quotas d'écriture serveur sont partagés entre applications.
+courante, distinct des ACL et du HTML généré. L'icône et la modale de permissions ont été retirées ;
+ne pas orienter le lecteur vers cette interface. Le SDK et MCP ne peuvent pas accorder cet accès.
+Les quotas d'écriture serveur sont partagés entre applications.
 
 Lorsqu'un résultat appelle un contenu rédigé durable à conserver, réviser ou partager,
 les documents Galaris en sont le support canonique. Une Task ne nécessite pas à elle seule

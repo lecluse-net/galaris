@@ -790,7 +790,7 @@ save retains the draft. Closing the document or losing access clears this contex
 incoming message can supply an active focus; historic messages do not silently restore it.
 
 In the integrated desktop workspace, a message also carries the last document selection, cursor
-position and an excerpt of currently visible text. This covers rendered editing, Source mode and
+position and an excerpt of currently visible text. This covers rendered editing and
 Dataset JSON, with the observed revision. Selecting a passage then typing “rephrase this passage”
 keeps the document selection even after focus moves to the chat composer.
 
@@ -1442,7 +1442,7 @@ their own rights, history and library.
 
 | Resource | Content | Editor |
 |---|---|---|
-| HTML | Rich text, media, forms, CSS and JavaScript; reports, simulators and small applications. | CKEditor, with code available through Source. |
+| HTML | Rich text, media, forms, CSS and JavaScript; reports, simulators and small applications. | Tiptap with a Quasar interface, without a document Source view. |
 | Dataset | JSON values, response arrays, simulation parameters, reference data and structured results. | JSON CodeEditor. |
 
 Other document types, such as a standalone image type, are not available; images/media can already
@@ -1544,19 +1544,20 @@ changes clear caches and old responses cannot replace newly saved icons.
 
 ### Rich editing
 
-CKEditor 5 stores semantic HTML under a defined profile. Shorter fields—memory, personality, job
+Tiptap stores semantic HTML under a defined profile, without an editor badge. Shorter fields—memory, personality, job
 description, Task objective and Goal description/follow-up—use a narrower rich-content profile.
 HTML document editing provides headings, paragraphs, text styles/sizes, bold/italic/underline/
-highlight; lists, alignment, quotes, code blocks and links; tables with rows/columns, headers,
-merged/split cells and adjustable widths; find/replace, undo/redo, Source and full screen;
+highlight; lists, alignment, quotes, code blocks and links; tables with theme-aware styles, rows/columns, headers,
+merged/split cells and adjustable widths; find/replace, undo/redo and full screen; Source is limited to non-document `rich-text` fields;
 Information, Warning, Question, Error, Stop, Forbidden and Review callouts; searchable Galaris
 resource links; and page/full-width display without changing saved content.
 
 Internal links never share their target. Their label belongs to the document and stable references
 survive target renaming. Page mode adapts to available width, including read-only/full-screen views,
 while preserving content and manual preference. Mobile editing, formatting, voice, link, file and
-sharing actions wrap as compact icons rather than an overflow menu. Find/replace and full-screen
-controls remain desktop features. Width changes preserve typing/dictation; fixed toolbars follow
+sharing actions remain accessible as compact icons. **More tools** groups additional commands,
+including find/replace and fullscreen. Main and contextual toolbars share GNOME icons
+where a suitable icon exists. Width changes preserve typing/dictation; fixed toolbars follow
 panel resizing and dialogs/backdrops appear above them.
 
 ### Datasets: independent JSON resources
@@ -1589,8 +1590,8 @@ explanation. Canvas, SVG and browser-compatible 3D are possible within isolation
 required libraries/resources must be embedded. Ordinary text documents retain their usual behaviour.
 
 Saved code runs in an isolated context on opening. The toolbar stays visible and HTML text remains
-editable. JavaScript-controlled areas are usable without promising full WYSIWYG editing; Source
-edits their code. No additional launch/edit mode is required. Entering Source or changing content
+editable. JavaScript-controlled areas are usable without promising full WYSIWYG editing; their code
+stays in stored HTML without a document Source view. No additional launch/edit mode is required. Changing content
 stops the affected execution; valid saving resumes rendering. Older application blocks remain
 compatible. Larger applications can use linked pages and shared Datasets, without a promise of
 general instantaneous synchronisation between applications.
@@ -1607,9 +1608,10 @@ Page sharing and data sharing are separate. A read-only page can contain a form 
 on which the reader has write access. Neither a URI nor an HTML declaration grants permission.
 ### Application permissions and protections
 
-Code uses the **reader's current rights**, never the author's. In addition, each reader must grant
-personal application/Dataset permissions through the document toolbar's **Application permissions**
-control. Dataset access is denied by default, including existing documents.
+Code uses the **reader's current rights**, never the author's. Server-side personal consent is
+also required. The permission icon and dialog have been removed; consent is no longer managed
+through the document UI. Dataset access is denied by default, including existing documents.
+Existing consent remains applicable.
 
 Consent is stored server-side, outside HTML, for the exact content version. Content edits/restoration
 require renewed consent; title-only changes do not. Consent transfers neither to another reader nor
@@ -2983,7 +2985,7 @@ flowchart LR
     R -->|authorised read| C[Comparison HTML document]
 ```
 
-Humans edit prose with WYSIWYG and code through Source. Print/PDF preserve displayed values/results
+Humans edit prose with WYSIWYG; tools and agents can update stored code. Print/PDF preserve displayed values/results
 with paper-adapted layout. The same structure supports questionnaires, collection forms, calculators
 and tracking pages; generated calculations still need checking for the intended use.
 
@@ -3058,7 +3060,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Learned skills | Off by default; explicit observation/learning with thresholds and evidence. |
 | Document collaboration | Saves, revisions, conflicts and sharing, not keystroke-level concurrent editing. |
 | Documents and Datasets | Memory owns HTML Documents `document://`; Dataset owns JSON resources `data://`, with independent rights and history. |
-| Document applications | Automatically rendered isolated HTML/CSS/JS, editable prose and Source code; ordinary external loading blocked, browser CPU/memory not capped. |
+| Document applications | Automatically rendered isolated HTML/CSS/JS and editable prose, without a Source view; ordinary external loading blocked, browser CPU/memory not capped. |
 | Dataset application access | Reader ACLs plus personal content-version consent, denied by default; write includes replacement, not a separate append-only permission. |
 | Data quotas | Bounded JSON without business schema; 30 writes/4,000,000 resulting bytes per minute per user–Dataset across apps. |
 | Application exports | Static current rendering without new execution/writes, with print-width layout independent of editor width. |
@@ -3626,7 +3628,7 @@ rather than independent applications.
 
 Not all shared functions are activatable modules:
 
-- `front/core/util`: rich/mobile editing, interactive Source preservation, static print/PDF capture,
+- `front/core/util`: rich/mobile editing, interactive HTML preservation, static print/PDF capture,
   links, files and viewers including Markdown, code and 3D.
 - `front/core/api.ts`, navigation, theme, i18n and WebSocket: session, transports and shared shell.
 - `front/app/onboarding`: initialisation blocks used by Home.

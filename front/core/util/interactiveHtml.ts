@@ -19,13 +19,33 @@ export function protectInteractiveHtml(html: string): string {
   }
   const first = nodes.findIndex(interactive), last = nodes.length - 1 - [...nodes].reverse().findIndex(interactive)
   if (first < 0) return doc.body.innerHTML
-  const region = doc.createElement('div')
-  const pre = doc.createElement('pre'), code = doc.createElement('code')
-  code.className = 'language-galaris-raw-html'
-  nodes[first]!.before(pre)
-  nodes.slice(first, last + 1).forEach(node => region.append(node))
-  code.textContent = region.innerHTML
-  pre.append(code)
+  // CSS selectors, scripts and cross-object SVG references can share document state.
+  // Keep that region together rather than guessing dependencies from arbitrary code.
+  const shared = [...doc.body.querySelectorAll('*')].some(element => ['script', 'style'].includes(element.localName)
+    || [...element.attributes].some(attribute => attribute.name.startsWith('on')
+      || /url\(\s*['"]?#/i.test(attribute.value)
+      || element.localName !== 'a' && ['href', 'xlink:href'].includes(attribute.name) && attribute.value.startsWith('#')))
+  const wrap = (start: number, end: number): void => {
+    const region = doc.createElement('div')
+    const pre = doc.createElement('pre'), code = doc.createElement('code')
+    code.className = 'language-galaris-raw-html'
+    nodes[start]!.before(pre)
+    nodes.slice(start, end + 1).forEach(node => region.append(node))
+    code.textContent = region.innerHTML
+    pre.append(code)
+  }
+  if (shared) wrap(first, last)
+  else {
+    let start = -1, end = -1
+    nodes.forEach((node, index) => {
+      if (interactive(node)) { if (start < 0) start = index; end = index }
+      else if (node.textContent?.trim() || node instanceof Element) {
+        if (start >= 0) wrap(start, end)
+        start = -1
+      }
+    })
+    if (start >= 0) wrap(start, end)
+  }
   return doc.body.innerHTML
 }
 

@@ -1,0 +1,61 @@
+/* Portable document presentation, including HTML authored by earlier editors. */
+.rich-content { color: var(--rich-foreground); background: var(--rich-background); overflow-wrap: anywhere; font-family: Helvetica, Arial, Tahoma, Verdana, sans-serif; font-size: 16px; line-height: 1.6; }
+.rich-content > :first-child { margin-top: 0; }
+.rich-content p { margin: 0 0 1em; }
+.rich-content figure { margin: 1em auto; }
+.rich-content figure.image { display: table; clear: both; max-width: 100%; }
+.rich-content figure.image img { display: block; max-width: 100%; height: auto; }
+.rich-content figure.image.image_resized { display: block; box-sizing: border-box; }
+.rich-content figure.image.image_resized img { width: 100%; }
+.rich-content figure.image.image_resized figcaption { display: block; }
+.rich-content .image-inline { display: inline-flex; max-width: 100%; vertical-align: middle; }
+.rich-content .image-inline img, .rich-content img { max-width: 100%; height: auto; }
+.rich-content .image-style-side, .rich-content .image-style-align-right, .rich-content .image-style-block-align-right { float: right; margin-left: 1.5em; }
+.rich-content .image-style-align-left, .rich-content .image-style-block-align-left { float: left; margin-right: 1.5em; }
+.rich-content .image-style-align-center { margin-inline: auto; }
+.rich-content figcaption, .rich-content caption { display: table-caption; caption-side: bottom; text-align: center; color: var(--rich-foreground); background: var(--rich-surface); padding: .5em; font-size: .85em; }
+.rich-content figure.table { display: table; max-width: 100%; }
+.rich-content table { border-collapse: collapse; table-layout: fixed; max-width: 100%; margin: 0; }
+.rich-content td, .rich-content th { border: 1px solid var(--rich-border); min-width: 1em; padding: .4em; vertical-align: top; position: relative; }
+.rich-content th { background: var(--rich-surface); font-weight: bold; }
+/* Authored table presets are shared by editing, readers, PDF and portable HTML. */
+.rich-content table.galaris-table-blue { --table-accent: var(--solaire-blue-accent); --table-light: var(--solaire-blue-light); --table-dark: var(--solaire-blue-dark); }
+.rich-content table.galaris-table-iris { --table-accent: var(--solaire-iris-accent); --table-light: var(--solaire-iris-light); --table-dark: var(--solaire-iris-dark); }
+.rich-content table.galaris-table-green { --table-accent: var(--solaire-green-accent); --table-light: var(--solaire-green-light); --table-dark: var(--solaire-green-dark); }
+.rich-content table.galaris-table-orange { --table-accent: var(--solaire-orange-accent); --table-light: var(--solaire-orange-light); --table-dark: var(--solaire-orange-dark); }
+.rich-content table.galaris-table-salmon { --table-accent: var(--solaire-salmon-accent); --table-light: var(--solaire-salmon-light); --table-dark: var(--solaire-salmon-dark); }
+.rich-content table.galaris-table-gray { --table-accent: var(--solaire-gray-accent); --table-light: var(--solaire-gray-light); --table-dark: var(--solaire-gray-dark); }
+.rich-content table:is(.galaris-table-contrast, .galaris-table-striped, .galaris-table-minimal) {
+  --table-background: #fff; --table-ink: var(--table-dark); --table-band: var(--table-light);
+  --table-header-background: var(--table-dark); --table-header-ink: var(--table-light);
+  border: 1px solid var(--table-accent); color: var(--table-ink); background: var(--table-background); print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.rich-content table:is(.galaris-table-contrast, .galaris-table-striped, .galaris-table-minimal) > :is(thead, tbody, tfoot) > tr > :is(td, th) {
+  padding: 10px 14px; border: 1px solid var(--table-accent); background: var(--table-background); color: var(--table-ink); vertical-align: middle;
+}
+.rich-content table:is(.galaris-table-contrast, .galaris-table-striped) > tbody > tr:nth-child(even) > :is(td, th) { background: var(--table-band); }
+.rich-content table.galaris-table-contrast > :is(thead, tbody) > tr:first-child > :is(td, th) {
+  background: var(--table-header-background); color: var(--table-header-ink); border-color: var(--table-accent); font-weight: 600;
+}
+.rich-content table.galaris-table-striped > :is(thead, tbody) > tr:first-child > :is(td, th) {
+  background: var(--table-band); border-bottom: 2px solid var(--table-accent); font-weight: 600;
+}
+.rich-content table.galaris-table-minimal { border-top-width: 3px; }
+.rich-content table.galaris-table-minimal > :is(thead, tbody) > tr:first-child > :is(td, th) { background: var(--table-band); font-weight: 600; }
+/* Screen-only overrides keep printing and standalone exports on a light page. */
+@media screen {
+  .body--dark .rich-content table:is(.galaris-table-contrast, .galaris-table-striped, .galaris-table-minimal) {
+    --table-background: var(--rich-background); --table-ink: var(--table-light); --table-band: var(--table-dark);
+    --table-header-background: var(--table-light); --table-header-ink: var(--table-dark);
+  }
+}
+.rich-content blockquote:not(.galaris-link-card):not(.galaris-callout) { border-left: 4px solid var(--rich-border); padding-left: 1.5em; margin-left: 0; }
+.rich-content .marker-yellow { background: #FFE610; color: #202124; }
+.rich-content .marker-green { background: #11A653; color: #202124; }
+.rich-content .marker-pink { background: #D936B5; color: #202124; }
+.rich-content .marker-blue { background: #087FF5; color: #fff; }
+.rich-content .pen-red { color: #F43636; background: transparent; }
+.rich-content .pen-green { color: #11A653; background: transparent; }
+/* Browser style APIs normalize legacy pastel hex values during editing. */
+.rich-content :is([style*="background-color: rgb(255, 245, 157)"], [style*="background-color: rgb(165, 214, 167)"], [style*="background-color: rgb(144, 202, 249)"], [style*="background-color: rgb(244, 143, 177)"]) { color: #202124 !important; }
+.rich-content :is([style*="background-color: rgb(255, 245, 157)"], [style*="background-color: rgb(165, 214, 167)"], [style*="background-color: rgb(144, 202, 249)"], [style*="background-color: rgb(244, 143, 177)"]) * { color: inherit; }

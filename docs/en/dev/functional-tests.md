@@ -2,6 +2,54 @@
 
 # Functional guarantees catalogue
 
+`document-apps.spec.mjs` checks isolated HTML text contrast with fixed CSS colors and
+light/dark panels. Switching themes on mobile and desktop does not restart scripts, clear
+fields or emit content changes. Print journeys preserve readable styling and calculated values.
+Exporting a form entirely outside the viewport also preserves its current values: capture
+does not depend on iframe animation frames, which Chromium suspends offscreen.
+Narrow document panels on a large screen keep form buttons reachable when scrolling,
+including in WebKit, after resizing and in fullscreen. Closing the editor restores its
+host container's own scrolling configuration.
+
+`rich-text.spec.mjs` covers choosing a table preset from its context gallery, undo/redo,
+switching and removing styles, fresh reopening, reading and printable rendering on desktop
+and mobile. Columns, merged cells and captions survive; new rows inherit the presentation.
+`core/util/tests/test_rich_text.py` checks that backend HTML normalization preserves all
+18 combinations.
+Theme changes adapt rendering without another edit or changing the HTML; reopening and
+reading follow the active theme while printing and PDF retain the light presentation.
+
+`document-print.spec.mjs` checks that PDF exports preserve process diagrams, their participants
+and agent portraits. Images and cards have no active links while ordinary text links remain
+usable. The scenario generates a real synthetic PDF for visual and link-annotation checks.
+
+`front/browser-tests/tiptap-preservation.spec.mjs` covers the HTML corpus through Tiptap,
+serialization, reopening and reading: canonical references, tables and opaque HTML/CSS/JavaScript.
+A real Three.js scene exercises the offline isolated runtime, controls and a nonempty
+static capture, without executing code in the editor's origin. Document Source and its Chat focus scenario are retired;
+rendered selection scenarios remain in `chat-document-workspace.spec.mjs`. Source for
+`rich-text` fields remains covered by `source-editing.spec.mjs`, and `rich-text.spec.mjs`
+checks its absence in documents and profile transitions on mobile and desktop. Prose between independent
+static objects and inherited-color tables remain editable; shared CSS/script regions preserve
+their source and ordering. Moving from object selection to text before typing preserves the
+object. The table journey also checks that merge/split is available only for a compatible
+selection. Existing editing,
+attachment, voice, export and Chat suites retain their guarantees using Quasar controls.
+Internal citation modals are covered by `galaris-links.spec.mjs` and
+`process-references.spec.mjs`; these current contracts replace the old test expecting a
+Goal citation to open in a browser tab.
+
+`rich-text.spec.mjs` checks that the size chosen with an image handle survives the end
+of the gesture, property changes, a fresh editor and reading: block, inline, wrapped and
+table-cell images, enlarged or reduced. Reopening recreates the component; feeding back
+its latest value does not exercise this contract. `e2e/specs/editorial-html.spec.mjs`
+covers actual storage of that size and preservation after reloading the document.
+
+`document-resources.spec.mjs` distinguishes image selection while editing from direct opening
+in read-only mode, with or without links. `document-apps.spec.mjs` preserves form input and
+commands around a grouped HTML block; read-only viewing opens a fullscreen capture without
+scripts or another save, on mobile and desktop.
+
 `front/browser-tests/chat-home.spec.mjs` checks that the home screen and Conversations panel
 include the same conversations, including older and empty ones. The former seven-day default
 filter and its toggle are retired; search, pagination, error recovery and rejection of late
@@ -21,6 +69,10 @@ access, concurrency and replay guarantees. Former list attachment/detachment sce
 are replaced by this contract. The merged menus
 preserve web links, text selection and uploads in `galaris-links.spec.mjs`,
 `mobile-editor-toolbar.spec.mjs` and `document-upload.spec.mjs`.
+`galaris-links.spec.mjs` replaces the former link search scenarios with the shared internal
+picker, including the reduced toolbar in the Memory form: preserved selected text and
+formatting, undo, dismissal, error recovery and rejection after content changes.
+Navigation and multiple selection remain covered by `internal-file-picker.spec.mjs`.
 `agents.spec.mjs` covers inserted cards, avatars, link/card switching, saving without
 injected UI and opening the complete agent card. `galaris-links.spec.mjs` checks that
 Task citations open and reopen in a modal without navigation in reading and editing modes.
@@ -734,7 +786,7 @@ unavailability), using a real DB.
 | Process → human → messaging | Private internal or external request, plain JSON reply converted to typed values, file-only message with source URI, retried delivery failure, rejection of another sender or a late reply; unrelated messages never complete the activity. An AI activity waits without an auxiliary Task, resumes even after an early answer, and preserves user holds; historical waits are retired, duplicates stay idempotent, and the Dataset and final message are preserved | `back/app/process/tests/test_human_messaging.py`, `back/app/process/tests/test_activity_controls.py`, `back/app/harness/tests/test_conversation_prompt.py`, `e2e/specs/native-processes.spec.mjs` |
 | Document → file → agent | Content, revision, canonical URIs and ACLs agree across readers and writers | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
 | Datasets and document compatibility | Separate libraries and creation, native `data://` identity, exact JSON source and errors without extra resources/revisions; independent rights/history, copy/restore and conflicts; legacy aliases and invalid drafts preserved. The native Dataset journey replaces Dataset creation in Documents | `back/app/memory/tests/test_dataset_documents.py`, `test_document_library.py`, `back/app/dataset/tests/test_datasets.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs`, `e2e/specs/datasets.spec.mjs` |
-| Interactive document HTML | Ordinary HTML forms using shared Datasets, viewer ACLs and personal revision-bound consent; revocation, unapproved cross-Dataset copies, JSON validation and quotas across workers; editable prose and usual toolbar, code only in Source; static print/PDF with resource filtering; isolation, WebRTC, bridge saturation and late responses | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
+| Interactive document HTML | Ordinary HTML forms using shared Datasets, viewer ACLs and personal revision-bound consent; revocation, unapproved cross-Dataset copies, JSON validation and quotas across workers; editable prose and usual toolbar, without a document Source view; static print/PDF with resource filtering; isolation, WebRTC, bridge saturation and late responses | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
 | Restart / concurrency | Stale workers cannot replace current owners; ambiguous effects are not blindly replayed | `back/app/task/tests/test_active_lease.py`, `back/app/harness/tests/test_checkpoint.py`, `back/tests/test_durable_concurrency.py` |
 | Lost tool acknowledgement | An SSH command remains unique after a lost response and PostgreSQL reload; MCP timeouts after effects block replay; retry preserves the journal | `make tests-recovery`, `back/app/harness/tests/test_ssh_checkpoint_recovery.py`, `back/app/harness/tests/test_execution_evidence.py`, `back/app/console/tests/test_durable_operations.py` |
 
@@ -872,7 +924,7 @@ are in `front/browser-tests/`.
 | `messenger` | Admission, deduplication and delivery within the correct connection and room | `test_journal.py`, `test_ingest.py`, `test_interactions.py`, `test_mcp_routing.py`, `test_mcp_files.py` |
 | `conversation` | Context, admissions, results and delivery resolution without repeated effects | `test_service.py`, `test_task_admission.py`, `test_delivery_resolution_http.py`, `e2e/specs/reliability.spec.mjs` |
 | `chat` | Sending, archive/restore, streaming recovery, user/room isolation and choices without an LLM (buttons, recovery, expiry) | `test_authorization.py`, `test_events.py`, `test_native_facade.py`, `chat.spec.mjs`, `chat-interactions.spec.mjs`, `e2e/specs/chat.spec.mjs` |
-| Chat and document | Open and edit in the full editor; save before sending and pass the URL to the prompt only while the document is displayed; retain selection and cursor across composer focus, send a bounded visible excerpt and invalidate stale positions in HTML and Source; preserve the draft on failure; reserve the integrated pane for desktop (≥ 1024 px), with controls in the document title bar; open a dialog on mobile; resize both desktop layouts with a mouse, touch and keyboard without losing edits; keep side-by-side documents at least 560 px wide, automatically stacking the panes when space is insufficient; keep the right sidebar visible on desktop and preserve content and conversation across reconnect | `front/browser-tests/chat-document-workspace.spec.mjs`, `back/app/conversation/tests/test_service.py`, `back/app/chat/tests/test_native_facade.py`, `back/app/memory/tests/test_document_library.py`, `back/app/memory/tests/test_document_grants.py` |
+| Chat and document | Open and edit in the full editor; save before sending and pass the URL to the prompt only while the document is displayed; retain selection and cursor across composer focus, send a bounded visible excerpt and invalidate stale positions in HTML; preserve the draft on failure; reserve the integrated pane for desktop (≥ 1024 px), with controls in the document title bar; open a dialog on mobile; resize both desktop layouts with a mouse, touch and keyboard without losing edits; keep side-by-side documents at least 560 px wide, automatically stacking the panes when space is insufficient; keep the right sidebar visible on desktop and preserve content and conversation across reconnect | `front/browser-tests/chat-document-workspace.spec.mjs`, `back/app/conversation/tests/test_service.py`, `back/app/chat/tests/test_native_facade.py`, `back/app/memory/tests/test_document_library.py`, `back/app/memory/tests/test_document_grants.py` |
 | `voice` | Call setup/cancellation, correct channel and media cleanup | `test_session.py`, `test_multichannel_routing.py`, `test_realtime_engine.py`, `voice.spec.mjs` |
 | `memory` | Search, create and restore private memories and documents; share documents without losing content, revision or rights | `test_document_library.py`, `test_document_grants.py`, `test_editorial_html.py`, `test_semantic_search.py`, `memory.spec.mjs` |
 | Document/Memory separation | Archive before expansion, verify the immutable backup, transfer from it and remove columns only after validation; retain the archive and its resources after forget; preserve content, URIs, history and permissions after rollback and replay; separate document content and synthesis, their revisions and staleness; search both in one result and hide both after revocation; keep standalone memories private without an authored title; open, save, delete and capture thumbnails of full document content through its separate contract, even with an empty synthesis | `back/app/memory/tests/test_document_split.py` (real PostgreSQL and Atlas), `test_document_retrieval.py`, `front/browser-tests/memory.spec.mjs`, `document-deletion.spec.mjs`, `document-resources.spec.mjs`, `document-thumbnails.spec.mjs`, `execution.spec.mjs`, `e2e/specs/editorial-html.spec.mjs`, `file-indexing.spec.mjs`, `session-races.spec.mjs` |
@@ -984,7 +1036,7 @@ after its WebAPK updates.
 | DB / runtime | Isolated sessions, concurrency, timeout and cleanup | `back/core/tests/test_database_context.py`, `test_runtime_timeouts.py`, `back/tests/test_durable_concurrency.py` |
 | i18n / navigation / API | Consistent catalogs, authorized navigation and responses bound to the correct account/request | `make typecheck`, `front/core/api.test.mjs`, `front/browser-tests/lab-access.spec.mjs`, `e2e/specs/session-races.spec.mjs` |
 | Content / previews / files | Edit, read and print without corruption or unintended execution; adapt page width automatically to the container, including fullscreen and read-only views, while preserving content and the manual preference; release attachments | `back/core/util/tests/test_rich_text.py`, `back/core/preview/tests/test_conversion.py`, `front/browser-tests/rich-text.spec.mjs`, `document-print.spec.mjs`, `document-layout.spec.mjs`, `model3d.spec.mjs` |
-| Document shortcuts | Format and undo with the keyboard, nest lists with Tab, preserve table navigation and code indentation; protect Source and read-only content; save and reopen headings | `front/browser-tests/document-shortcuts.spec.mjs`, `e2e/specs/editorial-html.spec.mjs` |
+| Document shortcuts | Chromium, Firefox and WebKit qualification: headings, alignment, superscript/subscript, undo/redo, lists, tables and nonbreaking characters; distinguish Ctrl+Alt, AltGr and simulated Option characters; preserve selection, links, navigation, focus and fullscreen; open help and print read-only content without changes; scroll help without covering its title; protect rich-text and Source fields; save and reopen content. Native Windows/macOS keyboard layouts remain outside the Linux runner | `front/browser-tests/document-shortcuts.spec.mjs`, `e2e/specs/editorial-html.spec.mjs` |
 | PWA / release | Automatically reload tabs after a failed deployment while preserving the session and conversation; qualify exact release images, backups and restoration | `e2e/specs/pwa.spec.mjs`, `back/tests/test_release_qualification.py`, `make tests-release`, `make tests-restore` |
 | Offline documentation tooling | Generate the FR/EN maps from the current checkout without access to secrets, application volumes or the network; refuse forbidden reads, source writes and connections from executed code; publish only the expected outputs and preserve the checkout on failure | `bin/test-documentation.sh`, `bin/test-documentation-confinement.sh`, `make tests-documentation` |
 
@@ -1079,7 +1131,7 @@ its counter includes `WITH`.
   the existing position and supports retry.
   Document icon choices propagate between tree and list, persist on reopening and ignore stale
   reads or previous-session writes; resetting the default and retrying failures remain usable.
-  In the tree, a document icon opens the document without an icon picker; folder icons remain editable.
+  In the list and tree, a document icon opens the document without an icon picker; choosing an icon remains available in the editor, and folder icons remain editable.
 - `e2e/specs/document-folder-create.spec.mjs`: creation from a nested folder, persisted
   personal classification, sub-document creation and expansion after reloading the assembled library.
   `test_document_classification.py` also covers personal isolation, read-only classification,

@@ -50,28 +50,32 @@ test('two document applications collect into the same Dataset with isolated Java
   const attachment = await upload.json()
   const photo = `<p class="note">Synthetic photo before the form</p><img alt="Synthetic photo" src="document://${documents[0].id}/attachments/${attachment.id}">`
   for (let index = 0; index < documents.length; index++) {
-    await page.goto(`/memory/documents?document_id=${documents[index].id}`)
     if (index === 0) {
-      await page.getByRole('button', { name: 'Source', exact: true }).click()
-      await page.locator('.ck-source-editing-area textarea').fill('<p>Data collection</p>' + photo + definition.html.replace('<form>', `<form data-dataset="data://${dataset.id}">`) + '<script>' + definition.javascript + '</script>')
-      await page.getByRole('button', { name: 'Source', exact: true }).click()
+      const latest = (await (await request.get(`/api/memory/documents/${documents[index].id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
+      const updated = await request.patch(`/api/memory/documents/${documents[index].id}?actor_agent_id=${fixture.agent_id}`, { headers, data: {
+        expected_revision: latest.revision, payload: { text: '<p>Data collection</p>' + photo + definition.html.replace('<form>', `<form data-dataset="data://${dataset.id}">`) + '<script>' + definition.javascript + '</script>' },
+      } })
+      expect(updated.ok(), await updated.text()).toBeTruthy()
     }
-    await expect(page.getByRole('button', { name: 'Source', exact: true })).toBeVisible()
-    await expect(page.locator('.ck-editor__editable')).not.toContainText('galaris.datasets.append')
-    await page.locator('.ck-galaris-editor').evaluate((element, width) => { element.style.width = width + 'px' }, index === 0 ? 320 : 980)
+    await page.goto(`/memory/documents?document_id=${documents[index].id}`)
+    await expect(page.getByRole('button', { name: 'Source', exact: true })).toHaveCount(0)
+    await expect(page.locator('[data-editor-surface]')).not.toContainText('galaris.datasets.append')
+    await page.locator('.tiptap-galaris-editor').evaluate((element, width) => { element.style.width = width + 'px' }, index === 0 ? 320 : 980)
     const app = page.frameLocator('.document-application iframe').frameLocator('iframe')
     if (index === 0) await expect.poll(() => app.getByRole('img', { name: 'Synthetic photo' }).evaluate(image => image.naturalWidth)).toBeGreaterThan(0)
     // Generated HTML cannot grant its own access, even for the owner of both documents.
     await app.getByRole('textbox').fill('Unapproved')
     await app.getByRole('button', { name: /^(Submit|Save|Enregistrer)$/ }).click()
-    await expect(app.getByRole('status')).toContainText(/Authorize|Autorisez/)
+    await expect(app.getByRole('status')).toContainText(/not authorized|n’est pas autorisé/)
     const unchanged = await (await request.get(`/api/datasets/${dataset.id}`, { headers })).json()
     expect(unchanged.revision).toBe(index + 1)
-    await page.getByRole('button', { name: /^(Application permissions|Permissions des applications)$/ }).click()
-    await page.getByRole('combobox', { name: /^(My permission|Mon autorisation)$/ }).click()
-    await page.getByRole('option', { name: /^(Read and write|Lecture et écriture)$/ }).click()
-    await expect(page.getByRole('combobox', { name: /^(My permission|Mon autorisation)$/ })).toHaveValue(/^(Read and write|Lecture et écriture)$/)
-    await page.getByRole('button', { name: /^(Close|Fermer)$/, exact: true }).last().click()
+    // Seed existing server consent: the document no longer exposes a permission dialog.
+    const permissions = await (await request.get(`/api/memory/documents/${documents[index].id}/app-permissions`, { headers })).json()
+    const grant = permissions.grants[0]
+    const consent = await request.put(`/api/memory/documents/${documents[index].id}/app-permissions/${grant.app_key}/${grant.alias}`, {
+      headers, data: { document_revision: permissions.document_revision, access: 'write' },
+    })
+    expect(consent.ok(), await consent.text()).toBeTruthy()
     await app.getByRole('textbox').fill('Response ' + index)
     await app.getByRole('button', { name: /^(Submit|Save|Enregistrer)$/ }).click()
     await expect(app.getByRole('status')).toHaveText('Saved ' + (index + 1))

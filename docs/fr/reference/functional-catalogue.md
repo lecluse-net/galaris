@@ -993,7 +993,7 @@ d’affichage ; une ancienne référence ne devient pas une sélection courante 
 
 Dans l’espace documentaire intégré sur desktop, le message transmet aussi la dernière sélection,
 la dernière position du curseur et un extrait du texte actuellement visible. Ces repères concernent
-le rendu éditable, le mode Source ou le JSON d’un Dataset, avec la révision observée. L’utilisateur
+le rendu éditable ou le JSON d’un Dataset, avec la révision observée. L’utilisateur
 peut sélectionner un passage puis écrire « reformule ce passage » : le focus dans le champ de chat
 ne fait pas perdre la sélection du document.
 
@@ -1906,7 +1906,7 @@ Deux ressources complémentaires sont disponibles :
 
 | Ressource | Contenu et usages | Éditeur |
 |---|---|---|
-| **HTML** | Texte enrichi, médias, formulaires, CSS et JavaScript ; rapports, simulateurs et petites applications. | CKEditor pour le texte HTML, avec accès au code par le bouton Source. |
+| **HTML** | Texte enrichi, médias, formulaires, CSS et JavaScript ; rapports, simulateurs et petites applications. | Tiptap et interface Quasar, sans vue Source dans les documents. |
 | **Dataset** | Données JSON : tableau de réponses, paramètres de simulation, référentiel ou résultats structurés. | CodeEditor avec coloration syntaxique JSON. |
 
 Les autres types de documents, tels qu’un type image autonome, ne sont pas encore disponibles.
@@ -2043,7 +2043,7 @@ Voir le [contrat de classement personnel](../../../project/decisions/0099-person
 
 ### Édition riche
 
-Les documents HTML utilisent **CKEditor 5** et stockent un HTML sémantique encadré par un profil. Les
+Les documents HTML utilisent **Tiptap**, sans badge d’éditeur, et stockent un HTML sémantique encadré par un profil. Les
 champs plus courts — mémoire, personnalité, fiche de poste, objectif de Task, description/suivi de
 Goal — emploient un profil riche plus restreint.
 
@@ -2051,8 +2051,8 @@ L’éditeur permet :
 
 - titres, paragraphes, styles de texte, taille, gras, italique, soulignement et surlignage ;
 - listes, alignement, citations, blocs de code et liens ;
-- tableaux, lignes/colonnes, en-têtes, fusion/séparation de cellules et largeurs ajustables ;
-- recherche/remplacement, annulation/rétablissement, édition de la source et plein écran ;
+- tableaux, styles adaptés au thème, lignes/colonnes, en-têtes, fusion/séparation de cellules et largeurs ajustables ;
+- recherche/remplacement, annulation/rétablissement et plein écran ; Source reste réservé aux champs `rich-text` hors documents ;
 - encadrés Information, Attention, Question, Erreur, Stop, Interdit et À examiner ;
 - recherche et insertion de **liens Galaris** vers des contenus accessibles ;
 - affichage en page ou pleine largeur pour les documents, sans modifier le contenu enregistré.
@@ -2062,9 +2062,10 @@ stable permet de conserver le lien si la cible est renommée.
 
 Le mode page s’adapte à la largeur disponible, y compris en lecture seule et plein écran, en
 préservant le contenu et la préférence manuelle. Sur mobile, les actions disponibles d’édition,
-formatage, voix, liens, fichiers et partage s’alignent en icônes compactes et reviennent à la ligne,
-sans menu de débordement. Recherche/remplacement et commande de plein écran restent des contrôles
-desktop. Une variation de largeur conserve la saisie et la dictée. Les barres fixes suivent le
+formatage, voix, liens, fichiers et partage restent accessibles en icônes compactes. **Autres outils**
+regroupe les commandes supplémentaires, notamment recherche/remplacement et plein écran.
+Les barres principales et contextuelles partagent les icônes GNOME lorsqu’une icône adaptée existe.
+Une variation de largeur conserve la saisie et la dictée. Les barres fixes suivent le
 redimensionnement de leur panneau ; les dialogues et leur fond passent au-dessus des barres d’outils.
 
 ### Datasets : des ressources JSON indépendantes
@@ -2108,8 +2109,8 @@ Ces possibilités sont facultatives : un document de texte conserve son fonction
 Le contenu enregistré s’affiche et son code s’exécute à l’ouverture dans un contexte isolé.
 **La barre d’outils reste présente et le texte HTML reste éditable.** Les zones pilotées par
 JavaScript sont utilisables sans devoir être entièrement modifiables au WYSIWYG ; leur code
-se modifie par le bouton **Source** existant. Aucun mode de lancement ou d’édition supplémentaire
-n’est nécessaire. Passer en Source ou modifier le contenu arrête l’exécution concernée ; le rendu
+reste conservé dans le HTML enregistré, sans vue **Source** dans l’éditeur de documents.
+Aucun mode de lancement ou d’édition supplémentaire n’est nécessaire. Modifier le contenu arrête l’exécution concernée ; le rendu
 reprend après une sauvegarde valide. Les anciens blocs applicatifs restent compatibles.
 
 Les pages conservent une taille et un rôle compréhensibles. Une application plus étendue peut
@@ -2139,9 +2140,9 @@ d’écriture. Une URI ou une déclaration dans le HTML n’accorde aucun accès
 ### Autorisations applicatives et protections
 
 Le code utilise les **droits actuels du lecteur**, jamais ceux de l’agent auteur. Ces droits sont
-complétés par un accord personnel, géré depuis l’icône **Permissions des applications** de la barre
-du document. Par défaut, l’accès aux Datasets est refusé, y compris dans les documents existants.
-Chaque lecteur choisit les accès qu’il autorise pour l’application et le Dataset concernés.
+complétés par un accord personnel côté serveur. L’icône et la modale de permissions ont été
+retirées ; ces accords ne se gèrent plus depuis l’interface du document. Par défaut, l’accès
+aux Datasets est refusé, y compris dans les documents existants. Les accords existants restent applicables.
 
 Cet accord est conservé côté serveur, séparément du HTML, et concerne la **version précise du
 contenu**. Une modification ou une restauration nécessite un nouvel accord ; un changement de
@@ -3962,7 +3963,7 @@ flowchart LR
     R -->|lecture autorisée| C[Document HTML de comparaison]
 ```
 
-L’humain corrige le texte d’explication au WYSIWYG et passe par Source pour changer le code.
+L’humain corrige le texte d’explication au WYSIWYG ; les outils et agents peuvent mettre à jour le code enregistré.
 L’impression ou le PDF conservent les valeurs et résultats actuellement affichés, avec une mise
 en page adaptée au papier. Le même assemblage convient à des formulaires de collecte, enquêtes,
 calculateurs ou pages de suivi ; les calculs produits par l’IA restent à vérifier pour leur usage.
@@ -4051,7 +4052,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Apprentissage de skills | Off par défaut ; observation et apprentissage explicites avec preuves et seuils. |
 | Collaboration documentaire | Sauvegarde, révisions, conflits et partage ; pas une promesse de coédition simultanée caractère par caractère. |
 | Documents et Datasets | Documents HTML `document://` dans Memory et ressources JSON `data://` dans Dataset ; droits et historiques indépendants. |
-| Applications documentaires | Affichage automatique de HTML/CSS/JavaScript isolés, texte éditable et Source pour le code ; les ressources externes ordinaires sont bloquées. Le CPU et la mémoire du navigateur ne sont pas plafonnés par ce mécanisme. |
+| Applications documentaires | Affichage automatique de HTML/CSS/JavaScript isolés et texte éditable, sans vue Source ; les ressources externes ordinaires sont bloquées. Le CPU et la mémoire du navigateur ne sont pas plafonnés par ce mécanisme. |
 | Accès applicatif aux Datasets | Droits actuels du lecteur et accord personnel pour la version du document ; refus par défaut. L’accès en écriture permet aussi un remplacement complet, sans permission « ajout uniquement » distincte. |
 | Données et quotas applicatifs | JSON borné, sans schéma métier imposé ; 30 écritures et 4 000 000 octets résultants par minute et couple utilisateur–Dataset, partagés entre applications. |
 | Export des applications | Capture statique du rendu courant, sans réexécution ni écriture supplémentaire ; largeur recalculée pour l’impression/PDF, indépendamment du panneau ouvert. |
@@ -4635,7 +4636,7 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 
 Les fonctions communes ne sont pas toutes des modules activables :
 
-- `front/core/util` : édition riche et mobile, portions interactives préservées dans Source,
+- `front/core/util` : édition riche et mobile, portions interactives préservées dans le HTML enregistré,
   capture statique du rendu pour impression/PDF, liens, fichiers et visionneuses, dont Markdown,
   code et 3D ;
 - `front/core/api.ts`, navigation, thème, i18n et WebSocket : session, transports et shell commun ;

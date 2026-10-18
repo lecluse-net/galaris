@@ -1,4 +1,6 @@
-const colors = /^(?:#[0-9a-f]{3}(?:[0-9a-f]{3})?|(?:rgb|hsl)a?\([0-9.,% /]{1,65}\)|black|white|red|green|blue|yellow|orange|purple|gray|grey|silver|maroon|navy|teal|lime|aqua|fuchsia|transparent)$/i
+import { tableStyleClasses } from './editorialTableStyles'
+
+const colors = /^(?:#[0-9a-f]{3}(?:[0-9a-f]{3})?|(?:rgb|hsl)a?\([0-9.,% /]{1,65}\)|black|white|red|green|blue|yellow|orange|purple|gray|grey|silver|maroon|navy|teal|lime|aqua|fuchsia|transparent|currentcolor)$/i
 const length = (value: string, maximum = 1600): boolean => {
   const match = /^(\d+(?:\.\d+)?)(px|pt|em|rem|%)?$/.exec(value)
   return Boolean(match && Number(match[1]) <= (match[2] === '%' ? 100 : maximum))
@@ -7,11 +9,12 @@ export const editorialClasses = new Set('galaris-link-card galaris-media-audio g
 for (const kind of ['', '-info', '-warning', '-question', '-error', '-stop', '-forbidden', '-search']) editorialClasses.add('galaris-callout' + kind)
 editorialClasses.add('galaris-process-diagram')
 editorialClasses.add('galaris-agent-card')
+for (const value of tableStyleClasses) editorialClasses.add(value)
 export function validEditorialStyle(key: string, value: string): boolean {
   const raw = value.trim().toLowerCase()
   switch (key) {
     case 'text-align': return ['left', 'center', 'right', 'justify'].includes(raw)
-    case 'color': case 'background-color': case 'border-color': return colors.test(raw)
+    case 'color': case 'background-color': case 'border-color': return colors.test(raw) || raw === 'inherit'
     case 'width': case 'height': return length(raw)
     case 'padding': case 'border-width': case 'font-size': return length(raw, 100)
     case 'margin-left': case 'margin-right': return raw === 'auto' || length(raw, 320)

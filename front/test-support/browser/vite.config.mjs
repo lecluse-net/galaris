@@ -3,6 +3,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 import { developmentWorkerRecovery } from '../../pwa/developmentWorkerRecovery.ts'
+import { documentRuntimeLibraries } from '../../documentRuntimeLibraries.ts'
 
 // Install an obsolete cached shell once; subsequent update requests reach Vite.
 const legacyWorkerRequests = new Set()
@@ -42,6 +43,7 @@ export default defineConfig({
   cacheDir: '/tmp/galaris-component-vite',
   resolve: { alias: { '@': fileURLToPath(new URL('../..', import.meta.url)) } },
   plugins: [
+    documentRuntimeLibraries(),
     legacyWorkerFixture,
     developmentWorkerRecovery(),
     vue({ template: { transformAssetUrls } }),
@@ -51,7 +53,11 @@ export default defineConfig({
     entries: ['test-support/browser/index.html'],
     noDiscovery: true,
     include: ['vue', 'pinia', 'quasar', 'quasar/dist/quasar.client.js', 'quasar/lang/en-US', 'quasar/lang/fr', 'quasar/lang/zh-CN',
-      'ckeditor5', '@ckeditor/ckeditor5-vue', 'vue-router', 'vue-i18n', 'axios', 'jwt-decode', 'socket.io-client', 'marked', 'qrcode', 'echarts', 'three',
+      '@tiptap/core', '@tiptap/vue-3', '@tiptap/starter-kit', '@tiptap/extension-table',
+      '@tiptap/extension-text-style', '@tiptap/extension-text-align', '@tiptap/extension-highlight',
+      '@tiptap/extension-subscript', '@tiptap/extension-superscript', '@tiptap/extension-link',
+      '@tiptap/pm/state', '@tiptap/pm/view', '@tiptap/pm/history',
+      'vue-router', 'vue-i18n', 'axios', 'jwt-decode', 'socket.io-client', 'marked', 'qrcode', 'echarts', 'three',
       'highlight.js/lib/common', 'highlight.js/lib/core', 'highlight.js/lib/languages/xml', 'highlight.js/lib/languages/javascript', 'highlight.js/lib/languages/css',
       'three/addons/controls/OrbitControls.js', 'three/addons/libs/meshopt_decoder.module.js',
       'three/addons/loaders/GLTFLoader.js', 'three/addons/loaders/OBJLoader.js', 'three/addons/loaders/PLYLoader.js', 'three/addons/loaders/STLLoader.js'],

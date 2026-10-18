@@ -9,6 +9,7 @@ import './resourcePreviewCard.css'
 export { showConfirmationDialog } from './confirmationDialog'
 export { startVisiblePolling } from './visiblePolling'
 export { isPrivateHostname } from './networkAddress'
+export { applyDocumentContrast } from './documentContrast'
 export { default as NetworkAccessNotice } from './components/NetworkAccessNotice.vue'
 export const CodeEditor = defineAsyncView(() => import('./components/CodeEditor.vue'))
 export { default as ResourceAttachments } from './components/ResourceAttachments.vue'
@@ -63,7 +64,7 @@ export type { BrowserResourceKind, NavigationClick } from './resourceViewer'
 export type { StatusBadgeTone } from './statusBadge'
 // Reading a document or using a utility must not initialize the editing engine.
 export const RichTextEditor = defineAsyncComponent(() => import('./components/RichTextEditor.vue'))
-export type { EditorVoiceControls } from './ckeditorVoice'
+export type { EditorVoiceControls } from './editorVoice'
 export type { EditorVoiceContext, EditorVoiceSession, EditorVoiceProvider } from './editorVoice'
 export const RichText = defineAsyncView(() => import('./components/RichText.vue'))
 export const EditorialContent = defineAsyncView(() => import('./components/EditorialContent.vue'))
@@ -79,3 +80,4 @@ export { default as WaitingResponseIndicator } from './components/WaitingRespons
 export { preparePortableDocumentSnapshot } from './facade'
 export { queuePreview } from './previewQueue'
 export type { RegisterDocumentCapture, RenderedDocumentCapture } from './renderedDocument'
+export { captureElementRendering } from './captureElementRendering'

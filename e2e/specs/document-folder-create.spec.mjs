@@ -35,7 +35,7 @@ test('creating documents in folders and under documents persists the personal hi
   expect(created.ok(), await created.text()).toBeTruthy()
   const document = await created.json()
   await expect(dialog).toHaveCount(0)
-  await expect(page.locator('.ck-editor__editable')).toBeVisible()
+  await expect(page.locator('[data-editor-surface]')).toBeVisible()
   const folder = page.getByLabel(`Documents du dossier ${child.name}`, { exact: true })
   await expect(folder.getByText(document.title, { exact: true })).toBeVisible()
   await expect(page.getByLabel('Documents non classés', { exact: true }).getByText(document.title, { exact: true })).toHaveCount(0)

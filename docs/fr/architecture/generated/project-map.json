@@ -20410,6 +20410,7 @@
           "front/app/memory/components/MemoryItemThumbnail.vue",
           "front/app/memory/components/MemorySharingPanel.vue",
           "front/app/memory/documentAppResources.ts",
+          "front/app/memory/documentAppSandbox.ts",
           "front/app/memory/documentEditor.ts",
           "front/app/memory/documentFolders.ts",
           "front/app/memory/pages/contacts.vue",

@@ -23,6 +23,42 @@ const photoId = '22222222-2222-4222-8222-222222222222'
 const photoUri = `document://${datasetId}/attachments/${photoId}`
 const photoBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNkYPjPwMDAxMDAwMDAAAALHwEDmIWXfgAAAABJRU5ErkJggg==', 'base64')
 
+for (const width of [1440, 390]) test(`isolated HTML follows the host theme without restarting scripts or losing input at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 })
+  const app = { id: 'theme-example', title: 'Synthetic theme example',
+    html: '<h2>Theme sample</h2><p>Inherited paragraph <strong>with emphasis</strong></p><p style="color:#222">Explicit dark text</p><div style="background:#eef2f7"><span>Light panel</span></div><div style="background:#162637;color:#f5f5f5">Dark panel</div><label>Draft <input value="Initial"></label><button>Increment</button><output>0</output>',
+    css: 'body{color:#222;font-family:system-ui;line-height:1.5} h2{margin-top:0} div{padding:12px} label{display:block} button{background:#087ff5;color:#fff;border:0;padding:8px}',
+    javascript: 'window.runs=(window.runs||0)+1; document.querySelector("button").onclick=()=>document.querySelector("output").textContent=Number(document.querySelector("output").textContent)+1;',
+  }
+  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: { documentId: 'synthetic-theme', revision: 1, app }, dark: false })
+  const content = inner(page)
+  await expect(content.getByRole('heading', { name: 'Theme sample' })).toBeVisible()
+  await content.getByRole('textbox', { name: 'Draft' }).fill('Unsaved synthetic draft')
+  await content.getByRole('button', { name: 'Increment' }).click()
+  const color = () => content.getByRole('heading').evaluate(element => getComputedStyle(element).color)
+  const original = await color()
+  const results = []
+  for (const dark of [true, false, true]) {
+    await page.evaluate(dark => window.testApp.dark(dark), dark)
+    if (dark) await expect.poll(color).not.toBe(original)
+    else await expect.poll(color).toBe(original)
+    const ratios = await content.locator('body').evaluate(body => {
+      const rgb = color => color.match(/[\d.]+/g).slice(0,3).map(Number)
+      const luminance = color => rgb(color).map(value => { const channel = value / 255; return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4 }).reduce((sum, value, index) => sum + value * [.2126,.7152,.0722][index], 0)
+      const background = node => { const color = getComputedStyle(node).backgroundColor; if (color !== 'rgba(0, 0, 0, 0)') return color; return node.parentElement ? background(node.parentElement) : document.documentElement.dataset.galarisTheme === 'dark' ? 'rgb(39,39,39)' : 'rgb(255,255,255)' }
+      return [...body.querySelectorAll('h2,p,strong,span,div,button,input,label,output')].filter(node => [...node.childNodes].some(child => child.nodeType === 3 && child.textContent.trim()) || node.tagName === 'INPUT').map(node => { const ink = luminance(getComputedStyle(node).color), surface = luminance(background(node)); return { ratio: (Math.max(ink,surface)+.05)/(Math.min(ink,surface)+.05), tag: node.tagName } })
+    })
+    for (const { ratio, tag } of ratios) expect(ratio, `${tag} in ${dark ? 'dark' : 'light'} mode`).toBeGreaterThanOrEqual(4.5)
+    await expect(content.getByRole('textbox', { name: 'Draft' })).toHaveValue('Unsaved synthetic draft')
+    await expect(content.locator('output')).toHaveText('1')
+    expect(await content.locator('body').evaluate(() => window.runs)).toBe(1)
+    results.push({ dark, color: await color() })
+  }
+  await page.screenshot({ path: testInfo.outputPath('isolated-html-dark.png') })
+  expect(results[0].color).toBe(results[2].color)
+  expect(await page.evaluate(() => window.testApp.events)).toEqual([])
+})
+
 test('a failed native photo load stops the application and a new revision retries with current access', async ({ page }) => {
   let denied = true
   await page.route(`**/api/memory/documents/${datasetId}/attachments/${photoId}*`, route => denied
@@ -125,7 +161,8 @@ test('a new document revision stops the application and discards late Dataset re
   expect(requests).toBe(1)
 })
 
-for (const format of ['legacy', 'html']) test(`the normal editor preserves ${format} forms with source available only through Source`, async ({ page }) => {
+for (const format of ['legacy', 'html']) test(`the normal editor preserves ${format} forms without a Source view`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: format === 'html' ? 390 : 1440, height: 900 })
   const attachmentId = '22222222-2222-4222-8222-222222222222'
   const uri = `document://${datasetId}/attachments/${attachmentId}`
   const photo = `<img src="${uri}" alt="Synthetic photo">`
@@ -150,28 +187,90 @@ for (const format of ['legacy', 'html']) test(`the normal editor preserves ${for
   await expect(inner(page).getByRole('textbox', { name: 'Answer' })).toBeVisible()
   await expect.poll(() => inner(page).getByRole('img', { name: 'Synthetic photo' }).evaluate(image => image.naturalWidth)).toBeGreaterThan(0)
   await expect(page.getByRole('button', { name: /Edit document|Show applications|Add form/ })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Source', exact: true })).toBeVisible()
-  const editor = page.locator('.ck-editor__editable')
+  const editor = page.locator('[data-editor-surface]')
   await expect(editor.locator('pre')).toHaveCount(0)
   await expect(editor).not.toContainText('galaris.datasets.append')
+  expect(writes).toEqual([])
+  // Focusing the iframe opens its outer menu without interrupting form input.
+  const tools = page.getByRole('toolbar', { name: 'Embedded application', exact: true })
+  await inner(page).getByRole('textbox', { name: 'Answer' }).fill('Synthetic answer')
+  await expect(inner(page).getByRole('textbox', { name: 'Answer' })).toBeFocused()
+  await expect(inner(page).getByRole('textbox', { name: 'Answer' })).toHaveValue('Synthetic answer')
+  await expect(tools).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('embedded-context.png') })
+  await tools.getByRole('button', { name: 'Insert paragraph before block', exact: true }).click()
+  await page.keyboard.type('Text immediately before the form')
+  await expect(editor.locator(':scope > p')).toContainText(['Introduction', 'Text immediately before the form', 'After the form'])
+  await inner(page).getByRole('textbox', { name: 'Answer' }).click()
+  await tools.getByRole('button', { name: 'Insert paragraph after block', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Text immediately after the form')
+  await expect(editor.locator(':scope > p')).toContainText(['Introduction', 'Text immediately before the form', 'Text immediately after the form', 'After the form'])
   await editor.locator('p').first().fill('Edited introduction')
   await expect.poll(() => writes.length).toBeGreaterThan(0)
   await expect(inner(page).getByRole('textbox', { name: 'Answer' })).toBeVisible()
   await expect(page.getByText('Edited introduction', { exact: true })).toBeVisible()
   expect(writes.at(-1).payload.text).toContain(format === 'html' ? '<script>' : 'language-galaris-app')
   expect(writes.at(-1).payload.text).toContain('Edited introduction')
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
-  await expect(page.locator('iframe')).toHaveCount(0)
-  const source = page.locator('.ck-source-editing-area textarea')
-  await expect(source).toHaveValue(/galaris\.datasets\.append/)
-  await source.fill((await source.inputValue()).replace('After the form', 'Edited ending'))
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
+  expect(writes.at(-1).payload.text).not.toMatch(/editorial-object-controls|editorial-insert-|keyboard_return/)
+  await expect(page.getByRole('button', { name: 'Source', exact: true })).toHaveCount(0)
+  await editor.locator(':scope > p').last().fill('Edited ending')
   await expect(inner(page).getByRole('textbox', { name: 'Answer' })).toBeVisible()
   await expect(editor).toContainText('Edited ending')
   await expect(editor).not.toContainText('galaris.datasets.append')
+  // Reading opens a static fullscreen copy; it never restarts the live application.
+  await page.evaluate(() => window.testApp.setProps({ editable: false }))
+  const previewButton = page.getByRole('button', { name: 'Document preview', exact: true })
+  const writesBeforePreview = writes.length
+  await previewButton.click()
+  const preview = page.getByRole('dialog', { name: 'Document preview', exact: true })
+  const snapshot = preview.frameLocator('iframe')
+  await expect(snapshot.getByRole('textbox', { name: 'Answer' })).toBeVisible()
+  await expect(tools).toBeHidden()
+  await expect(snapshot.locator('script')).toHaveCount(0)
+  await expect(snapshot.locator('img')).toHaveJSProperty('naturalWidth', 2)
+  await page.screenshot({ path: testInfo.outputPath('readonly-html-preview.png') })
+  await preview.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(preview).toBeHidden()
+  expect(writes.length).toBe(writesBeforePreview)
   await page.evaluate(html => window.testApp.mount({ component: 'core/util/components/RichText.vue', props: { content: html, profile: 'document' } }), current.payload.text)
   await expect(page.locator('iframe')).toHaveCount(0)
   await expect(page.locator('.rich-content')).not.toContainText('galaris.datasets.append')
+})
+
+test('narrow document panels keep embedded form controls reachable while scrolling', async ({ page }) => {
+  const app = { id: 'reachable-form', title: 'Synthetic form', html: '<form><label>Answer <input></label><button>Submit</button></form><output>Waiting</output>',
+    javascript: 'document.querySelector("form").onsubmit=event=>{event.preventDefault();document.querySelector("output").textContent=document.querySelector("input").value;}' }
+  await jsonRoute(page, '**/api/agents?*', [agent])
+  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
+  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
+  await jsonRoute(page, /\/api\/memory\/documents\/doc-a(?:\?.*)?$/, { item: { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: content(app) } }, agent_id: 7 })
+  await mount(page, 'app/memory/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['MEMORY_EDIT'] })
+  await page.locator('.document-editor').evaluate(element => {
+    const panel = document.createElement('div')
+    panel.style.cssText = 'margin-top:300px;height:700px;overflow:auto;scroll-padding-top:1rem'
+    element.before(panel); panel.append(element)
+  })
+  const runtime = page.frameLocator('.document-application-frame').frameLocator('iframe')
+  for (const width of [320, 980]) {
+    await page.locator('.tiptap-galaris-editor').evaluate((element, width) => { element.style.width = width + 'px' }, width)
+    await runtime.getByRole('textbox', { name: 'Answer' }).fill('Response ' + width)
+    await runtime.getByRole('button', { name: 'Submit', exact: true }).click()
+    await expect(runtime.locator('output')).toHaveText('Response ' + width)
+  }
+  for (const fullscreen of [true, false]) {
+    await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
+    await runtime.getByRole('textbox', { name: 'Answer' }).fill('Fullscreen ' + fullscreen)
+    await runtime.getByRole('button', { name: 'Submit', exact: true }).click()
+    await expect(runtime.locator('output')).toHaveText('Fullscreen ' + fullscreen)
+  }
+  // Closing an editor must restore the scroll container's own configuration.
+  expect(await page.locator('.document-editor').evaluate(element => {
+    const panel = element.parentElement
+    window.testApp.unmount()
+    return panel.style.scrollPaddingTop
+  })).toBe('1rem')
 })
 
 for (const format of ['legacy', 'html']) test(`printing and PDF preserve the displayed ${format} application state`, async ({ page }, testInfo) => {
@@ -195,7 +294,7 @@ for (const format of ['legacy', 'html']) test(`printing and PDF preserve the dis
     return route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.7\nfixture' })
   })
   await mount(page, 'app/memory/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['MEMORY_EDIT'] })
-  await page.locator('.ck-galaris-editor').evaluate(element => { element.style.width = '320px' })
+  await page.locator('.tiptap-galaris-editor').evaluate(element => { element.style.width = '320px' })
   const runtime = page.frameLocator('.document-application-frame').frameLocator('iframe')
   await runtime.getByRole('textbox', { name: 'Amount' }).fill('125')
   await runtime.getByRole('textbox', { name: 'Note' }).fill('Current note')
@@ -203,9 +302,14 @@ for (const format of ['legacy', 'html']) test(`printing and PDF preserve the dis
   await runtime.getByRole('checkbox').check()
   await runtime.getByRole('button', { name: 'Calculate' }).click()
   await expect(runtime.locator('output')).toHaveText('250 EUR')
+  // Exporting from the toolbar must also capture an application below the viewport.
+  await page.setViewportSize({ width: 1440, height: 520 })
+  await page.locator('.editorial-toolbar').evaluate(toolbar => toolbar.scrollIntoView({ block: 'end' }))
+  await expect.poll(() => page.locator('.document-application-frame').evaluate(frame => frame.getBoundingClientRect().top >= window.innerHeight)).toBe(true)
   const download = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export as PDF', exact: true }).click()
   await download
+  await page.setViewportSize({ width: 1440, height: 1000 })
   expect(snapshot).toContain('250 EUR')
   expect(snapshot).toContain('Current note')
   expect(snapshot).not.toMatch(/<script|<iframe|onsubmit=/)
@@ -238,7 +342,7 @@ for (const format of ['legacy', 'html']) test(`printing and PDF preserve the dis
   await page.locator('.document-print-frame').evaluate(frame => { frame.style.cssText = 'position:fixed;inset:0;width:794px;height:1123px;z-index:99999;background:white' })
   await printed.locator('main').screenshot({ path: testInfo.outputPath('application-print.png') })
   await page.evaluate(() => { const frame = document.querySelector('.document-print-frame'); frame.contentWindow.dispatchEvent(new frame.contentWindow.Event('afterprint')) })
-  await page.locator('.ck-galaris-editor').evaluate(element => { element.style.width = '980px' })
+  await page.locator('.tiptap-galaris-editor').evaluate(element => { element.style.width = '980px' })
   await runtime.getByRole('textbox', { name: 'Amount' }).fill('200')
   await runtime.getByRole('button', { name: 'Calculate' }).click()
   await page.getByRole('button', { name: 'Print', exact: true }).click()
@@ -254,63 +358,6 @@ for (const format of ['legacy', 'html']) test(`printing and PDF preserve the dis
   expect(exports).toBe(1)
 })
 
-
-test('Dataset consent can be granted, revoked and reopened without changing document content', async ({ page }) => {
-  let access = null
-  const changes = []
-  const response = () => ({ document_revision: 3, grants: [{
-    app_key: 'responses', app_title: 'Responses', alias: 'entries', dataset_id: datasetId,
-    dataset_title: 'Synthetic responses', requested_access: 'write', access,
-  }] })
-  await page.route('**/api/memory/documents/doc-a/app-permissions', route => route.fulfill({ json: response() }))
-  await page.route('**/api/memory/documents/doc-a/app-permissions/responses/entries', route => {
-    changes.push(route.request().postDataJSON())
-    access = changes.at(-1).access
-    return route.fulfill({ json: response() })
-  })
-  await mount(page, 'app/memory/components/DocumentAppPermissions.vue', { props: { documentId: 'doc-a', revision: 3, canWrite: true } })
-  await page.getByRole('button', { name: 'Application permissions', exact: true }).click()
-  await expect(page.getByText('Synthetic responses', { exact: true })).toBeVisible()
-  await page.getByRole('combobox', { name: 'My permission' }).click()
-  await page.getByRole('option', { name: 'Read and write', exact: true }).click()
-  await expect.poll(() => changes).toEqual([{ document_revision: 3, access: 'write' }])
-  await page.getByRole('button', { name: 'Close', exact: true }).last().click()
-  await page.getByRole('button', { name: 'Application permissions', exact: true }).click()
-  await expect(page.getByRole('combobox', { name: 'My permission' })).toHaveValue('Read and write')
-  await page.getByRole('combobox', { name: 'My permission' }).click()
-  await page.getByRole('option', { name: 'No access', exact: true }).click()
-  await expect.poll(() => changes.length).toBe(2)
-  expect(changes[1]).toEqual({ document_revision: 3, access: null })
-  await page.evaluate(() => window.testApp.setProps({ revision: 4 }))
-  await expect(page.getByRole('dialog')).toHaveCount(0)
-})
-
-test('late permission responses cannot authorize another document and errors preserve the last consent', async ({ page }) => {
-  let release
-  const pending = new Promise(resolve => { release = resolve })
-  await page.route('**/api/memory/documents/doc-a/app-permissions', async route => {
-    await pending
-    await route.fulfill({ json: { document_revision: 3, grants: [{ app_key: 'old', app_title: 'Old document', alias: 'entries', dataset_id: datasetId,
-      dataset_title: 'Old data', requested_access: 'write', access: null }] } }).catch(() => {})
-  })
-  await page.route('**/api/memory/documents/doc-b/app-permissions', route => route.fulfill({ json: { document_revision: 1, grants: [{
-    app_key: 'new', app_title: 'New document', alias: 'entries', dataset_id: datasetId,
-    dataset_title: 'New data', requested_access: 'write', access: 'read',
-  }] } }))
-  await page.route('**/api/memory/documents/doc-b/app-permissions/new/entries', route => route.fulfill({ status: 403, json: { detail: 'Denied' } }))
-  await mount(page, 'app/memory/components/DocumentAppPermissions.vue', { props: { documentId: 'doc-a', revision: 3, canWrite: true } })
-  await page.getByRole('button', { name: 'Application permissions', exact: true }).click()
-  await page.evaluate(() => window.testApp.setProps({ documentId: 'doc-b', revision: 1 }))
-  release()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Application permissions', exact: true }).click()
-  await expect(page.getByText('New data', { exact: true })).toBeVisible()
-  await expect(page.getByText('Old data', { exact: true })).toHaveCount(0)
-  await page.getByRole('combobox', { name: 'My permission' }).click()
-  await page.getByRole('option', { name: 'Read and write', exact: true }).click()
-  await expect(page.getByRole('alert')).toContainText('could not be saved')
-  await expect(page.getByRole('combobox', { name: 'My permission' })).toHaveValue('Read')
-})
 
 test('missing consent and backend quotas keep the form visible and preserve input', async ({ page }) => {
   let status = 403

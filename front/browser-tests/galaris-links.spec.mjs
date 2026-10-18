@@ -28,40 +28,38 @@ for (const mode of ['read', 'edit']) test(`a Task citation opens its modal witho
 })
 
 const goalId = '00000000-0000-0000-0000-000000000123'
-const lastValue = page => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)
-async function searchFixtures(page) {
-  await jsonRoute(page, '**/api/processes/internal/resource-options?*', [])
-  await jsonRoute(page, '**/api/agents**', [])
-  await jsonRoute(page, '**/api/memory/documents/library', { entries: [] })
-  await jsonRoute(page, '**/api/tasks/recent**', { items: [{ id: goalId, label: 'Project task', agent_id: 1 }] })
-  await jsonRoute(page, '**/api/goals**', { items: [{ id: goalId, title: 'Project goal', agent_id: 1 }] })
+const lastValue = page => page.evaluate(() => {
+  const event = window.testApp.events.filter(event => ['update:modelValue', 'update:draft'].includes(event.name)).at(-1)
+  return event?.name === 'update:draft' ? event.value.content : event?.value
+})
+async function pickerFixtures(page) {
+  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'galaris', label: 'Galaris', capabilities: ['list'], native: true }])
+  await jsonRoute(page, '**/api/file-share/browser/entries?*', { entries: [{ uri: `galaris://goal/${goalId}`, name: 'Synthetic goal', is_collection: false, media_type: 'text/html', size: null, capabilities: ['read'], metadata: { tool_code: 'galaris' } }], next_cursor: null, truncated: false })
+  await page.route('**/api/file-share/browser/thumbnail?*', route => route.fulfill({ status: 404 }))
 }
-async function openSearch(page) {
-  if (!await page.getByRole('button', { name: 'Insert a link or file', exact: true }).first().isVisible()) {
-    await page.getByRole('button', { name: 'Show more items', exact: true }).click()
-  }
-  await page.getByRole('button', { name: 'Insert a link or file', exact: true }).first().click()
-  await page.getByRole('button', { name: 'Add an internal attachment', exact: true }).click()
-  const search = page.getByRole('textbox', { name: 'Search accessible content', exact: true })
-  await expect(search).toBeFocused()
-  await search.fill('Project')
-  await expect(page.getByText('Project goal', { exact: true })).toBeVisible()
+async function openPicker(page, width = 1440) {
+  await page.getByRole('button', { name: 'Galaris link', exact: true }).click()
+  const picker = page.getByRole('dialog').filter({ has: page.getByText('Add an internal attachment', { exact: true }) })
+  await expect(picker).toBeVisible()
+  if (width < 1024) await picker.getByRole('button', { name: 'Show locations', exact: true }).click()
+  await picker.getByText('Galaris', { exact: true }).click()
+  return picker
 }
 
 test('heading and font-size commands change the authored document in normal and fullscreen editing', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: { modelValue: '<p>Document</p>', profile: 'document' } })
-  const editable = page.locator('.ck-editor__editable')
+  const editable = page.locator('[data-editor-surface]')
   await expect(editable).toBeVisible()
   await editable.click()
-  await page.getByRole('button', { name: 'Paragraph, Heading', exact: true }).click()
+  await page.getByRole('button', { name: 'Style', exact: true }).click()
   await page.getByRole('menuitemradio', { name: 'Heading 1', exact: true }).click()
   await expect(editable.locator('h1')).toHaveText('Document')
   expect(await lastValue(page)).toContain('<h1>Document</h1>')
-  await page.getByRole('button', { name: 'Enter fullscreen mode' }).click()
+  await page.getByRole('button', { name: 'Fullscreen' }).click()
   await editable.click()
   await page.keyboard.press('Control+a')
-  await page.getByRole('button', { name: 'Font Size', exact: true }).click()
+  await page.getByRole('button', { name: 'Font size', exact: true }).click()
   await page.getByRole('menuitemradio', { name: '24', exact: true }).click()
   expect(await lastValue(page)).toContain('font-size: 24px')
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
@@ -69,68 +67,54 @@ test('heading and font-size commands change the authored document in normal and 
   expect(await lastValue(page)).not.toContain('font-size: 24px')
 })
 
-test('Galaris dialog filters targets and preserves selected formatting when inserting a canonical link', async ({ page }, testInfo) => {
-  await searchFixtures(page)
-  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<p><strong>Selected text</strong></p>' } })
-  await page.locator('.ck-editor__editable').click()
+for (const mode of ['document', 'simple', 'mobile', 'fullscreen']) test(`the internal picker preserves selected formatting in ${mode} editing`, async ({ page }, testInfo) => {
+  const width = mode === 'mobile' ? 390 : 1440
+  await page.setViewportSize({ width, height: 900 })
+  await pickerFixtures(page)
+  if (mode === 'simple') await mount(page, 'app/memory/components/MemoryItemForm.vue', { props: {
+    draft: { content: '<p><strong>Selected text</strong></p>', nodeKind: 'memory', mediaType: 'text/html', contentType: 'text', keywords: [], revision: 1 },
+    editingId: null, sharingEditable: false,
+  } })
+  else await mount(page, 'core/util/components/RichTextEditor.vue', { dark: mode === 'mobile' || mode === 'fullscreen', props: {
+    profile: mode === 'document' ? 'document' : 'rich-text', singleRowToolbar: mode === 'simple',
+    hiddenToolbarGroups: mode === 'simple' ? ['reading', 'editing'] : [], modelValue: '<p><strong>Selected text</strong></p>',
+  } })
+  if (mode === 'fullscreen') await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
+  await page.locator('[data-editor-surface]').click()
   await page.keyboard.press('Control+a')
-  await openSearch(page)
-  await expect(page.getByRole('button', { name: 'Insert link', exact: true })).toBeDisabled()
-  await page.getByRole('button', { name: 'Goal', exact: true }).click()
-  await expect(page.getByText('Project task', { exact: true })).toHaveCount(0)
-  await page.getByText('Project goal', { exact: true }).click()
-  await expect(page.getByRole('textbox', { name: 'Link text', exact: true })).toHaveValue('Selected text')
-  await page.screenshot({ path: testInfo.outputPath('galaris-link-desktop.png') })
-  await page.getByRole('button', { name: 'Insert link', exact: true }).click()
-  await expect(page.locator('.ck-editor__editable a strong')).toHaveText('Selected text')
+  const picker = await openPicker(page, width)
+  await expect(picker.getByRole('button', { name: 'Select', exact: true })).toBeDisabled()
+  await picker.getByRole('button', { name: 'Select Synthetic goal', exact: true }).click()
+  await page.screenshot({ path: testInfo.outputPath('internal-reference-picker.png'), animations: 'disabled' })
+  await picker.getByRole('button', { name: 'Select', exact: true }).click()
+  await expect(page.locator('[data-editor-surface] a strong')).toHaveText('Selected text')
   expect(await lastValue(page)).toContain(`href="galaris://goal/${goalId}"`)
-  await page.getByRole('button', { name: 'Undo', exact: true }).click()
-  await expect(page.locator('.ck-editor__editable a')).toHaveCount(0)
-  await expect(page.locator('.ck-editor__editable strong')).toHaveText('Selected text')
+  await page.keyboard.press('Control+z')
+  await expect(page.locator('[data-editor-surface] a')).toHaveCount(0)
+  await expect(page.locator('[data-editor-surface] strong')).toHaveText('Selected text')
 })
 
-for (const mode of ['mobile', 'fullscreen']) test(`Galaris dialog works in dark ${mode} with an editable label`, async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: mode === 'mobile' ? 390 : 1440, height: 844 })
-  await searchFixtures(page)
-  await mount(page, 'core/util/components/RichTextEditor.vue', { dark: true, props: { profile: 'document', modelValue: '<p>Start </p>' } })
-  if (mode === 'fullscreen') await page.getByRole('button', { name: 'Enter fullscreen mode' }).click()
-  await page.locator('.ck-editor__editable').click()
-  await page.keyboard.press('Control+End')
-  await openSearch(page)
-  await page.getByText('Project goal', { exact: true }).click()
-  await page.getByRole('textbox', { name: 'Link text', exact: true }).fill('My goal')
-  await page.screenshot({ path: testInfo.outputPath(`galaris-link-${mode}-dark.png`) })
-  await page.getByRole('textbox', { name: 'Link text', exact: true }).press('Enter')
-  await expect(page.locator('.ck-editor__editable a')).toHaveText('My goal')
-  expect(await lastValue(page)).toContain(`href="galaris://goal/${goalId}"`)
-})
-
-test('Galaris dialog supports dismissal, retry and ignores stale search results', async ({ page }) => {
-  await searchFixtures(page)
-  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<p>Unchanged</p>' } })
-  await openSearch(page)
+test('the internal picker supports dismissal, retry and discards a selection after the content changes', async ({ page }) => {
+  await pickerFixtures(page)
+  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { modelValue: '<p>Unchanged</p>', singleRowToolbar: true } })
+  await openPicker(page)
   await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
-  await expect(page.locator('.galaris-link-dialog')).toHaveCount(0)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   expect(await lastValue(page)).toBeUndefined()
-  await page.route(/\/api\/(agents|datasets|goals|tasks\/recent|processes\/internal\/resource-options)/, route => route.fulfill({ status: 503, json: { detail: 'Unavailable' } }))
-  await page.getByRole('button', { name: 'Insert a link or file', exact: true }).first().click()
-  await page.getByRole('button', { name: 'Add an internal attachment', exact: true }).click()
-  const search = page.getByRole('textbox', { name: 'Search accessible content', exact: true })
-  await search.fill('Project')
-  await expect(page.getByRole('alert')).toContainText('Search is temporarily unavailable.')
-  await page.unroute(/\/api\/(agents|datasets|goals|tasks\/recent|processes\/internal\/resource-options)/)
+  await page.route('**/api/file-share/browser/schemes?*', route => route.fulfill({ status: 503, json: { detail: 'Unavailable' } }))
+  await page.getByRole('button', { name: 'Galaris link', exact: true }).click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  await page.unroute('**/api/file-share/browser/schemes?*')
+  await pickerFixtures(page)
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
-  await expect(page.getByText('Project goal', { exact: true })).toBeVisible()
-  let release
-  const pending = new Promise(resolve => { release = resolve })
-  await page.route('**/api/goals**', async route => {
-    await pending
-    await route.fulfill({ json: { items: [{ id: goalId, title: 'Stale goal', agent_id: 1 }] } })
-  })
-  await search.fill('Stale')
-  await page.waitForRequest(request => request.url().includes('/api/goals'))
-  await search.fill('x')
-  release()
-  await expect(page.getByText('Stale goal', { exact: true })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Insert link', exact: true })).toBeDisabled()
+  await page.getByRole('dialog').getByText('Galaris', { exact: true }).click()
+  await page.getByRole('button', { name: 'Select Synthetic goal', exact: true }).click()
+  await page.evaluate(() => window.testApp.setProps({ modelValue: '<p>Replacement content</p>' }))
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.locator('[data-editor-surface]')).toHaveText('Replacement content')
+  expect(await lastValue(page)).toBeUndefined()
+  await openPicker(page)
+  await page.getByRole('button', { name: 'Select Synthetic goal', exact: true }).click()
+  await page.getByRole('button', { name: 'Select', exact: true }).click()
+  await expect(page.locator('[data-editor-surface] a')).toHaveText('Synthetic goal')
 })

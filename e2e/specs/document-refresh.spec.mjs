@@ -76,7 +76,7 @@ test('remote changes and sharing updates reconcile documents without removing ac
   await expect(tree.getByText(updatedTitle, { exact: true })).toBeVisible()
   for (const row of [listRow, treeRow, rootRow]) expect(await row.evaluate(element => element.isConnected)).toBe(true)
 
-  const editor = page.locator('.ck-editor__editable')
+  const editor = page.locator('[data-editor-surface]')
   await expect(editor).toContainText('Synthetic report')
   const editorNode = await editor.elementHandle()
   readGate = new Promise(resolve => { release = resolve })

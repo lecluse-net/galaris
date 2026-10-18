@@ -94,7 +94,7 @@ for (const editable of [true, false]) {
       payload: { text: Array.from({ length: 100 }, (_, i) => `<p>Section ${i}: Initial document body with a distinct passage.</p>`).join('') },
     }, agent_id: null })
     await openFromSearch(page)
-    const content = page.locator('.chat-document-pane .ck-editor__editable')
+    const content = page.locator('.chat-document-pane [data-editor-surface]')
     const paragraph = content.locator('p').nth(50)
     await paragraph.scrollIntoViewIfNeeded()
     await paragraph.evaluate(element => {
@@ -141,7 +141,7 @@ for (const editable of [true, false]) {
 test('document attention bounds long selections and clears positions after a remote replacement', async ({ page }) => {
   const state = await workspace(page, false)
   await openFromSearch(page)
-  const content = page.locator('.chat-document-pane .ck-editor__editable')
+  const content = page.locator('.chat-document-pane [data-editor-surface]')
   await state.update('Long passage '.repeat(307) + 'abcdefgh😀' + 'Long passage '.repeat(700))
   await expect(content).toContainText('Long passage')
   const renderedLength = (await content.textContent()).length
@@ -170,24 +170,8 @@ test('document attention bounds long selections and clears positions after a rem
   expect(state.writes[1].document_focus.revision).toBeGreaterThan(state.writes[0].document_focus.revision)
 })
 
-  test('document attention captures source text without markup conversion', async ({ page }) => {
-    const state = await workspace(page)
-      await openFromSearch(page)
-      await page.locator('.chat-document-pane').getByRole('button', { name: 'Source', exact: true }).click()
-    const input = page.locator('.chat-document-pane .document-editor-fields textarea')
-    await expect(input).toBeVisible()
-    await input.evaluate(element => {
-      element.focus()
-      const start = element.value.indexOf('document body')
-      element.setSelectionRange(start, start + 'document body'.length)
-      element.dispatchEvent(new Event('select', { bubbles: true }))
-    })
-    await page.locator('.conversation-pane textarea').fill('Review this text')
-    await page.getByRole('button', { name: 'Post', exact: true }).click()
-    await expect.poll(() => state.writes.length).toBe(1)
-    expect(state.writes[0].document_focus).toMatchObject({ surface: 'source', selection: { text: 'document body' } })
-    expect(state.writes[0].document_focus.viewport.text).toContain('Initial document body')
-  })
+  // Source-view attention is retired with document Source. The preceding scenarios
+  // cover rendered selections, cursor bounds and stale attention after replacement.
 
 test('document dialogs cover the split editor toolbar and keep their own formatting usable', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -202,13 +186,13 @@ test('document dialogs cover the split editor toolbar and keep their own formatt
   await openFromSearch(page)
   await expect(page.getByLabel('Open document Test document', { exact: true })).toBeVisible()
   const background = page.locator('.chat-document-pane')
-  const toolbar = background.getByRole('toolbar', { name: 'Editor toolbar', exact: true })
+  const toolbar = background.getByRole('toolbar', { name: 'Content', exact: true })
   const dialog = page.getByRole('dialog')
   await background.locator('.chat-document-content').evaluate(element => { element.scrollTop = 650 })
   await expect(toolbar).toBeInViewport()
   for (let attempt = 0; attempt < 2; attempt += 1) {
     await page.getByRole('button', { name: 'Open document Test document in a dialog', exact: true }).click()
-    await expect(dialog.locator('.ck-editor__editable')).toBeVisible()
+    await expect(dialog.locator('[data-editor-surface]')).toBeVisible()
     await expect(page.getByLabel('Open document Test document', { exact: true })).toHaveAttribute('aria-current', 'true')
     // Hit testing proves that the dialog or its backdrop covers the background toolbar.
     await expect.poll(() => toolbar.evaluate(element => {
@@ -216,15 +200,15 @@ test('document dialogs cover the split editor toolbar and keep their own formatt
       const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
       return Boolean(hit?.closest('.q-dialog'))
     })).toBe(true)
-    const editor = dialog.locator('.ck-editor__editable')
+    const editor = dialog.locator('[data-editor-surface]')
     await editor.click()
-    await dialog.getByRole('button', { name: /, Heading$/ }).click()
-    await dialog.getByRole('menuitemradio', { name: 'Heading 2', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Style', exact: true }).click()
+    await page.getByRole('menuitemradio', { name: 'Heading 2', exact: true }).click()
     await expect(editor.locator('h2')).toContainText('Initial document body')
     await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
     await expect(dialog).toHaveCount(0)
     await expect(page.getByLabel('Open document Test document', { exact: true })).not.toHaveAttribute('aria-current', 'true')
-    await expect(background.locator('.ck-editor__editable')).toContainText('Initial document body')
+    await expect(background.locator('[data-editor-surface]')).toContainText('Initial document body')
     await toolbar.getByRole('button', { name: 'Bold', exact: true }).click()
   }
 })
@@ -261,7 +245,7 @@ for (const width of [1440, 390]) {
 test('document_show saves an existing draft before opening another document', async ({ page }) => {
   const state = await workspace(page)
   await openFromSearch(page)
-  await page.locator('.chat-document-pane .ck-editor__editable').fill('Preserve this edit')
+  await page.locator('.chat-document-pane [data-editor-surface]').fill('Preserve this edit')
   await page.evaluate(() => window.testApp.emitSocket('chat.document_show', {
     data: { room_id: 'room-a', document_id: 'doc-a' },
   }))
@@ -280,7 +264,7 @@ test('document_show cannot switch rooms while waiting for a document save', asyn
     return route.fulfill({ json: { ...documentFixture, id: 'doc-b', title: 'Off-list document',
       ...route.request().postDataJSON(), revision: 4, lock_version: 4 } })
   })
-  await page.locator('.chat-document-pane .ck-editor__editable').fill('Save before switching')
+  await page.locator('.chat-document-pane [data-editor-surface]').fill('Save before switching')
   await page.evaluate(() => window.testApp.emitSocket('chat.document_show', {
     data: { room_id: 'room-a', document_id: 'doc-a' },
   }))
@@ -367,7 +351,7 @@ for (const [width, editable, mode] of [[1440, true, undefined], [1440, true, 'sp
     await expect(page.getByRole('dialog')).toContainText('Document from the message')
     await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
     await expect(draft).toHaveValue('Review our document')
-    const editor = pane.locator('.ck-editor__editable')
+    const editor = pane.locator('[data-editor-surface]')
     await expect(editor).toBeEditable()
     await editor.fill('Edited from its preview')
     await page.getByRole('button', { name: 'Post', exact: true }).click()
@@ -421,7 +405,7 @@ test('the full document editor saves changes before sending its visible referenc
   await openFromSearch(page)
   const pane = page.locator('.chat-document-pane')
   await expect(pane.getByRole('textbox', { name: 'Title', exact: true })).toBeEditable()
-  const content = pane.locator('.ck-editor__editable')
+  const content = pane.locator('[data-editor-surface]')
   await expect(content).toBeEditable()
   await content.fill('Document edited from the conversation')
   const draft = page.locator('.conversation-pane textarea')
@@ -455,7 +439,7 @@ test('a failed document save preserves the chat draft until saving succeeds', as
     }
     return route.fallback()
   })
-  await page.locator('.chat-document-pane .ck-editor__editable').fill('Keep this document edit')
+  await page.locator('.chat-document-pane [data-editor-surface]').fill('Keep this document edit')
   const draft = page.locator('.conversation-pane textarea')
   await draft.fill('Keep this message until the document is saved')
   await page.getByRole('button', { name: 'Post', exact: true }).click()
@@ -539,7 +523,7 @@ for (const width of [1440, 1024]) {
       await expect(separator).toHaveAttribute('aria-orientation', stacked ? 'horizontal' : 'vertical')
       const draft = page.locator('.conversation-pane textarea')
       await draft.fill('Keep this chat draft while resizing')
-      const editor = page.locator('.chat-document-pane .ck-editor__editable')
+      const editor = page.locator('.chat-document-pane [data-editor-surface]')
       await editor.fill('Keep editing this document while resizing\n'.repeat(80))
       const dimension = async () => {
         const bounds = await page.locator('.conversation-pane').boundingBox()
@@ -564,10 +548,10 @@ for (const width of [1440, 1024]) {
       }
       if (stacked) await expect.poll(dimension).toBeGreaterThan(initial + 25)
       else await expect.poll(dimension).toBeLessThan(initial - 25)
-      const toolbar = page.locator('.chat-document-pane').getByRole('toolbar', { name: 'Editor toolbar', exact: true })
+      const toolbar = page.locator('.chat-document-pane').getByRole('toolbar', { name: 'Content', exact: true })
       await expect.poll(() => toolbar.evaluate(element => {
         const toolbar = element.getBoundingClientRect()
-        const editor = element.closest('.ck-editor').getBoundingClientRect()
+        const editor = element.closest('.tiptap-galaris-editor').getBoundingClientRect()
         return Math.max(Math.abs(toolbar.left - editor.left), Math.abs(toolbar.right - editor.right))
       })).toBeLessThanOrEqual(1)
       const dragged = await dimension()

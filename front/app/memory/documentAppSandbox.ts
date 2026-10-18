@@ -1,12 +1,14 @@
 import type { DocumentApp } from './documentApps'
 import { applicationSnapshotScript } from './documentAppSnapshot'
+import threeSource from 'virtual:galaris-document-three'
+import { applyDocumentContrast, solaire } from '@/core/util'
 
 // The outer frame owns frame-src: blob:. It also blocks self-navigation of the
 // untrusted inner frame, a channel that connect-src alone does not restrict.
 const policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:; connect-src 'none'; frame-src blob:; worker-src 'none'; form-action 'none'; base-uri 'none'"
 const quoted = (value: unknown): string => JSON.stringify(value).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e').replaceAll('&', '\\u0026')
 
-export function appSandboxDocument(app: DocumentApp): string {
+export function appSandboxDocument(app: DocumentApp, dark = false): string {
   const sdk = `
     (() => {
       // CSP connect-src does not cover WebRTC in every engine. No alternate realm
@@ -27,6 +29,21 @@ export function appSandboxDocument(app: DocumentApp): string {
         Object.defineProperty(constructor, 'createObjectURL', {value: passiveBlobUrl, writable: false, configurable: false});
       }
       ${applicationSnapshotScript}
+      const applyDocumentContrast = (${applyDocumentContrast.toString()});
+      function updateTheme(dark) {
+        document.documentElement.dataset.galarisTheme = dark ? 'dark' : 'light';
+        applyDocumentContrast(document, dark ? 'rgb(39, 39, 39)' : 'rgb(255, 255, 255)');
+      }
+      addEventListener('message', event => {
+        if (event.source === parent && event.data?.type === 'galaris-host-theme' && typeof event.data.dark === 'boolean') updateTheme(event.data.dark);
+      });
+      // Keep the displayed WebGL frame available to the existing static snapshot
+      // path, without re-running authored animation or Dataset mutations at export.
+      const canvasContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function(kind, options) {
+        if (kind === 'webgl' || kind === 'webgl2' || kind === 'experimental-webgl') options = {...options, preserveDrawingBuffer: true};
+        return canvasContext.call(this, kind, options);
+      };
       addEventListener('message', event => {
         if (event.source !== parent || event.data !== 'galaris-app-snapshot' || !event.ports[0]) return;
         const reply = event.ports[0];
@@ -65,20 +82,31 @@ export function appSandboxDocument(app: DocumentApp): string {
       })})});
       parent.postMessage('galaris-app-ready', '*');
       addEventListener('DOMContentLoaded', () => {
+        const refreshContrast = () => applyDocumentContrast(document, document.documentElement.dataset.galarisTheme === 'dark' ? 'rgb(39, 39, 39)' : 'rgb(255, 255, 255)');
+        refreshContrast();
+        let timer;
+        const observer = new MutationObserver(records => {
+          if (timer || records.every(record => record.target.nodeType === 1 && record.target.closest('style[data-galaris-contrast]'))) return;
+          timer = setTimeout(() => { timer = undefined; refreshContrast(); }, 250);
+        });
+        observer.observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:['style','class']});
+        observer.observe(document.head, {subtree:true, childList:true, characterData:true});
+        addEventListener('pagehide', () => { observer.disconnect(); clearTimeout(timer); });
         const report = () => parent.postMessage({type: 'galaris-app-height', height: document.body.scrollHeight}, '*');
         new ResizeObserver(report).observe(document.body); report();
       });
     })();`
-  const inner = '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'
+  const inner = '<!doctype html><html data-galaris-theme="' + (dark ? 'dark' : 'light') + '"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'
     + policy.replace('frame-src blob:', "frame-src 'none'") + '"><meta name="referrer" content="no-referrer">'
-    + '<script>' + sdk + '</script><style>html{font-family:system-ui,sans-serif;color-scheme:light dark}body{margin:0;display:flow-root}'
+    + '<script>' + sdk + '</script><script>' + threeSource.replace(/<\/script/gi, '<\\/script') + '</script><style>html{font-family:system-ui,sans-serif;color-scheme:light;color:' + solaire.gray.dark + '}html[data-galaris-theme="dark"]{color-scheme:dark;color:' + solaire.gray.light + '}body{margin:0;display:flow-root}'
     + (app.css ?? '').replace(/<\/style/gi, '<\\/style') + '</style></head><body>' + (app.html ?? '')
     + '<script>' + (app.javascript ?? '').replace(/<\/script/gi, '<\\/script') + '</script></body></html>'
-  return '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'
-    + policy + '"><meta name="referrer" content="no-referrer"><style>html,body,iframe{margin:0;width:100%;height:100%;border:0}</style></head><body>'
+  return '<!doctype html><html style="color-scheme:' + (dark ? 'dark' : 'light') + '"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'
+    + policy + '"><meta name="referrer" content="no-referrer"><style>html,body,iframe{margin:0;width:100%;height:100%;border:0;background:transparent}iframe{color-scheme:inherit}</style></head><body>'
     + '<iframe sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer" title="Application"></iframe><script>'
     + `const frame = document.querySelector('iframe');
        let port, ready = false, connected = false;
+       let dark = ${quoted(dark)};
        let loaded = false;
        addEventListener('securitypolicyviolation', event => {
          if (event.effectiveDirective === 'frame-src') parent.postMessage('galaris-app-navigated', '*');
@@ -93,9 +121,10 @@ export function appSandboxDocument(app: DocumentApp): string {
          frame.contentWindow.postMessage('galaris-app-connect', '*', [port]);
        }
        addEventListener('message', event => {
+         if (event.source === parent && event.data?.type === 'galaris-host-theme' && typeof event.data.dark === 'boolean') { dark = event.data.dark; document.documentElement.style.colorScheme = dark ? 'dark' : 'light'; if (ready) frame.contentWindow.postMessage({type:'galaris-host-theme', dark}, '*'); }
          if (event.source === parent && event.data === 'galaris-app-snapshot' && event.ports[0]) frame.contentWindow.postMessage(event.data, '*', [event.ports[0]]);
          if (event.source === parent && event.data === 'galaris-host-connect' && !port) { port = event.ports[0]; connect(); }
-         if (event.source === frame.contentWindow && event.data === 'galaris-app-ready') { ready = true; connect(); }
+         if (event.source === frame.contentWindow && event.data === 'galaris-app-ready') { ready = true; frame.contentWindow.postMessage({type:'galaris-host-theme', dark}, '*'); connect(); }
          if (event.source === frame.contentWindow && event.data?.type === 'galaris-app-height') parent.postMessage(event.data, '*');
        });
        frame.src = URL.createObjectURL(new Blob([${quoted(inner)}], {type: 'text/html'}));`

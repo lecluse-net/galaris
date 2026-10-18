@@ -38,19 +38,19 @@ routeur central.
 Les Documents éditoriaux `document://` appartiennent à Memory ; les Datasets JSON `data://`
 appartiennent à `app.dataset`. Utiliser ses services publics pour tout nouveau consommateur.
 Les anciens Datasets de la bibliothèque documentaire restent lisibles par alias vérifié.
-Utiliser CKEditor pour HTML et CodeEditor JSON pour Dataset, y compris dans l'historique.
+Utiliser RichTextEditor (Tiptap) pour HTML et CodeEditor JSON pour Dataset, y compris dans l'historique.
 Ne jamais convertir le JSON en HTML. Une autosauvegarde attend un JSON valide et préserve
 le brouillon invalide. Les jeux de données n'ont pas de schéma associé. Les variables des
 processus utilisent le codec typé partagé, avec leurs propres règles de définition et validation.
 Voir `docs/fr/dev/datasets.md` pour les limites actuelles et la transition des projections.
 Les documents acceptent directement formulaires HTML, CSS et JavaScript. Conserver la barre
 d'outils et l'édition habituelles, sans mode lecture/édition ni démarrage supplémentaire.
-Seul Source affiche le code. CKEditor conserve les portions
+Seul Source affiche le code. Tiptap conserve les portions
 interactives comme objets opaques internes ; leur rendu isolé n'ajoute aucun habillage.
 Les anciens `language-galaris-app` restent compatibles. Les autres lecteurs masquent le code
 et restent inertes. Les Datasets déclarés exigent les droits du lecteur et son accord personnel
-enregistré côté serveur pour la révision courante. L'icône Permissions gère cet accord hors du
-HTML ; préserver le rendu et la saisie lors d'un refus d'accord.
+enregistré côté serveur pour la révision courante. L'icône et la modale Permissions ont été
+retirées ; préserver le rendu et la saisie lors d'un refus d'accord sans renvoyer vers cette interface.
 Voir `docs/fr/dev/document-apps.md` pour les règles de CSP, révisions et révocation.
 
 - Typer les requêtes et réponses ; ne pas propager `any` depuis Axios.
@@ -96,3 +96,9 @@ Pour choisir la couche et centraliser ces contrôles, consulter
 
 Lancer les contrôles ciblés, puis `make typecheck`. Si les pages, modules ou éléments de
 navigation changent, régénérer aussi la cartographie avec `make project-context`.
+
+Lors du remplacement d’une bibliothèque d’interface, conserver aussi la présentation et les
+interactions de ses consommateurs. Comparer un même contenu synthétique avant/après sur les
+vues concernées, notamment les thèmes, la largeur de page et les commandes contextuelles.
+Des tests de conservation des données ne vérifient pas cette continuité visuelle ; inspecter
+le rendu avant de déclarer la migration terminée, sans figer chaque détail dans un test.

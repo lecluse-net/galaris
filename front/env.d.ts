@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-pwa/client" />
 
+declare module 'virtual:galaris-document-three' { const source: string; export default source }
+
 declare module 'socket.io-client' {
     export { io, Socket } from 'socket.io-client/dist/socket.io'
 }

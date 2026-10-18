@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
 
 test('resource card descriptions preserve readable text from HTML, Markdown and plain text', async ({ page }, testInfo) => {
@@ -32,7 +32,7 @@ const component = 'core/util/components/RichTextEditor.vue'
 test('a document card stays one object when writing around it, deleting it and undoing', async ({ page }, testInfo) => {
   const html = '<blockquote class="galaris-link-card"><p><a href="https://example.org/guide"><strong>Synthetic guide</strong></a></p><p>Preserved description</p></blockquote>'
   await mount(page, component, { props: { profile: 'document', modelValue: html } })
-  const editable = page.locator('.ck-editor__editable')
+  const editable = page.locator('[data-editor-surface]')
   const card = editable.locator('blockquote.galaris-link-card')
   const popups = []
   page.on('popup', popup => popups.push(popup))
@@ -41,11 +41,11 @@ test('a document card stays one object when writing around it, deleting it and u
   await expect(card).toHaveCount(0)
   await page.keyboard.press('Control+z')
   await card.getByText('Preserved description', { exact: true }).click()
-  await card.getByTitle('Insert paragraph before block', { exact: true }).click()
+  await page.getByRole('button', { name: 'Insert paragraph before block', exact: true }).click()
   await page.keyboard.type('Before the card')
   await expect(editable.locator(':scope > p').first()).toHaveText('Before the card')
   await card.getByText('Preserved description', { exact: true }).click()
-  await card.getByTitle('Insert paragraph after block', { exact: true }).click()
+  await page.getByRole('button', { name: 'Insert paragraph after block', exact: true }).click()
   await page.keyboard.type('After the card')
   await expect(editable.locator(':scope > p').last()).toHaveText('After the card')
   await card.getByText('Preserved description', { exact: true }).click()
@@ -54,21 +54,25 @@ test('a document card stays one object when writing around it, deleting it and u
   await expect(card).toHaveCount(0)
   await page.keyboard.press('Control+z')
   await expect(card).toContainText('Preserved description')
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
-  const saved = await page.locator('.ck-source-editing-area textarea').inputValue()
+  const saved = await editorHtml(page)
   const parsed = await page.evaluate(html => {
     const body = new DOMParser().parseFromString(html, 'text/html').body
-    return [...body.children].map(element => [element.tagName, element.textContent.replace(/\s+/g, ' ').trim()])
+    return [...body.children].map(element => [element.tagName, (element.tagName === 'BLOCKQUOTE' ? [...element.children].map(child => child.textContent).join(' ') : element.textContent).replace(/\s+/g, ' ').trim()])
   }, saved)
   expect(parsed).toEqual([['P', 'Before the card'], ['BLOCKQUOTE', 'Synthetic guide Preserved description'], ['P', 'After the card']])
   expect(saved).not.toMatch(/ck-widget|contenteditable|type-around/)
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
   await expect(card).toContainText('Preserved description')
   expect(popups).toHaveLength(0)
+  await page.evaluate(() => window.testApp.setProps({ readonly: true }))
+  await expect(page.getByRole('button', { name: 'Insert paragraph before block', exact: true })).toHaveCount(0)
+  await expect(card).toContainText('Preserved description')
+  await page.evaluate(() => window.testApp.setProps({ readonly: false }))
+  await card.getByText('Preserved description', { exact: true }).click()
+  await expect(page.getByRole('toolbar', { name: 'Insert a link or file' }).getByRole('button', { name: 'Insert paragraph before block', exact: true })).toBeVisible()
 })
 
 async function paste(page, text) {
-  await page.locator('.ck-editor__editable').evaluate((root, text) => {
+  await page.locator('[data-editor-surface]').evaluate((root, text) => {
     const data = new DataTransfer(); data.setData('text/plain', text)
     root.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
   }, text)
@@ -106,25 +110,23 @@ test('static link cards roundtrip and export', async ({ page }, testInfo) => {
       exportBundle: async html => { window.bundleSnapshot = html; return new Blob(['PK fixture'], { type: 'application/zip' }) },
     } })
   }, { uri, png })
-  await page.locator('.ck-editor__editable').click()
+  await page.locator('[data-editor-surface]').click()
   await page.keyboard.press('Control+End')
   await expect(page.getByRole('button', { name: 'Link preview or attachment', exact: true })).toHaveCount(0)
   await paste(page, 'https://youtu.be/dQw4w9WgXcQ')
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await page.locator('.ck-editor__editable a').click()
+  await page.locator('[data-editor-surface] a').click()
   await page.getByRole('button', { name: 'Show card', exact: true }).click()
-  const card = page.locator('.ck-editor__editable .galaris-link-card')
+  const card = page.locator('[data-editor-surface] .galaris-link-card')
   await expect(card).toContainText('Mont Saint-Michel')
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
   await expect(card.locator('iframe')).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
   await expect(card.locator('iframe')).toBeVisible()
   await expect(card.locator('figure.image')).not.toBeVisible()
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
-  const source = await page.locator('.ck-source-editing-area textarea').inputValue()
+  const source = await editorHtml(page)
   expect(source).toContain('galaris-link-card')
   expect(source).toContain(uri)
   expect(source).not.toContain('blob:')
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
   await card.screenshot({ path: testInfo.outputPath('link-card.png') })
   const downloaded = page.waitForEvent('download')
@@ -140,14 +142,14 @@ test('static link cards roundtrip and export', async ({ page }, testInfo) => {
   await card.locator('p').filter({ hasText: 'A video of the island' }).click()
   await page.getByRole('button', { name: 'Show URL', exact: true }).click()
   await expect(card).toHaveCount(0)
-  await expect(page.locator('.ck-editor__editable a')).toHaveText('https://youtu.be/dQw4w9WgXcQ')
+  await expect(page.locator('[data-editor-surface] a')).toHaveText('https://youtu.be/dQw4w9WgXcQ')
   await page.keyboard.press('Control+z')
   await expect(card).toContainText('Mont Saint-Michel')
   for (const selector of ['p:has(strong)', 'p:last-of-type a', 'p:has-text("A video of the island")']) {
     await card.locator(selector).click()
     await page.getByRole('button', { name: 'Show URL', exact: true }).click()
     await expect(card).toHaveCount(0)
-    await page.locator('.ck-editor__editable a').click()
+    await page.locator('[data-editor-surface] a').click()
     await page.getByRole('button', { name: 'Show card', exact: true }).click()
     await expect(card).toContainText('Mont Saint-Michel')
     await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
@@ -174,13 +176,13 @@ test('the card action is hidden for attachments and modal targets without a card
     profile: 'document', modelValue: `<p><a href="${uri}">Attachment</a></p><p><a href="galaris://task/00000000-0000-0000-0000-000000000003">Task</a></p><p><a href="https://example.org">Website</a></p>`,
     createLinkCard: async () => '',
   } }), { component, uri })
-  await page.locator('.ck-editor__editable a').first().click()
+  await page.locator('[data-editor-surface] a').first().click()
   await expect(page.getByRole('button', { name: 'Show card', exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
-  await page.locator('.ck-editor__editable a').nth(1).click()
+  await page.locator('[data-editor-surface] a').nth(1).click()
   await expect(page.getByRole('button', { name: 'Show card', exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
-  await page.locator('.ck-editor__editable a').last().click()
+  await page.locator('[data-editor-surface] a').last().click()
   await expect(page.getByRole('button', { name: 'Show card', exact: true })).toBeVisible()
 })
 
@@ -214,10 +216,10 @@ for (const directUpload of [false, true]) test(`the document ${directUpload ? 'u
     await expect(page.locator('.document-attachments')).toContainText('scene.html')
     await expect(page.locator('.document-attachments')).toContainText('0.850305 MB')
   }
-  await page.locator('.ck-editor__editable').click()
+  await page.locator('[data-editor-surface]').click()
   await page.keyboard.press('Control+End')
   if (directUpload) {
-    await page.locator('.ck-editor__editable').evaluate(root => {
+    await page.locator('[data-editor-surface]').evaluate(root => {
       const data = new DataTransfer()
       data.items.add(new File(['<html><body>Scene</body></html>'], 'scene.html', { type: 'text/html' }))
       root.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
@@ -229,23 +231,23 @@ for (const directUpload of [false, true]) test(`the document ${directUpload ? 'u
     await insert.click()
   }
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.locator('.ck-editor__editable .galaris-link-card')).toContainText('scene.html')
+  await expect(page.locator('[data-editor-surface] .galaris-link-card')).toContainText('scene.html')
   await expect(page.locator('.document-attachments')).toBeVisible()
   await expect(page.locator('.document-attachments')).toContainText('scene.html')
   await expect.poll(() => current.payload.text).toContain(uri)
   const insert = page.getByRole('button', { name: 'Insert into document', exact: true })
   await expect(insert).toHaveCount(1)
   if (directUpload) return
-  await page.locator('.ck-editor__editable p').first().click()
+  await page.locator('[data-editor-surface] p').first().click()
   await page.keyboard.press('Home')
   await page.locator('.document-attachments__item').hover()
   await insert.click()
-  await expect(page.locator('.ck-editor__editable .galaris-link-card')).toHaveCount(2)
+  await expect(page.locator('[data-editor-surface] .galaris-link-card')).toHaveCount(2)
   const item = page.locator('.document-attachments__item')
   await expect(item).toHaveAttribute('draggable', 'true')
   // A native drag copies the existing file to the drop position, independently of the cursor.
-  await item.dragTo(page.locator('.ck-editor__editable > p').filter({ hasText: 'Closing note' }), { sourcePosition: { x: 25, y: 40 }, targetPosition: { x: 150, y: 10 } })
-  await expect(page.locator('.ck-editor__editable .galaris-link-card')).toHaveCount(3)
+  await item.dragTo(page.locator('[data-editor-surface] > p').filter({ hasText: 'Closing note' }), { sourcePosition: { x: 25, y: 40 }, targetPosition: { x: 150, y: 10 } })
+  await expect(page.locator('[data-editor-surface] .galaris-link-card')).toHaveCount(3)
   await expect.poll(() => (current.payload.text.match(/scene.html/g) ?? []).length).toBe(3)
   expect(current.payload.text.indexOf('Closing note')).toBeLessThan(current.payload.text.lastIndexOf('scene.html'))
   expect(uploads).toBe(0)
@@ -330,14 +332,12 @@ for (const mode of ['edit', 'read']) for (const kind of ['audio', 'video', 'pdf'
   expect(loads.length).toBeGreaterThan(0)
   for (const reference of loads) expect(reference).toEqual([documentId, attachmentId])
   if (mode === 'edit') {
-    await page.locator('.ck-editor__editable strong').click()
+    await page.locator('[data-editor-surface] strong').click()
     expect(await page.evaluate(() => window.mediaLoads.length)).toBe(loads.length)
-    await page.getByRole('button', { name: 'Source', exact: true }).click()
-    const source = await page.locator('.ck-source-editing-area textarea').inputValue()
+    const source = await editorHtml(page)
     expect(source).toContain(`galaris-media-${kind}`)
     expect(source).toContain(uri)
     expect(source).not.toMatch(/<(audio|video|iframe)|blob:/)
-    await page.getByRole('button', { name: 'Source', exact: true }).click()
   }
   await page.emulateMedia({ media: 'print' })
   await expect(player).not.toBeVisible()
@@ -399,9 +399,9 @@ test('document link thumbnails survive saving, reopening and repeated conversion
   })
   const options = { props: { documentId, agentId: 7 }, privileges: ['MEMORY_EDIT'] }
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
-  await page.locator('.ck-editor__editable a').click()
+  await page.locator('[data-editor-surface] a').click()
   await page.getByRole('button', { name: 'Show card', exact: true }).click()
-  const card = page.locator('.ck-editor__editable .galaris-link-card')
+  const card = page.locator('[data-editor-surface] .galaris-link-card')
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
   await expect.poll(() => current.payload.text).toContain(uri)
   expect(current.payload.text).not.toContain('blob:')
@@ -411,7 +411,7 @@ test('document link thumbnails survive saving, reopening and repeated conversion
     await card.locator('strong').click()
     await page.getByRole('button', { name: 'Show URL', exact: true }).click()
     await expect(card).toHaveCount(0)
-    await page.locator('.ck-editor__editable a').click()
+    await page.locator('[data-editor-surface] a').click()
     await page.getByRole('button', { name: 'Show card', exact: true }).click()
     await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
   }
@@ -439,7 +439,7 @@ test('document link thumbnails survive saving, reopening and repeated conversion
   current.payload = { text: `<p><a href="${url}">${url}</a></p>` }
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
   for (let i = 0; i < 2; i++) {
-    await page.locator('.ck-editor__editable a').click()
+    await page.locator('[data-editor-surface] a').click()
     await page.getByRole('button', { name: 'Show card', exact: true }).click()
     await expect(card).toContainText('example.org')
     await expect(page.locator('.q-notification')).toHaveCount(0)
@@ -451,7 +451,7 @@ test('document link thumbnails survive saving, reopening and repeated conversion
 
 test('attachment links in the text open their viewer', async ({ page }) => {
   await mount(page, component, { props: { profile: 'document', modelValue: `<p><a href="${uri}">Scene 3D</a></p>` } })
-  const link = page.locator('.ck-editor__editable a')
+  const link = page.locator('[data-editor-surface] a')
   await expect(link).toHaveText('Scene 3D')
   await link.click({ modifiers: ['Control'] })
   await expect.poll(() => page.evaluate(() => window.testApp.events.find(event => event.name === 'open-attachment')?.args)).toEqual([documentId, attachmentId])
@@ -475,7 +475,7 @@ test('document attachments upload below the content, retry after failure and rem
   await page.route(`**/api/memory/documents/${documentId}?*`, route => route.fulfill({ json: { item: current } }))
   const options = { props: { documentId, agentId: 7 }, privileges: ['MEMORY_EDIT'] }
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
-  const editor = page.locator('.ck-editor__editable')
+  const editor = page.locator('[data-editor-surface]')
   const zone = page.getByRole('region', { name: 'Attachments', exact: true })
   await expect(editor).toContainText('Report content')
   await expect(zone).toBeVisible()
@@ -541,15 +541,24 @@ for (const editable of [true, false]) for (const reference of ['link', 'image'])
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'removed').map(event => event.value))).toEqual([secondId])
 })
 
-test('an image attachment displays with its canonical source', async ({ page }) => {
+for (const readonly of [false, true]) for (const linked of [false, true]) test(`an image attachment selects in editing and opens in reading (readonly=${readonly}, linked=${linked})`, async ({ page }, testInfo) => {
   await mount(page, component)
-  await page.evaluate(async ({ uri, png }) => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
-    profile: 'document', modelValue: `<figure class="image"><img src="${uri}" alt="photo.png"></figure>`,
+  await page.evaluate(async ({ uri, png, readonly, linked }) => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
+    profile: 'document', readonly, modelValue: `<figure class="image">${linked ? `<a href="${uri}">` : ''}<img src="${uri}" width="160" alt="photo.png">${linked ? '</a>' : ''}</figure>`,
     resolveImage: async () => new Blob([Uint8Array.from(atob(png), value => value.charCodeAt(0))], { type: 'image/png' }),
-  } }), { uri, png })
-  await expect(page.locator('.ck-editor__editable img')).toHaveJSProperty('naturalWidth', 1)
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
-  expect(await page.locator('.ck-source-editing-area textarea').inputValue()).toContain(uri)
+  } }), { uri, png, readonly, linked })
+  const picture = page.locator('[data-editor-surface] img:not(.ProseMirror-separator)')
+  await expect(picture).toHaveJSProperty('naturalWidth', 1)
+  await picture.click()
+  const tools = page.getByRole('toolbar', { name: 'Insert a link or file', exact: true })
+  if (!readonly) {
+    await expect(tools).toBeVisible()
+    expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'open-attachment'))).toEqual([])
+    await page.screenshot({ path: testInfo.outputPath('selected-image.png') })
+    await tools.getByRole('button', { name: 'Open', exact: true }).click()
+  } else await expect(tools).toBeHidden()
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'open-attachment').map(event => event.args))).toEqual([[documentId, attachmentId]])
+  expect(await editorHtml(page)).toContain(uri)
 })
 
 test('a thumbnail download failure can recover on the next card conversion', async ({ page }) => {
@@ -566,10 +575,10 @@ test('a thumbnail download failure can recover on the next card conversion', asy
     } })
   }, { uri, png })
   await expect.poll(() => page.evaluate(() => window.imageCalls)).toBe(1)
-  const card = page.locator('.ck-editor__editable .galaris-link-card')
+  const card = page.locator('[data-editor-surface] .galaris-link-card')
   await card.getByText('Description', { exact: true }).click()
   await page.getByRole('button', { name: 'Show URL', exact: true }).click()
-  await page.locator('.ck-editor__editable a').click()
+  await page.locator('[data-editor-surface] a').click()
   await page.getByRole('button', { name: 'Show card', exact: true }).click()
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
   expect(await page.evaluate(() => window.imageCalls)).toBe(2)
@@ -584,17 +593,17 @@ test('pasting a URL inserts an inline address without a modal or a metadata requ
       createLinkCard: async () => { window.cardCalls++; return '<p>Card</p>' },
     } })
   })
-  await page.locator('.ck-editor__editable').click()
+  await page.locator('[data-editor-surface]').click()
   await page.keyboard.press('Control+Home')
   for (let i = 0; i < 7; i++) await page.keyboard.press('ArrowRight', { delay: 50 })
   const url = 'https://example.org/page?first=1&second=2'
   await paste(page, url)
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.locator('.ck-editor__editable p')).toHaveText(`Before ${url}after`)
-  await expect(page.locator('.ck-editor__editable a')).toHaveAttribute('href', url)
+  await expect(page.locator('[data-editor-surface] p')).toHaveText(`Before ${url}after`)
+  await expect(page.locator('[data-editor-surface] a')).toHaveAttribute('href', url)
   expect(await page.evaluate(() => window.cardCalls)).toBe(0)
   await page.keyboard.press('Control+z')
-  await expect(page.locator('.ck-editor__editable')).toHaveText('Before after')
+  await expect(page.locator('[data-editor-surface]')).toHaveText('Before after')
 })
 
 test('editing away a link while its card loads discards the late card', async ({ page }) => {
@@ -602,15 +611,15 @@ test('editing away a link while its card loads discards the late card', async ({
   await page.evaluate(async () => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
     profile: 'document', modelValue: '<p>Report</p>', createLinkCard: () => new Promise(resolve => { window.finishCard = resolve }),
   } }))
-  await page.locator('.ck-editor__editable').click()
+  await page.locator('[data-editor-surface]').click()
   await paste(page, 'https://example.org')
-  await page.locator('.ck-editor__editable a').click()
+  await page.locator('[data-editor-surface] a').click()
   await page.getByRole('button', { name: 'Show card', exact: true }).click()
-  await page.locator('.ck-editor__editable').click()
+  await page.locator('[data-editor-surface]').click()
   await page.keyboard.press('Control+a')
   await page.keyboard.type('Changed content')
   await page.evaluate(() => window.finishCard('<blockquote class="galaris-link-card"><p>Late card</p></blockquote>'))
-  await expect(page.locator('.ck-editor__editable')).toHaveText('Changed content')
+  await expect(page.locator('[data-editor-surface]')).toHaveText('Changed content')
 })
 
 test('a failed conversion preserves the URL and a document switch cancels pending conversion', async ({ page }) => {
@@ -618,20 +627,20 @@ test('a failed conversion preserves the URL and a document switch cancels pendin
   await page.evaluate(async () => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
     profile: 'document', modelValue: '<p>Report</p>', createLinkCard: async () => { throw new Error('Unavailable') },
   } }))
-  await page.locator('.ck-editor__editable').click()
+  await page.locator('[data-editor-surface]').click()
   await paste(page, 'https://example.org')
-  await page.locator('.ck-editor__editable a').click()
+  await page.locator('[data-editor-surface] a').click()
   await page.getByRole('button', { name: 'Show card', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.locator('.q-notification')).toContainText('Preview unavailable')
-  await expect(page.locator('.ck-editor__editable a')).toHaveText('https://example.org')
+  await expect(page.locator('[data-editor-surface] a')).toHaveText('https://example.org')
   await page.evaluate(() => window.testApp.setProps({ createLinkCard: () => new Promise(resolve => { window.finishCard = resolve }) }))
-  await page.locator('.ck-editor__editable a').click()
+  await page.locator('[data-editor-surface] a').click()
   await page.getByRole('button', { name: 'Show card', exact: true }).click()
   await page.evaluate(() => window.testApp.setProps({ modelValue: '<p>Another document</p>' }))
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.evaluate(() => window.finishCard('<p>Obsolete card</p>'))
-  await expect(page.locator('.ck-editor__editable')).toHaveText('Another document')
+  await expect(page.locator('[data-editor-surface]')).toHaveText('Another document')
 })
 
 test('URLs pasted into code and text containing URLs do not prompt for cards', async ({ page }) => {
@@ -639,15 +648,15 @@ test('URLs pasted into code and text containing URLs do not prompt for cards', a
   await page.evaluate(async () => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
     profile: 'document', modelValue: '<pre><code class="language-plaintext">code</code></pre>', createLinkCard: async () => '<p>Card</p>',
   } }))
-  await page.locator('.ck-editor__editable code').click()
+  await page.locator('[data-editor-surface] code').click()
   await paste(page, 'https://example.org/code')
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.locator('.ck-editor__editable code')).toContainText('https://example.org/code')
+  await expect(page.locator('[data-editor-surface] code')).toContainText('https://example.org/code')
   await page.evaluate(() => window.testApp.setProps({ modelValue: '<p>Report</p>' }))
-  await page.locator('.ck-editor__editable').click()
+  await page.locator('[data-editor-surface]').click()
   await paste(page, 'Read https://example.org for details')
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.locator('.ck-editor__editable')).toContainText('Read https://example.org for details')
+  await expect(page.locator('[data-editor-surface]')).toContainText('Read https://example.org for details')
 })
 
 test('a full HTML paste becomes editable styled content with owned images', async ({ page }) => {
@@ -659,18 +668,18 @@ test('a full HTML paste becomes editable styled content with owned images', asyn
     resolveImage: async () => new Blob([], { type: 'image/png' }),
   } }), uri)
   const html = `<!doctype html><html><head><style>.intro{color:#123456;font-size:20px;font-weight:bold}</style></head><body><main><h1>Page title</h1><p class="intro">Editable paragraph</p><table><tr><td>Cell content</td></tr></table><img src="https://example.org/picture.png"><img src="https://example.org/picture.png"><img src="data:image/png;base64,${png}"></main><script>window.ran=true</script></body></html>`
-  await page.locator('.ck-editor__editable').click()
+  await page.locator('[data-editor-surface]').click()
   await page.keyboard.press('End'); await page.keyboard.press('Enter')
-  await page.locator('.ck-editor__editable').evaluate((root, html) => {
+  await page.locator('[data-editor-surface]').evaluate((root, html) => {
     const data = new DataTransfer(); data.setData('text/plain', html)
     root.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
   }, html)
-  await expect(page.locator('.ck-editor__editable h1')).toHaveText('Page title')
+  await expect(page.locator('[data-editor-surface] h1')).toHaveText('Page title')
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  const paragraph = page.locator('.ck-editor__editable p').filter({ hasText: 'Editable paragraph' })
+  const paragraph = page.locator('[data-editor-surface] p').filter({ hasText: 'Editable paragraph' })
   await expect(paragraph.locator('strong')).toHaveText('Editable paragraph')
   await expect(paragraph.locator('strong')).toHaveCSS('color', 'rgb(18, 52, 86)')
-  await expect(page.locator('.ck-editor__editable td')).toHaveText('Cell content')
+  await expect(page.locator('[data-editor-surface] td')).toHaveText('Cell content')
   expect(await page.evaluate(() => window.importedImages)).toEqual(['https://example.org/picture.png'])
   expect(await page.evaluate(() => window.pastedImage)).toEqual({ type: 'image/png', size: Buffer.from(png, 'base64').length })
   await expect(page.getByRole('textbox', { name: 'Content', exact: true })).toContainText('Report')
@@ -681,8 +690,8 @@ test('a full HTML paste becomes editable styled content with owned images', asyn
   expect(saved.match(/document:\/\//g)).toHaveLength(3)
   await page.evaluate(content => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: { profile: 'document', modelValue: content } }), saved)
   await expect(page.getByRole('textbox', { name: 'Content', exact: true })).toContainText('Editable paragraph changed')
-  await expect(page.locator('.ck-editor__editable p').filter({ hasText: 'Editable paragraph changed' }).locator('strong')).toHaveCSS('color', 'rgb(18, 52, 86)')
-  await expect(page.locator('.ck-editor__editable td')).toHaveText('Cell content')
+  await expect(page.locator('[data-editor-surface] p').filter({ hasText: 'Editable paragraph changed' }).locator('strong')).toHaveCSS('color', 'rgb(18, 52, 86)')
+  await expect(page.locator('[data-editor-surface] td')).toHaveText('Cell content')
 })
 
 for (const format of ['HTML', 'Markdown']) test(`pasted ${format} document images are saved through the attachment API and reopen locally`, async ({ page }) => {
@@ -708,14 +717,14 @@ for (const format of ['HTML', 'Markdown']) test(`pasted ${format} document image
   })
   const options = { props: { documentId, agentId: 7 }, privileges: ['MEMORY_EDIT'] }
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
-  await page.locator('.ck-editor__editable').click()
+  await page.locator('[data-editor-surface]').click()
   await paste(page, format === 'HTML' ? '<p>Illustration</p><p><img src="https://example.org/picture.png" alt="Diagram"></p>' : 'Illustration\n\n![Diagram](https://example.org/picture.png)')
-  await expect(page.locator('.ck-editor__editable img')).toHaveJSProperty('naturalWidth', 1)
+  await expect(page.locator('[data-editor-surface] img:not(.ProseMirror-separator)')).toHaveJSProperty('naturalWidth', 1)
   await expect.poll(() => current.payload.text).toContain(uri)
   expect(current.payload.text).not.toMatch(/blob:|https:\/\/example.org\/picture/)
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
-  await expect(page.locator('.ck-editor__editable')).toContainText('Illustration')
-  await expect(page.locator('.ck-editor__editable img')).toHaveJSProperty('naturalWidth', 1)
+  await expect(page.locator('[data-editor-surface]')).toContainText('Illustration')
+  await expect(page.locator('[data-editor-surface] img:not(.ProseMirror-separator)')).toHaveJSProperty('naturalWidth', 1)
 })
 
 for (const action of ['cancel', 'switch', 'readonly']) test(`pending HTML paste discards late images after ${action}`, async ({ page }) => {
@@ -727,7 +736,7 @@ for (const action of ['cancel', 'switch', 'readonly']) test(`pending HTML paste 
       signal.addEventListener('abort', () => { window.pasteAborted = true })
     }),
   } }), uri)
-  await page.locator('.ck-editor__editable').click()
+  await page.locator('[data-editor-surface]').click()
   await paste(page, '<p>Late content</p><img src="https://example.org/picture.png">')
   await expect.poll(() => page.evaluate(() => typeof window.finishPaste)).toBe('function')
   if (action === 'cancel') await page.getByRole('button', { name: 'Cancel', exact: true }).click()
@@ -735,7 +744,7 @@ for (const action of ['cancel', 'switch', 'readonly']) test(`pending HTML paste 
   await expect.poll(() => page.evaluate(() => window.pasteAborted)).toBe(true)
   await page.evaluate(() => window.finishPaste())
   await expect(page.getByRole('status')).toHaveCount(0)
-  await expect(page.locator('.ck-editor__editable')).toHaveText(action === 'switch' ? 'New document' : 'Keep this')
+  await expect(page.locator('[data-editor-surface]')).toHaveText(action === 'switch' ? 'New document' : 'Keep this')
 })
 
 test('HTML paste preserves typing during image download and remains one undo step', async ({ page }) => {
@@ -825,7 +834,7 @@ test('PDF exports only the document body without an attachment inventory', async
 
 test('HTML pasted inside a code block stays literal code without an import dialog', async ({ page }) => {
   await mount(page, component, { props: { profile: 'document', modelValue: '<pre><code class="language-html">Example</code></pre>' } })
-  const code = page.locator('.ck-editor__editable pre')
+  const code = page.locator('[data-editor-surface] pre')
   await code.click()
   await page.keyboard.press('End')
   await code.evaluate(root => {

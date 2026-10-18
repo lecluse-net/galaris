@@ -1,5 +1,5 @@
 <template>
-  <section class="process-preview" :class="{ 'process-preview--inline': inline }">
+  <section ref="root" class="process-preview" :class="{ 'process-preview--inline': inline }">
     <div v-if="loading" class="q-pa-md" role="status"><q-spinner color="primary" /></div>
     <q-banner v-else-if="error" role="alert">{{ t('nativeProcesses.resources.unavailable') }}
       <template #action><q-btn outline :label="t('common.retry')" @click="load" /></template>
@@ -27,9 +27,9 @@
   </section>
 </template>
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef, watch, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ResourceDetailDialog } from '@/core/util'
+import { ResourceDetailDialog, captureElementRendering } from '@/core/util'
 import BpmnCanvas from './BpmnCanvas.vue'
 import { processResourceTarget } from '../contracts'
 import { processResourceService, type ProcessResourcePreview } from '../services/processResourceService'
@@ -45,6 +45,13 @@ const graph = computed(() => {
 })
 const selectedNode = computed(() => preview.value ? graph.value.nodes.find(node => node.id === selected.value) : null)
 const target = computed(() => processResourceTarget(uri, preview.value?.title ?? '', agentId))
+const root = useTemplateRef('root')
+async function capture(signal: AbortSignal): Promise<string> {
+  const board = root.value?.querySelector<HTMLElement>('.diagram-board')
+  if (!board || loading.value || error.value) throw new Error('Process rendering unavailable')
+  return captureElementRendering(board, signal)
+}
+defineExpose({ capture })
 let request: AbortController | undefined
 async function load(): Promise<void> {
   request?.abort(); const controller = new AbortController(); request = controller

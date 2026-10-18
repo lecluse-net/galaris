@@ -7,47 +7,109 @@ Attachments remain separate files; saving, restoration and access rights retain
 their existing behavior.
 
 Memories, documents, Goal descriptions/tracking, Task objectives, job descriptions and
-personalities use CKEditor 5 with its native interface. Headings, lists, underlines, highlights, quotes, code and
+personalities use Tiptap with a Quasar interface and no editor badge. Headings, lists, underlines, highlights, quotes, code and
 tables survive saving. The Table menu adds/deletes rows and columns, merges/splits cells and
 toggles header rows. Drag a column boundary to resize it. The toolbar also includes alignment,
 find/replace, undo/redo and fullscreen mode.
+The four **Left**, **Center**, **Right** and **Justify** icons are directly accessible,
+including on mobile, without a submenu. The active alignment is highlighted.
+Commands unavailable for the current selection are disabled: **Merge cells** requires
+multiple selected cells, and **Split cell** requires an already merged cell.
+In the table context menu, **Table styles** opens a preview gallery: **Contrast**, **Banded**
+or **Minimal**, each available in **Ocean**, **Iris**, **Forest**, **Amber**, **Coral** and
+**Graphite**. Choose a presentation, then a palette to apply it. The style follows new rows
+and survives reading, reopening, PDF and exported HTML. **Remove preset style** clears it
+without changing cells, dimensions or the caption. Style changes can be undone. Palettes
+and their previews automatically follow the light or dark theme, with visible borders and
+contrasting text. Switching themes does not change saved content. Printing and PDF exports
+keep the light presentation even when started in dark mode.
 Commands are grouped into **Reading**, **Editing**, **Text**, **Paragraph** and **Insert** blocks,
 with small titles and tooltips, including in fullscreen mode. Blocks adapt to the available
 width without a menu bar. Focusing the document keeps its neutral border.
 **Simple mode**, used for enriched text fields, includes the **Reading** group with
-**Source** and **Fullscreen**. **Full mode** for documents adds page layout and its
+**Source** and **Fullscreen**. Documents offer no Source view, whether editable or read-only.
+Their **Full mode** adds page layout and its
 **Full width** button, document insertions, printing and PDF/ZIP exports in **Editing**.
 Dictation and speech playback appear in **Reading** in both modes, using your personal models.
 In read-only mode, **Read text** remains available and dictation is hidden. Select a passage
 to read only that passage, or leave the selection collapsed to read the entire text.
+**Reading controls** opens a menu with icons and labels for **Pause**, **Resume** and **Stop reading**.
 The toolbar stays accessible while scrolling through the document, even after clicking the page background.
+Contextual actions for links, cards, images, tables and code blocks appear in a bubble near
+the selection. They follow scrolling and resizing without adding a bar below the document.
+**Escape** closes the bubble; click the object again to reopen it. **Alt+F10** moves keyboard
+focus to its controls.
+These bubbles share the main toolbar's GNOME icons wherever a suitable icon exists.
+While editing, images and noneditable HTML regions select as a single object with a yellow
+outline. Clicking displays their commands; **Open** in an image's menu opens its preview.
+In read-only mode, clicking opens the fullscreen preview directly, without selection or
+editing menus. An HTML block's preview uses a static isolated copy of its current rendering,
+without rerunning its scripts or Dataset writes.
+Independent HTML objects leave intervening prose editable. Regions sharing CSS, JavaScript
+or SVG references stay grouped to preserve their behavior.
 Heading and font size selectors display their current value as text. Their dropdown lists
 preview headings and font sizes at their respective sizes.
+In documents, the first **Style** menu combines normal text, all six heading levels and
+card styles, each with its visual preview.
+On mobile, common commands remain visible; **More tools** provides additional commands,
+including Full width and exports. Source remains limited to non-document rich-text fields.
+
+The context menu for cards, block images, tables, code blocks and embedded applications
+offers **Insert paragraph before block** and **Insert paragraph after block**. These commands
+move the cursor into the new paragraph. An application's menu also opens when you enter its
+form, without interrupting input. Tooltips describe each icon's action. These controls stay
+out of saved content and are hidden in read-only and Source views.
 
 ## Document formatting shortcuts
 
 Place the cursor in the document or select text. On Mac, replace **Ctrl** with **Cmd**.
-Numbers use the top row, including on AZERTY keyboards. The **Accessibility help** button
-in **Reading** (also available on mobile), or **Alt+0** inside the editor, shows shortcuts.
+Help displays **Cmd** only when Safari is detected, and **Ctrl** elsewhere.
+Numbers use the top row, including on AZERTY keyboards. The **Keyboard help** button
+in **Reading**, shown as a GNOME keyboard icon and also visible on mobile, or **Alt+0** inside
+the editor, shows the list of formatting, editing and navigation shortcuts.
 Press **Escape** to close the help.
+In read-only mode, help lists only reading and navigation commands; help and print
+shortcuts remain available without changing the document.
+
+Available commands follow [LibreOffice Writer shortcuts](https://help.libreoffice.org/latest/fr/text/swriter/04/01020000.html).
+Heading level 6 and Galaris-specific commands extend this baseline.
 
 | Action | Shortcut |
 |---|---|
-| Headings 1–6 | Ctrl+Shift+1–6 |
-| Normal text | Ctrl+Shift+0 |
-| Numbered / bulleted list | Ctrl+Shift+7 / Ctrl+Shift+8 |
+| Headings 1–6 | Ctrl+Alt+1–6 |
+| Normal text | Ctrl+0 |
+| Numbered / bulleted list | F12 / Shift+F12 |
+| Remove the list | Ctrl+Shift+F12 |
+| Insert table / current table properties | Ctrl+F12 |
 | Block quote | Ctrl+Shift+9 |
 | Bold / italic / underline | Ctrl+B / Ctrl+I / Ctrl+U |
-| Strikethrough | Ctrl+Shift+S |
-| Inline code / code block | Ctrl+E / Ctrl+Alt+C |
-| Increase / decrease indent | Ctrl+M / Ctrl+Shift+M |
+| Strikethrough (Galaris) | Ctrl+Alt+S |
+| Left / center / right / justified | Ctrl+L / Ctrl+E / Ctrl+R / Ctrl+J |
+| Superscript / subscript | Ctrl+Shift+P / Ctrl+Shift+B |
+| Clear direct formatting, keep headings and links | Ctrl+M |
+| Inline code / code block (Galaris) | Ctrl+Alt+E / Ctrl+Alt+C |
+| Increase / decrease indent (Galaris) | Ctrl+] / Ctrl+[ |
 | Nest / unnest a list item | Tab / Shift+Tab |
 | Insert or edit a link | Ctrl+K |
-| Undo / redo | Ctrl+Z / Ctrl+Shift+Z |
+| Find and replace | Ctrl+H; on Mac: Cmd+Alt+F (Ctrl/Cmd+F also available) |
+| Undo / redo | Ctrl+Z / Ctrl+Y; on Mac: Cmd+Z / Cmd+Shift+Z |
+| Nonbreaking space / soft hyphen / nonbreaking hyphen | Ctrl+Shift+Space / Ctrl+Minus / Ctrl+Shift+Minus |
+| Document start / end, add Shift to extend selection | Ctrl+Home / Ctrl+End; on Mac: Cmd+Up / Cmd+Down |
+| Editor fullscreen | Ctrl+Shift+J |
+| Print the document | Ctrl+P |
+| Keyboard help / toolbar / context toolbar | F1 / F10 / Shift+F10 |
 
 In tables, **Tab** and **Shift+Tab** move between cells. In code blocks, they adjust
-indentation. Elsewhere, Tab retains keyboard navigation; use Ctrl+M to indent a paragraph.
+indentation. At the start of a heading, they demote or promote its level.
+**Alt+Enter**, at the start of the first cell or the end of the last cell, inserts a paragraph
+before or after the table; it also works at code block edges and after a selected object.
+On a link away from these boundaries, Alt+Enter still opens its target.
+Elsewhere, Tab retains keyboard navigation; use toolbar indentation commands or Ctrl+] and Ctrl+[.
 Commands respect editing permissions and do not apply to **Source** fields or JSON Datasets.
+
+Features absent from the editor (pagination, fields, macros, Writer Navigator, etc.) have no
+equivalent shortcut. Browser or system combinations, including Ctrl+Tab, F5 and F11, cannot
+be reliably reproduced. Some function keys may require Fn; commands remain available in the toolbars.
 
 At the start of a paragraph, type `#` through `######` then a space for a heading, `-` or
 `*` then a space for bullets, `1.` then a space for a numbered list, or `>` then a space for
@@ -66,12 +128,13 @@ folder picker, including when a search hides some documents.
 ## Links
 
 The **Insert a link or file** menu groups **Link**, **Add an internal attachment** and
-uploads. In Documents, the internal action opens a file_share tree with compact files,
+uploads. In Documents and simpler editorial fields, including the reduced toolbar,
+the internal action opens the same file_share tree with compact files,
 search within the location and multiple selection. It inserts citations in the text without
 adding attachments or copying existing files. An existing file opens at its source in Files,
 with the reader's access rights. The attachment list below the document contains uploaded
 files only; use **Upload** or drag and drop to add them.
-Other editorial fields keep accessible content search with a resource kind filter.
+The former link search dialog with a resource kind filter has been removed.
 Selected text and its formatting are preserved when inserting a single link.
 Clicking the backdrop closes the dialog.
 Use **Link** to enter a URL or Galaris reference. The label belongs to your text; renaming the target does not break its reference. A link
@@ -85,25 +148,32 @@ link with its label.
 
 ## Callouts and attachments
 
+The document toolbar shows real-time connection and saving status as icons. Hover over them
+or focus them with the keyboard to read their tooltips. The shield icon and application
+permission dialog have been removed. Server checks for Dataset access remain active;
+additional consent cannot be granted here.
+
 Attached photos remain visible when a CSS note places them in the same isolated region
 as a form or calculator. Their access remains checked, and document code receives no
 additional network access.
 
-The **Styles** menu offers Information, Warning, Question, Error, Stop, Forbidden and
-Investigate. Select one or more paragraphs and choose a style to wrap them in a card with
+In documents, the **Style** menu includes Information, Warning, Question, Error, Stop, Forbidden and
+Investigate. Each choice previews the final card, including its icon, colors and border,
+adapted to the light or dark theme. Select one or more paragraphs and choose a style to wrap them in a card with
 an icon and theme-aware background. Choose another style to change the card, or select the
 active style again to remove it.
 
 To insert new files directly in the text, drop them at the desired location or place the cursor
 and paste copied files. Multiple files keep their chosen order and insertion position while
 uploading. Upload progress
-includes cancellation; images also retain CKEditor’s native upload controls.
+includes cancellation; images also retain the editor’s upload controls.
 
-The document body remains rich text. Interactive HTML pages, 3D scenes, videos and other
-content are attachments opened with their resource viewer. HTML files use the same attachment
+The document body supports rich text and isolated interactive HTML with custom CSS and JavaScript.
+Three.js is available locally in that rendering as `THREE`. Uploaded HTML pages, 3D files, videos and other
+files are attachments opened with their resource viewer. HTML files use the same attachment
 and thumbnail mechanisms as other files and also open from Chat without creating another copy.
 Import keeps the supplied file; images, styles and other resources referenced by URLs inside
-it are neither downloaded nor added as attachments. **Insert attachment** in the toolbar's **Insert a link or file** menu
+it are neither downloaded nor added as attachments. **Insert attachment** in the toolbar's **Insert** group
 opens a file picker and inserts uploaded files at the cursor. The attachment area below the content
 remains available even when empty: drop files there or use **Upload**, then the **Insert into document**
 icon in the preview actions to insert them into the text. You can also drag an uploaded
@@ -113,12 +183,13 @@ players. Other files become clickable cards opening their viewer.
 All attachments remain listed below the text, including files referenced by images or links
 in the content, with actions to open, download and remove them. Removing an insertion from
 the text preserves its file.
-Each upload shows progress and can be cancelled. Pasting a complete HTML page
-into the editor or its source offers a choice: attach the intact page, extract rich text,
-or cancel. Scripts in historical versions remain readable as literal code.
+Each upload shows progress and can be cancelled. Pasting a complete HTML page into the text
+imports editable rich content with owned images, without executing its scripts.
+Custom HTML with CSS and JavaScript stays preserved in existing documents or content supplied
+by tools and agents; its interactive rendering remains isolated. The document editor does not display source code.
 
 Paste a URL on its own into the document: it becomes a clickable link without a modal.
-Click the link and choose **Show card** in CKEditor’s floating toolbar to insert its title,
+Click the link and choose **Show card** in the editor’s contextual toolbar to insert its title,
 available description and thumbnail, including for YouTube. **Show URL** on the card’s toolbar
 converts it back to a link. The card is fetched only after you choose it. You can repeat these appearance
 changes: a card with a thumbnail is reused during editing without downloading the page again or
@@ -155,15 +226,21 @@ original file, which remains intact. The same rule applies to indexed files and 
 previews: Office documents, spreadsheets and other formats without a viewer only offer
 downloads, with no fullscreen action.
 
-The editor’s **Print** button opens the browser print dialog with the current content,
+On desktop, the editor’s **Print** button opens the browser print dialog with the current content,
 including unsaved changes. Printing retains images, tables and callouts on a light background,
-without editor controls. It uses the document’s static content: scripts and the elements they
-generate are not printed.
+without editor controls. Embedded objects use a static copy of their current rendering,
+without rerunning their scripts.
+In mobile mode (below 1024 px wide), **Share** replaces **Print**: the current content is
+prepared as a PDF and offered to the device’s share menu. If the browser cannot share files,
+it offers to save the PDF instead.
 
 In the **Editing** group, **Export as PDF** downloads the current content directly using the
 document title and a `.pdf` extension. Text remains selectable; images, tables and callouts
 are retained on light A4 pages. As with printing, only static content is exported. Exporting
 requires read access and does not create a document revision.
+Process cards include their full diagram fitted to the page width; agent cards retain their
+portrait and text. Images and embedded objects are not clickable in the PDF. Ordinary text
+links remain usable.
 
 Bootstrap Icons’ filled compressed-file icon, with the **Export document and attachments (ZIP)** tooltip, downloads `document.html` and an `attachments/`
 directory. Extract the entire archive to keep file links working. The limit is 64 MiB,
@@ -187,7 +264,7 @@ HTML and SVG files keep their usual isolated previews.
 
 ## Document images
 
-Ordinary working documents accept local images through CKEditor's native selection, paste or
+Ordinary working documents accept local images through the editor’s selection, paste or
 drop controls. The contextual toolbar provides alternative text, captions and width settings.
 Uploads show progress. Images remain document attachments and appear in the content when embedded.
 
@@ -208,6 +285,10 @@ from the list but keeps historical versions restorable under current access righ
 the document permanently removes these resources, subject to business protections.
 
 ## Saving and history
+
+Edit the title in the outlined field in the document header, next to its icon. Long titles wrap
+across multiple lines and the field adjusts its height. It saves automatically
+like the content; read-only documents keep a non-editable title. Owner and Sharing sit on the same row.
 
 Documents save automatically. Wait for the saved status before closing the browser. A draft is
 also retained within the tab so interrupted editing can be recovered. If two people change the
@@ -232,6 +313,9 @@ Rich content automatically follows the application's light or dark theme while r
 editing and using fullscreen. Text, backgrounds, links, tables and code change together;
 highlights retain readable dark ink on their pastel colors. Switching themes does not change
 the saved content.
+Embedded HTML follows the same theme: text remains readable even when its CSS fixes a dark
+color. No additional background is added around its text. Forms retain their input and
+scripts continue without restarting.
 
 Select an image to show the native resize handles: drag a corner to change its width while
 preserving its aspect ratio, or use the size menu. Move images by dragging and dropping them.

@@ -1,9 +1,10 @@
 import DOMPurify from 'dompurify'
+import { applyDocumentContrast } from './documentContrast'
 
 const rasterSource = /^data:image\/(png|jpeg|gif|webp);base64,/i
 
 /** Reflow a static copy at paper width, in a disposable frame without scripts. */
-export async function layoutDocumentRendering(html: string, signal: AbortSignal): Promise<DocumentFragment> {
+export async function layoutDocumentRendering(html: string, signal: AbortSignal, fitToWidth = false): Promise<DocumentFragment> {
   signal.throwIfAborted()
   const clean = DOMPurify.sanitize(html, {
     WHOLE_DOCUMENT: true,
@@ -45,10 +46,17 @@ export async function layoutDocumentRendering(html: string, signal: AbortSignal)
           await Promise.all([...rendered.images].filter(image => image.hasAttribute('src')).map(image => image.decode()))
           await rendered.fonts.ready
           pending.throwIfAborted()
+          applyDocumentContrast(rendered)
+          if (fitToWidth && rendered.body.firstElementChild?.namespaceURI === 'http://www.w3.org/1999/xhtml') {
+            rendered.body.style.margin = '0'
+            const object = rendered.body.firstElementChild as HTMLElement
+            const width = object.offsetWidth, available = rendered.body.clientWidth - 28
+            if (width > available && available > 0) object.style.zoom = String(available / width)
+          }
           let count = 0
           function style(source: Element, target: HTMLElement | SVGElement, pseudo?: string): void {
             const computed = view!.getComputedStyle(source, pseudo)
-            for (const property of computed) target.style.setProperty(property, computed.getPropertyValue(property))
+            for (const property of computed) target.style.setProperty(property, computed.getPropertyValue(property).replace(/url\(["']?[^)'"#]*#([^)'"\s]+)["']?\)/g, 'url(#$1)'))
             target.style.setProperty('animation', 'none', 'important')
             target.style.setProperty('transition', 'none', 'important')
             target.style.setProperty('caret-color', 'transparent')

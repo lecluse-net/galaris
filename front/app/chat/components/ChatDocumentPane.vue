@@ -4,7 +4,7 @@
       <DocumentIcon :document-id="document.id" :title="title" class="q-mr-sm" />
       <q-toolbar-title class="text-body2 ellipsis">{{ title }}</q-toolbar-title>
       <slot name="actions" />
-      <q-btn flat round dense icon="close" :aria-label="t('chat.closeWorkingDocument')" @click="close" />
+      <q-btn flat round dense icon="close" :aria-label="t('chat.closeWorkingDocument')" @click="close"><q-tooltip>{{ t('chat.closeWorkingDocument') }}</q-tooltip></q-btn>
     </q-toolbar>
     <div ref="content" class="chat-document-content">
       <WorkingDocumentEditor ref="editor" :key="`${agentId}:${document.id}`" :document-id="document.id" :agent-id="agentId"

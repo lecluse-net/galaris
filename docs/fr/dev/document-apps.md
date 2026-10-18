@@ -4,16 +4,24 @@
 
 Les documents HTML acceptent directement des formulaires, du CSS et du JavaScript.
 L'agent écrit des balises HTML ordinaires ; aucun manifeste applicatif n'est nécessaire.
-La barre d'outils CKEditor reste présente et le texte environnant reste éditable.
+La barre d'outils Tiptap reste présente et le texte environnant reste éditable.
 Il n'y a pas de mode lecture/édition supplémentaire, de bouton de démarrage ou d'assistant
-« Ajouter un formulaire ». Le bouton **Source** existant donne accès au code.
+« Ajouter un formulaire ». L’éditeur de documents ne propose pas de vue **Source**.
 
 Les formulaires s'affichent à leur emplacement dans le document. Leurs contrôles sont
 utilisables ; les parties pilotées par le JavaScript ne sont pas éditées par le WYSIWYG.
-Le code enregistré se lance à l'ouverture. Passer en Source, modifier le document ou changer
+Le code enregistré se lance à l'ouverture. Modifier le document ou changer
 de contexte arrête le runtime ; le rendu reprend après une sauvegarde valide.
 Les anciens manifestes `language-galaris-app` restent lisibles et exécutables sans montrer
 leur JSON. Les nouveaux documents utilisent le HTML direct.
+
+Le runtime isolé suit le thème de l’application sans redémarrer ses scripts ni perdre les
+valeurs saisies. Il ne rajoute aucun fond aux zones de texte. Une correction d’affichage
+ajuste les couleurs de texte illisibles selon leur fond réel, y compris lorsqu’un CSS impose
+une encre sombre ; les panneaux dont les couleurs sont déjà lisibles sont conservés.
+Cette correction reste dans le rendu temporaire, sans modifier le HTML enregistré.
+Les captures destinées à l’impression repartent du CSS original sur une copie claire et
+vérifient son contraste, sans modifier le runtime ouvert.
 
 L'impression, le PDF, son partage mobile et l'archive HTML reprennent le rendu courant :
 valeurs des champs, résultats calculés, styles, SVG et images des canvas. Ils capturent
@@ -90,9 +98,21 @@ committée reste durable. Les déclarations du HTML direct utilisent l'identifia
 Le runtime est isolé dans deux iframes opaques, sans accès au DOM parent, aux cookies,
 au stockage de Galaris, aux popups ou à la navigation du parent. Ce mécanisme est interne :
 aucun cadre visuel, titre applicatif ou bouton supplémentaire n'est ajouté au document.
-Le texte éditorial reste dans CKEditor ; la portion interactive est conservée comme source
-opaque par son modèle, puis restituée en HTML ordinaire dans Source et à la sauvegarde.
-Les régions interactives partageant des scripts sont réunies dans le même contexte isolé.
+Le texte éditorial reste dans l’éditeur ; la portion interactive est conservée comme source
+opaque par son modèle, puis restituée en HTML ordinaire à la sauvegarde.
+Les objets statiques indépendants sont séparés aux frontières du texte éditorial. En présence
+de scripts, de styles globaux, de gestionnaires d’événements ou de références SVG partagées,
+la région du premier au dernier objet reste dans le même contexte isolé. Le regroupement
+reste volontairement conservateur : analyser arbitrairement le code pour en déduire ses
+dépendances pourrait casser les sélecteurs, identifiants et états partagés.
+
+Le runtime fournit localement `THREE`, avec `THREE.OrbitControls` et
+`THREE.GLTFLoader`, depuis la dépendance Three.js verrouillée du projet. Aucun import
+CDN n'est nécessaire ni autorisé. Une scène peut créer son `THREE.WebGLRenderer`,
+insérer son canvas dans le document et utiliser `requestAnimationFrame`. Le contexte
+WebGL conserve son tampon pour les captures statiques ; les exports capturent le rendu
+courant et ne rejouent pas les scripts. Les modèles et textures restent soumis aux
+ressources et MIME autorisés ; les chargeurs exigeant un Worker ne sont pas disponibles.
 
 Les images et médias de cette région conservent leurs références natives
 `document://…/attachments/…` dans la source. Avant le démarrage, le lecteur résout ces
@@ -121,9 +141,10 @@ vers du code Blob pourrait sinon créer un nouveau contexte avant l'arrêt par l
 
 ## Autorisations personnelles et quotas serveur
 
-L'accès Dataset est refusé par défaut, y compris pour les documents existants. Chaque lecteur
-approuve les couples application–Dataset depuis l'icône **Permissions des applications** de
-la barre du document. L'accord est enregistré en base, hors du HTML, pour cet utilisateur,
+L'accès Dataset est refusé par défaut, y compris pour les documents existants. L'icône et la
+modale de permissions ont été retirées de la barre du document ; l'interface ne permet plus
+d'accorder ou de révoquer ces accès. Les contrôles serveur et les accords existants restent
+en place. L'accord est enregistré en base, hors du HTML, pour cet utilisateur,
 cette application, cet alias, ce Dataset et cette révision du document. Il ne se transfère
 ni à un autre lecteur ni à un autre document. Toute modification du contenu ou restauration
 nécessite un nouvel accord ; changer seulement le titre ne change pas la révision du contenu.

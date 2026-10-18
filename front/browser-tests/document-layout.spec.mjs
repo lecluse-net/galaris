@@ -44,25 +44,23 @@ test('changing document layout and editing mode preserves the authored content',
   const width = async () => (await editor.boundingBox()).width
   await expect(editor).toBeVisible()
   const initialWidth = await width()
-  // Compare authored content, not CKEditor's transient widget DOM and styles.
-  const content = () => editor.locator('h2, p, td').allTextContents()
+  // Compare authored content independently of transient widget DOM and styles.
+  const content = () => editor.locator('h2, :scope > p, td').allTextContents()
   const snapshot = await content()
   expect(snapshot).toEqual(['Document title', 'Keep this content', ...Array.from({ length: 5 }, (_, index) => [`Row ${index + 1}`, 'Middle', 'Right edge']).flat()])
   await layout.click()
   await expect(layout).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(width).toBeGreaterThan(initialWidth)
   expect(await content()).toEqual(snapshot)
-  await page.getByRole('button', { name: /Enter fullscreen mode/ }).click()
+  await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
   expect(await content()).toEqual(snapshot)
   await layout.click()
   await expect(layout).toHaveAttribute('aria-pressed', 'false')
   expect(await content()).toEqual(snapshot)
   await page.screenshot({ path: testInfo.outputPath('fixed-width-fullscreen.png') })
-  await page.getByRole('button', { name: /Leave fullscreen mode/ }).click()
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
-  await expect(page.locator('.ck-source-editing-area textarea')).toHaveValue(/Keep this content/)
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
-  const constrain = async width => page.locator('.ck-galaris-editor').evaluate((element, width) => {
+  await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
+  await expect(editor).toContainText('Keep this content')
+  const constrain = async width => page.locator('.tiptap-galaris-editor').evaluate((element, width) => {
     element.style.width = `${width}px`
     element.style.maxWidth = '100%'
   }, width)
@@ -71,15 +69,13 @@ test('changing document layout and editing mode preserves the authored content',
   await expect(editor).toHaveAttribute('data-document-layout', 'full')
   await expect(layout).toHaveAttribute('aria-pressed', 'true')
   expect(await content()).toEqual(snapshot)
-  await page.getByRole('button', { name: /Enter fullscreen mode/ }).click()
+  await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
   await expect(editor).toHaveAttribute('data-document-layout', 'fixed')
-  await page.getByRole('button', { name: /Leave fullscreen mode/ }).click()
+  await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
   await expect(editor).toHaveAttribute('data-document-layout', 'full')
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
   await constrain(1100)
   await expect(editor).toHaveAttribute('data-document-layout', 'fixed')
-  await expect(page.locator('.ck-source-editing-area textarea')).toHaveValue(/Keep this content/)
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
+  await expect(editor).toContainText('Keep this content')
   // Explicit full width remains selected after a narrow/wide round trip.
   await layout.click()
   await constrain(560)

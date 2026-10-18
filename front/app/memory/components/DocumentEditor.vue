@@ -14,50 +14,70 @@
         <q-btn flat :label="t('documents.retry')" @click="onWebsocketConnect" />
       </q-banner>
       <q-toolbar class="document-editor-toolbar">
-        <DocumentIcon :document-id="currentDocument.id" :title="editorTitle || currentDocument.title" size="40px" class="q-mr-sm" />
+        <DocumentIcon class="document-editor-heading-icon" :document-id="currentDocument.id" :title="editorTitle || currentDocument.title" size="64px" plain />
         <q-toolbar-title>
           <div class="row items-center no-wrap">
-            <div class="text-h6 ellipsis">{{ editorTitle || currentDocument.title }}</div>
+            <q-input
+              v-model="editorTitle"
+              class="document-editor-title col"
+              input-class="text-h6"
+              :input-style="{ lineHeight: '1.4' }"
+              type="textarea"
+              autogrow
+              :rows="1"
+              outlined
+              dense
+              hide-bottom-space
+              :aria-label="t('documents.title')"
+              :readonly="historyOpen || !canEditDocument || isGoalDocument(currentDocument)"
+              :rules="[requiredRule]"
+            />
+          </div>
+          <div class="document-editor-details row items-center text-caption text-grey-7">
+            <div class="document-editor-reference row items-center no-wrap">
+              <q-badge
+                outline
+                color="primary"
+                class="document-editor-uri-badge document-editor-detail-control cursor-pointer"
+                role="button"
+                tabindex="0"
+                :aria-label="t('documents.copyUrl')"
+                @click="copyDocumentUri"
+                @keyup.enter="copyDocumentUri"
+                @keyup.space.prevent="copyDocumentUri"
+              >
+                <q-icon name="link" size="13px" class="q-mr-xs" />
+                <span class="ellipsis">{{ documentUri }}</span>
+                <q-tooltip>{{ t('documents.copyUrl') }}</q-tooltip>
+              </q-badge>
+              <q-btn
+                flat
+                dense
+                no-caps
+                icon="history"
+                :color="historyOpen ? 'primary' : 'grey-7'"
+                class="document-editor-revision-button document-editor-detail-control"
+                :label="t('documents.revision', { revision: currentDocument.revision })"
+                :aria-label="t('documents.historyOpen')"
+                @click="openDocumentHistory"
+              >
+                <q-tooltip>{{ t('documents.historyOpen') }}</q-tooltip>
+              </q-btn>
+            </div>
+            <q-badge outline>{{ t(`documents.types.${currentDocument.document_type ?? 'html'}`) }}</q-badge>
             <q-btn
               v-if="canDeleteDocument"
-              flat round dense size="sm" icon="delete_outline" style="color: var(--solaire-red-accent)"
-              class="q-ml-sm" :loading="deletingDocument"
-              :aria-label="t('documents.deleteDocument')"
-              @click="deleteDialogOpen = true"
-            >
-              <q-tooltip>{{ t('documents.deleteDocument') }}</q-tooltip>
-            </q-btn>
-          </div>
-          <div class="row items-center q-gutter-xs text-caption text-grey-7">
-            <q-badge outline>{{ t(`documents.types.${currentDocument.document_type ?? 'html'}`) }}</q-badge>
-            <q-badge
-              outline
-              color="primary"
-              class="document-editor-uri-badge cursor-pointer"
-              role="button"
-              tabindex="0"
-              :aria-label="t('documents.copyUrl')"
-              @click="copyDocumentUri"
-              @keyup.enter="copyDocumentUri"
-              @keyup.space.prevent="copyDocumentUri"
-            >
-              <q-icon name="link" size="13px" class="q-mr-xs" />
-              <span class="ellipsis">{{ documentUri }}</span>
-              <q-tooltip>{{ t('documents.copyUrl') }}</q-tooltip>
-            </q-badge>
-            <q-btn
-              flat
               dense
               no-caps
-              icon="history"
-              :color="historyOpen ? 'primary' : 'grey-7'"
-              class="document-editor-revision-button"
-              :label="t('documents.revision', { revision: currentDocument.revision })"
-              :aria-label="t('documents.historyOpen')"
-              @click="openDocumentHistory"
-            >
-              <q-tooltip>{{ t('documents.historyOpen') }}</q-tooltip>
-            </q-btn>
+              size="12px"
+              padding="0 6px"
+              color="negative"
+              icon="delete_outline"
+              class="document-editor-detail-control q-ml-auto"
+              :loading="deletingDocument"
+              :label="t('documents.deleteDocument')"
+              @click="deleteDialogOpen = true"
+            />
             <q-chip
               v-if="currentDocument.deletion_protected"
               dense
@@ -69,19 +89,17 @@
             </q-chip>
           </div>
         </q-toolbar-title>
-        <DocumentAppPermissions :document-id="currentDocument.id" :revision="currentDocument.revision"
-          :disabled="hasUnsavedChanges || !!conflictDocument"
-          :can-write="privilegeStore.hasPrivilege(privileges.MEMORY_EDIT) || privilegeStore.hasPrivilege(privileges.MEMORY_ADMIN)"
-          @changed="appPermissionsGeneration++" />
-        <div class="document-editor-live-status column items-end q-gutter-xs">
-          <div class="row items-center no-wrap text-caption" :class="realtimeStatusClass">
-            <q-icon :name="realtimeConnected ? 'wifi' : 'wifi_off'" size="16px" class="q-mr-xs" />
-            {{ t(realtimeConnected ? 'documents.realtimeActive' : 'documents.realtimeConnecting') }}
+        <div class="document-editor-live-status column items-center no-wrap q-gutter-y-xs">
+          <div class="row items-center" :class="realtimeStatusClass" role="status" tabindex="0"
+            :aria-label="t(realtimeConnected ? 'documents.realtimeActive' : 'documents.realtimeConnecting')">
+            <q-icon :name="realtimeConnected ? 'wifi' : 'wifi_off'" size="16px" />
+            <q-tooltip>{{ t(realtimeConnected ? 'documents.realtimeActive' : 'documents.realtimeConnecting') }}</q-tooltip>
           </div>
-          <div class="row items-center no-wrap text-caption" :class="autosaveStatus.colorClass">
-            <q-spinner v-if="autosaveState === 'saving'" size="14px" class="q-mr-xs" />
-            <q-icon v-else :name="autosaveStatus.icon" size="16px" class="q-mr-xs" />
-            {{ t(autosaveStatus.labelKey) }}
+          <div class="row items-center" :class="autosaveStatus.colorClass" role="status" tabindex="0"
+            :aria-label="t(autosaveStatus.labelKey)">
+            <q-spinner v-if="autosaveState === 'saving'" size="16px" />
+            <q-icon v-else :name="autosaveStatus.icon" size="16px" />
+            <q-tooltip>{{ t(autosaveStatus.labelKey) }}</q-tooltip>
           </div>
         </div>
       </q-toolbar>
@@ -96,9 +114,9 @@
 
       <q-card-section
         v-if="!historyOpen"
-        class="row q-col-gutter-sm document-editor-fields q-pa-sm"
+        class="row q-col-gutter-xs document-editor-fields q-pa-xs"
       >
-        <div class="col-12 col-md-4">
+        <div class="document-editor-owner-cell">
           <q-select
             v-model="editorOwner"
             class="document-editor-owner-field"
@@ -163,19 +181,7 @@
             </template>
           </q-select>
         </div>
-        <div class="col-12 col-md-8">
-          <q-input
-            v-model="editorTitle"
-            outlined
-            dense
-            stack-label
-            hide-bottom-space
-            :readonly="!canEditDocument || isGoalDocument(currentDocument)"
-            :label="t('documents.title')"
-            :rules="[requiredRule]"
-          />
-        </div>
-        <div class="col-12">
+        <div class="document-editor-sharing-cell">
           <MemorySharingPanel :item-id="documentId" resource-kind="document" :editable="canManageSharing" :lock-version="currentDocument?.lock_version" @permission="sharingPermission = $event" @changed="onSharingChanged" />
         </div>
         <div class="col-12 document-editor-metadata-cell">
@@ -233,7 +239,7 @@
             :max-height="contentMaxHeight"
           >
             <template #embedded-code="{ source, language, registerSnapshot }">
-              <DocumentApplicationBlock :key="appPermissionsGeneration" :source="source" :language="language" :register-snapshot="registerSnapshot" :resolve-media="resolveInlineImage" :document-id="currentDocument.id" :revision="currentDocument.revision" :ready="!hasUnsavedChanges && !conflictDocument && (autosaveState === 'saved' || !canEditDocument)" />
+              <DocumentApplicationBlock :source="source" :language="language" :register-snapshot="registerSnapshot" :resolve-media="resolveInlineImage" :document-id="currentDocument.id" :revision="currentDocument.revision" :ready="!hasUnsavedChanges && !conflictDocument && (autosaveState === 'saved' || !canEditDocument)" />
             </template>
           </RichTextEditor>
         </div>
@@ -288,7 +294,6 @@
 <script setup lang="ts">
 import DocumentIcon from './DocumentIcon.vue'
 import DocumentApplicationBlock from './DocumentApplicationBlock.vue'
-import DocumentAppPermissions from './DocumentAppPermissions.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { isAxiosError } from 'axios'
 import { useRoute, useRouter } from 'vue-router'
@@ -387,7 +392,6 @@ const $q = useQuasar()
 const agentStore = useAgentStore()
 const documentMutations = useDocumentMutations()
 const privilegeStore = usePrivilegeStore()
-const appPermissionsGeneration = ref(0)
 const loading = ref(true)
 const deleteDialogOpen = ref(false)
 const deletingDocument = ref(false)
@@ -1351,10 +1355,19 @@ function restoreDraft(document: MemoryItemDetail): void {
 .document-editor-state { min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
 .document-editor-error { color: var(--solaire-red-accent); background: var(--solaire-red-light); }
 .document-editor-error--dark { background: var(--solaire-red-dark); }
-.document-editor-toolbar { min-height: 72px; }
+.document-editor-toolbar { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; min-height: 72px; align-items: center; padding-top: 8px; padding-bottom: 8px; }
+.document-editor-heading-icon { align-self: center; }
+.document-editor-title { min-width: 0; }
+.document-editor-details { gap: 4px; margin-top: 4px; }
+.document-editor-reference { min-width: 0; max-width: 100%; gap: 4px; }
+.document-editor-detail-control { height: 24px; min-height: 24px; }
 .document-editor-live-status { flex: 0 0 auto; padding-left: 12px; }
 .document-editor-fields { min-width: 0; }
-.document-editor-attachments { background: var(--ck-color-base-foreground); }
+.document-editor-owner-cell { display: flex; width: 40%; min-width: 0; }
+.document-editor-sharing-cell { width: 60%; min-width: 0; }
+.document-editor-owner-field { flex: 1; min-width: 0; }
+.document-editor-owner-field :deep(.q-field__inner),
+.document-editor-owner-field :deep(.q-field__control) { height: 100%; }
 .document-editor-owner-field :deep(.q-field__native) { flex-wrap: nowrap; }
 .owner-selected { min-width: 0; max-width: 100%; }
 .owner-section { min-height: 30px; background: rgba(0, 0, 0, 0.035); }
@@ -1368,9 +1381,9 @@ function restoreDraft(document: MemoryItemDetail): void {
 .document-editor-metadata-field :deep(.q-field__inner),
 .document-editor-metadata-field :deep(.q-field__control) { height: 100%; }
 .document-editor-keywords-field :deep(.q-field__native) { align-content: flex-start; align-items: flex-start; }
-.document-editor-uri-badge { max-width: min(100%, 360px); padding: 4px 7px; font-weight: 400; }
+.document-editor-uri-badge { min-width: 0; max-width: min(100%, 360px); padding: 4px 7px; font-weight: 400; }
 .document-editor-uri-badge:focus-visible { outline: 2px solid var(--q-primary); outline-offset: 2px; }
-.document-editor-revision-button { min-height: 24px; padding: 1px 5px; font-size: inherit; }
+.document-editor-revision-button { flex-shrink: 0; padding: 1px 5px; font-size: inherit; }
 .document-editor-sharing-card { min-height: 40px; }
 .document-editor-sharing-row { min-width: 0; gap: 8px; }
 .document-editor-sharing-label { gap: 5px; flex: 0 0 auto; }
@@ -1379,8 +1392,6 @@ function restoreDraft(document: MemoryItemDetail): void {
 .document-editor-sharing-menu { width: min(340px, calc(100vw - 32px)); }
 .document-editor-sharing-options { max-height: 260px; overflow-y: auto; }
 @media (max-width: 599.98px) {
-  .document-editor-toolbar { align-items: flex-start; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
-  .document-editor-live-status { width: 100%; align-items: flex-start; padding-left: 40px; }
   .document-editor-sharing-row { align-items: flex-start; }
   .document-editor-sharing-label { padding-top: 5px; }
 }

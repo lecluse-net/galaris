@@ -19,5 +19,9 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium' } },
+    { name: 'firefox-shortcuts', testMatch: 'document-shortcuts.spec.mjs', use: { browserName: 'firefox' } },
+    { name: 'webkit-shortcuts', testMatch: 'document-shortcuts.spec.mjs', use: { browserName: 'webkit' } },
+  ],
 })

@@ -2,11 +2,20 @@
 @page { size: A4; margin: 10mm; }
 body { margin: 0; font: 12pt/1.6 Arial,sans-serif; color: #202124; background: #fff; }
 .rich-content { box-sizing: border-box; padding-inline: 1px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-.rich-content.ck-content figure.table:not(.layout-table) { display: block; max-width: 100%; width: auto; height: auto; overflow: visible; }
-.rich-content.ck-content figure.table > table,
-.rich-content.ck-content table { box-sizing: border-box; max-width: 100%; border: 1px solid var(--rich-border); }
-.rich-content.ck-content figure.table > table { width: 100%; height: auto; }
-.rich-content.ck-content :is(td, th) { overflow-wrap: anywhere; }
+.rich-content figure.table:not(.layout-table) { display: block; max-width: 100%; width: auto; height: auto; overflow: visible; }
+.rich-content figure.table > table,
+.rich-content table { box-sizing: border-box; max-width: 100%; border: 1px solid var(--rich-border); }
+.rich-content figure.table > table { width: 100%; height: auto; }
+.rich-content figure.table > figcaption { display: block; }
+/* Preserve authored table treatments over the generic print fallback border. */
+.rich-content table:is(.galaris-table-contrast, .galaris-table-striped) { border-color: var(--table-accent); }
+.rich-content table.galaris-table-minimal { border-width: 3px 1px 1px; border-color: var(--table-accent); }
+.rich-content :is(td, th) { overflow-wrap: anywhere; }
 h1,h2,h3,h4,h5,h6 { break-after: avoid; }
 tr,figure,.galaris-callout { break-inside: avoid; }
 thead { display: table-header-group; }
+/* Include live citation renderings in the static page, without their application controls. */
+.rich-content blockquote.galaris-agent-card { padding-left: 128px; min-height: 112px; }
+.rich-content blockquote.galaris-agent-card > .galaris-resource-embed { position: absolute; inset: 0 auto 0 0; width: 112px; overflow: hidden; }
+.rich-content blockquote.galaris-process-diagram > .galaris-resource-embed { width: 100%; overflow: visible; }
+.rich-content blockquote.galaris-agent-card:not(:has(.galaris-resource-embed)) { padding: 10px 12px; min-height: 0; }

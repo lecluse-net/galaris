@@ -35,7 +35,7 @@ test('document content is usable while optional owner and keyword catalogues are
   await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
   try {
     await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Test document', { timeout: 2000 })
-    await expect(page.locator('.ck-editor__editable')).toContainText('Working copy')
+    await expect(page.locator('[data-editor-surface]')).toContainText('Working copy')
   } finally { release() }
 })
 
@@ -67,7 +67,7 @@ test('pending deletion hides every library row immediately, survives refresh, an
   } finally { releaseDelete() }
   await expect(page.getByText('Unable to delete the document.', { exact: true })).toBeVisible()
   await expect(list.getByText('Latest title', { exact: true })).toBeVisible()
-  await expect(page.locator('.ck-editor__editable')).toContainText('Working copy')
+  await expect(page.locator('[data-editor-surface]')).toContainText('Working copy')
 })
 
 test('slow refreshes coalesce notifications and retain fresh filter catalogues across searches', async ({ page }, testInfo) => {

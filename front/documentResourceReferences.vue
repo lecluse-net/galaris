@@ -9,7 +9,7 @@ import { processReferenceHtml } from '@/app/process/interface'
 import { resourceTarget, type FileEntry } from '@/app/file_share/interface'
 import ResourcePicker from './resourcePicker.vue'
 
-const { documentId, agentId, editable } = defineProps<{ documentId: string; agentId: number | null; editable: boolean }>()
+const { documentId, agentId, editable } = defineProps<{ documentId?: string; agentId: number | null; editable: boolean }>()
 const adding = defineModel<boolean>('pickerOpen', { default: false })
 const emit = defineEmits<{ picked: [html: string] }>()
 const { t } = useI18n()

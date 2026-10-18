@@ -1,4 +1,4 @@
-import contentCss from 'ckeditor5/ckeditor5-content.css?inline'
+import contentCss from './editorialContent.css?inline'
 import richCss from './richText.css?inline'
 import printCss from './documentPrint.css?inline'
 import { attachmentReference, richLinkHref, sanitizeRichHtml } from './richText'
@@ -53,9 +53,13 @@ export async function prepareDocumentSnapshot(
   const doc = new DOMParser().parseFromString(sanitizeRichHtml(content, 'document'), 'text/html')
   doc.querySelectorAll('script').forEach(script => script.remove())
   const interactive = [...doc.querySelectorAll('pre > code.language-galaris-app, pre > code.language-galaris-raw-html')]
+  const resources = [...doc.querySelectorAll<HTMLElement>('blockquote.galaris-process-diagram, blockquote.galaris-agent-card')]
   // Capture before loading attachments so all live regions reflect this export action.
   const renderings = resolveRenderedContent ? await Promise.all(interactive.map((code, index) => resolveRenderedContent(
     code.textContent ?? '', code.classList.contains('language-galaris-app') ? 'galaris-app' : 'galaris-raw-html', index, signal,
+  ))) : []
+  const resourceRenderings = resolveRenderedContent ? await Promise.all(resources.map((card, index) => resolveRenderedContent(
+    card.querySelector('a')?.getAttribute('href') ?? '', 'galaris-resource-card', index, signal,
   ))) : []
   if (!resolveRenderedContent) hideInteractiveSource(doc.body, title)
   highlightDocumentCode(doc.body)
@@ -79,13 +83,25 @@ export async function prepareDocumentSnapshot(
     if (html === undefined) return
     if (html.length > MAX_SNAPSHOT_BYTES) throw new Error('Document snapshot too large')
     const fragment = await layoutDocumentRendering(html, signal)
+    if (!portableAttachments) fragment.querySelectorAll('a').forEach(link => { link.removeAttribute('href'); link.removeAttribute('xlink:href') })
     code.parentElement!.replaceWith(fragment)
   }))
+  await Promise.all(resources.map(async (card, index) => {
+    const rendering = resourceRenderings[index]
+    if (rendering === undefined) return
+    if (rendering.length > MAX_SNAPSHOT_BYTES) throw new Error('Document snapshot too large')
+    const fragment = await layoutDocumentRendering(rendering, signal, true)
+    const embed = doc.createElement('div'); embed.className = 'galaris-resource-embed'
+    embed.append(fragment); card.append(embed)
+  }))
+  if (!portableAttachments) doc.querySelectorAll('a').forEach(link => {
+    if (link.closest('.galaris-link-card') || link.querySelector('img, svg, canvas, iframe, object, embed')) link.removeAttribute('href')
+  })
   signal.throwIfAborted()
   const csp = "default-src 'none'; style-src 'unsafe-inline'; img-src blob: data:; base-uri 'none'; form-action 'none'"
   const heading = document.createElement('title')
   heading.textContent = title
-  const html = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}">${heading.outerHTML}<style>${solaireStyles}\n${contentCss}\n${richCss}\n${printCss}</style></head><body><main class="rich-content ck-content">${doc.body.innerHTML}</main></body></html>`
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}">${heading.outerHTML}<style>${solaireStyles}\n${contentCss}\n${richCss}\n${printCss}</style></head><body><main class="rich-content">${doc.body.innerHTML}</main></body></html>`
   if (new Blob([html]).size > MAX_SNAPSHOT_BYTES) throw new Error('Document snapshot too large')
   return html
 }

@@ -134,15 +134,21 @@ scripts, événements DOM, SVG et styles arbitraires. Les documents ordinaires l
 ainsi que les formulaires, pour un rendu isolé ; voir [HTML interactif](document-apps.md).
 Les iframes et images distantes restent refusées. Les API valident avant toute révision.
 
-CKEditor 5 est l’arbre d’édition temporaire. `getData()` traverse le filtre frontend avant émission,
+Tiptap est l’arbre d’édition temporaire. Son HTML traverse le filtre frontend avant émission,
 puis la validation backend reste autoritaire. Aucun aller-retour vers Markdown. Les lecteurs
 historiques utilisent le MIME de la révision ; les artefacts HTML actifs restent séparés du
 lecteur éditorial. Les fichiers Markdown et leur lecteur existant sont conservés pour les skills.
 
+Les lecteurs partagent les styles de tableaux `galaris-table-{blue,iris,green,orange,salmon,gray}` et
+`galaris-table-{contrast,striped,minimal}` avec l’éditeur et les exports PDF/HTML. Ces classes
+sont explicitement autorisées dans les deux filtres ; les couleurs viennent des variables
+Solaire incluses dans les documents autonomes. Les préréglages ne remplacent ni les attributs
+de colonnes, ni les fusions, ni les styles personnalisés des cellules.
+
 `RichTextEditor` expose deux modes via `profile` : `rich-text`, mode simple par défaut pour
 les champs multilignes enrichis, et `document`, mode complet avec page, images, pièces jointes
 et exports. Les usages métier hors documents conservent le mode simple. Le groupe Lecture
-est commun aux deux modes : Source et Plein écran sont toujours présents ; Pleine largeur
+est commun aux deux modes : Plein écran reste présent, Source est réservé à `rich-text` ; Pleine largeur
 est réservé au mode document, qui possède un affichage en page. La contribution `editorVoice.ts`
 du module actif `app.llm` fournit automatiquement la dictée et la lecture vocale aux deux modes,
 via le contrat `EditorVoiceProvider` de `core.util`. Aucun branchement n’est nécessaire dans
@@ -151,8 +157,9 @@ externe, une recréation ou la fermeture de l’éditeur arrête les requêtes e
 
 ## Vue du code source
 
-La vue « Code source » de CKEditor utilise une police à chasse fixe de 12 px. Le plugin
-`GalarisSourceEditing` colore le HTML et les portions JavaScript/CSS intégrées avec highlight.js,
+La vue « Code source », disponible uniquement pour `rich-text`, utilise une police à chasse fixe de 12 px.
+Les documents n’exposent ni cette commande ni ce mode, y compris sur mobile et en lecture seule.
+`EditorialSource` colore le HTML et les portions JavaScript/CSS intégrées avec highlight.js,
 en utilisant la palette Solaire dans les deux thèmes. La coloration est une couche visuelle
 séparée du champ natif : elle ne modifie ni la sélection, ni l’historique de saisie, ni le HTML
 enregistré. Le texte source est échappé par le moteur de coloration et n’est jamais exécuté
@@ -166,7 +173,7 @@ du bloc guide highlight.js ; les blocs sans langage ou en texte brut utilisent u
 automatique limitée aux langages courants. Les langages inconnus et les blocs de plus de
 50 000 caractères restent affichés sans coloration.
 
-`GalarisCodeHighlight` utilise des marqueurs CKEditor temporaires, uniquement convertis vers
+`tiptapContent` utilise des décorations ProseMirror temporaires, uniquement converties vers
 la vue d’édition, sans effet sur les données ni l’historique d’annulation. Seuls les blocs
 modifiés sont recolorés. Le lecteur et l’impression colorent une copie du HTML filtré ;
 les classes de coloration ne sont jamais enregistrées dans le document.
@@ -226,9 +233,9 @@ Le service de rendu doit être reconstruit lors d’une modification de son code
 ## Pièces jointes, cartouches et export portable
 
 Le profil documentaire accepte les formulaires et scripts dans un contexte isolé, avec la
-barre d'outils et le texte éditable habituels. Leur code n'apparaît que dans Source ; les
-historiques et exports restent inertes. La restauration conserve la source. Le mode Source
-permet toujours de saisir explicitement du HTML interactif.
+barre d'outils et le texte éditable habituels, sans vue Source. Les historiques et exports
+restent inertes. La restauration et les modifications du texte environnant conservent le
+HTML/CSS/JavaScript enregistré, notamment les contenus fournis par les outils et les agents.
 
 Coller une page HTML ou du contenu copié depuis une page dans le corps importe directement
 des blocs éditables, sans dialogue ni bloc de page isolé. Les titres, paragraphes, listes,
@@ -264,7 +271,7 @@ contre les adresses privées et redirections internes. Memory passe par le port
 dépendance circulaire entre les deux domaines. Pages : 1 Mio et 15 secondes ; images :
 5 Mio, 40 millions de pixels, redimensionnement maximal 640 × 360 et conversion JPEG.
 Le résultat est un `blockquote.galaris-link-card` statique avec une miniature en pièce jointe.
-L'insertion dans le corps est une édition CKEditor normale ; seule elle crée une révision.
+L'insertion dans le corps est une édition normale ; seule elle crée une révision.
 Une miniature déjà publiée reste réutilisable si l'insertion est annulée.
 
 L'impression et le PDF reproduisent uniquement le corps du document.
@@ -311,7 +318,7 @@ make architecture-check
 make project-context-check
 ```
 
-La recette navigateur utilise les vrais composants CKEditor/Quasar et des API simulées explicites.
+La recette navigateur utilise les vrais composants Tiptap/Quasar et des API simulées explicites.
 Elle complète les tests DB de persistance, d’accès, de restauration et de concurrence ; elle
 ne remplace pas une qualification d’un fournisseur externe. Vérifier aussi les petits écrans,
 les deux thèmes, le clavier et les fichiers de référence avant une nouvelle version du schéma.
@@ -322,8 +329,9 @@ client et la persistance d’un document après édition de tableau et rechargem
 unitaires de prompt couvrent les transports simulés et Hermès ; ils ne prétendent pas exécuter
 un fournisseur externe réel.
 
-Qualification CKEditor du 9 septembre 2026 : 44 tests backend du contrat HTML et des documents,
-27 tests Chromium éditeur/liens Galaris/Memory et le parcours API complet sous Chromium, Firefox et WebKit
-validés ; typage, lint et traductions contrôlés. La migration de développement a convergé avec
-523 corps Memory HTML, aucun corps éditorial restant à convertir et aucune exception.
-La reconstruction vectorielle suit sa file asynchrone habituelle.
+La qualification du remplacement par Tiptap s’appuie sur `tiptap-preservation.spec.mjs`,
+les parcours existants d’édition, de pièces jointes, de voix, d’historique et d’export,
+et `make tests-e2e ARGS='editorial-html.spec.mjs document-apps.spec.mjs'` pour Chromium,
+Firefox et WebKit avec stockage réel. Les comptes rendus sous `artifacts/` portent les
+résultats exécutés ; une ancienne recette CKEditor ne qualifie pas le nouvel éditeur.
+Le remplacement ne demande aucune réécriture des documents ou des révisions en base.

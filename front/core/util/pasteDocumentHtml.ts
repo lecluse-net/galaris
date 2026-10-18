@@ -77,7 +77,7 @@ export async function pasteDocumentHtml(html: string, options: {
         || (element.localName === 'code' && /^language-[a-z0-9_+-]{1,40}$/i.test(value) && !value.startsWith('language-galaris-'))).join(' ')
       if (!element.className) element.removeAttribute('class')
       // Keep pre > code intact: wrapping it in font spans turns a code block
-      // into ordinary paragraphs during CKEditor's conversion.
+      // into ordinary paragraphs during Tiptap's conversion.
       if (element.closest('pre')) continue
       for (const [key, value] of style.inline) {
         if (validEditorialStyle(key, value) && !['rgba(0, 0, 0, 0)', 'transparent', 'normal', 'start', '16px', 'none', '0px none rgb(0, 0, 0)'].includes(value)) element.style.setProperty(key, value)
@@ -88,7 +88,7 @@ export async function pasteDocumentHtml(html: string, options: {
           if (!enabled || element.localName === tag || /^h[1-6]$/.test(element.localName)) continue
           const wrapper = doc.createElement(tag); wrapper.append(...element.childNodes); element.append(wrapper)
         }
-        // CKEditor's font converters consume inline spans, not paragraph styles.
+        // Tiptap's font converters consume inline spans, not paragraph styles.
         if (element.localName !== 'span') {
           const span = doc.createElement('span')
           for (const key of ['color', 'font-family', 'font-size']) {

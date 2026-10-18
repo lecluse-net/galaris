@@ -53,7 +53,7 @@ test('Documents creates editorial content and keeps Dataset creation out of its 
     await expect.poll(() => creations).toHaveLength(1)
     expect(creations[0]).toMatchObject({ document_type: 'html', title: 'Scenarios', owner_kind: 'user', owner_id: 1, actor_agent_id: 7 })
   } finally { releaseAgents() }
-  await expect(page.locator('.ck-editor__editable')).toContainText('Synthetic document')
+  await expect(page.locator('[data-editor-surface]')).toContainText('Synthetic document')
   await page.getByRole('button', { name: 'Filters', exact: true }).click()
   await expect(page.getByRole('combobox', { name: 'Document type', exact: true })).toHaveCount(0)
   await page.getByRole('combobox', { name: 'Sort by', exact: true }).click()
@@ -122,12 +122,11 @@ test('internal insertion preserves citations and existing files without creating
   await expect(attachments.getByRole('button', { name: 'Upload', exact: true })).toBeVisible()
   await expect(attachments.getByRole('button', { name: 'Add an internal attachment', exact: true })).toHaveCount(0)
   await expect(attachments.locator('.resource-preview-card')).toHaveCount(0)
-  const editor = page.locator('.ck-editor__editable')
+  const editor = page.locator('[data-editor-surface]')
   await editor.click(); await page.keyboard.press('Control+a')
   await page.getByRole('button', { name: 'Bold', exact: true }).first().click()
   const choose = async (location, name) => {
-    await page.getByRole('button', { name: 'Insert a link or file', exact: true }).first().click()
-    await page.locator('.ck-dropdown__panel').getByRole('button', { name: 'Add an internal attachment', exact: true }).click()
+    await page.getByRole('button', { name: 'Galaris link', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await dialog.getByText(location, { exact: true }).click()
     await dialog.locator('.file-main').getByRole('button', { name: 'Select ' + name, exact: true }).click()

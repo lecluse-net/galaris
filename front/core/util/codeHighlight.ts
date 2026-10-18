@@ -14,6 +14,12 @@ highlighter.registerLanguage('dockerfile', dockerfile)
 const maxHighlightedLength = 50_000
 const detectedLanguages = ['javascript', 'typescript', 'python', 'xml', 'css', 'json', 'bash', 'sql', 'yaml', 'java', 'cpp', 'php', 'ruby', 'go', 'diff']
 
+/** Technical language names for display-only block headers. */
+export function codeLanguageLabel(language = ''): string {
+  if (!language || language === 'plaintext' || language === 'text') return ''
+  return highlighter.getLanguage(language)?.name ?? language
+}
+
 export function highlightCode(source: string, language = ''): string | null {
   if (!source || source.length > maxHighlightedLength) return null
   if (!language || language === 'plaintext') return highlighter.highlightAuto(source, detectedLanguages).value
@@ -21,10 +27,11 @@ export function highlightCode(source: string, language = ''): string | null {
   return highlighter.highlight(source, { language, ignoreIllegals: true }).value
 }
 
-/** Apply only to a sanitized display snapshot, never to stored HTML or CKEditor's DOM. */
+/** Apply only to a sanitized display snapshot, never to stored HTML or Tiptap's DOM. */
 export function highlightDocumentCode(root: ParentNode): void {
   root.querySelectorAll('pre code').forEach(code => {
     const language = [...code.classList].find(name => name.startsWith('language-'))?.slice(9)
+    code.parentElement?.setAttribute('data-code-language', codeLanguageLabel(language))
     const highlighted = highlightCode(code.textContent ?? '', language)
     if (highlighted !== null) code.innerHTML = highlighted
     if (code.getAttribute('data-code-lines') === 'true') {
@@ -57,7 +64,7 @@ export function highlightDocumentCode(root: ParentNode): void {
 
 export interface CodeToken { start: number; end: number; className: string }
 
-/** Highlight.js emits escaped text and spans; map their text offsets to CKEditor ranges. */
+/** Highlight.js emits escaped text and spans; map their text offsets to Tiptap ranges. */
 export function codeTokens(source: string, language: string): CodeToken[] {
   const highlighted = highlightCode(source, language)
   if (highlighted === null) return []

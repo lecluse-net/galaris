@@ -33,7 +33,7 @@ async function expectUnclassified(page, checked = true) {
   await expect(page.getByRole('switch', { name: 'Unclassified', exact: true })).toHaveCount(0)
 }
 
-test('document icon changes synchronize across the list and tree, persist, reset and recover from errors', async ({ page }, testInfo) => {
+test('document icon choices persist in the list and tree, open documents, reset and recover from errors', async ({ page }, testInfo) => {
   const icons = {}, writes = []
   let fail = false
   await page.route('**/api/memory/documents/icons/resolve', route => route.fulfill({ json: icons }))
@@ -44,6 +44,7 @@ test('document icon changes synchronize across the list and tree, persist, reset
     return route.fulfill({ json: data })
   })
   await fixture(page)
+  await mount(page, 'app/memory/components/DocumentIcon.vue', { props: { documentId: 'doc-a', title: 'Test document' } })
   const button = page.getByRole('button', { name: 'Icon for document Test document', exact: true })
   await expect(button).toBeVisible()
   await button.click()
@@ -56,26 +57,35 @@ test('document icon changes synchronize across the list and tree, persist, reset
   await page.getByLabel('Search icons', { exact: true }).fill('rocket')
   await page.getByRole('button', { name: 'Rocket', exact: true }).click()
   await expect(button).toContainText('🚀')
+  await fixture(page)
+  const listIcon = page.getByRole('img', { name: 'Icon for document Test document', exact: true })
+  await expect(listIcon).toContainText('🚀')
+  await expect(button).toHaveCount(0)
+  await listIcon.click()
+  await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'select').map(event => event.args[0].item.id))).toEqual(['doc-a'])
   await page.getByText('Test document', { exact: true }).dragTo(page.getByText('Work', { exact: true }))
   await toggleUnclassified(page)
-  const treeIcon = page.getByRole('img', { name: 'Icon for document Test document', exact: true })
-  await expect(button).toHaveCount(1)
-  await expect(button).toContainText('🚀')
+  const treeIcon = page.getByLabel('Documents in folder Work', { exact: true }).getByRole('img', { name: 'Icon for document Test document', exact: true })
+  await expect(listIcon).toHaveCount(2)
+  await expect(button).toHaveCount(0)
   await expect(treeIcon).toContainText('🚀')
   await treeIcon.click()
   await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
-  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'select').map(event => event.args[0].item.id))).toEqual(['doc-a'])
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'select').map(event => event.args[0].item.id))).toEqual(['doc-a', 'doc-a'])
+  await mount(page, 'app/memory/components/DocumentIcon.vue', { props: { documentId: 'doc-a', title: 'Test document' } })
   fail = true
   await button.first().click()
   await page.getByRole('button', { name: 'Default icon', exact: true }).click()
   await expect(page.getByText('Unable to update the document icon.', { exact: true })).toBeVisible()
   await expect(button.first()).toContainText('🚀')
-  await expect(treeIcon).toContainText('🚀')
   fail = false
   await page.getByRole('button', { name: 'Default icon', exact: true }).click()
   await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
   await expect(button.first()).not.toContainText('🚀')
-  await expect(treeIcon).not.toContainText('🚀')
+  const reopened = await fixture(page)
+  await expect(listIcon).not.toContainText('🚀')
+  reopened.assignments.add('work')
   icons['doc-a'] = 'emoji:1F680'
   await mount(page, 'app/memory/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
   await page.getByText('Work', { exact: true }).click()

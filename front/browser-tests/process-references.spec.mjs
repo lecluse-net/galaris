@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
 
 const processUri = 'galaris://processes/synthetic_process'
 const runId = '11111111-1111-4111-8111-111111111111'
@@ -56,7 +56,7 @@ for (const width of [1440, 390]) test(`document diagram citations preserve their
   await inline.getByRole('button', { name: 'Open preview', exact: true }).click()
   await expect(page.getByRole('dialog').getByText('Read-only access', { exact: true })).toBeVisible()
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
-  await page.locator('.ck-editor__editable').click({ position: { x: 15, y: 15 } })
+  await page.locator('[data-editor-surface]').click({ position: { x: 15, y: 15 } })
   await page.keyboard.press('Control+End'); await page.keyboard.type(' Added text.')
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.args[0] ?? '')).toContain('Added text.')
   const saved = await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1).args[0])
@@ -94,7 +94,7 @@ test('a Process citation switches between title link and diagram without saving 
       createLinkCard: async value => processReferenceHtml(value, 'Synthetic process', true),
     } })
   }, processUri)
-  const editor = page.locator('.ck-editor__editable')
+  const editor = page.locator('[data-editor-surface]')
   await editor.getByRole('link', { name: 'Synthetic process', exact: true }).click()
   await page.getByRole('button', { name: 'Show card', exact: true }).click()
   await expect(editor.locator('.process-preview--inline')).toHaveCount(1)
@@ -108,8 +108,7 @@ test('a Process citation switches between title link and diagram without saving 
   await editor.getByRole('link', { name: 'Synthetic process', exact: true }).click()
   await page.getByRole('button', { name: 'Show card', exact: true }).click()
   await expect(editor.locator('.process-preview--inline')).toHaveCount(1)
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
-  const source = await page.locator('.ck-source-editing-area textarea').inputValue()
+  const source = await editorHtml(page)
   expect(source).toContain(processUri); expect(source).toContain('Synthetic process')
   expect(source).toContain('galaris-process-diagram'); expect(source).not.toContain('<svg')
 })

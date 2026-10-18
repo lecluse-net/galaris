@@ -76,7 +76,7 @@ for (const human of [false, true]) {
     state.fail = true
     await dialog.getByRole('button', { name: 'Delete document', exact: true }).click()
     await expect(page.getByText('Unable to delete the document.', { exact: true })).toBeVisible()
-    await expect(page.locator('.ck-editor__editable')).toContainText('Keep my content')
+    await expect(page.locator('[data-editor-surface]')).toContainText('Keep my content')
     state.fail = false
     await dialog.getByRole('button', { name: 'Delete document', exact: true }).click()
     await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'unavailable').map(event => event.value))).toEqual(['doc-a'])

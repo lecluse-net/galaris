@@ -1,55 +1,70 @@
-import { test, expect, mount } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
 const component = 'core/util/components/RichTextEditor.vue'
 const documentUrl = 'https://galaris.example/memory/documents?document_id=00000000-0000-0000-0000-000000000001'
 
 async function command(page, name) {
   const button = page.getByRole('button', { name, exact: typeof name === 'string' }).first()
-  if (!await button.isVisible()) await page.getByRole('button', { name: 'Show more items', exact: true }).click()
+  if (!await button.isVisible()) await page.getByRole('button', { name: 'More tools', exact: true }).click()
   await button.click()
 }
 
 for (const profile of ['document', 'rich-text']) {
   test(`mobile ${profile} formatting remains usable across desktop transitions`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: profile === 'document' ? 320 : 390, height: 844 })
+    await jsonRoute(page, '**/api/file-share/browser/schemes?*', [])
     await mount(page, component, { props: { profile, modelValue: '<p>Keep this text</p>' } })
     if (profile === 'document') await page.evaluate(async component => window.testApp.mount({ component, props: {
       profile: 'document', modelValue: '<p>Keep this text</p>', uploadFile: async () => 'document://00000000-0000-0000-0000-000000000001/attachments/00000000-0000-0000-0000-000000000002',
     } }), component)
-    const editor = page.locator('.ck-editor__editable')
+    if (profile === 'document') {
+      await expect(page.getByRole('button', { name: 'Share', exact: true })).toBeVisible()
+      await page.getByRole('button', { name: 'More tools', exact: true }).click()
+      await expect(page.getByRole('button', { name: 'Print', exact: true })).toHaveCount(0)
+      await page.keyboard.press('Escape')
+    }
+    const editor = page.locator('[data-editor-surface]')
     await editor.click()
     await page.keyboard.press('End')
     await page.keyboard.insertText(' on mobile')
-    await command(page, 'Bulleted List')
+    await command(page, 'Bullet list')
     await expect(editor.locator('ul li')).toContainText('Keep this text on mobile')
-    await command(page, 'Numbered List')
+    await command(page, 'Ordered list')
     await expect(editor.locator('ol li')).toContainText('Keep this text on mobile')
-    await command(page, 'Numbered List')
-    await command(page, /, Heading$/)
+    await command(page, 'Ordered list')
+    await command(page, profile === 'document' ? 'Style' : 'Heading')
     await page.getByRole('menuitemradio', { name: 'Heading 2', exact: true }).click()
     await expect(editor.locator('h2')).toContainText('Keep this text on mobile')
-    await command(page, 'Styles')
-    await expect(page.getByRole('option', { name: 'Question', exact: true })).toBeInViewport()
+    await command(page, profile === 'document' ? 'Style' : 'Styles')
+    await expect(page.getByRole('menuitemradio', { name: 'Question', exact: true })).toBeInViewport()
     await page.screenshot({ path: testInfo.outputPath('mobile-block-styles.png') })
-    await page.getByRole('option', { name: 'Question', exact: true }).click()
+    await page.getByRole('menuitemradio', { name: 'Question', exact: true }).click()
     await expect(editor.locator('blockquote')).toContainText('Keep this text on mobile')
     if (profile === 'document') {
       const picker = page.waitForEvent('filechooser')
-      await command(page, 'Insert a link or file')
-      await page.getByRole('button', { name: 'Insert attachment', exact: true }).click()
+
+      await command(page, 'Insert attachment')
       await (await picker).setFiles([])
       await expect(page.getByRole('dialog')).toHaveCount(0)
     }
     await page.screenshot({ path: testInfo.outputPath('mobile-toolbar.png') })
     await page.setViewportSize({ width: 1024, height: 900 })
+    if (profile === 'document') {
+      await expect(page.getByRole('button', { name: 'Print', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Share', exact: true })).toHaveCount(0)
+    }
     await command(page, 'Bold')
     await page.keyboard.insertText(' desktop')
     await expect(editor.locator('strong')).toContainText('desktop')
     await page.setViewportSize({ width: 1023, height: 900 })
+    if (profile === 'document') {
+      await expect(page.getByRole('button', { name: 'Share', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Print', exact: true })).toHaveCount(0)
+    }
     await expect(editor).toContainText('Keep this text on mobile')
     await expect(editor.locator('strong')).toContainText('desktop')
-    await command(page, 'Insert a link or file')
-    await page.getByRole('button', { name: 'Add an internal attachment', exact: true }).click()
+
+    await page.getByRole('button', { name: 'Galaris link', exact: true }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
     await expect(editor).toContainText('Keep this text on mobile')
@@ -76,7 +91,7 @@ for (const support of ['combined', 'text', 'files', 'none']) {
         },
       } })
     }, { component, documentUrl, support })
-    const editor = page.locator('.ck-editor__editable')
+    const editor = page.locator('[data-editor-surface]')
     await editor.click(); await page.keyboard.press('End'); await page.keyboard.insertText(' unsaved')
     await command(page, 'Share')
     const dialog = page.getByRole('dialog')
@@ -126,12 +141,12 @@ test('mobile sharing cancels stale PDF preparation when the document changes', a
       }),
     } })
   }, component)
-  await expect(page.locator('.ck-editor__editable')).toContainText('First document')
+  await expect(page.locator('[data-editor-surface]')).toContainText('First document')
   await command(page, 'Share')
   await expect.poll(() => page.evaluate(() => window.pdfStarted)).toBe(true)
   await page.evaluate(() => window.testApp.setProps({ modelValue: '<p>Second document</p>' }))
   await expect.poll(() => page.evaluate(() => window.pdfSignal.aborted)).toBe(true)
   await page.evaluate(() => window.finishPdf())
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.locator('.ck-editor__editable')).toContainText('Second document')
+  await expect(page.locator('[data-editor-surface]')).toContainText('Second document')
 })

@@ -2,6 +2,13 @@
 
 # Forms and JavaScript in documents
 
+The isolated runtime follows the application's theme without restarting scripts or losing
+input. It adds no background to text areas. A display correction adjusts unreadable text
+colors against their effective background, including CSS that fixes dark ink; already
+readable custom panels retain their colors. This temporary rendering never changes saved
+HTML. Print captures use the original CSS in a light, inert copy and check its contrast
+without changing the running document.
+
 Printing, PDF export, mobile PDF sharing and HTML archives preserve the current rendering:
 field values, calculated results, styles, SVG and canvas images. They capture the open page
 without rerunning its code or performing another Dataset write. The copy is static and
@@ -12,12 +19,12 @@ uses a copy without scripts and does not resize the open document. A capture is 
 when its document changes.
 
 HTML documents accept ordinary forms, CSS and JavaScript directly. Agents write HTML;
-no application manifest is required. The existing CKEditor toolbar stays visible and
+no application manifest is required. The existing editor toolbar stays visible and
 surrounding prose remains editable. There is no additional read/edit mode, start button
-or form builder. The existing **Source** button is the code editor.
+or form builder. The document editor offers no **Source** view.
 
 Forms appear in place and their controls work normally. Script-driven areas are not edited
-through WYSIWYG. Saved code runs when the document opens. Entering Source, changing the
+through WYSIWYG. Saved code runs when the document opens. Changing the
 document or leaving it stops the runtime; rendering resumes after a valid save.
 Existing `language-galaris-app` manifests remain compatible without showing their JSON.
 Use ordinary HTML for new documents.
@@ -86,9 +93,19 @@ remain durable. Direct HTML uses the technical identifier `document-html` on the
 
 Two opaque iframes isolate code from the parent DOM, cookies, Galaris storage, popups and parent
 navigation. This is internal: no visual frame, application heading or extra button is added.
-Editorial prose stays in CKEditor; its model preserves interactive content opaquely and restores
-ordinary HTML in Source and saved content. Interactive regions sharing scripts run in the same
-isolated context.
+Editorial prose stays in the editor; its model preserves interactive content opaquely and restores
+ordinary HTML in saved content. Independent static objects split at editorial prose
+boundaries. Scripts, global styles, event handlers or shared SVG references keep the region
+from the first to the last object in one isolated context. Grouping is deliberately conservative:
+guessing dependencies from arbitrary code could break selectors, IDs and shared state.
+
+The runtime provides local `THREE`, including `THREE.OrbitControls` and
+`THREE.GLTFLoader`, from the project's locked Three.js dependency. No CDN import is
+needed or allowed. A scene can create its `THREE.WebGLRenderer`, insert its canvas
+and use `requestAnimationFrame`. WebGL drawing buffers are preserved for static
+captures; exports capture the current rendering without replaying scripts. Models
+and textures remain subject to allowed resources and MIME types; loaders requiring
+a Worker are unavailable.
 
 Native images and media inside an interactive region keep their
 `document://…/attachments/…` references in the saved source. Before startup, the reader
@@ -115,8 +132,9 @@ Blob content could otherwise create a fresh realm before the parent stops it.
 
 ## Personal consent and server quotas
 
-Dataset access is denied by default, including existing documents. Each reader approves
-application–Dataset bindings through the document toolbar's **Application permissions** icon.
+Dataset access is denied by default, including existing documents. The permission icon and
+dialog have been removed from the document toolbar; the UI no longer grants or revokes these
+permissions. Server checks and existing consent remain in place.
 Consent is stored in the database, outside generated HTML, for that user, app, alias, Dataset
 and exact document revision. It does not transfer to another reader or document. Any content
 edit or restore requires new consent; title-only changes do not change the content revision.

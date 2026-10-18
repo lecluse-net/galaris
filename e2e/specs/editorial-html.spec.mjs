@@ -37,7 +37,7 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   const forbidden = await request.put(`/api/agents/${fixture.agent_id}`, { headers, data: { personality: '<img src="https://example.invalid/image.png">' } })
   expect(forbidden.status()).toBe(422)
   await page.goto(`/memory/documents?document_id=${item.id}`)
-  const editor = page.locator('.document-editor .ck-editor__editable')
+  const editor = page.locator('.document-editor [data-editor-surface]')
   await expect(editor.locator('u')).toHaveText('Texte souligné')
   await expect(editor.locator('th')).toHaveAttribute('colspan', '2')
   await editor.locator('h2').click()
@@ -46,7 +46,7 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
     && response.url().includes(`/memory/documents/${item.id}`)
     && response.request().postDataJSON()?.payload?.text?.includes('<h3>Été!</h3>'))
   const modifier = await page.evaluate(() => /Macintosh|iPhone|iPad/.test(navigator.userAgent) ? 'Meta' : 'Control')
-  await page.keyboard.press(`${modifier}+Shift+Digit3`)
+  await page.keyboard.press(`${modifier}+Alt+Digit3`)
   await expect(editor.locator('h3')).toHaveText('Été')
   await page.keyboard.type('!')
   expect((await saved).ok()).toBeTruthy()
@@ -62,8 +62,41 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   await expect(editor.locator('h3')).toHaveText('Été!')
   await expect(editor.locator('th')).toHaveAttribute('colspan', '2')
   expect(await page.evaluate(() => window.editorialE2E)).toBeUndefined()
-  // Source editing exposes the saved editorial HTML, including escaped code.
-  await page.getByRole('button', { name: 'Source', exact: true }).click()
-  await expect(page.locator('.ck-source-editing-area textarea')).toHaveValue(/&lt;p&gt;/)
+  const upload = await request.post(`/api/memory/documents/${item.id}/attachments?actor_agent_id=${fixture.agent_id}`, {
+    headers, multipart: { file: { name: 'synthetic-resize.png', mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNkYPjPwMDAxMDAwMDAAAALHwEDmIWXfgAAAABJRU5ErkJggg==', 'base64') } },
+  })
+  expect(upload.ok(), await upload.text()).toBeTruthy()
+  const attachment = await upload.json()
+  const imageUri = `document://${item.id}/attachments/${attachment.id}`
+  const latest = (await (await request.get(`/api/memory/documents/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
+  const imageSaved = await request.patch(`/api/memory/documents/${item.id}?actor_agent_id=${fixture.agent_id}`, { headers, data: {
+    expected_revision: latest.revision, payload: { text: latest.payload.text
+      + `<figure class="image"><img width="200" alt="Synthetic resize image" src="${imageUri}"></figure><p>After image</p>` },
+  } })
+  expect(imageSaved.ok(), await imageSaved.text()).toBeTruthy()
+  await page.reload()
+  const picture = editor.getByAltText('Synthetic resize image')
+  await expect(picture).toHaveJSProperty('naturalWidth', 2)
+  await picture.click()
+  const handle = await editor.locator('.galaris-image-resize').boundingBox()
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(handle.x + handle.width / 2 + 80, handle.y + handle.height / 2, { steps: 8 })
+  const resizedWidth = (await picture.boundingBox()).width
+  const resizedSave = page.waitForResponse(response => response.request().method() === 'PATCH'
+    && response.url().includes(`/memory/documents/${item.id}`)
+    && response.request().postDataJSON()?.payload?.text?.includes('image_resized'))
+  await page.mouse.up()
+  expect((await resizedSave).ok()).toBeTruthy()
+  const resizedDocument = (await (await request.get(`/api/memory/documents/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
+  expect(resizedDocument.payload.text).toContain(imageUri)
+  expect(resizedDocument.payload.text).toMatch(/width: [0-9.]+%/)
+  expect(resizedDocument.payload.text).not.toMatch(/blob:|galaris-image-resize/)
+  await page.reload()
+  await expect(picture).toHaveJSProperty('naturalWidth', 2)
+  await expect.poll(async () => (await picture.boundingBox()).width).toBeCloseTo(resizedWidth, 0)
+  await expect(page.getByRole('button', { name: 'Source', exact: true })).toHaveCount(0)
+  expect(resizedDocument.payload.text).toContain('&lt;p&gt;')
   expect(await page.evaluate(() => window.editorialE2E)).toBeUndefined()
 })

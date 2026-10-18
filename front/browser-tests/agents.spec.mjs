@@ -25,7 +25,7 @@ for (const width of [1440, 390]) test(`an agent citation switches to an avatar c
       createLinkCard: uri => richLinkCard(uri, null),
     } })
   })
-  const editor = page.locator('.ck-editor__editable')
+  const editor = page.locator('[data-editor-surface]')
   await editor.getByRole('link', { name: 'Alice Example', exact: true }).click()
   await page.getByRole('button', { name: 'Show card', exact: true }).click()
   const card = editor.locator('.galaris-agent-card')

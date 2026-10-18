@@ -59,8 +59,8 @@
             <template #prepend><q-icon name="search" size="18px" /></template>
           </q-input>
           <DocumentLibraryFilters v-model="filters" v-model:only-unclassified="onlyUnclassified" :owners="owners" :keywords="keywords" />
-          <q-btn v-if="hasFilters" flat round dense icon="filter_alt_off" :aria-label="t('documents.library.reset')" @click="reset" />
-          <q-btn flat round dense icon="add" :aria-label="t('documents.createDocument')" @click="emit('create')" />
+          <q-btn v-if="hasFilters" flat round dense icon="filter_alt_off" :aria-label="t('documents.library.reset')" @click="reset"><q-tooltip>{{ t('documents.library.reset') }}</q-tooltip></q-btn>
+          <q-btn flat round dense icon="add" :aria-label="t('documents.createDocument')" @click="emit('create')"><q-tooltip>{{ t('documents.createDocument') }}</q-tooltip></q-btn>
         </div>
         <q-banner v-if="loadError" dense class="library-error" role="alert">{{ t('documents.loadError') }}<q-btn flat :label="t('documents.retry')" @click="reload" /></q-banner>
         <q-list class="document-list-scroll" separator :aria-busy="loading" :aria-label="t(onlyUnclassified ? 'documents.library.orphans' : 'documents.library.all')">

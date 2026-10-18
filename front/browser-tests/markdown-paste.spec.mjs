@@ -58,8 +58,9 @@ test('Markdown stays literal in code blocks and Source mode', async ({ page }) =
     return new DOMParser().parseFromString(saved, 'text/html').querySelector('pre code')?.textContent
   })).toContain(markdown)
   await expect(editor.locator('h1,table,strong')).toHaveCount(0)
+  await mount(page, component, { props: { profile: 'rich-text', modelValue: '<p>Other field</p>' } })
   await page.getByRole('button', { name: 'Source', exact: true }).click()
-  const source = page.locator('.ck-source-editing-area textarea')
+  const source = page.locator('.galaris-source-editing-area textarea')
   await source.fill('')
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.evaluate(text => navigator.clipboard.writeText(text), markdown)

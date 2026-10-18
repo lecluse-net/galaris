@@ -2,6 +2,58 @@
 
 # Catalogue des garanties fonctionnelles
 
+`document-apps.spec.mjs` vérifie le contraste du texte HTML isolé avec des couleurs CSS
+imposées et des panneaux clairs/sombres. La bascule de thème sur mobile et bureau ne
+redémarre pas les scripts, n’efface pas les champs et n’émet aucune modification du contenu.
+Les parcours d’impression conservent les styles lisibles et les valeurs calculées.
+L’export d’un formulaire entièrement hors écran conserve aussi ses valeurs courantes :
+la capture ne dépend pas du rafraîchissement visuel de l’iframe, suspendu par Chromium.
+Un panneau documentaire étroit sur un grand écran garde les boutons de formulaire accessibles
+au défilement, y compris sous WebKit, après redimensionnement et en plein écran. La fermeture
+de l’éditeur restitue la configuration de défilement du conteneur hôte.
+
+`rich-text.spec.mjs` couvre le choix d’un style de tableau dans sa galerie contextuelle,
+l’annulation/rétablissement, le changement et le retrait du style, puis une réouverture réelle,
+la lecture et le rendu imprimable sur mobile et bureau. Colonnes, fusions et légende sont
+préservées ; les nouvelles lignes héritent de la présentation. `core/util/tests/test_rich_text.py`
+vérifie la conservation des 18 combinaisons par la normalisation HTML backend.
+Les changements de thème adaptent le rendu sans nouvelle édition ni modification du HTML ;
+la réouverture et la lecture suivent le thème actif, tandis que l’impression et le PDF restent clairs.
+
+`document-print.spec.mjs` vérifie que le PDF conserve les diagrammes de processus, leurs
+participants et les portraits d’agents. Images et cartes y restent sans liens actifs, tandis
+que les liens textuels ordinaires restent utilisables. Le scénario produit un vrai PDF
+synthétique pour contrôler son rendu et ses annotations de liens.
+
+`front/browser-tests/tiptap-preservation.spec.mjs` couvre la conservation du corpus HTML
+dans Tiptap, la sérialisation, la réouverture et la lecture : références canoniques, tableaux et
+HTML/CSS/JavaScript opaque. Une vraie scène Three.js exerce le runtime isolé hors ligne,
+ses contrôles et une capture statique non vide, sans exécution dans l’origine de l’éditeur.
+La vue Source documentaire et son scénario de focus dans Discussion sont retirés ; les
+scénarios de sélection rendue restent dans `chat-document-workspace.spec.mjs`. La vue Source
+des champs `rich-text` reste couverte par `source-editing.spec.mjs`, et `rich-text.spec.mjs`
+vérifie son absence dans les documents et les changements de profil sur mobile et ordinateur.
+Le texte entre objets statiques indépendants et les tableaux à couleur héritée restent éditables ;
+les régions à CSS/scripts partagés conservent leur source et son ordre. Le passage d’une sélection
+d’objet au texte avant la saisie préserve l’objet. Le parcours de tableau vérifie aussi que
+fusionner/scinder est disponible uniquement pour une sélection compatible.
+Les suites existantes d’édition, de pièces jointes, de voix, d’exports et de Chat conservent
+leurs garanties avec les commandes Quasar. Les citations internes sont qualifiées dans
+leurs modales métier par `galaris-links.spec.mjs` et `process-references.spec.mjs` ; l’ancien
+test d’ouverture d’un Goal dans un onglet est remplacé par ce contrat actuel.
+
+`rich-text.spec.mjs` vérifie que la taille choisie par la poignée d’une image est conservée
+à la fin du geste, après modification de ses propriétés, puis dans un nouvel éditeur et
+en lecture : image de bloc, en ligne, enveloppée ou dans une cellule, agrandie ou réduite.
+La réouverture recrée le composant ; réinjecter sa dernière valeur ne suffit pas à exercer
+ce contrat. `e2e/specs/editorial-html.spec.mjs` couvre la sauvegarde réelle de cette taille
+et son maintien après rechargement du document.
+
+`document-resources.spec.mjs` distingue la sélection d’images en édition de leur ouverture
+directe en lecture seule, avec ou sans lien. `document-apps.spec.mjs` conserve la saisie
+et les commandes autour d’un bloc HTML groupé ; sa lecture seule ouvre une capture plein
+écran sans scripts ni nouvelle sauvegarde, sur mobile et bureau.
+
 `front/browser-tests/chat-home.spec.mjs` vérifie que l’accueil et le panneau Conversations
 incluent les mêmes conversations, anciennes ou sans message. L’ancien filtre par défaut
 sur sept jours et sa bascule sont retirés ; recherche, pagination, reprise après erreur et
@@ -21,6 +73,11 @@ les tests de références backend conservent leurs garanties de droits, concurre
 Les anciens scénarios d'ajout/détachement dans la liste de PJ sont remplacés par ce contrat.
 Les menus fusionnés conservent les liens web, la sélection de texte et l'upload dans
 `galaris-links.spec.mjs`, `mobile-editor-toolbar.spec.mjs` et `document-upload.spec.mjs`.
+`galaris-links.spec.mjs` remplace les scénarios de l'ancienne recherche de liens par le
+sélecteur interne commun, notamment dans le formulaire Memory au menu réduit : conservation
+du texte et de sa mise en forme, annulation, fermeture, reprise après erreur et rejet d'une
+sélection après changement de contenu. La navigation et la sélection multiple restent
+couvertes par `internal-file-picker.spec.mjs`.
 `agents.spec.mjs` couvre la carte insérée, son avatar, le choix lien/carte, la sauvegarde
 sans UI injectée et l'ouverture de la carte complète. `galaris-links.spec.mjs` vérifie que
 les tâches s'ouvrent et se rouvrent en modale sans navigation, en lecture et en édition.
@@ -764,7 +821,7 @@ du fournisseur (succès, abonnement disparu, refus et indisponibilité), avec un
 | Process → humain → messagerie | Demande privée interne ou externe, réponse JSON simple convertie en valeurs typées, fichier seul avec URI source, échec de livraison repris, refus d'un autre auteur ou d'une réponse tardive ; aucun message sans rapport ne termine l'étape. Une activité IA attend sans Task auxiliaire, reprend même après une réponse rapide et conserve une pause utilisateur ; anciennes attentes retirées, doublons idempotents, Dataset et message final conservés | `back/app/process/tests/test_human_messaging.py`, `back/app/process/tests/test_activity_controls.py`, `back/app/harness/tests/test_conversation_prompt.py`, `e2e/specs/native-processes.spec.mjs` |
 | Document → fichier → agent | Le contenu, sa révision, ses URI et ses ACL restent cohérents entre lecture et écriture | `back/app/memory/tests/test_editorial_html.py`, `back/app/file_share/tests/test_resource_service.py`, `e2e/specs/editorial-html.spec.mjs` |
 | Datasets et compatibilité documentaire | Bibliothèques et créations séparées, identité native `data://`, JSON source préservé et erreurs sans nouvelle ressource/révision ; droits et historique propres, copie/restauration et conflits ; anciens alias et brouillons invalides préservés. Le parcours Datasets remplace la création Dataset dans Documents | `back/app/memory/tests/test_dataset_documents.py`, `test_document_library.py`, `back/app/dataset/tests/test_datasets.py`, `front/browser-tests/dataset-documents.spec.mjs`, `e2e/specs/dataset-documents.spec.mjs`, `e2e/specs/datasets.spec.mjs` |
-| HTML interactif dans un document | Formulaires HTML directs vers Dataset partagé, ACL et accords personnels liés à la révision ; révocation, copie non autorisée entre Datasets, validation JSON et quotas entre workers ; texte éditable et barre habituelle, code uniquement dans Source ; impression et PDF statiques avec filtrage des ressources ; isolation, WebRTC, saturation du pont et réponses tardives | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
+| HTML interactif dans un document | Formulaires HTML directs vers Dataset partagé, ACL et accords personnels liés à la révision ; révocation, copie non autorisée entre Datasets, validation JSON et quotas entre workers ; texte éditable et barre habituelle, sans vue Source documentaire ; impression et PDF statiques avec filtrage des ressources ; isolation, WebRTC, saturation du pont et réponses tardives | `back/app/memory/tests/test_document_apps.py`, `front/browser-tests/document-apps.spec.mjs`, `e2e/specs/document-apps.spec.mjs` |
 | Arrêt / reprise / concurrence | Un ancien worker ne remplace pas le propriétaire courant ; les effets ambigus ne sont pas rejoués aveuglément | `back/app/task/tests/test_active_lease.py`, `back/app/harness/tests/test_checkpoint.py`, `back/tests/test_durable_concurrency.py` |
 | Accusé d’outil perdu | Une commande SSH reste unique après perte de réponse et relecture PostgreSQL ; un timeout MCP après effet bloque le rejeu ; le retry conserve le journal | `make tests-recovery`, `back/app/harness/tests/test_ssh_checkpoint_recovery.py`, `back/app/harness/tests/test_execution_evidence.py`, `back/app/console/tests/test_durable_operations.py` |
 
@@ -904,7 +961,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | `messenger` | Admettre, dédupliquer, router et livrer dans la bonne conversation et connexion | `test_journal.py`, `test_ingest.py`, `test_interactions.py`, `test_mcp_routing.py`, `test_mcp_files.py` |
 | `conversation` | Préserver contexte, admissions, résultats, notifications et résolution sans renvoi d’effets | `test_service.py`, `test_task_admission.py`, `test_delivery_resolution_http.py`, `e2e/specs/reliability.spec.mjs` |
 | `chat` | Envoyer, archiver/restaurer, retrouver le streaming, isoler salons/utilisateurs et répondre aux choix sans LLM (boutons, reprise, expiration) | `test_authorization.py`, `test_events.py`, `test_native_facade.py`, `chat.spec.mjs`, `chat-interactions.spec.mjs`, `e2e/specs/chat.spec.mjs` |
-| Chat et document | Ouvrir et modifier dans l’éditeur complet ; enregistrer avant l’envoi et transmettre l’URL au prompt seulement si le document est affiché ; conserver sélection et curseur après passage au champ de message, transmettre un extrait borné de la zone visible et invalider les repères obsolètes, en HTML et Source ; préserver le brouillon en cas d’échec ; réserver le panneau intégré au desktop (≥ 1024 px), avec ses commandes dans la barre du titre du document ; ouvrir une modale sur mobile ; redimensionner les deux dispositions desktop à la souris, au toucher et au clavier sans perdre l’édition ; garantir au document en colonne au moins 560 px, avec passage automatique en disposition empilée si la place manque ; garder la colonne de droite visible sur desktop et conserver contenu et discussion après reconnexion | `front/browser-tests/chat-document-workspace.spec.mjs`, `back/app/conversation/tests/test_service.py`, `back/app/chat/tests/test_native_facade.py`, `back/app/memory/tests/test_document_library.py`, `back/app/memory/tests/test_document_grants.py` |
+| Chat et document | Ouvrir et modifier dans l’éditeur complet ; enregistrer avant l’envoi et transmettre l’URL au prompt seulement si le document est affiché ; conserver sélection et curseur après passage au champ de message, transmettre un extrait borné de la zone visible et invalider les repères obsolètes, en HTML ; préserver le brouillon en cas d’échec ; réserver le panneau intégré au desktop (≥ 1024 px), avec ses commandes dans la barre du titre du document ; ouvrir une modale sur mobile ; redimensionner les deux dispositions desktop à la souris, au toucher et au clavier sans perdre l’édition ; garantir au document en colonne au moins 560 px, avec passage automatique en disposition empilée si la place manque ; garder la colonne de droite visible sur desktop et conserver contenu et discussion après reconnexion | `front/browser-tests/chat-document-workspace.spec.mjs`, `back/app/conversation/tests/test_service.py`, `back/app/chat/tests/test_native_facade.py`, `back/app/memory/tests/test_document_library.py`, `back/app/memory/tests/test_document_grants.py` |
 | `voice` | Démarrer/annuler un appel, traiter le tour dans le bon canal, fermer les médias | `test_session.py`, `test_multichannel_routing.py`, `test_realtime_engine.py`, `voice.spec.mjs` |
 | `memory` | Rechercher, créer et restaurer les souvenirs privés et les documents ; partager les documents sans perte de contenu, de révision ni de droits | `test_document_library.py`, `test_document_grants.py`, `test_editorial_html.py`, `test_semantic_search.py`, `memory.spec.mjs` |
 | Séparation documents/mémoire | Sauvegarder avant expansion, vérifier l'archive immuable, transférer depuis celle-ci puis retirer les colonnes uniquement après validation ; conserver l'archive et ses ressources après oubli ; préserver contenus, URI, historiques et droits après rollback et rejeu ; distinguer contenu documentaire et synthèse, leurs révisions et l’ancienneté ; rechercher les deux dans un seul résultat et masquer les deux après révocation ; conserver les souvenirs autonomes privés sans titre éditable ; ouvrir, sauvegarder, supprimer et miniaturiser le contenu documentaire complet via son contrat distinct, même avec une synthèse vide | `back/app/memory/tests/test_document_split.py` (PostgreSQL et Atlas réels), `test_document_retrieval.py`, `front/browser-tests/memory.spec.mjs`, `document-deletion.spec.mjs`, `document-resources.spec.mjs`, `document-thumbnails.spec.mjs`, `execution.spec.mjs`, `e2e/specs/editorial-html.spec.mjs`, `file-indexing.spec.mjs`, `session-races.spec.mjs` |
@@ -1011,7 +1068,7 @@ installation existante après actualisation du WebAPK.
 | DB / runtime | Sessions isolées, concurrence, timeout et arrêt sans abandon de ressources | `back/core/tests/test_database_context.py`, `test_runtime_timeouts.py`, `back/tests/test_durable_concurrency.py` |
 | i18n / navigation / API | Catalogues cohérents, navigation selon les droits, réponses du bon compte et de la bonne requête | `make typecheck`, `front/core/api.test.mjs`, `front/browser-tests/lab-access.spec.mjs`, `e2e/specs/session-races.spec.mjs` |
 | Contenu / aperçu / fichiers | Éditer, relire, imprimer sans altération ni exécution indue ; adapter automatiquement la largeur de page au conteneur, y compris en plein écran et en lecture seule, sans perdre le contenu ni le choix manuel ; libérer les pièces jointes | `back/core/util/tests/test_rich_text.py`, `back/core/preview/tests/test_conversion.py`, `front/browser-tests/rich-text.spec.mjs`, `document-print.spec.mjs`, `document-layout.spec.mjs`, `model3d.spec.mjs` |
-| Raccourcis documentaires | Mettre en forme et annuler au clavier, imbriquer les listes avec Tab, conserver la navigation des tableaux et l’indentation du code ; préserver Source et lecture seule ; enregistrer puis rouvrir les titres | `front/browser-tests/document-shortcuts.spec.mjs`, `e2e/specs/editorial-html.spec.mjs` |
+| Raccourcis documentaires | Qualification dans Chromium, Firefox et WebKit : titres, alignements, exposants/indices, annuler/rétablir, listes, tableaux et caractères insécables ; distinguer Ctrl+Alt, AltGr et les caractères Option simulés ; préserver sélection, liens, navigation, focus et plein écran ; ouvrir l’aide et imprimer en lecture seule sans modifier le contenu ; faire défiler l’aide sans recouvrir le titre ; préserver les champs enrichis et Source ; enregistrer puis rouvrir le contenu. Les dispositions natives Windows/macOS restent hors du runner Linux | `front/browser-tests/document-shortcuts.spec.mjs`, `e2e/specs/editorial-html.spec.mjs` |
 | PWA / livraison | Recharger automatiquement les onglets après un déploiement échoué en conservant la session et la conversation ; qualifier les images, sauvegardes et restaurations | `e2e/specs/pwa.spec.mjs`, `back/tests/test_release_qualification.py`, `make tests-release`, `make tests-restore` |
 | Outillage documentaire hors ligne | Générer les cartes FR/EN depuis le checkout courant sans accès aux secrets, aux volumes applicatifs ni au réseau ; refuser lectures interdites, écritures des sources et connexion depuis le code exécuté ; ne publier que les sorties attendues et préserver le checkout en cas d'échec | `bin/test-documentation.sh`, `bin/test-documentation-confinement.sh`, `make tests-documentation` |
 
@@ -1113,7 +1170,7 @@ sur 100 puis 1 000 documents et jusqu'à 100 000 révisions ; le compteur inclut
   pas le premier classement, et un refus conserve la position puis permet un réessai.
   Le choix d'icône se propage entre arbre et liste, persiste à la réouverture et ignore les réponses
   périmées après sauvegarde ou changement de session ; l'icône par défaut et les erreurs restent utilisables.
-  Dans l'arbre, l'icône d'un document ouvre le document sans sélecteur d'icône ; celle d'un dossier reste modifiable.
+  Dans la liste et l'arbre, l'icône d'un document ouvre le document sans sélecteur d'icône ; le choix reste disponible dans l'éditeur et l'icône d'un dossier reste modifiable.
 - `e2e/specs/document-folder-create.spec.mjs` : création depuis un sous-dossier, classement
   personnel persisté, création de sous-documents et dépliage après rechargement de la bibliothèque assemblée.
   `test_document_classification.py` couvre aussi l'isolation personnelle, la lecture seule,

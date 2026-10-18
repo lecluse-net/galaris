@@ -5,6 +5,50 @@ import { agent, document as documentFixture } from './data.mjs'
 const uri = 'document://00000000-0000-0000-0000-000000000001/attachments/00000000-0000-0000-0000-000000000002'
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII='
 
+test('PDF preserves process diagrams and agent portraits without clickable objects', async ({ page, context }, testInfo) => {
+  const processUri = 'galaris://processes/synthetic_pdf_review'
+  const graph = { schema_version: 'galaris.bpmn/v1', input_schema: {}, output_schema: {}, files: {}, actors: [{ id: 'reviewers', name: 'Document review team', kind: 'agent', agent_id: 7, user_id: null }], nodes: [
+    { id: 'start', kind: 'start', title: 'Start', config: {}, x: 0, y: 0, body: null },
+    { id: 'review', kind: 'task', title: 'Synthetic PDF review', config: { actor: 'reviewers' }, x: 0, y: 0, body: null },
+    { id: 'end', kind: 'end', title: 'Complete', config: {}, x: 0, y: 0, body: null },
+  ], flows: [{ id: 'one', source: 'start', target: 'review' }, { id: 'two', source: 'review', target: 'end' }] }
+  await jsonRoute(page, '**/api/processes/internal/resource-preview?*', { uri: processUri, kind: 'process', id: 'synthetic_pdf_review', title: 'Synthetic PDF process', description: 'An invented review workflow.', revision: 1, graph, process_uri: processUri })
+  await mount(page, 'core/util/components/RichTextEditor.vue')
+  const portrait = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128
+    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#087FF5'; ctx.fillRect(0, 0, 128, 128)
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(64, 43, 22, 0, 2 * Math.PI); ctx.fill()
+    ctx.beginPath(); ctx.roundRect(25, 76, 78, 60, 30); ctx.fill()
+    return canvas.toDataURL('image/png').split(',')[1]
+  })
+  await page.route('**/api/agents/7/avatar?*', route => route.fulfill({ contentType: 'image/png', body: Buffer.from(portrait, 'base64') }))
+  await page.evaluate(async ({ uri, png, processUri }) => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
+    profile: 'document', modelValue: `<h1>Illustrated PDF</h1><blockquote class="galaris-link-card galaris-agent-card"><p><a href="galaris://agent/7"><strong>Synthetic PDF agent</strong></a></p><p>Document reviewer</p></blockquote><blockquote class="galaris-link-card galaris-process-diagram"><p><a href="${processUri}"><strong>Synthetic PDF process</strong></a></p></blockquote><figure class="image" style="width:120px"><a href="${uri}"><img alt="Synthetic illustration" src="${uri}"></a></figure><p><a href="https://example.org/manual">Ordinary text link</a></p>`,
+    resolveImage: async () => new Blob([Uint8Array.from(atob(png), value => value.charCodeAt(0))], { type: 'image/png' }),
+    exportPdf: async html => { window.objectPdfSnapshot = html; return new Blob(['%PDF-1.7 fixture'], { type: 'application/pdf' }) },
+  } }), { uri, png: portrait, processUri })
+  const editor = page.locator('[data-editor-surface]')
+  await expect(editor.locator('.galaris-agent-card img')).toHaveJSProperty('naturalWidth', 128)
+  await expect(editor.getByRole('button', { name: 'Synthetic PDF review · review', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Export as PDF', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => typeof window.objectPdfSnapshot)).toBe('string')
+  const snapshot = await page.evaluate(() => window.objectPdfSnapshot)
+  await writeFile(testInfo.outputPath('objects-snapshot.html'), snapshot)
+  const printed = await context.newPage()
+  await printed.setContent(snapshot)
+  await printed.evaluate(() => Promise.all([...document.images].map(image => image.decode())))
+  await expect(printed.locator('.galaris-process-diagram')).toContainText('Synthetic PDF review')
+  await expect(printed.locator('.galaris-process-diagram svg')).toHaveCount(1)
+  await expect(printed.locator('.galaris-agent-card img')).toHaveJSProperty('naturalWidth', 128)
+  await expect(printed.locator('.galaris-process-diagram')).toContainText('Document review team')
+  await expect(printed.locator('.galaris-link-card a[href], a[href]:has(img), button, iframe')).toHaveCount(0)
+  await expect(printed.getByRole('link', { name: 'Ordinary text link' })).toHaveAttribute('href', 'https://example.org/manual')
+  await printed.pdf({ path: testInfo.outputPath('objects.pdf'), printBackground: true, preferCSSPageSize: true })
+  await printed.screenshot({ path: testInfo.outputPath('objects.png'), fullPage: true })
+  await printed.close()
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
+})
+
 test('a document downloads its current content as a named PDF and remains editable after an export failure', async ({ page }, testInfo) => {
   let current = { ...documentFixture, title: 'Rapport été', media_type: 'text/html', content_profile: 'document',
     payload: { text: '<h1>Rapport été</h1><p>Current content</p><table><tbody><tr><th>Élément</th><th>Valeur</th></tr><tr><td>Mesure</td><td>42</td></tr></tbody></table>' } }
@@ -73,7 +117,7 @@ test('PDF export embeds authorized images and cancels a stale download when the 
   await page.evaluate(() => window.finishPdf())
   await expect(button).toBeEnabled()
   expect(downloads).toBe(0)
-  await expect(page.locator('.ck-editor__editable')).toHaveText('Second')
+  await expect(page.locator('[data-editor-surface]')).toHaveText('Second')
 })
 
 test('Print uses current document content and loaded images on a light page without editor controls', async ({ page }, testInfo) => {
@@ -87,7 +131,7 @@ test('Print uses current document content and loaded images on a light page with
     resolveImage: async () => new Blob([Uint8Array.from(atob(png), value => value.charCodeAt(0))], { type: 'image/png' }),
     modelValue: `<blockquote class="galaris-callout galaris-callout-warning"><p>Important</p></blockquote><figure class="image"><img src="${uri}" alt="Example"></figure><p>Edit me</p><script>window.printScriptRan = true</script>`,
   }), { uri, png })
-  const editor = page.locator('.ck-editor__editable')
+  const editor = page.locator('[data-editor-surface]')
   await expect(editor.locator('img')).toHaveAttribute('src', /^blob:/)
   await editor.locator('p').last().click()
   await page.keyboard.press('End')
@@ -137,7 +181,7 @@ test('switching documents while images load cancels stale printing and allows th
       modelValue: `<p>First document</p><img src="${uri}" alt="Loading">`,
     })
   }, { uri })
-  await expect(page.locator('.ck-editor__editable img')).toBeVisible()
+  await expect(page.locator('[data-editor-surface] img:not(.ProseMirror-separator)')).toBeVisible()
   const button = page.getByRole('button', { name: 'Print', exact: true })
   await button.click()
   await expect(button).toBeDisabled()

@@ -520,7 +520,9 @@ fichier privé indépendant via `file_create` avec `path="file://"` et un nom in
 Une référence externe, par exemple Nextcloud, conserve son fournisseur et n'est pas rapatriée
 par la migration. Voir le [stockage et les sauvegardes](../dev/file-storage.md).
 
-Pour personnaliser un document ou un dossier, ouvrez sa palette d’icônes et utilisez le
+Pour personnaliser l’icône d’un document, cliquez sur celle de son en-tête dans l’éditeur.
+Dans la liste et l’arbre, cliquer sur l’icône ouvre simplement le document.
+Pour un dossier, ouvrez sa palette d’icônes. Utilisez le
 bouton **+** pour téléverser un SVG. La limite de taille est celle des fichiers
 (100 Mo par défaut) ; les scripts et contenus externes restent refusés.
 
