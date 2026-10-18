@@ -22,11 +22,18 @@ class DeploymentTests(unittest.TestCase):
             (("compose", "up"), "docker_command_failed"),
         ]:
             result = subprocess.CompletedProcess(arguments, 1, "Synthetic private output", "Synthetic private credential")
-            with self.subTest(reason=reason), patch.object(deploy.subprocess, "run", return_value=result):
+            def run(*args, **kwargs):
+                kwargs["stderr"].write(b"Couldn't find PID field in ps output; token=synthetic-private-credential")
+                return result
+            with self.subTest(reason=reason), patch.object(deploy.subprocess, "run", side_effect=run):
                 with self.assertRaises(RuntimeError) as failure:
                     deploy.docker(*arguments)
                 self.assertEqual(deploy.FAILURE_REASONS[str(failure.exception)], reason)
                 self.assertNotIn("Synthetic private", str(failure.exception))
+                self.assertEqual(failure.exception.details["exit_code"], 1)
+                self.assertIn("Couldn't find PID field", failure.exception.details["stderr"])
+                self.assertNotIn("synthetic-private-credential", failure.exception.details["stderr"])
+                self.assertIn("docker " + arguments[0], failure.exception.details["command"])
 
     def test_cli_reports_only_recognized_failure_reasons(self):
         for message, reason in [
@@ -38,8 +45,30 @@ class DeploymentTests(unittest.TestCase):
                 stdout, stderr = io.StringIO(), io.StringIO()
                 with redirect_stdout(stdout), redirect_stderr(stderr):
                     self.assertEqual(deploy.run(), 1)
-                self.assertEqual(json.loads(stdout.getvalue()), {"error": reason})
+                report = json.loads(stdout.getvalue())
+                self.assertEqual(report["error"], reason)
+                self.assertEqual(report["diagnostic"][0]["type"], "RuntimeError")
+                self.assertTrue(report["diagnostic"][0]["locations"])
                 self.assertNotIn(message, stderr.getvalue())
+
+    def test_unexpected_failures_and_cleanup_failures_keep_both_causes(self):
+        def main():
+            try:
+                raise deploy.DockerCommandError("Docker access, Compose or the code-server build failed",
+                    ("top", "synthetic-runtime", "-eo", "comm"), 1,
+                    stderr="Couldn't find PID field in ps output; password='synthetic secret'")
+            except RuntimeError:
+                raise TypeError("Synthetic cleanup failed; token=synthetic-token")
+        with patch.object(deploy, "main", side_effect=main):
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                self.assertEqual(deploy.run(), 1)
+        report = json.loads(stdout.getvalue())
+        self.assertEqual(report["error"], "unknown")
+        self.assertEqual([item["type"] for item in report["diagnostic"]], ["TypeError", "DockerCommandError"])
+        self.assertIn("Couldn't find PID field", stdout.getvalue())
+        self.assertNotIn("synthetic secret", stdout.getvalue())
+        self.assertNotIn("synthetic-token", stdout.getvalue())
 
     def test_deployment_and_retry_reuse_the_private_service_and_do_not_mount_sibling_homes(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -66,7 +95,11 @@ class DeploymentTests(unittest.TestCase):
                         "NetworkSettings": {"Ports": {"8766/tcp": [{"HostIp": "127.0.0.1", "HostPort": "32123"}]}}}])
                 if arguments[0] == "top":
                     self.assertTrue(paused)
-                    return "COMMAND\ntini\npython3\n" + ("node\n" if active_editor else "")
+                    # Docker needs PID to filter the host ps result to this container.
+                    # Real Docker rejects '-eo comm' with "Couldn't find PID field".
+                    if arguments[2:] != ("-eo", "pid,comm"):
+                        raise RuntimeError("Docker access, Compose or the code-server build failed")
+                    return "PID COMMAND\n101 tini\n102 python3\n" + ("103 node\n" if active_editor else "")
                 if arguments[0] in ("pause", "unpause"):
                     paused = arguments[0] == "pause"
                 if arguments[0] == "exec" and fail_verification:

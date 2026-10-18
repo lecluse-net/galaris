@@ -8,10 +8,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import secrets
 import subprocess
 import sys
 import time
+import tempfile
+import traceback
 import urllib.request
 
 
@@ -39,24 +42,57 @@ FAILURE_REASONS = {
     "The deployed editor did not become ready": "health_timeout",
 }
 
+_credential_values: set[str] = set()
+
+
+def diagnostic_text(value: str) -> str:
+    for secret in _credential_values:
+        value = value.replace(secret, "[redacted]")
+    value = re.sub(r"-----BEGIN [^-]*PRIVATE KEY-----.*?(?:-----END [^-]*PRIVATE KEY-----|$)",
+                   "[redacted private key]", value, flags=re.S)
+    value = re.sub(r"[a-zA-Z][a-zA-Z0-9+.-]*://[^\s<>\"']+", "[redacted URL]", value)
+    value = re.sub(r"(?i)\bBearer\s+[^\s,;\"']+", "Bearer [redacted]", value)
+    value = re.sub(r'''(?i)(["']?(?:password|passwd|token|secret|credential|api[_-]?key|authorization)["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;]+)''',
+                   r"\1[redacted]", value)
+    value = re.sub(r"[A-Za-z0-9_+/=-]{32,}", "[redacted opaque value]", value)
+    return value[-8000:]
+
+
+class DockerCommandError(RuntimeError):
+    def __init__(self, message: str, arguments: tuple[str, ...], exit_code: int | None,
+                 stdout: str = "", stderr: str = "") -> None:
+        super().__init__(message)
+        self.details = {"command": diagnostic_text("docker " + " ".join(arguments)), "exit_code": exit_code,
+                        "stdout": diagnostic_text(stdout), "stderr": diagnostic_text(stderr)}
+
 
 def docker(*arguments: str, timeout: int = 30, quiet: bool = False) -> str:
-    try:
-        result = subprocess.run(["docker", *arguments], check=False, timeout=timeout,
-            stdout=subprocess.DEVNULL if quiet else subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-    except FileNotFoundError:
-        raise RuntimeError("Docker executable is unavailable") from None
-    except subprocess.TimeoutExpired:
-        raise RuntimeError("The Docker command timed out") from None
+    with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:
+        try:
+            result = subprocess.run(["docker", *arguments], check=False, timeout=timeout,
+                stdout=output if quiet else subprocess.PIPE, stderr=errors, text=True)
+        except FileNotFoundError:
+            raise DockerCommandError("Docker executable is unavailable", arguments, None) from None
+        except subprocess.TimeoutExpired as error:
+            errors.seek(max(0, errors.tell() - 8000))
+            output.seek(max(0, output.tell() - 8000))
+            raise DockerCommandError("The Docker command timed out", arguments, None,
+                                     stdout=output.read().decode("utf-8", errors="replace"),
+                                     stderr=errors.read().decode("utf-8", errors="replace")) from error
+        errors.seek(max(0, errors.tell() - 16000))
+        stderr = errors.read().decode("utf-8", errors="replace")
+        output.seek(max(0, output.tell() - 16000))
+        stdout = result.stdout or output.read().decode("utf-8", errors="replace")
     if result.returncode:
+        message = "Docker access, Compose or the code-server build failed"
         if arguments[0] == "info":
-            raise RuntimeError("Docker daemon access failed")
-        if arguments[:2] == ("compose", "version"):
-            raise RuntimeError("Docker Compose is unavailable")
-        if arguments[0] == "exec" and "bwrap" in arguments:
-            raise RuntimeError("The editor user namespace check failed")
-        raise RuntimeError("Docker access, Compose or the code-server build failed")
-    return (result.stdout or "").strip()
+            message = "Docker daemon access failed"
+        elif arguments[:2] == ("compose", "version"):
+            message = "Docker Compose is unavailable"
+        elif arguments[0] == "exec" and "bwrap" in arguments:
+            message = "The editor user namespace check failed"
+        raise DockerCommandError(message, arguments, result.returncode, stdout, stderr)
+    return "" if quiet else stdout.strip()
 
 
 def credential(root: Path) -> str:
@@ -69,8 +105,10 @@ def credential(root: Path) -> str:
             value = source.read(129).strip()
         if not 32 <= len(value) <= 128:
             raise RuntimeError("The retained editor credential is invalid")
+        _credential_values.add(value)
         return value
     value = secrets.token_urlsafe(48)
+    _credential_values.add(value)
     with os.fdopen(descriptor, "w") as target:
         target.write(value)
     return value
@@ -185,8 +223,9 @@ def deploy(bundle: Path, home: Path, *, upgrade: bool = False, check_only: bool 
                     if not previous["State"].get("Paused"):
                         docker("pause", container)
                     paused = True
-                    processes = docker("top", container, "-eo", "comm").splitlines()[1:]
-                    if sorted(value.strip() for value in processes) != ["python3", "tini"]:
+                    # Docker uses PID to select this container's rows from host ps.
+                    processes = docker("top", container, "-eo", "pid,comm").splitlines()[1:]
+                    if sorted(value.split(maxsplit=1)[1].strip() for value in processes) != ["python3", "tini"]:
                         raise RuntimeError("End existing editor sessions before updating the editor")
             replacement_started = True
             docker("compose", "-p", project, "-f", str(compose), "up", "-d", "--build", timeout=900, quiet=True)
@@ -225,9 +264,19 @@ def main() -> None:
 def run() -> int:
     try:
         main()
-    except (RuntimeError, OSError, ValueError, KeyError, IndexError) as error:
+    except Exception as error:
         reason = FAILURE_REASONS.get(str(error), "unknown") if isinstance(error, RuntimeError) else "unknown"
-        print(json.dumps({"error": reason}))
+        causes = []
+        current = error
+        seen = set()
+        while current is not None and id(current) not in seen and len(causes) < 8:
+            seen.add(id(current))
+            causes.append({"type": type(current).__name__, "message": diagnostic_text(str(current)),
+                "locations": [{"file": Path(frame.filename).name, "line": frame.lineno, "function": frame.name}
+                              for frame in traceback.extract_tb(current.__traceback__)[-16:]],
+                "command": current.details if isinstance(current, DockerCommandError) else None})
+            current = current.__cause__ or current.__context__
+        print(json.dumps({"error": reason, "diagnostic": causes}))
         # No arbitrary Docker or HTTP response is exposed to application logs.
         print("Editor deployment failed: verify Docker/Compose access, Linux user namespaces and the account home", file=sys.stderr)
         return 1

@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0205 — Diagnostics durables des mises à jour](0205-durable-update-diagnostics.md)
+
 - [0204 — Parallélisme implicite par les liaisons des processus](0204-implicit-process-parallelism.md)
 
 - [0203 — Éditeur Tiptap, HTML portable et runtime documentaire isolé](0203-tiptap-html-editor.md)

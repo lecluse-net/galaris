@@ -12,6 +12,7 @@ export VERSION
 
 # Application name, overridable through .env and used for container names.
 APP_NAME ?= galaris
+export APP_NAME
 APP_HOST ?= http://localhost:8484
 WEBRTC_TURN_MODE ?= embedded
 POSTGRES_MODE ?= embedded
@@ -52,6 +53,7 @@ endif
 # Remove only disabled optional services, without loading their Compose files or
 # deleting their volumes. Other project containers remain untouched.
 UNUSED_SERVICES := $(if $(filter external,$(POSTGRES_MODE)),postgres) $(if $(filter embedded,$(WEBRTC_TURN_MODE)),,turn)
+export GALARIS_UNUSED_SERVICES = $(strip $(UNUSED_SERVICES))
 define STOP_UNUSED_SERVICES
 	@for service in $(UNUSED_SERVICES); do \
 		containers=$$(docker ps -aq --filter "label=com.docker.compose.project=$(APP_NAME)" --filter "label=com.docker.compose.service=$$service") || exit $$?; \
@@ -233,32 +235,7 @@ ifneq ($(if $(filter 0,$(GIT_UPDATE)),,$(strip $(VERSION))),)
 	@# Reload the selected version's Makefile and recompute Compose/build settings.
 	@$(MAKE) update GIT_UPDATE=0
 else
-	@bash bin/update-secrets.sh
-	@bash bin/init-search-config.sh
-	@echo "📥 Pulling infrastructure images, including SearXNG..."
-	docker compose $(COMPOSE_FILES) pull --ignore-buildable
-ifeq ($(APP_ENV),dev)
-	@echo "🔨 Rebuilding development images with cache..."
-	docker compose $(COMPOSE_FILES) build
-else
-	@echo "🔨 Rebuilding images with cache..."
-	docker compose $(COMPOSE_FILES) build --pull
-endif
-	@bash bin/init-data-volume.sh $(COMPOSE_FILES)
-	$(STOP_UNUSED_SERVICES)
-	@# Always rerun DbAdmin and refresh the proxy's backend DNS resolution.
-	docker compose $(COMPOSE_FILES) rm --stop --force backend frontend
-	@echo "⏳ Waiting for the backend schema/data synchronization to complete..."
-	@if ! docker compose $(COMPOSE_FILES) up -d --wait --wait-timeout 300; then \
-		echo "❌ Update failed; latest service logs:"; \
-		docker compose $(COMPOSE_FILES) logs --tail=200; \
-		exit 1; \
-	fi
-	@bash bin/finalize-internal-secrets.sh $(COMPOSE_FILES)
-	@echo "📚 Updating the shared documentation search index..."
-	@bash bin/refresh-documentation.sh $(COMPOSE_FILES)
-	@echo "Checking configured external code editors..."
-	docker compose $(COMPOSE_FILES) exec -T backend python -m code_editor_update
+	@bash bin/update-runtime.sh $(COMPOSE_FILES)
 	@echo "✅ Update complete ($(APP_ENV))."
 	@echo "Open $(APP_HOST) in your browser."
 endif

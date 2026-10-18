@@ -335,8 +335,18 @@ et le motif ; un motif inconnu ou une sortie distante privée ne sont jamais ré
 Une panne ne divulgue pas de secret et n’empêche pas
 les autres cibles d’être vérifiées. `make tests-update` protège l’exécution après disponibilité
 du backend et la propagation d’un échec de maintenance à `make update`.
+Les échecs injectés imposent aussi un journal privé de l’étape et du code de sortie pour les
+déploiements depuis les sources et les releases. `core/tests/test_update_diagnostics.py`
+vérifie la conservation des causes et des sorties utiles sans secrets, les permissions,
+la rétention bornée et le repli explicite lorsque le stockage échoue. La CLI de maintenance
+doit afficher le chemin du diagnostic et poursuivre les autres cibles.
 `code-executor/tests/test_deployment.py` vérifie l’orchestration avec une frontière Docker
-simulée ; les suites natives ci-dessous vérifient séparément code-server réel et ses montages.
+simulée, dont l’exigence d’une colonne PID pour `docker top` et le refus de remplacer un
+éditeur dont des processus de session sont actifs. Le contrôleur demande `pid,comm` et
+compare les noms de processus sans leurs PID. Les suites natives ci-dessous vérifient
+séparément code-server réel et ses montages.
+`make tests-code` vérifie également ce contrat de `docker top` avec Docker réel sur un
+conteneur jetable suspendu, pour ne pas qualifier le seul comportement d’un double de test.
 `front/browser-tests/chat-code-workspace.spec.mjs` exerce les composants du panneau partagé,
 la conservation de l’iframe non enregistrée et l’isolation des séquences/rooms ; son contenu
 IDE est une fixture explicite. La suite documentaire existante protège ses propres parcours.

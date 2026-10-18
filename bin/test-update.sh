@@ -3,10 +3,10 @@
 set -euo pipefail
 repo_dir=$(cd "$(dirname "$0")/.." && pwd)
 case_dir=$(mktemp -d)
-trap 'rm -rf "$case_dir"' EXIT
+trap 'status=$?; if [[ "$status" -ne 0 && -f "$case_dir/output.log" ]]; then tail -n 25 "$case_dir/output.log" >&2; fi; rm -rf "$case_dir"' EXIT
 cp "$repo_dir/Makefile" "$case_dir/Makefile"
 mkdir -p "$case_dir/bin"
-cp "$repo_dir/bin/"{start,update-source,init-data-volume,uninstall,refresh-documentation,documentation}.sh "$case_dir/bin/"
+cp "$repo_dir/bin/"{start,update-source,update-runtime,update-journal,init-data-volume,uninstall,refresh-documentation,documentation}.sh "$case_dir/bin/"
 cp -R "$repo_dir/tooling" "$case_dir/tooling"
 for script in update-secrets init-search-config update-release finalize-internal-secrets; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$case_dir/bin/$script.sh"
@@ -193,6 +193,17 @@ for app_mode in dev prod; do
             echo "FAIL: $app_mode update hid a $failure failure" >&2
             exit 1
         fi
+        grep -q 'Update failed: stage=' "$case_dir/output.log"
+        journal=$(sed -n 's/^Update journal: //p' "$case_dir/output.log")
+        test -f "$case_dir/$journal"
+        case "$failure" in
+            data_permissions) phase=data-volume ;;
+            reset) phase=backend-reset ;;
+            documentation_revision) phase=documentation ;;
+            *) phase=$failure ;;
+        esac
+        grep -q "stage=$phase status=failed exit_code=1$" "$case_dir/$journal"
+        test "$(stat -c %a "$case_dir/$journal")" = 600
         if [[ "$failure" == pull || "$failure" == build || "$failure" == data_permissions ]]; then
             # Failed image preparation must leave the running application alone.
             if grep -Eq ' (down|up|rm|stop)( |$)' "$UPDATE_TEST_LOG"; then
@@ -218,11 +229,23 @@ for app_mode in dev prod; do
 done
 unset UPDATE_TEST_FAILURE
 
+# If evidence cannot be created, stop before running any deployment command.
+mv "$case_dir/artifacts" "$case_dir/saved-artifacts"
+printf 'Synthetic non-directory\n' > "$case_dir/artifacts"
+if run_update APP_ENV=prod; then
+    echo 'FAIL: update proceeded without a writable journal' >&2
+    exit 1
+fi
+test ! -s "$UPDATE_TEST_LOG"
+grep -qE 'Not a directory|not a directory|Permission denied|File exists' "$case_dir/output.log"
+rm "$case_dir/artifacts"
+mv "$case_dir/saved-artifacts" "$case_dir/artifacts"
+
 # Prepared releases must maintain editors using the deployed release's backend too.
 release_case="$case_dir/release-case"
 release_fixture="$release_case/prepared"
 mkdir -p "$release_case/bin" "$release_fixture"
-cp "$repo_dir/bin/update-release.sh" "$release_case/bin/"
+cp "$repo_dir/bin/"{update-release,update-journal}.sh "$release_case/bin/"
 for script in load-release init-data-volume finalize-internal-secrets; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$release_case/bin/$script.sh"
 done
@@ -529,7 +552,7 @@ echo 'PASS: optional PostgreSQL in dev/prod, default inclusion and invalid confi
 install_dir="$case_dir/install"
 mkdir -p "$install_dir/bin" "$install_dir/resources"
 cp "$repo_dir/Makefile" "$repo_dir/.env.example" "$repo_dir/compose.override.yaml.example" "$install_dir/"
-cp "$repo_dir/bin/"{install,start,update-source,init-data-volume,update-secrets,init-search-config,finalize-internal-secrets,refresh-documentation,documentation}.sh "$install_dir/bin/"
+cp "$repo_dir/bin/"{install,start,update-source,update-runtime,update-journal,init-data-volume,update-secrets,init-search-config,finalize-internal-secrets,refresh-documentation,documentation}.sh "$install_dir/bin/"
 cp -R "$repo_dir/tooling" "$install_dir/tooling"
 cp -R "$repo_dir/resources/search" "$install_dir/resources/"
 cat > "$case_dir/bin/ip" <<'SH'

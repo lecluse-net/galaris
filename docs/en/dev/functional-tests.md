@@ -304,8 +304,17 @@ replacement with live sessions and preserves access parameters. Recognized remot
 their stage and reason; unknown reasons and private remote output are never echoed. Failures expose no secrets
 and do not prevent checking other targets. `make tests-update` protects execution after
 backend readiness and propagation of maintenance failures to `make update`.
-`code-executor/tests/test_deployment.py` checks orchestration with a simulated Docker boundary;
-the native suites below separately exercise actual code-server and its mounts.
+Injected failures also require a private stage/exit-status journal for source and release
+deployments. `core/tests/test_update_diagnostics.py` checks preservation of causes and useful
+output without secrets, permissions, bounded retention and explicit fallback on storage failure.
+The maintenance CLI must print the diagnostic path and continue checking other targets.
+`code-executor/tests/test_deployment.py` checks orchestration with a simulated Docker boundary,
+including Docker's requirement for a PID column in `docker top` and refusal to replace an
+editor with active session processes. The controller requests `pid,comm` and compares process
+names without their PIDs. The native suites below separately exercise actual code-server
+and its mounts.
+`make tests-code` also checks this `docker top` contract with real Docker on a disposable
+paused container, rather than qualifying only the behavior of a test double.
 `front/browser-tests/chat-code-workspace.spec.mjs` exercises the shared pane components,
 retained unsaved iframe contents and sequence/room isolation with explicit IDE fixtures.
 Existing Document scenarios protect their own journeys. `make tests-code` uses real

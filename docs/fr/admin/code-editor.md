@@ -95,6 +95,10 @@ les secrets. `unknown` signifie que le contrôleur n’a pas fourni de motif rec
 vient après le redémarrage et la disponibilité de Galaris : son échec ne signifie pas que
 l’application est arrêtée. Pour `sessions_active`, fermez les sessions de toutes les connexions
 qui utilisent le même compte Unix, y compris les sessions masquées.
+Chaque échec de maintenance affiche aussi le chemin d’un diagnostic privé et persistant
+dans `/data/update-diagnostics/` du backend. Il conserve la commande Docker, son code de
+sortie, l’explication renvoyée et les causes successives après masquage des secrets,
+y compris pour une erreur inconnue. Une erreur de stockage est signalée dans le terminal.
 La mise à niveau conserve le port privé, le credential et les profils retenus, et restaure l’image
 précédente si la construction ou la vérification locale échoue. La création de sessions est bloquée
 pendant le remplacement. L’automatisation ne modifie jamais les paramètres d’accès enregistrés.

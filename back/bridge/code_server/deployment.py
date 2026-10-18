@@ -31,6 +31,7 @@ class DeploymentCheck(BaseModel):
 
 class DeploymentFailure(BaseModel):
     error: str
+    diagnostic: list[dict[str, object]] = Field(default_factory=list[dict[str, object]], max_length=8)
 
 
 _FAILURE_MESSAGES = {
@@ -57,21 +58,29 @@ _FAILURE_MESSAGES = {
 class EditorDeploymentError(ValueError):
     """A fixed diagnostic safe to print without exposing remote output."""
 
-    def __init__(self, stage: Literal["inspection", "upgrade", "installation"], reason: str = "unknown") -> None:
+    def __init__(self, stage: Literal["inspection", "upgrade", "installation"], reason: str = "unknown",
+                 diagnostic: list[dict[str, object]] | None = None) -> None:
         if reason not in _FAILURE_MESSAGES:
             reason = "unknown"
         message = _FAILURE_MESSAGES.get(reason, "The remote controller failed without a recognized diagnostic")
         super().__init__(f"{stage} [{reason}]: {message}")
+        self.diagnostic = diagnostic
 
 
 def _deployment_error(result: ConsoleResult, stage: Literal["inspection", "upgrade", "installation"]) -> EditorDeploymentError:
     reason = "unknown"
+    diagnostic: list[dict[str, object]] | None = None
     if not result.stdout_truncated:
         try:
-            reason = DeploymentFailure.model_validate_json(result.stdout).error
+            failure = DeploymentFailure.model_validate_json(result.stdout)
+            reason, diagnostic = failure.error, failure.diagnostic
         except ValidationError:
             pass
-    return EditorDeploymentError(stage, reason)
+    if not diagnostic:
+        diagnostic = [{"type": "RemoteControllerFailure", "exit_code": result.exit_code,
+                       "status": result.status, "stdout_truncated": result.stdout_truncated,
+                       "stdout": result.stdout, "stderr": result.stderr}]
+    return EditorDeploymentError(stage, reason, diagnostic)
 
 
 def deployment_files() -> dict[str, bytes]:

@@ -90,6 +90,10 @@ The diagnostic identifies the stage (`inspection` or `upgrade`) and a recognized
 restarted and become ready: its failure does not mean the application has stopped. For
 `sessions_active`, end sessions on all connections using the same Unix account, including hidden
 sessions.
+Every maintenance failure also prints the path of a private, persistent backend diagnostic
+under `/data/update-diagnostics/`. It retains the Docker command, exit status, returned
+explanation and cause chain after secret redaction, including unexpected errors. Storage
+failures are reported in the terminal.
 Upgrades preserve the private port, credential and retained
 profiles, and restore the previous image if building or local verification fails. Session creation
 waits during replacement. Automation never changes the configured access parameters.

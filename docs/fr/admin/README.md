@@ -1143,6 +1143,22 @@ précachés sont supprimés ; les cookies, sessions et données utilisateur sont
 Enregistrez les formulaires en cours avant le déploiement : le rechargement remplace la page.
 Avec `RELEASE_DIR`, les images déjà qualifiées sont déployées telles quelles, sans reconstruction.
 
+Chaque déploiement depuis les sources ou une release conserve son journal d’étapes dans
+`artifacts/updates/` sur l’hôte. Le chemin est affiché au démarrage ; un échec indique l’étape
+et le code de sortie. Les 100 derniers journaux sont conservés, avec des droits privés.
+Ce journal contient des métadonnées, pas une copie des sorties Docker ni des secrets.
+Sa création doit réussir avant le déploiement. La sélection Git et les contrôles préalables
+conservent leurs diagnostics directs dans le terminal.
+
+Pour les éditeurs Console, le programme de maintenance affiche en plus le chemin exact
+d’un diagnostic JSON dans `/data/update-diagnostics/` du backend, conservé dans son volume
+de données. Il contient la commande en échec, son code de sortie, les sorties bornées,
+la chaîne des causes et les emplacements de code, après masquage des secrets. Les 100 derniers
+diagnostics sont conservés (répertoire 0700, fichiers 0600). Une erreur d’enregistrement est
+signalée explicitement avec un repli du diagnostic masqué dans le terminal. Ces diagnostics
+restent disponibles sans Logfire ; les sorties de `docker compose exec` ne sont pas ajoutées
+automatiquement aux logs du processus principal du conteneur.
+
 Le harness manager possède un cycle de déploiement indépendant et peut résider sur une autre
 machine. `make update` ne le met jamais à jour et ne redémarre aucun service hôte externe. Sa mise
 à jour s'effectue sur son propre hôte avec le Makefile de `harness_manager`, en coordonnant

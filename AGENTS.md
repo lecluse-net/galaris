@@ -117,6 +117,12 @@ a small change does not require a separate planning document.
 - After implementation, review the diff again specifically for failure modes: data loss,
   unauthorized access, stuck states, unbounded resource growth, and regressions in consumers.
   Resolve findings and rerun the affected checks before reporting completion.
+- Critical installation and update operations must retain failure evidence independently of
+  the application and external telemetry: stage, command identity, exit status, original cause,
+  and code locations. Redact secrets before persistence; never discard stderr as a substitute
+  for redaction. Preserve primary failures when rollback or cleanup also fails, report diagnostic
+  storage failures explicitly, and test these guarantees with injected failures. Qualify external
+  CLI contracts against the real executable as well as their test doubles.
 
 ## Environment and commands
 

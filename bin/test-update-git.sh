@@ -35,12 +35,12 @@ export PATH="$case_dir/tools:$PATH"
 git init --quiet --bare --initial-branch=main "$case_dir/origin.git"
 git init --quiet --initial-branch=main "$case_dir/seed"
 cp "$repo_dir/Makefile" "$case_dir/seed/"
-cp "$repo_dir/bin/"{update-source,start,init-data-volume,refresh-documentation,documentation}.sh "$case_dir/seed/bin/"
+cp "$repo_dir/bin/"{update-source,update-runtime,update-journal,start,init-data-volume,refresh-documentation,documentation}.sh "$case_dir/seed/bin/"
 cp -R "$repo_dir/tooling" "$case_dir/seed/tooling"
 for script in update-secrets init-search-config finalize-internal-secrets update-release; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$case_dir/seed/bin/$script.sh"
 done
-printf '.env\ncompose.override.yaml\n' > "$case_dir/seed/.gitignore"
+printf '.env\ncompose.override.yaml\n/artifacts/\n' > "$case_dir/seed/.gitignore"
 for locale in fr en; do
     mkdir -p "$case_dir/seed/docs/$locale/architecture/generated"
     for name in project-map navigation; do

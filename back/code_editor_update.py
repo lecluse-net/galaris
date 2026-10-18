@@ -8,6 +8,7 @@ import asyncio
 import sys
 
 from core.database import get_db_session, load_models
+from core.update_diagnostics import record_update_failure
 
 
 async def update_editors() -> bool:
@@ -32,9 +33,12 @@ async def update_editors() -> bool:
             # SSH/Docker exceptions can contain credentials or remote command output.
             # Report every failed target and still maintain the independent targets.
             succeeded = False
+            diagnostic = record_update_failure(error, connection_id=connection_id,
+                details=error.diagnostic if isinstance(error, EditorDeploymentError) else None)
             detail = f" {error}." if isinstance(error, EditorDeploymentError) else ""
             sys.stderr.write(
                 f"Code editor for Console connection {connection_id}: update failed.{detail} "
+                f"Diagnostic: {diagnostic or 'storage unavailable; see diagnostic above'}. "
                 "Save files and close editor sessions, verify SSH/Docker access and the "
                 "configured managed editor, then rerun make update.\n"
             )
@@ -44,8 +48,10 @@ async def update_editors() -> bool:
 def main() -> int:
     try:
         return 0 if asyncio.run(update_editors()) else 1
-    except Exception:
+    except Exception as error:
+        diagnostic = record_update_failure(error)
         sys.stderr.write("Unable to enumerate configured code editors; make update did not complete.\n")
+        sys.stderr.write(f"Diagnostic: {diagnostic or 'storage unavailable; see diagnostic above'}.\n")
         return 1
 
 

@@ -655,7 +655,9 @@ async def test_console_editor_deployment_only_publishes_verified_credentials_and
         deployed = transport.exec.return_value
         if automatic in ("remote_busy", "remote_unknown"):
             deployed = ConsoleResult(status="failed", exit_code=1,
-                stdout=json.dumps({"error": "sessions_active" if automatic == "remote_busy" else synthetic_token}),
+                stdout=json.dumps({"error": "sessions_active" if automatic == "remote_busy" else synthetic_token,
+                    "diagnostic": [{"command": "docker top synthetic-runtime -eo pid,comm", "exit_code": 1,
+                                    "stderr": "Synthetic Docker explanation"}]}),
                 stderr=synthetic_token)
         transport.exec.side_effect = [
             ConsoleResult(status="completed", exit_code=0, stdout=json.dumps({
@@ -690,6 +692,7 @@ async def test_console_editor_deployment_only_publishes_verified_credentials_and
         assert "upgrade" in str(failure.value)
         assert ("sessions_active" in str(failure.value)) == (automatic == "remote_busy")
         assert synthetic_token not in str(failure.value)
+        assert failure.value.diagnostic[0]["stderr"] == "Synthetic Docker explanation"
     elif succeeded:
         result = await install(config.connection_id)
         assert result.ready and result.port == 32123
@@ -733,11 +736,13 @@ async def test_editor_maintenance_selects_only_active_configured_external_consol
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("recognized", [False, True])
-async def test_editor_update_reports_failures_without_secrets_and_continues_other_targets(repository_scope, db, monkeypatch, capsys, recognized):
+async def test_editor_update_reports_failures_without_secrets_and_continues_other_targets(repository_scope, db, monkeypatch, capsys, recognized, tmp_path):
     import code_editor_update
     from bridge.code_server import deployment
     from app.connection.facade import set_params_bulk
     from app.console import ConsoleEditorInstallResult
+    from core import update_diagnostics
+    monkeypatch.setattr(update_diagnostics, "DIAGNOSTIC_ROOT", tmp_path)
 
     _, agent, config, _, _ = repository_scope
     other = Agent(title_id=agent.title_id, user_id=agent.user_id, first_name="Synthetic", last_name="Other developer",
@@ -753,7 +758,10 @@ async def test_editor_update_reports_failures_without_secrets_and_continues_othe
         await set_params_bulk(identifier, {"host": "synthetic.test", "code_runtime_port": "32123",
             "code_runtime_token": "synthetic-private-editor-credential-00001"})
     await db.commit()
-    error = (deployment.EditorDeploymentError("upgrade", "sessions_active") if recognized else
+    error = (deployment.EditorDeploymentError("upgrade", "docker_command_failed", [{
+                 "command": "docker top synthetic-runtime -eo comm", "exit_code": 1,
+                 "stderr": "Couldn't find PID field in ps output; token=synthetic-private-editor-credential-00001",
+             }]) if recognized else
              RuntimeError("synthetic-private-editor-credential-00001"))
     updater = AsyncMock(side_effect=[error,
         ConsoleEditorInstallResult(connection_id=second.id, port=32123, version="4.141.0", ready=True, already_installed=True)])
@@ -763,8 +771,15 @@ async def test_editor_update_reports_failures_without_secrets_and_continues_othe
     output = capsys.readouterr()
     assert "update failed" in output.err and "rerun make update" in output.err
     assert "verified" in output.out
-    assert ("sessions_active" in output.err) == recognized
+    assert ("docker_command_failed" in output.err) == recognized
     assert "synthetic-private-editor-credential-00001" not in output.err + output.out
+    diagnostics = list(tmp_path.glob("update-*.json"))
+    assert len(diagnostics) == 1
+    assert str(diagnostics[0]) in output.err
+    assert "synthetic-private-editor-credential-00001" not in diagnostics[0].read_text()
+    if recognized:
+        assert "Couldn't find PID field" in diagnostics[0].read_text()
+        assert '"exit_code": 1' in diagnostics[0].read_text()
 
 
 @pytest.mark.asyncio

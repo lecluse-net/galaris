@@ -1115,6 +1115,20 @@ after installation. Obsolete precached files are deleted; cookies, sessions and 
 are preserved. Save open forms before deployment: the reload replaces the page.
 With `RELEASE_DIR`, the previously qualified images are deployed unchanged, without rebuilding.
 
+Each source or prepared-release deployment retains its stage journal under `artifacts/updates/`
+on the host. Its path is printed at startup; failures identify the stage and exit status.
+The latest 100 journals are retained with private permissions. This journal contains metadata,
+not a copy of Docker output or secrets. Creation must succeed before deployment starts.
+Git selection and preflight checks keep their direct terminal diagnostics.
+
+For Console editors, the maintenance CLI also prints the exact JSON diagnostic path under
+`/data/update-diagnostics/` in the backend's persistent data volume. It contains the failed
+command, exit status, bounded output, cause chain and code locations after secret redaction.
+The latest 100 diagnostics are retained (directory 0700, files 0600). Storage failures are
+reported explicitly, with the redacted diagnostic falling back to the terminal. These records
+remain available without Logfire; output from `docker compose exec` is not automatically
+appended to the container's main-process logs.
+
 The harness manager has an independent deployment cycle and may reside on another
 machine. `make update` never updates it and does not restart any external host service. Its
 update is performed on its own host with the `harness_manager` Makefile, explicitly coordinating
