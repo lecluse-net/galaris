@@ -1,9 +1,9 @@
 <template>
   <section v-if="visible" class="execution-trace" :class="{ 'execution-trace--error': hasError, 'execution-trace--warning': rewriting }">
     <div class="trace-header">
-    <button type="button" class="trace-summary" :aria-expanded="expanded" @click="toggleTrace">
-      <q-icon :name="summaryIcon" class="summary-icon" />
-      <span class="summary-label">{{ summaryLabel }}</span>
+    <button type="button" class="trace-summary" :aria-label="summaryLabel || t('chat.thinking')" :aria-expanded="expanded" @click="toggleTrace">
+      <q-icon :name="summaryIcon" class="summary-icon" :class="{ 'gt-sm': !summaryLabel }" />
+      <span class="summary-label" :class="{ 'gt-sm': !summaryLabel }">{{ summaryLabel || t('chat.thinking') }}</span>
       <q-spinner-dots v-if="liveRound?.active" color="primary" size="22px" />
       <span
         v-for="(tool, index) in toolSummaries"
@@ -151,7 +151,7 @@ const summaryLabel = computed(() => {
   if (props.liveRound?.active && props.activity?.response_only) return t('chat.responseControl.responding')
   if (rewriting.value) return t('chat.rewritingResponse')
   if (hasError.value) return t('chat.executionProblem')
-  if (props.liveRound?.active) return t('chat.thinking')
+  if (props.liveRound?.active) return ''
   return t('chat.executionDetail')
 })
 const liveMessages = computed(() => props.liveRound?.ai_result.messages || [])
