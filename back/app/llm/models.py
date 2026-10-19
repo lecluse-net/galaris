@@ -6,11 +6,21 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
+
+
+# Shared by the partial index and timing reads. Keep these fixed literals in
+# SQL so PostgreSQL can use the index even with a generic prepared plan.
+USEFUL_OUTPUT_EVENT_SQL = """payload ->> 'kind' = 'message' AND (
+    (payload -> 'message' ->> 'type' = 'text'
+     AND length(regexp_replace(payload -> 'message' ->> 'content', '[[:space:]]', '', 'g')) > 0)
+    OR (payload -> 'message' ->> 'type' = 'tool'
+        AND length(btrim(payload -> 'message' ->> 'tool_name')) > 0)
+)"""
 
 
 class LLMDocumentAnalysis(Base):
@@ -86,7 +96,14 @@ class LLMCallEvent(Base):
     """Ordered inference payloads; the existing LLMCall owns lifecycle and billing."""
 
     __tablename__ = "llm_call_events"
-    __table_args__ = (UniqueConstraint("call_id", "sequence"), UniqueConstraint("inference_id", "inference_sequence"))
+    __table_args__ = (
+        UniqueConstraint("call_id", "sequence"),
+        UniqueConstraint("inference_id", "inference_sequence"),
+        # Timing projections seek the first useful output without scanning all
+        # later stream fragments. Sequence order is not timestamp order.
+        Index("ix_llm_call_events_call_created", "call_id", "created_at",
+              postgresql_where=text(USEFUL_OUTPUT_EVENT_SQL)),
+    )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     call_id: Mapped[UUID] = mapped_column(

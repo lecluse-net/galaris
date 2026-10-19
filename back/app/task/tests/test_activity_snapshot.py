@@ -72,6 +72,77 @@ async def test_activity_batch_only_contains_managed_tasks(db):
 
 
 @pytest.mark.asyncio
+async def test_activity_reads_only_live_children_without_loading_their_results(db):
+    from sqlalchemy import event, inspect
+    from app.agent import TaskMessage
+    from app.task.operational_state import operational_snapshot
+    from tests.sql_reads import measured_reads
+
+    parents = [Task(label="Synthetic parent"), Task(label="Synthetic independent parent")]
+    db.add_all(parents)
+    await db.flush()
+    children = [Task(label=f"Synthetic finished child {index}", parent_id=parents[0].id,
+        status=TaskStatus.SUCCESS if index % 2 else TaskStatus.ERROR,
+        data={"delegated": True}, plan={"steps": []},
+        execution_result={"result": "Synthetic result. " * 1000}) for index in range(200)]
+    awaiting = Task(label="Synthetic question", parent_id=parents[0].id, status=TaskStatus.DISPATCH,
+        objective="<p>Which period?</p>", paused=True,
+        data={"awaiting_reply": {"peer_display": "Synthetic peer"}})
+    delegated = Task(label="Synthetic delegation", parent_id=parents[0].id, status=TaskStatus.EXEC,
+        objective="<p>Prepare the report</p>", data={"delegated": True},
+        execution_result={"result": "Synthetic partial result. " * 1000},
+        dispatch_result={"route": "EXEC"}, messages=[TaskMessage(text="Synthetic context")])
+    planned = Task(label="Synthetic plan", parent_id=parents[1].id, status=TaskStatus.PLAN, plan={"steps": []})
+    deleted = Task(label="Synthetic deleted child", parent_id=parents[1].id,
+        data={"delegated": True}, deleted_at=datetime.now(timezone.utc))
+    children.extend([awaiting, delegated, planned, deleted])
+    db.add_all(children)
+    await db.flush()
+    expected = [operational_snapshot(parent, [child for child in children
+                if child.parent_id == parent.id and child.deleted_at is None]) for parent in parents]
+    parent_ids = [parent.id for parent in parents]
+    active_ids = {awaiting.id, delegated.id, planned.id}
+    delegated_id = delegated.id
+    db.expunge_all()
+    parents = [await db.get(Task, identity) for identity in parent_ids]
+    loaded = []
+
+    def capture(_session, instance):
+        if isinstance(instance, Task):
+            loaded.append(instance)
+
+    event.listen(db.sync_session, "loaded_as_persistent", capture)
+    try:
+        async with measured_reads(db, "task-activity-200-finished-children") as reads:
+            snapshots = await activity_snapshots(parents)
+    finally:
+        event.remove(db.sync_session, "loaded_as_persistent", capture)
+    # Child queries have no ordering contract; compare the same waits by identity.
+    actual = [snapshot.operational for snapshot in snapshots]
+    for state in [*actual, *expected]:
+        state["waits"].sort(key=lambda wait: wait.get("coordination_task_id", ""))
+    assert actual == expected
+    print(f"ACTIVITY_CHILDREN loaded={len(loaded)} result_payloads="
+          f"{sum('execution_result' not in inspect(child).unloaded for child in loaded)}")
+    assert {child.id for child in loaded} == active_ids
+    assert all({"execution_result", "dispatch_result", "messages"} <= inspect(child).unloaded for child in loaded)
+    assert len(reads) <= 5
+
+    # A later read observes completions immediately; it must neither retain stale
+    # waits nor keep amendment blocked by finished delegated/planned children.
+    for child in loaded:
+        child.status = TaskStatus.SUCCESS
+    await db.flush()
+    reopened = await activity_snapshots(parents)
+    assert all(snapshot.operational["waits"] == [] for snapshot in reopened)
+    assert all(snapshot.operational["amendable"] for snapshot in reopened)
+    completed = await task_service.get_by_id(delegated_id)
+    assert completed.execution_result == {"result": "Synthetic partial result. " * 1000}
+    assert completed.dispatch_result == {"route": "EXEC"}
+    assert [message.text for message in completed.messages] == ["Synthetic context"]
+
+
+@pytest.mark.asyncio
 async def test_activity_scope_summary_keeps_polling_payload_bounded(db):
     import json
     from pathlib import Path

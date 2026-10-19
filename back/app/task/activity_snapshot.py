@@ -8,11 +8,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import defer
 
 from app.agent import AIResult
 from core.database import get_db
 from core.util import visible_text
-from .models import Task, TaskAttempt
+from .models import Task, TaskAttempt, TaskStatus
 from .operational_state import TaskOperationalSnapshot, operational_snapshot
 from .working_set import parse_working_set
 from .startup_timing import TaskStartupTiming, task_startup_timings
@@ -92,7 +93,19 @@ async def activity_snapshots(tasks: Sequence[Task]) -> list[TaskActivitySnapshot
         TaskAttempt.task_id
     ).order_by(TaskAttempt.task_id, TaskAttempt.attempt_number.desc())
     attempts = {attempt.task_id: attempt for attempt in (await db.scalars(latest)).all()}
-    children = (await db.scalars(select(Task).where(Task.parent_id.in_(ids)))).all()
+    # Operational state ignores finished children and never consumes their
+    # execution payloads. Keep repeated monitoring independent of that history.
+    children = (await db.scalars(select(Task).where(
+        Task.parent_id.in_(ids), Task.status.not_in((TaskStatus.SUCCESS, TaskStatus.ERROR)),
+    ).options(
+        defer(Task.execution_result, raiseload=True),
+        defer(Task.dispatch_result, raiseload=True),
+        defer(Task.messages, raiseload=True),
+    ))).all()
+    children_by_parent: dict[UUID, list[Task]] = {}
+    for child in children:
+        if child.parent_id is not None:
+            children_by_parent.setdefault(child.parent_id, []).append(child)
     result: list[TaskActivitySnapshot] = []
     for task in tasks:
         attempt = attempts.get(task.id)
@@ -121,7 +134,7 @@ async def activity_snapshots(tasks: Sequence[Task]) -> list[TaskActivitySnapshot
                         last_activity = at
                 except ValueError:
                     pass
-        operational = operational_snapshot(task, [child for child in children if child.parent_id == task.id])
+        operational = operational_snapshot(task, children_by_parent.get(task.id, ()))
         result.append(TaskActivitySnapshot(
             task_id=task.id, revision=task.revision, phase=task.status.value,
             startup_timing=timings.get(task.id),

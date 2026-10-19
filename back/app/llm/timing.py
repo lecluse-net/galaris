@@ -4,10 +4,10 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import select, text
 from sqlalchemy.sql.selectable import ScalarSelect
 
-from .models import LLMCall, LLMCallEvent
+from .models import LLMCall, LLMCallEvent, USEFUL_OUTPUT_EVENT_SQL
 
 
 class LLMProcessingTiming(BaseModel):
@@ -28,18 +28,13 @@ class LLMExecutionTiming(BaseModel):
 
 
 def first_output_timestamp() -> ScalarSelect[datetime]:
-    """Correlated minimum: ignore reasoning, empty chunks and internal decisions."""
-    message = LLMCallEvent.payload["message"]
-    return select(func.min(LLMCallEvent.created_at)).where(
+    """Seek the earliest useful event, ignoring reasoning and internal decisions."""
+    return select(LLMCallEvent.created_at).where(
         LLMCallEvent.call_id == LLMCall.id,
         LLMCallEvent.created_at >= LLMCall.started_at,
         LLMCall.purpose.in_(("agent.exec", "agent.synthesis", "conversation.text", "conversation.audio")),
-        LLMCallEvent.payload["kind"].astext == "message",
-        or_(
-            and_(message["type"].astext == "text", func.length(func.regexp_replace(message["content"].astext, "[[:space:]]", "", "g")) > 0),
-            and_(message["type"].astext == "tool", func.length(func.btrim(message["tool_name"].astext)) > 0),
-        ),
-    ).correlate(LLMCall).scalar_subquery()
+        text(USEFUL_OUTPUT_EVENT_SQL),
+    ).order_by(LLMCallEvent.created_at).limit(1).correlate(LLMCall).scalar_subquery()
 
 
 def execution_timing(intervals: list[LLMProcessingTiming]) -> LLMExecutionTiming:

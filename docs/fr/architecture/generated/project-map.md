@@ -1995,12 +1995,12 @@ tests restent l’autorité sur le comportement.
 | `lab_tasks` | `LabTask` | `app.lab` | non | `tasks.id` | `back/app/lab/models.py:30` |
 | `learned_skill_evidences` | `LearnedSkillEvidence` | `app.skill` | non | `learned_skills.id` | `back/app/skill/models.py:204` |
 | `learned_skills` | `LearnedSkill` | `app.skill` | oui | `agents.id` | `back/app/skill/models.py:145` |
-| `llm_call_events` | `LLMCallEvent` | `app.llm` | non | `llm_calls.id`, `llm_inferences.id` | `back/app/llm/models.py:85` |
-| `llm_calls` | `LLMCall` | `app.llm` | non | `agents.id`, `conversation_rounds.id`, `llm_inference_attempts.id`, `llm_profiles.id`, `llms.id`, `multimedia_generations.id`, `process_runs.id`, `task_attempts.id`, `tasks.id`, `users.id` | `back/app/llm/models.py:104` |
-| `llm_document_analyses` | `LLMDocumentAnalysis` | `app.llm` | non | `agents.id`, `tasks.id` | `back/app/llm/models.py:16` |
-| `llm_inference_attempts` | `LLMInferenceAttempt` | `app.llm` | non | `llm_inferences.id` | `back/app/llm/models.py:56` |
-| `llm_inference_commands` | `LLMInferenceCommand` | `app.llm` | non | `llm_inference_attempts.id`, `llm_inferences.id` | `back/app/llm/models.py:72` |
-| `llm_inferences` | `LLMInference` | `app.llm` | non | `llm_inferences.id`, `users.id` | `back/app/llm/models.py:40` |
+| `llm_call_events` | `LLMCallEvent` | `app.llm` | non | `llm_calls.id`, `llm_inferences.id` | `back/app/llm/models.py:95` |
+| `llm_calls` | `LLMCall` | `app.llm` | non | `agents.id`, `conversation_rounds.id`, `llm_inference_attempts.id`, `llm_profiles.id`, `llms.id`, `multimedia_generations.id`, `process_runs.id`, `task_attempts.id`, `tasks.id`, `users.id` | `back/app/llm/models.py:121` |
+| `llm_document_analyses` | `LLMDocumentAnalysis` | `app.llm` | non | `agents.id`, `tasks.id` | `back/app/llm/models.py:26` |
+| `llm_inference_attempts` | `LLMInferenceAttempt` | `app.llm` | non | `llm_inferences.id` | `back/app/llm/models.py:66` |
+| `llm_inference_commands` | `LLMInferenceCommand` | `app.llm` | non | `llm_inference_attempts.id`, `llm_inferences.id` | `back/app/llm/models.py:82` |
+| `llm_inferences` | `LLMInference` | `app.llm` | non | `llm_inferences.id`, `users.id` | `back/app/llm/models.py:50` |
 | `llm_profiles` | `LlmProfile` | `app.llm` | non | `llms.id` | `back/app/llm/profile_models.py:19` |
 | `llm_providers` | `LLMProvider` | `app.llm` | oui | `users.id` | `back/app/llm/provider_models.py:9` |
 | `llms` | `LLM` | `app.llm` | oui | `llm_providers.id` | `back/app/llm/provider_models.py:123` |

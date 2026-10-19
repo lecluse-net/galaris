@@ -10467,7 +10467,7 @@
           "llm_inferences.id"
         ],
         "history_mixin": false,
-        "line": 85,
+        "line": 95,
         "module": "app.llm",
         "table": "llm_call_events"
       },
@@ -10487,7 +10487,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 104,
+        "line": 121,
         "module": "app.llm",
         "table": "llm_calls"
       },
@@ -10499,7 +10499,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 16,
+        "line": 26,
         "module": "app.llm",
         "table": "llm_document_analyses"
       },
@@ -10510,7 +10510,7 @@
           "llm_inferences.id"
         ],
         "history_mixin": false,
-        "line": 56,
+        "line": 66,
         "module": "app.llm",
         "table": "llm_inference_attempts"
       },
@@ -10522,7 +10522,7 @@
           "llm_inferences.id"
         ],
         "history_mixin": false,
-        "line": 72,
+        "line": 82,
         "module": "app.llm",
         "table": "llm_inference_commands"
       },
@@ -10534,7 +10534,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 40,
+        "line": 50,
         "module": "app.llm",
         "table": "llm_inferences"
       },
