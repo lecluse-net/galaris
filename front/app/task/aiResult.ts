@@ -168,12 +168,22 @@ function mergeCumulativeText(current: string, incoming: string): string {
   if (incoming.includes(current)) return incoming
 
   const maxOverlap = Math.min(current.length, incoming.length)
-  for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
-    if (current.endsWith(incoming.slice(0, overlap))) {
-      return `${current}${incoming.slice(overlap)}`
-    }
+  // Prefix fallback lengths let repeated text skip already compared characters.
+  // Only the bounded incoming prefix and current suffix can overlap. Work in
+  // UTF-16 units, as slice/includes do, to preserve split streaming fragments.
+  const prefixes = new Uint32Array(maxOverlap)
+  let overlap = 0
+  for (let index = 1; index < maxOverlap; index++) {
+    while (overlap > 0 && incoming[index] !== incoming[overlap]) overlap = prefixes[overlap - 1]!
+    if (incoming[index] === incoming[overlap]) overlap++
+    prefixes[index] = overlap
   }
-  return `${current}${incoming}`
+  overlap = 0
+  for (let index = current.length - maxOverlap; index < current.length; index++) {
+    while (overlap > 0 && current[index] !== incoming[overlap]) overlap = prefixes[overlap - 1]!
+    if (current[index] === incoming[overlap]) overlap++
+  }
+  return `${current}${incoming.slice(overlap)}`
 }
 
 function visibleTextMessages(result: AIResult): string {

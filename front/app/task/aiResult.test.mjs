@@ -337,3 +337,45 @@ test('cumulative text snapshots replace an HTTP baseline while delta streams sti
   assert.deepEqual(completed.messages.map(m => m.content), ['Bonjour'])
   assert.equal(completed.result, 'Bonjour')
 })
+
+test('cumulative text reconciliation preserves containment and the longest suffix/prefix overlap', () => {
+  // Keep the former brute-force rule as an independent oracle. Include UTF-16
+  // halves: network fragments can split an emoji between successive updates.
+  const alphabet = ['a', 'b', 'é', '\ud83d', '\ude42']
+  const samples = ['']
+  let level = ['']
+  for (let length = 1; length <= 3; length++) {
+    level = level.flatMap(prefix => alphabet.map(character => prefix + character))
+    samples.push(...level)
+  }
+  function reference(current, incoming) {
+    if (!current) return incoming
+    if (!incoming || current.includes(incoming)) return current
+    if (incoming.includes(current)) return incoming
+    for (let overlap = Math.min(current.length, incoming.length); overlap > 0; overlap--) {
+      if (current.endsWith(incoming.slice(0, overlap))) return current + incoming.slice(overlap)
+    }
+    return current + incoming
+  }
+  for (const current of samples) for (const incoming of samples) {
+    const left = { ...emptyAIResult(), result: current }
+    const right = { ...emptyAIResult(), result: incoming }
+    assert.equal(reconcileAIResult(left, right).result, reference(current, incoming),
+      JSON.stringify({ current, incoming }))
+    assert.equal(left.result, current)
+    assert.equal(right.result, incoming)
+  }
+})
+
+test('long repeated responses retain every character when overlap candidates share large prefixes', () => {
+  const repeated = 'ab🙂é'.repeat(10000)
+  for (const [current, incoming, expected] of [
+    [repeated + 'X', repeated + 'Y', repeated + 'X' + repeated + 'Y'],
+    ['X' + repeated, repeated + 'Y', 'X' + repeated + 'Y'],
+    [repeated + 'X', repeated.slice(100), repeated + 'X'],
+    [repeated.slice(100), repeated + 'X', repeated + 'X'],
+  ]) {
+    assert.equal(reconcileAIResult({ ...emptyAIResult(), result: current },
+      { ...emptyAIResult(), result: incoming }).result, expected)
+  }
+})
