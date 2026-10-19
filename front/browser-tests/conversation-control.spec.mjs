@@ -47,7 +47,7 @@ test('conversation controls preserve pause, resume, stop and restart with keyboa
   expect(commands.at(-1)).toEqual({ action: 'restart', expected_attempt: 2 })
 })
 
-test('reply now errors remain retryable and late replies do not alter another conversation', async ({ page }) => {
+test('pause errors remain retryable and late replies do not alter another conversation', async ({ page }) => {
   const commands = []
   await page.route('**/api/chat/rooms/synthetic-room/activity/*/control', async route => {
     commands.push(route.request().postDataJSON())
@@ -56,7 +56,7 @@ test('reply now errors remain retryable and late replies do not alter another co
   await mount(page, 'app/chat/components/AgentExecutionTrace.vue', {
     props: { roomId: 'synthetic-room', activity, allowControl: true }, privileges: ['CHAT_SEND'],
   })
-  const reply = page.getByRole('button', { name: 'Reply now', exact: true })
+  const reply = page.getByRole('button', { name: 'Pause response', exact: true })
   await reply.click()
   await expect(page.getByRole('alert')).toContainText('A newer message is waiting.')
   await expect(reply).toBeEnabled()

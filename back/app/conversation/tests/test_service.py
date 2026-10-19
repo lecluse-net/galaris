@@ -1926,7 +1926,43 @@ async def test_control_rejects_wrong_room_old_attempt_and_terminal_response(db):
 
 
 @pytest.mark.asyncio
-async def test_resuming_a_paused_reply_does_not_interrupt_a_newer_running_reply(db):
+@pytest.mark.parametrize("post_while_pausing", [False, True])
+async def test_post_after_pause_automatically_continues_with_both_inputs(db, post_while_pausing):
+    from app.conversation import control_round
+
+    agent, connection, room = await _scope(db)
+    initial = await _message(db, connection, room, 1, "Prepare a synthetic lesson")
+    await admit_message(initial, agent_id=agent.id, connection_id=connection.id)
+    previous = await claim_next_round("pause-worker")
+    await build_turn(previous.id, lease_token=previous.lease_token)
+    token = previous.lease_token
+    await control_round(room.id, previous.id, "pause", expected_attempt=1)
+    if not post_while_pausing:
+        await complete_round(previous.id, ConversationOutcome(text="Unfinished draft"), lease_token=token)
+        assert await claim_next_round("held-worker") is None
+
+    incoming = await _message(db, connection, room, 2, "Include a synthetic exercise")
+    assert await admit_message(incoming, agent_id=agent.id, connection_id=connection.id)
+    assert not await admit_message(incoming, agent_id=agent.id, connection_id=connection.id)
+    if post_while_pausing:
+        assert await claim_next_round("competing-worker") is None
+        await complete_round(previous.id, ConversationOutcome(text="Unfinished draft"), lease_token=token)
+
+    successor = await claim_next_round("automatic-continuation")
+    assert successor is not None
+    turn = await build_turn(successor.id, lease_token=successor.lease_token)
+    assert "Prepare a synthetic lesson" in turn.objective
+    assert "Include a synthetic exercise" in turn.objective
+    assert not turn.force_response
+    await db.refresh(previous)
+    assert previous.status == "SUPERSEDED"
+    assert previous.resolved_by_round_id == successor.id
+    assert previous.lease_token is None
+    assert await claim_next_round("duplicate-worker") is None
+
+
+@pytest.mark.asyncio
+async def test_resuming_a_superseded_pause_does_not_interrupt_its_continuation(db):
     from app.conversation import control_round, ConversationControlConflict
     agent, connection, room = await _scope(db)
     first = await _message(db, connection, room, 1, "Original synthetic request")
@@ -1937,12 +1973,12 @@ async def test_resuming_a_paused_reply_does_not_interrupt_a_newer_running_reply(
     await admit_message(newer, agent_id=agent.id, connection_id=connection.id)
     current = await claim_next_round("newer-worker")
     await build_turn(current.id, lease_token=current.lease_token)
-    with pytest.raises(ConversationControlConflict, match="newer message"):
+    with pytest.raises(ConversationControlConflict, match="no longer available"):
         await control_round(room.id, paused.id, "resume", expected_attempt=0)
     await db.refresh(current)
     assert current.status == "RUNNING" and current.lease_token is not None
     await db.refresh(paused)
-    assert paused.status == "PAUSED"
+    assert paused.status == "SUPERSEDED"
 
 
 @pytest.mark.asyncio

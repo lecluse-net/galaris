@@ -143,17 +143,29 @@ test('human controls pause and resume, then stopping removes the reply and prese
   expect(rounds.filter(round => round.status === 'SUCCEEDED')).toHaveLength(1)
 })
 
-test('reply now forces a real response with all tool access disabled', async ({ page, request }) => {
+test('posting a supplement automatically continues a paused response', async ({ page, request }, testInfo) => {
   test.setTimeout(90_000)
   const fixture = await prepare(page, request, 'conversation-control')
   await send(page)
-  await page.getByRole('button', { name: 'Répondre maintenant', exact: true }).click()
-  const answer = page.locator('.message-row').filter({ hasText: 'Réponse immédiate avec les éléments disponibles.' })
-  await expect(answer).toHaveCount(1)
-  await expect(answer).toHaveAttribute('data-message-id', /.+/)
+  await page.screenshot({ path: testInfo.outputPath('response-controls.png'), fullPage: true })
+  await page.getByRole('button', { name: 'Mettre en pause', exact: true }).click()
+  await expect(page.getByText('Réponse en pause', { exact: true })).toBeVisible()
   await page.reload()
-  await expect(answer).toHaveCount(1)
+  await expect(page.getByText('Réponse en pause', { exact: true })).toBeVisible()
+  const input = page.locator('.composer-fields textarea')
+  await input.fill('Ajoute un exemple synthétique à la réponse')
+  await input.press('Enter')
+  await expect.poll(async () => {
+    const rounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
+    return rounds.filter(round => round.status === 'RUNNING').length
+  }).toBe(1)
+  await release(request, fixture.rooms[0])
+  await final(page)
+  await page.reload()
+  await final(page)
   const rounds = await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json()
+  expect(rounds.filter(round => round.status === 'PAUSED')).toHaveLength(0)
+  expect(rounds.filter(round => round.status === 'SUPERSEDED')).toHaveLength(1)
   expect(rounds.filter(round => round.status === 'SUCCEEDED')).toHaveLength(1)
 })
 

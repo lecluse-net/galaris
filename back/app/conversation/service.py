@@ -232,14 +232,17 @@ async def admit_message(
     )
     await get_db().flush()
     waiting = (await get_db().scalars(select(ConversationRound).where(
-        ConversationRound.room_id == room.id, ConversationRound.status == "WAITING_APPROVAL",
+        ConversationRound.room_id == room.id,
+        ConversationRound.status.in_(("WAITING_APPROVAL", "PAUSED")),
     ).with_for_update())).all()
     if waiting:
         from app.tools.facade import invalidate_authorization_context
         for previous in waiting:
             await invalidate_authorization_context(agent_id, f"round:{previous.id}")
-            if not previous.effect_started:
+            if previous.status == "PAUSED" or not previous.effect_started:
                 await _merge_inputs(previous, round_)
+            if previous.status == "PAUSED":
+                previous.finished_at = _now()
             previous.status = "SUPERSEDED"
             previous.encrypted_checkpoint = None
     await get_db().commit()
@@ -2027,6 +2030,13 @@ async def apply_requested_control(round_: ConversationRound) -> bool:
     else:
         round_.status = "PAUSED"
         round_.control_action = None
+        if action == "pause" and (successor := await _pending_successor(round_)) is not None:
+            # An input posted while the runtime was draining ends the writing
+            # pause too; carry the unanswered request into that pending reply.
+            await _merge_inputs(round_, successor)
+            round_.status = "SUPERSEDED"
+            round_.finished_at = _now()
+            round_.encrypted_checkpoint = None
         if action == "respond" and await _pending_successor(round_) is None:
             try:
                 _ensure_safe_checkpoint(round_)

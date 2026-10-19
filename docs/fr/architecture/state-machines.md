@@ -226,6 +226,7 @@ toute l'exécution ; la perte de ce token annule le flux local avant toute récu
 | `CLAIMED` | construction du tour → `RUNNING` |
 | `FROZEN`, `CLAIMED`, `RUNNING`, `WAITING_APPROVAL` | commande humaine Pause, après l’outil engagé → `PAUSED` |
 | `PAUSED` | Reprendre, checkpoint sûr et aucun successeur en attente → `FROZEN` |
+| `PAUSED` ou Pause en cours | nouvel input → `SUPERSEDED`, inputs non consommés transmis au successeur `FROZEN` |
 | actif ou `PAUSED` | Stop, après l’outil engagé → `CANCELLED`, aucune réponse livrée |
 | `CANCELLED` | Relancer → nouveau round `FROZEN` lié, ancien round inchangé |
 | actif ou `PAUSED` | Répondre maintenant → `FROZEN` en mode réponse sans outils, puis tentative normale |

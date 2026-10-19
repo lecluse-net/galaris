@@ -307,6 +307,11 @@ L’accueil de **Discussion** présente toutes les conversations, comme la rubri
 **Conversations** de la fenêtre de chat, puis les agents. Les conversations anciennes et
 sans message sont incluses, avec les mêmes filtres et la pagination habituelle.
 
+Pendant une réponse, **Mettre en pause** vous laisse le temps de rédiger un complément.
+L’envoi du message reprend automatiquement avec la demande initiale et votre complément.
+**Reprendre la réponse** permet de continuer sans nouveau message ; **Arrêter la réponse**
+abandonne la réponse en cours. L’outil déjà engagé termine avant la pause ou l’arrêt.
+
 À l’ouverture d’une discussion, les messages s’affichent sans attendre le catalogue des
 commandes ni l’état des appels. Les aperçus de liens et les miniatures de documents se
 chargent progressivement à proximité de la zone visible ; vous pouvez lire et rédiger

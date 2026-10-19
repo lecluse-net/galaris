@@ -223,6 +223,7 @@ execution; loss of that token cancels the local flow before any concurrent recov
 | `CLAIMED` | turn construction → `RUNNING` |
 | `FROZEN`, `CLAIMED`, `RUNNING`, `WAITING_APPROVAL` | human Pause, after the running tool → `PAUSED` |
 | `PAUSED` | Resume, safe checkpoint and no pending successor → `FROZEN` |
+| `PAUSED` or Pause pending | new input → `SUPERSEDED`, unconsumed inputs carried into the `FROZEN` successor |
 | active or `PAUSED` | Stop, after the running tool → `CANCELLED`, no answer delivered |
 | `CANCELLED` | Restart → new linked `FROZEN` round; old round remains terminal |
 | active or `PAUSED` | Reply now → `FROZEN` with tools disabled, then a normal attempt |

@@ -345,7 +345,7 @@ export default {
       thinking: "Réflexion en cours",
       responseControl: {
         pause: 'Mettre en pause', stop: 'Arrêter la réponse', resume: 'Reprendre la réponse', restart: 'Relancer la réponse', respond: 'Répondre maintenant',
-        pauseHint: 'Mettre en pause après l’outil en cours et conserver l’avancement', stopHint: 'Terminer cette réponse après l’outil en cours',
+        pauseHint: 'Mettre en pause pour compléter votre demande ; l’envoi reprend la réponse', stopHint: 'Terminer cette réponse après l’outil en cours',
         resumeHint: 'Continuer depuis l’avancement sauvegardé', restartHint: 'Relancer avec les résultats déjà obtenus',
         respondHint: 'Répondre avec les éléments disponibles, sans nouveaux outils',
         pausing: 'Mise en pause…', stopping: 'Arrêt en cours…', responding: 'Réponse immédiate demandée…', paused: 'Réponse en pause', stopped: 'Réponse arrêtée',
@@ -711,7 +711,7 @@ export default {
       thinking: "Thinking",
       responseControl: {
         pause: 'Pause response', stop: 'Stop response', resume: 'Resume response', restart: 'Restart response', respond: 'Reply now',
-        pauseHint: 'Pause after the current tool and keep progress', stopHint: 'End this response after the current tool',
+        pauseHint: 'Pause to add to your request; sending resumes the response', stopHint: 'End this response after the current tool',
         resumeHint: 'Continue from saved progress', restartHint: 'Restart with the results already obtained',
         respondHint: 'Reply with available information, without new tools',
         pausing: 'Pausing…', stopping: 'Stopping…', responding: 'Immediate reply requested…', paused: 'Response paused', stopped: 'Response stopped',
@@ -774,7 +774,7 @@ export default {
       sources: { nextcloudTalk: "Nextcloud Talk", telegram: "Telegram", matrix: "Matrix", oneBot: "OneBot", whatsApp: "WhatsApp", other: "外部" },
       responseControl: {
         pause: '暂停回复', stop: '停止回复', resume: '继续回复', restart: '重新开始回复', respond: '立即回复',
-        pauseHint: '当前工具完成后暂停并保留进度', stopHint: '当前工具完成后结束回复',
+        pauseHint: '暂停以补充请求；发送后自动继续回复', stopHint: '当前工具完成后结束回复',
         resumeHint: '从已保存的进度继续', restartHint: '使用已获取的结果重新开始',
         respondHint: '使用现有信息回复，不调用新工具',
         pausing: '正在暂停…', stopping: '正在停止…', responding: '已请求立即回复…', paused: '回复已暂停', stopped: '回复已停止',

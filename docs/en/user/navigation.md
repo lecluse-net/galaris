@@ -281,6 +281,11 @@ explains that preparation for administrators and developers.
 The Chat home screen shows all conversations, like the chat window's **Conversations** section,
 then agents. Older and empty conversations are included, with the same filters and usual pagination.
 
+During a response, **Pause response** gives you time to compose a supplement.
+Sending it automatically continues with both your original request and the supplement.
+**Resume response** continues without a new message; **Stop response** abandons the current
+reply. An already running tool finishes before the pause or stop takes effect.
+
 When opening a conversation, messages appear without waiting for the command catalogue
 or call status. Link previews and document thumbnails load progressively near the visible
 area; you can read and compose while they load, and open a document before its thumbnail

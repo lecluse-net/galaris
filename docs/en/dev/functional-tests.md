@@ -721,7 +721,9 @@ preserving human requests, pauses and responses whose stop was refused. The prev
 expectation of a reopenable stopped response block is retired. The two control journeys in
 `e2e/specs/chat.spec.mjs` exercise real Chat, PostgreSQL, scheduler and harness with a
 synthetic model provider, including reopening, removal after stopping, a new request and
-a durably delivered immediate answer.
+automatic continuation after posting a supplement. The pause-and-post regression preserves
+both inputs, including a post received while pausing. Reply now remains covered at the
+API/harness boundary; its Chat button has been removed.
 
 Provider admission is covered by `app/llm/tests/test_provider_scheduler.py` and
 `tests/test_inference_lifecycle.py`: priority, protected places, shared model/native-call

@@ -746,6 +746,8 @@ tentative courante conservée, même Task, appel fermé puis reprise guidée et 
 `app/conversation/tests/test_service.py` protège aussi les commandes humaines Pause, Stop,
 Reprendre, Relancer et Répondre maintenant : tentative exacte, inputs conservés, suppression
 du brouillon, round arrêté immuable et refus de reprendre des effets incertains.
+Le scénario pause puis envoi conserve la demande initiale et le complément, reprend
+automatiquement et couvre aussi un message reçu pendant la mise en pause.
 Les tests de harnais vérifient que Répondre maintenant contourne le dispatcher et expose
 zéro outil au modèle. `front/browser-tests/conversation-control.spec.mjs` exerce clavier,
 doubles clics, erreurs réessayables, droits et réponses tardives sur les composants réels.
@@ -755,7 +757,8 @@ réouverture, tout en conservant la demande humaine, la pause et une réponse do
 a été refusé. L’ancienne attente d’un bloc de réponse arrêtée réouvrable est retirée.
 Les deux parcours de contrôle de `e2e/specs/chat.spec.mjs` utilisent Chat, PostgreSQL,
 le scheduler et le harnais réels avec un fournisseur synthétique ; ils couvrent réouverture,
-reprise, disparition après arrêt, nouvelle demande et réponse immédiate persistée.
+reprise, disparition après arrêt, nouvelle demande et reprise automatique après un complément.
+L’action Répondre maintenant reste couverte côté API/harnais ; son bouton a été retiré du Chat.
 
 L'admission par fournisseur est couverte par `app/llm/tests/test_provider_scheduler.py`
 et `tests/test_inference_lifecycle.py` : priorité, places protégées, partage entre modèles
