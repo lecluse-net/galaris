@@ -62,6 +62,10 @@ mentioned in the discussion; their access controls still apply.
 
 Text and voice conversations follow their own configured controller and executor. They do not go through the Task Dispatcher; when they need durable work, they explicitly create a linked Task.
 
+In native voice mode, you can speak again during a slow lookup. The agent interrupts its
+response and does not automatically resume the old sentence when the result arrives.
+Actions already performed remain recorded.
+
 If the agent's profile configures a Decision model, the text conversation dispatcher helps
 match your message to pending or active work and select a new business process to launch.
 The agent then performs the action through the usual checks. Without this model, or when

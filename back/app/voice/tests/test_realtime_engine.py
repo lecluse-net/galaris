@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
@@ -13,11 +14,342 @@ import pytest
 
 from app.voice import realtime_engine
 from app.voice import conversation_service
+from app.llm.provider_facade import RealtimeConversationEvent, RealtimeToolDefinition
+from app.voice.realtime_tools import RealtimeTool
 
 
 @asynccontextmanager
 async def _db_session() -> AsyncIterator[None]:
     yield None
+
+
+@asynccontextmanager
+async def _running_realtime(monkeypatch, tool):
+    from app import agent
+    from app.conversation import facade
+
+    events = asyncio.Queue()
+    interrupted = asyncio.Event()
+    resumed = asyncio.Event()
+    output_sent = asyncio.Event()
+    provider = MagicMock()
+    provider.receive = events.get
+    provider.send_function_output = AsyncMock(side_effect=lambda *_: output_sent.set())
+
+    async def request_response(instructions=None):
+        if instructions is None:
+            resumed.set()
+
+    provider.request_response = AsyncMock(side_effect=request_response)
+    provider.close = AsyncMock()
+    provider.truncate = AsyncMock()
+    transport = MagicMock()
+    transport.kind = "test"
+    transport.wait_input_ready = AsyncMock()
+    transport.wait_output_ready = AsyncMock()
+    transport.interrupt_output = AsyncMock(side_effect=lambda _: interrupted.set())
+    transport.audio_sent = asyncio.Event()
+
+    async def inbound(_handle):
+        await asyncio.Event().wait()
+        yield  # Never ends before the engine is stopped.
+
+    async def send_audio(_handle, frames):
+        async for _ in frames:
+            transport.audio_sent.set()
+
+    transport.inbound_audio = inbound
+    transport.send_audio = send_audio
+    configuration = realtime_engine._RealtimeConfiguration(
+        service=SimpleNamespace(create_realtime_session=AsyncMock(return_value=provider)),
+        connection=object(), model="synthetic-model", voice="synthetic-voice",
+        voice_resource_id=None, native_audio=True,
+    )
+    engine = realtime_engine.RealtimeAgentVoiceEngine(
+        transport=transport, handle=object(), agent_id=7, session_id=uuid4(),
+        room_id="synthetic-room", connection_id=None, topic_id=None,
+        contact_memory_item_id=None, language="fr", stop_requested=asyncio.Event(),
+        configuration=configuration,
+    )
+    engine._tools = (RealtimeTool(
+        definition=RealtimeToolDefinition(name="synthetic_lookup", description="Test lookup", parameters={}),
+        execute=tool,
+    ),)
+    engine._greeting_recorded = True
+    monkeypatch.setattr(realtime_engine, "get_db_session", _db_session)
+    monkeypatch.setattr(agent, "build_realtime_agent_context", AsyncMock(return_value=SimpleNamespace(instructions="Synthetic context")))
+    monkeypatch.setattr(facade, "active_work_snapshot", AsyncMock(return_value=()))
+    running = asyncio.create_task(engine._run_owned())
+    try:
+        yield engine, provider, events, interrupted, resumed, output_sent
+    finally:
+        engine._stop_requested.set()
+        await asyncio.wait_for(running, timeout=1)
+        provider.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("interruption", ["speech_started", "response_cancelled"])
+async def test_slow_realtime_tool_does_not_delay_barge_in(monkeypatch, interruption):
+    started, release = asyncio.Event(), asyncio.Event()
+    executed = []
+
+    async def lookup(_arguments):
+        executed.append(True)
+        started.set()
+        await release.wait()
+        return {"found": True}
+
+    async with _running_realtime(monkeypatch, lookup) as runtime:
+        engine, provider, events, interrupted, resumed, output_sent = runtime
+        events.put_nowait(RealtimeConversationEvent(kind="response_started", response_id="response-1"))
+        events.put_nowait(RealtimeConversationEvent(
+            kind="function_call", response_id="response-1", call_id="lookup-1",
+            tool_name="synthetic_lookup", arguments="{}",
+        ))
+        await asyncio.wait_for(started.wait(), timeout=1)
+        try:
+            events.put_nowait(RealtimeConversationEvent(
+                kind="function_call", response_id="response-1", call_id="queued-lookup",
+                tool_name="synthetic_lookup", arguments="{}",
+            ))
+            events.put_nowait(RealtimeConversationEvent(kind="response_done", response_id="response-1"))
+            events.put_nowait(RealtimeConversationEvent(kind=interruption, response_id="response-1"))
+            await asyncio.wait_for(interrupted.wait(), timeout=0.1)
+            assert not release.is_set()
+            assert engine._tool_calls.empty()
+            events.put_nowait(RealtimeConversationEvent(kind="response_started", response_id="response-2"))
+            events.put_nowait(RealtimeConversationEvent(
+                kind="function_call", response_id="response-1", call_id="late-lookup",
+                tool_name="synthetic_lookup", arguments="{}",
+            ))
+            events.put_nowait(RealtimeConversationEvent(kind="response_done", response_id="response-1"))
+            events.put_nowait(RealtimeConversationEvent(
+                kind="audio_delta", response_id="response-2", item_id="new-audio",
+                audio=b"\x01\x00" * 480,
+            ))
+            await asyncio.wait_for(engine._transport.audio_sent.wait(), 0.1)
+            assert not release.is_set()
+            release.set()
+            await asyncio.wait_for(output_sent.wait(), timeout=1)
+            await asyncio.wait_for(engine._tool_calls.join(), timeout=1)
+            assert not resumed.is_set()
+            assert executed == [True]
+            assert engine._current_response_id == "response-2"
+        finally:
+            release.set()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("terminal_first", [True, False])
+async def test_realtime_tool_batch_resumes_once_after_all_ordered_results(monkeypatch, terminal_first):
+    started, release, outputs = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    order = []
+
+    async def lookup(arguments):
+        order.append(arguments["index"])
+        started.set()
+        await release.wait()
+        return {"index": arguments["index"]}
+
+    async with _running_realtime(monkeypatch, lookup) as runtime:
+        engine, provider, events, _, resumed, _ = runtime
+
+        def sent(*_args):
+            if provider.send_function_output.await_count == 2:
+                outputs.set()
+
+        provider.send_function_output.side_effect = sent
+        events.put_nowait(RealtimeConversationEvent(kind="response_started", response_id="tools"))
+        for index in range(2):
+            events.put_nowait(RealtimeConversationEvent(
+                kind="function_call", response_id="tools", call_id=f"call-{index}",
+                tool_name="synthetic_lookup", arguments=json.dumps({"index": index}),
+            ))
+        await asyncio.wait_for(started.wait(), 1)
+        if terminal_first:
+            events.put_nowait(RealtimeConversationEvent(kind="response_done", response_id="tools"))
+        assert not resumed.is_set()
+        release.set()
+        await asyncio.wait_for(outputs.wait(), 1)
+        if not terminal_first:
+            assert not resumed.is_set()
+            events.put_nowait(RealtimeConversationEvent(kind="response_done", response_id="tools"))
+        await asyncio.wait_for(resumed.wait(), 1)
+        assert order == [0, 1]
+        assert provider.request_response.await_count == 2  # Greeting and one continuation.
+        assert [json.loads(call.args[1])["result"] for call in provider.send_function_output.await_args_list] == [
+            {"index": 0}, {"index": 1},
+        ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("waiting_approval", [False, True])
+async def test_realtime_tool_backlog_is_bounded_and_shutdown_cancels_active_tool(monkeypatch, waiting_approval):
+    from app.tools.facade import AuthorizationRequired
+
+    started, cancelled = asyncio.Event(), asyncio.Event()
+
+    async def lookup(_arguments):
+        started.set()
+        if waiting_approval:
+            raise AuthorizationRequired(uuid4())
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.set()
+
+    async with _running_realtime(monkeypatch, lookup) as runtime:
+        engine, provider, events, _, _, _ = runtime
+        events.put_nowait(RealtimeConversationEvent(kind="response_started", response_id="tools"))
+        events.put_nowait(RealtimeConversationEvent(
+            kind="function_call", response_id="tools", call_id="active",
+            tool_name="synthetic_lookup", arguments="{}",
+        ))
+        await asyncio.wait_for(started.wait(), 1)
+        if waiting_approval:
+            await asyncio.wait_for(engine._tool_calls.join(), 1)
+            assert len(engine._authorization_tasks) == 1
+        assert engine._tool_calls.maxsize > 0
+        with pytest.raises(RuntimeError, match="too many pending"):
+            for index in range(engine._tool_calls.maxsize + 1):
+                engine._queue_function_call(RealtimeConversationEvent(
+                    kind="function_call", response_id="tools", call_id=f"queued-{index}",
+                    tool_name="synthetic_lookup", arguments="{}",
+                ))
+    if waiting_approval:
+        assert not engine._authorization_tasks
+    else:
+        assert cancelled.is_set()
+    assert engine._tool_calls.empty()
+    assert not engine._pending_tool_calls
+    provider.send_function_output.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_realtime_authorizations_resume_only_after_all_results(monkeypatch):
+    from app.tools.facade import AuthorizationRequired
+
+    attempts = [0, 0]
+    checking = [asyncio.Event(), asyncio.Event()]
+    release = [asyncio.Event(), asyncio.Event()]
+    first_output = asyncio.Event()
+
+    async def lookup(arguments):
+        index = arguments["index"]
+        attempts[index] += 1
+        if attempts[index] == 1:
+            raise AuthorizationRequired(uuid4())
+        checking[index].set()
+        await release[index].wait()
+        return {"index": index}
+
+    async with _running_realtime(monkeypatch, lookup) as runtime:
+        _, provider, events, _, resumed, _ = runtime
+        provider.send_function_output.side_effect = lambda *_: first_output.set()
+        events.put_nowait(RealtimeConversationEvent(kind="response_started", response_id="tools"))
+        for index in range(2):
+            events.put_nowait(RealtimeConversationEvent(
+                kind="function_call", response_id="tools", call_id=f"call-{index}",
+                tool_name="synthetic_lookup", arguments=json.dumps({"index": index}),
+            ))
+        events.put_nowait(RealtimeConversationEvent(kind="response_done", response_id="tools"))
+        await asyncio.wait_for(asyncio.gather(*(event.wait() for event in checking)), 3)
+        assert not resumed.is_set()
+        release[0].set()
+        await asyncio.wait_for(first_output.wait(), 1)
+        assert not resumed.is_set()
+        release[1].set()
+        await asyncio.wait_for(resumed.wait(), 1)
+        assert provider.send_function_output.await_count == 2
+        assert provider.request_response.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_barge_in_cancels_authorization_continuations(monkeypatch):
+    from app.tools.facade import AuthorizationRequired
+
+    checked = asyncio.Event()
+
+    async def lookup(_arguments):
+        checked.set()
+        raise AuthorizationRequired(uuid4())
+
+    async with _running_realtime(monkeypatch, lookup) as runtime:
+        engine, provider, events, interrupted, resumed, _ = runtime
+        events.put_nowait(RealtimeConversationEvent(kind="response_started", response_id="tools"))
+        events.put_nowait(RealtimeConversationEvent(
+            kind="function_call", response_id="tools", call_id="pending-approval",
+            tool_name="synthetic_lookup", arguments="{}",
+        ))
+        await asyncio.wait_for(checked.wait(), 1)
+        await asyncio.wait_for(engine._tool_calls.join(), 1)
+        pending = tuple(engine._authorization_tasks)
+        assert len(pending) == 1
+        events.put_nowait(RealtimeConversationEvent(kind="speech_started"))
+        await asyncio.wait_for(interrupted.wait(), 0.1)
+        await asyncio.wait_for(asyncio.gather(*pending, return_exceptions=True), 1)
+        assert all(task.cancelled() for task in pending)
+        assert not resumed.is_set()
+        provider.send_function_output.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_queued_realtime_tools_keep_the_original_round_authority(monkeypatch):
+    from app.voice import realtime_tools as tool_api
+
+    started, release = asyncio.Event(), asyncio.Event()
+    rounds = []
+    original_round = uuid4()
+
+    async def lookup(_arguments):
+        rounds.append(tool_api._bound_round.get())
+        started.set()
+        await release.wait()
+        return {"found": True}
+
+    async with _running_realtime(monkeypatch, lookup) as runtime:
+        engine, _, events, _, _, _ = runtime
+        engine._current_turn_id = original_round
+        try:
+            events.put_nowait(RealtimeConversationEvent(kind="response_started", response_id="tools"))
+            events.put_nowait(RealtimeConversationEvent(
+                kind="function_call", response_id="tools", call_id="first",
+                tool_name="synthetic_lookup", arguments="{}",
+            ))
+            await asyncio.wait_for(started.wait(), 1)
+            engine._queue_function_call(RealtimeConversationEvent(
+                kind="function_call", response_id="tools", call_id="second",
+                tool_name="synthetic_lookup", arguments="{}",
+            ))
+            engine._current_turn_id = None
+            release.set()
+            await asyncio.wait_for(engine._tool_calls.join(), 1)
+            assert rounds == [(original_round,), (original_round,)]
+        finally:
+            engine._current_turn_id = None
+            release.set()
+
+
+@pytest.mark.asyncio
+async def test_realtime_tool_delivery_failure_closes_the_session(monkeypatch):
+    closed = asyncio.Event()
+
+    async def lookup(_arguments):
+        return {"found": True}
+
+    with pytest.raises(RuntimeError, match="provider send failed"):
+        async with _running_realtime(monkeypatch, lookup) as runtime:
+            _, provider, events, _, _, _ = runtime
+            provider.close.side_effect = closed.set
+            provider.send_function_output.side_effect = RuntimeError("provider send failed")
+            events.put_nowait(RealtimeConversationEvent(kind="response_started", response_id="tools"))
+            events.put_nowait(RealtimeConversationEvent(
+                kind="function_call", response_id="tools", call_id="failed-delivery",
+                tool_name="synthetic_lookup", arguments="{}",
+            ))
+            await asyncio.wait_for(closed.wait(), 1)
+    provider.close.assert_awaited_once()
 
 
 @pytest.mark.asyncio

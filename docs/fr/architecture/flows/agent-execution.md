@@ -1039,6 +1039,13 @@ fois l’identité, le prompt commun et les providers de contexte dans un
 `RealtimeAgentContext`. `app.voice` ouvre ensuite une session via le contrat fournisseur de
 `app.llm.provider_facade`; le bridge concret traduit uniquement le protocole distant.
 
+Les outils vocaux natifs sont exécutés dans l'ordre par un worker propre à l'appel,
+avec une file bornée et le round d'autorité figé à la réception. La lecture des événements
+audio reste indépendante d'un outil lent. Une interruption coupe la sortie, abandonne les
+outils non commencés et les reprises d'autorisation de l'ancienne réponse. Un outil déjà
+en cours conserve son résultat, sans déclencher une réponse vocale obsolète. Une suite
+d'outils ne relance le modèle qu'une fois, après tous ses résultats et autorisations.
+
 La session reçoit uniquement les fonctions conversationnelles bornées nécessaires : recherche
 mémoire, liste, création, amendement et lecture d’une Task, découverte/lecture des Process affectés
 et lancement asynchrone d’un Process. Les noms de contrôle (`conversation_task_list`,

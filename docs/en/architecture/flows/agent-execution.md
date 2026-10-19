@@ -996,6 +996,13 @@ identity, shared prompt, and context providers once in a `RealtimeAgentContext`.
 opens a session through the provider contract of `app.llm.provider_facade`; the concrete bridge
 translates only the remote protocol.
 
+Native voice tools execute in order in a call-owned worker, with a bounded queue and
+the authorizing round captured on receipt. Audio event reception remains independent
+of a slow tool. Interruption stops output, discards tools that have not started, and
+cancels authorization continuations for the old response. An already running tool retains
+its result without triggering obsolete speech. A tool batch resumes the model only once,
+after all its results and authorizations have settled.
+
 The session receives only the necessary bounded conversational functions: memory search, listing,
 creation, amendment, and reading of a Task, discovery/reading of assigned Processes, and
 asynchronous launching of a Process. The control names (`conversation_task_list`,

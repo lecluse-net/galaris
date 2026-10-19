@@ -8,7 +8,7 @@ import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Literal
 from uuid import UUID, uuid4
 
 from loguru import logger
@@ -17,6 +17,7 @@ from app.conversation import ConversationRuntimeStream
 
 from app.llm.provider_facade import (
     RealtimeConversationProvider,
+    RealtimeConversationEvent,
     RealtimeConversationSession,
     realtime_conversation_provider_for,
 )
@@ -191,6 +192,11 @@ class RealtimeAgentVoiceEngine:
         self._current_output_item_id = ""
         self._response_text: list[str] = []
         self._tool_response_ids: set[str] = set()
+        self._tool_calls: asyncio.Queue[tuple[RealtimeConversationEvent, int, UUID | None]] = (
+            asyncio.Queue(maxsize=16)
+        )
+        self._pending_tool_calls: dict[str, int] = {}
+        self._finished_tool_responses: set[str] = set()
         self._authorization_tasks: set[asyncio.Task[None]] = set()
         self._first_text_at: datetime | None = None
         self._first_audio_at: datetime | None = None
@@ -304,11 +310,15 @@ class RealtimeAgentVoiceEngine:
                 self._receive_events(),
                 name="voice_realtime_events",
             )
+            tools = asyncio.create_task(
+                self._run_function_calls(),
+                name="voice_realtime_tools",
+            )
             stop_waiter = asyncio.create_task(
                 self._stop_requested.wait(),
                 name="voice_realtime_stop_requested",
             )
-            tasks.extend((sender, receiver, stop_waiter))
+            tasks.extend((sender, receiver, tools, stop_waiter))
             done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             for task in done:
                 if task is stop_waiter or task.cancelled():
@@ -317,13 +327,11 @@ class RealtimeAgentVoiceEngine:
                 if error is not None:
                     raise error
         finally:
-            authorization_tasks = tuple(self._authorization_tasks)
-            for pending in authorization_tasks:
-                pending.cancel()
-            await asyncio.gather(*authorization_tasks, return_exceptions=True)
             for task in tasks:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
+            self._drain_tool_calls()
+            await self._cancel_authorizations()
             await self._cancel_tts()
             self._generation += 1
             self._drain_outbound()
@@ -365,19 +373,17 @@ class RealtimeAgentVoiceEngine:
             elif event.kind == "audio_transcript_delta":
                 await self._on_assistant_transcript(event.text)
             elif event.kind == "function_call":
-                await self._on_function_call(
-                    response_id=event.response_id,
-                    call_id=event.call_id,
-                    name=event.tool_name,
-                    arguments=event.arguments,
-                )
+                if event.response_id and event.response_id != self._current_response_id:
+                    continue
+                self._queue_function_call(event)
             elif event.kind == "response_done":
+                if event.response_id and event.response_id != self._current_response_id:
+                    continue
                 await self._finish_response(event.response_id)
             elif event.kind == "response_cancelled":
                 if event.response_id and event.response_id != self._current_response_id:
                     continue
-                await self._finish_external_tts()
-                await self._interrupt_current_turn()
+                await self._on_speech_started()
             elif event.kind == "error":
                 raise RuntimeError(event.error or "the Realtime provider failed")
 
@@ -388,10 +394,14 @@ class RealtimeAgentVoiceEngine:
         played_ms = self._estimated_played_ms()
         item_id = self._current_output_item_id
         self._generation += 1
+        self._drain_tool_calls()
         self._drain_outbound()
         self._native_pcm_carry.clear()
         await self._transport.interrupt_output(self._handle)
         await self._cancel_tts()
+        await self._cancel_authorizations()
+        self._tool_response_ids.clear()
+        self._finished_tool_responses.clear()
         if item_id:
             await provider.truncate(item_id, played_ms)
         if self._current_turn_id is not None:
@@ -481,23 +491,30 @@ class RealtimeAgentVoiceEngine:
         call_id: str,
         name: str,
         arguments: str,
+        round_id: UUID | None | Literal["current"] = "current",
+        generation: int | None = None,
     ) -> None:
         assert self._provider is not None
         self._tool_response_ids.add(response_id)
         from uuid import uuid5, NAMESPACE_URL
 
         operation = uuid5(NAMESPACE_URL, f"voice:{self._session_id}:{call_id}")
-        round_id = self._current_turn_id
+        round_id = self._current_turn_id if round_id == "current" else round_id
+        generation = self._generation if generation is None else generation
         output = await execute_realtime_tool(
             self._tools, name=name, arguments=arguments, operation_id=operation, round_id=round_id
         )
         if "authorization_required" in json.loads(output):
+            if generation != self._generation:
+                return
 
             async def resume() -> None:
                 try:
                     result = output
                     while "authorization_required" in json.loads(result):
                         await asyncio.sleep(2)
+                        if generation != self._generation:
+                            return
                         result = await execute_realtime_tool(
                             self._tools,
                             name=name,
@@ -505,9 +522,18 @@ class RealtimeAgentVoiceEngine:
                             operation_id=operation,
                             round_id=round_id,
                         )
-                    if self._provider is not None:
+                    if self._provider is not None and generation == self._generation:
                         await self._provider.send_function_output(call_id, result)
-                        if response_id not in self._tool_response_ids:
+                        other_authorizations = any(
+                            task is not asyncio.current_task() and not task.done()
+                            for task in self._authorization_tasks
+                        )
+                        if (
+                            generation == self._generation
+                            and response_id not in self._tool_response_ids
+                            and not other_authorizations
+                        ):
+                            self._current_response_id = ""
                             await self._provider.request_response()
                 except asyncio.CancelledError:
                     raise
@@ -526,13 +552,83 @@ class RealtimeAgentVoiceEngine:
             call_id,
         )
 
+    def _queue_function_call(self, event: RealtimeConversationEvent) -> None:
+        # Keep tool order and capture authority before a later input changes the turn.
+        pending = sum(self._pending_tool_calls.values()) + sum(
+            not task.done() for task in self._authorization_tasks
+        )
+        if pending >= self._tool_calls.maxsize:
+            raise RuntimeError("too many pending realtime voice tool calls")
+        try:
+            self._tool_calls.put_nowait((event, self._generation, self._current_turn_id))
+        except asyncio.QueueFull as exc:
+            raise RuntimeError("too many pending realtime voice tool calls") from exc
+        self._tool_response_ids.add(event.response_id)
+        self._pending_tool_calls[event.response_id] = (
+            self._pending_tool_calls.get(event.response_id, 0) + 1
+        )
+
+    async def _run_function_calls(self) -> None:
+        """Execute tools serially while the receiver keeps listening for barge-in."""
+        while True:
+            event, generation, round_id = await self._tool_calls.get()
+            try:
+                if generation != self._generation:
+                    continue
+                await self._on_function_call(
+                    response_id=event.response_id,
+                    call_id=event.call_id,
+                    name=event.tool_name,
+                    arguments=event.arguments,
+                    round_id=round_id,
+                    generation=generation,
+                )
+            finally:
+                remaining = self._complete_tool_call(event.response_id)
+            if (
+                generation == self._generation
+                and not remaining
+                and event.response_id in self._finished_tool_responses
+                and event.response_id == self._current_response_id
+            ):
+                self._finished_tool_responses.discard(event.response_id)
+                await self._finish_response(event.response_id)
+
+    def _complete_tool_call(self, response_id: str) -> int:
+        remaining = self._pending_tool_calls[response_id] - 1
+        if remaining:
+            self._pending_tool_calls[response_id] = remaining
+        else:
+            self._pending_tool_calls.pop(response_id)
+        self._tool_calls.task_done()
+        return remaining
+
+    def _drain_tool_calls(self) -> None:
+        while True:
+            try:
+                event, _, _ = self._tool_calls.get_nowait()
+            except asyncio.QueueEmpty:
+                return
+            self._complete_tool_call(event.response_id)
+
+    async def _cancel_authorizations(self) -> None:
+        tasks = tuple(self._authorization_tasks)
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
     async def _finish_response(self, response_id: str) -> None:
         assert self._provider is not None
+        if self._pending_tool_calls.get(response_id, 0):
+            self._finished_tool_responses.add(response_id)
+            return
         await self._finish_external_tts()
         if response_id in self._tool_response_ids:
             self._tool_response_ids.discard(response_id)
-            if self._authorization_tasks:
+            self._finished_tool_responses.discard(response_id)
+            if any(not task.done() for task in self._authorization_tasks):
                 return
+            self._current_response_id = ""
             await self._provider.request_response()
             return
         if self._current_turn_id is not None:

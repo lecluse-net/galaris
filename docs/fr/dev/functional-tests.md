@@ -431,6 +431,13 @@ préservés, interruption pendant l'attente et annulation sans perte de trame. L
 de vidage seuls ne détectaient pas cette dérive. Ces mesures isolent le transport ;
 elles ne mesurent pas la latence du fournisseur vocal ni celle du réseau réel.
 
+`app/voice/tests/test_realtime_engine.py` reproduit un outil suspendu pendant une reprise
+de parole : l'interruption et l'audio suivant passent sans attendre son résultat. Le même
+moteur vérifie les annulations fournisseur, les événements tardifs, l'ordre des outils,
+le round d'autorité conservé, la file bornée, la fermeture après erreur, l'annulation au
+raccrochage et une seule relance après les résultats et autorisations. Les fournisseurs
+et outils de ces scénarios sont entièrement synthétiques.
+
 La révocation et la suppression différée des flux audio sont couvertes par
 `app/voice/tests/test_monitoring_service.py`, `test_runtime_control.py` et `test_session.py` :
 transactions PostgreSQL réelles, propriétaire distant, erreurs tardives de fermeture,

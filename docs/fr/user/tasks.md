@@ -62,6 +62,10 @@ Les conversations texte et voix suivent leur propre contrôleur et leur exécute
 ne passent pas par le Dispatcher de Tasks ; lorsqu’elles ont besoin d’un travail durable, elles
 créent une Task explicitement liée.
 
+En mode voix native, vous pouvez reprendre la parole pendant une consultation lente.
+L'agent coupe sa réponse et ne reprend pas automatiquement l'ancienne phrase lorsque le
+résultat arrive. Les actions déjà effectuées restent enregistrées.
+
 Le contexte de conversation présente les tâches et processus réellement actifs de l’agent,
 y compris ceux lancés dans une autre discussion : travail en file, en cours ou en attente,
 avec la question ou la dépendance connue. Une attente ancienne reste visible tant qu’elle

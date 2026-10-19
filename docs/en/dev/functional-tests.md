@@ -405,6 +405,12 @@ interruption during pacing, and cancellation without frame loss. Drain-only test
 not detect this drift. These measurements isolate the transport; they do not measure
 voice-provider or real-network latency.
 
+`app/voice/tests/test_realtime_engine.py` reproduces a suspended tool during barge-in:
+interruption and subsequent audio proceed without waiting for its result. The same engine
+checks provider cancellation, late events, ordered tools, preserved round authority,
+bounded queuing, closure after failure, cancellation on hangup, and a single continuation
+after results and authorizations. Providers and tools in these scenarios are entirely synthetic.
+
 Durable audio revocation and deferred deletion are covered by
 `app/voice/tests/test_monitoring_service.py`, `test_runtime_control.py` and `test_session.py`:
 real PostgreSQL transactions, remote ownership, late teardown errors, resumed cleanup,
