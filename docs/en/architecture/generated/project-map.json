@@ -1019,6 +1019,7 @@
           "back/app/dataset/attachments.py",
           "back/app/dataset/compatibility.py",
           "back/app/dataset/contracts.py",
+          "back/app/dataset/ownership.py",
           "back/app/dataset/router.py",
           "back/app/dataset/service.py",
           "back/app/dataset/usage.py"
@@ -1058,6 +1059,7 @@
           "back/app/dataset/dbadmin.py",
           "back/app/dataset/migration.py",
           "back/app/dataset/models.py",
+          "back/app/dataset/ownership.py",
           "back/app/dataset/projection.py",
           "back/app/dataset/router.py",
           "back/app/dataset/service.py",
@@ -1085,6 +1087,7 @@
           "back/app/dataset/migration.py",
           "back/app/dataset/models.py",
           "back/app/dataset/organization.py",
+          "back/app/dataset/ownership.py",
           "back/app/dataset/projection.py",
           "back/app/dataset/provider.py",
           "back/app/dataset/router.py",
@@ -14872,7 +14875,7 @@
         "declared_path": "/datasets",
         "file": "back/app/dataset/router.py",
         "handler": "list_datasets",
-        "line": 96,
+        "line": 102,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14881,7 +14884,7 @@
         "declared_path": "/datasets",
         "file": "back/app/dataset/router.py",
         "handler": "create_dataset",
-        "line": 103,
+        "line": 109,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -14890,7 +14893,7 @@
         "declared_path": "/datasets/tags",
         "file": "back/app/dataset/router.py",
         "handler": "list_tags",
-        "line": 113,
+        "line": 119,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14899,7 +14902,7 @@
         "declared_path": "/datasets/tags",
         "file": "back/app/dataset/router.py",
         "handler": "create_tag",
-        "line": 120,
+        "line": 126,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -14908,7 +14911,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "delete_dataset",
-        "line": 163,
+        "line": 169,
         "method": "DELETE",
         "module": "app.dataset"
       },
@@ -14917,7 +14920,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "read_dataset",
-        "line": 129,
+        "line": 135,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14926,7 +14929,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "update_dataset",
-        "line": 152,
+        "line": 158,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -14935,7 +14938,7 @@
         "declared_path": "/datasets/{identity}/attachments",
         "file": "back/app/dataset/router.py",
         "handler": "attachments",
-        "line": 231,
+        "line": 254,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14944,7 +14947,7 @@
         "declared_path": "/datasets/{identity}/attachments",
         "file": "back/app/dataset/router.py",
         "handler": "attach",
-        "line": 239,
+        "line": 262,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -14953,7 +14956,7 @@
         "declared_path": "/datasets/{identity}/classification",
         "file": "back/app/dataset/router.py",
         "handler": "classify",
-        "line": 249,
+        "line": 272,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -14962,8 +14965,26 @@
         "declared_path": "/datasets/{identity}/content",
         "file": "back/app/dataset/router.py",
         "handler": "write_dataset",
-        "line": 137,
+        "line": 143,
         "method": "PUT",
+        "module": "app.dataset"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/datasets/{identity}/owner",
+        "file": "back/app/dataset/router.py",
+        "handler": "owner_options",
+        "line": 209,
+        "method": "GET",
+        "module": "app.dataset"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/datasets/{identity}/owner",
+        "file": "back/app/dataset/router.py",
+        "handler": "transfer_owner",
+        "line": 216,
+        "method": "PATCH",
         "module": "app.dataset"
       },
       {
@@ -14971,7 +14992,7 @@
         "declared_path": "/datasets/{identity}/revisions",
         "file": "back/app/dataset/router.py",
         "handler": "read_history",
-        "line": 171,
+        "line": 177,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14980,7 +15001,7 @@
         "declared_path": "/datasets/{identity}/revisions/{number}",
         "file": "back/app/dataset/router.py",
         "handler": "read_revision",
-        "line": 178,
+        "line": 184,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14989,7 +15010,7 @@
         "declared_path": "/datasets/{identity}/revisions/{number}/restore",
         "file": "back/app/dataset/router.py",
         "handler": "restore_revision",
-        "line": 186,
+        "line": 192,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -14998,7 +15019,7 @@
         "declared_path": "/datasets/{identity}/sharing",
         "file": "back/app/dataset/router.py",
         "handler": "sharing",
-        "line": 196,
+        "line": 202,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15007,7 +15028,7 @@
         "declared_path": "/datasets/{identity}/sharing",
         "file": "back/app/dataset/router.py",
         "handler": "set_grant",
-        "line": 221,
+        "line": 244,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15016,7 +15037,7 @@
         "declared_path": "/datasets/{identity}/sharing-level",
         "file": "back/app/dataset/router.py",
         "handler": "sharing_level",
-        "line": 203,
+        "line": 226,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15025,7 +15046,7 @@
         "declared_path": "/datasets/{identity}/usages",
         "file": "back/app/dataset/router.py",
         "handler": "usages",
-        "line": 212,
+        "line": 235,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -19813,6 +19834,14 @@
       },
       {
         "files": [
+          "front/app/dataset/pages/[[id]].vue"
+        ],
+        "source": "app/dataset",
+        "target": "app/agent"
+      },
+      {
+        "files": [
+          "front/app/dataset/components/DatasetEditor.vue",
           "front/app/dataset/components/DatasetSharing.vue",
           "front/app/dataset/services/datasetService.ts",
           "front/app/dataset/types.ts"
@@ -21342,15 +21371,16 @@
           "app/voice"
         ]
       ],
-      "domain_edges": 50,
+      "domain_edges": 51,
       "fan_in": [
         {
-          "count": 14,
+          "count": 15,
           "module": "app/agent",
           "modules": [
             "app/chat",
             "app/connection",
             "app/conversation",
+            "app/dataset",
             "app/dream",
             "app/file_share",
             "app/goal",
@@ -21577,6 +21607,14 @@
         },
         {
           "count": 2,
+          "module": "app/dataset",
+          "modules": [
+            "app/agent",
+            "app/share"
+          ]
+        },
+        {
+          "count": 2,
           "module": "app/dream",
           "modules": [
             "app/agent",
@@ -21604,13 +21642,6 @@
           "module": "app/browser",
           "modules": [
             "app/connection"
-          ]
-        },
-        {
-          "count": 1,
-          "module": "app/dataset",
-          "modules": [
-            "app/share"
           ]
         },
         {
@@ -21667,6 +21698,7 @@
         [
           "app/agent",
           "app/conversation",
+          "app/dataset",
           "app/lab",
           "app/llm",
           "app/memory",

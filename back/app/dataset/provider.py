@@ -166,8 +166,6 @@ class DatasetProvider:
 
     async def delete(self, ctx: ResourceContext, uri: ResourceUri, **options: Any) -> ResourceMutation:
         dataset = await service.record(UUID(uri.segments[0]), ctx.agent_id, manage=True, lock=True)
-        if dataset.metadata_.get("engine_dataset") or dataset.metadata_.get("engine_managed"):
-            raise service.DatasetPermissionError("A process owns this Dataset lifecycle")
         if len(uri.segments) == 3:
             attachment = await self._attachment(uri, ctx)
             attachment.soft_delete()

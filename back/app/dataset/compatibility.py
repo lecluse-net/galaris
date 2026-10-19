@@ -58,7 +58,6 @@ class LegacyDatasetAdapter:
     async def update(self, identity: UUID, actor: int | HumanActor, values: dict[str, Any]) -> None:
         with legacy_errors():
             dataset = await service.record(identity, actor, write=True, lock=True)
-            engine = bool(values.pop("_engine", False))
             expected = values.pop("expected_revision", None)
             lock = values.pop("expected_lock_version", None)
             if lock is not None and lock != dataset.lock_version:
@@ -73,13 +72,13 @@ class LegacyDatasetAdapter:
                 if payload.get("text") is None or payload.get("base64") is not None:
                     raise ValueError("A Dataset requires UTF-8 JSON text")
                 await service.replace(identity, actor, content=payload["text"], expected_revision=expected,
-                    engine=engine, consume_budget=not engine and not dataset_budget_reserved.get())
+                    consume_budget=not dataset_budget_reserved.get())
             if values:
                 if "metadata" in values:
                     values["metadata"] = {key: value for key, value in values["metadata"].items() if key not in {"dataset_migrated", "dataset_uri"}}
                 values.pop("visibility", None)
                 if values:
-                    await service.metadata(identity, actor, expected_lock_version=dataset.lock_version, values=values, engine=engine)
+                    await service.metadata(identity, actor, expected_lock_version=dataset.lock_version, values=values)
             if "document_attachments" in dataset.metadata_ or "retained_document_attachments" in dataset.metadata_:
                 entries: list[dict[str, Any]] = [*dataset.metadata_.get("document_attachments", []), *dataset.metadata_.get("retained_document_attachments", [])]
                 for entry in entries:

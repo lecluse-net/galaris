@@ -111,6 +111,18 @@ listing and HTML filtering, reads, permissions and content preservation without 
 
 ## Datasets and typed contracts
 
+`test_obsolete_process_markers_do_not_override_dataset_deletion_rights` checks former
+process markers through `data://`, aliases and Memory calls: permissions, versions,
+writes, attachments and logical deletion with retained history. Ownership HTTP tests
+also cover authorized deletion. The run-data scenario verifies that deleting such a
+Dataset changes neither run variables nor its files.
+
+`app/dataset/tests/test_ownership.py` checks transfers against live permissions and lock
+versions, preserves content and access, and denies targets outside the management scope.
+The frontend Dataset scenario preserves drafts during transfers and indents revisions;
+`formatJson.test.mjs` protects numeric precision and string escapes. The Dataset E2E journey
+checks transfers, reopening and returning ownership to the original owner.
+
 `app/dataset/tests/test_datasets.py` also checks that native creation makes no Memory
 projection and that historical aliases follow metadata, revisions, access revocation and
 deletion. Content reads and writes remain owned by Dataset.
@@ -188,7 +200,7 @@ definition lists and transaction settings reverting after commit and rollback. P
 permission tests preserve denials, sharing and orphan definition exclusion; the access
 filter optimization removes folder and attachment branches that these lists do not need.
 
-`test_run_observation.py` covers frozen participation, unused roles, independent Dataset
+`test_run_observation.py` covers frozen participation, unused roles, inherited Process
 ACLs, dedicated administration revocation and the wait/pause/resume/stop cycle. The
 progress scenarios in `native-processes.spec.mjs` exercise commands on the same run,
 stop confirmation, read-only access and removal of closed waits. The assembled journey
@@ -253,12 +265,12 @@ exactly one final notification. Tests also protect old references, concurrent wi
 rollback and a delegated activity that still exchanges messages in the launch conversation.
 
 `app/process/tests/test_decisions.py` covers both IF branches for AI/code/human, human
-authorization and receipts, Dataset updates from ordinary Python return values and the
+authorization and receipts, run-data updates from ordinary Python return values and the
 real Monty worker: denied host/network access and bounded loops/memory exhaustion.
 Assembled Chromium journeys execute a code task, followed by a code IF or the human
 False button in Chat. Component tests cover both handles and actor-specific modes.
 Actors survive XML round trips; human/agent type inversions are rejected. Coverage checks
-the actual assigned agent and writable shared Dataset access, human waiting, another user's denial,
+the actual assigned agent and writable run-data access, human waiting, another user's denial,
 deactivation, repeated replies and cancellation. Components build from Start,
 insert through handles while retaining conditions, and filter compatible actors. Human drafts
 survive network errors. Synthetic light/dark/mobile captures support visual inspection without
@@ -272,7 +284,7 @@ reads/writes, stale revisions, preservation of parallel edits, human/agent acces
 isolation between Runs. Legacy schema, file slot and mapping assertions are retired with
 those features; compilation verifies that they cannot create hidden requirements. Invalid
 JSON drafts remain covered for editable Tool arguments. The assembled human journey edits
-the Dataset, adds a file and verifies their preservation through completion.
+run data, adds a file and verifies their preservation through completion.
 Stopping on failure replaces the old retry/recovery checks: one attempt, no successors,
 cancellation of active branches, preserved executor/child error codes and retained data.
 Unexpected executor exceptions are covered too.

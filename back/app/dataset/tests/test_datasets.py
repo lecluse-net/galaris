@@ -1,5 +1,4 @@
 from app.share import ShareGrant
-from app.memory.models import MemoryItem
 from uuid import UUID
 
 import pytest
@@ -9,6 +8,69 @@ from app.dataset import service
 from app.dataset.models import Dataset, DatasetAlias
 from app.file_share import ResourceContext, resource_create, resource_delete, resource_info, resource_read, resource_write
 from app.memory import document_service
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("surface", ["native", "legacy-file", "legacy-memory"])
+@pytest.mark.parametrize("markers", [
+    {"engine_dataset": True},
+    {"engine_managed": True, "engine_agent": 1},
+    {"engine_dataset": True, "engine_managed": True, "engine_agent": 1},
+])
+async def test_obsolete_process_markers_do_not_override_dataset_deletion_rights(db, agents, memory_storage, surface, markers):
+    from app.dataset.models import DatasetAttachment, DatasetRevision
+
+    owner, other = agents
+    content = '{"synthetic":"retained history"}'
+    legacy = surface != "native"
+    if legacy:
+        source = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic former run data",
+            content=content, task_id=None, document_type="dataset", metadata=markers, workflow_metadata=True)
+        uri = f"document://{source.id}"
+        await resource_info(ResourceContext(agent_id=owner.id, runtime="internal"), uri)
+        dataset = await service.record(source.id, owner.id)
+    else:
+        dataset = Dataset(owner_agent_id=owner.id, title="Synthetic former run data", content=content, metadata_=markers)
+        db.add(dataset)
+        await db.flush()
+        db.add(DatasetRevision(dataset_id=dataset.id, revision=1, content=content, author_agent_id=owner.id))
+        await db.flush()
+        uri = f"data://{dataset.id}"
+    assert (await service.describe(dataset, owner.id))["can_delete"]
+    listed = await service.list_datasets(owner.id)
+    assert next(item for item in listed["items"] if item["id"] == str(dataset.id))["can_delete"]
+    with pytest.raises(service.DatasetNotFoundError):
+        await resource_delete(ResourceContext(agent_id=other.id, runtime="internal"), uri)
+    with pytest.raises(service.DatasetConflictError):
+        await service.remove(dataset.id, owner.id, expected_lock_version=dataset.lock_version + 1)
+    context = ResourceContext(agent_id=owner.id, runtime="internal")
+    if legacy:
+        from app.memory import write_workflow_document
+        await write_workflow_document(dataset.id, owner.id, '{"updated":true}', expected_revision=1)
+    else:
+        await resource_write(context, uri, b'{"updated":true}', expected_revision=1)
+    await service.metadata(dataset.id, owner.id, expected_lock_version=dataset.lock_version,
+        values={"metadata": {**dataset.metadata_, "ordinary": True}})
+    attachment = await resource_create(context, f"data://{dataset.id}/attachments/", b"Synthetic former run attachment", name="synthetic.txt")
+    assert (await resource_read(context, attachment.uri)).content == "Synthetic former run attachment"
+    attached = await db.scalar(select(DatasetAttachment).where(DatasetAttachment.dataset_id == dataset.id, DatasetAttachment.uri == attachment.uri))
+    attachment_uri = f"data://{dataset.id}/attachments/{attached.id}"
+    await resource_delete(context, attachment_uri)
+    with pytest.raises(FileNotFoundError):
+        await resource_info(context, attachment_uri)
+    # Read-only prevents content edits, while owners retain deletion rights.
+    await service.metadata(dataset.id, owner.id, expected_lock_version=dataset.lock_version, values={"read_only": True})
+    if surface == "legacy-memory":
+        from app.memory import service as memory
+        await memory.delete_document(dataset.id, actor_agent_id=owner.id)
+    else:
+        await resource_delete(context, uri)
+    with pytest.raises(service.DatasetNotFoundError):
+        await service.record(dataset.id, owner.id)
+    assert await db.scalar(select(DatasetRevision.content).where(DatasetRevision.dataset_id == dataset.id, DatasetRevision.revision == 1)) == content
+    if legacy:
+        from app.memory import service as memory
+        assert await memory.document_record(dataset.id) is None
 
 
 @pytest.mark.asyncio

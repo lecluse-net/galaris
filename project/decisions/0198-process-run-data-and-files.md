@@ -42,6 +42,11 @@ the target schema changes directly, without a historical run-Dataset adapter or
 data transfer action. Dataset remains available for independent JSON resources
 and the shared typed value codec.
 
+The retired run-Dataset runtime policy is removed from Dataset and its Memory adapters.
+Historical engine metadata is inert: former run Datasets use ordinary Dataset permissions
+for content, files, ownership and logical deletion. Their metadata and revision history
+are preserved; no automatic deletion or transfer into runs is introduced.
+
 ## Verification
 
 The existing Process integration scenarios cover execution, child forwarding,

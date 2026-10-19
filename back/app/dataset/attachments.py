@@ -21,9 +21,7 @@ from . import service
 
 async def attach_existing(identity: UUID, actor: DataActor, *, uri: str, agent_id: int,
                           name: str | None = None) -> DatasetAttachment:
-    dataset = await service.record(identity, actor, write=True, lock=True)
-    if dataset.metadata_.get("engine_managed"):
-        raise DatasetPermissionError("Only the engine publishes attachments for this run")
+    await service.record(identity, actor, write=True, lock=True)
     if not isinstance(actor, int):
         from app.agent import AgentManagementScope
         if not isinstance(actor, AgentManagementScope):
@@ -47,10 +45,8 @@ async def attach_existing(identity: UUID, actor: DataActor, *, uri: str, agent_i
 
 
 async def add_staged(identity: UUID, actor: DataActor, path: Path, *, name: str, media_type: str,
-                     file_id: UUID | None = None, engine: bool = False) -> DatasetAttachment:
-    dataset = await service.record(identity, actor, write=True, lock=True)
-    if dataset.metadata_.get("engine_managed") and not (engine and actor == dataset.metadata_.get("engine_agent")):
-        raise DatasetPermissionError("Only the engine publishes attachments for this run")
+                     file_id: UUID | None = None) -> DatasetAttachment:
+    await service.record(identity, actor, write=True, lock=True)
     db = get_db()
     identity_file = file_id or uuid4()
     existing = await db.scalar(select(DatasetAttachment).where(DatasetAttachment.dataset_id == identity,

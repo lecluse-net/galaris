@@ -70,10 +70,17 @@ async def test_dataset_page_keeps_human_and_managed_agent_scopes_separate(db, ag
     assert set(entries) == {str(mine.id), str(shared.id)}
     assert entries[str(mine.id)]["can_manage"] and entries[str(mine.id)]["can_write"]
     assert not entries[str(shared.id)]["can_manage"] and not entries[str(shared.id)]["can_write"]
-    scoped = await service.list_datasets(AgentManagementScope(human.id, frozenset({owner.id})))
+    scope = AgentManagementScope(human.id, frozenset({owner.id}))
+    scoped = await service.list_datasets(scope)
     assert {item["id"] for item in scoped["items"]} == {str(mine.id), str(shared.id), str(managed.id)}
+    for agent, expected in [(owner, managed), (other, shared)]:
+        filtered = await service.list_datasets(scope, owner_agent_id=agent.id, page_size=1)
+        assert filtered["total"] == 1 and [item["id"] for item in filtered["items"]] == [str(expected.id)]
+        assert (await service.list_datasets(scope, owner_agent_id=agent.id, page=2, page_size=1))["items"] == []
+    assert (await service.list_datasets(scope, owner_agent_id=owner.id, query="unmatched"))["total"] == 0
     await db.delete(grant)
     await db.flush()
+    assert (await service.list_datasets(scope, owner_agent_id=other.id))["total"] == 0
     assert (await service.list_datasets(HumanActor(human.id)))["total"] == 1
     human.is_active = False
     await db.flush()

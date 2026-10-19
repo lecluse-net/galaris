@@ -14,7 +14,7 @@ from app.share import SharingUpdate as DocumentSharingLevelUpdate
 from core.authorize import authorize
 from core.database import get_db
 
-from . import service, organization, sharing as sharing_service, usage
+from . import service, organization, ownership, sharing as sharing_service, usage
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 READ = ["DATASET_READ", "DATASET_EDIT", "DATASET_ADMIN"]
@@ -74,6 +74,12 @@ class Grant(Request):
     can_write: bool | None
 
 
+class OwnerUpdate(Request):
+    expected_lock_version: int = Field(ge=1)
+    kind: Literal["agent", "user"]
+    principal: int = Field(gt=0)
+
+
 class TagCreate(Request):
     name: str = Field(min_length=1, max_length=100)
     parent_id: UUID | None = None
@@ -93,9 +99,9 @@ class Attach(Request):
 
 @router.get("")
 @authorize(privileges=READ)
-async def list_datasets(page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500), q: str = Query("", max_length=500), tag_id: UUID | None = None) -> dict[str, Any]:
+async def list_datasets(page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500), q: str = Query("", max_length=500), tag_id: UUID | None = None, owner_agent_id: int | None = Query(None, gt=0)) -> dict[str, Any]:
     with errors():
-        return await service.list_datasets(await current_management_scope(), page=page, page_size=page_size, query=q, tag_id=tag_id)
+        return await service.list_datasets(await current_management_scope(), page=page, page_size=page_size, query=q, tag_id=tag_id, owner_agent_id=owner_agent_id)
 
 
 @router.post("")
@@ -196,6 +202,23 @@ async def restore_revision(identity: UUID, number: int, data: RevisionRequest) -
 async def sharing(identity: UUID) -> dict[str, Any]:
     with errors():
         return (await sharing_service.read(identity, await current_management_scope())).model_dump(mode="json")
+
+
+@router.get("/{identity}/owner", response_model=ownership.OwnerOptions)
+@authorize(privileges=READ)
+async def owner_options(identity: UUID) -> ownership.OwnerOptions:
+    with errors():
+        return await ownership.options(identity, await current_management_scope())
+
+
+@router.patch("/{identity}/owner")
+@authorize(privileges=EDIT)
+async def transfer_owner(identity: UUID, data: OwnerUpdate) -> dict[str, Any]:
+    with errors():
+        actor = await current_management_scope()
+        dataset = await ownership.transfer(identity, actor, **data.model_dump())
+        await get_db().commit()
+        return await service.describe(dataset, actor)
 
 
 @router.put("/{identity}/sharing-level")

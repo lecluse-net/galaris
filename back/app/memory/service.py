@@ -156,7 +156,7 @@ def _assert_not_source_managed(item: MemoryItem, *, allow_catalogue: bool = Fals
 
 
 def _assert_not_deletion_protected(item: MemoryItem) -> None:
-    if item.deletion_protected or item.metadata_.get("engine_dataset") or (
+    if item.deletion_protected or (
         item.document_type == "process" and item.metadata_.get("process_code")
     ):
         raise MemoryPermissionError(
@@ -830,7 +830,7 @@ async def create_item(
 ) -> tuple[MemoryItem, bool]:
     """Create a logical memory and immutable first resource revision."""
     if not workflow_metadata and any(key in data.metadata for key in (
-        "creation_command", "engine_dataset", "engine_managed", "engine_agent", "process_code")):
+        "creation_command", "process_code")):
         raise MemoryPermissionError("Workflow metadata is server-owned")
 
     if owner_user_id is not None and data.node_kind != "document":
@@ -1789,9 +1789,8 @@ async def update_item(
     if item.document_type == "dataset" and actor_agent_id is not None:
         from .dataset_port import dataset_compatibility
         if adapter := dataset_compatibility():
-            from .document_policy import dataset_writer_active
             await adapter.adopt(item.id)
-            await adapter.update(item.id, actor_agent_id, {**data.model_dump(exclude_unset=True), "_engine": dataset_writer_active(item.id)})
+            await adapter.update(item.id, actor_agent_id, data.model_dump(exclude_unset=True))
             await get_db().refresh(item)
             return item
     if data.expected_revision is not None and data.expected_revision != item.revision:
@@ -1809,22 +1808,12 @@ async def update_item(
     }
     if not fields:
         return item
-    if item.metadata_.get("engine_managed") and fields.intersection({"payload", "metadata", "read_only", "media_type", "content_type"}):
-        from .document_policy import dataset_writer_active
-        if not dataset_writer_active(item.id):
-            raise MemoryPermissionError("Run data is integrated by the workflow engine; submit the activity output instead")
     if "metadata" in fields and data.metadata is not None:
-        from .document_policy import dataset_writer_active
-        protected_workflow = ("creation_command", "engine_dataset", "engine_managed", "engine_agent", "process_code")
-        if not dataset_writer_active(item.id) and any(data.metadata.get(key) != item.metadata_.get(key) for key in protected_workflow):
+        protected_workflow = ("creation_command", "process_code")
+        if any(data.metadata.get(key) != item.metadata_.get(key) for key in protected_workflow):
             raise MemoryPermissionError("Workflow metadata is server-owned")
     if item.document_type == "process" and "metadata" in fields and data.metadata is not None and data.metadata.get("process_code") != item.metadata_.get("process_code"):
         raise MemoryPermissionError("The process code is immutable")
-    if item.metadata_.get("engine_dataset") and "metadata" in fields and data.metadata is not None:
-        protected = ("engine_dataset", "engine_agent", "creation_command")
-        from .document_policy import dataset_writer_active
-        if not dataset_writer_active(item.id) and any(data.metadata.get(key) != item.metadata_.get(key) for key in protected):
-            raise MemoryPermissionError("Run Dataset ownership is server-owned")
     if item.node_kind == "memory" and not item.source_managed:
         if "title" in fields:
             raise MemoryPermissionError("A memory has no editable title.")

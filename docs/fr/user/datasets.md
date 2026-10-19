@@ -16,6 +16,9 @@ Sur ordinateur, la liste à gauche permet de sélectionner le jeu de données af
 sans arborescence. La recherche et la page courante restent en place lors du changement de
 sélection. Sur petit écran, **Retour à la liste** permet de quitter l'éditeur. Les modifications
 non enregistrées demandent confirmation avant de changer de jeu de données.
+Le filtre **Agent propriétaire** limite la liste aux jeux d'un agent géré. **Tous les agents**
+rétablit tous les jeux accessibles, y compris ceux appartenant à un utilisateur. La recherche
+et la pagination s'appliquent au résultat filtré.
 Chaque jeu de données possède une adresse `data://`, un partage et un historique propres.
 Les nouveaux jeux de données se créent ici, séparément des Documents HTML. Un agent utilise
 `file_create(path="data://", name="Réponses", content="[]")` et conserve l'adresse retournée.
@@ -26,6 +29,14 @@ données ; les modifications et révocations de partage s'appliquent aux deux ad
 Son contenu peut être un objet, un tableau ou une valeur simple, sans schéma associé.
 L'éditeur conserve votre texte en cas de JSON invalide ou de conflit : rechargez
 uniquement après avoir conservé les modifications que vous souhaitez reprendre.
+Le JSON est indenté à l'ouverture et dans l'historique. Cet affichage conserve les valeurs
+exactes et n'enregistre aucune modification à lui seul.
+
+**Propriétaire** et **Partage** figurent sur une même ligne. Le propriétaire ou un administrateur
+autorisé peut transférer le jeu de données à un agent qu'il gère ou à lui-même ; un administrateur
+des jeux de données peut aussi choisir un autre utilisateur actif. Le transfert est immédiat,
+conserve le brouillon et l'historique, et laisse l'ancien propriétaire en écriture.
+Les jeux en lecture seule ne peuvent pas être transférés.
 
 Dans l'éditeur, **Partage** reprend les règles des Documents : privé, groupes ou public
 pour les utilisateurs authentifiés, avec des destinataires agents, utilisateurs ou groupes
@@ -41,7 +52,8 @@ ne prouve pas que l'accès a réussi.
 
 **Supprimer** demande confirmation et retire l'accès au jeu de données. Ses contenus
 historisés restent conservés ; les références existantes peuvent devenir indisponibles.
-Les jeux de données gérés par le moteur des processus suivent leur propre cycle de vie.
+Les anciens jeux de données créés pour des processus se suppriment selon les mêmes droits.
+Les données et fichiers des exécutions actuelles sont stockés dans les runs et restent indépendants.
 
 Les applications HTML/JavaScript dans les Documents peuvent lire et alimenter ces données
 via le pont Dataset, avec vos droits et votre consentement personnel pour la révision

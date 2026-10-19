@@ -67,6 +67,15 @@ sous verrou et `expected_lock_version`, sans réécrire le JSON ni ses révision
 frontend commun `SharingPanel` gère lecture/écriture et héritage des groupes. Un éditeur
 ne devient pas propriétaire ; les ressources en lecture seule ne peuvent pas être repartagées.
 
+`GET /datasets/{id}/owner` affiche le propriétaire et les cibles autorisées.
+`PATCH /datasets/{id}/owner` exige l'écriture, la gestion de la ressource et
+`expected_lock_version`. Les cibles sont les agents gérés et l'utilisateur courant ;
+`DATASET_ADMIN` autorise aussi les autres utilisateurs actifs. Le transfert garde l'ancien
+propriétaire en écriture, retire le grant redondant du nouveau propriétaire et actualise
+la projection historique, sans modifier le contenu ni sa révision. Les jeux en lecture seule
+sont exclus. Le frontend indente le JSON chargé sans réencoder
+les nombres ni les chaînes ; cette présentation ne rend pas le brouillon modifié.
+
 `GET /datasets/{id}/usages` pagine les catégories `documents`, `processes` et `agents`.
 Le point de composition enregistre les fournisseurs publics de Memory, Process et LLM ;
 Dataset n'importe pas leurs modèles. Les requêtes portent sur les contenus documentaires
@@ -79,6 +88,10 @@ Les runs Process stockent leurs variables dans `process_runs.data` et leurs fich
 via `process_run_files`, sans Dataset. Les données, liens et reçus d'exécution sont
 atomiques ; les droits sont ceux du processus parent. Dataset ne fournit que le codec
 typé partagé, sans posséder le stockage des runs.
+Les anciens marqueurs de métadonnées `engine_dataset`, `engine_managed` et `engine_agent`
+n'accordent aucun statut particulier. Les permissions ordinaires gouvernent lecture, écriture,
+pièces jointes, propriétaire et suppression, y compris via les alias Memory. La suppression
+logique exige toujours la gestion et la version attendue, sans supprimer l'historique ni les runs.
 
 ## Projection historique et conditions de retrait
 

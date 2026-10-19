@@ -67,10 +67,6 @@ async def test_document_sharing_contract_is_atomic_and_does_not_give_editors_own
     with pytest.raises(service.DatasetNotFoundError):
         await sharing.update(dataset.id, scope, DocumentSharingLevelUpdate(level="public", grants=[], expected_lock_version=private.lock_version))
     dataset.read_only = False; await db.flush()
-    managed = await service.create(owner.id, title="Synthetic engine data", engine_managed=True)
-    assert not (await service.describe(managed, owner.id))["can_delete"]
-    with pytest.raises(service.DatasetPermissionError):
-        await service.remove(managed.id, owner.id, expected_lock_version=managed.lock_version)
     await service.remove(dataset.id, scope, expected_lock_version=private.lock_version)
     with pytest.raises(service.DatasetNotFoundError):
         await service.record(dataset.id, scope)

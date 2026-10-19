@@ -499,7 +499,7 @@ other branches. A pre-dispatch claim can be recovered; a `started` effect withou
 is never automatically resent. Validated output is retained before
 integration: an acquired external response goes through `returned` before `completed`,
 without resending the call after interruption. Acquiring a result and integrating it are
-separate steps; a Memory receipt makes integration idempotent. Contract failures prevent
+separate steps; a run receipt makes integration idempotent. Contract failures prevent
 integration and successor admission. Multi-predecessor activities wait for all arrivals
 of the same invocation. Code phases retain invocation keys and observations in their
 occurrence: `queued`/`running` wait, and `success` is usable only with `stopped=true`.
@@ -508,7 +508,7 @@ The Monty adapter closes its isolated worker before confirming stop. Only this p
 computation may repeat after a lost result; external effects are never replayed.
 A configured IF follows exactly one True/False output after validating its boolean.
 Human mode reuses `human_waiting` and Messenger choices, without an AI waiting Task or
-integrating the boolean into the Dataset.
+integrating the boolean into run data.
 
 Terminal states: `success`, `error`, `cancelled`.
 

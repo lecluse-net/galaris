@@ -252,7 +252,7 @@ def build_executor_prompt_tree(
                     "could produce the wrong action or recipient, ask the user one concise, "
                     "concrete question and stop the run. Never claim that an action was completed "
                     "while waiting for that answer. When executing a Process activity, work only "
-                    "on that activity and its run Dataset. Keep the final acknowledgement to one "
+                    "on that activity and its run data. Keep the final acknowledgement to one "
                     "short sentence unless the activity requires a longer deliverable. Do not "
                     "add optional offers, recap old runs, or narrate internal submission receipts."
                 ),

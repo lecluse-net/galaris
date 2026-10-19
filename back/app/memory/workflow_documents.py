@@ -1,4 +1,4 @@
-"""Public Document operations used by workflow owners and durable run engines."""
+"""Public legacy Document operations, including idempotent Lab fixtures."""
 
 from __future__ import annotations
 
@@ -19,14 +19,11 @@ from .query_policy import prepare_memory_read
 from .document_types import DocumentType
 from .models import MemoryItem
 from .schemas import MemoryItemUpdate, MemoryPayload, DocumentContentRevisionPage, DocumentSharing, DocumentSharingLevelUpdate
-from .schemas import MemoryGrantUpdate
 
 
 async def create_workflow_document(*, owner_agent_id: int, title: str, content: str,
                                    kind: DocumentType, command: str,
                                    owner_user_id: int | None = None,
-                                   engine_dataset: bool = False,
-                                   engine_managed: bool = False,
                                    process_code: str | None = None) -> MemoryItem:
     """The creation marker and content commit together; lost replies do not duplicate."""
     lock = int.from_bytes(hashlib.sha256(command.encode()).digest()[:8], "big", signed=True)
@@ -34,15 +31,12 @@ async def create_workflow_document(*, owner_agent_id: int, title: str, content: 
     item = await get_db().scalar(select(MemoryItem).where(MemoryItem.metadata_["creation_command"].astext == command))
     if item is not None:
         expected_agent = owner_agent_id if owner_user_id is None else None
-        if item.document_type != kind or item.owner_user_id != owner_user_id or item.owner_agent_id != expected_agent or bool(item.metadata_.get("engine_dataset")) != engine_dataset or bool(item.metadata_.get("engine_managed")) != engine_managed:
+        if item.document_type != kind or item.owner_user_id != owner_user_id or item.owner_agent_id != expected_agent:
             raise service.MemoryConflictError("Workflow creation identity belongs to a different principal or document kind")
-        if not engine_dataset:
-            actor = HumanActor(owner_user_id) if owner_user_id is not None else owner_agent_id
-            existing = await read_workflow_document(item.id, actor)
-            if existing["content"] != content:
-                raise service.MemoryConflictError("Workflow creation identity belongs to different content")
-        if engine_dataset and owner_user_id is not None:
-            await service.set_item_grant(item.id, owner_agent_id, MemoryGrantUpdate(can_write=True))
+        actor = HumanActor(owner_user_id) if owner_user_id is not None else owner_agent_id
+        existing = await read_workflow_document(item.id, actor)
+        if existing["content"] != content:
+            raise service.MemoryConflictError("Workflow creation identity belongs to different content")
         return item
     if owner_user_id is not None:
         from .schemas import MemoryItemCreate
@@ -50,14 +44,11 @@ async def create_workflow_document(*, owner_agent_id: int, title: str, content: 
         item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner_agent_id, title=title,
             payload=MemoryPayload(text=content), node_kind="document", document_type=kind,
             media_type=document_media_type(kind), visibility="private",
-            metadata={"creation_command": command, "process_code": process_code, "engine_dataset": engine_dataset, "engine_managed": engine_managed, "engine_agent": owner_agent_id if engine_dataset else None}),
+            metadata={"creation_command": command, "process_code": process_code}),
             owner_user_id=owner_user_id, deduplicate=False, workflow_metadata=True)
-        if engine_dataset:
-            await service.set_item_grant(item.id, owner_agent_id, MemoryGrantUpdate(can_write=True))
         return item
     return await document_service.create_document(owner_agent_id=owner_agent_id, title=title, content=content,
-        task_id=None, document_type=kind, metadata={"creation_command": command, "process_code": process_code, "engine_dataset": engine_dataset, "engine_managed": engine_managed,
-            "engine_agent": owner_agent_id if engine_dataset else None}, workflow_metadata=True)
+        task_id=None, document_type=kind, metadata={"creation_command": command, "process_code": process_code}, workflow_metadata=True)
 
 
 async def read_workflow_document(document_id: UUID, actor: int | HumanActor,
@@ -106,7 +97,7 @@ def workflow_document_readable_ids(actor: int | AgentManagementScope) -> Select[
 
 
 def workflow_document_policy_ids(actor: int | AgentManagementScope) -> Select[tuple[UUID]]:
-    """Apply format visibility independently of a Run's separate Dataset ACL."""
+    """Apply the format visibility policy to documentary resource consumers."""
     from .document_policy import document_policy_clause
     return select(MemoryItem.id).where(MemoryItem.node_kind == "document",
         document_policy_clause(actor.user_id if isinstance(actor, AgentManagementScope) else None))

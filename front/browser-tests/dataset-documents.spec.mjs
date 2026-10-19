@@ -153,6 +153,7 @@ test('the native Dataset editor preserves invalid JSON drafts and writes valid s
     lock_version: 1, can_write: true, can_manage: true, can_delete: true, read_only: false, global_access: 0, group_access: 0, keywords: [] }
   const writes = []
   await jsonRoute(page, `**/api/datasets/${id}`, current)
+  await jsonRoute(page, `**/api/datasets/${id}/owner`, { owner: { kind: 'agent', id: 7, label: 'Synthetic owner' }, options: [] })
   await jsonRoute(page, `**/api/datasets/${id}/sharing`, { lock_version: 1, can_manage: true, level: 'private', can_write: false,
     grants: [], options: [], owner: { kind: 'agent', id: 7, label: 'Synthetic owner', can_write: true }, owner_groups: [] })
   await page.route(`**/api/datasets/${id}/content`, route => {
@@ -162,6 +163,9 @@ test('the native Dataset editor preserves invalid JSON drafts and writes valid s
   })
   await mount(page, 'app/dataset/components/DatasetEditor.vue', { props: { id }, privileges: ['DATASET_EDIT'] })
   const input = page.getByRole('textbox', { name: 'JSON content', exact: true })
+  await expect(input).toHaveValue('{\n  "amount": 0\n}')
+  await page.getByRole('button', { name: 'Reload', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await input.fill('{')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByRole('alert')).toBeVisible()
@@ -172,5 +176,69 @@ test('the native Dataset editor preserves invalid JSON drafts and writes valid s
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.poll(() => writes.length).toBe(1)
   expect(writes[0]).toMatchObject({ content: source, expected_revision: 1 })
-  await expect(input).toHaveValue(source)
+  await expect(input).toHaveValue('{\n  "amount": 1200,\n  "literal": "<b>Data</b>"\n}')
+  await jsonRoute(page, `**/api/datasets/${id}/revisions?*`, { items: [{ revision: 1, created_at: '2026-01-01' }], total: 1 })
+  await jsonRoute(page, `**/api/datasets/${id}/revisions/1`, { content: '{"amount":0}' })
+  await page.getByRole('button', { name: 'Expand "History"' }).click()
+  await page.getByRole('button', { name: '1', exact: true }).click()
+  await expect(page.getByRole('dialog').getByRole('textbox', { name: 'JSON content' })).toHaveValue('{\n  "amount": 0\n}')
+})
+
+test('Dataset ownership transfer preserves drafts and refreshes rights and lock versions', async ({ page }, testInfo) => {
+  const id = '00000000-0000-4000-8000-000000000005'
+  const owner = { kind: 'agent', id: 7, label: 'Synthetic owner', can_write: true }
+  const target = { kind: 'user', id: 2, label: 'Synthetic recipient', can_write: true }
+  let current = { id, uri: `data://${id}`, title: 'Synthetic values', content: '{"precise":9007199254740993}', revision: 1,
+    lock_version: 1, owner_agent_id: 7, owner_user_id: null, can_write: true, can_manage: true, can_delete: true, read_only: false, global_access: 0, group_access: 0, keywords: [] }
+  let fail = true
+  const transfers = [], writes = [], sharingReads = []
+  await jsonRoute(page, `**/api/datasets/${id}`, current)
+  await page.route(`**/api/datasets/${id}/owner`, route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { owner, options: [owner, target] } })
+    transfers.push(route.request().postDataJSON())
+    if (fail) return route.fulfill({ status: 409, json: { detail: 'Synthetic ownership conflict' } })
+    current = { ...current, lock_version: 2, owner_agent_id: null, owner_user_id: 2, can_manage: false, can_delete: false }
+    return route.fulfill({ json: current })
+  })
+  await page.route(`**/api/datasets/${id}/sharing`, route => {
+    sharingReads.push(current.lock_version)
+    return route.fulfill({ json: { lock_version: current.lock_version, can_manage: current.can_manage, level: 'private', can_write: false,
+      grants: current.can_manage ? [] : [owner], options: [], owner: current.can_manage ? owner : target, owner_groups: [] } })
+  })
+  await page.route(`**/api/datasets/${id}/content`, route => {
+    const data = route.request().postDataJSON(); writes.push(data)
+    current = { ...current, content: data.content, title: data.title }
+    return route.fulfill({ json: current })
+  })
+  await mount(page, 'app/dataset/components/DatasetEditor.vue', { props: { id }, privileges: ['DATASET_EDIT'] })
+  const picker = page.getByRole('combobox', { name: 'Owner', exact: true })
+  const ownerField = page.locator('.q-field').filter({ has: picker })
+  await expect(ownerField).toContainText(owner.label)
+  const input = page.getByRole('textbox', { name: 'JSON content', exact: true })
+  await expect(input).toHaveValue('{\n  "precise": 9007199254740993\n}')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(1)
+  expect(writes[0].content).toBe('{"precise":9007199254740993}')
+  await input.fill('{')
+  await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Unsaved synthetic title')
+  const choose = async () => { await picker.click(); await page.getByRole('option', { name: /Synthetic recipient/ }).click() }
+  await choose()
+  await expect(page.getByRole('alert')).toContainText('Synthetic ownership conflict')
+  await expect(ownerField).toContainText(owner.label)
+  await expect(input).toHaveValue('{')
+  fail = false
+  await choose()
+  await expect(ownerField).toContainText(target.label)
+  await expect.poll(() => sharingReads).toContain(2)
+  await expect(input).toHaveValue('{')
+  await expect(page.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue('Unsaved synthetic title')
+  expect(transfers).toEqual([{ kind: 'user', principal: 2, expected_lock_version: 1 }, { kind: 'user', principal: 2, expected_lock_version: 1 }])
+  await input.fill('{"kept":true}')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(2)
+  expect(writes[1]).toMatchObject({ expected_lock_version: 2, content: '{"kept":true}', title: 'Unsaved synthetic title' })
+  await page.screenshot({ path: testInfo.outputPath('dataset-owner-desktop.png'), fullPage: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(ownerField).toContainText(target.label)
+  await page.screenshot({ path: testInfo.outputPath('dataset-owner-mobile.png'), fullPage: true })
 })

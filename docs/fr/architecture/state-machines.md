@@ -503,7 +503,7 @@ des autres branches. Un claim expiré avant dispatch peut être repris ; un effe
 sans reçu n'est jamais réémis automatiquement. Les sorties
 validées sont conservées avant l'intégration : une réponse externe acquise passe par
 `returned` avant `completed`, sans réémission de l'appel après interruption. La réception
-du résultat et son intégration sont deux étapes distinctes ; le reçu Memory rend la seconde
+du résultat et son intégration sont deux étapes distinctes ; le reçu du run rend la seconde
 idempotente. Une erreur de contrat interdit l'intégration et toute admission du successeur.
 Les tâches à plusieurs prédécesseurs attendent toutes leurs arrivées de la même invocation.
 Les phases de code conservent leurs identités et observations dans l'occurrence :
@@ -513,7 +513,7 @@ rouvre un terminal. L'adapter Monty ferme son worker isolé avant de confirmer l
 Seule cette computation pure peut être recalculée après perte du résultat ; les effets
 externes ne sont pas rejoués. Un IF configuré suit une seule sortie True/False après
 validation de son booléen. Son mode humain réutilise `human_waiting` et les choix Messenger,
-sans Task IA d'attente et sans intégration du booléen dans le Dataset.
+sans Task IA d'attente et sans intégration du booléen dans les données du run.
 
 États terminaux : `success`, `error`, `cancelled`.
 

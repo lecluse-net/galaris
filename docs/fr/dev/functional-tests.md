@@ -116,6 +116,18 @@ liste et filtre HTML, lecture, droits et conservation du contenu sans réécritu
 
 ## Datasets et contrats typés
 
+Le scénario `test_obsolete_process_markers_do_not_override_dataset_deletion_rights` vérifie
+les anciens marqueurs de processus sur `data://`, les alias et les appels Memory : droits,
+versions, écritures, pièces jointes et suppression logique avec historique conservé.
+Les tests HTTP de propriété couvrent aussi leur suppression autorisée. Le scénario des
+données de run vérifie qu'une telle suppression ne modifie ni les valeurs ni les fichiers du run.
+
+`app/dataset/tests/test_ownership.py` vérifie les transferts sous droits et version de verrou,
+la conservation du contenu et des accès, et le refus des cibles hors périmètre.
+Le scénario Dataset frontend conserve le brouillon lors d'un transfert et indente les
+révisions ; `formatJson.test.mjs` protège la précision des nombres et les échappements.
+Le parcours E2E Dataset vérifie le transfert, la réouverture et le retour au propriétaire initial.
+
 `app/dataset/tests/test_datasets.py` vérifie aussi qu'une création native ne crée pas de
 projection Memory et que les alias historiques suivent métadonnées, révisions, révocations
 de droits et suppression. Les lectures et écritures restent celles de Dataset.
@@ -228,7 +240,7 @@ chronologique, la conservation de la position au chargement des runs plus ancien
 défilement vers les nouveaux runs sur ordinateur et mobile.
 
 `test_run_observation.py` couvre la participation figée, les rôles inutilisés, les ACL
-Dataset indépendantes, la révocation de l'administration dédiée et le cycle
+héritées du Process, la révocation de l'administration dédiée et le cycle
 attente/pause/reprise/arrêt. Les scénarios de suivi de `native-processes.spec.mjs`
 exercent les commandes sur la même exécution, la confirmation d'arrêt, la lecture seule
 et la disparition des attentes terminées. Le parcours assemblé reprend une activité
@@ -262,7 +274,7 @@ un vrai Run sans mock externe. `front/browser-tests/native-processes.spec.mjs` m
 les composants réels avec des réponses HTTP synthétiques : connexions/clavier,
 lecture seule, conservation des brouillons et sauvegarde avec révision attendue.
 Les acteurs survivent à l'aller-retour XML ; les inversions humain/agent sont refusées.
-La suite vérifie l'agent réellement affecté et l'écriture de son Dataset commun, ainsi que
+La suite vérifie l'agent réellement affecté et l'écriture des données de son run, ainsi que
 l'attente humaine, le refus d'un autre utilisateur, la désactivation,
 les réponses répétées et l'annulation. Les composants construisent le flux depuis Début,
 insèrent depuis les poignées en préservant les conditions et filtrent les acteurs compatibles.
@@ -272,7 +284,7 @@ Le glisser-déposer change les acteurs agents et humains au dépôt, conserve ty
 refuse les lignes incompatibles et annule sur Échap ou révocation de l'édition. Le parcours
 assemblé vérifie l'affectation après sauvegarde, rechargement et lancement.
 `e2e/specs/native-processes.spec.mjs` exerce l'application assemblée : édition et
-sauvegarde, Task réellement admise, suivi de fin, Dataset persistant et graphe du Run
+sauvegarde, Task réellement admise, suivi de fin, données persistantes et graphe du Run
 préservé après modification de la définition. API et PostgreSQL restent réels ; seul
 le harnais est synthétique. Les paramètres de pagination encodés dans l'URL sont aussi
 vérifiés par HTTP avec les droits réels sur les routes Process et Lab.

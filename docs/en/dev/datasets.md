@@ -63,6 +63,15 @@ and `expected_lock_version`, without rewriting JSON or revisions. The common fro
 `SharingPanel` handles read/write grants and group inheritance. Editors do not become
 owners; read-only resources cannot be reshared.
 
+`GET /datasets/{id}/owner` returns the owner and authorized targets.
+`PATCH /datasets/{id}/owner` requires write and management access and
+`expected_lock_version`. Targets are managed agents and the current user;
+`DATASET_ADMIN` also permits other active users. Transfers keep the former owner as an
+editor, remove the new owner's redundant grant and update the historical projection
+without changing content or its revision. Read-only Datasets are excluded.
+The frontend indents loaded JSON without re-encoding numbers or strings;
+display formatting does not make the draft dirty.
+
 `GET /datasets/{id}/usages` pages `documents`, `processes` and `agents` categories.
 The composition root registers public Memory, Process and LLM providers; Dataset imports
 none of their models. Queries cover current native Document content, run references and
@@ -74,6 +83,10 @@ Process runs store variables in `process_runs.data` and file links in
 `process_run_files`, without a Dataset. Variables, links and execution receipts commit
 atomically. Access follows the parent Process's existing policy. Dataset provides the
 shared typed codec without owning run storage.
+Former metadata markers `engine_dataset`, `engine_managed` and `engine_agent` confer no
+special status. Ordinary permissions govern reads, writes, attachments, ownership and
+deletion, including Memory aliases. Logical deletion still requires management access
+and the expected version; history and Process runs remain intact.
 
 ## Historical projection and retirement criteria
 

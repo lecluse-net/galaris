@@ -109,9 +109,9 @@ def _description(dataset: Dataset, permissions: DatasetAccess, *, content: bool,
         "global_access": dataset.global_access, "group_access": dataset.group_access,
         "keywords": dataset.keywords, "metadata": dataset.metadata_, "read_only": dataset.read_only,
         "size": size, "checksum": checksum,
-        "can_write": permissions.can_write and not dataset.metadata_.get("engine_managed", False),
+        "can_write": permissions.can_write,
         "can_manage": permissions.can_manage, "created_at": dataset.created_at.isoformat() if dataset.created_at else None,
-        "can_delete": permissions.can_manage and not dataset.metadata_.get("engine_dataset") and not dataset.metadata_.get("engine_managed"),
+        "can_delete": permissions.can_manage,
         "updated_at": dataset.updated_at.isoformat() if dataset.updated_at else None,
     }
     if content:
@@ -121,7 +121,7 @@ def _description(dataset: Dataset, permissions: DatasetAccess, *, content: bool,
 
 async def create(actor: DataActor, *, title: str, content: str = "[]", owner_agent_id: int | None = None,
                  creation_key: str | None = None, metadata: dict[str, Any] | None = None,
-                 identity: UUID | None = None, engine_managed: bool = False) -> Dataset:
+                 identity: UUID | None = None) -> Dataset:
     parse_json(content)
     if not title.strip() or len(title) > 500:
         raise ValueError("A Dataset requires a title of at most 500 characters")
@@ -132,24 +132,20 @@ async def create(actor: DataActor, *, title: str, content: str = "[]", owner_age
     if isinstance(actor, HumanActor) and owner_agent_id is not None:
         raise DatasetPermissionError("An Agent management scope is required")
     requested = fingerprint({"title": title.strip(), "content": content, "owner_agent": owner_agent_id,
-        "owner_user": owner_user_id, "metadata": metadata or {}, "engine_managed": engine_managed})
+        "owner_user": owner_user_id, "metadata": metadata or {}})
     if creation_key:
         await get_db().execute(select(func.pg_advisory_xact_lock(int.from_bytes(hashlib.sha256(creation_key.encode()).digest()[:8], "big", signed=True))))
         existing = await get_db().scalar(select(Dataset).where(Dataset.creation_key == creation_key).with_for_update())
         if existing is not None:
             if existing.creation_fingerprint != requested:
                 raise DatasetConflictError("Dataset creation key already has another request")
-            if (existing.owner_agent_id, existing.owner_user_id, existing.metadata_.get("engine_managed", False)) != (owner_agent_id, owner_user_id, engine_managed):
+            if (existing.owner_agent_id, existing.owner_user_id) != (owner_agent_id, owner_user_id):
                 raise DatasetConflictError("Dataset creation key already belongs to another request")
             await record(existing.id, actor)
             return existing
     controlled = dict(metadata or {})
-    if any(key in controlled for key in ("engine_managed", "engine_agent", "creation_command")):
-        raise ValueError("Dataset engine metadata is server-owned")
-    if engine_managed:
-        if not isinstance(actor, int):
-            raise DatasetPermissionError("An engine Dataset requires its execution Agent")
-        controlled.update(engine_managed=True, engine_agent=actor)
+    if "creation_command" in controlled:
+        raise ValueError("Dataset creation identity is server-owned")
     dataset = Dataset(id=identity or uuid4(), owner_agent_id=owner_agent_id, owner_user_id=owner_user_id,
         title=title.strip(), content=content, revision=1, lock_version=1,
         global_access=0, group_access=0, read_only=False, keywords=[], metadata_=controlled, creation_key=creation_key, creation_fingerprint=requested)
@@ -161,12 +157,10 @@ async def create(actor: DataActor, *, title: str, content: str = "[]", owner_age
 
 
 async def replace(identity: UUID, actor: DataActor, *, content: str, expected_revision: int | None,
-                  engine: bool = False, consume_budget: bool = False) -> Dataset:
+                  consume_budget: bool = False) -> Dataset:
     dataset = await record(identity, actor, write=True, lock=True)
     if expected_revision is None or dataset.revision != expected_revision:
         raise DatasetConflictError("Read the current Dataset revision before writing")
-    if dataset.metadata_.get("engine_managed") and not (engine and actor == dataset.metadata_.get("engine_agent")):
-        raise DatasetPermissionError("Run data is integrated by the workflow engine; submit the activity output instead")
     parse_json(content)
     if dataset.content == content:
         return dataset
@@ -256,7 +250,7 @@ async def set_grant(identity: UUID, actor: DataActor, *, kind: Literal["agent", 
 
 
 async def metadata(identity: UUID, actor: DataActor, *, expected_lock_version: int,
-                   values: dict[str, Any], engine: bool = False) -> Dataset:
+                   values: dict[str, Any]) -> Dataset:
     dataset = await record(identity, actor, lock=True)
     permissions = await access(dataset, actor)
     if not permissions.can_write and not (permissions.can_manage and set(values) <= {"read_only"}):
@@ -267,14 +261,10 @@ async def metadata(identity: UUID, actor: DataActor, *, expected_lock_version: i
         raise ValueError("Unsupported Dataset metadata field")
     if any(key in values for key in ("global_access", "group_access", "read_only")):
         await record(identity, actor, manage=True)
-    if dataset.metadata_.get("engine_managed") and not (engine and actor == dataset.metadata_.get("engine_agent")):
-        if set(values) - {"title", "keywords"}:
-            raise DatasetPermissionError("Run Dataset metadata belongs to its engine")
     if "metadata" in values:
         updated: dict[str, Any] = values["metadata"]
-        protected = {"engine_managed", "engine_dataset", "engine_agent", "creation_command", "process_code"}
-        if not engine and any(updated.get(key) != dataset.metadata_.get(key) for key in protected):
-            raise DatasetPermissionError("Dataset engine metadata is server-owned")
+        if updated.get("creation_command") != dataset.metadata_.get("creation_command"):
+            raise DatasetPermissionError("Dataset creation identity is server-owned")
         dataset.metadata_ = deepcopy(updated)
     if "title" in values:
         title = str(values["title"]).strip()
@@ -305,9 +295,12 @@ async def metadata(identity: UUID, actor: DataActor, *, expected_lock_version: i
 
 
 async def list_datasets(actor: DataActor, *, page: int = 1, page_size: int = 50,
-                        query: str = "", tag_id: UUID | None = None) -> dict[str, Any]:
+                        query: str = "", tag_id: UUID | None = None,
+                        owner_agent_id: int | None = None) -> dict[str, Any]:
     from .models import DatasetTagAssignment
     statement = select(Dataset).where(accessible_clause(actor))
+    if owner_agent_id is not None:
+        statement = statement.where(Dataset.owner_agent_id == owner_agent_id)
     if query.strip():
         statement = statement.where(Dataset.title.icontains(query.strip(), autoescape=True))
     if tag_id is not None:
@@ -346,8 +339,6 @@ async def remove(identity: UUID, actor: DataActor, *, expected_lock_version: int
     dataset = await record(identity, actor, manage=True, lock=True)
     if dataset.lock_version != expected_lock_version:
         raise DatasetConflictError("Dataset changed; reload before deleting")
-    if dataset.metadata_.get("engine_dataset") or dataset.metadata_.get("engine_managed"):
-        raise DatasetPermissionError("The Process domain owns this Dataset lifecycle")
     dataset.soft_delete()
     await get_db().flush()
     from .projection import changed

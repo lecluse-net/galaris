@@ -160,3 +160,10 @@ async def test_run_data_and_files_use_process_rights_without_creating_a_dataset(
     with pytest.raises(FileNotFoundError):
         await resource_info(ctx, added.uri)
     assert [entry.uri for entry in (await resource_list(ctx, collection)).entries] == [second.uri]
+    former_dataset = Dataset(owner_agent_id=owner.id, title="Synthetic obsolete run Dataset", content='{"old":true}',
+        metadata_={"engine_dataset": True, "engine_managed": True, "engine_agent": owner.id})
+    db.add(former_dataset)
+    await db.flush()
+    await resource_delete(ctx, f"data://{former_dataset.id}")
+    assert (await read_run_data(run.id, owner.id))["data"] == {"kept": False, "approved": True}
+    assert (await resource_read(ctx, second.uri)).content == "Entirely synthetic report"

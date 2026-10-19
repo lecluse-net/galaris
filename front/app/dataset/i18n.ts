@@ -1,5 +1,9 @@
 export default {
   fr: { datasets: {
+    deleteDataset: 'Supprimer le jeu de données',
+    agentFilter: 'Agent propriétaire', allAgents: 'Tous les agents', agentFilterError: 'Impossible de charger les agents. Rouvrez la liste pour réessayer.',
+    itemsPerPage: '{count} par page', lastModified: 'Dernière modification : {date}',
+    owner: 'Propriétaire', ownerAgent: 'Agent', ownerUser: 'Utilisateur',
     editor: 'Éditeur du jeu de données', selectDataset: 'Sélectionnez un jeu de données dans la liste', backToList: 'Retour à la liste',
     perPage: 'Résultats par page', resultRange: '{from}–{to} sur {total}', previousPage: 'Page précédente', nextPage: 'Page suivante',
     unsaved: 'Modifications non enregistrées', discardConfirm: 'Abandonner les modifications non enregistrées avant de continuer ?', discard: 'Abandonner les modifications',
@@ -26,6 +30,10 @@ export default {
     titleField: 'Titre',
   } },
   en: { datasets: {
+    deleteDataset: 'Delete Dataset',
+    agentFilter: 'Owner agent', allAgents: 'All agents', agentFilterError: 'Unable to load agents. Reopen the list to retry.',
+    itemsPerPage: '{count} per page', lastModified: 'Last modified: {date}',
+    owner: 'Owner', ownerAgent: 'Agent', ownerUser: 'User',
     editor: 'Dataset editor', selectDataset: 'Select a Dataset from the list', backToList: 'Back to list',
     perPage: 'Results per page', resultRange: '{from}–{to} of {total}', previousPage: 'Previous page', nextPage: 'Next page',
     unsaved: 'Unsaved changes', discardConfirm: 'Discard unsaved changes before continuing?', discard: 'Discard changes',
@@ -52,6 +60,10 @@ export default {
     titleField: 'Title',
   } },
   zh: { datasets: {
+    deleteDataset: '删除数据集',
+    agentFilter: '所属智能体', allAgents: '所有智能体', agentFilterError: '无法加载智能体，请重新打开列表重试。',
+    itemsPerPage: '每页 {count} 项', lastModified: '最后修改：{date}',
+    owner: '所有者', ownerAgent: '智能体', ownerUser: '用户',
     editor: '数据集编辑器', selectDataset: '请从列表中选择数据集', backToList: '返回列表',
     perPage: '每页结果数', resultRange: '第 {from}–{to} 项，共 {total} 项', previousPage: '上一页', nextPage: '下一页',
     unsaved: '更改尚未保存', discardConfirm: '继续前放弃尚未保存的更改？', discard: '放弃更改',

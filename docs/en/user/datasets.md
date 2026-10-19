@@ -14,6 +14,13 @@ Each Dataset has its own `data://`
 address, sharing and revision history. Content can be an object, array or scalar value,
 without an associated schema. Invalid JSON and conflicts preserve your local draft;
 keep any edits you need before reloading.
+JSON is indented when opened and in revision history. This display preserves exact values
+and does not save a change by itself.
+
+**Owner** and **Sharing** appear on the same row. The owner or an authorized administrator
+can transfer the Dataset to an agent they manage or to themselves; Dataset administrators
+can also select another active user. Transfers take effect immediately, preserve the draft
+and history, and keep the former owner as an editor. Read-only Datasets cannot be transferred.
 
 Create new Datasets here, separately from HTML Documents. An agent uses
 `file_create(path="data://", name="Responses", content="[]")` and retains the returned URI.
@@ -24,6 +31,9 @@ On desktop, select a Dataset in the flat list on the left to open its editor on 
 Search and the current page remain in place when switching Datasets. On small screens,
 use **Back to list** to leave the editor. Unsaved changes require confirmation before
 switching Datasets.
+The **Owner agent** filter limits the list to Datasets owned by a managed agent.
+**All agents** restores all accessible Datasets, including user-owned ones. Search and
+pagination apply to the filtered results.
 
 The editor's **Sharing** uses the same rules as Documents: private, groups or public for
 authenticated users, with read or write grants for agents, users and groups. Only the
@@ -36,8 +46,8 @@ your permissions on its sources. Dynamically constructed URIs and purged history
 missing; a mention in a trace does not establish successful access.
 
 **Delete** requires confirmation and removes access to the Dataset. Historical content is
-retained; existing references may become unavailable. Engine-managed process Datasets
-follow their own lifecycle.
+retained; existing references may become unavailable. Former process Datasets follow the
+same deletion permissions. Current run data and files are stored in Process runs and remain independent.
 
 Old document links for migrated Datasets continue to address the same data. Changes and
 sharing revocations apply through both addresses.
