@@ -8,6 +8,13 @@ parent Process's existing policy; dedicated `process_admin` access remains avail
 Filtering precedes counts and pagination and covers children and metrics.
 See [decision 0198](../../../../project/decisions/0198-process-run-data-and-files.md).
 
+The human `/processes/catalogue` combines native and external definitions. SQL applies rights,
+search, engine and archive filters before counts and pagination. Only the requested page
+receives counts and the latest run, without BPMN or execution payloads. Native runs inherit
+definition access; external runs retain launcher-agent scope. The human-reply counter counts
+active runs with a pending Process question or a latest waiting human attempt, excluding
+superseded attempts.
+
 [Human activities](../../dev/native-processes.md) use messaging exclusively. Process persists
 the wait and calls an injected port; Conversation sends a Messenger interaction, retrieves
 the participant's pending requests, and interprets messages and files. The validated result

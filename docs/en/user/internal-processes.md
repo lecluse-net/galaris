@@ -13,12 +13,27 @@ The edit icon on the right also opens its editor page.
 Adding an external process also uses a dedicated page.
 In each editor, **Back to list** is below the title, at the top left.
 Search applies to the combined list; the agent filter applies to external processes.
+**Engine** selects Galaris or external processes. **Archive** defaults to unarchived
+processes; archived definitions remain available through this filter. The server paginates
+the list, with 50 processes per page by default. Each row also shows its description,
+latest run, active run count and runs awaiting a human reply. These summaries follow
+the reader's permissions and update without opening runs. A search with no matches
+offers **Clear filters**.
+Returning from the editor preserves search, the agent filter, sorting, pagination and
+expanded processes during the current session. Sublists also retain their page when
+collapsed and reopened. Signing out, switching users or fully reloading the application
+resets these preferences. Open sublists update on run events, reconnection and returning
+to the browser tab without changing their page. If deletion removes the final page,
+the last available page is loaded. Collapsed lists load only catalogue summaries, without
+run lists or detailed views.
 Internal and external runs show their start date and time, duration, identifier, status,
 then the result before the actions. **Refresh** at the top of the page also reloads open
-sublists. The add buttons are grouped on the following row. Duration excludes time spent waiting to start,
+sublists. Internal process creation is on the following row in development. Duration excludes time spent waiting to start,
 updates during execution and stops at completion. A missing start time leaves duration
 unavailable. External runs have no additional filter.
-**Sync n8n** opens a dialog with API health and operational counters. On the page,
+**Integrations**, available to Process administrators, opens a dialog with n8n API health
+and operational counters. It groups **Add an external process** and **Sync n8n** and can
+close while synchronization is running. On the page,
 an error banner appears only when connection to a configured n8n instance fails;
 an unconfigured integration does not display this banner.
 Each internal process has a human or agent owner and read or write access granted to users, agents and groups;

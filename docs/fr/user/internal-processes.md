@@ -13,13 +13,29 @@ L’icône de modification à droite ouvre également sa page d’édition.
 L’ajout d’un processus externe utilise également une page dédiée.
 Dans chaque éditeur, **Retour à la liste** se trouve sous le titre, en haut à gauche.
 La recherche porte sur la liste commune ; le filtre par agent concerne les processus externes.
+**Moteur** permet de choisir Galaris ou les processus externes. **Archivage** affiche par
+défaut les processus non archivés ; les archives restent accessibles depuis ce filtre.
+La liste est paginée côté serveur, avec 50 processus par page par défaut. Elle affiche aussi
+la description, la dernière exécution, le nombre d’exécutions actives et celles qui attendent
+une réponse humaine. Ces résumés suivent les droits du lecteur et s’actualisent sans ouvrir
+les exécutions. Une recherche sans résultat propose **Effacer les filtres**.
+Le retour de l’éditeur conserve la recherche, le filtre par agent, le tri, la pagination
+et les processus dépliés pendant la session courante. Les sous-listes retrouvent aussi leur
+page après un repli puis une réouverture. Ces préférences sont effacées à la déconnexion
+ou au changement d’utilisateur ; un rechargement complet de l’application les réinitialise.
+Les sous-listes ouvertes s’actualisent lors des événements d’exécution, d’une reconnexion
+et du retour sur l’onglet, sans changer leur page. Si la dernière page disparaît après
+une suppression, la dernière page disponible est chargée. Les listes repliées ne chargent
+ni leurs listes d’exécutions ni les fiches détaillées ; seuls les résumés du catalogue sont lus.
 Les exécutions internes et externes présentent la date et l’heure de début, la durée,
 l’identifiant, le statut, puis le résultat avant les actions. Le bouton **Rafraîchir**
-en haut de page recharge aussi les sous-listes ouvertes. Les boutons d’ajout sont regroupés
-sur la ligne suivante. La durée exclut l’attente avant
+en haut de page recharge aussi les sous-listes ouvertes. L’ajout d’un processus interne se
+trouve sur la ligne suivante en développement. La durée exclut l’attente avant
 le démarrage, évolue pendant l’exécution et se fige à la fin. Une date de début absente
 laisse la durée indisponible. Les exécutions externes n’ont pas de filtre supplémentaire.
-**Synchroniser n8n** ouvre une modale avec l’état de l’API et les compteurs d’exploitation.
+**Intégrations**, accessible aux administrateurs Process, ouvre une modale avec l’état de
+l’API n8n et les compteurs d’exploitation. Elle regroupe **Ajouter un processus externe**
+et **Synchroniser n8n** ; vous pouvez la fermer pendant la synchronisation.
 Sur la page, seul un échec de connexion à une instance n8n configurée affiche un bandeau
 d’erreur ; une intégration non configurée n’affiche pas ce bandeau.
 Chaque processus interne a un propriétaire humain ou agent et des droits de lecture ou d'écriture attribués aux

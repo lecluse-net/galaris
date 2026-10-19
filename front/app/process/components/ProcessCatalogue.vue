@@ -5,10 +5,17 @@
       <template #action><q-btn outline :label="t('nativeProcesses.retry')" @click="load" /></template>
     </q-banner>
     <q-table
-      class="process-table" :rows="rows" :columns="columns" :filter="filter" :loading="loading || externalLoading"
+      class="process-table" :rows="rows" :columns="columns" :loading="loading"
       row-key="key" :grid="$q.screen.lt.md" v-model:pagination="pagination"
-      :rows-per-page-options="[10, 20, 50, 100, 500]" :no-data-label="t('processes.noRows')"
+      v-model:expanded="expanded"
+      :rows-per-page-options="[10, 20, 50, 100, 500]" @request="request"
     >
+      <template #no-data>
+        <div v-if="!loading && !error" class="column items-start q-gutter-sm q-pa-sm" role="status">
+          <div>{{ t(hasFilters ? 'processes.catalogue.noMatches' : 'processes.catalogue.empty') }}</div>
+          <q-btn v-if="hasFilters" outline :label="t('processes.catalogue.clearFilters')" @click="clearFilters" />
+        </div>
+      </template>
       <template #body="scope">
         <q-tr :props="scope" class="process-row" tabindex="0"
           :aria-label="scope.row.label" @click="router.push(scope.row.editorUrl)"
@@ -20,11 +27,12 @@
           </q-td>
           <q-td key="label" :props="scope">
             <span class="text-weight-medium">{{ scope.row.label }}</span>
-            <q-badge v-if="scope.row.native?.archived" outline class="q-ml-sm">{{ t('nativeProcesses.archive') }}</q-badge>
+            <q-badge v-if="scope.row.archived" outline class="process-archive q-ml-sm">{{ t('nativeProcesses.archived') }}</q-badge>
           </q-td>
           <q-td key="tool" :props="scope">{{ scope.row.tool }}</q-td>
           <q-td key="agent" :props="scope">{{ scope.row.agent }}</q-td>
           <q-td key="description" :props="scope" class="process-description">{{ scope.row.description }}</q-td>
+          <q-td key="monitoring" :props="scope"><ProcessCatalogueStatus :item="scope.row" /></q-td>
           <q-td key="actions" :props="scope">
             <router-link :to="scope.row.editorUrl" class="process-action" :aria-label="t('processes.edit') + ': ' + scope.row.label" @click.stop>
               <q-icon name="edit" color="primary" size="20px" />
@@ -34,8 +42,8 @@
         </q-tr>
         <q-tr v-if="scope.expand" :props="scope" :key="`${scope.row.key}-runs`">
           <q-td colspan="100%" class="process-runs-cell">
-            <NativeRunsTable v-if="scope.row.native" :code="scope.row.native.code" :refresh-revision="runsRevision" />
-            <ExternalProcessRuns v-else :definition="scope.row.external" :revision="runsRevision" @open-run="emit('openRun', $event)" />
+            <NativeRunsTable v-if="scope.row.code" :code="scope.row.code" :navigation-key="scope.row.key" :refresh-revision="runsRevision" />
+            <ExternalProcessRuns v-else :definition="scope.row" :revision="runsRevision" @open-run="emit('openRun', $event)" />
           </q-td>
         </q-tr>
       </template>
@@ -53,9 +61,10 @@
               </div>
               <div class="col process-identity">
                 <div class="text-subtitle2">{{ scope.row.label }}</div>
-                <q-badge v-if="scope.row.native?.archived" outline>{{ t('nativeProcesses.archive') }}</q-badge>
-                <div class="text-caption q-mt-sm">{{ scope.row.tool }}<span v-if="scope.row.agent !== '—'"> · {{ scope.row.agent }}</span></div>
+                <q-badge v-if="scope.row.archived" outline class="process-archive">{{ t('nativeProcesses.archived') }}</q-badge>
+                <div class="text-caption q-mt-sm">{{ scope.row.tool }}<span v-if="scope.row.agent"> · {{ scope.row.agent }}</span></div>
                 <div v-if="scope.row.description" class="process-description q-mt-sm">{{ scope.row.description }}</div>
+                <ProcessCatalogueStatus class="q-mt-sm" :item="scope.row" />
               </div>
               <router-link :to="scope.row.editorUrl" class="process-action" :aria-label="t('processes.edit') + ': ' + scope.row.label" @click.stop>
                 <q-icon name="edit" color="primary" size="20px" />
@@ -65,8 +74,8 @@
             <template v-if="scope.expand">
               <q-separator />
               <q-card-section class="process-runs-cell">
-                <NativeRunsTable v-if="scope.row.native" :code="scope.row.native.code" :refresh-revision="runsRevision" />
-                <ExternalProcessRuns v-else :definition="scope.row.external" :revision="runsRevision" @open-run="emit('openRun', $event)" />
+                <NativeRunsTable v-if="scope.row.code" :code="scope.row.code" :navigation-key="scope.row.key" :refresh-revision="runsRevision" />
+                <ExternalProcessRuns v-else :definition="scope.row" :revision="runsRevision" @open-run="emit('openRun', $event)" />
               </q-card-section>
             </template>
           </q-card>
@@ -77,56 +86,68 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import type { QTableColumn } from 'quasar'
-import { nativeProcessService, type NativeDefinitionSummary } from '../services/nativeProcessService'
-import type { AgentOption, ProcessDefinition, ProcessRun, ProcessTool } from '../services/processService'
+import { catalogueService, type CatalogueItem, type CatalogueSort } from '../services/catalogueService'
+import type { ProcessRun } from '../services/processService'
 import NativeRunsTable from './NativeRunsTable.vue'
 import ExternalProcessRuns from './ExternalProcessRuns.vue'
+import { useProcessCatalogueStore } from '../stores/catalogueStore'
+import ProcessCatalogueStatus from './ProcessCatalogueStatus.vue'
+import { useProcessRunRefresh } from '../composables/useProcessRunRefresh'
 
-const props = defineProps<{
-  definitions: ProcessDefinition[]; tools: ProcessTool[]; agents: AgentOption[]
-  filter: string | null; externalLoading: boolean; runsRevision: number
+defineProps<{
+  runsRevision: number
 }>()
 const emit = defineEmits<{ openRun: [run: ProcessRun] }>()
 const { t } = useI18n()
 const router = useRouter()
-const nativeDefinitions = ref<NativeDefinitionSummary[]>([])
+const items = ref<CatalogueItem[]>([])
 const loading = ref(false), error = ref(false)
-const pagination = ref({ page: 1, rowsPerPage: 50 })
+const view = useProcessCatalogueStore()
+const { pagination, expanded } = storeToRefs(view)
 let generation = 0
-const rows = computed(() => [
-  ...nativeDefinitions.value.map(native => ({ key: `native-${native.id}`, label: native.title, tool: 'Galaris', agent: '—', description: '', editorUrl: `/process/internal/${native.code}`, native, external: null })),
-  ...props.definitions.map(external => ({ key: `external-${external.id}`, label: external.label,
-    tool: props.tools.find(tool => tool.id === external.tool_id)?.label ?? '—',
-    agent: props.agents.find(agent => agent.id === external.agent_id)?.label ?? '—', description: external.description ?? '', editorUrl: `/process/external/${external.id}`, native: null, external })),
-])
+const rows = computed(() => items.value.map(item => ({ ...item, key: `${item.code ? 'native' : 'external'}-${item.id}`,
+  editorUrl: item.code ? `/process/internal/${item.code}` : `/process/external/${item.id}` })))
+const hasFilters = computed(() => !!view.filter || view.agentFilter !== null || view.kind !== 'all' || view.archive !== 'active')
+function clearFilters(): void { view.$patch({ filter: '', agentFilter: null, kind: 'all', archive: 'active' }) }
 const columns = computed<QTableColumn[]>(() => [
   { name: 'expand', label: '', field: 'key', align: 'left' },
   { name: 'label', label: t('processes.label'), field: 'label', align: 'left', sortable: true },
   { name: 'tool', label: t('processes.tool'), field: 'tool', align: 'left', sortable: true },
   { name: 'agent', label: t('processes.agent'), field: 'agent', align: 'left', sortable: true },
   { name: 'description', label: t('processes.description'), field: 'description', align: 'left', sortable: true },
+  { name: 'monitoring', label: t('processes.catalogue.monitoring'), field: 'latest_run', align: 'left' },
   { name: 'actions', label: t('processes.actions'), field: 'key', align: 'right' },
 ])
 async function load(): Promise<void> {
   const token = ++generation
   loading.value = true; error.value = false
   try {
-    // Both sources share client-side sorting, filtering and pagination; never truncate the native catalogue.
-    const first = await nativeProcessService.list(1, 500)
+    const sortBy = pagination.value.sortBy
+    const sort: CatalogueSort = sortBy === 'tool' || sortBy === 'agent' || sortBy === 'description' ? sortBy : 'label'
+    const result = await catalogueService.list({ page: pagination.value.page, page_size: pagination.value.rowsPerPage,
+      sort_by: sort, descending: pagination.value.descending ?? false, search: view.filter ?? '',
+      kind: view.kind, archive: view.archive, agent_id: view.agentFilter })
     if (token !== generation) return
-    nativeDefinitions.value = first.items
-    for (let page = 2; (page - 1) * first.page_size < first.total; page++) {
-      const next = await nativeProcessService.list(page, first.page_size)
-      if (token !== generation) return
-      nativeDefinitions.value.push(...next.items)
-    }
+    items.value = result.items
+    pagination.value = { ...pagination.value, page: result.page, rowsPerPage: result.page_size, rowsNumber: result.total }
   } catch { if (token === generation) error.value = true }
   finally { if (token === generation) loading.value = false }
 }
+function request(value: { pagination: { page: number; rowsPerPage: number; sortBy?: string | null; descending?: boolean } }): void {
+  pagination.value = { ...pagination.value, ...value.pagination }; void load()
+}
+watch(() => [view.filter, view.agentFilter, view.kind, view.archive, view.sessionRevision] as const, (current, previous) => {
+  // A debounced input flushes on blur. Keep row targets stable through that click;
+  // only a session change must immediately discard the previous resource data.
+  if (current[4] !== previous[4]) items.value = []
+  pagination.value.page = 1; void load()
+})
+useProcessRunRefresh(load, loading)
 onMounted(load)
 onBeforeUnmount(() => { generation++ })
 defineExpose({ reload: load })
@@ -139,6 +160,7 @@ defineExpose({ reload: load })
 .process-row:focus-visible { outline: 2px solid var(--q-primary); outline-offset: -2px; }
 .process-identity { min-width: 0; overflow-wrap: anywhere; }
 .process-description { white-space: normal; overflow-wrap: anywhere; max-width: 480px; }
+.process-archive { color: inherit; }
 .process-runs-cell { padding: 16px; white-space: normal; background: var(--solaire-gray-light); }
 body.body--dark .process-runs-cell { background: var(--solaire-gray-dark); }
 @media (max-width: 1023px) { .process-runs-cell { padding: 8px; } }

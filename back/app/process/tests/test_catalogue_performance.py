@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import text
 
 from app.agent import AgentManagementScope
-from app.process import native_definitions, native_runs, process_service
+from app.process import catalogue, native_definitions, native_runs, process_service
 from app.process.models import ProcessNodeRun, ProcessRun
 from .test_native_bpmn import committed_native as committed_native, graph
 
@@ -31,7 +31,7 @@ async def test_process_catalogues_bound_planner_work_and_restore_transaction_def
     original = await db.scalar(text("SHOW jit"))
     # Force the PostgreSQL cost threshold, independently of a test database's statistics.
     # This reproduces the expensive compilation of the real, fully composed ACL query.
-    for query in (native_runs.list_runs, native_definitions.page_for):
+    for query in (native_runs.list_runs, native_definitions.page_for, catalogue.page_for):
         await db.execute(text("SET LOCAL jit = on"))
         await db.execute(text("SET LOCAL jit_above_cost = 0"))
         await db.execute(text("SET LOCAL jit_inline_above_cost = 0"))
@@ -39,7 +39,7 @@ async def test_process_catalogues_bound_planner_work_and_restore_transaction_def
         started = time.perf_counter()
         page = await query(scope)
         elapsed = time.perf_counter() - started
-        assert page["total"] == (5 if query is native_runs.list_runs else 1)
+        assert (page.total if query is catalogue.page_for else page["total"]) == (5 if query is native_runs.list_runs else 1)
         assert elapsed < 2, "A small interactive catalogue must not compile its resource ACLs"
         await db.commit()
         assert await db.scalar(text("SHOW jit")) == original

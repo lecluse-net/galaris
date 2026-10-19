@@ -225,7 +225,14 @@ télécharger les fiches d'exécution ni attendre les agents et le contrôle n8n
 ne sont chargés qu'au dépliage du processus ; les sous-listes restent isolées et une erreur
 de chargement permet un réessai, sur ordinateur et mobile. La pagination conserve les totaux
 serveur et les pages indépendantes ; le rafraîchissement global recharge les sous-listes
-ouvertes sans changer leur page. Les diagnostics n8n restent dans une modale refermable
+ouvertes sans changer leur page, comme les événements d’exécution et les reconnexions.
+Le retour de l’éditeur conserve recherche, agent, tri, pagination et dépliage sur ordinateur
+et mobile ; changer d’utilisateur réinitialise ces préférences.
+Une rafale pendant un chargement lent déclenche un seul rechargement supplémentaire ;
+replier la liste retire ses abonnements aux événements.
+Les filtres moteur/archives, les descriptions natives et les compteurs en direct se vérifient
+sans charger de fiche d’exécution ; une réponse tardive d’un filtre précédent est ignorée.
+Les diagnostics n8n restent dans une modale refermable
 pendant la synchronisation ; le bandeau distingue une connexion cassée d’une intégration
 non configurée. La ligne et l’icône d’édition ouvrent le processus sans déplier les exécutions ;
 la zone de la flèche à gauche déplie les exécutions sans naviguer, avec accès au clavier.
@@ -245,6 +252,10 @@ d'exécutions et de définitions ainsi que le rétablissement des paramètres de
 après commit et rollback. Les tests de permissions des processus conservent les refus,
 les partages et l'exclusion des définitions orphelines ; l'optimisation du filtre d'accès
 retire les branches de dossiers et de pièces jointes inutiles à ces listes.
+`test_catalogue.py` protège la pagination commune au-delà de 500 définitions, les recherches
+littérales et les archives, les droits distincts des runs natifs et externes, les attentes
+humaines et le nombre borné de lectures SQL. La mesure de transfert compare l’ancienne liste
+complète avec une page sur les mêmes données synthétiques.
 
 `front/browser-tests/native-processes.spec.mjs` exerce le diagramme d'exécution dans les
 modales du Chat, de la définition et du suivi ainsi que le contenu partagé : activité en cours,

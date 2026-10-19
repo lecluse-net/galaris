@@ -3,7 +3,7 @@
     <PageHeader help-key="processes" :help-text="$t('contextHelpPages.processes')" :icon="navigationIcon('account_tree')" :title="t('nav.processes')" :description="t('nav.processes_desc')" />
 
     <div class="process-toolbar q-mb-md">
-      <q-input v-model="definitionFilter" class="process-definition-filter" dense outlined clearable debounce="250" :placeholder="t('processes.filter')">
+      <q-input v-model="definitionFilter" class="process-definition-filter" dense outlined clearable debounce="250" maxlength="200" :placeholder="t('processes.filter')">
         <template #prepend><q-icon name="search" /></template>
       </q-input>
       <AgentSelect
@@ -15,14 +15,17 @@
         outlined
         class="process-agent-filter"
       />
+      <q-select v-model="definitionKind" :options="kindOptions" emit-value map-options dense outlined
+        class="process-kind-filter" :label="t('processes.catalogue.kind')" />
+      <q-select v-model="definitionArchive" :options="archiveOptions" emit-value map-options dense outlined
+        class="process-kind-filter" :label="t('processes.catalogue.archive')" />
       <div class="process-toolbar-actions">
         <q-btn outline icon="refresh" :label="t('processes.refresh')" @click="refreshCatalogue" />
-        <q-btn v-if="canAdmin" color="secondary" icon="sync" :label="t('processes.syncN8n')" :loading="syncingN8n" @click="syncN8n" />
+        <q-btn v-if="canAdmin" outline icon="hub" :label="t('processes.catalogue.integrations')" @click="n8nDialog = true" />
       </div>
     </div>
-    <div v-if="(isDev && canEdit) || canAdmin" class="process-add-actions q-mb-md">
+    <div v-if="isDev && canEdit" class="process-add-actions q-mb-md">
       <q-btn v-if="isDev && canEdit" color="primary" icon="add" :label="t('nativeProcesses.newProcess')" to="/process/new-internal" />
-      <q-btn v-if="canAdmin" color="primary" icon="add" :label="t('processes.importExternal')" to="/process/new-external" />
     </div>
 
     <q-banner v-if="n8nConnectionError" role="alert" rounded class="n8n-error-banner q-mb-md">
@@ -34,14 +37,9 @@
       </template>
     </q-banner>
 
-    <q-banner v-if="store.error" role="alert" class="q-mb-md">
-      {{ t('processes.genericError') }}
-      <template #action><q-btn outline :label="t('nativeProcesses.retry')" @click="refreshCatalogue" /></template>
-    </q-banner>
     <ProcessCatalogue
       ref="catalogue"
-      :definitions="store.definitions" :tools="processTools" :agents="store.agents"
-      :filter="definitionFilter" :external-loading="store.loading" :runs-revision="runListRevision"
+      :runs-revision="runListRevision"
       @open-run="openRun"
     />
 
@@ -49,7 +47,7 @@
       <q-card class="n8n-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="sync" size="sm" />
-          <div class="text-subtitle1 q-ml-sm">{{ t('processes.syncN8n') }}</div>
+          <div class="text-subtitle1 q-ml-sm">{{ t('processes.catalogue.integrations') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('processes.close')" />
         </q-card-section>
@@ -67,6 +65,7 @@
           </q-banner>
         </q-card-section>
         <q-card-actions align="right">
+          <q-btn v-if="canAdmin" outline icon="add" :label="t('processes.importExternal')" to="/process/new-external" />
           <q-btn v-if="canAdmin" color="secondary" icon="sync" :label="t('processes.syncN8n')" :loading="syncingN8n" @click="syncN8n" />
         </q-card-actions>
       </q-card>
@@ -78,15 +77,17 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useQuasar } from 'quasar'
+import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { AgentSelect } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { PageHeader, defineAsyncView } from '@/core/util'
 import ProcessCatalogue from '../components/ProcessCatalogue.vue'
 import { useProcessStore } from '../stores/processStore'
-import { processService, type ProcessTool } from '../services/processService'
+import { useProcessCatalogueStore } from '../stores/catalogueStore'
+import { processService } from '../services/processService'
 
 const ExternalRunDialog = defineAsyncView(() => import('../components/ExternalRunDialog.vue'))
 
@@ -101,9 +102,16 @@ const catalogue = useTemplateRef('catalogue')
 const runListRevision = ref(0)
 const selectedRunId = ref<string | null>(null)
 function openRun(run: { id: string }): void { selectedRunId.value = run.id }
-const definitionFilter = ref('')
-const definitionAgentFilter = ref<number | null>(null)
-const processTools = ref<ProcessTool[]>([])
+const { filter: definitionFilter, agentFilter: definitionAgentFilter, kind: definitionKind, archive: definitionArchive } = storeToRefs(useProcessCatalogueStore())
+const kindOptions = computed(() => [
+  { label: t('processes.catalogue.allKinds'), value: 'all' },
+  { label: 'Galaris', value: 'native' }, { label: t('processes.catalogue.external'), value: 'external' },
+])
+const archiveOptions = computed(() => [
+  { label: t('processes.catalogue.active'), value: 'active' },
+  { label: t('processes.catalogue.archived'), value: 'archived' },
+  { label: t('processes.catalogue.allArchives'), value: 'all' },
+])
 const agentOptions = computed(() => store.agents.map(agent => ({ label: agent.label, value: agent.id })))
 const definitionAgentOptions = computed(() => [
   { label: t('processes.allAgents'), value: null },
@@ -154,24 +162,12 @@ onBeforeUnmount(() => { disposed = true; healthRequest++ })
 
 async function refreshCatalogue(): Promise<void> {
   runListRevision.value++
-  await Promise.all([
-    catalogue.value?.reload(),
-    store.loadDefinitions(definitionAgentFilter.value ?? undefined).catch((error: unknown) => { notify('negative', errorDetail(error)) }),
-  ])
+  await catalogue.value?.reload()
 }
-
-watch(definitionAgentFilter, agentId => {
-  void store.loadDefinitions(agentId ?? undefined).catch((error: unknown) => { console.error(error) })
-})
 
 onMounted(async () => {
   try {
-    await Promise.all([
-      processService.tools().then(tools => {
-        processTools.value = tools
-      }),
-      store.loadAll(), loadOperations(),
-    ])
+    await Promise.all([store.loadAgents(), loadOperations()])
   } catch { notify('negative', t('processes.genericError')) }
 })
 </script>
@@ -180,9 +176,10 @@ onMounted(async () => {
 .n8n-dialog { width: 650px; max-width: 96vw; }
 .n8n-error-banner { background: var(--solaire-red-light); }
 body.body--dark .n8n-error-banner { background: var(--solaire-red-dark); }
-.process-toolbar { display: flex; align-items: center; gap: 8px; }
+.process-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .process-definition-filter { flex: 1 1 auto; min-width: 0; }
 .process-agent-filter { flex: 0 1 260px; min-width: 200px; }
+.process-kind-filter { flex: 0 1 180px; min-width: 150px; }
 .process-toolbar-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .process-add-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .min-width-0 { min-width: 0; }
@@ -196,6 +193,7 @@ body.body--dark .n8n-error-banner { background: var(--solaire-red-dark); }
   .process-page { padding: 8px; }
   .process-toolbar-actions { display: grid; grid-template-columns: 1fr; }
   .process-agent-filter { flex-basis: 100%; width: 100%; }
+  .process-kind-filter { flex: 1 1 140px; }
   .process-toolbar-actions .q-btn { width: 100%; }
 }
 </style>

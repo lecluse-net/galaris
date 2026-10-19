@@ -14,6 +14,32 @@ ProcessStatus = Literal[
 ]
 
 
+class ProcessCatalogueRun(BaseModel):
+    id: UUID
+    status: ProcessStatus
+    created_at: datetime
+
+
+class ProcessCatalogueItem(BaseModel):
+    id: int
+    code: str | None
+    label: str
+    description: str | None
+    archived: bool
+    tool: str
+    agent: str | None
+    active_runs: int = 0
+    human_waiting_runs: int = 0
+    latest_run: ProcessCatalogueRun | None = None
+
+
+class ProcessCataloguePage(BaseModel):
+    items: list[ProcessCatalogueItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class EngineError(BaseModel):
     code: str
     message: str

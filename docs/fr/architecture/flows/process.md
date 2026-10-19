@@ -8,6 +8,14 @@ fichiers héritent des droits du processus parent ; la connexion dédiée `proce
 conserve l'administration globale. Le filtrage précède comptage/pagination et couvre enfants
 et métriques. Voir la [décision 0198](../../../../project/decisions/0198-process-run-data-and-files.md).
 
+Le catalogue humain `/processes/catalogue` réunit définitions natives et externes. Les droits,
+la recherche, le moteur et l’archivage sont filtrés en SQL avant le comptage et la pagination.
+Seule la page demandée reçoit les compteurs et la dernière exécution, sans BPMN ni données
+d’exécution. Les runs natifs héritent des droits de la définition ; les runs externes gardent
+le périmètre de leurs agents lanceurs. Le compteur de réponses humaines compte les runs actifs
+avec une question Process en attente ou une dernière tentative humaine en attente, sans
+confondre une ancienne tentative terminée avec une attente courante.
+
 Les [activités humaines](../../dev/native-processes.md) utilisent exclusivement la messagerie.
 Process persiste l'attente et appelle un port injecté ; Conversation envoie une interaction
 Messenger, retrouve les attentes du participant et interprète ses messages et fichiers.

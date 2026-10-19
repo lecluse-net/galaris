@@ -71,6 +71,18 @@ async def test_global_agent_scope_can_filter_processes_for_any_agent(
 
 
 @pytest.mark.asyncio
+async def test_catalogue_rejects_unmanaged_agent_before_querying(monkeypatch):
+    from app.process import catalogue
+    operation = AsyncMock()
+    monkeypatch.setattr(catalogue, "page_for", operation)
+    monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(1, frozenset({7}))))
+    with pytest.raises(HTTPException) as denied:
+        await router.read_catalogue(agent_id=8)
+    assert denied.value.status_code == 404
+    operation.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_export_cannot_cross_agent_scope(monkeypatch):
     from uuid import uuid4
     from types import SimpleNamespace
@@ -100,3 +112,5 @@ async def test_export_requires_authenticated_admin(client):
     login = await client.post('/api/auth/login-json', json={"email": email, "password": "export-password"})
     assert login.status_code == 200
     assert (await client.get(url, headers={"Authorization": f"Bearer {login.json()['access_token']}"})).status_code == 403
+    assert (await client.get('/api/processes/catalogue')).status_code == 401
+    assert (await client.get('/api/processes/catalogue', headers={"Authorization": f"Bearer {login.json()['access_token']}"})).status_code == 403

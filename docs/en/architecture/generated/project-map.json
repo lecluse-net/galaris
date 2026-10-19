@@ -3290,6 +3290,7 @@
       },
       {
         "files": [
+          "back/app/process/catalogue.py",
           "back/app/process/dataset_usage.py",
           "back/app/process/events.py",
           "back/app/process/facade.py",
@@ -3388,6 +3389,7 @@
       {
         "files": [
           "back/app/process/activity_jobs.py",
+          "back/app/process/catalogue.py",
           "back/app/process/dbadmin.py",
           "back/app/process/mcp.py",
           "back/app/process/native_definitions.py",
@@ -3415,6 +3417,7 @@
         "files": [
           "back/app/process/activity_controls.py",
           "back/app/process/activity_jobs.py",
+          "back/app/process/catalogue.py",
           "back/app/process/dataset_usage.py",
           "back/app/process/events.py",
           "back/app/process/export.py",
@@ -7978,7 +7981,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_activity_complete",
-        "line": 145,
+        "line": 147,
         "module": "app.process",
         "name": "process_activity_complete",
         "namespace": "galaris"
@@ -7986,7 +7989,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_activity_question",
-        "line": 160,
+        "line": 162,
         "module": "app.process",
         "name": "process_activity_question",
         "namespace": "galaris"
@@ -7994,7 +7997,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_analyze_run",
-        "line": 366,
+        "line": 368,
         "module": "app.process",
         "name": "process_analyze_run",
         "namespace": "galaris"
@@ -8002,7 +8005,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_archive",
-        "line": 212,
+        "line": 214,
         "module": "app.process",
         "name": "process_archive",
         "namespace": "galaris"
@@ -8010,7 +8013,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_create",
-        "line": 174,
+        "line": 176,
         "module": "app.process",
         "name": "process_create",
         "namespace": "galaris"
@@ -8018,7 +8021,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_definition_read",
-        "line": 168,
+        "line": 170,
         "module": "app.process",
         "name": "process_definition_read",
         "namespace": "galaris"
@@ -8026,7 +8029,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_get",
-        "line": 106,
+        "line": 108,
         "module": "app.process",
         "name": "process_get",
         "namespace": "galaris"
@@ -8034,7 +8037,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_get_run",
-        "line": 353,
+        "line": 355,
         "module": "app.process",
         "name": "process_get_run",
         "namespace": "galaris"
@@ -8042,7 +8045,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_history",
-        "line": 198,
+        "line": 200,
         "module": "app.process",
         "name": "process_history",
         "namespace": "galaris"
@@ -8050,7 +8053,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_list",
-        "line": 97,
+        "line": 99,
         "module": "app.process",
         "name": "process_list",
         "namespace": "galaris"
@@ -8058,7 +8061,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_list_runs",
-        "line": 329,
+        "line": 331,
         "module": "app.process",
         "name": "process_list_runs",
         "namespace": "galaris"
@@ -8066,7 +8069,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_restore",
-        "line": 206,
+        "line": 208,
         "module": "app.process",
         "name": "process_restore",
         "namespace": "galaris"
@@ -8074,7 +8077,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_cancel",
-        "line": 264,
+        "line": 266,
         "module": "app.process",
         "name": "process_run_cancel",
         "namespace": "galaris"
@@ -8082,7 +8085,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_children",
-        "line": 235,
+        "line": 237,
         "module": "app.process",
         "name": "process_run_children",
         "namespace": "galaris"
@@ -8090,7 +8093,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_control",
-        "line": 255,
+        "line": 257,
         "module": "app.process",
         "name": "process_run_control",
         "namespace": "galaris"
@@ -8098,7 +8101,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_inspect",
-        "line": 227,
+        "line": 229,
         "module": "app.process",
         "name": "process_run_inspect",
         "namespace": "galaris"
@@ -8106,7 +8109,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_metrics",
-        "line": 249,
+        "line": 251,
         "module": "app.process",
         "name": "process_run_metrics",
         "namespace": "galaris"
@@ -8114,7 +8117,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_occurrence",
-        "line": 243,
+        "line": 245,
         "module": "app.process",
         "name": "process_run_occurrence",
         "namespace": "galaris"
@@ -8122,7 +8125,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_retry",
-        "line": 272,
+        "line": 274,
         "module": "app.process",
         "name": "process_run_retry",
         "namespace": "galaris"
@@ -8130,7 +8133,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_share",
-        "line": 218,
+        "line": 220,
         "module": "app.process",
         "name": "process_share",
         "namespace": "galaris"
@@ -8138,7 +8141,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_start",
-        "line": 294,
+        "line": 296,
         "module": "app.process",
         "name": "process_start",
         "namespace": "galaris"
@@ -8146,7 +8149,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_update",
-        "line": 183,
+        "line": 185,
         "module": "app.process",
         "name": "process_update",
         "namespace": "galaris"
@@ -8154,7 +8157,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_validate",
-        "line": 191,
+        "line": 193,
         "module": "app.process",
         "name": "process_validate",
         "namespace": "galaris"
@@ -8162,7 +8165,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "processus_get",
-        "line": 28,
+        "line": 30,
         "module": "app.process",
         "name": "processus_get",
         "namespace": "galaris"
@@ -9010,7 +9013,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_analyze_run",
-        "line": 703,
+        "line": 705,
         "module": "app.process",
         "name": "process_admin_analyze_run",
         "namespace": "process_admin"
@@ -9018,7 +9021,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_cancel_run",
-        "line": 675,
+        "line": 677,
         "module": "app.process",
         "name": "process_admin_cancel_run",
         "namespace": "process_admin"
@@ -9026,7 +9029,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_create",
-        "line": 466,
+        "line": 468,
         "module": "app.process",
         "name": "process_admin_create",
         "namespace": "process_admin"
@@ -9034,7 +9037,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete",
-        "line": 544,
+        "line": 546,
         "module": "app.process",
         "name": "process_admin_delete",
         "namespace": "process_admin"
@@ -9042,7 +9045,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete_run",
-        "line": 717,
+        "line": 719,
         "module": "app.process",
         "name": "process_admin_delete_run",
         "namespace": "process_admin"
@@ -9050,7 +9053,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_engines",
-        "line": 380,
+        "line": 382,
         "module": "app.process",
         "name": "process_admin_engines",
         "namespace": "process_admin"
@@ -9058,7 +9061,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get",
-        "line": 446,
+        "line": 448,
         "module": "app.process",
         "name": "process_admin_get",
         "namespace": "process_admin"
@@ -9066,7 +9069,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get_run",
-        "line": 641,
+        "line": 643,
         "module": "app.process",
         "name": "process_admin_get_run",
         "namespace": "process_admin"
@@ -9074,7 +9077,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list",
-        "line": 415,
+        "line": 417,
         "module": "app.process",
         "name": "process_admin_list",
         "namespace": "process_admin"
@@ -9082,7 +9085,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list_runs",
-        "line": 604,
+        "line": 606,
         "module": "app.process",
         "name": "process_admin_list_runs",
         "namespace": "process_admin"
@@ -9090,7 +9093,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_refresh_run",
-        "line": 661,
+        "line": 663,
         "module": "app.process",
         "name": "process_admin_refresh_run",
         "namespace": "process_admin"
@@ -9098,7 +9101,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_retry_run",
-        "line": 689,
+        "line": 691,
         "module": "app.process",
         "name": "process_admin_retry_run",
         "namespace": "process_admin"
@@ -9106,7 +9109,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_start",
-        "line": 566,
+        "line": 568,
         "module": "app.process",
         "name": "process_admin_start",
         "namespace": "process_admin"
@@ -9114,7 +9117,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_sync",
-        "line": 399,
+        "line": 401,
         "module": "app.process",
         "name": "process_admin_sync",
         "namespace": "process_admin"
@@ -9122,7 +9125,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_update",
-        "line": 496,
+        "line": 498,
         "module": "app.process",
         "name": "process_admin_update",
         "namespace": "process_admin"
@@ -13945,6 +13948,15 @@
       },
       {
         "authorized": true,
+        "declared_path": "/catalogue",
+        "file": "back/app/process/router.py",
+        "handler": "read_catalogue",
+        "line": 94,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
         "declared_path": "/chat/agents/{agent_id}/avatar",
         "file": "back/app/chat/router.py",
         "handler": "read_agent_avatar",
@@ -15055,7 +15067,7 @@
         "declared_path": "/definitions",
         "file": "back/app/process/router.py",
         "handler": "read_definitions",
-        "line": 139,
+        "line": 156,
         "method": "GET",
         "module": "app.process"
       },
@@ -15064,7 +15076,7 @@
         "declared_path": "/definitions",
         "file": "back/app/process/router.py",
         "handler": "create_definition",
-        "line": 153,
+        "line": 170,
         "method": "POST",
         "module": "app.process"
       },
@@ -15073,7 +15085,7 @@
         "declared_path": "/definitions/sync",
         "file": "back/app/process/router.py",
         "handler": "sync_definitions",
-        "line": 164,
+        "line": 181,
         "method": "POST",
         "module": "app.process"
       },
@@ -15082,7 +15094,7 @@
         "declared_path": "/definitions/{process_id}",
         "file": "back/app/process/router.py",
         "handler": "delete_definition",
-        "line": 198,
+        "line": 215,
         "method": "DELETE",
         "module": "app.process"
       },
@@ -15091,7 +15103,7 @@
         "declared_path": "/definitions/{process_id}",
         "file": "back/app/process/router.py",
         "handler": "read_definition",
-        "line": 176,
+        "line": 193,
         "method": "GET",
         "module": "app.process"
       },
@@ -15100,7 +15112,7 @@
         "declared_path": "/definitions/{process_id}",
         "file": "back/app/process/router.py",
         "handler": "update_definition",
-        "line": 182,
+        "line": 199,
         "method": "PUT",
         "module": "app.process"
       },
@@ -18106,7 +18118,7 @@
         "declared_path": "/metrics",
         "file": "back/app/process/router.py",
         "handler": "read_metrics",
-        "line": 455,
+        "line": 472,
         "method": "GET",
         "module": "app.process"
       },
@@ -18169,7 +18181,7 @@
         "declared_path": "/operations",
         "file": "back/app/process/router.py",
         "handler": "read_process_operations",
-        "line": 128,
+        "line": 145,
         "method": "GET",
         "module": "app.process"
       },
@@ -18349,7 +18361,7 @@
         "declared_path": "/retention/preview",
         "file": "back/app/process/router.py",
         "handler": "preview_retention",
-        "line": 93,
+        "line": 110,
         "method": "GET",
         "module": "app.process"
       },
@@ -18358,7 +18370,7 @@
         "declared_path": "/runs",
         "file": "back/app/process/router.py",
         "handler": "read_runs",
-        "line": 258,
+        "line": 275,
         "method": "GET",
         "module": "app.process"
       },
@@ -18367,7 +18379,7 @@
         "declared_path": "/runs",
         "file": "back/app/process/router.py",
         "handler": "create_run",
-        "line": 212,
+        "line": 229,
         "method": "POST",
         "module": "app.process"
       },
@@ -18376,7 +18388,7 @@
         "declared_path": "/runs/{run_id}",
         "file": "back/app/process/router.py",
         "handler": "delete_run",
-        "line": 315,
+        "line": 332,
         "method": "DELETE",
         "module": "app.process"
       },
@@ -18385,7 +18397,7 @@
         "declared_path": "/runs/{run_id}",
         "file": "back/app/process/router.py",
         "handler": "read_run",
-        "line": 305,
+        "line": 322,
         "method": "GET",
         "module": "app.process"
       },
@@ -18394,7 +18406,7 @@
         "declared_path": "/runs/{run_id}/analyze",
         "file": "back/app/process/router.py",
         "handler": "analyze_run",
-        "line": 342,
+        "line": 359,
         "method": "POST",
         "module": "app.process"
       },
@@ -18403,7 +18415,7 @@
         "declared_path": "/runs/{run_id}/cancel",
         "file": "back/app/process/router.py",
         "handler": "cancel_run",
-        "line": 352,
+        "line": 369,
         "method": "POST",
         "module": "app.process"
       },
@@ -18412,7 +18424,7 @@
         "declared_path": "/runs/{run_id}/events",
         "file": "back/app/process/router.py",
         "handler": "receive_event",
-        "line": 385,
+        "line": 402,
         "method": "POST",
         "module": "app.process"
       },
@@ -18421,7 +18433,7 @@
         "declared_path": "/runs/{run_id}/export",
         "file": "back/app/process/router.py",
         "handler": "export_process_run",
-        "line": 100,
+        "line": 117,
         "method": "GET",
         "module": "app.process"
       },
@@ -18430,7 +18442,7 @@
         "declared_path": "/runs/{run_id}/files/{file_id}",
         "file": "back/app/process/router.py",
         "handler": "download_run_file",
-        "line": 399,
+        "line": 416,
         "method": "GET",
         "module": "app.process"
       },
@@ -18439,7 +18451,7 @@
         "declared_path": "/runs/{run_id}/refresh",
         "file": "back/app/process/router.py",
         "handler": "refresh_run",
-        "line": 327,
+        "line": 344,
         "method": "POST",
         "module": "app.process"
       },
@@ -18448,7 +18460,7 @@
         "declared_path": "/runs/{run_id}/retry",
         "file": "back/app/process/router.py",
         "handler": "retry_run",
-        "line": 365,
+        "line": 382,
         "method": "POST",
         "module": "app.process"
       },
@@ -18979,7 +18991,7 @@
         "declared_path": "/tools",
         "file": "back/app/process/router.py",
         "handler": "read_process_tools",
-        "line": 113,
+        "line": 130,
         "method": "GET",
         "module": "app.process"
       },
@@ -19042,7 +19054,7 @@
         "declared_path": "/tools/{tool_code}/health",
         "file": "back/app/process/router.py",
         "handler": "read_process_tool_health",
-        "line": 119,
+        "line": 136,
         "method": "GET",
         "module": "app.process"
       },
@@ -19384,7 +19396,7 @@
         "declared_path": "/workflows/{workflow_id}/runs/{engine_run_id}/sync",
         "file": "back/app/process/router.py",
         "handler": "sync_engine_run",
-        "line": 237,
+        "line": 254,
         "method": "POST",
         "module": "app.process"
       },
@@ -19627,6 +19639,7 @@
       },
       {
         "files": [
+          "front/app/chat/code/components/RepositoryBrowser.vue",
           "front/app/chat/components/AgentTasksPanel.vue",
           "front/app/chat/components/ChatDocumentPane.vue",
           "front/app/chat/components/ChatDocumentSearchDialog.vue",
@@ -20532,9 +20545,11 @@
       },
       {
         "files": [
+          "front/app/process/services/catalogueService.ts",
           "front/app/process/services/nativeProcessService.ts",
           "front/app/process/services/processResourceService.ts",
-          "front/app/process/services/processService.ts"
+          "front/app/process/services/processService.ts",
+          "front/app/process/stores/catalogueStore.ts"
         ],
         "source": "app/process",
         "target": "core/api"
@@ -20589,7 +20604,8 @@
         "files": [
           "front/app/process/components/ExternalRunDialog.vue",
           "front/app/process/components/NativeRunPanel.vue",
-          "front/app/process/components/ProcessRunsPanel.vue"
+          "front/app/process/components/ProcessRunsPanel.vue",
+          "front/app/process/composables/useProcessRunRefresh.ts"
         ],
         "source": "app/process",
         "target": "core/websocket"

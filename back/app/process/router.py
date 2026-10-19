@@ -32,6 +32,7 @@ from .schemas import (
     ProcessToolRead,
     ProcessEngineHealth,
     ProcessOperationsRead,
+    ProcessCataloguePage,
 )
 
 routes = APIRouter(tags=["processes"])
@@ -86,6 +87,22 @@ async def _require_global_scope() -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Global Agent management is required",
         )
+
+
+@routes.get("/catalogue", response_model=ProcessCataloguePage)
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
+async def read_catalogue(
+    page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500),
+    search: str = Query("", max_length=200), kind: Literal["all", "native", "external"] = "all",
+    archive: Literal["all", "active", "archived"] = "active",
+    agent_id: int | None = Query(None, gt=0),
+    sort_by: Literal["label", "tool", "agent", "description"] = "label", descending: bool = False,
+) -> ProcessCataloguePage:
+    from .catalogue import page_for
+    scope = await current_management_scope()
+    await _require_agent(scope, agent_id)
+    return await page_for(scope, page=page, page_size=page_size, search=search, kind=kind,
+        archive=archive, agent_id=agent_id, sort_by=sort_by, descending=descending)
 
 
 @routes.get("/retention/preview")

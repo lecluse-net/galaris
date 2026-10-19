@@ -7,6 +7,14 @@ export default {
     },
     nav: { processes: 'Processus', processes_desc: 'Processus métier et exécutions externes' },
     processes: {
+      catalogue: {
+        kind: 'Moteur', allKinds: 'Tous les moteurs', external: 'Externes', archive: 'Archivage',
+        active: 'Non archivés', archived: 'Archivés', allArchives: 'Tous les processus', integrations: 'Intégrations',
+        monitoring: 'Suivi', latestRun: 'Dernière exécution', neverRun: 'Aucune exécution',
+        activeRuns: '{count} en cours', humanWaiting: '{count} en attente de réponse humaine',
+        empty: 'Aucun processus non archivé. Créez un processus ou consultez les archives.',
+        noMatches: 'Aucun processus ne correspond à ces filtres.', clearFilters: 'Effacer les filtres',
+      },
       backToList: 'Retour à la liste',
       title: 'Processus métier', definitions: 'Définitions', runs: 'Exécutions',
       tracking: {
@@ -60,6 +68,14 @@ export default {
     },
     nav: { processes: 'Processes', processes_desc: 'Business processes and external runs' },
     processes: {
+      catalogue: {
+        kind: 'Engine', allKinds: 'All engines', external: 'External', archive: 'Archive',
+        active: 'Not archived', archived: 'Archived', allArchives: 'All processes', integrations: 'Integrations',
+        monitoring: 'Monitoring', latestRun: 'Latest run', neverRun: 'No runs yet',
+        activeRuns: '{count} active', humanWaiting: '{count} awaiting a human reply',
+        empty: 'No unarchived processes. Create a process or view the archives.',
+        noMatches: 'No processes match these filters.', clearFilters: 'Clear filters',
+      },
       backToList: 'Back to list',
       title: 'Business processes', definitions: 'Definitions', runs: 'Runs',
       tracking: {
@@ -113,6 +129,14 @@ export default {
     },
     nav: { processes: '流程', processes_desc: '业务流程和外部运行记录' },
     processes: {
+      catalogue: {
+        kind: '引擎', allKinds: '所有引擎', external: '外部', archive: '归档',
+        active: '未归档', archived: '已归档', allArchives: '所有流程', integrations: '集成',
+        monitoring: '监控', latestRun: '最近运行', neverRun: '尚未运行',
+        activeRuns: '{count} 个运行中', humanWaiting: '{count} 个等待人工回复',
+        empty: '没有未归档的流程。请创建流程或查看归档。',
+        noMatches: '没有符合筛选条件的流程。', clearFilters: '清除筛选',
+      },
       backToList: '返回列表',
       title: '业务流程', definitions: '定义', runs: '运行记录',
       tracking: {

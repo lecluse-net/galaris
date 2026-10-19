@@ -209,7 +209,13 @@ initial queueing, stops on completion and remains unavailable without a start ti
 downloading execution views or waiting for agents and n8n health. Runs load only when their
 process is expanded; sublists remain isolated and failed loads can be retried on desktop
 and mobile. Pagination preserves server totals and independent pages; the global refresh
-reloads open sublists without changing their page. n8n diagnostics stay in a dialog that
+reloads open sublists without changing their page, as do run events and reconnections.
+Returning from the editor preserves search, agent, sorting, pagination and expanded processes
+on desktop and mobile; switching users resets these preferences. Bursts during a slow load
+trigger a single follow-up, and collapsing a list removes its live subscriptions.
+Engine/archive filters, native descriptions and live counts work without opening run views;
+late responses from earlier filters are ignored.
+n8n diagnostics stay in a dialog that
 can close during synchronization; the banner distinguishes a broken connection from an
 unconfigured integration. The row and edit icon open the process without expanding runs;
 the arrow area on the left expands runs without navigating, with keyboard access.
@@ -228,6 +234,9 @@ reproduced several seconds of latency. It checks the interactive budget for exec
 definition lists and transaction settings reverting after commit and rollback. Process
 permission tests preserve denials, sharing and orphan definition exclusion; the access
 filter optimization removes folder and attachment branches that these lists do not need.
+`test_catalogue.py` protects combined pagination beyond 500 definitions, literal searches
+and archives, distinct native/external run permissions, human waits and bounded SQL reads.
+The transfer measurement compares the old full list with one page on the same synthetic data.
 
 `test_run_observation.py` covers frozen participation, unused roles, inherited Process
 ACLs, dedicated administration revocation and the wait/pause/resume/stop cycle. The

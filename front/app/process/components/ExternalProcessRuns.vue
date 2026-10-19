@@ -14,10 +14,13 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ProcessRunList, { type RunListPagination } from './ProcessRunList.vue'
 import { processService, type ProcessDefinition, type ProcessRun } from '../services/processService'
+import { useProcessCatalogueStore } from '../stores/catalogueStore'
+import { useProcessRunRefresh } from '../composables/useProcessRunRefresh'
 
-const props = defineProps<{ definition: ProcessDefinition; revision: number }>()
+const props = defineProps<{ definition: Pick<ProcessDefinition, 'id'>; revision: number }>()
 const emit = defineEmits<{ openRun: [run: ProcessRun] }>()
 const { t } = useI18n()
+const navigation = useProcessCatalogueStore()
 const rows = ref<ProcessRun[]>([]), loading = ref(false), error = ref(false)
 const pagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0, sortBy: 'created_at', descending: true })
 let generation = 0
@@ -37,6 +40,8 @@ async function load(): Promise<void> {
     const { page, rowsPerPage, sortBy, descending } = pagination.value
     const result = await processService.runs({ processId: props.definition.id, page, pageSize: rowsPerPage, sortBy, descending })
     if (token !== generation) return
+    const lastPage = Math.max(1, Math.ceil(result.total / rowsPerPage))
+    if (page > lastPage) { pagination.value.page = lastPage; await load(); return }
     rows.value = result.items; pagination.value.rowsNumber = result.total
   } catch { if (token === generation) error.value = true }
   finally { if (token === generation) loading.value = false }
@@ -45,7 +50,16 @@ function request(value: { pagination: { page: number; rowsPerPage: number; sortB
   pagination.value = { ...pagination.value, ...value.pagination, sortBy: value.pagination.sortBy || 'created_at' }
   void load()
 }
-watch(() => props.definition.id, () => { rows.value = []; pagination.value.page = 1; void load() }, { immediate: true })
+watch(() => props.definition.id, () => {
+  const saved = navigation.runPages[`external-${props.definition.id}`]
+  rows.value = []
+  pagination.value = { page: saved?.page ?? 1, rowsPerPage: saved?.rowsPerPage ?? 50, sortBy: saved?.sortBy || 'created_at', descending: saved?.descending ?? true, rowsNumber: 0 }
+  void load()
+}, { immediate: true })
+watch(pagination, value => {
+  navigation.runPages[`external-${props.definition.id}`] = { page: value.page, rowsPerPage: value.rowsPerPage, sortBy: value.sortBy, descending: value.descending }
+}, { deep: true })
 watch(() => props.revision, () => { void load() })
+useProcessRunRefresh(load, loading)
 onBeforeUnmount(() => { generation++ })
 </script>
