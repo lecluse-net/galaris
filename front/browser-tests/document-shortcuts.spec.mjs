@@ -279,11 +279,15 @@ test('shortcuts leave read-only, source mode and other fields unchanged', async 
   await expect(page.getByRole('button', { name: 'Keyboard help', exact: true })).toHaveCount(0)
 })
 
-test('shortcut help is available on desktop and small screens and restores editing', async ({ page, browserName }, testInfo) => {
+test('shortcut help opens from the desktop toolbar or keyboard and restores editing', async ({ page, browserName }, testInfo) => {
   const editor = await documentEditor(page)
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 844 })
-    await page.getByRole('button', { name: 'Keyboard help', exact: true }).filter({ visible: true }).click()
+    if (width >= 1024) await page.getByRole('button', { name: 'Keyboard help', exact: true }).filter({ visible: true }).click()
+    else {
+      await editor.click()
+      await page.keyboard.press('F1')
+    }
     const help = page.getByRole('dialog', { name: 'Keyboard help' })
     await expect(help).toBeVisible()
     await expect(help).toContainText('Heading 6')
