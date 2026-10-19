@@ -11,6 +11,45 @@ from app.memory import document_service
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"])
+async def test_dataset_partial_read_locates_edit_lines_without_changing_character_pagination(db, agents, newline):
+    from app.file_share import resource_edit
+
+    owner, other = agents
+    ctx = ResourceContext(agent_id=owner.id, runtime="internal")
+    source = newline.join(['{', '  "first": {"kept": true},', '  "target": {',
+        '    "state": "pending"', '  },', '  "last": 3', '}', ''])
+    created = await resource_create(ctx, "data://", source.encode(), name="Synthetic editable inventory")
+    start = source.index('"target"') - 1
+    end = source.index(newline + '  "last"')
+    page = await resource_read(ctx, created.uri, offset=start, max_chars=end - start)
+    metadata = page.model_dump()
+    assert page.content == source[start:end]
+    assert (page.start, page.end, page.next_offset, page.total) == (start, end, end, len(source))
+    assert metadata["start_line"] == 3
+    assert metadata["end_line"] == 5
+    assert metadata["total_lines"] == 7
+    assert metadata["start_line_complete"] is False
+    assert metadata["end_line_complete"] is False
+    await resource_edit(ctx, created.uri, start_line=metadata["start_line"] + 1,
+        end_line=metadata["start_line"] + 1, content='    "state": "done"', expected_revision=page.revision)
+    updated = await resource_read(ctx, created.uri)
+    assert updated.content == source.replace('"pending"', '"done"')
+    assert updated.model_dump()["start_line_complete"] is True
+    assert updated.model_dump()["end_line_complete"] is True
+    empty = await resource_read(ctx, created.uri, offset=len(updated.content) + 100)
+    assert empty.content == "" and empty.next_offset is None
+    assert empty.model_dump()["start_line"] is None
+    assert empty.model_dump()["end_line"] is None
+    assert empty.model_dump()["total_lines"] == 7
+    with pytest.raises(service.DatasetConflictError):
+        await resource_edit(ctx, created.uri, start_line=4, end_line=4,
+            content='    "state": "stale"', expected_revision=page.revision)
+    with pytest.raises(service.DatasetNotFoundError):
+        await resource_read(ResourceContext(agent_id=other.id, runtime="internal"), created.uri, offset=start)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("surface", ["native", "legacy-file", "legacy-memory"])
 @pytest.mark.parametrize("markers", [
     {"engine_dataset": True},

@@ -809,7 +809,13 @@ le proxy et le SDK Pydantic AI réels.
 Le suivi des tâches pendant la génération d'arguments d'outil est couvert par
 `app/harness/tests/test_message_fragments.py` et `test_executor_streaming.py` :
 progression durable sans faux résultat d'outil, arrêt des flux silencieux et des deltas
-vides. `test_inference_lifecycle.py` vérifie sur PostgreSQL que les boucles de suivi,
+vides. Le scénario de progression distingue texte, réflexion fragmentée et vrais outils :
+les fragments de réflexion ne forcent pas une sauvegarde chacun et la clôture reste immédiate.
+`app/agent/tests/test_message_contracts.py` conserve une occurrence par invocation dans
+`tools_used`, même avec de nombreux fragments et plusieurs appels du même outil.
+`app/dataset/tests/test_datasets.py` vérifie l'édition depuis une lecture JSON partielle,
+les fins de ligne LF/CRLF/CR, la conservation du contenu voisin, les conflits et les droits.
+`test_inference_lifecycle.py` vérifie sur PostgreSQL que les boucles de suivi,
 les leases et le journal ne retransfèrent pas les requêtes complètes ; les scénarios
 de reprise et `test_protocol_inference.py` préservent ordre, erreurs et comptabilité.
 Le même scénario impose zéro requête pendant une fenêtre de silence, puis une livraison

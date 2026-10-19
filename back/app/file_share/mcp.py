@@ -235,7 +235,10 @@ async def search_files(
         "Read any resource URI. UTF-8 text is returned in bounded pages; small binary files "
         "are returned completely as base64. Keep large binaries out of model context: pass their "
         "URI to a specialized tool, or copy to console:// only when console software must handle "
-        "them. Use next_offset to continue text reads. HTML Memory/document pages contain complete numbered blocks, format, profile and revision. Their offsets count blocks, not characters. A large indivisible block reports its required max_chars (up to 2 MB); the default budget stays 20,000."
+        "them. Use next_offset to continue text reads. Dataset JSON pages retain character offsets and include "
+        "one-based start_line/end_line, total_lines and start_line_complete/end_line_complete flags for file_edit; "
+        "a false flag means the first/last line is partial, so read its missing text before replacing that line. "
+        "HTML Memory/document pages contain complete numbered blocks, format, profile and revision. Their offsets count blocks, not characters. A large indivisible block reports its required max_chars (up to 2 MB); the default budget stays 20,000."
     ),
     effect_policy="read",
     concurrency_policy="safe",

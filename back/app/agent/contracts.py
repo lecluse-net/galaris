@@ -575,7 +575,7 @@ class AIResult(BaseModel):
         self.execution_time += ai_message.execution_time
         if ai_message.content and ai_message.type == "text":
             self.result += ai_message.content
-        if ai_message.tool_name:
+        if ai_message.tool_name and existing is None:
             self.tools_used.append(ai_message.tool_name)
 
         empty_tool_start = (

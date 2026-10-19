@@ -23,6 +23,19 @@ def test_text_fragments_merge_only_inside_the_same_semantic_stream() -> None:
     ]
 
 
+def test_stream_fragments_count_one_tool_per_invocation_and_retain_repeated_calls() -> None:
+    result = AIResult(prompt="Inspect synthetic data")
+    for stream_id, name in [("reasoning", "thinking"), ("read:1", "file_read"), ("read:2", "file_read")]:
+        for fragment in "Some content":
+            result.add_message(AIMessage(type="tool", tool_name=name, content=fragment,
+                stream_id=stream_id, stream_complete=False))
+        result.add_message(AIMessage(type="tool", tool_name=name, content="",
+            stream_id=stream_id, stream_complete=True))
+    assert result.tools_used == ["thinking", "file_read", "file_read"]
+    assert [message.content for message in result.messages] == ["Some content"] * 3
+    assert all(message.stream_complete for message in result.messages)
+
+
 def test_terminal_text_reconciliation_separates_progress_from_final_answer() -> None:
     result = AIResult(prompt="Inspect the repository")
     result.add_message(AIMessage(type="text", content="I am inspecting."))

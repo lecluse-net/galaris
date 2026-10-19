@@ -594,10 +594,11 @@ async def _stream(
             if message.type == "text" and not message.success:
                 ai_result.success = False
 
-            # Tool lifecycle blocks are sparse and important, while text deltas can be
-            # very frequent. Publish tools and failures immediately and throttle text.
+            # Reasoning uses tool-typed messages too, but its token deltas need the
+            # same throttle as text. Effects, failures and completed blocks stay immediate.
             await persist_progress(
-                force=message.type == "tool" or not message.success or message.stream_complete is True,
+                force=(message.type == "tool" and message.tool_name != "thinking")
+                or not message.success or message.stream_complete is True,
             )
 
             # Empty completion markers make a Task block visible without replaying text.

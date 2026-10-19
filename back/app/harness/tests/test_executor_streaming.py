@@ -218,12 +218,19 @@ async def test_voice_conversation_runtime_is_traced_as_audio(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("use_tool", [True, False])
 @pytest.mark.parametrize("argument_stream", [True, False])
+@pytest.mark.parametrize("stream_kind", ["text", "thinking"])
+@pytest.mark.parametrize("fragment_count", [9, 2048])
 async def test_internal_stream_publishes_initial_and_tool_progress(
     monkeypatch: pytest.MonkeyPatch,
     use_tool: bool,
     argument_stream: bool,
+    stream_kind: str,
+    fragment_count: int,
 ) -> None:
     progress = AsyncMock()
+    clock = SimpleNamespace(now=100.0)
+    monkeypatch.setattr(executor, "time", SimpleNamespace(time=executor.time.time, monotonic=lambda: clock.now))
+    streamed_content = "Searching" if fragment_count == 9 else "a" * fragment_count
     request = AgentRunRequest(
         run_id=uuid4(),
         task_id=uuid4(),
@@ -257,10 +264,16 @@ async def test_internal_stream_publishes_initial_and_tool_progress(
 
         def run(self, **_kwargs: object) -> AsyncIterator[AIMessage]:
             async def messages() -> AsyncIterator[AIMessage]:
-                yield AIMessage(type="text", content="Searching", stream_id="text", stream_complete=False)
-                yield AIMessage(type="text", content="", stream_id="text", stream_complete=True)
+                # Reasoning arrives as tool-typed fragments, but is not an executed tool.
+                kind = "tool" if stream_kind == "thinking" else "text"
+                tool_name = "thinking" if stream_kind == "thinking" else None
+                for fragment in streamed_content:
+                    yield AIMessage(type=kind, tool_name=tool_name, content=fragment,
+                        stream_id="content", stream_complete=False)
+                yield AIMessage(type=kind, tool_name=tool_name, content="",
+                    stream_id="content", stream_complete=True)
                 if argument_stream:
-                    await asyncio.sleep(executor._PROGRESS_PERSIST_INTERVAL + 0.01)
+                    clock.now += executor._PROGRESS_PERSIST_INTERVAL + 0.01
                     await _kwargs["on_model_activity"]()
                 if not use_tool:
                     return
@@ -305,24 +318,27 @@ async def test_internal_stream_publishes_initial_and_tool_progress(
     assert initial.messages == []
     assert initial.metadata["runtime_status"] == "running"
     completed = progress.await_args_list[1].args[0]
-    assert completed.messages[0].content == "Searching"
+    assert completed.messages[0].content == streamed_content
     assert completed.messages[0].stream_complete is True
-    assert [event.message.stream_complete for event in events[:2]] == [False, True]
+    assert [event.message.stream_complete for event in events[:fragment_count + 1]] == [False] * fragment_count + [True]
+
+    observed_tools = ["thinking"] if stream_kind == "thinking" else []
+    message_type = "tool" if stream_kind == "thinking" else "text"
 
     if argument_stream:
         during_arguments = progress.await_args_list[2].args[0]
-        assert during_arguments.tools_used == []
-        assert [message.type for message in during_arguments.messages] == ["text"]
+        assert during_arguments.tools_used == observed_tools
+        assert [message.type for message in during_arguments.messages] == [message_type]
     if use_tool:
         after_tool = progress.await_args_list[-1].args[0]
         assert isinstance(after_tool, ExecutionResult)
-        assert after_tool.tools_used == ["search_web"]
-        assert [message.type for message in after_tool.messages] == ["text", "tool"]
+        assert after_tool.tools_used == [*observed_tools, "search_web"]
+        assert [message.type for message in after_tool.messages] == [message_type, "tool"]
     assert events[-1].kind == "result"
     assert events[-1].result is not None
     assert events[-1].result.success is True
-    assert events[-1].result.tools_used == (["search_web"] if use_tool else [])
-    assert events[-1].result.result == "Searching"
+    assert events[-1].result.tools_used == [*observed_tools, *(["search_web"] if use_tool else [])]
+    assert events[-1].result.result == (streamed_content if stream_kind == "text" else "")
 
 
 @pytest.mark.asyncio

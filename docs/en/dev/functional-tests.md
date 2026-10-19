@@ -771,7 +771,13 @@ and Pydantic AI SDK.
 Task activity during tool-argument generation is covered by
 `app/harness/tests/test_message_fragments.py` and `test_executor_streaming.py`:
 durable progress without a fabricated tool result, timeout for silent streams and empty
-deltas. `test_inference_lifecycle.py` uses PostgreSQL to ensure polling, lease renewal and
+deltas. The progress scenario distinguishes text, fragmented reasoning and actual tools:
+reasoning fragments do not force one save each, while block completion stays immediate.
+`app/agent/tests/test_message_contracts.py` retains one `tools_used` occurrence per invocation,
+including fragmented messages and repeated calls to the same tool.
+`app/dataset/tests/test_datasets.py` verifies editing from a partial JSON read, LF/CRLF/CR
+line endings, preservation of adjacent content, revision conflicts and access rights.
+`test_inference_lifecycle.py` uses PostgreSQL to ensure polling, lease renewal and
 journal writes do not transfer full requests; recovery scenarios and
 `test_protocol_inference.py` preserve event order, errors and accounting.
 The same scenario requires zero queries during a silent interval, then notification-driven

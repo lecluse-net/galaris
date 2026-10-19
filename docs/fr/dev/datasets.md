@@ -47,6 +47,13 @@ Les utilisations Dataset incluent ces références après filtrage des droits du
 Les écritures utilisent `expected_revision` ; le partage utilise `expected_lock_version`.
 Le provider `data://` enregistré dans File Sharing utilise les mêmes services.
 
+Les lectures MCP gardent le JSON exact et leurs offsets en caractères. Elles donnent aussi
+`start_line`, `end_line` et `total_lines` (lignes à partir de 1), ainsi que
+`start_line_complete` et `end_line_complete`. Ces indicateurs signalent les lignes coupées
+par la pagination : relire leur partie manquante avant de les remplacer avec `file_edit`.
+Une page vide ne porte pas de coordonnées de ligne. Les éditions restent soumises à
+`expected_revision` ; ces repères évitent de relire tout l'inventaire pour compter ses lignes.
+
 Les inventaires de collections du planner se créent directement avec
 `file_create(path="data://", name=..., content=...)`. Le reçu conserve l'URI exacte retournée
 et doit correspondre à une opération réussie de l'étape de découverte. Le planner relit le

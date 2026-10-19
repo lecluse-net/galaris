@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0208 — Suivi des réflexions Task et lignes d'édition Dataset](0208-task-reasoning-progress-and-dataset-lines.md)
+
 - [0205 — Diagnostics durables des mises à jour](0205-durable-update-diagnostics.md)
 
 - [0204 — Parallélisme implicite par les liaisons des processus](0204-implicit-process-parallelism.md)

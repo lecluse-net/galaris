@@ -112,6 +112,10 @@ avec `task_work_update`, sur sa Task active, avec contrôle de révision. Jusqu�
 sont conservés ; un jalon déclaré terminé ne remplace pas la preuve du résultat ou de sa livraison.
 Le suivi possède sa propre révision : les sauvegardes d’exécution ne bloquent pas ses mises à jour.
 
+Pendant une réflexion longue, les sauvegardes intermédiaires sont espacées pour laisser
+l'exécution avancer. Les résultats d'outils, erreurs et fins de blocs restent enregistrés
+immédiatement ; rouvrir la Task retrouve le dernier suivi sauvegardé.
+
 Si le périmètre ou la profondeur attendue change sensiblement le travail, Galaris peut poser
 une question avant de commencer. Répondez dans la conversation liée à la demande. Une inconnue
 technique que l’agent peut résoudre par inspection autorisée relève de sa préparation.

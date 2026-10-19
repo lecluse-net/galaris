@@ -94,6 +94,10 @@ The executor can update it with
 retained; declaring one complete does not replace evidence of the result or its delivery.
 Tracking has its own revision, so execution checkpoints do not block progress updates.
 
+During long reasoning, intermediate saves are spaced out so execution can keep moving.
+Tool results, errors and block completions are still saved immediately; reopening the
+Task restores its latest saved activity.
+
 When scope or expected depth substantially changes the work, Galaris can ask a question
 before starting. Reply in the conversation linked to the request. A technical unknown
 that the agent can resolve through authorized inspection belongs to its preparation.

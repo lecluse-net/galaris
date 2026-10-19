@@ -34,6 +34,9 @@ Create new Datasets here, separately from HTML Documents. An agent uses
 Complete JSON content is required; replacing the returned URI's scheme with `document://`
 does not create a valid reference.
 
+When an agent updates part of the JSON, reads provide line coordinates for editing,
+the required revision and flags identifying partial lines to complete before replacement.
+
 On desktop, select a Dataset in the flat list on the left to open its editor on the right.
 Search and the current page remain in place when switching Datasets. On small screens,
 use **Back to list** to leave the editor. Unsaved changes require confirmation before

@@ -37,6 +37,10 @@ uniquement après avoir conservé les modifications que vous souhaitez reprendre
 Le JSON est indenté à l'ouverture et dans l'historique. Cet affichage conserve les valeurs
 exactes et n'enregistre aucune modification à lui seul.
 
+Lorsqu'un agent met à jour une partie du JSON, ses lectures lui fournissent les repères
+de ligne nécessaires à l'édition, avec la révision à respecter et les lignes partielles
+à compléter avant remplacement.
+
 **Propriétaire** et **Partage** figurent sur une même ligne. Le propriétaire ou un administrateur
 autorisé peut transférer le jeu de données à un agent qu'il gère ou à lui-même ; un administrateur
 des jeux de données peut aussi choisir un autre utilisateur actif. Le transfert est immédiat,

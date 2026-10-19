@@ -43,6 +43,12 @@ deletion of the attached resource. Dataset usages include these references under
 Writes require `expected_revision`; sharing requires `expected_lock_version`. File Sharing's
 registered `data://` provider uses these same services.
 
+MCP reads retain exact JSON and character offsets. They also expose one-based `start_line`,
+`end_line` and `total_lines`, plus `start_line_complete` and `end_line_complete`. These flags
+identify lines cut by pagination: read their missing text before replacing them with
+`file_edit`. Empty pages have no line coordinates. Edits still require `expected_revision`;
+these coordinates avoid rereading the entire inventory just to count its lines.
+
 Planner collection inventories are created directly with
 `file_create(path="data://", name=..., content=...)`. The receipt retains the exact returned
 URI and must match a successful operation by the discovery step. The planner rereads complete

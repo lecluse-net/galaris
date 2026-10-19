@@ -1,9 +1,12 @@
 """Native data:// provider; File Sharing retains the generic file surface."""
 
+from bisect import bisect_right
+from itertools import accumulate
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
+from pydantic import Field
 from sqlalchemy import or_, select
 
 from core.database import get_db
@@ -14,6 +17,16 @@ from app.file_share import (MaterializedResource, ResourceContext, ResourceDescr
 from . import service
 from .access import accessible_clause
 from .models import Dataset, DatasetAlias, DatasetAttachment
+
+
+class DatasetResourceRead(ResourceRead):
+    """Exact character page with one-based edit coordinates; no content decoration."""
+
+    start_line: int | None = Field(default=None, ge=1)
+    end_line: int | None = Field(default=None, ge=1)
+    total_lines: int = Field(ge=1)
+    start_line_complete: bool = False
+    end_line_complete: bool = False
 
 
 def root_id(uri: ResourceUri) -> UUID:
@@ -126,8 +139,17 @@ class DatasetProvider:
         dataset = await service.record(root_id(uri), ctx.management_scope or ctx.agent_id)
         start, limit = min(len(dataset.content), max(0, int(options.get("offset", 0)))), min(service.MAX_BYTES, max(1, int(options.get("max_chars", 20000))))
         end = min(len(dataset.content), start + limit)
-        return ResourceRead(uri=f"data://{dataset.id}", content=dataset.content[start:end], media_type="application/json",
-            start=start, end=end, total=len(dataset.content), next_offset=end if end < len(dataset.content) else None, revision=dataset.revision)
+        # Match edit()'s splitlines semantics, including CRLF and Unicode separators.
+        line_ends = list(accumulate(len(line) for line in dataset.content.splitlines(keepends=True)))
+        first = bisect_right(line_ends, start)
+        last = bisect_right(line_ends, end - 1)
+        has_content = start < end
+        return DatasetResourceRead(uri=f"data://{dataset.id}", content=dataset.content[start:end], media_type="application/json",
+            start=start, end=end, total=len(dataset.content), next_offset=end if end < len(dataset.content) else None, revision=dataset.revision,
+            start_line=first + 1 if has_content else None, end_line=last + 1 if has_content else None,
+            total_lines=len(line_ends),
+            start_line_complete=has_content and start == (line_ends[first - 1] if first else 0),
+            end_line_complete=has_content and end == line_ends[last])
 
     async def create(self, ctx: ResourceContext, uri: ResourceUri, content: bytes, **options: Any) -> ResourceMutation:
         if uri.locator:
@@ -159,7 +181,7 @@ class DatasetProvider:
         replacement = str(options["content"])
         original = "".join(lines[first - 1:last])
         if original.endswith(("\n", "\r")) and replacement and not replacement.endswith(("\n", "\r")):
-            replacement += "\r\n" if original.endswith("\r\n") else "\n"
+            replacement += "\r\n" if original.endswith("\r\n") else "\r" if original.endswith("\r") else "\n"
         content = "".join(lines[:first - 1]) + replacement + "".join(lines[last:])
         result = await self.write(ctx, uri, content.encode(), **{key: value for key, value in options.items() if key != "content"})
         return result.model_copy(update={"operation": "edit"})
