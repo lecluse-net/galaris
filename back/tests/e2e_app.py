@@ -44,6 +44,7 @@ from app.agent.models import Agent, Title
 from app.connection import Connection
 from app.conversation import ConversationOutcome, ConversationTurn, register_controller
 from app.conversation.contracts import ConversationExecutionError
+from app.conversation.task_objective import PreparedTaskFields
 from app.conversation.models import ConversationRound
 from app.messenger import create_internal_room
 from app.tools.models import Tool
@@ -118,7 +119,7 @@ class ScriptedController:
 
 
 async def task_fields(_turn, *, label_hint, objective_hint):
-    return label_hint, objective_hint, 0.0
+    return PreparedTaskFields(label_hint, objective_hint, 0.0)
 
 
 async def task_model(_agent, effort, _language, _reasoning):

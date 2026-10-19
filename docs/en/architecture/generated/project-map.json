@@ -7711,7 +7711,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_choice_resolve",
-        "line": 866,
+        "line": 869,
         "module": "app.conversation",
         "name": "conversation_choice_resolve",
         "namespace": "conversation"
@@ -7719,7 +7719,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_process_pending",
-        "line": 922,
+        "line": 925,
         "module": "app.conversation",
         "name": "conversation_process_pending",
         "namespace": "conversation"
@@ -7727,7 +7727,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_process_respond",
-        "line": 913,
+        "line": 916,
         "module": "app.conversation",
         "name": "conversation_process_respond",
         "namespace": "conversation"
@@ -7735,7 +7735,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_process_start",
-        "line": 1023,
+        "line": 1026,
         "module": "app.conversation",
         "name": "conversation_process_start",
         "namespace": "conversation"
@@ -7743,7 +7743,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_list",
-        "line": 806,
+        "line": 809,
         "module": "app.conversation",
         "name": "conversation_task_list",
         "namespace": "conversation"
@@ -7751,7 +7751,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_pause",
-        "line": 962,
+        "line": 965,
         "module": "app.conversation",
         "name": "conversation_task_pause",
         "namespace": "conversation"
@@ -7759,7 +7759,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_resume",
-        "line": 973,
+        "line": 976,
         "module": "app.conversation",
         "name": "conversation_task_resume",
         "namespace": "conversation"
@@ -7767,7 +7767,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_retry",
-        "line": 993,
+        "line": 996,
         "module": "app.conversation",
         "name": "conversation_task_retry",
         "namespace": "conversation"
@@ -7775,7 +7775,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_status",
-        "line": 846,
+        "line": 849,
         "module": "app.conversation",
         "name": "conversation_task_status",
         "namespace": "conversation"
@@ -7783,7 +7783,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_stop",
-        "line": 1004,
+        "line": 1007,
         "module": "app.conversation",
         "name": "conversation_task_stop",
         "namespace": "conversation"
@@ -7791,7 +7791,7 @@
       {
         "file": "back/app/conversation/mcp.py",
         "handler": "conversation_task_submit",
-        "line": 562,
+        "line": 565,
         "module": "app.conversation",
         "name": "conversation_task_submit",
         "namespace": "conversation"

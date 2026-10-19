@@ -47,6 +47,11 @@ pas. Une pièce jointe indisponible n’empêche pas la publication du texte.
 
 ## Ce qui se passe après l’envoi
 
+Une demande qui poursuit un travail peut réutiliser son document de suivi sans recopier
+son URI dans le dernier message. Galaris résout cette référence depuis le contexte et
+conserve la justification de sa mise à jour. Cela n'autorise pas à modifier les autres
+documents cités dans la discussion ; leurs droits d'accès restent applicables.
+
 1. La demande créée dans cet écran devient une Task durable.
 2. Le Dispatcher choisit la route, l’effort et l’organisation du travail.
 3. Une précision manquante peut suspendre la demande ; le planner prépare les travaux décomposables.

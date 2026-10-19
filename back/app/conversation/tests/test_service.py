@@ -24,6 +24,7 @@ from app.conversation import task_projection
 from app.conversation import work_projection
 from app.conversation.contracts import ConversationOutcome
 from app.conversation.document_metadata import ConversationDocumentMetadata
+from app.conversation.task_objective import PreparedTaskFields
 from app.conversation.models import (
     ConversationProcessLink,
     ConversationRound,
@@ -215,7 +216,7 @@ async def test_failed_amendment_preserves_target_and_explicit_new_work_is_idempo
     await db.commit()
     original_state = (original.revision, original.status, original.objective, original.plan, original.lease_token, original.data)
     original_failure = (original.last_error, original.execution_result, original.attempt_count)
-    generate = AsyncMock(return_value=("Rapport", f"<p>{request} Préserver le contenu existant.</p>", 0.0))
+    generate = AsyncMock(return_value=PreparedTaskFields("Rapport", f"<p>{request} Préserver le contenu existant.</p>", 0.0))
     cancel = MagicMock()
     monkeypatch.setattr("app.task.scheduler.cancel", cancel)
     monkeypatch.setattr(mcp, "generate_task_fields", generate)
@@ -320,7 +321,7 @@ async def test_explicit_replacement_admits_one_waiting_successor_and_keeps_indep
     await db.commit()
     revision = original.revision
     original_id = original.id
-    monkeypatch.setattr(mcp, "generate_task_fields", AsyncMock(return_value=(
+    monkeypatch.setattr(mcp, "generate_task_fields", AsyncMock(return_value=PreparedTaskFields(
         "Bilan corrigé", "<p>Préparer le bilan corrigé.</p>", 0.0)))
     monkeypatch.setattr("app.task.task_service.publish_created", AsyncMock())
     monkeypatch.setattr("app.task.runner.go_next", lambda *_, **__: None)
@@ -347,6 +348,71 @@ async def test_explicit_replacement_admits_one_waiting_successor_and_keeps_indep
     await db.refresh(successor)
     assert not successor.paused
     assert successor.data["_replacement"]["state"] == "confirmed"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("origin", ["text", "voice"])
+async def test_continuation_admission_preserves_resolved_writes_in_child_scope(committed_database, monkeypatch, origin):
+    from app.agent import AgentRunContext, EffectDescriptorV1, parse_scope
+    from app.conversation import ConversationTurn, mcp, task_objective
+    from app.task import TaskCreate, task_service
+    from app.task.agent_adapter import SqlAlchemyAgentTaskAdapter
+    from core.user import UserModel
+
+    ledger, unrelated = f"document://{uuid4()}", f"document://{uuid4()}"
+    request = "Continue the next synthetic batch using the same tracking document."
+    quote = f"Tracking document: {ledger}"
+    monkeypatch.setattr(task_objective.llm_service, "get_profile_llm", AsyncMock(return_value=SimpleNamespace(id=42)))
+    monkeypatch.setattr(task_objective.params_service, "get_or_default", AsyncMock(return_value="Prepare the task."))
+    monkeypatch.setattr(task_objective, "build_agent_run_context", AsyncMock(return_value=AgentRunContext(
+        continuity_context=f"{quote}\nUnrelated resource: {unrelated}",
+    )))
+
+    async def infer(**kwargs):
+        output = task_objective._GeneratedTaskFields.model_validate({
+            "label": "Next batch", "objective": f"<p>Update {ledger}; leave {unrelated} untouched.</p>",
+            "write_targets": [{"target": ledger, "request_quote": request, "context_quote": quote}],
+        })
+        return SimpleNamespace(output=kwargs["output_validator"](output), cost=0.0)
+
+    monkeypatch.setattr(task_objective, "run_structured", infer)
+    monkeypatch.setattr(task_service, "publish_created", AsyncMock())
+    monkeypatch.setattr("app.task.runner.go_next", lambda *_: None)
+    async with get_db_session() as db:
+        user = UserModel(email=f"continuation-{uuid4().hex}@example.test", hashed_password="synthetic")
+        db.add(user)
+        await db.flush()
+        agent, connection, room = await _scope(db, user_id=user.id)
+        round_ = ConversationRound(room_id=room.id, status="RUNNING", language="en")
+        db.add(round_)
+        await db.flush()
+        turn = ConversationTurn(room_id=room.id, round_id=round_.id, agent_id=agent.id, language="en",
+            objective=request, source_request=request, messages=(), origin=origin,
+            messaging_context={"connection_id": connection.id, "room_id": str(room.id), "platform": "internal"})
+        result = await mcp._create_conversation_task(turn, clean_label="Batch", clean_objective=request,
+            normalized_effort="high", action_key="synthetic-continuation", requested_disposition="CREATE_NEW")
+        repeated = await mcp._create_conversation_task(turn, clean_label="Batch", clean_objective=request,
+            normalized_effort="high", action_key="synthetic-continuation", requested_disposition="CREATE_NEW")
+        assert repeated["id"] == result["id"] and repeated["created"] is False
+        root = await db.get(Task, UUID(result["id"]))
+        scope = parse_scope(root.data)
+        assert scope.requirements[0].source_reference == f"galaris://{origin}/{round_.id}"
+        assert root.data["_resolved_write_targets"][0]["request_quote"] == request
+        child = await task_service.create(TaskCreate(parent_id=root.id, agent_id=agent.id, label="Inventory",
+            objective="<p>Record the inventory.</p>", data={"_resolved_write_targets": [{"target": unrelated}]}))
+        assert parse_scope(child.data) == scope
+        child_id, agent_id = child.id, agent.id
+    adapter = SqlAlchemyAgentTaskAdapter()
+    for target, capability, kind, expected in (
+        (ledger, "file.write", "mutate", "allow"),
+        (unrelated, "file.write", "mutate", "clarify"),
+        (ledger, "file.delete", "delete", "clarify"),
+        (ledger, "messenger.send", "transport", "clarify"),
+    ):
+        decision = await adapter.record_scope_preflight(child_id, agent_id=agent_id,
+            descriptor=EffectDescriptorV1(capability=capability, kind=kind, target_arguments=("uri",)),
+            tool_name="synthetic_effect", arguments={"uri": target})
+        assert decision.decision == expected
 
 
 async def _message(

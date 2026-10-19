@@ -1156,8 +1156,14 @@ depuis l’ADR 0058 et la reprise échoue explicitement.
 `ExecutionScopeV1` (`galaris.execution-scope/v1`) est admis côté serveur dans
 `Task.data["execution_scope"]`. La demande initiale est l'exigence `demand` ; les amendements
 et réponses de clarification ajoutent des exigences sourcées et incrémentent sa révision.
-Les grants portent des références exactes, jamais des noms interprétés depuis le profil
-ou la mémoire. Un enfant hérite du scope parent, même si sa rédaction ou son payload propose
+Les grants portent des références exactes. À l'admission conversationnelle, la préparation
+peut résoudre une ressource existante implicitement désignée par la demande courante
+(par exemple le même document de suivi). Elle conserve un extrait exact de cette demande
+et du contexte identifiant l'URI ; le serveur vérifie leur provenance avant d'accorder
+uniquement `file.write`. Une référence présente dans l'objectif ou la mémoire ne suffit
+pas seule à donner cet accord. Les suppressions et transports ne sont pas autorisés par
+cette résolution. Voir [0206](../../../../project/decisions/0206-contextual-task-write-targets.md).
+Un enfant hérite du scope parent, même si sa rédaction ou son payload propose
 d'autres grants. Une ancienne Task sans scope conserve son parcours historique.
 
 Le planner produit `requirement_ids` et `target_refs`. La validation déterministe refuse

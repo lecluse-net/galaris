@@ -413,7 +413,7 @@ async def _create_conversation_task(
         )
 
     preparation_started_at = datetime.now(timezone.utc)
-    generated_label, generated_objective, generation_cost = await run_preparation(
+    fields = await run_preparation(
         turn, lambda: generate_task_fields(
             turn, label_hint=clean_label, objective_hint=clean_objective,
         ),
@@ -438,10 +438,10 @@ async def _create_conversation_task(
 
     task = task_service.build(
         TaskCreate(
-            label=generated_label,
-            objective=compose_task_objective(turn, generated_objective),
+            label=fields.label,
+            objective=compose_task_objective(turn, fields.objective),
             status=TaskStatus.CREATE,
-            cost=generation_cost,
+            cost=fields.cost,
             effort=normalized_effort,
             forced_route=forced_route,
             forced_effort=forced_effort,
@@ -482,6 +482,7 @@ async def _create_conversation_task(
     task.data = {
         **(task.data or {}),
         "_original_demand": source_request_html(turn),
+        "_resolved_write_targets": [binding.model_dump(mode="json") for binding in fields.write_targets],
         STARTUP_TIMING_DATA_KEY: TaskAdmissionTiming(
             preparation_started_at=preparation_started_at,
             preparation_finished_at=preparation_finished_at,
@@ -490,7 +491,9 @@ async def _create_conversation_task(
     }
     created = True
     from app.task import initialize_scope
-    await initialize_scope(task)
+    source_collection = "voice" if turn.origin == "voice" else "text"
+    await initialize_scope(task, source_reference=f"galaris://{source_collection}/{turn.round_id}",
+                           resolved_write_targets=tuple(binding.target for binding in fields.write_targets))
     if replace_target is not None:
         from app.task import prepare_replacement
         prepared = await prepare_replacement(task, predecessor_id=replace_target[0],

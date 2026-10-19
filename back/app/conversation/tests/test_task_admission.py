@@ -12,6 +12,7 @@ import pytest
 
 from app.conversation import ConversationTurn
 from app.conversation import mcp as conversation_mcp
+from app.conversation.task_objective import PreparedTaskFields
 from app.conversation.models import ConversationTaskLink
 from app.agent.contracts import (
     ExecutionResult,
@@ -198,7 +199,7 @@ async def test_task_creation_is_cancelled_when_turn_becomes_stale_during_generat
     freshness = AsyncMock(return_value=False)
     turn = replace(_turn(), assert_fresh_before_effect=freshness)
     db = SimpleNamespace(scalar=AsyncMock(return_value=None))
-    generate = AsyncMock(return_value=("Rapport", "Objectif complet", 0.01))
+    generate = AsyncMock(return_value=PreparedTaskFields("Rapport", "Objectif complet", 0.01))
     lineage = AsyncMock()
     monkeypatch.setattr(conversation_mcp, "get_db", lambda: db)
     monkeypatch.setattr(conversation_mcp, "generate_task_fields", generate)
@@ -470,7 +471,7 @@ async def test_created_task_inherits_latest_round_topic(
         AsyncMock(return_value={}),
     )
     generate = AsyncMock(
-        return_value=(
+        return_value=PreparedTaskFields(
             "Scène 3D complète",
             "<p>Construire la scène 3D complète avec toutes les ressources citées.</p>",
             0.125,

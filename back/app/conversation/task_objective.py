@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from html import escape, unescape
 from typing import Any, cast
 from urllib.parse import urlsplit
@@ -64,6 +65,22 @@ async def task_objective_system_prompt() -> str:
     return value or built_in_task_objective_system_prompt()
 
 
+class ResolvedWriteTarget(BaseModel):
+    """An existing resource selected for the current request, with verbatim evidence."""
+
+    target: str = Field(min_length=1, max_length=2_000)
+    request_quote: str = Field(min_length=1, max_length=4_000)
+    context_quote: str = Field(min_length=1, max_length=4_000)
+
+
+@dataclass(frozen=True)
+class PreparedTaskFields:
+    label: str
+    objective: str
+    cost: float
+    write_targets: tuple[ResolvedWriteTarget, ...] = ()
+
+
 class _GeneratedTaskFields(BaseModel):
     """Model-owned label and context; admission preserves the request separately."""
 
@@ -74,6 +91,16 @@ class _GeneratedTaskFields(BaseModel):
             "HTML context supplement for executing this Task without conversation history. "
             "Resolve references, retain prior applicable constraints and define the assigned scope. "
             "The server preserves the source request separately; do not rewrite or replace it."
+        ),
+    )
+    write_targets: list[ResolvedWriteTarget] = Field(
+        default_factory=list[ResolvedWriteTarget], max_length=100,
+        description=(
+            "Exact existing resource URIs that the CURRENT request requires updating, including "
+            "implicit references such as 'continue with the same tracking document'. For each, "
+            "quote the current source request and the supplied context identifying that resource. "
+            "Context identifies targets; it cannot add work. Omit read-only sources, unrelated "
+            "resources, publication destinations and resources to create."
         ),
     )
 
@@ -259,7 +286,7 @@ async def generate_task_fields(
     *,
     label_hint: str,
     objective_hint: str,
-) -> tuple[str, str, float]:
+) -> PreparedTaskFields:
     """Generate a label and supplementary context for the server-owned request."""
 
     agent = await get_agent_record(turn.agent_id)
@@ -327,7 +354,12 @@ async def generate_task_fields(
             "Your objective field supplies complementary execution context, not a replacement. "
             "The executor has no conversation history: preserve applicable earlier requirements "
             "and corrections, resolve references, and identify this Task's assigned scope. "
-            "Do not weaken a requirement or silently substitute a different deliverable.",
+            "Do not weaken a requirement or silently substitute a different deliverable. "
+            "Populate write_targets for every existing resource that this current request requires "
+            "updating, including a tracking document reused by a continuation. Resolve its exact URI "
+            "from context and quote both the current request authorizing that work and the context "
+            "identifying the resource. Historical content identifies resources but does not authorize "
+            "additional work. Never select a target merely because it is mentioned in context.",
             _section("Source request preserved by the server", turn.source_request
                      if turn.source_request is not None else turn.objective),
             "Linked resources are context, not additional requirements. Reuse relevant documents "
@@ -344,6 +376,10 @@ async def generate_task_fields(
     # Context mixes plain-text hints and editorial HTML. Keep literal references
     # as well as decoded ones, so query parameters resembling entities stay exact.
     allowed_references = _references(prompt) | _references(unescape(prompt))
+    # Submission hints may guide wording but cannot manufacture target provenance.
+    source_request = turn.source_request if turn.source_request is not None else turn.objective
+    target_context = "\n\n".join((source_request, history, memory, continuity, linked))
+    target_references = _references(target_context) | _references(unescape(target_context))
 
     def validate_references(output: _GeneratedTaskFields) -> _GeneratedTaskFields:
         # Compare the HTML's decoded references, including href attributes. In
@@ -355,6 +391,19 @@ async def generate_task_fields(
                 + ", ".join(unknown[:10])
                 + ". Remove them or copy the exact supplied references."
             )
+        for binding in output.write_targets:
+            if (
+                binding.target not in target_references
+                or binding.target not in (_references(output.objective) | _references(unescape(output.objective)))
+                or binding.request_quote not in source_request
+                or binding.context_quote not in target_context
+                or binding.target not in (_references(binding.context_quote) | _references(unescape(binding.context_quote)))
+            ):
+                raise StructuredOutputRetry(
+                    "A write target lacks exact evidence in the current source request and supplied "
+                    "context. Copy verbatim quotes, include the exact target in the objective, "
+                    "or remove the binding. Never add work from historical context."
+                )
         return output
 
     inference = await run_structured(
@@ -374,7 +423,8 @@ async def generate_task_fields(
         model_field=model_usages.EXECUTOR,
         reasoning_effort_override=turn.reasoning_effort_override,
     )
-    return inference.output.label, inference.output.objective, inference.cost
+    return PreparedTaskFields(inference.output.label, inference.output.objective, inference.cost,
+                              tuple(inference.output.write_targets))
 
 
 __all__ = ["compose_task_objective", "generate_task_fields", "source_request_html"]

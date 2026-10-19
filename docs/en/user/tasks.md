@@ -49,6 +49,11 @@ unavailable attachment does not prevent the text from being published.
 
 ## What Happens After Submission
 
+A request continuing existing work can reuse its tracking document without repeating
+its URI in the latest message. Galaris resolves that reference from context and retains
+the evidence supporting its update. This does not authorize updates to other documents
+mentioned in the discussion; their access controls still apply.
+
 1. The request created on this screen becomes a durable Task.
 2. The Dispatcher selects the route, effort and work organization.
 3. Missing clarification can suspend the request; the planner prepares decomposable work.

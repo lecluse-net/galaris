@@ -286,3 +286,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0168 — Graphe mémoire exclusivement en 3D et représentants visibles](0168-memory-graph-3d-only.md)
 - [0201 — Agent-scoped virtual file browser](0201-agent-file-browser.md)
 - [0202 — Native Process references in Documents](0202-native-process-document-references.md)
+- [0206 — Resolve contextual write targets at Task admission](0206-contextual-task-write-targets.md)

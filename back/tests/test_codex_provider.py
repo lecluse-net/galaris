@@ -172,9 +172,9 @@ async def test_native_nonstream_responses_consumes_codex_sse(monkeypatch, outcom
             language="fr", objective="Vérifier le résultat", messages=(),
             messaging_context={}, reasoning_effort_override="low")
         # Actual objective generation, structured Pydantic output, SDK, proxy and bridge.
-        label, objective, _cost = await task_objective.generate_task_fields(
+        prepared = await task_objective.generate_task_fields(
             turn, label_hint="Test", objective_hint=turn.objective)
-        assert (label, objective) == ("Test", "Vérifier le résultat")
+        assert (prepared.label, prepared.objective) == ("Test", "Vérifier le résultat")
         assert len(requests) == 1
         assert requests[0]["stream"] is True
         assert create.call_args.kwargs["stream"] is True

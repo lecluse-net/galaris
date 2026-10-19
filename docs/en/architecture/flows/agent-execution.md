@@ -1109,7 +1109,12 @@ longer been available since ADR 0058, and resumption fails explicitly.
 Server admission stores `ExecutionScopeV1` (`galaris.execution-scope/v1`) in
 `Task.data["execution_scope"]`. The original demand becomes requirement `demand`; sourced
 amendments and clarification answers add requirements and increment its revision. Grants
-use exact references, never names interpreted from profiles or memory. Children inherit
+use exact references. At conversation admission, preparation can resolve an existing resource
+implicitly named by the current request, such as the same tracking document. It retains
+verbatim quotes of that request and the context identifying the URI; the server checks
+their provenance before granting only `file.write`. A reference in the objective or memory
+alone is insufficient. This resolution grants neither deletion nor transport.
+See [0206](../../../../project/decisions/0206-contextual-task-write-targets.md). Children inherit
 the parent scope even when their prose or payload supplies other grants. Historical Tasks
 without a scope preserve their existing execution path.
 

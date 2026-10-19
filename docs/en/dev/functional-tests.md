@@ -1330,6 +1330,10 @@ and Messenger.
 `e2e/specs/file-indexing.spec.mjs` exercises the assembled application and its real API.
 ## Scope and durable controls
 
+`app/conversation/tests/test_task_objective.py` and `test_service.py` also cover tracking
+document resolution for a continuation: quote provenance, write-only grants, durable
+admission, and child inheritance without scope expansion.
+
 `app/agent/tests/test_execution_scope.py` and `app/task/tests/test_execution_scope.py`
 check inheritance without widening, amendments through the port, unknown versions,
 plan coverage and target provenance. The real wrapper persists refusal before effects,

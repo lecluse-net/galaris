@@ -159,6 +159,7 @@ async def test_task_fields_use_standard_model_and_complete_conversation_context(
     inference = SimpleNamespace(
         output=SimpleNamespace(
             label="Mise à jour du rapport",
+            write_targets=[],
             objective=(
                 "Mettre à jour document://report/current avec les chiffres de "
                 "matrix://room/chiffres.xlsx, conserver le HTML et produire le PDF."
@@ -173,15 +174,15 @@ async def test_task_fields_use_standard_model_and_complete_conversation_context(
     monkeypatch.setattr(task_objective, "build_agent_run_context", build_context)
     monkeypatch.setattr(task_objective, "run_structured", run)
 
-    label, objective, cost = await task_objective.generate_task_fields(
+    prepared = await task_objective.generate_task_fields(
         turn,
         label_hint="Rapport",
         objective_hint="vas-y, fais-le",
     )
 
-    assert label == "Mise à jour du rapport"
-    assert "matrix://room/chiffres.xlsx" in objective
-    assert cost == 0.125
+    assert prepared.label == "Mise à jour du rapport"
+    assert "matrix://room/chiffres.xlsx" in prepared.objective
+    assert prepared.cost == 0.125
     get_llm.assert_awaited_once_with(model_usages.EXECUTOR, agent=agent)
     get_prompt.assert_awaited_once_with(Params.AI_TASK_OBJECTIVE_SYSTEM_PROMPT)
     request = build_context.await_args.args[0]
@@ -257,11 +258,11 @@ async def test_task_reference_html_encoding_does_not_exhaust_output_retries(
                         AsyncMock(return_value=model))
     monkeypatch.setattr(structured_service, "estimate_cost_from_usage", lambda *_: 0.0)
 
-    _, context, _ = await task_objective.generate_task_fields(
+    prepared = await task_objective.generate_task_fields(
         turn, label_hint="Synthetic import", objective_hint=turn.objective,
     )
 
-    objective = task_objective.compose_task_objective(turn, context)
+    objective = task_objective.compose_task_objective(turn, prepared.objective)
     assert requests == 2
     assert reference in visible_text(objective)
     assert visible_text(valid_html) in visible_text(objective)
@@ -392,3 +393,48 @@ async def test_empty_task_objective_prompt_uses_repository_default(
 
     assert resolved == task_objective.built_in_task_objective_system_prompt()
     get_prompt.assert_awaited_once_with(Params.AI_TASK_OBJECTIVE_SYSTEM_PROMPT)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("defect", [None, "target", "request_quote", "context_quote", "objective", "hint_only"])
+async def test_continued_work_binds_only_selected_contextual_write_targets(monkeypatch, defect):
+    """Continuing a batch can update its existing ledger without granting all context."""
+    from app.agent import admitted_scope, preflight, EffectDescriptorV1
+
+    ledger = f"document://{uuid4()}"
+    unrelated = f"document://{uuid4()}"
+    request = "Continue the next batch with the same tracking document."
+    turn = replace(_turn(), objective=request, source_request=request)
+    context_quote = f"Batch tracking document: {ledger}"
+    agent = SimpleNamespace(id=7, code="synthetic", first_name="Synthetic", last_name="Agent",
+                            agent_driver="internal", title=None, personality=None,
+                            job_description=None, job_title=None)
+    monkeypatch.setattr(task_objective, "get_agent_record", AsyncMock(return_value=agent))
+    monkeypatch.setattr(task_objective.llm_service, "get_profile_llm",
+                        AsyncMock(return_value=SimpleNamespace(id=42)))
+    monkeypatch.setattr(task_objective.params_service, "get_or_default", AsyncMock(return_value="Prepare the task."))
+    monkeypatch.setattr(task_objective, "build_agent_run_context", AsyncMock(return_value=AgentRunContext(
+        continuity_context="" if defect == "hint_only" else f"{context_quote}\nUnrelated resource: {unrelated}",
+    )))
+
+    async def prepare(**kwargs):
+        binding = {"target": ledger, "request_quote": request, "context_quote": context_quote}
+        if defect in {"target", "request_quote", "context_quote"}:
+            binding[defect] = "synthetic://invented"
+        output = task_objective._GeneratedTaskFields.model_validate({
+            "label": "Next batch", "objective": "<p>Prepare the batch.</p>" if defect == "objective"
+                else f"<p>Update {ledger}; leave {unrelated} untouched.</p>",
+            "write_targets": [binding],
+        })
+        return SimpleNamespace(output=kwargs["output_validator"](output), cost=0.0)
+
+    monkeypatch.setattr(task_objective, "run_structured", prepare)
+    if defect is not None:
+        with pytest.raises(StructuredOutputRetry):
+            await task_objective.generate_task_fields(turn, label_hint="Batch", objective_hint=context_quote)
+        return
+    prepared = await task_objective.generate_task_fields(turn, label_hint="Batch", objective_hint=request)
+    scope = admitted_scope(uuid4(), request, resolved_write_targets=tuple(item.target for item in prepared.write_targets))
+    write = EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("uri",))
+    assert preflight(scope, write, "file_edit", {"uri": ledger}).decision == "allow"
+    assert preflight(scope, write, "file_edit", {"uri": unrelated}).decision == "clarify"

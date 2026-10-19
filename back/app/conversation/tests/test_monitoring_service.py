@@ -18,6 +18,7 @@ from app.conversation import (
     monitoring_service,
     scheduler,
 )
+from app.conversation.task_objective import PreparedTaskFields
 from app.conversation.contracts import ConversationOutcome, ConversationTurn
 from app.conversation.models import ConversationRound, ConversationRoundAttempt, ConversationTaskLink
 from app.conversation.service import admit_message, claim_next_round, complete_round, fail_round
@@ -42,7 +43,7 @@ async def test_admission_timings_are_durable_shared_with_round_and_not_rewritten
         objective="Génère une image.", messages=(),
         messaging_context={"connection_id": connection.id, "room_id": str(room.id), "platform": "telegram"},
     )
-    generate = AsyncMock(return_value=("Image", "<p>Générer une image.</p>", 0.0))
+    generate = AsyncMock(return_value=PreparedTaskFields("Image", "<p>Générer une image.</p>", 0.0))
     monkeypatch.setattr(mcp, "generate_task_fields", generate)
     monkeypatch.setattr("app.task.task_service.publish_created", AsyncMock())
     monkeypatch.setattr("app.task.runner.go_next", lambda _id: None)

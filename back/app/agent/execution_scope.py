@@ -26,11 +26,17 @@ def parse_scope(data: Mapping[str, object]) -> ExecutionScopeV1 | None:
 
 
 def admitted_scope(task_id: UUID, demand: str, *, delivery_target: str | None = None,
-                   source_reference: str | None = None) -> ExecutionScopeV1:
+                   source_reference: str | None = None,
+                   resolved_write_targets: Sequence[str] = ()) -> ExecutionScopeV1:
     reference = source_reference or f"galaris://task/{task_id}"
     requirement = ScopeRequirement(key="demand", instruction=demand or "Complete the admitted task.", source_reference=reference)
     targets = set(_URI.findall(html.unescape(demand)))
     grants = [ScopeGrant(target=target, requirement_key="demand", source_reference=reference) for target in sorted(targets)]
+    # Trusted root admission resolves implicit targets against its frozen source
+    # and context. Resolution authorizes updates only, never deletion or transport.
+    grants.extend(ScopeGrant(target=target, capability="file.write", requirement_key="demand",
+                             source_reference=reference)
+                  for target in sorted(set(resolved_write_targets) - targets))
     if delivery_target:
         grants.append(ScopeGrant(target=delivery_target, capability="messenger.send", requirement_key="demand", source_reference=reference))
     return ExecutionScopeV1(source_task_id=task_id, delivery_owner_task_id=task_id, requirements=(requirement,), grants=tuple(grants))

@@ -1378,6 +1378,10 @@ groupée des fichiers d'un Tool combinant File Share et Messenger.
 `e2e/specs/file-indexing.spec.mjs` exerce l'application assemblée et son API réelle.
 ## Portée et commandes durables
 
+`app/conversation/tests/test_task_objective.py` et `test_service.py` couvrent aussi la
+résolution d'un document de suivi pour une demande de continuation : provenance des extraits,
+accord limité à l'écriture, admission durable et héritage sans élargissement par les enfants.
+
 `app/agent/tests/test_execution_scope.py` et `app/task/tests/test_execution_scope.py`
 vérifient héritage sans élargissement, amendement via le port, version inconnue, couverture
 du plan et provenance des cibles. Le wrapper réel conserve un refus avant tout effet,
