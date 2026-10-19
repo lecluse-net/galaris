@@ -155,11 +155,9 @@ async def move_document(scope: AgentManagementScope, document_id: UUID, tag_id: 
 
 
 async def sync_classified_document(document_id: UUID) -> None:
-    from .document_structure import sync_document_structure
+    from .document_structure import sync_document_classification
     await get_db().flush()
-    item = await service.document_record(document_id)
-    if item is not None:
-        await sync_document_structure(item)
+    await sync_document_classification(document_id)
 
 
 async def list_icons(user_id: int) -> list[DocumentTagIconPublic]:

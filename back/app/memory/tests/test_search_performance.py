@@ -97,13 +97,20 @@ async def test_multilingual_search_has_bounded_queries_and_preserves_private_sco
 
 
 @pytest.mark.asyncio
-async def test_memory_search_keeps_connection_planner_defaults_after_commit_and_rollback(committed_database):
+@pytest.mark.parametrize("operation", ["search", "library"])
+async def test_memory_reads_keep_connection_planner_defaults_after_commit_and_rollback(committed_database, operation):
     from core.database import get_db_session
+    from app.memory.library_queries import browse_document_library
+    from app.memory.schemas import DocumentLibraryRequest
 
     async with get_db_session() as session:
         original = await session.scalar(text("SHOW jit"))
         for finish in (session.commit, session.rollback):
-            result = await search_items(MemorySearchRequest(agent_id=1, query="Synthetic absent planner probe"))
-            assert result.hits == []
+            if operation == "search":
+                result = await search_items(MemorySearchRequest(agent_id=1, query="Synthetic absent planner probe"))
+                assert result.hits == []
+            else:
+                page = await browse_document_library(DocumentLibraryRequest(), managed_agent_ids=set())
+                assert page.entries == []
             await finish()
             assert await session.scalar(text("SHOW jit")) == original

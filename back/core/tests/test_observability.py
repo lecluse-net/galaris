@@ -119,6 +119,74 @@ def test_test_harness_does_not_export_or_join_external_traces(monkeypatch):
     assert configure.call_args.kwargs["distributed_tracing"] is False
 
 
+@pytest.mark.parametrize("environment", ["", "dev", "prod", "pp", "test", "demo", "custom"])
+def test_exception_sinks_keep_tracebacks_without_local_secrets(tmp_path, environment):
+    """Exercise both configured sinks and the stdlib bridge in an isolated process."""
+    import subprocess
+    import sys
+
+    script = tmp_path / "synthetic_logging_failure.py"
+    # A real source file is necessary: Loguru cannot inspect locals from python -c.
+    script.write_text('''
+import io
+import logging
+import os
+import sys
+from unittest.mock import patch
+
+sys.path.insert(0, os.getcwd())
+os.environ["LOGURU_DIAGNOSE"] = "YES"
+from asyncpg.exceptions import CannotConnectNowError
+from loguru import logger
+from core import settings
+from core.logging import setup_logging
+
+settings.APP_ENV = sys.argv[1]
+settings.LOG_LEVEL = "INFO"
+console = io.StringIO()
+mirrored = []
+
+class CaptureHandler(logging.Handler):
+    def emit(self, record):
+        mirrored.append(record.getMessage())
+
+def refuse_connection(parameters):
+    try:
+        raise OSError("synthetic connection refused")
+    except OSError as cause:
+        raise CannotConnectNowError("synthetic database is shutting down") from cause
+
+def connect():
+    parameters = {"password": "synthetic-db-password-never-log"}
+    refuse_connection(parameters)
+
+with patch("sys.stdout", console), patch("logfire.LogfireLoggingHandler", return_value=CaptureHandler()):
+    setup_logging()
+    for standard_logging in (False, True):
+        try:
+            connect()
+        except CannotConnectNowError:
+            if standard_logging:
+                logging.getLogger("synthetic.database").exception("Synthetic database unavailable")
+            else:
+                logger.exception("Synthetic database unavailable")
+    logger.remove()
+
+for output in (console.getvalue(), "\\n".join(mirrored)):
+    assert "synthetic-db-password-never-log" not in output
+    assert output.count("Synthetic database unavailable") == 2
+    assert output.count("CannotConnectNowError: synthetic database is shutting down") == 2
+    assert output.count("OSError: synthetic connection refused") == 2
+    assert "Traceback (most recent call last)" in output
+    assert 'in refuse_connection' in output
+''', encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(script), environment],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_sql_traces_keep_parent_duration_and_errors_without_varying_query_text(monkeypatch):
     """The configured SQL instrumentation preserves diagnostics and reusable SQL."""
     import json

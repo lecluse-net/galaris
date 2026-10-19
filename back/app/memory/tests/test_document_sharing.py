@@ -614,6 +614,10 @@ async def test_selected_owner_groups_are_explicit_and_memberships_remain_live(db
         for actor in [peer.id, HumanActor(reader.id)]:
             assert (await effective_access(item, actor)).can_write == write
             assert (await effective_access(item, actor)).can_read
+        page = await service.browse_document_library(DocumentLibraryRequest(), managed_agent_ids={peer.id}, user_id=reader.id)
+        assert [entry.item.id for entry in page.entries] == [item.id]
+        assert page.entries[0].user_access.can_write == write
+        assert page.entries[0].writable_agent_ids == ([peer.id] if write else [])
     # Removing the owner from a selected group does not silently replace the selection.
     await db.execute(delete(membership_model).where(getattr(membership_model, owner_field) == owner_id))
     await db.commit()
@@ -624,6 +628,12 @@ async def test_selected_owner_groups_are_explicit_and_memberships_remain_live(db
     await db.commit()
     assert not (await effective_access(item, peer.id)).can_read
     assert (await effective_access(item, HumanActor(reader.id))).can_write
+    page = await service.browse_document_library(DocumentLibraryRequest(), managed_agent_ids={peer.id}, user_id=reader.id)
+    assert page.entries[0].agent_ids == [] and page.entries[0].user_access.can_write
+    await db.execute(delete(TeamUserModel).where(TeamUserModel.user_id == reader.id, TeamUserModel.team_id == team.id))
+    await db.commit()
+    page = await service.browse_document_library(DocumentLibraryRequest(), managed_agent_ids={peer.id}, user_id=reader.id)
+    assert page.entries == [] and page.total == 0
 
 
 @pytest.mark.asyncio

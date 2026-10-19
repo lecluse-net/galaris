@@ -16,7 +16,7 @@ from .schemas import DocumentLinkCard
 
 
 async def create_link_card(document_id: UUID, url: str, *, actor_agent_id: int | HumanActor) -> DocumentLinkCard:
-    item, _, access, _, _ = await service.get_item(document_id, agent_id=actor_agent_id)
+    item, access = await service.get_item_metadata(document_id, agent_id=actor_agent_id)
     if not access.can_write or item.content_profile != "document":
         raise service.MemoryPermissionError("Document edit access required")
     metadata = await preview_web_link(url, agent_id=actor_agent_id)

@@ -1,11 +1,17 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
+// Playwright's worker blocker reads navigator.serviceWorker in opaque frames.
+// Keep the document sandbox intact and avoid injecting that failing script.
+test.use({ serviceWorkers: 'allow' })
+
 test('Documents and Datasets use separate libraries and creation paths', async ({ page, request }) => {
   const pageErrors = collectPageErrors(page)
   test.setTimeout(120_000)
   await page.addLocatorHandler(page.locator('.chat-notification-prompt'), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
-  await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }))
+  // A sidebar backdrop behind an open dialog must not interrupt dialog actions.
+  await page.addLocatorHandler(page.locator('body:not(:has([role="dialog"])) .q-drawer__backdrop'),
+    backdrop => backdrop.click({ position: { x: 380, y: 150 } }))
   const fixture = await (await request.post('/api/__test/seed')).json()
   await page.goto('/user/login')
   await page.locator('input[type=email]').fill(fixture.email)
@@ -43,8 +49,7 @@ test('Documents and Datasets use separate libraries and creation paths', async (
   expect(library.entries.every(entry => entry.item.document_type !== 'dataset')).toBe(true)
   const editor = page.locator('[data-editor-surface]')
   await editor.click()
-  await page.getByRole('button', { name: /^(Insérer un lien ou un fichier|Insert a link or file)$/ }).first().click()
-  await page.getByRole('button', { name: /^(Ajouter une PJ interne|Add an internal attachment)$/ }).click()
+  await page.getByRole('button', { name: /^(Lien Galaris|Galaris link)$/, exact: true }).first().click()
   await page.getByRole('dialog').getByText('Galaris Datasets', { exact: true }).click()
   await page.getByRole('dialog').locator('.file-main').getByRole('button', { name: new RegExp(`^(Select|Sélectionner) ${dataset.title}$`) }).click()
   const saved = page.waitForResponse(response => response.url().includes(`/memory/documents/${document.id}`) && response.request().method() === 'PATCH')

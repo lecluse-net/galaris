@@ -23,7 +23,7 @@ async def item_actor(
     document_id: UUID, scope: AgentManagementScope, *, write: bool = False,
     document_only: bool = False,
 ) -> int | HumanActor:
-    item = await service.item_record(document_id, revisions=False)
+    item = await service.item_record(document_id, revisions=False, contents=False)
     if document_only and (item is None or item.node_kind != "document"):
         raise service.MemoryNotFoundError("Document not found")
     if item is None:
@@ -54,7 +54,7 @@ async def can_manage(item: MemoryItem, scope: AgentManagementScope) -> bool:
 
 async def sharing(document_id: UUID, scope: AgentManagementScope) -> DocumentSharing:
     await item_actor(document_id, scope)
-    item = await service.item_record(document_id)
+    item = await service.item_record(document_id, revisions=False, contents=False)
     assert item is not None
     if item.node_kind != "document" and not item.source_managed and item.node_kind not in {"folder", "attachment"}:
         raise service.MemoryNotFoundError("Document not found")
@@ -96,7 +96,7 @@ async def update_level(document_id: UUID, data: DocumentSharingLevelUpdate, scop
 async def _editable_sharing(document_id: UUID, expected: int, scope: AgentManagementScope) -> MemoryItem:
     # Serialize edits to the same document, including concurrent first-time grants.
     await get_db().scalar(select(MemoryItem.id).where(MemoryItem.id == document_id).with_for_update())
-    item = await service.item_record(document_id)
+    item = await service.item_record(document_id, revisions=False, contents=False)
     if item is None or not await can_manage(item, scope):
         raise service.MemoryPermissionError("Only the owner can manage sharing")
     await item_actor(document_id, scope, write=True)
@@ -124,7 +124,7 @@ async def _update_grant(item: MemoryItem, data: DocumentSharingUpdate) -> None:
 
 async def agent_sharing(item_id: UUID, *, agent_id: int) -> DocumentSharing:
     """Let an agent inspect its own recipients without impersonating its human manager."""
-    item = await service.item_record(item_id)
+    item = await service.item_record(item_id, revisions=False, contents=False)
     if item is None:
         raise service.MemoryNotFoundError("Memory not found")
     if item.node_kind != "document":

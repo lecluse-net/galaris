@@ -17,7 +17,7 @@ from .document_attachment_service import attachments_from_item, read_document_at
 
 async def export_document_bundle(document_id: UUID, html: str, *, actor_agent_id: int | HumanActor) -> bytes:
     """Export a static snapshot and immutable attachments with portable local links."""
-    item, _, _, _, _ = await service.get_item(document_id, agent_id=actor_agent_id)
+    item, _ = await service.get_item_metadata(document_id, agent_id=actor_agent_id)
     if item.document_type != "html" or item.content_profile != "document":
         raise ValueError("A document is required")
     if len(html.encode()) > 12_000_000:
@@ -44,7 +44,7 @@ async def export_document_pdf(
     document_id: UUID, html: str, *, managed_agent_ids: frozenset[int] | None, actor: int | HumanActor | None = None,
 ) -> bytes:
     if actor is not None:
-        item, *_ = await service.get_item(document_id, agent_id=actor)
+        item, _ = await service.get_item_metadata(document_id, agent_id=actor)
     else:
         item, readable, _writable = await service.managed_document_agent_ids(
             document_id, managed_agent_ids=managed_agent_ids,

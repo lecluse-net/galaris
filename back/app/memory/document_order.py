@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from uuid import UUID
 import unicodedata
 
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, func, or_, select
 
 from app.agent import AgentManagementScope
 from core.database import get_db
@@ -45,10 +45,8 @@ async def reorder(scope: AgentManagementScope, data: DocumentOrderMove) -> None:
         parent_id = (await document_tags.require_tag(scope.user_id, parent_id)).parent_id
     if data.node.kind == "tag":
         moving: DocumentTag | DocumentTagAssignment | DocumentListPosition = await document_tags.require_tag(scope.user_id, data.node.id)
-        title = moving.name
     else:
         await document_sharing.document_actor(data.node.id, scope)
-        title = await db.scalar(select(MemoryItem.title).where(MemoryItem.id == data.node.id)) or ""
         if data.list_only or data.parent_id is None:
             existing = await db.scalar(select(DocumentListPosition).where(
                 DocumentListPosition.user_id == scope.user_id, DocumentListPosition.document_id == data.node.id,
@@ -59,15 +57,17 @@ async def reorder(scope: AgentManagementScope, data: DocumentOrderMove) -> None:
 
     siblings: list[Sibling] = []
     if data.list_only or (data.node.kind == "document" and data.parent_id is None):
-        rows = await db.execute(select(MemoryItem, DocumentListPosition).outerjoin(DocumentListPosition,
+        # Repositioning needs identities and personal positions, never the
+        # contents or ORM relationships of every document in the library.
+        rows = await db.execute(select(MemoryItem.id, DocumentListPosition).outerjoin(DocumentListPosition,
             (DocumentListPosition.document_id == MemoryItem.id) & (DocumentListPosition.user_id == scope.user_id),
         ).where(MemoryItem.node_kind == "document", or_(
             readable_item_for_agents_clause(scope.agent_ids), human_document_clause(scope.user_id),
-        )))
-        for item, position in rows:
-            if item.id != data.node.id:
-                siblings.append(Sibling("document", item.id, item.title, position or DocumentListPosition(
-                    user_id=scope.user_id, document_id=item.id, position=0,
+        )).order_by(func.coalesce(DocumentListPosition.position, 0), func.lower(MemoryItem.title), MemoryItem.id))
+        for document_id, position in rows:
+            if document_id != data.node.id:
+                siblings.append(Sibling("document", document_id, "", position or DocumentListPosition(
+                    user_id=scope.user_id, document_id=document_id, position=0,
                 )))
     else:
         folders = await db.scalars(select(DocumentTag).where(
@@ -81,7 +81,7 @@ async def reorder(scope: AgentManagementScope, data: DocumentOrderMove) -> None:
             ).where(DocumentTagAssignment.tag_id == data.parent_id))
             siblings.extend(Sibling("document", assignment.document_id, name, assignment) for assignment, name in rows
                 if not (data.node.kind == "document" and assignment.document_id == data.node.id))
-    siblings.sort(key=lambda node: (node.row.position, node.title.lower(), str(node.id)))
+        siblings.sort(key=lambda node: (node.row.position, node.title.lower(), str(node.id)))
     index = len(siblings)
     if data.anchor is not None:
         if data.anchor == data.node:
@@ -96,7 +96,9 @@ async def reorder(scope: AgentManagementScope, data: DocumentOrderMove) -> None:
 
     # Validate everything before replacing classification. A stale anchor never moves a document.
     previous_parent: UUID | None = None
+    folder_structure_changed = False
     if isinstance(moving, DocumentTag):
+        folder_structure_changed = moving.parent_id != data.parent_id or moving.memory_item_id is None
         moving.parent_id = data.parent_id
     elif not data.list_only:
         previous_parent = await document_nesting.clear_parent(scope.user_id, data.node.id)
@@ -104,7 +106,7 @@ async def reorder(scope: AgentManagementScope, data: DocumentOrderMove) -> None:
             DocumentTagAssignment.document_id == data.node.id,
             DocumentTagAssignment.tag_id.in_(select(DocumentTag.id).where(DocumentTag.user_id == scope.user_id)),
         ))
-    siblings.insert(index, Sibling(data.node.kind, data.node.id, title, moving))
+    siblings.insert(index, Sibling(data.node.kind, data.node.id, "", moving))
     # Manual positioning never places a document before a folder.
     siblings.sort(key=lambda node: node.kind != "tag")
     for position, node in enumerate(siblings, 1):
@@ -112,13 +114,11 @@ async def reorder(scope: AgentManagementScope, data: DocumentOrderMove) -> None:
         db.add(node.row)
     await db.flush()
     if isinstance(moving, DocumentTag):
-        from .document_structure import sync_folder_structure
-        await sync_folder_structure(scope.user_id)
+        if folder_structure_changed:
+            from .document_structure import sync_folder_structure
+            await sync_folder_structure(scope.user_id)
     elif not data.list_only:
-        from .document_structure import sync_document_structure
-        item = await db.get(MemoryItem, data.node.id)
-        if item is not None:
-            await sync_document_structure(item)
+        await document_tags.sync_classified_document(data.node.id)
     await db.commit()
     await emit_classification(scope.user_id,
         tag_ids=[] if data.list_only else [*previous_tags, *([data.parent_id] if data.parent_id else [])],

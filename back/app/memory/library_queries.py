@@ -4,9 +4,12 @@ from collections.abc import Collection
 from datetime import datetime, timezone
 from typing import cast
 from uuid import UUID
-from sqlalchemy import case, func, or_, select
+from pydantic import TypeAdapter
+from sqlalchemy import Select, Text, case, false, func, literal, or_, select, true, union_all
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.orm import defer, joinedload, raiseload, selectinload
 from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.selectable import ScalarSelect
 from core.database import get_db
 from core.user import UserModel, get_user_record, list_user_records
 from app.agent import Agent, list_agent_records
@@ -25,6 +28,7 @@ from .schemas import (
     RecentMemoryItem,
 )
 from .item_projection import item_to_public
+from .query_policy import prepare_memory_read
 
 
 async def list_recent_memories(
@@ -151,6 +155,10 @@ async def browse_document_library(
 ) -> DocumentLibraryPage:
     """Browse every document visible to at least one managed Agent."""
 
+    # Counts and personal classification can cross PostgreSQL's JIT threshold
+    # even for small libraries. Keep compilation out of this interactive read,
+    # just as for Memory search and graph queries; all live ACLs still apply.
+    await prepare_memory_read()
     db = get_db()
     now = datetime.now(timezone.utc)
     scope_clause = readable_item_for_agents_clause(managed_agent_ids)
@@ -163,44 +171,15 @@ async def browse_document_library(
         or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
         or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
     ]
-    owner_options: list[DocumentOwnerOption] = []
-    if request.include_owners:
-        agent_rows = await db.execute(
-            select(Agent.id, Agent.first_name, Agent.last_name, Agent.code)
-            .join(MemoryItem, MemoryItem.owner_agent_id == Agent.id)
-            .where(*base_filters)
-            .distinct()
-        )
-        for identity, first, last, code in agent_rows:
-            owner_options.append(
-                DocumentOwnerOption(
-                    kind="agent", id=identity, label=f"{first} {last}".strip() or code, subtitle=""
-                )
-            )
-        user_rows = await db.execute(
-            select(UserModel.id, UserModel.display_name, UserModel.email)
-            .join(MemoryItem, MemoryItem.owner_user_id == UserModel.id)
-            .where(*base_filters)
-            .distinct()
-        )
-        for identity, name, email in user_rows:
-            owner_options.append(
-                DocumentOwnerOption(kind="user", id=identity, label=name or email, subtitle="")
-            )
-    owner_options.sort(key=lambda option: (option.label.casefold(), option.kind, option.id))
-    # Classification reuses this scope for parents, children and descendants.
-    # Keep those joins from multiplying live ACL evaluation inside nested loops.
+    # Count, classification, facets and page metadata share one live ACL scan
+    # in the same statement, including when the requested page has no rows.
     visible_documents = (
         select(MemoryItem.id).where(*base_filters).correlate(None)
         .cte("library_visible_documents").prefix_with("MATERIALIZED")
     )
     visible_ids = select(visible_documents.c.id)
-    classification_filters = await library_filters(request, user_id, visible_ids)
-    if request.parent_document_id is not None:
-        # Reuse the same live ACL set in the outer query. Expanding the raw ACL
-        # again lets nesting joins repeat its correlated permission subqueries.
-        base_filters = [MemoryItem.id.in_(visible_ids)]
-    base_filters.extend(classification_filters)
+    base_filters = [MemoryItem.id.in_(visible_ids)]
+    base_filters.extend(await library_filters(request, user_id, visible_ids))
     keyword = request.keyword.strip() if request.keyword is not None else ""
     if keyword:
         base_filters.append(MemoryItem.keywords.contains([keyword]))
@@ -215,7 +194,12 @@ async def browse_document_library(
             )
         )
 
-    total = int(await db.scalar(select(func.count(MemoryItem.id)).where(*base_filters)) or 0)
+    filtered_documents = select(MemoryItem.id).where(*base_filters).cte("library_filtered_documents").prefix_with("MATERIALIZED")
+    summary = select(
+        select(func.count()).select_from(filtered_documents).scalar_subquery().label("total"),
+        (_library_owner_query(visible_ids) if request.include_owners else literal(None, Text)).label("owners"),
+        (_library_keyword_query(visible_ids) if request.include_keywords else literal(None, Text)).label("keywords"),
+    ).cte("library_summary").prefix_with("MATERIALIZED")
     position = func.coalesce(
         (
             select(DocumentNesting.position).where(
@@ -247,10 +231,43 @@ async def browse_document_library(
         "created_at": MemoryItem.created_at,
         "updated_at": func.coalesce(MemoryItem.updated_at, MemoryItem.created_at),
     }[request.sort_by]
+    page = select(
+        MemoryItem.id, position.label("position"), sort_column.label("sort_value"),
+        func.lower(MemoryItem.title).label("sort_title"),
+    ).where(MemoryItem.id.in_(select(filtered_documents.c.id))).order_by(
+        sort_column.desc() if request.sort_desc else sort_column.asc(),
+        func.lower(MemoryItem.title), MemoryItem.id,
+    ).offset(request.offset).limit(request.limit).cte("library_page")
+    parent = select(DocumentNesting.parent_document_id).where(
+        DocumentNesting.user_id == user_id, DocumentNesting.document_id == MemoryItem.id,
+        DocumentNesting.parent_document_id.in_(visible_ids),
+    ).correlate(MemoryItem).scalar_subquery()
+    children = select(func.count()).select_from(DocumentNesting).where(
+        DocumentNesting.user_id == user_id, DocumentNesting.parent_document_id == MemoryItem.id,
+        DocumentNesting.document_id.in_(visible_ids),
+    ).correlate(MemoryItem).scalar_subquery()
+    # Evaluate these once per page document, before URL/tag joins can multiply
+    # rows. Never load content or revisions to build the navigation list.
+    details = select(
+        page,
+        parent.label("parent_document_id"), children.label("children_count"),
+        (_library_tag_query(user_id) if user_id is not None else literal(None, Text)).label("tags"),
+        (human_document_clause(user_id) if user_id is not None else false()).label("human_readable"),
+        (human_document_clause(user_id, write=True) if user_id is not None else false()).label("human_writable"),
+    ).join(MemoryItem, MemoryItem.id == page.c.id).cte("library_page_details").prefix_with("MATERIALIZED")
+    first_row = func.row_number().over() == 1
+    first_document_row = func.row_number().over(partition_by=MemoryItem.id) == 1
     result = await db.execute(
         select(
             MemoryItem,
-            position.label("position"),
+            details.c.position, details.c.parent_document_id, details.c.children_count,
+            details.c.human_readable, details.c.human_writable, summary.c.total,
+            first_row.label("is_summary"),
+            # Send potentially large filter catalogues once, rather than once
+            # per document. Text keeps ORM row deduplication hashable.
+            case((first_row, summary.c.owners)).label("owners"),
+            case((first_row, summary.c.keywords)).label("keywords"),
+            case((first_document_row, details.c.tags)).label("tags"),
             case(
                 (
                     MemoryItem.owner_agent_id.is_not(None),
@@ -265,82 +282,62 @@ async def browse_document_library(
                 else_=func.coalesce(func.nullif(UserModel.display_name, ""), UserModel.email, ""),
             ).label("owner_label"),
         )
+        .select_from(summary)
+        .outerjoin(details, true())
+        .outerjoin(MemoryItem, MemoryItem.id == details.c.id)
         .outerjoin(Agent, MemoryItem.owner_agent_id == Agent.id)
         .outerjoin(UserModel, MemoryItem.owner_user_id == UserModel.id)
         .options(
+            # The summary must survive even when there is no page document.
+            joinedload(MemoryItem.share, innerjoin=False),
             selectinload(MemoryItem.grants),
             raiseload(MemoryItem.revisions),
             joinedload(MemoryItem.url_relations),
             joinedload(MemoryItem.document).defer(Document.content),
             defer(MemoryItem.memory_content),
         )
-        .where(*base_filters)
         .order_by(
-            sort_column.desc() if request.sort_desc else sort_column.asc(),
-            func.lower(MemoryItem.title),
-            MemoryItem.id,
+            details.c.sort_value.desc() if request.sort_desc else details.c.sort_value.asc(),
+            details.c.sort_title, details.c.id,
         )
-        .offset(request.offset)
-        .limit(request.limit + 1)
         .execution_options(populate_existing=True)
     )
     rows = result.unique().all()
-    items = [row[0] for row in rows]
-    owner_labels = {row[0].id: cast(str, row.owner_label) for row in rows}
-    positions = {row[0].id: cast(int, row.position) for row in rows}
-    has_more = len(items) > request.limit
-    items = items[: request.limit]
+    summary_row = next(row for row in rows if row.is_summary)
+    total = cast(int, summary_row.total)
+    owner_options = TypeAdapter(list[DocumentOwnerOption]).validate_json(cast(str | None, summary_row.owners) or "[]")
+    owner_options.sort(key=lambda option: (option.label.casefold(), option.kind, option.id))
+    keywords = TypeAdapter(list[str]).validate_json(cast(str | None, summary_row.keywords) or "[]")
+    keywords.sort(key=str.casefold)
+    items: dict[UUID, MemoryItem] = {}
+    owner_labels: dict[UUID, str] = {}
+    positions: dict[UUID, int] = {}
     personal_tags: dict[UUID, list[DocumentTagPublic]] = {}
     parents: dict[UUID, UUID] = {}
     child_counts: dict[UUID, int] = {}
-    if user_id is not None and items:
-        item_ids = [item.id for item in items]
-        parents = dict((await db.execute(select(DocumentNesting.document_id, DocumentNesting.parent_document_id).where(
-            DocumentNesting.user_id == user_id, DocumentNesting.document_id.in_(item_ids),
-            DocumentNesting.parent_document_id.in_(visible_ids),
-        ))).tuples().all())
-        child_counts = dict((await db.execute(select(DocumentNesting.parent_document_id, func.count()).where(
-            DocumentNesting.user_id == user_id, DocumentNesting.parent_document_id.in_(item_ids),
-            DocumentNesting.document_id.in_(visible_ids),
-        ).group_by(DocumentNesting.parent_document_id))).tuples().all())
-        tag_rows = await db.execute(
-            select(DocumentTagAssignment.document_id, DocumentTag)
-            .join(DocumentTag)
-            .where(
-                DocumentTag.user_id == user_id,
-                DocumentTagAssignment.document_id.in_([item.id for item in items]),
-            )
-            .order_by(func.lower(DocumentTag.name), DocumentTag.id)
-        )
-        for document_id, tag in tag_rows:
-            personal_tags.setdefault(document_id, []).append(DocumentTagPublic.model_validate(tag))
-
-    team_access = await document_team_agent_access([item.id for item in items])
-    human_readable: set[UUID] = (
-        set(
-            await db.scalars(
-                select(MemoryItem.id).where(
-                    MemoryItem.id.in_([item.id for item in items]), human_document_clause(user_id)
-                )
-            )
-        )
-        if user_id is not None
-        else set()
-    )
-    human_writable: set[UUID] = (
-        set(
-            await db.scalars(
-                select(MemoryItem.id).where(
-                    MemoryItem.id.in_([item.id for item in items]),
-                    human_document_clause(user_id, write=True),
-                )
-            )
-        )
-        if user_id is not None
-        else set()
-    )
+    human_readable: set[UUID] = set()
+    human_writable: set[UUID] = set()
+    tag_adapter = TypeAdapter(list[DocumentTagPublic])
+    for row in rows:
+        item = cast(MemoryItem | None, row[0])
+        if item is None:
+            continue
+        items[item.id] = item
+        owner_labels[item.id] = cast(str, row.owner_label)
+        positions[item.id] = cast(int, row.position)
+        if row.parent_document_id is not None:
+            parents[item.id] = cast(UUID, row.parent_document_id)
+        child_counts[item.id] = cast(int, row.children_count)
+        if row.human_readable:
+            human_readable.add(item.id)
+        if row.human_writable:
+            human_writable.add(item.id)
+        if row.tags is not None:
+            personal_tags[item.id] = tag_adapter.validate_json(cast(str, row.tags))
+    has_more = request.offset + len(items) < total
+    team_access = await document_team_agent_access(list(items)) if items else {}
     entries: list[DocumentLibraryEntry] = []
-    for item in items:
+    for item in items.values():
         readable_agent_ids, writable_agent_ids = await managed_item_agent_ids(
             item,
             managed_agent_ids,
@@ -371,9 +368,6 @@ async def browse_document_library(
             )
         )
 
-    keywords: list[str] = []
-    if request.include_keywords:
-        keywords = await _library_keywords(scope_clause, now)
     return DocumentLibraryPage(
         owners=owner_options,
         query=normalized,
@@ -384,18 +378,40 @@ async def browse_document_library(
     )
 
 
-async def _library_keywords(scope_clause: ColumnElement[bool], now: datetime) -> list[str]:
+def _library_tag_query(user_id: int) -> ScalarSelect[str]:
+    # Aggregate before joining URLs: a document with N tags and M locations
+    # must not produce N * M copies of its metadata.
+    value = func.jsonb_build_object(
+        "id", DocumentTag.id, "name", DocumentTag.name, "parent_id", DocumentTag.parent_id,
+        "icon", DocumentTag.icon, "position", DocumentTag.position, "memory_item_id", DocumentTag.memory_item_id,
+    )
+    return select(func.jsonb_agg(aggregate_order_by(value, func.lower(DocumentTag.name), DocumentTag.id)).cast(Text)).select_from(
+        DocumentTagAssignment,
+    ).join(DocumentTag).where(
+        DocumentTagAssignment.document_id == MemoryItem.id, DocumentTag.user_id == user_id,
+    ).correlate(MemoryItem).scalar_subquery()
+
+
+def _library_owner_query(visible_ids: Select[tuple[UUID]]) -> ScalarSelect[str]:
+    agents = select(
+        literal("agent").label("kind"), Agent.id,
+        func.coalesce(func.nullif(func.trim(func.concat(Agent.first_name, " ", Agent.last_name)), ""), Agent.code).label("label"),
+    ).join(MemoryItem, MemoryItem.owner_agent_id == Agent.id).where(MemoryItem.id.in_(visible_ids)).distinct().correlate(None)
+    users = select(
+        literal("user").label("kind"), UserModel.id,
+        func.coalesce(func.nullif(UserModel.display_name, ""), UserModel.email).label("label"),
+    ).join(MemoryItem, MemoryItem.owner_user_id == UserModel.id).where(MemoryItem.id.in_(visible_ids)).distinct().correlate(None)
+    owners = union_all(agents, users).subquery("library_owners")
+    return select(func.jsonb_agg(func.jsonb_build_object(
+        "kind", owners.c.kind, "id", owners.c.id, "label", owners.c.label, "subtitle", "",
+    )).cast(Text)).scalar_subquery()
+
+
+def _library_keyword_query(visible_ids: Select[tuple[UUID]]) -> ScalarSelect[str]:
     keyword_query = (
         select(func.jsonb_array_elements_text(MemoryItem.keywords).label("keyword"))
-        .where(
-            scope_clause,
-            MemoryItem.node_kind == "document",
-            MemoryItem.document_type == "html",
-            or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
-            or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
-        )
+        .where(MemoryItem.id.in_(visible_ids)).correlate(None)
         .subquery()
     )
     keyword_value = func.trim(keyword_query.c.keyword)
-    keyword_rows = await get_db().scalars(select(keyword_value).where(keyword_value != "").distinct())
-    return sorted(keyword_rows.all(), key=str.casefold)
+    return select(func.jsonb_agg(keyword_value.distinct()).cast(Text)).where(keyword_value != "").scalar_subquery()

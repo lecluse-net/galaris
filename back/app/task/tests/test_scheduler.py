@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 import pytest
+from asyncpg.exceptions import CannotConnectNowError
 from sqlalchemy import delete, select, text
 
 from app.agent.contracts import ReasoningDegenerationError, StaleAgentRunError
@@ -153,7 +154,8 @@ async def test_plan_waits_for_scheduler_retry_decision(
 
 
 @pytest.mark.asyncio
-async def test_periodic_timeout_cleans_up_and_allows_the_next_run(monkeypatch):
+@pytest.mark.parametrize("failure", [TimeoutError, CannotConnectNowError])
+async def test_periodic_failure_cleans_up_and_allows_the_next_run(monkeypatch, failure):
     cleaned = asyncio.Event()
     calls = []
 
@@ -166,6 +168,8 @@ async def test_periodic_timeout_cleans_up_and_allows_the_next_run(monkeypatch):
 
     async def blocked():
         calls.append("blocked")
+        if failure is CannotConnectNowError:
+            raise CannotConnectNowError("Synthetic database shutdown")
         await asyncio.Event().wait()
 
     monkeypatch.setattr(scheduler, "get_db_session", session)
@@ -175,7 +179,7 @@ async def test_periodic_timeout_cleans_up_and_allows_the_next_run(monkeypatch):
     scheduler.register_periodic_job("test", blocked, interval=1, timeout=0.01)
     scheduler._schedule_periodic_jobs()
     first = scheduler._periodic_running["test"]
-    with pytest.raises(TimeoutError):
+    with pytest.raises(failure):
         await first
     await asyncio.sleep(0)
     assert cleaned.is_set()

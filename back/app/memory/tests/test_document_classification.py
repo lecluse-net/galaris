@@ -8,7 +8,7 @@ from sqlalchemy import update
 
 from app.agent import AgentManagementScope
 from app.memory import document_icons, document_nesting, document_order, document_tags, service
-from app.memory.models import DocumentIcon
+from app.memory.models import DocumentIcon, MemoryURL
 from app.memory.schemas import DocumentIconRequest, DocumentIconWrite, DocumentOrderMove, DocumentOrderNode, DocumentOrderSort
 from app.memory.schemas import DocumentLibraryRequest, DocumentTagWrite, DocumentTagIconWrite, MemoryGrantUpdate, MemoryItemCreate, MemoryPayload
 from core.user import UserModel
@@ -404,6 +404,14 @@ async def test_filters_apply_before_pagination_and_live_access_hides_classified_
     assert page.total == 3 and page.has_more
     assert [entry.item.id for entry in page.entries] == [items[1].id]
     assert page.entries[0].owner_label
+    # An empty offset page still carries the total and the visible catalogues.
+    catalogued = request.model_copy(update={"offset": 0, "include_owners": True})
+    first = await service.browse_document_library(catalogued, managed_agent_ids=scope.agent_ids, user_id=user.id)
+    descending = await service.browse_document_library(catalogued.model_copy(update={"sort_desc": True}), managed_agent_ids=scope.agent_ids, user_id=user.id)
+    assert [entry.item.id for entry in descending.entries] == [items[2].id] and descending.has_more
+    beyond = await service.browse_document_library(catalogued.model_copy(update={"offset": 500}), managed_agent_ids=scope.agent_ids, user_id=user.id)
+    assert beyond.entries == [] and beyond.total == 3 and not beyond.has_more
+    assert beyond.owners == first.owners and beyond.keywords == first.keywords
     for excluded in (
         request.model_copy(update={"owner_kind": "user", "owner": user.id}),
         request.model_copy(update={"classification": "unclassified"}),
@@ -432,6 +440,9 @@ async def test_move_replaces_all_own_tags_preserves_other_users_and_read_only_do
     owner, reader = agents
     user, other = await human(db), await human(db)
     item = await document(owner, "Shared reading")
+    urls = ["https://example.test/synthetic-notes-a", "https://example.test/synthetic-notes-b"]
+    db.add_all([MemoryURL(memory_node_id=item.id, url=url) for url in urls])
+    await db.flush()
     await service.set_item_grant(item.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
     scope = AgentManagementScope(user_id=user.id, agent_ids=frozenset({reader.id}))
     other_scope = AgentManagementScope(user_id=other.id, agent_ids=scope.agent_ids)
@@ -444,6 +455,8 @@ async def test_move_replaces_all_own_tags_preserves_other_users_and_read_only_do
 
     async def assigned(current_scope):
         page = await service.browse_document_library(DocumentLibraryRequest(), managed_agent_ids=current_scope.agent_ids, user_id=current_scope.user_id)
+        assert len(page.entries) == page.total == 1
+        assert page.entries[0].item.urls == urls
         return {tag.id for tag in page.entries[0].tags}
 
     with pytest.raises(service.MemoryNotFoundError):

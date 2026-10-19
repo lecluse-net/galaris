@@ -130,7 +130,7 @@ async def list_document_attachments(
     adapter = dataset_compatibility()
     if adapter is not None and await adapter.contains(document_id):
         return [DocumentAttachmentPublic.model_validate(item) for item in await adapter.attachments(document_id, actor_agent_id)]
-    item, _content, _access, _content_type, _media_type = await service.get_item(
+    item, _access = await service.get_item_metadata(
         document_id,
         agent_id=actor_agent_id,
     )
@@ -152,7 +152,7 @@ async def add_document_attachment(
     actor_agent_id: int | HumanActor,
     upload: UploadFile,
 ) -> DocumentAttachmentPublic:
-    item, _content, access, _content_type, _media_type = await service.get_item(
+    item, access = await service.get_item_metadata(
         document_id,
         agent_id=actor_agent_id,
     )
@@ -247,7 +247,7 @@ async def _register_document_attachment(
     publication_attempted = False
     try:
         for _attempt in range(3):
-            item, _content, access, _content_type, _media_type = await service.get_item(
+            item, access = await service.get_item_metadata(
                 document_id,
                 agent_id=actor_agent_id,
             )
@@ -279,6 +279,7 @@ async def _register_document_attachment(
                     ),
                     actor_agent_id=actor_agent_id,
                     preserve_document_attachments=False,
+                    include_revisions=False,
                 )
                 return (await attachment_companions([attachment]))[0]
             except service.MemoryConflictError:
@@ -304,7 +305,7 @@ async def read_document_attachment(
         if result := await adapter.read_attachment(document_id, attachment_id, actor_agent_id):
             metadata, content = result
             return DocumentAttachmentPublic.model_validate(metadata), content
-    item, _content, _access, _content_type, _media_type = await service.get_item(
+    item, _access = await service.get_item_metadata(
         document_id,
         agent_id=actor_agent_id,
     )
@@ -332,7 +333,7 @@ async def document_attachment_path(
             metadata, path = result
             return DocumentAttachmentPublic.model_validate(metadata), path
 
-    item, _content, _access, _type, _mime = await service.get_item(document_id, agent_id=actor_agent_id)
+    item, _access = await service.get_item_metadata(document_id, agent_id=actor_agent_id)
     _assert_document(item)
     attachments = attachments_from_item(item, include_retained=True)
     attachment = next((value for value in attachments if value.id == attachment_id), None)
@@ -350,7 +351,7 @@ async def delete_document_attachment(
 ) -> None:
     attachment: DocumentAttachmentPublic | None = None
     for _attempt in range(3):
-        item, _content, access, _content_type, _media_type = await service.get_item(
+        item, access = await service.get_item_metadata(
             document_id,
             agent_id=actor_agent_id,
         )
@@ -380,6 +381,7 @@ async def delete_document_attachment(
                 ),
                 actor_agent_id=actor_agent_id,
                 preserve_document_attachments=False,
+                include_revisions=False,
             )
             break
         except service.MemoryConflictError:

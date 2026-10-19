@@ -52,7 +52,7 @@ async def read_document_thumbnail(
     document_id: UUID, snapshot: DocumentThumbnailRender, *, actor_agent_id: int | HumanActor, force: bool = False,
 ) -> bytes | None:
     """Capture the saved HTML revision after checking the current reader's access."""
-    item = await service.item_record(document_id, revisions=False)
+    item = await service.item_record(document_id, revisions=False, contents=False)
     if item is None:
         raise service.MemoryNotFoundError("Document not found.")
     await service.assert_item_access(item, actor_agent_id)
@@ -79,7 +79,7 @@ async def read_document_thumbnail(
     if cached is not None and not force:
         return cached
     async with thumbnails.generation(reference), _document_capture_slots:
-        cached = await read_current(await service.item_record(document_id, revisions=False))
+        cached = await read_current(await service.item_record(document_id, revisions=False, contents=False))
         if cached is not None and not force:
             return cached
         publishing = False
@@ -92,7 +92,7 @@ async def read_document_thumbnail(
                 publishing = True
                 await db.scalar(select(MemoryItem.id).where(MemoryItem.id == document_id).with_for_update())
                 await db.scalar(select(Document.id).where(Document.id == document_id).with_for_update())
-                current = await service.item_record(document_id, revisions=False)
+                current = await service.item_record(document_id, revisions=False, contents=False)
                 if current is None or (current.revision, current.lock_version) != (snapshot.revision, snapshot.lock_version):
                     await db.commit()
                     return None

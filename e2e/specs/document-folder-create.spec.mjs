@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
+// Playwright's worker blocker reads navigator.serviceWorker in opaque frames.
+// Keep the document sandbox intact and avoid injecting that failing script.
+test.use({ serviceWorkers: 'allow' })
+
 test('creating documents in folders and under documents persists the personal hierarchy', async ({ page, request }, testInfo) => {
   const pageErrors = collectPageErrors(page)
   const seed = await request.post('/api/__test/seed')

@@ -123,6 +123,61 @@ def test_explicit_reference_normalization_does_not_invent_documents():
 
 
 @pytest.mark.asyncio
+async def test_personal_moves_preserve_content_links_without_reading_payload(db, agents, memory_storage, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.agent import AgentManagementScope
+    from app.memory import document_nesting, document_order, document_tags
+    from app.memory.schemas import DocumentOrderMove, DocumentOrderNode, DocumentTagWrite
+    from app.memory.storage import get_storage
+    from core.user import UserModel
+
+    owner, _ = agents
+    human = UserModel(email="classification-links@example.test", hashed_password="unused", is_active=True)
+    db.add(human)
+    await db.flush()
+    scope = AgentManagementScope(user_id=human.id, agent_ids=frozenset({owner.id}))
+    folder = await document_tags.write_tag(human.id, DocumentTagWrite(name="Synthetic folder"))
+    target = await document(owner, "Referenced appendix")
+    source = await document(owner, "Movable report", f'<a href="document://{target.id}">Appendix</a>')
+    await attachments.add_document_attachment_bytes(
+        source.id, actor_agent_id=owner.id, name="synthetic.png", media_type="image/png", content=png(),
+    )
+    before = (source.revision, source.lock_version, source.content_hash)
+    content_links = set(await db.scalars(select(MemoryLink.id).where(
+        MemoryLink.source_item_id == source.id, MemoryLink.relation_type.in_(("references", "has_attachment")),
+    )))
+    assert len(content_links) == 2
+    storage = get_storage("native")
+    read = AsyncMock(wraps=storage.read)
+    monkeypatch.setattr(storage, "read", read)
+
+    async def check(*, in_folder):
+        read.assert_not_awaited()
+        assert set(await db.scalars(select(MemoryLink.id).where(
+            MemoryLink.source_item_id == source.id, MemoryLink.relation_type.in_(("references", "has_attachment")),
+        ))) == content_links
+        assert set(await db.scalars(select(MemoryLink.target_item_id).where(
+            MemoryLink.source_item_id == source.id, MemoryLink.relation_type == "in_folder",
+        ))) == ({folder.memory_item_id} if in_folder else set())
+
+    await document_tags.assign_tag(scope, source.id, folder.id)
+    await check(in_folder=True)
+    await document_tags.move_document(scope, source.id, None)
+    await check(in_folder=False)
+    await document_order.reorder(scope, DocumentOrderMove(
+        node=DocumentOrderNode(kind="document", id=source.id), parent_id=folder.id,
+    ))
+    await check(in_folder=True)
+    await document_nesting.move(scope, source.id, target.id)
+    await check(in_folder=False)
+    await document_order.reorder(scope, DocumentOrderMove(node=DocumentOrderNode(kind="document", id=source.id)))
+    await check(in_folder=False)
+    await db.refresh(source)
+    assert (source.revision, source.lock_version, source.content_hash) == before
+
+
+@pytest.mark.asyncio
 async def test_image_read_saves_real_attachment_description_and_never_reports_success_when_storage_fails(db, agents, memory_storage, monkeypatch):
     from unittest.mock import AsyncMock
     from app.image import mcp as image_mcp

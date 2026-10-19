@@ -1245,7 +1245,7 @@ async def update_human_document(document_id: UUID, data: MemoryItemUpdate, actor
             actor: int | HumanActor = actor_agent_id
         else:
             actor = HumanActor(scope.user_id)
-        item = await service.update_item(document_id, data, actor_agent_id=actor)
+        item = await service.update_item(document_id, data, actor_agent_id=actor, include_revisions=False)
         return service.item_to_public(item, await service.effective_access(item, actor))
     except Exception as exc:
         raise _http_error(exc) from exc
@@ -1292,7 +1292,7 @@ async def move_managed_document(
     try:
         scope = await current_management_scope()
         actor = await document_sharing.document_actor(document_id, scope, write=True)
-        item, *_ = await service.get_item(document_id, agent_id=actor)
+        item, _ = await service.get_item_metadata(document_id, agent_id=actor)
         metadata = dict(item.metadata_)
         if data.folder:
             metadata["document_path"] = data.folder
@@ -1306,6 +1306,7 @@ async def move_managed_document(
                 metadata=metadata,
             ),
             actor_agent_id=actor,
+            include_revisions=False,
         )
         return service.item_to_public(
             updated,
@@ -1329,7 +1330,7 @@ async def change_document_owner(
     try:
         scope = await current_management_scope()
         actor = await document_sharing.document_actor(document_id, scope, write=True)
-        item, *_ = await service.get_item(document_id, agent_id=actor)
+        item, _ = await service.get_item_metadata(document_id, agent_id=actor)
         current_user = await get_user_record(scope.user_id)
         owns_document = (
             scope.allows(item.owner_agent_id)
@@ -1356,6 +1357,7 @@ async def change_document_owner(
             document_id,
             data,
             actor_agent_id=actor,
+            include_revisions=False,
         )
         access = await service.effective_access(updated, actor)
         return service.item_to_public(updated, access)
@@ -1367,7 +1369,7 @@ async def _assert_can_manage_document_grants(
     document_id: UUID, *, target_agent_id: int | None = None,
 ) -> tuple[AgentManagementScope, int | HumanActor]:
     scope = await current_management_scope()
-    item = await service.document_record(document_id)
+    item = await service.document_record(document_id, revisions=False)
     if item is None or not await document_sharing.can_manage(item, scope):
         raise service.MemoryPermissionError("Only the document owner can manage sharing")
     if target_agent_id is not None and not scope.allows(target_agent_id):
@@ -1395,6 +1397,7 @@ async def set_managed_document_global_access(
             document_id,
             data,
             actor_agent_id=actor_agent_id if isinstance(actor_agent_id, int) else None,
+            include_revisions=False,
         )
         return service.item_to_public(
             updated,
@@ -1429,6 +1432,7 @@ async def set_managed_document_grant(
             agent_id,
             data,
             actor_agent_id=actor_agent_id if isinstance(actor_agent_id, int) else None,
+            include_revisions=False,
         )
         return service.item_to_public(
             updated,
@@ -1463,6 +1467,7 @@ async def remove_managed_document_grant(
             agent_id,
             actor_agent_id=actor_agent_id if isinstance(actor_agent_id, int) else None,
             expected_lock_version=expected_lock_version,
+            include_revisions=False,
         )
         return service.item_to_public(
             updated,
@@ -1648,7 +1653,7 @@ async def set_document_grant(
             access="edit" if data.can_write else "read",
             task_id=None,
         )
-        item, _content, access, _content_type, _media_type = await service.get_item(
+        item, access = await service.get_item_metadata(
             document_id,
             agent_id=owner_agent_id,
         )
@@ -1680,7 +1685,7 @@ async def remove_document_grant(
             access="none",
             task_id=None,
         )
-        item, _content, access, _content_type, _media_type = await service.get_item(
+        item, access = await service.get_item_metadata(
             document_id,
             agent_id=owner_agent_id,
         )

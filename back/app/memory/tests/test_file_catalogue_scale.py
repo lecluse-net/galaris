@@ -16,7 +16,9 @@ from app.file_share.models import FileCatalogEntry
 from app.memory import service
 from app.memory.models import MemoryItem, MemoryURL
 from app.memory.schemas import MemorySearchRequest
+from app.memory.query_policy import prepare_memory_read
 from app.memory.storage import get_storage
+from tests.sharing_fixtures import bind_private_shares
 from .test_file_catalogue import console_catalogue as console_catalogue
 
 
@@ -57,6 +59,7 @@ async def test_private_catalogue_search_at_1000_10000_100000_entries(console_cat
                     binding_stamp=scope.stamp, runtime=scope.runtime, uri=uri, uri_key=hashlib.sha256(uri.encode()).hexdigest(),
                     descriptor={'uri': uri, 'name': title, 'is_collection': False},
                     memory_url_id=url_id, operation_started_at=scope.started_at, last_seen_at=scope.started_at))
+            await bind_private_shares(db, memories)
             await db.execute(insert(MemoryItem.__table__), memories)
             await db.execute(insert(MemoryURL.__table__), urls)
             await db.execute(insert(FileCatalogEntry.__table__), resources)
@@ -83,6 +86,9 @@ async def test_private_catalogue_search_at_1000_10000_100000_entries(console_cat
         await service.search_items(MemorySearchRequest(agent_id=ctx.agent_id, query='Syntheticneedle100000'))
     finally:
         event.remove(sql_connection.sync_connection.engine, 'before_cursor_execute', capture)
+    # Source admission may release its transaction before provider I/O. Reapply
+    # the interactive planner policy when explaining on the new transaction.
+    await prepare_memory_read()
     plans = [(await sql_connection.exec_driver_sql(
         'EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ' + statement, parameters,
     )).scalar_one() for statement, parameters in statements if 'memory_items' in statement]

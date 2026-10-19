@@ -7,13 +7,14 @@ from typing import Literal
 from uuid import UUID
 
 from sqlalchemy.orm.exc import StaleDataError
+from sqlalchemy import select
 
 from app.agent import Agent
 from core.database import get_db
 from core.util import normalize_html, read_html_page, replace_visible_text, html_blocks, visible_text
 
 from . import service
-from .models import MemoryItem
+from .models import MemoryItem, MemoryRevision
 from .document_types import DocumentType, document_media_type
 from .schemas import (
     MemoryGrantUpdate,
@@ -125,19 +126,14 @@ async def _is_immediate_append_retry(
 
     if task_id is None or item.revision < 2:
         return False
-    latest = next(
-        (
-            revision
-            for revision in reversed(item.revisions)
-            if revision.revision == item.revision
-        ),
-        None,
-    )
+    latest = (await get_db().execute(select(
+        MemoryRevision.document_append, MemoryRevision.author_agent_id, MemoryRevision.task_id,
+    ).where(MemoryRevision.item_id == item.id, MemoryRevision.revision == item.revision))).tuples().one_or_none()
     if (
         latest is None
-        or not latest.document_append
-        or latest.author_agent_id != actor_agent_id
-        or latest.task_id != task_id
+        or not latest[0]
+        or latest[1] != actor_agent_id
+        or latest[2] != task_id
     ):
         return False
     # The latest content row identifies the exact append and task. Metadata,
@@ -257,6 +253,7 @@ async def read_document(
         agent_id=actor_agent_id,
         record_llm_access=True,
         task_id=task_id,
+        include_revisions=False,
     )
     _assert_document(item)
     content = _decode_document(raw_content)
@@ -314,6 +311,7 @@ async def edit_document(
     item, raw_content, access, _content_type, _media_type = await service.get_item(
         document_id,
         agent_id=actor_agent_id,
+        include_revisions=False,
     )
     _assert_document(item)
     if not access.can_write:
@@ -339,6 +337,7 @@ async def edit_document(
             actor_agent_id=actor_agent_id,
             actor_task_id=task_id,
             document_revision_author_agent_id=actor_agent_id,
+            include_revisions=False,
         )
     except StaleDataError as exc:
         raise service.MemoryConflictError(
@@ -366,6 +365,7 @@ async def append_document(
     item, raw_content, access, _content_type, _media_type = await service.get_item(
         document_id,
         agent_id=actor_agent_id,
+        include_revisions=False,
     )
     _assert_document(item)
     if not access.can_write:
@@ -394,6 +394,7 @@ async def append_document(
             actor_task_id=task_id,
             document_revision_author_agent_id=actor_agent_id,
             document_append=True,
+            include_revisions=False,
         )
     except StaleDataError as exc:
         raise service.MemoryConflictError(
@@ -412,7 +413,7 @@ async def share_document(
 ) -> dict[str, object]:
     """Set or remove one collaborator grant; only the owner may call it."""
 
-    item, _content, _effective, _content_type, _media_type = await service.get_item(
+    item, _effective = await service.get_item_metadata(
         document_id,
         agent_id=owner_agent_id,
     )
@@ -433,6 +434,7 @@ async def share_document(
             target_agent_id,
             actor_agent_id=owner_agent_id,
             actor_task_id=task_id,
+            include_revisions=False,
         )
     else:
         updated = await service.set_item_grant(
@@ -441,6 +443,7 @@ async def share_document(
             MemoryGrantUpdate(can_write=access == "edit"),
             actor_agent_id=owner_agent_id,
             actor_task_id=task_id,
+            include_revisions=False,
         )
     return {
         "document_id": str(updated.id),

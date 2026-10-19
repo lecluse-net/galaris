@@ -115,11 +115,13 @@ async def _node(
     return item
 
 
-async def _edges(source_id: UUID, desired: set[tuple[UUID, str]]) -> None:
+async def _edges(
+    source_id: UUID, desired: set[tuple[UUID, str]], *, relations: frozenset[str] = RELATIONS,
+) -> None:
     db = get_db()
     existing = list(await db.scalars(select(MemoryLink).where(
         MemoryLink.source_item_id == source_id,
-        MemoryLink.relation_type.in_(RELATIONS),
+        MemoryLink.relation_type.in_(relations),
     ).execution_options(include_historized=True)))
     indexed = {(edge.target_item_id, edge.relation_type): edge for edge in existing}
     for edge in existing:
@@ -142,6 +144,25 @@ async def _edges(source_id: UUID, desired: set[tuple[UUID, str]]) -> None:
             metadata_={"source": "document_structure"},
         ))
     await db.flush()
+
+
+async def sync_document_classification(document_id: UUID) -> None:
+    """Refresh only folder membership after a personal placement changes.
+
+    Moving a document does not change its payload, references or attachments.
+    Keep those projections intact instead of loading and parsing them again.
+    """
+    db = get_db()
+    await lock_structure("document", document_id)
+    desired: set[tuple[UUID, str]] = set()
+    if await db.scalar(select(MemoryItem.id).where(
+        MemoryItem.id == document_id, MemoryItem.node_kind == "document",
+    )) is not None:
+        folders = await db.scalars(select(DocumentTag.memory_item_id).join(
+            DocumentTagAssignment, DocumentTagAssignment.tag_id == DocumentTag.id,
+        ).where(DocumentTagAssignment.document_id == document_id, DocumentTag.memory_item_id.is_not(None)))
+        desired.update((identity, "in_folder") for identity in folders if identity is not None)
+    await _edges(document_id, desired, relations=frozenset({"in_folder"}))
 
 
 async def sync_document_structure(document: MemoryItem, content: bytes | None = None) -> None:

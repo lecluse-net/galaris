@@ -619,7 +619,7 @@ async def _graph_child_counts(node_ids: Sequence[UUID], request: MemoryGraphRoot
 
 
 async def _get_item_record(
-    item_id: UUID, *, include_historized: bool = False, revisions: bool = True
+    item_id: UUID, *, include_historized: bool = False, revisions: bool = True, contents: bool = True,
 ) -> MemoryItem | None:
     db = get_db()
     # Services intentionally reuse the request-scoped session. Refresh loaded
@@ -634,13 +634,16 @@ async def _get_item_record(
     )
     if include_historized:
         query = query.execution_options(include_historized=True)
+    if not contents:
+        query = query.options(defer(MemoryItem.memory_content, raiseload=True),
+                              joinedload(MemoryItem.document).defer(Document.content, raiseload=True))
     result = await db.execute(query)
     return result.unique().scalar_one_or_none()
 
 
-async def item_record(item_id: UUID, *, revisions: bool = True) -> MemoryItem | None:
+async def item_record(item_id: UUID, *, revisions: bool = True, contents: bool = True) -> MemoryItem | None:
     """Load a current memory resource and its grants for domain services."""
-    return await _get_item_record(item_id, revisions=revisions)
+    return await _get_item_record(item_id, revisions=revisions, contents=contents)
 
 
 async def document_record(document_id: UUID, *, revisions: bool = True) -> MemoryItem | None:
@@ -1348,6 +1351,23 @@ async def get_item(
     return item, content, access, content_type, media_type
 
 
+async def get_item_metadata(
+    item_id: UUID, *, agent_id: int | HumanActor | None, administrative: bool = False,
+) -> tuple[MemoryItem, MemoryAccess]:
+    """Read current metadata and live permissions without payloads or history."""
+    item = await _get_item_record(item_id, revisions=False, contents=False)
+    if item is None:
+        raise MemoryNotFoundError("Memory not found.")
+    access = await assert_item_access(item, agent_id, administrative=administrative)
+    if item.document_type == "dataset":
+        # Legacy document aliases must still adopt and authorize through the
+        # Dataset owner. Their compatibility projection is not an authority.
+        item, _content, access, _content_type, _media_type = await get_item(
+            item_id, agent_id=agent_id, administrative=administrative, include_revisions=False,
+        )
+    return item, access
+
+
 async def source_refs(item_id: UUID, *, urls: Sequence[str] | None = None) -> list[str]:
     result = await get_db().execute(
         select(MemorySource.source_ref)
@@ -1672,12 +1692,13 @@ async def _delete_resource_if_unreferenced(
         )
 
 
-async def refresh_document_search(item: MemoryItem) -> None:
+async def refresh_document_search(item: MemoryItem, *, content: bytes | None = None) -> None:
     """Index the authoritative document and its optional synthesis together."""
     document = item.document
     if document is None:
         return
-    content = await get_storage(document.provider_code).read(document.resource_id)
+    if content is None:
+        content = await get_storage(document.provider_code).read(document.resource_id)
     text = _search_text(content, content_type=document.content_type, media_type=document.media_type)
     if item.memory_resource_id:
         summary = await get_storage(item.memory_provider_code).read(item.memory_resource_id)
@@ -1781,8 +1802,9 @@ async def update_item(
     document_revision_author_agent_id: int | None = None,
     document_append: bool = False,
     allow_goal_document_metadata_sync: bool = False,
+    include_revisions: bool = True,
 ) -> MemoryItem:
-    item = await _get_item_record(item_id)
+    item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
     await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
@@ -1898,6 +1920,7 @@ async def update_item(
     previous_provider_code = item.provider_code
     previous_resource_id = item.resource_id
     new_resource_id: str | None = None
+    document_content: bytes | None = None
     content_changed = False
     provider = get_storage(item.provider_code)
     if "payload" in fields and data.payload is not None:
@@ -1960,6 +1983,7 @@ async def update_item(
         if future_content_type == "text" or future_media_type.startswith("text/"):
             assert_safe_text(content.decode("utf-8", errors="replace"))
         digest = _content_hash(content)
+        document_content = content
         content_changed = item.content_hash != digest
         if content_changed:
             new_resource_id, inline = await prepare_content(content, provider.code, content_type=future_content_type)
@@ -2022,8 +2046,9 @@ async def update_item(
         item.metadata_ = metadata
     if item.node_kind == "memory" and not item.source_managed:
         item.search_title = item.search_text[:120]
-    if item.document is not None:
-        await refresh_document_search(item)
+    document_format_changed = any(previous_values[field] != getattr(item, field) for field in ("content_type", "media_type"))
+    if item.document is not None and (content_changed or document_format_changed):
+        await refresh_document_search(item, content=document_content)
     _set_semantic_fingerprint(item)
     meaningful_change = bool(
         fields
@@ -2076,10 +2101,13 @@ async def update_item(
             )
         )
     try:
-        if item.node_kind == "document":
+        if item.node_kind == "document" and (content_changed or document_format_changed or any(
+            previous_metadata.get(key) != item.metadata_.get(key)
+            for key in ("document_attachments", "retained_document_attachments")
+        )):
             from .document_structure import sync_document_structure
             await db.flush()
-            await sync_document_structure(item)
+            await sync_document_structure(item, document_content)
         await db.commit()
     except StaleDataError as exc:
         await db.rollback()
@@ -2093,7 +2121,7 @@ async def update_item(
         if new_resource_id is not None:
             await provider.delete(new_resource_id)
         raise
-    loaded = await _get_item_record(item.id)
+    loaded = await _get_item_record(item.id, revisions=include_revisions)
     assert loaded is not None
     if content_changed and previous_resource_id != loaded.resource_id:
         await _delete_resource_if_unreferenced(
@@ -2644,8 +2672,9 @@ async def set_item_grant(
     *,
     actor_agent_id: int | None = None,
     actor_task_id: UUID | None = None,
+    include_revisions: bool = True,
 ) -> MemoryItem:
-    item = await _get_item_record(item_id)
+    item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
     if item.document_type == "dataset":
@@ -2695,7 +2724,7 @@ async def set_item_grant(
     await _commit_with_conflict(
         "The document changed while sharing was being edited; reload and retry."
     )
-    loaded = await _get_item_record(item_id)
+    loaded = await _get_item_record(item_id, revisions=include_revisions)
     assert loaded is not None
     await _emit_memory_event("update", loaded)
     await notify_memory_item(loaded.id, "sharing")
@@ -2703,11 +2732,9 @@ async def set_item_grant(
 
 
 async def has_document_grants(item_id: UUID) -> bool:
-    return bool(await get_db().scalar(select(or_(
+    return bool(await get_db().scalar(select(
         exists(select(ShareGrant.id).where(ShareGrant.share_id == MemoryItem.share_for(item_id))),
-        exists(select(ShareGrant.id).where(ShareGrant.share_id == MemoryItem.share_for(item_id))),
-        exists(select(ShareGrant.id).where(ShareGrant.share_id == MemoryItem.share_for(item_id))),
-    ))))
+    )))
 
 
 async def set_document_global_access(
@@ -2716,10 +2743,11 @@ async def set_document_global_access(
     *,
     actor_agent_id: int | None = None,
     actor_task_id: UUID | None = None,
+    include_revisions: bool = True,
 ) -> MemoryItem:
     """Set the durable public permission for authenticated humans and Agents."""
 
-    item = await _get_item_record(item_id)
+    item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
     _assert_not_source_managed(item)
@@ -2742,7 +2770,7 @@ async def set_document_global_access(
     item.group_access = 0
     item.visibility = "shared" if data.global_access > 0 or has_grants else "private"
     await commit_item_sharing(item)
-    loaded = await _get_item_record(item_id)
+    loaded = await _get_item_record(item_id, revisions=include_revisions)
     assert loaded is not None
     await _emit_memory_event("update", loaded)
     await invalidate_memory_views()
@@ -2753,8 +2781,7 @@ async def set_document_global_access(
 async def get_item_owner_agent_id(item_id: UUID) -> int | None:
     """Resolve an active Memory owner's Agent id for human API scoping."""
 
-    item = await _get_item_record(item_id)
-    return item.owner_agent_id if item is not None else None
+    return await get_db().scalar(select(MemoryItem.owner_agent_id).where(MemoryItem.id == item_id))
 
 
 async def remove_item_grant(
@@ -2764,8 +2791,9 @@ async def remove_item_grant(
     actor_agent_id: int | None = None,
     actor_task_id: UUID | None = None,
     expected_lock_version: int | None = None,
+    include_revisions: bool = True,
 ) -> MemoryItem:
-    item = await _get_item_record(item_id)
+    item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
     if item.document_type == "dataset":
@@ -2812,7 +2840,7 @@ async def remove_item_grant(
         await _commit_with_conflict(
             "The document changed while sharing was being edited; reload and retry."
         )
-    loaded = await _get_item_record(item_id)
+    loaded = await _get_item_record(item_id, revisions=include_revisions)
     assert loaded is not None
     if grant is not None:
         await _emit_memory_event("update", loaded)
@@ -3221,7 +3249,7 @@ async def managed_document_agent_ids(
 ) -> tuple[MemoryItem, tuple[int, ...], tuple[int, ...]]:
     """Load one document and resolve its effective managed-Agent access."""
 
-    item = await _get_item_record(document_id)
+    item = await _get_item_record(document_id, revisions=False, contents=False)
     if item is None or item.node_kind != "document":
         raise MemoryNotFoundError("Document not found.")
     readable_agent_ids, writable_agent_ids = await managed_item_agent_ids(
@@ -3238,10 +3266,11 @@ async def transfer_document_owner(
     data: DocumentOwnerUpdate,
     *,
     actor_agent_id: int | HumanActor,
+    include_revisions: bool = True,
 ) -> MemoryItem:
     """Transfer a document while preserving the current editor's write access."""
 
-    item = await _get_item_record(document_id)
+    item = await _get_item_record(document_id, revisions=include_revisions)
     if item is None or item.node_kind != "document":
         raise MemoryNotFoundError("Document not found.")
     _assert_not_source_managed(item)
@@ -3318,7 +3347,7 @@ async def transfer_document_owner(
     has_grants = await has_document_grants(document_id)
     item.visibility = "shared" if has_grants or item.global_access > 0 or item.group_access > 0 else "private"
     await commit_item_sharing(item)
-    loaded = await _get_item_record(document_id)
+    loaded = await _get_item_record(document_id, revisions=include_revisions)
     assert loaded is not None
     await _emit_memory_event("update", loaded)
     await notify_memory_item(loaded.id, "update")
@@ -3330,7 +3359,7 @@ async def list_document_folders(agent_id: int) -> list[str]:
 
     now = datetime.now(timezone.utc)
     result = await get_db().scalars(
-        select(MemoryItem).where(
+        select(MemoryItem.metadata_).where(
             readable_item_clause(agent_id),
             MemoryItem.node_kind == "document",
             or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
@@ -3339,8 +3368,8 @@ async def list_document_folders(agent_id: int) -> list[str]:
     )
     folders = {
         value.strip().strip("/")
-        for item in result.all()
-        if isinstance((value := item.metadata_.get("document_path")), str)
+        for metadata in result.all()
+        if isinstance((value := metadata.get("document_path")), str)
         and value.strip().strip("/")
     }
     return sorted(folders, key=str.casefold)
@@ -3352,7 +3381,8 @@ async def list_document_folder_options(agent_id: int) -> list[DocumentFolderOpti
     now = datetime.now(timezone.utc)
     items = await get_db().scalars(
         select(MemoryItem)
-        .options(selectinload(MemoryItem.grants), raiseload(MemoryItem.revisions))
+        .options(selectinload(MemoryItem.grants), raiseload(MemoryItem.revisions),
+                 defer(MemoryItem.memory_content), selectinload(MemoryItem.document).defer(Document.content))
         .where(
             readable_item_clause(agent_id),
             MemoryItem.node_kind == "document",

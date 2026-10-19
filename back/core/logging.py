@@ -51,14 +51,15 @@ def setup_logging() -> None:
     # Configure Loguru.
     logger.remove()
     
-    # Format JSON
-    # logger.add(sys.stdout, format="{time} {level} {message}", level="INFO", serialize=True)
-    
     # Human-readable development format; production can later opt into JSON.
+    # Tracebacks must never render frame locals (database credentials, tokens,
+    # document contents), including in the mirrored Logfire record.
     logger.add(
         sys.stdout,
         format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
-        level=settings.LOG_LEVEL
+        level=settings.LOG_LEVEL,
+        diagnose=False,
+        backtrace=False,
     )
 
     # Keep the local console sink and mirror the same structured records to
@@ -67,6 +68,8 @@ def setup_logging() -> None:
     logger.add(
         logfire.LogfireLoggingHandler(fallback=logging.NullHandler()),
         level=settings.LOG_LEVEL,
+        diagnose=False,
+        backtrace=False,
     )
     
     logger.info(f"Logging configured for {settings.APP_NAME}")

@@ -15,7 +15,7 @@ from .schemas import DocumentAttachmentPublic
 async def import_document_image(
     document_id: UUID, url: str, *, actor: int | HumanActor,
 ) -> DocumentAttachmentPublic:
-    item, _, access, _, _ = await service.get_item(document_id, agent_id=actor)
+    item, access = await service.get_item_metadata(document_id, agent_id=actor)
     if not access.can_write or item.content_profile != "document" or item.document_type != "html":
         raise service.MemoryPermissionError("Document edit access required")
     content = await read_web_image(url)
