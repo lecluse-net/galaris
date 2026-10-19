@@ -134,7 +134,7 @@
               </q-item-section>
             </template>
             <div class="sidebar-section-content">
-              <RepositoryBrowser v-if="repositoriesExpanded" ref="repositoryBrowser" :room-id="store.selectedRoom.id" :repositories="repositories" :can-discover="store.viewerAgentId === null" @open="openRepository" @discover-open="openDetectedRepository" />
+              <RepositoryBrowser v-if="repositoriesExpanded" ref="repositoryBrowser" :room-id="store.selectedRoom.id" :repositories="repositories" :active-path="activeRepositoryPath" :can-discover="store.viewerAgentId === null" @open="openRepository" @discover-open="openDetectedRepository" />
             </div>
           </q-expansion-item>
           <q-expansion-item v-if="store.selectedRoom" v-model="tasksExpanded" dense-toggle expand-separator icon="account_tree" :label="t('chat.tasks')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': tasksExpanded }" header-class="sidebar-accordion-header">
@@ -220,6 +220,7 @@ const selectedDocument = computed({
 })
 const selectedCodeId = computed(() => selectedWorkTarget.value?.kind === 'code' ? selectedWorkTarget.value.id : null)
 const codeStore = useCodeStore()
+const activeRepositoryPath = computed(() => codeStore.editors.find(item => item.session.workspace.id === selectedCodeId.value)?.session.workspace.label ?? null)
 const repositories = ref<CodeWorkspace[]>([])
 const repositoriesExpanded = ref(false)
 const repositoryBrowser = ref<InstanceType<typeof RepositoryBrowser> | null>(null)

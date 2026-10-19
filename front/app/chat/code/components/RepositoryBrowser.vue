@@ -1,9 +1,12 @@
 <template>
   <div>
     <div v-if="error" role="alert" class="q-pa-sm">{{ t(error) }}</div>
-    <div v-else-if="truncated" role="status" class="q-pa-sm">{{ t('code.partialRepositories') }}</div>
-    <q-list>
-      <q-item v-for="item in items" :key="item.path" clickable @click="item.workspace ? emit('open', item.workspace.id) : emit('discoverOpen', item.path)">
+    <q-list dense>
+      <q-item v-for="item in items" :key="item.path" clickable
+        :active="item.path === activePath" active-class="repository--selected"
+        :aria-current="item.path === activePath ? 'true' : undefined"
+        @click="item.workspace ? emit('open', item.workspace.id) : emit('discoverOpen', item.path)">
+        <q-item-section avatar><FolderIcon tone="red" :expanded="item.path === activePath" /></q-item-section>
         <q-item-section><q-item-label class="repository-path">{{ item.path }}</q-item-label></q-item-section>
       </q-item>
     </q-list>
@@ -14,16 +17,16 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { FolderIcon } from '@/core/util'
 import { codeErrorTranslationKey, codeService } from '../services/codeService'
 import type { CodeWorkspace } from '../types'
 
-const props = defineProps<{ roomId: string; repositories: CodeWorkspace[]; canDiscover: boolean }>()
+const props = defineProps<{ roomId: string; repositories: CodeWorkspace[]; canDiscover: boolean; activePath?: string | null }>()
 const emit = defineEmits<{ open: [id: string]; discoverOpen: [path: string] }>()
 const { t } = useI18n()
 const paths = ref<string[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
-const truncated = ref(false)
 let active: AbortController | null = null
 const items = computed(() => {
   const known = new Map<string, CodeWorkspace>()
@@ -48,7 +51,6 @@ async function load(): Promise<void> {
     const result = await codeService.discover(props.roomId, controller.signal)
     if (controller.signal.aborted) return
     paths.value = result.paths
-    truncated.value = result.truncated
   } catch (reason) {
     if (!controller.signal.aborted) error.value = codeErrorTranslationKey(reason) === 'code.discoveryForbidden' ? 'code.discoveryForbidden' : 'code.discoveryError'
   } finally {
@@ -59,7 +61,6 @@ watch(() => [props.roomId, props.canDiscover], () => {
   active?.abort()
   paths.value = []
   error.value = null
-  truncated.value = false
   loading.value = false
   void load()
 }, { immediate: true, flush: 'sync' })
@@ -69,4 +70,6 @@ defineExpose({ refresh: load, loading })
 
 <style scoped>
 .repository-path { overflow-wrap: anywhere; }
+.repository--selected { color: inherit; background: var(--solaire-blue-light); box-shadow: inset 3px 0 var(--solaire-blue-accent); }
+.body--dark .repository--selected { background: var(--solaire-blue-dark); }
 </style>

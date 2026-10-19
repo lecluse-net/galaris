@@ -39,7 +39,7 @@ async function setup(page, { directory = false, codeAccess = true, workspaceLabe
   await page.route('**/api/code/workspaces/*/sessions', route => {
     const id = route.request().url().split('/workspaces/')[1].split('/')[0]
     opens.push(id)
-    return route.fulfill({ json: { id: `session-${id}`, workspace: { ...workspace, id, label: id === 'code-a' ? workspace.label : 'Second repository' }, url: `http://localhost:8000/code-fixture/${id}`, expires_at: '2099-01-01T00:00:00Z' } })
+    return route.fulfill({ json: { id: `session-${id}`, workspace: { ...workspace, id, label: id === 'code-b' ? 'Second repository' : workspace.label }, url: `http://localhost:8000/code-fixture/${id}`, expires_at: '2099-01-01T00:00:00Z' } })
   })
   await page.route('**/api/code/sessions/session-*', route => { closes.push(route.request().url()); return route.fulfill({ json: { state: 'closed' } }) })
   await page.route('**/code-fixture/*', route => {
@@ -202,7 +202,8 @@ test(`discovery opens a home-relative path without needing a message from the ag
   if (width < 1024) await page.getByRole('button', { name: 'Details', exact: true }).click()
   await page.getByText('Source code', { exact: true }).click()
   await expect(page.getByText('archive/project #1', { exact: true })).toBeVisible()
-  const repository = page.getByRole('button', { name: 'work/project #1', exact: true })
+  const repository = page.getByRole('button', { name: 'work/project #1', exact: true, includeHidden: true })
+  await expect(repository).not.toHaveAttribute('aria-current', 'true')
   await repository.scrollIntoViewIfNeeded()
   await page.screenshot({ path: testInfo.outputPath('repository-list.png'), animations: 'disabled' })
   await repository.focus()
@@ -210,6 +211,7 @@ test(`discovery opens a home-relative path without needing a message from the ag
   await expect(page.locator('iframe.code-editor-frame')).toBeVisible()
   expect(registered).toEqual(['console://work/project%20%231/'])
   expect(state.opens).toEqual(['code-new'])
+  await expect(repository).toHaveAttribute('aria-current', 'true')
   await page.screenshot({ path: testInfo.outputPath('discovered-repository.png'), animations: 'disabled' })
 })
 }
@@ -227,7 +229,8 @@ test('failed discovery preserves linked repositories and refresh recovers a part
   await expect(page.getByText('Synthetic repository', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Refresh repositories', exact: true }).click()
   await expect(page.getByText('work/project', { exact: true })).toBeVisible()
-  await expect(page.getByRole('status')).toContainText('Partial search')
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(page.getByText('Synthetic repository', { exact: true })).toBeVisible()
 })
 
 test('a collapsed discovery ignores its late response when reopened', async ({ page }) => {
@@ -272,17 +275,24 @@ test('an unprepared external Console explains the failure and can be opened afte
 
 test('unsaved iframe contents survive code, document and code transitions', async ({ page }) => {
   const state = await setup(page)
+  await page.getByText('Source code', { exact: true }).click()
+  const repository = page.getByRole('button', { name: 'Synthetic repository', exact: true })
   await show(page)
   const iframe = page.locator('iframe.code-editor-frame')
   await expect(iframe).toBeVisible()
+  await expect(repository).toHaveAttribute('aria-current', 'true')
   const source = page.frameLocator('iframe.code-editor-frame').getByRole('textbox', { name: 'Synthetic unsaved source' })
   await source.fill('Unsaved human source')
   await page.evaluate(() => window.testApp.emitSocket('chat.document_show', { data: { room_id: 'room-a', document_id: 'doc-a' } }))
   await expect(page.locator('.chat-document-pane')).toContainText('Synthetic document body')
   await expect(iframe).toBeHidden()
+  await expect(repository).not.toHaveAttribute('aria-current', 'true')
   await show(page, 'code-a', '2')
   await expect(iframe).toBeVisible()
   await expect(source).toHaveValue('Unsaved human source')
+  await expect(repository).toHaveAttribute('aria-current', 'true')
+  await page.getByRole('button', { name: 'Hide editor', exact: true }).click()
+  await expect(repository).not.toHaveAttribute('aria-current', 'true')
   expect(state.opens).toEqual(['code-a'])
   expect(state.closes).toEqual([])
 })
