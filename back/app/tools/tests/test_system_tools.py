@@ -127,7 +127,12 @@ def test_native_function_families_have_their_expected_owners():
         if name.startswith("conversation_") and name != "conversation_round_get"
     }
     assert conversation_names <= set(names["conversation"])
-    assert len(conversation_names) == 9
+    assert {
+        "conversation_choice_resolve", "conversation_task_submit", "conversation_task_list",
+        "conversation_task_status", "conversation_task_pause", "conversation_task_resume",
+        "conversation_task_retry", "conversation_task_stop", "conversation_process_start",
+        "conversation_process_pending", "conversation_process_respond",
+    } <= conversation_names
 
 
 @pytest.mark.asyncio

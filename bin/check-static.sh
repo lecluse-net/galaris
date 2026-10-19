@@ -13,6 +13,7 @@ docker run --rm -e APP_ENV=test -e AUTH_SECRET_KEY=ci-auth-secret-ci-auth-secret
   -e BROWSER_EXECUTOR_TOKEN=ci-browser-token-ci-browser-00001 \
   -e ENCRYPTION_MASTER_KEY=ci-encryption-secret-ci-encryption-01 "$tag-back" python -m pyright
 docker run --rm "$tag-back" ruff check app core bridge scripts main.py
+docker run --rm "$tag-back" python scripts/check_critical_coverage.py --check-inventory --config coverage-all-domains.json
 docker run --rm "$tag-back" python scripts/check_format.py --check
 bash bin/test-documentation.sh
 bash bin/documentation.sh check

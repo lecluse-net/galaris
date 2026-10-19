@@ -225,9 +225,22 @@ branches manquantes par domaine. Les tests et runtimes embarqués `default-agent
 `back/coverage-all-domains.json` fixe les premiers planchers de chaque domaine, arrondis au
 pourcent inférieur depuis la mesure complète du 12 septembre. Toute baisse sous ces planchers,
 absence d'un domaine ou apparition d'un domaine sans plancher fait échouer le contrôle. Ces
-planchers se relèvent après revue, jamais automatiquement. Les seuils critiques, plus précis,
+planchers se relèvent après revue, jamais automatiquement. Les domaines Dataset, Partage,
+ordonnancement commun et diagnostics de mise à jour ont été ajoutés le 19 octobre depuis
+leurs suites ciblées : respectivement 61/37, 93/75, 100/100 et 93/85 % pour lignes/branches.
+Cette mesure ciblée ne constitue pas une qualification complète du backend.
+Les seuils critiques, plus précis,
 continuent à s'appliquer. Le seuil critique de 95 % ne devient pas une prétendue couverture
 globale de 95 %. La même exécution produit les deux rapports sans relancer pytest.
+
+Les vérifications statiques contrôlent aussi l'inventaire des sources avant les suites métier :
+chaque fichier de production doit relever d'exactement un domaine, même s'il est absent du
+rapport de couverture. Le contrôle refuse les domaines manquants ou chevauchants et un chemin
+de sources inexistant. Les préfixes de répertoire se terminent par `/` ; un préfixe de fichier
+désigne ce fichier exact. `make coverage-check` rejoue cet inventaire avant les planchers.
+Les commandes de build backend des pipelines GitHub et GitLab sont exercées par
+`tests/test_ci_build_contexts.py`, avec Docker et le scanner remplacés à leurs frontières :
+elles doivent fournir toutes les sources locales demandées par le Dockerfile.
 
 `back/coverage-domains.json` impose des planchers séparés de lignes et de branches pour dix
 domaines du périmètre critique. Un domaine absent ou un fichier mesuré non affecté fait échouer

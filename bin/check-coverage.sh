@@ -19,6 +19,8 @@ if [[ -n "${COVERAGE_DIFF_BASE:-}" ]]; then
   arguments=(--base "$base_commit" --diff "/repo/$relative_dir/changes.patch")
 fi
 docker compose -f compose.test.yaml run --rm --no-deps backend \
+  python scripts/check_critical_coverage.py --check-inventory --config coverage-all-domains.json
+docker compose -f compose.test.yaml run --rm --no-deps backend \
   python scripts/check_critical_coverage.py "${arguments[@]}"
 docker compose -f compose.test.yaml run --rm --no-deps backend \
   python scripts/check_critical_coverage.py --xml /repo/artifacts/coverage-full.xml \

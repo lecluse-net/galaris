@@ -87,7 +87,11 @@ images:
       image_tag="galaris-security-${CI_JOB_ID}"
       trap 'docker image rm "$image_tag" >/dev/null 2>&1 || true' EXIT
       extra=()
-      if [[ "$BUILD_CONTEXT" == back ]]; then extra+=(--build-context harness_manager=./harness_manager); fi
+      if [[ "$BUILD_CONTEXT" == back ]]; then
+        extra+=(--build-context harness_manager=./harness_manager)
+        extra+=(--build-context code_executor=./code-executor)
+        extra+=(--build-context product_docs=./docs --build-context project_docs=./project)
+      fi
       if [[ "$BUILD_CONTEXT" == ssh-executor ]]; then extra+=(--build-context console_assets=./back/app/console/assets); fi
       docker build --pull "${extra[@]}" -t "$image_tag" "$BUILD_CONTEXT"
       bash bin/security-check.sh image "$image_tag"

@@ -921,7 +921,12 @@ def test_every_declared_native_function_has_explicit_approval_metadata():
     from app.tools.mcp_loader import load_mcp_tools
     definitions = load_mcp_tools()
     assert len(definitions) > 100
-    assert all(definition.approval_reason != "Unclassified native action" for definition in definitions)
+    unclassified = [
+        definition.name for definition in definitions
+        if not definition.approval_reason.strip()
+        or definition.approval_reason == "Unclassified native action"
+    ]
+    assert not unclassified, f"Native functions need explicit approval metadata: {unclassified}"
     assert {definition.name: definition.approval for definition in definitions}["file_create"] == "ask"
 
 

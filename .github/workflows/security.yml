@@ -41,6 +41,8 @@ jobs:
           extra=()
           if [[ "$BUILD_CONTEXT" == back ]]; then
             extra+=(--build-context harness_manager=./harness_manager)
+            extra+=(--build-context code_executor=./code-executor)
+            extra+=(--build-context product_docs=./docs --build-context project_docs=./project)
           fi
           if [[ "$BUILD_CONTEXT" == ssh-executor ]]; then
             extra+=(--build-context console_assets=./back/app/console/assets)

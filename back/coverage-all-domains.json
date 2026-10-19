@@ -69,6 +69,13 @@
     "line_min": 92,
     "branch_min": 61
   },
+  "app/dataset/": {
+    "prefixes": [
+      "app/dataset/"
+    ],
+    "line_min": 61,
+    "branch_min": 37
+  },
   "app/documentation/": {
     "prefixes": [
       "app/documentation/"
@@ -180,6 +187,13 @@
     ],
     "line_min": 69,
     "branch_min": 48
+  },
+  "app/share/": {
+    "prefixes": [
+      "app/share/"
+    ],
+    "line_min": 93,
+    "branch_min": 75
   },
   "app/skill/": {
     "prefixes": [
@@ -601,6 +615,13 @@
     "line_min": 83,
     "branch_min": 73
   },
+  "core/scheduling.py": {
+    "prefixes": [
+      "core/scheduling.py"
+    ],
+    "line_min": 100,
+    "branch_min": 100
+  },
   "core/secrets.py": {
     "prefixes": [
       "core/secrets.py"
@@ -635,6 +656,13 @@
     ],
     "line_min": 87,
     "branch_min": 78
+  },
+  "core/update_diagnostics.py": {
+    "prefixes": [
+      "core/update_diagnostics.py"
+    ],
+    "line_min": 93,
+    "branch_min": 85
   },
   "core/user/": {
     "prefixes": [

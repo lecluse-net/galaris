@@ -23,7 +23,9 @@ from .schemas import (
 )
 
 
-@mcp_tool("galaris", name="processus_get", approval="enabled", effect_policy="read", concurrency_policy="safe",
+@mcp_tool("galaris", name="processus_get", approval="enabled",
+    approval_reason="Read process progress within the participant or active process administrator scope",
+    effect_policy="read", concurrency_policy="safe",
     description="Inspect an internal run's progress, active activities, human/authorization/Task/child waits, blockers, last activity and available controls. Only participating agents or an agent with active process_admin access may read it. Omit run_id inside an activity Task to inspect its owning run.")
 async def processus_get(ctx: McpToolContext, run_id: str | None = None) -> dict[str, Any]:
     if run_id is None:

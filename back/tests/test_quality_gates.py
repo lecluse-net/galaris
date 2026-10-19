@@ -6,23 +6,48 @@ from pathlib import Path
 
 import pytest
 
-from scripts.check_critical_coverage import main as coverage_main
+from pydantic import TypeAdapter
+
+from scripts.check_critical_coverage import Domain, check_source_inventory, main as coverage_main
 
 
 def test_all_backend_sources_belong_to_one_declared_coverage_domain():
     root = Path(__file__).resolve().parents[1]
-    domains = json.loads((root / "coverage-all-domains.json").read_text())
-    gaps = []
-    for layer in ("app", "bridge", "core"):
-        for path in (root / layer).rglob("*.py"):
-            if path.name == "__init__.py" or {"tests", "default-agent"} & set(path.parts):
-                continue
-            relative = path.relative_to(root).as_posix()
-            owners = [name for name, domain in domains.items()
-                      if any(relative.startswith(prefix) for prefix in domain["prefixes"])]
-            if len(owners) != 1:
-                gaps.append(relative)
-    assert not gaps, f"Backend sources need exactly one explicit coverage floor: {gaps}"
+    domains = TypeAdapter(dict[str, Domain]).validate_json((root / "coverage-all-domains.json").read_text())
+    check_source_inventory(root, domains)
+
+
+@pytest.mark.parametrize("fault", [None, "missing_domain", "overlapping_domain", "filename_prefix", "missing_root"])
+def test_coverage_inventory_checks_sources_independently_of_reports(tmp_path, monkeypatch, fault):
+    # A checkout under a directory named tests must still inspect production files.
+    source_root = tmp_path / "tests/checkout"
+    source = source_root / "app/critical/service.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("value = 1\n")
+    # Test support and embedded external runtimes are outside production coverage.
+    for relative in ("core/tests/helper.py", "bridge/example/default-agent/main.py"):
+        ignored = source_root / relative
+        ignored.parent.mkdir(parents=True)
+        ignored.write_text("value = 1\n")
+    domains = {"critical": {"prefixes": ["app/critical/"], "line_min": 80, "branch_min": 60}}
+    if fault == "missing_domain":
+        domains.clear()
+    elif fault == "overlapping_domain":
+        domains["duplicate"] = domains["critical"]
+    elif fault == "filename_prefix":
+        domains["critical"]["prefixes"] = ["app/critical/service.py"]
+        source.rename(source.with_name("service.py_extra.py"))
+    config = tmp_path / "domains.json"
+    config.write_text(json.dumps(domains))
+    if fault == "missing_root":
+        source_root = tmp_path / "absent"
+    monkeypatch.setattr(sys, "argv", ["coverage", "--check-inventory", "--source-root", str(source_root),
+                                     "--config", str(config)])
+    if fault:
+        with pytest.raises(ValueError, match="source directory is missing|exactly one explicit coverage floor"):
+            coverage_main()
+    else:
+        coverage_main()
 
 
 @pytest.mark.parametrize("fault", ["branch_gap", "missing_domain", "unassigned_source", "xml_entity"])

@@ -44,7 +44,13 @@ jobs:
           bash bin/update-secrets.sh
 
       - name: Build backend quality image
-        run: docker build --build-context harness_manager=./harness_manager --target builder --tag galaris-back-quality back
+        run: >-
+          docker build
+          --build-context harness_manager=./harness_manager
+          --build-context code_executor=./code-executor
+          --build-context product_docs=./docs
+          --build-context project_docs=./project
+          --target builder --tag galaris-back-quality back
 
       - name: Backend strict typing
         run: >-
@@ -58,6 +64,10 @@ jobs:
 
       - name: High-confidence Python lint
         run: docker run --rm galaris-back-quality ruff check app core bridge scripts main.py
+      - name: Every backend source has a coverage floor
+        run: >-
+          docker run --rm galaris-back-quality
+          python scripts/check_critical_coverage.py --check-inventory --config coverage-all-domains.json
       - name: Format extracted reliability modules
         run: docker run --rm galaris-back-quality python scripts/check_format.py --check
 

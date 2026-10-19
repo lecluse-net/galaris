@@ -204,8 +204,19 @@ files never imported by tests. `artifacts/coverage-full.xml`, `artifacts/coverag
 embedded `default-agent` runtimes are excluded. `back/coverage-all-domains.json` records initial
 per-domain floors rounded down to whole percentages from the September 12 full run. Drops below
 these floors, missing domains and new domains without a floor fail the check. Raise floors after
-review, never automatically. The more precise critical floors still apply. The critical 95%
+review, never automatically. Dataset, Sharing, common scheduling and update diagnostics were
+added on October 19 from their targeted suites: respectively 61/37, 93/75, 100/100 and 93/85%
+for lines/branches. This targeted measurement does not qualify the complete backend.
+The more precise critical floors still apply. The critical 95%
 threshold is not a global coverage claim. Both reports come from the same pytest execution.
+
+Static checks also inspect the source inventory before business test suites: each production
+file must belong to exactly one domain, even when absent from the coverage report. The check
+rejects missing or overlapping domains and a nonexistent source directory. Directory prefixes
+end with `/`; a file prefix matches that exact file. `make coverage-check` repeats the inventory
+check before enforcing floors. `tests/test_ci_build_contexts.py` executes the backend build
+commands from GitHub and GitLab pipelines, replacing Docker and the scanner at their boundaries:
+they must supply every local source required by the Dockerfile.
 
 `back/coverage-domains.json` enforces separate line and branch floors for ten critical domains.
 A missing domain or unassigned measured file fails the gate. Setting

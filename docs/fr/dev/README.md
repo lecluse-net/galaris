@@ -1224,7 +1224,8 @@ Autorisations reste utilisable pour leurs fonctions. Les Tools optionnels
 conservent leurs activations et restrictions administrées. Les ACL métier, les compatibilités
 de harnais et les restrictions de contexte restent appliquées.
 
-Les neuf fonctions de contrôle `conversation_*` appartiennent au Tool `conversation`, avec
+Les fonctions de contrôle `conversation_*`, dont les réponses aux demandes humaines de Process,
+appartiennent au Tool `conversation`, avec
 `document_show` ; elles restent réservées au contrôleur conversationnel. Le clic sur un Tool
 décrit ouvre sa description ; aucun lien n'est présenté pour une description vide. Le catalogue
 livré décrit tous les Tools natifs et les bridges de messagerie et de fichiers connus ; la

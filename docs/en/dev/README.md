@@ -1196,7 +1196,8 @@ remains usable for their functions. Optional Tools retain
 administrator-owned activation and restrictions. Business ACLs, harness compatibility and
 context restrictions still apply.
 
-The nine `conversation_*` control functions belong to the `conversation` Tool alongside
+The `conversation_*` control functions, including responses to Process human requests,
+belong to the `conversation` Tool alongside
 `document_show`; they remain limited to the conversation controller. Clicking a described Tool
 opens its description; empty descriptions have no link. The shipped catalog describes every
 native Tool and known messaging/file bridge. Synchronization fills empty bridge descriptions
