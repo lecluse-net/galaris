@@ -25,6 +25,54 @@ state = lifecycle.state
 
 
 @pytest.mark.asyncio
+async def test_live_protocol_delivers_text_and_supervision_before_provider_finishes(runtime, monkeypatch):
+    from app.llm import llm_call_service
+    from app.llm.contracts import ProtocolInferenceRequest
+
+    _, llm, _, mode = runtime
+    finish = asyncio.Event()
+    mode.update(concurrent=True, partial_gate=finish)
+    progress = asyncio.Event()
+    emitted = []
+
+    async def receive(subject, action, data, _room):
+        if subject == "llm_call" and action == "progress":
+            emitted.append(data)
+            if data["response_text"].get("append") or data["response_text"].get("replace"):
+                progress.set()
+
+    monkeypatch.setattr(llm_call_service.websocket, "emit", receive)
+    request = ProtocolInferenceRequest(
+        llm_id=llm.id, prompt="Synthetic greeting", purpose="lab.mechanism_run",
+        protocol="chat", body={"model": llm.code, "stream": True,
+            "messages": [{"role": "user", "content": "Synthetic greeting"}]},
+    )
+    response = await asyncio.wait_for(protocol_inference.protocol_response(request), 10)
+    iterator = response.body_iterator
+    chunks = []
+    try:
+        async with asyncio.timeout(3):
+            while not any(b"Bon" in chunk for chunk in chunks):
+                chunks.append(await anext(iterator))
+        assert not finish.is_set()
+        key = UUID(response.headers["X-Galaris-Inference-Id"])
+        async with aclosing(stream_inference(key)) as events:
+            async with asyncio.timeout(2):
+                async for event in events:
+                    if event.message is not None and event.message.type == "text":
+                        assert event.message.content == "Bon"
+                        break
+                else:
+                    pytest.fail("The message stream ended before delivering partial text.")
+        await asyncio.wait_for(progress.wait(), 2)
+        assert emitted and not finish.is_set()
+    finally:
+        finish.set()
+        async for _ in iterator:
+            pass
+
+
+@pytest.mark.asyncio
 async def test_closing_transport_stops_its_producer_before_closing_the_response(monkeypatch):
     from starlette.responses import StreamingResponse
     from app.llm import protocol_inference

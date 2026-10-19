@@ -19797,6 +19797,7 @@
           "front/app/conversation/components/ConversationExecutionDetails.vue",
           "front/app/conversation/components/ConversationHistory.vue",
           "front/app/conversation/components/ConversationRoundDetail.vue",
+          "front/app/conversation/index.ts",
           "front/app/conversation/services/conversationService.ts",
           "front/app/conversation/types.ts"
         ],
@@ -20308,7 +20309,8 @@
           "front/app/llm/services/llmProfileService.ts",
           "front/app/llm/services/llmProviderService.ts",
           "front/app/llm/services/personalLlmService.ts",
-          "front/app/llm/services/profileCatalogService.ts"
+          "front/app/llm/services/profileCatalogService.ts",
+          "front/app/llm/useLlmCallProgress.ts"
         ],
         "source": "app/llm",
         "target": "core/api"
@@ -20368,7 +20370,8 @@
       {
         "files": [
           "front/app/llm/components/LlmActivityPanel.vue",
-          "front/app/llm/components/LlmCalls.vue"
+          "front/app/llm/components/LlmCalls.vue",
+          "front/app/llm/useLlmCallProgress.ts"
         ],
         "source": "app/llm",
         "target": "core/websocket"

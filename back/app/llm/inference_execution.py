@@ -227,12 +227,11 @@ async def events(
     snapshot = await read(inference_id)
     attempt_id = attempt_id or snapshot.attempts[-1].id
     cursor = after_sequence
-    with notifications.subscribe("changes", inference_id) as changed:
+    with notifications.subscribe("messages", inference_id) as changed:
         while True:
             changed.clear()
-            status = await transaction(lambda: inference_store.read_attempt_status(inference_id, attempt_id))
-            batch = await transaction(
-                lambda cursor=cursor: inference_store.read_events(inference_id, attempt_id, cursor)
+            status, batch = await transaction(
+                lambda cursor=cursor: inference_store.read_event_batch(inference_id, attempt_id, cursor)
             )
             for event in batch:
                 cursor = event.sequence

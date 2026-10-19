@@ -19,7 +19,7 @@ function setup(getActivity) {
       onEvent: (subject, action, callback) => events.set(`${subject}.${action}`, callback),
       offEvent() {}, onConnect() {}, offConnect() {},
     } },
-    '@/app/llm': {}, './services/taskService': { taskService: { getActivity } },
+    '@/app/llm': { llmCallService: { getByRuns: async () => [] } }, './services/taskService': { taskService: { getActivity } },
     './aiResult': aiResult, './activity': activity,
   }, {
     setTimeout: callback => { timers.set(++timerId, callback); return timerId },
@@ -76,5 +76,21 @@ test('switching tasks rejects late activity and an empty selection makes no HTTP
     await state.refresh()
     assert.deepEqual(state.snapshots.value, {})
     assert.equal(requests.length, 2)
+  } finally { state.close() }
+})
+
+test('text-only fallback progress keeps activity fresh without reloading call histories', async () => {
+  const state = setup(async () => [{ ...snapshot('task'), streams_ai_messages: false }])
+  try {
+    await state.refresh()
+    const progress = state.events.get('llm_call.progress')
+    const at = '2026-01-01T12:00:00Z'
+    for (let index = 0; index < 1000; index++) {
+      progress({ data: { id: 'call', task_id: 'task', agent_run_id: 'run', updated_at: at } })
+    }
+    assert.equal(state.snapshots.value.task.last_activity_at, at)
+    assert.equal(state.timers.size, 0)
+    progress({ data: { task_id: 'task', agent_run_id: 'run', updated_at: at, tool_calls: [] } })
+    assert.equal(state.timers.size, 1)
   } finally { state.close() }
 })

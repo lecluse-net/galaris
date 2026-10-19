@@ -774,6 +774,24 @@ ni fuite dans le résultat MCP). Le scénario de récupération conversationnell
 fichier exige `SUCCEEDED` réellement persisté avant de marquer les incidents LLM/outils du
 round comme récupérés. Il conserve ceux d’un autre run et refuse ce marquage en attente d’accord,
 après interruption, remplacement, perte de lease, annulation, échec ou livraison incertaine.
+Le test de protocole avec fournisseur suspendu vérifie que le texte SSE et sa supervision
+arrivent avant la fin de la génération. Une régression dédiée vérifie la diffusion du dernier
+fragment sans nouvel événement fournisseur, y compris pendant la limitation de fréquence.
+`app/llm/tests/test_stream_performance.py` mesure les octets diffusés et requêtes SQL sur
+de grands contextes synthétiques, borne la mémoire des traces et vérifie supervision lente,
+fin immuable et réveils séparés. `front/browser-tests/stream-progress.spec.mjs` couvre les
+deltas Unicode, leur rattrapage et les événements tardifs ; `storeCatchUp.test.mjs` conserve
+tous les fragments d'une rafale avec une seule projection et annule le rendu après déconnexion.
+Le regroupement des deltas consécutifs est comparé au traitement séquentiel pour Unicode,
+fragments vides, raisonnement, outils, coûts, erreurs, doublons, trous, snapshots, resets,
+tentatives et fin du stream. Les événements entrants et projections déjà publiées restent immuables.
+`front/app/task/aiResult.test.mjs` conserve l'ordre des blocs lors de fusions de longues
+traces, y compris les messages manquants, les identifiants d'outils modifiés et les mélanges
+de messages historiques et identifiés. Le parcours Chat exige un fragment visible avant la fin.
+`storeCatchUp.test.mjs` vérifie aussi le partage des seules lectures de contrôles encore
+en cours, leur relance après erreur et leur isolation à la navigation, à la reconnexion,
+au changement de session et aux transitions d'appel. Le navigateur conserve messages frais
+et brouillon pendant ces lectures lentes, sans requêtes de commandes en doublon.
 Les tests de rétention empêchent une observation tardive de
 restaurer une trace expirée. `test_editorial_html.py` conserve le contenu et la révision après
 refus de mutation ; `app/image/tests/test_image_mcp.py` conserve le rejet des URL privées et

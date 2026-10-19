@@ -387,19 +387,19 @@ async def test_commits_wake_every_reader_even_between_read_and_wait(runtime, mon
     empty_reads = 0
     both_read = asyncio.Event()
     release = asyncio.Event()
-    original = store.read_events
+    original = store.read_event_batch
 
     async def read_then_pause(*args, **kwargs):
         nonlocal empty_reads
-        batch = await original(*args, **kwargs)
+        status, batch = await original(*args, **kwargs)
         if not batch and empty_reads < 2:
             empty_reads += 1
             if empty_reads == 2:
                 both_read.set()
             await release.wait()
-        return batch
+        return status, batch
 
-    monkeypatch.setattr(store, "read_events", read_then_pause)
+    monkeypatch.setattr(store, "read_event_batch", read_then_pause)
     consumers = [asyncio.create_task(anext(reader)) for reader in (stream, second)]
     try:
         await asyncio.wait_for(both_read.wait(), 5)
@@ -426,7 +426,7 @@ async def test_commits_wake_every_reader_even_between_read_and_wait(runtime, mon
         await asyncio.gather(*consumers, return_exceptions=True)
         await stream.aclose()
         await second.aclose()
-    assert ("changes", key) not in notifications._subscribers
+    assert ("messages", key) not in notifications._subscribers
 
 
 @pytest.mark.asyncio

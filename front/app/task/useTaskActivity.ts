@@ -86,6 +86,20 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
     if (payload.data?.task_id && ids.has(payload.data.task_id)
       && snapshots.value[payload.data.task_id]?.streams_ai_messages === false) schedule()
   }
+  function onCallProgress(payload: { data?: Partial<LLMCall> }) {
+    const data = payload.data
+    const taskId = data?.task_id
+    if (!data || !taskId || !ids.has(taskId)) return
+    const snapshot = snapshots.value[taskId]
+    if (!snapshot?.run_id || snapshot.streams_ai_messages !== false || data.agent_run_id !== snapshot.run_id) return
+    if (data.updated_at && (!snapshot.last_activity_at || Date.parse(data.updated_at) > Date.parse(snapshot.last_activity_at))) {
+      observedActivity.set(taskId, { runId: snapshot.run_id, attemptId: snapshot.latest_attempt?.id ?? null, at: data.updated_at })
+      applyObservedActivity(snapshot)
+    }
+    // Task text waits for a completed call. Only changed tools need another
+    // HTTP projection; text-only progress can update the silence clock locally.
+    if (data.tool_calls) schedule()
+  }
   async function refresh() {
     if (disposed) return
     if (inFlight) { refreshPending = true; return }
@@ -177,6 +191,7 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
   websocket.onEvent('agent_run', 'event', onEvent)
   websocket.onEvent('llm_call', 'create', onCall)
   websocket.onEvent('llm_call', 'update', onCall)
+  websocket.onEvent('llm_call', 'progress', onCallProgress)
   websocket.onEvent('llm_call', 'delete', schedule)
   websocket.onEvent('llm_call', 'cleanup', schedule)
   websocket.onConnect(schedule)
@@ -208,6 +223,7 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
     websocket.offEvent('agent_run', 'event', onEvent)
     websocket.offEvent('llm_call', 'create', onCall)
     websocket.offEvent('llm_call', 'update', onCall)
+    websocket.offEvent('llm_call', 'progress', onCallProgress)
     websocket.offEvent('llm_call', 'delete', schedule)
     websocket.offEvent('llm_call', 'cleanup', schedule)
     websocket.offConnect(schedule)

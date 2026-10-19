@@ -8,7 +8,7 @@ from uuid import UUID
 
 from core.database import after_commit
 
-type Topic = Literal["work", "changes", "control"]
+type Topic = Literal["work", "changes", "control", "messages", "wire"]
 type Key = tuple[Topic, UUID | None]
 _subscribers: dict[Key, set[asyncio.Event]] = {}
 
@@ -37,6 +37,11 @@ def subscribe(topic: Topic, inference_id: UUID | None = None) -> Generator[async
 
 
 def notify(topic: Topic, inference_id: UUID | None = None) -> None:
+    # Lifecycle transitions wake every cursor. Journal writes wake only readers
+    # of their own representation, avoiding two empty DB reads per other batch.
+    if topic == "changes":
+        notify("messages", inference_id)
+        notify("wire", inference_id)
     for event in tuple(_subscribers.get((topic, inference_id), ())):
         event.set()
 

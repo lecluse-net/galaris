@@ -1,6 +1,6 @@
 import axios from 'axios'
 import type { DocumentFocus } from '../documentFocus'
-import { computed, onScopeDispose, ref, watch } from 'vue'
+import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { usePrivilegeStore } from '@/core/authorize'
 import { AUTH_TOKEN_CHANGED_EVENT, getStoredAccessToken } from '@/core/api'
@@ -39,7 +39,8 @@ export const useChatStore = defineStore('chat', () => {
   const stoppingCallId = ref<string | null>(null)
   const endedCallId = ref<string | null>(null)
   const callAvailable = ref(false)
-  const liveRound = ref<LiveAgentRound | null>(null)
+  // Runtime reducers replace the root; completed trace messages stay immutable.
+  const liveRound = shallowRef<LiveAgentRound | null>(null)
   const pendingVoiceTranscriptions = ref<PendingVoiceTranscription[]>([])
   const roomsTotal = ref(0)
   const roomsPage = ref(1)
@@ -69,10 +70,21 @@ export const useChatStore = defineStore('chat', () => {
   let lastRecentMessagesLoad = 0
   let roomsRequestSequence = 0
   let runtimeEventRevision = 0
+  let runtimeRenderTimer: ReturnType<typeof setTimeout> | undefined
+  let pendingRuntimeRound: LiveAgentRound | null = null
+  let pendingRuntimeGeneration = 0
+  let pendingRuntimeDelta: { data: NonNullable<RealtimeRuntimeEvent['data']>; lastSequence: number } | null = null
   let callEventRevision = 0
   let selectedRoomGeneration = 0
   let projectionRequestSequence = 0
   let appliedProjectionSequence = 0
+  let controlsEpoch = 0
+  let pendingControls: {
+    generation: number; roomId: string
+    commands?: ReturnType<typeof service.commands>
+    activeCall?: ReturnType<typeof service.activeCall>
+    callStatus?: ReturnType<typeof service.callStatus>
+  } | null = null
 
   // Only an accepted newer projection supersedes an older one. A failed request
   // must not discard useful data still arriving for the same selection and viewer.
@@ -188,6 +200,7 @@ export const useChatStore = defineStore('chat', () => {
     result: ConversationActivityPage,
     runtimeRevisionAtRequest: number,
   ): void {
+    flushRuntimeProjection()
     activity.value = mergeConversationActivity(activity.value, result.items)
     activityTotal.value = result.total
     liveRound.value = reconcileLiveRoundFromActivitySnapshot(
@@ -312,20 +325,40 @@ export const useChatStore = defineStore('chat', () => {
       lastRecentMessagesLoad = Date.now()
       applyActivitySnapshot(id, activityResult, runtimeRevisionAtRequest)
       // Optional controls must not delay the canonical message/activity projection.
-      const optionalError = (error: unknown): void => { if (request.canApply()) clearDeniedScope(error) }
-      void Promise.all([
-        canLoadCall ? service.activeCall(id) : Promise.resolve(null),
-        canLoadCall ? service.callStatus(id) : Promise.resolve(null),
-      ]).then(([call, status]) => {
-        if (!request.canApply()) return
+      // Share only unfinished reads within this selection. Settled reads are
+      // discarded so later refreshes still observe configuration changes.
+      if (!pendingControls || pendingControls.generation !== selectedRoomGeneration || pendingControls.roomId !== id) {
+        pendingControls = { generation: selectedRoomGeneration, roomId: id }
+      }
+      const controls = pendingControls
+      const epoch = controlsEpoch
+      const canApplyControls = (): boolean => request.canApply() && pendingControls === controls
+      // A call transition invalidates data, but an access denial still applies
+      // to this selection/session even when the call state has changed.
+      const optionalError = (error: unknown): void => {
+        if (request.canApply() && epoch === controlsEpoch) clearDeniedScope(error)
+      }
+      const callRead = Promise.all([
+        canLoadCall
+          ? controls.activeCall ??= service.activeCall(id).finally(() => { controls.activeCall = undefined })
+          : Promise.resolve(null),
+        canLoadCall
+          ? controls.callStatus ??= service.callStatus(id).finally(() => { controls.callStatus = undefined })
+          : Promise.resolve(null),
+      ])
+      void callRead.then(([call, status]) => {
+        if (!canApplyControls()) return
         if (callRevisionAtRequest === callEventRevision) {
           activeCall.value = call?.call_id === endedCallId.value ? null : call
           if (!activeCall.value) stoppingCallId.value = null
         }
         callAvailable.value = status?.available ?? false
       }).catch(optionalError)
-      void (canLoadCommands ? service.commands(id) : Promise.resolve(null)).then(catalog => {
-        if (request.canApply()) commands.value = catalog?.commands ?? []
+      const commandRead = canLoadCommands
+        ? controls.commands ??= service.commands(id).finally(() => { controls.commands = undefined })
+        : Promise.resolve(null)
+      void commandRead.then(catalog => {
+        if (canApplyControls()) commands.value = catalog?.commands ?? []
       }).catch(optionalError)
     } catch (error) { if (request.canApply()) handleScopeError(error) }
   }
@@ -386,11 +419,13 @@ export const useChatStore = defineStore('chat', () => {
     } catch (error) { handleScopeError(error) }
   }
   function prepareCallStart(): void {
+    pendingControls = null
     callEventRevision += 1
     stoppingCallId.value = null
     endedCallId.value = null
   }
   function markCallStopping(callId: string): void {
+    pendingControls = null
     callEventRevision += 1
     stoppingCallId.value = callId
   }
@@ -565,6 +600,7 @@ export const useChatStore = defineStore('chat', () => {
         event,
       )
       if (update) {
+        pendingControls = null
         callEventRevision += 1
         activeCall.value = update.activeCall
         stoppingCallId.value = update.stoppingCallId
@@ -597,18 +633,90 @@ export const useChatStore = defineStore('chat', () => {
       messages.value,
     )
   }
+  function clearRuntimeProjection(): void {
+    if (runtimeRenderTimer) clearTimeout(runtimeRenderTimer)
+    runtimeRenderTimer = undefined
+    pendingRuntimeRound = null
+    pendingRuntimeDelta = null
+  }
+  function flushRuntimeDelta(): void {
+    const batch = pendingRuntimeDelta
+    pendingRuntimeDelta = null
+    if (!batch || !pendingRuntimeRound || pendingRuntimeGeneration !== selectedRoomGeneration
+      || pendingRuntimeRound.room_id !== selectedRoom.value?.id) return
+    // Reduce at the first sequence, then advance to the last accepted cursor.
+    const update = applyConversationRuntimeEvent(pendingRuntimeRound, batch.data)
+    if (update && !update.needsSnapshot) {
+      pendingRuntimeRound = { ...update.round, last_sequence: batch.lastSequence }
+    }
+  }
+  function bufferRuntimeDelta(data: NonNullable<RealtimeRuntimeEvent['data']>): boolean {
+    // Accounting, completion markers and other boundaries retain their original
+    // event-by-event semantics. Only zero-cost append fragments can coalesce.
+    const round = pendingRuntimeRound
+    const message = data.message
+    if (!round || pendingRuntimeGeneration !== selectedRoomGeneration || round.terminal_received
+      || data.kind !== 'message' || data.sequence === undefined || !message?.stream_id || typeof message.content !== 'string'
+      || data.room_id !== round.room_id || data.round_id !== round.round_id
+      || (data.attempt ?? 1) !== (round.attempt ?? 1)
+      || data.sequence !== (pendingRuntimeDelta?.lastSequence ?? round.last_sequence) + 1
+      || (message.type !== 'text' && !(message.type === 'tool' && message.tool_name === 'thinking'))
+      || (message.stream_mode ?? 'delta') !== 'delta' || message.stream_complete === true
+      || message.success === false || (message.cost ?? 0) !== 0 || (message.execution_time ?? 0) !== 0) return false
+    const batch = pendingRuntimeDelta
+    if (batch) {
+      const previous = batch.data.message!
+      if (data.topic_id !== batch.data.topic_id || message.stream_id !== previous.stream_id
+        || message.type !== previous.type || (message.tool_name ?? null) !== (previous.tool_name ?? null)
+        || message.stream_complete !== previous.stream_complete) return false
+      // This buffer owns its message; published rounds and incoming events stay immutable.
+      previous.content += message.content
+      batch.lastSequence = data.sequence
+    } else {
+      const previous = round.ai_result.messages?.find(item => item.stream_id === message.stream_id)
+      if (!previous || previous.type !== message.type
+        || (previous.tool_name ?? null) !== (message.tool_name ?? null)) return false
+      pendingRuntimeDelta = { data: { ...data, message: { ...message } }, lastSequence: data.sequence }
+    }
+    return true
+  }
+  function flushRuntimeProjection(): void {
+    flushRuntimeDelta()
+    const pending = pendingRuntimeRound
+    clearRuntimeProjection()
+    if (pending && pending.room_id === selectedRoom.value?.id && pendingRuntimeGeneration === selectedRoomGeneration) {
+      liveRound.value = pending
+    }
+  }
   function onRuntime(event: RealtimeRuntimeEvent): void {
     const data = event.data
     const roomId = data?.room_id
     if (!data || !roomId || roomId !== selectedRoom.value?.id) return
-    const update = applyConversationRuntimeEvent(liveRound.value, data)
+    if (bufferRuntimeDelta(data)) {
+      runtimeEventRevision += 1
+      return
+    }
+    flushRuntimeDelta()
+    const baseline = pendingRuntimeRound?.room_id === roomId && pendingRuntimeGeneration === selectedRoomGeneration
+      ? pendingRuntimeRound : liveRound.value
+    const update = applyConversationRuntimeEvent(baseline, data)
     if (!update) return
     if (update.needsSnapshot) {
+      flushRuntimeProjection()
       void refreshFromSignal(true)
       return
     }
     runtimeEventRevision += 1
-    liveRound.value = update.round
+    if (data.kind === 'message') {
+      // Accumulate every ordered delta outside Vue, but render at most 20 times
+      // per second. One cumulative value bounds memory even in hidden tabs.
+      pendingRuntimeRound = update.round
+      pendingRuntimeGeneration = selectedRoomGeneration
+      runtimeRenderTimer ??= setTimeout(flushRuntimeProjection, 50)
+    } else {
+      clearRuntimeProjection()
+      liveRound.value = update.round
+    }
     if (update.finished) {
       // The live AIResult remains visible while this catches up the canonical
       // Messenger response. MessageTimeline swaps only after that response and
@@ -617,12 +725,14 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
   function onConnect(): void {
+    controlsEpoch += 1
+    pendingControls = null
     signalRefresh = null
     if (subscribedRoom) websocket.joinRoom(subscribedRoom)
     void loadStatus().catch(() => undefined)
     void refreshFromSignal(true)
   }
-  function onAuthChanged(): void { if (!getStoredAccessToken()) { disconnect(); purge(); status.value = null } }
+  function onAuthChanged(): void { controlsEpoch += 1; pendingControls = null; if (!getStoredAccessToken()) { disconnect(); purge(); status.value = null } }
   function connect(): void {
     if (connected) return
     connected = true
@@ -637,6 +747,9 @@ export const useChatStore = defineStore('chat', () => {
     window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onAuthChanged)
   }
   function disconnect(): void {
+    controlsEpoch += 1
+    pendingControls = null
+    clearRuntimeProjection()
     stopCatchUp()
     signalRefresh = null
     if (subscribedRoom) websocket.leaveRoom(subscribedRoom)

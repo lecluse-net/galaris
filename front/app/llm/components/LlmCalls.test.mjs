@@ -4,18 +4,20 @@ import test from 'node:test'
 import { parse, compileScript } from '@vue/compiler-sfc'
 import * as vue from 'vue'
 import ts from 'typescript'
-import { deferred } from '../../../test-support/load-typescript.mjs'
+import { deferred, loadTypescript } from '../../../test-support/load-typescript.mjs'
+import { applyLlmCallProgress, isNewerCallRevision } from '../progress.ts'
 
 function setup(t) {
   const { descriptor } = parse(readFileSync(new URL('./LlmCalls.vue', import.meta.url), 'utf8'))
   const code = ts.transpileModule(compileScript(descriptor, { id: 'calls-races' }).content, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText
-  let cleanup
+  const cleanups = []
+  const cleanup = () => cleanups.forEach(fn => fn())
   let session = 'A'
   const requests = new Map(), notices = []
   const dependencies = {
-    vue: { ...vue, onBeforeUnmount(fn) { cleanup = fn } },
+    vue: { ...vue, onBeforeUnmount(fn) { cleanups.push(fn) } },
     'vue-i18n': { useI18n: () => ({ t: key => key }) },
     quasar: { useQuasar: () => ({ notify: notice => notices.push(notice) }) },
     '@/core/api': { sessionGeneration: () => session },
@@ -25,6 +27,13 @@ function setup(t) {
     './LlmCallTaskDetail.vue': {},
     '../services/llmCallService': { llmCallService: { getByTask(id) { const r = deferred(); requests.set(id, r); return r.promise } } },
   }
+  dependencies['../useLlmCallProgress'] = loadTypescript(new URL('../useLlmCallProgress.ts', import.meta.url), {
+    vue: dependencies.vue,
+    '@/core/api': dependencies['@/core/api'],
+    '@/core/websocket': dependencies['@/core/websocket'],
+    './services/llmCallService': dependencies['../services/llmCallService'],
+    './progress': { applyLlmCallProgress, isNewerCallRevision },
+  })
   const exports = {}
   new Function('require', 'exports', code)(name => {
     assert.ok(name in dependencies, name)

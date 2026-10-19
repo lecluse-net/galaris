@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -48,10 +47,10 @@ from .reasoning import (
 )
 from .trace import StreamTrace, response_trace
 from .subscription_policy import enforce_subscription_access
+from .stream_updates import StreamUpdates
 
 
 PROXY_TIMEOUT = httpx.Timeout(connect=10.0, read=600.0, write=60.0, pool=10.0)
-_PARTIAL_UPDATE_INTERVAL = 0.5
 
 
 async def _send_best_effort(
@@ -295,7 +294,7 @@ def _chat_completion_from_stream_trace(
 ) -> dict[str, Any]:
     """Collapse converted Chat Completions chunks into one ordinary completion."""
     trace_data = trace.result()
-    metadata = trace.raw_payloads[0] if trace.raw_payloads else {}
+    metadata = trace.metadata or {}
     raw_tools = as_list(trace_data.get("tool_calls"))
     tool_calls: list[dict[str, Any]] = []
     for index, raw_tool in enumerate(raw_tools):
@@ -751,44 +750,26 @@ async def proxy_chat_completion(
         error: str | None = None
         status = "completed"
         stream_completed = False
-        last_partial_update = 0.0
+        updates = StreamUpdates(call.id, lambda: dict(
+            trace=trace.result(unwrap_deferred_tools=unwrap_deferred_tools),
+            first_token_at=first_token_at,
+            input_rate=llm.cost_per_input_token,
+            cached_input_rate=llm.cost_per_cached_input_token,
+            output_rate=llm.cost_per_output_token,
+        ))
 
         async def track_payload(payload: dict[str, Any]) -> None:
-            nonlocal first_token_at, last_partial_update
+            nonlocal first_token_at
             if payload.get("error") is not None:
                 # HTTP 200 can still end with an SSE provider error. Fail the
                 # physical call before forwarding it, so accounting and failover
                 # see the same terminal outcome as the SDK.
                 raise RuntimeError(json.dumps(payload["error"], ensure_ascii=False))
-            before = (
-                len(trace.response_parts),
-                len(trace.reasoning_parts),
-                len(trace.tools),
-            )
-            trace.add_payload(payload)
-            after = (
-                len(trace.response_parts),
-                len(trace.reasoning_parts),
-                len(trace.tools),
-            )
-            if first_token_at is None and after != before:
+            changed = trace.add_payload(payload)
+            if first_token_at is None and changed:
                 first_token_at = datetime.now(timezone.utc)
-            now = time.monotonic()
-            if after != before and now - last_partial_update >= _PARTIAL_UPDATE_INTERVAL:
-                last_partial_update = now
-                try:
-                    await llm_call_service.update_running_call(
-                        call.id,
-                        trace=trace.result(
-                            unwrap_deferred_tools=unwrap_deferred_tools,
-                        ),
-                        first_token_at=first_token_at,
-                        input_rate=llm.cost_per_input_token,
-                        cached_input_rate=llm.cost_per_cached_input_token,
-                        output_rate=llm.cost_per_output_token,
-                    )
-                except Exception:
-                    logger.exception("LLM trace partial update failed for call {}", call.id)
+            if changed:
+                updates.changed()
 
         try:
             if stream_adapter is not None:
@@ -864,6 +845,7 @@ async def proxy_chat_completion(
                 error = "LLM stream closed before a terminal provider response."
 
             async def finalize_trace() -> None:
+                await updates.close()
                 await llm_call_service.finalize_call(
                     call.id,
                     trace=trace.result(
@@ -1187,7 +1169,12 @@ async def proxy_responses(
         status = "completed"
         error: str | None = None
         stream_completed = False
-        last_partial_update = 0.0
+        updates = StreamUpdates(call.id, lambda: dict(
+            trace=stream_trace.result(), first_token_at=first_token_at,
+            input_rate=llm.cost_per_input_token,
+            cached_input_rate=llm.cost_per_cached_input_token,
+            output_rate=llm.cost_per_output_token,
+        ))
         try:
             lines = deadline.iterate(upstream.aiter_lines(), completed=lambda: stream_trace.terminal)
             async for line in complete_function_argument_deltas(lines):
@@ -1204,23 +1191,8 @@ async def proxy_responses(
                             changed = stream_trace.add_event(decoded_event)
                             if changed and first_token_at is None:
                                 first_token_at = datetime.now(timezone.utc)
-                            now = time.monotonic()
-                            if changed and now - last_partial_update >= _PARTIAL_UPDATE_INTERVAL:
-                                last_partial_update = now
-                                try:
-                                    await llm_call_service.update_running_call(
-                                        call.id,
-                                        trace=stream_trace.result(),
-                                        first_token_at=first_token_at,
-                                        input_rate=llm.cost_per_input_token,
-                                        cached_input_rate=llm.cost_per_cached_input_token,
-                                        output_rate=llm.cost_per_output_token,
-                                    )
-                                except Exception:
-                                    logger.exception(
-                                        "Responses trace partial update failed for call {}",
-                                        call.id,
-                                    )
+                            if changed:
+                                updates.changed()
                 yield (line + "\n").encode("utf-8")
             if not stream_trace.terminal:
                 raise RuntimeError("the Responses stream ended before its terminal event")
@@ -1247,6 +1219,7 @@ async def proxy_responses(
                 error = "Responses stream closed before a terminal provider response."
 
             async def finalize_trace() -> None:
+                await updates.close()
                 await llm_call_service.finalize_call(
                     call.id,
                     trace=stream_trace.result(),

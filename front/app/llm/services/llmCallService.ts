@@ -3,6 +3,10 @@ import type { LLMCall, LLMCallPage } from '../types'
 
 
 class LLMCallService {
+  async getById(id: string, signal?: AbortSignal): Promise<LLMCall> {
+    return (await api.get<LLMCall>(`/llm-calls/${encodeURIComponent(id)}`, { signal })).data
+  }
+
   async getByRuns(taskIds: string[], runIds: string[]): Promise<LLMCall[]> {
     const params = new URLSearchParams({ limit: '500' })
     taskIds.forEach(id => params.append('task_ids', id))

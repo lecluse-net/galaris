@@ -99,6 +99,14 @@ de validation figés. L’admission est committée avant le départ du worker ; 
 `LLMCall` reste la source des coûts des appels physiques. Le pilote d’extraction Memory du Lab
 utilise le même journal tout en gardant ses retries métier.
 
+La supervision des appels est asynchrone et bornée à quatre mises à jour par seconde, sans
+file de snapshots. Le dernier changement est diffusé même si le fournisseur fait une pause.
+`llm_call.progress` transporte les changements et deltas de sortie,
+sans renvoyer le contexte d'entrée ; une révision manquante déclenche une lecture
+autorisée du snapshot. Les événements de création et de fin restent complets. Le journal
+conserve ses commits avant diffusion ; ses lecteurs texte et protocole ont des réveils
+distincts. Voir [0207](../../../../project/decisions/0207-bounded-stream-supervision.md).
+
 La lecture d’une tentative restitue les messages puis un résultat terminal unique. Une
 reconnexion reprend au curseur ; une commande `resume` crée une nouvelle tentative de la
 requête figée. Le service ne rejoue aucun outil. Les adaptateurs synchrones et HTTP demandent

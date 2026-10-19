@@ -338,10 +338,17 @@ class StreamTrace:
     finish_reason: str | None = None
     usage: dict[str, Any] = field(default_factory=lambda: {})
     response_id: str | None = None
-    raw_payloads: list[dict[str, Any]] = field(default_factory=lambda: [])
+    metadata: dict[str, Any] | None = None
+    revision: int = 0
 
-    def add_payload(self, payload: dict[str, Any]) -> None:
-        self.raw_payloads.append(payload)
+    def add_payload(self, payload: dict[str, Any]) -> bool:
+        previous_revision = self.revision
+        # Only these initial fields are used to reconstruct the final envelope.
+        # Keeping every decoded SSE frame duplicates the entire output in RAM.
+        if self.metadata is None:
+            self.metadata = {key: payload[key] for key in (
+                "id", "created", "model", "provider", "service_tier", "system_fingerprint",
+            ) if key in payload}
         if payload.get("id"):
             self.response_id = str(payload["id"])
         if isinstance(payload.get("usage"), dict):
@@ -357,13 +364,16 @@ class StreamTrace:
             text = content_to_text(delta.get("content"))
             if text:
                 self.response_parts.append(text)
+                self.revision += 1
             reasoning = reasoning_to_text(delta)
             if reasoning:
                 self.reasoning_parts.append(reasoning)
+                self.revision += 1
             for raw in _as_list(delta.get("tool_calls")):
                 if not isinstance(raw, dict):
                     continue
                 raw_dict = _as_dict(raw)
+                self.revision += 1
                 index = int(raw_dict.get("index") or 0)
                 tool = self.tools.setdefault(index, {"id": "", "type": "function", "name": "", "arguments_raw": ""})
                 if raw_dict.get("id"):
@@ -375,6 +385,7 @@ class StreamTrace:
                     tool["name"] += str(function["name"])
                 if function.get("arguments"):
                     tool["arguments_raw"] += str(function["arguments"])
+        return self.revision != previous_revision
 
     def result(self, *, unwrap_deferred_tools: bool = False) -> dict[str, Any]:
         tools = [

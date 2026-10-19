@@ -21,6 +21,14 @@ from app.llm.facade import (
 from app.llm.models import LLMCallEvent
 
 
+@pytest_asyncio.fixture
+async def db(inference_db):
+    # Streaming supervision owns an independent concurrent transaction. Real
+    # commits/connections are required; nested savepoints on one connection
+    # cannot model this workflow or cancellation of the supervision worker.
+    yield inference_db
+
+
 async def configure_provider(db, monkeypatch, responses_sse):
     connection = LLMProvider(
         name=f"pilot-{uuid4()}",

@@ -739,6 +739,24 @@ or disclosure in MCP results). The same file's conversational recovery scenario 
 durably persisted `SUCCEEDED` before marking the round's LLM/tool incidents as recovered.
 Other runs remain untouched; approval waits, interruption, supersession, lease loss,
 cancellation, failure and uncertain delivery do not produce this mark.
+The gated-provider protocol test checks that SSE text and supervision arrive before
+generation ends. A dedicated regression checks that the last fragment is flushed without
+another provider event, including during the throttle interval.
+`app/llm/tests/test_stream_performance.py` measures emitted bytes and SQL statements
+over large synthetic contexts, bounds trace memory, and checks slow supervision,
+terminal immutability and separate wakeups. `front/browser-tests/stream-progress.spec.mjs`
+covers Unicode deltas, catch-up and late events; `storeCatchUp.test.mjs` preserves every
+fragment in a burst with one projection and discards buffered rendering on disconnect.
+Consecutive delta batching is compared with sequential processing for Unicode, empty
+fragments, reasoning, tools, costs, errors, duplicates, gaps, snapshots, resets, attempts
+and stream completion. Incoming events and already published projections remain immutable.
+`front/app/task/aiResult.test.mjs` preserves block order when merging long traces,
+including missing messages, changed tool stream identifiers, and mixed legacy and identified
+messages. The Chat journey requires a fragment to be visible before completion.
+`storeCatchUp.test.mjs` also checks sharing only unfinished control reads, retrying
+failures, and isolation across navigation, reconnection, session changes and call
+transitions. The browser preserves fresh messages and drafts during slow reads without
+duplicating command requests.
 Retention tests prevent a late observation from restoring an
 expired trace. `test_editorial_html.py` preserves content and revision after rejected mutations;
 `app/image/tests/test_image_mcp.py` keeps private URLs blocked and guides the caller to the

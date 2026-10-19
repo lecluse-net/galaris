@@ -37,6 +37,7 @@ import { usePrivilegeStore, privileges } from '@/core/authorize'
 import LlmCallTaskDetail from './LlmCallTaskDetail.vue'
 import { llmCallService } from '../services/llmCallService'
 import type { LLMCall } from '../types'
+import { useLlmCallProgress } from '../useLlmCallProgress'
 
 const props = withDefaults(defineProps<{
   taskId?: string
@@ -98,6 +99,7 @@ function isTaskOwnedCall(call: LLMCall): boolean {
 const onCreate = (response: { data: LLMCall }) => upsert(response.data)
 const onUpdate = (response: { data: LLMCall }) => upsert(response.data)
 const onDelete = (response: { data: { id: string } }) => removeCall(response.data.id)
+useLlmCallProgress(id => calls.value.find(call => call.id === id), upsert)
 
 websocket.createWebsocket()
 websocket.onEvent('llm_call', 'create', onCreate)

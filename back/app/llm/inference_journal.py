@@ -4,7 +4,7 @@ from collections.abc import Collection
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import insert, select
 from sqlalchemy.orm import load_only
 
 from app.agent.contracts import AgentUsage
@@ -40,6 +40,8 @@ async def append_events(
     payloads: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Commit before delivery, using the execution writer’s contextual session."""
+    if not payloads:
+        return []
     for index, payload in enumerate(payloads):
         if payload.get("kind") not in {"message", "result", "wire"}:
             raise ValueError("Invalid inference event kind.")
@@ -50,15 +52,14 @@ async def append_events(
     from .inference_store import owned, LostInferenceLease
 
     operation = None
-    attempt_id = await db.scalar(select(LLMCall.inference_attempt_id).where(LLMCall.id == call_id))
-    if attempt_id is not None:
-        owner = inference_owner.get()
-        if owner is None or owner.attempt_id != attempt_id:
-            raise LostInferenceLease("This writer does not own the inference attempt.")
+    owner = inference_owner.get()
+    if owner is not None:
         operation, _ = await owned(owner)
+    # Keep lifecycle -> call lock order. The last-event read must remain a
+    # separate statement AFTER the lock (a waiting writer needs a fresh snapshot).
     call = await db.scalar(
         select(LLMCall).where(LLMCall.id == call_id).options(load_only(
-            LLMCall.id, LLMCall.cost, LLMCall.input_tokens, LLMCall.output_tokens,
+            LLMCall.id, LLMCall.inference_attempt_id, LLMCall.cost, LLMCall.input_tokens, LLMCall.output_tokens,
             LLMCall.cache_read_tokens, LLMCall.cache_write_tokens, LLMCall.reasoning_tokens,
             LLMCall.usage, LLMCall.is_subscription, LLMCall.cost_estimated, LLMCall.inference_cost,
             raiseload=True,
@@ -66,6 +67,8 @@ async def append_events(
     )
     if call is None:
         raise LookupError("The inference call no longer exists.")
+    if call.inference_attempt_id != (owner.attempt_id if owner is not None else None):
+        raise LostInferenceLease("This writer does not own the inference attempt.")
     last = (await db.execute(
         select(LLMCallEvent.sequence, LLMCallEvent.payload["kind"].astext.label("kind"))
         .where(LLMCallEvent.call_id == call_id)
@@ -78,6 +81,7 @@ async def append_events(
         raise ValueError("An inference journal is already terminal.")
     sequence = last.sequence
     events: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     for payload in payloads:
         sequence += 1
         if payload["kind"] == "result":
@@ -92,18 +96,19 @@ async def append_events(
         }
         if operation is not None:
             operation.event_sequence += 1
-        db.add(
-            LLMCallEvent(
-                call_id=call_id,
-                sequence=sequence,
-                payload=event,
-                inference_id=operation.id if operation is not None else None,
-                inference_sequence=operation.event_sequence if operation is not None else None,
-            )
-        )
+        rows.append(dict(
+            call_id=call_id, sequence=sequence, payload=event,
+            inference_id=operation.id if operation is not None else None,
+            inference_sequence=operation.event_sequence if operation is not None else None,
+        ))
         events.append(event)
+    if rows:
+        await db.execute(insert(LLMCallEvent), rows)
     if operation is not None and events:
-        notify_after_commit("changes", operation.id)
+        if any(event["kind"] != "wire" for event in events):
+            notify_after_commit("messages", operation.id)
+        if any(event["kind"] == "wire" for event in events):
+            notify_after_commit("wire", operation.id)
     await db.commit()
     return events
 

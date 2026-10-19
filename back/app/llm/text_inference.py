@@ -18,6 +18,9 @@ from pydantic_ai.messages import (
     TextPart,
     ThinkingPart,
     ToolCallPart,
+    TextPartDelta,
+    ThinkingPartDelta,
+    ToolCallPartDelta,
 )
 from pydantic_ai.models import Model, ModelRequestParameters
 from pydantic_ai.models.wrapper import WrapperModel
@@ -116,7 +119,8 @@ class RecordedTextModel(WrapperModel):
             prompt=str(capture.request["prompt"]),
             system_prompt=str(capture.request["system_prompt"]),
         )
-        pending: dict[int, AIMessage] = {}
+        pending: set[int] = set()
+        pending_size = 0
         committed_content: dict[int, str] = {}
         committed_messages: dict[int, AIMessage] = {}
         last_flush = 0.0
@@ -124,11 +128,21 @@ class RecordedTextModel(WrapperModel):
         active_call_id: UUID | None = None
 
         async def flush() -> None:
-            nonlocal last_flush, result
+            nonlocal last_flush, pending_size
             if not pending or capture.call_id is None:
                 return
             updates: list[AIMessage] = []
-            for index, message in pending.items():
+            snapshots: dict[int, AIMessage] = {}
+            # The SDK's cumulative response and tool JSON are materialized once
+            # per batch, never once per token.
+            parts = stream.get().parts
+            for index in sorted(pending):
+                if index >= len(parts):
+                    continue
+                message = message_for_part(capture.call_id, index, parts[index])
+                if message is None:
+                    continue
+                snapshots[index] = message
                 previous = committed_content.get(index, "")
                 if message == committed_messages.get(index):
                     continue
@@ -143,21 +157,20 @@ class RecordedTextModel(WrapperModel):
             ]
             if not payloads:
                 pending.clear()
+                pending_size = 0
                 return
-            projected = result.model_copy(deep=True)
-            for message in updates:
-                projected.add_message(message.model_copy(deep=True))
             cancellation: _CommittedCancellation | None = None
             try:
                 events = await persist_events(capture.call_id, payloads)
             except _CommittedCancellation as exc:
                 events = exc.events
                 cancellation = exc
-            result = projected
-            committed_content.update({index: message.content for index, message in pending.items()})
-            committed_messages.update({index: message.model_copy(deep=True)
-                                       for index, message in pending.items()})
+            for message in updates:
+                result.add_message(message)
+            committed_content.update({index: message.content for index, message in snapshots.items()})
+            committed_messages.update(snapshots)
             pending.clear()
+            pending_size = 0
             last_flush = time.monotonic()
             if cancellation is not None:
                 raise cancellation
@@ -186,24 +199,17 @@ class RecordedTextModel(WrapperModel):
                         continue
                     if capture.call_id is None:
                         raise RuntimeError("The model stream was not bound to a persisted LLMCall.")
-                    parts = stream.get().parts
-                    if event.index >= len(parts):
-                        continue
-                    part = parts[event.index]
-                    if not isinstance(part, (TextPart, ThinkingPart, ToolCallPart)):
-                        continue
-                    message = message_for_part(capture.call_id, event.index, part)
-                    if message is None:
-                        continue
-                    pending[event.index] = message
+                    pending.add(event.index)
+                    if isinstance(event, PartDeltaEvent):
+                        delta = event.delta
+                        if isinstance(delta, (TextPartDelta, ThinkingPartDelta)):
+                            pending_size += len(delta.content_delta or "")
+                        elif isinstance(delta, ToolCallPartDelta):
+                            pending_size += len(delta.args_delta) if isinstance(delta.args_delta, str) else 0
                     if (
                         isinstance(event, (PartStartEvent, PartEndEvent))
                         or time.monotonic() - last_flush >= 0.1
-                        or sum(
-                            max(0, len(message.content) - len(committed_content.get(index, "")))
-                            for index, message in pending.items()
-                        )
-                        >= 4096
+                        or pending_size >= 16384
                     ):
                         await flush()
                 response = stream.get()

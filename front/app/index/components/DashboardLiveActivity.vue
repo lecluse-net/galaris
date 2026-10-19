@@ -175,7 +175,7 @@ import { useInterval } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { agentService } from '@/app/agent/services/agentService'
 import { useAgentStore } from '@/app/agent/stores/agentStore'
-import { formatBilledCost, LlmCallTokenBadge } from '@/app/llm'
+import { formatBilledCost, LlmCallTokenBadge, useLlmCallProgress } from '@/app/llm'
 import { llmCallService } from '@/app/llm/services/llmCallService'
 import type { LLMCall, LLMToolCall } from '@/app/llm/types'
 import { taskService } from '@/app/task/services/taskService'
@@ -347,6 +347,7 @@ const onTaskDelete = (response: { data?: { id: string } } | { id: string }) => {
 const onTaskRefresh = () => { void refreshActivity() }
 const onCallCreate = (response: { data?: LLMCall } | LLMCall) => upsertCall(eventData(response))
 const onCallUpdate = (response: { data?: LLMCall } | LLMCall) => upsertCall(eventData(response))
+useLlmCallProgress(id => calls.value.find(call => call.id === id), upsertCall)
 const onCallDelete = (response: { data?: { id: string } } | { id: string }) => {
   const { id } = eventData(response)
   calls.value = calls.value.filter(call => call.id !== id)

@@ -10,6 +10,7 @@ from typing import Any, Optional, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from loguru import logger
+from pydantic import TypeAdapter
 from sqlalchemy import Select, and_, delete as sa_delete, exists, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
@@ -39,6 +40,7 @@ from .trace import (
 
 _RECONCILIATION_BATCH_SIZE = 500
 _STALE_CALL_GRACE_SECONDS = 300
+_PROGRESS_PAYLOAD_ADAPTER = TypeAdapter(dict[str, Any])
 
 if TYPE_CHECKING:
     from .call_capture import TextCallCapture
@@ -931,10 +933,25 @@ async def update_running_call(
     output_rate: float | None = None,
 ) -> None:
     """Publish a partial trace while the provider is streaming."""
+    response_text, reasoning, current_tools = await asyncio.to_thread(_compact_trace_output, trace)
+    # Do not fetch prompts, input messages or raw responses on every heartbeat.
+    fields = (
+        "id", "status", "task_id", "agent_id", "agent_run_id", "conversation_round_id",
+        "process_run_id", "response_text", "reasoning", "tool_calls", "updated_at",
+        "usage", "is_subscription", "provider_code", "first_token_at", "started_at",
+        "duration", "cost", "inference_cost", "cost_estimated", "finish_reason",
+        "upstream_request_id", "input_tokens", "output_tokens", "total_tokens",
+        "cache_read_tokens", "cache_write_tokens", "reasoning_tokens",
+    )
     async with AsyncSessionLocal() as db:
-        call = await db.get(LLMCall, call_id)
+        call = await db.scalar(select(LLMCall).where(LLMCall.id == call_id).options(
+            load_only(*(getattr(LLMCall, name) for name in fields), raiseload=True),
+        ).with_for_update())
         if call is None or call.status != "running":
             return
+        previous_text, previous_reasoning = call.response_text or "", call.reasoning or ""
+        previous_tools = call.tool_calls or []
+        base_updated_at = call.updated_at
         usage = as_dict(trace.get("usage"))
         counters = usage_counters(usage)
         inference_cost, estimated = _cost(
@@ -944,10 +961,6 @@ async def update_running_call(
             cached_input_rate,
             output_rate,
             call.provider_code,
-        )
-        response_text, reasoning, current_tools = await asyncio.to_thread(
-            _compact_trace_output,
-            trace,
         )
         call.response_text = response_text
         call.reasoning = reasoning
@@ -968,10 +981,24 @@ async def update_running_call(
         for key, value in counters.items():
             setattr(call, key, value)
         await db.commit()
-        await db.refresh(call)
         record_persisted_call_cost(call.id, call.cost)
-        payload = _public(call)
-    await websocket.emit("llm_call", "update", payload, None)
+        payload: dict[str, Any] = {
+            name: getattr(call, name) for name in fields
+            if name not in {"response_text", "reasoning", "tool_calls", "started_at", "provider_code", "is_subscription"}
+        }
+        payload["base_updated_at"] = base_updated_at
+        for name, previous, current in (
+            ("response_text", previous_text, response_text),
+            ("reasoning", previous_reasoning, reasoning),
+        ):
+            payload[name] = ({"append": current[len(previous):]} if current.startswith(previous)
+                             else {"replace": current})
+        if call.tool_calls != previous_tools:
+            payload["tool_calls"] = [tool for tool in (
+                _clean_tool_call(raw) for raw in call.tool_calls
+            ) if tool is not None]
+        payload = _PROGRESS_PAYLOAD_ADAPTER.dump_python(payload, mode="json")
+    await websocket.emit("llm_call", "progress", payload, None)
 
 
 async def create_running_call(

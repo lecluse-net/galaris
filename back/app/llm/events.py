@@ -9,6 +9,7 @@ from sqlalchemy import select
 from core import websocket
 from core.database import get_db
 from core.user import UserModel
+from .models import LLMCall
 
 
 async def _authorize(user: UserModel, action: str, data: Mapping[str, Any]) -> bool:
@@ -21,7 +22,10 @@ async def _authorize(user: UserModel, action: str, data: Mapping[str, Any]) -> b
     if scope.is_global:
         return True
     if action != "delete":
-        return await llm_call_service.get_call(UUID(str(data["id"])), agent_ids=scope.agent_ids) is not None
+        return await get_db().scalar(llm_call_service.apply_agent_scope(
+            select(LLMCall.id).where(LLMCall.id == UUID(str(data["id"]))),
+            scope.agent_ids,
+        )) is not None
 
     # A deleted row no longer exists. The publisher supplies only its durable
     # provenance, and the same related resources still determine its visibility.

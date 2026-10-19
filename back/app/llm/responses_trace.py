@@ -152,11 +152,7 @@ class ResponsesStreamTrace:
         """Record an event and return whether visible trace content changed."""
 
         event_type = str(event.get("type") or "")
-        before = (
-            len(self.response_parts),
-            len(self.reasoning_parts),
-            sum(len(value) for value in self.tool_arguments.values()),
-        )
+        changed = False
         output_index = event.get("output_index")
         index = output_index if isinstance(output_index, int) else 0
         if event_type == "response.output_item.added":
@@ -170,13 +166,16 @@ class ResponsesStreamTrace:
             self.completed_output_items[index] = dict(as_dict(event.get("item")))
         elif event_type == "response.output_text.delta":
             delta = str(event.get("delta") or "")
+            changed = bool(delta)
             if self.phases.get(index) in {"analysis", "commentary"}:
                 self.reasoning_parts.append(delta)
             else:
                 self.response_parts.append(delta)
         elif event_type in {"response.reasoning_summary_text.delta", "response.reasoning_text.delta"}:
             self.reasoning_parts.append(str(event.get("delta") or ""))
+            changed = bool(event.get("delta"))
         elif event_type == "response.function_call_arguments.delta":
+            changed = bool(event.get("delta"))
             self.tool_arguments[index] = (
                 self.tool_arguments.get(index, "") + str(event.get("delta") or "")
             )
@@ -193,12 +192,7 @@ class ResponsesStreamTrace:
             error = as_dict(event.get("error") or response.get("error"))
             self.error = str(error.get("message") or response.get("status") or "Responses request failed")
             self.terminal_response = response or None
-        after = (
-            len(self.response_parts),
-            len(self.reasoning_parts),
-            sum(len(value) for value in self.tool_arguments.values()),
-        )
-        return after != before
+        return changed
 
     def result(self) -> dict[str, Any]:
         terminal = response_trace(self.terminal_response or {})

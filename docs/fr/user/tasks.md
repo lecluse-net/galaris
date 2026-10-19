@@ -233,6 +233,10 @@ d'autorisation ni une mise en attente.
 
 ## Lire l’état d’une tâche
 
+Le texte du Chat continue d'apparaître pendant la génération. La supervision des appels
+LLM se rafraîchit au plus quatre fois par seconde ; une mise à jour manquée est récupérée
+automatiquement. La réponse finale et les coûts conservés restent complets.
+
 | État affiché | Signification pratique |
 |---|---|
 | Création / dispatch | la demande est en cours de routage |

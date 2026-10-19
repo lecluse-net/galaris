@@ -70,7 +70,7 @@ import { useI18n } from 'vue-i18n'
 import { usePrivilegeStore, privileges } from '@/core/authorize'
 import { apiErrorDetail } from '@/core/api'
 import { websocket } from '@/core/websocket'
-import { conversationService, ConversationExecutionDetails, type ConversationRoundDetail } from '@/app/conversation'
+import { conversationService, ConversationExecutionDetails, useConversationCallProgress, type ConversationRoundDetail } from '@/app/conversation'
 import { ExecutionResultComponent, reconcileAIResult, type ExecutionResult } from '@/app/task'
 import type { ConversationActivity, ConversationControlAction, LiveAgentRound } from '../types'
 import { chatService } from '../services/chatService'
@@ -87,7 +87,7 @@ const { t } = useI18n()
 const privilegeStore = usePrivilegeStore()
 const pendingAction = ref<ConversationControlAction | null>(null)
 const controlError = ref('')
-const actions = computed(() => props.activity?.available_actions ?? [])
+const actions = computed(() => (props.activity?.available_actions ?? []).filter(action => action !== 'respond'))
 const canControl = computed(() => props.allowControl && privilegeStore.hasPrivilege(privileges.CHAT_SEND))
 const controlIcons: Record<ConversationControlAction, string> = {
   pause: 'pause', stop: 'stop', resume: 'play_arrow', restart: 'replay', respond: 'quickreply',
@@ -221,6 +221,7 @@ const onLlmCallCreate = (
 const onLlmCallUpdate = (
   response: { data?: ConversationLlmCall } | ConversationLlmCall,
 ) => upsertLlmCall(eventData(response))
+useConversationCallProgress(id => llmCalls.value.find(call => call.id === id), upsertLlmCall)
 const onLlmCallDelete = (response: { data?: { id: string } } | { id: string }) => {
   const { id } = eventData(response)
   llmCalls.value = llmCalls.value.filter(call => call.id !== id)

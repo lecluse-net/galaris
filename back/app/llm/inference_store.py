@@ -414,6 +414,13 @@ async def read_attempt_status(inference_id: UUID, attempt_id: UUID) -> str:
 async def read_events(
     inference_id: UUID, attempt_id: UUID, after_sequence: int = 0, limit: int = 500
 ) -> list[InferenceRunEvent]:
+    return (await read_event_batch(inference_id, attempt_id, after_sequence, limit))[1]
+
+
+async def read_event_batch(
+    inference_id: UUID, attempt_id: UUID, after_sequence: int = 0, limit: int = 500
+) -> tuple[str, list[InferenceRunEvent]]:
+    """Read the cursor and its status together, in one short transaction."""
     if after_sequence < 0 or not 1 <= limit <= 500:
         raise ValueError("Invalid inference cursor or page size.")
     db = get_db()
@@ -457,7 +464,7 @@ async def read_events(
                 result=AIResult.model_validate(attempt.result),
             )
         )
-    return events
+    return attempt.status, events
 
 
 async def pending(*, exclude: Collection[UUID] = ()) -> list[UUID]:

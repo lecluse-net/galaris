@@ -411,6 +411,8 @@ const showLiveBubble = computed(() => shouldShowLiveConversationRound(
   props.messages,
 ))
 const showEphemeralBubble = computed(() => showLiveBubble.value || props.pendingTranscriptions.length > 0)
+// Parsing historic message content must not be repeated for every live fragment.
+const messageTexts = computed(() => new Map(props.messages.map(message => [message.id, displayMessageText(message, t)])))
 const timelineEntries = computed(() => conversationTimelineEntries(
   props.roomId,
   props.messages,
@@ -437,7 +439,7 @@ const timelineEntries = computed(() => conversationTimelineEntries(
     activity,
     copyRoundId: message ? roundIdByMessageId.value.get(message.id) : undefined,
     createdAt: message?.created_at ?? pendingTranscription?.started_at ?? null,
-    text: message ? displayMessageText(message, t) : visibleMessageText(conversationTimelineEntryText(entry)),
+    text: message ? messageTexts.value.get(message.id) ?? '' : visibleMessageText(conversationTimelineEntryText(entry)),
   }
 }))
 const timelineRenderKey = computed(() => conversationTimelineRenderKey(

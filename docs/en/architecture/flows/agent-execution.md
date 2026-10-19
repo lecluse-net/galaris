@@ -95,6 +95,14 @@ Admission is committed before the worker starts; its leases, events and results 
 neither Task attempts nor tool checkpoints. `LLMCall` remains the cost authority for physical
 calls. The Lab Memory extraction pilot uses the same journal while preserving business retries.
 
+Call supervision is asynchronous and limited to four updates per second, with no snapshot
+queue. The latest change is flushed even if the provider pauses.
+`llm_call.progress` carries changed metadata and output deltas without retransmitting
+input context; a missing revision triggers an authorized snapshot read. Creation and
+terminal events remain complete. Journal events are still committed before delivery;
+text and protocol readers use distinct wakeups. See
+[0207](../../../../project/decisions/0207-bounded-stream-supervision.md).
+
 Reading an attempt returns messages followed by exactly one terminal result. Reconnection
 continues from a cursor; `resume` creates a new attempt of the frozen request. The service
 never replays tools. Synchronous and HTTP adapters request stop when cancelled; closing a

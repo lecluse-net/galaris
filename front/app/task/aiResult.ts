@@ -78,9 +78,11 @@ export function appendAIMessage(current: AIResult | null, message: AIMessage): A
   const result = current ?? emptyAIResult()
   const messages = [...(result.messages ?? [])]
   const last = messages.at(-1)
-  const invocationIndex = messages.findIndex(item => sameToolInvocation(item, message)
-    || !isToolInvocation(message) && message.stream_mode === 'snapshot' && Boolean(message.stream_id)
-      && item.stream_id === message.stream_id)
+  const toolInvocation = isToolInvocation(message)
+  const invocationIndex = toolInvocation || message.stream_mode === 'snapshot' && message.stream_id
+    ? messages.findIndex(item => sameToolInvocation(item, message)
+      || !toolInvocation && item.stream_id === message.stream_id)
+    : -1
   const invocation = invocationIndex >= 0 ? messages[invocationIndex] : undefined
   if (invocation) {
     const updated = mergeMessageUpdate(invocation, message)
@@ -200,16 +202,46 @@ function mergeMessageSnapshots(
 ): AIMessage[] {
   if (!incoming.length) return [...current]
   const messages = [...incoming]
+  // A short trace is cheaper to scan than to index.
+  const indexed = incoming.length >= 32
+  const positions = indexed ? incoming.map((_message, index) => index) : []
+  const byStream = new Map<string, number[]>()
+  const byToolCall = new Map<string, number[]>()
+  const withoutStream: number[] = []
+  if (indexed) incoming.forEach((message, index) => {
+    for (const [key, lookup] of [[message.stream_id, byStream], [message.tool_call_external_id, byToolCall]] as const) {
+      if (!key) continue
+      const indices = lookup.get(key)
+      if (indices) indices.push(index)
+      else lookup.set(key, [index])
+    }
+    if (!message.stream_id) withoutStream.push(index)
+  })
   const matched = new Set<number>()
   let insertion = 0
   for (const previous of current) {
-    const index = incoming.findIndex((next, index) => (
-      !matched.has(index) && sameSnapshotMessage(previous, next)
-    ))
+    let index = -1
+    if (indexed && previous.stream_id) {
+      // Identified blocks can match their stream, an external tool invocation,
+      // or legacy blocks lacking a stream. Keep the first compatible unmatched
+      // position, including legacy rows preceding an exact identifier match.
+      for (const candidates of [byStream.get(previous.stream_id),
+        previous.tool_call_external_id ? byToolCall.get(previous.tool_call_external_id) : undefined,
+        withoutStream]) {
+        for (const candidate of candidates ?? []) {
+          if ((index < 0 || candidate < index) && !matched.has(candidate)
+            && sameSnapshotMessage(previous, incoming[candidate]!)) index = candidate
+        }
+      }
+    } else {
+      index = incoming.findIndex((next, index) => (
+        !matched.has(index) && sameSnapshotMessage(previous, next)
+      ))
+    }
     if (index >= 0) {
       matched.add(index)
       const next = incoming[index]!
-      const target = messages.indexOf(next)
+      const target = indexed ? positions[index]! : messages.indexOf(next)
       // A shorter cumulative snapshot can arrive after newer deltas. A change
       // of type (e.g. narration becoming thinking) remains authoritative.
       messages[target] = isToolInvocation(next)
@@ -224,7 +256,11 @@ function mergeMessageSnapshots(
       insertion = target + 1
     } else if (!terminal || previous.type !== 'text' && !isToolInvocation(previous)
       && !incoming.some(next => sameSnapshotMessage(previous, next))) {
-      messages.splice(insertion++, 0, previous)
+      messages.splice(insertion, 0, previous)
+      for (let position = 0; position < positions.length; position++) {
+        if (positions[position]! >= insertion) positions[position]! += 1
+      }
+      insertion++
     }
   }
   return messages

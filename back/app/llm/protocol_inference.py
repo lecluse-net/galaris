@@ -311,13 +311,15 @@ async def protocol_response(request: ProtocolInferenceRequest) -> JSONResponse |
         assert attempt_id is not None
         selected_attempt = attempt_id
         cursor = 0
-        with notifications.subscribe("changes", key) as changed:
+
+        async def read_batch() -> tuple[str, list[tuple[int, dict[str, Any]]]]:
+            status = await inference_store.read_attempt_status(key, selected_attempt)
+            return status, await _read_wire(selected_attempt, cursor)
+
+        with notifications.subscribe("wire", key) as changed:
             while True:
                 changed.clear()
-                status = await execution.transaction(
-                    lambda: inference_store.read_attempt_status(key, selected_attempt)
-                )
-                batch = await execution.transaction(lambda cursor=cursor: _read_wire(selected_attempt, cursor))
+                status, batch = await execution.transaction(read_batch)
                 for cursor, payload in batch:
                     yield payload
                 if status in inference_store.TERMINAL_ATTEMPTS and not batch:

@@ -1,4 +1,5 @@
 export { conversationService } from './services/conversationService'
+export { useLlmCallProgress as useConversationCallProgress } from '@/app/llm'
 export { default as ConversationRoundDetailView } from './components/ConversationRoundDetail.vue'
 export type { ConversationMessage } from './types'
 export { default as ConversationExecutionDetails } from './components/ConversationExecutionDetails.vue'

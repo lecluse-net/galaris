@@ -201,6 +201,10 @@ arguments; this refusal does not automatically create an approval request or a w
 
 ## Reading a Task’s Status
 
+Chat text continues to appear during generation. LLM call supervision refreshes at most
+four times per second and automatically recovers a missed update. The final response and
+persisted costs remain complete.
+
 | Displayed status | Practical meaning |
 |---|---|
 | Creation / dispatch | the request is being routed |

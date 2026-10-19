@@ -100,6 +100,44 @@ test('a longer snapshot cannot erase an existing reflection and stale snapshots 
   assert.deepEqual(reconcileAIResult(merged, incoming).messages, merged.messages)
 })
 
+for (const padding of [0, 40]) {
+  test(`snapshot reconciliation retains missing thoughts and updates reordered blocks (${padding} unrelated blocks)`, () => {
+    const thought = { type: 'tool', tool_name: 'thinking', stream_id: 'thought', content: 'Observed reasoning' }
+    const pending = { type: 'tool', tool_name: 'file_read', stream_id: 'old-stream',
+      tool_call_external_id: 'read-1', tool_retry_number: 1, content: 'Reading', tool_arguments: { uri: 'synthetic://data' } }
+    const answer = { type: 'text', stream_id: 'answer', content: 'Complete answer', stream_complete: true }
+    const completed = { ...pending, stream_id: 'new-stream', content: 'Loaded data', tool_arguments: undefined }
+    const current = { ...emptyAIResult(), messages: [thought, pending, answer] }
+    const extras = Array.from({ length: padding }, (_, index) => ({ type: 'audio', stream_id: `other:${index}`, content: 'Other block' }))
+    const incoming = { ...emptyAIResult(), messages: [{ ...answer, content: 'Complete', stream_complete: false }, completed, ...extras] }
+    const inputs = structuredClone({ current, incoming })
+    const live = reconcileAIResult(current, incoming)
+    assert.deepEqual(live.messages.slice(0, 3).map(message => message.content), ['Observed reasoning', 'Complete answer', 'Loaded data'])
+    assert.deepEqual(live.messages.slice(3), extras)
+    assert.deepEqual(live.messages[2].tool_arguments, pending.tool_arguments)
+    assert.equal(live.messages[1].stream_complete, true)
+    const terminal = finalizeAIResult(current, incoming)
+    assert.deepEqual(terminal.messages.slice(0, 3).map(message => message.content), ['Observed reasoning', 'Complete', 'Loaded data'])
+    assert.deepEqual(terminal.messages.slice(3), extras)
+    assert.deepEqual({ current, incoming }, inputs)
+  })
+
+  test(`mixed legacy and identified snapshots retain the first compatible block (${padding} unrelated blocks)`, () => {
+    const current = { ...emptyAIResult(), messages: [
+      { type: 'text', stream_id: 'answer', content: 'Same full answer' },
+      { type: 'text', stream_id: 'answer', content: 'Same full answer' },
+    ] }
+    const incoming = { ...emptyAIResult(), messages: [
+      { type: 'text', content: 'Same' },
+      { type: 'text', stream_id: 'answer', content: 'Other' },
+      ...Array.from({ length: padding }, (_, index) => ({ type: 'audio', stream_id: `other:${index}`, content: 'Other block' })),
+    ] }
+    const result = reconcileAIResult(current, incoming)
+    assert.deepEqual(result.messages.slice(0, 2).map(message => message.content), ['Same full answer', 'Other'])
+    assert.equal(result.messages.length, 2 + padding)
+  })
+}
+
 test('the visible response contains only text AIMessages, separated by a blank line', () => {
   let result = { ...emptyAIResult(), result: 'NE DOIT PAS ÊTRE AFFICHÉ' }
   result = appendAIMessage(result, { type: 'text', content: 'Première partie.' })

@@ -123,6 +123,7 @@ import LlmCall from './LlmCall.vue'
 import { llmCallService } from '../services/llmCallService'
 import { assignTaskColors, callTaskKey, type LlmTaskColor } from '../taskColors'
 import type { LLMCall, LLMCallPage, LLMCallSummary } from '../types'
+import { useLlmCallProgress } from '../useLlmCallProgress'
 
 const { t, locale } = useI18n()
 const $q = useQuasar()
@@ -281,6 +282,10 @@ function upsert(call: LLMCall): void {
 
 const onCreate = (response: { data: LLMCall }) => upsert(response.data)
 const onUpdate = (response: { data: LLMCall }) => upsert(response.data)
+useLlmCallProgress(id => liveCalls.value.find(call => call.id === id), call => {
+  const index = liveCalls.value.findIndex(item => item.id === call.id)
+  if (index >= 0) liveCalls.value[index] = call
+})
 // After a server purge, retain only calls that are still running locally.
 const onCleanup = () => {
   liveCalls.value = liveCalls.value.filter(call => call.status === 'running')

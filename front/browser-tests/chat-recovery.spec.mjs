@@ -34,13 +34,20 @@ async function conversation(page, privileges = ['CHAT_SEND'], commandsHandler = 
 
 test('messages and composer remain usable while optional commands are slow or unavailable', async ({ page }) => {
   const releases = []
-  await conversation(page, ['CHAT_SEND'], async route => {
+  const state = await conversation(page, ['CHAT_SEND'], async route => {
     await new Promise(resolve => releases.push(resolve))
     await route.fulfill({ status: 503, json: { detail: 'Temporarily unavailable' } })
   })
   await expect.poll(() => releases.length).toBeGreaterThan(0)
   const composer = page.locator('.composer-shell textarea')
   await composer.fill('A draft while commands are loading')
+  state.messages['room-a'].text = 'Content room-a updated while commands are pending'
+  for (let index = 0; index < 5; index++) {
+    await refresh(page, `optional-${index}`)
+    await settled(page, `optional-${index}`)
+  }
+  await expect(page.locator('.conversation-pane')).toContainText('Content room-a updated while commands are pending')
+  expect(releases).toHaveLength(1)
   releases.forEach(release => release())
   await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
   await expect(composer).toHaveValue('A draft while commands are loading')
@@ -131,9 +138,19 @@ test('an admitted round is visible before streaming and keeps its response throu
       data: { room_id: 'room-a', round_id: 'admitted-round', ...event },
     })
     emit({ kind: 'started', sequence: 0 })
-    emit({ kind: 'message', sequence: 1, message: { type: 'text', content: 'Synthetic answer' } })
-    emit({ kind: 'finished', sequence: 2, success: true })
+    emit({ kind: 'message', sequence: 1, message: { type: 'text', content: 'Synthetic ' } })
   })
+  // A useful prefix must be visible while the round is still running.
+  await expect(response).toContainText('Synthetic')
+  await expect(response.getByRole('button', { name: /^Thinking/ })).toBeVisible()
+  await page.evaluate(() => window.testApp.emitSocket('chat.runtime', { data: {
+    room_id: 'room-a', round_id: 'admitted-round', kind: 'message', sequence: 2,
+    message: { type: 'text', content: 'answer' },
+  } }))
+  await expect(response).toContainText('Synthetic answer')
+  await page.evaluate(() => window.testApp.emitSocket('chat.runtime', { data: {
+    room_id: 'room-a', round_id: 'admitted-round', kind: 'finished', sequence: 3, success: true,
+  } }))
   await expect(response).toHaveCount(1)
   await expect(response).toContainText('Synthetic answer')
   await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
