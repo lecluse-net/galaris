@@ -13,37 +13,22 @@
     <MemoryFileResources v-if="item.node_kind === 'file'" :item-id="item.id" :agent-id="agentId" />
   </section>
 
-  <q-dialog v-model="documentOpen" allow-focus-outside :maximized="$q.screen.lt.md"
-    @before-hide="flushDocument" @hide="selectedDocumentId = null">
-    <q-card class="memory-document-dialog column no-wrap galaris-dialog-card">
-      <q-toolbar class="galaris-dialog-title">
-        <q-toolbar-title>{{ documentTitle }}</q-toolbar-title>
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-      </q-toolbar>
-      <div class="memory-document-body col galaris-dialog-body">
-        <DocumentEditor v-if="selectedDocumentId" ref="documentEditor" :key="`${agentId}:${selectedDocumentId}`"
-          :document-id="selectedDocumentId" :agent-id="agentId" content-min-height="min(42vh, 440px)"
-          @loaded="documentTitle = $event.title" @updated="documentTitle = $event.title"
-          @unavailable="documentOpen = false" @deleted="documentOpen = false" />
-      </div>
-    </q-card>
-  </q-dialog>
+  <DocumentDialog v-model="documentOpen" :document-id="selectedDocumentId" :agent-id="agentId"
+    :title="documentTitle" editable card-class="memory-document-dialog" />
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue'
-import { useQuasar } from 'quasar'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { attachmentReference, ResourcePreviewBlock } from '@/core/util'
 import type { MemoryItem } from '../types'
-import DocumentEditor from './DocumentEditor.vue'
+import DocumentDialog from './DocumentDialog.vue'
 import DocumentThumbnail from './DocumentThumbnail.vue'
 import MemoryAttachmentButton from './MemoryAttachmentButton.vue'
 import MemoryFileResources from './MemoryFileResources.vue'
 
 const { item, agentId } = defineProps<{ item: MemoryItem; agentId: number | null }>()
 const { t } = useI18n()
-const $q = useQuasar()
 const resourceUris = computed(() => [...new Set([
   item.primary_url, ...(item.urls ?? []), item.metadata.resource_uri,
 ].filter((uri): uri is string => typeof uri === 'string' && uri.length > 0))])
@@ -58,21 +43,15 @@ const hasContent = computed(() => documentIds.value.length > 0 || attachmentUris
 const documentOpen = ref(false)
 const selectedDocumentId = ref<string | null>(null)
 const documentTitle = ref('')
-const documentEditor = useTemplateRef<InstanceType<typeof DocumentEditor>>('documentEditor')
 
 function openDocument(id: string): void {
   selectedDocumentId.value = id
   documentTitle.value = item.title || t('memory.graph.roles.document')
   documentOpen.value = true
 }
-function flushDocument(): void {
-  void documentEditor.value?.flush()
-}
 watch(() => [item.id, agentId], () => { documentOpen.value = false })
 </script>
 
 <style scoped>
 .memory-content-previews { display: grid; gap: 12px; min-width: 0; }
-.memory-document-dialog { width: 980px; max-width: 96vw; height: min(860px, 92vh); }
-.memory-document-body { min-height: 0; overflow-y: auto; }
 </style>

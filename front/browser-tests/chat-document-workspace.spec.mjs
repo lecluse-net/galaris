@@ -1,11 +1,12 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
 
-async function workspace(page, editable = true, extraDocuments = []) {
+async function workspace(page, editable = true, extraDocuments = [], content = '<p>Initial document body</p>') {
   const room = { id: 'room-a', label: 'Document conversation', agent_id: 7, agent_name: 'Alice', agent_active: false, source: null, writable: true, members: [], muted: false, archived: false, unread_count: 0, conversation_type: 'text' }
   const message = { id: 'message-a', room_id: room.id, text: 'Conversation remains available', files: [], sender: null, created_at: '2026-09-01T12:00:00Z', is_mine: true, status: 'sent' }
-  let document = { ...documentFixture, media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Initial document body</p>' } }
+  let document = { ...documentFixture, media_type: 'text/html', content_profile: 'document', payload: { text: content } }
   let denied = false
+  let refuseSave = false
   let openedDocumentId = 'doc-a'
   const writes = []
   const documentWrites = []
@@ -37,6 +38,7 @@ async function workspace(page, editable = true, extraDocuments = []) {
   await page.route(/\/api\/memory\/documents\/doc-b(?:\?.*)?$/, route => {
     openedDocumentId = 'doc-b'
     if (route.request().method() === 'PATCH') {
+      if (refuseSave) return route.fulfill({ status: 503, json: { detail: 'Save unavailable' } })
       const change = route.request().postDataJSON()
       documentWrites.push(change)
       operations.push('save')
@@ -56,6 +58,7 @@ async function workspace(page, editable = true, extraDocuments = []) {
     documentWrites,
     operations,
     deny(value) { denied = value },
+    refuseSave(value) { refuseSave = value },
     async update(text, id = openedDocumentId) {
       document = { ...document, revision: document.revision + 1, payload: { text: `<p>${text}</p>` } }
       await page.evaluate(data => window.testApp.emitSocket('memory.update', { data }), { id, node_kind: 'document', revision: document.revision })
@@ -68,6 +71,141 @@ async function openFromSearch(page) {
   await page.getByLabel('Open document Off-list document', { exact: true }).click()
   await expect(page.locator('.chat-document-pane')).toContainText('document body')
 }
+
+async function linkedWorkspace(page, editable = true) {
+  const ids = [1, 2, 3].map(index => `00000000-0000-4000-8000-00000000008${index}`)
+  const content = `<p>Initial document body</p><p><a href="document://${ids[0]}">Open Beta</a></p><p><a href="document://${ids[2]}">Open Delta</a></p>`
+  const state = await workspace(page, editable, [], content)
+  const items = ['Beta', 'Gamma', 'Delta'].map((title, index) => ({
+    ...documentFixture, id: ids[index], title, owner_agent_id: null, owner_user_id: 1,
+    media_type: 'text/html', content_profile: 'document',
+    payload: { text: `<p>${title} content</p>${index === 0 ? `<blockquote class="galaris-link-card"><p><a href="document://${ids[1]}"><strong>Open Gamma</strong></a></p><p>Card summary</p></blockquote>` : ''}` },
+  }))
+  const reads = []
+  for (const item of items) await page.route(new RegExp(`/api/memory/documents/${item.id}(?:\\?|$)`), route => {
+    const actor = new URL(route.request().url()).searchParams.get('agent_id')
+    reads.push({ id: item.id, actor })
+    if (actor) return route.fulfill({ status: 403, json: { detail: 'Private document' } })
+    return route.fulfill({ json: { item, agent_id: null } })
+  })
+  await openFromSearch(page)
+  return { ...state, items, reads }
+}
+
+for (const width of [1600, 1024]) test(`chat document links and cards stay in the pane with local history at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const state = await linkedWorkspace(page)
+  const pane = page.locator('.chat-document-pane')
+  const title = pane.getByLabel('Title', { exact: true })
+  const back = pane.getByRole('button', { name: 'Previous document', exact: true })
+  const forward = pane.getByRole('button', { name: 'Next document', exact: true })
+  await expect(back).toBeDisabled()
+  await title.fill('Saved before navigating')
+  await pane.getByRole('link', { name: 'Open Beta', exact: true }).click({ modifiers: ['Control'] })
+  await expect(title).toHaveValue('Beta')
+  expect(state.documentWrites.at(-1)).toMatchObject({ title: 'Saved before navigating' })
+  await pane.getByRole('link', { name: 'Open Gamma', exact: true }).click()
+  await expect(title).toHaveValue('Gamma')
+  await back.click()
+  await expect(title).toHaveValue('Beta')
+  await back.focus(); await page.keyboard.press('Enter')
+  await expect(title).toHaveValue('Off-list document')
+  await forward.click()
+  await expect(title).toHaveValue('Beta')
+  await back.click()
+  await pane.getByRole('link', { name: 'Open Delta', exact: true }).click({ modifiers: ['Control'] })
+  await expect(title).toHaveValue('Delta')
+  await expect(forward).toBeDisabled()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/chat?room=room-a')
+  expect(state.reads.every(read => read.actor === null)).toBe(true)
+  await page.locator('.conversation-pane textarea').fill('Use this document')
+  await page.getByRole('button', { name: 'Post', exact: true }).click()
+  await expect.poll(() => state.writes.length).toBe(1)
+  expect(state.writes[0].displayed_document_id).toBe(state.items[2].id)
+  await pane.screenshot({ path: testInfo.outputPath('chat-document-history.png'), animations: 'disabled' })
+  await pane.getByRole('button', { name: 'Close working document', exact: true }).click()
+  await openFromSearch(page)
+  await expect(back).toBeDisabled()
+})
+
+test('chat document navigation preserves drafts on failure and discards destinations after closing', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  const state = await linkedWorkspace(page)
+  const pane = page.locator('.chat-document-pane')
+  const title = pane.getByLabel('Title', { exact: true })
+  let mode = 'denied', release, started = false
+  const gate = new Promise(resolve => { release = resolve })
+  await page.route(new RegExp(`/api/memory/documents/${state.items[0].id}(?:\\?|$)`), async route => {
+    if (mode === 'denied') return route.fulfill({ status: 403, json: { detail: 'Access denied' } })
+    started = true; await gate; return route.fallback()
+  })
+  state.refuseSave(true)
+  await title.fill('Preserved draft')
+  await pane.getByRole('link', { name: 'Open Beta', exact: true }).click({ modifiers: ['Control'] })
+  await expect(pane.getByRole('status', { name: 'Automatic save failed', exact: true })).toBeVisible()
+  await expect(title).toHaveValue('Preserved draft')
+  expect(state.reads).toHaveLength(0)
+  state.refuseSave(false)
+  await pane.getByRole('link', { name: 'Open Beta', exact: true }).click({ modifiers: ['Control'] })
+  await expect(page.getByText(/Access denied/).first()).toBeVisible()
+  await expect(title).toHaveValue('Preserved draft')
+  await expect(pane.getByRole('button', { name: 'Previous document', exact: true })).toBeDisabled()
+  mode = 'late'
+  await pane.getByRole('link', { name: 'Open Beta', exact: true }).click({ modifiers: ['Control'] })
+  try {
+    await expect.poll(() => started).toBe(true)
+    await title.fill('Typed while loading')
+    await pane.getByRole('button', { name: 'Close working document', exact: true }).click()
+    await expect(pane).toHaveCount(0)
+    expect(state.documentWrites.at(-1)).toMatchObject({ title: 'Typed while loading' })
+  } finally { release() }
+  await openFromSearch(page)
+  await expect(title).toHaveValue('Off-list document')
+  await expect(pane.getByRole('button', { name: 'Previous document', exact: true })).toBeDisabled()
+  expect(await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/chat?room=room-a')
+})
+
+test('the contextual dialog action leaves the chat document and its history in place', async ({ page }) => {
+  const state = await linkedWorkspace(page)
+  const pane = page.locator('.chat-document-pane')
+  await pane.getByRole('link', { name: 'Open Beta', exact: true }).click()
+  await page.getByRole('button', { name: 'Open in a dialog', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Beta')
+  await dialog.getByRole('link', { name: 'Open Gamma', exact: true }).click()
+  await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Gamma')
+  await expect(pane.getByLabel('Title', { exact: true })).toHaveValue('Off-list document')
+  await expect(pane.getByRole('button', { name: 'Previous document', exact: true })).toBeDisabled()
+  await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
+  await expect(dialog).toHaveCount(0)
+  expect(state.reads.every(read => read.actor === null)).toBe(true)
+  expect(await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/chat?room=room-a')
+})
+
+test('chat navigation saves edits made during loading and ignores an older destination', async ({ page }) => {
+  const state = await linkedWorkspace(page)
+  const pane = page.locator('.chat-document-pane')
+  const title = pane.getByLabel('Title', { exact: true })
+  let release, started = false
+  const gate = new Promise(resolve => { release = resolve })
+  await page.route(new RegExp(`/api/memory/documents/${state.items[0].id}(?:\\?|$)`), async route => {
+    started = true; await gate; return route.fallback()
+  })
+  await pane.getByRole('link', { name: 'Open Beta', exact: true }).click({ modifiers: ['Control'] })
+  try {
+    await expect.poll(() => started).toBe(true)
+    await title.fill('Edited before the newer destination')
+    await pane.getByRole('link', { name: 'Open Delta', exact: true }).click({ modifiers: ['Control'] })
+    await expect(title).toHaveValue('Delta')
+    expect(state.documentWrites.at(-1)).toMatchObject({ title: 'Edited before the newer destination' })
+  } finally { release() }
+  await expect.poll(() => state.reads.some(read => read.id === state.items[0].id)).toBe(true)
+  await expect(title).toHaveValue('Delta')
+  await pane.getByRole('button', { name: 'Previous document', exact: true }).click()
+  await expect(title).toHaveValue('Off-list document')
+  await expect(pane.getByRole('button', { name: 'Previous document', exact: true })).toBeDisabled()
+})
 
 async function expectReadableSelection(row, label) {
   await expect(row).toHaveAttribute('aria-current', 'true')

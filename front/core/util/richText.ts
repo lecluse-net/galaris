@@ -11,6 +11,8 @@ export interface RichContentContribution {
   search: (query: string) => Promise<RichLinkTarget[]>
   href: (uri: string) => string | null
   target?: (uri: string, title?: string, agentId?: number | null) => ResourceDetailTarget | null
+  title?: (uri: string, agentId: number | null) => Promise<string>
+  canCard?: (uri: string) => boolean
   card?: (uri: string, agentId: number | null) => Promise<string>
 }
 interface ContributionModule { default: RichContentContribution }
@@ -40,12 +42,16 @@ export function richLinkTarget(uri: string, title = '', agentId: number | null =
   return validRichLink(uri) ? contributions.map(value => value.target?.(uri, title, agentId)).find(Boolean) ?? null : null
 }
 export function richLinkHasCard(uri: string): boolean {
-  return validRichLink(uri) && contributions.some(value => value.target?.(uri) && value.card)
+  return validRichLink(uri) && contributions.some(value => value.target?.(uri) && value.card && (value.canCard?.(uri) ?? true))
 }
 export async function richLinkCard(uri: string, agentId: number | null): Promise<string> {
-  const contribution = contributions.find(value => value.target?.(uri) && value.card)
+  const contribution = contributions.find(value => value.target?.(uri) && value.card && (value.canCard?.(uri) ?? true))
   if (!contribution?.card) throw new Error('Resource card unavailable')
   return contribution.card(uri, agentId)
+}
+export async function richLinkTitle(uri: string, agentId: number | null): Promise<string> {
+  const contribution = contributions.find(value => value.target?.(uri) && value.title)
+  return await contribution?.title?.(uri, agentId) || uri
 }
 export async function searchRichLinks(query: string, scheme?: string): Promise<RichLinkTarget[]> {
   const sources = contributions.filter(value => !scheme || value.schemes?.includes(scheme))

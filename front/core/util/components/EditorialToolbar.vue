@@ -39,6 +39,7 @@ import pdfIcon from '../icons/bootstrap/file-earmark-pdf-fill.svg?raw'
 import zipIcon from '../icons/bootstrap/file-zip-fill.svg?raw'
 import { solaire } from '../solaire'
 import { editorialIcon } from '../editorialIcons'
+import { imageAlignment } from '../imageAlignment'
 const { editor, revision, document = false, source = false, singleRow = false, hiddenGroups = [], fullWidth = false, fullscreen = false, fits = true, disabledActions = [] } = defineProps<{
   editor: Editor; revision: number; document?: boolean; source?: boolean; singleRow?: boolean; hiddenGroups?: readonly EditorToolbarGroupName[]; fullWidth?: boolean; fullscreen?: boolean; fits?: boolean; disabledActions?: readonly string[]
 }>()
@@ -80,6 +81,7 @@ const activeCallout = computed(() => {
 })
 const groups = computed(() => {
   void revision
+  const image = editor.isActive('documentImage') ? new DOMParser().parseFromString(editor.getAttributes('documentImage').html, 'text/html').body.firstElementChild as HTMLElement : null
   const button = (key: string, icon: string, active?: boolean, reading = false): Item => ({ key,
     icon: key === 'exportPdf' ? coloredIcon(pdfIcon, solaire.red.accent)
       : key === 'resources.documentExportBundle' ? coloredIcon(zipIcon, solaire.blue.accent)
@@ -114,11 +116,11 @@ const groups = computed(() => {
       heading, ...(document ? [] : [callout]),
       button('bulletList', 'format_list_bulleted', editor.isActive('bulletList')), button('orderedList', 'format_list_numbered', editor.isActive('orderedList')), button('listProperties', 'format_list_numbered_rtl'),
     ], [
-      ...alignments.map(value => button(value, 'format_align_' + value, editor.isActive({ textAlign: value }) || value === 'left' && editor.isActive({ textAlign: null }))),
+      ...alignments.map(value => button(value, 'format_align_' + value, image ? imageAlignment(image) === value : editor.isActive({ textAlign: value }) || value === 'left' && editor.isActive({ textAlign: null }))),
       button('shortcuts.outdent', 'format_indent_decrease'), button('shortcuts.indent', 'format_indent_increase'),
     ]] },
     { name: 'insert' as const, rows: [[button('link', 'link'), button('galarisLink', 'folder_open'), ...(document ? [button('resources.uploadFile', 'upload_file'), button('insertTable', 'table_chart')] : [])],
-      ...(document ? [[button('quote', 'format_quote', editor.isActive('blockquote')), button('code', 'data_object', editor.isActive('codeBlock')), button('separator', 'horizontal_rule'), button('specialCharacters', 'emoji_symbols')]] : [])] },
+      ...(document ? [[button('quote', 'format_quote', editor.isActive('blockquote')), button('code', 'code', editor.isActive('codeBlock')), button('separator', 'horizontal_rule'), button('specialCharacters', 'emoji_symbols')]] : [])] },
   ].filter(group => !hiddenGroups.includes(group.name))
 })
 </script>

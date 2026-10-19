@@ -1,8 +1,8 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
 
-async function library(page) {
-  const item = { ...documentFixture, owner_agent_id: null, owner_user_id: 1,
+async function library(page, agentId = null) {
+  const item = { ...documentFixture, owner_agent_id: agentId, owner_user_id: agentId === null ? 1 : null,
     media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Working copy</p>' } }
   const state = { item, deleted: false, reads: [] }
   await jsonRoute(page, '**/api/agents?*', [agent])
@@ -19,9 +19,63 @@ async function library(page) {
       agent_ids: [], writable_agent_ids: [], user_access: item.access }], total: state.deleted ? 0 : 1,
       has_more: false, keywords: ['reference'], owners: [{ id: 1, kind: 'user', label: 'Me', subtitle: '' }] } })
   })
-  await page.route(/\/api\/memory\/documents\/doc-a(?:\?|$)/, route => route.fulfill({ json: { item: state.item, agent_id: null } }))
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?|$)/, route => route.fulfill({ json: { item: state.item, agent_id: agentId } }))
   return state
 }
+
+for (const location of ['list', 'tree']) test(`dragging a document from the ${location} inserts its titled link, saves and reopens as a card`, async ({ page }, testInfo) => {
+  const state = await library(page, 7)
+  const id = '00000000-0000-0000-0000-000000000245'
+  const source = { ...state.item, id, owner_agent_id: null, owner_user_id: 1, title: 'Reference <notes> & plan', payload: { text: '<p>Referenced content</p>' } }
+  const folder = { id: 'references', name: 'References', parent_id: null, position: 1 }
+  const writes = [], moves = []
+  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: location === 'tree' ? [folder] : [] })
+  await page.route(new RegExp(`/api/memory/documents/${id}(?:\\?|$)`), route => route.fulfill(
+    new URL(route.request().url()).searchParams.has('agent_id')
+      ? { status: 403, json: { detail: 'The containing document Agent cannot read this private User document' } }
+      : { json: { item: source, agent_id: null } }))
+  await jsonRoute(page, `**/api/memory/documents/${id}/attachments*`, [])
+  await page.route('**/api/memory/documents/library', route => {
+    const query = route.request().postDataJSON()
+    const items = query.tag_id ? [source] : location === 'list' ? [state.item, source] : [state.item]
+    return route.fulfill({ json: { entries: items.map(item => ({ item, tags: item.id === id && location === 'tree' ? [folder] : [], agent_ids: item.owner_agent_id ? [item.owner_agent_id] : [], writable_agent_ids: item.owner_agent_id ? [item.owner_agent_id] : [], user_access: item.owner_user_id ? item.access : { can_read: false, can_write: false } })), total: items.length, has_more: false, keywords: [] } })
+  })
+  await page.route('**/api/memory/documents/order', route => { moves.push(route.request().postDataJSON()); return route.fulfill({ status: 204 }) })
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?|$)/, route => {
+    if (route.request().method() !== 'PATCH') return route.fallback()
+    const change = route.request().postDataJSON(); writes.push(change)
+    state.item = { ...state.item, ...change, revision: state.item.revision + 1, lock_version: state.item.lock_version + 1 }
+    return route.fulfill({ json: state.item })
+  })
+  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  const editor = page.locator('[data-editor-surface]')
+  await expect(editor).toContainText('Working copy')
+  if (location === 'tree') await page.getByText('References', { exact: true }).click()
+  const navigation = location === 'tree' ? page.locator('.document-tree') : page.getByRole('list', { name: 'Unclassified documents', exact: true })
+  const row = navigation.getByText(source.title, { exact: true })
+  await row.dragTo(editor, { targetPosition: { x: 60, y: 20 } })
+  await expect(editor.locator('a')).toHaveText(source.title)
+  await expect(editor).toContainText('Working copy')
+  expect(await editorHtml(page)).toContain(`href="document://${id}"`)
+  expect(moves).toEqual([])
+  await editor.locator('a').click()
+  await page.getByRole('button', { name: 'Show card', exact: true }).click()
+  await expect(editor.locator('.galaris-link-card > p').first()).toHaveText(source.title)
+  await expect.poll(() => writes.at(-1)?.payload?.text).toContain('galaris-link-card')
+  expect(writes.at(-1).payload.text).toContain(`document://${id}`)
+  await page.screenshot({ path: testInfo.outputPath(`document-reference-${location}.png`), animations: 'disabled' })
+  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await expect(editor.locator('.galaris-link-card > p').first()).toHaveText(source.title)
+  await editor.locator('.galaris-link-card > p').first().click()
+  await page.getByRole('button', { name: 'Show URL', exact: true }).click()
+  await expect(editor.locator('a')).toHaveText(source.title)
+  await editor.locator('a').click({ modifiers: ['Control'] })
+  await expect(editor).toHaveText('Referenced content')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Previous document', exact: true }).click()
+  await expect(editor).toContainText('Working copy')
+  expect(moves).toEqual([])
+})
 
 test('document content is usable while optional owner and keyword catalogues are still loading', async ({ page }) => {
   await library(page)

@@ -48,6 +48,9 @@ en lecture : image de bloc, en ligne, enveloppée ou dans une cellule, agrandie 
 La réouverture recrée le composant ; réinjecter sa dernière valeur ne suffit pas à exercer
 ce contrat. `e2e/specs/editorial-html.spec.mjs` couvre la sauvegarde réelle de cette taille
 et son maintien après rechargement du document.
+Les mêmes suites protègent l’alignement réel des images en bloc à gauche, au centre et à droite :
+commandes sur mobile et bureau, propriétés, réouverture, lecture et sauvegarde via les vraies API.
+La présence de boutons d’alignement ou le centrage par défaut ne prouve pas leur effet sur une image.
 
 `document-resources.spec.mjs` distingue la sélection d’images en édition de leur ouverture
 directe en lecture seule, avec ou sans lien. `document-apps.spec.mjs` conserve la saisie
@@ -79,10 +82,36 @@ du texte et de sa mise en forme, annulation, fermeture, reprise après erreur et
 sélection après changement de contenu. La navigation et la sélection multiple restent
 couvertes par `internal-file-picker.spec.mjs`.
 `agents.spec.mjs` couvre la carte insérée, son avatar, le choix lien/carte, la sauvegarde
-sans UI injectée et l'ouverture de la carte complète. `galaris-links.spec.mjs` vérifie que
+sans UI injectée et l'ouverture de la carte complète par son titre en lecture et en édition,
+sur mobile et bureau ; l’avatar ne l’ouvre plus.
+`galaris-links.spec.mjs` vérifie le clic simple sur le titre des cartes documentaires,
+la sélection du reste de la carte et le maintien des raccourcis pour les liens dans le texte. Il vérifie aussi que
 les tâches s'ouvrent et se rouvrent en modale sans navigation, en lecture et en édition.
+
+`chat-document-workspace.spec.mjs` vérifie que les liens et cartes documentaires remplacent
+le document dans le Chat sans changer de page, avec historique précédent/suivant, sauvegarde
+avant navigation, refus d’accès et rejet des réponses après fermeture. Le document transmis au
+message suivant est celui affiché après navigation. `document-navigation.spec.mjs` et
+`document-dialog-navigation.spec.mjs` conservent les contextes Documents et modale. Les trois
+suites vérifient aussi l’action contextuelle **Ouvrir dans une modale**, sans remplacer le
+document d’origine ni partager son historique, y compris depuis une carte en lecture seule.
 `goals.spec.mjs` vérifie la même garantie pour les objectifs, avec leurs actions et sans
 modifier la sélection d'un objectif déjà ouverte ailleurs.
+
+`document-flows.spec.mjs` exerce le dépôt depuis la liste et l’arborescence : lien titré sans
+déplacement de la source, conversion en carte, sauvegarde, réouverture et ouverture de la cible
+en modale. `galaris-links.spec.mjs` vérifie le titre lors du collage d’une URI ou URL documentaire,
+l’annulation, le refus d’accès et les réponses tardives.
+`e2e/specs/document-links.spec.mjs` exerce les deux sources de glisser-déposer avec les vraies
+API, la persistance après rechargement, le retour carte/lien et le maintien du classement.
+Le document contenant appartient à un agent et la référence privée à l’utilisateur : les
+titres, cartes et modales doivent résoudre les droits de la cible sans réutiliser ceux de
+l’agent du document contenant. Les fixtures de bibliothèque distinguent les droits humains
+des droits agents ; une autorisation humaine systématique masquerait cette régression.
+`galaris-links.spec.mjs` vérifie la miniature et la copie de l’UUID au clic et au clavier,
+en lecture et en édition, sur mobile et bureau, y compris pour une ancienne carte sans UUID.
+La copie ne modifie pas le document et n’ouvre pas la cible. `document-print.spec.mjs` conserve
+la miniature et l’UUID dans le rendu PDF, sans bouton ni lien actif sur la carte.
 `document-resources.spec.mjs` couvre l'insertion répétée et le glisser-déposer de PJ
 existantes sans nouvel envoi ; l'ancienne contrainte masquant l'insertion est supprimée.
 
@@ -1149,7 +1178,31 @@ Revue de dépendance : `app/chat` consomme uniquement les exports publics `useAu
 et `DocumentOpenMode` de `core/user` pour lire et enregistrer la préférence. Cette dépendance
 applicative vers l’infrastructure utilisateur n’ajoute ni import privé ni cycle.
 
+`front/browser-tests/dataset-dialog.spec.mjs` vérifie l’ouverture de l’éditeur Dataset depuis
+le Chat, la confirmation de fermeture avec brouillon invalide, la réouverture, la conservation
+du filtre de bibliothèque et la conversion des URI/URL Dataset collées en cartes persistantes
+ouvrant la modale en lecture et en édition sans copier leur JSON. Le parcours assemblé
+`e2e/specs/datasets.spec.mjs` conserve sauvegarde, historique, restauration et partage dans la modale.
+
 ### Classement personnel des documents
+
+`front/browser-tests/document-navigation.spec.mjs` couvre l’historique précédent/suivant
+sur bureau et mobile : ouvertures depuis la bibliothèque ou une route documentaire,
+activation au clavier, nouvelle branche après un retour, absence de doublon consécutif,
+retrait des visites supprimées et préservation du brouillon et du curseur d’historique
+après un refus de sauvegarde, puis sauvegarde et réouverture après reprise.
+Les liens et cartes documentaires naviguent dans le même onglet en lecture, édition et lecture
+seule, pour les URI et les URL locales (`galaris-links.spec.mjs`) ; les autres ressources gardent
+leur modale et les pièces jointes leur lecteur. `document-flows.spec.mjs` et
+`e2e/specs/document-links.spec.mjs` vérifient le retour au document contenant la référence.
+Le parcours E2E utilise les flèches avec le shell complet : le menu du compte ne doit pas
+intercepter leur activation, un risque absent du montage de composant seul.
+`document-dialog-navigation.spec.mjs` couvre l’historique propre à la modale, les liens et
+cartes sans changement de route ni fenêtre imbriquée, la nouvelle branche et la réouverture,
+la portée d’agent initiale conservée sans la transmettre aux documents privés liés, le clavier,
+la sauvegarde refusée ou effectuée pendant un chargement, les droits refusés et les réponses
+tardives après fermeture. Les consommateurs existants sont exercés dans
+`chat-document-workspace.spec.mjs`, `topic-detail.spec.mjs` et `file-browser.spec.mjs`.
 
 `front/browser-tests/document-flows.spec.mjs` retient les réponses annexes et de suppression :
 contenu utilisable avant les catalogues, retrait anticipé et restauration de la ligne courante

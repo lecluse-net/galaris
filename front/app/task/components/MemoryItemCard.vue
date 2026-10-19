@@ -47,20 +47,9 @@
         </template>
     </q-card>
 
-    <q-dialog v-if="documentOpen && documentId && agentId != null" v-model="documentOpen" allow-focus-outside :maximized="$q.screen.lt.md" @before-hide="flushDocument">
-        <q-card class="memory-document-dialog galaris-detail-dialog column no-wrap galaris-dialog-card">
-            <q-card-section class="galaris-dialog-title row items-center no-wrap">
-                <DocumentIcon :document-id="documentId" :title="displayedItem?.title ?? ''" size="24px" class="q-mr-sm" />
-                <div class="text-h6 ellipsis">{{ displayedItem?.title }}</div>
-                <q-space />
-                <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-            </q-card-section>
-            <div class="memory-document-reader galaris-dialog-body">
-                <WorkingDocumentEditor ref="documentEditor" :document-id="documentId" :agent-id="agentId"
-                    content-min-height="min(42vh, 440px)" content-max-height="52vh" />
-            </div>
-        </q-card>
-    </q-dialog>
+    <WorkingDocumentDialog v-if="documentId && agentId != null" v-model="documentOpen"
+        :document-id="documentId" :agent-id="agentId" :title="displayedItem?.title ?? ''"
+        editable card-class="memory-document-dialog" />
 </template>
 
 <script lang="ts">
@@ -77,11 +66,11 @@ export interface MemoryItemPreview {
 
 <script setup lang="ts">
 import { WorkingDocumentIcon as DocumentIcon } from '@/core/util'
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { copyToClipboard, useQuasar } from 'quasar'
 import type { MemoryItemDetail } from '@/app/memory/types'
-import { EditorialContent, WorkingDocumentEditor } from '@/core/util'
+import { EditorialContent, WorkingDocumentDialog } from '@/core/util'
 
 const props = withDefaults(defineProps<{
     agentId?: number | null
@@ -100,11 +89,6 @@ const props = withDefaults(defineProps<{
 const { t } = useI18n()
 const $q = useQuasar()
 const documentOpen = ref(false)
-const documentEditor = useTemplateRef<InstanceType<typeof WorkingDocumentEditor>>('documentEditor')
-
-function flushDocument(): void {
-    void documentEditor.value?.flush()
-}
 
 const displayedItem = computed<MemoryItemPreview | null>(() => {
     if (props.item) {
@@ -177,17 +161,6 @@ const isMarkdown = computed(() => {
     overflow-wrap: anywhere;
     white-space: normal;
     text-align: left;
-}
-
-.memory-document-dialog {
-    width: min(94vw, 980px);
-    max-width: 980px;
-    max-height: calc(100dvh - 32px);
-}
-
-.memory-document-reader {
-    min-height: 0;
-    overflow-y: auto;
 }
 
 .memory-unavailable {

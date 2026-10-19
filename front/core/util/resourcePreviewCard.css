@@ -2,7 +2,7 @@
 .rich-content blockquote.galaris-link-card { padding: 10px 12px; margin: 12px 0; font-style: normal; break-inside: avoid; }
 .rich-content blockquote.galaris-link-card p { margin: 4px 0; font-size: 13px; line-height: 1.4; }
 .rich-content blockquote.galaris-link-card p:has(strong) { font-size: 15px; }
-.rich-content blockquote.galaris-link-card p:last-of-type { font-size: 11px; opacity: .7; }
+.rich-content blockquote.galaris-link-card p:last-of-type:not(:first-of-type) { font-size: 11px; opacity: .7; }
 .rich-content blockquote.galaris-link-card a { color: inherit; text-decoration: none; }
 .rich-content blockquote.galaris-link-card a:hover { text-decoration: underline; }
 .rich-content blockquote.galaris-link-card figure.image { float: left; width: 112px; max-width: 35%; margin: 0 12px 0 0; }
@@ -66,6 +66,9 @@
 .body--dark .resource-preview-block .resource-preview-actions { color: #ddd; background: rgba(24, 24, 24, .9); }
 .rich-content blockquote.galaris-agent-card { padding-left: 128px; min-height: 112px; }
 .rich-content blockquote.galaris-agent-card > .galaris-resource-embed { position: absolute; inset: 0 auto 0 0; width: 112px; overflow: hidden; }
+.rich-content blockquote.galaris-document-card { min-height: 100px; padding-left: 124px; }
+.rich-content blockquote.galaris-document-card > .galaris-resource-embed { position: absolute; inset: 8px auto 8px 8px; width: 100px; }
+.rich-content blockquote.galaris-document-card > .galaris-resource-embed:has(.document-citation-preview) { position: static; width: auto; }
 @media (hover: none), (pointer: coarse) {
   .resource-preview-block .resource-preview-actions { opacity: 1; pointer-events: auto; }
 }

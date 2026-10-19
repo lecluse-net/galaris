@@ -1,5 +1,107 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
-import { result } from './data.mjs'
+import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
+import { result, document as documentFixture } from './data.mjs'
+
+for (const mode of ['read', 'edit', 'readonly']) for (const format of ['uri', 'url']) for (const card of [false, true]) {
+  test(`a document ${format} ${card ? 'card' : 'link'} navigates without a modal in ${mode} mode`, async ({ page, baseURL }) => {
+    const id = '00000000-0000-4000-8000-000000000245'
+    const uri = format === 'uri' ? `document://${id}` : new URL(`/documents?document_id=${id}`, baseURL).href
+    const link = `<p><a href="${uri}">${card ? '<strong>Referenced document</strong>' : 'Referenced document'}</a></p>`
+    const html = card ? `<blockquote class="galaris-link-card">${link}<p>Reference summary</p></blockquote>` : link
+    await jsonRoute(page, `**/api/memory/documents/${id}`, { item: { ...documentFixture, id, title: 'Referenced document' }, agent_id: null })
+    const popups = []
+    page.on('popup', popup => popups.push(popup))
+    await mount(page, `core/util/components/${mode === 'read' ? 'RichText' : 'RichTextEditor'}.vue`, {
+      route: '/documents', props: { profile: 'document', ...(mode === 'read' ? { content: html } : { modelValue: html, readonly: mode === 'readonly' }) },
+    })
+    const reference = page.getByRole('link', { name: 'Referenced document', exact: true })
+    if (mode === 'edit' && card) {
+      await page.getByText('Reference summary', { exact: true }).click()
+      expect(await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/documents')
+    }
+    await reference.click()
+    if (mode === 'edit' && !card) {
+      await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/documents')
+      await page.keyboard.press('Alt+Enter')
+    }
+    await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(`/documents?document_id=${id}`)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(popups).toHaveLength(0)
+    expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
+  })
+}
+
+for (const mode of ['read', 'edit']) for (const width of [1440, 390]) test(`document cards show their thumbnail and copy the UUID in ${mode} mode at ${width}px`, async ({ page, context }, testInfo) => {
+  const id = '00000000-0000-0000-0000-000000000245'
+  const title = 'Synthetic illustrated document'
+  const html = `<blockquote class="galaris-link-card"><p><a href="document://${id}"><strong>${title}</strong></a></p>${mode === 'edit' ? `<p>${id}</p>` : ''}</blockquote>`
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.setViewportSize({ width, height: 900 })
+  await jsonRoute(page, `**/api/memory/documents/${id}`, { item: { ...documentFixture, id, title, media_type: 'text/html', document_type: 'html', payload: { text: '<h1>Illustrated source</h1>' } }, agent_id: null })
+  await page.route(`**/api/memory/documents/${id}/thumbnail*`, route => route.fulfill({ contentType: 'image/webp', body: Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=', 'base64') }))
+  await mount(page, `core/util/components/${mode === 'edit' ? 'RichTextEditor' : 'RichText'}.vue`, { props: { profile: 'document', ...(mode === 'edit' ? { modelValue: html } : { content: html }) } })
+  const card = page.locator('.galaris-link-card')
+  await expect(card.locator('.document-thumbnail img')).toHaveJSProperty('naturalWidth', 1)
+  await card.locator('.document-citation-thumbnail').click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const copy = card.getByRole('button', { name: 'Copy content', exact: true })
+  await expect(copy).toHaveText(id)
+  await copy.click()
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(id)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await copy.focus(); await page.keyboard.press('Enter')
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(id)
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
+  if (mode === 'edit') expect(await editorHtml(page)).not.toMatch(/blob:|<button|document-citation-preview/)
+  await card.screenshot({ path: testInfo.outputPath('document-card-thumbnail.png'), animations: 'disabled' })
+})
+
+async function pasteLink(page, value) {
+  await page.locator('[data-editor-surface]').evaluate((root, text) => {
+    const data = new DataTransfer(); data.setData('text/plain', text)
+    root.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+  }, value)
+}
+
+for (const format of ['uri', 'url', 'dialog']) test(`inserting a document ${format} uses its title and preserves the surrounding text`, async ({ page }) => {
+  const id = '00000000-0000-0000-0000-000000000245'
+  await jsonRoute(page, `**/api/memory/documents/${id}`, { item: { ...documentFixture, id, owner_agent_id: null, owner_user_id: 1, title: 'Synthetic reference' }, agent_id: null })
+  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<p>Keep this</p>', resourceAgentId: 7 } })
+  await page.locator('[data-editor-surface]').click(); await page.keyboard.press('End')
+  const url = format === 'uri' ? `document://${id}` : new URL(`/documents?document_id=${id}`, page.url()).href
+  if (format === 'dialog') {
+    await page.keyboard.press('Control+k')
+    await page.getByRole('dialog').getByRole('textbox').first().fill(url)
+    await page.getByRole('button', { name: 'Apply', exact: true }).click()
+  } else await pasteLink(page, url)
+  await expect(page.locator('[data-editor-surface] a')).toHaveText('Synthetic reference')
+  expect(await lastValue(page)).toContain(`href="document://${id}"`)
+  await page.keyboard.press('Control+z')
+  await expect(page.locator('[data-editor-surface]')).toHaveText('Keep this')
+})
+
+for (const action of ['switch', 'readonly', 'denied']) test(`document title lookup handles ${action} without corrupting content`, async ({ page }) => {
+  const id = '00000000-0000-0000-0000-000000000245'
+  let release, started = false
+  const gate = new Promise(resolve => { release = resolve })
+  await page.route(`**/api/memory/documents/${id}`, async route => {
+    started = true; await gate
+    return route.fulfill(action === 'denied' ? { status: 403, json: { detail: 'Access denied' } } : { json: { item: { ...documentFixture, id, title: 'Late title' }, agent_id: null } })
+  })
+  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<p>Keep this</p>' } })
+  await page.locator('[data-editor-surface]').click(); await page.keyboard.press('End')
+  await pasteLink(page, `document://${id}`)
+  await expect.poll(() => started).toBe(true)
+  if (action !== 'denied') await page.evaluate(action => window.testApp.setProps(action === 'switch' ? { modelValue: '<p>Replacement</p>' } : { readonly: true }), action)
+  const response = page.waitForResponse(response => response.url().includes(`/documents/${id}`))
+  release(); await (await response).finished()
+  if (action === 'denied') {
+    await expect(page.locator('[data-editor-surface] a')).toHaveText(`document://${id}`)
+    await expect(page.locator('[data-editor-surface]')).toContainText('Keep this')
+  } else {
+    await expect(page.locator('[data-editor-surface]')).toHaveText(action === 'switch' ? 'Replacement' : 'Keep this')
+    await expect(page.locator('[data-editor-surface] a')).toHaveCount(0)
+  }
+})
 
 for (const mode of ['read', 'edit']) test(`a Task citation opens its modal without navigation in ${mode} mode`, async ({ page }) => {
   const id = '00000000-0000-0000-0000-000000000003'

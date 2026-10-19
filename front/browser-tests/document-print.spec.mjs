@@ -6,6 +6,9 @@ const uri = 'document://00000000-0000-0000-0000-000000000001/attachments/0000000
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII='
 
 test('PDF preserves process diagrams and agent portraits without clickable objects', async ({ page, context }, testInfo) => {
+  const documentId = '00000000-0000-0000-0000-000000000245'
+  await jsonRoute(page, `**/api/memory/documents/${documentId}`, { item: { ...documentFixture, id: documentId, media_type: 'text/html', payload: { text: '<h1>Synthetic preview</h1>' } }, agent_id: null })
+  await page.route(`**/api/memory/documents/${documentId}/thumbnail*`, route => route.fulfill({ contentType: 'image/webp', body: Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=', 'base64') }))
   const processUri = 'galaris://processes/synthetic_pdf_review'
   const graph = { schema_version: 'galaris.bpmn/v1', input_schema: {}, output_schema: {}, files: {}, actors: [{ id: 'reviewers', name: 'Document review team', kind: 'agent', agent_id: 7, user_id: null }], nodes: [
     { id: 'start', kind: 'start', title: 'Start', config: {}, x: 0, y: 0, body: null },
@@ -22,13 +25,15 @@ test('PDF preserves process diagrams and agent portraits without clickable objec
     return canvas.toDataURL('image/png').split(',')[1]
   })
   await page.route('**/api/agents/7/avatar?*', route => route.fulfill({ contentType: 'image/png', body: Buffer.from(portrait, 'base64') }))
-  await page.evaluate(async ({ uri, png, processUri }) => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
-    profile: 'document', modelValue: `<h1>Illustrated PDF</h1><blockquote class="galaris-link-card galaris-agent-card"><p><a href="galaris://agent/7"><strong>Synthetic PDF agent</strong></a></p><p>Document reviewer</p></blockquote><blockquote class="galaris-link-card galaris-process-diagram"><p><a href="${processUri}"><strong>Synthetic PDF process</strong></a></p></blockquote><figure class="image" style="width:120px"><a href="${uri}"><img alt="Synthetic illustration" src="${uri}"></a></figure><p><a href="https://example.org/manual">Ordinary text link</a></p>`,
+  await page.evaluate(async ({ uri, png, processUri, documentId }) => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
+    profile: 'document', modelValue: `<h1>Illustrated PDF</h1><blockquote class="galaris-link-card galaris-agent-card"><p><a href="galaris://agent/7"><strong>Synthetic PDF agent</strong></a></p><p>Document reviewer</p></blockquote><blockquote class="galaris-link-card galaris-process-diagram"><p><a href="${processUri}"><strong>Synthetic PDF process</strong></a></p></blockquote><figure class="image" style="width:120px"><a href="${uri}"><img alt="Synthetic illustration" src="${uri}"></a></figure><p><a href="https://example.org/manual">Ordinary text link</a></p><blockquote class="galaris-link-card"><p><a href="document://${documentId}"><strong>Synthetic cited document</strong></a></p><p>${documentId}</p></blockquote>`,
     resolveImage: async () => new Blob([Uint8Array.from(atob(png), value => value.charCodeAt(0))], { type: 'image/png' }),
     exportPdf: async html => { window.objectPdfSnapshot = html; return new Blob(['%PDF-1.7 fixture'], { type: 'application/pdf' }) },
-  } }), { uri, png: portrait, processUri })
+  } }), { uri, png: portrait, processUri, documentId })
   const editor = page.locator('[data-editor-surface]')
   await expect(editor.locator('.galaris-agent-card img')).toHaveJSProperty('naturalWidth', 128)
+  await editor.locator('.galaris-document-card').scrollIntoViewIfNeeded()
+  await expect(editor.locator('.galaris-document-card img')).toHaveJSProperty('naturalWidth', 1)
   await expect(editor.getByRole('button', { name: 'Synthetic PDF review · review', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Export as PDF', exact: true }).click()
   await expect.poll(() => page.evaluate(() => typeof window.objectPdfSnapshot)).toBe('string')
@@ -40,6 +45,8 @@ test('PDF preserves process diagrams and agent portraits without clickable objec
   await expect(printed.locator('.galaris-process-diagram')).toContainText('Synthetic PDF review')
   await expect(printed.locator('.galaris-process-diagram svg')).toHaveCount(1)
   await expect(printed.locator('.galaris-agent-card img')).toHaveJSProperty('naturalWidth', 128)
+  await expect(printed.locator('.galaris-document-card img')).toHaveJSProperty('naturalWidth', 1)
+  await expect(printed.locator('.galaris-document-card > p').last()).toHaveText(documentId)
   await expect(printed.locator('.galaris-process-diagram')).toContainText('Document review team')
   await expect(printed.locator('.galaris-link-card a[href], a[href]:has(img), button, iframe')).toHaveCount(0)
   await expect(printed.getByRole('link', { name: 'Ordinary text link' })).toHaveAttribute('href', 'https://example.org/manual')

@@ -1,72 +1,60 @@
 <template>
   <q-page class="datasets-page q-pa-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }">
     <PageHeader icon="data_object" :title="t('datasets.title')" :description="t('datasets.description')" />
-    <q-card flat bordered class="datasets-workspace" :class="{ 'datasets-workspace--selected': selectedId }">
-      <q-splitter v-model="splitter" :limits="[25, 50]" :disable="$q.screen.lt.md" class="datasets-splitter">
-        <template #before>
-          <nav class="dataset-list" :aria-label="t('datasets.title')">
-            <div class="row items-center q-gutter-sm q-pa-md">
-              <q-input v-model="query" outlined dense clearable class="col" :label="t('datasets.filter')" debounce="250" @update:model-value="search">
-                <template #prepend><q-icon name="search" /></template>
-              </q-input>
-              <q-btn v-if="canEdit" color="primary" icon="add" :aria-label="t('datasets.new')" @click="createError = ''; creating = true">
-                <q-tooltip>{{ t('datasets.new') }}</q-tooltip>
-              </q-btn>
+    <q-card flat bordered class="datasets-workspace">
+      <nav class="dataset-list" :aria-label="t('datasets.title')">
+        <div class="row items-center q-gutter-sm q-pa-md">
+          <q-input v-model="query" outlined dense clearable class="col" :label="t('datasets.filter')" debounce="250" @update:model-value="search">
+            <template #prepend><q-icon name="search" /></template>
+          </q-input>
+          <q-btn v-if="canEdit" color="primary" icon="add" :aria-label="t('datasets.new')" @click="createError = ''; creating = true">
+            <q-tooltip>{{ t('datasets.new') }}</q-tooltip>
+          </q-btn>
+        </div>
+        <AgentSelect v-model="ownerAgentId" :options="agentOptions" :load-agents="false" outlined dense
+          class="q-mx-md q-mb-md" :label="t('datasets.agentFilter')" :loading="agentsLoading" :error="agentsError"
+          :error-message="agentsError ? t('datasets.agentFilterError') : undefined" hide-bottom-space
+          @popup-show="loadAgents" @update:model-value="search" />
+        <q-banner v-if="error" class="q-mx-md q-mb-sm" role="alert">
+          {{ error }} <q-btn flat :label="t('datasets.reload')" @click="load" />
+        </q-banner>
+        <q-table v-model:pagination="pagination" flat hide-header wrap-cells class="dataset-list-table"
+          :rows="rows" :columns="columns" row-key="id" :loading="loading"
+          :rows-per-page-options="[10, 20, 50, 100, 500]" :no-data-label="t('datasets.empty')" @request="request">
+          <template #body="slot">
+            <q-tr :props="slot" :class="{ 'dataset-row--selected': slot.row.id === selectedId }">
+              <q-td key="title" :props="slot" class="q-pa-none">
+                <router-link :to="`/dataset/${slot.row.id}`" class="dataset-link" :aria-label="slot.row.title" :aria-current="slot.row.id === selectedId ? 'page' : undefined">
+                  <q-icon name="data_object" size="22px" class="dataset-link-icon" aria-hidden="true" />
+                  <span class="dataset-link-copy">
+                    <span class="dataset-link-title">{{ slot.row.title }}</span>
+                    <span class="dataset-link-details text-caption text-grey-7">
+                      <time v-if="slot.row.updated_at || slot.row.created_at" :datetime="slot.row.updated_at ?? slot.row.created_at"
+                        :title="t('datasets.lastModified', { date: formatDate(slot.row.updated_at ?? slot.row.created_at) })">
+                        {{ formatDate(slot.row.updated_at ?? slot.row.created_at) }}
+                      </time>
+                      <span>{{ t('datasets.revision') }} {{ slot.row.revision }}</span>
+                    </span>
+                  </span>
+                </router-link>
+              </q-td>
+            </q-tr>
+          </template>
+          <template #bottom>
+            <div class="dataset-pagination row items-center justify-center q-pa-xs">
+              <span class="text-caption">{{ t('datasets.resultRange', { from: rows.length ? (pagination.page - 1) * pagination.rowsPerPage + 1 : 0, to: rows.length ? (pagination.page - 1) * pagination.rowsPerPage + rows.length : 0, total: pagination.rowsNumber }) }}</span>
+              <q-select :model-value="pagination.rowsPerPage" :options="[10, 20, 50, 100, 500]" dense borderless
+                :aria-label="t('datasets.perPage')" :disable="loading" @update:model-value="setPageSize">
+                <template #selected>{{ t('datasets.itemsPerPage', { count: pagination.rowsPerPage }) }}</template>
+              </q-select>
+              <q-pagination :model-value="pagination.page" :max="Math.max(1, Math.ceil(pagination.rowsNumber / pagination.rowsPerPage))"
+                :max-pages="3" direction-links boundary-numbers size="sm" :disable="loading" @update:model-value="changePage" />
             </div>
-            <AgentSelect v-model="ownerAgentId" :options="agentOptions" :load-agents="false" outlined dense
-              class="q-mx-md q-mb-md" :label="t('datasets.agentFilter')" :loading="agentsLoading" :error="agentsError"
-              :error-message="agentsError ? t('datasets.agentFilterError') : undefined" hide-bottom-space
-              @popup-show="loadAgents" @update:model-value="search" />
-            <q-banner v-if="error" class="q-mx-md q-mb-sm" role="alert">
-              {{ error }} <q-btn flat :label="t('datasets.reload')" @click="load" />
-            </q-banner>
-            <q-table v-model:pagination="pagination" flat hide-header wrap-cells class="dataset-list-table"
-              :rows="rows" :columns="columns" row-key="id" :loading="loading"
-              :rows-per-page-options="[10, 20, 50, 100, 500]" :no-data-label="t('datasets.empty')" @request="request">
-              <template #body="slot">
-                <q-tr :props="slot" :class="{ 'dataset-row--selected': slot.row.id === selectedId }">
-                  <q-td key="title" :props="slot" class="q-pa-none">
-                    <router-link :to="`/dataset/${slot.row.id}`" class="dataset-link" :aria-label="slot.row.title" :aria-current="slot.row.id === selectedId ? 'page' : undefined">
-                      <q-icon name="data_object" size="22px" class="dataset-link-icon" aria-hidden="true" />
-                      <span class="dataset-link-copy">
-                        <span class="dataset-link-title">{{ slot.row.title }}</span>
-                        <span class="dataset-link-details text-caption text-grey-7">
-                          <time v-if="slot.row.updated_at || slot.row.created_at" :datetime="slot.row.updated_at ?? slot.row.created_at"
-                            :title="t('datasets.lastModified', { date: formatDate(slot.row.updated_at ?? slot.row.created_at) })">
-                            {{ formatDate(slot.row.updated_at ?? slot.row.created_at) }}
-                          </time>
-                          <span>{{ t('datasets.revision') }} {{ slot.row.revision }}</span>
-                        </span>
-                      </span>
-                    </router-link>
-                  </q-td>
-                </q-tr>
-              </template>
-              <template #bottom>
-                <div class="dataset-pagination row items-center justify-center q-pa-xs">
-                  <span class="text-caption">{{ t('datasets.resultRange', { from: rows.length ? (pagination.page - 1) * pagination.rowsPerPage + 1 : 0, to: rows.length ? (pagination.page - 1) * pagination.rowsPerPage + rows.length : 0, total: pagination.rowsNumber }) }}</span>
-                  <q-select :model-value="pagination.rowsPerPage" :options="[10, 20, 50, 100, 500]" dense borderless
-                    :aria-label="t('datasets.perPage')" :disable="loading" @update:model-value="setPageSize">
-                    <template #selected>{{ t('datasets.itemsPerPage', { count: pagination.rowsPerPage }) }}</template>
-                  </q-select>
-                  <q-pagination :model-value="pagination.page" :max="Math.max(1, Math.ceil(pagination.rowsNumber / pagination.rowsPerPage))"
-                    :max-pages="3" direction-links boundary-numbers size="sm" :disable="loading" @update:model-value="changePage" />
-                </div>
-              </template>
-            </q-table>
-          </nav>
-        </template>
-        <template #separator><span class="dataset-splitter-handle"><q-icon name="drag_indicator" size="16px" /></span></template>
-        <template #after>
-          <q-btn v-if="selectedId" flat icon="arrow_back" :label="t('datasets.backToList')" class="lt-md q-ma-sm" to="/dataset" />
-          <DatasetEditor v-if="selectedId" :key="selectedId" :id="selectedId" @updated="load" @deleted="removed" />
-          <div v-else class="dataset-placeholder">
-            <q-icon name="data_object" size="48px" aria-hidden="true" />
-            <p>{{ t('datasets.selectDataset') }}</p>
-          </div>
-        </template>
-      </q-splitter>
+          </template>
+        </q-table>
+      </nav>
     </q-card>
+    <DatasetDialog v-if="selectedId" :key="selectedId" :id="selectedId" @close="router.push('/dataset')" @updated="load" @deleted="removed" />
     <q-dialog v-model="creating">
       <q-card style="width: 480px; max-width: 95vw">
         <q-card-section class="galaris-dialog-title row items-center">
@@ -93,14 +81,14 @@ import type { QTableProps } from 'quasar'
 import { PageHeader } from '@/core/util'
 import { usePrivilegeStore } from '@/core/authorize'
 import { AgentSelect, getAgentSelection, type AgentSelectionOption } from '@/app/agent'
-import DatasetEditor from '../components/DatasetEditor.vue'
+import DatasetDialog from '../components/DatasetDialog.vue'
 import { datasetService } from '../services/datasetService'
 import type { Dataset } from '../types'
 
 const { t, locale } = useI18n(), route = useRoute(), router = useRouter(), auth = usePrivilegeStore()
 const selectedId = computed(() => typeof route.params.id === 'string' ? route.params.id : '')
 const canEdit = computed(() => auth.hasPrivilege('DATASET_EDIT') || auth.hasPrivilege('DATASET_ADMIN'))
-const splitter = ref(30), rows = ref<Dataset[]>([]), query = ref<string | null>(''), title = ref('')
+const rows = ref<Dataset[]>([]), query = ref<string | null>(''), title = ref('')
 const error = ref(''), loading = ref(false), creating = ref(false), creatingBusy = ref(false), createError = ref('')
 const ownerAgentId = ref<number | null>(null), agents = ref<AgentSelectionOption[]>([]), agentsLoading = ref(false), agentsError = ref(false)
 const agentOptions = computed(() => [{ label: t('datasets.allAgents'), value: null }, ...agents.value.map(agent => ({ label: agent.label, value: agent.id, hasAvatar: agent.has_avatar }))])
@@ -160,14 +148,6 @@ onBeforeUnmount(() => { mounted = false; generation++ })
 </script>
 <style scoped>
 .datasets-workspace { overflow: hidden; }
-.datasets-splitter { min-height: 540px; }
-.datasets-splitter :deep(> .q-splitter__before),
-.datasets-splitter :deep(> .q-splitter__after) { min-width: 0; overflow: auto; }
-.datasets-splitter :deep(> .q-splitter__separator) { z-index: 2; width: 8px; background: color-mix(in srgb, var(--solaire-gray-accent) 4%, transparent); }
-.datasets-splitter :deep(> .q-splitter__separator)::before { position: absolute; inset: 0 auto 0 3px; width: 2px; background: color-mix(in srgb, var(--solaire-gray-accent) 28%, transparent); content: ""; transition: background-color .15s ease; }
-.datasets-splitter :deep(> .q-splitter__separator:hover)::before,
-.datasets-splitter :deep(> .q-splitter__separator:focus-within)::before,
-.datasets-splitter.q-splitter--active :deep(> .q-splitter__separator)::before { background: var(--q-primary); }
 .dataset-list { min-width: 0; }
 .dataset-list-table :deep(.q-table__middle) { overflow: auto; }
 .dataset-list-table :deep(td) { padding: 0; }
@@ -181,23 +161,11 @@ onBeforeUnmount(() => { mounted = false; generation++ })
 .dataset-row--selected { background: var(--solaire-blue-light); box-shadow: inset 3px 0 var(--solaire-blue-accent); }
 :global(body.body--dark) .dataset-row--selected { background: var(--solaire-blue-dark); }
 .dataset-pagination { flex-shrink: 0; gap: 4px 12px; width: 100%; }
-.dataset-splitter-handle { position: absolute; top: 50%; left: 50%; z-index: 1; display: flex; width: 20px; height: 42px; align-items: center; justify-content: center; transform: translate(-50%, -50%); border: 1px solid color-mix(in srgb, var(--solaire-gray-accent) 28%, transparent); border-radius: 10px; color: var(--solaire-gray-accent); background: var(--solaire-gray-light); box-shadow: 0 2px 8px color-mix(in srgb, var(--solaire-gray-accent) 24%, transparent); }
-:global(body.body--dark) .dataset-splitter-handle { background: var(--solaire-gray-dark); }
-.dataset-placeholder { display: flex; min-height: 420px; height: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; text-align: center; color: var(--solaire-gray-accent); }
 @media (min-width: 1024px) {
   .datasets-page { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
   .datasets-page > :not(.datasets-workspace) { flex-shrink: 0; }
   .datasets-workspace { flex: 1; min-height: 0; }
-  .datasets-splitter { height: 100%; min-height: 0; }
   .dataset-list { display: flex; flex-direction: column; height: 100%; min-height: 0; }
   .dataset-list-table { flex: 1; min-height: 0; }
-}
-@media (max-width: 1023.98px) {
-  .datasets-splitter { min-height: 0; }
-  .datasets-splitter :deep(> .q-splitter__before) { width: 100% !important; }
-  .datasets-splitter :deep(> .q-splitter__separator),
-  .datasets-splitter :deep(> .q-splitter__after) { display: none; }
-  .datasets-workspace--selected .datasets-splitter :deep(> .q-splitter__before) { display: none; }
-  .datasets-workspace--selected .datasets-splitter :deep(> .q-splitter__after) { display: block; width: 100% !important; }
 }
 </style>

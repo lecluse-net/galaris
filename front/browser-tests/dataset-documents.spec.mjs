@@ -64,7 +64,7 @@ test('Documents creates editorial content and keeps Dataset creation out of its 
   expect(requests.at(-1)).not.toHaveProperty('document_type')
 })
 
-for (const component of ['DocumentEditor', 'DocumentLibraryPage']) {
+for (const component of ['DocumentEditor', 'DocumentLibraryPage', 'DocumentDialog']) {
   test(`a historical Dataset opens its canonical editor from ${component}`, async ({ page }) => {
     const id = '00000000-0000-4000-8000-000000000001'
     await jsonRoute(page, '**/api/agents?*', [agent])
@@ -72,7 +72,7 @@ for (const component of ['DocumentEditor', 'DocumentLibraryPage']) {
     await jsonRoute(page, '**/api/memory/documents/library', { entries: [], total: 0, has_more: false, keywords: [] })
     await jsonRoute(page, `**/api/memory/documents/${id}*`, { resource_type: 'dataset', resource_uri: `data://${id}` })
     await mount(page, `app/memory/components/${component}.vue`, {
-      props: component === 'DocumentEditor' ? { documentId: id, agentId: null } : {},
+      props: component === 'DocumentLibraryPage' ? {} : { documentId: id, agentId: null, ...(component === 'DocumentDialog' ? { modelValue: true } : {}) },
       route: `/documents?document_id=${id}`, privileges: ['MEMORY_EDIT', 'DATASET_READ'],
     })
     await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(`/dataset/${id}`)

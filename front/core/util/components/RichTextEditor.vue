@@ -43,6 +43,7 @@
     </template>
     <template v-else-if="activeContext.kind === 'resource'">
       <EditorialToolButton flat dense :icon="editorialIcon('open', 'open_in_new')" :label="t('richEditor.open')" @click="openSelection" />
+      <EditorialToolButton v-if="selectedDocumentUri" flat dense icon="open_in_new" :label="t('richEditor.openInDialog')" @click="openSelectionDialog" />
       <EditorialToolButton v-if="selectedType !== 'resourceCard'" flat dense :icon="editorialIcon('edit', 'edit')" :label="t('richEditor.' + (selectedType.includes('Image') ? 'imageProperties' : 'link'))" :disable="readonly" @click="showDialog(selectedType.includes('Image') ? 'image' : 'link')" />
       <EditorialToolButton v-if="selectedCardImage" flat dense :icon="editorialIcon('image', 'image')" :label="t('richEditor.resources.openImage')" @click="navigate(selectedCardImage)" />
       <EditorialToolButton v-if="canConvertCard" flat dense icon="view_agenda" :label="t('richEditor.resources.' + (selectedType === 'resourceCard' ? 'asUrl' : 'asCard'))" :disable="readonly || busyCard" @click="convertCard" />
@@ -107,10 +108,14 @@ import RenderedObjectPreview from './RenderedObjectPreview.vue'
 import { DocumentResourceReferences as InternalResourcePicker } from '../resourceContributions'
 import PdfPreview from './PdfPreview.vue'
 import { contentExtensions, resolveEditorLinks, type EditorObject, type EditorToolbarGroupName, type ObjectHost } from '../tiptapContent'
-import { attachmentReference, richLinkHref, richLinkTarget, richLinkHasCard, sanitizeRichHtml, validRichLink, type ContentProfile } from '../richText'
+import { attachmentReference, richLinkHref, richLinkTarget, richLinkHasCard, richLinkTitle, sanitizeRichHtml, validRichLink, type ContentProfile } from '../richText'
+import { documentUriFromLink } from '../documentResource'
+import { useDocumentNavigation } from '../documentNavigation'
+import { alignImage, imageAlignment } from '../imageAlignment'
 import { protectInteractiveHtml, restoreInteractiveHtml } from '../interactiveHtml'
 import { ResourceDetailDialog, type ResourceDetailTarget } from '../resourceDetail'
 import { ResourceEmbed, type ResourceEmbedTarget } from '../resourceEmbed'
+import { prepareDocumentCard } from '../resourceCards'
 import { documentPlayer, createDocumentPlayer, type PdfPreviewSource } from '../documentMedia'
 import { documentResourceHtml, withAttachmentInventory, type DocumentResource } from '../documentResources'
 import { pasteDocumentHtml } from '../pasteDocumentHtml'
@@ -130,6 +135,7 @@ const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = f
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string]; 'open-attachment': [documentId: string, attachmentId: string] }>()
 const { t, locale } = useI18n(), $q = useQuasar(), slots = useSlots()
+const navigateDocument = useDocumentNavigation()
 const keyboardShortcuts = computed(() => [
   ...editorialShortcuts.filter(([, , command]) => !readonly || readingShortcutCommands.has(command)).map(([key, binding, , value]) => ({ label: t('richEditor.' + key, { level: Number(value) }), keys: shortcutKeys(binding, Boolean($q.platform.is.safari)) })),
   ...([
@@ -225,7 +231,8 @@ function mountCard(target: ObjectHost): () => void {
   const links = [...target.element.querySelectorAll('a')]
   const link = links[0], uri = link?.getAttribute('href') ?? ''
   for (const image of target.element.querySelectorAll('img')) { const src = image.getAttribute('src') ?? ''; image.dataset.editorAttachment = src; image.removeAttribute('src'); disposals.push(resolveAttachment(src, image)) }
-  if (target.element.matches('.galaris-process-diagram, .galaris-agent-card') && richLinkTarget(uri)) {
+  if ((target.element.matches('.galaris-process-diagram, .galaris-agent-card') || richLinkTarget(uri)?.kind === 'document') && richLinkTarget(uri)) {
+    prepareDocumentCard(target.element)
     const element = document.createElement('div'); element.className = 'galaris-resource-embed'; target.element.append(element)
     const embed = { key: ++hostKey, element, uri, title: link?.textContent ?? '' }
     queueMicrotask(() => { if (element.isConnected) resourceEmbeds.value = [...resourceEmbeds.value, embed] })
@@ -255,7 +262,7 @@ function createEditor(): void {
       handleDrop: (view, event, _slice, moved) => moved ? false : handleTransfer(event.dataTransfer, view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? view.state.selection.from, event),
       handleClickOn: (view, _pos, node, nodePos, _event, direct) => {
         if (!direct || !['documentImage', 'inlineImage', 'resourceCard'].includes(node.type.name)) return false
-        if (readonly) return true
+        if (readonly && node.type.name !== 'resourceCard') return true
         view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, nodePos)))
         view.focus()
         return true
@@ -321,7 +328,7 @@ const contextTarget = computed(() => {
   if (!element) return null
   let target: HTMLElement | null, kind: 'code' | 'table' | 'resource' | 'object'
   if (selectedType.value === 'codeBlock') { if (!codeToolsOpen.value) return null; target = element.closest('pre'); kind = 'code' }
-  else if (['documentImage', 'inlineImage', 'resourceCard'].includes(selectedType.value)) { if (readonly) return null; target = element; kind = 'resource' }
+  else if (['documentImage', 'inlineImage', 'resourceCard'].includes(selectedType.value)) { if (readonly && selectedType.value !== 'resourceCard') return null; target = element; kind = 'resource' }
   else if (selectedType.value === 'rawObject' && !readonly) { target = element; kind = 'object' }
   else if (current.isActive('link')) { target = element.closest('a'); kind = 'resource' }
   else if (current.isActive('table') && !readonly) { target = element.closest('table'); kind = 'table' }
@@ -342,6 +349,7 @@ function dismissContext(key: string, restoreFocus = false): void {
   if (restoreFocus) editor.value?.view.focus()
 }
 const canConvertCard = computed(() => { void revision.value; const uri = selectionUri(); return profile === 'document' && Boolean(createLinkCard) && (/^https?:\/\//i.test(uri) || richLinkHasCard(uri)) })
+const selectedDocumentUri = computed(() => { void revision.value; return documentUriFromLink(selectionUri(), window.location.origin) })
 const languageNames: Record<string, string> = { javascript: 'JavaScript', typescript: 'TypeScript', graphql: 'GraphQL', cpp: 'C++', cs: 'C#', html: 'HTML', css: 'CSS', scss: 'SCSS', xml: 'XML', yaml: 'YAML', json: 'JSON', sql: 'SQL', php: 'PHP', ini: 'INI' }
 const languages = computed(() => ['plaintext', 'text', 'bash', 'c', 'cs', 'cpp', 'css', 'diff', 'go', 'graphql', 'html', 'ini', 'java', 'javascript', 'json', 'kotlin', 'lua', 'makefile', 'markdown', 'perl', 'php', 'python', 'r', 'ruby', 'rust', 'scss', 'sql', 'swift', 'typescript', 'xml', 'yaml'].map(value => ({ value, label: value === 'plaintext' ? t('richEditor.codeTools.automatic') : value === 'text' ? t('richEditor.codeTools.plainText') : languageNames[value] ?? value[0]!.toUpperCase() + value.slice(1) })))
 function insertAt(value: Anchor, markup: string, focus = true): void {
@@ -378,12 +386,39 @@ function handleTransfer(data: DataTransfer | null, position: number, event: Even
   if (!data || readonly || sourceMode.value) return false
   if (data.files.length && profile === 'document') { event.preventDefault(); void upload(Array.from(data.files), position); return true }
   if (editor.value?.isActive('codeBlock') || editor.value?.isActive('code')) return false
-  const plain = data.getData('text/plain') || data.getData('text/markdown')
+  const plain = data.getData('text/plain') || data.getData('text/uri-list') || data.getData('text/markdown')
   const markup = data.getData('text/html') || (profile === 'document' && /^(?:<!doctype\s+html\b|<(?:html|head|body|p|h[1-6]|div|section|article|main|table|ul|ol|blockquote|pre|img|figure|style)\b)/i.test(plain.trim()) ? plain : '')
+  const documentUri = documentUriFromLink(plain.trim(), window.location.origin)
+    ?? (richLinkTarget(plain.trim())?.kind === 'dataset' ? plain.trim() : null)
+  if (documentUri) {
+    event.preventDefault()
+    if (event instanceof DragEvent && data.effectAllowed === 'copyMove') data.dropEffect = 'copy'
+    const at = anchor(position, event instanceof ClipboardEvent ? editor.value?.state.selection.to ?? position : position)
+    const link = new DOMParser().parseFromString(markup, 'text/html').querySelector('a')
+    const label = link && documentUriFromLink(link.getAttribute('href') ?? '', window.location.origin) === documentUri ? link.textContent?.trim() : undefined
+    const title = label && label !== plain.trim() && label !== documentUri ? label : undefined
+    void insertDocumentLink(documentUri, at, title)
+    return true
+  }
   if (/^https?:\/\/\S+$/i.test(plain.trim()) && validRichLink(plain.trim())) { event.preventDefault(); const link = document.createElement('a'); link.href = plain.trim(); link.textContent = plain.trim(); insertResource(link.outerHTML); return true }
   const markdown = pastedMarkdownHtml(plain, markup)
   if (markdown !== null || markup) { event.preventDefault(); const at = anchor(position); if (profile === 'document') void importHtml(markdown ?? markup, at); else { insertAt(at, markdown ?? markup); release(at) }; return true }
   return false
+}
+async function insertDocumentLink(uri: string, at: Anchor, title?: string | null): Promise<void> {
+  const pending = request()
+  let label = title
+  try {
+    label ||= await richLinkTitle(uri, resourceAgentId)
+  } catch {
+    if (!pending.signal.aborted && valid(at)) $q.notify({ type: 'warning', message: t('richEditor.resources.failed') })
+  } finally {
+    if (!pending.signal.aborted && valid(at)) {
+      const link = document.createElement('a'); link.href = uri; link.textContent = label || uri
+      insertAt(at, link.outerHTML, Boolean(title))
+    }
+    release(at); requests.delete(pending)
+  }
 }
 async function importHtml(markup: string, at: Anchor): Promise<void> {
   importRequest.value?.abort(); const pending = request(); importRequest.value = pending; let failed = false
@@ -422,9 +457,23 @@ async function openInternal(): Promise<void> {
   }
   linkOpen.value = true
 }
-function navigate(uri: string): void { const target = richLinkTarget(uri, '', resourceAgentId); if (target) { resourceDetail.value = target; return }; const attachment = attachmentReference(uri); if (attachment) { emit('open-attachment', ...attachment); return }; const href = richLinkHref(uri); if (href) window.open(href, '_blank', 'noopener,noreferrer') }
+function navigate(uri: string): void {
+  if (navigateDocument(uri)) return
+  const target = richLinkTarget(uri, '', resourceAgentId)
+  if (target) { resourceDetail.value = target; return }
+  const attachment = attachmentReference(uri)
+  if (attachment) { emit('open-attachment', ...attachment); return }
+  const href = richLinkHref(uri)
+  if (href) window.open(href, '_blank', 'noopener,noreferrer')
+}
 function selectionUri(): string { const attrs = selectedAttributes.value; if (attrs.html) return new DOMParser().parseFromString(attrs.html, 'text/html').querySelector('a')?.getAttribute('href') ?? attrs.src ?? ''; return editor.value?.getAttributes('link').href ?? '' }
 function openSelection(): void { const attrs = selectedAttributes.value; navigate(attrs.src ?? selectionUri()) }
+function openSelectionDialog(): void {
+  const uri = selectedDocumentUri.value
+  if (!uri) return
+  dismissedContext.value = contextTarget.value?.key ?? ''
+  resourceDetail.value = richLinkTarget(uri)
+}
 function editorClick(event: MouseEvent): void {
   if (!(event.target instanceof Element) || !event.target.closest('[data-editor-surface]')) return
   dismissedContext.value = ''
@@ -432,10 +481,14 @@ function editorClick(event: MouseEvent): void {
   if (readonly && event.target.closest('.galaris-image-object')) return
   const link = event.target instanceof Element ? event.target.closest('[data-editor-surface] a') : null
   if (!link) return
+  const uri = link.getAttribute('data-rich-reference') ?? link.getAttribute('href') ?? ''
+  const card = link.closest('blockquote.galaris-link-card')
+  const targetKind = richLinkTarget(uri)?.kind
+  const cardTitle = card && card.querySelector('a') === link && (documentUriFromLink(uri, window.location.origin) || targetKind === 'dataset' || card.classList.contains('galaris-agent-card') && targetKind === 'agent')
   event.preventDefault()
-  if (event.ctrlKey || event.metaKey || readonly) {
+  if (event.ctrlKey || event.metaKey || readonly || cardTitle) {
     event.stopPropagation()
-    navigate(link.getAttribute('data-rich-reference') ?? link.getAttribute('href') ?? '')
+    navigate(uri)
   }
 }
 function insertBeside(after: boolean): void {
@@ -544,14 +597,22 @@ function releaseDialog(): void { release(dialogAnchor); dialogAnchor = undefined
 function applyDialog(): void {
   const current = editor.value, at = dialogAnchor; if (!current || !at || !valid(at)) return
   current.commands.setTextSelection({ from: at.from, to: at.to })
-  if (dialog.value === 'link') { if (!validRichLink(fields.value.url)) return; if (at.from !== at.to && fields.value.text === current.state.doc.textBetween(at.from, at.to)) current.chain().focus().setLink({ href: fields.value.url }).run(); else { const link = document.createElement('a'); link.href = fields.value.url; link.textContent = fields.value.text || fields.value.url; insertAt(at, link.outerHTML) } }
+  if (dialog.value === 'link') {
+    const documentUri = documentUriFromLink(fields.value.url.trim(), window.location.origin), uri = documentUri ?? fields.value.url
+    if (!validRichLink(uri)) return
+    if (documentUri && !fields.value.text) void insertDocumentLink(documentUri, anchor(at.from, at.to))
+    else if (at.from !== at.to && fields.value.text === current.state.doc.textBetween(at.from, at.to)) current.chain().focus().setLink({ href: uri }).run()
+    else { const link = document.createElement('a'); link.href = uri; link.textContent = fields.value.text || uri; insertAt(at, link.outerHTML) }
+  }
   else if (dialog.value === 'fontColor') current.chain().focus().setColor(fields.value.color).run()
   else if (dialog.value === 'backgroundColor') current.chain().focus().setBackgroundColor(fields.value.color).run()
   else if (dialog.value === 'specialCharacters') current.chain().focus().insertContent({ type: 'text', text: fields.value.text }).run()
   else if (dialog.value === 'image') {
     const node = current.state.doc.nodeAt(at.from); if (!node) return
     const doc = new DOMParser().parseFromString(node.attrs.html, 'text/html'), image = doc.querySelector('img')!; image.alt = fields.value.alt
-    const figure = doc.createElement('figure'); figure.className = 'image' + (fields.value.imageStyle === 'wrapText' ? ' image-style-side' : '')
+    const previousFigure = doc.querySelector('figure')
+    const figure = doc.createElement('figure'); figure.className = 'image'
+    alignImage(figure, previousFigure ? imageAlignment(previousFigure) : fields.value.imageStyle === 'wrapText' ? 'right' : 'center', fields.value.imageStyle === 'wrapText')
     if (fields.value.imageLink && !validRichLink(fields.value.imageLink)) return
     const link = fields.value.imageLink ? doc.createElement('a') : null
     if (link) { link.setAttribute('href', fields.value.imageLink); link.append(image) }
@@ -696,7 +757,15 @@ function action(key: string, value?: string): void {
       else chain.wrapIn('blockquote', { editorialClass: 'galaris-callout galaris-callout-' + value }).run()
       break
     }
-    case 'fontFamily': value ? chain.setFontFamily(value).run() : chain.unsetFontFamily().run(); break; case 'fontSize': chain.setFontSize(value + 'px').run(); break; case 'alignment': chain.setTextAlign(value!).run(); break; case 'highlight': chain.toggleHighlight({ color: '#FFE610' }).run(); break
+    case 'alignment': {
+      if (current.isActive('documentImage') && (value === 'left' || value === 'center' || value === 'right')) {
+        const image = new DOMParser().parseFromString(current.getAttributes('documentImage').html, 'text/html').body.firstElementChild as HTMLElement
+        alignImage(image, value)
+        chain.updateAttributes('documentImage', { html: image.outerHTML }).run()
+      } else chain.setTextAlign(value!).run()
+      break
+    }
+    case 'fontFamily': value ? chain.setFontFamily(value).run() : chain.unsetFontFamily().run(); break; case 'fontSize': chain.setFontSize(value + 'px').run(); break; case 'highlight': chain.toggleHighlight({ color: '#FFE610' }).run(); break
     case 'shortcuts.indent': indent(1); break; case 'shortcuts.outdent': indent(-1); break
     case 'galarisLink': void openInternal(); break; case 'resources.uploadFile': fileInput.value?.click(); break
     case 'insertTable': chain.insertContent({ type: 'tableFigure', content: [{ type: 'table', content: Array.from({ length: 3 }, () => ({ type: 'tableRow', content: Array.from({ length: 3 }, () => ({ type: 'tableCell', content: [{ type: 'paragraph' }] })) })) }] }).run(); break

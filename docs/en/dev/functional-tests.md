@@ -2,6 +2,21 @@
 
 # Functional guarantees catalogue
 
+`document-flows.spec.mjs` covers dropping a document from the list and folder tree: a titled
+link without moving the source, card conversion, saving, reopening and opening the target in
+a modal. `galaris-links.spec.mjs` checks title lookup when pasting a document URI or URL, undo,
+denied access and late responses.
+`e2e/specs/document-links.spec.mjs` exercises both drag sources with real APIs, persistence
+after reload, card/link conversion and preservation of library classification.
+The containing document belongs to an agent while the private reference belongs to the user:
+title lookup, cards and modals must resolve access to the target independently of the
+containing document's agent. Library fixtures distinguish human and agent access; granting
+human access to every fixture would hide this regression.
+`galaris-links.spec.mjs` checks thumbnails and UUID copying by click and keyboard in reading
+and editing on desktop and mobile, including old cards without a saved UUID. Copying neither
+edits the document nor opens the target. `document-print.spec.mjs` preserves the thumbnail
+and UUID in PDF rendering without a button or active card link.
+
 `document-apps.spec.mjs` checks isolated HTML text contrast with fixed CSS colors and
 light/dark panels. Switching themes on mobile and desktop does not restart scripts, clear
 fields or emit content changes. Print journeys preserve readable styling and calculated values.
@@ -44,6 +59,9 @@ of the gesture, property changes, a fresh editor and reading: block, inline, wra
 table-cell images, enlarged or reduced. Reopening recreates the component; feeding back
 its latest value does not exercise this contract. `e2e/specs/editorial-html.spec.mjs`
 covers actual storage of that size and preservation after reloading the document.
+The same suites protect actual left, center and right placement of block images: commands on
+mobile and desktop, property changes, reopening, reading and persistence through real APIs.
+Alignment buttons and default centering alone do not prove that commands affect images.
 
 `document-resources.spec.mjs` distinguishes image selection while editing from direct opening
 in read-only mode, with or without links. `document-apps.spec.mjs` preserves form input and
@@ -74,8 +92,19 @@ picker, including the reduced toolbar in the Memory form: preserved selected tex
 formatting, undo, dismissal, error recovery and rejection after content changes.
 Navigation and multiple selection remain covered by `internal-file-picker.spec.mjs`.
 `agents.spec.mjs` covers inserted cards, avatars, link/card switching, saving without
-injected UI and opening the complete agent card. `galaris-links.spec.mjs` checks that
+injected UI and opening the complete agent card through its title in reading and editing,
+on mobile and desktop; the avatar no longer opens it.
+`galaris-links.spec.mjs` checks single-click navigation through document card titles,
+selection through the rest of the card and preserved shortcuts for text links. It also checks that
 Task citations open and reopen in a modal without navigation in reading and editing modes.
+
+`chat-document-workspace.spec.mjs` checks that document links and cards replace the Chat
+document without changing pages, with back/forward history, saving before navigation,
+access denials and rejection of responses after closing. The next message uses the document
+displayed after navigation. `document-navigation.spec.mjs` and
+`document-dialog-navigation.spec.mjs` preserve the Documents and dialog contexts. All three
+suites also check **Open in a dialog**, preserving the source document and its independent
+history, including opening from a read-only card.
 `goals.spec.mjs` checks the same guarantee for Goals, preserving their actions and another
 Goal selection already open elsewhere.
 `document-resources.spec.mjs` covers repeated insertion and drag and drop of existing
@@ -1114,7 +1143,29 @@ Dependency review: `app/chat` consumes only the public `useAuthStore` and `Docum
 exports from `core/user` to read and save this preference. This application dependency on
 user infrastructure adds neither private imports nor cycles.
 
+`front/browser-tests/dataset-dialog.spec.mjs` checks opening the Dataset editor from Chat,
+confirmation before closing an invalid draft, reopening, library filter preservation and
+conversion of pasted Dataset URIs/URLs into persisted cards opening the modal in reading
+and editing without copying JSON. The assembled `e2e/specs/datasets.spec.mjs` journey
+preserves saving, history, restoration and sharing inside the modal.
+
 ### Personal document classification
+
+`front/browser-tests/document-navigation.spec.mjs` covers back/forward history on desktop
+and mobile: library and document route openings, keyboard activation, branching after going
+back, consecutive duplicate suppression, skipping deleted visits, and retaining the draft
+and history position after a refused save, followed by saving and reopening after recovery.
+Document links and cards navigate in the same tab in reading, editing and read-only mode,
+for URIs and local URLs (`galaris-links.spec.mjs`); other resources keep their modal and
+attachments keep their viewer. `document-flows.spec.mjs` and `e2e/specs/document-links.spec.mjs`
+verify returning to the document containing the reference.
+The E2E journey activates the arrows with the complete shell: the account menu must not
+intercept them, a risk absent from the isolated component mount.
+`document-dialog-navigation.spec.mjs` covers dialog-local history, links and cards without
+route changes or nested windows, branching and reopening, preserving the initial agent scope
+without passing it to linked private documents, keyboard use, failed saves and edits made
+while loading, denied access and replies after closing. Existing consumers are exercised in
+`chat-document-workspace.spec.mjs`, `topic-detail.spec.mjs` and `file-browser.spec.mjs`.
 
 `front/browser-tests/document-flows.spec.mjs` holds ancillary and deletion responses to verify
 usable content before catalogues, early row removal and restoration of the current row on refusal,

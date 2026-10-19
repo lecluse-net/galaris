@@ -13,6 +13,18 @@ export function documentIdFromResourceUri(value: string): string | null {
   return match?.[1]?.toLowerCase() ?? null
 }
 
+/** Accept canonical document references and document URLs copied from this installation. */
+export function documentUriFromLink(value: string, origin: string): string | null {
+  const id = documentIdFromResourceUri(value)
+  if (id) return `document://${id}`
+  try {
+    const url = new URL(value, origin)
+    if (url.origin !== origin || !['/documents', '/memory/documents'].includes(url.pathname) || url.searchParams.has('attachment_id')) return null
+    const documentId = documentIdFromRouteQuery(url.searchParams.get('document_id'))
+    return documentId ? `document://${documentId}` : null
+  } catch { return null }
+}
+
 export function documentIdFromRouteQuery(value: unknown): string | null {
   const candidate = Array.isArray(value) ? value[0] : value
   return typeof candidate === 'string' ? normalizeDocumentId(candidate) : null
@@ -23,6 +35,13 @@ export function documentResourceHref(documentId: string): string {
   return normalized
     ? `/documents?document_id=${encodeURIComponent(normalized)}`
     : '/documents'
+}
+
+/** Only whole Documents navigate here; attachments and other resource types keep their own viewers. */
+export function documentNavigationHref(value: string, origin: string): string | null {
+  const uri = documentUriFromLink(value, origin)
+  const id = uri && documentIdFromResourceUri(uri)
+  return id ? documentResourceHref(id) : null
 }
 
 function markDocumentLink(link: HTMLAnchorElement, documentId: string): void {

@@ -13,9 +13,11 @@ export interface WorkingDocumentSnapshot {
 
 export interface WorkingDocumentEditorContribution {
   component: Component
+  dialogComponent?: Component
   iconComponent?: Component
   thumbnailComponent?: Component
   search: (query: string, limit: number, offset: number) => Promise<WorkingDocumentSearchPage>
+  resolve: (id: string) => Promise<{ item: WorkingDocumentSnapshot; agentId: number | null }>
 }
 
 export interface WorkingDocumentReference { id: string; title: string }
@@ -34,6 +36,10 @@ export const workingDocumentEditor = Object.values(modules)
   .map(module => module.default.component)
   .find(Boolean)
 
+export const workingDocumentDialog = Object.values(modules)
+  .map(module => module.default.dialogComponent)
+  .find(Boolean)
+
 export const workingDocumentIcon = Object.values(modules)
   .map(module => module.default.iconComponent)
   .find(Boolean)
@@ -41,6 +47,12 @@ export const workingDocumentIcon = Object.values(modules)
 export const workingDocumentThumbnail = Object.values(modules)
   .map(module => module.default.thumbnailComponent)
   .find(Boolean)
+
+export async function resolveWorkingDocument(id: string): Promise<{ item: WorkingDocumentSnapshot; agentId: number | null }> {
+  const provider = Object.values(modules)[0]?.default
+  if (!provider) throw new Error('Document provider unavailable')
+  return provider.resolve(id)
+}
 
 export async function searchWorkingDocuments(query: string, limit = 50, offset = 0): Promise<WorkingDocumentSearchPage> {
   const provider = Object.values(modules)[0]?.default

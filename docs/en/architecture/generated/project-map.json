@@ -20424,6 +20424,7 @@
           "front/app/memory/components/DocumentApplication.vue",
           "front/app/memory/components/DocumentApplicationBlock.vue",
           "front/app/memory/components/DocumentAttachments.vue",
+          "front/app/memory/components/DocumentDialog.vue",
           "front/app/memory/components/DocumentEditor.vue",
           "front/app/memory/components/DocumentFolderSelect.vue",
           "front/app/memory/components/DocumentHistoryDialog.vue",

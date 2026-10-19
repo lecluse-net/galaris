@@ -139,12 +139,40 @@ Selected text and its formatting are preserved when inserting a single link.
 Clicking the backdrop closes the dialog.
 Use **Link** to enter a URL or Galaris reference. The label belongs to your text; renaming the target does not break its reference. A link
 does not share the target: access is checked when it opens. In reading mode, click to open.
-Agents, tasks, goals, processes, runs, Datasets, documents and memories open in their modal without
-leaving the document. External links open in a new tab. In editing mode, click positions the
+Document links and cards replace the document in the current context: the Documents page,
+the Chat pane or the open dialog. In Chat, you stay in the conversation; back/forward arrows
+appear to the right of the title, before the pane positioning buttons. Each context has its own
+history. Chat history resets when the pane closes or the conversation changes; dialog history
+resets when the dialog reopens. The arrows have rounded blue borders and tooltips.
+Document URLs copied from this installation use the same navigation. Agents, tasks, goals,
+processes, runs, Datasets and memories open in their modal without leaving the document.
+Paste a `data://` address or a Dataset URL from this installation to retrieve its title,
+then choose **Show card** to create a clickable reference opening the Dataset modal.
+External links open in a new tab. In editing mode, click positions the
 cursor; Ctrl/Cmd-click or Alt+Enter opens the target. The link menu also offers Open, edit
-and remove actions. For an agent, **Show card** displays its avatar, name and job title in the
-text. Click its avatar or name to open the complete agent card. **Show URL** restores the
+and remove actions. For documents, **Open in a dialog** opens a separate window from Documents,
+Chat or another dialog, preserving the current document and its history.
+For an agent, **Show card** displays its avatar, name and job title in the
+text. Click its name to open the complete agent card, including while editing; the avatar is not clickable. **Show URL** restores the
 link with its label.
+
+On the **Documents** page, **Previous document** and **Next document** retrace documents
+opened during your visit, including links to this page. On mobile, the arrows also appear
+in the document dialog. Opening another document after going back replaces the forward
+history. Changes are saved before switching documents; if saving fails, the current document
+stays open. History resets when you leave or reload the page.
+
+To reference another document, drag it from the folder tree or the list to the desired
+position in the text. The link displays its title and the document stays in its library
+location. Pasting a `document://…` reference or a document URL from this installation also
+retrieves its title when you can read it. **Show card** turns the link into a clickable card;
+**Show URL** restores the link while keeping the title. The card displays the document thumbnail
+and its UUID in small text below the title. Click the UUID to copy it. A single click on the
+title opens the document, including while editing; text links still require Ctrl/Cmd-click
+or Alt+Enter while editing. The thumbnail does not open a modal. Existing saved cards also get this preview;
+thumbnail access follows the reader's rights.
+The inserted title is saved in your
+text: renaming the target later does not replace it.
 
 ## Callouts and attachments
 
@@ -320,6 +348,9 @@ scripts continue without restarting.
 Select an image to show the native resize handles: drag a corner to change its width while
 preserving its aspect ratio, or use the size menu. Move images by dragging and dropping them.
 The contextual toolbar also controls wrapping, captions and alternative text. Changes can be undone.
+To align a block image to the left, center or right, select it and use the alignment buttons
+in the main toolbar. Alignment is preserved when editing its caption or alternative text and
+after reopening the document.
 
 Inside a table, the contextual toolbar exposes rows, columns, headers, merge/split and deletion.
 Drag across multiple cells before merging them; drag a vertical cell border to resize a column.

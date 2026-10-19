@@ -10,8 +10,11 @@
 <script setup lang="ts">
 import { ref, shallowRef, watch, onBeforeUnmount, nextTick, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useDocumentNavigation } from '../documentNavigation'
+import { documentNavigationHref } from '../documentResource'
 import { sanitizeRichHtml, richLinkHref, richLinkTarget, attachmentReference, type ContentProfile } from '../richText'
 import { ResourceEmbed, type ResourceEmbedTarget } from '../resourceEmbed'
+import { embeddedResourceCards, prepareDocumentCard } from '../resourceCards'
 import { ResourceDetailDialog, type ResourceDetailTarget } from '../resourceDetail'
 import { highlightDocumentCode } from '../codeHighlight'
 import { hideInteractiveSource } from '../interactiveHtml'
@@ -25,10 +28,14 @@ const { content, profile = 'rich-text', resolveImage } = defineProps<{
   resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>
 }>()
 const rendered = ref('')
+const navigateDocument = useDocumentNavigation()
 const embeds = shallowRef<ResourceEmbedTarget[]>([]), detail = shallowRef<ResourceDetailTarget | null>(null)
 function openReference(event: MouseEvent): void {
   const link = event.target instanceof Element ? event.target.closest('a') : null
-  const target = link && richLinkTarget(link.getAttribute('data-rich-reference') ?? '', link.textContent ?? '')
+  if (!link) return
+  const uri = link.getAttribute('data-rich-reference') ?? link.getAttribute('href') ?? ''
+  if (navigateDocument(uri)) { event.preventDefault(); return }
+  const target = richLinkTarget(uri, link.textContent ?? '')
   if (target) { event.preventDefault(); detail.value = target }
 }
 const pdfPreview = shallowRef<PdfPreviewSource | null>(null)
@@ -67,8 +74,11 @@ watch(() => [content, profile, resolveImage] as const, async () => {
   )
   doc.body.querySelectorAll('a').forEach(link => {
     link.setAttribute('data-rich-reference', link.getAttribute('href') ?? '')
-    link.setAttribute('target', '_blank')
-    const href = richLinkHref(link.getAttribute('href') ?? '')
+    const uri = link.getAttribute('href') ?? ''
+    const documentHref = documentNavigationHref(uri, window.location.origin)
+    if (documentHref) link.removeAttribute('target')
+    else link.setAttribute('target', '_blank')
+    const href = documentHref ?? richLinkHref(uri)
     if (href) link.setAttribute('href', href)
     else link.removeAttribute('href')
   })
@@ -91,9 +101,10 @@ watch(() => [content, profile, resolveImage] as const, async () => {
     rendered.value = doc.body.innerHTML
     await nextTick()
     if (current !== generation || profile !== 'document') return
-    embeds.value = [...(root.value?.querySelectorAll<HTMLElement>('blockquote.galaris-process-diagram, blockquote.galaris-agent-card') ?? [])].flatMap((card, key) => {
+    embeds.value = (root.value ? embeddedResourceCards(root.value) : []).flatMap((card, key) => {
       const link = card.querySelector('a'), uri = link?.getAttribute('data-rich-reference') ?? ''
       if (!richLinkTarget(uri)) return []
+      prepareDocumentCard(card)
       const element = card.ownerDocument.createElement('div'); element.className = 'galaris-resource-embed'; card.append(element)
       return [{ key, element, uri, title: link?.textContent ?? '' }]
     })

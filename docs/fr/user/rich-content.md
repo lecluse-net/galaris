@@ -148,13 +148,44 @@ de liens avec filtre par nature est supprimée. La sélection de texte et sa mis
 conservées lors de l'insertion d'un seul lien. Le clic sur l'arrière-plan ferme la modale.
 Utilisez **Lien** pour saisir une URL ou une référence Galaris. Le libellé appartient à votre texte ; renommer la cible ne
 casse pas la référence. Un lien ne partage pas sa cible : les droits sont vérifiés à l’ouverture.
-En lecture, cliquez pour ouvrir la cible. Les agents, tâches, objectifs, processus, runs, Datasets,
-documents et mémoires s'ouvrent dans leur modale sans quitter le document. Les liens externes
+En lecture, cliquez pour ouvrir la cible. Les liens et cartes vers un document remplacent le
+document dans le contexte courant : la page Documents, le panneau du Chat ou la modale ouverte.
+Dans le Chat, vous restez dans la conversation ; les flèches précédent/suivant sont à droite
+du titre, avant les boutons de positionnement du panneau. Chaque contexte possède son propre
+historique. Celui du Chat repart de zéro à la fermeture du panneau ou au changement de
+conversation ; celui d’une modale repart de zéro à sa réouverture. Les flèches ont une bordure
+bleue arrondie et des infobulles. Les URL de documents
+copiées depuis cette installation utilisent aussi cette navigation. Les agents, tâches, objectifs,
+processus, runs, Datasets et mémoires s'ouvrent dans leur modale sans quitter le document. Collez
+une adresse `data://` ou un lien Dataset de cette installation pour retrouver son titre, puis
+choisissez **Afficher une carte** pour créer une référence cliquable vers la modale Dataset.
+Les liens externes
 s'ouvrent dans un nouvel onglet. En édition, le clic place le curseur ; Ctrl/Cmd-clic ou
 Alt+Entrée ouvre la cible. Le menu du lien propose aussi Ouvrir, modifier et retirer le lien.
+Pour un document, **Ouvrir dans une modale** ouvre une fenêtre distincte depuis Documents,
+le Chat ou une autre modale, sans remplacer le document courant ni modifier son historique.
 Pour un agent, **Afficher une carte** présente son avatar, son nom et son poste dans le texte.
-Cliquez sur son avatar ou son nom pour ouvrir sa carte complète. **Afficher l'URL** rétablit
+Cliquez sur son nom pour ouvrir sa carte complète, même en édition ; l’avatar n’est pas cliquable. **Afficher l'URL** rétablit
 le lien avec son libellé.
+
+Dans la page **Documents**, les flèches **Document précédent** et **Document suivant**
+retracent les documents ouverts pendant votre visite, y compris depuis un lien vers cette page.
+Sur mobile, elles sont aussi disponibles dans la fenêtre du document. Après un retour,
+ouvrir un autre document remplace la suite de l’historique. Les modifications sont sauvegardées
+avant de changer de document ; si la sauvegarde échoue, le document courant reste ouvert.
+L’historique est réinitialisé lorsque vous quittez ou rechargez la page.
+
+Pour citer un autre document, glissez-le depuis l’arborescence des dossiers ou la liste vers
+l’endroit voulu dans le texte. Le lien affiche son titre et le document reste à sa place
+dans la bibliothèque. Coller une référence `document://…` ou l’URL d’un document de cette
+installation retrouve également son titre, si vous pouvez le lire. Le menu **Afficher une carte**
+transforme ce lien en carte cliquable ; **Afficher l’URL** revient au lien en conservant le titre.
+La carte affiche la miniature du document et son UUID en petit sous le titre. Cliquez sur
+l’UUID pour le copier. Un clic simple sur le titre ouvre le document, même en édition ;
+les liens dans le texte conservent Ctrl/Cmd-clic ou Alt+Entrée en édition.
+La miniature n’ouvre pas de modale. Les cartes déjà enregistrées
+bénéficient aussi de cet aperçu ; les droits du lecteur restent vérifiés pour la miniature.
+Le titre inséré est conservé dans votre texte : un renommage ultérieur ne le remplace pas.
 
 ## Encadrés et pièces jointes
 
@@ -340,6 +371,9 @@ Sélectionnez une image pour afficher les poignées natives : faites glisser un 
 sa largeur en conservant les proportions, ou utilisez le menu de taille. Déplacez l’image par
 glisser-déposer. La barre contextuelle permet aussi de régler l’habillage, la légende et le
 texte alternatif. Chaque modification peut être annulée.
+Pour déplacer une image en bloc à gauche, au centre ou à droite, sélectionnez-la puis utilisez
+les boutons d’alignement de la barre principale. L’alignement reste conservé lors d’une
+modification de sa légende ou de son texte alternatif et après réouverture du document.
 
 Dans un tableau, la barre contextuelle expose directement lignes, colonnes, en-têtes,
 fusion/séparation et suppression. Sélectionnez plusieurs cellules par glissement avant de les

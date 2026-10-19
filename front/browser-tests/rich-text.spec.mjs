@@ -62,6 +62,42 @@ async function reopenImage(page, html, readingWidth) {
   await expect(page.locator('.rich-content img')).toHaveJSProperty('naturalWidth', 1)
 }
 
+for (const width of [1440, 390]) test(`image alignment moves the image and survives properties, reopening and reading at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  await imageEditor(page)
+  await page.evaluate(modelValue => window.testApp.setProps({ modelValue }), `<p>Before picture</p><figure class="image image_resized" style="width: 35%"><a href="https://example.org"><img alt="Example image" src="${uri}"></a><figcaption>Preserved caption</figcaption></figure><p>After picture</p>`)
+  const picture = page.locator('.rich-content img')
+  async function expectAlignment(alignment) {
+    await expect.poll(() => picture.evaluate((image, alignment) => {
+      const container = image.closest('.galaris-image-object')?.parentElement ?? image.closest('figure').parentElement
+      const bounds = container.getBoundingClientRect(), style = getComputedStyle(container), box = image.getBoundingClientRect()
+      const left = box.left - bounds.left - container.clientLeft - parseFloat(style.paddingLeft)
+      const right = bounds.left + container.clientLeft + container.clientWidth - parseFloat(style.paddingRight) - box.right
+      return Math.abs(alignment === 'left' ? left : alignment === 'right' ? right : left - right)
+    }, alignment)).toBeLessThan(2)
+  }
+  for (const alignment of ['left', 'center', 'right']) {
+    await picture.click()
+    await command(page, alignment === 'left' ? 'Align left' : alignment === 'right' ? 'Align right' : 'Center')
+    await expectAlignment(alignment)
+  }
+  await picture.click()
+  await page.getByRole('toolbar', { name: 'Insert a link or file' }).getByRole('button', { name: 'Image properties', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Alternative text', exact: true }).fill('Aligned illustration')
+  await page.getByRole('button', { name: 'Apply', exact: true }).click()
+  await expectAlignment('right')
+  const saved = await lastValue(page)
+  expect(saved).toContain(uri)
+  expect(saved).toContain('https://example.org')
+  const readingWidth = await page.locator('[data-editor-surface]').evaluate(element => element.clientWidth - parseFloat(getComputedStyle(element).paddingLeft) - parseFloat(getComputedStyle(element).paddingRight))
+  await reopenImage(page, saved)
+  await expectAlignment('right')
+  await expect(page.locator('figcaption')).toHaveText('Preserved caption')
+  await page.screenshot({ path: testInfo.outputPath('image-alignment.png'), animations: 'disabled' })
+  await reopenImage(page, saved, readingWidth)
+  await expectAlignment('right')
+})
+
 for (const variant of ['block', 'inline', 'wrapped-inline', 'cell']) for (const delta of [-80, 80]) {
 test(`image resizing survives a fresh editor and reader (${variant}, ${delta}px)`, async ({ page }) => {
   await imageEditor(page)

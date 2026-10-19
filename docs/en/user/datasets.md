@@ -10,6 +10,13 @@ In the toolbar, **Insert a link or file** then **Add an internal attachment** op
 file_share picker: choose `data://` and select the Datasets. Citations are inserted in the
 text without adding attachments. Each Dataset retains its own URI, history and sharing.
 Removing a citation does not delete data; sharing the Document does not share its Datasets.
+Click a Dataset to open its editor in a modal on desktop or mobile. Close it with the cross,
+Escape or the backdrop to return to the list with its search and page preserved. Unsaved
+changes require confirmation before closing. Dataset cards in chat open the same dedicated
+modal with complete JSON content, history and available permissions.
+In a document, paste a `data://` address or this installation’s `/dataset/…` URL, then choose
+**Show card** in the link’s context menu. Clicking the card title opens the Dataset modal
+without leaving the document. The JSON stays in the Dataset; the document stores its reference.
 Each Dataset has its own `data://`
 address, sharing and revision history. Content can be an object, array or scalar value,
 without an associated schema. Invalid JSON and conflicts preserve your local draft;

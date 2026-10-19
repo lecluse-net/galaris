@@ -5,6 +5,7 @@
     ref="editor"
     :document-id="documentId"
     :agent-id="agentId"
+    :initial-document="initialDocument"
     :editable="editable"
     :content-min-height="contentMinHeight"
     :content-max-height="contentMaxHeight"
@@ -25,6 +26,7 @@ import {
 withDefaults(defineProps<{
   documentId: string
   agentId: number | null
+  initialDocument?: WorkingDocumentSnapshot | null
   editable?: boolean
   contentMinHeight?: string
   contentMaxHeight?: string

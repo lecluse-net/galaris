@@ -58,7 +58,9 @@
             @pointerdown="startDocumentResize" @pointermove="moveDocumentResize" @pointerup="finishDocumentResize"
             @pointercancel="finishDocumentResize" @lostpointercapture="finishDocumentResize" @keydown="resizeDocumentWithKeyboard"
           ><span class="column-resizer-handle"><q-icon name="drag_indicator" size="16px" /></span></div>
-          <ChatDocumentPane v-if="integratedDocument" ref="documentPane" :document="integratedDocument" :agent-id="selectedDocumentAgentId" :editable="canEditDocuments" @available="displayedDocumentId = $event" @unavailable="displayedDocumentId = null" @deleted="onDocumentDeleted" @close="selectedDocument = null">
+          <ChatDocumentPane v-if="integratedDocument" ref="documentPane" :document="integratedDocument" :agent-id="selectedDocumentAgentId" :editable="canEditDocuments"
+            :initial-document="selectedDocumentSeed" :can-go-back="!documentNavigationBusy && documentHistory.canGoBack.value" :can-go-forward="!documentNavigationBusy && documentHistory.canGoForward.value"
+            @back="navigateDocumentHistory(-1)" @forward="navigateDocumentHistory(1)" @available="onDocumentAvailable" @unavailable="displayedDocumentId = null" @deleted="onDocumentDeleted" @close="selectedDocument = null">
             <template #actions>
               <q-btn flat round dense icon="view_column" :aria-label="t('chat.documentColumns')" :aria-pressed="effectiveDocumentLayout === 'columns'" :color="effectiveDocumentLayout === 'columns' ? 'primary' : undefined" @click="documentLayout = 'columns'"><q-tooltip>{{ t('chat.documentColumns') }}</q-tooltip></q-btn>
               <q-btn flat round dense icon="view_agenda" :aria-label="t('chat.documentRows')" :aria-pressed="effectiveDocumentLayout === 'rows'" :color="effectiveDocumentLayout === 'rows' ? 'primary' : undefined" @click="documentLayout = 'rows'"><q-tooltip>{{ t('chat.documentRows') }}</q-tooltip></q-btn>
@@ -159,7 +161,7 @@
 <script setup lang="ts">
 import { ContextHelp, PageHeader } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
@@ -179,7 +181,7 @@ import ConversationProcessesPanel from '../components/ConversationProcessesPanel
 import ChatDocumentPane from '../components/ChatDocumentPane.vue'
 import { CodeWorkspacePane, RepositoryBrowser, codeService, codeErrorTranslationKey, useCodeStore, type CodeWorkspace } from '../code'
 import ChatDocumentSearchDialog from '../components/ChatDocumentSearchDialog.vue'
-import type { WorkingDocumentReference } from '@/core/util'
+import { documentNavigationKey, resolveWorkingDocument, useDocumentHistory, type WorkingDocumentReference, type WorkingDocumentSnapshot } from '@/core/util'
 import type { ConversationDocumentReference } from '../types'
 import { useChatInboxStore } from '../stores/inbox'
 import { sourceTranslationKey } from '../sourcePresentation'
@@ -230,6 +232,10 @@ const mobileCodeOpen = computed({ get: () => $q.screen.lt.md && selectedCodeId.v
   set: (open: boolean) => { if (!open) selectedWorkTarget.value = null },
 })
 const selectedDocumentAgentId = ref<number | null>(null)
+const selectedDocumentSeed = shallowRef<WorkingDocumentSnapshot | null>(null)
+const documentHistory = useDocumentHistory()
+const documentNavigationBusy = ref(false)
+let pendingHistoryPosition: number | undefined
 const displayedDocumentId = ref<string | null>(null)
 const documentPane = ref<InstanceType<typeof ChatDocumentPane> | null>(null)
 const mobileDocument = ref<InstanceType<typeof ConversationDocumentDialog> | null>(null)
@@ -315,6 +321,8 @@ async function openLibraryDocument(document: WorkingDocumentReference): Promise<
   if (mobileDocumentOpen.value && !await mobileDocument.value?.flush()) return
   if (request !== documentDisplayRequest || store.selectedRoom?.id !== roomId) return
   selectedDocumentAgentId.value = null
+  selectedDocumentSeed.value = null
+  pendingHistoryPosition = undefined
   selectedDocument.value = document
   mobileView.value = 'conversation'
 }
@@ -325,18 +333,63 @@ async function openConversationDocument(document: Pick<ConversationDocumentRefer
   if (mobileDocumentOpen.value && !await mobileDocument.value?.flush()) return
   if (request !== documentDisplayRequest || store.selectedRoom?.id !== roomId) return
   selectedDocumentAgentId.value = store.viewerAgentId ?? store.selectedRoom?.agent_id ?? null
+  selectedDocumentSeed.value = null
+  pendingHistoryPosition = undefined
   selectedDocument.value = { id: document.id, title: document.label }
   mobileView.value = 'conversation'
 }
 function onDocumentDeleted(documentId: string): void {
+  documentHistory.forget(documentId)
   if (selectedDocument.value?.id !== documentId) return
   selectedDocument.value = null
   displayedDocumentId.value = null
   conversationDocumentsPanel.value?.removeDocument(documentId)
 }
 let documentDisplayRequest = 0
-watch(() => store.selectedRoom?.id, () => { documentDisplayRequest += 1 }, { flush: 'sync' })
-watch(selectedWorkTarget, () => { documentDisplayRequest += 1; if (selectedWorkTarget.value?.kind !== 'code') codeStore.hide() }, { flush: 'sync' })
+let documentPageDisposed = false
+watch(() => store.selectedRoom?.id, () => { documentDisplayRequest += 1; documentNavigationBusy.value = false; documentHistory.reset() }, { flush: 'sync' })
+watch(selectedWorkTarget, () => {
+  documentDisplayRequest += 1
+  documentNavigationBusy.value = false
+  if (!selectedDocument.value) { documentHistory.reset(); pendingHistoryPosition = undefined; selectedDocumentSeed.value = null }
+  if (selectedWorkTarget.value?.kind !== 'code') codeStore.hide()
+}, { flush: 'sync' })
+function onDocumentAvailable(id: string): void {
+  if (id !== selectedDocument.value?.id) return
+  displayedDocumentId.value = id
+  documentHistory.record(id, pendingHistoryPosition)
+  pendingHistoryPosition = undefined
+}
+async function flushDisplayedDocument(): Promise<boolean> {
+  if (documentPane.value && !await documentPane.value.flush()) return false
+  if (mobileDocumentOpen.value && !await mobileDocument.value?.flush()) return false
+  return true
+}
+async function navigateChatDocument(id: string, historyPosition?: number): Promise<void> {
+  if (!canReadDocuments.value || !store.selectedRoom) return
+  const request = ++documentDisplayRequest, roomId = store.selectedRoom.id
+  if (selectedDocument.value?.id === id) { documentNavigationBusy.value = false; return }
+  const current = () => !documentPageDisposed && request === documentDisplayRequest && store.selectedRoom?.id === roomId && canReadDocuments.value
+  documentNavigationBusy.value = true
+  try {
+    if (!await flushDisplayedDocument() || !current()) return
+    const detail = await resolveWorkingDocument(id)
+    if (!current() || !await flushDisplayedDocument() || !current()) return
+    selectedDocumentSeed.value = detail.item
+    selectedDocumentAgentId.value = detail.agentId
+    pendingHistoryPosition = historyPosition
+    selectedDocument.value = { id, title: detail.item.title }
+    mobileView.value = 'conversation'
+  } catch (error) { if (current()) reportError(error) }
+  finally { if (current()) documentNavigationBusy.value = false }
+}
+async function navigateDocumentHistory(direction: -1 | 1): Promise<void> {
+  if (documentNavigationBusy.value) return
+  const target = documentHistory.target(direction)
+  if (target) await navigateChatDocument(target.id, target.position)
+}
+provide(documentNavigationKey, id => navigateChatDocument(id))
+onBeforeUnmount(() => { documentPageDisposed = true; ++documentDisplayRequest })
 async function openDirectory(uri: string, messageId: string): Promise<void> {
   const roomId = store.selectedRoom?.id
   if (!roomId || store.viewerAgentId !== null || !privilegeStore.hasPrivilege('CODE_ACCESS')) return
@@ -393,6 +446,8 @@ async function onDocumentShow(event: { data?: { room_id?: string; document_id?: 
     if (request !== documentDisplayRequest || store.selectedRoom?.id !== room.id) return
     // Load through the existing viewer-authorized editor; the event grants no access.
     selectedDocumentAgentId.value = store.viewerAgentId ?? room.agent_id
+    selectedDocumentSeed.value = null
+    pendingHistoryPosition = undefined
     selectedDocument.value = { id, title: t('chat.workingDocument') }
     mobileView.value = 'conversation'
   } catch (error) {

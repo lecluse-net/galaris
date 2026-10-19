@@ -275,6 +275,8 @@
     @changed="syncPreviewFromDocument"
     @unavailable="onSelectedDocumentUnavailable"
   />
+  <ResourceDetailDialog v-if="datasetDialogOpen && datasetTarget" :target="datasetTarget"
+    @close="datasetDialogOpen = false" @changed="scheduleRealtimeRefresh" />
 </template>
 
 <script setup lang="ts">
@@ -297,6 +299,8 @@ import {
   TextResourcePreview,
   saveBlobAsResource,
   queuePreview,
+  ResourceDetailDialog,
+  richLinkTarget,
 } from '@/core/util'
 import type { BrowserResourceKind, Model3dSource, WorkingDocumentSnapshot } from '@/core/util'
 import { websocket } from '@/core/websocket'
@@ -350,6 +354,11 @@ const previews = ref<MessageResourcePreview[]>([])
 const selected = ref<MessageResourcePreview | null>(null)
 const dialogOpen = ref(false)
 const documentDialogOpen = ref(false)
+const datasetDialogOpen = ref(false)
+const datasetTarget = computed(() => {
+  const target = selected.value && richLinkTarget(selected.value.uri, selected.value.title, props.viewerAgentId)
+  return target?.kind === 'dataset' ? target : null
+})
 const imageUrls = reactive<Record<string, string>>({})
 const resourceUrl = ref<string | null>(null)
 const resourceBlob = ref<Blob | null>(null)
@@ -491,6 +500,7 @@ async function load(resetDialog = true): Promise<void> {
     loading.value = true
     previews.value = []
     selected.value = null
+    datasetDialogOpen.value = false
     dialogOpen.value = false
     documentDialogOpen.value = false
     resetResource()
@@ -515,6 +525,7 @@ async function load(resetDialog = true): Promise<void> {
       const refreshedSelection = loaded.find(item => item.uri === selectedUri) ?? null
       selected.value = refreshedSelection
       if (!refreshedSelection || refreshedSelection.deleted) {
+        datasetDialogOpen.value = false
         dialogOpen.value = false
         documentDialogOpen.value = false
         resetResource()
@@ -609,6 +620,14 @@ function openPreview(preview: MessageResourcePreview): void {
   }
   if (preview.kind === 'code') { emit('openRepository', preview.uri.replace('galaris://code/', '')); return }
   if (preview.deleted || resourceKind(preview) === 'audio') return
+  if (richLinkTarget(preview.uri)?.kind === 'dataset') {
+    resetResource()
+    selected.value = preview
+    dialogOpen.value = documentDialogOpen.value = false
+    datasetDialogOpen.value = true
+    return
+  }
+  datasetDialogOpen.value = false
   if (downloadOnly(preview)) {
     void downloadPreview(preview)
     return

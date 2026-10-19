@@ -7,6 +7,7 @@ import { hideInteractiveSource } from './interactiveHtml'
 import { solaireStyles } from './solaire'
 import { layoutDocumentRendering } from './layoutDocumentRendering'
 import type { RenderedDocumentResolver } from './renderedDocument'
+import { embeddedResourceCards, prepareDocumentCard } from './resourceCards'
 
 const MAX_SNAPSHOT_BYTES = 12_000_000
 
@@ -53,7 +54,8 @@ export async function prepareDocumentSnapshot(
   const doc = new DOMParser().parseFromString(sanitizeRichHtml(content, 'document'), 'text/html')
   doc.querySelectorAll('script').forEach(script => script.remove())
   const interactive = [...doc.querySelectorAll('pre > code.language-galaris-app, pre > code.language-galaris-raw-html')]
-  const resources = [...doc.querySelectorAll<HTMLElement>('blockquote.galaris-process-diagram, blockquote.galaris-agent-card')]
+  const resources = embeddedResourceCards(doc)
+  resources.forEach(card => prepareDocumentCard(card, false))
   // Capture before loading attachments so all live regions reflect this export action.
   const renderings = resolveRenderedContent ? await Promise.all(interactive.map((code, index) => resolveRenderedContent(
     code.textContent ?? '', code.classList.contains('language-galaris-app') ? 'galaris-app' : 'galaris-raw-html', index, signal,

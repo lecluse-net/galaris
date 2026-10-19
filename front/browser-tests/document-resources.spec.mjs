@@ -170,18 +170,17 @@ test('reading a YouTube card embeds only the official player and leaves plain li
   }
 })
 
-test('the card action is hidden for attachments and modal targets without a card provider', async ({ page }) => {
+test('the card action is hidden for attachments and modal targets without a supported card', async ({ page }) => {
   await mount(page, component)
   await page.evaluate(async ({ component, uri }) => window.testApp.mount({ component, props: {
-    profile: 'document', modelValue: `<p><a href="${uri}">Attachment</a></p><p><a href="galaris://task/00000000-0000-0000-0000-000000000003">Task</a></p><p><a href="https://example.org">Website</a></p>`,
+    profile: 'document', modelValue: `<p><a href="${uri}">Attachment</a></p><p><a href="galaris://task/00000000-0000-0000-0000-000000000003">Task</a></p><p><a href="memory://00000000-0000-0000-0000-000000000004">Memory</a></p><p><a href="https://example.org">Website</a></p>`,
     createLinkCard: async () => '',
   } }), { component, uri })
-  await page.locator('[data-editor-surface] a').first().click()
-  await expect(page.getByRole('button', { name: 'Show card', exact: true })).toHaveCount(0)
-  await page.keyboard.press('Escape')
-  await page.locator('[data-editor-surface] a').nth(1).click()
-  await expect(page.getByRole('button', { name: 'Show card', exact: true })).toHaveCount(0)
-  await page.keyboard.press('Escape')
+  for (let index = 0; index < 3; index++) {
+    await page.locator('[data-editor-surface] a').nth(index).click()
+    await expect(page.getByRole('button', { name: 'Show card', exact: true })).toHaveCount(0)
+    await page.keyboard.press('Escape')
+  }
   await page.locator('[data-editor-surface] a').last().click()
   await expect(page.getByRole('button', { name: 'Show card', exact: true })).toBeVisible()
 })

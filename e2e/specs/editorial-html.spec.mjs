@@ -96,6 +96,26 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   await page.reload()
   await expect(picture).toHaveJSProperty('naturalWidth', 2)
   await expect.poll(async () => (await picture.boundingBox()).width).toBeCloseTo(resizedWidth, 0)
+  for (const [alignment, label] of [
+    ['left', /^(Align left|Aligner à gauche)$/], ['center', /^(Center|Centrer)$/], ['right', /^(Align right|Aligner à droite)$/],
+  ]) {
+    await picture.click()
+    const alignmentSaved = page.waitForResponse(response => response.request().method() === 'PATCH'
+      && response.url().includes(`/memory/documents/${item.id}`))
+    await page.getByRole('button', { name: label, exact: true }).first().click()
+    expect((await alignmentSaved).ok()).toBeTruthy()
+    await page.reload()
+    await expect(picture).toHaveJSProperty('naturalWidth', 2)
+    await picture.scrollIntoViewIfNeeded()
+    await expect.poll(() => picture.evaluate((image, alignment) => {
+      const container = image.closest('.galaris-image-object').parentElement
+      const bounds = container.getBoundingClientRect(), style = getComputedStyle(container), box = image.getBoundingClientRect()
+      const left = box.left - bounds.left - container.clientLeft - parseFloat(style.paddingLeft)
+      const right = bounds.left + container.clientLeft + container.clientWidth - parseFloat(style.paddingRight) - box.right
+      return Math.abs(alignment === 'left' ? left : alignment === 'right' ? right : left - right)
+    }, alignment)).toBeLessThan(2)
+    await expect.poll(async () => (await picture.boundingBox()).width).toBeCloseTo(resizedWidth, 0)
+  }
   await expect(page.getByRole('button', { name: 'Source', exact: true })).toHaveCount(0)
   expect(resizedDocument.payload.text).toContain('&lt;p&gt;')
   expect(await page.evaluate(() => window.editorialE2E)).toBeUndefined()

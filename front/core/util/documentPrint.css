@@ -19,3 +19,4 @@ thead { display: table-header-group; }
 .rich-content blockquote.galaris-agent-card > .galaris-resource-embed { position: absolute; inset: 0 auto 0 0; width: 112px; overflow: hidden; }
 .rich-content blockquote.galaris-process-diagram > .galaris-resource-embed { width: 100%; overflow: visible; }
 .rich-content blockquote.galaris-agent-card:not(:has(.galaris-resource-embed)) { padding: 10px 12px; min-height: 0; }
+.rich-content blockquote.galaris-document-card:not(:has(.galaris-resource-embed)) { padding: 10px 12px; min-height: 0; }

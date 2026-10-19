@@ -1,5 +1,5 @@
 import { api } from '@/core/api'
-import type { RichContentContribution } from '@/core/util'
+import { documentIdFromResourceUri, type RichContentContribution } from '@/core/util'
 import { memoryService } from './services/memoryService'
 import type { MemorySearchPage } from './types'
 export default {
@@ -32,5 +32,22 @@ export default {
   target(uri, title = '', agentId = null) {
     const match = /^(document|memory):\/\/([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/.exec(uri)
     return match ? { kind: match[1]!, id: match[2]!, title, agentId } : null
+  },
+  async title(uri) {
+    const id = documentIdFromResourceUri(uri)
+    return id ? (await memoryService.getManagedDocument(id)).item.title : uri
+  },
+  canCard: uri => documentIdFromResourceUri(uri) !== null,
+  async card(uri) {
+    const id = documentIdFromResourceUri(uri)
+    if (!id) throw new Error('Invalid Document reference')
+    const { item } = await memoryService.getManagedDocument(id)
+    const card = document.createElement('blockquote'), paragraph = document.createElement('p')
+    const anchor = document.createElement('a'), title = document.createElement('strong')
+    card.className = 'galaris-link-card'
+    anchor.href = `document://${id}`; title.textContent = item.title
+    anchor.append(title); paragraph.append(anchor); card.append(paragraph)
+    const identifier = document.createElement('p'); identifier.textContent = id; card.append(identifier)
+    return card.outerHTML
   },
 } satisfies RichContentContribution

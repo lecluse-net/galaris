@@ -1,6 +1,6 @@
 <template>
   <q-item clickable class="document-row" :dense="compact" :class="{ 'document-row--compact': compact }" :active="selectedDocumentId === entry.item.id" :disable="loading" draggable="true"
-    @click.stop="emit('select', entry)" @dragstart.stop="emit('dragstart', $event, entry.item.id)" @dragend.stop="emit('dragend')">
+    @click.stop="emit('select', entry)" @dragstart.stop="startDrag" @dragend.stop="emit('dragend')">
     <slot name="toggle" />
     <q-item-section>
       <q-item-label class="row items-center no-wrap"><DocumentIcon :document-id="entry.item.id" :title="entry.item.title" readonly size="26px" class="library-document-icon" :class="compact ? 'q-mr-xs' : 'q-mr-sm'" /><span class="ellipsis" :title="entry.item.title">{{ entry.item.title }}</span></q-item-label>
@@ -15,13 +15,24 @@ import { useI18n } from 'vue-i18n'
 import type { DocumentLibraryEntry } from '../types'
 import DocumentIcon from './DocumentIcon.vue'
 import DocumentThumbnail from './DocumentThumbnail.vue'
-defineProps<{
+const props = defineProps<{
   entry: DocumentLibraryEntry
   loading: boolean
   compact?: boolean
   selectedDocumentId: string | null
 }>()
 const emit = defineEmits<{ select: [entry: DocumentLibraryEntry]; dragstart: [event: DragEvent, id: string]; dragend: [] }>()
+function startDrag(event: DragEvent): void {
+  if (event.dataTransfer) {
+    const link = document.createElement('a')
+    link.href = `document://${props.entry.item.id}`; link.textContent = props.entry.item.title
+    event.dataTransfer.setData('text/html', link.outerHTML)
+    event.dataTransfer.setData('text/plain', link.href)
+    event.dataTransfer.setData('text/uri-list', link.href)
+    event.dataTransfer.effectAllowed = 'copyMove'
+  }
+  emit('dragstart', event, props.entry.item.id)
+}
 const { t, locale } = useI18n()
 function formatDate(value: string): string { return new Intl.DateTimeFormat(locale.value, { dateStyle: 'short' }).format(new Date(value)) }
 </script>

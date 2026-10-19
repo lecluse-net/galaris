@@ -2,7 +2,7 @@
 const icons: Record<string, string> = {
   undo: 'edit-undo', redo: 'edit-redo', bold: 'format-text-bold', italic: 'format-text-italic', underline: 'format-text-underline', strike: 'format-text-strikethrough',
   'shortcuts.indent': 'format-indent-more', 'shortcuts.outdent': 'format-indent-less', link: 'insert-link', galarisLink: 'document-open',
-  find: 'edit-find-replace', selectAll: 'edit-select-all', removeFormat: 'edit-clear', source: 'text-x-script', code: 'text-x-script', insertTable: 'x-office-spreadsheet',
+  find: 'edit-find-replace', selectAll: 'edit-select-all', removeFormat: 'edit-clear', source: 'text-x-script', insertTable: 'x-office-spreadsheet',
   specialCharacters: 'accessories-character-map', print: 'document-print', 'layout.full': 'stock_zoom-page-width', 'resources.uploadFile': 'insert-image',
   help: 'preferences-desktop-keyboard',
   left: 'format-justify-left', center: 'format-justify-center', right: 'format-justify-right', justify: 'format-justify-fill',

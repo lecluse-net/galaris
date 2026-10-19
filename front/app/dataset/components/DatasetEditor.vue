@@ -80,7 +80,7 @@
     </template>
     <q-dialog v-model="showRevision"><q-card style="width: 800px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('datasets.revision') }} {{ revision }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('datasets.close')" /></q-card-section><q-card-section><CodeEditor :model-value="historical" language="json" readonly :label="t('datasets.content')" /></q-card-section><q-card-actions align="right"><q-btn v-if="editable && dataset?.can_write" :label="t('datasets.restore')" @click="restore" /></q-card-actions></q-card></q-dialog>
     <q-dialog v-model="confirmDelete"><q-card style="width: 480px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('datasets.delete') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('datasets.close')" /></q-card-section><q-card-section><q-banner v-if="error" role="alert">{{ error }}</q-banner>{{ t('datasets.deleteConfirm') }}<p class="q-mt-md">{{ t('datasets.deleteImpact') }}</p></q-card-section><q-card-actions align="right"><q-btn v-close-popup flat :label="t('datasets.cancel')" /><q-btn flat :label="t('datasets.delete')" :loading="busy" @click="remove" /></q-card-actions></q-card></q-dialog>
-    <q-dialog v-model="confirmDiscard" @hide="resolveDiscard(false)">
+    <q-dialog :model-value="confirmDiscard" @update:model-value="!$event && resolveDiscard(false)">
       <q-card style="width: 480px; max-width: 95vw">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ t('datasets.unsaved') }}</div><q-space />
@@ -110,7 +110,7 @@ import DatasetSharing from './DatasetSharing.vue'
 import DatasetUsages from './DatasetUsages.vue'
 import { errorMessage } from '../errors'
 const props = defineProps<{ id: string }>()
-const emit = defineEmits<{ updated: [dataset: Dataset]; deleted: [id: string] }>()
+const emit = defineEmits<{ loaded: [dataset: Dataset]; updated: [dataset: Dataset]; deleted: [id: string] }>()
 const { t } = useI18n(), dataset = shallowRef<Dataset>(), content = ref(''), title = ref(''), error = ref(''), busy = ref(false)
 const privileges = usePrivilegeStore(), confirmDelete = ref(false), showUsages = ref(false)
 const confirmDiscard = ref(false)
@@ -127,7 +127,7 @@ const history = ref<{ revision: number; created_at: string }[]>([]), pagination 
 const columns = computed<QTableProps['columns']>(() => [{ name: 'revision', field: 'revision', label: t('datasets.revision'), align: 'left' }, { name: 'created_at', field: 'created_at', label: t('datasets.history'), align: 'left' }])
 async function action(work: () => Promise<void>, mutation = false): Promise<void> { if (busy.value) return; busy.value = true; mutating = mutation; error.value = ''; try { await work() } catch (err) { if (mounted) error.value = errorMessage(err, t('datasets.error')) } finally { if (mounted) { busy.value = false; mutating = false } } }
 function accept(value: Dataset): void { if (!mounted) return; dataset.value = value; title.value = value.title; content.value = savedContent.value = formatJson(value.content) }
-async function load(): Promise<void> { await action(async () => { accept(await service.read(props.id)); const owners = await service.owner(props.id); if (mounted) ownerState.value = owners }) }
+async function load(): Promise<void> { await action(async () => { const value = await service.read(props.id); accept(value); if (mounted) emit('loaded', value); const owners = await service.owner(props.id); if (mounted) ownerState.value = owners }) }
 async function reload(): Promise<void> { if (await canLeave()) await load() }
 async function save(): Promise<void> { const current = dataset.value; if (!current) return; await action(async () => { JSON.parse(content.value); const source = content.value === savedContent.value ? current.content : content.value; const value = await service.write(current.id, source, current.revision, title.value, current.lock_version); if (mounted) { accept(value); emit('updated', value) } }, true) }
 async function changeOwner(owner: Collaborator): Promise<void> {
@@ -160,6 +160,7 @@ function canLeave(): boolean | Promise<boolean> {
   return new Promise(resolve => { pendingDiscard = resolve })
 }
 function beforeUnload(event: BeforeUnloadEvent): void { if (dirty.value && !deleted) { event.preventDefault(); event.returnValue = '' } }
+defineExpose({ canLeave })
 onBeforeRouteLeave(canLeave)
 onBeforeRouteUpdate((to, from) => to.params.id === from.params.id || canLeave())
 onMounted(() => { window.addEventListener('beforeunload', beforeUnload); void load() })

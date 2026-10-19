@@ -1,6 +1,10 @@
 <template>
   <q-page class="documents-page q-pa-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }">
-    <PageHeader help-key="documents" :help-text="$t('contextHelpPages.documents')" :icon="navigationIcon('description')" :title="t('nav.documents')" :description="t('nav.documents_desc')" />
+    <PageHeader help-key="documents" :help-text="$t('contextHelpPages.documents')" :icon="navigationIcon('description')" :title="t('nav.documents')" :description="t('nav.documents_desc')">
+      <template #title-after>
+        <DocumentNavigationButtons :can-go-back="canGoBack" :can-go-forward="canGoForward" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
+      </template>
+    </PageHeader>
 
     <q-card flat bordered class="documents-workspace">
       <q-splitter v-model="splitterModel" :limits="[20, 55]" class="documents-splitter">
@@ -30,12 +34,14 @@
     <q-dialog
       v-model="mobileDocumentOpen"
       allow-focus-outside
+      no-route-dismiss
       maximized
       @before-hide="flushMobileDocumentEditor"
       @hide="clearMobileDocument"
     >
       <q-card class="documents-mobile-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
+          <DocumentNavigationButtons class="q-mr-sm" :can-go-back="canGoBack" :can-go-forward="canGoForward" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
           <DocumentIcon v-if="mobileDocumentId" :document-id="mobileDocumentId" :title="mobileDocumentTitle" size="36px" class="q-mr-sm" />
           <div class="text-h6 ellipsis">{{ mobileDocumentTitle }}</div>
           <q-space />
@@ -134,12 +140,12 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { AgentAvatar, useAgentStore } from '@/app/agent'
-import { documentIdFromRouteQuery, documentResourceHref, PageHeader } from '@/core/util'
+import { documentIdFromRouteQuery, documentNavigationKey, documentResourceHref, DocumentNavigationButtons, PageHeader, useDocumentHistory } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { DatasetDocumentRedirect, memoryService } from '../services/memoryService'
 import type {
@@ -193,6 +199,10 @@ const mobileDocumentOpen = ref(false)
 const mobileDocumentId = ref<string | null>(null)
 const mobileDocumentAgentId = ref<number | null>(null)
 const mobileInitialDocument = ref<MemoryItemDetail | null>(null)
+const history = useDocumentHistory()
+const navigatingHistory = ref(false)
+const canGoBack = computed(() => !navigatingHistory.value && history.canGoBack.value)
+const canGoForward = computed(() => !navigatingHistory.value && history.canGoForward.value)
 const createDocumentOpen = ref(false)
 const creatingDocument = ref(false)
 const createDocumentOwner = ref('')
@@ -270,7 +280,22 @@ function preferredAgent(entry: DocumentLibraryEntry): number | null {
   if (entry.item.owner_agent_id !== null && entry.agent_ids.includes(entry.item.owner_agent_id)) return entry.item.owner_agent_id
   return entry.writable_agent_ids[0] ?? entry.agent_ids[0] ?? null
 }
-async function selectDocument(id: string, agentId: number | null, initialDocument: MemoryItemDetail | null = null): Promise<void> {
+function recordNavigation(id: string, position?: number): void {
+  history.record(id, position)
+  if (documentIdFromRouteQuery(route.query.document_id) !== id) void router.replace(documentResourceHref(id))
+}
+async function navigateHistory(direction: -1 | 1): Promise<void> {
+  if (navigatingHistory.value) return
+  const target = history.target(direction)
+  if (!target) return
+  navigatingHistory.value = true
+  try {
+    await openRouteDocument(target.id, target.position)
+  } finally {
+    navigatingHistory.value = false
+  }
+}
+async function selectDocument(id: string, agentId: number | null, initialDocument: MemoryItemDetail | null = null, historyIndex?: number): Promise<void> {
   const selection = ++selectionGeneration
   if (id !== selectedDocumentId.value && documentEditor.value) {
     const saved = await documentEditor.value.flush()
@@ -283,13 +308,23 @@ async function selectDocument(id: string, agentId: number | null, initialDocumen
   selectedInitialDocument.value = initialDocument
   selectedAgentId.value = agentId
   selectedNodeKey.value = `document:${agentId ?? 'user'}:${id}`
+  recordNavigation(id, historyIndex)
 }
-function openMobileDocument(id: string, agentId: number | null, initialDocument: MemoryItemDetail | null = null): void {
-  ++selectionGeneration
+async function openMobileDocument(id: string, agentId: number | null, initialDocument: MemoryItemDetail | null = null, historyIndex?: number): Promise<void> {
+  const selection = ++selectionGeneration
+  if (id !== mobileDocumentId.value && mobileDocumentEditor.value) {
+    const saved = await mobileDocumentEditor.value.flush()
+    if (!saved) {
+      $q.notify({ type: 'negative', message: t('documents.autosaveError') })
+      return
+    }
+  }
+  if (disposed || leavingPage || selection !== selectionGeneration) return
   mobileInitialDocument.value = initialDocument
   mobileDocumentId.value = id
   mobileDocumentAgentId.value = agentId
   mobileDocumentOpen.value = true
+  recordNavigation(id, historyIndex)
 }
 function onLibraryLoaded(loaded: DocumentLibraryEntry[]): void {
   entries.value = loaded
@@ -297,7 +332,7 @@ function onLibraryLoaded(loaded: DocumentLibraryEntry[]): void {
 }
 async function selectEntry(entry: DocumentLibraryEntry): Promise<void> {
   const actor = preferredAgent(entry)
-  if ($q.screen.lt.md) openMobileDocument(entry.item.id, actor)
+  if ($q.screen.lt.md) await openMobileDocument(entry.item.id, actor)
   else await selectDocument(entry.item.id, actor)
 }
 async function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry): Promise<void> {
@@ -354,7 +389,7 @@ async function createDocument(): Promise<void> {
     }
     navigation.value?.refreshDocuments([document.id], classified ? tag?.id : undefined, classified ? parent?.item.id : undefined)
     const documentActor = owner.kind === 'user' ? null : actorAgentId
-    if ($q.screen.lt.md) openMobileDocument(document.id, documentActor)
+    if ($q.screen.lt.md) await openMobileDocument(document.id, documentActor)
     else await selectDocument(document.id, documentActor)
     if ((!tag && !parent) || classified) $q.notify({ type: 'positive', message: t('documents.created') })
   } catch {
@@ -368,6 +403,9 @@ function onDocumentUpdated(document: MemoryItemDetail): void {
   navigation.value?.updateDocument(document)
 }
 function onDocumentDeleted(id: string): void {
+  // Deleted visits no longer provide a destination, without shifting an in-flight cursor.
+  history.forget(id)
+  ++selectionGeneration
   if (selectedDocumentId.value === id) selectedNodeKey.value = null
   if (mobileDocumentId.value === id) mobileDocumentOpen.value = false
   navigation.value?.removeDocument(id)
@@ -380,20 +418,20 @@ function onMobileDocumentUnavailable(id: string): void {
   mobileDocumentOpen.value = false
   onDocumentUnavailable(id)
 }
-async function openRouteDocument(id: string): Promise<void> {
+async function openRouteDocument(id: string, historyIndex?: number): Promise<void> {
   const selection = ++selectionGeneration
   const entry = entries.value.find(value => value.item.id === id)
   const agentId = entry ? preferredAgent(entry) : null
   if (agentId !== null || entry?.user_access?.can_read) {
-    if ($q.screen.lt.md) openMobileDocument(id, agentId)
-    else await selectDocument(id, agentId)
+    if ($q.screen.lt.md) await openMobileDocument(id, agentId, null, historyIndex)
+    else await selectDocument(id, agentId, null, historyIndex)
     return
   }
   try {
     const detail = await memoryService.getManagedDocument(id)
     if (disposed || leavingPage || selection !== selectionGeneration) return
-    if ($q.screen.lt.md) openMobileDocument(id, detail.agent_id, detail.item)
-    else await selectDocument(id, detail.agent_id, detail.item)
+    if ($q.screen.lt.md) await openMobileDocument(id, detail.agent_id, detail.item, historyIndex)
+    else await selectDocument(id, detail.agent_id, detail.item, historyIndex)
   } catch (error) {
     if (disposed || leavingPage || selection !== selectionGeneration) return
     if (error instanceof DatasetDocumentRedirect) await router.replace(error.href)
@@ -401,10 +439,13 @@ async function openRouteDocument(id: string): Promise<void> {
   }
 }
 
+provide(documentNavigationKey, id => openRouteDocument(id))
+
 function flushMobileDocumentEditor(): void {
   void mobileDocumentEditor.value?.flush()
 }
 function clearMobileDocument(): void {
+  if (mobileDocumentOpen.value) return
   mobileDocumentId.value = null
   mobileDocumentAgentId.value = null
 }
@@ -424,19 +465,10 @@ watch(createDocumentOwner, value => {
   const owner = createOwnerChoices.value.find(option => option.value === value)
   if (owner?.kind === 'agent') createDocumentActorAgentId.value = owner.id
 })
-watch(selectedNodeKey, value => {
-  if (disposed || leavingPage) return
-  const parts = value?.split(':') ?? []
-  if (parts[0] !== 'document' || parts.length < 3) return
-  const agentId = parts[1] === 'user' ? null : Number(parts[1])
-  const id = parts.slice(2).join(':')
-  if (agentId !== null && (!Number.isInteger(agentId) || agentId <= 0)) return
-  selectedAgentId.value = agentId
-  if (documentIdFromRouteQuery(route.query.document_id) !== id) void router.replace(documentResourceHref(id))
-})
 watch(() => route.query.document_id, value => {
   const id = documentIdFromRouteQuery(value)
-  if (pageMounted && id && id !== selectedDocumentId.value) void openRouteDocument(id)
+  const currentId = $q.screen.lt.md ? mobileDocumentId.value : selectedDocumentId.value
+  if (pageMounted && id && id !== currentId) void openRouteDocument(id)
 })
 onBeforeRouteLeave(async () => {
   // An automatic selection must not replace the navigation while its lazy chunk loads.

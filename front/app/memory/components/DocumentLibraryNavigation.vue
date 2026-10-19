@@ -567,9 +567,9 @@ function startTagDrag(event: DragEvent, id: string): void {
 }
 function startDocumentDrag(event: DragEvent, id: string): void {
   if (busy.value) { event.preventDefault(); return }
-  drag = { kind: 'document', id }; event.dataTransfer?.setData('text/plain', id)
+  drag = { kind: 'document', id }
   documentFromTree = event.target instanceof Element && Boolean(event.target.closest('.document-tree, .document-children'))
-  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copyMove'
 }
 async function moveDocument(documentId: string, tagId: string | null): Promise<void> {
   const entry = [...entries.value, ...Object.values(branchSnapshots.value).flat()].find(value => value.item.id === documentId)

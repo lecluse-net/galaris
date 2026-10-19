@@ -3,6 +3,11 @@
   <NativeRunDialog v-else-if="target.kind === 'process_run'" :key="target.id + ':' + target.agentId"
     :run-id="target.id" :agent-id="target.agentId" :title="target.title" @close="emit('close')" />
   <ExternalRunDialog v-else-if="target.kind === 'external_process_run'" :key="target.id" :run-id="target.id" @close="emit('close')" />
+  <WorkingDocumentDialog v-else-if="target.kind === 'document'" :model-value="true"
+    :document-id="target.id" :agent-id="target.agentId ?? null" :title="target.title"
+    @update:model-value="!$event && emit('close')" @deleted="changedAndClose" />
+  <DatasetDialog v-else-if="target.kind === 'dataset'" :key="target.id" :id="target.id" :title="target.title"
+    @close="emit('close')" @updated="emit('changed')" @deleted="changedAndClose" />
   <ConversationTurnDialog v-else :model-value="true" :title="resolvedTitle || target.title" :icon="icons[target.kind] || 'info'"
     :width="target.kind === 'agent' ? '700px' : undefined" :close-label="t('common.close')" @update:model-value="!$event && emit('close')">
     <div v-if="loading" class="flex flex-center q-pa-xl"><q-spinner color="primary" size="42px" /></div>
@@ -14,7 +19,6 @@
       @task-change="taskId = $event" @refresh="emit('changed')" @delete="taskToDelete = $event" />
     <AgentPreview v-else-if="target.kind === 'agent'" :key="target.id" :agent-id="Number(target.id)" @loaded="resolvedTitle = $event" @deleted="changedAndClose" />
     <ProcessPreview v-else-if="target.kind === 'process'" :key="target.id" :uri="`galaris://processes/${target.id}`" :agent-id="target.agentId" @loaded="resolvedTitle = $event.title" />
-    <DatasetEditor v-else-if="target.kind === 'dataset'" :key="target.id" :id="target.id" @updated="emit('changed')" @deleted="changedAndClose" />
     <ConversationRoundDetailView v-else-if="round && message" :message="message" :round="round"
       :calls="calls" :loading="false" error="" :calls-loading="callsLoading" :calls-error="callsError"
       @deleted="changedAndClose" @topic-updated="round = $event; emit('changed')"
@@ -22,8 +26,6 @@
     <VoiceConversationDetailView v-else-if="conversation && turn" :conversation="conversation" :turn="turn"
       @deleted="changedAndClose" @stopped="changedAndClose" @topic-updated="emit('changed')" />
     <RoomDiscussion v-else-if="room" :room="room" />
-    <DocumentEditor v-else-if="target.kind === 'document'" :document-id="target.id"
-      :agent-id="target.agentId ?? null" :editable="false" @unavailable="error = t('topic.detail.targetLoadError')" />
     <div v-else-if="memory" class="q-pa-md">
       <EditorialContent v-if="memory.payload.text != null" :content="memory.payload.text" :media-type="memory.media_type" />
       <q-banner v-else>{{ t('memory.binaryContent') }}</q-banner>
@@ -54,7 +56,7 @@ export async function preload(kind: string): Promise<void> {
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { defineAsyncView, EditorialContent, ConversationTurnDialog, type ResourceDetailTarget } from '@/core/util'
+import { defineAsyncView, EditorialContent, ConversationTurnDialog, WorkingDocumentDialog, type ResourceDetailTarget } from '@/core/util'
 import type { TaskFull } from '@/app/task'
 import type { ConversationMessage, ConversationRoundDetail } from '@/app/conversation'
 import type { VoiceConversationDetail, VoiceConversationTurn } from '@/app/voice'
@@ -68,8 +70,7 @@ const GoalPreview = defineAsyncView(async () => (await import('@/app/goal')).Goa
 const NativeRunDialog = defineAsyncView(async () => (await import('@/app/process')).NativeRunDialog)
 const ExternalRunDialog = defineAsyncView(async () => (await import('@/app/process')).ExternalRunDialog)
 const ProcessPreview = defineAsyncView(async () => (await import('@/app/process')).ProcessPreview)
-const DatasetEditor = defineAsyncView(async () => (await import('@/app/dataset')).DatasetEditor)
-const DocumentEditor = defineAsyncView(async () => (await import('@/app/memory')).DocumentEditor)
+const DatasetDialog = defineAsyncView(async () => (await import('@/app/dataset')).DatasetDialog)
 const ConversationRoundDetailView = defineAsyncView(async () => (await import('@/app/conversation')).ConversationRoundDetailView)
 const VoiceConversationDetailView = defineAsyncView(async () => (await import('@/app/voice')).VoiceConversationDetailView)
 const RoomDiscussion = defineAsyncView(async () => (await import('@/app/chat/interface')).RoomDiscussion)
@@ -135,7 +136,7 @@ watch([() => props.target, retry], async ([target], _, onCleanup) => {
   memory.value = null
   room.value = null
   taskId.value = target.id
-  loading.value = !['agent', 'goal', 'task', 'document', 'process', 'process_run', 'dataset'].includes(target.kind)
+  loading.value = !['agent', 'goal', 'task', 'process', 'process_run', 'dataset'].includes(target.kind)
   try {
     if (target.kind === 'round') {
       const { conversationService } = await import('@/app/conversation')

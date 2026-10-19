@@ -142,8 +142,8 @@ body .q-tooltip :is(.text-caption, .text-overline, small) {
         font-size: 24px !important;
     }
 
-    .q-btn,
-    .q-icon {
+    .q-btn:not(.q-btn--outline),
+    .q-icon:not(.q-btn--outline .q-icon) {
         color: white !important;
     }
 }

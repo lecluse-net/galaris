@@ -12,10 +12,15 @@ puis **Ajouter une PJ interne** ouvre le sélecteur file_share : choisissez l'em
 `data://`, puis les jeux souhaités. Leurs citations sont insérées dans le texte, sans PJ.
 Le jeu conserve son adresse, son historique et son partage. Retirer la citation ne supprime
 pas les données ; partager le document ne partage pas ses jeux de données.
-Sur ordinateur, la liste à gauche permet de sélectionner le jeu de données affiché à droite,
-sans arborescence. La recherche et la page courante restent en place lors du changement de
-sélection. Sur petit écran, **Retour à la liste** permet de quitter l'éditeur. Les modifications
-non enregistrées demandent confirmation avant de changer de jeu de données.
+Cliquez sur un jeu de données pour ouvrir son éditeur dans une modale, sur ordinateur
+comme sur petit écran. Fermez-la avec la croix, Échap ou un clic sur l’arrière-plan pour
+retrouver la liste, sa recherche et sa page courante. Les modifications non enregistrées
+demandent confirmation avant de fermer. Dans le chat, les cartes Dataset ouvrent cette
+même modale dédiée avec le contenu JSON complet, l’historique et les droits disponibles.
+Dans un document, collez une adresse `data://` ou le lien `/dataset/…` de cette installation,
+puis choisissez **Afficher une carte** dans le menu contextuel du lien. Le clic sur le titre
+de la carte ouvre la modale Dataset sans quitter le document. Le contenu JSON reste dans
+le Dataset ; le document conserve uniquement sa référence.
 Le filtre **Agent propriétaire** limite la liste aux jeux d'un agent géré. **Tous les agents**
 rétablit tous les jeux accessibles, y compris ceux appartenant à un utilisateur. La recherche
 et la pagination s'appliquent au résultat filtré.

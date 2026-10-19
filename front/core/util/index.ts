@@ -40,6 +40,11 @@ export { contextHelpKey, type ContextHelpState } from './contextHelp'
 export { default as StatusBadge } from './components/StatusBadge.vue'
 export { default as TileTexture } from './components/TileTexture.vue'
 export { default as WorkingDocumentEditor } from './components/WorkingDocumentEditor.vue'
+export { default as WorkingDocumentDialog } from './components/WorkingDocumentDialog.vue'
+export { documentNavigationKey } from './documentNavigation'
+export { useDocumentHistory } from './documentHistory'
+export { default as DocumentNavigationButtons } from './components/DocumentNavigationButtons.vue'
+export { resolveWorkingDocument } from './workingDocumentEditor'
 export { default as WorkingDocumentIcon } from './components/WorkingDocumentIcon.vue'
 export { default as WorkingDocumentThumbnail } from './components/WorkingDocumentThumbnail.vue'
 export { searchWorkingDocuments } from './workingDocumentEditor'
@@ -50,6 +55,7 @@ export type {
 } from './workingDocumentEditor'
 export {
   documentIdFromRouteQuery,
+  documentIdFromResourceUri,
   documentResourceHref,
 } from './documentResource'
 export { sanitizeHtml, sanitizePreviewHtml } from './sanitizeHtml'
