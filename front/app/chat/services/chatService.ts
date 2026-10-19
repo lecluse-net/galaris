@@ -1,5 +1,5 @@
 import { api, AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
-import { createSessionReadCache, queuePreview, saveBlobAsResource } from '@/core/util/facade'
+import { createSessionReadCache, invalidateSessionReads, queuePreview, saveBlobAsResource } from '@/core/util/facade'
 import type { DocumentFocus } from '../documentFocus'
 import type { MessengerInteraction } from '../types'
 import { isAxiosError } from 'axios'
@@ -10,6 +10,16 @@ const base = '/chat'
 const avatars = createSessionReadCache<Blob>({
   sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration,
   group: 'agent-avatar', maxAgeMs: 60_000, maxEntries: 64, maxBytes: 16 * 1024 * 1024, size: blob => blob.size,
+})
+const previewReads = createSessionReadCache<MessageResourcePreview[]>({
+  sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration,
+  group: 'chat-preview-metadata', maxAgeMs: 30_000, maxEntries: 128,
+  maxBytes: 4 * 1024 * 1024, size: items => JSON.stringify(items).length * 2,
+})
+const previewImages = createSessionReadCache<Blob>({
+  sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration,
+  group: 'chat-preview-images', maxAgeMs: 30_000, maxEntries: 64,
+  maxBytes: 16 * 1024 * 1024, size: blob => blob.size,
 })
 
 export class DictationNotConfiguredError extends Error {
@@ -51,9 +61,25 @@ export const chatService = {
   async messageSpeechStatus(roomId: string, agentId: number | null = null): Promise<MessageSpeechStatus> { return (await api.get<MessageSpeechStatus>(`${base}/rooms/${roomId}/speech/status`, { params: { agent_id: agentId } })).data },
   async messageSpeechBlob(roomId: string, messageId: string, language: string, agentId: number | null = null): Promise<Blob> { return (await api.post<Blob>(`${base}/rooms/${roomId}/messages/${messageId}/speech`, undefined, { params: { language, agent_id: agentId }, responseType: 'blob' })).data },
   async updateMessageTopic(roomId: string, messageId: string, topicId: string, scope: MessageTopicChangeScope): Promise<MessageTopicUpdateResult> { return (await api.patch<MessageTopicUpdateResult>(`${base}/rooms/${roomId}/messages/${messageId}/topic`, { topic_id: topicId, scope })).data },
-  async messagePreviews(roomId: string, messageId: string, agentId: number | null = null, signal?: AbortSignal): Promise<MessageResourcePreview[]> { return (await api.get<MessageResourcePreview[]>(`${base}/rooms/${roomId}/messages/${messageId}/previews`, { params: { agent_id: agentId }, signal })).data },
+  invalidateMessagePreviews(): void {
+    invalidateSessionReads('chat-preview-metadata')
+    invalidateSessionReads('chat-preview-images')
+  },
+  async messagePreviews(roomId: string, messageId: string, agentId: number | null = null, signal?: AbortSignal): Promise<MessageResourcePreview[]> {
+    const key = JSON.stringify([roomId, messageId, agentId])
+    const items = await previewReads.read(key, async sharedSignal => (await api.get<MessageResourcePreview[]>(`${base}/rooms/${roomId}/messages/${messageId}/previews`, { params: { agent_id: agentId }, signal: sharedSignal })).data, signal)
+    return structuredClone(items)
+  },
   async messageDirectoryRepository(roomId: string, messageId: string, uri: string): Promise<CodeWorkspace> { return (await api.post<CodeWorkspace>(`${base}/rooms/${roomId}/messages/${messageId}/previews/repository`, undefined, { params: { uri } })).data },
-  async messagePreviewImageBlob(roomId: string, messageId: string, uri: string, agentId: number | null = null, signal?: AbortSignal): Promise<Blob> { return (await api.get<Blob>(`${base}/rooms/${roomId}/messages/${messageId}/previews/image`, { params: { uri, agent_id: agentId }, responseType: 'blob', signal })).data },
+  async messagePreviewImageBlob(roomId: string, messageId: string, uri: string, agentId: number | null = null, signal?: AbortSignal, source: 'image' | 'content' = 'image', refreshMetadata = false): Promise<Blob> {
+    return previewImages.read(JSON.stringify([roomId, messageId, agentId, uri, source]), async sharedSignal => {
+      const blob = (await api.get<Blob>(`${base}/rooms/${roomId}/messages/${messageId}/previews/${source}`, { params: { uri, agent_id: agentId }, responseType: 'blob', signal: sharedSignal })).data
+      // A generated capture can enrich its title/description. Invalidate once in
+      // the shared transport so concurrent consumers still share that next read.
+      if (refreshMetadata && blob.type.toLowerCase().startsWith('image/')) invalidateSessionReads('chat-preview-metadata', JSON.stringify([roomId, messageId, agentId]))
+      return blob
+    }, signal)
+  },
   async messagePreviewContentBlob(roomId: string, messageId: string, uri: string, agentId: number | null = null, signal?: AbortSignal): Promise<Blob> { return (await api.get<Blob>(`${base}/rooms/${roomId}/messages/${messageId}/previews/content`, { params: { uri, agent_id: agentId }, responseType: 'blob', signal })).data },
   async activity(roomId: string, page = 1, pageSize = 50, agentId: number | null = null): Promise<ConversationActivityPage> { return (await api.get<ConversationActivityPage>(`${base}/rooms/${roomId}/activity`, { params: { page, page_size: pageSize, agent_id: agentId } })).data },
   async activityDetail(roomId: string, roundId: string, agentId: number | null = null): Promise<ConversationActivityDetail> { return (await api.get<ConversationActivityDetail>(`${base}/rooms/${roomId}/activity/${roundId}`, { params: { agent_id: agentId } })).data },
@@ -85,7 +111,7 @@ export const chatService = {
   async upload(roomId: string, files: readonly File[], text = '', replyToMessageId: string | null = null, topicId: string | null = null, clientMessageId = crypto.randomUUID(), reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null): Promise<MessengerMessage> { const form = new FormData(); if (displayedRepositoryId) form.append("displayed_repository_id", displayedRepositoryId); for (const file of files) form.append('files', file); form.append('client_message_id', clientMessageId); form.append('language', language); form.append('text', text); if (topicId) form.append('topic_id', topicId); if (replyToMessageId) form.append('reply_to_message_id', replyToMessageId); if (reasoningEffortOverride) form.append('reasoning_effort_override', reasoningEffortOverride); if (taskRequested) form.append('task_requested', 'true'); if (displayedDocumentId) { form.append('displayed_document_id', displayedDocumentId); if (documentFocus) form.append('document_focus', JSON.stringify(documentFocus)); } return (await api.post<MessengerMessage>(`${base}/rooms/${roomId}/attachments`, form)).data },
   async markRead(roomId: string, messageId: string | null = null): Promise<void> { await api.post(`${base}/rooms/${roomId}/read`, { message_id: messageId }) },
   async setMuted(roomId: string, muted: boolean): Promise<void> { await api.post(`${base}/rooms/${roomId}/mute`, { muted }) },
-  async attachmentBlob(roomId: string, fileId: string, agentId: number | null = null): Promise<Blob> { return (await api.get<Blob>(`${base}/rooms/${roomId}/files/${fileId}`, { params: { agent_id: agentId }, responseType: 'blob' })).data },
+  async attachmentBlob(roomId: string, fileId: string, agentId: number | null = null, signal?: AbortSignal): Promise<Blob> { return (await api.get<Blob>(`${base}/rooms/${roomId}/files/${fileId}`, { params: { agent_id: agentId }, responseType: 'blob', signal })).data },
   async downloadFile(roomId: string, fileId: string, name: string, agentId: number | null = null): Promise<void> {
     const blob = await this.attachmentBlob(roomId, fileId, agentId)
     saveBlobAsResource(blob, name)

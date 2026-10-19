@@ -19,9 +19,11 @@
     >
       {{ t('chat.emptyRoom') }}
     </div>
+    <TimelineWindow :items="timelineEntries" :scope="`${roomId}:${viewerAgentId ?? 'user'}`"
+      :retain="entry => Boolean(entry.isLive || entry.pendingTranscription || entry.message?.id === speechPlayingMessageId)"
+      :aria-label="t('chat.messageHistory')" @rendered="onWindowRendered" @navigate="emit('historyNavigation')">
+      <template #default="{ entry }">
     <div
-      v-for="entry in timelineEntries"
-      :key="entry.key"
       class="message-row"
       :class="{
         'message-row--sent': entry.isMine,
@@ -129,7 +131,7 @@
               :interaction="entry.message.interaction"
               :readonly="!allowReply || viewerAgentId !== null"
             />
-            <SafeMessageContent v-else-if="entry.text" class="message-text" :content="entry.text" />
+            <SafeMessageContent v-else-if="entry.text" class="message-text" :content="entry.text" :streaming="Boolean(entry.liveRound?.active)" />
             <MessageResourcePreviews
               v-if="entry.message && hasPreviewableReference(entry.message.text)"
               :room-id="roomId"
@@ -142,7 +144,7 @@
               @open-repository="emit('openRepository', $event)"
               @open-directory="(uri, messageId) => emit('openDirectory', uri, messageId)"
             />
-            <div v-for="file in entry.message?.files ?? []" :key="file.id" class="attachment q-mt-xs">
+            <div v-for="file in entry.message?.files ?? []" :key="file.id" :data-attachment-id="file.id" class="attachment q-mt-xs">
               <button
                 v-if="isModel3dFile(file)"
                 type="button"
@@ -183,10 +185,11 @@
                 class="pdf-reader"
               />
               <MarkdownAttachmentPreview
-                v-else-if="isMarkdownFile(file)"
+                v-else-if="isMarkdownFile(file) && activatedFileIds.has(file.id)"
                 :room-id="roomId"
                 :file="file"
                 :viewer-agent-id="viewerAgentId"
+                :cached-content="mediaTexts[file.id]"
                 @loaded="storeMarkdownContent"
               />
               <div class="attachment-actions">
@@ -241,6 +244,8 @@
         </div>
       </div>
     </div>
+      </template>
+    </TimelineWindow>
   </div>
   <FullscreenPreview
     v-model="previewOpen"
@@ -305,7 +310,7 @@
           :markdown="isMarkdownFile(previewFile)"
           :media-type="previewFile.mime_type"
         />
-        <div v-else-if="isTextFile(previewFile)" class="q-pa-xl text-center">
+        <div v-else class="q-pa-xl text-center">
           <template v-if="mediaLoadErrors[previewFile.id]">
             <p role="alert">{{ t('chat.attachmentPreviewError', { name: previewFile.name }) }}</p>
             <q-btn color="primary" :label="t('chat.retryAttachmentPreview', { name: previewFile.name })" @click="retryMedia(previewFile)" />
@@ -322,8 +327,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { apiErrorDetail } from '@/core/api'
-import { browserResourceKind, FullscreenPreview, isolatedBrowserResourceUrl, TextResourcePreview, shouldOpenInline, model3dFormat, Model3dThumbnail, Model3dViewer, type Model3dSource } from '@/core/util'
+import { apiErrorDetail, AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
+import { browserResourceKind, FullscreenPreview, isolatedBrowserResourceUrl, TextResourcePreview, shouldOpenInline, model3dFormat, Model3dThumbnail, Model3dViewer, queuePreview, type Model3dSource } from '@/core/util'
 import { TopicBadge, useTopicRefs, type TopicAssignmentChangeScope } from '@/app/topic'
 import SafeMessageContent from './SafeMessageContent.vue'
 import InteractionChoice from './InteractionChoice.vue'
@@ -331,10 +336,12 @@ import InternalAgentAvatar from './InternalAgentAvatar.vue'
 import InternalParticipantAvatar from './InternalParticipantAvatar.vue'
 import AgentExecutionTrace from './AgentExecutionTrace.vue'
 import MarkdownAttachmentPreview from './MarkdownAttachmentPreview.vue'
+import TimelineWindow from './TimelineWindow.vue'
 import MessageResourcePreviews from './MessageResourcePreviews.vue'
 import VoiceTranscriptionStatus from './VoiceTranscriptionStatus.vue'
 import type { ConversationActivity, ConversationDocumentReference, LiveAgentRound, MessageTopicChange, MessengerFile, MessengerMessage, PendingVoiceTranscription } from '../types'
 import { chatService } from '../services/chatService'
+import { useMessagePreviewFreshness } from '../useMessagePreviewFreshness'
 import { visibleMessageText } from '../messageDirectives'
 import { displayMessageText } from '../messagePresentation'
 import { conversationTimelineEntries, conversationTimelineEntryText, conversationTimelineRenderKey, shouldShowLiveConversationRound } from '../liveState'
@@ -358,15 +365,25 @@ const emit = defineEmits<{
   layoutChanged: []
   messageVisible: [messageId: string]
   controlled: []
+  historyNavigation: []
 }>()
 const { t, locale } = useI18n()
+const timestampFormatter = computed(() => new Intl.DateTimeFormat(locale.value, {
+  dateStyle: 'short',
+  timeStyle: 'short',
+}))
 const $q = useQuasar()
+useMessagePreviewFreshness()
 const { resolveTopicRefs, topicTitle } = useTopicRefs()
 const timelineElement = useTemplateRef<HTMLElement>('timelineElement')
 const mediaUrls = reactive<Record<string, string>>({})
 const mediaTexts = reactive<Record<string, string>>({})
 const mediaLoading = reactive<Record<string, boolean>>({})
 const mediaLoadErrors = reactive<Record<string, boolean>>({})
+const activatedFileIds = reactive(new Set<string>())
+const mediaRequests = new Map<string, AbortController>()
+const mediaSizes = new Map<string, number>()
+const nearbyFileIds = new Set<string>()
 const previewOpen = ref(false)
 const previewFile = ref<MessengerFile | null>(null)
 const speechAvailableAgentIds = ref<Set<number>>(new Set())
@@ -381,6 +398,7 @@ let speechScopeGeneration = 0
 let speechRequestGeneration = 0
 let timelineResizeObserver: ResizeObserver | null = null
 let messageVisibilityObserver: IntersectionObserver | null = null
+let attachmentVisibilityObserver: IntersectionObserver | null = null
 const visibleMessageIds = new Set<string>()
 const audioFilenamePattern = /\.(?:aac|flac|m4a|mp3|oga|ogg|opus|wav|weba)$/i
 const imageFilenamePattern = /\.(?:avif|bmp|gif|ico|jpe?g|png|webp)$/i
@@ -413,35 +431,56 @@ const showLiveBubble = computed(() => shouldShowLiveConversationRound(
 const showEphemeralBubble = computed(() => showLiveBubble.value || props.pendingTranscriptions.length > 0)
 // Parsing historic message content must not be repeated for every live fragment.
 const messageTexts = computed(() => new Map(props.messages.map(message => [message.id, displayMessageText(message, t)])))
-const timelineEntries = computed(() => conversationTimelineEntries(
+const liveRoundIdentity = computed(() => props.liveRound?.room_id === props.roomId ? props.liveRound.round_id : null)
+const historicEntries = computed(() => conversationTimelineEntries(
   props.roomId,
   props.messages,
   props.activity,
-  props.liveRound,
+  null,
   props.pendingTranscriptions,
-).map(entry => {
-  const message = entry.message
-  const liveRound = entry.liveRound
-  const activity = liveRound
-    ? activityByRoundId.value.get(liveRound.round_id)
-    : message
-      ? activityByMessageId.value.get(message.id)
-      : entry.activity
-  const pendingTranscription = entry.pendingTranscription
-  return {
-    ...entry,
-    isMine: message?.is_mine ?? pendingTranscription?.is_mine ?? false,
-    senderName: message?.sender?.display_name || pendingTranscription?.sender?.display_name || (liveRound || activity ? props.agentName : t('chat.message')),
-    senderAgentId: props.showAgentAvatars
-      ? message?.sender?.agent_id ?? pendingTranscription?.sender?.agent_id ?? (liveRound || activity ? props.agentId : null)
-      : null,
-    avatarUrl: message?.sender?.avatar_url ?? pendingTranscription?.sender?.avatar_url,
-    activity,
-    copyRoundId: message ? roundIdByMessageId.value.get(message.id) : undefined,
-    createdAt: message?.created_at ?? pendingTranscription?.started_at ?? null,
-    text: message ? messageTexts.value.get(message.id) ?? '' : visibleMessageText(conversationTimelineEntryText(entry)),
-  }
-}))
+))
+const timelineEntries = computed(() => {
+  const liveKey = liveRoundIdentity.value ? `response:${liveRoundIdentity.value}` : null
+  const showLive = showLiveBubble.value
+  const entries = historicEntries.value.filter(entry => !showLive || !liveKey || entry.key !== liveKey || entry.message)
+  if (showLive && liveKey) entries.splice(
+    entries.findIndex(entry => !entry.message) < 0 ? entries.length : entries.findIndex(entry => !entry.message),
+    0, { key: liveKey, message: null, liveRound: null, pendingTranscription: null },
+  )
+  return entries.map(entry => {
+    const message = entry.message
+    const isLive = entry.key === liveKey && (Boolean(message) || showLive)
+    const activity = isLive
+      ? activityByRoundId.value.get(liveRoundIdentity.value!)
+      : message
+        ? activityByMessageId.value.get(message.id)
+        : entry.activity
+    const pendingTranscription = entry.pendingTranscription
+    return {
+      ...entry,
+      isLive,
+      // The history stays stable across fragments. Only a rendered live bubble
+      // reads the changing snapshot, including its terminal durable handoff.
+      get liveRound() {
+        const round = isLive ? props.liveRound : null
+        return round && message ? { ...round, active: false } : round
+      },
+      isMine: message?.is_mine ?? pendingTranscription?.is_mine ?? false,
+      senderName: message?.sender?.display_name || pendingTranscription?.sender?.display_name || (isLive || activity ? props.agentName : t('chat.message')),
+      senderAgentId: props.showAgentAvatars
+        ? message?.sender?.agent_id ?? pendingTranscription?.sender?.agent_id ?? (isLive || activity ? props.agentId : null)
+        : null,
+      avatarUrl: message?.sender?.avatar_url ?? pendingTranscription?.sender?.avatar_url,
+      activity,
+      copyRoundId: message ? roundIdByMessageId.value.get(message.id) : undefined,
+      createdAt: message?.created_at ?? pendingTranscription?.started_at ?? null,
+      get text() {
+        return message ? messageTexts.value.get(message.id) ?? ''
+          : visibleMessageText(conversationTimelineEntryText({ ...entry, liveRound: isLive ? props.liveRound : null }))
+      },
+    }
+  })
+})
 const timelineRenderKey = computed(() => conversationTimelineRenderKey(
   props.roomId,
   timelineEntries.value,
@@ -482,6 +521,11 @@ function observeMessageVisibility(): void {
   for (const element of timelineElement.value?.querySelectorAll<HTMLElement>('[data-message-id]') ?? []) {
     messageVisibilityObserver.observe(element)
   }
+}
+
+function onWindowRendered(): void {
+  observeMessageVisibility()
+  observeAttachmentVisibility()
 }
 
 watch(timelineRenderKey, async () => {
@@ -687,23 +731,23 @@ function isPreviewableFile(file: MessengerFile): boolean {
     || isTextFile(file)
 }
 function hasMediaText(fileId: string): boolean {
-  return Object.hasOwn(mediaTexts, fileId)
+  return fileId in mediaTexts
 }
 function canOpenPreview(file: MessengerFile): boolean {
   if (isModel3dFile(file)) return true
   if (isTextFile(file)) return true
   if (isMarkdownFile(file)) return hasMediaText(file.id)
-  return Boolean(mediaUrls[file.id]) && (
-    isImageFile(file) || isHtmlFile(file) || isPdfFile(file) || isVideoFile(file)
-  )
+  return isImageFile(file) || isHtmlFile(file) || isPdfFile(file) || isVideoFile(file)
 }
 function openPreview(file: MessengerFile): void {
   if (!canOpenPreview(file)) return
+  loadMedia([file])
   previewFile.value = file
   previewOpen.value = true
 }
 function storeMarkdownContent(fileId: string, content: string): void {
   mediaTexts[fileId] = content
+  rememberMedia(fileId, content.length * 2)
 }
 function attachmentStandaloneHref(file: MessengerFile): string | undefined {
   if (isHtmlFile(file) || isImageFile(file) || isPdfFile(file) || isVideoFile(file)) {
@@ -726,10 +770,7 @@ function retryMedia(file: MessengerFile): void {
   void loadMedia([file])
 }
 function formatTimestamp(value: string): string {
-  return new Intl.DateTimeFormat(locale.value, {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(new Date(value))
+  return timestampFormatter.value.format(new Date(value))
 }
 async function copyRoundId(roundId: string | undefined): Promise<void> {
   if (!roundId) return
@@ -741,6 +782,11 @@ async function copyRoundId(roundId: string | undefined): Promise<void> {
   }
 }
 function clearMedia(): void {
+  for (const request of mediaRequests.values()) request.abort()
+  mediaRequests.clear()
+  activatedFileIds.clear()
+  mediaSizes.clear()
+  nearbyFileIds.clear()
   for (const url of Object.values(mediaUrls)) URL.revokeObjectURL(url)
   for (const key of Object.keys(mediaUrls)) delete mediaUrls[key]
   for (const key of Object.keys(mediaTexts)) delete mediaTexts[key]
@@ -748,19 +794,74 @@ function clearMedia(): void {
   for (const key of Object.keys(mediaLoadErrors)) delete mediaLoadErrors[key]
 }
 
-async function loadMedia(requestedFiles?: MessengerFile[]): Promise<void> {
+function touchMedia(fileId: string): void {
+  const size = mediaSizes.get(fileId)
+  if (size === undefined) return
+  mediaSizes.delete(fileId)
+  mediaSizes.set(fileId, size)
+}
+
+function trimMedia(): void {
+  const protectedFiles = new Set(nearbyFileIds)
+  if (previewOpen.value && previewFile.value) protectedFiles.add(previewFile.value.id)
+  for (const element of timelineElement.value?.querySelectorAll<HTMLMediaElement>('audio, video') ?? []) {
+    const fileId = element.closest<HTMLElement>('[data-attachment-id]')?.dataset.attachmentId
+    if (fileId && !element.paused && !element.ended) protectedFiles.add(fileId)
+  }
+  let bytes = [...mediaSizes.values()].reduce((total, size) => total + size, 0)
+  for (const [fileId, size] of mediaSizes) {
+    if (bytes <= 32 * 1024 * 1024 && mediaSizes.size <= 32) break
+    if (protectedFiles.has(fileId)) continue
+    if (mediaUrls[fileId]) URL.revokeObjectURL(mediaUrls[fileId])
+    delete mediaUrls[fileId]
+    delete mediaTexts[fileId]
+    activatedFileIds.delete(fileId)
+    mediaSizes.delete(fileId)
+    bytes -= size
+  }
+}
+
+function rememberMedia(fileId: string, bytes: number): void {
+  mediaSizes.delete(fileId)
+  mediaSizes.set(fileId, bytes)
+  trimMedia()
+}
+
+watch(previewOpen, open => { if (!open) trimMedia() })
+
+function resetMedia(): void {
+  generation += 1
+  attachmentVisibilityObserver?.disconnect()
+  clearMedia()
+  previewOpen.value = false
+  previewFile.value = null
+}
+
+async function onMediaSessionChanged(): Promise<void> {
+  resetMedia()
+  await nextTick()
+  if (timelineElement.value) observeAttachmentVisibility()
+}
+
+function reconcileMedia(): void {
   const scopeKey = `${props.roomId}:${props.viewerAgentId ?? 'user'}`
   if (mediaScopeKey !== scopeKey) {
-    generation += 1
-    clearMedia()
+    resetMedia()
     mediaScopeKey = scopeKey
-    previewOpen.value = false
-    previewFile.value = null
   }
-  const currentGeneration = generation
   const visibleFileIds = new Set(
     props.messages.flatMap(message => message.files.map(file => file.id)),
   )
+  for (const fileId of mediaSizes.keys()) if (!visibleFileIds.has(fileId)) mediaSizes.delete(fileId)
+  for (const [fileId, request] of mediaRequests) {
+    if (visibleFileIds.has(fileId)) continue
+    request.abort()
+    mediaRequests.delete(fileId)
+    delete mediaLoading[fileId]
+  }
+  for (const fileId of activatedFileIds) {
+    if (!visibleFileIds.has(fileId)) activatedFileIds.delete(fileId)
+  }
   for (const [fileId, url] of Object.entries(mediaUrls)) {
     if (visibleFileIds.has(fileId)) continue
     URL.revokeObjectURL(url)
@@ -776,7 +877,53 @@ async function loadMedia(requestedFiles?: MessengerFile[]): Promise<void> {
     previewOpen.value = false
     previewFile.value = null
   }
-  const files = requestedFiles ?? props.messages.flatMap(message => message.files)
+}
+
+function observeAttachmentVisibility(): void {
+  attachmentVisibilityObserver?.disconnect()
+  const elements = [...timelineElement.value?.querySelectorAll<HTMLElement>('[data-attachment-id]') ?? []]
+  const mountedFiles = new Set(elements.map(element => element.dataset.attachmentId))
+  for (const fileId of nearbyFileIds) if (!mountedFiles.has(fileId)) nearbyFileIds.delete(fileId)
+  for (const [fileId, request] of mediaRequests) {
+    if (mountedFiles.has(fileId) || previewFile.value?.id === fileId) continue
+    request.abort()
+    mediaRequests.delete(fileId)
+    delete mediaLoading[fileId]
+    activatedFileIds.delete(fileId)
+  }
+  const currentGeneration = generation
+  const files = new Map(props.messages.flatMap(message => message.files).map(file => [file.id, file]))
+  const observer = new IntersectionObserver(entries => {
+    if (generation !== currentGeneration || attachmentVisibilityObserver !== observer) return
+    for (const entry of entries) {
+      const file = files.get((entry.target as HTMLElement).dataset.attachmentId ?? '')
+      if (!file) continue
+      if (!entry.isIntersecting) {
+        nearbyFileIds.delete(file.id)
+        if (mediaUrls[file.id] || hasMediaText(file.id) || previewFile.value?.id === file.id) continue
+        activatedFileIds.delete(file.id)
+        mediaRequests.get(file.id)?.abort()
+        mediaRequests.delete(file.id)
+        delete mediaLoading[file.id]
+        continue
+      }
+      nearbyFileIds.add(file.id)
+      touchMedia(file.id)
+      activatedFileIds.add(file.id)
+      loadMedia([file])
+    }
+    trimMedia()
+  }, { rootMargin: '160px' })
+  attachmentVisibilityObserver = observer
+  for (const element of elements) {
+    observer.observe(element)
+  }
+}
+
+function loadMedia(files: readonly MessengerFile[]): void {
+  const roomId = props.roomId
+  const viewerAgentId = props.viewerAgentId
+  const currentGeneration = generation
   for (const file of files) {
       if (
         !isPreviewableFile(file)
@@ -785,28 +932,36 @@ async function loadMedia(requestedFiles?: MessengerFile[]): Promise<void> {
         || mediaLoading[file.id]
         || mediaLoadErrors[file.id]
       ) continue
+      const request = new AbortController()
+      mediaRequests.set(file.id, request)
       mediaLoading[file.id] = true
-      try {
-        const blob = await chatService.attachmentBlob(props.roomId, file.id, props.viewerAgentId)
+      const current = (): boolean => currentGeneration === generation
+        && mediaRequests.get(file.id) === request && !request.signal.aborted
+      void queuePreview(async () => {
+        const blob = await chatService.attachmentBlob(roomId, file.id, viewerAgentId, request.signal)
         if (isTextFile(file)) {
           const text = await blob.text()
-          if (currentGeneration !== generation) return
+          if (!current()) return
           mediaTexts[file.id] = text
-          continue
+          rememberMedia(file.id, text.length * 2)
+          return
         }
-        if (currentGeneration !== generation) return
+        if (!current()) return
         const objectUrl = await isolatedBrowserResourceUrl(blob, file.mime_type, file.name)
-        if (currentGeneration !== generation) {
+        if (!current()) {
           if (objectUrl.startsWith('blob:')) URL.revokeObjectURL(objectUrl)
           return
         }
         mediaUrls[file.id] = objectUrl
+        rememberMedia(file.id, blob.size)
         delete mediaLoadErrors[file.id]
-      } catch {
-        if (currentGeneration === generation) mediaLoadErrors[file.id] = true
-      } finally {
-        if (currentGeneration === generation) delete mediaLoading[file.id]
-      }
+      }, request.signal).catch(() => {
+        if (current()) mediaLoadErrors[file.id] = true
+      }).finally(() => {
+        if (!current()) return
+        mediaRequests.delete(file.id)
+        delete mediaLoading[file.id]
+      })
   }
 }
 
@@ -821,7 +976,12 @@ const mediaSignature = computed(() => props.messages
   .join('|'))
 watch(
   () => [props.roomId, props.viewerAgentId, mediaSignature.value] as const,
-  () => void loadMedia(),
+  async () => {
+    reconcileMedia()
+    const currentGeneration = generation
+    await nextTick()
+    if (currentGeneration === generation && timelineElement.value) observeAttachmentVisibility()
+  },
   { immediate: true },
 )
 watch(
@@ -853,16 +1013,21 @@ watch(
   },
 )
 onMounted(() => {
+  window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onMediaSessionChanged)
   timelineResizeObserver = new ResizeObserver(() => emit('layoutChanged'))
   if (timelineElement.value) timelineResizeObserver.observe(timelineElement.value)
   observeMessageVisibility()
+  observeAttachmentVisibility()
 })
 onBeforeUnmount(() => {
+  window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, onMediaSessionChanged)
   timelineResizeObserver?.disconnect()
   timelineResizeObserver = null
   messageVisibilityObserver?.disconnect()
   messageVisibilityObserver = null
   visibleMessageIds.clear()
+  attachmentVisibilityObserver?.disconnect()
+  attachmentVisibilityObserver = null
   generation += 1
   speechScopeGeneration += 1
   clearMedia()

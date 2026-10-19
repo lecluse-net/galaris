@@ -28,7 +28,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Markdown } from '@/core/util'
+import { Markdown, queuePreview } from '@/core/util'
 import type { MessengerFile } from '../types'
 import { chatService } from '../services/chatService'
 
@@ -36,6 +36,7 @@ const props = withDefaults(defineProps<{
   roomId: string
   file: MessengerFile
   viewerAgentId?: number | null
+  cachedContent?: string
 }>(), {
   viewerAgentId: null,
 })
@@ -49,18 +50,23 @@ const content = ref('')
 const loading = ref(false)
 const failed = ref(false)
 let generation = 0
+let controller: AbortController | null = null
 
 async function load(): Promise<void> {
   const currentGeneration = ++generation
+  controller?.abort()
+  const request = new AbortController()
+  controller = request
   loading.value = true
   failed.value = false
 
   try {
-    const blob = await chatService.attachmentBlob(
+    const blob = await queuePreview(() => chatService.attachmentBlob(
       props.roomId,
       props.file.id,
       props.viewerAgentId,
-    )
+      request.signal,
+    ), request.signal)
     const text = await blob.text()
     if (currentGeneration !== generation) return
 
@@ -74,12 +80,20 @@ async function load(): Promise<void> {
 }
 
 watch(
-  () => [props.roomId, props.file.id, props.viewerAgentId] as const,
-  () => { void load() },
+  [() => props.roomId, () => props.file.id, () => props.viewerAgentId],
+  () => {
+    if (props.cachedContent !== undefined) {
+      generation += 1
+      controller?.abort()
+      content.value = props.cachedContent
+      loading.value = false
+      failed.value = false
+    } else void load()
+  },
   { immediate: true },
 )
 
-onBeforeUnmount(() => { generation += 1 })
+onBeforeUnmount(() => { generation += 1; controller?.abort() })
 </script>
 
 <style scoped>

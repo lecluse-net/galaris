@@ -34,6 +34,77 @@ function silentAudio() {
   return wav
 }
 
+const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5AAAAABJRU5ErkJggg==', 'base64')
+const historyMessage = (id, files, text = '') => ({ id, external_id: id, text, files,
+  is_mine: true, sender: { display_name: 'Test', is_ai: false }, created_at: '2026-01-01T12:00:00Z' })
+const imageFile = id => ({ id, name: `${id}.png`, mime_type: 'image/png', kind: 'image', size_bytes: pixel.length })
+
+for (const kind of ['image', 'markdown']) test(`message ${kind} attachments load near the viewport and survive history refresh`, async ({ page }, testInfo) => {
+  const reads = []
+  await page.route('**/api/chat/rooms/room-1/files/*', route => {
+    const id = new URL(route.request().url()).pathname.split('/').at(-1)
+    reads.push(id)
+    return route.fulfill({ contentType: kind === 'image' ? 'image/png' : 'text/markdown',
+      body: kind === 'image' ? pixel : `# ${id}` })
+  })
+  await jsonRoute(page, '**/api/chat/rooms/*/speech/status*', { available_agent_ids: [] })
+  const messages = Array.from({ length: 20 }, (_, index) => historyMessage(`message-${index}`, [{
+    ...imageFile(`file-${index}`), ...(kind === 'markdown' ? { name: `file-${index}.md`, mime_type: 'text/markdown', kind: 'file' } : {}),
+  }], index ? 'Synthetic context paragraph.\n\n'.repeat(25) : ''))
+  await mount(page, 'app/chat/components/MessageTimeline.vue', { containerStyle: { height: '480px', overflow: 'auto' },
+    props: { roomId: 'room-1', agentId: 7, agentName: 'Test', activity: [], liveRound: null, messages } })
+  const first = kind === 'image' ? page.getByRole('img', { name: 'file-0.png', exact: true }) : page.getByRole('heading', { name: 'file-0', exact: true })
+  await expect(first).toBeVisible()
+  expect(reads).toEqual(['file-0'])
+  await page.evaluate(messages => window.testApp.setProps({ messages }), structuredClone(messages))
+  await expect(first).toBeVisible()
+  await page.locator('.q-page-container').evaluate(element => { element.scrollTop = element.scrollHeight })
+  const last = kind === 'image' ? page.getByRole('img', { name: 'file-19.png', exact: true }) : page.getByRole('heading', { name: 'file-19', exact: true })
+  await expect(last).toBeVisible()
+  expect(reads).toEqual(['file-0', 'file-19'])
+  await testInfo.attach('attachment-requests', { body: JSON.stringify({ historyAttachments: 20, afterVisitingBothEnds: reads.length }), contentType: 'application/json' })
+})
+
+test('message media previews share two loading slots, retry failures and cancel on scope change', async ({ page }) => {
+  const pending = []
+  const requests = []
+  const aborted = []
+  page.on('requestfailed', request => { if (request.url().includes('/files/')) aborted.push(request.url()) })
+  await page.route('**/api/chat/rooms/*/files/*', async route => {
+    requests.push(route.request().url())
+    if (requests.length <= 2) await new Promise(resolve => pending.push(resolve))
+    await route.fulfill({ contentType: 'image/png', body: pixel }).catch(() => {})
+  })
+  await jsonRoute(page, '**/api/chat/rooms/*/speech/status*', { available_agent_ids: [] })
+  const files = Array.from({ length: 5 }, (_, index) => imageFile(`file-${index}`))
+  await mount(page, 'app/chat/components/MessageTimeline.vue', { props: {
+    roomId: 'room-1', agentId: 7, agentName: 'Test', activity: [], liveRound: null,
+    messages: [historyMessage('message', files)],
+  } })
+  await expect.poll(() => pending.length).toBe(2)
+  expect(requests).toHaveLength(2)
+  await page.evaluate(() => window.testApp.setProps({ roomId: 'room-2', viewerAgentId: 9 }))
+  await expect.poll(() => aborted.length).toBe(2)
+  pending.forEach(release => release())
+  await expect(page.locator('.attachment img')).toHaveCount(5)
+  expect(requests.filter(url => url.includes('/room-1/'))).toHaveLength(2)
+  expect(requests.filter(url => url.includes('/room-2/') && url.includes('agent_id=9'))).toHaveLength(5)
+  await page.evaluate(async () => {
+    const { AUTH_TOKEN_CHANGED_EVENT } = await import('/core/api.ts')
+    window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT))
+  })
+  await expect.poll(() => requests.filter(url => url.includes('/room-2/')).length).toBe(10)
+  await expect(page.locator('.attachment img')).toHaveCount(5)
+  await page.route('**/api/chat/rooms/room-3/files/*', route => route.fulfill({ status: 503 }))
+  await page.evaluate(messages => window.testApp.setProps({ roomId: 'room-3', messages }),
+    [historyMessage('retry-message', [imageFile('retry-file')])])
+  const retry = page.getByRole('button', { name: 'Reload preview of retry-file.png', exact: true })
+  await expect(retry).toBeVisible()
+  await page.route('**/api/chat/rooms/room-3/files/*', route => route.fulfill({ contentType: 'image/png', body: pixel }))
+  await retry.click()
+  await expect(page.getByRole('img', { name: 'retry-file.png', exact: true })).toBeVisible()
+})
+
 for (const surface of ['document', 'resource']) for (const width of [1440, 390]) {
   test(`${surface} unsupported files only download at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })

@@ -147,6 +147,72 @@ test('Markdown compact frontmatter renders metadata and keeps the body and table
   await expect(page.getByRole('heading', { name: 'No metadata' })).toBeVisible()
 })
 
+test('streaming chat reuses date formatters across existing messages', async ({ page }, testInfo) => {
+  await page.addInitScript(() => {
+    window.chatDateFormatters = 0
+    Intl.DateTimeFormat = new Proxy(Intl.DateTimeFormat, {
+      construct(target, args) { window.chatDateFormatters++; return Reflect.construct(target, args) },
+    })
+  })
+  await page.route('**/api/chat/rooms/performance-room/speech/status*', route => route.fulfill({ json: { available_agent_ids: [] } }))
+  const messages = Array.from({ length: 100 }, (_, index) => ({
+    id: `message-${index}`, external_id: `message-${index}`, text: `Synthetic message ${index}`, files: [],
+    sender: { display_name: 'Test', is_ai: false }, created_at: '2026-01-01T12:00:00Z', is_mine: true,
+  }))
+  await mount(page, 'app/chat/components/MessageTimeline.vue', { props: {
+    roomId: 'performance-room', messages, activity: [], liveRound: null, agentId: 7, agentName: 'Test', showAgentAvatars: false,
+  } })
+  await expect(page.locator('.message-meta time')).toHaveCount(100)
+  const initialFormatters = await page.evaluate(() => window.chatDateFormatters)
+  for (const text of ['First fragment', 'Second fragment', 'Final fragment']) {
+    await page.evaluate(result => window.testApp.setProps({ liveRound: {
+      room_id: 'performance-room', round_id: 'synthetic-round', topic_id: null, active: true, success: true,
+      last_sequence: 1, ai_result: { prompt: '', system_prompt: '', result, messages: [{ type: 'text', content: result }], tools_used: [], cost: 0, execution_time: 0, success: true },
+    } }), text)
+    await expect(page.locator('.message-bubble--live')).toContainText(text)
+  }
+  const streamedFormatters = await page.evaluate(() => window.chatDateFormatters)
+  const englishDate = await page.locator('.message-meta time').first().textContent()
+  await page.evaluate(async () => { const { setLocale } = await import('/core/i18n/index.ts'); setLocale('fr') })
+  await expect(page.locator('.message-meta time').first()).not.toHaveText(englishDate)
+  await testInfo.attach('chat-date-format-cost', { body: JSON.stringify({ initialFormatters, streamedFormatters, messages: 100 }), contentType: 'application/json' })
+  expect(initialFormatters).toBeLessThan(10)
+  expect(streamedFormatters).toBeLessThan(10)
+})
+
+test('chat text preserves Unicode, links and code during updates without fragmenting prose into character nodes', async ({ page }, testInfo) => {
+  await mount(page, 'app/chat/components/SafeMessageContent.vue', { props: { content: 'Ready' } })
+  await expect(page.getByText('Ready', { exact: true })).toBeVisible()
+  await page.evaluate(() => {
+    const original = document.createTextNode.bind(document)
+    window.chatTextAllocations = 0
+    document.createTextNode = text => { window.chatTextAllocations++; return original(text) }
+  })
+  const plain = 'Synthetic ordinary text. '.repeat(500)
+  await page.evaluate(content => window.testApp.setProps({ content }), plain)
+  await expect(page.locator('.safe-message-content p')).toHaveText(plain.trim())
+  const plainAllocations = await page.evaluate(() => window.chatTextAllocations)
+  await page.evaluate(() => { window.chatTextAllocations = 0 })
+  const emojiText = `${plain}👩🏽‍💻🇫🇷1️⃣ ${plain}`
+  await page.evaluate(content => window.testApp.setProps({ content }), `${emojiText}\n\n[Reference](https://example.invalid) and \`literal 😀\`.`)
+  await expect(page.getByRole('link', { name: 'Reference', exact: true })).toHaveAttribute('href', 'https://example.invalid')
+  await expect(page.locator('.safe-message-content p').first()).toHaveText(emojiText.trim())
+  await expect(page.locator('.safe-message-content code')).toHaveText('literal 😀')
+  await expect(page.locator('.chat-message-emoji')).toHaveText(['👩🏽‍💻', '🇫🇷', '1️⃣'])
+  const mixedAllocations = await page.evaluate(() => window.chatTextAllocations)
+  const textNodes = await page.locator('.safe-message-content').evaluate(element => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+    let count = 0
+    while (walker.nextNode()) count++
+    return count
+  })
+  await testInfo.attach('chat-text-cost', { body: JSON.stringify({ plainAllocations, mixedAllocations, textNodes }), contentType: 'application/json' })
+  // Bound linear DOM growth, without prescribing an exact presentation tree.
+  expect(plainAllocations).toBeLessThan(100)
+  expect(mixedAllocations).toBeLessThan(100)
+  expect(textNodes).toBeLessThan(100)
+})
+
 test('conversation plans preserve HTML structure alongside Markdown and filter active content', async ({ page }, testInfo) => {
   await mount(page, 'app/chat/components/SafeMessageContent.vue', { props: {
     content: '🛠️ Background plan\n\n🎯 What I understood\n'

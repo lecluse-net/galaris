@@ -276,7 +276,7 @@
     @unavailable="onSelectedDocumentUnavailable"
   />
   <ResourceDetailDialog v-if="datasetDialogOpen && datasetTarget" :target="datasetTarget"
-    @close="datasetDialogOpen = false" @changed="scheduleRealtimeRefresh" />
+    @close="datasetDialogOpen = false" @changed="invalidateMessagePreviewReaders" />
 </template>
 
 <script setup lang="ts">
@@ -303,7 +303,7 @@ import {
   richLinkTarget,
 } from '@/core/util'
 import type { BrowserResourceKind, Model3dSource, WorkingDocumentSnapshot } from '@/core/util'
-import { websocket } from '@/core/websocket'
+import { invalidateMessagePreviewReaders, useMessagePreviewFreshness } from '../useMessagePreviewFreshness'
 import { useAuthStore } from '@/core/user'
 import { usePrivilegeStore } from '@/core/authorize'
 import type { ConversationDocumentReference, MessageResourcePreview, MessageResourcePreviewKind } from '../types'
@@ -329,14 +329,6 @@ const emit = defineEmits<{
   openDirectory: [uri: string, messageId: string]
   openDocument: [document: Pick<ConversationDocumentReference, 'id' | 'label'>]
 }>()
-
-interface MemoryRealtimeEvent {
-  data?: {
-    id?: string
-    node_kind?: string
-    revision?: number
-  }
-}
 
 const { t } = useI18n()
 const $q = useQuasar()
@@ -372,6 +364,7 @@ const openingResourceUri = ref<string | null>(null)
 let generation = 0
 let resourceGeneration = 0
 let realtimeTimer: ReturnType<typeof setTimeout> | undefined
+useMessagePreviewFreshness(scheduleRealtimeRefresh)
 
 const iconByKind: Record<MessageResourcePreviewKind, string> = {
   code: 'code',
@@ -488,10 +481,6 @@ function openCoediting(preview: MessageResourcePreview): void {
   emit('openDocument', { id, label: preview.title })
 }
 
-function documentPreviewIds(): Set<string> {
-  return new Set(previews.value.map(documentId).filter((id): id is string => id !== null))
-}
-
 async function load(resetDialog = true): Promise<void> {
   controller?.abort()
   const currentGeneration = ++generation
@@ -568,20 +557,14 @@ async function loadPreviewImage(
     if (delay > 0) await waitForThumbnail(delay, signal)
     if (currentGeneration !== generation || signal.aborted) return
     try {
-      const blob = await queuePreview(() => directImage
-        ? chatService.messagePreviewContentBlob(
+      const blob = await queuePreview(() => chatService.messagePreviewImageBlob(
             props.roomId,
             props.messageId,
             preview.uri,
             props.viewerAgentId,
             signal,
-          )
-        : chatService.messagePreviewImageBlob(
-            props.roomId,
-            props.messageId,
-            preview.uri,
-            props.viewerAgentId,
-            signal,
+            directImage ? 'content' : 'image',
+            preview.open_mode === 'external' && !preview.description,
           ), signal)
       if (currentGeneration !== generation) return
       if (blob.type && !blob.type.toLowerCase().startsWith('image/')) return
@@ -763,6 +746,7 @@ function previewDescription(content: string): string {
 }
 
 function syncPreviewFromDocument(document: WorkingDocumentSnapshot): void {
+  invalidateMessagePreviewReaders()
   const uri = `document://${document.id}`
   const apply = (preview: MessageResourcePreview): MessageResourcePreview => (
     preview.uri === uri
@@ -784,7 +768,7 @@ function syncPreviewFromDocument(document: WorkingDocumentSnapshot): void {
 function onSelectedDocumentUnavailable(documentIdValue: string): void {
   if (documentId(selected.value) !== documentIdValue) return
   documentDialogOpen.value = false
-  scheduleRealtimeRefresh()
+  invalidateMessagePreviewReaders()
 }
 
 function scheduleRealtimeRefresh(): void {
@@ -794,22 +778,6 @@ function scheduleRealtimeRefresh(): void {
     realtimeTimer = undefined
     if (visible) void load(false)
   }, 180)
-}
-
-function onMemoryUpdate(response: MemoryRealtimeEvent): void {
-  const event = response.data
-  if (event?.node_kind !== 'document' || !event.id || !documentPreviewIds().has(event.id)) return
-  scheduleRealtimeRefresh()
-}
-
-function onMemoryDelete(response: MemoryRealtimeEvent): void {
-  const event = response.data
-  if (event?.node_kind !== 'document' || !event.id || !documentPreviewIds().has(event.id)) return
-  scheduleRealtimeRefresh()
-}
-
-function onWebsocketConnect(): void {
-  scheduleRealtimeRefresh()
 }
 
 function onSessionChanged(event: Event): void {
@@ -855,10 +823,6 @@ onMounted(() => {
     }
   }, { rootMargin: '160px' })
   if (container.value) observer.observe(container.value)
-  websocket.createWebsocket()
-  websocket.onEvent('memory', 'update', onMemoryUpdate)
-  websocket.onEvent('memory', 'delete', onMemoryDelete)
-  websocket.onConnect(onWebsocketConnect)
 })
 
 onBeforeUnmount(() => {
@@ -867,9 +831,6 @@ onBeforeUnmount(() => {
   window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionChanged)
   generation += 1
   if (realtimeTimer) clearTimeout(realtimeTimer)
-  websocket.offEvent('memory', 'update', onMemoryUpdate)
-  websocket.offEvent('memory', 'delete', onMemoryDelete)
-  websocket.offConnect(onWebsocketConnect)
   clearImages()
   resetResource()
 })

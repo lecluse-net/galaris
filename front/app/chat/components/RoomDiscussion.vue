@@ -9,7 +9,8 @@
       @keydown="onKeydown">
       <MessageTimeline :room-id="room.id" :messages="messages" :agent-id="room.agent_id"
         :agent-name="room.agent_name" :activity="[]" :live-round="null" :allow-reply="false"
-        :loading="loading" @block-rendered="keepReadingPosition" @layout-changed="keepReadingPosition" />
+        :loading="loading" @history-navigation="beginNavigation"
+        @block-rendered="keepReadingPosition" @layout-changed="keepReadingPosition" />
     </q-scroll-area>
     <div v-if="loading" class="room-discussion__loading" role="status" :aria-label="t('chat.loadingRoom')">
       <q-spinner color="primary" size="24px" />
@@ -166,6 +167,7 @@ function onWheel(event: WheelEvent): void {
 }
 
 function onKeydown(event: KeyboardEvent): void {
+  if (event.defaultPrevented) return
   const target = event.target
   if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select, button, a'))) return
   const scroll = scrollArea.value

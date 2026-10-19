@@ -1008,6 +1008,8 @@ are in `front/browser-tests/`.
 | Late owners and events | Reject expired lease renewal; an event from another round cannot replace the displayed round and requests server reconciliation | `back/app/task/tests/test_replacement.py`, `back/app/conversation/tests/test_service.py`, `front/app/chat/runtimeState.test.mjs` |
 | Chat recovery | Preserve the current conversation against late HTTP successes/denials; retain a useful response when a newer request fails; rearm stream gaps during HTTP and across selection changes; current revocation still purges content | `front/browser-tests/chat-recovery.spec.mjs` (real page/store, replaced HTTP boundary) |
 | Client caches and avatars | Share reads across fifty bubbles and consumer screens; bound size and lifetime; separate authorized endpoints; invalidate on mutation/session; preserve other readers after cancellation; coalesce selectors without retaining lists | `front/browser-tests/chat-avatars.spec.mjs`, `front/browser-tests/avatar-cache.spec.mjs`, `front/core/util/sessionReadCache.test.mjs` |
+| Chat reads and attachments | Coalesce acknowledgements, advance to the latest visible message without parallel requests, allow retry and isolate selections/sessions; defer offscreen attachments, share two transfer slots, retain loaded previews, cancel obsolete contexts and preserve opening, download and retry | `front/app/chat/storeCatchUp.test.mjs`, `front/browser-tests/attachment-previews.spec.mjs` |
+| Chat timeline cost | Activity bursts do not reload the conversation list, while concurrent message invalidations and reconnects still do; dates share their formatter per locale; long text preserves Unicode, links and code without creating a node for each character | `front/app/chat/storeCatchUp.test.mjs`, `front/browser-tests/chat-recovery.spec.mjs`, `front/browser-tests/presentation.spec.mjs` |
 | Agent selection | Order API responses by first and last name before pagination, preserving access rules; reuse the last non-null choice between Memory and Contacts and in the shared selector, without overriding an explicit choice or restoring an unavailable agent; clear the preference on session changes | `back/app/agent/tests/test_agents.py`, `test_selection.py`, `front/browser-tests/agent-selection.spec.mjs`, `select-lifecycle.spec.mjs` |
 | Shared catalogues | Reuse agents, titles, groups and parameters across openings; reload after F5, expiry, saves or forced refresh; isolate drafts and ignore superseded responses | `front/browser-tests/agents.spec.mjs`, `front/app/agent/agentStore.test.mjs`, `front/app/agent/services/agentService.test.mjs`, `front/core/params/paramsStore.test.mjs` |
 | Chat interruption and reconnection | A correction supersedes the active round; both inputs and one final response survive offline completion and reload across all three browser engines | `e2e/specs/chat.spec.mjs` (full stack, scripted controller at its public port) |
@@ -1068,6 +1070,25 @@ are in `front/browser-tests/`.
 | `webhook` | Authenticate and identify incoming deliveries without duplicate admission | `test_router.py`, `test_delivery_identity.py` |
 
 ### Topic selection and creation
+
+`front/browser-tests/chat-window.spec.mjs` measures mounted bubbles for 1,000 synthetic
+messages and protects both ends, replies and read visibility. The full chat and discussion
+viewer cross the virtualization threshold by loading pages of 50 messages on desktop
+and mobile, then reopen at the bottom. Scenarios preserve the reading anchor through
+variable heights, prepended history, streaming and resizing; they also cover focus,
+selection, keyboard navigation, native search, Markdown caching and offscreen audio playback.
+Native search and active interactions may retain additional bubbles.
+
+`front/browser-tests/chat-performance.spec.mjs` measures synthetic history reads during
+20 fragments, Markdown renders during a burst, card/thumbnail reads when revisiting a
+message, and retained Blob bytes after viewing 40 attachments. It protects complete final
+text, empty paused responses, durable message handoff, reload after eviction, expiration,
+offscreen invalidation, late responses and isolation between viewers and sessions.
+Visible, opened and playing media is protected from eviction; other previews share a
+32-entry, 32 MiB budget per timeline. Shared card and thumbnail caches expire after
+30 seconds and are invalidated on document changes, reconnects and session changes;
+original downloads are excluded. `services/chatPreviews.test.mjs` verifies request
+sharing, independent copies and metadata enrichment after a capture.
 
 `front/browser-tests/topic-detail.spec.mjs` checks desktop and mobile dossier target dialogs
 for tasks, text/voice rounds, spaces, documents and memories, including keyboard activation,

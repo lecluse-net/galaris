@@ -70,7 +70,11 @@ async function settled(page, key) {
 
 test('conversation activity bursts retain new messages without concurrent history reloads', async ({ page }) => {
   const state = await conversation(page)
-  let release, requests = 0, active = 0, peak = 0
+  let release, requests = 0, active = 0, peak = 0, roomLists = 0
+  await page.route('**/api/chat/rooms?*', route => {
+    roomLists++
+    return route.fulfill({ json: { items: state.rooms, total: state.rooms.length } })
+  })
   const blocked = new Promise(resolve => { release = resolve })
   await page.route('**/api/chat/rooms/room-a/messages?*', async route => {
     const items = [{ ...state.messages['room-a'] }]
@@ -98,6 +102,7 @@ test('conversation activity bursts retain new messages without concurrent histor
   await expect(composer).toHaveValue('Draft preserved during refresh')
   expect(peak).toBe(1)
   expect(requests).toBe(2)
+  expect(roomLists).toBe(0)
 })
 
 test('opening a conversation retains its running response when history refresh overlaps the initial activity', async ({ page }) => {

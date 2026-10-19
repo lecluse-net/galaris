@@ -88,6 +88,7 @@ export default {
       newRoom: "Nouvelle conversation avec un agent",
       loadingRoom: "En cours de chargement…",
       emptyRoom: "Aucun message",
+      messageHistory: "Historique des messages",
       unreadMessage: "Un message non lu",
       unreadMessages: "{count} messages non lus",
       notifications: {
@@ -457,6 +458,7 @@ export default {
       newRoom: "New conversation with an agent",
       loadingRoom: "Loading…",
       emptyRoom: "No messages",
+      messageHistory: "Message history",
       unreadMessage: "One unread message",
       unreadMessages: "{count} unread messages",
       notifications: {
@@ -802,6 +804,7 @@ export default {
       },
       viewAs: "以此身份查看对话", myself: "我", readOnly: "只读", search: "搜索对话…", listOptions: "对话显示选项",
       showExternalRooms: "同时显示外部消息对话", hideExternalRooms: "隐藏外部消息对话", showArchivedRooms: "显示已归档的对话", archivedRoom: "已归档的对话", newRoom: "与智能体新建对话", loadingRoom: "加载中…",
+      messageHistory: "消息历史",
       emptyRoom: "暂无消息", unreadMessage: "1 条未读消息", unreadMessages: "{count} 条未读消息",
       notifications: {
         promptTitle: "在此设备上接收消息", promptBody: "即使应用已关闭，Galaris 也可以通知您。", enable: "启用", enableDevice: "在此设备上启用通知",

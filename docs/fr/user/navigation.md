@@ -316,6 +316,20 @@ abandonne la réponse en cours. L’outil déjà engagé termine avant la pause 
 commandes ni l’état des appels. Les aperçus de liens et les miniatures de documents se
 chargent progressivement à proximité de la zone visible ; vous pouvez lire et rédiger
 pendant leur chargement, et ouvrir un document avant que sa miniature soit prête.
+Les aperçus des pièces jointes, y compris Markdown, se chargent aussi à l’approche de
+l’écran. Les aperçus récents sont réutilisés pendant la consultation de l’historique,
+avec une mémoire limitée : un ancien aperçu peut se recharger lorsque vous y revenez.
+Les médias visibles, ouverts ou en lecture restent disponibles. Changer de discussion
+annule les transferts en attente. En cas d’échec, utilisez l’action
+de rechargement de l’aperçu ; le téléchargement du fichier original reste disponible.
+Dans les longues discussions, la position de lecture est conservée lors du chargement
+des messages précédents et du redimensionnement. Après avoir placé le focus dans
+l’historique, utilisez **Début**, **Fin** et **Page précédente/suivante** pour parcourir
+les messages chargés. **Ctrl+F** (ou **Cmd+F**) rend ceux-ci accessibles à la recherche
+du navigateur. Un média en lecture reste actif pendant le défilement.
+Les cartes de liens et leurs miniatures sont brièvement réutilisées lors d’un retour
+sur un message. Les mises à jour et suppressions documentaires reçues les actualisent,
+y compris lorsque le message est hors écran.
 Les bulles d’un même agent partagent le chargement de son avatar ; ses initiales restent
 visibles tant que l’image n’est pas disponible.
 Les avatars sont aussi réutilisés brièvement entre les autres écrans. Un remplacement ou

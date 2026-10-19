@@ -1050,6 +1050,8 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | Propriétaires et événements tardifs | Refuser le renouvellement d'un lease expiré ; ne pas remplacer le round affiché à partir d'un événement d'un autre round, demander une réconciliation serveur | `back/app/task/tests/test_replacement.py`, `back/app/conversation/tests/test_service.py`, `front/app/chat/runtimeState.test.mjs` |
 | Rattrapage Chat | Préserver la conversation courante face aux succès/refus HTTP tardifs ; conserver une réponse utile si une requête plus récente échoue ; réarmer les trous de stream pendant HTTP et après changement de sélection ; une révocation courante purge toujours le contenu | `front/browser-tests/chat-recovery.spec.mjs` (page et store réels, frontière HTTP remplacée) |
 | Caches client et avatars | Mutualiser cinquante bulles et les écrans consommateurs ; borner taille et durée ; séparer les endpoints autorisés ; invalider après mutation/session ; préserver les autres lecteurs après annulation ; mutualiser les sélecteurs sans conserver les listes | `front/browser-tests/chat-avatars.spec.mjs`, `front/browser-tests/avatar-cache.spec.mjs`, `front/core/util/sessionReadCache.test.mjs` |
+| Lectures et PJ du chat | Mutualiser les acquittements, avancer vers le dernier message visible sans parallélisme, permettre le réessai et isoler les sélections/sessions ; différer les PJ hors écran, partager deux transferts, conserver les aperçus chargés, annuler les anciens contextes et préserver ouverture, téléchargement et réessai | `front/app/chat/storeCatchUp.test.mjs`, `front/browser-tests/attachment-previews.spec.mjs` |
+| Coût du fil de chat | Une rafale d’activité ne recharge pas la liste des conversations, mais une invalidation de message concurrente et une reconnexion le font ; les dates partagent leur formateur par langue ; les longs textes préservent Unicode, liens et code sans créer un nœud par caractère | `front/app/chat/storeCatchUp.test.mjs`, `front/browser-tests/chat-recovery.spec.mjs`, `front/browser-tests/presentation.spec.mjs` |
 | Sélection des agents | Trier les réponses API par prénom puis nom avant pagination, conserver les droits ; reprendre le dernier choix non nul entre Mémoire et Contacts et dans le sélecteur partagé, sans remplacer un choix explicite ni restaurer un agent indisponible ; effacer la préférence au changement de session | `back/app/agent/tests/test_agents.py`, `test_selection.py`, `front/browser-tests/agent-selection.spec.mjs`, `select-lifecycle.spec.mjs` |
 | Catalogues partagés | Réutiliser agents, titres, groupes et paramètres entre ouvertures ; relire après F5, expiration, sauvegarde ou rafraîchissement forcé ; isoler les brouillons et ignorer les réponses supplantées | `front/browser-tests/agents.spec.mjs`, `front/app/agent/agentStore.test.mjs`, `front/app/agent/services/agentService.test.mjs`, `front/core/params/paramsStore.test.mjs` |
 | Interruption et reconnexion Chat | Une correction supplante le round en cours ; les deux entrées et une seule réponse finale restent visibles après fin hors ligne puis rechargement, sur les trois moteurs de navigateur | `e2e/specs/chat.spec.mjs` (stack complète, contrôleur scripté à son port public) |
@@ -1112,6 +1114,28 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | `webhook` | Authentifier et identifier une livraison entrante sans admettre deux fois le même événement | `test_router.py`, `test_delivery_identity.py` |
 
 ### Sélection et création de sujets
+
+`front/browser-tests/chat-window.spec.mjs` compare le nombre de bulles montées pour
+1 000 messages synthétiques et protège les extrémités, les réponses et la visibilité de lecture.
+Le chat complet et le lecteur de discussions franchissent le seuil de virtualisation
+en chargeant des pages de 50 messages, sur desktop et mobile, puis se rouvrent en bas.
+Les scénarios conservent l’ancre avec des hauteurs variables, des ajouts d’historique,
+le streaming et le redimensionnement ; ils couvrent aussi le focus, la sélection,
+le clavier, la recherche native, le cache Markdown et la lecture audio hors écran.
+La recherche native et les interactions actives peuvent conserver davantage de bulles.
+
+`front/browser-tests/chat-performance.spec.mjs` mesure sur des données synthétiques les
+relectures de l’historique pendant 20 fragments, les rendus Markdown pendant une rafale,
+les lectures de cartes et miniatures au retour sur un message, et les octets de Blob
+retenus après consultation de 40 pièces jointes. Il protège le texte final complet,
+les réponses vides en pause, le relais vers le message durable, le rechargement après
+éviction, l’expiration, l’invalidation hors écran, les réponses tardives et l’isolation
+entre agents et sessions. Les médias visibles, ouverts ou en lecture sont protégés de
+l’éviction ; les autres aperçus se partagent 32 entrées et 32 Mio par fil. Les caches
+partagés des cartes et miniatures expirent après 30 secondes et sont invalidés lors
+des modifications documentaires, reconnexions et changements de session ; ils ne stockent
+pas les téléchargements originaux. `services/chatPreviews.test.mjs` vérifie le partage
+des requêtes, les copies indépendantes et l’enrichissement des métadonnées après capture.
 
 `TopicSelect` centralise la recherche paginée et la sélection par identifiant de sujet.
 

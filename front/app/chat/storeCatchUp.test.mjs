@@ -119,6 +119,121 @@ for (const [scenario, events] of [
   })
 }
 
+test('visible read acknowledgements share in-flight work and skip already read history', async t => {
+  const blocked = deferred()
+  const reads = []
+  const store = await setup(t, {
+    markRead: async (room, message) => { reads.push([room, message]); await blocked.promise },
+    rooms: async () => ({ items: [], total: 0 }),
+  })
+  store.messages = [{ id: 'older' }, { id: 'newer' }]
+  const first = store.markSelectedRoomRead('newer')
+  const repeated = Array.from({ length: 9 }, () => store.markSelectedRoomRead('newer'))
+  blocked.resolve()
+  assert.equal((await Promise.all([first, ...repeated])).filter(Boolean).length, 1)
+  assert.equal(await store.markSelectedRoomRead('newer'), false)
+  assert.equal(await store.markSelectedRoomRead('older'), false)
+  assert.deepEqual(reads, [['room', 'newer']])
+})
+
+test('read acknowledgements serialize progress and retain only the newest pending visible message', async t => {
+  const blocked = deferred()
+  const reads = []
+  const store = await setup(t, {
+    markRead: async (_room, message) => { reads.push(message); if (reads.length === 1) await blocked.promise },
+    rooms: async () => ({ items: [], total: 0 }),
+  })
+  store.messages = ['first', 'second', 'third'].map(id => ({ id }))
+  const pending = ['first', 'second', 'third', 'second'].map(id => store.markSelectedRoomRead(id))
+  assert.deepEqual(reads, ['first'])
+  blocked.resolve()
+  await Promise.all(pending)
+  assert.deepEqual(reads, ['first', 'third'])
+})
+
+test('a failed read can retry and an obsolete denial cannot purge the new selection', async t => {
+  const obsolete = deferred()
+  let attempts = 0
+  const store = await setup(t, {
+    markRead: async () => {
+      if (++attempts === 1) throw Error('Temporary network failure')
+      if (attempts === 3) await obsolete.promise
+    },
+    room: async id => ({ id }),
+    messages: async () => ({ items: [{ id: 'new-message' }], total: 1 }),
+    activity: async () => ({ items: [], total: 0 }),
+  })
+  store.messages = [{ id: 'message' }]
+  await assert.rejects(store.markSelectedRoomRead('message'), /Temporary/)
+  await store.markSelectedRoomRead('message')
+  const oldRead = store.markSelectedRoomRead('next')
+  // Only real displayed messages can advance the read cursor.
+  assert.equal(attempts, 2)
+  await oldRead
+  store.messages.push({ id: 'next' })
+  const stale = store.markSelectedRoomRead('next')
+  await store.selectRoom({ id: 'other-room' })
+  obsolete.reject({ isAxiosError: true, response: { status: 403 } })
+  await stale
+  assert.equal(store.selectedRoom.id, 'other-room')
+  await store.markSelectedRoomRead('new-message')
+  assert.equal(attempts, 4)
+})
+
+test('read cursors reset when reopening the same room or changing sessions, and a current denial purges content', async t => {
+  let denied = false
+  let reads = 0
+  const room = { id: 'room' }
+  const store = await setup(t, {
+    markRead: async () => { reads++; if (denied) throw { isAxiosError: true, response: { status: 403 } } },
+    room: async () => room,
+    messages: async () => ({ items: [{ id: 'message' }], total: 1 }),
+    activity: async () => ({ items: [], total: 0 }),
+  })
+  store.messages = [{ id: 'message' }]
+  await store.markSelectedRoomRead('message')
+  await store.selectRoom(room)
+  await store.markSelectedRoomRead('message')
+  window.dispatchEvent(new Event('auth'))
+  await store.markSelectedRoomRead('message')
+  assert.equal(reads, 3)
+  window.dispatchEvent(new Event('auth'))
+  denied = true
+  await store.markSelectedRoomRead('message')
+  assert.equal(store.selectedRoom, null)
+  assert.deepEqual(store.messages, [])
+})
+
+test('a room-list read started by an acknowledgement cannot purge a later selection', async t => {
+  const blocked = deferred()
+  const store = await setup(t, {
+    markRead: async () => {}, rooms: () => blocked.promise,
+    room: async id => ({ id }),
+    messages: async () => ({ items: [{ id: 'newer' }], total: 1 }),
+    activity: async () => ({ items: [], total: 0 }),
+  })
+  store.messages = [{ id: 'older' }, { id: 'newer' }]
+  const pending = store.markSelectedRoomRead('older')
+  await setImmediate()
+  await store.selectRoom({ id: 'other-room' })
+  blocked.reject({ isAxiosError: true, response: { status: 403 } })
+  assert.equal(await pending, false)
+  assert.equal(store.selectedRoom.id, 'other-room')
+  assert.equal(store.messages[0].id, 'newer')
+})
+
+test('a failed optional room-list refresh preserves the successful read and inbox invalidation', async t => {
+  let reads = 0
+  const store = await setup(t, {
+    markRead: async () => { reads++ },
+    rooms: async () => { throw Error('Room list temporarily unavailable') },
+  })
+  store.messages = [{ id: 'older' }, { id: 'newer' }]
+  assert.equal(await store.markSelectedRoomRead('older'), true)
+  assert.equal(await store.markSelectedRoomRead('older'), false)
+  assert.equal(reads, 1)
+})
+
 test('opening a room displays its messages while commands are still loading and ignores stale commands', async t => {
   let release
   const room = { id: 'room', writable: true }
@@ -340,25 +455,29 @@ for (const stop of ['disconnect', '$dispose']) {
 }
 
 test('a burst of conversation signals bounds HTTP work and retains a newer invalidation', async t => {
-  const listeners = new Map(), first = deferred(), roomsLoaded = deferred()
-  let requests = 0, active = 0, peak = 0, revision = 1
+  const listeners = new Map(), first = deferred(), activityLoaded = deferred()
+  let requests = 0, active = 0, peak = 0, revision = 1, roomLists = 0
   const store = await setup(t, {
     room: async () => {
       const captured = revision
       requests++; peak = Math.max(peak, ++active)
       try {
         if (requests === 1) await first.promise
-        return { id: 'room', label: `Revision ${captured}` }
+        return { id: 'room', label: `Revision ${captured}`, unread_count: 5 }
       } finally { active-- }
     },
     messages: async () => ({ items: [], total: 0 }),
-    activity: async () => ({ items: [], total: 0 }),
+    activity: async () => {
+      if (requests >= 2) activityLoaded.resolve()
+      return { items: [], total: 0 }
+    },
     rooms: async () => {
-      if (requests >= 2) roomsLoaded.resolve()
+      roomLists++
       return { items: [{ id: 'room', label: `Revision ${revision}` }], total: 1 }
     },
   }, false, listeners)
   store.liveRound = null
+  store.rooms = [{ id: 'room', label: 'Conversation', unread_count: 0 }]
   listeners.get('chat.activity')({ data: { room_id: 'room' } })
   await setImmediate()
   revision = 2
@@ -366,11 +485,42 @@ test('a burst of conversation signals bounds HTTP work and retains a newer inval
     listeners.get('chat.activity')({ data: { room_id: 'room' } })
   }
   first.resolve()
-  await roomsLoaded.promise
+  await activityLoaded.promise
   await setImmediate()
   assert.equal(peak, 1, 'only one signal refresh may read the room at a time')
   assert.equal(requests, 2, 'the burst must converge with one follow-up read')
   assert.equal(store.selectedRoom.label, 'Revision 2')
+  assert.equal(roomLists, 0, 'round activity does not invalidate the conversation list')
+  assert.equal(store.rooms[0].unread_count, 0, 'a delayed room snapshot must not undo a read badge')
+})
+
+test('message invalidations arriving during activity still refresh the room list and reconnection remains complete', async t => {
+  const listeners = new Map(), first = deferred()
+  let requests = 0, roomLists = 0
+  const store = await setup(t, {
+    room: async () => {
+      if (++requests === 1) await first.promise
+      return { id: 'room', label: 'Current conversation' }
+    },
+    messages: async () => ({ items: [], total: 0 }),
+    activity: async () => ({ items: [], total: 0 }),
+    rooms: async () => { roomLists++; return { items: [{ id: 'room', label: 'Current conversation' }], total: 1 } },
+  }, false, listeners)
+  store.liveRound = null
+  listeners.get('chat.activity')({ data: { room_id: 'other-room' } })
+  await setImmediate()
+  assert.equal(roomLists, 0)
+  listeners.get('chat.activity')({ data: { room_id: 'room' } })
+  await setImmediate()
+  listeners.get('chat.message')({ data: { room_id: 'room' } })
+  first.resolve()
+  await setImmediate()
+  await setImmediate()
+  assert.equal(requests, 2)
+  assert.equal(roomLists, 1)
+  listeners.get('connect')()
+  await setImmediate()
+  assert.equal(roomLists, 2)
 })
 
 test('signal refresh retries an invalidation after a failed read', async t => {

@@ -1,5 +1,5 @@
 <template>
-  <div ref="contentRoot" class="safe-message-content">
+  <div class="safe-message-content">
     <template v-for="(block, index) in blocks" :key="index">
       <div
         v-if="block.kind === 'markdown'"
@@ -27,7 +27,7 @@
           </q-btn>
         </div>
         <div :class="{ 'markdown-rendered': block.copyable }">
-          <Markdown :content="block.text" />
+          <Markdown :content="block.text" @vue:mounted="enlargeRenderedEmojis" @vue:updated="enlargeRenderedEmojis" />
         </div>
       </div>
       <HtmlPreview v-else-if="block.kind === 'html'" :content="block.text" />
@@ -47,10 +47,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUpdated, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, shallowRef, watch, type VNode } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { CodeEditor, HtmlPreview, Markdown } from '@/core/util'
+import { enlargeMessageEmojis } from '../messageEmojis'
 
 type CodeLanguage =
   | 'json'
@@ -88,14 +89,13 @@ type ContentBlock = MarkdownBlock | HtmlBlock | CodeBlock
 const props = withDefaults(defineProps<{
   content: string
   markdownSource?: boolean
+  streaming?: boolean
 }>(), {
   markdownSource: false,
+  streaming: false,
 })
 const $q = useQuasar()
 const { t } = useI18n()
-const contentRoot = useTemplateRef<HTMLElement>('contentRoot')
-const emojiSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-const emojiMarkerPattern = /[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Regional_Indicator}\u20e3]/u
 
 const languageAliases: Record<string, CodeLanguage> = {
   css: 'css',
@@ -211,52 +211,25 @@ function contentBlocks(content: string): ContentBlock[] {
   return result
 }
 
-const blocks = computed<ContentBlock[]>(() => contentBlocks(props.content))
-
-function enlargeRenderedEmojis(): void {
-  const root = contentRoot.value
-  if (!root) return
-
-  for (const markdown of root.querySelectorAll<HTMLElement>('.markdown-content')) {
-    const walker = document.createTreeWalker(markdown, NodeFilter.SHOW_TEXT, {
-      acceptNode(node): number {
-        const parent = node.parentElement
-        if (
-          !node.textContent
-          || !parent
-          || parent.closest('code, pre, textarea, .chat-message-emoji')
-        ) return NodeFilter.FILTER_REJECT
-        return NodeFilter.FILTER_ACCEPT
-      },
-    })
-    const textNodes: Text[] = []
-    let current = walker.nextNode()
-    while (current) {
-      if (current instanceof Text) textNodes.push(current)
-      current = walker.nextNode()
-    }
-
-    for (const textNode of textNodes) {
-      const fragment = document.createDocumentFragment()
-      let hasEmoji = false
-      for (const { segment } of emojiSegmenter.segment(textNode.data)) {
-        if (!emojiMarkerPattern.test(segment)) {
-          fragment.append(document.createTextNode(segment))
-          continue
-        }
-        const emoji = document.createElement('span')
-        emoji.className = 'chat-message-emoji'
-        emoji.textContent = segment
-        fragment.append(emoji)
-        hasEmoji = true
-      }
-      if (hasEmoji) textNode.replaceWith(fragment)
-    }
-  }
+// Coalesce only an actively growing response. Replacements and terminal text
+// bypass the timer, so interruption, restart and completion cannot lose text.
+const displayedContent = shallowRef(props.content)
+let renderTimer: ReturnType<typeof setTimeout> | undefined
+function flushContent(): void {
+  if (renderTimer !== undefined) clearTimeout(renderTimer)
+  renderTimer = undefined
+  displayedContent.value = props.content
 }
+watch([() => props.content, () => props.streaming], () => {
+  if (!props.streaming || !displayedContent.value || !props.content.startsWith(displayedContent.value)) flushContent()
+  else if (renderTimer === undefined) renderTimer = setTimeout(flushContent, 50)
+}, { flush: 'sync' })
+onBeforeUnmount(() => { if (renderTimer !== undefined) clearTimeout(renderTimer) })
+const blocks = computed<ContentBlock[]>(() => contentBlocks(displayedContent.value))
 
-onMounted(enlargeRenderedEmojis)
-onUpdated(enlargeRenderedEmojis)
+function enlargeRenderedEmojis(vnode: VNode): void {
+  if (vnode.el instanceof HTMLElement) enlargeMessageEmojis(vnode.el)
+}
 
 function onMarkdownClick(event: MouseEvent, identified: boolean): void {
   if (identified) event.stopPropagation()

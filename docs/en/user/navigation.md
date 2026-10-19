@@ -290,6 +290,19 @@ When opening a conversation, messages appear without waiting for the command cat
 or call status. Link previews and document thumbnails load progressively near the visible
 area; you can read and compose while they load, and open a document before its thumbnail
 is ready.
+Attachment previews, including Markdown, also load as they approach the screen.
+Recent previews are reused while browsing history, within a bounded memory budget;
+an older preview may reload when revisited. Visible, opened and playing media remains
+available. Switching conversations cancels pending transfers. If a preview fails,
+use its reload action; the original file remains
+available for download.
+In long conversations, the reading position is preserved when earlier messages load
+and when resizing. After focusing the history, use **Home**, **End** and **Page Up/Down**
+to navigate loaded messages. **Ctrl+F** (or **Cmd+F**) makes these messages available
+to the browser's search. Playing media stays active while scrolling.
+Link cards and their thumbnails are briefly reused when revisiting a message.
+Received document updates and deletions refresh them, including while the message
+is offscreen.
 Messages from the same agent share its avatar load; initials remain visible while the
 image is unavailable.
 Avatars are also briefly reused across other screens. Replacing or deleting one in the app

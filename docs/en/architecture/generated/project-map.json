@@ -19664,10 +19664,10 @@
           "front/app/chat/components/AgentTasksPanel.vue",
           "front/app/chat/components/ConversationDocumentsPanel.vue",
           "front/app/chat/components/ConversationProcessesPanel.vue",
-          "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/pages/index.vue",
           "front/app/chat/stores/chat.ts",
-          "front/app/chat/stores/inbox.ts"
+          "front/app/chat/stores/inbox.ts",
+          "front/app/chat/useMessagePreviewFreshness.ts"
         ],
         "source": "app/chat",
         "target": "core/websocket"

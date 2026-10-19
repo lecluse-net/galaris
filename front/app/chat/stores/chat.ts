@@ -175,20 +175,62 @@ export const useChatStore = defineStore('chat', () => {
     ))
   }
 
-  async function markSelectedRoomRead(messageId: string): Promise<void> {
+  let readAcknowledgement: {
+    generation: number; roomId: string; acknowledged: string | null; requested: string | null;
+    promise: Promise<boolean> | null
+  } | null = null
+
+  function readCovers(cursor: string | null, messageId: string): boolean {
+    if (cursor === messageId) return true
+    const cursorIndex = messages.value.findIndex(message => message.id === cursor)
+    const messageIndex = messages.value.findIndex(message => message.id === messageId)
+    return cursorIndex >= 0 && messageIndex >= 0 && cursorIndex >= messageIndex
+  }
+
+  // Only the caller starting the shared work refreshes the inbox summary.
+  async function markSelectedRoomRead(messageId: string): Promise<boolean> {
     const roomId = selectedRoom.value?.id
-    if (!roomId || viewerAgentId.value !== null) return
-    try {
-      await service.markRead(roomId, messageId)
-      if (
-        selectedRoom.value?.id === roomId
-        && latestDisplayedMessageId.value === messageId
-      ) {
-        markRoomReadLocally(roomId)
-      } else {
-        await refreshRooms()
+    if (!roomId || viewerAgentId.value !== null
+      || !messages.value.some(message => message.id === messageId && !message.id.startsWith('pending:'))) return false
+    if (readAcknowledgement?.generation !== selectedRoomGeneration || readAcknowledgement.roomId !== roomId) {
+      readAcknowledgement = { generation: selectedRoomGeneration, roomId, acknowledged: null, requested: null, promise: null }
+    }
+    const state = readAcknowledgement
+    const current = (): boolean => readAcknowledgement === state
+      && state.generation === selectedRoomGeneration && selectedRoom.value?.id === roomId && viewerAgentId.value === null
+    if (readCovers(state.acknowledged, messageId)) return false
+    if (!readCovers(state.requested, messageId)) state.requested = messageId
+    if (state.promise) {
+      await state.promise
+      return false
+    }
+    state.promise = (async () => {
+      while (state.requested && current()) {
+        const target = state.requested
+        state.requested = null
+        if (readCovers(state.acknowledged, target)) continue
+        try {
+          await service.markRead(roomId, target)
+        } catch (error) {
+          if (!current()) return false
+          // A later visible message can also acknowledge a failed earlier read.
+          clearDeniedScope(error)
+          if (!current()) return false
+          if (state.requested) continue
+          throw error
+        }
+        if (!current()) return false
+        state.acknowledged = target
+        if (latestDisplayedMessageId.value === target) markRoomReadLocally(roomId)
+        // The read is durable even if the optional room-list refresh fails.
+        // A denial still purges the scope inside refreshRooms.
+        else await refreshRooms(current).catch(() => undefined)
       }
-    } catch (error) { handleScopeError(error) }
+      return current()
+    })()
+    try {
+      return await state.promise
+    } finally { state.promise = null }
   }
 
   function createLiveRound(roomId: string, roundId: string, topicId: string | null = null): LiveAgentRound {
@@ -259,7 +301,7 @@ export const useChatStore = defineStore('chat', () => {
       includeArchivedRooms.value = includeArchived
     } catch (error) { if (sequence === roomsRequestSequence) handleScopeError(error) }
   }
-  async function refreshRooms(): Promise<void> {
+  async function refreshRooms(canApply: () => boolean = () => true): Promise<void> {
     const sequence = ++roomsRequestSequence
     const loadedCount = Math.max(roomsPageSize.value, rooms.value.length)
     try {
@@ -271,11 +313,11 @@ export const useChatStore = defineStore('chat', () => {
         includeExternalRooms.value,
         includeArchivedRooms.value,
       )
-      if (sequence !== roomsRequestSequence) return
+      if (sequence !== roomsRequestSequence || !canApply()) return
       rooms.value = result.items
       roomsTotal.value = result.total
       roomsPage.value = Math.max(1, Math.ceil(result.items.length / roomsPageSize.value))
-    } catch (error) { if (sequence === roomsRequestSequence) handleScopeError(error) }
+    } catch (error) { if (sequence === roomsRequestSequence && canApply()) handleScopeError(error) }
   }
   async function loadMoreRooms(): Promise<void> {
     if (loadingMoreRooms.value || !hasMoreRooms.value) return
@@ -521,28 +563,31 @@ export const useChatStore = defineStore('chat', () => {
     })
   }
   let signalRefresh: {
-    generation: number; requested: boolean; refreshRoom: boolean; promise: Promise<void>
+    generation: number; requested: boolean; refreshRoom: boolean; refreshRoomList: boolean; promise: Promise<void>
   } | null = null
   // Keep one HTTP projection in flight and retain invalidations received while
   // it runs. A new selection starts independently of a blocked previous room.
-  async function refreshFromSignal(refreshRoom: boolean): Promise<void> {
+  async function refreshFromSignal(refreshRoom: boolean, refreshRoomList = true): Promise<void> {
+    if (!refreshRoom && !refreshRoomList) return
     const generation = selectedRoomGeneration
     if (signalRefresh?.generation === generation) {
       signalRefresh.requested = true
       signalRefresh.refreshRoom ||= refreshRoom
+      signalRefresh.refreshRoomList ||= refreshRoomList
       return signalRefresh.promise
     }
-    const refresh = { generation, requested: true, refreshRoom, promise: Promise.resolve() }
+    const refresh = { generation, requested: true, refreshRoom, refreshRoomList, promise: Promise.resolve() }
     signalRefresh = refresh
     refresh.promise = (async () => {
       try {
         do {
           const reloadRoom = refresh.refreshRoom
-          refresh.requested = refresh.refreshRoom = false
+          const reloadRoomList = refresh.refreshRoomList
+          refresh.requested = refresh.refreshRoom = refresh.refreshRoomList = false
           try {
             if (reloadRoom) await refreshSelected()
             if (signalRefresh !== refresh || generation !== selectedRoomGeneration || !connected) return
-            await refreshRooms()
+            if (reloadRoomList) await refreshRooms()
           } catch { /* A 403 purges scoped state; subsequent signals and HTTP catch-up retry transient failures. */ }
         } while (refresh.requested && signalRefresh === refresh && generation === selectedRoomGeneration && connected)
       } finally {
@@ -589,7 +634,12 @@ export const useChatStore = defineStore('chat', () => {
     incomingMessageNotification.value = { roomId, messageId }
   }
   function onRealtimeMessage(event: RealtimeMessageEvent): void { void refreshMessageFromSignal(event) }
-  function onRealtime(event: RealtimeMessageEvent): void { void refreshFromSignal(event.data?.room_id === selectedRoom.value?.id) }
+  function onRealtime(event: RealtimeMessageEvent): void {
+    const roomId = event.data?.room_id
+    // Round progress does not alter list ordering or unread counts. Keep the
+    // selected snapshot current; message and call signals also refresh lists.
+    void refreshFromSignal(roomId === selectedRoom.value?.id, !roomId)
+  }
   function onCall(event: RealtimeCallEvent): void {
     const roomId = event.data?.room_id
     if (roomId === selectedRoom.value?.id) {
@@ -732,7 +782,7 @@ export const useChatStore = defineStore('chat', () => {
     void loadStatus().catch(() => undefined)
     void refreshFromSignal(true)
   }
-  function onAuthChanged(): void { controlsEpoch += 1; pendingControls = null; if (!getStoredAccessToken()) { disconnect(); purge(); status.value = null } }
+  function onAuthChanged(): void { controlsEpoch += 1; pendingControls = null; readAcknowledgement = null; if (!getStoredAccessToken()) { disconnect(); purge(); status.value = null } }
   function connect(): void {
     if (connected) return
     connected = true
@@ -750,6 +800,7 @@ export const useChatStore = defineStore('chat', () => {
     controlsEpoch += 1
     pendingControls = null
     clearRuntimeProjection()
+    readAcknowledgement = null
     stopCatchUp()
     signalRefresh = null
     if (subscribedRoom) websocket.leaveRoom(subscribedRoom)
