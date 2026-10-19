@@ -26,6 +26,7 @@ from .facade import (
     call_listeners_running as voice_call_listeners_running,
 )
 from .interface import CallProvider, CallTransport
+from .audio import AudioFramePacer
 from .models import (
     AudioFrame,
     DEFAULT_CHANNELS,
@@ -77,6 +78,7 @@ __all__ = [
     "register_runtime_settings",
     "register_scheduler_jobs",
     "AudioFrame",
+    "AudioFramePacer",
     "DEFAULT_CHANNELS",
     "DEFAULT_SAMPLE_RATE",
     "VoiceTurnDeletion",

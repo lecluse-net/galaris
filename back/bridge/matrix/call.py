@@ -18,7 +18,7 @@ from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
 from aiortc.sdp import candidate_from_sdp
 from loguru import logger
 
-from app.voice import AudioFrame, CallTransport
+from app.voice import AudioFrame, AudioFramePacer, CallTransport
 from app.voice.models import DEFAULT_CHANNELS, DEFAULT_SAMPLE_RATE
 from core.util import as_dict, as_list
 
@@ -45,6 +45,7 @@ class _OutboundAudioTrack(MediaStreamTrack):
         self._queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._buffer = bytearray()
         self._pts = 0
+        self._pacer = AudioFramePacer()
         self._drained = asyncio.Event()
         self._drained.set()
 
@@ -79,13 +80,13 @@ class _OutboundAudioTrack(MediaStreamTrack):
         return pcm.ljust(_PCM_FRAME_BYTES, b"\x00")
 
     async def recv(self) -> av.AudioFrame:
+        await self._pacer.wait()
         frame = av.AudioFrame(format="s16", layout="mono", samples=_SAMPLES_PER_FRAME)
         frame.sample_rate = DEFAULT_SAMPLE_RATE
         frame.pts = self._pts
         frame.time_base = fractions.Fraction(1, DEFAULT_SAMPLE_RATE)
         frame.planes[0].update(self._next_frame())
         self._pts += frame.samples
-        await asyncio.sleep(_FRAME_MS / 1_000)
         if not self._buffer and self._queue.empty():
             self._drained.set()
         return frame

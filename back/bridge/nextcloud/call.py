@@ -33,7 +33,7 @@ from loguru import logger
 from core.params import runtime_settings
 from core.i18n import render_prompt, t
 from core.util import as_dict, as_list
-from app.voice import AudioFrame, CallTransport
+from app.voice import AudioFrame, AudioFramePacer, CallTransport
 from app.voice.models import DEFAULT_CHANNELS, DEFAULT_SAMPLE_RATE
 
 from .client import NextcloudTalkClient
@@ -177,6 +177,7 @@ def _build_out_track(
             self._generation = 0
             self._buffer = bytearray()
             self._pts = 0
+            self._pacer = AudioFramePacer()
             self._silence = b"\x00" * _PCM_FRAME_BYTES
             self._speaking = False
             self._drained = asyncio.Event()
@@ -244,6 +245,7 @@ def _build_out_track(
             return self._silence
 
         async def recv(self) -> "av.AudioFrame":
+            await self._pacer.wait()
             pcm = self._next_pcm_frame()
             self._update_speaking(any(pcm))
             frame = av.AudioFrame(format="s16", layout="mono", samples=_SAMPLES_PER_FRAME)
@@ -252,7 +254,6 @@ def _build_out_track(
             frame.time_base = fractions.Fraction(1, DEFAULT_SAMPLE_RATE)
             frame.planes[0].update(pcm)
             self._pts += frame.samples
-            await asyncio.sleep(_FRAME_MS / 1000)  # Do not run ahead of real time.
             if not self._buffer and self._queue.empty():
                 self._drained.set()
             return frame

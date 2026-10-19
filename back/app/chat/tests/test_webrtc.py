@@ -4,6 +4,8 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import math
+import struct
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -28,6 +30,7 @@ from app.chat.webrtc import (
     browser_rtc_configuration,
 )
 from app.voice.models import AudioFrame
+from app.voice.audio import pcm_rms
 from core.settings import settings
 
 
@@ -487,7 +490,8 @@ async def test_browser_call_accepts_trickled_mobile_ice_candidates(
 @pytest.mark.asyncio
 async def test_trickled_offer_establishes_a_real_peer_connection() -> None:
     browser = RTCPeerConnection()
-    browser.addTrack(_OutgoingAudioTrack())
+    microphone = _OutgoingAudioTrack()
+    browser.addTrack(microphone)
     transport = BrowserCallTransport("user:1")
     try:
         offer = await browser.createOffer()
@@ -516,6 +520,40 @@ async def test_trickled_offer_establishes_a_real_peer_connection() -> None:
 
         await asyncio.wait_for(transport._connected.wait(), timeout=3.0)
         assert browser.connectionState == "connected"
+
+        # Exercise both RTP directions with synthetic speech-band audio, rather
+        # than certifying only the signaling/ICE connection.
+        tone = b"".join(
+            struct.pack("<h", int(8000 * math.sin(2 * math.pi * 440 * index / 48_000)))
+            for index in range(9600)
+        )
+        microphone.push(AudioFrame(pcm=tone))
+
+        async def speech():
+            yield AudioFrame(pcm=tone)
+
+        await transport.send_audio(transport, speech())
+
+        async def hear_microphone():
+            async for frame in transport.inbound_audio(transport):
+                if pcm_rms(frame.pcm) > 1000:
+                    return
+            pytest.fail("The peer closed before receiving microphone audio")
+
+        async def hear_speaker():
+            track = browser.getReceivers()[0].track
+            assert track is not None
+            resampler = av.AudioResampler(format="s16", layout="mono", rate=48_000)
+            while True:
+                frame = await track.recv()
+                for normalized in resampler.resample(frame):
+                    pcm = bytes(normalized.planes[0])[:normalized.samples * 2]
+                    if pcm_rms(pcm) > 1000:
+                        return
+
+        await asyncio.wait_for(
+            asyncio.gather(hear_microphone(), hear_speaker()), timeout=3.0
+        )
     finally:
         await browser.close()
         await transport.leave(transport)

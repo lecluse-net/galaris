@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+from array import array
 import io
 from itertools import islice
 import math
 import struct
+import sys
 import wave
 from collections.abc import Iterator
+from time import monotonic
 from typing import TYPE_CHECKING, Any, AsyncIterator, Protocol, cast
 
 from .models import AudioFrame, DEFAULT_CHANNELS, DEFAULT_SAMPLE_RATE
@@ -35,6 +38,25 @@ FRAME_BYTES = (
     // 1000
 )
 BYTES_PER_SECOND = DEFAULT_SAMPLE_RATE * DEFAULT_CHANNELS * BYTES_PER_SAMPLE
+
+
+class AudioFramePacer:
+    """Pace canonical frames without accumulating encoding or scheduler delays."""
+
+    def __init__(self) -> None:
+        self._deadline: float | None = None
+
+    async def wait(self) -> None:
+        now = monotonic()
+        interval = FRAME_MS / 1000
+        # After a stall, resume from now rather than bursting through missed slots.
+        deadline = (
+            now + interval
+            if self._deadline is None
+            else max(self._deadline + interval, now)
+        )
+        await asyncio.sleep(max(0.0, deadline - now))
+        self._deadline = deadline
 
 
 def pcm_rms(pcm: bytes) -> int:
@@ -73,12 +95,8 @@ def downsample_pcm_48k_to_24k(pcm: bytes) -> bytes:
 
     if len(pcm) % BYTES_PER_SAMPLE:
         raise ValueError("PCM audio ended with an incomplete sample")
-    samples = struct.iter_unpack("<h", pcm)
-    return b"".join(
-        struct.pack("<h", sample)
-        for index, (sample,) in enumerate(samples)
-        if index % 2 == 0
-    )
+    # Select two-byte samples as raw storage; their byte order stays unchanged.
+    return memoryview(pcm).cast("H")[::2].tobytes()
 
 
 def upsample_pcm_24k_to_48k(pcm: bytes) -> bytes:
@@ -86,14 +104,21 @@ def upsample_pcm_24k_to_48k(pcm: bytes) -> bytes:
 
     if len(pcm) % BYTES_PER_SAMPLE:
         raise ValueError("PCM audio ended with an incomplete sample")
-    samples = [sample for (sample,) in struct.iter_unpack("<h", pcm)]
+    samples = array("h", pcm)
     if not samples:
         return b""
-    output = bytearray()
-    for index, sample in enumerate(samples):
-        following = samples[index + 1] if index + 1 < len(samples) else sample
-        output.extend(struct.pack("<hh", sample, int((sample + following) / 2)))
-    return bytes(output)
+    if sys.byteorder != "little":
+        samples.byteswap()
+    output = array("h", [0]) * (2 * len(samples))
+    output[::2] = samples
+    output[1:-1:2] = array(
+        "h",
+        (int((left + right) / 2) for left, right in zip(samples, samples[1:])),
+    )
+    output[-1] = samples[-1]
+    if sys.byteorder != "little":
+        output.byteswap()
+    return output.tobytes()
 
 
 def _pcm_bytes(frame: Any) -> bytes:

@@ -398,6 +398,13 @@ contracts and tests, then select the least expensive layer that proves the obser
 
 ## Media and acquired evidence
 
+`app/voice/tests/test_audio_pacing.py` exercises the actual Chat, Matrix and Nextcloud
+tracks with a shared synthetic clock: cadence without accumulated encoding or wake-up
+delays, resumption without a burst after a stall, preserved PCM and timestamps,
+interruption during pacing, and cancellation without frame loss. Drain-only tests did
+not detect this drift. These measurements isolate the transport; they do not measure
+voice-provider or real-network latency.
+
 Durable audio revocation and deferred deletion are covered by
 `app/voice/tests/test_monitoring_service.py`, `test_runtime_control.py` and `test_session.py`:
 real PostgreSQL transactions, remote ownership, late teardown errors, resumed cleanup,

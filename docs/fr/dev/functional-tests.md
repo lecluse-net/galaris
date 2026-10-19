@@ -424,6 +424,13 @@ présence au catalogue ne remplace pas une exécution réussie.
 
 ## Médias et preuves acquises
 
+`app/voice/tests/test_audio_pacing.py` exerce les pistes réelles du Chat, de Matrix et
+de Nextcloud avec une horloge synthétique commune : cadence sans dérive due à l'encodage
+ou aux réveils tardifs, reprise sans rafale après une suspension, PCM et timestamps
+préservés, interruption pendant l'attente et annulation sans perte de trame. Les tests
+de vidage seuls ne détectaient pas cette dérive. Ces mesures isolent le transport ;
+elles ne mesurent pas la latence du fournisseur vocal ni celle du réseau réel.
+
 La révocation et la suppression différée des flux audio sont couvertes par
 `app/voice/tests/test_monitoring_service.py`, `test_runtime_control.py` et `test_session.py` :
 transactions PostgreSQL réelles, propriétaire distant, erreurs tardives de fermeture,

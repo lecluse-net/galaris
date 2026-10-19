@@ -25,6 +25,7 @@ from aiortc.sdp import candidate_from_sdp  # pyright: ignore[reportMissingTypeSt
 
 from app.voice import (
     AudioFrame,
+    AudioFramePacer,
     CallTransport,
     DEFAULT_CHANNELS,
     DEFAULT_SAMPLE_RATE,
@@ -240,6 +241,7 @@ class _OutgoingAudioTrack(MediaStreamTrack):
         self._queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._buffer = bytearray()
         self._pts = 0
+        self._pacer = AudioFramePacer()
         self._drained = asyncio.Event()
         self._drained.set()
 
@@ -283,6 +285,8 @@ class _OutgoingAudioTrack(MediaStreamTrack):
         return pcm.ljust(_PCM_FRAME_BYTES, b"\x00")
 
     async def recv(self) -> Any:
+        # Pace before taking PCM so a barge-in during the wait clears it too.
+        await self._pacer.wait()
         frame = av.AudioFrame(
             format="s16",
             layout="mono",
@@ -293,10 +297,6 @@ class _OutgoingAudioTrack(MediaStreamTrack):
         frame.pts = self._pts
         frame.time_base = Fraction(1, DEFAULT_SAMPLE_RATE)
         self._pts += frame.samples
-        # MediaStreamTrack.recv() owns pacing. Without this delay aiortc drains
-        # complete utterances before the browser's RTP jitter buffer is ready,
-        # which clips the beginning of speech.
-        await asyncio.sleep(_FRAME_MS / 1_000)
         if not self._buffer and self._queue.empty():
             self._drained.set()
         return frame

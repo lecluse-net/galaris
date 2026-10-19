@@ -62,9 +62,21 @@ def test_incomplete_pcm_sample_is_rejected_without_silent_corruption(convert):
     assert convert(b"") == b""
 
 
-def test_pcm_conversion_preserves_signed_amplitudes_and_interpolates_adjacent_samples():
-    source = struct.pack("<hhh", -1000, 1000, 3000)
-    assert struct.unpack("<hhhhhh", audio.upsample_pcm_24k_to_48k(source)) == (-1000, 0, 1000, 2000, 3000, 3000)
+@pytest.mark.parametrize(
+    "samples,expected",
+    [
+        ((-1000, 1000, 3000), (-1000, 0, 1000, 2000, 3000, 3000)),
+        ((-32768, 32767, 0), (-32768, 0, 32767, 16383, 0, 0)),
+        ((-3, -2, -1, 0, 1), (-3, -2, -2, -1, -1, 0, 0, 0, 1, 1)),
+        ((32767,), (32767, 32767)),
+    ],
+)
+def test_pcm_conversion_preserves_signed_amplitudes_and_interpolates_adjacent_samples(samples, expected):
+    source = struct.pack(f"<{len(samples)}h", *samples)
+    assert audio.upsample_pcm_24k_to_48k(source) == struct.pack(f"<{len(expected)}h", *expected)
+    assert audio.downsample_pcm_48k_to_24k(source) == struct.pack(
+        f"<{len(samples[::2])}h", *samples[::2]
+    )
     assert audio.downsample_pcm_48k_to_24k(audio.upsample_pcm_24k_to_48k(source)) == source
     assert audio.pcm_rms(b"") == 0
     assert audio.pcm_rms(struct.pack("<hh", -1000, 1000)) == 1000
