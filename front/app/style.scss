@@ -44,6 +44,20 @@ body .q-tooltip :is(.text-caption, .text-overline, small) {
     font-size: max(10pt, 0.875rem) !important;
 }
 
+/* Share compact icon gutters and equal outer insets across action menus. */
+.q-menu .q-list[role="menu"] > .q-item {
+    padding-inline: 12px;
+
+    > .q-item__section--avatar {
+        min-width: 32px;
+        padding-inline: 0 8px;
+    }
+
+    > .q-item__section--side:last-of-type:not(.q-item__section--avatar) {
+        padding-inline: 12px 0;
+    }
+}
+
 /* Dialog chrome never belongs to the content's scroll viewport. */
 .q-dialog__inner > .galaris-dialog-card {
     display: flex;
