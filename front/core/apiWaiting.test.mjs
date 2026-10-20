@@ -3,6 +3,7 @@ import test from 'node:test'
 import axios from 'axios'
 import { deferred, loadTypescript } from '../test-support/load-typescript.mjs'
 import * as thumbnailEvents from '../app/memory/thumbnailEvents.ts'
+import { sessionReadCache } from '../test-support/session-read-cache.mjs'
 
 function setup() {
   const entered = deferred()
@@ -39,7 +40,14 @@ function setup() {
   // These HTTP-wait scenarios never render a resource preview. Fail explicitly
   // if that boundary is accidentally invoked rather than hiding it with a no-op.
   const unexpectedPreview = () => assert.fail('Resource preview invoked during an HTTP-wait scenario')
+  const cacheHelpers = sessionReadCache()
+  const resources = loadTypescript(new URL('./util/sessionResources.ts', import.meta.url), {
+    '@/core/api': loaded, './sessionReadCache': cacheHelpers, './previewQueue': cacheHelpers,
+  })
   const dependencies = {
+    '@/app/share': loadTypescript(new URL('../app/share/ownerCache.ts', import.meta.url), {
+      '@/core/util/facade': { ...cacheHelpers, ...resources },
+    }),
     '@/core/api': { __esModule: true, default: loaded.api, api: loaded.api },
     '@/core/util': { attachmentReference: unexpectedPreview, browserResourceKind: unexpectedPreview },
     '../thumbnailEvents': thumbnailEvents,

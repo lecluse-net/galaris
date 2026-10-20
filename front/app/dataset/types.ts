@@ -11,7 +11,7 @@ export interface Dataset {
   owner_agent_id: number | null; owner_user_id: number | null
   created_at: string | null; updated_at: string | null
 }
-export interface DatasetOwnerOptions { owner: Collaborator | null; options: Collaborator[] }
+export interface DatasetOwnerOptions { owner: Collaborator | null; options: Collaborator[]; current_user_id: number }
 export interface Page<T> { items: T[]; total: number }
 export type DatasetSharing = SharingState
 export type UsageKind = 'documents' | 'processes' | 'agents'

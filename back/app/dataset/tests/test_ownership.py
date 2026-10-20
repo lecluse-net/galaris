@@ -23,6 +23,7 @@ async def test_transfer_keeps_former_owner_as_editor_and_rejects_stale_or_unmana
     dataset.metadata_ = {"engine_dataset": True, "engine_managed": True, "engine_agent": first.id}
     await db.flush()
     choices = await ownership.options(dataset.id, limited)
+    assert choices.current_user_id == limited.user_id
     assert choices.owner.id == first.id
     assert {(p.kind, p.id) for p in choices.options} == {("agent", first.id), ("user", user.id)}
     with pytest.raises(service.DatasetPermissionError):

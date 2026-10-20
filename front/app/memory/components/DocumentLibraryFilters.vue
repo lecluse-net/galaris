@@ -7,8 +7,7 @@
         <div class="text-subtitle2">{{ t('documents.library.filters') }}</div>
         <q-toggle v-model="onlyUnclassified" dense :label="t('documents.library.unclassified')" />
         <q-select v-model="draft.keyword" dense outlined clearable :label="t('documents.keywordFilter')" :options="keywords" />
-        <q-select v-model="draft.owner_kind" dense outlined clearable emit-value map-options :label="t('documents.library.ownerKind')" :options="ownerKinds" @update:model-value="draft.owner = null" />
-        <q-select v-model="draft.owner" dense outlined clearable emit-value map-options use-input input-debounce="0" :label="t('documents.library.owner')" :options="ownerOptions" @filter="filterOwners" :disable="!draft.owner_kind" />
+        <OwnerSelect v-model="ownerSelection" :options="ownerOptions" :current-user-id="currentUserId" clearable />
         <div v-for="pair in datePairs" :key="pair.label">
           <div class="text-caption q-mb-xs">{{ t(`documents.library.${pair.label}`) }}</div>
           <div class="row no-wrap q-gutter-sm">
@@ -31,13 +30,24 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DocumentOwnerOption } from '../types'
+import { OwnerSelect } from '@/app/share'
 import { defaultLibraryFilters as defaults, type LibraryFilterState } from '../libraryFilterState'
 const model = defineModel<LibraryFilterState>({ required: true })
 const onlyUnclassified = defineModel<boolean>('onlyUnclassified', { required: true })
-const props = defineProps<{ owners: DocumentOwnerOption[]; keywords: string[] }>()
+const { owners, currentUserId } = defineProps<{ owners: DocumentOwnerOption[]; keywords: string[]; currentUserId?: number }>()
 const { t } = useI18n()
+const ownerOptions = computed(() => currentUserId && !owners.some(owner => owner.kind === 'user' && owner.id === currentUserId)
+  ? [{ kind: 'user' as const, id: currentUserId, label: t('resourceOwner.me'), is_current_user: true }, ...owners]
+  : owners)
 const draft = ref({ ...model.value })
-const ownerSearch = ref('')
+const ownerSelection = computed({
+  get: () => draft.value.owner_kind && draft.value.owner !== null ? `${draft.value.owner_kind}:${draft.value.owner}` : '',
+  set: (key: string) => {
+    const [kind, id] = key.split(':')
+    draft.value.owner_kind = kind === 'user' || kind === 'agent' ? kind : null
+    draft.value.owner = draft.value.owner_kind ? Number(id) : null
+  },
+})
 const dateFields = [
   { key: 'created_from', label: 'createdFrom', boundary: 'from' }, { key: 'created_until', label: 'createdUntil', boundary: 'until' },
   { key: 'updated_from', label: 'updatedFrom', boundary: 'from' }, { key: 'updated_until', label: 'updatedUntil', boundary: 'until' },
@@ -45,15 +55,12 @@ const dateFields = [
 const datePairs = [{ label: 'created', fields: dateFields.slice(0, 2) }, { label: 'updated', fields: dateFields.slice(2) }]
 const invalidDates = computed(() => Boolean((draft.value.created_from && draft.value.created_until && draft.value.created_from > draft.value.created_until)
   || (draft.value.updated_from && draft.value.updated_until && draft.value.updated_from > draft.value.updated_until)))
-const ownerKinds = computed(() => ['agent', 'user'].map(value => ({ value, label: t(`documents.library.${value}`) })))
 const sortOptions = computed(() => [
   { value: 'position', label: t('documents.library.manualOrder') },
   { value: 'title', label: t('documents.library.title') }, { value: 'created_at', label: t('documents.library.created') }, { value: 'updated_at', label: t('documents.library.updated') },
 ])
-const ownerOptions = computed(() => props.owners.filter(owner => owner.kind === draft.value.owner_kind && owner.label.toLocaleLowerCase().includes(ownerSearch.value)).map(owner => ({ value: owner.id, label: owner.label })))
 const activeCount = computed(() => Number(onlyUnclassified.value) + Number(Boolean(model.value.owner_kind)) + Number(Boolean(model.value.keyword))
   + dateFields.filter(field => model.value[field.key]).length + Number(model.value.sort_by !== 'position' || model.value.sort_desc))
-function filterOwners(value: string, update: (callback: () => void) => void): void { update(() => { ownerSearch.value = value.toLocaleLowerCase() }) }
 function apply(): void { if (!invalidDates.value) model.value = { ...draft.value } }
 </script>
 <style scoped>

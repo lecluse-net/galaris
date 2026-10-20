@@ -894,6 +894,9 @@ async def test_owner_options_only_expose_self_without_dedicated_privilege(
         is_active=True,
     )
     db.add_all([current, other])
+    agents[0].avatar = b"synthetic-avatar-bytes"
+    current.avatar_key = uuid4()
+    current.avatar_mime_type = "image/png"
     await db.flush()
 
     restricted = await service.list_document_owner_options(
@@ -904,6 +907,8 @@ async def test_owner_options_only_expose_self_without_dedicated_privilege(
     assert [option.id for option in restricted.users] == [current.id]
     assert restricted.users[0].is_current_user is True
     assert [option.id for option in restricted.agents] == [agents[0].id]
+    assert restricted.agents[0].has_avatar
+    assert restricted.users[0].avatar_url == f"/api/auth/avatars/{current.avatar_key}"
 
     privileged = await service.list_document_owner_options(
         current_user_id=current.id,
@@ -912,6 +917,20 @@ async def test_owner_options_only_expose_self_without_dedicated_privilege(
         search="other",
     )
     assert [option.id for option in privileged.users] == [other.id]
+
+    # Every selectable owner remains searchable and reachable after the picker's
+    # first ten pages; the catalogue must not silently stop at 500 records.
+    many = [UserModel(email=f"synthetic-owner-{index:04d}@example.test", display_name=f"Synthetic owner {index:04d}",
+        hashed_password="unused", is_active=True) for index in range(501)]
+    db.add_all(many)
+    await db.flush()
+    complete = await service.list_document_owner_options(current_user_id=current.id,
+        include_all_users=True, managed_agent_ids=frozenset())
+    assert {user.id for user in many}.issubset({option.id for option in complete.users})
+    assert complete.users[0].id == current.id
+    found = await service.list_document_owner_options(current_user_id=current.id,
+        include_all_users=True, managed_agent_ids=frozenset(), search="synthetic-owner-0500")
+    assert [option.id for option in found.users] == [many[-1].id]
 
 
 @pytest.mark.asyncio

@@ -73,47 +73,8 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
         <q-card-section class="q-gutter-md galaris-dialog-body">
-          <q-select
-            v-model="createDocumentOwner"
-            :options="filteredCreateOwnerOptions"
-            emit-value map-options outlined use-input
-            input-debounce="0"
-            option-value="value"
-            option-label="label"
-            option-disable="disable"
-            :loading="createOwnerOptionsLoading"
-            :label="t('documents.owner')"
-            @filter="filterCreateOwnerOptions"
-          >
-            <template #option="scope">
-              <q-item v-if="scope.opt.section" dense>
-                <q-item-section>
-                  <q-item-label header>{{ scope.opt.label }}</q-item-label>
-                </q-item-section>
-              </q-item>
-              <q-item v-else v-bind="scope.itemProps">
-                <q-item-section avatar>
-                  <AgentAvatar
-                    v-if="scope.opt.kind === 'agent'"
-                    :agent-id="scope.opt.id"
-                    :name="scope.opt.label"
-                    size="32px"
-                  />
-                  <q-avatar v-else size="32px" color="grey-3" text-color="grey-8">
-                    <img v-if="scope.opt.avatarUrl" :src="scope.opt.avatarUrl" alt="" />
-                    <q-icon v-else name="person" size="20px" />
-                  </q-avatar>
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label>{{ scope.opt.label }}</q-item-label>
-                  <q-item-label caption>{{ scope.opt.subtitle }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <q-item><q-item-section class="text-grey-7">{{ t('documents.ownerEmpty') }}</q-item-section></q-item>
-            </template>
-          </q-select>
+          <OwnerSelect v-model="createDocumentOwner" :options="createOwnerChoices" :loading="createOwnerOptionsLoading" @open="refreshCreateOwners">
+          </OwnerSelect>
           <q-input
             v-model="createDocumentTitle"
             outlined autofocus
@@ -144,7 +105,8 @@ import { computed, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, wat
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { AgentAvatar, useAgentStore } from '@/app/agent'
+import { useAgentStore } from '@/app/agent'
+import { OwnerSelect } from '@/app/share'
 import { documentIdFromRouteQuery, documentNavigationKey, documentResourceHref, DocumentNavigationButtons, PageHeader, useDocumentHistory } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { DatasetDocumentRedirect, memoryService } from '../services/memoryService'
@@ -152,7 +114,6 @@ import type {
   DocumentTag,
   DocumentLibraryEntry,
   DocumentOwnerKind,
-  DocumentOwnerOption,
   DocumentOwnerOptions,
   MemoryItemDetail,
   MemoryNodeKind,
@@ -163,26 +124,8 @@ import DocumentLibraryNavigation from './DocumentLibraryNavigation.vue'
 import DocumentSplitterHandle from './DocumentSplitterHandle.vue'
 
 interface MemoryRealtimeEvent { data: { id: string; node_kind: MemoryNodeKind } }
-interface CreateOwnerChoice {
-  value: string
-  label: string
-  subtitle: string
-  kind: DocumentOwnerKind
-  id: number
-  avatarUrl: string | null
-  searchText: string
-  disable?: false
-  section?: false
-}
-interface CreateOwnerSection {
-  value: string
-  label: string
-  disable: true
-  section: true
-}
-type CreateOwnerSelectOption = CreateOwnerChoice | CreateOwnerSection
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
@@ -211,7 +154,6 @@ const createDocumentTitle = ref('')
 const createDocumentTag = ref<DocumentTag | null>(null)
 const createDocumentParent = ref<DocumentLibraryEntry | null>(null)
 const createOwnerOptions = ref<DocumentOwnerOptions>({ agents: [], users: [] })
-const filteredCreateOwnerOptions = ref<CreateOwnerSelectOption[]>([])
 const createOwnerOptionsLoading = ref(false)
 let pageMounted = false
 let leavingPage = false
@@ -230,51 +172,9 @@ const mobileDocumentTitle = computed(() => (
   entries.value.find(entry => entry.item.id === mobileDocumentId.value)?.item.title
   ?? t('nav.documents')
 ))
-const createOwnerChoices = computed<CreateOwnerChoice[]>(() => [
-  ...createOwnerOptions.value.agents.map(createOwnerChoice),
-  ...createOwnerOptions.value.users.map(createOwnerChoice),
-])
-const selectedCreateDocumentOwner = computed(() => (
-  createOwnerChoices.value.find(option => option.value === createDocumentOwner.value) ?? null
-))
-function createOwnerValue(kind: DocumentOwnerKind, id: number): string {
-  return `${kind}:${id}`
-}
-function createOwnerChoice(option: DocumentOwnerOption): CreateOwnerChoice {
-  const label = option.is_current_user ? t('documents.ownerMe') : option.label
-  return {
-    value: createOwnerValue(option.kind, option.id),
-    label,
-    subtitle: option.is_current_user ? option.label : option.subtitle,
-    kind: option.kind,
-    id: option.id,
-    avatarUrl: option.avatar_url,
-    searchText: `${label} ${option.label} ${option.subtitle}`.toLocaleLowerCase(locale.value),
-  }
-}
-function sectionCreateOwnerOptions(choices: CreateOwnerChoice[]): CreateOwnerSelectOption[] {
-  const agents = choices.filter(choice => choice.kind === 'agent')
-  const users = choices.filter(choice => choice.kind === 'user')
-  const options: CreateOwnerSelectOption[] = []
-  if (agents.length) {
-    options.push({ value: 'section:agents', label: t('documents.ownerAgents'), disable: true, section: true })
-    options.push(...agents)
-  }
-  if (users.length) {
-    options.push({ value: 'section:users', label: t('documents.ownerUsers'), disable: true, section: true })
-    options.push(...users)
-  }
-  return options
-}
-function filterCreateOwnerOptions(value: string, update: (callback: () => void) => void): void {
-  update(() => {
-    const needle = value.trim().toLocaleLowerCase(locale.value)
-    const choices = needle
-      ? createOwnerChoices.value.filter(option => option.searchText.includes(needle))
-      : createOwnerChoices.value
-    filteredCreateOwnerOptions.value = sectionCreateOwnerOptions(choices)
-  })
-}
+const createOwnerChoices = computed(() => [...createOwnerOptions.value.users, ...createOwnerOptions.value.agents])
+const selectedCreateDocumentOwner = computed(() => createOwnerChoices.value.find(option => createOwnerValue(option.kind, option.id) === createDocumentOwner.value) ?? null)
+function createOwnerValue(kind: DocumentOwnerKind, id: number): string { return `${kind}:${id}` }
 function preferredAgent(entry: DocumentLibraryEntry): number | null {
   if (entry.user_access?.can_write) return null
   if (entry.item.owner_agent_id !== null && entry.agent_ids.includes(entry.item.owner_agent_id)) return entry.item.owner_agent_id
@@ -342,13 +242,11 @@ async function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEnt
   createDocumentTitle.value = ''
   createDocumentOwner.value = ''
   createOwnerOptions.value = { agents: [], users: [] }
-  filteredCreateOwnerOptions.value = []
   createDocumentOpen.value = true
   createOwnerOptionsLoading.value = true
   try {
     createOwnerOptions.value = await memoryService.listDocumentOwnerOptions()
     createDocumentActorAgentId.value ??= createOwnerOptions.value.agents[0]?.id ?? null
-    filteredCreateOwnerOptions.value = sectionCreateOwnerOptions(createOwnerChoices.value)
     const currentUser = createOwnerOptions.value.users.find(option => option.is_current_user)
     if (currentUser) createDocumentOwner.value = createOwnerValue('user', currentUser.id)
   } catch {
@@ -356,6 +254,12 @@ async function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEnt
   } finally {
     createOwnerOptionsLoading.value = false
   }
+}
+async function refreshCreateOwners(): Promise<void> {
+  try {
+    const owners = await memoryService.listDocumentOwnerOptions()
+    if (!disposed && createDocumentOpen.value) createOwnerOptions.value = owners
+  } catch { if (!disposed) $q.notify({ type: 'negative', message: t('documents.ownerLoadError') }) }
 }
 async function createDocument(): Promise<void> {
   const owner = selectedCreateDocumentOwner.value
@@ -462,7 +366,7 @@ watch(() => $q.screen.lt.md, mobile => {
   if (!mobile) mobileDocumentOpen.value = false
 })
 watch(createDocumentOwner, value => {
-  const owner = createOwnerChoices.value.find(option => option.value === value)
+  const owner = createOwnerChoices.value.find(option => createOwnerValue(option.kind, option.id) === value)
   if (owner?.kind === 'agent') createDocumentActorAgentId.value = owner.id
 })
 watch(() => route.query.document_id, value => {

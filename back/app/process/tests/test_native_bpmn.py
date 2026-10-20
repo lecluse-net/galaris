@@ -380,6 +380,32 @@ async def test_http_native_and_lab_pagination_accepts_encoded_sizes_with_real_au
     assert created.status_code == 201, created.text
     assert created.json()["description"] == "Synthetic plain text description\nSecond line."
     code = created.json()["code"]
+    assert created.json()["owner"]["kind"] == "user"
+    assert created.json()["owner"]["id"] == user_id
+    assert created.json()["can_manage"]
+    owners = await client.get("/api/processes/internal/owner-options", headers=headers)
+    assert owners.status_code == 200, owners.text
+    assert {(entry["kind"], entry["id"]) for entry in owners.json()} == {("user", user_id), ("agent", owner_id)}
+    owner_path = f"/api/processes/internal/definitions/{code}/owner"
+    transferred = await client.patch(owner_path, headers=headers, json={
+        "kind": "agent", "id": other_agent_id, "expected_lock_version": created.json()["lock_version"]})
+    assert transferred.status_code == 403
+    transferred = await client.patch(owner_path, headers=headers, json={
+        "kind": "agent", "id": owner_id, "expected_lock_version": created.json()["lock_version"]})
+    assert transferred.status_code == 200, transferred.text
+    assert transferred.json()["owner"]["id"] == owner_id
+    assert transferred.json()["owner"]["kind"] == "agent"
+    stale = await client.patch(owner_path, headers=headers, json={
+        "kind": "user", "id": user_id, "expected_lock_version": created.json()["lock_version"]})
+    assert stale.status_code == 409
+    returned = await client.patch(owner_path, headers=headers, json={
+        "kind": "user", "id": user_id, "expected_lock_version": transferred.json()["lock_version"]})
+    assert returned.status_code == 200, returned.text
+    assert returned.json()["owner"]["kind"] == "user"
+    assert returned.json()["graph"] == created.json()["graph"]
+    sharing_after = (await client.get(f"/api/processes/internal/definitions/{code}/sharing", headers=headers)).json()
+    assert any(grant["kind"] == "agent" and grant["id"] == owner_id and grant["can_write"] for grant in sharing_after["grants"])
+    assert not any(grant["kind"] == "user" and grant["id"] == user_id for grant in sharing_after["grants"])
     admission = await client.post(f"/api/processes/internal/definitions/{code}/runs", headers=headers, json={"agent_id": owner_id})
     assert admission.status_code == 202, admission.text
     run_id = UUID(admission.json()["run_id"])
@@ -2084,6 +2110,11 @@ async def test_human_ownership_readonly_sharing_run_dataset_and_orphans(db, nati
     await update_process_sharing(definition.code, scope, DocumentSharingLevelUpdate(level="private", expected_lock_version=item.lock_version,
         grants=[{"kind": "user", "id": viewer.id, "can_write": True}]))
     assert (await read(definition.code, viewer_scope))["can_write"]
+    from app.process.native_sharing import transfer_owner
+    with pytest.raises(PermissionError, match="Only the Process owner"):
+        await transfer_owner(definition.code, viewer_scope, kind="user", principal=viewer.id,
+            expected_lock_version=definition.lock_version)
+    assert (await read(definition.code, scope))["owner"]["id"] == human.id
     shared_update = await update(definition.code, viewer_scope, expected_revision=1, graph=graph("Synthetic shared edit"))
     assert shared_update["graph"]["nodes"][1]["config"]["prompt"] == "Synthetic shared edit"
     response = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={}, requester_user_id=human.id)

@@ -420,6 +420,11 @@ parmi ses actions. Renseignez le titre et le propriétaire : le document est aut
 classé dans ce dossier, qui se déplie, puis s’ouvre dans l’éditeur. Le bouton de création
 général conserve les nouveaux documents parmi les documents non classés.
 
+Dans les filtres de la bibliothèque, le champ unique **Propriétaire** remplace le choix
+séparé du type et du nom. Il affiche **Moi**, les utilisateurs, puis les agents ; la recherche
+et la pagination par type permettent d’atteindre les grandes listes. Effacer ce champ
+rétablit tous les propriétaires ; les autres filtres restent applicables.
+
 Le bouton **⋮** de chaque dossier et le clic droit ouvrent le même menu avec les icônes et les libellés de toutes ses
 actions : créer un document ou un dossier, modifier, trier, déplier,
 replier et supprimer. Les raccourcis **Nouveau document**, **Nouveau sous-dossier**, **Modifier**

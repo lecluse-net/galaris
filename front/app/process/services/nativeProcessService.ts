@@ -1,5 +1,7 @@
 import { api } from '@/core/api'
 import type { SharingState as DocumentSharing, SharingUpdate as DocumentSharingLevelUpdate } from '@/app/share'
+import type { OwnerOption } from '@/app/share'
+import { createOwnerOptionsCache } from '@/app/share'
 
 export type NodeKind = 'start' | 'end' | 'task' | 'human_task' | 'tool_call' | 'rest' | 'code' | 'program' | 'call' | 'if' | 'parallel' | 'for' | 'while'
 export const valueTypes = ['int', 'float', 'string', 'bool', 'Agent', 'File', 'User', 'Document', 'array', 'object'] as const
@@ -23,6 +25,7 @@ export interface BpmnGraph {
 export interface NativeDefinition {
   id: number; code: string; title: string; description: string | null; revision: number; archived: boolean; can_write: boolean
   graph: BpmnGraph; xml: string; diagnostics: { node: string; code: string; severity: string; message: string }[]
+  owner: OwnerOption | null; can_manage: boolean; lock_version: number
 }
 export type NativeDefinitionSummary = Pick<NativeDefinition, 'id' | 'code' | 'title' | 'archived'>
 export interface DefinitionPage { items: NativeDefinitionSummary[]; total: number; page: number; page_size: number }
@@ -71,11 +74,16 @@ export const emptyGraph = (): BpmnGraph => ({ schema_version: 'galaris.bpmn/v2',
   flows: [{ id: 'start_end', source: 'start', target: 'end', condition: null }] })
 
 const base = '/processes/internal'
+const ownerOptionsCache = createOwnerOptionsCache<OwnerOption[]>()
 export const nativeProcessService = {
   runUrl(id: string): string { return `galaris://processes/runs/${encodeURIComponent(id)}` },
   async agents(): Promise<ProcessAgentOption[]> { return (await api.get(`${base}/agents`)).data },
-  async sharingOptions(agentId: number, owner: 'user' | 'agent'): Promise<DocumentSharing> {
-    return (await api.get(`${base}/sharing-options`, { params: { agent_id: agentId, owner } })).data
+  async ownerOptions(): Promise<OwnerOption[]> { return ownerOptionsCache.read('all', async signal => (await api.get<OwnerOption[]>(`${base}/owner-options`, { signal })).data) },
+  async transferOwner(code: string, owner: OwnerOption, lockVersion: number): Promise<NativeDefinition> {
+    return (await api.patch(`${base}/definitions/${encodeURIComponent(code)}/owner`, { kind: owner.kind, id: owner.id, expected_lock_version: lockVersion })).data
+  },
+  async sharingOptions(agentId: number, owner: 'user' | 'agent', ownerId?: number): Promise<DocumentSharing> {
+    return (await api.get(`${base}/sharing-options`, { params: { agent_id: agentId, owner, owner_id: ownerId } })).data
   },
   async humans(agentId: number, signal?: AbortSignal): Promise<{ id: number; label: string }[]> {
     return (await api.get(`${base}/humans`, { params: { agent_id: agentId }, signal })).data
@@ -84,7 +92,7 @@ export const nativeProcessService = {
     return (await api.get(`${base}/definitions`, { params: { page, page_size: pageSize } })).data
   },
   async get(code: string): Promise<NativeDefinition> { return (await api.get(`${base}/definitions/${encodeURIComponent(code)}`)).data },
-  async create(data: { title: string; description?: string; agent_id: number; owner: 'user' | 'agent'; graph?: BpmnGraph; xml?: string }): Promise<NativeDefinition> {
+  async create(data: { title: string; description?: string; agent_id: number; owner: 'user' | 'agent'; owner_id?: number; graph?: BpmnGraph; xml?: string }): Promise<NativeDefinition> {
     return (await api.post(`${base}/definitions`, data)).data
   },
   async save(code: string, data: { title: string; description?: string; expected_revision: number; graph?: BpmnGraph; xml?: string }): Promise<NativeDefinition> {

@@ -13,7 +13,7 @@ import { PersonAvatar } from '@/core/util'
 import { SharingPanel, type SharingDraft, type SharingPresentation as SharingState } from '@/app/share'
 import type { SharingState as DocumentSharing } from '@/app/share'
 import { nativeProcessService as service } from '../services/nativeProcessService'
-const props = defineProps<{ modelValue: SharingDraft; editable: boolean; agentId: number | null; owner: 'user' | 'agent' }>()
+const props = defineProps<{ modelValue: SharingDraft; editable: boolean; agentId: number | null; owner: 'user' | 'agent'; ownerId?: number }>()
 const emit = defineEmits<{ 'update:modelValue': [draft: SharingDraft] }>()
 const catalog = ref<DocumentSharing | null>(null), loading = ref(false), error = ref(false)
 let generation = 0
@@ -30,7 +30,7 @@ async function load(): Promise<void> {
   if (agentId === null || !props.editable) { loading.value = false; return }
   loading.value = true
   try {
-    const result = await service.sharingOptions(agentId, props.owner)
+    const result = await service.sharingOptions(agentId, props.owner, props.ownerId)
     if (current === generation) {
       catalog.value = result
       const grants = props.modelValue.grants.filter(grant => grant.kind !== result.owner?.kind || grant.id !== result.owner.id)
@@ -39,6 +39,6 @@ async function load(): Promise<void> {
   } catch { if (current === generation) error.value = true }
   finally { if (current === generation) loading.value = false }
 }
-watch(() => [props.agentId, props.owner, props.editable], () => { void load() }, { immediate: true })
+watch(() => [props.agentId, props.owner, props.ownerId, props.editable], () => { void load() }, { immediate: true })
 onBeforeUnmount(() => { generation++ })
 </script>

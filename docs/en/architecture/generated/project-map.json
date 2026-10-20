@@ -497,6 +497,7 @@
       },
       {
         "files": [
+          "back/app/chat/router.py",
           "back/app/chat/storage.py"
         ],
         "source": "app.chat",
@@ -1116,7 +1117,9 @@
         "files": [
           "back/app/dataset/attachments.py",
           "back/app/dataset/compatibility.py",
-          "back/app/dataset/migration.py"
+          "back/app/dataset/migration.py",
+          "back/app/dataset/provider.py",
+          "back/app/dataset/router.py"
         ],
         "source": "app.dataset",
         "target": "core.storage"
@@ -2877,7 +2880,9 @@
       },
       {
         "files": [
+          "back/app/memory/attachment_analysis.py",
           "back/app/memory/document_attachment_service.py",
+          "back/app/memory/router.py",
           "back/app/memory/service.py",
           "back/app/memory/storage.py"
         ],
@@ -3110,7 +3115,8 @@
       },
       {
         "files": [
-          "back/app/messenger/journal.py"
+          "back/app/messenger/journal.py",
+          "back/app/messenger/native_facade.py"
         ],
         "source": "app.messenger",
         "target": "core.storage"
@@ -3408,6 +3414,7 @@
           "back/app/process/facade.py",
           "back/app/process/native_access.py",
           "back/app/process/native_router.py",
+          "back/app/process/native_sharing.py",
           "back/app/process/router.py"
         ],
         "source": "app.process",
@@ -3486,6 +3493,7 @@
       },
       {
         "files": [
+          "back/app/process/native_router.py",
           "back/app/process/process_service.py",
           "back/app/process/run_data.py",
           "back/app/process/run_resources.py"
@@ -3501,6 +3509,7 @@
           "back/app/process/facade.py",
           "back/app/process/native_access.py",
           "back/app/process/native_actors.py",
+          "back/app/process/native_definitions.py",
           "back/app/process/native_engine.py",
           "back/app/process/process_service.py"
         ],
@@ -5784,6 +5793,7 @@
         "files": [
           "back/core/storage/lifecycle.py",
           "back/core/storage/models.py",
+          "back/core/storage/names.py",
           "back/core/storage/registry.py"
         ],
         "source": "core.storage",
@@ -13960,7 +13970,7 @@
         "declared_path": "/chat/agents/{agent_id}/avatar",
         "file": "back/app/chat/router.py",
         "handler": "read_agent_avatar",
-        "line": 398,
+        "line": 401,
         "method": "GET",
         "module": "app.chat"
       },
@@ -13969,7 +13979,7 @@
         "declared_path": "/chat/emojis/frequent",
         "file": "back/app/chat/router.py",
         "handler": "read_frequent_emojis",
-        "line": 319,
+        "line": 322,
         "method": "GET",
         "module": "app.chat"
       },
@@ -13978,7 +13988,7 @@
         "declared_path": "/chat/emojis/usage",
         "file": "back/app/chat/router.py",
         "handler": "create_emoji_usage",
-        "line": 328,
+        "line": 331,
         "method": "POST",
         "module": "app.chat"
       },
@@ -13987,7 +13997,7 @@
         "declared_path": "/chat/identities",
         "file": "back/app/chat/router.py",
         "handler": "read_identity_mappings",
-        "line": 338,
+        "line": 341,
         "method": "GET",
         "module": "app.chat"
       },
@@ -13996,7 +14006,7 @@
         "declared_path": "/chat/identities/{tool_id}",
         "file": "back/app/chat/router.py",
         "handler": "delete_identity_mapping",
-        "line": 368,
+        "line": 371,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -14005,7 +14015,7 @@
         "declared_path": "/chat/identities/{tool_id}",
         "file": "back/app/chat/router.py",
         "handler": "update_identity_mapping",
-        "line": 347,
+        "line": 350,
         "method": "PUT",
         "module": "app.chat"
       },
@@ -14014,7 +14024,7 @@
         "declared_path": "/chat/inbox",
         "file": "back/app/chat/router.py",
         "handler": "read_inbox",
-        "line": 280,
+        "line": 283,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14023,7 +14033,7 @@
         "declared_path": "/chat/push/configuration",
         "file": "back/app/chat/router.py",
         "handler": "read_push_configuration",
-        "line": 286,
+        "line": 289,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14032,7 +14042,7 @@
         "declared_path": "/chat/push/subscriptions",
         "file": "back/app/chat/router.py",
         "handler": "remove_push_subscription",
-        "line": 309,
+        "line": 312,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -14041,7 +14051,7 @@
         "declared_path": "/chat/push/subscriptions",
         "file": "back/app/chat/router.py",
         "handler": "create_push_subscription",
-        "line": 296,
+        "line": 299,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14050,7 +14060,7 @@
         "declared_path": "/chat/recipients",
         "file": "back/app/chat/router.py",
         "handler": "read_recipients",
-        "line": 375,
+        "line": 378,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14059,7 +14069,7 @@
         "declared_path": "/chat/rooms",
         "file": "back/app/chat/router.py",
         "handler": "read_rooms",
-        "line": 418,
+        "line": 421,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14068,7 +14078,7 @@
         "declared_path": "/chat/rooms",
         "file": "back/app/chat/router.py",
         "handler": "create_room",
-        "line": 444,
+        "line": 447,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14077,7 +14087,7 @@
         "declared_path": "/chat/rooms/{room_id}",
         "file": "back/app/chat/router.py",
         "handler": "read_room",
-        "line": 472,
+        "line": 475,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14086,7 +14096,7 @@
         "declared_path": "/chat/rooms/{room_id}",
         "file": "back/app/chat/router.py",
         "handler": "update_room_preferences",
-        "line": 489,
+        "line": 492,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -14095,7 +14105,7 @@
         "declared_path": "/chat/rooms/{room_id}/activity",
         "file": "back/app/chat/router.py",
         "handler": "read_activity",
-        "line": 937,
+        "line": 940,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14104,7 +14114,7 @@
         "declared_path": "/chat/rooms/{room_id}/activity/{round_id}",
         "file": "back/app/chat/router.py",
         "handler": "read_activity_detail",
-        "line": 952,
+        "line": 955,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14113,7 +14123,7 @@
         "declared_path": "/chat/rooms/{room_id}/activity/{round_id}/control",
         "file": "back/app/chat/router.py",
         "handler": "control_response",
-        "line": 966,
+        "line": 969,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14122,7 +14132,7 @@
         "declared_path": "/chat/rooms/{room_id}/archive",
         "file": "back/app/chat/router.py",
         "handler": "update_room_archive",
-        "line": 507,
+        "line": 510,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -14131,7 +14141,7 @@
         "declared_path": "/chat/rooms/{room_id}/attachments",
         "file": "back/app/chat/router.py",
         "handler": "create_attachment_message",
-        "line": 1189,
+        "line": 1192,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14140,7 +14150,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls",
         "file": "back/app/chat/router.py",
         "handler": "start_call",
-        "line": 1358,
+        "line": 1371,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14149,7 +14159,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/active",
         "file": "back/app/chat/router.py",
         "handler": "read_active_call",
-        "line": 1417,
+        "line": 1430,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14158,7 +14168,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/status",
         "file": "back/app/chat/router.py",
         "handler": "read_voice_call_status",
-        "line": 1331,
+        "line": 1344,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14167,7 +14177,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/{call_id}",
         "file": "back/app/chat/router.py",
         "handler": "stop_call",
-        "line": 1476,
+        "line": 1489,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -14176,7 +14186,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/{call_id}/candidates",
         "file": "back/app/chat/router.py",
         "handler": "add_call_candidate",
-        "line": 1441,
+        "line": 1454,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14185,7 +14195,7 @@
         "declared_path": "/chat/rooms/{room_id}/commands",
         "file": "back/app/chat/router.py",
         "handler": "read_room_commands",
-        "line": 548,
+        "line": 551,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14194,7 +14204,7 @@
         "declared_path": "/chat/rooms/{room_id}/dictation",
         "file": "back/app/chat/router.py",
         "handler": "transcribe_dictation",
-        "line": 1138,
+        "line": 1141,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14203,7 +14213,7 @@
         "declared_path": "/chat/rooms/{room_id}/documents",
         "file": "back/app/chat/router.py",
         "handler": "read_room_documents",
-        "line": 1004,
+        "line": 1007,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14212,7 +14222,7 @@
         "declared_path": "/chat/rooms/{room_id}/documents",
         "file": "back/app/chat/router.py",
         "handler": "create_room_document",
-        "line": 1034,
+        "line": 1037,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14221,8 +14231,17 @@
         "declared_path": "/chat/rooms/{room_id}/files/{file_id}",
         "file": "back/app/chat/router.py",
         "handler": "download_file",
-        "line": 1286,
+        "line": 1299,
         "method": "GET",
+        "module": "app.chat"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/chat/rooms/{room_id}/files/{file_id}",
+        "file": "back/app/chat/router.py",
+        "handler": "rename_chat_attachment",
+        "line": 1289,
+        "method": "PATCH",
         "module": "app.chat"
       },
       {
@@ -14230,7 +14249,7 @@
         "declared_path": "/chat/rooms/{room_id}/interactions/{interaction_id}",
         "file": "back/app/chat/router.py",
         "handler": "read_interaction",
-        "line": 1080,
+        "line": 1083,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14239,7 +14258,7 @@
         "declared_path": "/chat/rooms/{room_id}/interactions/{interaction_id}/answer",
         "file": "back/app/chat/router.py",
         "handler": "answer_interaction",
-        "line": 1089,
+        "line": 1092,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14248,7 +14267,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages",
         "file": "back/app/chat/router.py",
         "handler": "read_messages",
-        "line": 562,
+        "line": 565,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14257,7 +14276,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages",
         "file": "back/app/chat/router.py",
         "handler": "create_message",
-        "line": 1105,
+        "line": 1108,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14266,7 +14285,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/previews",
         "file": "back/app/chat/router.py",
         "handler": "read_message_previews",
-        "line": 712,
+        "line": 715,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14275,7 +14294,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/previews/content",
         "file": "back/app/chat/router.py",
         "handler": "read_message_preview_content",
-        "line": 891,
+        "line": 894,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14284,7 +14303,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/previews/image",
         "file": "back/app/chat/router.py",
         "handler": "read_message_preview_image",
-        "line": 838,
+        "line": 841,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14293,7 +14312,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/previews/repository",
         "file": "back/app/chat/router.py",
         "handler": "open_message_directory_repository",
-        "line": 807,
+        "line": 810,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14302,7 +14321,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/speech",
         "file": "back/app/chat/router.py",
         "handler": "read_message_speech",
-        "line": 613,
+        "line": 616,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14311,7 +14330,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/topic",
         "file": "back/app/chat/router.py",
         "handler": "update_message_topic",
-        "line": 681,
+        "line": 684,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -14320,7 +14339,7 @@
         "declared_path": "/chat/rooms/{room_id}/mute",
         "file": "back/app/chat/router.py",
         "handler": "set_muted",
-        "line": 1278,
+        "line": 1281,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14329,7 +14348,7 @@
         "declared_path": "/chat/rooms/{room_id}/processes",
         "file": "back/app/chat/router.py",
         "handler": "read_room_processes",
-        "line": 1062,
+        "line": 1065,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14338,7 +14357,7 @@
         "declared_path": "/chat/rooms/{room_id}/read",
         "file": "back/app/chat/router.py",
         "handler": "mark_read",
-        "line": 1270,
+        "line": 1273,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14347,7 +14366,7 @@
         "declared_path": "/chat/rooms/{room_id}/repositories",
         "file": "back/app/chat/router.py",
         "handler": "discover_room_repositories",
-        "line": 768,
+        "line": 771,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14356,7 +14375,7 @@
         "declared_path": "/chat/rooms/{room_id}/repositories",
         "file": "back/app/chat/router.py",
         "handler": "open_room_repository",
-        "line": 784,
+        "line": 787,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14365,7 +14384,7 @@
         "declared_path": "/chat/rooms/{room_id}/speech/status",
         "file": "back/app/chat/router.py",
         "handler": "read_message_speech_status",
-        "line": 587,
+        "line": 590,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14374,7 +14393,7 @@
         "declared_path": "/chat/rooms/{room_id}/tasks",
         "file": "back/app/chat/router.py",
         "handler": "read_room_tasks",
-        "line": 983,
+        "line": 986,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14383,7 +14402,7 @@
         "declared_path": "/chat/rooms/{room_id}/topic",
         "file": "back/app/chat/router.py",
         "handler": "update_room_topic",
-        "line": 524,
+        "line": 527,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -14392,7 +14411,7 @@
         "declared_path": "/chat/status",
         "file": "back/app/chat/router.py",
         "handler": "read_status",
-        "line": 270,
+        "line": 273,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14401,7 +14420,7 @@
         "declared_path": "/chat/viewer-agents",
         "file": "back/app/chat/router.py",
         "handler": "read_viewer_agents",
-        "line": 391,
+        "line": 394,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14887,7 +14906,7 @@
         "declared_path": "/datasets",
         "file": "back/app/dataset/router.py",
         "handler": "list_datasets",
-        "line": 102,
+        "line": 103,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14896,7 +14915,7 @@
         "declared_path": "/datasets",
         "file": "back/app/dataset/router.py",
         "handler": "create_dataset",
-        "line": 109,
+        "line": 110,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -14905,7 +14924,7 @@
         "declared_path": "/datasets/tags",
         "file": "back/app/dataset/router.py",
         "handler": "list_tags",
-        "line": 119,
+        "line": 120,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14914,7 +14933,7 @@
         "declared_path": "/datasets/tags",
         "file": "back/app/dataset/router.py",
         "handler": "create_tag",
-        "line": 126,
+        "line": 127,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -14923,7 +14942,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "delete_dataset",
-        "line": 169,
+        "line": 170,
         "method": "DELETE",
         "module": "app.dataset"
       },
@@ -14932,7 +14951,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "read_dataset",
-        "line": 135,
+        "line": 136,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14941,7 +14960,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "update_dataset",
-        "line": 158,
+        "line": 159,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -14950,7 +14969,7 @@
         "declared_path": "/datasets/{identity}/attachments",
         "file": "back/app/dataset/router.py",
         "handler": "attachments",
-        "line": 254,
+        "line": 255,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14959,8 +14978,17 @@
         "declared_path": "/datasets/{identity}/attachments",
         "file": "back/app/dataset/router.py",
         "handler": "attach",
-        "line": 262,
+        "line": 263,
         "method": "POST",
+        "module": "app.dataset"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/datasets/{identity}/attachments/{attachment_id}",
+        "file": "back/app/dataset/router.py",
+        "handler": "rename_dataset_attachment",
+        "line": 273,
+        "method": "PATCH",
         "module": "app.dataset"
       },
       {
@@ -14968,7 +14996,7 @@
         "declared_path": "/datasets/{identity}/classification",
         "file": "back/app/dataset/router.py",
         "handler": "classify",
-        "line": 272,
+        "line": 281,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -14977,7 +15005,7 @@
         "declared_path": "/datasets/{identity}/content",
         "file": "back/app/dataset/router.py",
         "handler": "write_dataset",
-        "line": 143,
+        "line": 144,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -14986,7 +15014,7 @@
         "declared_path": "/datasets/{identity}/owner",
         "file": "back/app/dataset/router.py",
         "handler": "owner_options",
-        "line": 209,
+        "line": 210,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14995,7 +15023,7 @@
         "declared_path": "/datasets/{identity}/owner",
         "file": "back/app/dataset/router.py",
         "handler": "transfer_owner",
-        "line": 216,
+        "line": 217,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -15004,7 +15032,7 @@
         "declared_path": "/datasets/{identity}/revisions",
         "file": "back/app/dataset/router.py",
         "handler": "read_history",
-        "line": 177,
+        "line": 178,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15013,7 +15041,7 @@
         "declared_path": "/datasets/{identity}/revisions/{number}",
         "file": "back/app/dataset/router.py",
         "handler": "read_revision",
-        "line": 184,
+        "line": 185,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15022,7 +15050,7 @@
         "declared_path": "/datasets/{identity}/revisions/{number}/restore",
         "file": "back/app/dataset/router.py",
         "handler": "restore_revision",
-        "line": 192,
+        "line": 193,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -15031,7 +15059,7 @@
         "declared_path": "/datasets/{identity}/sharing",
         "file": "back/app/dataset/router.py",
         "handler": "sharing",
-        "line": 202,
+        "line": 203,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15040,7 +15068,7 @@
         "declared_path": "/datasets/{identity}/sharing",
         "file": "back/app/dataset/router.py",
         "handler": "set_grant",
-        "line": 244,
+        "line": 245,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15049,7 +15077,7 @@
         "declared_path": "/datasets/{identity}/sharing-level",
         "file": "back/app/dataset/router.py",
         "handler": "sharing_level",
-        "line": 226,
+        "line": 227,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15058,7 +15086,7 @@
         "declared_path": "/datasets/{identity}/usages",
         "file": "back/app/dataset/router.py",
         "handler": "usages",
-        "line": 235,
+        "line": 236,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15760,7 +15788,7 @@
         "declared_path": "/file-share/bridges",
         "file": "back/app/file_share/router.py",
         "handler": "list_bridges",
-        "line": 96,
+        "line": 92,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15769,7 +15797,7 @@
         "declared_path": "/file-share/files",
         "file": "back/app/file_share/router.py",
         "handler": "create_managed_file",
-        "line": 36,
+        "line": 32,
         "method": "POST",
         "module": "app.file_share"
       },
@@ -15778,7 +15806,7 @@
         "declared_path": "/file-share/files/{file_id}",
         "file": "back/app/file_share/router.py",
         "handler": "rename_file",
-        "line": 48,
+        "line": 44,
         "method": "PATCH",
         "module": "app.file_share"
       },
@@ -15787,7 +15815,7 @@
         "declared_path": "/file-share/files/{file_id}/content",
         "file": "back/app/file_share/router.py",
         "handler": "read_managed_file",
-        "line": 62,
+        "line": 58,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15796,7 +15824,7 @@
         "declared_path": "/file-share/files/{file_id}/thumbnail",
         "file": "back/app/file_share/router.py",
         "handler": "read_managed_file_thumbnail",
-        "line": 81,
+        "line": 77,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15805,7 +15833,7 @@
         "declared_path": "/file-share/indexing",
         "file": "back/app/file_share/router.py",
         "handler": "read_indexing",
-        "line": 149,
+        "line": 145,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15814,7 +15842,7 @@
         "declared_path": "/file-share/indexing",
         "file": "back/app/file_share/router.py",
         "handler": "create_indexing",
-        "line": 156,
+        "line": 152,
         "method": "POST",
         "module": "app.file_share"
       },
@@ -15823,7 +15851,7 @@
         "declared_path": "/file-share/indexing/repairs/retry",
         "file": "back/app/file_share/router.py",
         "handler": "retry_index_repairs",
-        "line": 181,
+        "line": 177,
         "method": "POST",
         "module": "app.file_share"
       },
@@ -15832,7 +15860,7 @@
         "declared_path": "/file-share/indexing/{run_id}/cancel",
         "file": "back/app/file_share/router.py",
         "handler": "cancel_indexing",
-        "line": 171,
+        "line": 167,
         "method": "POST",
         "module": "app.file_share"
       },
@@ -15841,7 +15869,7 @@
         "declared_path": "/file-share/items/{item_id}/resources",
         "file": "back/app/file_share/router.py",
         "handler": "read_item_resources",
-        "line": 108,
+        "line": 104,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15850,7 +15878,7 @@
         "declared_path": "/file-share/items/{item_id}/resources/{entry_id}/content",
         "file": "back/app/file_share/router.py",
         "handler": "read_item_resource_content",
-        "line": 128,
+        "line": 124,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15859,7 +15887,7 @@
         "declared_path": "/file-share/items/{item_id}/resources/{entry_id}/thumbnail",
         "file": "back/app/file_share/router.py",
         "handler": "read_item_resource_thumbnail",
-        "line": 115,
+        "line": 111,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -16399,7 +16427,7 @@
         "declared_path": "/internal/agents",
         "file": "back/app/process/native_router.py",
         "handler": "native_execution_agents",
-        "line": 118,
+        "line": 138,
         "method": "GET",
         "module": "app.process"
       },
@@ -16408,7 +16436,7 @@
         "declared_path": "/internal/definitions",
         "file": "back/app/process/native_router.py",
         "handler": "native_list_definitions",
-        "line": 125,
+        "line": 145,
         "method": "GET",
         "module": "app.process"
       },
@@ -16417,7 +16445,7 @@
         "declared_path": "/internal/definitions",
         "file": "back/app/process/native_router.py",
         "handler": "native_create_definition",
-        "line": 132,
+        "line": 152,
         "method": "POST",
         "module": "app.process"
       },
@@ -16426,7 +16454,7 @@
         "declared_path": "/internal/definitions/{code}",
         "file": "back/app/process/native_router.py",
         "handler": "native_read_definition",
-        "line": 144,
+        "line": 166,
         "method": "GET",
         "module": "app.process"
       },
@@ -16435,7 +16463,7 @@
         "declared_path": "/internal/definitions/{code}",
         "file": "back/app/process/native_router.py",
         "handler": "native_update_definition",
-        "line": 177,
+        "line": 207,
         "method": "PUT",
         "module": "app.process"
       },
@@ -16444,7 +16472,7 @@
         "declared_path": "/internal/definitions/{code}/archive",
         "file": "back/app/process/native_router.py",
         "handler": "native_archive_definition",
-        "line": 229,
+        "line": 259,
         "method": "POST",
         "module": "app.process"
       },
@@ -16453,7 +16481,7 @@
         "declared_path": "/internal/definitions/{code}/history",
         "file": "back/app/process/native_router.py",
         "handler": "native_definition_history",
-        "line": 185,
+        "line": 215,
         "method": "GET",
         "module": "app.process"
       },
@@ -16462,7 +16490,7 @@
         "declared_path": "/internal/definitions/{code}/history/{revision}",
         "file": "back/app/process/native_router.py",
         "handler": "native_delete_revision",
-        "line": 206,
+        "line": 236,
         "method": "DELETE",
         "module": "app.process"
       },
@@ -16471,8 +16499,17 @@
         "declared_path": "/internal/definitions/{code}/history/{revision}",
         "file": "back/app/process/native_router.py",
         "handler": "native_history_detail",
-        "line": 192,
+        "line": 222,
         "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/definitions/{code}/owner",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_transfer_owner",
+        "line": 173,
+        "method": "PATCH",
         "module": "app.process"
       },
       {
@@ -16480,7 +16517,7 @@
         "declared_path": "/internal/definitions/{code}/restore",
         "file": "back/app/process/native_router.py",
         "handler": "native_restore_definition",
-        "line": 199,
+        "line": 229,
         "method": "POST",
         "module": "app.process"
       },
@@ -16489,7 +16526,7 @@
         "declared_path": "/internal/definitions/{code}/runs",
         "file": "back/app/process/native_router.py",
         "handler": "native_launch",
-        "line": 236,
+        "line": 266,
         "method": "POST",
         "module": "app.process"
       },
@@ -16498,7 +16535,7 @@
         "declared_path": "/internal/definitions/{code}/sharing",
         "file": "back/app/process/native_router.py",
         "handler": "native_sharing",
-        "line": 213,
+        "line": 243,
         "method": "GET",
         "module": "app.process"
       },
@@ -16507,7 +16544,7 @@
         "declared_path": "/internal/definitions/{code}/sharing",
         "file": "back/app/process/native_router.py",
         "handler": "native_update_sharing",
-        "line": 221,
+        "line": 251,
         "method": "PUT",
         "module": "app.process"
       },
@@ -16516,7 +16553,16 @@
         "declared_path": "/internal/humans",
         "file": "back/app/process/native_router.py",
         "handler": "native_human_options",
-        "line": 92,
+        "line": 101,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/owner-options",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_owner_options",
+        "line": 121,
         "method": "GET",
         "module": "app.process"
       },
@@ -16525,7 +16571,7 @@
         "declared_path": "/internal/resource-options",
         "file": "back/app/process/native_router.py",
         "handler": "native_resource_options",
-        "line": 164,
+        "line": 194,
         "method": "GET",
         "module": "app.process"
       },
@@ -16534,7 +16580,7 @@
         "declared_path": "/internal/resource-preview",
         "file": "back/app/process/native_router.py",
         "handler": "native_resource_preview",
-        "line": 151,
+        "line": 181,
         "method": "GET",
         "module": "app.process"
       },
@@ -16543,7 +16589,7 @@
         "declared_path": "/internal/runs",
         "file": "back/app/process/native_router.py",
         "handler": "native_run_list",
-        "line": 246,
+        "line": 276,
         "method": "GET",
         "module": "app.process"
       },
@@ -16552,7 +16598,7 @@
         "declared_path": "/internal/runs/{identity}",
         "file": "back/app/process/native_router.py",
         "handler": "native_inspect_run",
-        "line": 254,
+        "line": 284,
         "method": "GET",
         "module": "app.process"
       },
@@ -16561,7 +16607,7 @@
         "declared_path": "/internal/runs/{identity}/activities/{node_key}",
         "file": "back/app/process/native_router.py",
         "handler": "native_activity_occurrences",
-        "line": 286,
+        "line": 324,
         "method": "GET",
         "module": "app.process"
       },
@@ -16570,7 +16616,7 @@
         "declared_path": "/internal/runs/{identity}/cancel",
         "file": "back/app/process/native_router.py",
         "handler": "native_cancel",
-        "line": 316,
+        "line": 354,
         "method": "POST",
         "module": "app.process"
       },
@@ -16579,7 +16625,7 @@
         "declared_path": "/internal/runs/{identity}/children",
         "file": "back/app/process/native_router.py",
         "handler": "native_run_children",
-        "line": 294,
+        "line": 332,
         "method": "GET",
         "module": "app.process"
       },
@@ -16588,7 +16634,7 @@
         "declared_path": "/internal/runs/{identity}/control",
         "file": "back/app/process/native_router.py",
         "handler": "native_control",
-        "line": 308,
+        "line": 346,
         "method": "POST",
         "module": "app.process"
       },
@@ -16597,8 +16643,17 @@
         "declared_path": "/internal/runs/{identity}/files/{file_id}",
         "file": "back/app/process/native_router.py",
         "handler": "native_run_file",
-        "line": 273,
+        "line": 311,
         "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/runs/{identity}/files/{file_id}",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_rename_run_file",
+        "line": 303,
+        "method": "PATCH",
         "module": "app.process"
       },
       {
@@ -16606,7 +16661,7 @@
         "declared_path": "/internal/runs/{identity}/metrics",
         "file": "back/app/process/native_router.py",
         "handler": "native_metrics",
-        "line": 301,
+        "line": 339,
         "method": "GET",
         "module": "app.process"
       },
@@ -16615,7 +16670,7 @@
         "declared_path": "/internal/runs/{identity}/nodes/{node_identity}",
         "file": "back/app/process/native_router.py",
         "handler": "native_inspect_node",
-        "line": 266,
+        "line": 296,
         "method": "GET",
         "module": "app.process"
       },
@@ -16624,7 +16679,7 @@
         "declared_path": "/internal/runs/{identity}/retry",
         "file": "back/app/process/native_router.py",
         "handler": "native_retry",
-        "line": 325,
+        "line": 363,
         "method": "POST",
         "module": "app.process"
       },
@@ -16633,7 +16688,7 @@
         "declared_path": "/internal/sharing-options",
         "file": "back/app/process/native_router.py",
         "handler": "native_sharing_options",
-        "line": 101,
+        "line": 110,
         "method": "GET",
         "module": "app.process"
       },
@@ -16642,7 +16697,7 @@
         "declared_path": "/internal/validate",
         "file": "back/app/process/native_router.py",
         "handler": "native_validate_definition",
-        "line": 110,
+        "line": 130,
         "method": "POST",
         "module": "app.process"
       },
@@ -17281,7 +17336,7 @@
         "declared_path": "/memory/browse",
         "file": "back/app/memory/router.py",
         "handler": "browse_memory",
-        "line": 456,
+        "line": 457,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17290,7 +17345,7 @@
         "declared_path": "/memory/documents",
         "file": "back/app/memory/router.py",
         "handler": "create_managed_document",
-        "line": 258,
+        "line": 259,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17299,7 +17354,7 @@
         "declared_path": "/memory/documents/folders",
         "file": "back/app/memory/router.py",
         "handler": "read_document_folders",
-        "line": 861,
+        "line": 862,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17308,7 +17363,7 @@
         "declared_path": "/memory/documents/icons/resolve",
         "file": "back/app/memory/router.py",
         "handler": "resolve_document_icons",
-        "line": 733,
+        "line": 734,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17317,7 +17372,7 @@
         "declared_path": "/memory/documents/keywords",
         "file": "back/app/memory/router.py",
         "handler": "read_document_keywords",
-        "line": 697,
+        "line": 698,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17326,7 +17381,7 @@
         "declared_path": "/memory/documents/library",
         "file": "back/app/memory/router.py",
         "handler": "browse_managed_documents",
-        "line": 716,
+        "line": 717,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17335,7 +17390,7 @@
         "declared_path": "/memory/documents/order",
         "file": "back/app/memory/router.py",
         "handler": "reorder_personal_documents",
-        "line": 752,
+        "line": 753,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17344,7 +17399,7 @@
         "declared_path": "/memory/documents/order/sort",
         "file": "back/app/memory/router.py",
         "handler": "sort_personal_documents",
-        "line": 763,
+        "line": 764,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17353,7 +17408,7 @@
         "declared_path": "/memory/documents/owner-options",
         "file": "back/app/memory/router.py",
         "handler": "read_document_owner_options",
-        "line": 877,
+        "line": 878,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17362,7 +17417,7 @@
         "declared_path": "/memory/documents/tag-icons",
         "file": "back/app/memory/router.py",
         "handler": "read_personal_tag_icons",
-        "line": 774,
+        "line": 775,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17371,7 +17426,7 @@
         "declared_path": "/memory/documents/tag-icons",
         "file": "back/app/memory/router.py",
         "handler": "upload_personal_tag_icon",
-        "line": 780,
+        "line": 781,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17380,7 +17435,7 @@
         "declared_path": "/memory/documents/tags",
         "file": "back/app/memory/router.py",
         "handler": "read_personal_document_tags",
-        "line": 809,
+        "line": 810,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17389,7 +17444,7 @@
         "declared_path": "/memory/documents/tags",
         "file": "back/app/memory/router.py",
         "handler": "create_personal_document_tag",
-        "line": 816,
+        "line": 817,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17398,7 +17453,7 @@
         "declared_path": "/memory/documents/tags/{tag_id}",
         "file": "back/app/memory/router.py",
         "handler": "delete_personal_document_tag",
-        "line": 834,
+        "line": 835,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -17407,7 +17462,7 @@
         "declared_path": "/memory/documents/tags/{tag_id}",
         "file": "back/app/memory/router.py",
         "handler": "update_personal_document_tag",
-        "line": 825,
+        "line": 826,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17416,7 +17471,7 @@
         "declared_path": "/memory/documents/{document_id}",
         "file": "back/app/memory/router.py",
         "handler": "delete_managed_document",
-        "line": 1225,
+        "line": 1226,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -17425,7 +17480,7 @@
         "declared_path": "/memory/documents/{document_id}",
         "file": "back/app/memory/router.py",
         "handler": "read_managed_document",
-        "line": 1200,
+        "line": 1201,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17434,7 +17489,7 @@
         "declared_path": "/memory/documents/{document_id}",
         "file": "back/app/memory/router.py",
         "handler": "update_human_document",
-        "line": 1240,
+        "line": 1241,
         "method": "PATCH",
         "module": "app.memory"
       },
@@ -17443,7 +17498,7 @@
         "declared_path": "/memory/documents/{document_id}/app-permissions",
         "file": "back/app/memory/router.py",
         "handler": "read_app_permissions",
-        "line": 136,
+        "line": 137,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17452,7 +17507,7 @@
         "declared_path": "/memory/documents/{document_id}/app-permissions/{app_key}/{alias}",
         "file": "back/app/memory/router.py",
         "handler": "update_app_permission",
-        "line": 145,
+        "line": 146,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17461,7 +17516,7 @@
         "declared_path": "/memory/documents/{document_id}/apps/{app_id}/datasets/{alias}",
         "file": "back/app/memory/router.py",
         "handler": "access_app_dataset",
-        "line": 157,
+        "line": 158,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17470,7 +17525,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments",
         "file": "back/app/memory/router.py",
         "handler": "list_document_attachments",
-        "line": 1485,
+        "line": 1486,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17479,7 +17534,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments",
         "file": "back/app/memory/router.py",
         "handler": "add_document_attachment",
-        "line": 1505,
+        "line": 1506,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17488,7 +17543,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}",
         "file": "back/app/memory/router.py",
         "handler": "delete_document_attachment",
-        "line": 1611,
+        "line": 1624,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -17497,8 +17552,17 @@
         "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}",
         "file": "back/app/memory/router.py",
         "handler": "read_document_attachment",
-        "line": 1579,
+        "line": 1592,
         "method": "GET",
+        "module": "app.memory"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}",
+        "file": "back/app/memory/router.py",
+        "handler": "rename_document_attachment",
+        "line": 1559,
+        "method": "PATCH",
         "module": "app.memory"
       },
       {
@@ -17506,7 +17570,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}/info",
         "file": "back/app/memory/router.py",
         "handler": "read_document_attachment_info",
-        "line": 1561,
+        "line": 1574,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17515,7 +17579,7 @@
         "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}/thumbnail",
         "file": "back/app/memory/router.py",
         "handler": "read_document_attachment_thumbnail",
-        "line": 1526,
+        "line": 1527,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17524,7 +17588,7 @@
         "declared_path": "/memory/documents/{document_id}/collaborators/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "remove_managed_document_grant",
-        "line": 1453,
+        "line": 1454,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -17533,7 +17597,7 @@
         "declared_path": "/memory/documents/{document_id}/collaborators/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "set_managed_document_grant",
-        "line": 1418,
+        "line": 1419,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17542,7 +17606,7 @@
         "declared_path": "/memory/documents/{document_id}/content-revisions",
         "file": "back/app/memory/router.py",
         "handler": "list_managed_document_content_revisions",
-        "line": 926,
+        "line": 927,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17551,7 +17615,7 @@
         "declared_path": "/memory/documents/{document_id}/content-revisions/{revision}",
         "file": "back/app/memory/router.py",
         "handler": "read_managed_document_content_revision",
-        "line": 953,
+        "line": 954,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17560,7 +17624,7 @@
         "declared_path": "/memory/documents/{document_id}/content-revisions/{revision}/diff",
         "file": "back/app/memory/router.py",
         "handler": "diff_managed_document_content_revision",
-        "line": 978,
+        "line": 979,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17569,7 +17633,7 @@
         "declared_path": "/memory/documents/{document_id}/content-revisions/{revision}/restore",
         "file": "back/app/memory/router.py",
         "handler": "restore_managed_document_content_revision",
-        "line": 1003,
+        "line": 1004,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17578,7 +17642,7 @@
         "declared_path": "/memory/documents/{document_id}/dataset-attachments",
         "file": "back/app/memory/router.py",
         "handler": "read_document_datasets",
-        "line": 1107,
+        "line": 1108,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17587,7 +17651,7 @@
         "declared_path": "/memory/documents/{document_id}/dataset-attachments",
         "file": "back/app/memory/router.py",
         "handler": "attach_document_dataset",
-        "line": 1167,
+        "line": 1168,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17596,7 +17660,7 @@
         "declared_path": "/memory/documents/{document_id}/dataset-attachments/{dataset_id}",
         "file": "back/app/memory/router.py",
         "handler": "detach_document_dataset",
-        "line": 1180,
+        "line": 1181,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -17605,7 +17669,7 @@
         "declared_path": "/memory/documents/{document_id}/export-bundle",
         "file": "back/app/memory/router.py",
         "handler": "export_document_bundle",
-        "line": 1053,
+        "line": 1054,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17614,7 +17678,7 @@
         "declared_path": "/memory/documents/{document_id}/export-pdf",
         "file": "back/app/memory/router.py",
         "handler": "export_managed_document_pdf",
-        "line": 1067,
+        "line": 1068,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17623,7 +17687,7 @@
         "declared_path": "/memory/documents/{document_id}/folder",
         "file": "back/app/memory/router.py",
         "handler": "move_managed_document",
-        "line": 1286,
+        "line": 1287,
         "method": "PATCH",
         "module": "app.memory"
       },
@@ -17632,7 +17696,7 @@
         "declared_path": "/memory/documents/{document_id}/global-access",
         "file": "back/app/memory/router.py",
         "handler": "set_managed_document_global_access",
-        "line": 1388,
+        "line": 1389,
         "method": "PATCH",
         "module": "app.memory"
       },
@@ -17641,7 +17705,7 @@
         "declared_path": "/memory/documents/{document_id}/grants/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "remove_document_grant",
-        "line": 1670,
+        "line": 1683,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -17650,7 +17714,7 @@
         "declared_path": "/memory/documents/{document_id}/grants/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "set_document_grant",
-        "line": 1637,
+        "line": 1650,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17659,7 +17723,7 @@
         "declared_path": "/memory/documents/{document_id}/icon",
         "file": "back/app/memory/router.py",
         "handler": "save_document_icon",
-        "line": 741,
+        "line": 742,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17668,7 +17732,7 @@
         "declared_path": "/memory/documents/{document_id}/import-image",
         "file": "back/app/memory/router.py",
         "handler": "import_document_image",
-        "line": 1031,
+        "line": 1032,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17677,7 +17741,7 @@
         "declared_path": "/memory/documents/{document_id}/internal-attachments",
         "file": "back/app/memory/router.py",
         "handler": "read_internal_attachments",
-        "line": 1118,
+        "line": 1119,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17686,7 +17750,7 @@
         "declared_path": "/memory/documents/{document_id}/internal-attachments",
         "file": "back/app/memory/router.py",
         "handler": "change_internal_attachments",
-        "line": 1130,
+        "line": 1131,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17695,7 +17759,7 @@
         "declared_path": "/memory/documents/{document_id}/link-card",
         "file": "back/app/memory/router.py",
         "handler": "create_document_link_card",
-        "line": 1042,
+        "line": 1043,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17704,7 +17768,7 @@
         "declared_path": "/memory/documents/{document_id}/owner",
         "file": "back/app/memory/router.py",
         "handler": "change_document_owner",
-        "line": 1324,
+        "line": 1325,
         "method": "PATCH",
         "module": "app.memory"
       },
@@ -17713,7 +17777,7 @@
         "declared_path": "/memory/documents/{document_id}/parent",
         "file": "back/app/memory/router.py",
         "handler": "move_personal_subdocument",
-        "line": 798,
+        "line": 799,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17722,7 +17786,7 @@
         "declared_path": "/memory/documents/{document_id}/process-attachments",
         "file": "back/app/memory/router.py",
         "handler": "read_document_processes",
-        "line": 1143,
+        "line": 1144,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17731,7 +17795,7 @@
         "declared_path": "/memory/documents/{document_id}/process-attachments",
         "file": "back/app/memory/router.py",
         "handler": "attach_document_process",
-        "line": 1154,
+        "line": 1155,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17740,7 +17804,7 @@
         "declared_path": "/memory/documents/{document_id}/sharing",
         "file": "back/app/memory/router.py",
         "handler": "read_document_sharing",
-        "line": 1256,
+        "line": 1257,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17749,7 +17813,7 @@
         "declared_path": "/memory/documents/{document_id}/sharing",
         "file": "back/app/memory/router.py",
         "handler": "update_document_sharing",
-        "line": 1265,
+        "line": 1266,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17758,7 +17822,7 @@
         "declared_path": "/memory/documents/{document_id}/sharing-level",
         "file": "back/app/memory/router.py",
         "handler": "update_document_sharing_level",
-        "line": 1274,
+        "line": 1275,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17767,7 +17831,7 @@
         "declared_path": "/memory/documents/{document_id}/tags",
         "file": "back/app/memory/router.py",
         "handler": "move_personal_document",
-        "line": 789,
+        "line": 790,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17776,7 +17840,7 @@
         "declared_path": "/memory/documents/{document_id}/tags/{tag_id}",
         "file": "back/app/memory/router.py",
         "handler": "remove_personal_document_tag",
-        "line": 852,
+        "line": 853,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -17785,7 +17849,7 @@
         "declared_path": "/memory/documents/{document_id}/tags/{tag_id}",
         "file": "back/app/memory/router.py",
         "handler": "add_personal_document_tag",
-        "line": 843,
+        "line": 844,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17794,7 +17858,7 @@
         "declared_path": "/memory/documents/{document_id}/thumbnail",
         "file": "back/app/memory/router.py",
         "handler": "read_document_thumbnail",
-        "line": 1085,
+        "line": 1086,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17803,7 +17867,7 @@
         "declared_path": "/memory/duplicates/preview",
         "file": "back/app/memory/router.py",
         "handler": "estimate_memory_duplicates",
-        "line": 384,
+        "line": 385,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17812,7 +17876,7 @@
         "declared_path": "/memory/filter-options",
         "file": "back/app/memory/router.py",
         "handler": "read_memory_filter_options",
-        "line": 499,
+        "line": 500,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17821,7 +17885,7 @@
         "declared_path": "/memory/findings",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_findings",
-        "line": 406,
+        "line": 407,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17830,7 +17894,7 @@
         "declared_path": "/memory/findings/{finding_id}/apply",
         "file": "back/app/memory/router.py",
         "handler": "apply_memory_finding",
-        "line": 425,
+        "line": 426,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17839,7 +17903,7 @@
         "declared_path": "/memory/findings/{finding_id}/dismiss",
         "file": "back/app/memory/router.py",
         "handler": "dismiss_memory_finding",
-        "line": 443,
+        "line": 444,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17848,7 +17912,7 @@
         "declared_path": "/memory/goal-folders/reconcile",
         "file": "back/app/memory/router.py",
         "handler": "launch_goal_folder_reconciliation",
-        "line": 350,
+        "line": 351,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17857,7 +17921,7 @@
         "declared_path": "/memory/graph/expand",
         "file": "back/app/memory/router.py",
         "handler": "expand_memory_graph_node",
-        "line": 564,
+        "line": 565,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17866,7 +17930,7 @@
         "declared_path": "/memory/graph/roots",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_graph_roots",
-        "line": 527,
+        "line": 528,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17875,7 +17939,7 @@
         "declared_path": "/memory/graph/state",
         "file": "back/app/memory/router.py",
         "handler": "write_memory_graph_state",
-        "line": 555,
+        "line": 556,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17884,7 +17948,7 @@
         "declared_path": "/memory/graph/state/read",
         "file": "back/app/memory/router.py",
         "handler": "read_memory_graph_state",
-        "line": 546,
+        "line": 547,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17893,7 +17957,7 @@
         "declared_path": "/memory/items",
         "file": "back/app/memory/router.py",
         "handler": "create_memory_item",
-        "line": 238,
+        "line": 239,
         "method": "POST",
         "module": "app.memory"
       },
@@ -17902,7 +17966,7 @@
         "declared_path": "/memory/items/{item_id}",
         "file": "back/app/memory/router.py",
         "handler": "forget_memory_item",
-        "line": 680,
+        "line": 681,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -17911,7 +17975,7 @@
         "declared_path": "/memory/items/{item_id}",
         "file": "back/app/memory/router.py",
         "handler": "get_memory_item",
-        "line": 609,
+        "line": 610,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17920,7 +17984,7 @@
         "declared_path": "/memory/items/{item_id}",
         "file": "back/app/memory/router.py",
         "handler": "update_memory_item",
-        "line": 657,
+        "line": 658,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17929,7 +17993,7 @@
         "declared_path": "/memory/items/{item_id}/grants/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "remove_memory_item_grant",
-        "line": 1714,
+        "line": 1727,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -17938,7 +18002,7 @@
         "declared_path": "/memory/items/{item_id}/grants/{agent_id}",
         "file": "back/app/memory/router.py",
         "handler": "set_memory_item_grant",
-        "line": 1699,
+        "line": 1712,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17947,7 +18011,7 @@
         "declared_path": "/memory/items/{item_id}/links",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_links",
-        "line": 1749,
+        "line": 1762,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17956,7 +18020,7 @@
         "declared_path": "/memory/items/{item_id}/revisions",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_revisions",
-        "line": 642,
+        "line": 643,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17965,7 +18029,7 @@
         "declared_path": "/memory/items/{item_id}/sharing",
         "file": "back/app/memory/router.py",
         "handler": "read_item_sharing",
-        "line": 583,
+        "line": 584,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17974,7 +18038,7 @@
         "declared_path": "/memory/items/{item_id}/sharing",
         "file": "back/app/memory/router.py",
         "handler": "update_item_sharing",
-        "line": 592,
+        "line": 593,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -17983,7 +18047,7 @@
         "declared_path": "/memory/link-reconciliation",
         "file": "back/app/memory/router.py",
         "handler": "read_link_reconciliation_status",
-        "line": 328,
+        "line": 329,
         "method": "GET",
         "module": "app.memory"
       },
@@ -17992,7 +18056,7 @@
         "declared_path": "/memory/link-reconciliation",
         "file": "back/app/memory/router.py",
         "handler": "launch_link_reconciliation",
-        "line": 340,
+        "line": 341,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18001,7 +18065,7 @@
         "declared_path": "/memory/links",
         "file": "back/app/memory/router.py",
         "handler": "create_memory_link",
-        "line": 1731,
+        "line": 1744,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18010,7 +18074,7 @@
         "declared_path": "/memory/metrics",
         "file": "back/app/memory/router.py",
         "handler": "read_memory_metrics",
-        "line": 310,
+        "line": 311,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18037,7 +18101,7 @@
         "declared_path": "/memory/recall",
         "file": "back/app/memory/router.py",
         "handler": "recall_memory",
-        "line": 515,
+        "line": 516,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18046,7 +18110,7 @@
         "declared_path": "/memory/recent",
         "file": "back/app/memory/router.py",
         "handler": "read_recent_memories",
-        "line": 197,
+        "line": 198,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18055,7 +18119,7 @@
         "declared_path": "/memory/retention/preview",
         "file": "back/app/memory/router.py",
         "handler": "estimate_memory_retention",
-        "line": 367,
+        "line": 368,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18064,7 +18128,7 @@
         "declared_path": "/memory/search",
         "file": "back/app/memory/router.py",
         "handler": "search_memory",
-        "line": 487,
+        "line": 488,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18073,7 +18137,7 @@
         "declared_path": "/memory/temporal/defaults",
         "file": "back/app/memory/router.py",
         "handler": "temporal_defaults",
-        "line": 120,
+        "line": 121,
         "method": "GET",
         "module": "app.memory"
       },
@@ -19643,6 +19707,7 @@
           "front/app/chat/components/AgentTasksPanel.vue",
           "front/app/chat/components/ChatDocumentPane.vue",
           "front/app/chat/components/ChatDocumentSearchDialog.vue",
+          "front/app/chat/components/Composer.vue",
           "front/app/chat/components/ConversationDocumentDialog.vue",
           "front/app/chat/components/ConversationDocumentsPanel.vue",
           "front/app/chat/components/ConversationProcessDialog.vue",
@@ -19966,6 +20031,7 @@
       },
       {
         "files": [
+          "front/app/file_share/components/AgentFileBrowser.vue",
           "front/app/file_share/navigation.ts"
         ],
         "source": "app/file_share",
@@ -20390,7 +20456,11 @@
       },
       {
         "files": [
+          "front/app/memory/components/DocumentEditor.vue",
+          "front/app/memory/components/DocumentLibraryFilters.vue",
+          "front/app/memory/components/DocumentLibraryPage.vue",
           "front/app/memory/components/MemorySharingPanel.vue",
+          "front/app/memory/services/memoryService.ts",
           "front/app/memory/types.ts"
         ],
         "source": "app/memory",
@@ -20615,9 +20685,11 @@
       },
       {
         "files": [
+          "front/app/share/components/OwnerAvatar.vue",
           "front/app/share/components/ResourceSharingPanel.vue",
           "front/app/share/components/SharingPanel.vue",
           "front/app/share/components/SharingRecipients.vue",
+          "front/app/share/ownerCache.ts",
           "front/app/share/panel.ts"
         ],
         "source": "app/share",
@@ -21347,7 +21419,9 @@
       },
       {
         "files": [
-          "front/core/util/components/ResourceAttachments.vue"
+          "front/core/util/components/RenameFileButton.vue",
+          "front/core/util/components/ResourceAttachments.vue",
+          "front/core/util/sessionResources.ts"
         ],
         "source": "core/util",
         "target": "core/api"

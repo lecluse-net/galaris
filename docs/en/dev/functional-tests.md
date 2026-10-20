@@ -119,6 +119,19 @@ attachments without another upload; the former insertion-hiding constraint is re
 
 `app/share/tests` verifies exclusive configurations, isolation between resources and owners, read/write access and denial of resharing by ordinary editors. PostgreSQL migration tests cover Documents, Dataset and Process, all three principal types, global and team access, tombstones, replay after revocation and rollback of interrupted copies. Common frontend sharing scenarios also include Dataset.
 
+`front/browser-tests/owner-select.spec.mjs` protects the common selector: owners remain reachable
+through search and independent pages per type, short lists have no pagination, and current-user
+identity, keyboard dismissal and read-only access work on mobile and desktop. Document filters
+retain the type/identifier pair through one field. Process scenarios cover transfers, conflicts
+and preserved drafts; HTTP tests reject out-of-scope transfers and ordinary editors while
+keeping the former owner as an editor. The internal process E2E journey transfers ownership
+and reopens the definition in the assembled application.
+The common selector also checks actual user and agent images and avatar reuse across
+openings. `front/app/share/ownerCache.test.mjs` exercises the Documents, Dataset and Process
+services: coalesced concurrent requests, five-minute expiry, independent copies, resource
+and version isolation, session invalidation and retries after failure. The Process scenario
+checks refresh on reopening after expiry without losing the draft.
+
 
 `app/tools/tests/test_action_authorizations.py` also checks that unconsumed legacy automatic
 approvals are invalidated before execution, directly or through reconciliation.

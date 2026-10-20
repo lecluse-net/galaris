@@ -389,6 +389,10 @@ actions. Enter the title and owner: the document is automatically placed in that
 which expands, and opens in the editor. The general creation button keeps new documents
 in the unclassified list.
 
+Library filters use a single **Owner** field to choose a person or agent. It lists **Me**,
+then users and agents, with search and independent pagination for each large list.
+Clearing the field restores all owners while retaining the other filters.
+
 Click a folder's **⋮** button or right-click the folder to open the same menu with icons and
 labels for all its actions: create a document or folder, edit, sort, expand,
 collapse, and delete. **New document**, **New subfolder**, **Edit**, and **Delete** remain

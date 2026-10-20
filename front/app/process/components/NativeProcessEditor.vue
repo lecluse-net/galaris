@@ -19,22 +19,21 @@
             <q-input v-model="title" outlined dense hide-bottom-space :readonly="!editable" :label="t('nativeProcesses.titleField')" />
           </div>
           <div class="col-12 col-md-6">
-            <ResourceSharingPanel v-if="definition && !sharingPending" :item-id="String(definition.id)" :editable="editable" :reader="readSharing" :writer="writeSharing">
+            <OwnerSelect :model-value="ownerSelection" :options="ownerOptions" :current="definition?.owner"
+              :disable="!privileges.loaded || ownerOptionsLoading" :loading="ownerOptionsLoading"
+              @open="refreshOwners"
+              :readonly="!editable || saving || Boolean(definition && !definition.can_manage)" @update:model-value="selectOwner">
+            </OwnerSelect>
+          </div>
+          <div class="col-12">
+            <ResourceSharingPanel v-if="definition && !sharingPending" :lock-version="definition.lock_version" :item-id="String(definition.id)" :editable="editable" :reader="readSharing" :writer="writeSharing">
               <template #avatar="{ recipient, size }">
                 <AgentAvatar v-if="recipient.kind === 'agent'" :agent-id="recipient.id" :name="recipient.label" :has-avatar="recipient.has_avatar" :size="size" />
                 <PersonAvatar v-else :name="recipient.label" :avatar-url="recipient.avatar_url" :size="size" />
               </template>
             </ResourceSharingPanel>
             <template v-else>
-            <ProcessSharingDraft v-model="sharingDraft" :agent-id="launcherAgentId" :owner="owner" :editable="editable && !saving" />
-            <div v-if="!definition" class="row q-col-gutter-sm q-mt-sm">
-              <div :class="owner === 'agent' ? 'col-12 col-sm-6' : 'col-12'">
-                <q-select v-model="owner" outlined dense hide-bottom-space :options="ownerOptions" emit-value map-options :readonly="!editable" :label="t('nativeProcesses.owner')" />
-              </div>
-              <div v-if="owner === 'agent'" class="col-12 col-sm-6">
-                <ProcessAgentSelect v-model="launcherAgentId" :options="agents" outlined dense hide-bottom-space :readonly="!editable" :label="t('nativeProcesses.ownerAgent')" />
-              </div>
-            </div>
+            <ProcessSharingDraft v-model="sharingDraft" :agent-id="owner === 'agent' ? ownerId ?? null : launcherAgentId" :owner="owner" :owner-id="ownerId" :editable="editable && !saving" />
             </template>
           </div>
         </div>
@@ -182,10 +181,9 @@ import { usePrivilegeStore } from '@/core/authorize'
 import { navigationIcon } from '@/core/navigation'
 import { CodeEditor, PageHeader, PersonAvatar, showConfirmationDialog } from '@/core/util'
 import { AgentAvatar } from '@/app/agent'
-import { ResourceSharingPanel, type SharingDraft, type SharingState as DocumentSharing, type SharingUpdate as DocumentSharingLevelUpdate } from '@/app/share'
+import { OwnerSelect, ownerKey, ResourceSharingPanel, type OwnerOption, type SharingDraft, type SharingState as DocumentSharing, type SharingUpdate as DocumentSharingLevelUpdate } from '@/app/share'
 import BpmnCanvas from './BpmnCanvas.vue'
 import NativeRunsTable from './NativeRunsTable.vue'
-import ProcessAgentSelect from './ProcessAgentSelect.vue'
 import ProcessSharingDraft from './ProcessSharingDraft.vue'
 import ProcessVariableDeclarations from './ProcessVariableDeclarations.vue'
 import { persistLayout, processingMode, defaultDecisionCode, defaultTaskCode } from '../graphEditing'
@@ -194,13 +192,19 @@ const props = withDefaults(defineProps<{ code?: string | null }>(), { code: null
 const { t, locale } = useI18n(), router = useRouter(), $q = useQuasar(), privileges = usePrivilegeStore()
 const definition = shallowRef<NativeDefinition | null>(null), graph = shallowRef(emptyGraph()), title = ref('')
 const description = ref('')
-const agents = ref<ProcessAgentOption[]>([]), launcherAgentId = ref<number | null>(null), owner = ref<'user' | 'agent'>('user')
+const agents = ref<ProcessAgentOption[]>([]), launcherAgentId = ref<number | null>(null)
+const ownerOptions = ref<OwnerOption[]>([]), ownerSelection = ref('')
+const ownerOptionsLoading = ref(false)
+let ownerOptionsGeneration = 0
+const ownerDirectoryAllowed = computed(() => privileges.loaded && (privileges.hasPrivilege('PROCESS_EDIT') || privileges.hasPrivilege('PROCESS_ADMIN')))
+const owner = computed(() => ownerSelection.value.startsWith('agent:') ? 'agent' : 'user')
+const ownerId = computed(() => Number(ownerSelection.value.split(':')[1]) || undefined)
 const humans = ref<{ id: number; label: string }[]>([])
 const sharingDraft = ref<SharingDraft>({ level: 'private', can_write: false, grants: [] })
 const sharingPending = ref(false)
 const humansLoading = ref(false), humansError = ref(false)
 let humansRequest: AbortController | null = null
-const loading = ref(false), saving = ref(false), archiving = ref(false), error = ref('')
+const loading = ref(true), saving = ref(false), archiving = ref(false), error = ref('')
 let archiveDialog: ReturnType<typeof showConfirmationDialog> | null = null
 let revisionDialog: ReturnType<typeof showConfirmationDialog> | null = null
 const deletingRevision = ref(false)
@@ -242,7 +246,6 @@ async function loadHumans(): Promise<void> {
     if (humansRequest === request) { humansRequest = null; humansLoading.value = false }
   }
 }
-const ownerOptions = computed(() => [{ value: 'user', label: t('nativeProcesses.userOwner') }, { value: 'agent', label: t('nativeProcesses.agentOwner') }])
 function atPath(root: BpmnGraph, path: string[]): BpmnGraph { let current = root; for (const key of path) { const body = current.nodes.find(node => node.id === key)?.body; if (!body) break; current = body } return current }
 const localGraph = computed<BpmnGraph>({ get: () => atPath(graph.value, bodyPath.value), set: value => {
   function replace(root: BpmnGraph, path: string[]): BpmnGraph {
@@ -297,7 +300,7 @@ function report(cause: unknown): void {
   const response = cause as { response?: { data?: { detail?: unknown } } }
   error.value = typeof response.response?.data?.detail === 'string' ? response.response.data.detail : cause instanceof Error ? cause.message : t('nativeProcesses.error')
 }
-function apply(value: NativeDefinition): void { definition.value = value; graph.value = value.graph; title.value = value.title; description.value = value.description ?? ''; bodyPath.value = []; selectedNode.value = null; selectedFlow.value = null; invalidDrafts.value = {}; drafts.value = {}; declarationDrafts.value = {}; pastRevision.value = null; selectedRevision.value = null; revisionLoading.value = false; revisionError.value = false; revisionGeneration++; error.value = '' }
+function apply(value: NativeDefinition): void { definition.value = value; ownerSelection.value = value.owner ? ownerKey(value.owner) : ''; graph.value = value.graph; title.value = value.title; description.value = value.description ?? ''; bodyPath.value = []; selectedNode.value = null; selectedFlow.value = null; invalidDrafts.value = {}; drafts.value = {}; declarationDrafts.value = {}; pastRevision.value = null; selectedRevision.value = null; revisionLoading.value = false; revisionError.value = false; revisionGeneration++; error.value = '' }
 async function load(): Promise<void> {
   const token = ++generation, code = props.code
   sharingPending.value = false; sharingDraft.value = { level: 'private', can_write: false, grants: [] }
@@ -308,14 +311,61 @@ async function load(): Promise<void> {
   declarationDrafts.value = {}
   try {
     if (code) { const value = await service.get(code); if (token !== generation) return; apply(value) }
-    else { graph.value = emptyGraph(); title.value = ''; description.value = ''; bodyPath.value = [] }
+    else { graph.value = emptyGraph(); title.value = ''; description.value = ''; ownerSelection.value = ''; bodyPath.value = [] }
     const options = await service.agents(); if (token !== generation) return; agents.value = options; launcherAgentId.value = options[0]?.id ?? null
   } catch (cause) { if (token === generation) report(cause) }
   finally { if (token === generation) loading.value = false }
 }
+watch([ownerDirectoryAllowed, loading], async ([allowed, pageLoading]) => {
+  const request = ++ownerOptionsGeneration, token = generation
+  ownerOptions.value = []
+  if (!allowed || pageLoading) { ownerOptionsLoading.value = false; return }
+  ownerOptionsLoading.value = true
+  try {
+    const owners = await service.ownerOptions()
+    if (request !== ownerOptionsGeneration || token !== generation) return
+    ownerOptions.value = owners
+    if (!props.code && !ownerSelection.value) {
+      const me = owners.find(option => option.is_current_user)
+      ownerSelection.value = me ? ownerKey(me) : ''
+    }
+  } catch (cause) { if (request === ownerOptionsGeneration && token === generation) report(cause) }
+  finally { if (request === ownerOptionsGeneration && token === generation) ownerOptionsLoading.value = false }
+}, { immediate: true })
 function selectNode(id: string): void { selectedNode.value = id; selectedFlow.value = null }
+async function refreshOwners(): Promise<void> {
+  if (!ownerDirectoryAllowed.value || loading.value) return
+  const request = ++ownerOptionsGeneration, token = generation
+  try {
+    const owners = await service.ownerOptions()
+    if (request === ownerOptionsGeneration && token === generation) ownerOptions.value = owners
+  } catch (cause) { if (request === ownerOptionsGeneration && token === generation) report(cause) }
+}
 function readSharing(_id: string): Promise<DocumentSharing> { return service.sharing(definition.value?.code ?? '') }
-function writeSharing(_id: string, value: DocumentSharingLevelUpdate): Promise<DocumentSharing> { return service.share(definition.value?.code ?? '', value) }
+async function writeSharing(_id: string, value: DocumentSharingLevelUpdate): Promise<DocumentSharing> {
+  const record = definition.value, token = generation
+  const state = await service.share(record?.code ?? '', value)
+  if (record && token === generation && definition.value?.id === record.id) definition.value = { ...definition.value, lock_version: state.lock_version, can_manage: state.can_manage }
+  return state
+}
+async function selectOwner(key: string): Promise<void> {
+  const selected = ownerOptions.value.find(option => ownerKey(option) === key)
+  if (!editable.value || saving.value || !selected) return
+  const record = definition.value, token = generation
+  if (!record) { ownerSelection.value = key; return }
+  if (!record.can_manage || key === ownerSelection.value) return
+  saving.value = true
+  try {
+    const result = await service.transferOwner(record.code, selected, record.lock_version)
+    if (token !== generation) return
+    // Ownership changes do not rebase an unsaved BPMN draft onto a newer revision.
+    definition.value = { ...record, owner: result.owner, lock_version: result.lock_version,
+      can_write: result.can_write, can_manage: result.can_manage }
+    ownerSelection.value = result.owner ? ownerKey(result.owner) : ''
+    error.value = ''
+  } catch (cause) { if (token === generation) report(cause) }
+  finally { if (token === generation) saving.value = false }
+}
 function selectFlow(id: string): void { selectedFlow.value = id; selectedNode.value = null }
 function dismissInspector(kind: 'node' | 'flow', id: string): void {
   if (kind === 'node' && selectedNode.value === id) selectedNode.value = null
@@ -340,7 +390,7 @@ function removeNode(id: string): void {
 function openBody(): void { if (!selected.value?.body) return; bodyPath.value = [...bodyPath.value, selected.value.id]; selectedNode.value = null }
 async function validate(): Promise<void> { const token = generation; try { assertDrafts(); await service.validate({ graph: persistLayout(graph.value) }); if (token !== generation) return; error.value = ''; $q.notify({ message: t('nativeProcesses.valid'), color: 'positive' }) } catch (cause) { if (token === generation) report(cause) } }
 async function save(): Promise<void> {
-  if (!editable.value || saving.value || archiving.value || !launcherAgentId.value && !definition.value) return
+  if (!editable.value || saving.value || archiving.value || (!launcherAgentId.value || !ownerId.value) && !definition.value) return
   const token = generation
   saving.value = true
   try {
@@ -348,15 +398,17 @@ async function save(): Promise<void> {
     const creating = !definition.value
     const result = definition.value ? await service.save(definition.value.code, { title: title.value, description: description.value, expected_revision: definition.value.revision,
       graph: persistLayout(graph.value) }) : await service.create({ title: title.value, description: description.value,
-        graph: persistLayout(graph.value), agent_id: launcherAgentId.value!, owner: owner.value })
+        graph: persistLayout(graph.value), agent_id: launcherAgentId.value!, owner: owner.value, owner_id: ownerId.value })
     if (token !== generation) return
     definition.value = result
     if (creating) sharingPending.value = true
     if (sharingPending.value) {
       const state = await service.sharing(result.code)
       if (token !== generation) return
-      await service.share(result.code, { ...sharingDraft.value, expected_lock_version: state.lock_version })
+      const shared = await service.share(result.code, { ...sharingDraft.value, expected_lock_version: state.lock_version })
       if (token !== generation) return
+      result.lock_version = shared.lock_version
+      result.can_manage = shared.can_manage
       sharingPending.value = false
     }
     apply(result); $q.notify({ message: t('nativeProcesses.saved'), color: 'positive' })

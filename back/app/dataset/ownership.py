@@ -18,6 +18,7 @@ from .projection import changed
 class OwnerOptions(BaseModel):
     owner: Collaborator | None
     options: list[Collaborator]
+    current_user_id: int
 
 
 async def options(identity: UUID, actor: AgentManagementScope) -> OwnerOptions:
@@ -32,7 +33,7 @@ async def options(identity: UUID, actor: AgentManagementScope) -> OwnerOptions:
                 principal.kind == "user" and (principal.id == actor.user_id or administrator)
             ):
                 choices.append(principal)
-    return OwnerOptions(owner=directory.owner, options=choices)
+    return OwnerOptions(owner=directory.owner, options=choices, current_user_id=actor.user_id)
 
 
 async def transfer(identity: UUID, actor: AgentManagementScope, *, kind: Literal["agent", "user"],

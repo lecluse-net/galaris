@@ -10,9 +10,10 @@ from uuid import uuid4
 from sqlalchemy import select, func
 from sqlalchemy.orm import defer, undefer
 
-from app.agent import AgentManagementScope
+from app.agent import Agent, AgentManagementScope
 from app.tools import ToolModel
 from core.database import get_db
+from core.user import get_user_record
 
 from .bpmn import Workflow, compile_bpmn, to_bpmn
 from .models import ProcessDefinition, ProcessDefinitionRevision
@@ -95,7 +96,21 @@ async def read(code: str, actor: int | AgentManagementScope) -> dict[str, Any]:
         can_write = True
     except PermissionError:
         can_write = False
+    owner: dict[str, object] | None = None
+    if record.agent_id is not None:
+        agent = (await get_db().execute(select(Agent.first_name, Agent.last_name, Agent.code, Agent.avatar.is_not(None))
+            .where(Agent.id == record.agent_id))).one_or_none()
+        owner = {"kind": "agent", "id": record.agent_id, "label": f"{agent.first_name} {agent.last_name}".strip() or agent.code,
+            "has_avatar": agent[3]} if agent else {"kind": "agent", "id": record.agent_id, "label": f"#{record.agent_id}", "has_avatar": False}
+    elif record.owner_user_id is not None:
+        user = await get_user_record(record.owner_user_id)
+        owner = {"kind": "user", "id": record.owner_user_id, "label": user.display_name or user.email,
+            "avatar_url": user.avatar_url} if user else {"kind": "user", "id": record.owner_user_id, "label": f"#{record.owner_user_id}"}
+        owner["is_current_user"] = not isinstance(actor, int) and actor.user_id == record.owner_user_id
+    can_manage = bool(await get_db().scalar(select(ProcessDefinition.id).where(
+        ProcessDefinition.id == record.id, accessible_clause(actor, manage=True))))
     return {"id": record.id, "code": record.code, "archived": record.archived,
+            "owner": owner, "can_manage": can_manage, "lock_version": record.lock_version,
             "title": record.label, "description": record.description, "revision": record.revision, "can_write": can_write,
             "xml": record.bpmn_xml, "graph": graph.model_dump(mode="json"), "diagnostics": diagnostics}
 

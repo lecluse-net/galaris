@@ -151,6 +151,10 @@ for (const readonly of [false, true]) test(`sequence arrows meet ${readonly ? 'e
 
 test('a new workflow can be built from its start handle and retains typed human assignments', async ({ page }) => {
   await jsonRoute(page, '**/api/processes/internal/agents', [{ id: 7, label: 'Synthetic agent' }])
+  await jsonRoute(page, '**/api/processes/internal/owner-options', [
+    { kind: 'user', id: 1, label: 'Synthetic owner', is_current_user: true },
+    { kind: 'agent', id: 7, label: 'Synthetic agent', has_avatar: false },
+  ])
   await jsonRoute(page, '**/api/processes/internal/humans?**', [{ id: 11, label: 'Synthetic human' }])
   let sharing = { lock_version: 1, can_manage: true, grants: [], owner_groups: [], level: 'private', can_write: false,
     owner: { kind: 'user', id: 1, label: 'Synthetic owner', can_write: true },
@@ -179,7 +183,7 @@ test('a new workflow can be built from its start handle and retains typed human 
   let definition
   await page.route('**/api/processes/internal/definitions', async route => {
     writes.push(route.request().postDataJSON())
-    definition = { ...writes[0], id: 1, code: 'synthetic_saved',
+    definition = { ...writes[0], owner: sharing.owner, can_manage: true, lock_version: 1, id: 1, code: 'synthetic_saved',
       revision: 1, can_write: true, archived: false, xml: '', diagnostics: [] }
     await route.fulfill({ status: 201, json: definition })
   })
@@ -315,6 +319,7 @@ test('typed actor lanes preserve task assignment when editing and saving', async
 
 async function definitionFixtures(page, writable, kind = 'task', typed = false, declarations = {}, definitionRevision = 1) {
   const definition = { id: 1, code: 'invented_process', title: 'Invented workflow', description: 'Synthetic existing description',
+    owner: { kind: 'agent', id: 7, label: 'Synthetic agent', has_avatar: false }, can_manage: writable, lock_version: 1,
     revision: definitionRevision, archived: false, can_write: writable, graph: graph(), xml: '<synthetic/>', diagnostics: [] }
   const writes = []
   definition.graph.nodes[1].kind = kind
@@ -325,6 +330,10 @@ async function definitionFixtures(page, writable, kind = 'task', typed = false, 
   }
   if (kind === 'tool_call') definition.graph.nodes[1].config = { tool: 'synthetic_tool' }
   await jsonRoute(page, '**/api/processes/internal/agents', [{ id: 7, label: 'Synthetic agent' }])
+  await jsonRoute(page, '**/api/processes/internal/owner-options', [
+    { kind: 'user', id: 1, label: 'Synthetic owner', is_current_user: true },
+    { kind: 'agent', id: 7, label: 'Synthetic agent', has_avatar: false },
+  ])
   await jsonRoute(page, '**/api/processes/internal/humans?**', [{ id: 11, label: 'Synthetic human' }])
   await jsonRoute(page, '**/api/processes/internal/definitions/invented_process/sharing', { lock_version: 1, can_manage: writable, can_write: writable,
     grants: [], options: [], level: 'private', owner: { kind: 'agent', id: 7, label: 'Synthetic agent', can_write: true }, owner_groups: [] })
@@ -336,6 +345,95 @@ async function definitionFixtures(page, writable, kind = 'task', typed = false, 
   })
   return writes
 }
+
+test('process owner options refresh on reopening after five minutes without losing the draft', async ({ page }) => {
+  await page.clock.install()
+  await definitionFixtures(page, true)
+  let reads = 0
+  await page.route('**/api/processes/internal/owner-options', route => {
+    reads++
+    return route.fulfill({ json: [
+      { kind: 'user', id: 1, label: 'Synthetic owner', is_current_user: true },
+      { kind: 'agent', id: 7, label: `Synthetic agent ${reads}`, has_avatar: false },
+    ] })
+  })
+  await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_EDIT'] })
+  const picker = page.getByRole('combobox', { name: 'Owner', exact: true })
+  const title = page.locator('.editor-content').getByRole('textbox', { name: 'Title', exact: true })
+  await expect(picker).toBeEnabled()
+  await title.fill('Synthetic unsaved draft')
+  for (let opening = 0; opening < 3; opening++) {
+    await picker.click()
+    await expect(page.getByRole('option', { name: 'Synthetic agent 1', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+  }
+  expect(reads).toBe(1)
+  await page.clock.fastForward(300_001)
+  await picker.click()
+  await expect(page.getByRole('option', { name: 'Synthetic agent 2', exact: true })).toBeVisible()
+  expect(reads).toBe(2)
+  await page.keyboard.press('Escape')
+  await expect(title).toHaveValue('Synthetic unsaved draft')
+})
+
+test('process owner conflicts preserve drafts and a successful transfer refreshes sharing without changing the diagram', async ({ page }) => {
+  const writes = await definitionFixtures(page, true)
+  let fail = true
+  const original = { kind: 'agent', id: 7, label: 'Synthetic agent', has_avatar: false }
+  const target = { kind: 'user', id: 1, label: 'Synthetic owner', is_current_user: true }
+  let currentOwner = original, lockVersion = 1
+  const transfers = [], sharingReads = []
+  await page.route('**/api/processes/internal/definitions/invented_process/owner', route => {
+    transfers.push(route.request().postDataJSON())
+    if (fail) return route.fulfill({ status: 409, json: { detail: 'Synthetic ownership conflict' } })
+    // Another editor saves content after the ownership transaction commits,
+    // before the API rereads the definition for its response.
+    currentOwner = target; lockVersion += 2
+    const remoteGraph = graph(); remoteGraph.nodes[1].config.prompt = 'A newer synthetic saved instruction'
+    return route.fulfill({ json: { id: 1, code: 'invented_process', title: 'Invented workflow', description: 'Synthetic existing description',
+      revision: 2, archived: false, can_write: true, can_manage: true, lock_version: lockVersion,
+      owner: currentOwner, graph: remoteGraph, xml: '<synthetic/>', diagnostics: [] } })
+  })
+  await page.route('**/api/processes/internal/definitions/invented_process/sharing', route => {
+    sharingReads.push(lockVersion)
+    return route.fulfill({ json: { lock_version: lockVersion, can_manage: true, can_write: false,
+      grants: currentOwner === original ? [] : [{ ...original, can_write: true }], options: [], level: 'private', owner: currentOwner, owner_groups: [] } })
+  })
+  await page.route('**/api/processes/internal/definitions/invented_process', route => {
+    if (route.request().method() !== 'PUT') return route.fallback()
+    writes.push(route.request().postDataJSON())
+    return route.fulfill({ status: 409, json: { detail: 'Synthetic graph revision changed' } })
+  })
+  await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_EDIT'] })
+  const picker = page.getByRole('combobox', { name: 'Owner', exact: true })
+  const title = page.locator('.editor-content').getByRole('textbox', { name: 'Title', exact: true })
+  let pendingPrivileges
+  await page.route('**/api/authorize/my-privileges', route => { pendingPrivileges = route })
+  await page.evaluate(() => { window.testApp.privileges.clearPrivileges(); void window.testApp.privileges.loadPrivileges() })
+  await expect.poll(() => Boolean(pendingPrivileges)).toBe(true)
+  await expect(picker).toBeDisabled()
+  await pendingPrivileges.fulfill({ json: ['PROCESS_EDIT'] })
+  await expect(picker).toBeEnabled()
+  await title.fill('Unsaved synthetic title')
+  await page.getByRole('textbox', { name: 'Description', exact: true }).fill('Unsaved synthetic description')
+  await picker.click(); await page.getByRole('option', { name: 'Me', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Synthetic ownership conflict' })).toBeVisible()
+  await expect(picker).toContainText(original.label)
+  await expect(title).toHaveValue('Unsaved synthetic title')
+  fail = false
+  await picker.click(); await page.getByRole('option', { name: 'Me', exact: true }).click()
+  await expect(picker).toContainText('Me')
+  await expect.poll(() => sharingReads).toContain(3)
+  await expect(title).toHaveValue('Unsaved synthetic title')
+  await expect(page.getByRole('textbox', { name: 'Description', exact: true })).toHaveValue('Unsaved synthetic description')
+  expect(transfers).toEqual([{ kind: 'user', id: 1, expected_lock_version: 1 }, { kind: 'user', id: 1, expected_lock_version: 1 }])
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(1)
+  await expect(page.getByRole('alert').filter({ hasText: 'Synthetic graph revision changed' })).toBeVisible()
+  await expect(title).toHaveValue('Unsaved synthetic title')
+  expect(writes[0]).toMatchObject({ title: 'Unsaved synthetic title', description: 'Unsaved synthetic description', expected_revision: 1 })
+  expect(writes[0].graph.nodes.map(node => ({ id: node.id, config: node.config }))).toEqual(graph().nodes.map(node => ({ id: node.id, config: node.config })))
+})
 
 for (const width of [1440, 390]) {
 test(`process history paginates saved revisions and retries without losing the editing draft at ${width}px`, async ({ page }) => {
@@ -712,12 +810,14 @@ test('invalid tool argument drafts survive node changes and prevent saving until
   await expect(page.getByRole('dialog', { name: 'Activity settings', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
   await expect(mapping).toHaveValue('{')
-  await page.locator('.editor-content').getByRole('textbox', { name: 'Title', exact: true }).click()
+  // Click outside the inspector independently of where its popover fits in the viewport.
+  await page.getByRole('heading', { name: 'Process editor', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Activity settings', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
   await page.getByRole('button', { name: 'End · end', exact: true }).click()
   await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
   await expect(mapping).toHaveValue('{')
+  await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   expect(writes).toEqual([])
   await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()

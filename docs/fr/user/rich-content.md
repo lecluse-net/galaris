@@ -339,6 +339,15 @@ longs passent automatiquement sur plusieurs lignes et le champ adapte sa hauteur
 sauvegarde automatiquement comme le contenu ; les documents en lecture seule conservent leur titre
 non modifiable. Les champs Propriétaire et Partage sont regroupés sur une même ligne.
 
+Le champ **Propriétaire**, commun aux documents, jeux de données et processus internes,
+présente **Moi** en premier, les autres utilisateurs ensuite et les agents en dernier,
+selon vos droits. Recherchez un nom dans le menu. Chaque type dépassant 50 résultats
+possède sa propre pagination ; les listes plus courtes n’affichent aucune pagination.
+Les pages contiennent 50 résultats par défaut et proposent 10, 20, 50, 100 ou 500 résultats.
+Les avatars accompagnent les noms, y compris celui de **Moi** et le propriétaire sélectionné.
+La liste est conservée en mémoire pendant cinq minutes pour votre session ; une ouverture
+après ce délai la recharge.
+
 Un document se sauvegarde automatiquement. Attendez l’état enregistré avant de fermer votre
 navigateur. Un brouillon est également conservé dans l’onglet pour retrouver une édition
 interrompue. Si deux personnes modifient le même contenu, un message conserve votre brouillon

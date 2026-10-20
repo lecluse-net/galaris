@@ -1,7 +1,10 @@
 """Process authorization around the shared policy service."""
 
+from typing import Literal
+
 from app.agent import AgentManagementScope
-from app.share import SharingState, SharingUpdate, sharing_directory, sharing_state, replace_sharing, set_grant
+from app.share import Collaborator, SharingState, SharingUpdate, sharing_directory, sharing_state, replace_sharing, set_grant
+from core.authorize import privilege_clause
 from core.database import get_db
 from sqlalchemy import select
 
@@ -10,10 +13,50 @@ from .native_access import ProcessActor, accessible_clause
 from .native_definitions import DefinitionConflictError, get
 
 
-async def preview(scope: AgentManagementScope, *, owner_agent_id: int | None) -> SharingState:
+async def owner_options(scope: AgentManagementScope) -> list[Collaborator]:
+    directory = await sharing_directory(owner_agent_id=None, owner_user_id=scope.user_id)
+    administrator = bool(await get_db().scalar(select(privilege_clause(scope.user_id, "PROCESS_ADMIN"))))
+    return [principal for principal in [*([directory.owner] if directory.owner else []), *directory.options]
+        if (principal.kind == "agent" and scope.allows(principal.id)) or
+        (principal.kind == "user" and (principal.id == scope.user_id or administrator))]
+
+
+async def require_owner(scope: AgentManagementScope, kind: Literal["agent", "user"], principal: int) -> None:
+    if not any(option.kind == kind and option.id == principal for option in await owner_options(scope)):
+        raise PermissionError("Process owner is outside the current management scope")
+
+
+async def preview(scope: AgentManagementScope, *, owner_agent_id: int | None, owner_user_id: int | None = None) -> SharingState:
     if owner_agent_id is not None:
         scope.require(owner_agent_id)
-    return await sharing_directory(owner_agent_id=owner_agent_id, owner_user_id=scope.user_id if owner_agent_id is None else None)
+    user = (owner_user_id or scope.user_id) if owner_agent_id is None else None
+    if user is not None and user != scope.user_id:
+        await require_owner(scope, "user", user)
+    return await sharing_directory(owner_agent_id=owner_agent_id, owner_user_id=user)
+
+
+async def transfer_owner(code: str, actor: AgentManagementScope, *, kind: Literal["agent", "user"], principal: int,
+                         expected_lock_version: int) -> dict[str, object]:
+    from .native_definitions import read
+
+    record, _ = await get(code, actor, write=True, lock=True)
+    if not await get_db().scalar(select(ProcessDefinition.id).where(
+        ProcessDefinition.id == record.id, accessible_clause(actor, manage=True))):
+        raise PermissionError("Only the Process owner can transfer ownership")
+    if record.lock_version != expected_lock_version:
+        raise DefinitionConflictError("Process changed; reload before transferring ownership")
+    await require_owner(actor, kind, principal)
+    previous_kind: Literal["agent", "user"] = "agent" if record.agent_id is not None else "user"
+    previous = record.agent_id if record.agent_id is not None else record.owner_user_id
+    if (previous_kind, previous) != (kind, principal):
+        if previous is not None:
+            await set_grant(record.share_id, previous_kind, previous, True)
+        record.agent_id = principal if kind == "agent" else None
+        record.owner_user_id = principal if kind == "user" else None
+        await set_grant(record.share_id, kind, principal, None)
+        record.lock_version += 1
+        await get_db().commit()
+    return await read(code, actor)
 
 
 async def state(record: ProcessDefinition, actor: ProcessActor) -> SharingState:

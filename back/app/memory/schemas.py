@@ -678,6 +678,7 @@ class DocumentOwnerOption(BaseModel):
     label: str
     subtitle: str
     avatar_url: str | None = None
+    has_avatar: bool = False
     is_current_user: bool = False
 
 

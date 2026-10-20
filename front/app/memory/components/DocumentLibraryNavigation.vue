@@ -58,7 +58,7 @@
           <q-input v-model="query" dense outlined clearable debounce="350" class="col" :placeholder="t('documents.search')" :aria-label="t('documents.search')">
             <template #prepend><q-icon name="search" size="18px" /></template>
           </q-input>
-          <DocumentLibraryFilters v-model="filters" v-model:only-unclassified="onlyUnclassified" :owners="owners" :keywords="keywords" />
+          <DocumentLibraryFilters v-model="filters" v-model:only-unclassified="onlyUnclassified" :owners="owners" :keywords="keywords" :current-user-id="userId ?? undefined" />
           <q-btn v-if="hasFilters" flat round dense icon="filter_alt_off" :aria-label="t('documents.library.reset')" @click="reset"><q-tooltip>{{ t('documents.library.reset') }}</q-tooltip></q-btn>
           <q-btn flat round dense icon="add" :aria-label="t('documents.createDocument')" @click="emit('create')"><q-tooltip>{{ t('documents.createDocument') }}</q-tooltip></q-btn>
         </div>

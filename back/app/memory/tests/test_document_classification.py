@@ -389,7 +389,10 @@ async def test_nonempty_branch_requires_confirmation_even_when_it_changed_after_
 @pytest.mark.parametrize("classification", ["all", "classified"])
 async def test_filters_apply_before_pagination_and_live_access_hides_classified_documents(db, agents, memory_storage, classification):
     owner, reader = agents
+    owner.avatar = b"synthetic-owner-image"
     user = await human(db)
+    user.avatar_key = uuid4()
+    user.avatar_mime_type = "image/png"
     scope = AgentManagementScope(user_id=user.id, agent_ids=frozenset({reader.id}))
     tag = await document_tags.write_tag(user.id, DocumentTagWrite(name="Reports"))
     items = [await document(owner, f"Report {n}") for n in range(3)]
@@ -407,6 +410,8 @@ async def test_filters_apply_before_pagination_and_live_access_hides_classified_
     # An empty offset page still carries the total and the visible catalogues.
     catalogued = request.model_copy(update={"offset": 0, "include_owners": True})
     first = await service.browse_document_library(catalogued, managed_agent_ids=scope.agent_ids, user_id=user.id)
+    assert next(option for option in first.owners if option.kind == "agent" and option.id == owner.id).has_avatar
+    assert next(option for option in first.owners if option.kind == "user" and option.id == user.id).avatar_url == f"/api/auth/avatars/{user.avatar_key}"
     descending = await service.browse_document_library(catalogued.model_copy(update={"sort_desc": True}), managed_agent_ids=scope.agent_ids, user_id=user.id)
     assert [entry.item.id for entry in descending.entries] == [items[2].id] and descending.has_more
     beyond = await service.browse_document_library(catalogued.model_copy(update={"offset": 500}), managed_agent_ids=scope.agent_ids, user_id=user.id)

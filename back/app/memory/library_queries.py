@@ -7,12 +7,12 @@ from uuid import UUID
 from pydantic import TypeAdapter
 from sqlalchemy import Select, Text, case, false, func, literal, or_, select, true, union_all
 from sqlalchemy.dialects.postgresql import aggregate_order_by
-from sqlalchemy.orm import defer, joinedload, raiseload, selectinload
+from sqlalchemy.orm import defer, joinedload, load_only, raiseload, selectinload
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.selectable import ScalarSelect
 from core.database import get_db
-from core.user import UserModel, get_user_record, list_user_records
-from app.agent import Agent, list_agent_records
+from core.user import UserModel, get_user_record
+from app.agent import Agent
 from .access import human_document_clause, document_team_agent_access
 from .access import readable_item_for_agents_clause, readable_item_clause, managed_item_agent_ids
 from .contracts import MemoryAccess
@@ -98,10 +98,13 @@ async def list_document_owner_options(
     """Return owner choices without leaking users outside the caller's scope."""
 
     normalized = search.strip().casefold()
-    agents = await list_agent_records(
-        limit=500,
-        agent_ids=(frozenset(managed_agent_ids) if managed_agent_ids is not None else None),
-    )
+    # The shared picker paginates each type locally. Do not truncate its catalogue,
+    # otherwise later owners silently disappear from both browsing and search.
+    agent_query = select(Agent.id, Agent.first_name, Agent.last_name, Agent.code,
+        Agent.avatar.is_not(None).label("has_avatar")).order_by(Agent.id)
+    if managed_agent_ids is not None:
+        agent_query = agent_query.where(Agent.id.in_(managed_agent_ids))
+    agents = await get_db().execute(agent_query)
     agent_options: list[DocumentOwnerOption] = []
     for agent in agents:
         label = f"{agent.first_name} {agent.last_name}".strip() or agent.code
@@ -114,11 +117,15 @@ async def list_document_owner_options(
                 id=agent.id,
                 label=label,
                 subtitle=agent.code,
+                has_avatar=agent.has_avatar,
             )
         )
 
     if include_all_users:
-        users = await list_user_records(limit=500, search=search or None)
+        users = list(await get_db().scalars(select(UserModel).options(load_only(
+            UserModel.id, UserModel.display_name, UserModel.email, UserModel.is_active,
+            UserModel.avatar_key, UserModel.avatar_mime_type, raiseload=True,
+        )).where(UserModel.is_active.is_(True)).order_by(UserModel.id)))
     else:
         if current_user is None or current_user.id != current_user_id:
             current_user = await get_user_record(current_user_id)
@@ -197,7 +204,7 @@ async def browse_document_library(
     filtered_documents = select(MemoryItem.id).where(*base_filters).cte("library_filtered_documents").prefix_with("MATERIALIZED")
     summary = select(
         select(func.count()).select_from(filtered_documents).scalar_subquery().label("total"),
-        (_library_owner_query(visible_ids) if request.include_owners else literal(None, Text)).label("owners"),
+        (_library_owner_query(visible_ids, user_id) if request.include_owners else literal(None, Text)).label("owners"),
         (_library_keyword_query(visible_ids) if request.include_keywords else literal(None, Text)).label("keywords"),
     ).cte("library_summary").prefix_with("MATERIALIZED")
     position = func.coalesce(
@@ -306,6 +313,8 @@ async def browse_document_library(
     summary_row = next(row for row in rows if row.is_summary)
     total = cast(int, summary_row.total)
     owner_options = TypeAdapter(list[DocumentOwnerOption]).validate_json(cast(str | None, summary_row.owners) or "[]")
+    for option in owner_options:
+        option.is_current_user = option.kind == "user" and option.id == user_id
     owner_options.sort(key=lambda option: (option.label.casefold(), option.kind, option.id))
     keywords = TypeAdapter(list[str]).validate_json(cast(str | None, summary_row.keywords) or "[]")
     keywords.sort(key=str.casefold)
@@ -392,18 +401,26 @@ def _library_tag_query(user_id: int) -> ScalarSelect[str]:
     ).correlate(MemoryItem).scalar_subquery()
 
 
-def _library_owner_query(visible_ids: Select[tuple[UUID]]) -> ScalarSelect[str]:
+def _library_owner_query(visible_ids: Select[tuple[UUID]], user_id: int | None) -> ScalarSelect[str]:
     agents = select(
         literal("agent").label("kind"), Agent.id,
         func.coalesce(func.nullif(func.trim(func.concat(Agent.first_name, " ", Agent.last_name)), ""), Agent.code).label("label"),
+        literal(None, Text).label("avatar_url"), Agent.avatar.is_not(None).label("has_avatar"),
     ).join(MemoryItem, MemoryItem.owner_agent_id == Agent.id).where(MemoryItem.id.in_(visible_ids)).distinct().correlate(None)
     users = select(
         literal("user").label("kind"), UserModel.id,
         func.coalesce(func.nullif(UserModel.display_name, ""), UserModel.email).label("label"),
-    ).join(MemoryItem, MemoryItem.owner_user_id == UserModel.id).where(MemoryItem.id.in_(visible_ids)).distinct().correlate(None)
+        case((UserModel.avatar_key.is_not(None) & UserModel.avatar_mime_type.is_not(None),
+            func.concat("/api/auth/avatars/", UserModel.avatar_key)), else_=None).label("avatar_url"),
+        literal(False).label("has_avatar"),
+    ).where(or_(
+        UserModel.id.in_(select(MemoryItem.owner_user_id).where(MemoryItem.id.in_(visible_ids))),
+        UserModel.id == user_id,
+    )).correlate(None)
     owners = union_all(agents, users).subquery("library_owners")
     return select(func.jsonb_agg(func.jsonb_build_object(
         "kind", owners.c.kind, "id", owners.c.id, "label", owners.c.label, "subtitle", "",
+        "avatar_url", owners.c.avatar_url, "has_avatar", owners.c.has_avatar,
     )).cast(Text)).scalar_subquery()
 
 

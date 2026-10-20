@@ -125,6 +125,20 @@ existantes sans nouvel envoi ; l'ancienne contrainte masquant l'insertion est su
 
 `app/share/tests` vérifie l’exclusivité des configurations, l’isolation entre ressources et propriétaires, les droits de lecture/écriture et l’interdiction de repartager comme simple éditeur. La migration PostgreSQL couvre Documents, Dataset et Process, les trois types de destinataires, les accès généraux et de groupes, les suppressions logiques, le rejeu après révocation et le rollback d’une copie interrompue. Les scénarios de partage frontend communs incluent aussi Dataset.
 
+`front/browser-tests/owner-select.spec.mjs` protège la sélection commune : accès aux propriétaires
+par recherche et pages indépendantes par type, listes courtes sans pagination, identité humaine
+courante, fermeture au clavier et lecture seule, sur mobile et bureau. Les filtres Documents
+conservent le couple type/identifiant sans demander deux champs. Les scénarios Process vérifient
+le transfert, les conflits et les brouillons conservés ; les tests HTTP refusent un transfert
+hors périmètre ou par un simple éditeur et préservent l’ancien propriétaire comme éditeur.
+Le parcours E2E des processus internes transfère puis rouvre une définition dans l’application.
+La sélection commune vérifie aussi les images réelles des utilisateurs et agents et la
+réutilisation des avatars entre ouvertures. `front/app/share/ownerCache.test.mjs` exerce les
+services Documents, Dataset et Process : requêtes simultanées mutualisées, expiration à cinq
+minutes, copies indépendantes, séparation des ressources et versions, invalidation de session
+et réessai après erreur. Le scénario Process vérifie le rechargement à la réouverture après
+expiration, sans perdre le brouillon.
+
 
 `app/tools/tests/test_action_authorizations.py` vérifie aussi que les anciens accords
 automatiques non consommés sont invalidés avant exécution, directement ou par réconciliation.

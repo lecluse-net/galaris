@@ -1,4 +1,8 @@
 export { default as ResourceSharingPanel } from './components/ResourceSharingPanel.vue'
+export { default as OwnerSelect } from './components/OwnerSelect.vue'
+export { ownerKey } from './owners'
+export { createOwnerOptionsCache } from './ownerCache'
+export type { OwnerOption } from './owners'
 export type { SharingState, SharingUpdate, SingleGrantUpdate, Collaborator } from './types'
 export { SharingPanel } from './panel'
 export type { SharingDraft, SharingLevel, SharingRecipient, SharingState as SharingPresentation } from './sharing'

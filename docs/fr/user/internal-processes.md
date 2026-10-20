@@ -51,8 +51,13 @@ administrateurs humains PROCESS_ADMIN.
 
 Créer un processus et saisir son titre dans la barre compacte. Le champ **Description**
 permet d'ajouter un texte facultatif, modifiable puis conservé avec **Enregistrer**.
-En lecture seule, la description reste consultable. Le propriétaire est choisi
-à la création. Le champ **Partage** est disponible dès
+En lecture seule, la description reste consultable. Le champ **Propriétaire** reste visible
+à la création et lors de la réouverture. Il propose **Moi**, puis les autres utilisateurs
+autorisés, puis les agents gérés. La recherche parcourt chaque liste ; au-delà de 50 résultats
+pour un type, sa pagination apparaît indépendamment de l’autre type, avec 50 résultats par défaut.
+Le propriétaire ou un administrateur Process peut transférer la propriété ; l’ancien
+propriétaire conserve un droit d’écriture, et le diagramme ainsi que les brouillons restent présents.
+Un conflit de version refuse le transfert et demande de recharger. Le champ **Partage** est disponible dès
 la création pour donner des droits **Lecture** ou **Écriture** aux utilisateurs, agents
 et groupes, ou choisir un partage public. Enregistrer applique ces choix au nouveau
 processus ; pour un processus existant, les modifications du partage sont enregistrées

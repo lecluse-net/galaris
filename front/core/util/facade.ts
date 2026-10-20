@@ -1,4 +1,5 @@
 export { createSessionReadCache, createSessionResponseCache, invalidateSessionReads, onSessionReadInvalidation } from './sessionReadCache'
+export { createSessionCatalogueCache, createSessionImageCache, onReadSessionChanged } from './sessionResources'
 export { queuePreview } from './previewQueue'
 export { saveBlobAsResource } from './resourceViewer'
 export { attachmentReference } from './richText'

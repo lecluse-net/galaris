@@ -318,6 +318,13 @@ Edit the title in the outlined field in the document header, next to its icon. L
 across multiple lines and the field adjusts its height. It saves automatically
 like the content; read-only documents keep a non-editable title. Owner and Sharing sit on the same row.
 
+The **Owner** field shared by Documents, Datasets and internal processes lists **Me** first,
+then other users and finally agents, according to your permissions. Search for a name in
+the menu. Each type with more than 50 results has independent pagination; shorter lists
+have none. Pages default to 50 results, with 10, 20, 50, 100 or 500 results available.
+Avatars accompany names, including **Me** and the selected owner. The list stays in memory
+for five minutes within your session; opening the field after that period refreshes it.
+
 Documents save automatically. Wait for the saved status before closing the browser. A draft is
 also retained within the tab so interrupted editing can be recovered. If two people change the
 same content, a message preserves your draft and offers a choice between your version and the

@@ -50,23 +50,9 @@
           <q-input v-model="title" outlined dense stack-label hide-bottom-space :label="t('datasets.titleField')" :readonly="busy || !editable || !dataset.can_write" />
         </div>
         <div class="dataset-editor-owner-cell">
-          <q-select :model-value="ownerState?.owner" :options="ownerChoices" :option-value="ownerKey" option-label="label"
-            class="dataset-editor-owner-field" outlined dense stack-label hide-bottom-space use-input input-debounce="0"
-            :label="t('datasets.owner')" :readonly="busy || !editable || !dataset.can_manage || !dataset.can_write || !ownerState?.options.length"
-            @filter="filterOwners" @update:model-value="changeOwner">
-            <template #selected>
-              <div v-if="ownerState?.owner" class="row items-center no-wrap dataset-owner-selected">
-                <PersonAvatar :name="ownerState.owner.label" :avatar-url="ownerState.owner.avatar_url" size="22px" />
-                <span class="ellipsis q-ml-sm">{{ ownerState.owner.label }}</span>
-              </div>
-            </template>
-            <template #option="scope">
-              <q-item v-bind="scope.itemProps">
-                <q-item-section avatar><PersonAvatar :name="scope.opt.label" :avatar-url="scope.opt.avatar_url" size="32px" /></q-item-section>
-                <q-item-section><q-item-label>{{ scope.opt.label }}</q-item-label><q-item-label caption>{{ t(scope.opt.kind === 'agent' ? 'datasets.ownerAgent' : 'datasets.ownerUser') }}</q-item-label></q-item-section>
-              </q-item>
-            </template>
-          </q-select>
+          <OwnerSelect :model-value="ownerState?.owner ? ownerKey(ownerState.owner) : ''" :options="ownerChoices" :current="currentOwner" :current-user-id="ownerState?.current_user_id"
+            class="dataset-editor-owner-field" :readonly="busy || !editable || !dataset.can_manage || !dataset.can_write || !ownerChoices.length"
+            @update:model-value="selectOwner" @open="refreshOwners" />
         </div>
         <div class="dataset-editor-sharing-cell">
           <DatasetSharing :key="dataset.id" :id="dataset.id" :lock-version="dataset.lock_version" :editable="!busy && editable && dataset.can_manage" @changed="sharingChanged" />
@@ -100,8 +86,8 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { QTableProps } from 'quasar'
-import { CodeEditor, PersonAvatar } from '@/core/util'
-import type { Collaborator } from '@/app/share'
+import { CodeEditor } from '@/core/util'
+import { OwnerSelect, ownerKey, type OwnerOption, type Collaborator } from '@/app/share'
 import { usePrivilegeStore } from '@/core/authorize'
 import { datasetService as service } from '../services/datasetService'
 import type { Dataset, DatasetOwnerOptions, DatasetSharing as SharingState } from '../types'
@@ -115,10 +101,10 @@ const { t } = useI18n(), dataset = shallowRef<Dataset>(), content = ref(''), tit
 const privileges = usePrivilegeStore(), confirmDelete = ref(false), showUsages = ref(false)
 const confirmDiscard = ref(false)
 const ownerState = shallowRef<DatasetOwnerOptions>()
-const ownerSearch = ref(''), savedContent = ref('')
-const ownerChoices = computed(() => (ownerState.value?.options ?? []).filter(option => option.label.toLocaleLowerCase().includes(ownerSearch.value)))
-function ownerKey(owner: Collaborator): string { return `${owner.kind}:${owner.id}` }
-function filterOwners(search: string, update: (work: () => void) => void): void { update(() => { ownerSearch.value = search.toLocaleLowerCase() }) }
+const savedContent = ref('')
+const ownerChoices = computed(() => (ownerState.value?.options ?? []).filter((option): option is Collaborator & OwnerOption => option.kind !== 'team'))
+const currentOwner = computed(() => { const owner = ownerState.value?.owner; return owner && owner.kind !== 'team' ? owner as OwnerOption : null })
+function selectOwner(key: string): void { const owner = ownerChoices.value.find(option => ownerKey(option) === key); if (owner) void changeOwner(owner) }
 let mounted = true, deleted = false, mutating = false
 let pendingDiscard: ((discard: boolean) => void) | undefined
 const dirty = computed(() => !!dataset.value && (title.value !== dataset.value.title || content.value !== savedContent.value))
@@ -127,7 +113,15 @@ const history = ref<{ revision: number; created_at: string }[]>([]), pagination 
 const columns = computed<QTableProps['columns']>(() => [{ name: 'revision', field: 'revision', label: t('datasets.revision'), align: 'left' }, { name: 'created_at', field: 'created_at', label: t('datasets.history'), align: 'left' }])
 async function action(work: () => Promise<void>, mutation = false): Promise<void> { if (busy.value) return; busy.value = true; mutating = mutation; error.value = ''; try { await work() } catch (err) { if (mounted) error.value = errorMessage(err, t('datasets.error')) } finally { if (mounted) { busy.value = false; mutating = false } } }
 function accept(value: Dataset): void { if (!mounted) return; dataset.value = value; title.value = value.title; content.value = savedContent.value = formatJson(value.content) }
-async function load(): Promise<void> { await action(async () => { const value = await service.read(props.id); accept(value); if (mounted) emit('loaded', value); const owners = await service.owner(props.id); if (mounted) ownerState.value = owners }) }
+async function load(): Promise<void> { await action(async () => { const value = await service.read(props.id); accept(value); if (mounted) emit('loaded', value); const owners = await service.owner(props.id, value.lock_version); if (mounted) ownerState.value = owners }) }
+async function refreshOwners(): Promise<void> {
+  const current = dataset.value
+  if (!current) return
+  try {
+    const owners = await service.owner(current.id, current.lock_version)
+    if (mounted && dataset.value?.id === current.id && dataset.value.lock_version === current.lock_version) ownerState.value = owners
+  } catch (err) { if (mounted) error.value = errorMessage(err, t('datasets.error')) }
+}
 async function reload(): Promise<void> { if (await canLeave()) await load() }
 async function save(): Promise<void> { const current = dataset.value; if (!current) return; await action(async () => { JSON.parse(content.value); const source = content.value === savedContent.value ? current.content : content.value; const value = await service.write(current.id, source, current.revision, title.value, current.lock_version); if (mounted) { accept(value); emit('updated', value) } }, true) }
 async function changeOwner(owner: Collaborator): Promise<void> {
@@ -183,7 +177,6 @@ onBeforeUnmount(() => { mounted = false; window.removeEventListener('beforeunloa
 .dataset-editor-owner-field :deep(.q-field__inner),
 .dataset-editor-owner-field :deep(.q-field__control) { height: 100%; }
 .dataset-editor-owner-field :deep(.q-field__native) { flex-wrap: nowrap; }
-.dataset-owner-selected { min-width: 0; max-width: 100%; }
 .dataset-editor-fields :deep(.q-field--dense .q-field__control) { min-height: 40px; }
 .dataset-editor-fields :deep(.q-field--dense .q-field__marginal) { height: 40px; }
 @media (max-width: 599.98px) {

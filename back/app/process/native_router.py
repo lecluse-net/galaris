@@ -58,6 +58,7 @@ class DefinitionCreate(DefinitionContent):
     description: str | None = None
     agent_id: int = Field(gt=0)
     owner: Literal["user", "agent"] = "user"
+    owner_id: int | None = Field(default=None, gt=0)
     code: str | None = None
 
 
@@ -65,6 +66,13 @@ class DefinitionUpdate(DefinitionContent):
     expected_revision: int = Field(ge=1)
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
+
+
+class OwnerUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["user", "agent"]
+    id: int = Field(gt=0)
+    expected_lock_version: int = Field(ge=1)
 
 
 class RestoreRequest(BaseModel):
@@ -99,11 +107,22 @@ async def native_human_options(agent_id: int = Query(..., gt=0)) -> list[dict[st
 
 @routes.get("/sharing-options")
 @authorize(privileges=["PROCESS_EDIT", Privileges.PROCESS_ADMIN])
-async def native_sharing_options(agent_id: int = Query(..., gt=0), owner: Literal["user", "agent"] = "user") -> dict[str, Any]:
+async def native_sharing_options(agent_id: int = Query(..., gt=0), owner: Literal["user", "agent"] = "user",
+    owner_id: int | None = Query(default=None, gt=0)) -> dict[str, Any]:
     with domain_errors():
         scope = await current_management_scope()
         scope.require(agent_id)
-        return (await definition_sharing.preview(scope, owner_agent_id=agent_id if owner == "agent" else None)).model_dump(mode="json")
+        return (await definition_sharing.preview(scope, owner_agent_id=(owner_id or agent_id) if owner == "agent" else None,
+            owner_user_id=owner_id if owner == "user" else None)).model_dump(mode="json")
+
+
+@routes.get("/owner-options")
+@authorize(privileges=["PROCESS_EDIT", Privileges.PROCESS_ADMIN])
+async def native_owner_options() -> list[dict[str, Any]]:
+    with domain_errors():
+        scope = await current_management_scope()
+        return [{**option.model_dump(mode="json"), "is_current_user": option.kind == "user" and option.id == scope.user_id}
+            for option in await definition_sharing.owner_options(scope)]
 
 
 @routes.post("/validate")
@@ -134,8 +153,10 @@ async def native_create_definition(data: DefinitionCreate) -> dict[str, Any]:
     with domain_errors():
         scope = await current_management_scope()
         scope.require(data.agent_id)
-        record = await definitions.create(actor_agent_id=data.agent_id, title=data.title, graph=data.graph,
-            xml=data.xml, code=data.code, owner_user_id=scope.user_id if data.owner == "user" else None,
+        principal = data.owner_id or (scope.user_id if data.owner == "user" else data.agent_id)
+        await definition_sharing.require_owner(scope, data.owner, principal)
+        record = await definitions.create(actor_agent_id=principal if data.owner == "agent" else data.agent_id, title=data.title, graph=data.graph,
+            xml=data.xml, code=data.code, owner_user_id=principal if data.owner == "user" else None,
             description=data.description)
         return await definitions.read(record.code or "", scope)
 
@@ -145,6 +166,14 @@ async def native_create_definition(data: DefinitionCreate) -> dict[str, Any]:
 async def native_read_definition(code: str) -> dict[str, Any]:
     with domain_errors():
         return await definitions.read(code, await current_management_scope())
+
+
+@routes.patch("/definitions/{code}/owner")
+@authorize(privileges=["PROCESS_EDIT", Privileges.PROCESS_ADMIN])
+async def native_transfer_owner(code: str, data: OwnerUpdate) -> dict[str, object]:
+    with domain_errors():
+        return await definition_sharing.transfer_owner(code, await current_management_scope(), kind=data.kind,
+            principal=data.id, expected_lock_version=data.expected_lock_version)
 
 
 @routes.get("/resource-preview")

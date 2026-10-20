@@ -1,4 +1,5 @@
 import { api } from '@/core/api'
+import { createOwnerOptionsCache } from '@/app/share'
 
 export type MemoryDreamAction = 'describe' | 'read_document' | 'thumbnail' | 'findings' | 'structure'
 export interface MemoryDreamActionResult { receipt_id: string; result_count: number }
@@ -64,6 +65,7 @@ export interface DocumentInternalAttachments {
   lock_version: number
 }
 
+const ownerOptionsCache = createOwnerOptionsCache<DocumentOwnerOptions>()
 export const memoryService = {
   async internalAttachments(id: string, agentId: number | null, resourceAgentId: number, signal?: AbortSignal): Promise<DocumentInternalAttachments> {
     return (await api.get<DocumentInternalAttachments>(`/memory/documents/${id}/internal-attachments`, { params: { agent_id: agentId, resource_agent_id: resourceAgentId }, signal })).data
@@ -312,10 +314,9 @@ export const memoryService = {
   },
 
   async listDocumentOwnerOptions(search = ''): Promise<DocumentOwnerOptions> {
-    const response = await api.get<DocumentOwnerOptions>('/memory/documents/owner-options', {
-      params: { search },
-    })
-    return response.data
+    return ownerOptionsCache.read(search, async signal => (await api.get<DocumentOwnerOptions>('/memory/documents/owner-options', {
+      params: { search }, signal,
+    })).data)
   },
 
   async createDocument(data: DocumentCreate): Promise<MemoryItem> {

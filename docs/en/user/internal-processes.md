@@ -47,8 +47,12 @@ Definitions without an active owner are restricted to human PROCESS_ADMIN admini
 
 Create a process and enter its title in the compact toolbar. The **Description** field
 accepts optional plain text, which can be edited and saved with **Save**.
-The description remains visible with read-only access. Choose its owner when
-creating it. The **Sharing** field is available from creation
+The description remains visible with read-only access. **Owner** stays visible during
+creation and after reopening. It lists **Me**, then other eligible users, then managed agents.
+Search covers each list; above 50 results of one type, that type has its own pagination,
+defaulting to 50 results. The owner or a Process administrator can transfer ownership;
+the former owner keeps write access, while the diagram and editing drafts remain available.
+A version conflict refuses the transfer and requires reloading. **Sharing** is available from creation
 to grant **Read** or **Write** access to users, agents and groups, or choose public access.
 Saving applies these choices to the new process; sharing changes to an existing process
 are saved directly. If sharing fails after creation, retry preserves the process and

@@ -117,69 +117,10 @@
         class="row q-col-gutter-xs document-editor-fields q-pa-xs"
       >
         <div class="document-editor-owner-cell">
-          <q-select
-            v-model="editorOwner"
-            class="document-editor-owner-field"
-            :options="filteredOwnerOptions"
-            outlined
-            dense
-            stack-label
-            hide-bottom-space
-            use-input
-            emit-value
-            map-options
-            input-debounce="180"
-            option-value="value"
-            option-label="label"
-            option-disable="disable"
-            :readonly="!canManageOwner || isGoalDocument(currentDocument)"
-            :label="t('documents.owner')"
-            @filter="filterOwnerOptions"
-          >
-            <template #selected>
-              <div v-if="selectedOwnerChoice" class="row items-center no-wrap owner-selected">
-                <AgentAvatar
-                  v-if="selectedOwnerChoice.kind === 'agent'"
-                  :agent-id="selectedOwnerChoice.id"
-                  :name="selectedOwnerChoice.label"
-                  size="22px"
-                />
-                <q-avatar v-else size="22px" color="grey-3" text-color="grey-8">
-                  <img v-if="selectedOwnerChoice.avatarUrl" :src="selectedOwnerChoice.avatarUrl" alt="" />
-                  <q-icon v-else name="person" size="16px" />
-                </q-avatar>
-                <span class="ellipsis q-ml-sm">{{ selectedOwnerChoice.label }}</span>
-              </div>
-            </template>
-            <template #option="scope">
-              <q-item v-if="scope.opt.section" dense class="owner-section">
-                <q-item-section>
-                  <q-item-label header>{{ scope.opt.label }}</q-item-label>
-                </q-item-section>
-              </q-item>
-              <q-item v-else v-bind="scope.itemProps">
-                <q-item-section avatar>
-                  <AgentAvatar
-                    v-if="scope.opt.kind === 'agent'"
-                    :agent-id="scope.opt.id"
-                    :name="scope.opt.label"
-                    size="32px"
-                  />
-                  <q-avatar v-else size="32px" color="grey-3" text-color="grey-8">
-                    <img v-if="scope.opt.avatarUrl" :src="scope.opt.avatarUrl" alt="" />
-                    <q-icon v-else name="person" size="20px" />
-                  </q-avatar>
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label>{{ scope.opt.label }}</q-item-label>
-                  <q-item-label caption>{{ scope.opt.subtitle }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <q-item><q-item-section class="text-grey-7">{{ t('documents.ownerEmpty') }}</q-item-section></q-item>
-            </template>
-          </q-select>
+          <OwnerSelect v-model="editorOwner" class="document-editor-owner-field"
+            :options="ownerChoices" :current="selectedOwnerChoice"
+            :readonly="!canManageOwner || isGoalDocument(currentDocument)" @open="loadOwnerOptions">
+          </OwnerSelect>
         </div>
         <div class="document-editor-sharing-cell">
           <MemorySharingPanel :item-id="documentId" resource-kind="document" :editable="canManageSharing" :lock-version="currentDocument?.lock_version" @permission="sharingPermission = $event" @changed="onSharingChanged" />
@@ -303,7 +244,8 @@ import { copyToClipboard, useQuasar } from 'quasar'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { RichTextEditor, richLinkHref, documentResourceHtml, documentResourceHref } from '@/core/util'
 import { websocket } from '@/core/websocket'
-import { AgentAvatar, useAgentStore } from '@/app/agent'
+import { useAgentStore } from '@/app/agent'
+import { OwnerSelect, type OwnerOption } from '@/app/share'
 import { DatasetDocumentRedirect, memoryService } from '../services/memoryService'
 import { useDocumentMutations } from '../stores/documentMutations'
 import { reconcileLibrarySnapshot } from '../librarySnapshot'
@@ -335,26 +277,7 @@ interface DocumentDraft {
   sharing: Record<number, DocumentShareAccess>
 }
 
-interface OwnerChoice {
-  value: string
-  label: string
-  subtitle: string
-  kind: DocumentOwnerKind
-  id: number
-  avatarUrl: string | null
-  searchText: string
-  disable?: false
-  section?: false
-}
-
-interface OwnerSection {
-  value: string
-  label: string
-  disable: true
-  section: true
-}
-
-type OwnerSelectOption = OwnerChoice | OwnerSection
+type OwnerChoice = OwnerOption & { value: string }
 
 interface MemoryRealtimeEvent {
   data: {
@@ -407,7 +330,6 @@ const editorKeywords = ref<string[]>([])
 const keywordOptions = ref<string[]>([])
 const filteredKeywordOptions = ref<string[]>([])
 const ownerOptions = ref<DocumentOwnerOptions>({ agents: [], users: [] })
-const filteredOwnerOptions = ref<OwnerSelectOption[]>([])
 const attachments = ref<DocumentAttachment[]>([])
 const route = useRoute(), router = useRouter()
 const richEditor = ref<InstanceType<typeof RichTextEditor>>()
@@ -476,7 +398,6 @@ let realtimeTimer: ReturnType<typeof setTimeout> | undefined
 let pendingExternalRevision = 0
 let pendingExternalLockVersion = 0
 let loadGeneration = 0
-let ownerFilterGeneration = 0
 let ownerLoadGeneration = 0
 let keywordLoadGeneration = 0
 let disposed = false
@@ -563,16 +484,7 @@ function ownerValue(kind: DocumentOwnerKind, id: number): string {
 }
 
 function ownerOptionToChoice(option: DocumentOwnerOption): OwnerChoice {
-  const label = option.is_current_user ? t('documents.ownerMe') : option.label
-  return {
-    value: ownerValue(option.kind, option.id),
-    label,
-    subtitle: option.is_current_user ? option.label : option.subtitle,
-    kind: option.kind,
-    id: option.id,
-    avatarUrl: option.avatar_url,
-    searchText: `${label} ${option.label} ${option.subtitle}`.toLocaleLowerCase(locale.value),
-  }
+  return { ...option, value: ownerValue(option.kind, option.id) }
 }
 
 function choicesFromOwnerOptions(options: DocumentOwnerOptions): OwnerChoice[] {
@@ -598,8 +510,7 @@ function fallbackOwnerChoice(document: MemoryItem | null): OwnerChoice | null {
       subtitle: '',
       kind: 'agent',
       id: document.owner_agent_id,
-      avatarUrl: null,
-      searchText: '',
+      avatar_url: null,
     }
   }
   if (document.owner_user_id !== null) {
@@ -609,26 +520,10 @@ function fallbackOwnerChoice(document: MemoryItem | null): OwnerChoice | null {
       subtitle: '',
       kind: 'user',
       id: document.owner_user_id,
-      avatarUrl: null,
-      searchText: '',
+      avatar_url: null,
     }
   }
   return null
-}
-
-function sectionedOwnerOptions(choices: OwnerChoice[]): OwnerSelectOption[] {
-  const agents = choices.filter(choice => choice.kind === 'agent')
-  const users = choices.filter(choice => choice.kind === 'user')
-  const options: OwnerSelectOption[] = []
-  if (agents.length) {
-    options.push({ value: 'section:agents', label: t('documents.ownerAgents'), disable: true, section: true })
-    options.push(...agents)
-  }
-  if (users.length) {
-    options.push({ value: 'section:users', label: t('documents.ownerUsers'), disable: true, section: true })
-    options.push(...users)
-  }
-  return options
 }
 
 const requiredRule = (value: unknown): true | string => Boolean(String(value ?? '').trim()) || t('documents.required')
@@ -795,38 +690,6 @@ function filterKeywordOptions(value: string, update: (callback: () => void) => v
   })
 }
 
-function filterOwnerOptions(
-  value: string,
-  update: (callback: () => void) => void,
-  abort: () => void,
-): void {
-  const query = value.trim()
-  const needle = query.toLocaleLowerCase(locale.value)
-  const generation = ++ownerFilterGeneration
-  if (!needle) {
-    update(() => { filteredOwnerOptions.value = sectionedOwnerOptions(ownerChoices.value) })
-    return
-  }
-  void memoryService.listDocumentOwnerOptions(query).then(options => {
-    if (generation !== ownerFilterGeneration) return
-    const serverChoices = choicesFromOwnerOptions(options)
-    const currentUserChoice = ownerChoices.value.find(option => (
-      option.kind === 'user'
-      && option.label.toLocaleLowerCase(locale.value).includes(needle)
-    ))
-    const choices = currentUserChoice
-      && !serverChoices.some(option => option.value === currentUserChoice.value)
-      ? [...serverChoices, currentUserChoice]
-      : serverChoices
-    update(() => { filteredOwnerOptions.value = sectionedOwnerOptions(choices) })
-  }).catch(() => {
-    if (generation !== ownerFilterGeneration) return
-    abort()
-  })
-}
-
-
-
 function addKeyword(value: string, done: NewKeywordDone): void {
   const normalized = value.trim().slice(0, 100)
   done(normalized || undefined, normalized ? 'add-unique' : undefined)
@@ -884,7 +747,6 @@ async function loadOwnerOptions(): Promise<void> {
       users: [],
     }
   }
-  filteredOwnerOptions.value = sectionedOwnerOptions(ownerChoices.value)
 }
 
 function propertyUpdate(document: MemoryItemDetail, base: DocumentDraft, draft: DocumentDraft): MemoryItemUpdate | null {
@@ -1301,7 +1163,6 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   disposed = true
   loadGeneration += 1
-  ownerFilterGeneration += 1
   if (autosaveTimer) clearTimeout(autosaveTimer)
   if (realtimeTimer) clearTimeout(realtimeTimer)
   websocket.offEvent('memory', 'update', onMemoryRealtime)
@@ -1376,9 +1237,6 @@ function restoreDraft(document: MemoryItemDetail): void {
 .document-editor-owner-field :deep(.q-field__inner),
 .document-editor-owner-field :deep(.q-field__control) { height: 100%; }
 .document-editor-owner-field :deep(.q-field__native) { flex-wrap: nowrap; }
-.owner-selected { min-width: 0; max-width: 100%; }
-.owner-section { min-height: 30px; background: rgba(0, 0, 0, 0.035); }
-.owner-section :deep(.q-item__label--header) { padding: 0; color: var(--q-primary); font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .document-editor-fields :deep(.q-field--dense .q-field__control) { min-height: 40px; }
 .document-editor-fields :deep(.q-field--dense .q-field__marginal) { height: 40px; }
 .document-editor-fields :deep(.q-field__bottom) { display: none; }

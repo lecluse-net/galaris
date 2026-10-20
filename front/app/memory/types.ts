@@ -246,6 +246,7 @@ export interface DocumentOwnerOption {
   label: string
   subtitle: string
   avatar_url: string | null
+  has_avatar?: boolean
   is_current_user: boolean
 }
 
