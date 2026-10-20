@@ -65,7 +65,6 @@
                 <q-tooltip>{{ t('documents.historyOpen') }}</q-tooltip>
               </q-btn>
             </div>
-            <q-badge outline>{{ t(`documents.types.${currentDocument.document_type ?? 'html'}`) }}</q-badge>
             <q-btn
               v-if="canDeleteDocument"
               dense
