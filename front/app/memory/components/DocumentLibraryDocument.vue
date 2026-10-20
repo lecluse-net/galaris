@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="document-branch-row row no-wrap items-center" :class="[dropClass, { 'document-branch-row--compact': compact }]"
+    <div v-library-shortcuts="shortcuts" class="document-branch-row row no-wrap items-center" :title="t('documents.shortcuts.document')" aria-keyshortcuts="F2 F3 F4 F7 Delete" :class="[dropClass, { 'document-branch-row--compact': compact }]"
       @dragover.stop="emit('dragover', $event, entry, parentDocumentId, tagId, listOnly)"
       @dragleave.stop="emit('dragleave')" @drop.prevent.stop="emit('drop')">
       <DocumentLibraryEntryRow class="col" :entry="entry" :loading="false" :compact="compact" :selected-document-id="selectedDocumentId"
@@ -31,7 +31,7 @@
       <DocumentLibraryDocument v-for="child in visibleChildren" :key="child.item.id" :entry="child" :parent-document-id="entry.item.id" :ancestors="[...(ancestors ?? []), entry.item.id]"
         :compact="true" :selected-document-id="selectedDocumentId" :busy="busy" :children="children" :loading="loading" :errors="errors"
         :expanded="expanded" :drop-target="dropTarget" :drop-placement="dropPlacement"
-        @select="emit('select', $event)" @create="emit('create', $event)"
+        @select="emit('select', $event)" @create="emit('create', $event)" @action="(entry, action) => emit('action', entry, action)"
         @toggle="emit('toggle', $event)" @retry="emit('retry', $event)" @dragstart="(event, id) => emit('dragstart', event, id)" @dragend="emit('dragend')"
         @dragover="(event, value, parent, tag, list) => emit('dragover', event, value, parent, tag, list)" @dragleave="emit('dragleave')" @drop="emit('drop')" />
       <span v-if="!loading[branchKey] && !errors[branchKey] && !(children[branchKey]?.length)" class="text-caption q-pa-sm">{{ t('documents.library.noSubdocuments') }}</span>
@@ -43,6 +43,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DocumentLibraryEntry } from '../types'
 import DocumentLibraryEntryRow from './DocumentLibraryEntryRow.vue'
+import { documentRowShortcuts, vLibraryShortcuts, type DocumentRowAction } from '../libraryShortcuts'
 
 const props = defineProps<{
   entry: DocumentLibraryEntry
@@ -62,12 +63,15 @@ const props = defineProps<{
   dropPlacement: string
 }>()
 const emit = defineEmits<{
+  action: [entry: DocumentLibraryEntry, action: DocumentRowAction]
   select: [entry: DocumentLibraryEntry]; create: [entry: DocumentLibraryEntry]
   toggle: [id: string]; retry: [id: string]; dragstart: [event: DragEvent, id: string]; dragend: []
   dragover: [event: DragEvent, entry: DocumentLibraryEntry, parent?: string | null, tag?: string | null, listOnly?: boolean]
   dragleave: []; drop: []
 }>()
 const { t } = useI18n()
+const shortcuts = computed(() => documentRowShortcuts(props.entry, props.busy,
+  () => emit('select', props.entry), () => emit('create', props.entry), action => emit('action', props.entry, action)))
 const branchKey = computed(() => `doc:${props.entry.item.id}`)
 const visibleChildren = computed(() => (props.children[branchKey.value] ?? []).filter(child =>
   child.item.id !== props.entry.item.id && !props.ancestors?.includes(child.item.id)))

@@ -1,7 +1,7 @@
 <template>
-  <div class="document-tag-row row items-center no-wrap full-width" :draggable="!renaming && !busy" @contextmenu.stop @keydown="openKeyboardMenu">
+  <div v-library-shortcuts="shortcuts" class="document-tag-row row items-center no-wrap full-width" :title="t('documents.shortcuts.folder')" aria-keyshortcuts="F2 F3 F4 F7 Delete" :draggable="!renaming && !busy" @contextmenu.stop @keydown="openKeyboardMenu">
     <q-btn flat dense round size="sm" class="folder-icon-button q-mr-xs" :aria-label="t('documents.library.changeIcon', { name: tag.name })" :disable="busy"
-      @click="clickIcon" @keydown.f2.prevent.stop="startRename">
+      @click="clickIcon">
       <DocumentTagIcon :icon="tag.icon" :expanded="selected" size="26px" />
       <q-tooltip>{{ t(renaming ? 'documents.library.iconHint' : 'documents.library.renameHint') }}</q-tooltip>
       <DocumentTagIconPicker v-model="iconOpen" :busy="busy" :save="saveIcon" />
@@ -12,7 +12,7 @@
       <template #append><q-btn flat dense round size="sm" icon="check" :aria-label="t('documents.library.save')" @mousedown.prevent @click.stop="rename" /></template>
     </q-input>
     <span v-else class="ellipsis col tag-name" tabindex="0" :title="tag.name"
-      @keydown.f2.prevent.stop="startRename" @keydown.enter.prevent.stop="startRename">{{ tag.name }}</span>
+      @keydown.enter.prevent.stop="startRename">{{ tag.name }}</span>
     <div v-if="!renaming" class="tag-actions row items-center no-wrap" @click.stop @dblclick.stop @dragstart.prevent.stop>
       <q-btn flat dense round size="sm" icon="note_add" :disable="busy" :aria-label="t('documents.library.newDocument', { name: tag.name })" @click="emit('createDocument')">
         <q-tooltip>{{ t('documents.library.newDocument', { name: tag.name }) }}</q-tooltip>
@@ -38,6 +38,7 @@
           <q-item v-close-popup clickable role="menuitem" :aria-label="action.label" :disable="action.disabled" :class="{ 'tag-delete': action.negative }" @click="action.run()">
             <q-item-section avatar><q-icon :name="action.icon" :class="{ 'tag-action-icon': !action.negative }" /></q-item-section>
             <q-item-section>{{ action.label }}</q-item-section>
+            <q-item-section v-if="action.shortcut" side>{{ action.shortcut }}</q-item-section>
           </q-item>
         </template>
       </q-list>
@@ -49,6 +50,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { QMenu } from 'quasar'
 import type { DocumentTag } from '../types'
+import { vLibraryShortcuts, type LibraryShortcuts } from '../libraryShortcuts'
 import DocumentTagIconPicker from './DocumentTagIconPicker.vue'
 import DocumentTagIcon from './DocumentTagIcon.vue'
 const props = defineProps<{
@@ -59,23 +61,27 @@ const props = defineProps<{
   save: (tag: DocumentTag) => Promise<boolean>
   create: (name: string, parentId: string | null, afterTagId?: string) => Promise<boolean>
 }>()
-const emit = defineEmits<{ createDocument: []; delete: []; renamed: []; sort: [descending: boolean]; expand: []; collapse: [] }>()
+const emit = defineEmits<{ browse: []; createDocument: []; delete: []; confirmDelete: []; renamed: []; sort: [descending: boolean]; expand: []; collapse: [] }>()
 const { t } = useI18n()
 const renaming = ref(false)
 const name = ref('')
 const iconOpen = ref(false)
 const menuOpen = ref(false)
 const contextMenu = useTemplateRef<QMenu>('contextMenu')
+const shortcuts = computed<LibraryShortcuts>(() => props.busy || renaming.value ? {} : {
+  F2: startRename, F3: () => emit('createDocument'), F4: () => emit('browse'), F7: () => { void createChild() }, Delete: () => emit('confirmDelete'),
+})
 const contextActions = computed(() => [
-  { key: 'document', icon: 'note_add', label: t('documents.library.newDocument', { name: props.tag.name }), disabled: props.busy, run: () => emit('createDocument') },
-  { key: 'child', icon: 'create_new_folder', label: t('documents.library.newSubtag', { name: props.tag.name }), disabled: props.busy, run: createChild },
+  { key: 'browse', icon: 'view_list', label: t('documents.bulk.openFolder', { name: props.tag.name }), shortcut: 'F4', run: () => emit('browse') },
+  { key: 'document', icon: 'note_add', label: t('documents.library.newDocument', { name: props.tag.name }), shortcut: 'F3', disabled: props.busy, run: () => emit('createDocument') },
+  { key: 'child', icon: 'create_new_folder', label: t('documents.library.newSubtag', { name: props.tag.name }), shortcut: 'F7', disabled: props.busy, run: createChild },
   { key: 'sibling', icon: 'playlist_add', label: t('documents.library.newSibling', { name: props.tag.name }), disabled: props.busy, run: createSibling },
-  { key: 'edit', icon: 'edit', label: t('documents.library.editNamedTag', { name: props.tag.name }), disabled: props.busy, run: startRename },
+  { key: 'edit', icon: 'edit', label: t('documents.library.editNamedTag', { name: props.tag.name }), shortcut: 'F2', disabled: props.busy, run: startRename },
   { key: 'ascending', icon: 'sort_by_alpha', label: t('documents.library.sortAscending'), disabled: props.busy, separator: true, run: () => emit('sort', false) },
   { key: 'descending', icon: 'sort_by_alpha', label: t('documents.library.sortDescending'), disabled: props.busy, run: () => emit('sort', true) },
   { key: 'expand', icon: 'unfold_more', label: t('documents.library.expandAll'), separator: true, run: () => emit('expand') },
   { key: 'collapse', icon: 'unfold_less', label: t('documents.library.collapseAll'), run: () => emit('collapse') },
-  { key: 'delete', icon: 'delete_outline', label: t('documents.library.deleteNamedTag', { name: props.tag.name }), disabled: props.busy, separator: true, negative: true, run: () => emit('delete') },
+  { key: 'delete', icon: 'delete_outline', label: t('documents.library.deleteNamedTag', { name: props.tag.name }), shortcut: t('documents.shortcuts.deleteKey'), disabled: props.busy, separator: true, negative: true, run: () => emit('delete') },
 ])
 function openKeyboardMenu(event: KeyboardEvent): void {
   if (renaming.value || !(event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) return

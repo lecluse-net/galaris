@@ -284,6 +284,24 @@ export default {
       selectTwo: 'Sélectionnez exactement deux contacts du même agent pour les fusionner.',
     },
     documents: {
+      shortcuts: {
+        folder: 'F2 : renommer · F3 : nouveau document · F4 : afficher en liste · F7 : nouveau sous-dossier · Suppr : supprimer',
+        document: 'F2 : renommer · F3 / F7 : nouveau sous-document · F4 : ouvrir · Suppr : supprimer',
+        deleteKey: 'Suppr',
+      },
+      bulk: {
+        title: 'Opération sur {count} document(s)', operation: 'Opération', actions: 'Actions sur la sélection',
+        openFolder: 'Afficher le dossier {name} en liste', openUnclassified: 'Afficher les documents non classés en liste', closeList: 'Fermer la liste',
+        recursive: 'Inclure les sous-dossiers et sous-documents', selectPage: 'Sélectionner cette page', selected: '{count} sélectionné(s)', selectDocument: 'Sélectionner {title}',
+        keywordsAdd: 'Ajouter des mots-clés', keywordsRemove: 'Retirer des mots-clés', keywords: 'Mots-clés', keywordsHint: 'Validez chaque mot-clé avec Entrée.',
+        sharing: 'Modifier le partage', sharingHint: 'Ajoutez, modifiez ou retirez uniquement le partage choisi sur chaque document. Les autres partages sont conservés.',
+        inheritedHint: 'Retirer un partage explicite ne retire pas les accès obtenus par un groupe ou par le partage public. Le propriétaire conserve son accès.',
+        recipient: 'Destinataire', access: 'Action sur le partage', read: 'Ajouter / régler en lecture', write: 'Ajouter / régler en écriture', remove: 'Retirer ce partage',
+        owner: 'Changer le propriétaire', delete: 'Supprimer les documents', deleteHint: 'Supprimer définitivement les {count} documents sélectionnés ? Cette opération ne peut pas être annulée.',
+        optionsError: 'Les destinataires n’ont pas pu être chargés.', agent: 'Agent', user: 'Utilisateur', team: 'Équipe',
+        progress: '{done} / {total} document(s) traité(s)', result: '{success} réussi(s), {failed} en échec. Les échecs restent sélectionnés lorsqu’ils sont encore accessibles.',
+        errors: { permission: 'Droits insuffisants pour cette opération.', conflict: 'Le document a changé. Vérifiez-le avant de réessayer.', missing: 'Document ou destinataire indisponible.', keywordLimit: 'Limite de 50 mots-clés de 100 caractères par document.', other: 'Opération échouée. Vérifiez le document avant de réessayer.' },
+      },
       library: {
         tags: 'Mes dossiers', all: 'Tous les documents', filters: 'Filtres', reset: 'Réinitialiser', apply: 'Appliquer',
         newSubtag: "Créer un sous-dossier de {name}",
@@ -774,6 +792,24 @@ export default {
       selectTwo: 'Select exactly two contacts from the same agent to merge them.',
     },
     documents: {
+      shortcuts: {
+        folder: 'F2: rename · F3: new document · F4: show as list · F7: new subfolder · Delete: delete',
+        document: 'F2: rename · F3 / F7: new sub-document · F4: open · Delete: delete',
+        deleteKey: 'Delete',
+      },
+      bulk: {
+        title: 'Operation on {count} document(s)', operation: 'Operation', actions: 'Selection actions',
+        openFolder: 'Show folder {name} as a list', openUnclassified: 'Show unclassified documents as a list', closeList: 'Close list',
+        recursive: 'Include subfolders and sub-documents', selectPage: 'Select this page', selected: '{count} selected', selectDocument: 'Select {title}',
+        keywordsAdd: 'Add keywords', keywordsRemove: 'Remove keywords', keywords: 'Keywords', keywordsHint: 'Press Enter after each keyword.',
+        sharing: 'Change sharing', sharingHint: 'Add, change or remove only the chosen share on each document. Other shares are preserved.',
+        inheritedHint: 'Removing an explicit share does not remove access through groups or public sharing. The owner retains access.',
+        recipient: 'Recipient', access: 'Sharing action', read: 'Add / set read access', write: 'Add / set write access', remove: 'Remove this share',
+        owner: 'Change owner', delete: 'Delete documents', deleteHint: 'Permanently delete the {count} selected documents? This cannot be undone.',
+        optionsError: 'Recipients could not be loaded.', agent: 'Agent', user: 'User', team: 'Team',
+        progress: '{done} / {total} document(s) processed', result: '{success} succeeded, {failed} failed. Failed documents remain selected when still accessible.',
+        errors: { permission: 'Insufficient permissions for this operation.', conflict: 'The document changed. Review it before retrying.', missing: 'Document or recipient unavailable.', keywordLimit: 'Maximum 50 keywords of 100 characters per document.', other: 'Operation failed. Check the document before retrying.' },
+      },
       library: {
         tags: 'My folders', all: 'All documents', filters: 'Filters', reset: 'Reset', apply: 'Apply',
         newSubtag: "Create a subfolder of {name}",
@@ -1079,6 +1115,24 @@ export default {
       selectTwo: '请选择同一智能体的恰好两个联系人进行合并。',
     },
     documents: {
+      shortcuts: {
+        folder: 'F2：重命名 · F3：新建文档 · F4：显示列表 · F7：新建子文件夹 · Delete：删除',
+        document: 'F2：重命名 · F3 / F7：新建子文档 · F4：打开 · Delete：删除',
+        deleteKey: 'Delete',
+      },
+      bulk: {
+        title: '对 {count} 个文档执行操作', operation: '操作', actions: '批量操作',
+        openFolder: '以列表显示文件夹 {name}', openUnclassified: '以列表显示未分类文档', closeList: '关闭列表',
+        recursive: '包括子文件夹和子文档', selectPage: '选择本页', selected: '已选择 {count} 项', selectDocument: '选择 {title}',
+        keywordsAdd: '添加关键词', keywordsRemove: '移除关键词', keywords: '关键词', keywordsHint: '输入每个关键词后按回车。',
+        sharing: '修改共享', sharingHint: '仅添加、修改或移除每个文档的指定共享，保留其他共享。',
+        inheritedHint: '移除直接共享不会取消通过团队或公开共享获得的权限。所有者保留访问权限。',
+        recipient: '共享对象', access: '共享操作', read: '添加或设置只读权限', write: '添加或设置编辑权限', remove: '移除此共享',
+        owner: '更改所有者', delete: '删除文档', deleteHint: '永久删除选中的 {count} 个文档？此操作无法撤销。',
+        optionsError: '无法加载共享对象。', agent: '智能体', user: '用户', team: '团队',
+        progress: '已处理 {done} / {total} 个文档', result: '{success} 项成功，{failed} 项失败。仍可访问的失败文档保持选中。',
+        errors: { permission: '没有执行此操作的权限。', conflict: '文档已更改，请检查后重试。', missing: '文档或共享对象不可用。', keywordLimit: '每个文档最多 50 个关键词，每个最长 100 个字符。', other: '操作失败，请检查文档后重试。' },
+      },
       library: {
         tags: '我的文件夹', all: '全部文档', filters: '筛选', reset: '重置', apply: '应用',
         newSubtag: "创建 {name} 的子文件夹",

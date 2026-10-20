@@ -391,6 +391,15 @@ Les changements s’appliquent aux nouveaux appels.
 
 ## Documents et connaissances
 
+Dans la bibliothèque, survolez une ligne de dossier ou de document, ou placez-y le focus
+au clavier, pour utiliser les raccourcis. **F2** renomme, **F3** crée un document dans le
+dossier ou un sous-document du document, **F4** ouvre le dossier en liste ou le document,
+et **F7** crée un sous-dossier (un sous-document sur une ligne de document).
+**Suppr** ouvre la confirmation de suppression de la ligne ciblée ; il ne supprime pas la
+sélection en masse. Les raccourcis sont suspendus pendant la saisie, dans les menus et les
+dialogues, et respectent les droits et protections de chaque document. Le menu contextuel
+des dossiers rappelle les touches disponibles.
+
 **Connaissances → Documents** (`/documents`) sert à retrouver et créer les contenus rédigés HTML.
 Les jeux de données JSON indépendants se créent et se gèrent séparément dans
 **Connaissances → Jeux de données** (`/dataset`), y compris ceux issus d'anciens documents.
@@ -426,10 +435,27 @@ et la pagination par type permettent d’atteindre les grandes listes. Effacer c
 rétablit tous les propriétaires ; les autres filtres restent applicables.
 
 Le bouton **⋮** de chaque dossier et le clic droit ouvrent le même menu avec les icônes et les libellés de toutes ses
-actions : créer un document ou un dossier, modifier, trier, déplier,
+actions : afficher en liste, créer un document ou un dossier, modifier, trier, déplier,
 replier et supprimer. Les raccourcis **Nouveau document**, **Nouveau sous-dossier**, **Modifier**
 et **Supprimer** restent visibles sur la ligne, y compris sur mobile.
 Au clavier, activez le bouton **⋮** ou utilisez **Maj + F10** sur le dossier ; **Échap** ferme le menu.
+
+L’action **Afficher le dossier en liste** ouvre une liste paginée avec titres, miniatures,
+propriétaires et mots-clés. Cochez **Inclure les sous-dossiers et sous-documents** pour
+parcourir aussi ses descendants. L’action **Afficher les documents non classés en liste**,
+près de la recherche, présente les documents sans classement personnel. La pagination
+propose 10, 20, 50, 100 ou 500 documents, avec 50 par défaut.
+
+Sélectionnez des documents ou cochez **Sélectionner cette page**, puis ouvrez
+**Actions sur la sélection** : supprimer après confirmation, changer le propriétaire,
+ajouter ou retirer des mots-clés, ajouter, modifier ou retirer un partage. La sélection
+concerne uniquement la page affichée et se vide lors d’un changement de page ou de recherche.
+Chaque ajout ou retrait conserve les autres mots-clés et partages propres à chaque document.
+Un droit de lecture ou d’écriture s’applique au destinataire choisi sur toute la sélection ;
+retirer son partage explicite ne supprime pas les droits hérités d’une équipe ou du partage public.
+Les droits du propriétaire restent attachés à la propriété. Un bilan indique les réussites
+et les échecs, avec les documents encore accessibles en échec sélectionnés pour une nouvelle tentative.
+Une modification concurrente est refusée plutôt que d’écraser les réglages récents.
 
 Un document peut aussi contenir des **sous-documents**. Utilisez son icône
 **Nouveau sous-document**, ou glissez un document existant au centre de sa ligne.

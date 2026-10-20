@@ -18,6 +18,7 @@
         <q-toolbar-title>
           <div class="row items-center no-wrap">
             <q-input
+              ref="titleInput"
               v-model="editorTitle"
               class="document-editor-title col"
               input-class="text-h6"
@@ -226,7 +227,7 @@
         <q-card-section class="galaris-dialog-body">{{ t('documents.deleteConfirm', { title: editorTitle || currentDocument?.title }) }}</q-card-section>
         <q-card-actions align="right">
           <q-btn v-close-popup flat :label="t('common.cancel')" />
-          <q-btn flat style="color: var(--solaire-red-accent)" :label="t('documents.deleteDocument')" :loading="deletingDocument" :disable="!canDeleteDocument" @click="deleteDocument" />
+          <q-btn color="negative" :label="t('documents.deleteDocument')" :loading="deletingDocument" :disable="!canDeleteDocument" @click="deleteDocument" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -236,11 +237,12 @@
 <script setup lang="ts">
 import DocumentIcon from './DocumentIcon.vue'
 import DocumentApplicationBlock from './DocumentApplicationBlock.vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { isAxiosError } from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { copyToClipboard, useQuasar } from 'quasar'
+import { copyToClipboard, useQuasar, type QInput } from 'quasar'
+import type { DocumentRowAction } from '../libraryShortcuts'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { RichTextEditor, richLinkHref, documentResourceHtml, documentResourceHref } from '@/core/util'
 import { websocket } from '@/core/websocket'
@@ -317,6 +319,9 @@ const agentStore = useAgentStore()
 const documentMutations = useDocumentMutations()
 const privilegeStore = usePrivilegeStore()
 const loading = ref(true)
+const titleInput = useTemplateRef<QInput>('titleInput')
+const requestedRowAction = ref<DocumentRowAction | null>(null)
+const ownerOptionsReady = ref(false)
 const deleteDialogOpen = ref(false)
 const deletingDocument = ref(false)
 const refreshing = ref(false)
@@ -746,6 +751,8 @@ async function loadOwnerOptions(): Promise<void> {
       agents: [],
       users: [],
     }
+  } finally {
+    if (!disposed && generation === ownerLoadGeneration) ownerOptionsReady.value = true
   }
 }
 
@@ -1173,7 +1180,23 @@ onBeforeUnmount(() => {
   if (hasUnsavedChanges.value) void flushAutosave()
 })
 
-defineExpose({ flush: flushAutosave })
+function requestRowAction(action: DocumentRowAction, documentId: string): void {
+  if (documentId === props.documentId) requestedRowAction.value = action
+}
+watch([requestedRowAction, loading, ownerOptionsReady], () => {
+  const action = requestedRowAction.value
+  if (!action || loading.value) return
+  if (!currentDocument.value) { requestedRowAction.value = null; return }
+  if (action === 'delete' && !ownerOptionsReady.value) return
+  requestedRowAction.value = null
+  if (action === 'delete') {
+    if (canDeleteDocument.value) deleteDialogOpen.value = true
+  } else if (canEditDocument.value && !isGoalDocument(currentDocument.value) && !historyOpen.value) {
+    titleInput.value?.focus()
+    titleInput.value?.select()
+  }
+}, { flush: 'post' })
+defineExpose({ flush: flushAutosave, requestRowAction })
 
 async function resolveInlineImage(documentId: string, attachmentId: string, signal?: AbortSignal): Promise<Blob> {
   return memoryService.documentAttachmentBlob(documentId, attachmentId, requestAgentId.value, signal)

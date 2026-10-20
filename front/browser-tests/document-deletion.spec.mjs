@@ -57,6 +57,39 @@ async function setup(page, { human = false, item = {}, privileges = ['MEMORY_EDI
   return { requests, state }
 }
 
+test('row rename and delete shortcuts survive a slow document opening on a small viewport', async ({ page }) => {
+  const { requests } = await setup(page, { human: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  const item = { ...documentFixture, owner_agent_id: null, owner_user_id: 1 }
+  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [] })
+  await jsonRoute(page, '**/api/memory/documents/library', {
+    entries: [{ item, tags: [], agent_ids: [], writable_agent_ids: [], user_access: item.access }], total: 1, has_more: false, keywords: [],
+  })
+  let release
+  const gate = new Promise(resolve => { release = resolve })
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?|$)/, async route => {
+    if (route.request().method() === 'GET') await gate
+    return route.fallback()
+  })
+  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  const row = page.getByText('Test document', { exact: true })
+  await row.hover()
+  await page.keyboard.press('F2')
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(page.getByLabel('Title', { exact: true })).toHaveCount(0)
+  release()
+  await expect(page.getByLabel('Title', { exact: true })).toBeFocused()
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await row.hover()
+  await page.keyboard.press('Delete')
+  const confirmation = page.getByRole('dialog').filter({ hasText: 'Permanently delete' })
+  await expect(confirmation).toBeVisible()
+  expect(requests).toHaveLength(0)
+  await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click()
+  expect(requests).toHaveLength(0)
+})
+
 for (const human of [false, true]) {
   test(`${human ? 'human' : 'agent'} owner confirms deletion, can cancel, and can retry a refused deletion`, async ({ page }) => {
     const { requests, state } = await setup(page, { human })

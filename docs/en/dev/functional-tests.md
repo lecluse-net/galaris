@@ -1216,6 +1216,17 @@ modules follow the same functional form contracts.
 
 ## Documents and shared interactions
 
+- Shortcut scenarios in `front/browser-tests/document-classification.spec.mjs` cover hover,
+  focus, creation, delete confirmation, typing, dialogs, and protected or busy documents.
+  `e2e/specs/document-library-shortcuts.spec.mjs` exercises subfolder and document creation,
+  persisted renaming and confirmed deletion in the assembled application.
+
+- `front/browser-tests/document-bulk.spec.mjs`: page-scoped selection, folder filters,
+  pagination, keyword and sharing deltas preserving heterogeneous settings, ownership
+  transfer and deletion with partial results.
+- `e2e/specs/document-bulk.spec.mjs`: assembled desktop and mobile Documents journey,
+  folder recursion, persisted keywords and sharing preservation, unclassified documents and deletion.
+
 ### Personal chat document opening preference
 
 The profile stores each user's split-screen or dialog preference, defaulting to split

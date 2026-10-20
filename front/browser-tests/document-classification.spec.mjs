@@ -311,6 +311,83 @@ async function fixture(page, locale = 'en') {
   return { requests, assignments, mutations, deletions, orders }
 }
 
+test('folder shortcuts target hover or focus, create children, and confirm deletion without intercepting typing', async ({ page }) => {
+  const state = await fixture(page)
+  const work = page.getByText('Work', { exact: true })
+  await work.hover()
+  await page.keyboard.press('F3')
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').at(-1).args[0].id)).toBe('work')
+  await page.keyboard.press('F4')
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'browse').at(-1).value.id)).toBe('work')
+  await page.keyboard.press('Control+F7')
+  await work.dispatchEvent('keydown', { key: 'F7', repeat: true })
+  expect(state.mutations).toEqual([])
+  await page.keyboard.press('F7')
+  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toBeVisible()
+  expect(state.mutations.filter(value => value.id === 'new-tag')).toEqual([expect.objectContaining({ parent_id: 'work' })])
+  // Repeated keys and editing must never create another folder or delete this one.
+  await work.hover()
+  await page.keyboard.press('F7')
+  await page.keyboard.press('Delete')
+  expect(state.mutations.filter(value => value.id === 'new-tag')).toHaveLength(1)
+  expect(state.deletions).toEqual([])
+  await page.keyboard.press('Escape')
+  await page.getByRole('textbox', { name: 'Search document titles and content', exact: true }).focus()
+  await work.hover()
+  await page.keyboard.press('F7')
+  expect(state.mutations.filter(value => value.id === 'new-tag')).toHaveLength(1)
+  await page.mouse.click(1100, 900)
+  await work.hover()
+  await page.keyboard.press('F2')
+  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('Work')
+  await page.keyboard.press('Escape')
+  await page.mouse.move(1100, 900)
+  await work.focus()
+  await page.keyboard.press('Delete')
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Work')
+  expect(state.deletions).toEqual([])
+  await page.keyboard.press('F7')
+  expect(state.mutations.filter(value => value.id === 'new-tag')).toHaveLength(1)
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await work.hover()
+  await page.keyboard.press('Delete')
+  await dialog.getByRole('button', { name: 'Delete folder', exact: true }).click()
+  await expect(work).toHaveCount(0)
+  expect(state.deletions).toEqual([{ id: 'work', deleted: true }])
+})
+
+test('document shortcuts target one row and respect read-only, protected and busy documents', async ({ page }) => {
+  const entry = { item: document, agent_ids: [7], writable_agent_ids: [7] }
+  await jsonRoute(page, '**/api/memory/documents/doc-a?*', { item: document, agent_id: 7 })
+  await mount(page, 'app/memory/components/DocumentLibraryDocument.vue', { props: {
+    entry, selectedDocumentId: null, busy: false, children: {}, loading: {}, errors: {}, expanded: [], dropTarget: null, dropPlacement: 'inside',
+  } })
+  await page.getByText('Test document', { exact: true }).hover()
+  await page.keyboard.press('F3')
+  await page.keyboard.press('F7')
+  await page.keyboard.press('F4')
+  await page.keyboard.press('F2')
+  await page.keyboard.press('Delete')
+  const commands = () => page.evaluate(() => window.testApp.events.map(event => [event.name, event.args[0]?.item?.id, event.args[1]]))
+  expect(await commands()).toEqual([
+    ['create', 'doc-a', undefined], ['create', 'doc-a', undefined], ['select', 'doc-a', undefined], ['action', 'doc-a', 'rename'], ['action', 'doc-a', 'delete'],
+  ])
+  await page.evaluate(() => window.testApp.setProps({ busy: true }))
+  await page.keyboard.press('F7')
+  await page.keyboard.press('Delete')
+  expect(await commands()).toHaveLength(5)
+  await page.evaluate(entry => window.testApp.setProps({ busy: false, entry: { ...entry, item: { ...entry.item, read_only: true } } }), entry)
+  await page.keyboard.press('F2')
+  await page.keyboard.press('Delete')
+  expect(await commands()).toHaveLength(5)
+  await page.keyboard.press('F3')
+  expect(await commands()).toHaveLength(6)
+  await page.evaluate(entry => window.testApp.setProps({ entry: { ...entry, item: { ...entry.item, deletion_protected: true } } }), entry)
+  await page.keyboard.press('Delete')
+  expect(await commands()).toHaveLength(6)
+})
+
 test('personal classification works for a read-only document by drag and survives reopening', async ({ page }, testInfo) => {
   const state = await fixture(page)
   await expectUnclassified(page)
@@ -744,7 +821,7 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   const work = page.getByRole('button', { name: 'Icon for folder Work', exact: true })
   const menu = page.getByRole('menu', { name: 'Actions for folder Work', exact: true })
   await work.click({ button: 'right' })
-  for (const name of ['New document in Work', 'Create a subfolder of Work',
+  for (const name of ['Show folder Work as a list', 'New document in Work', 'Create a subfolder of Work',
     'Create a folder below Work', 'Edit folder Work', 'Delete folder Work',
     'Sort by name (A → Z)', 'Sort by name (Z → A)', 'Expand all in this folder', 'Collapse all in this folder']) {
     await expect(menu.getByRole('menuitem', { name, exact: true })).toBeVisible()

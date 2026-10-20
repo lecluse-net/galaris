@@ -7,15 +7,16 @@
     </PageHeader>
 
     <q-card flat bordered class="documents-workspace">
-      <q-splitter v-model="splitterModel" :limits="[20, 55]" class="documents-splitter">
+      <q-splitter v-model="splitterModel" :limits="[20, 55]" class="documents-splitter" :class="{ 'documents-splitter--list': listingOpen }">
         <template #before>
-          <DocumentLibraryNavigation ref="navigation" :selected-document-id="selectedDocumentId" @loaded="onLibraryLoaded" @select="selectEntry" @create="openCreateDocument" />
+          <DocumentLibraryNavigation ref="navigation" :selected-document-id="selectedDocumentId" @action="documentRowAction" @browse="openListing" @loaded="onLibraryLoaded" @select="selectEntry" @create="openCreateDocument" />
         </template>
         <template #separator>
           <DocumentSplitterHandle />
         </template>
         <template #after>
-          <div v-if="!selectedDocumentId" class="documents-placeholder text-grey-7">
+          <DocumentBulkList v-if="listingOpen" :folder="listingFolder" @action="documentRowAction" @create="entry => openCreateDocument(undefined, entry)" @close="listingOpen = false" @select="selectEntry" @deleted="onDocumentDeleted" @changed="ids => navigation?.refreshDocuments(ids)" />
+          <div v-else-if="!selectedDocumentId" class="documents-placeholder text-grey-7">
             <q-icon name="article" size="48px" />
             <div>{{ t('documents.selectDocument') }}</div>
           </div>
@@ -101,7 +102,7 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import { computed, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
@@ -110,6 +111,7 @@ import { OwnerSelect } from '@/app/share'
 import { documentIdFromRouteQuery, documentNavigationKey, documentResourceHref, DocumentNavigationButtons, PageHeader, useDocumentHistory } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { DatasetDocumentRedirect, memoryService } from '../services/memoryService'
+import type { DocumentRowAction } from '../libraryShortcuts'
 import type {
   DocumentTag,
   DocumentLibraryEntry,
@@ -122,6 +124,7 @@ import DocumentEditor from './DocumentEditor.vue'
 import DocumentIcon from './DocumentIcon.vue'
 import DocumentLibraryNavigation from './DocumentLibraryNavigation.vue'
 import DocumentSplitterHandle from './DocumentSplitterHandle.vue'
+import DocumentBulkList from './DocumentBulkList.vue'
 
 interface MemoryRealtimeEvent { data: { id: string; node_kind: MemoryNodeKind } }
 
@@ -135,6 +138,8 @@ const mobileDocumentEditor = useTemplateRef<InstanceType<typeof DocumentEditor>>
 const navigation = useTemplateRef<InstanceType<typeof DocumentLibraryNavigation>>('navigation')
 const entries = ref<DocumentLibraryEntry[]>([])
 const splitterModel = ref(30)
+const listingOpen = ref(false)
+const listingFolder = ref<DocumentTag | null>(null)
 const selectedNodeKey = ref<string | null>(null)
 const selectedAgentId = ref<number | null>(null)
 const selectedInitialDocument = ref<MemoryItemDetail | null>(null)
@@ -205,6 +210,7 @@ async function selectDocument(id: string, agentId: number | null, initialDocumen
     }
   }
   if (disposed || leavingPage || selection !== selectionGeneration) return
+  listingOpen.value = false
   selectedInitialDocument.value = initialDocument
   selectedAgentId.value = agentId
   selectedNodeKey.value = `document:${agentId ?? 'user'}:${id}`
@@ -228,12 +234,28 @@ async function openMobileDocument(id: string, agentId: number | null, initialDoc
 }
 function onLibraryLoaded(loaded: DocumentLibraryEntry[]): void {
   entries.value = loaded
-  if (!selectedDocumentId.value && !documentIdFromRouteQuery(route.query.document_id) && !$q.screen.lt.md && loaded[0]) void selectEntry(loaded[0])
+  if (!listingOpen.value && !selectedDocumentId.value && !documentIdFromRouteQuery(route.query.document_id) && !$q.screen.lt.md && loaded[0]) void selectEntry(loaded[0])
+}
+async function openListing(folder: DocumentTag | null): Promise<void> {
+  const selection = ++selectionGeneration
+  if (documentEditor.value && !await documentEditor.value.flush()) {
+    $q.notify({ type: 'negative', message: t('documents.autosaveError') })
+    return
+  }
+  if (disposed || leavingPage || selection !== selectionGeneration) return
+  listingFolder.value = folder
+  listingOpen.value = true
 }
 async function selectEntry(entry: DocumentLibraryEntry): Promise<void> {
   const actor = preferredAgent(entry)
   if ($q.screen.lt.md) await openMobileDocument(entry.item.id, actor)
   else await selectDocument(entry.item.id, actor)
+}
+async function documentRowAction(entry: DocumentLibraryEntry, action: DocumentRowAction): Promise<void> {
+  await selectEntry(entry)
+  await nextTick()
+  const editor = $q.screen.lt.md ? mobileDocumentEditor.value : documentEditor.value
+  editor?.requestRowAction(action, entry.item.id)
 }
 async function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry): Promise<void> {
   createDocumentTag.value = tag ?? null
@@ -464,5 +486,7 @@ onBeforeUnmount(() => {
   .documents-splitter :deep(> .q-splitter__before) { width: 100% !important; }
   .documents-splitter :deep(> .q-splitter__separator),
   .documents-splitter :deep(> .q-splitter__after) { display: none; }
+  .documents-splitter--list :deep(> .q-splitter__before) { display: none; }
+  .documents-splitter--list :deep(> .q-splitter__after) { display: block; width: 100% !important; overflow: auto; }
 }
 </style>

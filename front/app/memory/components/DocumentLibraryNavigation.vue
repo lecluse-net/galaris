@@ -12,14 +12,14 @@
               <DocumentTagRow :key="`${userId}:${node.id}`" :tag="node.tag" :selected="expanded.includes(node.id)" :busy="busy" :save="saveTag" :create="createTag"
                 :rename-on-create="renameTagId === node.id" @renamed="renameTagId === node.id && (renameTagId = null)"
                 @sort="sortFolder(node.id, $event)" @expand="expandFolder(node.id, true)" @collapse="expandFolder(node.id, false)"
-                @create-document="emit('create', node.tag)" @delete="requestDelete(node.tag)" />
+                @browse="emit('browse', node.tag)" @create-document="emit('create', node.tag)" @delete="requestDelete(node.tag)" @confirm-delete="confirmDelete(node.tag)" />
             </div>
           </template>
           <template #header-document="{ node }">
             <div class="full-width" :aria-label="node.parentDocumentId ? t('documents.library.subdocuments', { name: node.parentDocumentTitle }) : t('documents.library.tagDocuments', { name: node.tag.name })">
               <DocumentLibraryDocument :entry="node.entry" compact tree-row :tag-id="node.parentDocumentId ? null : node.tag.id" :parent-document-id="node.parentDocumentId" :selected-document-id="selectedDocumentId" :busy="busy"
                 :children="branchEntries" :loading="branches.loading.value" :errors="branchErrors" :expanded="expandedDocuments" :drop-target="dropTarget" :drop-placement="dropPlacement"
-                @select="emit('select', $event)" @create="emit('create', undefined, $event)"
+                @select="emit('select', $event)" @create="emit('create', undefined, $event)" @action="(entry, action) => emit('action', entry, action)"
                 @toggle="toggleDocument" @retry="id => branches.refresh(`doc:${id}`)" @dragstart="startDocumentDrag" @dragend="clearDrag"
                 @dragover="dragOverDocument" @dragleave="dropTarget = null" @drop="dropNode" />
             </div>
@@ -61,12 +61,13 @@
           <DocumentLibraryFilters v-model="filters" v-model:only-unclassified="onlyUnclassified" :owners="owners" :keywords="keywords" :current-user-id="userId ?? undefined" />
           <q-btn v-if="hasFilters" flat round dense icon="filter_alt_off" :aria-label="t('documents.library.reset')" @click="reset"><q-tooltip>{{ t('documents.library.reset') }}</q-tooltip></q-btn>
           <q-btn flat round dense icon="add" :aria-label="t('documents.createDocument')" @click="emit('create')"><q-tooltip>{{ t('documents.createDocument') }}</q-tooltip></q-btn>
+          <q-btn flat round dense icon="view_list" :aria-label="t('documents.bulk.openUnclassified')" @click="emit('browse', null)"><q-tooltip>{{ t('documents.bulk.openUnclassified') }}</q-tooltip></q-btn>
         </div>
         <q-banner v-if="loadError" dense class="library-error" role="alert">{{ t('documents.loadError') }}<q-btn flat :label="t('documents.retry')" @click="reload" /></q-banner>
         <q-list class="document-list-scroll" separator :aria-busy="loading" :aria-label="t(onlyUnclassified ? 'documents.library.orphans' : 'documents.library.all')">
           <DocumentLibraryDocument v-for="entry in visibleEntries" :key="entry.item.id" :entry="entry" list-only :selected-document-id="selectedDocumentId" :busy="busy"
             :children="branchEntries" :loading="branches.loading.value" :errors="branchErrors" :expanded="expandedDocuments" :drop-target="dropTarget" :drop-placement="dropPlacement"
-            @select="emit('select', $event)" @create="emit('create', undefined, $event)"
+            @select="emit('select', $event)" @create="emit('create', undefined, $event)" @action="(entry, action) => emit('action', entry, action)"
             @toggle="toggleDocument" @retry="id => branches.refresh(`doc:${id}`)" @dragstart="startDocumentDrag" @dragend="clearDrag"
             @dragover="dragOverDocument" @dragleave="dropTarget = null" @drop="dropNode" />
           <div v-if="!loading && !loadError && !visibleEntries.length" class="q-pa-md text-caption">{{ t('documents.empty') }}</div>
@@ -85,7 +86,7 @@
     <q-card class="tag-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center"><span class="text-h6">{{ t('documents.library.deleteTag') }}</span><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
       <q-card-section class="galaris-dialog-body">{{ t('documents.library.deleteExplanation', { name: editingTag?.name }) }}</q-card-section>
-      <q-card-actions align="right"><q-btn v-close-popup flat :label="t('documents.library.cancel')" /><q-btn color="primary" :loading="busy" :label="t('documents.library.deleteTag')" @click="editingTag && requestDelete(editingTag, true)" /></q-card-actions>
+      <q-card-actions class="galaris-dialog-actions" align="right"><q-btn v-close-popup outline :label="t('documents.library.cancel')" /><q-btn color="negative" :loading="busy" :label="t('documents.library.deleteTag')" @click="editingTag && requestDelete(editingTag, true)" /></q-card-actions>
     </q-card>
   </q-dialog>
 </template>
@@ -106,8 +107,9 @@ import { reconcileLibrarySnapshot } from '../librarySnapshot'
 import { useDocumentMutations } from '../stores/documentMutations'
 import DocumentLibraryDocument from './DocumentLibraryDocument.vue'
 import DocumentSplitterHandle from './DocumentSplitterHandle.vue'
+import type { DocumentRowAction } from '../libraryShortcuts'
 defineProps<{ selectedDocumentId: string | null }>()
-const emit = defineEmits<{ select: [entry: DocumentLibraryEntry]; loaded: [entries: DocumentLibraryEntry[]]; create: [tag?: DocumentTag, parent?: DocumentLibraryEntry] }>()
+const emit = defineEmits<{ action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; browse: [folder: DocumentTag | null]; select: [entry: DocumentLibraryEntry]; loaded: [entries: DocumentLibraryEntry[]]; create: [tag?: DocumentTag, parent?: DocumentLibraryEntry] }>()
 const { t } = useI18n()
 const $q = useQuasar()
 const userId = ref<number | null>(null)
@@ -542,6 +544,11 @@ async function createTag(name: string, parentId: string | null, afterTagId?: str
   if (saved && parentId && !expanded.value.includes(parentId)) expanded.value.push(parentId)
   if (saved && creation.tag) renameTagId.value = creation.tag.id
   return saved
+}
+function confirmDelete(tag: DocumentTag): void {
+  if (busy.value) return
+  editingTag.value = tag
+  deleteDialog.value = true
 }
 async function requestDelete(tag: DocumentTag, confirmed = false): Promise<void> {
   if (busy.value) return

@@ -1260,6 +1260,18 @@ canonique. Leurs modules frontend de configuration suivent les mêmes contrats d
 
 ## Documents et interactions communes
 
+- Les scénarios de raccourcis de `front/browser-tests/document-classification.spec.mjs`
+  couvrent le survol, le focus, la création, la confirmation de suppression, les champs de
+  saisie, les dialogues et les documents protégés ou occupés.
+  `e2e/specs/document-library-shortcuts.spec.mjs` exerce création de sous-dossier et de
+  document, renommage enregistré et suppression confirmée dans l’application assemblée.
+
+- `front/browser-tests/document-bulk.spec.mjs` : sélection limitée à la page, filtres de dossier,
+  pagination, ajout/retrait de mots-clés et de partages sans écraser les réglages hétérogènes,
+  transfert de propriété et suppression avec bilan partiel.
+- `e2e/specs/document-bulk.spec.mjs` : parcours Documents assemblé en bureau et mobile,
+  récursion des dossiers, conservation des mots-clés et partages réels, non-classés et suppression.
+
 ### Préférence personnelle d’ouverture des documents du chat
 
 Le profil enregistre par utilisateur le choix écran splitté ou modale, avec écran splitté

@@ -360,6 +360,28 @@ a task with multiple calls may run for hours. Changes apply to new calls.
 
 ## Documents and knowledge
 
+Hover a folder or document row, or focus it with the keyboard, to use its shortcuts.
+**F2** renames, **F3** creates a document in the folder or a sub-document under the document,
+**F4** opens the folder as a list or opens the document, and **F7** creates a subfolder
+(a sub-document on document rows). **Delete** opens confirmation for the targeted row;
+it does not delete the bulk selection. Shortcuts are suspended while typing, in menus and
+dialogs, and respect each document's permissions and protections. Folder context menus
+also show the available keys.
+
+In **Documents**, **Show folder as a list** opens a paginated view with titles, thumbnails,
+owners and keywords. Enable **Include subfolders and sub-documents** to include descendants.
+**Show unclassified documents as a list**, beside the search field, opens documents without
+personal classification. Pages default to 50 documents and offer 10, 20, 50, 100 or 500.
+
+Select individual documents or **Select this page**, then open **Selection actions** to
+delete after confirmation, change ownership, add or remove keywords, or add, change or remove
+a share. Selection covers the displayed page and resets when changing pages or search.
+Each command preserves the other keywords and shares specific to each document. Read or
+write access is set for the chosen recipient across the selection; removing an explicit
+share preserves access inherited through teams or public sharing. Owners retain access
+through ownership. Results list successes and failures; accessible failed documents stay
+selected for another attempt. Concurrent changes are rejected instead of overwriting newer settings.
+
 **Knowledge → Documents** (`/documents`) holds and creates authored HTML content.
 Independent JSON Datasets are created and managed separately under **Knowledge → Datasets**
 (`/dataset`), including those migrated from old documents.
@@ -394,7 +416,7 @@ then users and agents, with search and independent pagination for each large lis
 Clearing the field restores all owners while retaining the other filters.
 
 Click a folder's **⋮** button or right-click the folder to open the same menu with icons and
-labels for all its actions: create a document or folder, edit, sort, expand,
+labels for all its actions: show as a list, create a document or folder, edit, sort, expand,
 collapse, and delete. **New document**, **New subfolder**, **Edit**, and **Delete** remain
 available directly on the row, including on mobile. Use the **⋮**
 button from the keyboard or press **Shift + F10** on the folder; **Escape** closes the menu.
