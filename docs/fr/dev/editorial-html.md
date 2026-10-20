@@ -178,10 +178,11 @@ la vue d’édition, sans effet sur les données ni l’historique d’annulatio
 modifiés sont recolorés. Le lecteur et l’impression colorent une copie du HTML filtré ;
 les classes de coloration ne sont jamais enregistrées dans le document.
 
-Un clic dans un bloc affiche une barre flottante : langage, numéros de ligne, retour à la
+En édition, un clic dans un bloc affiche une barre flottante : langage, numéros de ligne, retour à la
 ligne et copie. Le changement de langage cible explicitement ce bloc sans en créer ni en
 fusionner d’autres. `Alt+F10` place le focus dans la barre et `Échap` la ferme. En lecture
-seule, la copie reste disponible et les options du document sont désactivées.
+seule, aucune barre contextuelle ni aucun menu au clic droit n’est affiché, y compris sur
+le texte. La copie reste disponible au clavier et via le bouton dédié du bloc.
 
 Les options sont conservées sur `<code>` par `data-code-lines="true"` et
 `data-code-nowrap="true"`, validés par les deux filtres HTML. Les numéros sont des éléments
@@ -342,8 +343,9 @@ Les tâches, objectifs, sujets, discussions, rounds texte, appels et tours vocau
 être copiés depuis leurs menus contextuels ou fiches, puis collés comme liens titrés.
 Le sélecteur **Lien Galaris → Objets Galaris** les recherche également. Les URI et les
 URL de cette installation sont normalisées avant insertion. Le menu contextuel et la
-barre d'outils basculent entre lien et carte ; en lecture, le menu permet l'ouverture
-et la copie. Ces références ouvrent leur fiche en modale avec les droits actuels du
+barre d'outils basculent entre lien et carte en édition. En lecture seule ou visualisation,
+le clic gauche sur un lien ou le fond d’une carte ouvre sa cible ; le clic droit est bloqué
+et les barres contextuelles sont absentes. Ces références ouvrent leur fiche en modale avec les droits actuels du
 lecteur, sans changer le document consulté.
 
 Les cartes sont des instantanés HTML portables des métadonnées essentielles : titre,

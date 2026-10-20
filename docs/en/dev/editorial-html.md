@@ -170,10 +170,11 @@ and blocks exceeding 50,000 characters remain readable without highlighting.
 without affecting data or undo history. Only changed blocks are highlighted again. Reading
 and printing highlight a copy of sanitized HTML; syntax classes are never saved in documents.
 
-Clicking inside a block shows a floating toolbar: language, line numbers, line wrapping and
+While editing, clicking inside a block shows a floating toolbar: language, line numbers, line wrapping and
 copy. Changing the language explicitly targets that block without inserting or merging other
-blocks. `Alt+F10` focuses the toolbar and `Escape` dismisses it. In read-only mode, copying
-remains available while document options are disabled.
+blocks. `Alt+F10` focuses the toolbar and `Escape` dismisses it. In read-only mode, no contextual
+toolbar or right-click menu appears, including on text. Copying remains available through
+the keyboard and the block's dedicated copy button.
 
 Options persist on `<code>` as `data-code-lines="true"` and `data-code-nowrap="true"`,
 validated by both HTML filters. Line numbers are temporary display elements, excluded from
@@ -324,7 +325,8 @@ Tasks, Goals, Topics, discussions, text rounds, voice calls and voice turns can 
 from their context menus or detail views and pasted as titled links. The **Galaris link →
 Galaris objects** picker also searches these objects. Native URIs and URLs from this
 installation are normalized before insertion. The editor toolbar and context menu switch
-between link and card; the reader context menu provides Open and Copy. These references
+between link and card while editing. In read-only or viewing mode, left-clicking a link or
+card background opens its target; right-click is blocked and contextual toolbars are absent. These references
 open their detail modal with the reader's current rights, keeping the containing Document
 in place.
 

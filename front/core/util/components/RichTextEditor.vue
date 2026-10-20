@@ -331,7 +331,7 @@ const selectedAttributes = computed(() => { void revision.value; return editor.v
 const contextTarget = computed(() => {
   void revision.value
   const current = editor.value
-  if (!current || current.isDestroyed || sourceMode.value) return null
+  if (readonly || !current || current.isDestroyed || sourceMode.value) return null
   const { selection } = current.state
   const dom = selection instanceof NodeSelection ? current.view.nodeDOM(selection.from) : current.view.domAtPos(selection.from, 1).node
   const element = dom instanceof HTMLElement ? dom : dom?.parentElement
@@ -486,11 +486,10 @@ function openSelectionDialog(): void {
   resourceDetail.value = richLinkTarget(uri)
 }
 async function openContextMenu(event: MouseEvent): Promise<void> {
+  if (readonly) { event.preventDefault(); event.stopPropagation(); return }
   const current = editor.value, target = event.target
   if (!current || current.isDestroyed || sourceMode.value || !(target instanceof Element) || !current.view.dom.contains(target)) return
   const object = target.closest('.galaris-image-object, blockquote.galaris-link-card, .embedded-code-widget')
-  // Plain read-only text retains the browser's selection and clipboard menu.
-  if (readonly && !object && !target.closest('a, pre')) return
   const request = ++pointerRequest
   pointerMenu.value?.hide()
   pointerSelection = undefined
@@ -526,7 +525,9 @@ function editorClick(event: MouseEvent): void {
   dismissedContext.value = ''
   selectedCardImage.value = event.target instanceof HTMLImageElement ? event.target.dataset.editorAttachment ?? '' : ''
   if (readonly && event.target.closest('.galaris-image-object')) return
-  const link = event.target instanceof Element ? event.target.closest('[data-editor-surface] a') : null
+  if (readonly && event.target.closest('button, input, select, textarea, [data-document-player]')) return
+  const link = event.target.closest('[data-editor-surface] a')
+    ?? (readonly ? event.target.closest('blockquote.galaris-link-card')?.querySelector('a') : null)
   if (!link) return
   const uri = link.getAttribute('data-rich-reference') ?? link.getAttribute('href') ?? ''
   const card = link.closest('blockquote.galaris-link-card')

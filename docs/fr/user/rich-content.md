@@ -39,7 +39,7 @@ laissez le curseur sans sélection pour lire tout le texte. **Commandes de lectu
 un menu avec icônes et libellés pour **Pause**, **Reprendre** et **Arrêter la lecture**.
 La barre reste accessible au défilement tant que le document est à l’écran, même après un clic sur le fond.
 Cliquer dans le document conserve sa bordure neutre.
-Les commandes contextuelles des liens, cartes, images, tableaux et blocs de code apparaissent
+En édition, les commandes contextuelles des liens, cartes, images, tableaux et blocs de code apparaissent
 dans une bulle près de la sélection. Elles suivent le défilement et les redimensionnements,
 sans ajouter de barre sous le document. **Échap** ferme la bulle ; cliquez à nouveau sur
 l’objet pour la rouvrir. **Alt+F10** donne accès à ses commandes au clavier.
@@ -56,8 +56,11 @@ directement ; les sous-menus **Texte**, **Paragraphe** et **Insertion** regroupe
 commandes. Un clic droit dans une sélection la conserve ; en dehors, il cible le texte cliqué.
 Les sélections dans les liens et les cellules gardent aussi leurs commandes spécifiques.
 **Copier**, **Couper** et **Coller** conservent la mise en forme lorsque le navigateur autorise
-le presse-papiers ; en cas de refus, utilisez les raccourcis clavier indiqués. Le texte en
-lecture seule conserve le menu natif du navigateur.
+le presse-papiers ; en cas de refus, utilisez les raccourcis clavier indiqués.
+En lecture seule ou en visualisation, le clic droit est désactivé, y compris sur le texte,
+et aucune barre contextuelle n’apparaît. Le clic gauche ouvre directement les liens et
+les objets ; le fond d’une carte ouvre aussi sa cible. La sélection et la copie au clavier
+restent disponibles.
 En édition, les images et les portions HTML non éditables se sélectionnent comme un seul
 objet, entouré de jaune. Un clic affiche leurs commandes ; **Ouvrir** dans le menu de
 l’image affiche son aperçu. En lecture seule, un clic ouvre directement l’aperçu plein
@@ -179,7 +182,8 @@ Alt+Entrée ouvre la cible. Le menu du lien propose aussi Ouvrir, modifier et re
 Pour un document, **Ouvrir dans une modale** ouvre une fenêtre distincte depuis Documents,
 le Chat ou une autre modale, sans remplacer le document courant ni modifier son historique.
 Pour un agent, **Afficher une carte** présente son avatar, son nom et son poste dans le texte.
-Cliquez sur son nom pour ouvrir sa carte complète, même en édition ; l’avatar n’est pas cliquable. **Afficher l'URL** rétablit
+Cliquez sur son nom pour ouvrir sa carte complète, même en édition ; en lecture seule,
+l’avatar ouvre aussi la fiche. **Afficher l'URL** rétablit
 le lien avec son libellé.
 
 Dans la page **Documents**, les flèches **Document précédent** et **Document suivant**

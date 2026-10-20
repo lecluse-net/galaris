@@ -115,7 +115,7 @@ test('text clipboard menus preserve rich content and refuse failed or stale cuts
     const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
     element.dispatchEvent(event)
     return event.defaultPrevented
-  })).toBe(false)
+  })).toBe(true)
   await expect(menu).toBeHidden()
 })
 
@@ -130,6 +130,36 @@ const contextCases = [
   ['process', '<blockquote class="galaris-link-card galaris-process-diagram"><p><a href="galaris://processes/synthetic_context">Synthetic process</a></p></blockquote>', '.process-preview--inline', 'Insert a link or file'],
   ['object', '<section><details><summary>Synthetic object</summary>Preserved content</details></section>', '.embedded-code-widget', 'Embedded application'],
 ]
+
+for (const mode of ['read', 'readonly']) for (const width of [1440, 390]) test(`document ${mode} suppresses all context menus and opens cards with a left click (${width}px)`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const html = '<p>Ordinary text</p>' + contextCases.filter(([kind]) => !['agent', 'process', 'object'].includes(kind)).map(([, html]) => html).join('')
+  await mount(page, `core/util/components/${mode === 'read' ? 'RichText' : 'RichTextEditor'}.vue`, {
+    props: { profile: 'document', ...(mode === 'read' ? { content: html } : { modelValue: html, readonly: true }) },
+  })
+  await page.context().route('https://example.org/guide', route => route.fulfill({ body: 'Synthetic external page' }))
+  const content = page.locator(mode === 'read' ? '.rich-content-reader > .rich-content' : '[data-editor-surface]')
+  for (const selector of ['p', 'pre code', 'td', 'a', 'img', 'blockquote']) {
+    const target = content.locator(selector).first()
+    expect(await target.evaluate(element => {
+      const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+      element.dispatchEvent(event)
+      return event.defaultPrevented
+    })).toBe(true)
+    await target.click({ button: 'right' })
+    await expect(page.getByRole('menu')).toBeHidden()
+    await expect(page.locator('.editorial-context')).toHaveCount(0)
+  }
+  await content.locator('pre code').click()
+  await expect(page.getByRole('toolbar', { name: 'Code block options', exact: true })).toBeHidden()
+  for (const click of [() => content.locator('a').first().click(), () => content.locator('blockquote').click({ position: { x: 4, y: 4 } })]) {
+    const [popup] = await Promise.all([page.waitForEvent('popup'), click()])
+    await expect(popup).toHaveURL('https://example.org/guide')
+    await popup.close()
+  }
+  await page.screenshot({ path: testInfo.outputPath('document-reading.png') })
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
+})
 
 for (const width of [1440, 390]) for (const [kind, html, selector, label] of contextCases) {
   test(`right-click ${kind} offers the same commands and hides the quick toolbar (${width}px)`, async ({ page }, testInfo) => {
@@ -211,19 +241,21 @@ test('right-click targets another table, preserves selected cells and closes sta
   await expect(page.locator('[data-editor-surface]')).toHaveText('New document')
 })
 
-test('right-click code menus keep language controls and read-only restrictions', async ({ page }) => {
+test('right-click code menus keep language controls and close when editing rights are removed', async ({ page }) => {
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<pre><code class="language-javascript">const answer = 42;</code></pre>' } })
   const code = page.locator('[data-editor-surface] pre code'), menu = page.getByRole('menu', { name: 'Code block options', exact: true })
   await code.click({ button: 'right' })
   await menu.getByRole('menuitem', { name: 'Block language', exact: true }).hover()
   await page.getByRole('menuitemradio', { name: 'Python', exact: true }).click()
   expect(await editorHtml(page)).toContain('language-python')
+  await code.click({ button: 'right' })
+  await expect(menu).toBeVisible()
   await page.evaluate(() => window.testApp.setProps({ readonly: true }))
+  await expect(menu).toBeHidden()
   const saved = await editorHtml(page)
   await code.click({ button: 'right' })
-  await expect(menu.getByRole('menuitem', { name: 'Line numbers', exact: true })).toHaveAttribute('aria-disabled', 'true')
-  await expect(menu.getByRole('menuitem', { name: 'Block language', exact: true })).toHaveAttribute('aria-disabled', 'true')
-  await expect(menu.getByRole('menuitem', { name: 'Copy code', exact: true })).not.toHaveAttribute('aria-disabled', 'true')
+  await expect(menu).toBeHidden()
+  await expect(page.getByRole('toolbar', { name: 'Code block options', exact: true })).toBeHidden()
   expect(await editorHtml(page)).toBe(saved)
 })
 

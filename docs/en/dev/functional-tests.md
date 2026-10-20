@@ -7,7 +7,8 @@ agents, processes, code blocks and HTML objects on mobile and desktop: matching 
 and icons with the quick toolbars, mutually exclusive menu and toolbar, direct targeting, cell merge/split, styles, language,
 read-only restrictions and dismissal when switching documents.
 The same suite covers text selections, headings and lists, formatting commands inside links
-and cells, the rich clipboard, rejected or delayed cuts, and native menus for read-only text.
+and cells, the rich clipboard, rejected or delayed cuts, blocked right-click and absent contextual
+toolbars in read-only and viewing modes, with left-click opening links and card backgrounds on mobile and desktop.
 `e2e/specs/editorial-html.spec.mjs` also checks table properties through right-click,
 real persistence and preservation after reload.
 This journey also checks changing heading levels through the right-click **Style** menu,
@@ -119,7 +120,7 @@ formatting, undo, dismissal, error recovery and rejection after content changes.
 Navigation and multiple selection remain covered by `internal-file-picker.spec.mjs`.
 `agents.spec.mjs` covers inserted cards, avatars, link/card switching, saving without
 injected UI and opening the complete agent card through its title in reading and editing,
-on mobile and desktop; the avatar no longer opens it.
+on mobile and desktop; in read-only mode, the avatar also opens the card.
 `galaris-links.spec.mjs` checks single-click navigation through document card titles,
 selection through the rest of the card and preserved shortcuts for text links. It also checks that
 Task citations open and reopen in a modal without navigation in reading and editing modes.
@@ -130,7 +131,8 @@ access denials and rejection of responses after closing. The next message uses t
 displayed after navigation. `document-navigation.spec.mjs` and
 `document-dialog-navigation.spec.mjs` preserve the Documents and dialog contexts. All three
 suites also check **Open in a dialog**, preserving the source document and its independent
-history, including opening from a read-only card.
+history while editing. In read-only mode, a card background opens its target directly in the
+current context without a contextual toolbar.
 `goals.spec.mjs` checks the same guarantee for Goals, preserving their actions and another
 Goal selection already open elsewhere.
 `document-resources.spec.mjs` covers repeated insertion and drag and drop of existing

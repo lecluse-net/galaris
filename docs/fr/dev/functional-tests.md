@@ -8,7 +8,8 @@ commandes et icônes que les barres rapides, exclusion entre menu et barre, cibl
 styles, langage, lecture seule et fermeture lors d’un changement de document.
 La même suite couvre les sélections de texte, titres et listes, les commandes de mise en forme
 dans les liens et cellules, le presse-papiers enrichi, les coupes refusées ou tardives et le
-menu natif du texte en lecture seule.
+blocage du clic droit et l’absence de barres contextuelles en lecture seule ou visualisation,
+avec ouverture des liens et fonds de cartes au clic gauche sur mobile et bureau.
 `e2e/specs/editorial-html.spec.mjs` vérifie aussi les propriétés d’un tableau par clic droit,
 leur sauvegarde réelle et leur conservation après rechargement.
 Ce parcours vérifie également le changement de niveau de titre depuis **Style** au clic droit,
@@ -112,7 +113,7 @@ sélection après changement de contenu. La navigation et la sélection multiple
 couvertes par `internal-file-picker.spec.mjs`.
 `agents.spec.mjs` couvre la carte insérée, son avatar, le choix lien/carte, la sauvegarde
 sans UI injectée et l'ouverture de la carte complète par son titre en lecture et en édition,
-sur mobile et bureau ; l’avatar ne l’ouvre plus.
+sur mobile et bureau ; en lecture seule, l’avatar ouvre aussi la fiche.
 `galaris-links.spec.mjs` vérifie le clic simple sur le titre des cartes documentaires,
 la sélection du reste de la carte et le maintien des raccourcis pour les liens dans le texte. Il vérifie aussi que
 les tâches s'ouvrent et se rouvrent en modale sans navigation, en lecture et en édition.
@@ -123,7 +124,8 @@ avant navigation, refus d’accès et rejet des réponses après fermeture. Le d
 message suivant est celui affiché après navigation. `document-navigation.spec.mjs` et
 `document-dialog-navigation.spec.mjs` conservent les contextes Documents et modale. Les trois
 suites vérifient aussi l’action contextuelle **Ouvrir dans une modale**, sans remplacer le
-document d’origine ni partager son historique, y compris depuis une carte en lecture seule.
+document d’origine ni partager son historique en édition. En lecture seule, le fond d’une carte
+ouvre directement sa cible dans le contexte courant, sans barre contextuelle.
 `goals.spec.mjs` vérifie la même garantie pour les objectifs, avec leurs actions et sans
 modifier la sélection d'un objectif déjà ouverte ailleurs.
 

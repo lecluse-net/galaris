@@ -108,7 +108,7 @@ for (const action of ['switch', 'readonly', 'denied']) test(`document title look
   }
 })
 
-for (const mode of ['read', 'edit']) test(`a Task citation opens its modal without navigation in ${mode} mode`, async ({ page }) => {
+for (const mode of ['read', 'edit', 'readonly']) test(`a Task citation opens its modal without navigation in ${mode} mode`, async ({ page }) => {
   const id = '00000000-0000-0000-0000-000000000003'
   const task = { id, label: 'Synthetic cited task', objective: '<p>Synthetic task objective</p>', status: 'SUCCESS', paused: false, agent_id: null, parent_id: null, topic_id: null, data: {}, execution_result: result, revision: 1, created_at: '2026-09-01T12:00:00Z', updated_at: null, effort: 'standard', ai: true, cost: 0, messages: [] }
   await jsonRoute(page, `**/api/tasks/${id}/full`, task)
@@ -117,7 +117,7 @@ for (const mode of ['read', 'edit']) test(`a Task citation opens its modal witho
   await jsonRoute(page, `**/api/tasks/${id}/budget`, { enabled: false })
   await jsonRoute(page, '**/api/tasks/activity', [])
   const html = `<p><a href="galaris://task/${id}">Synthetic cited task</a></p>`
-  await mount(page, `core/util/components/${mode === 'edit' ? 'RichTextEditor' : 'RichText'}.vue`, { props: mode === 'edit' ? { modelValue: html, profile: 'document' } : { content: html, profile: 'document' }, privileges: ['TASK_ACCESS'] })
+  await mount(page, `core/util/components/${mode === 'read' ? 'RichText' : 'RichTextEditor'}.vue`, { props: mode === 'read' ? { content: html, profile: 'document' } : { modelValue: html, profile: 'document', readonly: mode === 'readonly' }, privileges: ['TASK_ACCESS'] })
   const url = page.url(), popups = []
   page.on('popup', popup => popups.push(popup))
   const open = async () => {

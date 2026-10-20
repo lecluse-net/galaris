@@ -35,7 +35,7 @@ In read-only mode, **Read text** remains available and dictation is hidden. Sele
 to read only that passage, or leave the selection collapsed to read the entire text.
 **Reading controls** opens a menu with icons and labels for **Pause**, **Resume** and **Stop reading**.
 The toolbar stays accessible while scrolling through the document, even after clicking the page background.
-Contextual actions for links, cards, images, tables and code blocks appear in a bubble near
+While editing, contextual actions for links, cards, images, tables and code blocks appear in a bubble near
 the selection. They follow scrolling and resizing without adding a bar below the document.
 **Escape** closes the bubble; click the object again to reopen it. **Alt+F10** moves keyboard
 focus to its controls.
@@ -51,8 +51,10 @@ text, all six heading levels and callouts, with the current style checked. **Bol
 submenus contain the other commands. Right-clicking inside a selection preserves it; clicking
 outside targets the clicked text. Selections inside links and cells also retain their specific
 commands. **Copy**, **Cut** and **Paste** preserve formatting when the browser allows clipboard
-access; if access is denied, use the indicated keyboard shortcuts. Read-only text retains the
-browser's native menu.
+access; if access is denied, use the indicated keyboard shortcuts.
+In read-only or viewing mode, right-click is disabled, including on text, and no contextual
+toolbar appears. Left-click opens links and objects directly; a card's background also opens
+its target. Keyboard selection and copying remain available.
 While editing, images and noneditable HTML regions select as a single object with a yellow
 outline. Clicking displays their commands; **Open** in an image's menu opens its preview.
 In read-only mode, clicking opens the fullscreen preview directly, without selection or
@@ -166,7 +168,8 @@ cursor; Ctrl/Cmd-click or Alt+Enter opens the target. The link menu also offers 
 and remove actions. For documents, **Open in a dialog** opens a separate window from Documents,
 Chat or another dialog, preserving the current document and its history.
 For an agent, **Show card** displays its avatar, name and job title in the
-text. Click its name to open the complete agent card, including while editing; the avatar is not clickable. **Show URL** restores the
+text. Click its name to open the complete agent card, including while editing; in read-only
+mode, the avatar also opens the card. **Show URL** restores the
 link with its label.
 
 On the **Documents** page, **Previous document** and **Next document** retrace documents
