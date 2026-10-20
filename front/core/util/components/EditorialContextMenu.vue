@@ -1,5 +1,5 @@
 <template>
-  <q-menu ref="menu" :target="target" :model-value="!clipped" no-parent-event no-focus no-refocus
+  <q-menu ref="menu" :target="target" :model-value="!clipped && !suppressed" no-parent-event no-focus no-refocus
     anchor="top middle" self="bottom middle" :offset="[0, 8]" :transition-duration="0"
     max-width="calc(100vw - 16px)" class="rich-editor editorial-context" role="presentation"
     @hide="hide" @escape-key="emit('dismiss', contextKey, true)">
@@ -10,14 +10,14 @@
 </template>
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
-const { target, contextKey, label, code = false, refreshKey } = defineProps<{
-  target: HTMLElement; contextKey: string; label: string; code?: boolean; refreshKey: string
+const { target, contextKey, label, code = false, refreshKey, suppressed = false } = defineProps<{
+  target: HTMLElement; contextKey: string; label: string; code?: boolean; refreshKey: string; suppressed?: boolean
 }>()
 const emit = defineEmits<{ dismiss: [key: string, restoreFocus: boolean] }>()
 const menu = useTemplateRef<{ updatePosition: () => void }>('menu'), panel = useTemplateRef('panel')
 const clipped = ref(false)
 let observer: ResizeObserver | undefined, frame: number | undefined, disposed = false
-function hide(): void { if (!clipped.value) emit('dismiss', contextKey, false) }
+function hide(): void { if (!clipped.value && !suppressed) emit('dismiss', contextKey, false) }
 function refresh(): void {
   if (disposed || frame !== undefined) return
   frame = requestAnimationFrame(async () => {

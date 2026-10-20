@@ -33,6 +33,7 @@ export default {
       reload: 'Recharger les droits',
     },
     richEditor: {
+      clipboard: { copy: 'Copier', cut: 'Couper', paste: 'Coller', failed: 'Accès au presse-papiers refusé. Utilisez les raccourcis clavier pour copier, couper ou coller.' },
       defaultFont: 'Par défaut', moreTools: 'Autres outils',
       tableStyles: { title: 'Styles de tableau', presentation: 'Présentation', colors: 'Palettes de couleurs', contrast: 'Contraste', striped: 'Alterné', minimal: 'Épuré', blue: 'Océan', iris: 'Iris', green: 'Forêt', orange: 'Ambre', salmon: 'Corail', gray: 'Graphite', reset: 'Sans style prédéfini' },
       source: 'Source', selectAll: 'Tout sélectionner', removeFormat: 'Supprimer la mise en forme', fontFamily: 'Police', fontSize: 'Taille de police', fontColor: 'Couleur du texte', backgroundColor: 'Couleur de fond', subscript: 'Indice', superscript: 'Exposant', alignment: 'Alignement', callout: 'Styles', listProperties: 'Propriétés de la liste', tableProperties: 'Propriétés du tableau', cellProperties: 'Propriétés de la cellule', height: 'Hauteur', border: 'Bordure', imageStyle: 'Présentation de l’image', imageWidth: 'Largeur (px ou %)', specialCharacters: 'Caractères spéciaux', reversed: 'Numérotation inversée', listStyle: 'Style de liste', dictate: 'Dicter', read: 'Lire à voix haute', stopReading: 'Arrêter la lecture', help: 'Aide clavier', keyboardHelp: 'Ctrl/Cmd+B : gras ; I : italique ; U : souligné ; Z : annuler. Tab et Maj+Tab : listes et tableaux. Échap : fermer.',
@@ -223,6 +224,7 @@ unavailable: "Ce contenu est indisponible.",
       reload: 'Reload access',
     },
     richEditor: {
+      clipboard: { copy: 'Copy', cut: 'Cut', paste: 'Paste', failed: 'Clipboard access denied. Use keyboard shortcuts to copy, cut or paste.' },
       defaultFont: 'Default', moreTools: 'More tools',
       tableStyles: { title: 'Table styles', presentation: 'Presentation', colors: 'Color palettes', contrast: 'Contrast', striped: 'Banded', minimal: 'Minimal', blue: 'Ocean', iris: 'Iris', green: 'Forest', orange: 'Amber', salmon: 'Coral', gray: 'Graphite', reset: 'Remove preset style' },
       source: 'Source', selectAll: 'Select all', removeFormat: 'Remove format', fontFamily: 'Font family', fontSize: 'Font size', fontColor: 'Font color', backgroundColor: 'Background color', subscript: 'Subscript', superscript: 'Superscript', alignment: 'Alignment', callout: 'Styles', listProperties: 'List properties', tableProperties: 'Table properties', cellProperties: 'Cell properties', height: 'Height', border: 'Border', imageStyle: 'Image style', imageWidth: 'Width (px or %)', specialCharacters: 'Special characters', reversed: 'Reversed numbering', listStyle: 'List style', dictate: 'Dictate', read: 'Read aloud', stopReading: 'Stop reading', help: 'Keyboard help', keyboardHelp: 'Ctrl/Cmd+B: bold; I: italic; U: underline; Z: undo. Tab and Shift+Tab: lists and tables. Escape: close.',
@@ -413,6 +415,7 @@ unavailable: "This content is unavailable.",
       reload: '重新加载权限',
     },
     richEditor: {
+      clipboard: { copy: '复制', cut: '剪切', paste: '粘贴', failed: '无法访问剪贴板。请使用键盘快捷键复制、剪切或粘贴。' },
       defaultFont: '默认', moreTools: '更多工具',
       tableStyles: { title: '表格样式', presentation: '外观', colors: '配色', contrast: '对比', striped: '交替', minimal: '简约', blue: '海洋', iris: '鸢尾', green: '森林', orange: '琥珀', salmon: '珊瑚', gray: '石墨', reset: '移除预设样式' },
       source: '源代码', selectAll: '全选', removeFormat: '清除格式', fontFamily: '字体', fontSize: '字号', fontColor: '文字颜色', backgroundColor: '背景颜色', subscript: '下标', superscript: '上标', alignment: '对齐', callout: '样式', listProperties: '列表属性', tableProperties: '表格属性', cellProperties: '单元格属性', height: '高度', border: '边框', imageStyle: '图片样式', imageWidth: '宽度（px 或 %）', specialCharacters: '特殊字符', reversed: '倒序编号', listStyle: '列表样式', dictate: '听写', read: '朗读', stopReading: '停止朗读', help: '键盘帮助', keyboardHelp: 'Ctrl/Cmd+B：粗体；I：斜体；U：下划线；Z：撤销。Tab 和 Shift+Tab：列表和表格。Escape：关闭。',

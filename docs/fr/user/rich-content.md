@@ -44,6 +44,20 @@ dans une bulle près de la sélection. Elles suivent le défilement et les redim
 sans ajouter de barre sous le document. **Échap** ferme la bulle ; cliquez à nouveau sur
 l’objet pour la rouvrir. **Alt+F10** donne accès à ses commandes au clavier.
 Ces bulles reprennent les icônes GNOME de la barre principale lorsqu’une icône adaptée existe.
+Un clic droit sur tout élément doté d’une barre contextuelle ouvre aussi un menu à l’endroit
+du clic, avec les mêmes actions, icônes, libellés et restrictions. Cela comprend les tableaux,
+liens, images, cartes d’agents ou de processus, blocs de code et objets HTML. Les barres
+contextuelles se masquent pendant l’ouverture du menu au clic droit pour éviter les doublons.
+**Échap** ferme ce menu et réaffiche la barre rapide de la sélection.
+Le clic droit fonctionne aussi dans les paragraphes, titres, listes et citations. **Style**
+propose le texte normal, les six niveaux de titre et les encadrés, avec le style courant
+coché. **Gras**, **Italique**, **Souligné** et **Supprimer la mise en forme** sont accessibles
+directement ; les sous-menus **Texte**, **Paragraphe** et **Insertion** regroupent les autres
+commandes. Un clic droit dans une sélection la conserve ; en dehors, il cible le texte cliqué.
+Les sélections dans les liens et les cellules gardent aussi leurs commandes spécifiques.
+**Copier**, **Couper** et **Coller** conservent la mise en forme lorsque le navigateur autorise
+le presse-papiers ; en cas de refus, utilisez les raccourcis clavier indiqués. Le texte en
+lecture seule conserve le menu natif du navigateur.
 En édition, les images et les portions HTML non éditables se sélectionnent comme un seul
 objet, entouré de jaune. Un clic affiche leurs commandes ; **Ouvrir** dans le menu de
 l’image affiche son aperçu. En lecture seule, un clic ouvre directement l’aperçu plein

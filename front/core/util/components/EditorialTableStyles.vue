@@ -1,7 +1,12 @@
 <template>
-  <q-btn flat dense :icon="editorialIcon('tableStyles', 'palette')" :aria-label="t('richEditor.tableStyles.title')">
-    <q-tooltip>{{ t('richEditor.tableStyles.title') }}</q-tooltip>
-    <q-menu class="editorial-table-gallery" anchor="bottom left" self="top left" :offset="[0, 8]" @before-show="browseCurrent">
+  <component :is="menuItem ? QItem : QBtn" v-bind="menuItem ? { clickable: true, role: 'menuitem' } : { flat: true, dense: true, icon: editorialIcon('tableStyles', 'palette') }" :aria-label="t('richEditor.tableStyles.title')">
+    <template v-if="menuItem">
+      <q-item-section avatar><q-icon :name="editorialIcon('tableStyles', 'palette')" /></q-item-section>
+      <q-item-section>{{ t('richEditor.tableStyles.title') }}</q-item-section>
+      <q-item-section side><q-icon name="chevron_right" /></q-item-section>
+    </template>
+    <q-tooltip v-else>{{ t('richEditor.tableStyles.title') }}</q-tooltip>
+    <component :is="menuItem ? ContextSubmenu : QMenu" class="editorial-table-gallery" :anchor="menuItem ? 'top end' : 'bottom left'" :self="menuItem ? 'top start' : 'top left'" :offset="menuItem ? [0, 0] : [0, 8]" @before-show="browseCurrent">
       <div class="q-px-md q-pt-md text-subtitle2">{{ t('richEditor.tableStyles.title') }}</div>
       <q-tabs v-model="treatment" dense no-caps align="justify" class="q-mx-sm q-mt-sm" :aria-label="t('richEditor.tableStyles.presentation')">
         <q-tab v-for="kind in tableTreatments" :key="kind" :name="kind" :label="t('richEditor.tableStyles.' + kind)" />
@@ -16,15 +21,17 @@
       </div>
       <q-separator />
       <div class="q-pa-sm"><q-btn v-close-popup outline no-caps icon="format_clear" :label="t('richEditor.tableStyles.reset')" class="full-width" @click="emit('select')" /></div>
-    </q-menu>
-  </q-btn>
+    </component>
+  </component>
 </template>
 <script setup lang="ts">
 import { ref } from 'vue'
+import { QBtn, QItem, QMenu } from 'quasar'
+import ContextSubmenu from './ContextSubmenu.vue'
 import { useI18n } from 'vue-i18n'
 import { editorialIcon } from '../editorialIcons'
 import { tablePalettes, tableTreatments, withTableStyle, type TablePalette, type TableTreatment } from '../editorialTableStyles'
-const { classes } = defineProps<{ classes: string | null }>()
+const { classes, menuItem = false } = defineProps<{ classes: string | null; menuItem?: boolean }>()
 const emit = defineEmits<{ select: [palette?: TablePalette, treatment?: TableTreatment] }>()
 const { t } = useI18n()
 const treatment = ref<TableTreatment>('contrast')

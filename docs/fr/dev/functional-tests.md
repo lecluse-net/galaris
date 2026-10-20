@@ -2,6 +2,18 @@
 
 # Catalogue des garanties fonctionnelles
 
+`editor-toolbar.spec.mjs` vérifie les menus au clic droit des tableaux, liens, images,
+cartes, agents, processus, blocs de code et objets HTML sur mobile et bureau : mêmes
+commandes et icônes que les barres rapides, exclusion entre menu et barre, ciblage direct, fusion/scission des cellules,
+styles, langage, lecture seule et fermeture lors d’un changement de document.
+La même suite couvre les sélections de texte, titres et listes, les commandes de mise en forme
+dans les liens et cellules, le presse-papiers enrichi, les coupes refusées ou tardives et le
+menu natif du texte en lecture seule.
+`e2e/specs/editorial-html.spec.mjs` vérifie aussi les propriétés d’un tableau par clic droit,
+leur sauvegarde réelle et leur conservation après rechargement.
+Ce parcours vérifie également le changement de niveau de titre depuis **Style** au clic droit,
+sa sauvegarde puis son rechargement.
+
 `attachment-rename.spec.mjs` vérifie la saisie d’un nom, les erreurs récupérables et
 la fermeture du dialogue dans les composants réels. Son parcours E2E vérifie sur mobile
 et bureau le renommage documentaire, la réouverture, le renommage depuis Fichiers et

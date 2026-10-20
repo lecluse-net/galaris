@@ -2,6 +2,17 @@
 
 # Functional guarantees catalogue
 
+`editor-toolbar.spec.mjs` checks right-click menus for tables, links, images, cards,
+agents, processes, code blocks and HTML objects on mobile and desktop: matching commands
+and icons with the quick toolbars, mutually exclusive menu and toolbar, direct targeting, cell merge/split, styles, language,
+read-only restrictions and dismissal when switching documents.
+The same suite covers text selections, headings and lists, formatting commands inside links
+and cells, the rich clipboard, rejected or delayed cuts, and native menus for read-only text.
+`e2e/specs/editorial-html.spec.mjs` also checks table properties through right-click,
+real persistence and preservation after reload.
+This journey also checks changing heading levels through the right-click **Style** menu,
+including persistence and reload.
+
 `attachment-rename.spec.mjs` checks name entry, recoverable errors and dialog dismissal
 in real components. Its E2E journey checks Document renaming, reopening, renaming from
 Files and preservation of the body, revision, identity and bytes on mobile and desktop.

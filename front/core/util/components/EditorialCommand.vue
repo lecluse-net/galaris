@@ -1,5 +1,18 @@
 <template>
-  <EditorialToolButton v-if="!item.options" flat dense :icon="item.icon" :label="t('richEditor.' + item.key)" :aria-pressed="item.active" :disable="item.disabled" :color="item.active ? 'primary' : undefined" :class="{ 'editorial-alignment-active': item.active && ['left', 'center', 'right', 'justify'].includes(item.key) }" @click="emit('action', item.key)" />
+  <q-item v-if="menu" clickable :role="item.options || item.active === undefined ? 'menuitem' : 'menuitemcheckbox'" :aria-label="commandLabel" :aria-checked="item.active" :aria-haspopup="item.options ? 'menu' : undefined" :disable="item.disabled" @click="!item.options && emit('action', item.key)">
+    <q-item-section avatar><q-icon :name="item.active ? 'check' : item.icon" /></q-item-section>
+    <q-item-section>{{ commandLabel }}</q-item-section>
+    <q-item-section v-if="item.options" side><q-icon name="chevron_right" /></q-item-section>
+    <ContextSubmenu v-if="item.options" max-height="70vh" max-width="calc(100vw - 16px)">
+      <q-list dense role="menu" :aria-label="commandLabel" @mousedown.prevent>
+        <q-item v-for="option in item.options" :key="(option.action ?? item.key) + ':' + option.value" clickable role="menuitemradio" :aria-label="option.label" :aria-checked="optionActive(option.action ?? item.key, option.value)" @click="emit('action', option.action ?? item.key, option.value)">
+          <q-item-section avatar><q-icon v-if="optionActive(option.action ?? item.key, option.value)" name="check" /></q-item-section>
+          <q-item-section :style="optionStyle(option.action ?? item.key, option.value)">{{ option.label }}</q-item-section>
+        </q-item>
+      </q-list>
+    </ContextSubmenu>
+  </q-item>
+  <EditorialToolButton v-else-if="!item.options" flat dense :icon="item.icon" :label="t('richEditor.' + item.key)" :aria-pressed="item.active" :disable="item.disabled" :color="item.active ? 'primary' : undefined" :class="{ 'editorial-alignment-active': item.active && ['left', 'center', 'right', 'justify'].includes(item.key) }" @click="emit('action', item.key)" />
   <span v-else class="inline-flex">
     <q-btn-dropdown no-caps :flat="!isStyleMenu && (compact || !item.value)" :outline="isStyleMenu || !compact && Boolean(item.value)" dense :icon="!isStyleMenu && (compact || !item.value || item.key === 'fontFamily') ? item.icon : undefined" :label="isStyleMenu || !compact ? item.value : undefined" :aria-label="commandLabel" :disable="item.disabled"
       :class="{ 'editorial-style-selector': isStyleMenu, 'editorial-style-selector--compact': isStyleMenu && compact }"
@@ -39,8 +52,9 @@ export interface EditorialCommandItem {
 import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import EditorialToolButton from './EditorialToolButton.vue'
+import ContextSubmenu from './ContextSubmenu.vue'
 const { item } = defineProps<{
-  item: EditorialCommandItem; compact?: boolean
+  item: EditorialCommandItem; compact?: boolean; menu?: boolean
   optionActive: (key: string, value: string) => boolean
 }>()
 const emit = defineEmits<{ action: [key: string, value?: string] }>()

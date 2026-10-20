@@ -40,6 +40,19 @@ the selection. They follow scrolling and resizing without adding a bar below the
 **Escape** closes the bubble; click the object again to reopen it. **Alt+F10** moves keyboard
 focus to its controls.
 These bubbles share the main toolbar's GNOME icons wherever a suitable icon exists.
+Right-clicking any element with a contextual toolbar also opens a menu at the pointer,
+with the same actions, icons, labels and restrictions. This includes tables, links, images,
+agent or process cards, code blocks and HTML objects. The selection toolbar is hidden while
+the right-click menu is open, avoiding duplicate controls. **Escape** closes the menu and
+restores the selection toolbar.
+Right-click also works in paragraphs, headings, lists and quotations. **Style** offers normal
+text, all six heading levels and callouts, with the current style checked. **Bold**, **Italic**,
+**Underline** and **Remove format** are available directly; **Text**, **Paragraph** and **Insert**
+submenus contain the other commands. Right-clicking inside a selection preserves it; clicking
+outside targets the clicked text. Selections inside links and cells also retain their specific
+commands. **Copy**, **Cut** and **Paste** preserve formatting when the browser allows clipboard
+access; if access is denied, use the indicated keyboard shortcuts. Read-only text retains the
+browser's native menu.
 While editing, images and noneditable HTML regions select as a single object with a yellow
 outline. Clicking displays their commands; **Open** in an image's menu opens its preview.
 In read-only mode, clicking opens the fullscreen preview directly, without selection or

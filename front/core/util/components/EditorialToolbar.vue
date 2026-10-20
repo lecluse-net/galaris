@@ -1,5 +1,18 @@
 <template>
-  <div class="editorial-toolbar" :class="{ 'editorial-toolbar-single-row': singleRow }" role="toolbar" :aria-label="t('richEditor.content')" @mousedown.prevent @keydown="navigateToolbar">
+  <template v-if="menu">
+    <EditorialCommand v-for="item in contextPrimary" :key="item.key" menu :item="item" :option-active="optionActive" @action="dispatch" />
+    <q-separator />
+    <q-item v-for="group in contextGroups" :key="group.name" clickable role="menuitem" aria-haspopup="menu" :aria-label="t('richEditor.groups.' + group.name)">
+      <q-item-section>{{ t('richEditor.groups.' + group.name) }}</q-item-section>
+      <q-item-section side><q-icon name="chevron_right" /></q-item-section>
+      <ContextSubmenu max-height="70vh" max-width="calc(100vw - 16px)">
+        <q-list dense role="menu" :aria-label="t('richEditor.groups.' + group.name)" @mousedown.prevent>
+          <EditorialCommand v-for="item in group.items" :key="item.key" menu :item="item" :option-active="optionActive" @action="dispatch" />
+        </q-list>
+      </ContextSubmenu>
+    </q-item>
+  </template>
+  <div v-else class="editorial-toolbar" :class="{ 'editorial-toolbar-single-row': singleRow }" role="toolbar" :aria-label="t('richEditor.content')" @mousedown.prevent @keydown="navigateToolbar">
     <template v-if="!mobile">
     <div v-for="group in groups" :key="group.name" role="group" :aria-label="t('richEditor.groups.' + group.name)" class="editorial-toolbar-group">
       <span v-if="!singleRow" class="editorial-toolbar-title">{{ t('richEditor.groups.' + group.name) }}</span>
@@ -35,13 +48,14 @@ import { useI18n } from 'vue-i18n'
 import type { Editor } from '@tiptap/core'
 import { calloutKinds, type EditorToolbarGroupName } from '../tiptapContent'
 import EditorialCommand, { type EditorialCommandItem as Item } from './EditorialCommand.vue'
+import ContextSubmenu from './ContextSubmenu.vue'
 import pdfIcon from '../icons/bootstrap/file-earmark-pdf-fill.svg?raw'
 import zipIcon from '../icons/bootstrap/file-zip-fill.svg?raw'
 import { solaire } from '../solaire'
 import { editorialIcon } from '../editorialIcons'
 import { imageAlignment } from '../imageAlignment'
-const { editor, revision, document = false, source = false, singleRow = false, hiddenGroups = [], fullWidth = false, fullscreen = false, fits = true, disabledActions = [] } = defineProps<{
-  editor: Editor; revision: number; document?: boolean; source?: boolean; singleRow?: boolean; hiddenGroups?: readonly EditorToolbarGroupName[]; fullWidth?: boolean; fullscreen?: boolean; fits?: boolean; disabledActions?: readonly string[]
+const { editor, revision, document = false, source = false, singleRow = false, hiddenGroups = [], fullWidth = false, fullscreen = false, fits = true, disabledActions = [], menu = false } = defineProps<{
+  editor: Editor; revision: number; document?: boolean; source?: boolean; singleRow?: boolean; hiddenGroups?: readonly EditorToolbarGroupName[]; fullWidth?: boolean; fullscreen?: boolean; fits?: boolean; disabledActions?: readonly string[]; menu?: boolean
 }>()
 const emit = defineEmits<{ action: [key: string, value?: string] }>()
 const { t } = useI18n()
@@ -123,4 +137,11 @@ const groups = computed(() => {
       ...(document ? [[button('quote', 'format_quote', editor.isActive('blockquote')), button('code', 'code', editor.isActive('codeBlock')), button('separator', 'horizontal_rule'), button('specialCharacters', 'emoji_symbols')]] : [])] },
   ].filter(group => !hiddenGroups.includes(group.name))
 })
+const contextPrimaryKeys = ['heading', 'bold', 'italic', 'underline', 'removeFormat']
+const contextPrimary = computed(() => contextPrimaryKeys.flatMap(key => groups.value.flatMap(group => group.rows.flat()).find(item => item.key === key) ?? []))
+const contextGroups = computed(() => groups.value.filter(group => group.name !== 'reading').map(group => ({
+  name: group.name,
+  items: group.rows.flat().filter(item => !contextPrimaryKeys.includes(item.key) && !['print', 'exportPdf', 'resources.documentExportBundle', 'share.action'].includes(item.key)
+    && (item.key !== 'listProperties' || editor.isActive('bulletList') || editor.isActive('orderedList'))),
+})).filter(group => group.items.length))
 </script>

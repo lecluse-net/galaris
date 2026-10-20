@@ -1,5 +1,5 @@
 <template>
-  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown.esc="fullscreen = false" @keydown.capture="editorCaptureKeydown" @keydown="editorKeydown" @click.capture="editorClick">
+  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown.esc="fullscreen = false" @keydown.capture="editorCaptureKeydown" @keydown="editorKeydown" @click.capture="editorClick" @contextmenu.capture="openContextMenu">
     <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :document="profile === 'document'" :source="sourceMode" :single-row="singleRowToolbar" :hidden-groups="hiddenToolbarGroups" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
       <template v-if="personalVoice" #voice>
         <EditorialToolButton v-if="!readonly" flat dense :color="voice?.dictating || voice?.dictationPending ? 'negative' : 'primary'" :icon="voice?.dictating || voice?.dictationPending ? 'stop' : 'mic'" :label="voice?.dictating ? voice.labels.finishDictation : voice?.dictationPending ? voice.labels.processing : voice?.labels.dictate ?? ''" :disable="sourceMode || voice?.reading" @click="voice?.toggleDictation()" />
@@ -30,30 +30,23 @@
       </Teleport>
       <Teleport v-for="target in resourceEmbeds" :key="target.key" :to="target.element"><ResourceEmbed :uri="target.uri" :title="target.title" :agent-id="resourceAgentId" :register-snapshot="(capture: RenderedDocumentCapture | undefined) => registerResourceSnapshot(target.key, capture)" /></Teleport>
     </template>
-    <EditorialContextMenu v-if="activeContext" :key="activeContext.key" ref="contextMenu" :target="activeContext.target" :context-key="activeContext.key" :label="t(activeContext.kind === 'code' ? 'richEditor.codeTools.toolbar' : activeContext.kind === 'table' ? 'richEditor.table' : activeContext.kind === 'object' ? 'richEditor.embeddedApplication' : 'richEditor.resources.insert')" :code="activeContext.kind === 'code'" :refresh-key="`${revision}:${fullscreen}:${effectiveLayout}`" @dismiss="dismissContext" @keydown.capture="editorCaptureKeydown" @keydown="editorKeydown">
-    <template v-if="activeContext.kind === 'code'">
-      <q-select dense outlined emit-value map-options :model-value="selectedAttributes.language" :options="languages" :label="t('richEditor.codeTools.language')" :disable="readonly" @update:model-value="value => setCodeLanguage(value)" />
-      <EditorialToolButton flat dense icon="format_list_numbered" :label="t('richEditor.codeTools.lineNumbers')" :disable="readonly" @click="editor?.commands.updateAttributes('codeBlock', { lines: !selectedAttributes.lines })" />
-      <EditorialToolButton flat dense icon="wrap_text" :label="t('richEditor.codeTools.wrap')" :disable="readonly" @click="editor?.commands.updateAttributes('codeBlock', { nowrap: !selectedAttributes.nowrap })" />
-      <EditorialToolButton flat dense :icon="editorialIcon('copy', 'content_copy')" :label="t('richEditor.codeTools.copy')" @click="copyCode" />
-    </template>
-    <template v-else-if="activeContext.kind === 'table'">
-      <EditorialTableStyles :classes="tableClasses" @select="applyTableStyle" />
-      <EditorialToolButton v-for="item in tableActions" :key="item.key" flat dense :icon="editorialIcon(item.key, item.icon)" :disable="item.disabled" :label="t('richEditor.' + item.key)" @click="tableAction(item.key)" />
-    </template>
-    <template v-else-if="activeContext.kind === 'resource'">
-      <EditorialToolButton flat dense :icon="editorialIcon('open', 'open_in_new')" :label="t('richEditor.open')" @click="openSelection" />
-      <EditorialToolButton v-if="selectedDocumentUri" flat dense icon="open_in_new" :label="t('richEditor.openInDialog')" @click="openSelectionDialog" />
-      <EditorialToolButton v-if="selectedType !== 'resourceCard'" flat dense :icon="editorialIcon('edit', 'edit')" :label="t('richEditor.' + (selectedType.includes('Image') ? 'imageProperties' : 'link'))" :disable="readonly" @click="showDialog(selectedType.includes('Image') ? 'image' : 'link')" />
-      <EditorialToolButton v-if="selectedCardImage" flat dense :icon="editorialIcon('image', 'image')" :label="t('richEditor.resources.openImage')" @click="navigate(selectedCardImage)" />
-      <EditorialToolButton v-if="canConvertCard" flat dense icon="view_agenda" :label="t('richEditor.resources.' + (selectedType === 'resourceCard' ? 'asUrl' : 'asCard'))" :disable="readonly || busyCard" @click="convertCard" />
-      <EditorialToolButton flat dense :icon="editorialIcon('remove', 'link_off')" :label="t('richEditor.remove')" :disable="readonly" @click="removeSelected" />
-    </template>
-    <template v-if="canInsertBeside && !readonly">
-      <EditorialToolButton flat dense :icon="editorialIcon('insertBefore', 'vertical_align_top')" :label="t('richEditor.insertBefore')" @click="insertBeside(false)" />
-      <EditorialToolButton flat dense :icon="editorialIcon('insertAfter', 'vertical_align_bottom')" :label="t('richEditor.insertAfter')" @click="insertBeside(true)" />
-    </template>
+    <EditorialContextMenu v-if="activeContext" :key="activeContext.key" ref="contextMenu" :suppressed="pointerMenuOpen" :target="activeContext.target" :context-key="activeContext.key" :label="t(activeContext.kind === 'code' ? 'richEditor.codeTools.toolbar' : activeContext.kind === 'table' ? 'richEditor.table' : activeContext.kind === 'object' ? 'richEditor.embeddedApplication' : 'richEditor.resources.insert')" :code="activeContext.kind === 'code'" :refresh-key="`${revision}:${fullscreen}:${effectiveLayout}`" @dismiss="dismissContext" @keydown.capture="editorCaptureKeydown" @keydown="editorKeydown">
+      <EditorialContextActions :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runContextAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
     </EditorialContextMenu>
+      <q-menu v-if="activeContext || pointerTextContext" ref="pointerMenu" v-model="pointerMenuOpen" :target="editorHost ?? false" no-parent-event touch-position no-refocus separate-close-popup :transition-duration="0" max-width="calc(100vw - 16px)" max-height="80vh" role="presentation" @escape-key="editor?.view.focus()">
+        <q-list dense role="menu" :aria-label="t(!activeContext ? 'richEditor.content' : activeContext.kind === 'code' ? 'richEditor.codeTools.toolbar' : activeContext.kind === 'table' ? 'richEditor.table' : activeContext.kind === 'object' ? 'richEditor.embeddedApplication' : 'richEditor.resources.insert')" @mousedown.prevent>
+          <EditorialContextActions v-if="activeContext" menu :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runPointerAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
+          <template v-if="pointerTextContext && editor && !readonly">
+            <q-separator v-if="activeContext" />
+            <q-item v-for="key in clipboardActions" :key="key" clickable role="menuitem" :aria-label="t('richEditor.clipboard.' + key)" :disable="key !== 'paste' && editor.state.selection.empty" @click="clipboardAction(key)">
+              <q-item-section avatar><q-icon :name="key === 'copy' ? 'content_copy' : key === 'cut' ? 'content_cut' : 'content_paste'" /></q-item-section>
+              <q-item-section>{{ t('richEditor.clipboard.' + key) }}</q-item-section>
+            </q-item>
+            <q-separator />
+            <EditorialToolbar menu :editor="editor" :revision="revision" :document="profile === 'document'" :hidden-groups="hiddenToolbarGroups" :disabled-actions="disabledActions" @action="runPointerTextAction" />
+          </template>
+        </q-list>
+      </q-menu>
     <ResourceDetailDialog v-if="resourceDetail" :target="resourceDetail" @close="resourceDetail = null" />
     <RenderedObjectPreview v-if="objectPreview" :key="objectPreview.key" :source="objectPreview.source" :language="objectPreview.language" :capture="capturePreview" :title="t('richEditor.interactivePreview')" @close="objectPreview = null" />
     <PdfPreview v-model="pdfPreview" />
@@ -88,17 +81,17 @@
 </template>
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useSlots, useTemplateRef, watch } from 'vue'
-import { useQuasar, copyToClipboard } from 'quasar'
+import { useQuasar, copyToClipboard, type QMenu } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { Editor } from '@tiptap/vue-3'
-import { NodeSelection, TextSelection } from '@tiptap/pm/state'
+import { NodeSelection, TextSelection, type Selection } from '@tiptap/pm/state'
 import { closeHistory } from '@tiptap/pm/history'
 import { marked } from 'marked'
 import EditorialToolButton from './EditorialToolButton.vue'
 import EditorialToolbar from './EditorialToolbar.vue'
 import EditorialSource from './EditorialSource.vue'
 import EditorialContextMenu from './EditorialContextMenu.vue'
-import EditorialTableStyles from './EditorialTableStyles.vue'
+import EditorialContextActions from './EditorialContextActions.vue'
 import { withTableStyle, type TablePalette, type TableTreatment } from '../editorialTableStyles'
 import { editorialIcon } from '../editorialIcons'
 import CodeBlockCopyButton from './CodeBlockCopyButton.vue'
@@ -155,6 +148,10 @@ const editor = shallowRef<Editor>(), revision = ref(0), sourceMode = ref(false),
 const codeToolsOpen = ref(true)
 const codeCopies = shallowRef<Array<{ key: number; element: HTMLElement; source: () => string }>>([])
 const contextMenu = useTemplateRef('contextMenu'), dismissedContext = ref('')
+const pointerMenu = useTemplateRef<QMenu>('pointerMenu')
+const pointerMenuOpen = ref(false)
+const pointerTextContext = ref(false)
+let pointerSelection: Selection | undefined, pointerRequest = 0
 const effectiveLayout = computed(() => fits.value ? layout.value : 'full')
 const embeddedTargets = shallowRef<EditorObject[]>([]), resourceEmbeds = shallowRef<ResourceEmbedTarget[]>([]), resourceDetail = shallowRef<ResourceDetailTarget | null>(null), pdfPreview = shallowRef<PdfPreviewSource | null>(null)
 const objectPreview = shallowRef<EditorObject | null>(null)
@@ -176,7 +173,7 @@ function anchor(from = editor.value?.state.selection.from ?? 1, to = editor.valu
 function valid(value: Anchor): boolean { return value.valid && value.generation === generation && Boolean(editor.value?.isEditable) && !sourceMode.value }
 function release(value?: Anchor): void { if (value) { value.valid = false; anchors.delete(value) } }
 function request(): AbortController { const value = new AbortController(); requests.add(value); return value }
-function stop(): void { generation++; requests.forEach(value => value.abort()); requests.clear(); exportJobs.clear(); exportBusy.value = []; anchors.forEach(value => { value.valid = false }); anchors.clear(); personalVoice?.stop(); uploadProgress.value = null; importRequest.value = null; shareOpen.value = false; dialogOpen.value = false; linkOpen.value = false; objectPreview.value = null }
+function stop(): void { pointerRequest++; pointerMenu.value?.hide(); pointerTextContext.value = false; pointerSelection = undefined; generation++; requests.forEach(value => value.abort()); requests.clear(); exportJobs.clear(); exportBusy.value = []; anchors.forEach(value => { value.valid = false }); anchors.clear(); personalVoice?.stop(); uploadProgress.value = null; importRequest.value = null; shareOpen.value = false; dialogOpen.value = false; linkOpen.value = false; objectPreview.value = null }
 function inputHtml(value: string): string {
   if (mediaType === 'text/markdown') value = marked.parse(value, { async: false })
   if (mediaType === 'text/plain') { const paragraph = document.createElement('p'); paragraph.textContent = value; value = paragraph.outerHTML }
@@ -306,6 +303,10 @@ function createEditor(): void {
       handleClick: (_view, pos, event) => { const link = event.target instanceof Element ? event.target.closest('a') : null; if (event.target instanceof Element && event.target.closest('pre')) { codeToolsOpen.value = true; if (readonly) editor.value?.commands.setTextSelection(pos) }; if (!link || !(event.ctrlKey || event.metaKey || readonly)) return false; event.preventDefault(); navigate(link.dataset.richReference ?? link.getAttribute('href') ?? ''); return true },
     },
     onTransaction: ({ transaction, editor: current }) => {
+      // Native focus restoration may move the caret inside the same code block;
+      // its commands still apply to that whole block. Table cells keep exact selections.
+      const sameCode = pointerSelection && transaction.selection.$from.parent.type.name === 'codeBlock' && transaction.selection.$from.sameParent(pointerSelection.$from)
+      if (transaction.docChanged || transaction.selectionSet && pointerSelection && !transaction.selection.eq(pointerSelection) && !sameCode) pointerMenu.value?.hide()
       if (transaction.selectionSet) dismissedContext.value = ''
       for (const value of anchors) { const from = transaction.mapping.mapResult(value.from, 1), to = transaction.mapping.mapResult(value.to, -1); value.from = from.pos; value.to = Math.max(from.pos, to.pos); if (from.deletedAcross && to.deletedAcross) value.valid = false }
       revision.value++; nextTick(() => { if (!current.isDestroyed) resolveEditorLinks(current) })
@@ -473,6 +474,42 @@ function openSelectionDialog(): void {
   if (!uri) return
   dismissedContext.value = contextTarget.value?.key ?? ''
   resourceDetail.value = richLinkTarget(uri)
+}
+async function openContextMenu(event: MouseEvent): Promise<void> {
+  const current = editor.value, target = event.target
+  if (!current || current.isDestroyed || sourceMode.value || !(target instanceof Element) || !current.view.dom.contains(target)) return
+  const object = target.closest('.galaris-image-object, blockquote.galaris-link-card, .embedded-code-widget')
+  // Plain read-only text retains the browser's selection and clipboard menu.
+  if (readonly && !object && !target.closest('a, pre')) return
+  const request = ++pointerRequest
+  pointerMenu.value?.hide()
+  pointerSelection = undefined
+  if (object) {
+    const position = current.view.posAtDOM(object, 0)
+    const node = current.state.doc.nodeAt(position)
+    if (!node || !NodeSelection.isSelectable(node)) return
+    current.commands.setNodeSelection(position)
+  } else {
+    const position = current.view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
+    if (position === undefined) return
+    const { selection } = current.state
+    // Keep multi-cell and text selections when the pointer is inside them.
+    if (!target.closest('.selectedCell') && (selection.empty || position < selection.from || position > selection.to)) current.commands.setTextSelection(position)
+  }
+  codeToolsOpen.value = true
+  dismissedContext.value = ''
+  selectedCardImage.value = target instanceof HTMLImageElement ? target.dataset.editorAttachment ?? '' : ''
+  pointerTextContext.value = !readonly && !(current.state.selection instanceof NodeSelection) && !current.isActive('codeBlock')
+  if (!activeContext.value && !pointerTextContext.value) return
+  event.preventDefault()
+  event.stopPropagation()
+  current.view.focus()
+  const { doc, selection } = current.state
+  await nextTick()
+  if (request === pointerRequest && editor.value === current && !current.isDestroyed && current.state.doc === doc && current.state.selection.eq(selection)) {
+    pointerSelection = selection
+    pointerMenu.value?.show(event)
+  }
 }
 function editorClick(event: MouseEvent): void {
   if (!(event.target instanceof Element) || !event.target.closest('[data-editor-surface]')) return
@@ -697,6 +734,76 @@ const tableActions = computed(() => {
     disabled: !current?.isEditable || !current.isActive('table') || Boolean(command && !current.can()[command]()),
   }))
 })
+const contextActions = computed(() => {
+  void revision.value
+  const actions: Array<{ key: string; icon: string; label: string; disabled: boolean; run: () => void }> = []
+  const add = (key: string, icon: string, label: string, run: () => void, disabled = false): void => { actions.push({ key, icon, label: t('richEditor.' + label), disabled, run }) }
+  if (activeContext.value?.kind === 'code') {
+    add('lines', 'format_list_numbered', 'codeTools.lineNumbers', () => { editor.value?.commands.updateAttributes('codeBlock', { lines: !selectedAttributes.value.lines }) }, readonly)
+    add('wrap', 'wrap_text', 'codeTools.wrap', () => { editor.value?.commands.updateAttributes('codeBlock', { nowrap: !selectedAttributes.value.nowrap }) }, readonly)
+    add('copy', editorialIcon('copy', 'content_copy'), 'codeTools.copy', copyCode)
+  } else if (activeContext.value?.kind === 'table') {
+    for (const item of tableActions.value) add(item.key, editorialIcon(item.key, item.icon), item.key, () => tableAction(item.key), item.disabled)
+  } else if (activeContext.value?.kind === 'resource') {
+    add('open', editorialIcon('open', 'open_in_new'), 'open', openSelection)
+    if (selectedDocumentUri.value) add('openInDialog', 'open_in_new', 'openInDialog', openSelectionDialog)
+    if (selectedType.value !== 'resourceCard') add('edit', editorialIcon('edit', 'edit'), selectedType.value.includes('Image') ? 'imageProperties' : 'link', () => showDialog(selectedType.value.includes('Image') ? 'image' : 'link'), readonly)
+    if (selectedCardImage.value) add('image', editorialIcon('image', 'image'), 'resources.openImage', () => navigate(selectedCardImage.value))
+    if (canConvertCard.value) add('convert', 'view_agenda', 'resources.' + (selectedType.value === 'resourceCard' ? 'asUrl' : 'asCard'), convertCard, readonly || busyCard.value)
+    add('remove', editorialIcon('remove', 'link_off'), 'remove', removeSelected, readonly)
+  }
+  if (canInsertBeside.value && !readonly) {
+    add('insertBefore', editorialIcon('insertBefore', 'vertical_align_top'), 'insertBefore', () => insertBeside(false))
+    add('insertAfter', editorialIcon('insertAfter', 'vertical_align_bottom'), 'insertAfter', () => insertBeside(true))
+  }
+  return actions
+})
+function runContextAction(key: string): void { const item = contextActions.value.find(item => item.key === key); if (item && !item.disabled) item.run() }
+function runPointerTextAction(key: string, value?: string): void {
+  pointerMenu.value?.hide()
+  action(key, value)
+}
+const clipboardActions = ['cut', 'copy', 'paste'] as const
+async function clipboardAction(key: typeof clipboardActions[number]): Promise<void> {
+  const current = editor.value
+  if (!current || readonly || sourceMode.value) return
+  const { doc, selection } = current.state, started = generation
+  pointerMenu.value?.hide()
+  const unchanged = (): boolean => editor.value === current && !current.isDestroyed && generation === started && !readonly && !sourceMode.value && current.state.doc === doc && current.state.selection.eq(selection)
+  try {
+    if (key === 'paste') {
+      const items = navigator.clipboard.read ? await navigator.clipboard.read() : []
+      const rich = items.find(item => item.types.includes('text/html'))
+      const plain = items.find(item => item.types.includes('text/plain'))
+      const markup = rich ? await (await rich.getType('text/html')).text() : undefined
+      const text = !rich ? plain ? await (await plain.getType('text/plain')).text() : await navigator.clipboard.readText() : ''
+      if (!unchanged()) return
+      current.view.focus()
+      if (markup) current.view.pasteHTML(editableHtml(markup))
+      else if (text) current.view.pasteText(text)
+    } else {
+      if (selection.empty) return
+      const { dom, text } = current.view.serializeForClipboard(selection.content())
+      if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') await navigator.clipboard.write([new ClipboardItem({
+        'text/html': new Blob([dom.innerHTML], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }),
+      })])
+      else await copyToClipboard(text)
+      // A delayed clipboard response must never cut another document or selection.
+      if (unchanged()) {
+        if (key === 'cut') current.chain().focus().deleteSelection().run()
+        else current.view.focus()
+      }
+    }
+  } catch { if (unchanged()) $q.notify({ type: 'negative', message: t('richEditor.clipboard.failed') }) }
+}
+async function runPointerAction(key: string): Promise<void> {
+  pointerMenu.value?.hide()
+  runContextAction(key)
+  if (key === 'insertBefore' || key === 'insertAfter') {
+    await nextTick()
+    editor.value?.view.focus()
+  }
+}
 function tableAction(key: TableAction): void {
   const current = editor.value, item = tableActions.value.find(item => item.key === key)
   if (!current || readonly || !item || item.disabled) return

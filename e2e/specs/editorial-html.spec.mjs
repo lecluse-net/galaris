@@ -62,6 +62,27 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   await expect(editor.locator('h3')).toHaveText('Été!')
   await expect(editor.locator('th')).toHaveAttribute('colspan', '2')
   expect(await page.evaluate(() => window.editorialE2E)).toBeUndefined()
+  await editor.locator('h3').click({ button: 'right' })
+  await page.getByRole('menu', { name: /^(Content|Contenu)$/ }).getByRole('menuitem', { name: 'Style', exact: true }).hover()
+  const headingSaved = page.waitForResponse(response => response.request().method() === 'PATCH'
+    && response.url().includes(`/memory/documents/${item.id}`)
+    && response.request().postDataJSON()?.payload?.text?.includes('<h4>Été!</h4>'))
+  await page.getByRole('menuitemradio', { name: /^(Heading 4|Titre 4)$/ }).click()
+  expect((await headingSaved).ok()).toBeTruthy()
+  await page.reload()
+  await expect(editor.locator('h4')).toHaveText('Été!')
+  await editor.locator('td').first().click({ button: 'right' })
+  await expect(page.getByRole('toolbar', { name: /^(Table|Tableau)$/ })).toBeHidden()
+  await page.getByRole('menu', { name: /^(Table|Tableau)$/ }).getByRole('menuitem', { name: /^(Table properties|Propriétés du tableau)$/ }).click()
+  await page.getByRole('dialog').getByRole('textbox', { name: /^(Caption|Légende)$/ }).fill('Context menu table')
+  const tableSaved = page.waitForResponse(response => response.request().method() === 'PATCH'
+    && response.url().includes(`/memory/documents/${item.id}`)
+    && response.request().postDataJSON()?.payload?.text?.includes('Context menu table'))
+  await page.getByRole('dialog').getByRole('button', { name: /^(Apply|Valider)$/ }).click()
+  expect((await tableSaved).ok()).toBeTruthy()
+  await page.reload()
+  await expect(editor.locator('figcaption')).toHaveText('Context menu table')
+  await expect(editor.locator('th')).toHaveAttribute('colspan', '2')
   const upload = await request.post(`/api/memory/documents/${item.id}/attachments?actor_agent_id=${fixture.agent_id}`, {
     headers, multipart: { file: { name: 'synthetic-resize.png', mimeType: 'image/png',
       buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNkYPjPwMDAxMDAwMDAAAALHwEDmIWXfgAAAABJRU5ErkJggg==', 'base64') } },
