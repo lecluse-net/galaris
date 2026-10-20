@@ -341,10 +341,16 @@ onBeforeUnmount(() => { active = false; schemesRequest?.abort(); searchRequest?.
 .file-scheme-uri { line-height: 1.4; }
 .file-main { display: flex; flex-direction: column; min-width: 0; height: 100%; }
 .file-scroll { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
-.file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); align-items: start; gap: 14px; }
+.file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); align-items: start; gap: 0; }
 .file-entry { position: relative; min-width: 0; }
-.file-entry-rename { position: absolute; top: 0; right: 0; }
-.file-entry-menu { position: absolute; top: 32px; right: 0; }
+.file-entry :deep(.file-entry-rename) { position: absolute; top: 0; right: 32px; }
+.file-entry :deep(.file-entry-menu) { position: absolute; top: 0; right: 0; opacity: 0; pointer-events: none; }
+.file-entry:hover :deep(.file-entry-menu),
+.file-entry:focus-within :deep(.file-entry-menu),
+.file-entry :deep(.file-entry-menu:has([aria-expanded="true"])) { opacity: 1; pointer-events: auto; }
+@media (hover: none) {
+  .file-entry :deep(.file-entry-menu) { opacity: 1; pointer-events: auto; }
+}
 .file-state { padding: 60px 16px; text-align: center; }
 .file-warning { background: var(--solaire-yellow-light); }
 :global(body.body--dark .file-warning) { background: var(--solaire-yellow-dark); }

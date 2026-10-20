@@ -64,8 +64,8 @@ onBeforeUnmount(() => { request?.abort(); observer?.disconnect(); if (thumbnail.
 
 <style scoped>
 .file-tile { width: 100%; min-width: 0; color: inherit; }
-.file-tile-content { width: 100%; min-width: 0; padding: 10px 0; text-align: center; }
-.file-tile-preview { height: 120px; display: grid; place-items: center; margin-bottom: 12px; }
+.file-tile-content { width: 100%; min-width: 0; padding: 6px 0; text-align: center; }
+.file-tile-preview { height: 120px; display: grid; place-items: center; margin-bottom: 4px; }
 .file-tile-preview img { width: 100%; height: 120px; object-fit: contain; }
 .file-tile-image { filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .14)); }
 :global(body.body--dark .file-tile-image) { filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .32)); }
