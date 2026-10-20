@@ -8,3 +8,4 @@ export type {
   TopicAssignmentChangeScope,
   TopicAssignmentSubjectKind,
 } from './types'
+export { default as TopicDetail } from './components/TopicDetail.vue'

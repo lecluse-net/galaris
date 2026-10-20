@@ -53,6 +53,7 @@
       >
         <div class="message-meta">
           <ActionContextMenu v-if="entry.message" target=".message-row" preserve-selection :actions="messageActions(entry.message)" />
+          <CopyResourceReference v-if="entry.copyRoundId" :uri="`galaris://text/${entry.copyRoundId}`" />
           <button
             type="button"
             class="message-round-copy"
@@ -333,7 +334,7 @@
 </template>
 <script setup lang="ts">
 import { RenameFileButton } from '@/core/util'
-import { ActionContextMenu, FileContextMenu, type ContextAction } from '@/core/util'
+import { CopyResourceReference, ActionContextMenu, FileContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -801,12 +802,15 @@ async function copyRoundId(roundId: string | undefined): Promise<void> {
 }
 const topicBadges = new Map<string, { open: () => void }>()
 const topicPermissions = usePrivilegeStore()
+const { action: copyReferenceAction } = useResourceCopy()
 function registerTopicBadge(id: string, value: unknown): void {
   if (value && typeof value === 'object' && 'open' in value && typeof value.open === 'function') topicBadges.set(id, value as { open: () => void })
   else topicBadges.delete(id)
 }
 function messageActions(message: MessengerMessage): ContextAction[] {
+  const roundId = roundIdByMessageId.value.get(message.id)
   return [
+    ...(roundId ? [copyReferenceAction(`galaris://text/${roundId}`)] : []),
     { key: 'copy', icon: 'content_copy', label: t('common.copy'), run: () => copyToClipboard(displayMessageText(message, t)) },
     ...(props.allowReply && !message.is_mine ? [{ key: 'reply', icon: 'reply', label: t('chat.reply'), run: () => emit('reply', message) }] : []),
     ...(canReadMessage(message) ? [{ key: 'speech', icon: speechPlayingMessageId.value === message.id ? 'stop_circle' : 'volume_up', label: t(speechPlayingMessageId.value === message.id ? 'chat.stopReadingMessage' : 'chat.readMessage'), disabled: speechLoadingMessageId.value !== null, run: () => toggleMessageSpeech(message) }] : []),

@@ -66,6 +66,8 @@
                             </div>
                         </div>
                         <div class="row justify-end q-gutter-sm">
+                            <CopyResourceReference :uri="`galaris://task/${task.id}`" />
+                            <ResourceReferenceMenu :uri="`galaris://task/${task.id}`" :title="task.label" target=".task-detail" />
                             <TaskLabCaptureMenu
                                 v-if="canEditLab"
                                 :task-id="task.id"
@@ -455,7 +457,7 @@
 </template>
 
 <script setup lang="ts">
-import { showConfirmationDialog } from '@/core/util'
+import { CopyResourceReference, ResourceReferenceMenu, showConfirmationDialog } from '@/core/util'
 import { EditorialContent, richTextExcerpt } from '@/core/util'
 import { computed, reactive, ref, watch } from 'vue'
 import { useInterval, useQuasar } from 'quasar'

@@ -64,6 +64,7 @@ for (const width of [1440, 390]) test(`topic rows open their target dialogs with
   await jsonRoute(page, '**/api/agents?*', [])
   await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [], users: [] })
   await jsonRoute(page, '**/api/memory/documents/doc-a/attachments', [])
+  await jsonRoute(page, '**/api/memory/documents/keywords', [])
   await jsonRoute(page, '**/api/memory/documents/doc-a/content/revisions?*', { items: [], total: 0 })
   await openTopic(page, width)
   const dialog = page.getByRole('dialog')

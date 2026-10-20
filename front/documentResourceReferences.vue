@@ -1,10 +1,11 @@
 <template>
-  <ResourcePicker v-model="adding" :agent-id="agentId" :busy="busy" :error="error" @select="select" @hide="finishPicker" />
+  <ResourcePicker v-model="adding" references :agent-id="agentId" :busy="busy" :error="error" @select="select" @reference="selectReference" @hide="finishPicker" />
 </template>
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { validRichLink } from '@/core/util/richText'
+import type { RichLinkTarget } from '@/core/util/richText'
 import { processReferenceHtml } from '@/app/process/interface'
 import { resourceTarget, type FileEntry } from '@/app/file_share/interface'
 import ResourcePicker from './resourcePicker.vue'
@@ -14,6 +15,11 @@ const adding = defineModel<boolean>('pickerOpen', { default: false })
 const emit = defineEmits<{ picked: [html: string] }>()
 const { t } = useI18n()
 const error = ref(''), busy = ref(false)
+function selectReference(value: RichLinkTarget): void {
+  if (!editable || busy.value || !validRichLink(value.uri)) return
+  const link = document.createElement('a'); link.href = value.uri; link.textContent = value.title
+  emit('picked', `<p>${link.outerHTML}</p>`); adding.value = false
+}
 
 function reference(entry: FileEntry, selectedAgent: number): string {
   const title = String(entry.metadata?.label ?? entry.name)

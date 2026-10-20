@@ -637,3 +637,17 @@ of associated tasks and processes. Uncertain remote stop remains pending and nev
 starts a duplicate. An active Goal requires its own coordination. Independent work and
 your manual holds remain preserved. If a destination differs from the request, the agent
 may ask for clarification on the same work before sending or changing a resource.
+
+## Cite a Galaris object in a Document
+
+**Galaris link → Galaris objects** searches Tasks, Goals, Topics, discussions, text rounds,
+voice calls and voice turns. Their detail views and context menus provide **Copy reference**;
+paste it into the Document to insert a titled link. Select the link and choose **Show card**
+in the toolbar or context menu. **Show URL** restores the link.
+
+Task and exchange cards show essential metadata without a summary or copied execution
+content. Their saved state reflects insertion time. Opening a link or card title shows
+the current detail modal while keeping the Document open. When editing, **Open** and
+`Alt+Enter` also open the target. The reader's right-click menu provides Open and Copy
+reference. Access to each target is still required; sharing the Document does not share
+the referenced objects.

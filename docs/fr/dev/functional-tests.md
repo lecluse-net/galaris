@@ -1641,3 +1641,17 @@ sans arrêter le worker pytest. `app/messenger/tests/test_link_preview.py` conse
 normalisation et déduplication pour les documents et fichiers gérés. Le scénario de
 `app/connection/tests/test_encryption.py` protège les valeurs chiffrées, historiques,
 vides ou indéchiffrables des dictionnaires de connexion.
+
+### Références documentaires aux objets métier
+
+`front/browser-tests/business-references.spec.mjs` exerce les URI et URL des tâches,
+objectifs, sujets, discussions, rounds texte, appels et tours vocaux : collage titré,
+cartes compactes réversibles, conservation du contenu, ouverture et réouverture en modale,
+copie, fermeture par le fond, recherche avec reprise et réponses obsolètes. Le lecteur
+exerce aussi le menu contextuel et le clavier. Les cartes de tâches et d'échanges ne
+contiennent aucun corps d'exécution. Le parcours assemblé est dans
+`e2e/specs/business-references.spec.mjs` : copie depuis Activité, collage, sauvegarde,
+rechargement et fiches Task/Topic. La validation des identités et la normalisation sont
+couvertes par `back/core/util/tests/test_rich_text.py`. Le test des restrictions du menu
+Task conserve les interdictions de mutation terminale sans figer le nombre d'actions
+non destructives.

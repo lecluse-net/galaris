@@ -158,6 +158,7 @@
               </div>
             </q-td>
             <q-td key="status" :props="props">
+              <ResourceReferenceMenu v-if="props.row.round_id" :uri="`galaris://text/${props.row.round_id}`" target="tr" />
               <StatusBadge
                 :tone="messageStatusTone(props.row)"
                 :label="messageStatusLabel(props.row)"
@@ -204,6 +205,7 @@
                   />
                 </div>
 
+                <ResourceReferenceMenu v-if="props.row.round_id" :uri="`galaris://text/${props.row.round_id}`" target=".conversation-mobile-card" />
                 <div class="conversation-mobile-room q-mt-sm">
                   <q-icon name="forum" color="grey-7" size="16px" />
                   <span class="ellipsis">{{ props.row.channel_kind }} · {{ props.row.room_id }}</span>
@@ -288,7 +290,7 @@ import { useAgentStore } from '@/app/agent/stores/agentStore'
 import type { LLMCall } from '@/app/llm/types'
 import ConversationTurnDialog from '@/core/util/components/ConversationTurnDialog.vue'
 import WaitingResponseIndicator from '@/core/util/components/WaitingResponseIndicator.vue'
-import { ExecutionDateFilters, StatusBadge, type StatusBadgeTone } from '@/core/util'
+import { ResourceReferenceMenu, ExecutionDateFilters, StatusBadge, type StatusBadgeTone } from '@/core/util'
 import ConversationRoundDetail from './ConversationRoundDetail.vue'
 import { conversationService } from '../services/conversationService'
 import type {

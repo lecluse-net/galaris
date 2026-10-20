@@ -405,7 +405,7 @@
 </template>
 
 <script setup lang="ts">
-import { ActionContextMenu, type ContextAction } from '@/core/util'
+import { ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -422,6 +422,7 @@ import type { Topic, TopicInput, TopicLinkedMemory, TopicMonthlyUsage } from '..
 type TableRequest = Parameters<NonNullable<QTableProps['onRequest']>>[0]
 
 const { t, locale } = useI18n()
+const { action: copyReferenceAction } = useResourceCopy()
 const router = useRouter()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
@@ -637,6 +638,7 @@ function notifyError(key = 'topic.operationError'): void {
 function topicActions(topic: Topic): ContextAction[] {
   return [
     { key: 'open', icon: 'folder_open', label: t('common.open'), run: () => router.push(`/topic/${encodeURIComponent(topic.id)}`) },
+    copyReferenceAction(`galaris://topic/${topic.id}`),
     ...(canEdit.value ? [
     { key: 'edit', icon: 'edit', label: t('topic.edit'), run: () => openEdit(topic) },
     { key: 'merge', icon: 'merge', label: t('topic.merge'), run: () => openMerge(topic) },

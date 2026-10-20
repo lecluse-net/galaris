@@ -151,6 +151,7 @@
               </div>
             </q-td>
             <q-td key="status" :props="props">
+              <ResourceReferenceMenu :uri="`galaris://voice_session/${props.row.id}`" target="tr" />
               <StatusBadge
                 :tone="statusTone(props.row.status)"
                 :label="t(`voice.history.statuses.${props.row.status}`)"
@@ -225,6 +226,7 @@
                 :tone="turnStatusTone(turn.status)"
                 :label="t(`voice.history.turnStatuses.${turn.status}`)"
               />
+              <ResourceReferenceMenu :uri="`galaris://voice/${turn.id}`" target="tr" />
             </q-td>
           </q-tr>
         </template>
@@ -290,6 +292,7 @@
                 </div>
               </q-card-section>
 
+              <div class="row justify-end q-px-sm"><ResourceReferenceMenu :uri="`galaris://voice_session/${props.row.id}`" target=".voice-mobile-card" /></div>
               <q-separator v-if="props.row.turns.length" />
               <q-list v-if="props.row.turns.length" separator>
                 <q-item
@@ -334,6 +337,7 @@
                       <template v-else>{{ turnResponsePreview(turn) }}</template>
                     </q-item-label>
                   </q-item-section>
+                  <q-item-section side><ResourceReferenceMenu :uri="`galaris://voice/${turn.id}`" target=".voice-mobile-turn" /></q-item-section>
                 </q-item>
               </q-list>
             </q-card>
@@ -372,7 +376,7 @@ import { useAgentStore } from '@/app/agent/stores/agentStore'
 import { websocket } from '@/core/websocket'
 import ConversationTurnDialog from '@/core/util/components/ConversationTurnDialog.vue'
 import WaitingResponseIndicator from '@/core/util/components/WaitingResponseIndicator.vue'
-import { ExecutionDateFilters, StatusBadge, type StatusBadgeTone } from '@/core/util'
+import { ResourceReferenceMenu, ExecutionDateFilters, StatusBadge, type StatusBadgeTone } from '@/core/util'
 import VoiceConversationDetail from './VoiceConversationDetail.vue'
 import { voiceConversationService } from '../services/voiceConversationService'
 import type {

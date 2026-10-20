@@ -263,7 +263,7 @@ import type {
 } from '../types'
 import MemorySharingPanel from './MemorySharingPanel.vue'
 import DocumentAttachments from './DocumentAttachments.vue'
-import { DocumentResourceReferences, richLinkTarget, richLinkCard } from '@/core/util'
+import { DocumentResourceReferences, richLinkTarget, richLinkCard, useReferenceFormatting } from '@/core/util'
 import DocumentHistoryDialog from './DocumentHistoryDialog.vue'
 
 type DocumentShareAccess = 'none' | 'read' | 'edit'
@@ -313,6 +313,7 @@ const emit = defineEmits<{
 }>()
 
 const { t, locale } = useI18n()
+const referenceFormatting = useReferenceFormatting()
 const $q = useQuasar()
 const agentStore = useAgentStore()
 const documentMutations = useDocumentMutations()
@@ -361,7 +362,7 @@ watch(() => [route.query.attachment_id, attachmentPanel.value, attachments.value
 async function createLinkCard(url: string): Promise<string> {
   const documentId = props.documentId
   if (richLinkTarget(url)) {
-    const html = await richLinkCard(url, requestAgentId.value)
+    const html = await richLinkCard(url, requestAgentId.value, referenceFormatting())
     if (props.documentId !== documentId) throw new Error('Document changed')
     return html
   }

@@ -4,6 +4,7 @@ import { datasetResourceId } from './resource'
 
 export default {
   schemes: ['data'],
+  canonical(value) { const id = datasetResourceId(value); return id ? `data://${id}` : null },
   async search(query) {
     const page = await datasetService.list(1, 50, query)
     return page.items.map(item => ({ uri: item.uri, title: item.title, context: '' }))

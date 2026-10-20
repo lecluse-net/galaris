@@ -78,6 +78,8 @@
                 </div>
               </div>
               <div v-if="roundId" class="conversation-action-buttons">
+                <CopyResourceReference :uri="`galaris://text/${roundId}`" />
+                <ResourceReferenceMenu :uri="`galaris://text/${roundId}`" target=".conversation-detail-header" />
                 <ConversationDatasetCaptureButton
                   v-if="canEditLab"
                   kind="text"
@@ -237,7 +239,7 @@ import { labSectionPrivileges } from '@/app/lab'
 import ConversationBubble from '@/core/util/components/ConversationBubble.vue'
 import Markdown from '@/core/util/components/Markdown.vue'
 import WaitingResponseIndicator from '@/core/util/components/WaitingResponseIndicator.vue'
-import { StatusBadge, type StatusBadgeTone } from '@/core/util'
+import { CopyResourceReference, ResourceReferenceMenu, StatusBadge, type StatusBadgeTone } from '@/core/util'
 import type { ConversationMessage, ConversationRoundDetail } from '../types'
 import { conversationService } from '../services/conversationService'
 import TopicAssignmentEditor from '@/app/topic/components/TopicAssignmentEditor.vue'

@@ -9,7 +9,7 @@ import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { apiErrorDetail } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { ActionContextMenu, type ContextAction } from '@/core/util'
+import { ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
 import RoomPreferencesDialog from './RoomPreferencesDialog.vue'
 import { chatService } from '../services/chatService'
 import type { MessengerRoom } from '../types'
@@ -17,6 +17,7 @@ const { room, editable } = defineProps<{ room: MessengerRoom; editable: boolean 
 const emit = defineEmits<{ select: []; changed: [room: MessengerRoom] }>()
 const { t } = useI18n(), $q = useQuasar(), permissions = usePrivilegeStore()
 const preferences = ref(false), busy = ref(false)
+const { action: copyAction } = useResourceCopy()
 const canEditTopic = computed(() => editable && permissions.hasPrivilege(privileges.TOPIC_EDIT))
 let active = true
 onBeforeUnmount(() => { active = false })
@@ -41,6 +42,7 @@ async function save(label: string, showLastMessage: boolean, topicId: string | n
 function archive(archived: boolean): Promise<void> { return change(() => chatService.setArchived(room.id, archived)) }
 const actions = computed<ContextAction[]>(() => [
   { key: 'open', icon: 'forum', label: t('common.open'), run: () => emit('select') },
+  copyAction(`galaris://room/${room.id}`),
   ...(editable ? [
     { key: 'rename', icon: 'edit', label: t('chat.roomPreferences.name'), disabled: busy.value, run: () => { preferences.value = true } },
     { key: 'preferences', icon: 'settings', label: t('chat.roomPreferences.open'), disabled: busy.value, run: () => { preferences.value = true } },

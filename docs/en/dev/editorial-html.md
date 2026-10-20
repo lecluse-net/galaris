@@ -317,3 +317,22 @@ attachment, voice, history and export journeys, and
 Firefox and WebKit with real storage. Reports under `artifacts/` record executed results;
 an older CKEditor qualification does not qualify the replacement editor.
 Replacing the editor requires no rewrite of stored documents or revisions.
+
+## Business object references
+
+Tasks, Goals, Topics, discussions, text rounds, voice calls and voice turns can be copied
+from their context menus or detail views and pasted as titled links. The **Galaris link →
+Galaris objects** picker also searches these objects. Native URIs and URLs from this
+installation are normalized before insertion. The editor toolbar and context menu switch
+between link and card; the reader context menu provides Open and Copy. These references
+open their detail modal with the reader's current rights, keeping the containing Document
+in place.
+
+Cards are portable HTML snapshots of essential metadata: title, Agent, date, state and
+channel as applicable. Task, text-round and voice-turn cards never store a summary,
+objective, transcript or response. Topic cards may include their description and keywords.
+Saved state does not refresh automatically; the modal reads the current resource.
+References neither create attachments nor grant access. The navigation identities
+`galaris://topic/<uuid>`, `galaris://room/<uuid>` and `galaris://voice_session/<uuid>`
+declare no new file-provider capabilities. See
+[decision 0209](../../../project/decisions/0209-business-document-references.md).

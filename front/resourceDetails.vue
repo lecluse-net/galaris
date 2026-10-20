@@ -8,13 +8,14 @@
     @update:model-value="!$event && emit('close')" @deleted="changedAndClose" />
   <DatasetDialog v-else-if="target.kind === 'dataset'" :key="target.id" :id="target.id" :title="target.title"
     @close="emit('close')" @updated="emit('changed')" @deleted="changedAndClose" />
-  <ConversationTurnDialog v-else :model-value="true" :title="resolvedTitle || target.title" :icon="icons[target.kind] || 'info'"
+  <ConversationTurnDialog v-else :model-value="true" :title="resolvedTitle || target.title || t(titleKeys[target.kind] || 'common.open')" :icon="icons[target.kind] || 'info'"
     :width="target.kind === 'agent' ? '700px' : undefined" :close-label="t('common.close')" @update:model-value="!$event && emit('close')">
     <div v-if="loading" class="flex flex-center q-pa-xl"><q-spinner color="primary" size="42px" /></div>
     <q-banner v-else-if="error" class="q-ma-md">
       {{ error }}
       <template #action><q-btn flat :label="t('common.retry')" @click="retry++" /></template>
     </q-banner>
+    <TopicDetail v-else-if="target.kind === 'topic'" :key="target.id" :topic-id="target.id" embedded @loaded="resolvedTitle = $event" />
     <TaskDetail v-else-if="target.kind === 'task'" :task-id="taskId"
       @task-change="taskId = $event" @refresh="emit('changed')" @delete="taskToDelete = $event" />
     <AgentPreview v-else-if="target.kind === 'agent'" :key="target.id" :agent-id="Number(target.id)" @loaded="resolvedTitle = $event" @deleted="changedAndClose" />
@@ -23,8 +24,25 @@
       :calls="calls" :loading="false" error="" :calls-loading="callsLoading" :calls-error="callsError"
       @deleted="changedAndClose" @topic-updated="round = $event; emit('changed')"
       @delivery-resolved="round = $event; emit('changed')" />
-    <VoiceConversationDetailView v-else-if="conversation && turn" :conversation="conversation" :turn="turn"
-      @deleted="changedAndClose" @stopped="changedAndClose" @topic-updated="emit('changed')" />
+    <div v-else-if="conversation && turn">
+      <q-btn v-if="target.kind === 'voice_session'" flat round icon="arrow_back" :aria-label="t('common.back')" @click="turn = null" />
+      <VoiceConversationDetailView :conversation="conversation" :turn="turn"
+        @deleted="changedAndClose" @stopped="changedAndClose" @topic-updated="emit('changed')" />
+    </div>
+    <div v-else-if="conversation" class="q-pa-md">
+      <div class="row items-center q-gutter-sm q-mb-md">
+        <span>{{ conversation.agent_name }} · {{ conversation.started_at }}</span>
+        <CopyResourceReference :uri="`galaris://voice_session/${conversation.id}`" />
+      </div>
+      <q-list separator>
+        <q-item v-for="item in conversation.turns" :key="item.id" clickable @click="turn = item">
+          <q-item-section>{{ t('voice.history.turnLabel', { sequence: item.sequence }) }}</q-item-section>
+          <q-item-section side>{{ t(`voice.history.turnStatuses.${item.status}`) }}</q-item-section>
+          <ResourceReferenceMenu :uri="`galaris://voice/${item.id}`" target=".q-item" />
+        </q-item>
+        <q-item v-if="!conversation.turns.length"><q-item-section>{{ t('voice.history.noRows') }}</q-item-section></q-item>
+      </q-list>
+    </div>
     <RoomDiscussion v-else-if="room" :room="room" />
     <div v-else-if="memory" class="q-pa-md">
       <EditorialContent v-if="memory.payload.text != null" :content="memory.payload.text" :media-type="memory.media_type" />
@@ -56,7 +74,7 @@ export async function preload(kind: string): Promise<void> {
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { defineAsyncView, EditorialContent, ConversationTurnDialog, WorkingDocumentDialog, type ResourceDetailTarget } from '@/core/util'
+import { CopyResourceReference, ResourceReferenceMenu, defineAsyncView, EditorialContent, ConversationTurnDialog, WorkingDocumentDialog, type ResourceDetailTarget } from '@/core/util'
 import type { TaskFull } from '@/app/task'
 import type { ConversationMessage, ConversationRoundDetail } from '@/app/conversation'
 import type { VoiceConversationDetail, VoiceConversationTurn } from '@/app/voice'
@@ -65,6 +83,7 @@ import type { MemoryItemDetail } from '@/app/memory'
 import type { LLMCall } from '@/app/llm'
 
 const TaskDetail = defineAsyncView(async () => (await import('@/app/task')).TaskDetail)
+const TopicDetail = defineAsyncView(async () => (await import('@/app/topic')).TopicDetail)
 const AgentPreview = defineAsyncView(async () => (await import('@/app/agent')).AgentPreview)
 const GoalPreview = defineAsyncView(async () => (await import('@/app/goal')).GoalPreview)
 const NativeRunDialog = defineAsyncView(async () => (await import('@/app/process')).NativeRunDialog)
@@ -77,7 +96,8 @@ const RoomDiscussion = defineAsyncView(async () => (await import('@/app/chat/int
 const props = defineProps<{ target: ResourceDetailTarget }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
 const { t } = useI18n()
-const icons: Record<string, string> = { agent: 'person', task: 'task_alt', process_run: 'account_tree', dataset: 'data_object', round: 'forum', voice: 'record_voice_over', room: 'hub', document: 'description', memory: 'memory' }
+const titleKeys: Record<string, string> = { topic: 'topic.detail.title', task: 'task.detailTitle', round: 'conversation.history.detail.title', voice: 'voice.history.detail.title', voice_session: 'voice.history.tab', room: 'chat.conversations' }
+const icons: Record<string, string> = { topic: 'folder', voice_session: 'phone_in_talk', agent: 'person', task: 'task_alt', process_run: 'account_tree', dataset: 'data_object', round: 'forum', voice: 'record_voice_over', room: 'hub', document: 'description', memory: 'memory' }
 const retry = ref(0)
 const resolvedTitle = ref('')
 const taskId = ref<string | null>(null)
@@ -136,7 +156,7 @@ watch([() => props.target, retry], async ([target], _, onCleanup) => {
   memory.value = null
   room.value = null
   taskId.value = target.id
-  loading.value = !['agent', 'goal', 'task', 'process', 'process_run', 'dataset'].includes(target.kind)
+  loading.value = !['agent', 'goal', 'task', 'topic', 'process', 'process_run', 'dataset'].includes(target.kind)
   try {
     if (target.kind === 'round') {
       const { conversationService } = await import('@/app/conversation')
@@ -167,12 +187,18 @@ watch([() => props.target, retry], async ([target], _, onCleanup) => {
       if (!active) return
       conversation.value = session
       turn.value = detail
+    } else if (target.kind === 'voice_session') {
+      const { voiceConversationService } = await import('@/app/voice')
+      if (!active) return
+      const detail = await voiceConversationService.get(target.id)
+      if (active) conversation.value = detail
     } else if (target.kind === 'room') {
       const { chatService } = await import('@/app/chat/interface')
       if (!active) return
       const detail = await chatService.room(target.id)
       if (!active) return
       room.value = detail
+      resolvedTitle.value = detail.label || detail.external_id
     } else if (target.kind === 'memory') {
       const { memoryService } = await import('@/app/memory')
       if (!active) return

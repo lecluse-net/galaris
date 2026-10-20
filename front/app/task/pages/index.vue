@@ -140,11 +140,13 @@
         <ProcessRunsPanel v-if="activeTab === 'processes'" />
       </q-tab-panel>
     </q-tab-panels>
+    <ResourceDetailDialog v-if="referenceTarget" :target="referenceTarget" @close="closeReference" />
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
+import { ResourceDetailDialog, canonicalRichLink, richLinkTarget, type ResourceDetailTarget } from '@/core/util'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { apiErrorDetail } from '@/core/api'
 import { useRoute, useRouter } from 'vue-router'
@@ -308,6 +310,18 @@ watch(canReadProcesses, allowed => {
 })
 
 watch(() => route.query.task_id, openTaskFromQuery)
+const referenceTarget = ref<ResourceDetailTarget | null>(null)
+watch(() => route.fullPath, () => {
+  const uri = canonicalRichLink(route.fullPath)
+  const target = uri ? richLinkTarget(uri) : null
+  referenceTarget.value = target && target.kind !== 'task' ? target : null
+}, { immediate: true })
+function closeReference(): void {
+  referenceTarget.value = null
+  const query = { ...route.query }
+  delete query.round_id; delete query.voice_turn_id; delete query.voice_session_id
+  void router.replace({ query })
+}
 
 function tabFromQuery(value: unknown): ActivityTab {
   if (value === 'processes' && canReadProcesses.value) return 'processes'

@@ -76,6 +76,8 @@
               </div>
             </div>
             <div class="conversation-action-buttons">
+              <CopyResourceReference :uri="`galaris://voice/${turn.id}`" />
+              <ResourceReferenceMenu :uri="`galaris://voice/${turn.id}`" target=".conversation-detail-header" />
               <ConversationDatasetCaptureButton
                 v-if="canEditLab"
                 kind="voice"
@@ -233,7 +235,7 @@ import { labSectionPrivileges } from '@/app/lab'
 import ConversationBubble from '@/core/util/components/ConversationBubble.vue'
 import Markdown from '@/core/util/components/Markdown.vue'
 import WaitingResponseIndicator from '@/core/util/components/WaitingResponseIndicator.vue'
-import { StatusBadge, type StatusBadgeTone } from '@/core/util'
+import { CopyResourceReference, ResourceReferenceMenu, StatusBadge, type StatusBadgeTone } from '@/core/util'
 import { voiceConversationService } from '../services/voiceConversationService'
 import type {
   VoiceConversationDetail,

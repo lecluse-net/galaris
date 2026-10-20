@@ -335,3 +335,22 @@ et `make tests-e2e ARGS='editorial-html.spec.mjs document-apps.spec.mjs'` pour C
 Firefox et WebKit avec stockage réel. Les comptes rendus sous `artifacts/` portent les
 résultats exécutés ; une ancienne recette CKEditor ne qualifie pas le nouvel éditeur.
 Le remplacement ne demande aucune réécriture des documents ou des révisions en base.
+
+## Références aux objets métier
+
+Les tâches, objectifs, sujets, discussions, rounds texte, appels et tours vocaux peuvent
+être copiés depuis leurs menus contextuels ou fiches, puis collés comme liens titrés.
+Le sélecteur **Lien Galaris → Objets Galaris** les recherche également. Les URI et les
+URL de cette installation sont normalisées avant insertion. Le menu contextuel et la
+barre d'outils basculent entre lien et carte ; en lecture, le menu permet l'ouverture
+et la copie. Ces références ouvrent leur fiche en modale avec les droits actuels du
+lecteur, sans changer le document consulté.
+
+Les cartes sont des instantanés HTML portables des métadonnées essentielles : titre,
+agent, date, état et canal selon le type. Les tâches, rounds et tours vocaux n'y enregistrent
+ni résumé, ni objectif, ni transcription, ni réponse. Un sujet peut afficher sa description
+et ses mots-clés. L'état enregistré n'est pas actualisé automatiquement ; la modale relit
+la ressource actuelle. Une référence ne crée aucune pièce jointe et ne donne aucun droit
+supplémentaire. Les identités de navigation `galaris://topic/<uuid>`, `galaris://room/<uuid>`
+et `galaris://voice_session/<uuid>` ne déclarent aucune nouvelle capacité du provider
+fichier. Voir la [décision 0209](../../../project/decisions/0209-business-document-references.md).

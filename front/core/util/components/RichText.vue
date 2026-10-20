@@ -1,6 +1,7 @@
 <template>
   <div class="rich-content-reader">
     <div ref="root" class="rich-content" v-html="rendered" @click="openReference" />
+    <ResourceReadMenu :root="root" :content="rendered" @open="openUri" />
     <Teleport v-for="target in codeCopies" :key="target.key" :to="target.element"><CodeBlockCopyButton :source="target.source" /></Teleport>
     <Teleport v-for="target in embeds" :key="target.key" :to="target.element"><ResourceEmbed :uri="target.uri" :title="target.title" /></Teleport>
     <ResourceDetailDialog v-if="detail" :target="detail" @close="detail = null" />
@@ -21,6 +22,7 @@ import { hideInteractiveSource } from '../interactiveHtml'
 import { createDocumentPlayer, documentPlayer, type PdfPreviewSource } from '../documentMedia'
 import PdfPreview from './PdfPreview.vue'
 import CodeBlockCopyButton from './CodeBlockCopyButton.vue'
+import ResourceReadMenu from './ResourceReadMenu.vue'
 import '../editorialTheme.css'
 const { content, profile = 'rich-text', resolveImage } = defineProps<{
   content: string
@@ -37,6 +39,9 @@ function openReference(event: MouseEvent): void {
   if (navigateDocument(uri)) { event.preventDefault(); return }
   const target = richLinkTarget(uri, link.textContent ?? '')
   if (target) { event.preventDefault(); detail.value = target }
+}
+function openUri(uri: string): void {
+  if (!navigateDocument(uri)) detail.value = richLinkTarget(uri)
 }
 const pdfPreview = shallowRef<PdfPreviewSource | null>(null)
 const root = useTemplateRef('root')

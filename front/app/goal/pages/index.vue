@@ -631,6 +631,8 @@
               {{ statusLabel(store.currentGoal.status) }}
             </q-chip>
           </div>
+          <CopyResourceReference v-if="editingGoal" :uri="`galaris://goal/${editingGoal.id}`" />
+          <ResourceReferenceMenu v-if="editingGoal" :uri="`galaris://goal/${editingGoal.id}`" :title="editingGoal.title" target=".goal-detail-dialog" />
           <q-btn
             flat
             round
@@ -1278,7 +1280,7 @@
 </template>
 
 <script setup lang="ts">
-import { ActionContextMenu, type ContextAction } from '@/core/util'
+import { CopyResourceReference, ResourceReferenceMenu, ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
@@ -1336,7 +1338,7 @@ interface GoalHierarchyItem extends GoalTreeNode {
   depth: number
 }
 function goalActions(goal: Goal): ContextAction[] {
-  const actions: ContextAction[] = [{ key: 'details', icon: 'visibility', label: t('goal.details'), run: () => openDetails(goal) }]
+  const actions: ContextAction[] = [{ key: 'details', icon: 'visibility', label: t('goal.details'), run: () => openDetails(goal) }, copyReferenceAction(`galaris://goal/${goal.id}`)]
   if (!canEdit.value) return actions
   const disabled = commandGoalIds.has(goal.id)
   actions.push({ key: 'edit', icon: 'edit', label: t('goal.editAction'), run: () => openEdit(goal) })
@@ -1360,6 +1362,7 @@ const UNIT_SECONDS: Record<DurationUnit, number> = {
 
 const { t, locale } = useI18n()
 const $q = useQuasar()
+const { action: copyReferenceAction } = useResourceCopy()
 const router = useRouter()
 const route = useRoute()
 

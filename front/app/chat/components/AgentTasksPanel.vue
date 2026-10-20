@@ -236,7 +236,7 @@
 </template>
 
 <script setup lang="ts">
-import { ActionContextMenu, type ContextAction } from '@/core/util'
+import { ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { richTextExcerpt } from '@/core/util'
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
@@ -275,6 +275,7 @@ const emit = defineEmits<{ back: []; 'has-items': [value: boolean] }>()
 
 const $q = useQuasar()
 const { t, locale } = useI18n()
+const { action: copyReferenceAction } = useResourceCopy()
 const taskStore = useTaskStore()
 const privilegeStore = usePrivilegeStore()
 const tasks = ref<ConversationTask[]>([])
@@ -750,7 +751,7 @@ function unsubscribe(): void {
 }
 
 function taskContextActions(task: Task): ContextAction[] {
-  const actions: ContextAction[] = [{ key: 'details', icon: 'info_outline', label: t('chat.details'), run: () => openTask(task.id) }]
+  const actions: ContextAction[] = [{ key: 'details', icon: 'info_outline', label: t('chat.details'), run: () => openTask(task.id) }, copyReferenceAction(`galaris://task/${task.id}`)]
   if (!canEdit.value) return actions
   const disabled = taskAction(task.id) !== null
   if (canPauseTask(task)) actions.push({ key: 'pause', icon: 'pause', label: t('task.detail.pauseTooltip'), disabled, run: () => pauseTask(task) })

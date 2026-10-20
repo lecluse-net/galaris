@@ -1575,3 +1575,15 @@ stopping the pytest worker. `app/messenger/tests/test_link_preview.py` preserves
 normalization and deduplication for documents and managed files. The scenario in
 `app/connection/tests/test_encryption.py` protects encrypted, legacy, empty and
 undecryptable values in connection dictionaries.
+
+### Business object references in Documents
+
+`front/browser-tests/business-references.spec.mjs` exercises Task, Goal, Topic, discussion,
+text-round, voice-call and voice-turn URIs and URLs: titled paste, reversible compact
+cards, preserved content, modal opening and reopening, copy, backdrop dismissal, search
+recovery and obsolete responses. The reader also exercises its context menu and keyboard.
+Task and exchange cards contain no execution body. The assembled journey lives in
+`e2e/specs/business-references.spec.mjs`: copy from Activity, paste, save, reload and
+Task/Topic detail modals. Identity validation and normalization are covered by
+`back/core/util/tests/test_rich_text.py`. Task-menu restrictions retain terminal mutation
+denials without freezing the number of non-destructive actions.

@@ -174,13 +174,15 @@ def test_links_reject_unsupported_identity(uri):
     assert not valid_link(uri)
 
 
-@pytest.mark.parametrize("scheme", ["document", "data"])
+@pytest.mark.parametrize("scheme", ["document", "data", "galaris://topic", "galaris://text", "galaris://voice", "galaris://room", "galaris://voice_session"])
 def test_editorial_references_preserve_distinct_resource_schemes(scheme):
-    uri = f"{scheme}://{DOCUMENT}"
+    uri = f"{scheme}/{DOCUMENT}" if scheme.startswith("galaris://") else f"{scheme}://{DOCUMENT}"
     content = f'<p><a href="{uri}">Synthetic resource</a></p>'
     assert valid_link(uri)
     assert f'href="{uri}"' in normalize_html(content, profile="document")
     assert not valid_link(uri + "/other")
+    for suffix in ["?other=1", "#fragment", "/attachments/", "/"]:
+        assert not valid_link(uri + suffix)
 
 
 @pytest.mark.parametrize(("uri", "card_class"), [("galaris://processes/synthetic_process", "galaris-process-diagram"), (f"galaris://processes/runs/{DOCUMENT}", "galaris-process-diagram"), ("galaris://agent/7", "galaris-agent-card")])

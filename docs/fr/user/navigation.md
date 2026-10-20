@@ -696,3 +696,18 @@ en attente ; il ne provoque pas de second lancement. Une Goal active nécessite 
 coordination. Les travaux indépendants et vos pauses manuelles sont conservés.
 Si une destination ne correspond pas à la demande, l'agent peut demander une précision
 sur le même travail avant d'envoyer ou de modifier une ressource.
+
+## Citer un objet Galaris dans un document
+
+**Lien Galaris → Objets Galaris** recherche les tâches, objectifs, sujets, discussions,
+rounds texte, appels et tours vocaux. Leurs fiches et menus contextuels proposent
+**Copier la référence** ; collez-la dans le document pour insérer un lien titré.
+Sélectionnez ce lien puis **Afficher une carte** dans la barre d'outils ou le menu
+contextuel. **Afficher l'URL** restaure le lien.
+
+Les cartes de tâches et d'échanges affichent les informations essentielles, sans résumé
+ni copie du contenu de l'exécution. Leur état correspond au moment de l'insertion.
+L'ouverture du lien ou du titre de la carte affiche les détails actuels en modale,
+sans quitter le document. En édition, utilisez aussi **Ouvrir** ou `Alt+Entrée`.
+En lecture, le clic droit propose l'ouverture et la copie de la référence. Les droits
+du lecteur restent nécessaires ; partager le document ne partage pas les objets cités.

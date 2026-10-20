@@ -102,8 +102,9 @@ import RenderedObjectPreview from './RenderedObjectPreview.vue'
 import { DocumentResourceReferences as InternalResourcePicker } from '../resourceContributions'
 import PdfPreview from './PdfPreview.vue'
 import { contentExtensions, resolveEditorLinks, type EditorObject, type EditorToolbarGroupName, type ObjectHost } from '../tiptapContent'
-import { attachmentReference, richLinkHref, richLinkTarget, richLinkHasCard, richLinkTitle, sanitizeRichHtml, validRichLink, type ContentProfile } from '../richText'
+import { attachmentReference, canonicalRichLink, richLinkCard, richLinkHref, richLinkTarget, richLinkHasCard, richLinkTitle, sanitizeRichHtml, validRichLink, type ContentProfile } from '../richText'
 import { documentUriFromLink } from '../documentResource'
+import { useReferenceFormatting } from '../resourceReference'
 import { useDocumentNavigation } from '../documentNavigation'
 import { alignImage, imageAlignment } from '../imageAlignment'
 import { protectInteractiveHtml, restoreInteractiveHtml } from '../interactiveHtml'
@@ -129,6 +130,7 @@ const { modelValue, mediaType = 'text/html', profile = 'rich-text', readonly = f
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string]; 'open-attachment': [documentId: string, attachmentId: string] }>()
 const { t, locale } = useI18n(), $q = useQuasar(), slots = useSlots()
+const referenceFormatting = useReferenceFormatting()
 const navigateDocument = useDocumentNavigation()
 const keyboardShortcuts = computed(() => [
   ...editorialShortcuts.filter(([, , command]) => !readonly || readingShortcutCommands.has(command)).map(([key, binding, , value]) => ({ label: t('richEditor.' + key, { level: Number(value) }), keys: shortcutKeys(binding, Boolean($q.platform.is.safari)) })),
@@ -351,7 +353,7 @@ function dismissContext(key: string, restoreFocus = false): void {
   dismissedContext.value = key
   if (restoreFocus) editor.value?.view.focus()
 }
-const canConvertCard = computed(() => { void revision.value; const uri = selectionUri(); return profile === 'document' && Boolean(createLinkCard) && (/^https?:\/\//i.test(uri) || richLinkHasCard(uri)) })
+const canConvertCard = computed(() => { void revision.value; const uri = selectionUri(); return profile === 'document' && (richLinkHasCard(uri) || Boolean(createLinkCard) && /^https?:\/\//i.test(uri)) })
 const selectedDocumentUri = computed(() => { void revision.value; return documentUriFromLink(selectionUri(), window.location.origin) })
 const languageNames: Record<string, string> = { javascript: 'JavaScript', typescript: 'TypeScript', graphql: 'GraphQL', cpp: 'C++', cs: 'C#', html: 'HTML', css: 'CSS', scss: 'SCSS', xml: 'XML', yaml: 'YAML', json: 'JSON', sql: 'SQL', php: 'PHP', ini: 'INI' }
 const languages = computed(() => ['plaintext', 'text', 'bash', 'c', 'cs', 'cpp', 'css', 'diff', 'go', 'graphql', 'html', 'ini', 'java', 'javascript', 'json', 'kotlin', 'lua', 'makefile', 'markdown', 'perl', 'php', 'python', 'r', 'ruby', 'rust', 'scss', 'sql', 'swift', 'typescript', 'xml', 'yaml'].map(value => ({ value, label: value === 'plaintext' ? t('richEditor.codeTools.automatic') : value === 'text' ? t('richEditor.codeTools.plainText') : languageNames[value] ?? value[0]!.toUpperCase() + value.slice(1) })))
@@ -392,13 +394,14 @@ function handleTransfer(data: DataTransfer | null, position: number, event: Even
   const plain = data.getData('text/plain') || data.getData('text/uri-list') || data.getData('text/markdown')
   const markup = data.getData('text/html') || (profile === 'document' && /^(?:<!doctype\s+html\b|<(?:html|head|body|p|h[1-6]|div|section|article|main|table|ul|ol|blockquote|pre|img|figure|style)\b)/i.test(plain.trim()) ? plain : '')
   const documentUri = documentUriFromLink(plain.trim(), window.location.origin)
-    ?? (richLinkTarget(plain.trim())?.kind === 'dataset' ? plain.trim() : null)
+    ?? canonicalRichLink(plain.trim())
   if (documentUri) {
     event.preventDefault()
     if (event instanceof DragEvent && data.effectAllowed === 'copyMove') data.dropEffect = 'copy'
     const at = anchor(position, event instanceof ClipboardEvent ? editor.value?.state.selection.to ?? position : position)
     const link = new DOMParser().parseFromString(markup, 'text/html').querySelector('a')
-    const label = link && documentUriFromLink(link.getAttribute('href') ?? '', window.location.origin) === documentUri ? link.textContent?.trim() : undefined
+    const copiedUri = link?.getAttribute('href') ?? ''
+    const label = link && (documentUriFromLink(copiedUri, window.location.origin) ?? canonicalRichLink(copiedUri)) === documentUri ? link.textContent?.trim() : undefined
     const title = label && label !== plain.trim() && label !== documentUri ? label : undefined
     void insertDocumentLink(documentUri, at, title)
     return true
@@ -412,7 +415,7 @@ async function insertDocumentLink(uri: string, at: Anchor, title?: string | null
   const pending = request()
   let label = title
   try {
-    label ||= await richLinkTitle(uri, resourceAgentId)
+    label ||= await richLinkTitle(uri, resourceAgentId, referenceFormatting())
   } catch {
     if (!pending.signal.aborted && valid(at)) $q.notify({ type: 'warning', message: t('richEditor.resources.failed') })
   } finally {
@@ -523,7 +526,7 @@ function editorClick(event: MouseEvent): void {
   const uri = link.getAttribute('data-rich-reference') ?? link.getAttribute('href') ?? ''
   const card = link.closest('blockquote.galaris-link-card')
   const targetKind = richLinkTarget(uri)?.kind
-  const cardTitle = card && card.querySelector('a') === link && (documentUriFromLink(uri, window.location.origin) || targetKind === 'dataset' || card.classList.contains('galaris-agent-card') && targetKind === 'agent')
+  const cardTitle = card && card.querySelector('a') === link && (documentUriFromLink(uri, window.location.origin) || targetKind)
   event.preventDefault()
   if (event.ctrlKey || event.metaKey || readonly || cardTitle) {
     event.stopPropagation()
@@ -599,10 +602,10 @@ function editorCaptureKeydown(event: KeyboardEvent): void {
 function removeSelected(): void { if (selectedType.value === 'resourceCard' || selectedType.value.includes('Image')) editor.value?.commands.deleteSelection(); else editor.value?.chain().focus().unsetLink().run() }
 const busyCard = ref(false), savedCards = new Map<string, string>()
 async function convertCard(): Promise<void> {
-  const current = editor.value; if (!current || readonly || !createLinkCard || busyCard.value) return
+  const current = editor.value; if (!current || readonly || busyCard.value) return
   if (current.isActive('link')) current.commands.extendMarkRange('link')
   const at = anchor(), uri = selectionUri(), original = current.state.doc.slice(at.from, at.to).toJSON(); busyCard.value = true
-  try { let markup: string; if (selectedType.value === 'resourceCard') { const saved = String(selectedAttributes.value.html); savedCards.set(uri, saved); const link = document.createElement('a'); link.href = uri; link.textContent = richLinkTarget(uri) ? new DOMParser().parseFromString(saved, 'text/html').querySelector('a')?.textContent ?? uri : uri; markup = '<p>' + link.outerHTML + '</p>' } else markup = savedCards.get(uri) ?? await createLinkCard(uri)
+  try { let markup: string; if (selectedType.value === 'resourceCard') { const saved = String(selectedAttributes.value.html); savedCards.set(uri, saved); const link = document.createElement('a'); link.href = uri; link.textContent = richLinkTarget(uri) ? new DOMParser().parseFromString(saved, 'text/html').querySelector('a')?.textContent ?? uri : uri; markup = '<p>' + link.outerHTML + '</p>' } else markup = savedCards.get(uri) ?? await (richLinkHasCard(uri) ? richLinkCard(uri, resourceAgentId, referenceFormatting()) : createLinkCard!(uri))
     if (valid(at) && JSON.stringify(current.state.doc.slice(at.from, at.to).toJSON()) === JSON.stringify(original)) insertAt(at, markup)
   } catch { $q.notify({ type: 'warning', message: t('richEditor.resources.cardUnavailable') }) } finally { release(at); busyCard.value = false }
 }
@@ -637,7 +640,7 @@ function applyDialog(): void {
   const current = editor.value, at = dialogAnchor; if (!current || !at || !valid(at)) return
   current.commands.setTextSelection({ from: at.from, to: at.to })
   if (dialog.value === 'link') {
-    const documentUri = documentUriFromLink(fields.value.url.trim(), window.location.origin), uri = documentUri ?? fields.value.url
+    const documentUri = documentUriFromLink(fields.value.url.trim(), window.location.origin) ?? canonicalRichLink(fields.value.url.trim()), uri = documentUri ?? fields.value.url
     if (!validRichLink(uri)) return
     if (documentUri && !fields.value.text) void insertDocumentLink(documentUri, anchor(at.from, at.to))
     else if (at.from !== at.to && fields.value.text === current.state.doc.textBetween(at.from, at.to)) current.chain().focus().setLink({ href: uri }).run()
@@ -748,6 +751,7 @@ const contextActions = computed(() => {
     for (const item of tableActions.value) add(item.key, editorialIcon(item.key, item.icon), item.key, () => tableAction(item.key), item.disabled)
   } else if (activeContext.value?.kind === 'resource') {
     add('open', editorialIcon('open', 'open_in_new'), 'open', openSelection)
+    add('copyReference', 'link', 'copy', () => { void copyToClipboard(selectionUri()).then(() => $q.notify({ type: 'positive', message: t('common.copied') })).catch(() => $q.notify({ type: 'negative', message: t('richEditor.copyError') })) })
     if (selectedDocumentUri.value) add('openInDialog', 'open_in_new', 'openInDialog', openSelectionDialog)
     if (selectedType.value !== 'resourceCard') add('edit', editorialIcon('edit', 'edit'), selectedType.value.includes('Image') ? 'imageProperties' : 'link', () => showDialog(selectedType.value.includes('Image') ? 'image' : 'link'), readonly)
     if (selectedCardImage.value) add('image', editorialIcon('image', 'image'), 'resources.openImage', () => navigate(selectedCardImage.value))

@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { showConfirmationDialog } from '@/core/util'
+import { showConfirmationDialog, useResourceCopy } from '@/core/util'
 import { ActionContextMenu, type ContextAction } from '@/core/util'
 import type { Task } from '../types'
 import { useTaskStore } from '../stores/taskStore'
@@ -13,6 +13,7 @@ const { task } = defineProps<{ task: Task }>()
 const emit = defineEmits<{ select: [id: string] }>()
 const { t } = useI18n(), $q = useQuasar(), permissions = usePrivilegeStore(), store = useTaskStore()
 const busy = ref(false)
+const { action: copyAction } = useResourceCopy()
 async function command(action: 'run' | 'pause' | 'resume' | 'retry' | 'terminate'): Promise<void> {
   if (busy.value || !permissions.hasPrivilege(privileges.TASK_EDIT)) return
   busy.value = true
@@ -35,7 +36,7 @@ function terminate(): void {
   })
 }
 const actions = computed<ContextAction[]>(() => {
-  const result: ContextAction[] = [{ key: 'details', icon: 'visibility', label: t('task.detailTitle'), run: () => emit('select', task.id) }]
+  const result: ContextAction[] = [{ key: 'details', icon: 'visibility', label: t('task.detailTitle'), run: () => emit('select', task.id) }, copyAction(`galaris://task/${task.id}`)]
   if (!permissions.hasPrivilege(privileges.TASK_EDIT)) return result
   const terminal = ['SUCCESS', 'ERROR'].includes(task.status)
   const executable = task.execution_expected !== false && task.coordination_type !== 'await_reply' && !task.is_coordination && !task.data?.awaiting_reply
