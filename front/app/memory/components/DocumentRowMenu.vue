@@ -15,7 +15,7 @@ const actions = computed<ContextAction[]>(() => {
   return [
     { key: 'F4', icon: 'visibility', label: t('common.open'), shortcut: 'F4' },
     { key: 'F2', icon: 'edit', label: t('documents.library.renameTag'), shortcut: 'F2' },
-    { key: 'F3', icon: 'note_add', label: t('documents.library.newSubdocument', { name: entry.item.title }), shortcut: 'F3' },
+    { key: 'F3', icon: 'note_add', label: t('documents.library.newSubdocumentAction'), shortcut: 'F3' },
     { key: 'Delete', icon: 'delete', label: t('common.delete'), shortcut: 'Delete', negative: true },
   ].flatMap(action => {
     const run = shortcuts[action.key as keyof typeof shortcuts]

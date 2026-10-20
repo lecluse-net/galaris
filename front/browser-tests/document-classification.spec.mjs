@@ -11,14 +11,12 @@ async function openFolderIcon(button) {
 
 async function folderAction(page, folder, action) {
   const menuLabel = `Actions for folder ${folder}`
-  const shortcut = page.getByRole('button', { name: action, exact: true })
-  if (action !== menuLabel && await shortcut.count()) { await shortcut.click(); return }
   await page.getByRole('button', { name: menuLabel, exact: true }).click()
   if (action !== menuLabel) await page.getByRole('menuitem', { name: action, exact: true }).click()
 }
 
 async function editFolder(page, folder) {
-  await folderAction(page, folder, `Edit folder ${folder}`)
+  await folderAction(page, folder, 'Edit folder')
 }
 
 async function toggleUnclassified(page) {
@@ -359,7 +357,7 @@ test('folder shortcuts target hover or focus, create children, and confirm delet
 
 test('document shortcuts target one row and respect read-only, protected and busy documents', async ({ page }) => {
   const entry = { item: document, agent_ids: [7], writable_agent_ids: [7] }
-  await jsonRoute(page, '**/api/memory/documents/doc-a?*', { item: document, agent_id: 7 })
+  await jsonRoute(page, url => url.pathname === '/api/memory/documents/doc-a', { item: document, agent_id: 7 })
   await mount(page, 'app/memory/components/DocumentLibraryDocument.vue', { props: {
     entry, selectedDocumentId: null, busy: false, children: {}, loading: {}, errors: {}, expanded: [], dropTarget: null, dropPlacement: 'inside',
   } })
@@ -713,12 +711,12 @@ test('tag creation, inline rename, reparenting and confirmed recursive deletion 
   await expect.poll(() => page.evaluate(() => Number(localStorage.getItem('galaris:document-library-split:1')))).toBeGreaterThan(35)
   await page.getByText('Test document', { exact: true }).dragTo(page.getByText('Work', { exact: true }))
   await expect.poll(() => [...assignments]).toEqual(['work'])
-  await folderAction(page, 'Work', 'Delete folder Work')
+  await folderAction(page, 'Work', 'Delete folder')
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(page.getByText('Work', { exact: true })).toBeVisible()
   await expect.poll(() => [...assignments]).toEqual(['work'])
-  await folderAction(page, 'Work', 'Delete folder Work')
+  await folderAction(page, 'Work', 'Delete folder')
   await page.route('**/api/memory/documents/tags/work?confirmed=true', route => route.fulfill({ status: 500, json: { detail: 'Unavailable' } }))
   await page.getByRole('dialog').getByRole('button', { name: 'Delete folder', exact: true }).click()
   await expect(page.getByText('Unable to update your classification.', { exact: true })).toBeVisible()
@@ -733,7 +731,7 @@ test('tag creation, inline rename, reparenting and confirmed recursive deletion 
   await page.getByRole('button', { name: 'Create a folder', exact: true }).click()
   await page.getByLabel('Name', { exact: true }).fill('Empty')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
-  await folderAction(page, 'Empty', 'Delete folder Empty')
+  await folderAction(page, 'Empty', 'Delete folder')
   await expect(page.getByText('Empty', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('dialog')).toHaveCount(0)
   expect(deletions.at(-1)).toMatchObject({ deleted: true })
@@ -821,8 +819,8 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   const work = page.getByRole('button', { name: 'Icon for folder Work', exact: true })
   const menu = page.getByRole('menu', { name: 'Actions for folder Work', exact: true })
   await work.click({ button: 'right' })
-  for (const name of ['Show folder Work as a list', 'New document in Work', 'Create a subfolder of Work',
-    'Create a folder below Work', 'Edit folder Work', 'Delete folder Work',
+  for (const name of ['Show as a list', 'New document', 'Create a subfolder',
+    'Create a folder below', 'Edit folder', 'Delete folder',
     'Sort by name (A → Z)', 'Sort by name (Z → A)', 'Expand all in this folder', 'Collapse all in this folder']) {
     await expect(menu.getByRole('menuitem', { name, exact: true })).toBeVisible()
   }
@@ -843,7 +841,7 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   await trigger.click()
   await expect(menu).toHaveCount(0)
   await work.click({ button: 'right' })
-  await menu.getByRole('menuitem', { name: 'New document in Work', exact: true }).click()
+  await menu.getByRole('menuitem', { name: 'New document', exact: true }).click()
   await expect(menu).toHaveCount(0)
   expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').at(-1).args[0].id)).toBe('work')
   await page.getByText('Work', { exact: true }).focus()
@@ -851,22 +849,22 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   await menu.getByRole('menuitem', { name: 'Expand all in this folder', exact: true }).press('Enter')
   await expect(page.getByText('Project', { exact: true })).toBeVisible()
   await page.getByText('Project', { exact: true }).click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Edit folder Project', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Edit folder', exact: true }).click()
   await expect(page.getByLabel('Name', { exact: true })).toBeFocused()
   await page.getByLabel('Name', { exact: true }).fill('Renamed project')
   await page.getByLabel('Name', { exact: true }).press('Enter')
   await expect.poll(() => mutations.at(-1)).toMatchObject({ id: 'project', name: 'Renamed project', parent_id: 'work' })
   await page.getByText('Renamed project', { exact: true }).click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Create a subfolder of Renamed project', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Create a subfolder', exact: true }).click()
   await expect(page.getByLabel('Name', { exact: true })).toBeFocused()
   await expect.poll(() => mutations.at(-1)).toMatchObject({ name: 'New folder', parent_id: 'project' })
   await page.getByLabel('Name', { exact: true }).press('Escape')
   // Left-click opens the same complete menu; the four shortcuts also remain usable.
   await page.getByRole('button', { name: 'Actions for folder Work', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Edit folder Work', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Edit folder', exact: true }).click()
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Work')
   await page.getByLabel('Name', { exact: true }).press('Escape')
-  await folderAction(page, 'Work', 'Edit folder Work')
+  await folderAction(page, 'Work', 'Edit folder')
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Work')
 })
 }
@@ -875,7 +873,7 @@ for (const [folder, parent] of [['Work', null], ['Project', 'work']]) {
   test(`folder actions create a sibling immediately below ${folder} and preserve its position`, async ({ page }, testInfo) => {
     const { orders, mutations, requests } = await fixture(page)
     if (parent) await page.getByText('Work', { exact: true }).click()
-    await folderAction(page, folder, `Create a folder below ${folder}`)
+    await folderAction(page, folder, 'Create a folder below')
     await expect(page.getByLabel('Name', { exact: true })).toBeFocused()
     expect(orders).toEqual([{ node: { kind: 'tag', id: 'new-tag' }, parent_id: parent, anchor: { kind: 'tag', id: folder.toLowerCase() }, after: true }])
     await page.getByLabel('Name', { exact: true }).fill('Sibling')
@@ -902,13 +900,13 @@ for (const [folder, parent] of [['Work', null], ['Project', 'work']]) {
     await page.mouse.move(700, 700)
     const actions = page.getByRole('button', { name: `Actions for folder ${folder}`, exact: true })
     await actions.focus(); await page.keyboard.press('Enter')
-    await page.getByRole('menuitem', { name: `Edit folder ${folder}`, exact: true }).press('Enter')
+    await page.getByRole('menuitem', { name: 'Edit folder', exact: true }).press('Enter')
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue(folder)
     await page.getByLabel('Name', { exact: true }).press('Escape')
     await page.setViewportSize({ width: 390, height: 844 })
     await page.evaluate(() => window.testApp.dark(true))
     await page.locator('.library-navigation').screenshot({ path: testInfo.outputPath('folder-toolbar-mobile-dark.png'), animations: 'disabled' })
-    await folderAction(page, folder, `Edit folder ${folder}`)
+    await folderAction(page, folder, 'Edit folder')
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue(folder)
   })
 }
@@ -916,7 +914,7 @@ for (const [folder, parent] of [['Work', null], ['Project', 'work']]) {
 test('a folder created through its actions remains editable when positioning fails', async ({ page }) => {
   await fixture(page)
   await page.route('**/api/memory/documents/order', route => route.fulfill({ status: 409, json: { detail: 'Stale anchor' } }))
-  await folderAction(page, 'Work', 'Create a folder below Work')
+  await folderAction(page, 'Work', 'Create a folder below')
   await expect(page.getByText('The folder was created, but could not be positioned. You can move it.', { exact: true })).toBeVisible()
   await expect(page.getByLabel('Name', { exact: true })).toBeFocused()
   await page.getByLabel('Name', { exact: true }).fill('Kept folder')
@@ -926,7 +924,7 @@ test('a folder created through its actions remains editable when positioning fai
 
 test('each tag creates a child and its icon picker searches Unicode emojis and reuses uploads', async ({ page }, testInfo) => {
   const { mutations } = await fixture(page)
-  await folderAction(page, 'Work', 'Create a subfolder of Work')
+  await folderAction(page, 'Work', 'Create a subfolder')
   await expect.poll(() => mutations.at(-1)).toMatchObject({ name: 'New folder', parent_id: 'work' })
   await expect(page.getByLabel('Name', { exact: true })).toBeFocused()
   await page.keyboard.type('Reading')

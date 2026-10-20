@@ -80,16 +80,16 @@ const shortcuts = computed<LibraryShortcuts>(() => props.busy || renaming.value 
   F2: startRename, F3: () => emit('createDocument'), F4: () => emit('browse'), F7: () => { void createChild() }, Delete: () => emit('confirmDelete'),
 })
 const contextActions = computed(() => [
-  { key: 'browse', icon: 'view_list', label: t('documents.bulk.openFolder', { name: props.tag.name }), shortcut: 'F4', run: () => emit('browse') },
-  { key: 'document', icon: 'note_add', label: t('documents.library.newDocument', { name: props.tag.name }), shortcut: 'F3', disabled: props.busy, run: () => emit('createDocument') },
-  { key: 'child', icon: 'create_new_folder', label: t('documents.library.newSubtag', { name: props.tag.name }), shortcut: 'F7', disabled: props.busy, run: createChild },
-  { key: 'sibling', icon: 'playlist_add', label: t('documents.library.newSibling', { name: props.tag.name }), disabled: props.busy, run: createSibling },
-  { key: 'edit', icon: 'edit', label: t('documents.library.editNamedTag', { name: props.tag.name }), shortcut: 'F2', disabled: props.busy, run: startRename },
+  { key: 'browse', icon: 'view_list', label: t('documents.library.openFolderAction'), shortcut: 'F4', run: () => emit('browse') },
+  { key: 'document', icon: 'note_add', label: t('documents.library.newDocumentAction'), shortcut: 'F3', disabled: props.busy, run: () => emit('createDocument') },
+  { key: 'child', icon: 'create_new_folder', label: t('documents.library.newSubtagAction'), shortcut: 'F7', disabled: props.busy, run: createChild },
+  { key: 'sibling', icon: 'playlist_add', label: t('documents.library.newSiblingAction'), disabled: props.busy, run: createSibling },
+  { key: 'edit', icon: 'edit', label: t('documents.library.editTag'), shortcut: 'F2', disabled: props.busy, run: startRename },
   { key: 'ascending', icon: 'sort_by_alpha', label: t('documents.library.sortAscending'), disabled: props.busy, separator: true, run: () => emit('sort', false) },
   { key: 'descending', icon: 'sort_by_alpha', label: t('documents.library.sortDescending'), disabled: props.busy, run: () => emit('sort', true) },
   { key: 'expand', icon: 'unfold_more', label: t('documents.library.expandAll'), separator: true, run: () => emit('expand') },
   { key: 'collapse', icon: 'unfold_less', label: t('documents.library.collapseAll'), run: () => emit('collapse') },
-  { key: 'delete', icon: 'delete_outline', label: t('documents.library.deleteNamedTag', { name: props.tag.name }), shortcut: t('documents.shortcuts.deleteKey'), disabled: props.busy, separator: true, negative: true, run: () => emit('delete') },
+  { key: 'delete', icon: 'delete_outline', label: t('documents.library.deleteTag'), shortcut: t('documents.shortcuts.deleteKey'), disabled: props.busy, separator: true, negative: true, run: () => emit('delete') },
 ])
 function openKeyboardMenu(event: KeyboardEvent): void {
   if (renaming.value || !(event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) return
