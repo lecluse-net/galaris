@@ -416,12 +416,12 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 - Additional conditions : —
 - Sources : `front/core/authorize/navigation.ts`
 
-## Administer → Visual reference
+## Developers → Visual reference
 
 - Route : `/graphic-reference`
 - Purpose : Galaris visual elements together, for a consistency review.
 - Menu visibility (privileges) : —
-- Additional conditions : admin.graphicReference: dynamic
+- Additional conditions : developers: dynamic
 - Sources : `front/app/index/navigation.ts`
 
 ## About

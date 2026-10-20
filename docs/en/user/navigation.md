@@ -28,9 +28,10 @@ profile, personal API tokens, language, theme, assignments for switching roles, 
 The role displayed below your name identifies the current context. Personal language and
 theme preferences are separate from the instance's administrative **Preferences**.
 
-## The five main sections
+## The main sections
 
-In development mode only (`APP_ENV=dev`), **Administration → Visual reference** opens
+In development mode only (`APP_ENV=dev`), **Developers** appears directly after **Administer**
+as a section at the same level. **Developers → Visual reference** opens
 `/graphic-reference`. This page brings together the Solaire palette, form controls,
 buttons, an embedded mini dialog and its openable version, open/closed folders at their
 display sizes, navigation, resizable splitters, states, content and editors. Interactions
@@ -46,6 +47,7 @@ The route is excluded from builds for other environments.
 | **Knowledge** | Documents, Datasets, Memory, Contacts, Thematic dossiers |
 | **Monitor** | Dashboard, Activity, Dream, Mail journal, Failure journal |
 | **Administer** | Preferences, Laboratory, Console, Users, Teams, Roles & permissions |
+| **Developers** (dev mode only) | Visual reference |
 
 Technical documentation may refer to “Tasks”, “Conversations” or “AI Lab”. Tasks and
 conversation histories are tabs inside **Activity**; the AI Lab is **Laboratory**.

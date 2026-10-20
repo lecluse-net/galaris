@@ -9,4 +9,5 @@ export const navigationSections: readonly NavigationSection[] = [
   { rootKey: 'knowledge', label: 'index.sidebar.knowledge' },
   { rootKey: 'monitor', label: 'index.sidebar.monitor' },
   { rootKey: 'admin', label: 'index.sidebar.administration' },
+  { rootKey: 'developers', label: 'index.sidebar.developers' },
 ] as const

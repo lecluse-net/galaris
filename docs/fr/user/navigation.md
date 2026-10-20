@@ -31,9 +31,10 @@ permettant de changer de rôle et la déconnexion. Le rôle affiché sous le nom
 vérifier le contexte courant. Les préférences personnelles de langue et de thème sont
 distinctes des **Préférences** d’administration de l’instance.
 
-## Les cinq sections principales
+## Les sections principales
 
-En mode développement uniquement (`APP_ENV=dev`), **Administrer → Référence graphique**
+En mode développement uniquement (`APP_ENV=dev`), la rubrique **Développeurs** apparaît juste
+après **Administrer**, au même niveau. **Développeurs → Référence graphique**
 ouvre `/graphic-reference`. Cette page réunit la palette Solaire, les contrôles de
 formulaire, les boutons, une mini-modale intégrée et sa version ouvrable, les dossiers
 ouverts/fermés avec leurs tailles, la navigation, les séparateurs redimensionnables,
@@ -51,6 +52,7 @@ La route est exclue des constructions des autres environnements.
 | **Connaissances** | Documents, Jeux de données, Mémoire, Contacts, Sujets |
 | **Superviser** | Tableau de bord, Activité, Dream, Journal des mails, Journal des échecs |
 | **Administrer** | Préférences, Laboratoire, Console, Utilisateurs, Équipes, Rôles & autorisations |
+| **Développeurs** (mode dev uniquement) | Référence graphique |
 
 Dans la documentation technique, « Chat » correspond au menu **Discussion**, « Skills »
 à **Compétences**, « Tasks » à l’onglet **Tâches** d’**Activité**, « Topics » à **Sujets**

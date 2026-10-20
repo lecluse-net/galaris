@@ -15,15 +15,15 @@ const navigation: NavigationTree = {
             },
         },
     },
-    admin: {
+    developers: {
+        visible: () => settings.is_dev,
         children: {
             graphicReference: {
                 label: 'graphicReference.title',
                 description: 'graphicReference.description',
                 icon: 'palette',
                 to: '/graphic-reference',
-                visible: () => settings.is_dev,
-                order: 90,
+                order: 10,
             },
         },
     },

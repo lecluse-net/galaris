@@ -2057,18 +2057,18 @@
       ]
     },
     {
-      "id": "admin.graphicReference",
+      "id": "developers.graphicReference",
       "labels": {
         "fr": "Référence graphique",
         "en": "Visual reference"
       },
       "breadcrumbs": {
         "fr": [
-          "Administrer",
+          "Développeurs",
           "Référence graphique"
         ],
         "en": [
-          "Administer",
+          "Developers",
           "Visual reference"
         ]
       },
@@ -2081,7 +2081,7 @@
       "privilege_groups": [],
       "conditions": [
         {
-          "node": "admin.graphicReference",
+          "node": "developers",
           "visibility": "dynamic"
         }
       ],
