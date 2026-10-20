@@ -218,7 +218,7 @@
             :key="documentId + ':' + agentId"
             v-model="editorContent"
             :attachments="documentResources"
-            :resource-agent-id="agentId"
+            :resource-agent-id="requestAgentId"
             :pick-resources="isGoalDocument(currentDocument) ? undefined : pickInternalResources"
             :create-link-card="createLinkCard"
             :upload-file="uploadDocumentFile"
@@ -250,7 +250,7 @@
             ref="attachmentPanel"
             :content="editorContent"
             :document-id="currentDocument.id"
-            :agent-id="agentId"
+            :agent-id="requestAgentId"
             :attachments="attachments"
             :editable="canEditDocument && !isGoalDocument(currentDocument)"
             :loading="attachmentsLoading"
@@ -260,14 +260,14 @@
           />
           <DocumentResourceReferences v-if="canEditDocument && !isGoalDocument(currentDocument)" :key="currentDocument.id + ':' + agentId"
             v-model:picker-open="internalPickerOpen" @picked="finishInternalPick"
-            :document-id="currentDocument.id" :agent-id="agentId" :editable="canEditDocument" />
+            :document-id="currentDocument.id" :agent-id="requestAgentId" :editable="canEditDocument" />
         </div>
       </q-card-section>
       <DocumentHistoryDialog
         v-else
         :document-id="currentDocument.id"
         :current-revision="currentDocument.revision"
-        :agent-id="agentId"
+        :agent-id="requestAgentId"
         :can-restore="canEditDocument"
         :min-height="contentMinHeight"
         :max-height="contentMaxHeight"
@@ -435,31 +435,31 @@ watch(() => [route.query.attachment_id, attachmentPanel.value, attachments.value
 async function createLinkCard(url: string): Promise<string> {
   const documentId = props.documentId
   if (richLinkTarget(url)) {
-    const html = await richLinkCard(url, props.agentId)
+    const html = await richLinkCard(url, requestAgentId.value)
     if (props.documentId !== documentId) throw new Error('Document changed')
     return html
   }
-  const result = await memoryService.createDocumentLinkCard(documentId, props.agentId, url)
+  const result = await memoryService.createDocumentLinkCard(documentId, requestAgentId.value, url)
   if (props.documentId !== documentId) throw new Error('Document changed')
   if (result.attachment) onAttachmentAdded(result.attachment)
   return result.html
 }
 async function uploadDocumentFile(file: File, signal: AbortSignal, progress: (value: number) => void): Promise<string> {
   const documentId = props.documentId
-  const attachment = await memoryService.addDocumentAttachment(documentId, props.agentId, file, signal, progress)
+  const attachment = await memoryService.addDocumentAttachment(documentId, requestAgentId.value, file, signal, progress)
   if (props.documentId !== documentId) throw new Error('Document changed')
   onAttachmentAdded(attachment)
   return 'document://' + documentId + '/attachments/' + attachment.id
 }
 async function importPastedImage(url: string, signal: AbortSignal): Promise<string> {
-  const documentId = props.documentId, agentId = props.agentId
+  const documentId = props.documentId, agentId = requestAgentId.value
   const attachment = await memoryService.importDocumentImage(documentId, agentId, url, signal)
-  if (signal.aborted || props.documentId !== documentId || props.agentId !== agentId) throw new Error('Document changed')
+  if (signal.aborted || props.documentId !== documentId || requestAgentId.value !== agentId) throw new Error('Document changed')
   onAttachmentAdded(attachment)
   return 'document://' + documentId + '/attachments/' + attachment.id
 }
 async function exportCurrentBundle(html: string, signal: AbortSignal): Promise<Blob> {
-  return memoryService.exportDocumentBundle(props.documentId, props.agentId, html, signal)
+  return memoryService.exportDocumentBundle(props.documentId, requestAgentId.value, html, signal)
 }
 const attachmentsLoading = ref(false)
 const historyOpen = ref(false)
@@ -506,6 +506,8 @@ const currentUserOwnsDocument = computed(() => Boolean(
     && option.id === currentDocument.value?.owner_user_id
   )),
 ))
+// An open editor can outlive its original Agent's grant after an ownership transfer.
+const requestAgentId = computed(() => currentUserOwnsDocument.value ? null : props.agentId)
 const canEditDocument = computed(() => Boolean(
   props.editable
   && currentDocument.value?.access.can_write
@@ -534,7 +536,7 @@ const canDeleteDocument = computed(() => Boolean(
   && !currentDocument.value.deletion_protected
   && !currentDocument.value.source_managed
   && privilegeStore.hasPrivilege(privileges.MEMORY_EDIT)
-  && (props.agentId === null ? currentUserOwnsDocument.value : selectedAgentOwnsDocument.value),
+  && (requestAgentId.value === null ? currentUserOwnsDocument.value : selectedAgentOwnsDocument.value),
 ))
 watch([() => props.documentId, () => props.agentId, canDeleteDocument], () => {
   deleteDialogOpen.value = false
@@ -734,7 +736,7 @@ function applyPublicDocument(document: MemoryItem): void {
 async function loadKeywords(): Promise<void> {
   const generation = ++keywordLoadGeneration
   try {
-    const incoming = await memoryService.listDocumentKeywords(props.agentId)
+    const incoming = await memoryService.listDocumentKeywords(requestAgentId.value)
     if (disposed || generation !== keywordLoadGeneration) return
     keywordOptions.value = [...new Set([...incoming, ...(currentDocument.value?.keywords ?? [])])]
     filteredKeywordOptions.value = keywordOptions.value
@@ -754,7 +756,7 @@ async function loadAttachments(): Promise<void> {
   const generation = loadGeneration
   attachmentsLoading.value = attachments.value.length === 0
   try {
-    const incoming = await memoryService.listDocumentAttachments(props.documentId, props.agentId)
+    const incoming = await memoryService.listDocumentAttachments(props.documentId, requestAgentId.value)
     if (generation === loadGeneration) attachments.value = reconcileLibrarySnapshot(attachments.value, incoming, attachment => attachment.id)
   } catch {
     // A temporary failure must not remove already displayed attachments.
@@ -851,7 +853,7 @@ async function loadDocument(): Promise<void> {
   try {
     const seed = initialDocument
     initialDocument = null
-    const document = seed?.id === props.documentId ? seed : await memoryService.getDocument(props.documentId, props.agentId)
+    const document = seed?.id === props.documentId ? seed : await memoryService.getDocument(props.documentId, requestAgentId.value)
     if (generation !== loadGeneration) return
     if (document.document_type === 'dataset') throw new DatasetDocumentRedirect(`data://${document.id}`)
     if (document.document_type !== 'html') throw new Error('This resource is not an HTML Document.')
@@ -962,7 +964,7 @@ function resolveConflict(keepDraft: boolean): void {
 }
 
 async function mergeLatestDocument(documentId: string, generation = loadGeneration): Promise<void> {
-  const latest = await memoryService.getDocument(documentId, props.agentId)
+  const latest = await memoryService.getDocument(documentId, requestAgentId.value)
   if (generation !== loadGeneration || currentDocument.value?.id !== documentId) return
   mergeDocument(latest)
 }
@@ -1044,7 +1046,7 @@ async function persistAutosave(): Promise<void> {
     const update = canEditDocument.value ? propertyUpdate(document, base, draft) : null
     if (update) {
       if (update.payload) update.media_type = 'text/html'
-      const updated = await memoryService.updateDocument(document.id, props.agentId, update)
+      const updated = await memoryService.updateDocument(document.id, requestAgentId.value, update)
       applyPublicDocument(updated)
       persisted = {
         ...cloneDraft(draft),
@@ -1095,7 +1097,7 @@ async function persistAutosave(): Promise<void> {
         ownerId,
       )
       applyPublicDocument(updated)
-      const latest = await memoryService.getDocument(document.id, props.agentId)
+      const latest = await memoryService.getDocument(document.id, requestAgentId.value)
       if (currentDocument.value?.id === document.id) applyDocument(latest, 'updated')
       return
     }
@@ -1154,7 +1156,7 @@ async function flushAutosave(): Promise<boolean> {
 
 async function deleteDocument(): Promise<void> {
   const document = currentDocument.value
-  const agentId = props.agentId
+  const agentId = requestAgentId.value
   const storageKey = draftKey()
   if (!document || !canDeleteDocument.value || deletingDocument.value) return
   const finishDeletion = documentMutations.beginDeletion(document.id)
@@ -1164,10 +1166,10 @@ async function deleteDocument(): Promise<void> {
   if (realtimeTimer) clearTimeout(realtimeTimer)
   try {
     await waitForActiveSave()
-    if (disposed || currentDocument.value?.id !== document.id || props.agentId !== agentId || !canDeleteDocument.value) return
+    if (disposed || currentDocument.value?.id !== document.id || requestAgentId.value !== agentId || !canDeleteDocument.value) return
     await memoryService.deleteDocument(document.id, agentId)
     try { sessionStorage.removeItem(storageKey) } catch { /* Storage may be unavailable. */ }
-    if (disposed || currentDocument.value?.id !== document.id || props.agentId !== agentId) return
+    if (disposed || currentDocument.value?.id !== document.id || requestAgentId.value !== agentId) return
     loadGeneration += 1
     currentDocument.value = null
     deleteDialogOpen.value = false
@@ -1203,7 +1205,7 @@ async function refreshFromRealtime(): Promise<void> {
       await mergeLatestDocument(document.id, generation)
       if (generation === loadGeneration) scheduleAutosave(150)
     } else {
-      const latest = await memoryService.getDocument(document.id, props.agentId)
+      const latest = await memoryService.getDocument(document.id, requestAgentId.value)
       if (generation === loadGeneration && currentDocument.value?.id === document.id) {
         // A clean editor may have acquired a draft during the read.
         if (hasUnsavedChanges.value) {
@@ -1313,7 +1315,7 @@ onBeforeUnmount(() => {
 defineExpose({ flush: flushAutosave })
 
 async function resolveInlineImage(documentId: string, attachmentId: string, signal?: AbortSignal): Promise<Blob> {
-  return memoryService.documentAttachmentBlob(documentId, attachmentId, props.agentId, signal)
+  return memoryService.documentAttachmentBlob(documentId, attachmentId, requestAgentId.value, signal)
 }
 async function exportCurrentDocumentPdf(html: string, signal: AbortSignal): Promise<Blob> {
   const document = currentDocument.value
@@ -1322,10 +1324,10 @@ async function exportCurrentDocumentPdf(html: string, signal: AbortSignal): Prom
 }
 async function uploadInlineImage(file: File, signal: AbortSignal, progress: (value: number) => void): Promise<string> {
   const document = currentDocument.value
-  const agentId = props.agentId
+  const agentId = requestAgentId.value
   if (!document || isGoalDocument(document)) throw new Error('Images unavailable')
   const attachment = await memoryService.addDocumentAttachment(document.id, agentId, file, signal, progress)
-  if (signal.aborted || props.documentId !== document.id || props.agentId !== agentId) throw new Error('Document changed')
+  if (signal.aborted || props.documentId !== document.id || requestAgentId.value !== agentId) throw new Error('Document changed')
   await onAttachmentAdded(attachment)
   return 'document://' + document.id + '/attachments/' + attachment.id
 }

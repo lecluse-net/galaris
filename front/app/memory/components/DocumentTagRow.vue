@@ -1,5 +1,5 @@
 <template>
-  <div class="document-tag-row row items-center no-wrap full-width" :class="{ 'document-tag-row--dark': $q.dark.isActive }" :draggable="!renaming && !busy">
+  <div class="document-tag-row row items-center no-wrap full-width" :draggable="!renaming && !busy" @contextmenu.stop @keydown="openKeyboardMenu">
     <q-btn flat dense round size="sm" class="folder-icon-button q-mr-xs" :aria-label="t('documents.library.changeIcon', { name: tag.name })" :disable="busy"
       @click="clickIcon" @keydown.f2.prevent.stop="startRename">
       <DocumentTagIcon :icon="tag.icon" :expanded="selected" size="26px" />
@@ -13,41 +13,42 @@
     </q-input>
     <span v-else class="ellipsis col tag-name" tabindex="0" :title="tag.name"
       @keydown.f2.prevent.stop="startRename" @keydown.enter.prevent.stop="startRename">{{ tag.name }}</span>
-    <div v-if="!renaming" class="tag-toolbar row items-center no-wrap" role="group" :aria-label="t('documents.library.tagActions', { name: tag.name })"
-      @click.stop @dblclick.stop @dragstart.prevent.stop>
-      <q-btn flat dense round size="sm" icon="playlist_add" :disable="busy" :aria-label="t('documents.library.newSibling', { name: tag.name })" @click="createSibling">
-        <q-tooltip>{{ t('documents.library.newSibling', { name: tag.name }) }}</q-tooltip>
-      </q-btn>
+    <div v-if="!renaming" class="tag-actions row items-center no-wrap" @click.stop @dblclick.stop @dragstart.prevent.stop>
       <q-btn flat dense round size="sm" icon="note_add" :disable="busy" :aria-label="t('documents.library.newDocument', { name: tag.name })" @click="emit('createDocument')">
         <q-tooltip>{{ t('documents.library.newDocument', { name: tag.name }) }}</q-tooltip>
       </q-btn>
-      <DocumentTagCreateButton :parent-id="tag.id" :parent-name="tag.name" :busy="busy" :save="create" />
+      <q-btn flat dense round size="sm" icon="create_new_folder" :disable="busy" :aria-label="t('documents.library.newSubtag', { name: tag.name })" @click="createChild">
+        <q-tooltip>{{ t('documents.library.newSubtag', { name: tag.name }) }}</q-tooltip>
+      </q-btn>
       <q-btn flat dense round size="sm" icon="edit" :disable="busy" :aria-label="t('documents.library.editNamedTag', { name: tag.name })" @click="startRename">
         <q-tooltip>{{ t('documents.library.editTag') }}</q-tooltip>
       </q-btn>
       <q-btn flat dense round size="sm" icon="delete_outline" class="tag-delete" :disable="busy" :aria-label="t('documents.library.deleteNamedTag', { name: tag.name })" @click="emit('delete')">
         <q-tooltip>{{ t('documents.library.deleteTag') }}</q-tooltip>
       </q-btn>
-      <q-btn flat dense round size="sm" icon="more_vert" :aria-label="t('documents.library.tagActions', { name: tag.name })">
+      <q-btn flat dense round size="sm" icon="more_vert" :aria-label="t('documents.library.tagActions', { name: tag.name })"
+        aria-haspopup="menu" :aria-expanded="menuOpen" @click="contextMenu?.toggle()">
         <q-tooltip>{{ t('documents.library.tagActions', { name: tag.name }) }}</q-tooltip>
-        <q-menu>
-          <q-list dense>
-            <q-item v-close-popup clickable :disable="busy" @click="emit('sort', false)"><q-item-section avatar><q-icon name="sort_by_alpha" /></q-item-section><q-item-section>{{ t('documents.library.sortAscending') }}</q-item-section></q-item>
-            <q-item v-close-popup clickable :disable="busy" @click="emit('sort', true)"><q-item-section avatar><q-icon name="sort_by_alpha" /></q-item-section><q-item-section>{{ t('documents.library.sortDescending') }}</q-item-section></q-item>
-            <q-separator />
-            <q-item v-close-popup clickable @click="emit('expand')"><q-item-section avatar><q-icon name="unfold_more" /></q-item-section><q-item-section>{{ t('documents.library.expandAll') }}</q-item-section></q-item>
-            <q-item v-close-popup clickable @click="emit('collapse')"><q-item-section avatar><q-icon name="unfold_less" /></q-item-section><q-item-section>{{ t('documents.library.collapseAll') }}</q-item-section></q-item>
-          </q-list>
-        </q-menu>
       </q-btn>
     </div>
+    <q-menu v-if="!renaming" ref="contextMenu" v-model="menuOpen" context-menu class="tag-context-menu" role="menu" :aria-label="t('documents.library.tagActions', { name: tag.name })">
+      <q-list dense>
+        <template v-for="action in contextActions" :key="action.key">
+          <q-separator v-if="action.separator" />
+          <q-item v-close-popup clickable role="menuitem" :aria-label="action.label" :disable="action.disabled" :class="{ 'tag-delete': action.negative }" @click="action.run()">
+            <q-item-section avatar><q-icon :name="action.icon" :class="{ 'tag-action-icon': !action.negative }" /></q-item-section>
+            <q-item-section>{{ action.label }}</q-item-section>
+          </q-item>
+        </template>
+      </q-list>
+    </q-menu>
   </div>
 </template>
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import type { QMenu } from 'quasar'
 import type { DocumentTag } from '../types'
-import DocumentTagCreateButton from './DocumentTagCreateButton.vue'
 import DocumentTagIconPicker from './DocumentTagIconPicker.vue'
 import DocumentTagIcon from './DocumentTagIcon.vue'
 const props = defineProps<{
@@ -63,10 +64,32 @@ const { t } = useI18n()
 const renaming = ref(false)
 const name = ref('')
 const iconOpen = ref(false)
+const menuOpen = ref(false)
+const contextMenu = useTemplateRef<QMenu>('contextMenu')
+const contextActions = computed(() => [
+  { key: 'document', icon: 'note_add', label: t('documents.library.newDocument', { name: props.tag.name }), disabled: props.busy, run: () => emit('createDocument') },
+  { key: 'child', icon: 'create_new_folder', label: t('documents.library.newSubtag', { name: props.tag.name }), disabled: props.busy, run: createChild },
+  { key: 'sibling', icon: 'playlist_add', label: t('documents.library.newSibling', { name: props.tag.name }), disabled: props.busy, run: createSibling },
+  { key: 'edit', icon: 'edit', label: t('documents.library.editNamedTag', { name: props.tag.name }), disabled: props.busy, run: startRename },
+  { key: 'ascending', icon: 'sort_by_alpha', label: t('documents.library.sortAscending'), disabled: props.busy, separator: true, run: () => emit('sort', false) },
+  { key: 'descending', icon: 'sort_by_alpha', label: t('documents.library.sortDescending'), disabled: props.busy, run: () => emit('sort', true) },
+  { key: 'expand', icon: 'unfold_more', label: t('documents.library.expandAll'), separator: true, run: () => emit('expand') },
+  { key: 'collapse', icon: 'unfold_less', label: t('documents.library.collapseAll'), run: () => emit('collapse') },
+  { key: 'delete', icon: 'delete_outline', label: t('documents.library.deleteNamedTag', { name: props.tag.name }), disabled: props.busy, separator: true, negative: true, run: () => emit('delete') },
+])
+function openKeyboardMenu(event: KeyboardEvent): void {
+  if (renaming.value || !(event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) return
+  event.preventDefault()
+  event.stopPropagation()
+  contextMenu.value?.show()
+}
+async function createChild(): Promise<void> {
+  if (!props.busy) await props.create(t('documents.library.newFolderName'), props.tag.id)
+}
 async function createSibling(): Promise<void> {
   if (!props.busy) await props.create(t('documents.library.newFolderName'), props.tag.parent_id, props.tag.id)
 }
-function startRename(): void { if (!props.busy && !renaming.value) { name.value = props.tag.name; renaming.value = true } }
+function startRename(): void { if (!props.busy && !renaming.value) { menuOpen.value = false; name.value = props.tag.name; renaming.value = true } }
 function finishRename(): void { iconOpen.value = false; renaming.value = false; emit('renamed') }
 function clickIcon(event: Event): void {
   if (!renaming.value) return
@@ -93,13 +116,10 @@ async function rename(): Promise<void> {
 </script>
 <style scoped>
 .document-tag-row { position: relative; min-width: 0; }
-.tag-toolbar { flex-shrink: 0; border-radius: 4px; background: var(--solaire-gray-light); opacity: 0; pointer-events: none; }
-.document-tag-row:hover .tag-toolbar, .document-tag-row:focus-within .tag-toolbar { opacity: 1; pointer-events: auto; }
-.document-tag-row--dark .tag-toolbar { background: var(--solaire-gray-dark); }
+.tag-actions { flex-shrink: 0; }
 .tag-delete { color: var(--solaire-red-accent); }
-@media (hover: none), (max-width: 1023px) {
-  .tag-toolbar { opacity: 1; pointer-events: auto; }
-}
+.tag-action-icon { color: var(--solaire-gray-accent); }
+.tag-context-menu { max-width: calc(100vw - 16px); }
 .folder-icon-button { width: 26px; height: 26px; min-width: 26px; min-height: 26px; padding: 0; }
 .tag-name { min-width: 0; cursor: pointer; }
 .tag-name:focus-visible { outline: 2px solid var(--solaire-blue-accent); }

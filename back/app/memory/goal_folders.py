@@ -27,6 +27,7 @@ from core.user import UserModel
 from .access import human_document_clause, readable_item_for_agents_clause
 from .document_tags import lock_tree, next_position
 from .models import DocumentTag, DocumentTagAssignment, MemoryAutomationJob, MemoryItem, MemorySource
+from .tag_icons import inherited_folder_icon
 
 
 JOB_KIND = "goal_folder_reconcile"
@@ -129,6 +130,7 @@ async def _folder(user: UserModel, goal: Goal | None) -> DocumentTag:
         user_id=user.id, goal_id=goal.id if goal is not None else None,
         system_role=None if goal is not None else "goals_root",
         name=name, generated_name=name, parent_id=parent.id if parent else None,
+        icon=inherited_folder_icon(parent.icon if parent is not None else None),
         position=await next_position(user.id, parent.id if parent else None),
     )
     db.add(folder)

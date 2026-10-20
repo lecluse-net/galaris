@@ -389,6 +389,12 @@ actions. Enter the title and owner: the document is automatically placed in that
 which expands, and opens in the editor. The general creation button keeps new documents
 in the unclassified list.
 
+Click a folder's **⋮** button or right-click the folder to open the same menu with icons and
+labels for all its actions: create a document or folder, edit, sort, expand,
+collapse, and delete. **New document**, **New subfolder**, **Edit**, and **Delete** remain
+available directly on the row, including on mobile. Use the **⋮**
+button from the keyboard or press **Shift + F10** on the folder; **Escape** closes the menu.
+
 A document can also contain **sub-documents**. Use its **New sub-document** icon,
 or drag an existing document onto the middle of its row. The arrow expands its children
 across multiple levels; clicking the title still opens the document. To move a child out of

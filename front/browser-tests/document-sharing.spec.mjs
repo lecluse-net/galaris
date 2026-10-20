@@ -41,6 +41,78 @@ const toggle = (page, name) => page.getByRole('button', { name: 'Toggle read / w
 const remove = (page, name) => page.getByRole('button', { name: 'Remove access for ' + name, exact: true })
 
 for (const width of [1440, 390]) {
+test(`taking ownership keeps the document usable after revoking the original agent at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const document = { ...documentFixture, media_type: 'text/html', payload: { text: '<p>Transferred content</p>' } }
+  const human = { kind: 'user', id: 1, label: 'Current user', can_write: false }
+  const originalAgent = { kind: 'agent', id: 7, label: 'Alice Example', can_write: true }
+  const state = { ...privateState(), lock_version: document.lock_version,
+    owner: originalAgent, grants: [human], options: [human], owner_groups: [] }
+  let revoked = false
+  const writes = []
+  await jsonRoute(page, '**/api/agents?*', [agent])
+  await jsonRoute(page, '**/api/memory/documents/owner-options?*', {
+    agents: [{ ...originalAgent, subtitle: '' }],
+    users: [{ ...human, subtitle: '', is_current_user: true }],
+  })
+  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments*', [])
+  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [] })
+  await page.route('**/api/memory/documents/library', route => route.fulfill({ json: {
+    entries: [{ item: document, tags: [], agent_ids: revoked ? [] : [7],
+      writable_agent_ids: revoked ? [] : [7],
+      user_access: { can_read: true, can_write: document.owner_user_id === 1 } }],
+    total: 1, has_more: false, keywords: [],
+  } }))
+  await page.route(/\/api\/memory\/documents\/doc-a(?:\?|$)/, route => {
+    const url = new URL(route.request().url())
+    if (revoked && (url.searchParams.has('agent_id') || url.searchParams.has('actor_agent_id'))) {
+      return route.fulfill({ status: 403, json: { detail: 'Original agent access revoked' } })
+    }
+    if (route.request().method() === 'PATCH') {
+      writes.push(route.request().postDataJSON())
+      Object.assign(document, writes.at(-1), { revision: document.revision + 1, lock_version: document.lock_version + 1 })
+      return route.fulfill({ json: document })
+    }
+    return route.fulfill({ json: { item: document, agent_id: url.searchParams.has('agent_id') ? 7 : null } })
+  })
+  await page.route('**/api/memory/documents/doc-a/owner', route => {
+    expect(route.request().postDataJSON()).toMatchObject({ kind: 'user', id: 1 })
+    Object.assign(document, { owner_agent_id: null, owner_user_id: 1, lock_version: document.lock_version + 1 })
+    Object.assign(state, { owner: human, grants: [originalAgent], options: [originalAgent], lock_version: document.lock_version })
+    return route.fulfill({ json: document })
+  })
+  await page.route('**/api/memory/documents/doc-a/sharing', route => route.fulfill({ json: state }))
+  await page.route('**/api/memory/documents/doc-a/sharing-level', async route => {
+    expect(route.request().postDataJSON().grants).toEqual([])
+    revoked = true
+    document.lock_version++
+    Object.assign(state, { grants: [], lock_version: document.lock_version })
+    await page.evaluate(() => window.testApp.emitSocket('memory.invalidate', { data: {} }))
+    return route.fulfill({ json: state })
+  })
+  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  if (width < 1024) await page.getByText(document.title, { exact: true }).click()
+  const editor = page.locator('[data-editor-surface]')
+  await expect(editor).toContainText('Transferred content')
+  await page.getByRole('combobox', { name: 'Owner', exact: true }).click()
+  await page.getByRole('option').filter({ hasText: 'Me' }).click()
+  await expect(toggle(page, 'Alice Example')).toBeVisible()
+  await expect(remove(page, 'Current user')).toHaveCount(0)
+  await remove(page, 'Alice Example').click()
+  await expect(picker(page)).toContainText('Private')
+  await expect(editor).toContainText('Transferred content')
+  await expect(page.getByLabel('Unclassified documents', { exact: true }).getByText(document.title, { exact: true })).toBeVisible()
+  await editor.fill('Content edited as owner')
+  await expect.poll(() => writes.at(-1)?.payload?.text).toContain('Content edited as owner')
+  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  if (width < 1024) await page.getByText(document.title, { exact: true }).click()
+  await expect(editor).toContainText('Content edited as owner')
+  await expect(picker(page)).toContainText('Private')
+})
+}
+
+for (const width of [1440, 390]) {
 test(`changing rights reconciles the library and open document without remounting at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 })
   const document = { ...documentFixture, media_type: 'text/html', payload: { text: '<p>Keep editing here</p>' } }

@@ -3318,6 +3318,12 @@ async def transfer_document_owner(
     else:
         item.owner_agent_id = None
         item.owner_user_id = data.id
+        await db.execute(
+            delete(ShareGrant).where(
+                ShareGrant.share_id == item.share_id,
+                ShareGrant.user_id == data.id,
+            )
+        )
 
     if isinstance(actor_agent_id, HumanActor):
         if data.kind != "user" or data.id != actor_agent_id.user_id:

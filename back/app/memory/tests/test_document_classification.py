@@ -484,6 +484,45 @@ def svg_data(source):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(("parent_icon", "inherited_icon"), [
+    ("folder:green", "folder:green"),
+    ("folder-open:iris", "folder:iris"),
+    (None, None),
+    ("emoji:1F4C1", None),
+    ("/tag-icons/openmoji/1F680.svg", None),
+    ("font:mdi:folder", None),
+    (svg_data('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0L10 10"/></svg>'), None),
+])
+async def test_new_subfolders_inherit_only_galaris_folder_colors(db, parent_icon, inherited_icon):
+    user = await human(db)
+    parent = await document_tags.write_tag(user.id, DocumentTagWrite(name="Parent", icon=parent_icon))
+    child = await document_tags.write_tag(user.id, DocumentTagWrite(name="Child", parent_id=parent.id))
+    grandchild = await document_tags.write_tag(user.id, DocumentTagWrite(name="Grandchild", parent_id=child.id))
+    assert child.icon == grandchild.icon == inherited_icon
+    await document_tags.write_tag(user.id, DocumentTagWrite(name="Parent", icon="folder:red"), parent.id)
+    # Inheritance is a persisted creation default, not a live recoloring rule.
+    icons = {tag.id: tag.icon for tag in await document_tags.list_tags(user.id)}
+    assert icons[child.id] == icons[grandchild.id] == inherited_icon
+    renamed = await document_tags.write_tag(user.id, DocumentTagWrite(name="Renamed", parent_id=parent.id), child.id)
+    assert renamed.icon == inherited_icon
+
+
+@pytest.mark.asyncio
+async def test_folder_color_inheritance_preserves_explicit_choices_and_existing_folders(db):
+    user = await human(db)
+    parent = await document_tags.write_tag(user.id, DocumentTagWrite(name="Parent", icon="folder:green"))
+    existing = await document_tags.write_tag(user.id, DocumentTagWrite(name="Existing"))
+    moved = await document_tags.write_tag(user.id, DocumentTagWrite(name="Existing", parent_id=parent.id), existing.id)
+    assert moved.icon is None
+    for icon in (None, "folder:blue", "emoji:1F680"):
+        child = await document_tags.write_tag(user.id, DocumentTagWrite(name="Explicit choice", parent_id=parent.id, icon=icon))
+        assert child.icon == icon
+    other = await human(db)
+    with pytest.raises(service.MemoryNotFoundError):
+        await document_tags.write_tag(other.id, DocumentTagWrite(name="Private parent denied", parent_id=parent.id))
+
+
+@pytest.mark.asyncio
 async def test_icons_survive_rename_moves_and_tag_deletion_and_are_private(db):
     user, other = await human(db), await human(db)
     data = DocumentTagIconWrite(name="Triangle", data=svg_data('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 10L5 0L10 10Z"/></svg>'))

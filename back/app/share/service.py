@@ -30,6 +30,14 @@ async def state(
     catalog = {(p.kind, p.id): p for p in [*result.options, *result.owner_groups]}
     recipients: dict[tuple[PrincipalKind, int], Collaborator] = {}
     for grant in await grants(share_id):
+        # Older ownership transfers can leave a redundant owner grant behind.
+        # Ownership already grants access and is never a sharing recipient.
+        if (
+            owner_agent_id is not None and grant.agent_id == owner_agent_id
+        ) or (
+            owner_user_id is not None and grant.user_id == owner_user_id
+        ):
+            continue
         kind: PrincipalKind = (
             "agent"
             if grant.agent_id is not None

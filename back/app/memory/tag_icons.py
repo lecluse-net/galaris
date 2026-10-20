@@ -14,6 +14,13 @@ SVG_PREFIX = "data:image/svg+xml;base64,"
 BUILTIN_ICONS = frozenset(cast(list[str], json.loads(Path(__file__).with_name("icon_catalog.json").read_text())))
 
 
+def inherited_folder_icon(icon: str | None) -> str | None:
+    """Copy only a Galaris folder color, independently of expansion state."""
+    if icon is not None and icon.startswith(("folder:", "folder-open:")):
+        return "folder:" + icon.split(":", 1)[1]
+    return None
+
+
 def validate_icon(value: str) -> str:
     legacy = re.fullmatch(r"/tag-icons/(?:openmoji|fluent)/([0-9A-F]+(?:-[0-9A-F]+)*)\.svg", value)
     if legacy:

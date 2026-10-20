@@ -420,6 +420,12 @@ parmi ses actions. Renseignez le titre et le propriétaire : le document est aut
 classé dans ce dossier, qui se déplie, puis s’ouvre dans l’éditeur. Le bouton de création
 général conserve les nouveaux documents parmi les documents non classés.
 
+Le bouton **⋮** de chaque dossier et le clic droit ouvrent le même menu avec les icônes et les libellés de toutes ses
+actions : créer un document ou un dossier, modifier, trier, déplier,
+replier et supprimer. Les raccourcis **Nouveau document**, **Nouveau sous-dossier**, **Modifier**
+et **Supprimer** restent visibles sur la ligne, y compris sur mobile.
+Au clavier, activez le bouton **⋮** ou utilisez **Maj + F10** sur le dossier ; **Échap** ferme le menu.
+
 Un document peut aussi contenir des **sous-documents**. Utilisez son icône
 **Nouveau sous-document**, ou glissez un document existant au centre de sa ligne.
 La flèche permet de déplier ses enfants, sur plusieurs niveaux ; cliquer sur le titre

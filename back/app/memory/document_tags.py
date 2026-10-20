@@ -10,6 +10,7 @@ from core.database import get_db
 from . import document_sharing, service
 from .events import emit_classification
 from .models import DocumentTag, DocumentTagAssignment, DocumentTagIcon
+from .tag_icons import inherited_folder_icon
 from .schemas import DocumentTagDeletionResult, DocumentTagPublic, DocumentTagWrite, DocumentTagIconPublic, DocumentTagIconWrite
 
 
@@ -49,17 +50,23 @@ async def write_tag(user_id: int, data: DocumentTagWrite, tag_id: UUID | None = 
     db = get_db()
     await lock_tree(user_id)
     tag = await require_tag(user_id, tag_id) if tag_id is not None else DocumentTag(user_id=user_id)
+    parent: DocumentTag | None = None
     parent_id = data.parent_id
     while parent_id is not None:
         if parent_id == tag_id:
             raise ValueError("A tag cannot be placed inside itself")
-        parent_id = (await require_tag(user_id, parent_id)).parent_id
+        ancestor = await require_tag(user_id, parent_id)
+        if parent is None:
+            parent = ancestor
+        parent_id = ancestor.parent_id
     if tag_id is None or tag.parent_id != data.parent_id:
         tag.position = await next_position(user_id, data.parent_id)
     tag.name = data.name
     tag.parent_id = data.parent_id
     if "icon" in data.model_fields_set:
         tag.icon = data.icon
+    elif tag_id is None:
+        tag.icon = inherited_folder_icon(parent.icon if parent is not None else None)
     db.add(tag)
     await db.flush()
     from .document_structure import sync_folder_structure

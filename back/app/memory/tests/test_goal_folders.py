@@ -110,6 +110,8 @@ async def test_background_filing_notifies_only_its_owner_and_changed_folder(db, 
 @pytest.mark.asyncio
 async def test_filing_is_personal_idempotent_and_preserves_manual_classification(db, agents, memory_storage):
     goal, user, other = await setup_goal(db, agents)
+    await document_tags.write_tag(user.id, DocumentTagWrite(name="Objectifs", icon="folder:cyan"))
+    await document_tags.write_tag(other.id, DocumentTagWrite(name="Objectifs", icon="emoji:1F4C1"))
     for identity in (goal.description_document_id, goal.tracking_document_id):
         db.add(ShareGrant(share_id=MemoryItem.share_for(identity), user_id=other.id, can_write=False))
     await db.commit()
@@ -134,6 +136,7 @@ async def test_filing_is_personal_idempotent_and_preserves_manual_classification
         assert root.name == "Objectifs"
         assert folder.name == goal.title
         assert folder.parent_id == root.id
+        assert folder.icon == ("folder:cyan" if person.id == user.id else None)
         assert sum(tag.goal_id == goal.id for tag in tags) == 1
     for item in documents:
         await db.refresh(item)

@@ -4,15 +4,17 @@ import { document } from './data.mjs'
 async function openFolderIcon(button) {
   const row = button.locator('..')
   if (!await row.getByRole('textbox').count()) {
-    await button.hover()
     await row.getByRole('button', { name: /^(Edit folder|Modifier le dossier) / }).click()
   }
   await button.click()
 }
 
 async function folderAction(page, folder, action) {
-  await page.getByRole('button', { name: `Icon for folder ${folder}`, exact: true }).hover()
-  await page.getByRole('button', { name: action, exact: true }).click()
+  const menuLabel = `Actions for folder ${folder}`
+  const shortcut = page.getByRole('button', { name: action, exact: true })
+  if (action !== menuLabel && await shortcut.count()) { await shortcut.click(); return }
+  await page.getByRole('button', { name: menuLabel, exact: true }).click()
+  if (action !== menuLabel) await page.getByRole('menuitem', { name: action, exact: true }).click()
 }
 
 async function editFolder(page, folder) {
@@ -712,7 +714,7 @@ test('tree loads all documents, retries, ignores list search and discards closed
   await expect(page.getByLabel('Unclassified documents', { exact: true }).getByText('Fresh result', { exact: true })).toHaveCount(0)
 })
 
-test('folder toolbar edits name and icon without toggling the branch or requiring a double click', async ({ page }) => {
+test('folder actions edit name and icon without toggling the branch or requiring a double click', async ({ page }) => {
   const { mutations } = await fixture(page)
   const icon = page.getByRole('button', { name: 'Icon for folder Work', exact: true })
   await icon.click()
@@ -735,8 +737,58 @@ test('folder toolbar edits name and icon without toggling the branch or requirin
   expect(mutations).toHaveLength(1)
 })
 
+for (const width of [1440, 390]) {
+test(`folder context menu keeps actions on the right folder and supports dismissal and keyboard at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const { mutations } = await fixture(page)
+  if (width < 1024) await page.evaluate(() => window.testApp.dark(true))
+  const work = page.getByRole('button', { name: 'Icon for folder Work', exact: true })
+  const menu = page.getByRole('menu', { name: 'Actions for folder Work', exact: true })
+  await work.click({ button: 'right' })
+  for (const name of ['New document in Work', 'Create a subfolder of Work',
+    'Create a folder below Work', 'Edit folder Work', 'Delete folder Work',
+    'Sort by name (A → Z)', 'Sort by name (Z → A)', 'Expand all in this folder', 'Collapse all in this folder']) {
+    await expect(menu.getByRole('menuitem', { name, exact: true })).toBeVisible()
+  }
+  await expect(page.getByText('Project', { exact: true })).toHaveCount(0)
+  await menu.screenshot({ path: testInfo.outputPath('folder-context-menu.png'), animations: 'disabled' })
+  await page.keyboard.press('Escape')
+  await expect(menu).toHaveCount(0)
+  expect(mutations).toEqual([])
+  await work.click({ button: 'right' })
+  await page.mouse.click(width - 8, 990)
+  await expect(menu).toHaveCount(0)
+  await work.click({ button: 'right' })
+  await menu.getByRole('menuitem', { name: 'New document in Work', exact: true }).click()
+  await expect(menu).toHaveCount(0)
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').at(-1).args[0].id)).toBe('work')
+  await page.getByText('Work', { exact: true }).focus()
+  await page.keyboard.press('Shift+F10')
+  await menu.getByRole('menuitem', { name: 'Expand all in this folder', exact: true }).press('Enter')
+  await expect(page.getByText('Project', { exact: true })).toBeVisible()
+  await page.getByText('Project', { exact: true }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Edit folder Project', exact: true }).click()
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused()
+  await page.getByLabel('Name', { exact: true }).fill('Renamed project')
+  await page.getByLabel('Name', { exact: true }).press('Enter')
+  await expect.poll(() => mutations.at(-1)).toMatchObject({ id: 'project', name: 'Renamed project', parent_id: 'work' })
+  await page.getByText('Renamed project', { exact: true }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Create a subfolder of Renamed project', exact: true }).click()
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused()
+  await expect.poll(() => mutations.at(-1)).toMatchObject({ name: 'New folder', parent_id: 'project' })
+  await page.getByLabel('Name', { exact: true }).press('Escape')
+  // Left-click opens the same complete menu; the four shortcuts also remain usable.
+  await page.getByRole('button', { name: 'Actions for folder Work', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Edit folder Work', exact: true }).click()
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Work')
+  await page.getByLabel('Name', { exact: true }).press('Escape')
+  await folderAction(page, 'Work', 'Edit folder Work')
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Work')
+})
+}
+
 for (const [folder, parent] of [['Work', null], ['Project', 'work']]) {
-  test(`folder toolbar creates a sibling immediately below ${folder} and preserves its position`, async ({ page }, testInfo) => {
+  test(`folder actions create a sibling immediately below ${folder} and preserve its position`, async ({ page }, testInfo) => {
     const { orders, mutations, requests } = await fixture(page)
     if (parent) await page.getByText('Work', { exact: true }).click()
     await folderAction(page, folder, `Create a folder below ${folder}`)
@@ -759,23 +811,25 @@ for (const [folder, parent] of [['Work', null], ['Project', 'work']]) {
     await sibling.click()
     await expect(page.getByText('Empty folder', { exact: true })).toBeVisible()
     expect(requests).toHaveLength(requestCount)
-    await page.getByRole('button', { name: `Icon for folder ${folder}`, exact: true }).hover()
+    await page.getByRole('button', { name: `Actions for folder ${folder}`, exact: true }).click()
     await page.locator('.library-navigation').screenshot({ path: testInfo.outputPath('folder-toolbar.png'), animations: 'disabled' })
-    // Keyboard focus reveals the same actions without requiring pointer hover.
+    await page.keyboard.press('Escape')
+    // Keyboard activation opens the complete action menu.
     await page.mouse.move(700, 700)
-    const edit = page.getByRole('button', { name: `Edit folder ${folder}`, exact: true })
-    await edit.focus(); await page.keyboard.press('Enter')
+    const actions = page.getByRole('button', { name: `Actions for folder ${folder}`, exact: true })
+    await actions.focus(); await page.keyboard.press('Enter')
+    await page.getByRole('menuitem', { name: `Edit folder ${folder}`, exact: true }).press('Enter')
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue(folder)
     await page.getByLabel('Name', { exact: true }).press('Escape')
     await page.setViewportSize({ width: 390, height: 844 })
     await page.evaluate(() => window.testApp.dark(true))
     await page.locator('.library-navigation').screenshot({ path: testInfo.outputPath('folder-toolbar-mobile-dark.png'), animations: 'disabled' })
-    await page.getByRole('button', { name: `Edit folder ${folder}`, exact: true }).click()
+    await folderAction(page, folder, `Edit folder ${folder}`)
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue(folder)
   })
 }
 
-test('a folder created through the toolbar remains editable when positioning fails', async ({ page }) => {
+test('a folder created through its actions remains editable when positioning fails', async ({ page }) => {
   await fixture(page)
   await page.route('**/api/memory/documents/order', route => route.fulfill({ status: 409, json: { detail: 'Stale anchor' } }))
   await folderAction(page, 'Work', 'Create a folder below Work')

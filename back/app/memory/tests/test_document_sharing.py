@@ -668,6 +668,53 @@ async def test_legacy_groups_become_explicit_and_survive_owner_transfer(db, agen
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("target_kind", ["user", "agent"])
+async def test_transferred_owner_needs_no_self_grant(db, agents, memory_storage, target_kind):
+    from app.memory.schemas import DocumentOwnerUpdate
+    from app.share import ShareGrant
+
+    owner, peer = agents
+    human = await user(db)
+    manager = AgentManagementScope(user_id=human.id, agent_ids=frozenset({owner.id}))
+    target_id = human.id if target_kind == "user" else peer.id
+    recipient = AgentManagementScope(
+        user_id=human.id,
+        agent_ids=frozenset() if target_kind == "user" else frozenset({peer.id}),
+    )
+    item = await document(owner)
+    await level(item, manager, "private", grants=[
+        {"kind": target_kind, "id": target_id, "can_write": True},
+    ])
+    item = await service.transfer_document_owner(item.id, DocumentOwnerUpdate(
+        kind=target_kind, id=target_id, expected_revision=item.revision,
+        expected_lock_version=item.lock_version,
+    ), actor_agent_id=owner.id)
+    state = await document_sharing.sharing(item.id, recipient)
+    assert state.can_manage
+    assert state.owner.kind == target_kind and state.owner.id == target_id
+    self_grants = [g for g in state.grants if g.kind == target_kind and g.id == target_id]
+    column = ShareGrant.user_id if target_kind == "user" else ShareGrant.agent_id
+    stored_self_grant = await db.scalar(select(ShareGrant.id).where(
+        ShareGrant.share_id == item.share_id, column == target_id,
+    ))
+    # Remove all remaining sharing: ownership alone must keep the document visible.
+    await level(item, recipient, "private")
+    page = await service.browse_document_library(
+        DocumentLibraryRequest(), managed_agent_ids=recipient.agent_ids, user_id=human.id,
+    )
+    assert page.total == 1
+    assert [entry.item.id for entry in page.entries] == [item.id]
+    actor = HumanActor(human.id) if target_kind == "user" else peer.id
+    assert (await service.get_item(item.id, agent_id=actor))[2].can_write
+    assert self_grants == []
+    assert stored_self_grant is None
+    # Documents transferred before this fix can still contain an owner grant.
+    db.add(ShareGrant(share_id=item.share_id, can_write=False, **{target_kind + "_id": target_id}))
+    await db.flush()
+    assert (await document_sharing.sharing(item.id, recipient)).grants == []
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("node_kind", ["document"])
 async def test_sharing_rejects_stale_invalid_and_non_owner_updates_atomically(db, agents, memory_storage, monkeypatch, node_kind):
     from app.memory.schemas import DocumentSharingLevelUpdate
