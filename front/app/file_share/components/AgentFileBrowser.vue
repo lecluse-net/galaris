@@ -280,7 +280,13 @@ function activateEntry(entry: FileEntry): void {
   else if (entry.capabilities.includes('read')) { if (!selected.value.some(value => value.uri === entry.uri)) selected.value = [...selected.value, entry]; emit('confirm') }
 }
 function selectTree(id: string | null): void {
-  if (!id) return
+  if (!id) {
+    const uri = currentUri.value
+    expanded.value = expanded.value.includes(uri)
+      ? expanded.value.filter(value => value !== uri)
+      : [...expanded.value, uri]
+    return
+  }
   for (const scheme of schemes.value) if (id === `${scheme.scheme}://`) { navigate(id); return }
   const find = (nodes: BrowserNode[]): FileEntry | undefined => {
     for (const node of nodes) { if (node.id === id) return node.entry; const entry = find((node.children ?? []) as BrowserNode[]); if (entry) return entry }

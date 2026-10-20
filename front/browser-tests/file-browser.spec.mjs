@@ -133,6 +133,39 @@ test('shared videos play from range URLs, release access on closing and reopen w
   expect(downloads).toBe(0)
 })
 
+for (const width of [1440, 390]) test(`tree folders collapse and reopen on repeated clicks at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  await setup(page)
+  let reads = 0
+  await page.route('**/api/file-share/browser/entries?*', route => {
+    const uri = new URL(route.request().url()).searchParams.get('uri')
+    if (uri === 'console://') return route.fulfill({ json: pageOf(uri, [entry('console://reports/', 'Reports', true)]) })
+    reads++
+    return route.fulfill({ json: pageOf(uri, [
+      entry('console://reports/archive/', 'Archive', true), entry('console://reports/notes.txt', 'Notes.txt'),
+    ]) })
+  })
+  await mount(page, component, { route: '/files?agent_id=7', privileges: ['MEMORY_ACCESS'] })
+  if (width === 390) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
+  await page.getByText('Console', { exact: true }).click()
+  const tree = page.locator('.file-tree')
+  const reports = tree.getByText('Reports', { exact: true })
+  await reports.click()
+  if (width === 390) await page.getByRole('button', { name: 'Show locations', exact: true }).click()
+  await expect(tree.getByText('Archive', { exact: true })).toBeVisible()
+  await reports.click()
+  await expect(tree.getByText('Archive', { exact: true })).toBeHidden()
+  await expect(page.locator('.file-main').getByRole('button', { name: 'Open Notes.txt', exact: true })).toBeVisible()
+  await reports.click()
+  await expect(tree.getByText('Archive', { exact: true })).toBeVisible()
+  const reportsItem = tree.getByRole('treeitem', { name: 'Reports', exact: true })
+  await reportsItem.press('Enter')
+  await expect(tree.getByText('Archive', { exact: true })).toBeHidden()
+  await reportsItem.press('Enter')
+  await expect(tree.getByText('Archive', { exact: true })).toBeVisible()
+  expect(reads).toBe(1)
+})
+
 for (const width of [1440, 390]) test(`browse folders, scroll, retry and preview with the keyboard at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   await setup(page)
