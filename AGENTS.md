@@ -163,7 +163,7 @@ make update                 # Dev/prod: images + restart + DB sync + readiness c
 - `make clean` deletes volumes and is never a routine diagnostic step.
 
 Reference stack: Python 3.14, FastAPI, Pydantic 2, SQLAlchemy 2 async, PostgreSQL 17 and
-pgvector; Vue 3, Quasar 2, Pinia 3, Vue Router 5, vue-i18n 11 and TypeScript; Pydantic AI,
+pgvector; Vue 3, Quasar 2, Pinia 4, Vue Router 5, vue-i18n 11 and TypeScript; Pydantic AI,
 MCP/FastMCP and Docker Compose.
 
 ## Repository architecture
@@ -226,9 +226,9 @@ materialization is neither durable nor addressable by the agent. Consult the
 ### Tools and processes
 
 MCP tools, connections, and files use the contracts of `app.tools`, `app.mcp`,
-`app.connection`, and `app.file_share`. Business workflows use `app.process`; existing
-workflows execute through the external n8n bridge. The proposed native Galaris workflow
-feature means complete executable BPMN processes.
+`app.connection`, and `app.file_share`. Business workflows use `app.process`: external
+workflows can execute through the n8n bridge, and the native engine executes BPMN processes. See
+`docs/fr/dev/native-processes.md` for its supported executable profile and remaining limits.
 
 Never create a process definition, run, or engine adapter to wrap a standalone function,
 MCP tool, or technical operation. Duration, callbacks, retries, and durable tracking do

@@ -118,8 +118,10 @@ Choices are constrained, validated and traceable.
 - shared and private files, image generation/editing/analysis, and controlled SSH execution;
 - audio/video transcription, long-recording segmentation and hierarchical summaries; public
   YouTube captions use the same workflow without downloading the video;
-- durable personal and administrative processes, including idempotent n8n runs, callbacks,
-  cancellation and linked Task tracking;
+- native BPMN business workflows with agent and human activities, typed variables and live
+  monitoring, alongside external engines such as n8n; internal creation in the UI is currently
+  available in development mode;
+- independent JSON Datasets, an agent file browser and a shared Git editor alongside Chat;
 - long-running Goals with owners, referrers, schedules, cycles, evidence and manual controls.
 
 Capabilities are governed per agent, and specialized ones remain inactive by default. The runtime

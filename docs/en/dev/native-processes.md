@@ -5,7 +5,8 @@
 ## Resource ownership
 
 Current BPMN is stored directly in `process_definitions.bpmn_xml`. Process owns its
-revisions (`process_definition_revisions`) and access grants (`process_definition_grants`).
+revisions (`process_definition_revisions`) and authorizes resources before delegating permissions
+to `app.share`. `process_definition_grants` remains a historical migration source without business writes.
 Creating, editing, sharing or restoring a definition never creates or modifies a Document.
 Documents contain HTML and Datasets contain JSON. Launches freeze BPMN, graph and revision
 without a Document reference.
@@ -217,7 +218,9 @@ Process pages do not provide manual launch controls.
 `actors` contains graph-local roles: `id`, `name`, `kind: agent/human`, and `agent_id`
 or `user_id`. `config.actor` references a role. When assigned, `task` requires an agent
 actor; `human_task` requires a human actor. XML retains these assignments and exports
-`laneSet/lane/flowNodeRef` and `userTask`. Assignment never converts an activity's type.
+`laneSet/lane/flowNodeRef` and `userTask`. In the typed profile, tasks and IF nodes use human
+handling on human lanes and AI/code on agent lanes. Historical definitions retain rejection
+of incompatible type changes.
 Existing graphs without actors remain valid. Admission checks managed agent scope and
 active users; the engine rechecks these rights before each new effect. Data and file access follows the parent Process's policy; assignment creates no
 additional grant.

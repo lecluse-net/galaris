@@ -8,6 +8,11 @@ Galaris est une Progressive Web App (PWA). Un navigateur compatible peut l’ins
 le site existant : aucun paquet APK, compte de store ou passage par l’App Store n’est nécessaire.
 Une fois installée, elle possède sa propre icône et s’ouvre dans une fenêtre autonome.
 
+L'interface est disponible en français, anglais et chinois simplifié. Au premier
+chargement d'une langue, Galaris attend son catalogue avant d'afficher les nouveaux
+libellés. Une erreur de téléchargement conserve la langue utilisable et permet de
+réessayer. La langue de l'interface ne traduit pas les documents enregistrés.
+
 ## Avant de commencer
 
 Vous avez besoin :

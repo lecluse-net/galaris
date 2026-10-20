@@ -23,6 +23,15 @@ particularly for preparing the product website: detailed capabilities, condition
 
 [Assigning and following a Task](user/tasks.md)
 
+| Workflow | Guide |
+|---|---|
+| Organize Documents and act on a selection | [Document library](user/documents.md) |
+| Write, cite an object, share or export | [Rich content](user/rich-content.md) |
+| Create and reuse JSON | [Datasets](user/datasets.md) |
+| Browse an agent's resources | [Files](user/files.md) |
+| Work on a Git checkout with an agent | [Code editor](user/code-editor.md) |
+| Design and monitor a BPMN workflow | [Internal Processes](user/internal-processes.md) |
+
 This path explains, with examples:
 
 - what an Agent is and what Galaris actually orchestrates;
@@ -45,6 +54,8 @@ This path explains, with examples:
 [Install and operate Galaris](admin/installation.md)
 
 [Give any agent knowledge of Galaris](admin/product-knowledge.md)
+
+[Configure AI provider admission and concurrency](admin/provider-admission.md)
 
 This path covers installation and operations:
 

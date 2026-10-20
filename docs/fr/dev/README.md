@@ -2,29 +2,20 @@
 
 # Guide développeur
 
-Le [stockage textuel en base](memory-text-storage.md) décrit les colonnes de contenu
-des souvenirs, documents et révisions, ainsi que leur migration vérifiée sans effacement des sources.
+Ce guide décrit les contrats de contribution du code actuel. Les contrats et tests
+font foi ; les plans décrivent les extensions encore ouvertes.
 
-Le [domaine Dataset](datasets.md) décrit les types JSON communs, les ressources `data://`,
-les alias historiques et le pont des applications documentaires.
-
-Le [stockage des fichiers internes](file-storage.md) décrit `file://`, le registre partagé
-et la migration vérifiée des PJ Documents et Chat.
-
-Le [profil BPMN natif](native-processes.md) décrit les processus internes et leurs contrats.
-
-Le [partage des ressources](sharing.md) décrit les configurations exclusives, les contrats communs et la migration des droits existants.
-
-Ce document décrit l’architecture qui existe dans le dépôt. Il sert de contrat de
-contribution : lorsqu’une implémentation impose un autre flux, corrigez soit le code soit ce
-guide, mais ne créez pas une seconde architecture implicite.
-
-Pour trouver rapidement une surface, utiliser la
-[cartographie générée](../architecture/generated/project-map.md). Les
-[invariants, flux et machines d’état](../architecture/README.md) complètent ce guide,
-et les choix structurels acceptés sont consignés dans
-[`project/decisions`](../../../project/decisions/README.md). La cartographie est un index statique ; les
-contrats et tests restent l’autorité sur le comportement.
+| Besoin | Référence |
+|---|---|
+| Trouver modules, routes, modèles et outils | [Cartographie générée](../architecture/generated/project-map.md) |
+| Comprendre les frontières et transitions | [Architecture, invariants et flux](../architecture/README.md) |
+| Comprendre les choix structurels | [Décisions acceptées](../../../project/decisions/README.md) |
+| Stocker du texte et préserver les migrations | [Contenus en PostgreSQL](memory-text-storage.md) |
+| Manipuler fichiers et pièces jointes | [Registre `file://`](file-storage.md) |
+| Manipuler du JSON et le codec typé | [Domaine Dataset](datasets.md) |
+| Exécuter un workflow interne | [Profil BPMN natif](native-processes.md) |
+| Partager des ressources | [Contrats et migration des ACL](sharing.md) |
+| Choisir une preuve et une commande de test | [Tester un comportement](testing.md) |
 
 Le [corpus de référence du Lab](lab-reference-corpus.md) fournit des cas reproductibles sur
 les contraintes éditoriales et les ressources. Les builds frontend affichent `frontend_build_bytes`
@@ -466,9 +457,11 @@ d'outil restent uniquement dans la trace d'audit.
 
 `app.memory` sépare l'identité et la gouvernance du stockage de contenu. PostgreSQL possède les
 items avec leur propriétaire direct, grants, révisions, sources, liens, usages, acquisitions
-idempotentes et jobs. Il n'existe pas d'espace mémoire intermédiaire. `ResourceStorage` manipule
-seulement des octets par identifiant opaque; le provider `native` écrit atomiquement dans le
-répertoire fixe `/data/memory`. La recherche applique propriétaire, accès directs, visibilité et validité
+idempotentes et jobs. Il n'existe pas d'espace mémoire intermédiaire. Les textes natifs courants
+et historisés vivent dans les colonnes PostgreSQL `content` ; `ResourceStorage` conserve les
+ressources opaques externes et historiques. Les fichiers internes utilisent `core.storage`
+et `/data/files`. Les sources de migration de `/data/memory` restent conservées.
+La recherche applique propriétaire, accès directs, visibilité et validité
 dans SQL avant le classement. Le classement favorise les termes informatifs de la requête,
 leur rareté, les identités nommées et les titres exacts, puis la similarité sémantique.
 Appartenance thématique, liens confirmés, provenance, fraîcheur et centralité restent des signaux
@@ -1397,10 +1390,17 @@ catalogue d'opérations REST. `RestResponse` conserve `status_code`, `headers` e
 configuration ou de transport sans exposer les identifiants ; aucun retry n'est implicite.
 Les chemins restent relatifs à l'adresse de base et les redirections ne sont pas suivies.
 L'absence de corps et `json_body=None` sont distincts : ce dernier transmet le JSON `null`.
-Les consommateurs Process et Code, les callbacks et le suivi de jobs ne sont pas ajoutés
-par cette capacité. Voir [la configuration administrateur](../admin/tool-administration.md).
+La façade REST ne crée aucun run Process ni suivi de job à elle seule. Les activités REST
+du moteur BPMN la consomment dans leur propre contrat d'exécution et de reprise. Voir
+[la configuration administrateur](../admin/tool-administration.md).
 
 ### Processus et moteurs externes
+
+Le moteur natif exécute le [profil BPMN](native-processes.md), avec activités IA,
+humaines, MCP, REST et code isolé. Process possède directement définitions, historique,
+variables et fichiers de run ; le partage commun passe par `app.share`. Le catalogue
+réunit moteurs natif et externes. Les restrictions de création UI et les limites de
+profil ne retirent pas les vérifications de droits du domaine.
 
 `app.process` possède les définitions, les runs, l’outbox, les callbacks et le registre des
 moteurs. `bridge.n8n` adapte l’API et les webhooks n8n au protocole `ProcessEngine` ; il ne
@@ -1411,7 +1411,8 @@ l'enregistrement, la configuration, les affectations et un adaptateur de traitem
 indépendant de n8n, ainsi que les garanties de reprise à vérifier. Plusieurs moteurs
 peuvent coexister ; le Tool de chaque définition sélectionne son moteur.
 
-Les six fonctions personnelles `process_*` appartiennent au package socle `galaris` ; il n’existe
+Les six fonctions personnelles de découverte, lancement et suivi externe appartiennent au
+package socle `galaris`, complétées par les commandes natives ; il n’existe
 plus de connexion `process` à activer. La définition associe explicitement un workflow à un agent,
 et les outils de liste, lecture, lancement et suivi filtrent ou revalident systématiquement cet
 agent. Les deux drivers ajoutent au prompt un catalogue compact des seuls processus affectés à
@@ -1640,7 +1641,8 @@ make quality
 
 `make typecheck` exécute Pyright strict sur le backend de production, `vue-tsc` sur le
 frontend, puis le contrôle de parité des catalogues frontend. Celui-ci vérifie les clés, les
-types de valeurs et les paramètres nommés entre l’anglais et le français. Les tests Python
+types de valeurs et les paramètres nommés entre l’anglais et le français, ainsi que les
+catalogues chinois simplifié. Les tests Python
 utilisent beaucoup de mocks et monkeypatch dynamiques : ils sont validés par pytest, tandis
 que le runtime reste strictement typé.
 

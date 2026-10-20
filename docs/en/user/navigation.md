@@ -369,27 +369,8 @@ a task with multiple calls may run for hours. Changes apply to new calls.
 
 ## Documents and knowledge
 
-Hover a folder or document row, or focus it with the keyboard, to use its shortcuts.
-**F2** renames, **F3** creates a document in the folder or a sub-document under the document,
-**F4** opens the folder as a list or opens the document, and **F7** creates a subfolder
-(a sub-document on document rows). **Delete** opens confirmation for the targeted row;
-it does not delete the bulk selection. Shortcuts are suspended while typing, in menus and
-dialogs, and respect each document's permissions and protections. Folder context menus
-also show the available keys.
-
-In **Documents**, **Show folder as a list** opens a paginated view with titles, thumbnails,
-owners and keywords. Enable **Include subfolders and sub-documents** to include descendants.
-**Show unclassified documents as a list**, beside the search field, opens documents without
-personal classification. Pages default to 50 documents and offer 10, 20, 50, 100 or 500.
-
-Select individual documents or **Select this page**, then open **Selection actions** to
-delete after confirmation, change ownership, add or remove keywords, or add, change or remove
-a share. Selection covers the displayed page and resets when changing pages or search.
-Each command preserves the other keywords and shares specific to each document. Read or
-write access is set for the chosen recipient across the selection; removing an explicit
-share preserves access inherited through teams or public sharing. Owners retain access
-through ownership. Results list successes and failures; accessible failed documents stay
-selected for another attempt. Concurrent changes are rejected instead of overwriting newer settings.
+The [document library guide](documents.md) covers creation, folders, sub-documents,
+lists, bulk actions and keyboard shortcuts.
 
 **Knowledge → Documents** (`/documents`) holds and creates authored HTML content.
 Independent JSON Datasets are created and managed separately under **Knowledge → Datasets**
@@ -415,39 +396,6 @@ to refresh the latest messages, or use the downward arrow.
 Deleted documents disappear from the chat document list. Their old references in messages
 display **Document deleted**, without allowing access to their content.
 
-In the **Documents** library, every folder offers a **New document** icon among its
-actions. Enter the title and owner: the document is automatically placed in that folder,
-which expands, and opens in the editor. The general creation button keeps new documents
-in the unclassified list.
-
-Library filters use a single **Owner** field to choose a person or agent. It lists **Me**,
-then users and agents, with search and independent pagination for each large list.
-Clearing the field restores all owners while retaining the other filters.
-
-Click a folder's **⋮** button or right-click the folder to open the same menu with icons and
-labels for all its actions: show as a list, create a document or folder, edit, sort, expand,
-collapse, and delete. **New document**, **New subfolder**, **Edit**, and **Delete** remain
-available directly on the row, including on mobile. Use the **⋮**
-button from the keyboard or press **Shift + F10** on the folder; **Escape** closes the menu.
-
-A document can also contain **sub-documents**. Use its **New sub-document** icon,
-or drag an existing document onto the middle of its row. The arrow expands its children
-across multiple levels; clicking the title still opens the document. To move a child out of
-its parent, drag it into the unclassified documents area or a folder.
-This hierarchy is personal, like folders: each document retains its own sharing rights.
-Deleting a parent preserves its children; readable children reappear in the unclassified
-list, including when access to their parent is revoked.
-
-Once the server confirms an operation, a moved document appears in its new location and a
-deleted document disappears immediately. Lists refresh in the background without blocking
-the next move. If the server rejects a move, the existing placement stays unchanged and you
-can retry.
-
-To develop a document with an agent, ask for updates to the relevant passages. The agent
-preserves useful information and can add distinct material; prior versions remain in the
-revisions. Specify when you need a chronological journal or meeting minutes: that chronology
-then remains relevant in the document.
-
 Both tabs place the agent and search on the first row, followed by the thematic dossier
 and interlocutor below. In **List**, the target date and its apply button complete the
 filters. The fields rearrange on smaller screens.
@@ -469,7 +417,7 @@ yet also contribute. The hidden-item count remains visible even if some have no 
 Their reappearance removes that weight without moving nodes.
 The graph is exclusively 3D. Captions of representatives with hidden items always remain
 visible, even when distant or overlapping. If WebGL is unavailable, a message offers a retry.
-Auto refresh applies additions, updates and deletions in the background every 30 seconds
+Auto refresh applies additions, updates and deletions in the background every five minutes
 while the tab is visible. It preserves the camera, positions, filters and open branches,
 including after reconnection. Previously loaded directories are also refreshed. A temporary
 failure leaves the graph usable; session or access changes still remove protected data.
@@ -566,10 +514,6 @@ Large maps place items near their anchors before settling and load all pages mat
 Spatial loading and subgroups remain the next steps
 in the [multi-level memory graph plan](../../../project/plans/graphe-memoire-multiechelle.md) (in French), with `partial` status.
 
-In **Documents**, ordinary refreshes update affected rows without clearing the tree or list.
-Expanded folders and filters stay in place, including after reconnection. A failed refresh
-can be retried while displayed documents remain available; access revocation removes them immediately.
-
 ## Preferences, monitoring and account
 
 **Administer → Preferences** (`/params`) presents a section grid and submenus for System,
@@ -637,17 +581,3 @@ of associated tasks and processes. Uncertain remote stop remains pending and nev
 starts a duplicate. An active Goal requires its own coordination. Independent work and
 your manual holds remain preserved. If a destination differs from the request, the agent
 may ask for clarification on the same work before sending or changing a resource.
-
-## Cite a Galaris object in a Document
-
-**Galaris link → Galaris objects** searches Tasks, Goals, Topics, discussions, text rounds,
-voice calls and voice turns. Their detail views and context menus provide **Copy reference**;
-paste it into the Document to insert a titled link. Select the link and choose **Show card**
-in the toolbar or context menu. **Show URL** restores the link.
-
-Task and exchange cards show essential metadata without a summary or copied execution
-content. Their saved state reflects insertion time. Opening a link or card title shows
-the current detail modal while keeping the Document open. When editing, **Open** and
-`Alt+Enter` also open the target. The reader's right-click menu provides Open and Copy
-reference. Access to each target is still required; sharing the Document does not share
-the referenced objects.

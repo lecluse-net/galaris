@@ -4,8 +4,8 @@
 
 Internal files have a `file://<uuid>` identity and a `files` registry in `core.storage`.
 File Sharing exposes reads, copies, independent uploads and thumbnails. Chat and Documents
-retain attachment membership and authorization. Datasets remain documents in this release;
-`app.dataset` and `data://` belong to a later step.
+retain attachment membership and authorization, as do Dataset and Process. JSON Datasets
+are independent `data://` resources owned by `app.dataset`; see the [Dataset contracts](datasets.md).
 
 ## Storage
 

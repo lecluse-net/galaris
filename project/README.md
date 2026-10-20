@@ -20,6 +20,12 @@ La [matrice des contrats et preuves](audits/2026-09-19-fiabilisation-transversal
 relie les corrections conversationnelles aux garanties de persistance, d'arrêt, de
 capacité, de recherche et de ressources à préserver dans les travaux suivants.
 
+## Documentation
+
+La [revue documentaire du 20 octobre 2026](audits/2026-10-20-documentation.md) décrit les
+écarts corrigés dans les guides, catalogues, skills et plans, leur couverture et les limites
+des vérifications effectuées.
+
 ## Performances SQL
 
 L'[audit SQL du 17 octobre 2026](audits/2026-10-17-sql-optimizations.md) décrit les

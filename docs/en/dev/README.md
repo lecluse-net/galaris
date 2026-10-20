@@ -2,46 +2,35 @@
 
 # Developer Guide
 
-[Text storage in the database](memory-text-storage.md) describes Memory, Document and
-revision content columns and their verified migration without deleting sources.
+This guide describes contribution contracts for the current implementation. Contracts
+and tests remain authoritative; plans describe extensions still open.
 
-The [Dataset domain](datasets.md) describes shared JSON types, `data://` resources,
-legacy aliases and the document application bridge.
-
-[Internal file storage](file-storage.md) describes `file://`, the shared registry and
-the verified migration of Document and Chat attachments.
-
-The [native BPMN profile](native-processes.md) documents internal process contracts.
-
-[Resource sharing](sharing.md) describes exclusive configurations, common contracts and migration of existing permissions.
-
-See [Testing behavior](testing.md) for test commands, real Vue component scenarios,
-concurrency fixtures and the limits of local bridge validation.
+| Need | Reference |
+|---|---|
+| Find modules, routes, models and tools | [Generated map](../architecture/generated/project-map.md) |
+| Understand boundaries and transitions | [Architecture, invariants and flows](../architecture/README.md) |
+| Understand structural choices | [Accepted decisions](../../../project/decisions/README.md) |
+| Store text and preserve migrations | [Content in PostgreSQL](memory-text-storage.md) |
+| Handle files and attachments | [`file://` registry](file-storage.md) |
+| Handle JSON and the typed codec | [Dataset domain](datasets.md) |
+| Execute an internal workflow | [Native BPMN profile](native-processes.md) |
+| Share resources | [ACL contracts and migration](sharing.md) |
+| Choose evidence and test commands | [Testing behavior](testing.md) |
 
 The [Lab reference corpus](lab-reference-corpus.md) supplies reproducible editorial and
 resource-boundary cases. Frontend builds print `frontend_build_bytes` using
 `scripts/report-build.mjs`: raw and gzip bytes for eager static JS/CSS imports, separately
-from all chunks. `startup_by_locale` includes the selected catalog in startup costs.
+from all chunks. `startup_by_locale` includes the selected catalogue in startup costs.
 English is immediately available as fallback; French and Chinese use generated JSON
-resources loaded before switching the interface. The HTML editor loads asynchronously. Fonts, API calls and PWA precache
-downloads are excluded from the eager graph; offline installation still precaches all assets.
-Budget inspection and these measurements are described in the [operations guide](reliability-operations.md).
+resources loaded before switching the interface. The HTML editor loads asynchronously.
+Fonts, API calls and PWA precache downloads are excluded from the eager graph; offline
+installation still precaches all assets. Budget inspection and these measurements are
+described in the [operations guide](reliability-operations.md).
 
-The frontend HTTP client imposes no API request deadline, including Lab analyses, document
-transfers and harness operations. Slow local operations can wait for their response;
-explicit cancellation uses `AbortSignal`, and responses from a previous session remain
-rejected. No browser timeout setting is needed. Server, provider and proxy limits are independent.
-
-This document describes the architecture that exists in the repository. It serves as a contribution
-contract: when an implementation requires a different flow, correct either the code or this
-guide, but do not create a second implicit architecture.
-
-To quickly find a surface, use the
-[generated map](../architecture/generated/project-map.md). The
-[invariants, flows, and state machines](../architecture/README.md) complement this guide,
-and the accepted structural decisions are recorded in
-[`project/decisions`](../../../project/decisions/README.md). The map is a static index; contracts and
-tests remain authoritative for behavior.
+The frontend HTTP client imposes no API request deadline, including Lab analyses,
+document transfers and harness operations. Explicit cancellation uses `AbortSignal`,
+and responses from a previous session remain rejected. Server, provider and proxy
+limits are independent.
 
 ## 1. Development Environment
 
@@ -456,8 +445,9 @@ in the audit trace.
 `app.memory` separates identity and governance from content storage. PostgreSQL owns
 items with their direct owner, grants, revisions, sources, links, usages, idempotent acquisitions,
 and jobs. There is no intermediate memory space. `ResourceStorage` manipulates
-only bytes by opaque identifier; the `native` provider writes atomically under the fixed
-`/data/memory` directory. Search applies owner, access, visibility, and validity in SQL before
+opaque external and historical resources. Current and historical native text lives in
+PostgreSQL `content` columns. Internal files use `core.storage` and `/data/files`;
+`/data/memory` migration sources are retained. Search applies owner, access, visibility, and validity in SQL before
 ranking. Ranking favors informative query terms, their rarity, named identities and exact
 titles, then semantic similarity. Topic membership, confirmed links, provenance, freshness
 and centrality remain secondary signals. No lexical or vector cutoff alone empties recall;
@@ -1363,11 +1353,18 @@ policy or a REST operation catalogue. `RestResponse` retains `status_code`, `hea
 and `body` (JSON or text), including HTTP error responses. `RestError` reports configuration
 or transport failures without revealing credentials; retries are never implicit.
 Paths stay relative to the base URL and redirects are not followed. An absent body differs
-from `json_body=None`, which sends JSON `null`. Process and Code consumers, callbacks and
-remote job tracking are outside this capability. See
+from `json_body=None`, which sends JSON `null`. The REST facade does not create Process runs
+or job tracking on its own. Native BPMN REST activities consume it under their own execution
+and recovery contract. See
 [administrator configuration](../admin/tool-administration.md).
 
 ### Processes and external engines
+
+The native engine executes the [BPMN profile](native-processes.md), with AI, human,
+MCP, REST and isolated code activities. Process directly owns definitions, history,
+variables and run files; shared permissions use `app.share`. Its catalogue combines
+native and external engines. UI creation restrictions and profile limits do not
+remove domain authorization checks.
 
 `app.process` owns definitions, runs, the outbox, callbacks, and engine registry. `bridge.n8n`
 adapts the n8n API and webhooks to the `ProcessEngine` protocol; it must not contain business
@@ -1378,7 +1375,8 @@ registration, configuration, assignments and a processing adapter independent of
 along with the recovery guarantees to verify. Multiple engines can coexist;
 each definition's Tool selects its engine.
 
-The six personal `process_*` functions belong to the core `galaris` package; there is
+The six personal functions for discovery, launch and external monitoring belong to the
+core `galaris` package, extended by native commands; there is
 no longer a `process` connection to activate. The definition explicitly associates a workflow
 with an agent, and list, read, launch, and tracking tools systematically filter or revalidate
 that agent. Both drivers add to the prompt a compact catalog of only the processes assigned to
@@ -1596,7 +1594,8 @@ make quality
 
 `make typecheck` runs strict Pyright on the production backend, `vue-tsc` on the
 frontend, then frontend catalog parity checks. The latter verify keys, value types,
-and named parameters between English and French. Python tests use many dynamic mocks and
+and named parameters between English and French, as well as Simplified Chinese catalogues.
+Python tests use many dynamic mocks and
 monkeypatches: they are validated by pytest, while the runtime remains strictly typed.
 
 `make tests` starts an ephemeral PostgreSQL pgvector database, runs the same DbAdmin as
@@ -1707,6 +1706,10 @@ make it explicit in the contract, tests, and documentation.
 
 Dependency, secret, SAST, image and restore checks are described in
 [Security validation](security-validation.md).
+
+Commands, test layers and the scope of their guarantees are detailed in
+[Testing behavior](testing.md), including real Vue components in the browser,
+concurrency fixtures and local bridge contracts.
 
 ## Editorial content
 

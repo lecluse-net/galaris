@@ -13,7 +13,7 @@ After installation and entering an OpenRouter token, the Galaris agent and its m
 configured. Start chatting, then progressively add agents, tools and integrations through the
 graphical interface. Asking a first question requires no team design or workflow construction.
 
-The application works on desktop and mobile, with English/French interfaces, light/dark themes
+The application works on desktop and mobile, with English, French and Simplified Chinese interfaces, light/dark themes
 and PWA installation. Navigation, search, notifications and monitoring keep routine work accessible.
 For installation/update commands, follow the [installation guide](admin/installation.md).
 
@@ -66,7 +66,8 @@ everywhere.
 ## Turn a document into a usable tool
 
 A document can contain a form, calculator, chart or small application. The agent writes the page;
-the human retains editable explanations and opens code through Source. A method and the calculator
+the human retains editable explanations and uses forms directly. The document editor
+offers no Source view. A method and the calculator
 that applies it can occupy the same documentary space.
 
 Independent `data://` Datasets store JSON under **Knowledge → Datasets**, with their own rights
@@ -119,6 +120,16 @@ check results in a browser. URIs identify the same files across tools.
 Skills provide reusable methods; connected MCP servers extend capabilities. Conversely, Galaris
 can expose an agent's authorised tools to external MCP clients. n8n Processes provide reusable
 business workflows tracked from submission to outcome.
+
+[Internal BPMN Processes](user/internal-processes.md) also coordinate agents, humans,
+tools and REST calls using typed variables, branches, loops and subprocesses. Human
+exchanges use messaging; monitoring shows the run graph, data, files and waits. Creation
+through the UI remains temporarily restricted to development mode. Runs retain their
+own state in Process.
+
+The [file browser](user/files.md) explores each agent's accessible locations. For Git,
+the [conversational code editor](user/code-editor.md) lets humans and agents work on the
+same checkout under explicit permissions.
 
 Email adds message search/reading, attachment processing and reply preparation. Where configured,
 sending waits for a human to approve the exact content. Calendars add availability checks, free-slot

@@ -55,8 +55,12 @@ historique ne prétend donc pas mettre à jour le conteneur partagé.
 - L’arrêt natif `/v1/runs/{id}/stop` est exposé par le driver ; une annulation locale tente
   aussi d’arrêter le run distant.
 
-## Preuves dans le code
+## Sources historiques de cette décision remplacée
 
 `back/bridge/hermes/native.py`, `manager.py`, `client.py`, `executor.py`,
 `docker-compose.hermes.yaml`, les paramètres `BRIDGE_HERMES_*` et les tests
 `back/bridge/hermes/tests/test_native.py` et `test_executor_cancellation.py`.
+
+Ces chemins désignent l'implémentation au moment de la décision ; plusieurs ont été retirés.
+Pour l'architecture et les opérations actuelles, suivre l'ADR 0058 citée en tête et le
+[guide Hermès](../../docs/fr/components/hermes.md).

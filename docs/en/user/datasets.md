@@ -2,73 +2,70 @@
 
 # Datasets
 
-Open **Knowledge → Datasets** to create JSON data. Datasets belong to this dedicated
-library and no longer appear in the Documents library or its creation dialog.
-An old Document link to a Dataset now opens its dedicated editor. An HTML Document can
-read its values for display or computation with the viewer's permissions and consent.
-In the toolbar, **Insert a link or file** then **Add an internal attachment** opens the
-file_share picker: choose `data://` and select the Datasets. Citations are inserted in the
-text without adding attachments. Each Dataset retains its own URI, history and sharing.
-Removing a citation does not delete data; sharing the Document does not share its Datasets.
-Click a Dataset to open its editor in a modal on desktop or mobile. Close it with the cross,
-Escape or the backdrop to return to the list with its search and page preserved. Unsaved
-changes require confirmation before closing. Dataset cards in chat open the same dedicated
-modal with complete JSON content, history and available permissions.
-In a document, paste a `data://` address or this installation’s `/dataset/…` URL, then choose
-**Show card** in the link’s context menu. Clicking the card title opens the Dataset modal
-without leaving the document. The JSON stays in the Dataset; the document stores its reference.
-Each Dataset has its own `data://`
-address, sharing and revision history. Content can be an object, array or scalar value,
-without an associated schema. Invalid JSON and conflicts preserve your local draft;
-keep any edits you need before reloading.
-JSON is indented when opened and in revision history. This display preserves exact values
-and does not save a change by itself.
+## Open the library and editor
 
-**Owner** and **Sharing** appear on the same row. The owner or an authorized administrator
-can transfer the Dataset to an agent they manage or to themselves; Dataset administrators
-can also select another active user. Transfers take effect immediately, preserve the draft
-and history, and keep the former owner as an editor. Read-only Datasets cannot be transferred.
+**Knowledge → Datasets** contains independent `data://` JSON resources. Each has its own
+title, owner, sharing and history. They do not appear in the Documents library, which holds
+HTML content. Legacy Document links to migrated Datasets open the same Dataset editor
+under current permissions.
 
-Create new Datasets here, separately from HTML Documents. An agent uses
+Click a Dataset to open its modal on desktop or mobile. The cross, Escape or backdrop
+returns to the list while preserving search and page. Unsaved drafts require confirmation
+before closing. Chat Dataset cards open this same modal, with full JSON, history and
+authorized actions.
+
+The **Owner agent** filter limits the list to a managed agent's Datasets. **All agents**
+restores all accessible Datasets, including user-owned ones. Search and pagination apply
+to the filtered results: 50 items by default, with choices 10, 20, 50, 100 or 500.
+
+## Create and edit JSON
+
+Create a Dataset from this library. Content can be an object, array or scalar without an
+associated schema. Use a root array `[]` to collect successive additions. An agent uses
 `file_create(path="data://", name="Responses", content="[]")` and retains the returned URI.
-Complete JSON content is required; replacing the returned URI's scheme with `document://`
-does not create a valid reference.
+Complete JSON is required; replacing its scheme with `document://` does not create a valid reference.
 
-When an agent updates part of the JSON, reads provide line coordinates for editing,
-the required revision and flags identifying partial lines to complete before replacement.
+JSON is indented on opening and in history without changing exact values or saving an edit.
+Invalid JSON or a revision conflict preserves your draft; retain the edits you need before
+reloading. Agent reads provide line coordinates, the revision and partial-line boundaries
+before `file_edit`. Reading and restoring old revisions still checks permissions and
+revisions; a restore does not reinstate historical sharing.
 
-On desktop, select a Dataset in the flat list on the left to open its editor on the right.
-Search and the current page remain in place when switching Datasets. On small screens,
-use **Back to list** to leave the editor. Unsaved changes require confirmation before
-switching Datasets.
-The **Owner agent** filter limits the list to Datasets owned by a managed agent.
-**All agents** restores all accessible Datasets, including user-owned ones. Search and
-pagination apply to the filtered results.
+## Ownership and sharing
 
-The editor's **Sharing** uses the same rules as Documents: private, groups or public for
-authenticated users, with read or write grants for agents, users and groups. Only the
-owner or an authorized administrator can change sharing; write access does not grant
-resharing rights. Groups follow current membership. Read-only Datasets cannot be reshared.
+**Owner** and **Sharing** sit on the same row. The owner or an authorized administrator can
+transfer the Dataset to a managed agent or themselves; a Dataset administrator may also choose
+another active user. Transfer is immediate, preserves the draft and history, and keeps the
+former owner as an editor. Read-only Datasets cannot be transferred.
 
-**Usages** lists documents containing the reference, process definitions and runs that
-reference it, and agents whose retained tool traces mention its URI. Each category respects
-your permissions on its sources. Dynamically constructed URIs and purged history may be
-missing; a mention in a trace does not establish successful access.
+Sharing follows Document rules: private, teams or public for authenticated users, with agent,
+user or team recipients and read or write access. Only the owner or an authorized administrator
+may reshare; write access alone is insufficient. Teams follow current membership. Read-only
+resources cannot be reshared. Documents, Datasets and Processes retain independent permissions;
+see the [sharing mechanism](../dev/sharing.md).
 
-**Delete** requires confirmation and removes access to the Dataset. Historical content is
-retained; existing references may become unavailable. Former process Datasets follow the
-same deletion permissions. Current run data and files are stored in Process runs and remain independent.
+## Cite and use data
 
-Old document links for migrated Datasets continue to address the same data. Changes and
-sharing revocations apply through both addresses.
+In a Document, **Insert a link or file → Add an internal attachment** opens the resource picker.
+Choose `data://`, then the Datasets: these become citations without copied JSON or additional
+attachments. Pasting a `data://` URI or this installation's `/dataset/…` link also lets you
+choose **Show card**. Its title opens the Dataset modal without leaving the Document.
+Removing a citation does not delete data; sharing the page does not share cited Datasets.
 
-HTML/JavaScript applications in Documents can read and populate these resources through
-the Dataset bridge, using your permissions and personal consent for the current Document
-revision. Share the page and its Datasets separately. See
-[document applications](../dev/document-apps.md).
+HTML/JavaScript applications can read and update Datasets through the Dataset bridge, using
+the viewer's permissions and personal consent for the page's current revision. Share page and
+data separately. See [document applications](../dev/document-apps.md). Referencing data does
+not automatically update previously authored prose.
 
-For a business process, the agent gathers missing information and prepares the variables
-in the format expected by that process. The engine validates them before execution.
-Attachments retain their authorized file URIs.
+## Inspect usages and delete
 
-Each Document, Dataset and process definition retains independent sharing. Changing access to one resource does not change access to another linked resource. Upgrades preserve existing permissions, including team access. See the [sharing mechanism](../dev/sharing.md).
+**Usages** lists Documents referencing the Dataset, Process definitions and runs mentioning
+it, and agents whose retained tool traces contain its URI. Each category respects your rights
+on source objects. Dynamically constructed URIs and purged history may be missing; a mention
+does not prove successful access.
+
+**Delete** asks for confirmation and removes access. History remains retained; existing
+references may become unavailable. Old Datasets created for Processes follow the same
+permissions. Current Processes keep data and files in their own runs rather than creating
+a Dataset for execution state. Before a workflow launch, the agent collects missing inputs
+and prepares the required variables; Process validates them and preserves authorized file URIs.

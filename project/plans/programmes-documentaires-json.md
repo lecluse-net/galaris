@@ -10,6 +10,15 @@ Le nom désigne un programme du catalogue personnel de l'agent ; une URI `docume
 peut aussi identifier directement son document. Le serveur exécute le programme sans
 navigateur et conserve un résultat durable. Les APIs décrites ci-dessous sont à construire.
 
+Revue du 20 octobre 2026 : cette proposition reste une conception. Aucun `document_exec`
+n'est exposé. Le moteur BPMN possède un port de programme conditionnel dont l'exécuteur
+reste absent ; cela ne livre pas l'exécution serveur des Documents. Les Datasets sont
+désormais indépendants `data://`, et les données d'un run appartiennent à Process.
+La conception ci-dessous doit être réconciliée avec ces frontières avant implémentation :
+une fonction autonome ne devient pas un workflow métier par son suivi durable. Les
+contrats actuels et l'[ADR 0197](../decisions/0197-process-owned-bpmn-storage.md) priment
+sur les propositions de stockage et de suivi conservées ici.
+
 ## 1. Garanties attendues
 
 | Garantie | Vérification de réception |

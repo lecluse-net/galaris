@@ -5,8 +5,9 @@
 ## Propriété des ressources
 
 Le BPMN courant est stocké directement dans `process_definitions.bpmn_xml`.
-Process possède ses révisions (`process_definition_revisions`) et ses droits
-(`process_definition_grants`). Créer, modifier, partager ou restaurer une définition
+Process possède ses révisions (`process_definition_revisions`) et autorise ses ressources
+avant de déléguer les droits à `app.share`. `process_definition_grants` reste une source
+historique de migration, sans écriture métier. Créer, modifier, partager ou restaurer une définition
 ne crée ni ne modifie de Document. Les Documents sont du HTML et les Datasets du JSON.
 Les lancements figent le BPMN, le graphe et la révision sans référence documentaire.
 
@@ -228,8 +229,10 @@ depuis le Chat ; les pages Process ne proposent pas de lancement manuel.
 `actors` contient des rôles locaux au graphe : `id`, `name`, `kind: agent/human`,
 `agent_id` ou `user_id`. `config.actor` référence le rôle. `task` exige un acteur agent
 si renseigné ; `human_task` exige un acteur humain. Le XML conserve ces affectations
-et exporte des `laneSet/lane/flowNodeRef` ainsi que `userTask`. Le type d'une activité
-ne se convertit pas lors d'une affectation. Les anciens graphes sans acteurs restent valides.
+et exporte des `laneSet/lane/flowNodeRef` ainsi que `userTask`. Dans le profil typé, les tâches
+et IF adoptent le traitement humain sur une ligne humaine et IA/code sur une ligne agent.
+Les définitions historiques conservent le refus des changements de type incompatibles.
+Les anciens graphes sans acteurs restent valides.
 L'admission vérifie le périmètre des agents et l'activité des utilisateurs ; le moteur
 revérifie ces droits avant un nouvel effet. Les droits de données et fichiers sont ceux du processus parent ; l'affectation ne crée
 aucun grant supplémentaire.

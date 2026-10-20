@@ -59,4 +59,4 @@ message ou d’autre effet externe.
 `back/app/agent/prompt_tree.py`, `back/app/agent/executor_prompts.py`,
 `back/app/lab/executor_prompt_service.py`, `back/app/lab/mechanism_registry.py`,
 `front/core/params/pages/index.vue` et
-`front/app/lab/components/MechanismEvaluationTab.vue`.
+`front/app/lab/components/LabWorkbench.vue` et `LabParameterEditor.vue`.

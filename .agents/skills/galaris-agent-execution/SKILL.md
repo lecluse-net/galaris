@@ -56,7 +56,8 @@ Le planner utilise cette URI pour les nouveaux inventaires ; seuls les anciens a
 vérifiés restent lisibles. Toujours fournir le JSON complet dans `content`.
 Les formulaires et petites applications sont du HTML ordinaire avec `form`, `style` et
 `script`, décrit dans `docs/fr/dev/document-apps.md`. Le runtime les isole sans ajouter de
-mode d'édition ou d'habillage ; seul Source affiche le code. Les lecteurs génériques restent inertes.
+mode d'édition ou d'habillage. Les documents n'ont pas de vue Source ; celle-ci reste disponible
+pour les champs `rich-text` hors documents. Les lecteurs génériques restent inertes.
 Conserver les métadonnées de format dans les projections
 et expliciter ce format dans les prompts qui font produire ces champs. L'enveloppe du prompt,
 le stream conversationnel et les arguments non éditoriaux gardent leur propre contrat.

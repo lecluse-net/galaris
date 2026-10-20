@@ -45,5 +45,7 @@ lectures et des notifications, Atlas a supprimé `conversation_mailboxes`, `conv
 ## Preuves dans le code
 
 `back/app/conversation/models.py`, `back/app/conversation/service.py`,
-`back/app/conversation/upgrade.py`, `back/app/voice/conversation_service.py` et les contributions
-désormais enregistrées dans `core.dbadmin`.
+`back/app/voice/conversation_service.py` et
+`back/app/conversation/tests/test_service.py`. L'ancien module de transfert Conversation
+a été retiré après contraction ; il ne constitue plus une procédure de mise à jour courante.
+Les opérations de convergence passent désormais par `core.dbadmin`.

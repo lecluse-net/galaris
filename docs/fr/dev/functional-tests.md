@@ -2,6 +2,25 @@
 
 # Catalogue des garanties fonctionnelles
 
+Ce catalogue indique où chercher une preuve existante avant de modifier un contrat.
+Il décrit les garanties couvertes par les suites ; leur présence ne signifie pas qu'elles
+ont été exécutées sur votre checkout. Pour choisir une commande et comprendre sa portée,
+consultez la [méthode de test](testing.md).
+
+| Garantie à vérifier |
+|---|
+| [JSON et droits Dataset](#datasets) |
+| [Processus natifs et interactions humaines](#processes) |
+| [Éditeur Git et reprise des sessions](#code) |
+| [Parcours entre domaines](#workflows) |
+| [Garanties des domaines](#domains) |
+| [Infrastructure et interface communes](#shared) |
+| [Documents et interactions](#documents) |
+| [Catalogue des fichiers](#files) |
+| [Portée, supervision et commandes durables](#scope) |
+
+## Interface partagée et édition documentaire
+
 `metric-card.spec.mjs` protège la valeur affichée, le chargement, l’activation facultative
 à la souris et au clavier et l’état sélectionné de `MetricCard`. Les historiques texte et
 voix gardent leurs paramètres de filtre et leur remise à zéro ; `execution.spec.mjs` couvre
@@ -210,6 +229,8 @@ liste et filtre HTML, lecture, droits et conservation du contenu sans réécritu
 `e2e/specs/document-refresh.spec.mjs` vérifie la redirection de `/memory/documents` vers
 `/documents` avec la sélection conservée, puis le rafraîchissement et le partage.
 
+<a id="datasets"></a>
+
 ## Datasets et contrats typés
 
 Le scénario `test_obsolete_process_markers_do_not_override_dataset_deletion_rights` vérifie
@@ -266,6 +287,8 @@ Les suites `tests/test_transcription_service.py` et `core/util/tests/test_http_m
 protègent l'envoi audio depuis des octets ou un fichier et la fermeture des handles après
 erreur ou annulation. `tests/test_audio_resource_discovery.py` couvre les catalogues vocaux
 publics, leur cache séparé par fournisseur, son expiration et le réessai après panne.
+
+<a id="processes"></a>
 
 ## Processus métier internes
 
@@ -425,6 +448,8 @@ aucun successeur, annulation des branches actives, codes d'erreur conservés pou
 exécuteurs et les enfants, données préservées. Les exceptions inattendues sont aussi couvertes.
 Les suites Dataset/partage couvrent les consommateurs communs. Elles ne qualifient
 pas à elles seules les effets d'un harnais ou d'un serveur n8n réel.
+
+<a id="code"></a>
 
 ## Dépôts Git dans la discussion
 
@@ -637,6 +662,8 @@ tests de génération et de revue utilisent donc un vrai plan exécutable.
 `back/tests/test_protocol_inference.py` reproduit une réponse fournisseur `response.failed`
 contenant un appel d'outil vide : l'inférence et sa trace restent en échec, en flux comme
 en réponse JSON, au lieu de transformer cet appel en plan accepté.
+
+<a id="workflows"></a>
 
 ## Parcours traversant plusieurs domaines
 
@@ -999,6 +1026,8 @@ du fournisseur (succès, abonnement disparu, refus et indisponibilité), avec un
 | Arrêt / reprise / concurrence | Un ancien worker ne remplace pas le propriétaire courant ; les effets ambigus ne sont pas rejoués aveuglément | `back/app/task/tests/test_active_lease.py`, `back/app/harness/tests/test_checkpoint.py`, `back/tests/test_durable_concurrency.py` |
 | Accusé d’outil perdu | Une commande SSH reste unique après perte de réponse et relecture PostgreSQL ; un timeout MCP après effet bloque le rejeu ; le retry conserve le journal | `make tests-recovery`, `back/app/harness/tests/test_ssh_checkpoint_recovery.py`, `back/app/harness/tests/test_execution_evidence.py`, `back/app/console/tests/test_durable_operations.py` |
 
+<a id="domains"></a>
+
 ## Domaines applicatifs
 
 `app/harness/tests/test_conversation_interrupt.py` interrompt un vrai agent Pydantic AI
@@ -1159,10 +1188,10 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | API REST des Tools | Héritage et surcharge des identifiants, connexion active propre à l'agent, modes d'authentification, erreurs HTTP, redirections, limites de taille et timeout ; sauvegarde, réouverture et désactivation du formulaire desktop/mobile et parcours assemblé avec identifiants masqués | `app/tools/tests/test_rest.py`, `front/browser-tests/system-tools.spec.mjs`, `e2e/specs/tools-rest.spec.mjs` |
 | Recherche Web | Préserver requête, encodage, ordre et langue configurée ; distinguer recherche vide, partielle, dégradée et échec ; conserver les sources valides, masquer les exceptions brutes et annuler le transport sans bloquer la boucle | `back/app/tools/tests/test_search.py` (frontière HTTP remplacée, client et outil réels) |
 | Paramètres d’indexation des Tools | Configurer `tools.fileindexing` par Tool et par connexion avec héritage, surcharge, valeur imposée et limites du provider ; reprendre les anciennes préférences sans les réappliquer ; respecter la valeur effective dans les recherches et le parcours automatique ; enregistrer depuis la Console embarquée et reprendre après erreur ; traduire les libellés internes dans les trois langues | `back/app/tools/tests/test_file_indexing.py`, `back/app/memory/tests/test_file_catalogue.py`, `front/browser-tests/tool-parameters.spec.mjs`, `e2e/specs/tool-parameters.spec.mjs` (desktop/mobile) |
-| Administration ToolAdmin | Tester/créer un candidat sans fuite de secret dans le modèle ou les checkpoints ; connexion initialement inactive, héritage, atomicité, conflits, dépendances et interdiction d’auto-délégation ; révocation et rotation sur les anciens clients FastMCP/Pydantic AI ; Process massif reprenable, annulable et revalidé | `back/app/tools/tests/test_tool_admin.py`, `test_admin_network.py` ; `e2e/specs/tool-admin.spec.mjs` (application assemblée, clavier, fermeture et réouverture, desktop/mobile) |
+| Administration ToolAdmin | Tester/créer un candidat sans fuite de secret dans le modèle ou les checkpoints ; connexion initialement inactive, héritage, atomicité, conflits, dépendances et interdiction d’auto-délégation ; révocation et rotation sur les anciens clients FastMCP/Pydantic AI ; rafraîchissement massif retournant ses résultats directement, avec droits revérifiés et processus métier préservés | `back/app/tools/tests/test_tool_admin.py`, `test_admin_network.py` ; `e2e/specs/tool-admin.spec.mjs` (application assemblée, clavier, fermeture et réouverture, desktop/mobile) |
 | Disponibilité de la recherche | Un HTTP 200 sans sources ne valide pas le diagnostic ; une dégradation conserve les sources et produit un verdict distinct | `back/app/tools/tests/test_search.py` ; `make check-search` pour le corpus externe volontaire, avec relecture humaine de la pertinence |
 | Mise à jour des images d'infrastructure | Récupérer les images déclarées, dont SearXNG, en dev et prod avant le build et le redémarrage ; un téléchargement échoué laisse les services actifs et fait échouer la commande | `make tests-update` (recettes Make réelles, frontière Docker remplacée) |
-| `document_show` (Conversation) | Exposer l'outil uniquement dans le chat interne autorisé, indépendamment de la connexion Memory et des anciens refus de fonctions du service système (ADR 0105) ; vérifier l'accès au document et les révocations ; ouvrir et rouvrir la visionneuse sans perdre les brouillons ni appliquer une demande à une autre conversation | `back/app/memory/tests/test_document_show.py`, `front/browser-tests/chat-document-workspace.spec.mjs` |
+| `document_show` (Conversation) | Exposer l'outil uniquement dans le chat interne autorisé, indépendamment de la connexion Memory, en appliquant les refus de fonction du service système ; vérifier l'accès au document et les révocations ; ouvrir et rouvrir la visionneuse sans perdre les brouillons ni appliquer une demande à une autre conversation | `back/app/memory/tests/test_document_show.py`, `front/browser-tests/chat-document-workspace.spec.mjs` |
 | `connection` | Activer/configurer une connexion et ses fonctions sans exposer ses secrets ou un autre agent | `test_connections.py`, `test_encryption.py`, `test_function_states.py` |
 | OAuth MCP | Retour direct localhost, CIMD/DCR et négociation du secret client, client pré-enregistré en repli, PKCE, chiffrement, retour unique et expirant, isolation et refus HTTP ; code d’appareil avant le relais, intervalle/slow_down, refus terminal et jeton tardif après déconnexion ; clients HTTP/SSE réels ; relais téléchargé sur un vrai port HTTP, contrôles Host/state, expiration et port occupé ; parcours navigateur desktop/mobile, nouvel onglet, erreurs et annulation au changement de connexion | `app/connection/tests/test_mcp_oauth.py`, `app/connection/tests/test_oauth_loopback.py`, `front/browser-tests/mcp-oauth.spec.mjs` |
 | `mcp` | Exposer les capacités et propager l’identité d’exécution dans les outils | `back/tests/test_realtime_security.py`, `back/app/tools/tests/test_mcp.py`, `back/core/authorize/tests/test_guard_provider.py` |
@@ -1244,6 +1273,8 @@ sélection par une réponse obsolète. La fusion exclut le sujet source et utili
 paginée commune. Preuves : `topics.spec.mjs`, `chat.spec.mjs`, `select-lifecycle.spec.mjs`
 et `filter-loading.spec.mjs` dans `front/browser-tests/`.
 
+<a id="shared"></a>
+
 ## Infrastructure et interface commune
 
 Pour les couleurs des barres système Android, les assertions DOM/CSS de
@@ -1304,6 +1335,8 @@ Les autres providers déclarés sont `openrouter`, `mammouth`, `anthropic`, `dee
 `ollama`. La suite partagée ne qualifie pas exhaustivement toutes leurs opérations. Ajouter
 un cas spécifique lorsqu’une différence de protocole le justifie, pas une copie du workflow
 canonique. Leurs modules frontend de configuration suivent les mêmes contrats de formulaire.
+
+<a id="documents"></a>
 
 ## Documents et interactions communes
 
@@ -1476,6 +1509,8 @@ L’annulation et le changement de document empêchent de proposer un PDF devenu
 Garanties : `mobile-editor-toolbar.spec.mjs`, `document-voice.spec.mjs`,
 `rich-text.spec.mjs` et `document-print.spec.mjs` dans `front/browser-tests/`.
 
+<a id="files"></a>
+
 ## Catalogue privé de fichiers et maintenance
 
 L'indexation se pilote dans **Dream → Indexation**. **Suivi** s'ouvre par
@@ -1598,6 +1633,24 @@ métadonnées suivent le nombre de dossiers pour 300 et 3 000 fichiers, avec re
 et nouveaux contrôles après révocation. Le scénario fournisseur vérifie aussi la résolution
 groupée des fichiers d'un Tool combinant File Share et Messenger.
 `e2e/specs/file-indexing.spec.mjs` exerce l'application assemblée et son API réelle.
+Le navigateur **Connaissances → Fichiers** est couvert par
+`front/browser-tests/file-browser.spec.mjs` : navigation, chargement au défilement,
+reprise après erreur sans perte des entrées, aperçu au clavier et changement d’agent
+pendant une réponse tardive. `app/file_share/tests/test_managed_http.py` vérifie ses
+routes HTTP assemblées, les refus de portée et de ressource, le contenu autorisé et
+la continuation des fichiers indépendants. `app/memory/tests/test_managed_files.py`
+vérifie que la liste et la recherche `file://` incluent les pièces jointes Document et
+Chat autorisées, réappliquent les droits après révocation et continuent sans doublon
+ni fuite à travers des pages de fichiers refusés. `app/console/tests/test_file_listing.py`
+vérifie plusieurs pages SFTP non ordonnées, sans doublon ni omission, les curseurs
+liés au répertoire et l’exclusion des symlinks et chemins extérieurs au home.
+`e2e/specs/file-browser.spec.mjs` vérifie la page assemblée sur mobile et bureau
+avec les vraies API : sélection d’agent, fichiers internes et pièces jointes depuis
+`file://`, réouverture des aperçus
+et modale documentaire sous le bon périmètre.
+
+<a id="scope"></a>
+
 ## Portée et commandes durables
 
 `app/conversation/tests/test_task_objective.py` et `test_service.py` couvrent aussi la
@@ -1630,22 +1683,6 @@ et ses coûts ; `test_dispatcher_planning.py` conserve la résolution des infér
 figées, sans leur ajouter les champs d'organisation.
 
 ## Règle de maintenance
-
-Le navigateur **Connaissances → Fichiers** est couvert par
-`front/browser-tests/file-browser.spec.mjs` : navigation, chargement au défilement,
-reprise après erreur sans perte des entrées, aperçu au clavier et changement d’agent
-pendant une réponse tardive. `app/file_share/tests/test_managed_http.py` vérifie ses
-routes HTTP assemblées, les refus de portée et de ressource, le contenu autorisé et
-la continuation des fichiers indépendants. `app/memory/tests/test_managed_files.py`
-vérifie que la liste et la recherche `file://` incluent les pièces jointes Document et
-Chat autorisées, réappliquent les droits après révocation et continuent sans doublon
-ni fuite à travers des pages de fichiers refusés. `app/console/tests/test_file_listing.py`
-vérifie plusieurs pages SFTP non ordonnées, sans doublon ni omission, les curseurs
-liés au répertoire et l’exclusion des symlinks et chemins extérieurs au home.
-`e2e/specs/file-browser.spec.mjs` vérifie la page assemblée sur mobile et bureau
-avec les vraies API : sélection d’agent, fichiers internes et pièces jointes depuis
-`file://`, réouverture des aperçus
-et modale documentaire sous le bon périmètre.
 
 Une garantie a une preuve principale et, si nécessaire, une preuve d’assemblage E2E.
 Une nouvelle fonction interne n’exige pas automatiquement un nouveau test. Une nouvelle

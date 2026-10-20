@@ -50,6 +50,7 @@ Agent runtime
    → app.process (définition + run + événement + job de démarrage)
    → registry d’engine
       ├── bridge.n8n
+      ├── moteur BPMN natif Galaris
       └── fake engine de test
    → callback ou refresh périodique
    → transition durable + output/error nettoyé
@@ -65,7 +66,9 @@ Cette vérification n'est appelée ni pour une réponse à une activité ni pour
 sans lancement. Voir la [décision 0195](../../../../project/decisions/0195-conversation-process-launch-permissions.md)
 pour les limites de l'interprétation assistée et le périmètre des outils concernés.
 
-Les six fonctions personnelles `process_*` appartiennent au package socle `galaris` : la connexion
+Les six fonctions personnelles de découverte, lancement et suivi externe appartiennent au
+package socle `galaris`. Les fonctions natives de définition, activités et débogage le complètent
+sous les droits propres du processus ; voir le [profil BPMN](../../dev/native-processes.md). La connexion
 optionnelle `process` n’existe plus. L’inventaire du prompt est produit depuis exactement la même
 projection que le serveur MCP ; il ne cite donc aucune fonction inactive, incompatible avec le
 runtime, désactivée ou retirée du scope de la tâche.

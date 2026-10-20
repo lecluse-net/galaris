@@ -80,7 +80,7 @@ out of saved content and are hidden in read-only and Source views.
 Place the cursor in the document or select text. On Mac, replace **Ctrl** with **Cmd**.
 Help displays **Cmd** only when Safari is detected, and **Ctrl** elsewhere.
 Numbers use the top row, including on AZERTY keyboards. The **Keyboard help** button
-in **Reading**, shown as a GNOME keyboard icon and also visible on mobile, or **Alt+0** inside
+in **Reading**, shown as a GNOME keyboard icon visible on desktop, or **Alt+0** inside
 the editor, shows the list of formatting, editing and navigation shortcuts.
 Press **Escape** to close the help.
 In read-only mode, help lists only reading and navigation commands; help and print
@@ -189,6 +189,19 @@ or Alt+Enter while editing. The thumbnail does not open a modal. Existing saved 
 thumbnail access follows the reader's rights.
 The inserted title is saved in your
 text: renaming the target later does not replace it.
+
+### Cite business objects
+
+**Galaris link → Galaris objects** searches Tasks, Goals, Topics, discussions, text rounds,
+calls and voice turns. Their details and menus offer **Copy reference**. Paste it into a
+Document to insert a titled link, then choose **Show card** from its toolbar or context
+menu while editing. **Show URL** restores the link.
+
+Task and exchange cards retain essential information from insertion time without copying
+execution content. The link or title opens current details in a modal under the viewer's
+permissions. While editing, **Open** or **Alt+Enter** also opens the target. In read-only
+mode, use left-click; right-click menus and contextual toolbars are disabled. Sharing the
+Document does not share cited objects.
 
 ## Callouts and attachments
 

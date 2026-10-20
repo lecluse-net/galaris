@@ -2,9 +2,6 @@
 
 # Guide administrateur
 
-L’[éditeur de code conversationnel](code-editor.md) décrit les origines, les accès et la
-préparation des Consoles externes pour la revue et l’édition Git.
-
 Ce guide couvre le déploiement, la configuration et l’exploitation de Galaris. Les
 commandes partent de la racine du dépôt.
 
@@ -13,6 +10,16 @@ Pour une première installation, suivez le [guide d’installation](installation
 → Chat avec Galaris**. Après la création du premier compte administrateur, l’agent Galaris,
 les modèles et le profil par défaut sont déjà prêts ; renseignez votre token pour discuter.
 Les sections suivantes détaillent les options d’administration.
+
+## Guides d'administration spécialisés
+
+| Opération | Guide |
+|---|---|
+| Installer et mettre à jour | [Installation](installation.md) |
+| Régler la concurrence des modèles | [Admission des fournisseurs](provider-admission.md) |
+| Configurer les outils, REST, OAuth et autorisations | [Administration des outils](tool-administration.md) |
+| Préparer l'éditeur Git et ses accès | [Éditeur de code](code-editor.md) |
+| Donner accès aux connaissances du produit | [Documentation pour les agents](product-knowledge.md) |
 
 ## 1. Préparer l’hôte
 
@@ -457,11 +464,13 @@ et que sa note atteint `DREAM_SKILL_ACTIVATION_SCORE`, dans la limite de
 d'injection, et permet de suspendre immédiatement une procédure. Dream ne crée plus de nœud Memory
 `experience` et les anciens nœuds ne sont plus injectés.
 
-Le contenu du provider natif réside dans le répertoire fixe `/data/memory`, avec une
-taille maximale par ressource définie par `MEMORY_RESOURCE_MAX_BYTES`. En production, ce chemin est
-dans le volume Compose `galaris_data`; en développement, il correspond à `./data/memory`. Une
-sauvegarde cohérente doit capturer PostgreSQL et ce volume au même point logique : les révisions en
-base contiennent des pointeurs opaques vers les ressources du volume.
+Les textes courants et historiques des souvenirs, documents et synthèses résident dans
+PostgreSQL. Les fichiers internes et pièces jointes utilisent le registre `files` et
+`/data/files` ; les miniatures utilisent `/data/thumbnails`. Les sources historiques de
+`/data/memory` et les sauvegardes SQL du schéma `galaris_migration` restent conservées
+après migration. Sauvegardez ensemble la base complète et les volumes applicatifs au même
+point logique. Les [règles de stockage et de migration](../dev/memory-text-storage.md)
+expliquent les copies à conserver ; ne supprimez pas l'ancien répertoire après la mise à jour.
 
 Archiver conserve le contenu mais le retire du rappel ordinaire. **Oublier définitivement** efface
 le contenu courant, toutes ses révisions, sources, ACL, liens, chunks vectoriels et traces
@@ -1063,7 +1072,7 @@ restauration PostgreSQL, fichiers, clés de chiffrement et de signature. Voir la
 
 Sauvegardez ensemble :
 
-- PostgreSQL ;
+- PostgreSQL complet, y compris les schémas de preuve et sauvegarde `galaris_migration` ;
 - `.env` dans un coffre sécurisé ;
 - le volume Docker `browser_credentials`, avec ses propriétaires et permissions ;
 - le volume ou répertoire `data`, notamment les workspaces, les médias et les données de
@@ -1073,7 +1082,7 @@ Sauvegardez ensemble :
 Exemple avec le service PostgreSQL fourni :
 
 ```bash
-docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB" > galaris.dump
+docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > galaris.dump
 ```
 
 La restauration est une opération intrusive : arrêtez les écritures, restaurez dans une

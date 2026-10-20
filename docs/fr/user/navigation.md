@@ -402,14 +402,8 @@ Les changements s’appliquent aux nouveaux appels.
 
 ## Documents et connaissances
 
-Dans la bibliothèque, survolez une ligne de dossier ou de document, ou placez-y le focus
-au clavier, pour utiliser les raccourcis. **F2** renomme, **F3** crée un document dans le
-dossier ou un sous-document du document, **F4** ouvre le dossier en liste ou le document,
-et **F7** crée un sous-dossier (un sous-document sur une ligne de document).
-**Suppr** ouvre la confirmation de suppression de la ligne ciblée ; il ne supprime pas la
-sélection en masse. Les raccourcis sont suspendus pendant la saisie, dans les menus et les
-dialogues, et respectent les droits et protections de chaque document. Le menu contextuel
-des dossiers rappelle les touches disponibles.
+La [bibliothèque documentaire](documents.md) explique création, dossiers, sous-documents,
+listes, traitements groupés et raccourcis clavier.
 
 **Connaissances → Documents** (`/documents`) sert à retrouver et créer les contenus rédigés HTML.
 Les jeux de données JSON indépendants se créent et se gèrent séparément dans
@@ -435,58 +429,6 @@ Revenez tout en bas pour actualiser les derniers messages, ou utilisez la flèch
 Les documents supprimés disparaissent de la liste des documents du chat. Leurs anciennes
 références dans les messages indiquent **Document supprimé**, sans permettre d’ouvrir leur contenu.
 
-Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**
-parmi ses actions. Renseignez le titre et le propriétaire : le document est automatiquement
-classé dans ce dossier, qui se déplie, puis s’ouvre dans l’éditeur. Le bouton de création
-général conserve les nouveaux documents parmi les documents non classés.
-
-Dans les filtres de la bibliothèque, le champ unique **Propriétaire** remplace le choix
-séparé du type et du nom. Il affiche **Moi**, les utilisateurs, puis les agents ; la recherche
-et la pagination par type permettent d’atteindre les grandes listes. Effacer ce champ
-rétablit tous les propriétaires ; les autres filtres restent applicables.
-
-Le bouton **⋮** de chaque dossier et le clic droit ouvrent le même menu avec les icônes et les libellés de toutes ses
-actions : afficher en liste, créer un document ou un dossier, modifier, trier, déplier,
-replier et supprimer. Les raccourcis **Nouveau document**, **Nouveau sous-dossier**, **Modifier**
-et **Supprimer** restent visibles sur la ligne, y compris sur mobile.
-Au clavier, activez le bouton **⋮** ou utilisez **Maj + F10** sur le dossier ; **Échap** ferme le menu.
-
-L’action **Afficher le dossier en liste** ouvre une liste paginée avec titres, miniatures,
-propriétaires et mots-clés. Cochez **Inclure les sous-dossiers et sous-documents** pour
-parcourir aussi ses descendants. L’action **Afficher les documents non classés en liste**,
-près de la recherche, présente les documents sans classement personnel. La pagination
-propose 10, 20, 50, 100 ou 500 documents, avec 50 par défaut.
-
-Sélectionnez des documents ou cochez **Sélectionner cette page**, puis ouvrez
-**Actions sur la sélection** : supprimer après confirmation, changer le propriétaire,
-ajouter ou retirer des mots-clés, ajouter, modifier ou retirer un partage. La sélection
-concerne uniquement la page affichée et se vide lors d’un changement de page ou de recherche.
-Chaque ajout ou retrait conserve les autres mots-clés et partages propres à chaque document.
-Un droit de lecture ou d’écriture s’applique au destinataire choisi sur toute la sélection ;
-retirer son partage explicite ne supprime pas les droits hérités d’une équipe ou du partage public.
-Les droits du propriétaire restent attachés à la propriété. Un bilan indique les réussites
-et les échecs, avec les documents encore accessibles en échec sélectionnés pour une nouvelle tentative.
-Une modification concurrente est refusée plutôt que d’écraser les réglages récents.
-
-Un document peut aussi contenir des **sous-documents**. Utilisez son icône
-**Nouveau sous-document**, ou glissez un document existant au centre de sa ligne.
-La flèche permet de déplier ses enfants, sur plusieurs niveaux ; cliquer sur le titre
-continue d'ouvrir le document. Pour sortir un enfant de son parent, glissez-le dans la zone
-des documents non classés ou dans un dossier.
-Cette hiérarchie est personnelle, comme les dossiers : chaque document conserve ses
-propres droits de partage. Supprimer le parent conserve les enfants ; ceux qui restent
-lisibles réapparaissent parmi les non-classés, également si l'accès au parent est retiré.
-
-Après confirmation du serveur, un document déplacé prend sa nouvelle place et un document
-supprimé disparaît aussitôt. Le rafraîchissement des listes continue en arrière-plan sans
-bloquer le déplacement suivant. Si le serveur refuse un déplacement, le classement reste
-inchangé et vous pouvez réessayer.
-
-Pour faire évoluer un document avec un agent, demandez une mise à jour des passages concernés.
-L'agent conserve les informations utiles et peut ajouter des éléments distincts ; les anciennes
-versions restent dans les révisions. Précisez si le résultat attendu est un journal chronologique
-ou un compte rendu : cette chronologie reste alors pertinente dans le document.
-
 Les deux onglets placent l'agent et la recherche sur la première ligne, puis le sujet
 et l'interlocuteur juste dessous. Dans **Liste**, la date cible et son bouton d'application
 complètent ces filtres. Les champs se réorganisent sur les petits écrans.
@@ -510,7 +452,7 @@ si certains n'ont aucun représentant. Leur réapparition retire ce poids sans d
 Le graphe est uniquement en 3D. Le texte des représentants d'éléments masqués reste toujours
 visible, même de loin et en cas de chevauchement. Si WebGL est indisponible, un message permet de réessayer.
 L'actualisation automatique applique les ajouts, modifications et suppressions en arrière-plan,
-toutes les 30 secondes quand l'onglet est visible. Elle conserve la caméra, les positions,
+toutes les cinq minutes quand l'onglet est visible. Elle conserve la caméra, les positions,
 les filtres et les branches ouvertes, y compris après reconnexion. Les dossiers déjà chargés
 sont aussi actualisés. Une erreur temporaire laisse le graphe utilisable ; les changements
 de session ou de droits d'accès continuent à retirer les données protégées.
@@ -619,11 +561,6 @@ avant stabilisation, en chargeant toutes les pages correspondant aux filtres. Le
 et les sous-groupes sont les étapes restantes du
 [plan de graphe mémoire à plusieurs niveaux de détail](../../../project/plans/graphe-memoire-multiechelle.md), au statut `partial`.
 
-Dans **Documents**, les rafraîchissements courants mettent à jour les lignes concernées
-sans vider l’arborescence ni la liste. Les dossiers ouverts et les filtres restent en place,
-y compris après une reconnexion. Une erreur de rafraîchissement permet de réessayer en
-conservant les documents affichés ; une révocation d’accès les retire immédiatement.
-
 ## Préférences, supervision et compte
 
 **Administrer → Préférences** (`/params`) présente une grille de rubriques et des sous-menus :
@@ -696,18 +633,3 @@ en attente ; il ne provoque pas de second lancement. Une Goal active nécessite 
 coordination. Les travaux indépendants et vos pauses manuelles sont conservés.
 Si une destination ne correspond pas à la demande, l'agent peut demander une précision
 sur le même travail avant d'envoyer ou de modifier une ressource.
-
-## Citer un objet Galaris dans un document
-
-**Lien Galaris → Objets Galaris** recherche les tâches, objectifs, sujets, discussions,
-rounds texte, appels et tours vocaux. Leurs fiches et menus contextuels proposent
-**Copier la référence** ; collez-la dans le document pour insérer un lien titré.
-Sélectionnez ce lien puis **Afficher une carte** dans la barre d'outils ou le menu
-contextuel. **Afficher l'URL** restaure le lien.
-
-Les cartes de tâches et d'échanges affichent les informations essentielles, sans résumé
-ni copie du contenu de l'exécution. Leur état correspond au moment de l'insertion.
-L'ouverture du lien ou du titre de la carte affiche les détails actuels en modale,
-sans quitter le document. En édition, utilisez aussi **Ouvrir** ou `Alt+Entrée`.
-En lecture, le clic droit propose l'ouverture et la copie de la référence. Les droits
-du lecteur restent nécessaires ; partager le document ne partage pas les objets cités.

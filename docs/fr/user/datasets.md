@@ -2,75 +2,76 @@
 
 # Jeux de données
 
-Ouvrez **Connaissances → Jeux de données** pour créer un ensemble de données JSON.
-Les jeux de données se gèrent dans cette bibliothèque dédiée ; ils ne figurent plus
-dans la bibliothèque Documents ni dans sa création.
-Un ancien lien documentaire vers un jeu de données ouvre désormais son éditeur dédié.
-Un document HTML peut lire ses valeurs pour les afficher ou les utiliser, avec les droits
-et l'autorisation de son lecteur. Dans la barre d'outils, **Insérer un lien ou un fichier**
-puis **Ajouter une PJ interne** ouvre le sélecteur file_share : choisissez l'emplacement
-`data://`, puis les jeux souhaités. Leurs citations sont insérées dans le texte, sans PJ.
-Le jeu conserve son adresse, son historique et son partage. Retirer la citation ne supprime
-pas les données ; partager le document ne partage pas ses jeux de données.
-Cliquez sur un jeu de données pour ouvrir son éditeur dans une modale, sur ordinateur
-comme sur petit écran. Fermez-la avec la croix, Échap ou un clic sur l’arrière-plan pour
-retrouver la liste, sa recherche et sa page courante. Les modifications non enregistrées
-demandent confirmation avant de fermer. Dans le chat, les cartes Dataset ouvrent cette
-même modale dédiée avec le contenu JSON complet, l’historique et les droits disponibles.
-Dans un document, collez une adresse `data://` ou le lien `/dataset/…` de cette installation,
-puis choisissez **Afficher une carte** dans le menu contextuel du lien. Le clic sur le titre
-de la carte ouvre la modale Dataset sans quitter le document. Le contenu JSON reste dans
-le Dataset ; le document conserve uniquement sa référence.
+## Ouvrir la bibliothèque et l'éditeur
+
+**Connaissances → Jeux de données** contient les ressources JSON indépendantes `data://`.
+Elles ont leur propre titre, propriétaire, partage et historique. Elles ne figurent pas
+dans la bibliothèque Documents, réservée aux contenus HTML. Les anciens liens documentaires
+vers les jeux migrés ouvrent le même éditeur Dataset, avec les droits actuels.
+
+Cliquez sur un jeu pour ouvrir sa modale sur ordinateur comme sur mobile. La croix,
+Échap ou le clic sur l'arrière-plan ramène à la liste, en conservant recherche et page.
+Un brouillon non enregistré demande confirmation avant fermeture. Les cartes Dataset du
+Chat ouvrent cette même modale, avec le JSON complet, l'historique et les actions autorisées.
+
 Le filtre **Agent propriétaire** limite la liste aux jeux d'un agent géré. **Tous les agents**
-rétablit tous les jeux accessibles, y compris ceux appartenant à un utilisateur. La recherche
-et la pagination s'appliquent au résultat filtré.
-Chaque jeu de données possède une adresse `data://`, un partage et un historique propres.
-Les nouveaux jeux de données se créent ici, séparément des Documents HTML. Un agent utilise
-`file_create(path="data://", name="Réponses", content="[]")` et conserve l'adresse retournée.
-Le contenu JSON complet est obligatoire ; il ne faut pas fabriquer une adresse `document://`
-en remplaçant le début de l'adresse obtenue.
-Les anciens liens documentaires de jeux de données migrés continuent de viser ces mêmes
-données ; les modifications et révocations de partage s'appliquent aux deux adresses.
-Son contenu peut être un objet, un tableau ou une valeur simple, sans schéma associé.
-L'éditeur conserve votre texte en cas de JSON invalide ou de conflit : rechargez
-uniquement après avoir conservé les modifications que vous souhaitez reprendre.
-Le JSON est indenté à l'ouverture et dans l'historique. Cet affichage conserve les valeurs
-exactes et n'enregistre aucune modification à lui seul.
+rétablit tous les jeux accessibles, y compris ceux d'un utilisateur. La recherche et la
+pagination s'appliquent au résultat filtré : 50 éléments par défaut, choix 10, 20, 50, 100 ou 500.
 
-Lorsqu'un agent met à jour une partie du JSON, ses lectures lui fournissent les repères
-de ligne nécessaires à l'édition, avec la révision à respecter et les lignes partielles
-à compléter avant remplacement.
+## Créer et modifier du JSON
 
-**Propriétaire** et **Partage** figurent sur une même ligne. Le propriétaire ou un administrateur
-autorisé peut transférer le jeu de données à un agent qu'il gère ou à lui-même ; un administrateur
-des jeux de données peut aussi choisir un autre utilisateur actif. Le transfert est immédiat,
-conserve le brouillon et l'historique, et laisse l'ancien propriétaire en écriture.
-Les jeux en lecture seule ne peuvent pas être transférés.
+Créez un jeu depuis cette bibliothèque. Son contenu peut être un objet, un tableau ou une
+valeur simple, sans schéma associé. Pour recueillir des ajouts successifs, partez d'un tableau
+racine `[]`. Un agent utilise `file_create(path="data://", name="Réponses", content="[]")`
+et conserve l'URI retournée. Le JSON complet est obligatoire ; remplacer son schéma par
+`document://` ne crée pas une référence valide.
 
-Dans l'éditeur, **Partage** reprend les règles des Documents : privé, groupes ou public
-pour les utilisateurs authentifiés, avec des destinataires agents, utilisateurs ou groupes
-en lecture ou en écriture. Seul le propriétaire ou un administrateur autorisé peut modifier
-ce partage ; le droit d'écriture ne donne pas le droit de repartager. Les groupes suivent
-leurs membres actuels. Un jeu de données en lecture seule ne peut pas être repartagé.
+Le JSON est indenté à l'ouverture et dans l'historique sans changer les valeurs exactes ni
+enregistrer une modification. Un JSON invalide ou un conflit conserve votre brouillon ;
+gardez les changements à reprendre avant de recharger. Les lectures d'un agent donnent les
+repères de ligne, la révision et les limites des lignes partielles avant `file_edit`.
+La consultation et la restauration d'une ancienne version restent soumises aux droits
+et au contrôle de révision ; une restauration ne rétablit pas d'anciens partages.
 
-**Utilisations** liste les documents qui contiennent sa référence, les définitions et
-exécutions de processus qui le référencent, et les agents dont les traces d'outils conservées
-mentionnent son URI. Chaque catégorie respecte vos droits sur ses sources. Les URI construites
-dynamiquement et les historiques déjà purgés peuvent manquer ; une mention dans une trace
-ne prouve pas que l'accès a réussi.
+## Propriétaire et partage
 
-**Supprimer** demande confirmation et retire l'accès au jeu de données. Ses contenus
-historisés restent conservés ; les références existantes peuvent devenir indisponibles.
-Les anciens jeux de données créés pour des processus se suppriment selon les mêmes droits.
-Les données et fichiers des exécutions actuelles sont stockés dans les runs et restent indépendants.
+**Propriétaire** et **Partage** sont sur la même ligne. Le propriétaire ou un administrateur
+autorisé peut transférer le jeu à un agent qu'il gère ou à lui-même ; un administrateur Dataset
+peut aussi choisir un autre utilisateur actif. Le transfert est immédiat, conserve brouillon
+et historique, et laisse l'ancien propriétaire en écriture. Les jeux en lecture seule
+ne peuvent pas être transférés.
 
-Les applications HTML/JavaScript dans les Documents peuvent lire et alimenter ces données
-via le pont Dataset, avec vos droits et votre consentement personnel pour la révision
-courante du Document. Partagez séparément la page et les jeux de données utilisés.
-Voir les [applications documentaires](../dev/document-apps.md).
+Le partage reprend les règles des Documents : privé, groupes ou public pour les utilisateurs
+authentifiés, avec des destinataires agents, utilisateurs ou groupes en lecture ou écriture.
+Seul le propriétaire ou un administrateur autorisé peut repartager ; le droit d'écriture
+ne suffit pas. Les groupes suivent leurs membres actuels. Une ressource en lecture seule
+ne peut pas être repartagée. Documents, Datasets et processus gardent des droits indépendants ;
+voir le [mécanisme de partage](../dev/sharing.md).
 
-Pour un processus métier, l'agent recueille les informations manquantes et prépare les
-variables au format attendu par le processus. Le moteur valide ces variables avant
-l'exécution. Les pièces jointes conservent leurs URI de fichiers autorisées.
+## Citer et utiliser les données
 
-Chaque document, jeu de données et définition de processus conserve un partage indépendant. Modifier les droits d’une ressource ne modifie pas ceux d’une autre ressource liée. La mise à jour conserve les partages existants, y compris les accès par groupe. Voir le [mécanisme de partage](../dev/sharing.md).
+Dans un document, **Insérer un lien ou un fichier → Ajouter une PJ interne** ouvre le sélecteur
+de ressources. Choisissez `data://`, puis les jeux voulus : ils sont cités sans copie JSON ni
+pièce jointe supplémentaire. Coller une URI `data://` ou un lien `/dataset/…` de cette
+installation permet aussi de choisir **Afficher une carte**. Son titre ouvre la modale
+Dataset sans quitter le document. Retirer la citation ne supprime pas les données ; partager
+la page ne partage pas les jeux cités.
+
+Les applications HTML/JavaScript peuvent lire et alimenter ces jeux via le pont Dataset,
+avec les droits et l'accord personnel du lecteur pour la révision courante de la page.
+Partagez séparément page et données. Voir les [applications documentaires](../dev/document-apps.md).
+Une référence aux données ne met pas automatiquement à jour un texte déjà rédigé.
+
+## Voir les utilisations et supprimer
+
+**Utilisations** liste les documents qui référencent le jeu, les définitions et exécutions de
+processus qui le mentionnent et les agents dont les traces d'outils conservées portent son URI.
+Chaque catégorie respecte vos droits sur les sources. Les URI construites dynamiquement et
+les historiques purgés peuvent manquer ; une mention ne prouve pas que l'accès a réussi.
+
+**Supprimer** demande confirmation et retire l'accès au jeu. Son historique reste conservé ;
+les références existantes peuvent devenir indisponibles. Les anciens jeux créés pour des
+processus suivent les mêmes droits. Les processus actuels stockent leurs données et fichiers
+dans leurs runs ; ils ne créent pas de Dataset pour conserver cet état. Au lancement d'un
+workflow, l'agent recueille les informations manquantes et prépare les variables attendues ;
+Process les valide et conserve les URI autorisées des fichiers.

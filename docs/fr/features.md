@@ -14,7 +14,7 @@ préconfigurés. On peut commencer à discuter, puis ajouter progressivement des
 et des intégrations depuis l’interface graphique. Il n’est pas nécessaire de construire une équipe
 ou un workflow pour poser sa première question.
 
-L’application s’utilise sur ordinateur et mobile, avec une interface française ou anglaise,
+L’application s’utilise sur ordinateur et mobile, avec une interface française, anglaise ou chinoise simplifiée,
 un thème clair ou sombre et une installation possible comme PWA. La navigation, la recherche,
 les notifications et les écrans de suivi gardent les opérations courantes accessibles.
 
@@ -74,7 +74,8 @@ un agent ou une équipe rend le travail commun accessible sans le recopier parto
 ## Faire d’un document un outil utilisable
 
 Un document peut contenir un formulaire, un calculateur, un graphique ou une petite application.
-L’agent écrit la page ; l’humain garde un texte explicatif éditable et accède au code par Source.
+L’agent écrit le HTML ; l’humain conserve un texte explicatif éditable et utilise directement
+les formulaires. L’éditeur de documents ne propose pas de vue Source.
 On peut ainsi conserver une méthode et son outil de calcul dans le même espace documentaire.
 
 Des Datasets indépendants `data://` stockent les données JSON dans **Connaissances → Jeux de données**.
@@ -132,6 +133,16 @@ Les compétences apportent des méthodes réutilisables ; les serveurs MCP conne
 capacités. À l’inverse, Galaris peut exposer les outils autorisés d’un agent à un client MCP externe.
 Les processus n8n apportent des traitements métier réutilisables, suivis depuis leur lancement
 jusqu’à leur résultat.
+
+Les [processus BPMN internes](user/internal-processes.md) coordonnent aussi agents,
+humains, outils et appels REST, avec variables typées, branches, boucles et sous-processus.
+Les échanges humains passent par la messagerie ; le suivi présente le graphe du run,
+ses données, ses fichiers et ses attentes. La création dans l'interface reste temporairement
+réservée au mode développement. Les runs gardent leur propre état dans Process.
+
+Le [navigateur de fichiers](user/files.md) explore les emplacements accessibles de chaque
+agent. Pour un dépôt Git, l'[éditeur de code conversationnel](user/code-editor.md) permet
+à l'humain et à l'agent de travailler sur le même checkout, avec des accès explicites.
 
 Le courrier complète ces moyens d’action : lire et rechercher des mails, traiter les pièces jointes,
 préparer une réponse et, si la connexion l’exige, attendre que l’humain approuve exactement ce qui

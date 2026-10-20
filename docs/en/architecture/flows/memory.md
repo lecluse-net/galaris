@@ -611,9 +611,12 @@ separately from the editorial record's format and size. A unique index protects
 each node/URL pair, and a deferred FK enforces primary URL membership. Usage
 records reference Tasks through a nullable FK that preserves the audit on deletion.
 
-`MemoryItem.id` is the stable logical identity. Each revision points to an opaque
-`(provider_code, resource_id)` pair. The `native` provider writes atomically to the fixed
-`/data/memory` directory; the database never derives a path from `resource_id`.
+`MemoryItem.id` is the stable logical identity. Current and historical native text is
+stored in PostgreSQL `content` columns in the same transaction as its metadata.
+Opaque `(provider_code, resource_id)` references remain relevant to external resources
+and historical sources; they are not paths. Migration retains `/data/memory` and its
+verified SQL backup. See the [text storage contract](../../dev/memory-text-storage.md)
+and the [internal file registry](../../dev/file-storage.md).
 
 There is no longer a product archive. Forgetting deletes all related resources, vector projections,
 and traces, then leaves only a contentless tombstone. Explicit forgetting retains an irreversible

@@ -650,9 +650,13 @@ Une nouvelle copie conserve l'URL principale ; un déplacement la suit et une su
 choisit un emplacement restant, sinon `NULL`. L'action DbAdmin transfère les liens
 existants avant contraction. Voir la [décision 0159](../../../../project/decisions/0159-memory-url-associations.md).
 
-`MemoryItem.id` est l'identité logique stable. Chaque révision pointe vers un couple
-`(provider_code, resource_id)` opaque. Le provider `native` écrit atomiquement dans le répertoire
-fixe `/data/memory` ; la base ne déduit jamais un chemin de `resource_id`.
+`MemoryItem.id` est l'identité logique stable. Les contenus textuels natifs courants et
+historisés sont enregistrés dans les colonnes PostgreSQL `content`, dans la transaction
+de leurs métadonnées. Les références opaques `(provider_code, resource_id)` restent
+pertinentes pour les ressources externes et les sources historiques ; elles ne sont pas
+des chemins. La migration conserve `/data/memory` et sa sauvegarde SQL vérifiée.
+Voir le [contrat de stockage textuel](../../dev/memory-text-storage.md) et le
+[registre de fichiers internes](../../dev/file-storage.md).
 
 Il n'existe plus d'archive produit. L'oubli supprime toutes les ressources, projections
 vectorielles et traces liées, puis seul un tombstone sans contenu demeure. Un oubli explicite

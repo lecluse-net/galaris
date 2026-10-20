@@ -88,7 +88,7 @@ contenu enregistré et sont masquées en lecture seule et dans Source.
 Placez le curseur dans le document ou sélectionnez du texte. Sur Mac, remplacez **Ctrl** par
 **Cmd**. L’aide affiche **Cmd** uniquement lorsque Safari est détecté, et **Ctrl** ailleurs.
 Les chiffres sont ceux de la rangée supérieure, y compris sur un clavier AZERTY.
-L’icône de clavier GNOME **Aide clavier** du groupe **Lecture**, également visible sur mobile,
+L’icône de clavier GNOME **Aide clavier** du groupe **Lecture**, visible sur ordinateur,
 ou **Alt+0** dans l’éditeur, affiche la liste des raccourcis de mise en forme, d’édition et de
 navigation. **Échap** ferme cette aide.
 En lecture seule, l’aide liste uniquement les commandes de lecture et de navigation ;
@@ -204,6 +204,20 @@ les liens dans le texte conservent Ctrl/Cmd-clic ou Alt+Entrée en édition.
 La miniature n’ouvre pas de modale. Les cartes déjà enregistrées
 bénéficient aussi de cet aperçu ; les droits du lecteur restent vérifiés pour la miniature.
 Le titre inséré est conservé dans votre texte : un renommage ultérieur ne le remplace pas.
+
+### Citer des objets métier
+
+**Lien Galaris → Objets Galaris** recherche les tâches, objectifs, sujets, discussions,
+rounds texte, appels et tours vocaux. Leurs fiches et menus proposent **Copier la référence**.
+Collez cette référence dans un document pour insérer un lien titré, puis choisissez
+**Afficher une carte** dans sa barre ou son menu contextuel en édition. **Afficher l'URL**
+restaure le lien.
+
+Les cartes de tâches et d'échanges gardent les informations essentielles au moment de
+l'insertion, sans copier le contenu de l'exécution. Le lien ou le titre ouvre les détails
+actuels en modale, avec les droits du lecteur. En édition, **Ouvrir** ou **Alt+Entrée**
+ouvrent aussi la cible. En lecture seule, utilisez le clic gauche ; les menus au clic droit
+et les barres contextuelles sont désactivés. Partager le document ne partage pas les objets cités.
 
 ## Encadrés et pièces jointes
 

@@ -78,7 +78,8 @@ vérifiés vers `data://` et des adaptateurs Memory ; ne pas créer de nouveaux 
 de ces surfaces historiques. Voir `docs/fr/dev/datasets.md` pour les critères de leur retrait.
 
 Les documents HTML acceptent directement formulaires, CSS et JavaScript. La barre d'outils
-et l'édition normales restent présentes ; seul le bouton Source montre le code. Ne pas ajouter
+et l'édition normales restent présentes. Les documents n'ont pas de vue Source ; celle-ci
+reste réservée aux champs `rich-text` hors documents. Ne pas ajouter
 de mode lecture/édition, de manifeste à rédiger ou d'assistant de formulaire. Lire
 `docs/fr/dev/document-apps.md` pour l'isolation interne, le pont Dataset et les lecteurs inertes.
 L'accès applicatif aux Datasets exige un accord personnel côté serveur pour la révision

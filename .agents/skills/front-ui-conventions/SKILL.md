@@ -49,7 +49,8 @@ concerné avant toute correction ; ne pas appliquer `rich-content` ni les styles
 à `CodeEditor`. Une primitive de coloration peut être partagée, sans coupler leurs présentations.
 Les documents acceptent directement formulaires HTML, CSS et JavaScript. Conserver la barre
 d'outils et l'édition habituelles, sans mode lecture/édition ni démarrage supplémentaire.
-Seul Source affiche le code. Tiptap conserve les portions
+Les documents n'ont pas de vue Source ; les champs `rich-text` hors documents la conservent.
+Tiptap conserve les portions
 interactives comme objets opaques internes ; leur rendu isolé n'ajoute aucun habillage.
 Les anciens `language-galaris-app` restent compatibles. Les autres lecteurs masquent le code
 et restent inertes. Les Datasets déclarés exigent les droits du lecteur et son accord personnel

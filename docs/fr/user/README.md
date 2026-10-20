@@ -2,26 +2,24 @@
 
 # Guide utilisateur et découverte
 
-Pour gérer les données structurées, consultez [Jeux de données](datasets.md).
+Ce guide présente Galaris sans prérequis sur les modèles, les API ou Docker. Les écrans
+accessibles dépendent des droits de votre compte. Pour une vue d'ensemble, commencez
+par le [tour des fonctionnalités](../features.md).
 
-Pour créer et observer des workflows, consultez [Processus métier internes](internal-processes.md).
+| Votre besoin | Guide |
+|---|---|
+| Trouver un menu ou un écran | [Navigation et parcours](navigation.md), [carte générée](../architecture/generated/navigation.md) |
+| Confier et suivre un travail | [Tasks, jalons et reprise](tasks.md) |
+| Organiser les contenus rédigés | [Bibliothèque documentaire](documents.md) |
+| Écrire, relier, partager et exporter | [Contenus riches](rich-content.md) |
+| Gérer des données JSON | [Jeux de données](datasets.md) |
+| Explorer les emplacements d'un agent | [Fichiers](files.md) |
+| Modifier un dépôt avec un agent | [Éditeur Git conversationnel](code-editor.md) |
+| Construire et observer un workflow | [Processus métier internes](internal-processes.md) |
+| Organiser les accès aux agents | [Équipes et autorisations de dialogue](teams.md) |
 
-Pour trouver un écran, consultez le [guide des menus et parcours](navigation.md) et la
-[carte de navigation générée](../architecture/generated/navigation.md).
-
-Ce guide s’adresse à une personne qui veut utiliser Galaris sans connaître les modèles de
-langage, les API ou Docker. Les écrans accessibles dépendent des droits attribués à votre
-compte.
-
-Dans les fenêtres de détail, de formulaire ou de benchmark du Lab, seul le contenu défile :
-le titre et sa croix de fermeture restent visibles, même lorsque le contenu est long.
-
-Pour commencer par une vue d’ensemble, consultez le
-[tour complet des fonctionnalités](../features.md).
-
-Pour organiser les accès aux agents, consultez [Équipes et autorisations de dialogue](teams.md).
-
-Pour suivre et coéditer le code des agents, consultez [Dépôts Git dans une discussion](code-editor.md).
+Dans les fenêtres de détail, de formulaire ou de benchmark du Lab, le contenu défile
+en conservant le titre et la fermeture accessibles.
 
 ## Galaris, simplement
 
@@ -84,7 +82,7 @@ La barre latérale ne montre que les écrans autorisés par votre rôle :
 | [Fichiers](files.md) | choisir un agent, explorer ses emplacements et répertoires et ouvrir les fichiers ou leurs vues métier ; chargement au défilement |
 | Dream | suivre le travail de fond, consulter son historique et gérer l’indexation des fichiers par agent |
 | Lab IA | analyser une tâche et mesurer les mécanismes IA sur des jeux de cas reproductibles |
-| Processus | lancer et suivre un workflow externe, par exemple n8n |
+| Processus | construire et suivre un workflow BPMN interne, ou lancer un workflow externe comme n8n |
 | Outils | voir les capacités MCP et API REST et les connexions des agents ; principalement destiné aux responsables |
 
 Pour configurer une intégration REST, un responsable active **API** sur le Tool, puis
@@ -104,7 +102,7 @@ par connexion. Les conversations vocales puis textuelles ont priorité sur le tr
 fond ; avec une seule place, un appel déjà engagé doit toutefois terminer avant le suivant.
 
 Les rubriques LLM, paramètres, utilisateurs et autorisations sont administratives. Leur
-absence dans votre menu est normale. Dans **Profil**, choisissez Français ou English ; ce
+absence dans votre menu est normale. Dans **Profil**, choisissez Français, English ou 简体中文 ; ce
 choix traduit l’interface et devient aussi la langue de référence de vos nouvelles tâches.
 Le menu de votre compte permet de changer d’affectation si plusieurs rôles vous ont été
 attribués. Les droits visibles changent immédiatement avec le rôle actif.
@@ -500,14 +498,15 @@ fournies au modèle, sans certifier la justesse des réponses. Voir les
 
 ### Lancer un processus métier
 
-L’écran **Processus** expose les workflows que l’administrateur a associés à un agent. Ouvrez
-une définition, renseignez son entrée JSON puis lancez une exécution. Son statut, sa sortie, ses
-événements et les tâches liées restent consultables dans le même écran.
+La page **Processus** réunit workflows BPMN internes et workflows externes, dont n8n.
+Demandez à l'agent de lancer le processus avec les informations et fichiers nécessaires.
+Pour un processus interne, les pages servent à l'édition et au suivi ; le lancement passe
+par le Chat, sans formulaire de lancement manuel. Les activités humaines vous sollicitent
+dans la messagerie et leur réponse poursuit le run existant.
 
-Le traitement peut être exécuté par n8n ou par un autre moteur intégré à Galaris.
-La définition affectée détermine le logiciel utilisé ; les actions de lancement et de
-suivi restent les mêmes. Pour préparer une intégration, l'administrateur suit le
-[guide des moteurs externes](../dev/process-engines.md).
+Le [guide des processus internes](internal-processes.md) détaille acteurs, variables,
+branches, données du run et contrôles. Pour préparer un logiciel externe, l'administrateur
+utilise le [guide des moteurs](../dev/process-engines.md).
 
 Le rafraîchissement technique des outils ne figure pas dans cet écran. Si l’agent signale
 un catalogue partiellement actualisé, demandez-lui de relancer le rafraîchissement pour les
@@ -549,8 +548,8 @@ La fiche d'un souvenir propose une **Temporalité (facultative)**. Renseignez un
 composantes utiles : jour, mois, année, jour de semaine, heure et minute. Les champs vides
 restent libres : jour 27 et mois 9 signifient chaque 27 septembre ; ajouter une année limite
 la correspondance à cette année. Une date sans heure correspond toute la journée. L'heure 9
-sans minute correspond de 9 h à 9 h 59. Le fuseau proposé est celui de l'application et peut
-être changé. L'interprétation s'affiche sous les champs ; **Retirer la temporalité** conserve
+sans minute correspond de 9 h à 9 h 59. Le fuseau est celui configuré pour Galaris (`TZ`) ;
+il ne se règle pas dans cette fiche. L'interprétation s'affiche sous les champs ; **Retirer la temporalité** conserve
 le souvenir et son contenu.
 
 Les correspondances actuelles ou prochaines enrichissent le contexte des agents, avec les
@@ -563,7 +562,7 @@ seule une temporalité. Ajouter un ancrage exclut le souvenir du rappel automati
 et lui donne priorité lorsqu'il correspond. Les souvenirs sans date suivent la recherche habituelle.
 
 Dans **Mémoire → Liste**, le filtre temporel est toujours appliqué, dès la première recherche.
-Un seul champ date et heure est prérempli avec l'heure actuelle du navigateur. Modifiez-le puis
+Un seul champ date et heure est prérempli avec l'instant actuel dans le fuseau global de Galaris. Modifiez-le puis
 cliquez sur **Appliquer** pour tester précisément cet instant, sans anticipation ni fuseau à saisir.
 La liste réunit deux sélections indépendantes : les souvenirs **sans date** répondant aux filtres
 texte, sujet et interlocuteur ; les souvenirs **datés** correspondant à la date cible,

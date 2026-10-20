@@ -2,9 +2,6 @@
 
 # Administrator Guide
 
-The [conversational code editor](code-editor.md) guide covers origins, permissions and
-prepared external Consoles for Git review and editing.
-
 This guide covers the deployment, configuration, and operation of Galaris. Commands are run from the repository root.
 
 For a first installation, follow the [installation guide](installation.md):
@@ -12,6 +9,16 @@ For a first installation, follow the [installation guide](installation.md):
 → Chat with Galaris**. After creating the first administrator account, the Galaris agent,
 models and default profile are ready; enter your token to start chatting.
 The following sections detail administration options.
+
+## Specialized administration guides
+
+| Operation | Guide |
+|---|---|
+| Install and update | [Installation](installation.md) |
+| Configure model concurrency | [Provider admission](provider-admission.md) |
+| Configure tools, REST, OAuth and authorizations | [Tool administration](tool-administration.md) |
+| Prepare the Git editor and its access | [Code editor](code-editor.md) |
+| Give agents product knowledge | [Documentation for agents](product-knowledge.md) |
 
 ## 1. Prepare the Host
 
@@ -443,11 +450,12 @@ and its score reaches `DREAM_SKILL_ACTIVATION_SCORE`, subject to
 injection state, and allows a procedure to be suspended immediately. Dream no longer creates a
 Memory `experience` node, and old nodes are no longer injected.
 
-The native provider's content resides under the fixed `/data/memory` directory, with
-a maximum size per resource defined by `MEMORY_RESOURCE_MAX_BYTES`. In production, this path is in
-the `galaris_data` Compose volume; in development, it corresponds to `./data/memory`. A
-consistent backup must capture PostgreSQL and this volume at the same logical point:
-database revisions contain opaque pointers to resources in the volume.
+Current and historical memory, document and synthesis text resides in PostgreSQL.
+Internal files and attachments use the `files` registry and `/data/files`; thumbnails
+use `/data/thumbnails`. Historical `/data/memory` sources and SQL backups in the
+`galaris_migration` schema remain after migration. Back up the complete database and
+application volumes at the same logical point. The [text storage and migration rules](../dev/memory-text-storage.md)
+explain which copies to retain; do not delete the old directory after updating.
 
 Archiving preserves the content but removes it from ordinary recall. **Permanently forget** deletes
 the current content, all its revisions, sources, ACLs, links, vector chunks, and usage traces;
@@ -1040,7 +1048,7 @@ restore, files, encryption keys and signing keys. See
 
 Back up together:
 
-- PostgreSQL;
+- the complete PostgreSQL database, including the `galaris_migration` evidence and backup schema;
 - `.env` in a secure vault;
 - the Docker `browser_credentials` volume, preserving ownership and permissions;
 - the `data` volume or directory, especially workspaces, media, and embedded SSH Executor data;
@@ -1049,7 +1057,7 @@ Back up together:
 Example using the provided PostgreSQL service:
 
 ```bash
-docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB" > galaris.dump
+docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > galaris.dump
 ```
 
 Restoration is an intrusive operation: stop writes, restore into an empty database of the same

@@ -8,7 +8,7 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **11 octobre 2026**, y compris
+Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **20 octobre 2026**, y compris
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
@@ -20,14 +20,14 @@ des connexions, du modèle et, pour un service externe, du compte configuré. Ce
 sur l’implémentation actuelle et ses usages accessibles. Il décrit le logiciel, sans attester la
 configuration ou la qualification de tous les fournisseurs d’une installation particulière.
 
-La revue inclut les **21 commits du 11 octobre**, jusqu’à `733c3b4`, ainsi que les fonctionnalités
-déjà inventoriées. Le dépôt était sans modification locale au début de cette inspection.
-Les comportements sont confrontés aux contrats, à l’implémentation et aux tests disponibles ;
-cette revue documentaire ne constitue ni une qualification de l’application ni une preuve de
-publication ou de déploiement. Les dix mécanismes du Lab restent distincts des quatorze mécanismes
-de fond enregistrés dans Dream.
+Il présente les capacités actuelles, leurs concepts, leurs conditions d’accès et leurs limites,
+sans constituer un journal des changements. La couverture comprend les fonctions métier,
+l’architecture, les API, le stockage, la sécurité, l’exploitation et les moyens de vérification.
+Les dix mécanismes IA du Lab, ses campagnes de processus et les mécanismes de fond Dream
+constituent des fonctions distinctes. Les sources et tests décrivent les garanties du logiciel ;
+ce catalogue ne constitue pas une qualification de chaque installation ou fournisseur.
 
-Les inventaires couvrent **246 fonctions MCP natives, 72 modules backend et 36 modules frontend**.
+Les inventaires couvrent **272 fonctions MCP natives, 77 modules backend et 39 modules frontend**.
 Les fonctionnalités réalisées restent distinctes des intentions du
 [registre des plans](../../../project/plans/README.md) ; les contrôles de
 qualité figurent dans [l’exploitation](#exploitation).
@@ -53,7 +53,7 @@ qualité figurent dans [l’exploitation](#exploitation).
 17. [Outils, connexions et serveur MCP](#outils)
 18. [Fichiers et ressources](#fichiers)
 19. [Recherche web et navigateur](#web)
-20. [Console et environnement Linux](#console)
+20. [Console, environnement Linux et code source](#console)
 21. [Images, audio, musique et vidéo](#medias)
 22. [Courrier électronique](#mail)
 23. [Calendriers et déclenchements](#calendrier)
@@ -90,7 +90,10 @@ qualité figurent dans [l’exploitation](#exploitation).
 | **Plan / sous-tâche** | Une décomposition réelle du travail | Chaque étape devient un travail suivi avec ses dépendances, ses critères et ses livrables. |
 | **Goal / objectif** | Une finalité poursuivie sur plusieurs cycles | Relance du travail selon une fréquence ou un objectif parent ; juge l’avancement et conserve un suivi. |
 | **Cycle d’objectif** | Un passage de travail et d’évaluation | Relie une Task à un verdict et prépare la suite du Goal. |
-| **Process / processus** | Une définition de traitement externe | Décrit un workflow, son moteur et son affectation ; chaque lancement crée une exécution suivie. |
+| **Process / processus** | Un workflow métier interne BPMN ou externe | Possède une définition et des exécutions suivies ; le moteur natif orchestre activités IA, humaines, outils, code, branches et sous-processus. |
+| **Acteur de processus** | Un rôle nommé humain ou agent | Affecte les activités à leur exécutant ; les variables d’entrée/sortie déterminent le contrat de chaque activité. |
+| **Dépôt de code** | Un checkout Git de la Console SSH | S’ouvre dans VS Code OSS depuis le chat, avec droits propres et référence `galaris://code/<uuid>`. |
+| **Fichier interne** | Des octets immuables sous `file://<uuid>` | Possède un nom modifiable, des métadonnées et des références métier ; son accès suit ses propriétaires ou les ressources qui le retiennent. |
 | **Run / tentative** | Une exécution concrète | Permet de distinguer un essai, une reprise et une nouvelle exécution, avec leurs coûts et erreurs. |
 | **Mémoire** | Une connaissance durable et gouvernée | Est recherchable, révisable, attribuée à une source et soumise à des droits. |
 | **Document** | Une ressource éditoriale HTML `document://` | Conserve un titre, un propriétaire, des versions et des partages ; sa page peut associer texte, médias et application interactive. |
@@ -118,7 +121,7 @@ flowchart TD
     Y --> T
     T --> P[Plan et sous-tâches]
     T --> O[Outils et collègues]
-    C --> X[Processus externe]
+    C --> X[Processus BPMN ou externe]
     O --> X
     O --> D[Documents et fichiers]
     T --> F[Résultat et livraison]
@@ -157,7 +160,7 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
 - **Navigation par domaine.** Accès au chat, aux agents, à l’activité, aux objectifs, aux documents,
   à la mémoire, aux sujets, à Dream, au Lab, aux incidents, aux processus, aux modèles et aux réglages.
   Certains domaines apparaissent comme onglets ou panneaux d’une page commune.
-- **Interface français/anglais**, thème clair ou sombre et palette commune **Solaire**. La langue de
+- **Interface français/anglais/chinois simplifié**, thème clair ou sombre et palette commune **Solaire**. La langue de
   l’interface est distincte des langues de travail des agents et des langues des contenus.
 - **Notifications refermables.** Les notifications temporaires peuvent être fermées immédiatement ;
   leur expiration automatique reste active. Les infobulles utilisent un contraste lisible.
@@ -193,13 +196,20 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
 - **Guidage documenté.** Le guide de navigation décrit les parcours par section, écran et onglet ;
   une carte générée depuis le frontend conserve routes, libellés FR/EN et conditions de visibilité.
   Les agents disposant de la connaissance du produit peuvent s’y référer pour guider l’utilisateur.
+- **Menus contextuels communs.** Conversations, messages, documents, fichiers, tâches, objectifs
+  et sujets proposent leurs actions applicables au clic droit et au clavier ; sélection de texte,
+  droits et saisies sont respectés. Un clic extérieur ferme la chaîne de menus sans bloquer la cible.
+- **Référence graphique en développement.** Développeurs présente palette, composants, icônes,
+  états et éditeurs avec données fictives et interactions sans sauvegarde. La route et sa navigation
+  sont exclues des constructions hors `dev`.
 
 La PWA ne transforme pas les agents en logiciel autonome hors connexion : les actions métier ont
 besoin du serveur Galaris et des services qu’elles utilisent.
 
 Les vues lourdes, éditeurs et onglets se chargent à leur ouverture. Un échec propose **Réessayer**
-sans recharger la page ni effacer les saisies. Les listes d’agents sont réutilisées une minute,
-les civilités, groupes et paramètres cinq minutes ; les sauvegardes invalident les caches concernés,
+sans recharger la page ni effacer les saisies. Les sélections d’agents mutualisent les lectures
+simultanées par périmètre, sans résultat conservé entre ouvertures ; les civilités, groupes et
+paramètres utilisent leurs caches de session bornés. Les sauvegardes invalident les caches concernés,
 et la déconnexion les vide. Un rechargement complet permet de voir immédiatement les changements
 d’une autre session. Les miniatures et aperçus du chat se chargent près de la zone visible ;
 les messages et la rédaction restent utilisables. Les avatars mutualisent leurs lectures et
@@ -210,6 +220,12 @@ Les vérifications de mise à jour sont réessayées même si l’indicateur ré
 à tort hors ligne. Le mode développement désactive le cache PWA. Les chargements communs
 d’identité, d’agents et de privilèges mutualisent les demandes concurrentes et ignorent les
 réponses d’une ancienne session pour éviter les rafales de requêtes et les remplacements tardifs.
+
+Les catalogues français et chinois se chargent au premier usage ; le changement de langue
+s’applique après leur lecture et rejette un choix devenu périmé. Un échec permet de réessayer,
+avec l’anglais disponible au démarrage. La PWA restaure son thème et signale sa couleur à Chrome
+au retour au premier plan ; le renouvellement du manifeste/WebAPK Android reste géré par Chrome.
+Son fond natif de secours est sombre, indépendamment de la couleur momentanée de l’interface.
 
 Sources : [guide utilisateur](../user/README.md), [PWA](../user/pwa.md),
 [onboarding](../../../back/app/onboarding/), [shell](../../../front/app/index/),
@@ -437,7 +453,7 @@ remplacer les affectations avant de pouvoir utiliser les ressources concernées.
 
 | Ressource livrée dans la configuration | Affectation initiale |
 |---|---|
-| DeepSeek V4.1 Flash | Les quatre niveaux texte et la vision |
+| DeepSeek V4.1 Flash 1017 | Les quatre niveaux texte et la vision |
 | GPT 5.4 Nano | Documents |
 | Whisper large v3 | Transcription |
 | MiniMax Hailuo 3 Max | Génération vidéo |
@@ -495,7 +511,31 @@ restent des erreurs explicites. L’activité conserve l’effort demandé même
 traduite. La [matrice des paramètres](../dev/provider-parameters.md) décrit les contrats vérifiés
 par des transports simulés, sans appel facturable aux services externes.
 
-### Décisions spécialisées et repli gouverné
+### Profil secondaire et capacité des fournisseurs
+
+Un agent peut choisir un **Profil principal** et un **Profil secondaire (secours)** facultatif.
+Une surcharge ou une indisponibilité admissible du fournisseur principal permet un essai du même
+usage dans le secondaire pour les inférences texte et structurées. Un usage secondaire vide ne
+remplace pas un modèle manquant. Le harnais interne peut basculer pendant un flux et conserve
+ce choix jusqu’à la fin du run, avec les résultats d’outils déjà acquis. Les journaux enregistrent
+les appels, les coûts et le motif de bascule. Les candidats explicites du Lab restent fixes ;
+un flux brut de passerelle déjà publié ne change pas de fournisseur. Les refus de contenu,
+annulations, autorisations et budgets ne sont pas contournés par ce secours.
+
+La concurrence des appels est réglable **par fournisseur**, partagée entre ses modèles.
+L’ordonnanceur distingue voix en direct, conversation texte et traitements de fond, réserve
+de la capacité aux dialogues et fait progresser les demandes anciennes. À priorité égale,
+il répartit la capacité entre propriétaires de travail et conserve leur ordre interne.
+Les fournisseurs ont des files indépendantes ; annuler une attente libère sa réservation.
+Réduire une limite laisse finir les appels engagés ; zéro signifie sans limite applicative.
+Cette admission locale ne remplace ni les quotas ni les limites du service distant.
+
+Sources : [résolution du secours](../../../back/app/llm/profile_fallback.py),
+[profils d’agent](../../../back/app/agent/schemas.py),
+[ordonnanceur fournisseur](../../../back/app/llm/provider_scheduler.py),
+[garanties d’admission](../../../back/app/llm/tests/test_provider_scheduler.py).
+
+### Contrats des décisions
 
 Le modèle Décision traite des questions à choix fermés et ses réponses sont validées avant
 application. L’adaptateur disponible passe par OpenRouter ; une ressource limitée aux décisions
@@ -794,6 +834,13 @@ Les runtimes externes sont épinglés dans leurs images. DeepSeek Harness utilis
 le protocole **Chat Completions** pour communiquer avec la passerelle Galaris. Voir le
 [guide DeepSeek Harness](../components/deepseek-harness.md).
 
+DeepSeek Harness peut continuer la même session après une erreur transitoire du fournisseur,
+avec attente interruptible et nombre d’essais borné. Les outils terminés ne sont pas rejoués ;
+une sortie partielle n’est pas déclarée réussie et un outil d’issue inconnue interdit le rejeu.
+Une fermeture du transport MCP du harnais interne conserve aussi le lot engagé : les lectures
+et effets idempotents reprennent avec leur identité, tandis qu’un effet non idempotent non
+acquitté attend réconciliation avant une nouvelle décision du modèle.
+
 ### Capacités effectives et choix d’exécution
 
 Le descripteur commun distingue les capacités implémentées, configurées, vérifiées pour la cible
@@ -904,8 +951,9 @@ L’accueil privilégie les conversations récentes. Les réponses enregistrées
 affichent leur phrase d’introduction dans la langue courante de l’interface, y compris après
 réouverture ; le titre et le choix conservent la langue de la demande d’origine.
 
-L’accueil du Chat propose les agents avec qui commencer une conversation et les conversations
-récentes en cartes : non-lus, dernier message et aperçu selon la préférence de confidentialité.
+L’accueil du Chat affiche d’abord toutes les conversations accessibles correspondant aux filtres,
+y compris anciennes ou sans message, puis les agents avec qui commencer un échange.
+Les cartes montrent non-lus, dernier message et aperçu selon la préférence de confidentialité.
 Les deux listes sont paginées, avec 50 éléments par défaut et les choix 10/20/50/100/500.
 Recherche, archives, conversations externes et vue d’un agent restent accessibles selon les droits.
 Créer une conversation présélectionne l’agent ; un nom déjà utilisé, archives comprises, reçoit
@@ -950,7 +998,7 @@ de » permet de consulter le périmètre d’un agent autorisé avec le privilè
 restent soumises aux droits et au caractère éventuellement non modifiable de la conversation.
 La disposition permet de redimensionner les colonnes et de retrouver le dernier message.
 
-Le panneau latéral organise **Conversations, Documents, Tâches et Processus**. Une rubrique
+Le panneau latéral organise **Conversations, Documents, Code source, Tâches et Processus**. Une rubrique
 s’ouvre lorsqu’elle reçoit des éléments et se replie lorsqu’elle devient vide ; un repli manuel
 est conservé lors des actualisations ordinaires. Les actions de création de conversation et
 de document restent accessibles dans les en-têtes, même repliés, selon les droits. Les filtres
@@ -993,7 +1041,7 @@ d’affichage ; une ancienne référence ne devient pas une sélection courante 
 
 Dans l’espace documentaire intégré sur desktop, le message transmet aussi la dernière sélection,
 la dernière position du curseur et un extrait du texte actuellement visible. Ces repères concernent
-le rendu éditable ou le JSON d’un Dataset, avec la révision observée. L’utilisateur
+le rendu éditable du Document HTML, avec la révision observée. L’utilisateur
 peut sélectionner un passage puis écrire « reformule ce passage » : le focus dans le champ de chat
 ne fait pas perdre la sélection du document.
 
@@ -1013,7 +1061,36 @@ partage rien, ne constitue pas un reçu de lecture et n’est pas exposée aux T
 canaux externes. Changement de disposition, réouverture et reconnexion préservent les données
 autorisées ; une réponse tardive ne remplace pas le nouveau document sélectionné.
 
-### Ce que fait le contrôleur conversationnel
+### Commandes humaines et continuité des réponses
+
+Dans une discussion native modifiable, l’utilisateur peut **mettre en pause**, **reprendre**,
+**arrêter**, **relancer** ou demander **Répondre maintenant** pour la réponse conversationnelle.
+La pause conserve le checkpoint ; Stop retire le texte provisoire et la réponse de ce round,
+en conservant le message humain. Relancer crée un nouveau round lié à celui arrêté.
+Répondre maintenant poursuit avec les informations disponibles, sans nouveaux outils ni
+chargement de compétences. Un outil engagé termine avant l’arrêt ; ses effets restent acquis.
+Les commandes vérifient la tentative observée, les droits du salon et `CHAT_SEND`.
+Elles restent distinctes des commandes des Tasks, Process et appels vocaux.
+
+Pause et arrêt persistent après fermeture ou reconnexion. Un nouveau message pendant une pause
+remplace le round en attente en réagrégeant les entrées non consommées. Une reprise automatique
+de worker ne lève pas une pause humaine. Les rounds texte reprennent après redémarrage depuis
+leurs checkpoints et reçus, sans consommer les essais réservés aux erreurs. Une action non
+idempotente ou une livraison sans reçu certain exige réconciliation avant répétition.
+
+Le contexte rassemble les **travaux actifs de l’agent**, y compris d’autres discussions : Tasks,
+processus internes et externes, questions, autorisations et dépendances connues. Le dispatcher
+de conversation peut rattacher un message à une attente ou proposer un Process adapté avec le
+modèle Décision ; l’exécuteur réalise l’action sous les contrôles habituels. Sans décision
+concluante, il recherche lui-même la bonne attente. Une demande de suivi ne répond pas à une
+question ; une réponse ambiguë appelle une précision. Les échanges internes entre collègues
+passent par des Tasks, avec les droits de contact, sans boucle de réponses conversationnelles.
+
+Sources : [parcours de conversation](../user/README.md),
+[transitions et reprise](../architecture/state-machines.md),
+[travaux actifs](../user/tasks.md).
+
+### Admission et exécution du tour
 
 Plusieurs messages rapprochés peuvent être regroupés dans un round cohérent. L’agent reçoit
 l’échange récent, les fichiers dans leur position chronologique, le contexte de l’interlocuteur,
@@ -1152,8 +1229,11 @@ Source : [tests des passerelles depuis une instance locale](../bridges/telegram-
 - Lire l’historique par pages ; les pièces jointes restent attachées au message qui les a reçues.
 - Rechercher des interlocuteurs sur les canaux actifs et utiliser une cible résolue.
 - Envoyer un message à un salon ou à un utilisateur, un fichier canonique ou une note audio générée.
-- Utiliser la connexion d’origine d’une Task pour sa réponse. Choisir un autre canal exige une
-  cible explicite ; un canal absent ou ambigu ne déclenche pas un repli silencieux.
+- Conserver le canal explicitement choisi, sinon celui de la Task ou de la conversation.
+  Sans route fixée, utiliser le dernier message entrant du destinataire exactement identifié,
+  puis le Chat interne ou la plus ancienne connexion disponible. Un canal explicitement choisi
+  ou fixé devenu indisponible échoue sans repli. La route est figée par appel avant autorisation ;
+  une note vocale exige aussi une room récente sur le canal retenu.
 - Lorsqu’un destinataire est un autre agent, appliquer les règles de dialogue et de coordination
   afin d’éviter les échanges automatiques sans fin.
 - Conserver l’historique observé même lorsqu’une plateforme ne permet pas de relire arbitrairement
@@ -1199,6 +1279,17 @@ selon l’installation, dont TURN. Une option d’auto-réponse existe pour les
 parcours externes pris en charge.
 
 ### Actions et continuité
+
+La voix temps réel accepte une interruption pendant un appel d’outil lent : elle coupe la
+restitution en cours et ne reprend pas l’ancienne phrase quand le résultat arrive. Les effets
+déjà acquis restent enregistrés. Les moteurs distinguent arrêt demandé et libération physique
+du transport ; un worker ancien ne peut plus publier après révocation de son autorité audio.
+
+Les gestionnaires habilités peuvent **Raccrocher de force** depuis un tour vocal : session,
+leases, checkpoints et autorisations en attente sont révoqués, en conservant messages et travaux
+métier. Un arrêt non encore confirmé reste visible. La suppression d’un tour attend le nettoyage
+audio ; une demande durable, suivie dans l’interface, reprend après erreur ou redémarrage avant
+de retirer le tour. Une fermeture de transport en échec n’est pas déclarée acquittée.
 
 - Démarrer, suivre et terminer un appel ; consulter la disponibilité de la voix avant son lancement.
 - Parler à l’agent, recevoir du texte/de l’audio et interrompre une réponse lorsque le transport
@@ -1362,10 +1453,11 @@ Une tâche peut demander une précision ou une autorisation et attendre la répo
 concerné. Une réponse libre peut résoudre une interaction en attente dans la conversation. Une
 approbation ne se déduit pas d’une réponse ambiguë.
 
-L’auto-approbation est un choix explicite. Son héritage dans une arborescence s’arrête à la frontière
-d’un autre agent : déléguer ne transmet pas automatiquement tous les consentements du parent.
-Le comportement d’un runtime externe reste celui de son adaptateur ; par exemple Claude Agent peut
-refuser une opération hors mode d’auto-approbation plutôt que fabriquer une approbation humaine.
+Les accords portent sur la fonction d'une connexion ou le type exact d'action d'un harnais,
+avec contrôle unitaire avant effet ; il n'existe plus de mode global d'auto-approbation.
+Déléguer ne transfère pas les consentements d'un autre agent. Les adaptateurs externes,
+dont Claude Agent, consultent l'autorisation Galaris et refusent l'opération lorsqu'un
+accord valide manque ; ils ne fabriquent pas d'approbation humaine.
 
 ### Suivre et commander l’exécution
 
@@ -1400,9 +1492,26 @@ Les vues de tâches affichent les blocs de texte et de réflexion une fois termi
 actualisant les états et résultats d’outils pendant l’exécution. Les réponses conversationnelles
 restent diffusées au fil de leur génération.
 
+Après deux minutes sans réflexion, texte, arguments ou résultat d’outil reçus, le suivi signale
+le silence sans interrompre le travail. Les pauses, attentes déclarées et pertes de connexion
+sont distinguées. Pour le harnais interne, **Interrompre l’appel et reprendre** ferme la génération
+et reprend la même Task avec ses résultats et son budget ; un outil engagé ou un effet incertain
+empêche cette interruption. Une boucle de raisonnement répétitif peut recevoir deux récupérations
+guidées au maximum, sans répéter les écritures réussies ; une boucle persistante laisse un diagnostic.
+Réessayer un plan reprend la première étape inachevée, y compris dans ses groupes imbriqués.
+
 La terminaison forcée libère les leases et les dépendances prévues, notamment un cycle de Goal
 bloqué. La suppression d’un travail actif invalide son exécution afin qu’un worker tardif ne puisse
 pas le faire réapparaître.
+
+**Terminer de force** rend la Task terminale et révoque son lease même si sa révision a changé.
+L’arrêt est committé avant la clôture du cycle Goal et les notifications, dont les échecs bornés
+ne remettent pas l’arrêt en cause. Répéter la commande peut reprendre la clôture d’un cycle ouvert.
+Un réessai ordinaire conserve le checkpoint opaque du driver et réconcilie son exécution existante ;
+une autorité expirée ou révoquée reste refusée. Les refus de portée portent un diagnostic distinct,
+non réessayable par simple changement d’arguments : la modification d’une cible exige un amendement
+explicite. Un document de suivi déjà autorisé peut être résolu depuis le contexte d’une continuation,
+avec sa provenance, sans autoriser les autres documents cités.
 
 ### Durabilité, reprise et livraison
 
@@ -1831,10 +1940,14 @@ les éléments sans représentant. Les titres de ces représentants restent touj
 Les racines utilisent le libellé du Tool enregistré en Memory, ou son schéma à défaut ; les anciens
 titres « . » et « / » sont corrigés à la synchronisation, en préservant les titres personnalisés.
 
-Toutes les trente secondes lorsque l’onglet est visible, l’actualisation applique les ajouts,
+Toutes les cinq minutes lorsque l’onglet est visible, l’actualisation applique les ajouts,
 changements et suppressions en arrière-plan, y compris dans les dossiers chargés. Elle conserve
 caméra, positions, filtres et branches, aussi après reconnexion. Une panne temporaire laisse
 la carte utilisable ; les changements de session ou de droits retirent les données protégées.
+
+**Réinitialiser le positionnement** recalcule le placement du contexte courant et recadre la vue,
+en conservant les filtres ; les positions sont enregistrées pour la réouverture. Translation,
+rotation, zoom et dépliage des branches conservent une navigation cohérente après changement d’échelle.
 
 Les branches d’au moins huit feuilles exclusives se replient en groupes avec compteur.
 Le zoom ou un clic les déplie ; le dézoom les replie sans masquer les nœuds partagés.
@@ -1964,7 +2077,9 @@ plusieurs copies d’un document partagé entre agents. Le propriétaire affich�
 document, et non un lecteur qui le rend accessible. La modification du propriétaire suit ses
 droits propres ; le classement personnel ne nécessite qu’un accès en lecture.
 
-La suppression efface le contenu, les versions, les fichiers et les index associés. Dans le chat,
+La suppression efface contenu, versions et index et retire les références de fichiers du document.
+Les octets restent protégés s’ils sont encore retenus par une autre ressource ou un propriétaire.
+Dans le chat,
 les références historiques conservent une carte portant le dernier titre et « Document supprimé »,
 sans aperçu du contenu ni action d’ouverture ou de téléchargement. Cette carte ne rétablit aucun
 accès à la ressource ; les anciennes suppressions sans titre conservé utilisent un libellé générique.
@@ -2022,7 +2137,30 @@ ou d’une ancienne session sont ignorées. Ouvrir un lien vers un document hors
 une fausse ligne aux résultats courants. La révocation d’accès masque le document et interdit
 toute nouvelle mutation de classement, même si son ancienne association existe encore.
 
-### Icônes personnelles
+### Sous-documents et gestion en masse
+
+La hiérarchie personnelle peut imbriquer des documents sur plusieurs niveaux, par création
+d’un **sous-document** ou glisser-déposer. Elle ne change ni contenu ni partage. Un enfant
+peut être sorti vers un dossier ou les non-classés ; supprimer le parent ou perdre son accès
+conserve les enfants encore lisibles parmi les non-classés. Les cycles sont refusés.
+
+**Afficher le dossier en liste** propose titres, miniatures, propriétaires et mots-clés, avec
+inclusion facultative des sous-dossiers et sous-documents. Une liste analogue présente les
+non-classés. La sélection, limitée à la page courante, permet suppression confirmée, changement
+de propriétaire, ajout/retrait de mots-clés et ajout/modification/retrait de partages. Chaque
+opération préserve les autres mots-clés et grants ; retirer un grant direct ne retire pas les
+droits d’équipe ou publics. Les conflits n’écrasent pas les données récentes. Un bilan conserve
+les échecs encore accessibles sélectionnés pour réessayer, sans répéter les réussites.
+
+Les raccourcis de bibliothèque permettent de renommer (F2), créer un document ou sous-document
+(F3), ouvrir (F4), créer un sous-dossier ou sous-document (F7) et demander une suppression (Suppr).
+Ils ciblent la ligne survolée ou au focus, sont suspendus pendant la saisie et respectent les droits.
+Les menus contextuels sont accessibles au clic droit, au bouton d’actions et au clavier.
+
+Sources : [bibliothèque et actions groupées](../user/navigation.md),
+[interactions de gestion en masse](../../../front/browser-tests/document-bulk.spec.mjs).
+
+### Personnaliser les icônes
 
 Pendant l’édition du dossier, un clic sur son icône ouvre une palette avec recherche et collections :
 le choix enregistre ensemble le nom saisi et l’icône. La palette propose des émojis Unicode dans la
@@ -2050,6 +2188,7 @@ Goal — emploient un profil riche plus restreint.
 L’éditeur permet :
 
 - titres, paragraphes, styles de texte, taille, gras, italique, soulignement et surlignage ;
+- barré, exposant, indice, retrait, caractères insécables et effacement du formatage direct ;
 - listes, alignement, citations, blocs de code et liens ;
 - tableaux, styles adaptés au thème, lignes/colonnes, en-têtes, fusion/séparation de cellules et largeurs ajustables ;
 - recherche/remplacement, annulation/rétablissement et plein écran ; Source reste réservé aux champs `rich-text` hors documents ;
@@ -2096,6 +2235,38 @@ courantes et conservent unités, dates, sources et incertitudes. Cette politique
 adapté au besoin : une réponse autonome ou un fait isolé n’impose pas un Dataset. Une référence
 ne rafraîchit pas automatiquement les textes existants ; les registres métier restent leur source
 d’autorité et les droits de la conversation ou de la Task continuent de s’appliquer.
+
+### Parcourir, transférer et supprimer un Dataset
+
+La bibliothèque Dataset filtre par agent propriétaire, recherche et pagine les ressources
+accessibles. Un clic ouvre une modale commune à la bibliothèque, au Chat et aux cartes de documents,
+avec JSON complet, historique, partage et propriétaire. Fermer retrouve recherche et page ; un
+brouillon non enregistré exige confirmation. L’indentation d’affichage ne modifie pas les valeurs.
+Les lectures agentiques donnent révision, coordonnées de lignes et indicateurs de lignes coupées,
+en conservant les offsets de pagination en caractères pour permettre une édition partielle sûre.
+
+Le propriétaire ou administrateur habilité peut transférer le Dataset à lui-même, à un agent géré
+ou, avec l’administration Dataset, à un autre utilisateur actif. Le transfert conserve brouillon,
+historique et ancien propriétaire en écriture. Lecture seule et conflits empêchent la mutation.
+**Utilisations** recense, sous droits et par catégorie, documents, processus/runs et traces d’outils
+agents citant l’URI ; les références construites dynamiquement ou purgées peuvent manquer.
+Une trace ne prouve pas un accès réussi. La suppression confirmée retire l’accès courant et conserve
+l’historique ; elle ne supprime pas les données des runs Process, stockées dans leur propre domaine.
+
+Un Document peut citer ou joindre une **référence vivante** vers un Dataset sans copier son JSON.
+Le manifeste et File Sharing conservent `data://` ; ajout et retrait contrôlent les droits du
+Document, et l’ajout exige la lecture du Dataset. Retirer le lien laisse les données intactes.
+Les Documents, leur recherche et le graphe Memory excluent les Datasets ; les anciens liens
+documentaires vérifiés ouvrent l’éditeur Dataset avec ses droits actuels.
+
+Sources : [parcours Dataset](../user/datasets.md), [contrats et alias](../dev/datasets.md),
+[propriété](../../../back/app/dataset/tests/test_ownership.py),
+[utilisations et partage](../../../back/app/dataset/tests/test_management.py).
+
+Dataset fournit aussi le **codec de valeurs typées** commun : types primitifs, références Agent,
+User, File, Document, Dataset et conteneurs récursifs, avec validation des entiers exacts, nulls,
+doublons et limites. Le JSON libre d’un Dataset n’impose pas cette enveloppe ; le profil Process
+v2 conserve sa liste historique de types, qui n’admet pas les références typées Dataset.
 
 ### Formulaires, simulateurs et applications dans la page
 
@@ -2201,7 +2372,37 @@ en lecture seule avec copie et téléchargement de l’original. Les HTML conser
 isolé et ne sont pas injectés comme code dans l’éditeur. Une erreur de lecture peut être réessayée ;
 une réponse tardive d’un autre fichier est écartée.
 
-### Coller du contenu existant
+### Liens métier, cartes et navigation documentaire
+
+Les liens Galaris couvrent agents, Documents, Datasets, Tasks, Goals, Topics, discussions,
+rounds texte, appels/tours vocaux, définitions Process et runs. Le sélecteur **Objets Galaris**
+et **Copier la référence** fournissent une URI stable et un titre. Les cartes compactes montrent
+les informations essentielles et l’état au moment de leur insertion ; leur ouverture consulte
+la ressource actuelle en modale, sans copier son contenu ni accorder de droit. Les cartes d’agent
+présentent avatar, nom et poste ; les processus et runs peuvent intégrer leur diagramme.
+**Afficher l’URL** rétablit le lien sans supprimer l’objet.
+
+Un lien documentaire s’ouvre dans son contexte courant : bibliothèque, panneau du Chat ou modale.
+Chaque contexte possède son historique précédent/suivant ; **Ouvrir dans une modale** garde aussi
+le document courant disponible. Les changements sont sauvegardés avant navigation ; un échec
+conserve le brouillon ouvert. Glisser un document depuis la bibliothèque insère sa référence sans
+le déplacer. Coller `document://`, `data://` ou une URL interne reconnue retrouve le titre autorisé.
+
+L’édition expose menus contextuels et barres rapides pour texte, listes, liens, cartes, images,
+tableaux, code et applications. Copier/couper/coller conserve la mise en forme selon le navigateur ;
+insertion de paragraphes avant/après les blocs, styles, liens, légendes et suppression restent
+propres à la sélection. Échap, clic extérieur et clavier ferment ou parcourent les menus.
+Les blocs de code proposent langage, indentation, copie et numéros de ligne, activés par défaut
+pour les nouveaux blocs. Les tableaux possèdent des galeries de styles adaptés au thème.
+Les raccourcis de type Writer, l’aide clavier et les transformations de préfixes (`#`, listes,
+citations) complètent les barres. En lecture seule, liens et objets s’ouvrent directement ;
+les menus d’édition sont absents, avec sélection et copie au clavier toujours possibles.
+L’aperçu d’une application est une copie statique de son rendu, sans réexécution des scripts.
+
+Sources : [contenus riches](../user/rich-content.md), [références métier](../user/navigation.md),
+[processus cités](../user/internal-processes.md).
+
+### Importer par collage
 
 Le collage d’un fragment ou d’une page HTML produit du contenu ordinaire que l’on peut modifier,
 sauvegarder et rouvrir : titres, listes, tableaux, liens, code et styles éditoriaux pris en charge.
@@ -2279,6 +2480,19 @@ la même personne, par exemple via une équipe.
 
 Les agents disposent de `document_share`, `memory_sharing` et `memory_share` pour découvrir les
 identifiants des destinataires et modifier un partage propriétaire sans deviner ces identifiants.
+
+### Partage commun des ressources
+
+Documents, Datasets et définitions Process utilisent le **même mécanisme de partage**, chacun
+avec sa configuration exclusive : partager une page ne partage ni ses données ni les processus
+qu’elle cite. Les grants sont remplacés atomiquement sous contrôle de version ; appartenance aux
+groupes et révocations sont vérifiées au moment de l’accès. Le propriétaire reste autorisé après
+retrait des grants explicites ; un transfert conserve l’ancien propriétaire comme éditeur.
+Le sélecteur de propriétaire commun présente Moi, utilisateurs puis agents selon les droits,
+avec recherche, avatars et pagination indépendante par type. Les destinataires de partage
+utilisent aussi la pagination commune, 50 par défaut.
+
+Source : [contrat de partage commun](../dev/sharing.md).
 
 ### Dicter, écouter, imprimer et exporter
 
@@ -2632,7 +2846,7 @@ modes **Actif**, **Bloqué**, **Sur demande** et héritages que les autres Tools
 un humain. Les anciennes restrictions système ignorées sont archivées pendant la migration ;
 l’activation obligatoire ne lève ni les ACL métier ni les restrictions de harnais ou de contexte.
 
-Les neuf commandes `conversation_*` d’admission, de suivi et de contrôle appartiennent
+Les commandes `conversation_*` d’admission, de suivi et de contrôle appartiennent
 au Tool **Conversation**, avec `document_show`. Les inspections `conversation_round_get`,
 `voice_turn_get`, `llm_call` et `llm_calls` appartiennent à **Galaris Admin**, optionnel et inactif
 par défaut. Chaque inspection revérifie sa connexion administrative au moment de l’appel,
@@ -2674,7 +2888,35 @@ conservés lors des mises à jour. L’activation d’une connexion et son autor
 sont deux réglages distincts. Les fonctions multimédias exigent les ressources IA compatibles du profil ;
 leur présence dans le catalogue ne garantit pas leur disponibilité sur tous les agents.
 
-### Administration déléguée du catalogue
+### API REST et authentification OAuth MCP
+
+Un Tool configurable peut exposer **MCP et REST** simultanément. L’onglet API REST règle URL de base,
+authentification aucune/Bearer/en-tête/Basic/paramètre de requête, en-têtes supplémentaires, délai
+et taille maximale de réponse. Les secrets sont référencés par noms de paramètres de connexion,
+avec héritage global, surcharges, chiffrement et masquage, sans catalogue OpenAPI obligatoire.
+La façade REST sert notamment aux activités natives Process ; elle n’ajoute pas de proxy public
+ni de fonction MCP HTTP universelle. Les droits distants sont ceux du token tiers ; la matrice des
+fonctions MCP ne filtre pas les endpoints REST. Les redirections et retries automatiques sont exclus,
+et les erreurs conservent leur statut HTTP.
+
+Les connexions MCP **HTTP/SSE** proposent **Connecter le compte** avec découverte OAuth : retour
+direct vers Galaris, client connu, métadonnées publiques CIMD ou enregistrement dynamique DCR.
+Le code d’appareil est essayé si la préparation directe est refusée et si le fournisseur le permet ;
+le relais local est un dernier recours. Une application pré-enregistrée peut être renseignée
+lorsque l’enregistrement automatique est impossible. PKCE S256 est conservé ; retour à usage unique,
+identité de l’initiateur, connexion et expiration sont contrôlés. HTTPS est requis hors localhost.
+
+Les jetons et secrets restent chiffrés côté serveur, exclus des paramètres lisibles et exports YAML.
+Le renouvellement utilise le refresh token disponible ; révocation ou expiration non renouvelable
+exige une reconnexion. **Déconnecter le compte** retire tokens et demandes locales. Les accords sont
+propres à la connexion d’agent et invalidés par un changement de cible/configuration ; les retours
+tardifs ne rétablissent pas un accord retiré. Les diagnostics exposent statut/code OAuth sans secrets.
+Ce parcours ne concerne ni stdio ni REST et ne modifie pas les droits des fonctions Galaris.
+
+Sources : [parcours REST et OAuth](../admin/tool-administration.md),
+[contrats OAuth exercés](../../../back/app/connection/tests/test_mcp_oauth.py).
+
+### Déléguer la configuration des Tools
 
 **ToolAdmin** fournit 23 fonctions pour examiner, créer, modifier et supprimer des Tools
 personnalisés, configurer les valeurs partagées et les connexions, gérer les permissions et
@@ -2702,8 +2944,11 @@ Sources : [parcours ToolAdmin](../admin/tool-administration.md),
 Les fonctions sensibles sont **Sur demande** par défaut. Le responsable reçoit une demande
 localisée et inspecte les arguments avant d’autoriser ou de refuser l’action. Lorsqu’il est
 proposé, **Toujours autoriser cette fonction** rend cette seule fonction Active sur cette
-connexion, pour ses futurs arguments aussi ; le choix n’existe pas pour une commande locale
-de harnais. Les droits et les préconditions de ressource sont encore vérifiés à la reprise :
+connexion, pour ses futurs arguments aussi. Les actions locales des harnais externes gérés peuvent
+proposer **Toujours autoriser ce type d’action**, limité à l’agent, au harnais et au nom exact de
+l’action avec son empreinte de configuration. Le harnais interne conserve ses autorisations MCP.
+Un changement de responsable ou la révocation invalide les accords concernés avant effet.
+Il n’existe pas de mode global d’approbation automatique. Les droits et préconditions restent vérifiés :
 une source modifiée après l’accord empêche l’opération initiale, même si l’accord est permanent.
 
 La page **Permissions** permet aussi de traiter une demande sans canal privé disponible.
@@ -2827,6 +3072,7 @@ contrôle l’accès** ; le nom affiché ne remplace pas son identité.
 
 | URI / famille | Ce qu’elle rend accessible |
 |---|---|
+| `file://<uuid>` | Fichiers internes indépendants et pièces jointes accessibles, octets immuables et nom officiel commun. |
 | `console://` | Fichiers du home de la console active de l’agent ; ce schéma n’est annoncé que si cette console existe. |
 | `document://` | Documents HTML et collection de pièces jointes `document://<uuid>/attachments/` ; anciens alias Dataset vérifiés seulement. |
 | `data://` | Datasets JSON indépendants, avec leurs droits et révisions propres. |
@@ -2834,13 +3080,36 @@ contrôle l’accès** ; le nom affiché ne remplace pas son identité.
 | `galaris://` | Projections d’objets métier : Tasks, rounds texte, tours vocaux, Goals, cycles et processus selon les collections exposées. |
 | `galaris://skill/` | Fichiers des skills administrées, uniquement avec la connexion spécialisée active. |
 | `galaris://agent/<id>` | Profil courant d’un agent accessible, dont les champs éditoriaux d’identité et de mission ; l’identifiant entier est fourni par l’annuaire. |
+| `galaris://code/<uuid>` | Référence d’un dépôt Git dans la Console ; ouverture de son checkout courant avec droits propres. |
+| `galaris://processes/runs/<uuid>` | Snapshot autorisé d’un run natif ; sous-ressources `data` et `attachments/` sous les règles du profil et du processus. |
 | `galaris://documentation/` | Corpus officiel installé, en lecture seule, soumis à la connexion Galaris Admin et à `documentation_catalog`. |
 | URI d’un Tool de fichiers connecté | Fichiers et collections du provider, par exemple Nextcloud ou Samba / SMB 2–3. Le code exact du Tool constitue le schéma. |
 | URI d’une pièce jointe Messenger | Fichier conservant le Tool et le salon d’origine ; lecture selon l’accès à la conversation. |
 | `mail://` | Pièces jointes identifiées par message/partie MIME ; lecture et copie, sans mutation générique. |
 | HTTPS public | Lecture/transfert web borné selon les contrôles du provider web. |
 
-### Opérations communes
+### Explorateur des fichiers d’un agent
+
+**Connaissances → Fichiers** permet de choisir un agent géré puis parcourir son système de
+fichiers virtuel : racines, répertoires, fil d’Ariane, remontée au parent, grille et miniatures.
+La liste se complète au défilement ; après erreur, Réessayer conserve les éléments déjà chargés.
+Actualiser relit le répertoire. Changer d’agent retire les fichiers précédents et ferme leurs
+aperçus. Sur mobile, **Afficher les emplacements** ouvre l’arborescence. Les éléments cachés
+sont masqués ; les schémas sans listing de racine ou sans continuation signalent cette limite.
+Documents, Tasks, Datasets et échanges ouvrent leur vue métier ; les autres fichiers proposent
+leur lecteur ou téléchargement, sans copie persistante ni droit supplémentaire.
+
+La racine **`file://`** regroupe fichiers internes indépendants et pièces jointes accessibles,
+une seule fois par identité. Elle exige les droits du propriétaire ou du domaine qui retient
+le fichier ; Console n’apparaît que pour une connexion active et reste confinée au home SSH.
+**Renommer** modifie le nom complet des fichiers internes autorisés et PJ, avant ou après leur
+envoi, depuis Chat, Documents, Process ou Fichiers. Le nom commun est relu dans toutes les vues,
+aperçus et téléchargements ; UUID, URI, octets et références restent stables. Les références
+externes n’offrent pas cette mutation du registre interne.
+
+Sources : [parcours Fichiers](../user/files.md), [registre interne](../dev/file-storage.md).
+
+### Lire et modifier les ressources
 
 - Découvrir les schémas et leurs capacités avec `file_schemes`.
 - Lister une collection, consulter taille, type, nom et capacités d’une ressource.
@@ -2980,6 +3249,15 @@ sans analyse IA, OCR ni extraction du document complet. Ils restent **téléchar
 visionneuse plein écran**. Les fichiers audio disposent d’un lecteur intégré à leur aperçu.
 Les SVG utilisent un rendu vectoriel pour leur miniature.
 
+Les fichiers de code, y compris scripts avec shebang, restent des octets inertes : coloration,
+copie et téléchargement n’exécutent pas la source. Leur transport force texte/téléchargement,
+`nosniff` et une politique sans scripts. HTML et SVG conservent leurs lecteurs isolés.
+Les vidéos internes, Console, Samba, WebDAV/Nextcloud et AFFiNE utilisent les **plages HTTP
+d’octets** pour une lecture progressive et le déplacement dans le média, sans téléchargement
+complet ni plafond de l’aperçu téléchargé. HTTPS public le permet avec taille connue ; un serveur
+sans support de plages peut exiger la relecture des octets précédents. Les codecs restent ceux
+du navigateur, les autres providers gardent leurs limites habituelles et les accès restent contrôlés.
+
 Dream prépare les miniatures admissibles et les ouvertures réutilisent le dérivé autorisé.
 Les miniatures serveur utilisent **WebP sans perte**, au plus **320 × 320 pixels**, avec
 proportions et transparence préservées, dans un cache durable réparti en sous-répertoires.
@@ -3071,7 +3349,7 @@ Sources : [outils navigateur](../../../back/app/browser/mcp.py),
 [flux et limites](../architecture/flows/browser.md), [recherche](../../../back/app/tools/mcp.py).
 
 <a id="console"></a>
-## 20. Console et environnement Linux
+## 20. Console, environnement Linux et code source
 
 La Console donne à un agent un environnement de calcul et de fichiers via **SSH/SFTP**. Elle peut
 pointer vers l’exécuteur Debian embarqué ou une machine externe.
@@ -3128,6 +3406,46 @@ bloquée ; une mise à jour du helper ne reconstruit pas les reçus manquants d�
 
 Sources : [Console](../../../back/app/console/), [exécuteur embarqué](../components/ssh-executor.md),
 [terminal](../../../front/app/console/).
+
+### Dépôts Git et VS Code dans le Chat
+
+**Code source**, sous Documents dans le Chat, retrouve les dépôts présentés par `repository_show`
+et recherche les checkouts du home SSH si l’utilisateur possède la Console active. La découverte
+reconnaît dépôts et worktrees, ignore liens symboliques et répertoires techniques/cachés et signale
+les résultats partiels dans ses bornes de profondeur, nombre et délai. Cliquer vérifie à nouveau
+le checkout et les droits puis associe le dépôt à la discussion. Une carte de dossier `console://`
+peut ouvrir son dépôt ; un dossier non Git ou un éditeur indisponible affiche une erreur explicite.
+
+Le panneau de travail ouvre **code-server / VS Code OSS** sur la même origine que Galaris,
+alternativement au Document, avec le checkout réel de l’agent, ses changements non committés,
+explorateur, diffs, extensions et opérations Git natives : branches, index, commit, fetch, pull,
+push et rebase selon les droits. Le terminal isolé réutilise identité Git et clés de forge
+autorisées du home de l’agent. En lecture seule, dépôt et métadonnées Git sont non inscriptibles,
+sans clés de forge ni réseau. Le mode de confiance reste celui de VS Code.
+
+Un dépôt possède une URI **`galaris://code/<uuid>`** et ses propres droits ; lien, conversation ou
+gestion de l’agent ne confèrent pas cet accès. L’humain requiert aussi `CODE_ACCESS`. Les sessions
+vérifient identité, autorisation et checkout, expirent et ferment les accès révoqués. Les personnes
+et l’agent partagent fichiers et index, avec les conflits de sauvegarde natifs ; leurs buffers non
+enregistrés et curseurs ne sont pas synchronisés. Un message transmet l’URI et branche/HEAD observés
+côté serveur du dépôt affiché, sans fichier/sélection ni approbation implicite de commit/push.
+
+Masquer le panneau, changer de discussion ou ouvrir un Document conserve iframe et onglets dans
+la session. Une erreur conserve la fenêtre ; **Réessayer** renouvelle les droits. Une fenêtre de
+récupération permet de retrouver le profil et de consulter l’ancienne fenêtre pour recopier les
+brouillons. Les profils natifs conservent préférences et thème sans synchronisation automatique
+avec Galaris. Les sessions ont une durée maximale de 24 heures, un bail inactif de dix minutes ;
+le runtime borne les IDE actifs et profils conservés. L’aperçu Markdown natif reste limité sous Firefox.
+
+La connexion Console permet de **déployer l’éditeur** après vérification SSH ; la mise à jour de
+Galaris inspecte et met à niveau les éditeurs gérés des connexions actives, en conservant dépôts,
+profils et droits. Une session ouverte empêche leur remplacement. L’administration peut archiver
+et restaurer les profils ; les défaillances de mise à niveau produisent des diagnostics expurgés.
+La disponibilité dépend du runtime installé sur l’exécuteur embarqué ou la Console externe.
+
+Sources : [parcours code](../user/code-editor.md), [administration et maintenance](../admin/code-editor.md),
+[contrats et droits](../../../back/app/code/tests/test_workspaces.py),
+[bridge code-server](../../../back/bridge/code_server/).
 
 <a id="medias"></a>
 ## 21. Images, audio, musique et vidéo
@@ -3324,14 +3642,15 @@ Sources : [calendrier](../architecture/flows/calendar.md), [API](../../../back/b
 ### Définitions et affectations
 
 Un processus métier porte un workflow défini indépendamment des fonctions de ses activités.
-Les workflows existants s’exécutent via n8n ; une fonction MCP, une génération média ou une opération
+Les workflows s’exécutent dans le moteur BPMN natif Galaris ou via n8n ; une fonction MCP, une génération média ou une opération
 Lab, même longue et récupérable, conserve son état dans son domaine sans créer de définition ou
 run Process. Le registre permet plusieurs moteurs simultanés, choisis par le Tool de chaque
 définition. Un autre logiciel exige un bridge installé conforme au contrat commun ; le
 [guide des moteurs externes](../dev/process-engines.md) décrit cette intégration.
 
-Un Process décrit un traitement exécuté par un moteur externe. Il possède une définition, un outil
-moteur, un identifiant de workflow, un libellé, une description et une affectation à un agent.
+Un Process interne possède son BPMN, ses révisions, son propriétaire et ses droits dans Process.
+Un Process externe référence un outil moteur et un identifiant de workflow, avec un libellé,
+une description et une affectation à un agent. Ni définition BPMN ni données de run ne sont des Documents.
 
 - Lister les moteurs/outils de processus et tester leur santé : joignabilité, authentification
   et support de l’annulation.
@@ -3366,7 +3685,106 @@ avec possibilité de poursuite distante bloque le successeur ; une observation u
 confirmer l’arrêt du run exact sans modifier sa sortie ni rejouer l’effet. Une erreur réseau ou
 une référence distante absente conserve cette incertitude.
 
-### n8n et reprise fiable
+### Catalogue commun et conception des processus natifs
+
+**Processus** réunit définitions internes et externes avec recherche, filtre de moteur, archivage,
+agent pour les externes, tri et pagination serveur. Chaque ligne affiche description, dernière
+exécution et compteurs d’exécutions actives ou en attente humaine, sous droits. Elle ouvre
+l’éditeur ; sa flèche charge les runs à la demande. Les filtres, pages et dépliages sont conservés
+pendant la session ; événements et reconnexion actualisent les sous-listes ouvertes.
+**Intégrations** rassemble santé, compteurs, ajout externe et synchronisation n8n.
+La création depuis l’interface d’un **processus interne est réservée au mode `dev`** ; les contrats
+natifs et les autres fonctions restent soumis aux privilèges et ACL ordinaires.
+
+L’éditeur natif propose titre, description, propriétaire, partage et diagramme directement
+manipulable : début/fin, ajout et insertion d’activités, liens et conditions, glisser des connexions,
+réorganisation, zoom, plein écran et navigation clavier. Le dernier Fin, le Début, les doublons,
+cycles bruts et nœuds inaccessibles sont protégés ou refusés. Les boucles sont structurées.
+Les formulaires contextuels conservent leurs brouillons à la réouverture ; un JSON incorrect
+bloque la sauvegarde. **Valider** contrôle le profil exécutable avant **Enregistrer**.
+
+Les **acteurs nommés** organisent les couloirs humains et agents. Chaque acteur porte son type
+et son affectation ; déplacer une activité ou réordonner un couloir conserve instructions et liens.
+Les tâches sans agent imposé utilisent l’agent lanceur, sauf défaut de définition ou acteur affecté.
+Un acteur humain utilisé exige un utilisateur actif ; un acteur inutilisé ne bloque pas le départ.
+Le propriétaire peut partager lecture/écriture aux humains, agents et groupes, ou publiquement
+dans l’application ; un transfert conserve l’ancien propriétaire en écriture. Un éditeur ne peut
+pas repartager. Historique paginé, consultation, restauration confirmée et suppression d’un état
+antérieur sont disponibles, sans modifier les runs existants ni proposer de lancer une ancienne version.
+
+### Activités, variables et exécution native
+
+| Capacité | Fonctionnement |
+|---|---|
+| Tâche IA | Instructions, acteur agent, outils autorisés et résultat structuré validé ; les sorties sont remises avec `process_activity_complete`. |
+| Tâche humaine | Question transmise par Messenger à l’utilisateur affecté, dans le Chat ou son canal joignable ; pas de Task IA pour attendre sa réponse. |
+| IF | Deux sorties True/False ; décision IA, Python isolé ou choix humain suivant le couloir, avec une seule branche retenue. |
+| Branches parallèles | Plusieurs sorties activent les branches ; la convergence attend les prédécesseurs activés et ne démarre qu’une fois. Une branche IF écartée ne bloque pas la suite. |
+| FOR / WHILE | Corps imbriqués, itérations suivies et reprise durable ; pas de cycle libre dans le graphe. |
+| Appel de processus | Sous-processus avec ses entrées, sorties et données propres ; dernière définition enregistrée à l’admission, sans profondeur métier maximale imposée. |
+| MCP / REST | Appel des outils/connexions existants, sous identité de l’exécutant ; arguments, réponse et erreurs conservés, autorisations MCP et credentials REST ordinaires. |
+| Code | Python restreint via Monty dans un worker neuf, sans réseau, montages, objets hôte ni packages tiers ; phases de préparation, calcul et intégration. |
+| Programme | Contrat `program_uri` utilisable seulement avec un exécuteur qualifié enregistré ; ce contrat ne rend pas exécutables tous les documents JSON. |
+
+Le profil **`galaris.bpmn/v2`** déclare entrées et sorties du processus et de chaque activité :
+nom unique, type, nullable/notnull et défaut facultatif. Types exécutables : int, float, string,
+bool, Agent, File, User, Document, array et object récursifs. Omission, null, zéro, false et vide
+restent distincts ; entiers exacts, bornes de taille/profondeur et doublons JSON sont contrôlés.
+Une entrée invalide n’admet pas l’activité ; une sortie invalide n’est pas intégrée et n’admet
+pas son successeur. Les mappings et expressions bornées préparent les valeurs locales ; les
+objets externes ordinaires ne deviennent pas implicitement des enveloppes typées.
+Les définitions historiques v1 gardent leur contrat ; leur conversion vers v2 est explicite.
+
+L’agent recueille les entrées et lance le processus depuis le Chat avec une clé d’idempotence.
+Un retry technique retrouve le même run ; répondre à une activité ne déclenche pas un autre lancement.
+Les pages servent à concevoir et suivre, sans formulaire de lancement manuel natif. Les activités
+IA peuvent poser une question avec `process_activity_question` : leur Task existante attend puis
+reprend avec la réponse corrélée, sans enfant d’attente. Une réponse déjà reçue reste acquise ;
+une nouvelle question explicite possède une autre identité. Les messages ambigus demandent précision.
+Seul l’utilisateur affecté peut remettre le résultat d’une tâche humaine ; réponse identique et
+redelivery retrouvent le reçu, réponse différente ou tardive après annulation est refusée.
+
+Chaque run fige définition, révision et graphe et possède ses variables dans Process et ses liens
+de fichiers, **sans créer de Dataset ni de Document**. Les fichiers v2 gardent leurs URI source,
+sans copie automatique entre activités ; les droits sont contrôlés à la lecture des octets.
+Le moteur valide puis intègre atomiquement les sorties, préserve les changements disjoints et
+signale les conflits. Les reçus techniques restent séparés des variables métier. Les droits et
+révocations du processus s’appliquent aussi à ses runs et fichiers existants.
+
+### Inspection, débogage et reprise des runs natifs
+
+Chat, catalogue, Activité et liens internes ouvrent la **même modale de suivi**, avec le diagramme
+figé et les activités actives mises en évidence. Le détail d’un nœud montre ses occurrences,
+entrées/sorties, instructions et prompts réels, tentatives, retours d’outils, erreurs et liens
+vers les Tasks ou enfants. Les boucles et sous-processus s’ouvrent à la demande. Les données,
+PJ téléchargeables/renommables, dernière activité, attentes, durée, tokens et coûts directs ou
+inclusifs restent consultables ; les totaux partiels sont signalés quand des enfants sont invisibles.
+Le coût facturé est distinct de la valeur d’inférence d’un abonnement. L’URI copiable est
+`galaris://processes/runs/<uuid>`, également lisible par File Sharing et `processus_get`.
+
+Les vues ouvertes suivent événements, reconnexion et contrôle périodique pendant le run, sans
+perdre la sélection ; fermer arrête ce suivi. **Pause**, **Reprendre**, **Pas à pas** et points
+d’arrêt sont durables. Le pas admet une occurrence et laisse progresser ses descendants composites.
+Les commandes réutilisent leur clé en cas de réponse perdue et contrôlent la révision ; elles
+ne répètent pas un pas déjà acquis. Arrêter ferme les demandes humaines et attend confirmation
+des Tasks, enfants et opérations engagés ; un run arrêté ne se reprend pas.
+
+Le moteur enregistre intentions, claims, retours et reçus d’intégration. Les branches lentes
+ne bloquent pas les autres ; un résultat acquis se réintègre après interruption sans réémettre
+l’effet. La première erreur arrête les nouvelles admissions et les branches actives, conserve
+données et code d’erreur puis termine après arrêt confirmé. Un effet externe incertain exige
+réconciliation ; aucun retry ni traitement de secours automatique ne le répète. Seul un calcul
+pur isolé peut être recalculé après perte de résultat. Un nouveau lancement explicite depuis
+un run terminal utilise ses entrées et la dernière définition, avec une nouvelle clé idempotente.
+Les quanta et leases techniques ne sont pas des plafonds métier de durée, coût ou itérations.
+
+Sources : [parcours natif](../user/internal-processes.md), [profils et moteur](../dev/native-processes.md),
+[BPMN et activités](../../../back/app/process/bpmn.py),
+[contrats exercés](../../../back/app/process/tests/test_native_bpmn.py),
+[échanges humains](../../../back/app/process/tests/test_human_messaging.py),
+[questions d’activité](../../../back/app/process/tests/test_activity_controls.py).
+
+### Intégration n8n et reprise fiable
 
 Dans **Préférences → Processus**, l’URL de n8n et sa clé API suffisent à préparer la connexion.
 Les adresses dérivées sont affichées ; les options avancées permettent de les remplacer et de
@@ -3423,7 +3841,27 @@ le contexte propre à l’item, les paramètres communs au jeu, la sortie du can
 | Exécuteur vocal | Sollicitation transcrite | Réponse orale et actions |
 | Analyse de tâches | Dossier d’exécution | Diagnostic structuré |
 
-### Préparer un jeu et ses cas
+### Campagnes de processus natifs
+
+Le Lab propose aussi des **campagnes de processus réels** dans son espace Processus, distinctes
+des dix mécanismes d’évaluation IA. Un agent peut créer un Dataset privé d’entrées entièrement
+synthétiques avec sorties exactes attendues facultatives, ou générer **1 à 20 cas** depuis le
+contrat d’entrée du processus avec le modèle Lab. Le dataset de campagne est une ressource
+réutilisable ; les données de chaque exécution restent dans son run Process.
+
+Lancer une campagne admet de vrais runs, avec la dernière définition enregistrée à chaque
+admission : appels externes et effets métier peuvent donc se produire, sans mocks automatiques.
+Chaque cas conserve référence d’exécution, entrées, résultat, durée, coût et contrôles exacts
+disponibles. Les droits de lancement sont revérifiés ; clés idempotentes et reçus évitent les
+doublons. L’inspection est paginée et l’annulation demande aussi l’arrêt des runs déjà admis,
+y compris si la campagne a échoué. Ces contrôles ne prouvent pas à eux seuls la qualité métier
+d’un processus pour toutes les entrées.
+
+Sources : [campagnes Process du Lab](../../../back/app/lab/process_evaluation.py),
+[fonctions dédiées](../../../back/app/lab/mcp.py),
+[preuves d’exécution](../../../back/app/process/tests/test_native_bpmn.py).
+
+### Jeux et cas des mécanismes IA
 
 - Créer, nommer, modifier et supprimer des jeux de tests propres à un mécanisme.
 - Définir les paramètres communs : consignes, ressources, catalogue, corpus, limites et rubrique.
@@ -3557,7 +3995,7 @@ complémentaires.
 
 ### Confier une campagne à un agent
 
-La connexion **Lab Galaris** donne accès à **50 fonctions MCP** pour découvrir les dix mécanismes,
+La connexion **Lab Galaris** donne accès à **55 fonctions MCP** pour découvrir les dix mécanismes,
 lire leurs contrats et rubriques, préparer les jeux et cas, régler leurs prompts expérimentaux,
 lancer les benchmarks et examiner leurs preuves. La connexion et le skill système **Galaris Lab**
 (`galaris-lab`) sont **désactivés globalement par défaut** et s’activent séparément. Le skill est
@@ -3736,6 +4174,31 @@ Sources : [dashboard](../../../back/app/dashboard/schemas.py), [appels LLM](../.
 <a id="exploitation"></a>
 ## 27. Réglages, hébergement et exploitation
 
+### Architecture et contrats transversaux
+
+| Socle technique | Capacités et garanties |
+|---|---|
+| Architecture modulaire | Activation explicite backend/frontend ; `core` fournit l’infrastructure, `app` les domaines métier et `bridge` les systèmes externes. Façades/contrats publics et ports de composition encadrent les dépendances ; contrôles statiques de frontières, cycles et dette. |
+| API | FastAPI, validation Pydantic, contrats HTTP/WebSocket, documentation OpenAPI et API compatibles de modèles/agents ; authentification, RBAC et ACL appliqués côté serveur. |
+| Persistance | PostgreSQL/pgvector, SQLAlchemy async, transactions, historique et verrouillage optimiste ; leases et claims pour répartir les exécutions durables. DbAdmin dérive le schéma et applique les contributions idempotentes. |
+| Orchestration | Agent fournit façade, registre, résolution, dispatcher, planner et résultat ; Harness exécute Pydantic AI ; Task possède états, tentatives et scheduler. Les drivers rendent un unique résultat terminal après leurs événements. |
+| Messages | Messenger possède conversations, capacités, journal entrant et déduplication ; les bridges traduisent les protocoles. Les fichiers conservent leur URI et provenance dans la chronologie. |
+| Ressources | Memory possède le HTML éditorial, Dataset le JSON, Process le BPMN et ses runs, Storage les octets ; File Sharing unifie leurs URI sans déplacer leur autorité ni leurs droits. |
+| Interface | Vue/Quasar, Pinia, routes dérivées des fichiers, navigation déclarée, catalogue i18n par domaine et composants partagés chargés à la demande ; contrôles de parité FR/EN, thème et frontière mobile communs. |
+| Temps réel | Abonnements autorisés par domaine, événements après commit, deltas de progression bornés et resynchronisation par snapshot/cursor ; reconnexion sans restauration d’un droit révoqué. |
+| Extensions | Providers IA/fichiers/aperçus, drivers, harnais, moteurs Process, bridges, mécanismes Dream/Lab et contributions DbAdmin possèdent leurs contrats ; présence sur disque et activation sont distinctes. |
+| Isolement | Exécuteurs navigateur/SSH et harnais gérés en services séparés ; sessions IDE en lecture seule ou écriture, code Monty isolé, applications HTML isolées et matérialisations serveur temporaires bornées. |
+
+La supervision du stream LLM diffuse au plus quatre mises à jour par seconde, avec deltas de
+sortie sans retransmettre le contexte d’entrée ; une révision manquante relit le snapshot autorisé.
+Les événements de création/fin et les résultats conservés restent complets. Les sélecteurs, listes
+et résumés utilisent projections compactes, lectures SQL groupées et chargement à l’ouverture.
+Les catalogues de langue et composants de partage sont différés ; une erreur n’efface pas les
+brouillons. Ces dispositions décrivent le fonctionnement, sans promettre un gain chiffré global.
+
+Sources : [architecture](../architecture/README.md), [invariants](../architecture/invariants.md),
+[carte des contrats](../architecture/generated/project-map.md), [socle développeur](../dev/README.md).
+
 ### Réglages applicatifs
 
 Les paramètres de fonctionnement sont persistés et consultables dans les préférences. Les
@@ -3834,7 +4297,47 @@ de secret partagé dédié. Les API ordinaires de préférences n’exposent pas
 maîtresse de chiffrement reste une donnée de déploiement à conserver avec les sauvegardes pour
 pouvoir relire les secrets.
 
-### Santé, observabilité et maintenance
+### Stockage, migrations et diagnostics durables
+
+Les textes courants et historiques de Memory/Documents résident en colonnes PostgreSQL,
+enregistrés transactionnellement avec leurs métadonnées et révisions. Les listes et résumés
+n’emportent pas systématiquement ces corps. Les Datasets conservent leur JSON dans leur domaine ;
+Process conserve BPMN, révisions, variables, liens de fichiers et reçus séparément.
+
+**`core.storage`** possède le registre des fichiers, empreintes SHA-256, tailles, noms et alias.
+Le driver livré est disque, avec octets immuables répartis par UUID ; `file://` n’est pas un accès
+aux chemins de l’hôte. Des références Document/Chat/Process ou un propriétaire indépendant
+autorisent la lecture. Les anciennes URI restent des alias vérifiés ; renommer ne change que
+le nom officiel. Seul un fichier sans référence protectrice devient purgeable ; son tombstone
+interdit la réutilisation de l’UUID et un reconciler reprend les effacements interrompus.
+Le volume d’octets et les miniatures peuvent être séparés de PostgreSQL.
+
+Les transferts DbAdmin de textes, fichiers, Datasets, BPMN et partages utilisent obligations
+durables, lots transactionnels, vérification d’identité/empreinte et rejeu idempotent. Ils conservent
+les preuves et sources requises, refusent les collisions ou absences inattendues et ne téléchargent
+pas les ressources externes pour les migrer. La première bascule exige l’arrêt des anciens writers.
+Sauvegarde/restauration doit couvrir ensemble base, archives de migration, fichiers et métadonnées
+cachées de leur magasin, données historiques encore retenues et secrets de déchiffrement.
+
+Les mises à jour de sources ou d’images qualifiées conservent un **journal local indépendant de
+l’application et de Logfire** : date UTC, étape, statut et code de sortie, sans recopier les
+arguments ou sorties arbitraires. L’impossibilité de créer ce journal bloque le déploiement.
+La maintenance des éditeurs SSH conserve en plus commandes Docker échouées, sorties bornées
+expurgées, chaîne des causes et emplacements du code dans des diagnostics privés du volume de
+données. Un échec de nettoyage ne masque pas l’échec primaire ; un défaut de persistance signale
+l’échec et restitue les preuves expurgées sur stderr. Les cibles indépendantes restent traitées.
+Le précontrôle Git et l’installation gardent leurs diagnostics directs ; ces journaux ne
+garantissent pas une écriture après arrêt brutal ou perte du stockage.
+
+Sources : [textes en base](../dev/memory-text-storage.md), [fichiers et reprise](../dev/file-storage.md),
+[Datasets](../dev/datasets.md), [BPMN](../dev/native-processes.md), [partages](../dev/sharing.md),
+[mise à jour](../dev/reliability-operations.md), [éditeurs SSH](../admin/code-editor.md).
+
+La topologie applicative prise en charge reste **un worker Uvicorn par installation** : les
+caches de paramètres et connexions temps réel ne sont pas distribués. Les leases et verrous
+durables ne constituent pas à eux seuls une prise en charge générale de plusieurs réplicas API.
+
+### Exploiter, observer et vérifier
 
 Le superviseur gère les boucles de service, leur arrêt et leur redémarrage après incident. Les
 sondes distinguent service joignable, processus vivant et **readiness**, qui contrôle la base et les
@@ -3915,7 +4418,23 @@ Sources : [préférences](../../../front/core/params/presentation.ts),
 Ces parcours illustrent l’assemblage des capacités existantes ; ils nécessitent les connexions et
 droits de chaque étape, ainsi que la vérification des résultats produits par les modèles.
 
-### D’un échange à un livrable partagé
+### Une validation métier avec un processus natif
+
+Un responsable construit un workflow avec collecte IA, décision humaine et branche de traitement,
+déclare ses entrées/sorties et partage la définition. Dans le Chat, l’agent recueille le fichier
+et les données puis lance un run. La personne affectée répond dans sa messagerie ; le moteur
+valide la réponse et poursuit le même run. Le diagramme montre branches, données, coûts et erreurs.
+Un cas synthétique du Lab peut exercer ce parcours avec de vrais effets et des résultats attendus.
+
+### Corriger un dépôt avec l’agent
+
+L’utilisateur découvre le checkout SSH dans **Code source** ou demande sa présentation à l’agent,
+ouvre VS Code avec les droits nécessaires et examine les changements non committés. La discussion
+transmet le dépôt affiché comme contexte ; l’agent et la personne travaillent sur les mêmes fichiers.
+Diffs, tests et opérations Git se font avec les capacités du checkout et les autorisations requises.
+Masquer puis rouvrir l’éditeur conserve la session, sans garantir la sauvegarde de buffers non enregistrés.
+
+### Produire et partager un livrable
 
 Un humain demande une analyse dans le chat et joint un fichier. Le contrôleur crée une Task avec
 une consigne autonome et les URI de ressources. L’agent recherche les informations utiles, lit les
@@ -4077,8 +4596,8 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Collections de plan | Inventaire figé et exécution séquentielle par vagues ; jusqu’à 1 000 éléments par collection, sans promesse de parallélisme. |
 | Permissions navigateur | Réseau local interdit par défaut ; un accord mémorisé ne contourne pas les filtres de la connexion. |
 | Sujet précoce | Classement parallèle si Décision et texte Dream sont configurés ; aucune attente d’admission, aucun droit supplémentaire et aucun rejeu automatique d’une recherche déjà faite. |
-| Documentation produit | Accès Galaris Admin et fonctions documentaires nécessaires ; lecture seule, recherche texte sans embeddings, plans identifiés comme prospectifs et configuration réelle à vérifier séparément. |
-| Lab agentique | Connexion et skill optionnels, inactifs globalement par défaut ; seul le skill est attribué individuellement à l’assistant Galaris initial. 50 fonctions sur les expériences communes, sans modification automatique de la production. Captures et diagnostics exigent l’inspection Admin. |
+| Documentation produit | Accès Galaris Admin et fonctions documentaires nécessaires ; lecture seule, recherche lexicale disponible immédiatement, enrichissement vectoriel et recherche hybride si configurés ; plans prospectifs et configuration réelle à vérifier séparément. |
+| Lab agentique | Connexion et skill optionnels, inactifs globalement par défaut ; seul le skill est attribué individuellement à l’assistant Galaris initial. 55 fonctions ; les benchmarks IA n’appliquent pas automatiquement leurs réglages à la production. Les campagnes Process exécutent de vrais runs et leurs effets. Captures et diagnostics exigent l’inspection Admin. |
 | Génération synthétique | De 1 à 20 cas adaptés au mécanisme et éventuellement au contexte d’un jeu ; tous restent brouillons et le jeu est enregistré intégralement ou pas du tout. |
 | Notes et revues du Lab | Une note absente ne vaut pas zéro ; avis agents, revues humaines et juge restent distincts. Les comparaisons descriptives ne prouvent pas une supériorité statistique. |
 | Webhook générique | Aucun endpoint actif ; les callbacks et entrées des intégrations dédiées gardent leurs contrats propres. |
@@ -4089,7 +4608,12 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Preuve de livraison | Artefact actif et reçu concordants pour la validation du plan ; un autre fichier livré ne valide pas le résultat demandé. |
 | Samba | SMB 2–3 signé, chiffrement SMB 3 optionnel, compte distant et TCP 445 joignable ; aucun montage ni lien public. |
 | Réseau messagerie | WhatsApp exige HTTPS public ; OneBot une adresse joignable. Les avertissements de l’interface ne certifient pas la connectivité. |
-| Évolutions encore prévues | VNC, éditeur Git conversationnel, programmes documentaires JSON exécutables, processus BPMN natifs et recherche sur la supervision LLM restent des plans, sans fonction active correspondante. |
+| Processus natifs | Sous-ensemble BPMN exécutable v1/v2, avec données propres aux runs ; création UI interne en dev seulement, sans retry/handler de secours automatique. Un résultat d’effet incertain exige réconciliation. |
+| Python natif | Calcul pur Monty borné et isolé ; ni CPython généraliste, ni packages, réseau ou capacités hôte implicites. Une activité Programme nécessite un exécuteur qualifié. |
+| Espace de code | Checkout SSH existant et runtime code-server requis ; droits de dépôt indépendants, pas de coédition des buffers ni d’autorisation implicite de publier. L’aperçu Markdown natif reste limité sous Firefox. |
+| Fichiers internes | `file://` identifie des octets immuables, sans ouvrir le disque de l’hôte ; propriétaires et références métier gouvernent chaque lecture. |
+| Autorisations des harnais | Accords mémorisables par type exact pour les harnais externes gérés, sans mode global d’approbation automatique ni contournement des droits. |
+| Extensions conditionnelles | Les contrats d’exécuteur Programme et les plans VNC ne constituent pas un éditeur de bureau distant ou un moteur universel de documents JSON livré. |
 
 Le logiciel fournit des contrats d’extension pour les providers de fichiers, les convertisseurs
 d’aperçu, les bridges, les harnais, les mécanismes Dream et les contributions DbAdmin.
@@ -4097,7 +4621,7 @@ d’aperçu, les bridges, les harnais, les mécanismes Dream et les contribution
 <a id="mcp"></a>
 ## 30. Inventaire des fonctions accessibles aux agents
 
-Cet inventaire reprend les **246 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
+Cet inventaire reprend les **272 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
 Il couvre aussi les fonctions réservées aux contrôleurs conversationnels ou à l’administration.
 Toutes ne sont donc pas visibles simultanément par chaque agent. Les schémas d’arguments complets
 sont exposés par MCP ; leurs sources sont reliées aux sections métier ci-dessus.
@@ -4139,7 +4663,15 @@ fonctions explicitement. Pour Messenger, la connexion de transport détermine le
 | `document_show` | `conversation` | Demander l’ouverture d’un document lisible dans le salon texte interne courant de l’agent, après contrôle des droits et de la fraîcheur ; ne partage rien et ne s’exécute pas dans une Task. |
 | `conversation_round_get` | `galaris_admin` | Inspection administrative complète d’un round : messages, tentatives, tâches créées/amendées, processus, résultat et appels. |
 
-### Administration déléguée des agents
+### Conversation : code et activités humaines
+
+| Fonction | Famille | Action et résultat |
+|---|---|---|
+| `repository_show` | `conversation` | Présenter le checkout Git de la Console dans le Chat, avec référence, branche et ouverture facultative de fichier/diff sous droits. |
+| `conversation_process_pending` | `conversation` | Lister les questions et activités Process en attente dans la portée exacte de la conversation, avec contrats et pagination. |
+| `conversation_process_respond` | `conversation` | Remettre la réponse humaine choisie, valider ses valeurs/fichiers et enregistrer un reçu idempotent sans relancer le processus. |
+
+### Administrer les agents
 
 Les 34 fonctions exigent la connexion AgentAdmin, les permissions courantes et les droits du responsable.
 
@@ -4376,7 +4908,30 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 | `process_get_run` | `galaris` | Lire statut, sortie, ressources et erreur d’un run. |
 | `process_analyze_run` | `galaris` | Produire/lire une analyse du dossier de run autorisé. |
 
-### Administration des processus
+### Processus natifs : définition, activités et débogage
+
+| Fonction | Famille | Action et résultat |
+|---|---|---|
+| `processus_get` | `galaris` | Lire l’avancement opérationnel, les attentes, dernières activités et actions disponibles d’un run autorisé. |
+| `process_definition_read` | `galaris` | Lire BPMN courant, graphe, instructions et acteurs pour auditer une définition accessible. |
+| `process_create` | `galaris` | Créer un processus BPMN privé depuis un graphe ou XML, avec code immuable. |
+| `process_update` | `galaris` | Modifier une définition avec révision attendue ; les runs actifs gardent leur graphe figé. |
+| `process_validate` | `galaris` | Valider graphe ou BPMN sans sauvegarde ni effet métier. |
+| `process_history` | `galaris` | Lire les sauvegardes paginées de la définition. |
+| `process_restore` | `galaris` | Restaurer une sauvegarde comme nouvelle version courante sous contrôle de révision. |
+| `process_archive` | `galaris` | Archiver ou réactiver une définition sans effacer ses runs. |
+| `process_share` | `galaris` | Accorder/retirer à un agent lecture ou édition en tant que propriétaire. |
+| `process_activity_complete` | `galaris` | Remettre les sorties validées de l’activité Process courante et un message facultatif ; réservé à sa Task. |
+| `process_activity_question` | `galaris` | Poser une question corrélée au lanceur humain et suspendre l’activité courante jusqu’à réponse. |
+| `process_run_inspect` | `galaris` | Lire graphe figé, occurrences paginées, données et événements d’un run. |
+| `process_run_children` | `galaris` | Lister les enfants immédiats autorisés, sans plafond de profondeur métier. |
+| `process_run_occurrence` | `galaris` | Inspecter une occurrence exacte : prompts, entrées/sorties, tentatives, Tasks et enfants. |
+| `process_run_metrics` | `galaris` | Lire coûts/tokens directs et inclusifs, comptabilité par Task et couverture partielle. |
+| `process_run_control` | `galaris` | Persister pause, reprise, pas ou points d’arrêt avec clé de commande idempotente et révision. |
+| `process_run_cancel` | `galaris` | Demander l’annulation et confirmer la terminaison réelle des activités admises. |
+| `process_run_retry` | `galaris` | Relancer explicitement un run terminal avec ses entrées et la dernière définition ; clé idempotente requise. |
+
+### Administration des moteurs et exécutions
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
@@ -4403,7 +4958,17 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 | `documentation_catalog` | `galaris_admin` | Découvrir version, langues, domaines et points d’entrée ; son autorisation ouvre aussi la lecture du corpus sous `galaris://documentation/`. |
 | `documentation_search` | `galaris_admin` | Rechercher une question dans le corpus installé avec filtres, extraits, URI, sections, statuts et provenance ; repli textuel lorsque la recherche sémantique manque. |
 
-### Lab : découverte, jeux et cas
+### Lab : campagnes de processus
+
+| Fonction | Famille | Action et résultat |
+|---|---|---|
+| `lab_process_dataset_create` | `lab` | Créer un Dataset privé d’entrées entièrement synthétiques et de sorties exactes attendues facultatives. |
+| `lab_process_dataset_generate` | `lab` | Générer 1 à 20 cas synthétiques depuis le contrat courant du processus avec le modèle Lab. |
+| `lab_process_campaign_start` | `lab` | Lancer une campagne de vrais runs depuis le Dataset, sous droits et avec effets externes possibles. |
+| `lab_process_campaign_get` | `lab` | Lire les preuves paginées : runs, données, résultats, durées, coûts et contrôles exacts disponibles. |
+| `lab_process_campaign_cancel` | `lab` | Annuler la campagne et demander l’arrêt des runs déjà admis. |
+
+### Lab : mécanismes, jeux et cas
 
 Les jeux de tests du Lab sont des expériences propres à un mécanisme ; ils sont distincts des
 ressources JSON indépendantes du domaine Dataset. Les cinquante fonctions ci-dessous
@@ -4509,7 +5074,7 @@ les [garanties fonctionnelles testées](../dev/functional-tests.md) et les sourc
 
 ### Modules backend déclarés
 
-Les **72 modules déclarés** sont tous rattachés à une ou plusieurs sections. Les conditions
+Les **77 modules déclarés** sont tous rattachés à une ou plusieurs sections. Les conditions
 d’activation et de configuration restent celles du runtime.
 
 | Module | Fonction couverte / section |
@@ -4519,10 +5084,12 @@ d’activation et de configuration restent celles du runtime.
 | `core.authorize` | [Privilèges, rôles, affectations et accès](#comptes) |
 | `core.params` | [Réglages persistants et défauts gouvernés](#exploitation) |
 | `core.dbadmin` | [Convergence de schéma, datasets et mises à jour](#exploitation) |
+| `core.storage` | [Registre des octets, alias, noms, empreintes et purges récupérables](#fichiers), [stockage et migrations](#exploitation) |
 | `app.incident` | [Journal de défaillances et suivi des correctifs](#supervision) |
 | `app.tools` | [Catalogue, intégrations, recherche et restrictions de fonctions](#outils) |
 | `app.documentation` | [Corpus produit installé, provenance, recherche hybride et accès agentique](#outils), [actualisation de l’index partagé](#exploitation) |
 | `app.agent` | [Identité, administration déléguée et portraits](#agents), [organisation adaptative, portée, plans et preuves de livraison](#taches), [API agents et Janus](#modeles) |
+| `app.share` | [Partage commun, droits exclusifs par ressource, groupes et révocation](#documents) |
 | `app.harness` | [Exécution interne Pydantic AI](#harnais) |
 | `app.harnesses` | [Catalogue, sélection et cycle de vie des harnais](#harnais) |
 | `app.connection` | [Connexions par agent et paramètres](#outils) |
@@ -4548,7 +5115,8 @@ d’activation et de configuration restent celles du runtime.
 | `app.voice` | [Conversations vocales et historique des tours](#voix) |
 | `app.file_share` | [Façade des ressources, fichiers, catalogue privé, indexation et transferts](#fichiers) |
 | `app.console` | [SSH, SFTP, terminal et commandes durables](#console) |
-| `app.process` | [Définitions, runs, callbacks et reprise](#processus) |
+| `app.code` | [Dépôts SSH, découverte Git, sessions VS Code, droits et reprise](#console) |
+| `app.process` | [Catalogue, BPMN natif, variables, activités humaines/IA/MCP/REST/code, runs, débogage et moteurs externes](#processus) |
 | `app.multimedia` | [Analyse audio/vidéo et générations durables propres au domaine](#medias) |
 | `app.mcp` | [Serveur unifié et tokens par agent](#outils) |
 | `bridge.harness` | [Accès au manager, diagnostics et infrastructure des harnais](#harnais) |
@@ -4556,6 +5124,7 @@ d’activation et de configuration restent celles du runtime.
 | `bridge.codex` | [Runtime Codex et credentials gérés](#harnais) |
 | `bridge.deepseek_harness` | [Runtime DSH](#harnais) |
 | `bridge.n8n` | [Workflows externes](#processus) |
+| `bridge.code_server` | [Runtime VS Code OSS, sessions, profils et maintenance des éditeurs](#console) |
 | `bridge.mail` | [IMAP, SMTP, validation humaine et historique](#mail) |
 | `bridge.calendar` | [iCalendar, disponibilité et déclencheurs](#calendrier) |
 | `bridge.hermes` | [Runtime et configuration Hermès](#harnais) |
@@ -4590,7 +5159,7 @@ d’activation et de configuration restent celles du runtime.
 
 ### Modules frontend déclarés
 
-Les **36 modules frontend** suivants sont couverts. Les contributions de bridge ajoutent généralement
+Les **39 modules frontend** suivants sont couverts. Les contributions de bridge ajoutent généralement
 des formulaires/guides aux écrans communs, plutôt qu’une application indépendante.
 
 | Module | Écrans ou contribution |
@@ -4609,6 +5178,9 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 | `app/llm` | Fournisseurs, ressources et filtres, quotas d’abonnement, profils texte/décision, configurations de clients externes, préférences et appels |
 | `app/task` | Activité, tâches, détails, arborescences, commandes et budgets |
 | `app/conversation` | Historique des rounds, détails d’exécution communs et résolution de livraison |
+| `app/share` | Formulaire de partage commun et sélection des propriétaires/destinataires |
+| `app/file_share` | Explorateur des fichiers par agent, URI, aperçus, téléchargements et renommage |
+| `app/dataset` | Bibliothèque JSON, éditeur en modale, versions, propriété, partage, utilisations et suppression |
 | `app/chat` | Discussion, salons, éditeur de messages, aperçus, espace documentaire adaptatif, tâches/documents/processus liés |
 | `app/voice` | Historique des appels et détail des tours vocaux |
 | `app/dream` | Suivi, historique, indexation des fichiers et actions immédiates sur les nœuds Memory |

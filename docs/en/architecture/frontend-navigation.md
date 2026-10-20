@@ -13,8 +13,9 @@ stable keys. `core/navigation/tree.ts` recursively merges these trees in activat
 without mutating the original contributions. Modules can extend `admin.params.children`
 without replacing other preferences.
 
-`app/index/navigationSections.ts` orders the sidebar's five roots. `MainLayout.vue` hosts
-the page container, mobile toolbar and account menu; `Sidebar.vue` displays sections with
+`app/index/navigationSections.ts` orders the sidebar roots: five main sections and a
+Developers section visible only in `dev` mode.
+`MainLayout.vue` hosts the page container, mobile toolbar and account menu; `Sidebar.vue` displays sections with
 at least one visible entry. Children are sorted by `order`, defaulting to 99. Labels and
 descriptions resolve through i18n catalogs; internal names differ from displayed labels.
 

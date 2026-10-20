@@ -26,8 +26,10 @@ Ne pas faire dépendre le catalogue d’outils d’un client concret. Un bridge 
 vers `app.process` et les façades métier au lieu de posséder un second état canonique.
 
 Un processus métier porte un workflow défini indépendamment des fonctions qui exécutent
-ses activités. Les workflows existants sont exécutés par n8n. Le projet de processus natifs
-Galaris vise des processus BPMN exécutables complets.
+ses activités. Les workflows externes sont notamment exécutés par n8n. Le moteur natif Galaris
+exécute le profil BPMN décrit dans `docs/fr/dev/native-processes.md` : Process possède son BPMN,
+son historique, les données et fichiers de ses runs ; ne pas les stocker dans Documents
+ou Dataset. La création UI native reste temporairement réservée au mode `dev`.
 Ne jamais envelopper une fonction, un tool MCP ou une opération technique dans une
 `ProcessDefinition` ou un `ProcessRun`. Leur durée, leurs callbacks, leurs retries ou leur
 besoin de suivi durable ne changent pas leur nature : leur domaine possède cet état.
@@ -71,9 +73,10 @@ Créer avec `file_create(path="document://", name=..., content=...)` où
 `content` est un fragment HTML éditorial UTF-8. Réutiliser l'URI et les révisions plutôt que créer
 des copies Markdown ou HTML ; lier les sources et pièces jointes. Partager avec `memory_sharing`
 puis `document_share` avant de transmettre l'URI aux destinataires. Un lien ne donne pas accès.
-La synchronisation réactive leurs connexions et ignore les anciens refus de fonctions ; seuls
-les Tools optionnels conservent leurs désactivations explicites. Les API et l'interface refusent
-les mutations des Tools système, de leurs connexions et de leurs autorisations.
+La synchronisation réactive leurs connexions. Leurs fonctions gardent les modes
+Actif/Bloqué/Sur demande et l'héritage global/local des autres Tools ; les définitions
+et l'activation des connexions système sont protégées. Les Tools optionnels conservent
+leurs désactivations explicites. Un accord ne lève ni ACL ni restriction de contexte.
 Le choix d'un fichier pour un format explicitement demandé ou un artefact technique reste possible.
 Voir `docs/fr/dev/editorial-html.md`, section « Documents comme pivot de l'information ».
 
@@ -161,8 +164,11 @@ l’isolation entre agents, la connexion active, les ACL du domaine et l'overwri
 chaque nouveau transport. Un nouveau provider expose ses capacités par protocoles optionnels ; il
 ne prétend pas supporter list, move ou delete sans implémentation réelle.
 
-Les neuf fonctions de contrôle `conversation_*` appartiennent au Tool `conversation` et restent
-limitées au contrôleur conversationnel. `conversation_round_get`, `voice_turn_get`, `llm_call` et
+Les fonctions de contrôle `conversation_*` appartiennent au Tool `conversation` et restent
+limitées au contrôleur conversationnel, y compris les réponses aux activités humaines.
+`repository_show` appartient au même Tool et accepte aussi les Tasks explicitement liées
+au Chat interne ; il ne clone, ne committe et ne publie aucun dépôt.
+`conversation_round_get`, `voice_turn_get`, `llm_call` et
 `llm_calls` appartiennent à `galaris_admin`, optionnel, avec vérification de sa connexion active
 à chaque appel. Ne pas exposer les inspections LLM dans le service système `galaris`.
 

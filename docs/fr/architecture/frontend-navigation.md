@@ -14,7 +14,8 @@ par clés stables. `core/navigation/tree.ts` fusionne récursivement ces arbres 
 d’activation, sans modifier les contributions d’origine. Un module peut ainsi compléter
 `admin.params.children` sans remplacer les autres préférences.
 
-`app/index/navigationSections.ts` ordonne les cinq racines de la barre latérale.
+`app/index/navigationSections.ts` ordonne les racines de la barre latérale : cinq sections
+principales et une section Développeurs visible uniquement en mode `dev`.
 `MainLayout.vue` porte le conteneur de pages, la barre mobile et le menu utilisateur ;
 `Sidebar.vue` affiche les sections ayant au moins une entrée visible. Les enfants sont
 triés par `order`, avec 99 par défaut. Les libellés et descriptions sont résolus par les

@@ -48,6 +48,7 @@ Agent runtime
    → app.process (definition + run + event + startup job)
    → engine registry
       ├── bridge.n8n
+      ├── native Galaris BPMN engine
       └── test fake engine
    → callback or periodic refresh
    → durable transition + sanitized output/error
@@ -63,7 +64,9 @@ an activity reply or a conversation without a launch. See
 [decision 0195](../../../../project/decisions/0195-conversation-process-launch-permissions.md)
 for the limits of model-assisted interpretation and the covered tool surface.
 
-The six personal `process_*` functions belong to the `galaris` core package: the optional
+The six personal functions for discovery, launch and external monitoring belong to the
+`galaris` core package. Native definition, activity and debugging functions extend it
+under Process permissions; see the [BPMN profile](../../dev/native-processes.md). The optional
 `process` connection no longer exists. The prompt inventory is produced from exactly the same
 projection as the MCP server; it therefore cites no function that is inactive, incompatible with
 the runtime, disabled, or removed from the Task scope.

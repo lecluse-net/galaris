@@ -39,9 +39,11 @@ shared client aggregates these persisted traces and treats them as the primary t
 source. SDK usage remains a `partial` fallback when the gateway produced no trace; it therefore
 cannot hide an exact provider cost or a pricing estimate explicitly qualified by Galaris.
 
-A Task with automatic approval uses `bypassPermissions`. In every other case, the permission
-callback rejects the operation instead of allowing the runtime to simulate human approval. Turn
-and Tool counts follow the limits frozen in `AgentRunEnvelopeV1`.
+The SDK uses `permission_mode="default"`; its permission callback checks Galaris authorization
+for the exact action. A refusal prevents the effect; the runtime cannot simulate human approval.
+Remembered action-type grants remain bound to the agent, harness and configuration, with a
+single-action check before each effect. Turn and Tool counts follow the limits frozen in
+`AgentRunEnvelopeV1`.
 
 `start`, `restart`, and `update` build or recreate the image pinned by `requirements.txt`.
 `refresh` reprojects configuration, MCP token, and Skills before restarting. Deleting the Harness

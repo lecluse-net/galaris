@@ -91,7 +91,8 @@ Sensitive actions use the common authorization policy; discoverability never gra
 `agent_options`, `agent_create`, `agent_update` and `agent_delete` manage profiles within the
 manager's scope. Creation uses the internal Harness; code and Harness changes use their
 dedicated contracts. `agent_avatar_set`, `agent_avatar_delete` and `agent_avatar_generate`
-manage portraits; generation returns a governed Process to follow.
+manage portraits. Generation runs directly and returns a registration receipt with the
+target profile URI and avatar revision; it does not create a business Process.
 
 Use `agent_team_list` and `agent_team_set` for membership. Titles use `agent_title_list`,
 `agent_title_create`, `agent_title_update` and `agent_title_delete`; groups use `agent_group_list`,
@@ -260,7 +261,7 @@ required by the Process; preserve false, zero, nullability and defaults.
 **HTML/JavaScript document applications:** keep the type `html` and write ordinary HTML
 directly: `<form>`, `<style>` and `<script>`. No JSON application manifest is required.
 The usual editor and toolbar stay present; prose remains editable, forms render in place,
-and executable source is visible only through the existing Source button. No extra edit,
+and the document editor offers no Source view. Non-document rich-text fields retain Source. No extra edit,
 view, start or form-builder mode is needed. Code executes in isolation when the saved page
 opens; generic readers and exports remain inert and hide executable source.
 For a shared Dataset, declare `<form data-dataset="data://UUID">` (alias `entries`,
@@ -293,7 +294,7 @@ only trusted document code with sensitive data. Bundle code and dependencies.
 Blob URLs accept only passive raster image/audio/video MIME types; HTML, SVG and untyped
 blobs cannot create new executable contexts. Prefer embedded data URLs for portable assets.
 Native form actions are blocked, so use JavaScript and the SDK. At most 10 Dataset bindings and the
-existing overall document limits apply. Editing and switching to Source stop the runtime;
+existing overall document limits apply. Editing or changing the document context stops the runtime;
 it renders again after a valid save. Opening a document executes its code with the viewer's
 permissions and recorded consent for its declared Datasets; only share executable documents
 from trusted authors. Application writes accept finite JSON within depth 32, 20,000 nodes and

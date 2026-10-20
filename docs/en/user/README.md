@@ -2,24 +2,24 @@
 
 # User and Discovery Guide
 
-For structured data, see [Datasets](datasets.md).
+This guide introduces Galaris without requiring knowledge of models, APIs or Docker.
+Visible screens depend on your account's permissions. For an overview, start with the
+[feature tour](../features.md).
 
-To create and observe workflows, see [Internal business processes](internal-processes.md).
+| Your need | Guide |
+|---|---|
+| Find a menu or screen | [Navigation and workflows](navigation.md), [generated map](../architecture/generated/navigation.md) |
+| Assign and track work | [Tasks, milestones and recovery](tasks.md) |
+| Organize authored content | [Document library](documents.md) |
+| Write, link, share and export | [Rich content](rich-content.md) |
+| Manage JSON data | [Datasets](datasets.md) |
+| Explore an agent's locations | [Files](files.md) |
+| Edit a repository with an agent | [Conversational Git editor](code-editor.md) |
+| Build and observe a workflow | [Internal business processes](internal-processes.md) |
+| Organize agent access | [Teams and dialogue permissions](teams.md) |
 
-For shared source editing with agents, see [Git repositories in a conversation](code-editor.md).
-
-In detail windows, forms and Lab benchmarks, only the content scrolls: the title and its
-close button remain visible even with long content.
-
-To find a screen, see the [menu and workflow guide](navigation.md) and the
-[generated navigation map](../architecture/generated/navigation.md).
-
-This guide is intended for anyone who wants to use Galaris without knowing about language models, APIs, or Docker. The screens available depend on the permissions assigned to your account.
-
-For an overview, see the
-[complete feature tour](../features.md).
-
-To organize access to agents, see [Teams and dialogue permissions](teams.md).
+Detail, form and Lab benchmark windows scroll their content while keeping the title
+and close control accessible.
 
 ## Galaris, Simply
 
@@ -74,7 +74,7 @@ The sidebar shows only the screens authorized by your role:
 | [Files](files.md) | choose an Agent, browse their locations and directories, and open files or their domain views; loading on scroll |
 | Dream | track background work, inspect its history, and manage file indexing per agent |
 | AI Lab | analyze a Task and measure AI mechanisms on reproducible case sets |
-| Processes | launch and track an external workflow, such as n8n |
+| Processes | build and track an internal BPMN workflow, or launch an external workflow such as n8n |
 | Tools | view MCP and REST API capabilities and agent connections; primarily intended for administrators |
 
 To configure a REST integration, an administrator enables **API** on the Tool, then
@@ -93,7 +93,7 @@ In **Providers**, an administrator can adjust concurrent LLM calls for each conn
 Voice conversations take priority, followed by text conversations and background work;
 with a single place, the current call must still finish before the next one starts.
 
-The LLM, settings, users, and permissions sections are administrative. Their absence from your menu is normal. In **Profile**, choose Français or English; this choice translates the interface and also becomes the reference language for your new Tasks. Your account menu lets you change your assignment if you have been assigned multiple roles. The permissions displayed change immediately with the active role.
+The LLM, settings, users, and permissions sections are administrative. Their absence from your menu is normal. In **Profile**, choose Français, English or 简体中文; this choice translates the interface and also becomes the reference language for your new Tasks. Your account menu lets you change your assignment if you have been assigned multiple roles. The permissions displayed change immediately with the active role.
 
 The profile also lets you enable two-factor authentication with a TOTP application. Keep the recovery codes displayed during activation in a separate, secure location: they will not be displayed again, and each one works only once. After several incorrect passwords or codes, Galaris temporarily slows down new login attempts.
 
@@ -386,12 +386,14 @@ units supplied to the model without certifying answer accuracy. See
 
 ### Launching a Business Process
 
-The **Processes** screen exposes the workflows that the administrator has associated with an Agent. Open a definition, enter its JSON input, and then launch an execution. Its status, output, events, and related Tasks remain available in the same screen.
+The **Processes** page combines internal BPMN workflows and external workflows, including n8n.
+Ask the agent to launch a Process with the required information and files. Internal Process
+pages are for editing and monitoring; launch takes place through Chat without a manual launch
+form. Human activities ask through messaging, and an answer continues the existing run.
 
-Processing can run in n8n or another engine integrated with Galaris.
-The assigned definition selects the software; launch and tracking actions remain
-the same. To prepare an integration, administrators follow the
-[external engine guide](../dev/process-engines.md).
+The [internal Process guide](internal-processes.md) explains actors, variables, branches,
+run data and controls. Administrators integrating external software use the
+[engine guide](../dev/process-engines.md).
 
 Technical tool catalogue refresh does not appear on this screen. If the Agent reports a
 partially refreshed catalogue, ask it to retry refresh for the indicated agents without
@@ -427,8 +429,8 @@ Recent conversation memory is reconstructed automatically. For durable context, 
 A memory's details include **Temporality (optional)**. Enter only meaningful components:
 day, month, year, weekday, hour and minute. Empty fields are unrestricted: day 27 and month 9
 mean every September 27; adding a year restricts the match to that year. A date without a time
-matches the whole day. Hour 9 without a minute matches 9:00–9:59. The proposed timezone comes
-from the application and can be changed. An interpretation appears below the fields;
+matches the whole day. Hour 9 without a minute matches 9:00–9:59. The timezone is configured globally for Galaris (`TZ`);
+it cannot be changed in this form. An interpretation appears below the fields;
 **Remove temporality** preserves the memory and its content.
 
 Current and upcoming matches enrich agent context under the same access rules. Configure the
@@ -440,11 +442,11 @@ Adding an anchor excludes the memory from automatic recall outside its period an
 when it matches. Undated memories continue through ordinary relevance search.
 
 In **Memory → List**, the temporal filter always applies, starting with the first search. A single
-date and time field is prefilled with the browser's current local time. Edit it and click **Apply**
+date and time field is prefilled with the current instant in Galaris's global timezone. Edit it and click **Apply**
 to check that exact instant, with no lookahead or timezone to enter. The list unites two independent
 selections: **undated memories** matching text, topic and interlocutor filters, and **dated memories**
 matching the target time regardless of those other filters. Dated memories outside their period are excluded.
-The target date appears in the filter; dated results display their matching time in browser local time.
+The target date appears in the filter; dated results display their matching time in Galaris's global timezone, independently of the browser.
 The field is required and the filter cannot be disabled. The simulation
 uses current memories, validity and access rights; it does not reconstruct historical state.
 

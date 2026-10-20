@@ -47,6 +47,11 @@ utilisateurs, agents et groupes ; il peut aussi être partagé publiquement. Les
 processus des agents gérés. Sans propriétaire actif, la définition est réservée aux
 administrateurs humains PROCESS_ADMIN.
 
+La création d'un processus interne depuis l'interface est temporairement disponible
+uniquement en mode développement (`APP_ENV=dev`). Les autres environnements conservent
+la consultation, l'édition autorisée et le suivi des processus existants. Cette restriction
+d'interface ne remplace pas les droits API et MCP.
+
 ## Construire et enregistrer
 
 Créer un processus et saisir son titre dans la barre compacte. Le champ **Description**

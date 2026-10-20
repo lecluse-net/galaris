@@ -19656,6 +19656,7 @@
           "front/app/chat/components/ConversationProcessesPanel.vue",
           "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/components/MessageTimeline.vue",
+          "front/app/chat/components/RoomRowMenu.vue",
           "front/app/chat/pages/index.vue",
           "front/app/chat/services/chatService.ts",
           "front/app/chat/stores/chat.ts",
@@ -19670,6 +19671,8 @@
           "front/app/chat/components/AgentExecutionTrace.vue",
           "front/app/chat/components/AgentTasksPanel.vue",
           "front/app/chat/components/MessageResourcePreviews.vue",
+          "front/app/chat/components/MessageTimeline.vue",
+          "front/app/chat/components/RoomRowMenu.vue",
           "front/app/chat/navigation.ts",
           "front/app/chat/pages/index.vue",
           "front/app/chat/stores/chat.ts"
@@ -19715,8 +19718,11 @@
           "front/app/chat/components/MarkdownAttachmentPreview.vue",
           "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/components/MessageTimeline.vue",
+          "front/app/chat/components/RoomDiscussion.vue",
+          "front/app/chat/components/RoomRowMenu.vue",
           "front/app/chat/components/SafeMessageContent.vue",
           "front/app/chat/pages/index.vue",
+          "front/app/chat/richContent.ts",
           "front/app/chat/services/chatService.ts",
           "front/app/chat/useChatAvatar.ts"
         ],
@@ -19906,7 +19912,8 @@
         "files": [
           "front/app/conversation/components/ConversationExecutionDetails.vue",
           "front/app/conversation/components/ConversationHistory.vue",
-          "front/app/conversation/components/ConversationRoundDetail.vue"
+          "front/app/conversation/components/ConversationRoundDetail.vue",
+          "front/app/conversation/richContent.ts"
         ],
         "source": "app/conversation",
         "target": "core/util"
@@ -19952,6 +19959,7 @@
       },
       {
         "files": [
+          "front/app/dataset/components/DatasetDialog.vue",
           "front/app/dataset/components/DatasetEditor.vue",
           "front/app/dataset/pages/[[id]].vue",
           "front/app/dataset/richContent.ts"
@@ -20461,6 +20469,7 @@
           "front/app/memory/components/DocumentLibraryFilters.vue",
           "front/app/memory/components/DocumentLibraryPage.vue",
           "front/app/memory/components/MemorySharingPanel.vue",
+          "front/app/memory/services/memoryService.ts",
           "front/app/memory/types.ts"
         ],
         "source": "app/memory",
@@ -20518,8 +20527,10 @@
           "front/app/memory/components/DocumentFolderSelect.vue",
           "front/app/memory/components/DocumentHistoryDialog.vue",
           "front/app/memory/components/DocumentLibraryPage.vue",
+          "front/app/memory/components/DocumentRowMenu.vue",
           "front/app/memory/components/DocumentTagIcon.vue",
           "front/app/memory/components/DocumentTagIconPicker.vue",
+          "front/app/memory/components/DocumentTagRow.vue",
           "front/app/memory/components/DocumentThumbnail.vue",
           "front/app/memory/components/MemoryAttachmentButton.vue",
           "front/app/memory/components/MemoryContentPreviews.vue",
@@ -20658,6 +20669,7 @@
         "files": [
           "front/app/process/components/BpmnCanvas.vue",
           "front/app/process/components/ExternalProcessEditor.vue",
+          "front/app/process/components/ExternalProcessRuns.vue",
           "front/app/process/components/ExternalRunDialog.vue",
           "front/app/process/components/NativeActivityDetails.vue",
           "front/app/process/components/NativeProcessEditor.vue",
@@ -20689,10 +20701,11 @@
       },
       {
         "files": [
-          "front/app/share/components/OwnerSelect.vue",
+          "front/app/share/components/OwnerAvatar.vue",
           "front/app/share/components/ResourceSharingPanel.vue",
           "front/app/share/components/SharingPanel.vue",
           "front/app/share/components/SharingRecipients.vue",
+          "front/app/share/ownerCache.ts",
           "front/app/share/panel.ts"
         ],
         "source": "app/share",
@@ -20825,6 +20838,7 @@
           "front/app/task/components/TaskActivitySummary.vue",
           "front/app/task/components/TaskDetail.vue",
           "front/app/task/components/TaskFormDialog.vue",
+          "front/app/task/components/TaskRowMenu.vue",
           "front/app/task/navigation.ts",
           "front/app/task/pages/index.vue"
         ],
@@ -20864,6 +20878,7 @@
           "front/app/task/components/PlannerResult.vue",
           "front/app/task/components/TaskDetail.vue",
           "front/app/task/components/TaskFormDialog.vue",
+          "front/app/task/components/TaskRowMenu.vue",
           "front/app/task/pages/index.vue",
           "front/app/task/richContent.ts",
           "front/app/task/services/taskStatusService.ts"
@@ -20940,8 +20955,8 @@
       },
       {
         "files": [
+          "front/app/topic/components/TopicDetail.vue",
           "front/app/topic/navigation.ts",
-          "front/app/topic/pages/[id].vue",
           "front/app/topic/pages/index.vue"
         ],
         "source": "app/topic",
@@ -20949,9 +20964,11 @@
       },
       {
         "files": [
+          "front/app/topic/components/TopicDetail.vue",
+          "front/app/topic/components/TopicFormDialog.vue",
           "front/app/topic/components/TopicParticipants.vue",
-          "front/app/topic/pages/[id].vue",
-          "front/app/topic/pages/index.vue"
+          "front/app/topic/pages/index.vue",
+          "front/app/topic/richContent.ts"
         ],
         "source": "app/topic",
         "target": "core/util"
@@ -21013,7 +21030,8 @@
       {
         "files": [
           "front/app/voice/components/VoiceCallHistory.vue",
-          "front/app/voice/components/VoiceConversationDetail.vue"
+          "front/app/voice/components/VoiceConversationDetail.vue",
+          "front/app/voice/richContent.ts"
         ],
         "source": "app/voice",
         "target": "core/util"
@@ -21220,6 +21238,7 @@
           "front/core/authorize/components/AssignmentManager.vue",
           "front/core/authorize/components/PrivilegeListManager.vue",
           "front/core/authorize/components/RoleManager.vue",
+          "front/core/authorize/components/UserPreferencesMenu.vue",
           "front/core/authorize/pages/index.vue",
           "front/core/authorize/pages/profile.vue"
         ],
@@ -21422,8 +21441,10 @@
       },
       {
         "files": [
+          "front/core/util/components/ActionContextMenu.vue",
           "front/core/util/components/RenameFileButton.vue",
-          "front/core/util/components/ResourceAttachments.vue"
+          "front/core/util/components/ResourceAttachments.vue",
+          "front/core/util/sessionResources.ts"
         ],
         "source": "core/util",
         "target": "core/api"

@@ -42,9 +42,11 @@ des tokens et du coût. L'usage du SDK reste un repli `partial` lorsque le gatew
 trace ; il ne peut donc pas masquer un coût fournisseur exact ni une estimation tarifaire
 explicitement qualifiée par Galaris.
 
-Une Task en approbation automatique utilise le mode `bypassPermissions`. Dans les autres cas, le
-callback de permission refuse l'opération au lieu de permettre au runtime de simuler une
-approbation humaine. Le nombre de tours et d'outils suit les limites figées dans
+Le SDK utilise `permission_mode="default"` et son callback de permission consulte
+l'autorisation Galaris de l'action exacte. Un refus bloque l'effet ; le runtime ne peut
+pas simuler un accord humain. Les accords mémorisés par type d'action restent liés à
+l'agent, au harnais et à sa configuration, avec contrôle unitaire avant effet.
+Le nombre de tours et d'outils suit les limites figées dans
 `AgentRunEnvelopeV1`.
 
 `start`, `restart` et `update` construisent ou recréent l'image épinglée par

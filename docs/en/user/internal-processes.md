@@ -43,6 +43,10 @@ Each internal process has a human or agent owner and read or write access grante
 it can also be shared publicly. Users also see managed agents' processes.
 Definitions without an active owner are restricted to human PROCESS_ADMIN administrators.
 
+Creating an internal process through the interface is temporarily available only in
+development mode (`APP_ENV=dev`). Other environments retain viewing, authorized editing
+and monitoring of existing processes. This UI restriction does not replace API or MCP permissions.
+
 ## Build and save
 
 Create a process and enter its title in the compact toolbar. The **Description** field

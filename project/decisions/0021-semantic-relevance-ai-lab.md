@@ -67,7 +67,7 @@ couverture de jugement est affichée ; aucune similarité stricte ne remplace la
 `back/app/lab/mechanism_rubrics.py`,
 `back/app/lab/mechanism_evaluation_service.py`,
 `back/app/lab/tests/test_evaluation.py` et
-`front/app/lab/components/MechanismEvaluationTab.vue`.
+`front/app/lab/components/LabWorkbench.vue` et `LabResultsPanel.vue`.
 
 La spécification détaillée, les formules, les rubriques, le protocole d’étalonnage et les limites
 se trouvent dans [Architecture et théorie d’évaluation du Lab IA](../../docs/fr/architecture/ai-lab-evaluation.md).
