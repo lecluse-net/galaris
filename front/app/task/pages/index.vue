@@ -45,41 +45,13 @@
         <template v-if="activeTab === 'tasks'">
           <div class="row q-col-gutter-md q-mb-lg">
             <div v-for="metric in taskMetrics" :key="metric.label" class="col-6 col-md-3">
-              <q-card
-                flat
-                bordered
-                class="full-height task-metric-card"
-                :class="{
-                  'task-metric-card--interactive': isTaskFilterMetric(metric.key),
-                  'task-metric-card--active': taskMetricFilterActive(metric.key),
-                  'task-metric-card--paused': metric.key === 'paused',
-                  'task-metric-card--running': metric.key === 'running',
-                  'task-metric-card--errors': metric.key === 'errors',
-                }"
-                :role="isTaskFilterMetric(metric.key) ? 'button' : undefined"
-                :tabindex="isTaskFilterMetric(metric.key) ? 0 : undefined"
-                :aria-pressed="isTaskFilterMetric(metric.key) ? taskMetricFilterActive(metric.key) : undefined"
-                @click="toggleTaskMetricFilter(metric.key)"
-                @keydown.enter.prevent="toggleTaskMetricFilter(metric.key)"
-                @keydown.space.prevent="toggleTaskMetricFilter(metric.key)"
-              >
-                <q-card-section class="row items-center no-wrap">
-                  <q-avatar :color="metric.color" text-color="white" :icon="metric.icon" />
-                  <div class="col q-ml-md" style="min-width: 0">
-                    <div class="text-caption text-grey-7 ellipsis">{{ metric.label }}</div>
-                    <q-skeleton
-                      v-if="store.recentLoading && !store.recentTasks.length"
-                      type="text"
-                      width="48px"
-                      height="32px"
-                    />
-                    <div v-else class="text-h5 text-weight-medium">{{ metric.value }}</div>
-                  </div>
-                </q-card-section>
+              <MetricCard :label="metric.label" :value="metric.value" :icon="metric.icon" :tone="metric.tone"
+                :loading="store.recentLoading && !store.recentTasks.length" :interactive="isTaskFilterMetric(metric.key)"
+                :active="taskMetricFilterActive(metric.key)" @activate="toggleTaskMetricFilter(metric.key)">
                 <q-tooltip v-if="isTaskFilterMetric(metric.key)">
                   {{ $t(taskMetricFilterTooltip(metric.key)) }}
                 </q-tooltip>
-              </q-card>
+              </MetricCard>
             </div>
           </div>
 
@@ -155,7 +127,7 @@ import { useTaskStore } from '../stores/taskStore'
 import { usePrivilegeStore } from '@/core/authorize'
 import { privileges } from '@/core/authorize'
 import { useI18n } from 'vue-i18n'
-import { PageHeader, defineAsyncView } from '@/core/util'
+import { MetricCard, PageHeader, defineAsyncView } from '@/core/util'
 import type { Task, TaskFull } from '../types'
 
 const TaskDetail = defineAsyncView(() => import('../components/TaskDetail.vue'))
@@ -192,28 +164,28 @@ const taskMetrics = computed(() => {
       label: t('task.overview.metrics.completed'),
       value: summary.completed,
       icon: 'check_circle',
-      color: 'positive',
+      tone: 'green' as const,
     },
     {
       key: 'paused',
       label: t('task.overview.metrics.paused'),
       value: summary.paused,
       icon: 'pause_circle',
-      color: 'warning',
+      tone: 'orange' as const,
     },
     {
       key: 'running',
       label: t('task.overview.metrics.running'),
       value: summary.running,
       icon: 'motion_photos_on',
-      color: 'primary',
+      tone: 'blue' as const,
     },
     {
       key: 'errors',
       label: t('task.overview.metrics.errors'),
       value: summary.errors,
       icon: 'error',
-      color: 'negative',
+      tone: 'red' as const,
     },
   ]
 })
@@ -398,57 +370,10 @@ async function confirmDelete() {
   padding: 0;
 }
 
-.task-metric-card {
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
-}
-
-.task-metric-card--interactive {
-  cursor: pointer;
-}
-
-.task-metric-card--paused {
-  --task-metric-accent: var(--q-warning);
-  --task-metric-shadow: rgb(242 192 55 / 18%);
-}
-
-.task-metric-card--running {
-  --task-metric-accent: var(--q-primary);
-  --task-metric-shadow: rgb(25 118 210 / 18%);
-}
-
-.task-metric-card--errors {
-  --task-metric-accent: var(--q-negative);
-  --task-metric-shadow: rgb(193 40 46 / 18%);
-}
-
-.task-metric-card--interactive:hover,
-.task-metric-card--interactive:focus-visible {
-  border-color: var(--task-metric-accent);
-  box-shadow: 0 4px 14px var(--task-metric-shadow);
-  outline: none;
-  transform: translateY(-1px);
-}
-
-.task-metric-card--active {
-  border-color: var(--task-metric-accent);
-  box-shadow: 0 0 0 1px var(--task-metric-accent), 0 5px 16px var(--task-metric-shadow);
-}
-
 @media (max-width: 599px) {
   .execution-monitoring-page {
     padding: 8px;
   }
 
-  .task-metric-card :deep(.q-card__section) {
-    padding: 12px;
-  }
-
-  .task-metric-card :deep(.q-avatar) {
-    font-size: 36px;
-  }
-
-  .task-metric-card :deep(.q-ml-md) {
-    margin-left: 8px;
-  }
 }
 </style>

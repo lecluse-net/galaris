@@ -21,6 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
     const error = ref<string | null>(null)
     const mfaRequired = ref(false)
     let authOperation = 0
+    let languageOperation = 0
     let observedGeneration = sessionGeneration()
     // Getters
     const isAuthenticated = computed(() => !!token.value && !!user.value)
@@ -93,7 +94,8 @@ export const useAuthStore = defineStore('auth', () => {
         if (savedUser) {
             try {
                 user.value = JSON.parse(savedUser) as User
-                applyUserLocale(user.value.language)
+                void applyUserLocale(user.value.language, () => generation === sessionGeneration())
+                    .catch(err => console.error('Unable to load the user language:', err))
             } catch {
                 localStorage.removeItem('user')
             }
@@ -206,7 +208,9 @@ export const useAuthStore = defineStore('auth', () => {
             user.value = userData
             localStorage.setItem('user', JSON.stringify(userData))
             // Apply the profile locale, falling back to the browser and then English.
-            applyUserLocale(userData.language)
+            await applyUserLocale(userData.language, () => generation === sessionGeneration())
+                .catch(err => console.error('Unable to load the user language:', err))
+            if (generation !== sessionGeneration()) throw new SupersededSessionError()
         } catch (err) {
             // An explicit login is complete only once identity has loaded. Keep
             // its form open on failure; background restoration remains best effort.
@@ -306,19 +310,22 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     /**
-     * Apply the user's language immediately and persist it to the profile.
+     * Load and apply the user's language, then persist the current choice.
      */
     async function setLanguage(locale: AppLocale): Promise<void> {
         const generation = sessionGeneration()
-        setLocale(locale)
+        const operation = ++languageOperation
+        const isCurrent = () => generation === sessionGeneration() && operation === languageOperation
         try {
+            if (!await setLocale(locale, isCurrent)) return
             const updatedUser = await authService.updateProfile({ language: locale })
-            if (generation !== sessionGeneration()) throw new SupersededSessionError()
+            if (!isCurrent()) throw new SupersededSessionError()
             user.value = updatedUser
             localStorage.setItem('user', JSON.stringify(updatedUser))
         } catch (err) {
-            if (generation !== sessionGeneration() || err instanceof SupersededSessionError) return
+            if (!isCurrent() || err instanceof SupersededSessionError) return
             console.error('Unable to save the user language:', err)
+            throw err
         }
     }
 

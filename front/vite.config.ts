@@ -9,6 +9,7 @@ import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 import { VitePWA } from 'vite-plugin-pwa'
 import { developmentWorkerRecovery } from './pwa/developmentWorkerRecovery'
 import { documentRuntimeLibraries } from './documentRuntimeLibraries'
+import { localeCatalogs } from './localeCatalogs'
 
 interface RouteFolder {
     src: string
@@ -75,11 +76,13 @@ const precacheRevision = randomUUID()
 // https://vitejs.dev/config/
 export default defineConfig({
     define: {
+        __VUE_I18N_LEGACY_API__: false,
         'import.meta.env.VITE_APP_ENV': JSON.stringify(appEnv),
         'import.meta.env.VITE_BUILD_VERSION': JSON.stringify(process.env.GALARIS_BUILD_VERSION || 'unknown'),
     },
     build: { manifest: true },
     plugins: [
+        localeCatalogs(),
         documentRuntimeLibraries(),
         developmentWorkerRecovery(),
         VueRouter({
@@ -152,7 +155,7 @@ export default defineConfig({
                     })),
                     warnings: [],
                 })],
-                globPatterns: appEnv === 'dev' ? [] : ['**/*.{js,css,html,ico,png,svg,jpg,woff,woff2}'],
+                globPatterns: appEnv === 'dev' ? [] : ['**/*.{js,css,html,ico,png,svg,jpg,woff,woff2}', '**/locale-*.json'],
                 globIgnores: ['**/swagger-ui-*'],
                 maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
             },

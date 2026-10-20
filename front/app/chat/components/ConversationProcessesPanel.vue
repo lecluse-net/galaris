@@ -1,21 +1,10 @@
 <template>
   <section class="conversation-processes-panel">
-    <div v-if="!canRead" class="conversation-work-state text-grey-7">
-      <q-icon name="lock" size="28px" />
-      <span>{{ t('chat.processesUnavailable') }}</span>
-    </div>
-    <div v-else-if="loading && !processes.length" class="conversation-work-state text-grey-7">
-      <q-spinner color="primary" size="28px" />
-    </div>
-    <div v-else-if="error && !processes.length" class="conversation-work-state text-negative">
-      <q-icon name="warning" size="28px" />
-      <span>{{ error }}</span>
-      <q-btn flat dense color="negative" :label="t('chat.retryProcesses')" @click="load(true)" />
-    </div>
-    <div v-else-if="!processes.length" class="conversation-work-state text-grey-7">
-      <q-icon name="schema" size="28px" />
-      <span>{{ t('chat.noProcesses') }}</span>
-    </div>
+    <PanelState v-if="!canRead" state="forbidden" :message="t('chat.processesUnavailable')" />
+    <PanelState v-else-if="loading && !processes.length" state="loading" />
+    <PanelState v-else-if="error && !processes.length" state="error" :message="error"
+      :retry-label="t('chat.retryProcesses')" @retry="load(true)" />
+    <PanelState v-else-if="!processes.length" state="empty" icon="schema" :message="t('chat.noProcesses')" />
     <q-list ref="processList" v-else separator class="conversation-work-list" @scroll.passive="onScroll">
       <div v-if="loadingMore" class="conversation-work-loader"><q-spinner color="primary" size="20px" /></div>
       <q-item
@@ -63,7 +52,7 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { websocket } from '@/core/websocket'
-import { preloadResourceDetail } from '@/core/util'
+import { PanelState, preloadResourceDetail } from '@/core/util'
 import { chatService } from '../services/chatService'
 import type { ConversationProcess, ConversationProcessStatus } from '../types'
 import ConversationProcessDialog from './ConversationProcessDialog.vue'
@@ -341,7 +330,6 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .conversation-processes-panel { display: flex; flex: 1 1 auto; min-width: 0; min-height: 0; flex-direction: column; color: var(--chat-text, #252b36); background: var(--chat-surface, #fff); }
-.conversation-work-state { display: flex; min-height: 120px; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 18px; text-align: center; font-size: .78rem; }
 .conversation-work-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .conversation-work-loader { display: flex; min-height: 36px; align-items: center; justify-content: center; }
 .conversation-work-inline-error { padding: 7px 10px; font-size: .75rem; }

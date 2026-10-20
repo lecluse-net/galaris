@@ -209,7 +209,7 @@ const localeOptions = SUPPORTED_LOCALES.map(locale => ({
 const currentLocale = computed<AppLocale>({
   get: () => (authStore.user?.language as AppLocale) || getLocale(),
   set: value => {
-    void authStore.setLanguage(value)
+    void authStore.setLanguage(value).catch(error => notifyError(error, 'user.profile.updateError'))
   },
 })
 

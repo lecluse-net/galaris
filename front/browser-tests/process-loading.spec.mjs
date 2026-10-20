@@ -236,6 +236,43 @@ for (const width of [1440, 390]) {
   })
 }
 
+for (const kind of ['external', 'native']) {
+  test(`${kind} run pagination ignores a late previous process and preserves its rows on refresh errors`, async ({ page }) => {
+    await fixtures(page)
+    let delayed, failed = false
+    const requests = []
+    const endpoint = kind === 'external' ? '/processes/runs' : '/processes/internal/runs'
+    await page.route(`**/api${endpoint}?*`, route => {
+      const params = new URL(route.request().url()).searchParams
+      requests.push(params)
+      const context = params.get(kind === 'external' ? 'process_id' : 'code')
+      if (context === '1') { delayed = route; return }
+      if (failed) return route.fulfill({ status: 503, json: { detail: 'Synthetic outage' } })
+      return route.fulfill({ json: { items: [{ id: 'current-run', summary: 'Current synthetic process', process_label: 'Current synthetic process', status: 'success',
+        created_at: '2026-01-01T12:00:00Z', started_at: '2026-01-01T12:00:00Z', output: null }], total: 1, page: 1, page_size: 50 } })
+    })
+    await mount(page, `app/process/components/${kind === 'external' ? 'ExternalProcessRuns' : 'NativeRunsTable'}.vue`, {
+      props: kind === 'external' ? { definition: { id: 1 }, revision: 0 } : { code: '1' },
+    })
+    await expect.poll(() => Boolean(delayed)).toBe(true)
+    await page.evaluate(kind => window.testApp.setProps(kind === 'external' ? { definition: { id: 2 } } : { code: '2' }), kind)
+    const current = page.getByLabel('Show details: Current synthetic process', { exact: true })
+    await expect(current).toBeVisible()
+    expect(requests.at(-1).get('page_size')).toBe('50')
+    await delayed.fulfill({ json: { items: [{ id: 'obsolete-run', summary: 'Obsolete process', process_label: 'Obsolete process' }], total: 1 } })
+    await expect(current).toBeVisible()
+    await expect(page.getByLabel('Show details: Obsolete process', { exact: true })).toHaveCount(0)
+    failed = true
+    await page.evaluate(kind => window.testApp.setProps(kind === 'external' ? { revision: 1 } : { refreshRevision: 1 }), kind)
+    await expect(page.getByRole('alert')).toBeVisible()
+    await expect(current).toBeVisible()
+    failed = false
+    await page.getByRole('button', { name: 'Retry', exact: true }).press('Enter')
+    await expect(page.getByRole('alert')).toHaveCount(0)
+    await expect(current).toBeVisible()
+  })
+}
+
 const externalDefinition = { id: 1, agent_id: 7, tool_id: 1, engine_process_id: 'synthetic-external', label: 'Synthetic external process', description: 'Saved synthetic description' }
 
 for (const width of [1440, 390]) {

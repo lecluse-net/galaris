@@ -4,7 +4,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { Quasar, QLayout, QPageContainer, Dialog, Notify, Loading } from 'quasar'
 import quasarUserOptions, { useBrowserTheme } from '/quasar-user-options.ts'
 import { getThemeMode, toQuasarDark } from '/core/theme.ts'
-import { i18n, setLocale } from '/core/i18n/index.ts'
+import { i18n, setLocale, initialLocaleReady } from '/core/i18n/index.ts'
 import { useAuthStore } from '/core/user/stores/authStore.ts'
 import { useHelpStore } from '/core/user/stores/helpStore.ts'
 import { contextHelpKey } from '/core/util/contextHelp.ts'
@@ -16,6 +16,7 @@ import '/app/style.scss'
 import '/core/util/solaireTheme.ts'
 
 const errors = []
+await initialLocaleReady
 window.testApp = {
   errors,
   mount(options) {
@@ -38,7 +39,7 @@ window.testApp = {
     }
     const privileges = usePrivilegeStore(pinia)
     await privileges.loadPrivileges()
-    setLocale(locale)
+    await setLocale(locale)
     const target = (await import(/* @vite-ignore */ `/${component}`)).default
     for (const name of setProps) props[name] = new Set(props[name])
     const currentProps = shallowRef(props)

@@ -320,8 +320,8 @@ test('a visually edited native process runs its saved Task and retains its own g
   expect(run.nodes.map(node => node.status)).toEqual(['success', 'success', 'success'])
   expect(run.data).toEqual({ subject: 'Invented example' })
   expect(run.data).toEqual(run.output)
-  await page.getByText(/^(Run data|Données du run)$/, { exact: true }).click()
-  await expect(page.getByRole('dialog')).toContainText('Invented example')
+  const runData = page.getByRole('textbox', { name: /^(Run data|Données du run)$/, exact: true })
+  await expect.poll(async () => JSON.parse(await runData.inputValue())).toEqual({ subject: 'Invented example' })
   const changed = await request.put(definitionPath, { headers, data: { expected_revision: 2, title: 'Changed next launch',
     graph: { ...run.graph, nodes: run.graph.nodes.map(node => node.id === 'work'
       ? { ...node, config: { ...node.config, prompt: 'A different instruction for future launches.' } } : node) },

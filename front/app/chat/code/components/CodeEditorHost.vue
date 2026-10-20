@@ -44,7 +44,7 @@ const visible = computed(() => store.activeId !== null && bounds.value !== null 
 const position = computed(() => ({ left: `${bounds.value?.left ?? 0}px`, top: `${bounds.value?.top ?? 0}px`,
   width: `${bounds.value?.width ?? 0}px`, height: `${bounds.value?.height ?? 0}px`, zIndex: layer.value,
 }))
-let animation = 0
+let animation: number | undefined
 let heartbeat: ReturnType<typeof setInterval> | undefined
 function measure(): void {
   const element = store.anchor
@@ -56,12 +56,20 @@ function measure(): void {
   if (!rect || !bounds.value || ['left', 'top', 'width', 'height'].some(key => rect[key as keyof DOMRect] !== bounds.value?.[key as keyof DOMRect])) bounds.value = rect
   animation = requestAnimationFrame(measure)
 }
+// Retain the iframe and its buffers while hidden, without scanning the page on
+// every frame. The anchor is restored when the workspace pane opens again.
+watch(() => Boolean(store.anchor && store.activeId !== null && store.editors.length), tracking => {
+  if (animation !== undefined) cancelAnimationFrame(animation)
+  animation = undefined
+  if (tracking) measure()
+  else bounds.value = null
+}, { immediate: true, flush: 'post' })
 function protectBuffers(event: BeforeUnloadEvent): void {
   if (!store.editors.some(editor => editor.session.workspace.mode === 'edit')) return
   event.preventDefault()
 }
-onMounted(() => { measure(); heartbeat = setInterval(() => { void store.heartbeat() }, 30_000); window.addEventListener('beforeunload', protectBuffers); window.addEventListener('message', ready) })
-onBeforeUnmount(() => { store.reset(); cancelAnimationFrame(animation); clearInterval(heartbeat); window.removeEventListener('beforeunload', protectBuffers); window.removeEventListener('message', ready) })
+onMounted(() => { heartbeat = setInterval(() => { void store.heartbeat() }, 30_000); window.addEventListener('beforeunload', protectBuffers); window.addEventListener('message', ready) })
+onBeforeUnmount(() => { store.reset(); if (animation !== undefined) cancelAnimationFrame(animation); clearInterval(heartbeat); window.removeEventListener('beforeunload', protectBuffers); window.removeEventListener('message', ready) })
 </script>
 
 <style scoped>

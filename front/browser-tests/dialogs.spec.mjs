@@ -16,6 +16,7 @@ for (const locale of ['en', 'fr']) test(`confirmations cancel safely, reopen and
   const close = () => dialog.getByRole('button', { name: locale === 'fr' ? 'Fermer' : 'Close', exact: true })
   const cancel = () => dialog.getByRole('button', { name: locale === 'fr' ? 'Annuler' : 'Cancel', exact: true })
   await open()
+  await expect(dialog).toHaveAccessibleName('A confirmation with an existing resource')
   await expect(dialog).toContainText('Keep this content')
   await expect(cancel()).toBeFocused()
   await close().click()

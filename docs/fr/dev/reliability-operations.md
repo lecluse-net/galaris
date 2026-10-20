@@ -281,6 +281,14 @@ asynchrone : consulter un document ne doit pas initialiser son moteur d'édition
 exclut les polices et les appels API ; le service worker conserve son précache complet,
 donc le volume téléchargé pour une installation PWA n'est pas celui du graphe initial.
 
+`startup_by_locale` inclut aussi le catalogue français ou chinois sélectionné : ne pas
+confondre la réduction des imports statiques avec celle du démarrage dans chaque langue.
+L’anglais reste disponible comme repli. `localeCatalogs.ts` sélectionne ses messages au build
+et produit les ressources JSON des autres langues, également précachées pour l’usage hors ligne.
+`setLocale` et `applyUserLocale` sont asynchrones : attendre leur résultat avant une action
+qui dépend de la langue. Un téléchargement échoué préserve l’interface courante et peut être
+réessayé ; une réponse tardive ne remplace ni une sélection plus récente ni une autre session.
+
 Les lecteurs, éditeurs et prévisualisations lourds exposés par `core/util`, ainsi que les
 panneaux Activité, Fournisseurs & modèles et plusieurs sections des Préférences, se
 chargent à leur ouverture. `defineAsyncView` conserve le contrat Vue des props, événements,

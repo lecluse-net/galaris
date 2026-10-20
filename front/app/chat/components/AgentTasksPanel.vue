@@ -15,22 +15,13 @@
     </q-toolbar>
     <q-separator v-if="!embedded" />
 
-    <div v-if="!canRead" class="agent-tasks-state text-grey-7">
-      <q-icon name="lock" size="28px" />
-      <span>{{ t('chat.tasksUnavailable') }}</span>
-    </div>
-    <div v-else-if="error && !tasks.length" class="agent-tasks-state text-negative">
-      <q-icon name="error_outline" size="28px" />
-      <span>{{ error }}</span>
-      <q-btn flat dense no-caps color="primary" :label="t('chat.retryTasks')" @click="load(true)" />
-    </div>
+    <PanelState v-if="!canRead" class="agent-tasks-state" state="forbidden" :message="t('chat.tasksUnavailable')" />
+    <PanelState v-else-if="error && !tasks.length" class="agent-tasks-state" state="error" :message="error"
+      :retry-label="t('chat.retryTasks')" @retry="load(true)" />
     <div v-else class="agent-tasks-scroll-zone">
       <q-scroll-area ref="taskScrollArea" class="agent-tasks-scroll" @scroll="onTaskScroll">
-        <div v-if="loading && !tasks.length && !hasCompletedInitialTaskLoad" class="agent-tasks-state text-grey-7"><q-spinner color="primary" size="28px" /></div>
-        <div v-else-if="!tasks.length" class="agent-tasks-state text-grey-7">
-          <q-icon name="account_tree" size="32px" />
-          <span>{{ t('chat.noAgentTasks') }}</span>
-        </div>
+        <PanelState v-if="loading && !tasks.length && !hasCompletedInitialTaskLoad" class="agent-tasks-state" state="loading" />
+        <PanelState v-else-if="!tasks.length" class="agent-tasks-state" state="empty" icon="account_tree" :message="t('chat.noAgentTasks')" />
         <q-list v-else class="agent-task-list">
           <div v-if="loadingOlder" class="agent-tasks-load-older"><q-spinner color="primary" size="20px" /></div>
           <q-item
@@ -236,7 +227,7 @@
 </template>
 
 <script setup lang="ts">
-import { ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
+import { ActionContextMenu, PanelState, useResourceCopy, type ContextAction } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { richTextExcerpt } from '@/core/util'
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
@@ -850,7 +841,7 @@ onBeforeUnmount(() => {
 .agent-tasks-scroll :deep(.q-scrollarea__content) { width: 100%; min-width: 0 !important; max-width: 100%; overflow-x: hidden; }
 .agent-tasks-scroll :deep(.q-scrollarea__bar--h),
 .agent-tasks-scroll :deep(.q-scrollarea__thumb--h) { display: none; }
-.agent-tasks-state { display: flex; min-height: 170px; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 20px; text-align: center; font-size: .78rem; }
+.agent-tasks-state { min-height: 170px; padding: 20px; }
 .agent-task-list { position: relative; width: 100%; min-width: 0; max-width: 100%; padding: 3px 0; overflow-x: hidden; }
 .agent-tasks-load-older { position: absolute; top: 5px; left: 50%; z-index: 2; display: flex; align-items: center; justify-content: center; transform: translateX(-50%); pointer-events: none; }
 .agent-task-row { --chat-task-font-size: .875rem; box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; min-height: 64px; padding-top: 7px; padding-right: 8px; padding-bottom: 7px; overflow: hidden; border-left: 3px solid transparent; border-bottom: 1px solid var(--chat-border, rgba(35, 46, 66, .065)); font-size: var(--chat-task-font-size); }

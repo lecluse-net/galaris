@@ -2,6 +2,28 @@
 
 # Catalogue des garanties fonctionnelles
 
+`metric-card.spec.mjs` protège la valeur affichée, le chargement, l’activation facultative
+à la souris et au clavier et l’état sélectionné de `MetricCard`. Les historiques texte et
+voix gardent leurs paramètres de filtre et leur remise à zéro ; `execution.spec.mjs` couvre
+les filtres exclusifs des Tasks. `dialogs.spec.mjs` exerce `DialogHeader` dans les confirmations
+et les détails : titre accessible, fermeture, réouverture et défilement sur mobile.
+`dataset-dialog.spec.mjs` conserve la protection des brouillons JSON invalides lors de la fermeture.
+
+`panel-state.spec.mjs` couvre les annonces de chargement, d’absence et de refus d’accès,
+la reprise au clavier et son branchement aux trois panneaux du chat. Les scénarios
+d’historique de `metric-card.spec.mjs` vérifient aussi la recherche et les dates de
+`HistoryToolbar`. `core/util/usePaginatedQuery.test.mjs` protège les données lors d’un
+échec, la concurrence, le changement de contexte, la destruction et la correction bornée
+des pages hors limites. `process-loading.spec.mjs` exerce ses deux consommateurs Process :
+réouverture, isolement des processus, réponses tardives et reprise après erreur.
+
+`presentation.spec.mjs` vérifie le démarrage selon la langue du navigateur, la préférence
+personnelle et la reprise après échec du téléchargement d’un catalogue sans recharger la page.
+`core/i18n/loading.test.mjs` couvre les téléchargements partagés, le repli anglais et les
+réponses obsolètes ; `authStore.test.mjs` empêche une ancienne session de modifier le profil.
+Les tests `locale-catalogs.test.mjs` préservent tous les messages des catalogues générés ;
+`report-build.test.mjs` vérifie les mesures de démarrage par langue.
+
 `editor-toolbar.spec.mjs` vérifie les menus au clic droit des tableaux, liens, images,
 cartes, agents, processus, blocs de code et objets HTML sur mobile et bureau : mêmes
 commandes et icônes que les barres rapides, exclusion entre menu et barre, ciblage direct, fusion/scission des cellules,
@@ -373,6 +395,8 @@ sauvegarde, Task réellement admise, suivi de fin, données persistantes et grap
 préservé après modification de la définition. API et PostgreSQL restent réels ; seul
 le harnais est synthétique. Les paramètres de pagination encodés dans l'URL sont aussi
 vérifiés par HTTP avec les droits réels sur les routes Process et Lab.
+Les données JSON sont vérifiées dans le champ accessible de l’exécution ; l’ancienne
+assertion d’ouverture par clic sur le libellé « Données du run » est retirée.
 
 Le parcours de `test_activity_controls.py` utilise le vrai scheduler, ses leases,
 la façade Agent, le client du harnais, MCP HTTP et PostgreSQL ; seul le harnais distant est

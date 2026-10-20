@@ -1,19 +1,7 @@
 <template>
   <q-dialog v-model="open">
     <q-card class="conversation-turn-dialog galaris-detail-dialog galaris-dialog-card" :style="{ width }">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <q-icon :name="icon" size="sm" class="q-mr-sm" />
-        <div class="text-h6 ellipsis">{{ title }}</div>
-        <q-space />
-        <q-btn
-          v-close-popup
-          flat
-          round
-          dense
-          icon="close"
-          :aria-label="closeLabel"
-        />
-      </q-card-section>
+      <DialogHeader :title="title" :icon="icon" :close-label="closeLabel" />
       <q-separator />
       <div class="galaris-dialog-body">
         <slot />
@@ -23,6 +11,7 @@
 </template>
 
 <script setup lang="ts">
+import DialogHeader from './DialogHeader.vue'
 const open = defineModel<boolean>({ required: true })
 defineProps<{
   title: string

@@ -21,7 +21,9 @@ concurrency fixtures and the limits of local bridge validation.
 The [Lab reference corpus](lab-reference-corpus.md) supplies reproducible editorial and
 resource-boundary cases. Frontend builds print `frontend_build_bytes` using
 `scripts/report-build.mjs`: raw and gzip bytes for eager static JS/CSS imports, separately
-from all chunks. The HTML editor loads asynchronously. Fonts, API calls and PWA precache
+from all chunks. `startup_by_locale` includes the selected catalog in startup costs.
+English is immediately available as fallback; French and Chinese use generated JSON
+resources loaded before switching the interface. The HTML editor loads asynchronously. Fonts, API calls and PWA precache
 downloads are excluded from the eager graph; offline installation still precaches all assets.
 Budget inspection and these measurements are described in the [operations guide](reliability-operations.md).
 
@@ -1425,6 +1427,20 @@ front/app/<domain>/
 Use `<script setup lang="ts">`, typed props, and Quasar components. Pinia stores
 group shared state and actions; services contain no UI state.
 Routing is file-based: do not add a second manual route table.
+
+Shared `core/util` primitives include `DialogHeader` and `MetricCard`. `DialogHeader`
+provides the title, optional icon, actions slot and native Quasar closing control; the
+parent dialog retains dismissal rules and draft protection. `MetricCard` receives its
+label, value, icon and Solaire color; loading and optional mouse/keyboard activation are
+shared. Calculations, permissions and filters remain in consuming domains. Dashboard
+variants retain their dedicated component.
+
+`PanelState` presents loading, empty data, denied access or errors, with an optional retry
+action. Its parent selects the state and retains existing data during refreshes.
+`HistoryToolbar` shares the title, debounced search and responsive layout; its slot hosts
+domain filters. `usePaginatedQuery` shares loading, rejection of obsolete responses and
+bounded recovery of out-of-range pages. Consumers reset the query when context changes
+and retain ownership of the API, permissions, sorting and saved pagination.
 
 Every modal card uses `galaris-dialog-card`. Its `galaris-dialog-title` bar stays outside
 the `galaris-dialog-body` container, which owns content scrolling. Footer actions also stay

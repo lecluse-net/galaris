@@ -7,94 +7,55 @@
 
     <div class="row q-col-gutter-md q-mb-lg">
       <div v-for="metric in callMetrics" :key="metric.status" class="col-6 col-md-3">
-        <q-card
-          flat
-          bordered
-          class="full-height voice-metric-card"
-          :class="{
-            'voice-metric-card--interactive': metric.status !== 'ACTIVE',
-            'voice-metric-card--active': statusFilter === metric.status,
-          }"
-          :role="metric.status !== 'ACTIVE' ? 'button' : undefined"
-          :tabindex="metric.status !== 'ACTIVE' ? 0 : undefined"
-          :aria-pressed="metric.status !== 'ACTIVE' ? statusFilter === metric.status : undefined"
-          @click="metric.status !== 'ACTIVE' && toggleStatusFilter(metric.status)"
-          @keydown.enter.prevent="metric.status !== 'ACTIVE' && toggleStatusFilter(metric.status)"
-          @keydown.space.prevent="metric.status !== 'ACTIVE' && toggleStatusFilter(metric.status)"
-        >
-          <q-card-section class="row items-center no-wrap">
-            <q-avatar :color="metric.color" text-color="white" :icon="metric.icon" />
-            <div class="col q-ml-md metric-content">
-              <div class="text-caption text-grey-7 ellipsis">{{ metric.label }}</div>
-              <q-skeleton v-if="loading && !conversations.length" type="text" width="48px" height="32px" />
-              <div v-else class="text-h5 text-weight-medium">{{ metric.value }}</div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <MetricCard :label="metric.label" :value="metric.value" :icon="metric.icon" :tone="metric.tone"
+          :loading="loading && !conversations.length" :interactive="metric.status !== 'ACTIVE'" :active="statusFilter === metric.status"
+          @activate="toggleStatusFilter(metric.status)" />
       </div>
     </div>
 
     <q-card class="voice-history-card">
-      <q-card-section>
-        <div class="row items-center justify-between no-wrap voice-history-header-row">
-          <div class="row items-center no-wrap voice-history-title">
-            <q-icon name="history" size="sm" class="q-mr-sm" />
-            <span class="text-subtitle1">
-              {{ t('executionMonitoring.history', { count: pagination.rowsNumber }) }}
-            </span>
-          </div>
-          <div class="row items-center voice-history-filters">
-            <q-input
-              v-model="search"
-              outlined
-              dense
-              clearable
-              debounce="300"
-              :label="t('voice.history.search')"
-              class="voice-search-filter"
-              @update:model-value="filtersChanged"
-            >
-              <template #prepend><q-icon name="search" /></template>
-            </q-input>
-            <AgentSelect
-              v-model="agentFilter"
-              outlined
-              dense
-              emit-value
-              map-options
-              :label="t('voice.history.agentFilter')"
-              :options="agentOptions"
-              class="voice-agent-filter"
-              @update:model-value="filtersChanged"
-            />
-            <TopicSelect
-              v-model="topicFilter"
-              :allow-create="false"
-              :label="t('topic.filter')"
-              dense
-              outlined
-              class="voice-topic-filter"
-              @update:model-value="filtersChanged"
-            />
-            <q-select
-              v-model="statusFilter"
-              outlined
-              dense
-              emit-value
-              map-options
-              :label="t('voice.history.statusFilter')"
-              :options="statusOptions"
-              class="voice-status-filter"
-              @update:model-value="filtersChanged"
-            />
-            <ExecutionDateFilters
-              v-model:date-from="dateFrom"
-              v-model:date-to="dateTo"
-              @change="filtersChanged"
-            />
-          </div>
-        </div>
-      </q-card-section>
+      <HistoryToolbar v-model:search="search"
+        :title="t('executionMonitoring.history', { count: pagination.rowsNumber })"
+        :search-label="t('voice.history.search')"
+        @change="filtersChanged">
+        <AgentSelect
+          v-model="agentFilter"
+          outlined
+          dense
+          emit-value
+          map-options
+          :label="t('voice.history.agentFilter')"
+          :options="agentOptions"
+          class="history-toolbar-filter"
+          @update:model-value="filtersChanged"
+        />
+        <TopicSelect
+          v-model="topicFilter"
+          :allow-create="false"
+          :label="t('topic.filter')"
+          dense
+          outlined
+          class="history-toolbar-filter history-toolbar-filter--wide"
+          @update:model-value="filtersChanged"
+        />
+        <q-select
+          v-model="statusFilter"
+          outlined
+          dense
+          emit-value
+          map-options
+          :label="t('voice.history.statusFilter')"
+          :options="statusOptions"
+          class="history-toolbar-filter"
+          @update:model-value="filtersChanged"
+        />
+        <ExecutionDateFilters
+          class="history-toolbar-dates"
+          v-model:date-from="dateFrom"
+          v-model:date-to="dateTo"
+          @change="filtersChanged"
+        />
+      </HistoryToolbar>
 
       <q-separator />
 
@@ -367,6 +328,7 @@
 </template>
 
 <script setup lang="ts">
+import { HistoryToolbar, MetricCard } from '@/core/util'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { QTableColumn, QTableProps } from 'quasar'
@@ -434,10 +396,10 @@ const statusOptions = computed(() => [
   })),
 ])
 const callMetrics = computed(() => [
-  { status: 'COMPLETED' as const, label: t('voice.history.metrics.completed'), value: summary.value.completed, icon: 'check_circle', color: 'positive' },
-  { status: 'CANCELLED' as const, label: t('voice.history.metrics.cancelled'), value: summary.value.cancelled, icon: 'phone_disabled', color: 'grey-7' },
-  { status: 'ACTIVE' as const, label: t('voice.history.metrics.active'), value: summary.value.active, icon: 'phone_in_talk', color: 'primary' },
-  { status: 'ERROR' as const, label: t('voice.history.metrics.errors'), value: summary.value.errors, icon: 'error', color: 'negative' },
+  { status: 'COMPLETED' as const, label: t('voice.history.metrics.completed'), value: summary.value.completed, icon: 'check_circle', tone: 'green' as const },
+  { status: 'CANCELLED' as const, label: t('voice.history.metrics.cancelled'), value: summary.value.cancelled, icon: 'phone_disabled', tone: 'gray' as const },
+  { status: 'ACTIVE' as const, label: t('voice.history.metrics.active'), value: summary.value.active, icon: 'phone_in_talk', tone: 'blue' as const },
+  { status: 'ERROR' as const, label: t('voice.history.metrics.errors'), value: summary.value.errors, icon: 'error', tone: 'red' as const },
 ])
 async function load(page = pagination.value.page, pageSize = pagination.value.rowsPerPage): Promise<void> {
   if (loading.value) return
@@ -602,70 +564,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.voice-metric-card {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.voice-metric-card--interactive {
-  cursor: pointer;
-}
-
-.voice-metric-card--interactive:hover,
-.voice-metric-card--interactive:focus-visible,
-.voice-metric-card--active {
-  border-color: var(--q-primary);
-  box-shadow: 0 2px 8px rgb(25 118 210 / 14%);
-  outline: none;
-}
-
-.metric-content {
-  min-width: 0;
-}
-
-.voice-history-header-row {
-  gap: 12px;
-}
-
-.voice-history-title {
-  flex: 0 0 auto;
-}
-
-.voice-history-filters {
-  flex: 1 1 auto;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
-}
-
-.voice-search-filter {
-  flex: 0 1 220px;
-  width: 220px;
-  min-width: 140px;
-  max-width: 220px;
-}
-
-.voice-agent-filter {
-  flex: 0 1 180px;
-  width: 180px;
-  min-width: 130px;
-  max-width: 180px;
-}
-
-.voice-status-filter {
-  flex: 0 1 180px;
-  width: 180px;
-  min-width: 130px;
-  max-width: 180px;
-}
-
-.voice-topic-filter {
-  flex: 0 1 220px;
-  width: 220px;
-  min-width: 150px;
-  max-width: 220px;
-}
-
 .voice-history-card {
   width: 100%;
   overflow: hidden;
@@ -777,58 +675,7 @@ body.body--dark .exchange-line--response {
   color: #bdbdbd;
 }
 
-@media (max-width: 1023px) {
-  .voice-history-header-row {
-    flex-wrap: wrap;
-  }
-
-  .voice-history-title,
-  .voice-history-filters {
-    width: 100%;
-  }
-
-  .voice-history-filters {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .voice-search-filter,
-  .voice-agent-filter,
-  .voice-status-filter,
-  .voice-topic-filter {
-    width: 100%;
-    min-width: 0;
-    max-width: none;
-  }
-
-  .voice-search-filter,
-  .voice-history-filters :deep(.execution-date-filters) {
-    grid-column: 1 / -1;
-  }
-}
-
 @media (max-width: 599px) {
-  .voice-history-filters {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .voice-search-filter,
-  .voice-history-filters :deep(.execution-date-filters) {
-    grid-column: auto;
-  }
-
-  .voice-metric-card :deep(.q-card__section) {
-    padding: 12px;
-  }
-
-  .voice-metric-card :deep(.q-avatar) {
-    font-size: 36px;
-  }
-
-  .metric-content {
-    margin-left: 8px;
-  }
-
   .voice-history-table :deep(.q-table__grid-item) {
     padding-right: 8px;
     padding-left: 8px;

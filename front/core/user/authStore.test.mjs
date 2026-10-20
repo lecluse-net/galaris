@@ -11,6 +11,8 @@ function setup() {
   globalThis.window = new EventTarget()
   let generation = 'initial'
   const requests = []
+  const localeLoads = []
+  const profileWrites = []
   const authService = {
     saveToken(token) {
       generation = `next-${token}`
@@ -19,15 +21,22 @@ function setup() {
     },
     getCurrentUser() { const pending = deferred(); requests.push(pending); return pending.promise },
     getToken: () => storage.get('access_token'),
+    async updateProfile(value) { profileWrites.push(value); return { id: 1, ...value } },
   }
   const { useAuthStore } = loadTypescript(new URL('./stores/authStore.ts', import.meta.url), {
     vue, pinia,
     '../services/authService': { authService },
     '@/core/api': { sessionGeneration: () => generation, AUTH_TOKEN_CHANGED_EVENT: 'token', SupersededSessionError: class extends Error {} },
-    '@/core/i18n': { applyUserLocale() {}, i18n: { global: { t: key => key } } },
+    '@/core/i18n': { applyUserLocale: async () => true,
+      setLocale(locale, isCurrent) {
+        const pending = deferred()
+        localeLoads.push({ locale, pending })
+        return pending.promise.then(() => isCurrent())
+      },
+      i18n: { global: { t: key => key } } },
   })
   const store = useAuthStore(pinia.createPinia())
-  return { store, requests, changeGeneration() { generation = 'changed' }, close() {
+  return { store, requests, localeLoads, profileWrites, changeGeneration() { generation = 'changed' }, close() {
     store.$dispose(); globalThis.window = previous.window; globalThis.localStorage = previous.localStorage
   } }
 }
@@ -42,6 +51,17 @@ test('a changed role token reloads identity before completing the switch', async
     await pending
     assert.equal(state.store.isAuthenticated, true)
     assert.equal(state.store.user.email, 'one@example.com')
+  } finally { state.close() }
+})
+
+test('a language download from a former session cannot write the current profile', async () => {
+  const state = setup()
+  try {
+    const pending = state.store.setLanguage('fr')
+    state.changeGeneration()
+    state.localeLoads[0].pending.resolve()
+    await pending
+    assert.deepEqual(state.profileWrites, [])
   } finally { state.close() }
 })
 

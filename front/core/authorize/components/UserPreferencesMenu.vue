@@ -75,12 +75,14 @@
 import { ContextSubmenu } from '@/core/util'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useQuasar } from 'quasar'
 import { useAuthStore } from '@/core/user'
 import { SUPPORTED_LOCALES, getLocale, type AppLocale } from '@/core/i18n'
 import { getThemeMode, setThemeMode, type ThemeMode } from '@/core/theme'
 
 const authStore = useAuthStore()
 const { t } = useI18n()
+const $q = useQuasar()
 
 const localeOptions = SUPPORTED_LOCALES.map(locale => ({
   label: locale.label,
@@ -112,7 +114,8 @@ const themeOptions = computed(() => [
 const currentTheme = ref<ThemeMode>(getThemeMode())
 
 async function selectLanguage(locale: AppLocale): Promise<void> {
-  await authStore.setLanguage(locale)
+  try { await authStore.setLanguage(locale) }
+  catch { $q.notify({ type: 'negative', message: t('user.profile.updateError') }) }
 }
 
 function selectTheme(mode: ThemeMode): void {

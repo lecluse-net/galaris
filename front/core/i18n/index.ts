@@ -1,12 +1,12 @@
-import { createI18n, type LocaleMessageValue, type VueMessageType } from 'vue-i18n'
+import { createI18n } from 'vue-i18n'
 import { Lang } from 'quasar'
 import quasarEn from 'quasar/lang/en-US'
 import quasarFr from 'quasar/lang/fr'
 import quasarZh from 'quasar/lang/zh-CN'
-import baseFr from './locales/fr'
-import baseEn from './locales/en'
-import baseZh from './locales/zh'
-import { deepMergeMessages } from './merge'
+import english from './catalogs/en'
+import frenchUrl from 'virtual:galaris-locale-fr'
+import chineseUrl from 'virtual:galaris-locale-zh'
+import type { Messages } from './catalogs/merge'
 
 export type AppLocale = 'fr' | 'en' | 'zh'
 
@@ -23,30 +23,6 @@ export function isSupportedLocale(value: unknown): value is AppLocale {
   return value === 'fr' || value === 'en' || value === 'zh'
 }
 
-type Messages = Record<string, LocaleMessageValue<VueMessageType>>
-
-// Shared base messages (common and language).
-const messages: Record<AppLocale, Messages> = {
-  fr: { ...baseFr },
-  en: { ...baseEn },
-  zh: { ...baseZh },
-}
-
-// Collect module locales automatically. Every app/**, core/**, or bridge/** i18n.ts file
-// exporting { fr, en, zh } is merged into the shared instance. English remains the
-// per-key fallback while a module's Chinese catalog is being loaded.
-const moduleLocales = import.meta.glob<{ default: { fr: Messages; en: Messages; zh?: Messages } }>(
-  ['../../app/**/i18n.ts', '../../core/**/i18n.ts', '../../bridge/**/i18n.ts'],
-  { eager: true }
-)
-for (const path in moduleLocales) {
-  const mod = moduleLocales[path].default
-  if (mod?.fr) deepMergeMessages(messages.fr, mod.fr)
-  if (mod?.en) deepMergeMessages(messages.en, mod.en)
-  if (mod?.en) deepMergeMessages(messages.zh, mod.en)
-  if (mod?.zh) deepMergeMessages(messages.zh, mod.zh)
-}
-
 const quasarLocales = { fr: quasarFr, en: quasarEn, zh: quasarZh } as const
 
 /**
@@ -59,28 +35,56 @@ export function detectBrowserLocale(): AppLocale {
   return isSupportedLocale(base) ? base : DEFAULT_LOCALE
 }
 
-const initialLocale = detectBrowserLocale()
-
 export const i18n = createI18n({
   legacy: false,
   globalInjection: true,
-  locale: initialLocale,
+  locale: DEFAULT_LOCALE,
   fallbackLocale: DEFAULT_LOCALE,
-  messages,
+  messages: { en: english, fr: {}, zh: {} },
 })
 
-/** Apply the in-memory locale. The user profile remains the persistence source of truth. */
-export function setLocale(locale: AppLocale): void {
-  i18n.global.locale.value = locale
-  Lang.set(quasarLocales[locale])
-  document.documentElement.setAttribute('lang', locale)
+const catalogUrls = { fr: frenchUrl, zh: chineseUrl }
+const loaded = new Set<AppLocale>(['en'])
+const pending = new Map<AppLocale, Promise<void>>()
+let localeRequest = 0
+
+/** Prepare a language once; failed downloads remain retryable. */
+async function loadLocale(locale: AppLocale): Promise<void> {
+  if (loaded.has(locale) || locale === 'en') return
+  let request = pending.get(locale)
+  if (!request) {
+    request = fetch(catalogUrls[locale]).then(async response => {
+      if (!response.ok) throw new Error(`Unable to load ${locale} catalog: HTTP ${response.status}`)
+      const messages: unknown = await response.json()
+      if (!messages || typeof messages !== 'object' || Array.isArray(messages)) throw new Error(`Invalid ${locale} catalog`)
+      i18n.global.setLocaleMessage(locale, messages as Messages)
+      loaded.add(locale)
+    }).finally(() => { pending.delete(locale) })
+    pending.set(locale, request)
+  }
+  await request
+}
+
+/** Switch only after loading, and never apply an obsolete session or choice. */
+export function setLocale(locale: AppLocale, isCurrent: () => boolean = () => true): Promise<boolean> {
+  const request = ++localeRequest
+  const apply = (): boolean => {
+    if (request !== localeRequest || !isCurrent()) return false
+    i18n.global.locale.value = locale
+    Lang.set(quasarLocales[locale])
+    document.documentElement.setAttribute('lang', locale)
+    return true
+  }
+  // Cached languages still apply synchronously, including the English fallback.
+  if (loaded.has(locale)) return Promise.resolve(apply())
+  return loadLocale(locale).then(apply)
 }
 
 /**
  * Apply the user's preferred locale, then the browser locale, then English.
  */
-export function applyUserLocale(preferred?: string | null): void {
-  setLocale(isSupportedLocale(preferred) ? preferred : detectBrowserLocale())
+export function applyUserLocale(preferred?: string | null, isCurrent?: () => boolean): Promise<boolean> {
+  return setLocale(isSupportedLocale(preferred) ? preferred : detectBrowserLocale(), isCurrent)
 }
 
 /** Return the current locale. */
@@ -88,7 +92,13 @@ export function getLocale(): AppLocale {
   return i18n.global.locale.value as AppLocale
 }
 
-document.documentElement.setAttribute('lang', initialLocale)
-Lang.set(quasarLocales[initialLocale])
+document.documentElement.setAttribute('lang', DEFAULT_LOCALE)
+Lang.set(quasarLocales.en)
+
+// Bootstrap waits before mounting. An unavailable language leaves a usable
+// English interface; selecting it again can retry the download.
+export const initialLocaleReady = applyUserLocale().catch(error => {
+  console.error('Unable to load the browser language:', error)
+})
 
 export default i18n

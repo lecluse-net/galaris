@@ -250,6 +250,14 @@ asynchronous: reading a document should not initialize its editing engine. The m
 excludes fonts and API calls. The service worker retains its full precache, so offline
 installation downloads differ from the initial dependency graph.
 
+`startup_by_locale` also includes the selected French or Chinese catalog: distinguish the
+static import reduction from startup savings in each language. English remains available
+as fallback. `localeCatalogs.ts` selects its messages at build time and generates the other
+languages as JSON resources, also precached for offline use. `setLocale` and `applyUserLocale`
+are asynchronous: await them before actions that depend on the language. Failed downloads
+preserve the current interface and can be retried; late responses cannot replace a newer
+selection or another session.
+
 Heavy readers, editors and previews exported by `core/util`, the Activity and Providers
 & models panels, and several Preferences sections load when opened. `defineAsyncView`
 preserves Vue props, events, slots and references. After a short wait it displays an

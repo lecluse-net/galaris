@@ -114,8 +114,35 @@ test('user preferences persist each theme and save a selected profile language',
   await expect(page.locator('.language-menu-list .q-item')).toHaveCount(3)
   await page.locator('.language-menu-list .q-item').filter({ hasText: 'Français' }).click()
   await expect.poll(() => updates).toEqual([{ language: 'fr' }])
+  // The language item dismisses its menu; verify the translated preferences on reopening.
+  await page.getByRole('button', { name: 'Mon compte', exact: true }).click()
   await expect(page.getByText('Langue', { exact: true })).toBeVisible()
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('user'))?.language)).toBe('fr')
+})
+
+test('a failed language download preserves the interface and profile and can be retried', async ({ page }) => {
+  let fail = true
+  const updates = []
+  await page.route('**/locale-fr*.json', route => fail ? route.abort('failed') : route.continue())
+  await page.route('**/api/auth/me', route => {
+    updates.push(route.request().postDataJSON())
+    return route.fulfill({ json: { id: 1, language: updates.at(-1).language } })
+  })
+  await mount(page, 'core/user/components/UserMenu.vue')
+  const selectFrench = async () => {
+    await page.getByRole('button', { name: 'My account', exact: true }).click()
+    await page.locator('.q-item').filter({ hasText: 'Language' }).click()
+    await page.locator('.language-menu-list .q-item').filter({ hasText: 'Français' }).click()
+  }
+  await selectFrench()
+  await expect(page.getByText('Error while updating', { exact: true })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', /^en(?:-|$)/)
+  expect(updates).toEqual([])
+  fail = false
+  // Selecting again retries the actual module download, without reloading the page.
+  await selectFrench()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
+  await expect.poll(() => updates).toEqual([{ language: 'fr' }])
 })
 
 test('navigation translates tooltips, retains literal descriptions and follows links', async ({ page }) => {

@@ -1,11 +1,7 @@
 <template>
   <q-dialog :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)">
     <q-card class="topic-form-dialog galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ topic ? t('topic.editTitle') : t('topic.createTitle') }}</div>
-        <q-space />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('topic.cancel')" />
-      </q-card-section>
+      <DialogHeader :title="topic ? t('topic.editTitle') : t('topic.createTitle')" :close-label="t('topic.cancel')" />
       <q-form class="galaris-dialog-form" @submit.prevent="save">
         <q-card-section class="q-gutter-md galaris-dialog-body">
           <q-input v-model="form.title" outlined autofocus :label="t('topic.title')" :rules="[requiredRule]" />
@@ -46,6 +42,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { topicService } from '../services/topicService'
 import type { Topic, TopicInput } from '../types'
+import { DialogHeader } from '@/core/util'
 
 type NewKeywordDone = (value?: string, mode?: 'add' | 'add-unique' | 'toggle') => void
 

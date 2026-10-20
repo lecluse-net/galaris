@@ -29,7 +29,10 @@ contrats et tests restent l’autorité sur le comportement.
 Le [corpus de référence du Lab](lab-reference-corpus.md) fournit des cas reproductibles sur
 les contraintes éditoriales et les ressources. Les builds frontend affichent `frontend_build_bytes`
 via `scripts/report-build.mjs` : tailles brutes et gzip des imports statiques JS/CSS initiaux,
-distinctes du total des chunks. L’éditeur HTML est chargé à la demande ; les fontes, appels API
+distinctes du total des chunks. `startup_by_locale` ajoute le catalogue de la langue choisie
+au coût de démarrage. L’anglais est disponible immédiatement comme repli ; les catalogues
+français et chinois sont des ressources JSON générées et chargées avant leur affichage.
+L’éditeur HTML est chargé à la demande ; les fontes, appels API
 et téléchargements du précache PWA sont exclus du graphe initial. L’installation hors ligne
 précache toutefois tous les assets. Les mesures et budgets sont décrits dans le
 [guide d'exploitation](reliability-operations.md).
@@ -1458,6 +1461,22 @@ front/app/<domain>/
 Utilisez `<script setup lang="ts">`, des props typées et les composants Quasar. Les stores
 Pinia regroupent l’état partagé et les actions ; les services ne contiennent pas d’état UI.
 Le routage est basé sur les fichiers : n’ajoutez pas une seconde table de routes manuelle.
+
+Les primitives partagées de `core/util` incluent `DialogHeader` et `MetricCard`.
+`DialogHeader` fournit le titre, l’icône facultative, un emplacement d’actions et la fermeture
+native Quasar ; le dialogue parent conserve ses règles de fermeture et de protection des
+brouillons. `MetricCard` reçoit libellé, valeur, icône et couleur Solaire ; son état de
+chargement et son activation facultative à la souris ou au clavier sont communs. Les calculs,
+permissions et filtres restent dans les domaines consommateurs. Les variantes spécifiques
+du tableau de bord conservent leur composant dédié.
+
+`PanelState` présente le chargement, l’absence de données, le refus d’accès ou l’erreur,
+avec une action de reprise facultative. Le parent choisit l’état et conserve les données
+déjà affichées lors des actualisations. `HistoryToolbar` partage le titre, la recherche
+temporisée et la disposition responsive ; ses emplacements accueillent les filtres métier.
+`usePaginatedQuery` partage le chargement, le rejet des réponses obsolètes et une correction
+bornée des pages hors limites. Le consommateur réinitialise la requête au changement de
+contexte et reste responsable de l’API, des droits, du tri et de la pagination mémorisée.
 
 Chaque carte de modale porte `galaris-dialog-card`. Sa barre `galaris-dialog-title` reste
 hors du conteneur `galaris-dialog-body`, seul responsable du défilement du contenu.

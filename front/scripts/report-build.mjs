@@ -13,17 +13,16 @@ for (const field of ['theme_color', 'background_color']) {
   assert.ok(pwa[field].trim(), `Installed PWA requires a nonempty ${field}`)
 }
 const manifest = JSON.parse(await readFile(resolve(directory, '.vite/manifest.json'), 'utf8'))
-const visited = new Set()
 const eager = new Set()
-function visit(key) {
+function visit(key, files, visited = new Set()) {
   if (visited.has(key)) return
   visited.add(key)
   const entry = manifest[key]
-  eager.add(entry.file)
-  for (const css of entry.css ?? []) eager.add(css)
-  for (const dependency of entry.imports ?? []) visit(dependency)
+  files.add(entry.file)
+  for (const css of entry.css ?? []) files.add(css)
+  for (const dependency of entry.imports ?? []) visit(dependency, files, visited)
 }
-for (const [key, entry] of Object.entries(manifest)) if (entry.isEntry) visit(key)
+for (const [key, entry] of Object.entries(manifest)) if (entry.isEntry) visit(key, eager)
 async function sizes(files) {
   const rows = await Promise.all([...files].map(async file => {
     const data = await readFile(resolve(directory, file))
@@ -36,8 +35,16 @@ async function sizes(files) {
   }
 }
 const all = new Set(Object.values(manifest).flatMap(entry => [entry.file, ...(entry.css ?? [])]))
+const startupByLocale = {}
+for (const locale of ['en', 'fr', 'zh']) {
+  const files = new Set(eager)
+  const key = `core/i18n/catalogs/${locale}.json`
+  if (manifest[key]) visit(key, files)
+  startupByLocale[locale] = await sizes(files)
+}
 console.log(JSON.stringify({
   metric: 'frontend_build_bytes',
   eager: await sizes(eager), all: await sizes(all),
-  note: 'Static imports and CSS; excludes dynamic imports, fonts, API traffic and PWA precache downloads. Gzip is measured per file.',
+  startup_by_locale: startupByLocale,
+  note: 'Static imports and CSS; startup_by_locale also includes the selected language. Excludes other dynamic imports, fonts, API traffic and PWA precache downloads. Gzip is measured per file.',
 }, null, 2))

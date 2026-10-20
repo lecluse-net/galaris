@@ -7,94 +7,55 @@
 
     <div class="row q-col-gutter-md q-mb-lg">
       <div v-for="metric in metrics" :key="metric.key" class="col-6 col-md-3">
-        <q-card
-          flat
-          bordered
-          class="full-height conversation-metric-card"
-          :class="{
-            'conversation-metric-card--interactive': metric.key !== 'running',
-            'conversation-metric-card--active': isMetricActive(metric),
-          }"
-          :role="metric.key !== 'running' ? 'button' : undefined"
-          :tabindex="metric.key !== 'running' ? 0 : undefined"
-          :aria-pressed="metric.key !== 'running' ? isMetricActive(metric) : undefined"
-          @click="metric.key !== 'running' && toggleMetric(metric)"
-          @keydown.enter.prevent="metric.key !== 'running' && toggleMetric(metric)"
-          @keydown.space.prevent="metric.key !== 'running' && toggleMetric(metric)"
-        >
-          <q-card-section class="row items-center no-wrap">
-            <q-avatar :color="metric.color" text-color="white" :icon="metric.icon" />
-            <div class="col q-ml-md conversation-metric-content">
-              <div class="text-caption text-grey-7 ellipsis">{{ metric.label }}</div>
-              <q-skeleton v-if="loading && !messages.length" type="text" width="48px" height="32px" />
-              <div v-else class="text-h5 text-weight-medium">{{ metric.value }}</div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <MetricCard :label="metric.label" :value="metric.value" :icon="metric.icon" :tone="metric.tone"
+          :loading="loading && !messages.length" :interactive="metric.key !== 'running'" :active="isMetricActive(metric)"
+          @activate="toggleMetric(metric)" />
       </div>
     </div>
 
     <q-card class="conversation-history-card">
-      <q-card-section>
-        <div class="row items-center justify-between no-wrap conversation-history-header-row">
-          <div class="row items-center no-wrap conversation-history-title">
-            <q-icon name="history" size="sm" class="q-mr-sm" />
-            <span class="text-subtitle1">
-              {{ t('executionMonitoring.history', { count: pagination.rowsNumber }) }}
-            </span>
-          </div>
-          <div class="row items-center conversation-history-filters">
-            <q-input
-              v-model="search"
-              outlined
-              dense
-              clearable
-              debounce="300"
-              :label="t('conversation.history.messageSearch')"
-              class="conversation-search-filter"
-              @update:model-value="filtersChanged"
-            >
-              <template #prepend><q-icon name="search" /></template>
-            </q-input>
-            <AgentSelect
-              v-model="agentFilter"
-              outlined
-              dense
-              emit-value
-              map-options
-              :label="t('conversation.history.agentFilter')"
-              :options="agentOptions"
-              class="conversation-agent-filter"
-              @update:model-value="filtersChanged"
-            />
-            <TopicSelect
-              v-model="topicFilter"
-              :allow-create="false"
-              :label="t('topic.filter')"
-              dense
-              outlined
-              class="conversation-topic-filter"
-              @update:model-value="filtersChanged"
-            />
-            <q-select
-              v-model="statusFilter"
-              outlined
-              dense
-              emit-value
-              map-options
-              :label="t('conversation.history.statusFilter')"
-              :options="statusOptions"
-              class="conversation-status-filter"
-              @update:model-value="statusFilterChanged"
-            />
-            <ExecutionDateFilters
-              v-model:date-from="dateFrom"
-              v-model:date-to="dateTo"
-              @change="filtersChanged"
-            />
-          </div>
-        </div>
-      </q-card-section>
+      <HistoryToolbar v-model:search="search"
+        :title="t('executionMonitoring.history', { count: pagination.rowsNumber })"
+        :search-label="t('conversation.history.messageSearch')"
+        @change="filtersChanged">
+        <AgentSelect
+          v-model="agentFilter"
+          outlined
+          dense
+          emit-value
+          map-options
+          :label="t('conversation.history.agentFilter')"
+          :options="agentOptions"
+          class="history-toolbar-filter"
+          @update:model-value="filtersChanged"
+        />
+        <TopicSelect
+          v-model="topicFilter"
+          :allow-create="false"
+          :label="t('topic.filter')"
+          dense
+          outlined
+          class="history-toolbar-filter history-toolbar-filter--wide"
+          @update:model-value="filtersChanged"
+        />
+        <q-select
+          v-model="statusFilter"
+          outlined
+          dense
+          emit-value
+          map-options
+          :label="t('conversation.history.statusFilter')"
+          :options="statusOptions"
+          class="history-toolbar-filter"
+          @update:model-value="statusFilterChanged"
+        />
+        <ExecutionDateFilters
+          class="history-toolbar-dates"
+          v-model:date-from="dateFrom"
+          v-model:date-to="dateTo"
+          @change="filtersChanged"
+        />
+      </HistoryToolbar>
 
       <q-separator />
 
@@ -281,6 +242,7 @@
 </template>
 
 <script setup lang="ts">
+import { HistoryToolbar, MetricCard, type SolaireColor } from '@/core/util'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useInterval, type QTableColumn, type QTableProps } from 'quasar'
@@ -311,7 +273,7 @@ interface ConversationMetric {
   label: string
   value: number
   icon: string
-  color: string
+  tone: SolaireColor
 }
 
 const { t, te, locale } = useI18n()
@@ -365,10 +327,10 @@ const statusOptions = computed(() => [
   })),
 ])
 const metrics = computed<ConversationMetric[]>(() => [
-  { key: 'idle', status: 'IDLE', label: t('conversation.history.metrics.idle'), value: summary.value.idle, icon: 'check_circle', color: 'positive' },
-  { key: 'ready', status: 'READY', label: t('conversation.history.metrics.ready'), value: summary.value.ready, icon: 'schedule', color: 'warning' },
-  { key: 'running', status: 'RUNNING', label: t('conversation.history.metrics.running'), value: summary.value.running, icon: 'motion_photos_on', color: 'primary' },
-  { key: 'errors', status: null, label: t('conversation.history.metrics.errors'), value: summary.value.errors, icon: 'error', color: 'negative' },
+  { key: 'idle', status: 'IDLE', label: t('conversation.history.metrics.idle'), value: summary.value.idle, icon: 'check_circle', tone: 'green' },
+  { key: 'ready', status: 'READY', label: t('conversation.history.metrics.ready'), value: summary.value.ready, icon: 'schedule', tone: 'orange' },
+  { key: 'running', status: 'RUNNING', label: t('conversation.history.metrics.running'), value: summary.value.running, icon: 'motion_photos_on', tone: 'blue' },
+  { key: 'errors', status: null, label: t('conversation.history.metrics.errors'), value: summary.value.errors, icon: 'error', tone: 'red' },
 ])
 const detailTitle = computed(() => t('conversation.history.detail.turn'))
 
@@ -610,70 +572,8 @@ function formatDate(value: string): string {
 </script>
 
 <style scoped>
-.conversation-metric-card {
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
-}
-
-.conversation-metric-card--interactive {
-  cursor: pointer;
-}
-
-.conversation-metric-card--interactive:hover,
-.conversation-metric-card--interactive:focus-visible,
-.conversation-metric-card--active {
-  border-color: var(--q-primary);
-  box-shadow: 0 4px 14px rgb(25 118 210 / 16%);
-  outline: none;
-  transform: translateY(-1px);
-}
-
-.conversation-metric-content,
 .conversation-mobile-heading {
   min-width: 0;
-}
-
-.conversation-history-header-row {
-  gap: 12px;
-}
-
-.conversation-history-title {
-  flex: 0 0 auto;
-}
-
-.conversation-history-filters {
-  flex: 1 1 auto;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
-}
-
-.conversation-search-filter {
-  flex: 0 1 220px;
-  width: 220px;
-  min-width: 140px;
-  max-width: 220px;
-}
-
-.conversation-agent-filter {
-  flex: 0 1 180px;
-  width: 180px;
-  min-width: 130px;
-  max-width: 180px;
-}
-
-.conversation-status-filter {
-  flex: 0 1 180px;
-  width: 180px;
-  min-width: 130px;
-  max-width: 180px;
-}
-
-.conversation-topic-filter {
-  flex: 0 1 220px;
-  width: 220px;
-  min-width: 150px;
-  max-width: 220px;
 }
 
 .conversation-history-card {
@@ -809,62 +709,7 @@ body.body--dark .exchange-line--response {
   color: #bdbdbd;
 }
 
-@media (max-width: 1023px) {
-  .conversation-history-header-row {
-    flex-wrap: wrap;
-  }
-
-  .conversation-history-title,
-  .conversation-history-filters {
-    width: 100%;
-  }
-
-  .conversation-history-filters {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .conversation-search-filter,
-  .conversation-agent-filter,
-  .conversation-status-filter,
-  .conversation-topic-filter {
-    width: 100%;
-    min-width: 0;
-    max-width: none;
-  }
-
-  .conversation-search-filter,
-  .conversation-history-filters :deep(.execution-date-filters) {
-    grid-column: 1 / -1;
-  }
-
-  .conversation-history-filters :deep(.execution-date-filters) {
-    justify-content: stretch;
-  }
-}
-
 @media (max-width: 599px) {
-  .conversation-history-filters {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .conversation-search-filter,
-  .conversation-history-filters :deep(.execution-date-filters) {
-    grid-column: auto;
-  }
-
-  .conversation-metric-card :deep(.q-card__section) {
-    padding: 12px;
-  }
-
-  .conversation-metric-card :deep(.q-avatar) {
-    font-size: 36px;
-  }
-
-  .conversation-metric-content {
-    margin-left: 8px;
-  }
-
   .conversation-table :deep(.q-table__grid-item) {
     padding-right: 8px;
     padding-left: 8px;

@@ -12,22 +12,11 @@
         <q-tooltip>{{ t('chat.createDocument') }}</q-tooltip>
       </q-btn>
     </header>
-    <div v-if="!canRead" class="conversation-work-state text-grey-7">
-      <q-icon name="lock" size="28px" />
-      <span>{{ t('chat.documentsUnavailable') }}</span>
-    </div>
-    <div v-else-if="loading && !documents.length" class="conversation-work-state text-grey-7">
-      <q-spinner color="primary" size="28px" />
-    </div>
-    <div v-else-if="error && !documents.length" class="conversation-work-state text-negative">
-      <q-icon name="warning" size="28px" />
-      <span>{{ error }}</span>
-      <q-btn flat dense color="negative" :label="t('chat.retryDocuments')" @click="load(true)" />
-    </div>
-    <div v-else-if="!documents.length" class="conversation-work-state text-grey-7">
-      <q-icon name="description" size="28px" />
-      <span>{{ t('chat.noWorkingDocuments') }}</span>
-    </div>
+    <PanelState v-if="!canRead" state="forbidden" :message="t('chat.documentsUnavailable')" />
+    <PanelState v-else-if="loading && !documents.length" state="loading" />
+    <PanelState v-else-if="error && !documents.length" state="error" :message="error"
+      :retry-label="t('chat.retryDocuments')" @retry="load(true)" />
+    <PanelState v-else-if="!documents.length" state="empty" icon="description" :message="t('chat.noWorkingDocuments')" />
     <q-list ref="documentList" v-else separator class="conversation-work-list" @scroll.passive="onScroll">
       <q-item
         v-for="document in documents"
@@ -112,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { WorkingDocumentIcon as DocumentIcon, WorkingDocumentThumbnail } from '@/core/util'
+import { PanelState, WorkingDocumentIcon as DocumentIcon, WorkingDocumentThumbnail } from '@/core/util'
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
@@ -451,7 +440,6 @@ onBeforeUnmount(() => {
 <style scoped>
 .conversation-documents-panel { display: flex; height: 100%; min-width: 0; min-height: 0; flex-direction: column; color: var(--chat-text, #252b36); background: var(--chat-surface, #fff); }
 .conversation-documents-toolbar { min-height: 36px; flex: 0 0 auto; border-bottom: 1px solid var(--chat-border, rgba(0, 0, 0, .12)); }
-.conversation-work-state { display: flex; min-height: 120px; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 18px; text-align: center; font-size: .78rem; }
 .conversation-work-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .conversation-document { min-height: 78px; padding: 1px 16px 1px 4px; }
 .conversation-document-preview { padding-right: 8px; }

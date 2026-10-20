@@ -4,11 +4,12 @@ import { Quasar } from 'quasar'
 import quasarUserOptions from '../quasar-user-options'
 import App from './App.vue'
 import router from '@/app/index/router'
-import i18n from '@/core/i18n'
+import i18n, { initialLocaleReady } from '@/core/i18n'
 import '@/app/style.scss'
 import '../pwa/register'
 
 async function initApp() {
+    await initialLocaleReady
     const app = createApp(App)
 
     app.use(createPinia())

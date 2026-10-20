@@ -539,12 +539,12 @@ test('task overview mouse and keyboard filters send mutually exclusive server pa
     return route.fulfill({ json: { items: [], total: 0, has_more: false, summary: { running: 2, completed: 3, paused: 1, errors: 1 } } })
   })
   await mount(page, 'app/task/pages/index.vue', { route: '/task?tab=tasks' })
-  for (const [key, interaction, parameter] of [['paused', 'click', 'paused_only'], ['running', 'Enter', 'active'], ['errors', 'Space', 'errors_only']]) {
-    const metric = page.locator(`.task-metric-card--${key}`)
+  for (const [label, interaction, parameter] of [['Paused', 'click', 'paused_only'], ['Running', 'Enter', 'active'], ['Errors', 'Space', 'errors_only']]) {
+    const metric = page.getByRole('button', { name: new RegExp(`^${label}\\b`) })
     if (interaction === 'click') await metric.click()
     else await metric.press(interaction)
     await expect(metric).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.locator('.task-metric-card[aria-pressed="true"]')).toHaveCount(1)
+    await expect(page.getByRole('button', { pressed: true })).toHaveCount(1)
     await expect.poll(() => requests.at(-1)).toContain(`${parameter}=true`)
     for (const other of ['paused_only', 'active', 'errors_only'].filter(value => value !== parameter)) expect(requests.at(-1)).not.toContain(`${other}=true`)
   }

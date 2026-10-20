@@ -292,3 +292,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0202 — Native Process references in Documents](0202-native-process-document-references.md)
 - [0206 — Resolve contextual write targets at Task admission](0206-contextual-task-write-targets.md)
 - [0209 — Business object references in Documents](0209-business-document-references.md)
+- [0210 — Load secondary language catalogs as generated JSON](0210-lazy-locale-catalogs.md)

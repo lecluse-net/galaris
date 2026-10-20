@@ -2,16 +2,7 @@
   <div>
     <div class="row q-col-gutter-md q-mb-lg">
       <div v-for="metric in metrics" :key="metric.key" class="col-6 col-md-3">
-        <q-card flat bordered class="full-height process-metric-card">
-          <q-card-section class="row items-center no-wrap">
-            <q-avatar :color="metric.color" text-color="white" :icon="metric.icon" />
-            <div class="col q-ml-md" style="min-width: 0">
-              <div class="text-caption text-grey-7 ellipsis">{{ metric.label }}</div>
-              <q-skeleton v-if="operations === null" type="text" width="48px" height="32px" />
-              <div v-else class="text-h5 text-weight-medium">{{ metric.value }}</div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <MetricCard :label="metric.label" :value="metric.value" :icon="metric.icon" :tone="metric.tone" :loading="operations === null" />
       </div>
     </div>
 
@@ -207,6 +198,7 @@
 </template>
 
 <script setup lang="ts">
+import { MetricCard } from '@/core/util'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useInterval, type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -336,28 +328,28 @@ const metrics = computed(() => {
       label: t('processes.tracking.metrics.completed'),
       value: counts.success ?? 0,
       icon: 'check_circle',
-      color: 'positive',
+      tone: 'green' as const,
     },
     {
       key: 'cancelled',
       label: t('processes.tracking.metrics.cancelled'),
       value: counts.cancelled ?? 0,
       icon: 'cancel',
-      color: 'grey-7',
+      tone: 'gray' as const,
     },
     {
       key: 'active',
       label: t('processes.tracking.metrics.active'),
       value: active,
       icon: 'motion_photos_on',
-      color: 'primary',
+      tone: 'blue' as const,
     },
     {
       key: 'errors',
       label: t('processes.tracking.metrics.errors'),
       value: counts.error ?? 0,
       icon: 'error',
-      color: 'negative',
+      tone: 'red' as const,
     },
   ]
 })
@@ -690,18 +682,6 @@ body.body--dark .process-mobile-summary {
   .process-search-input,
   .process-runs-filters :deep(.execution-date-filters) {
     grid-column: auto;
-  }
-
-  .process-metric-card :deep(.q-card__section) {
-    padding: 12px;
-  }
-
-  .process-metric-card :deep(.q-avatar) {
-    font-size: 36px;
-  }
-
-  .process-metric-card :deep(.q-ml-md) {
-    margin-left: 8px;
   }
 
   .process-active-run {

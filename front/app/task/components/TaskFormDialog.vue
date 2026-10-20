@@ -1,11 +1,7 @@
 <template>
   <q-dialog allow-focus-outside v-model="dialogOpen">
     <q-card class="task-form-dialog galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center">
-        <div class="text-h6">{{ isEdit ? $t('task.form.editTitle') : $t('task.form.createTitle') }}</div>
-        <q-space />
-        <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup class="text-white" />
-      </q-card-section>
+      <DialogHeader :title="isEdit ? $t('task.form.editTitle') : $t('task.form.createTitle')" />
 
       <q-separator />
 
@@ -80,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { RichTextEditor } from '@/core/util'
+import { DialogHeader, RichTextEditor } from '@/core/util'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'

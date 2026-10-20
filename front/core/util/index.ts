@@ -1,4 +1,9 @@
 // Reusable utility components.
+export { default as DialogHeader } from './components/DialogHeader.vue'
+export { default as MetricCard } from './components/MetricCard.vue'
+export { default as PanelState } from './components/PanelState.vue'
+export { default as HistoryToolbar } from './components/HistoryToolbar.vue'
+export { usePaginatedQuery, type QueryPagination } from './usePaginatedQuery'
 export { useContextMenuDismissal } from './contextMenuDismissal'
 export { default as ContextSubmenu } from './components/ContextSubmenu.vue'
 export { default as ActionContextMenu } from './components/ActionContextMenu.vue'

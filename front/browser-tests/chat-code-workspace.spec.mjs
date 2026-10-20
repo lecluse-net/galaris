@@ -339,6 +339,23 @@ test('older sequence and another room cannot replace the current repository', as
 
 test('hiding and reopening a repository preserves the editor without navigating or closing its session', async ({ page }) => {
   const state = await setup(page)
+  // Sample the host's document-wide layout scans over the same 12 frames in
+  // each state. A retained, hidden editor must not keep polling the DOM.
+  const layoutScans = () => page.evaluate(async () => {
+    const query = document.querySelectorAll
+    let scans = 0
+    document.querySelectorAll = function (selector) {
+      if (selector === '.q-dialog') scans += 1
+      return query.call(this, selector)
+    }
+    try {
+      for (let frame = 0; frame < 12; frame += 1) {
+        await new Promise(resolve => requestAnimationFrame(resolve))
+      }
+      return scans
+    } finally { document.querySelectorAll = query }
+  })
+  expect(await layoutScans(), 'no layout polling before opening an editor').toBe(0)
   await show(page)
   const iframe = page.locator('iframe.code-editor-frame')
   await expect(iframe).toBeVisible()
@@ -351,10 +368,20 @@ test('hiding and reopening a repository preserves the editor without navigating 
   })
   await page.getByRole('button', { name: 'Hide editor', exact: true }).click()
   await expect(iframe).toBeHidden()
+  expect(await layoutScans(), 'no layout polling while the editor is hidden').toBe(0)
   await page.getByText('Source code', { exact: true }).click()
   await page.locator('#chat-sidebar-content').getByText('Synthetic repository', { exact: true }).click()
   await expect(iframe).toBeVisible()
   await expect(source).toHaveValue('Synthetic retained repository draft')
+  // Reopening must also resume alignment when the viewport changes, without
+  // requiring a particular polling or observer implementation while visible.
+  await page.setViewportSize({ width: 1180, height: 850 })
+  await expect.poll(async () => {
+    const frame = await iframe.boundingBox()
+    const anchor = await page.locator('.code-workspace-anchor').boundingBox()
+    if (!frame || !anchor) return Infinity
+    return Math.max(...['x', 'y', 'width', 'height'].map(key => Math.abs(frame[key] - anchor[key])))
+  }).toBeLessThan(1)
   expect(state.opens).toEqual(['code-a'])
   expect(state.closes).toEqual([])
   expect(navigation).toEqual([])

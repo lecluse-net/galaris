@@ -4,6 +4,7 @@ import vue from '@vitejs/plugin-vue'
 import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 import { developmentWorkerRecovery } from '../../pwa/developmentWorkerRecovery.ts'
 import { documentRuntimeLibraries } from '../../documentRuntimeLibraries.ts'
+import { localeCatalogs } from '../../localeCatalogs.ts'
 
 // Install an obsolete cached shell once; subsequent update requests reach Vite.
 const legacyWorkerRequests = new Set()
@@ -43,6 +44,7 @@ export default defineConfig({
   cacheDir: '/tmp/galaris-component-vite',
   resolve: { alias: { '@': fileURLToPath(new URL('../..', import.meta.url)) } },
   plugins: [
+    localeCatalogs(),
     documentRuntimeLibraries(),
     legacyWorkerFixture,
     developmentWorkerRecovery(),

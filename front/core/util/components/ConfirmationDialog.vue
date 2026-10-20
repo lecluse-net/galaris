@@ -1,11 +1,7 @@
 <template>
   <q-dialog :ref="dialog.dialogRef" :aria-labelledby="titleId" @hide="dialog.onDialogHide">
     <q-card class="q-dialog-plugin galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title">
-        <div :id="titleId" class="text-h6">{{ title || t('common.confirm') }}</div>
-        <q-space />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="title || t('common.confirm')" :title-id="titleId" />
       <q-card-section class="confirmation-message galaris-dialog-body">{{ message }}</q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
         <q-btn v-if="cancel" v-bind="cancelProps" :data-autofocus="focus === 'cancel' || undefined" @click="dialog.onDialogCancel" />
@@ -20,6 +16,7 @@ import { computed, useId } from 'vue'
 import { useDialogPluginComponent, useQuasar, type QBtnProps } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import type { ConfirmationDialogOptions } from '../confirmationDialog'
+import DialogHeader from './DialogHeader.vue'
 
 const { title, message, ok = true, cancel = false, focus = 'ok', color = 'primary' } = defineProps<ConfirmationDialogOptions>()
 defineEmits([...useDialogPluginComponent.emits])

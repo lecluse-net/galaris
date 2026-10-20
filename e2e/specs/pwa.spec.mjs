@@ -62,8 +62,17 @@ test('a deployed update automatically replaces the cached shell while preserving
     })
     const previousKeys = await cacheKeys()
     expect(previousKeys.length).toBeGreaterThan(0)
+    const localePaths = ['fr', 'zh'].map(locale => {
+      const cached = previousKeys.find(url => new URL(url).pathname.match(new RegExp(`/locale-${locale}-[^/]+\\.json$`)))
+      expect(cached, `precache includes the ${locale} catalog`).toBeTruthy()
+      return new URL(cached).pathname
+    })
     // Offline clients keep their working shell and session until connectivity returns.
     await page.context().setOffline(true)
+    expect(await page.evaluate(async paths => Promise.all(paths.map(async path => {
+      const response = await fetch(path)
+      return response.ok && typeof (await response.json()).common === 'object'
+    })), localePaths)).toEqual([true, true])
     await page.clock.fastForward(60_001)
     await expect(page.locator('meta[name="e2e-build"]')).toHaveAttribute('content', 'A')
     await page.context().setOffline(false)

@@ -1,12 +1,7 @@
 <template>
   <q-dialog v-model="runDetailDialog" :maximized="$q.screen.lt.md">
     <q-card class="process-run-detail-dialog galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <q-icon name="account_tree" size="sm" />
-        <div class="text-subtitle1 text-weight-medium ellipsis q-ml-sm">{{ t('processes.details') }}</div>
-        <q-space />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('processes.close')" />
-      </q-card-section>
+      <DialogHeader :title="t('processes.details')" icon="account_tree" :close-label="t('processes.close')" />
       <q-separator />
       <div class="galaris-dialog-body galaris-dialog-body--layout">
         <div v-if="runDetailLoading" class="col flex flex-center">
@@ -37,7 +32,7 @@ import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { defineAsyncView, showConfirmationDialog } from '@/core/util'
+import { DialogHeader, defineAsyncView, showConfirmationDialog } from '@/core/util'
 import { useProcessRunActions } from '../composables/useProcessRunActions'
 import { useProcessStore } from '../stores/processStore'
 import { websocket } from '@/core/websocket'

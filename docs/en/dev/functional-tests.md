@@ -2,6 +2,26 @@
 
 # Functional guarantees catalogue
 
+`metric-card.spec.mjs` protects displayed values, loading, optional mouse/keyboard activation
+and selected state in `MetricCard`. Text and voice histories retain their domain filter
+parameters and clearing behavior; `execution.spec.mjs` covers mutually exclusive Task filters.
+`dialogs.spec.mjs` exercises `DialogHeader` through confirmations and detail dialogs:
+accessible titles, closing, reopening and mobile scrolling. `dataset-dialog.spec.mjs`
+preserves invalid JSON draft protection when dismissing the dialog.
+
+`panel-state.spec.mjs` covers loading, empty and denied-access announcements, keyboard retry
+and its connection to all three chat panels. History scenarios in `metric-card.spec.mjs`
+also check `HistoryToolbar` search and dates. `core/util/usePaginatedQuery.test.mjs`
+protects existing data on failure, concurrency, context changes, disposal and bounded
+out-of-range page recovery. `process-loading.spec.mjs` exercises both Process consumers:
+reopening, process isolation, late responses and recovery after errors.
+
+`presentation.spec.mjs` checks browser-language startup, personal preferences and recovery
+from a failed catalog download without reloading the page. `core/i18n/loading.test.mjs`
+covers shared downloads, English fallback and obsolete responses; `authStore.test.mjs`
+prevents an old session from changing the profile. `locale-catalogs.test.mjs` preserves
+all generated catalog messages; `report-build.test.mjs` checks startup measurements by language.
+
 `editor-toolbar.spec.mjs` checks right-click menus for tables, links, images, cards,
 agents, processes, code blocks and HTML objects on mobile and desktop: matching commands
 and icons with the quick toolbars, mutually exclusive menu and toolbar, direct targeting, cell merge/split, styles, language,
@@ -336,6 +356,8 @@ saving, actual Task admission, live completion, persistent Dataset and a Run gra
 survives later definition changes. APIs and PostgreSQL remain real; only the harness is
 synthetic. URL-encoded pagination parameters are also exercised over HTTP with actual
 authorization on Process and Lab routes.
+Run JSON is checked through its accessible field; the former assertion requiring a
+click on the “Run data” label to open its content has been retired.
 The journey in `test_activity_controls.py` uses the actual scheduler, leases, Agent facade,
 Harness client, MCP HTTP and PostgreSQL; only the remote Harness is synthetic. It covers losing
 the remote result before the human reply, reconciling without another effect, a fresh turn
