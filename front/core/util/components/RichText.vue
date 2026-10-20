@@ -3,6 +3,7 @@
     <div ref="root" class="rich-content" v-html="rendered" @click="openReference" />
     <ResourceReadMenu :root="root" :content="rendered" @open="openUri" />
     <Teleport v-for="target in codeCopies" :key="target.key" :to="target.element"><CodeBlockCopyButton :source="target.source" /></Teleport>
+    <Teleport v-for="target in documentLinkIcons" :key="target.key" :to="target.element"><WorkingDocumentIcon :document-id="target.documentId" title="" size="1em" readonly /></Teleport>
     <Teleport v-for="target in embeds" :key="target.key" :to="target.element"><ResourceEmbed :uri="target.uri" :title="target.title" /></Teleport>
     <ResourceDetailDialog v-if="detail" :target="detail" @close="detail = null" />
     <PdfPreview v-model="pdfPreview" />
@@ -23,6 +24,8 @@ import { createDocumentPlayer, documentPlayer, type PdfPreviewSource } from '../
 import PdfPreview from './PdfPreview.vue'
 import CodeBlockCopyButton from './CodeBlockCopyButton.vue'
 import ResourceReadMenu from './ResourceReadMenu.vue'
+import WorkingDocumentIcon from './WorkingDocumentIcon.vue'
+import { useDocumentLinkIcons } from '../documentLinkIcons'
 import '../editorialTheme.css'
 const { content, profile = 'rich-text', resolveImage } = defineProps<{
   content: string
@@ -45,6 +48,11 @@ function openUri(uri: string): void {
 }
 const pdfPreview = shallowRef<PdfPreviewSource | null>(null)
 const root = useTemplateRef('root')
+const { targets: documentLinkIcons, decorate: decorateDocumentLink } = useDocumentLinkIcons()
+watch([rendered, root], (_value, _old, onCleanup) => {
+  const disposals = [...(root.value?.querySelectorAll('a') ?? [])].map(decorateDocumentLink)
+  onCleanup(() => disposals.forEach(dispose => dispose()))
+}, { flush: 'post' })
 const codeCopies = shallowRef<Array<{ key: number; element: HTMLElement; source: () => string }>>([])
 let codeCopyKey = 0
 watch([rendered, root, () => profile], () => {

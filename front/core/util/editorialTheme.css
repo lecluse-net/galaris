@@ -62,3 +62,4 @@
 .editorial-toolbar-single-row { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; }
 .editorial-toolbar-single-row .editorial-toolbar-commands { flex-direction: row; }
 .editorial-toolbar-single-row .editorial-toolbar-row { flex-wrap: nowrap; }
+.document-link-icon .document-icon--readonly:has(> *) { margin-inline-end: .25em; }

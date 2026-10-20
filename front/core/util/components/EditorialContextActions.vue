@@ -18,14 +18,15 @@
   <EditorialTableStyles v-if="kind === 'table'" :classes="tableClasses" :menu-item="menu" @select="(palette, treatment) => emit('table-style', palette, treatment)" />
   <template v-for="item in actions" :key="item.key">
     <q-item v-if="menu" clickable role="menuitem" :aria-label="item.label" :disable="item.disabled" @click="emit('action', item.key)">
-      <q-item-section avatar><q-icon :name="item.icon" /></q-item-section>
+      <q-item-section avatar><q-icon :name="item.icon" :style="item.key === 'remove' ? { color: solaireCss.red.accent } : undefined" /></q-item-section>
       <q-item-section>{{ item.label }}</q-item-section>
     </q-item>
-    <EditorialToolButton v-else flat dense :icon="item.icon" :label="item.label" :disable="item.disabled" @click="emit('action', item.key)" />
+    <EditorialToolButton v-else flat dense :icon="item.icon" :style="item.key === 'remove' ? { color: solaireCss.red.accent } : undefined" :label="item.label" :disable="item.disabled" @click="emit('action', item.key)" />
   </template>
 </template>
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { solaireCss } from '../solaireTheme'
 import EditorialToolButton from './EditorialToolButton.vue'
 import EditorialTableStyles from './EditorialTableStyles.vue'
 import ContextSubmenu from './ContextSubmenu.vue'

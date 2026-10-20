@@ -12,6 +12,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { codeLanguageLabel, codeTokens } from './codeHighlight'
 import { EditorialTableView } from './editorialTableView'
 import { attachmentReference, richLinkHref, sanitizeRichHtml, type ContentProfile } from './richText'
+import { documentIdFromResourceUri, documentUriFromLink } from './documentResource'
 
 export type EditorToolbarGroupName = 'reading' | 'editing' | 'text' | 'paragraph' | 'insert'
 export const calloutKinds = ['info', 'warning', 'question', 'error', 'stop', 'forbidden', 'search'] as const
@@ -25,6 +26,7 @@ export interface ContentAdapters {
   openImage: (uri: string) => void
   readonly: () => boolean
   codeCopy: (element: HTMLElement, source: () => string) => () => void
+  linkIcon?: (element: HTMLElement, documentId: string) => () => void
 }
 let sequence = 0
 
@@ -229,6 +231,18 @@ export function contentExtensions(adapters: ContentAdapters): Extensions {
     }).configure({ paragraph: false, codeBlock: false, link: false, trailingNode: false }), Link.extend({
     addAttributes() { return { ...this.parent?.(), href: { default: null, parseHTML: element => element.getAttribute('data-rich-reference') ?? element.getAttribute('href') } } },
     renderHTML({ HTMLAttributes }) { const uri = String(HTMLAttributes.href ?? ''); return ['a', mergeAttributes(HTMLAttributes, { href: richLinkHref(uri) ?? uri, 'data-rich-reference': uri, target: '_blank', rel: 'noopener noreferrer' }), 0] },
+    addMarkView() { return ({ HTMLAttributes }) => {
+      const dom = document.createElement('a'), uri = String(HTMLAttributes.href ?? '')
+      for (const [key, value] of Object.entries(mergeAttributes(HTMLAttributes, { href: richLinkHref(uri) ?? uri, 'data-rich-reference': uri, target: '_blank', rel: 'noopener noreferrer' }))) dom.setAttribute(key, String(value))
+      const documentUri = documentUriFromLink(uri, window.location.origin)
+      const id = documentUri && documentIdFromResourceUri(documentUri)
+      if (!id || !adapters.linkIcon) return { dom }
+      const icon = document.createElement('span'), contentDOM = document.createElement('span')
+      icon.className = 'document-link-icon'; icon.contentEditable = 'false'; icon.setAttribute('aria-hidden', 'true')
+      dom.append(icon, contentDOM)
+      const dispose = adapters.linkIcon(icon, id)
+      return { dom, contentDOM, ignoreMutation: mutation => mutation.type !== 'selection' && icon.contains(mutation.target), destroy: dispose }
+    } },
   }).configure({ openOnClick: false, autolink: false, protocols: ['document', 'memory', 'data', 'galaris'] }), TextStyleKit, TextAlign.extend({
     addKeyboardShortcuts() { return adapters.profile === 'document' ? {} : this.parent?.() ?? {} },
   }).configure({ types: ['heading', 'paragraph'] }), Highlight.extend({

@@ -22,6 +22,7 @@
     </div>
     <template v-if="!sourceMode">
       <Teleport v-for="target in codeCopies" :key="target.key" :to="target.element"><CodeBlockCopyButton :source="target.source" /></Teleport>
+      <Teleport v-for="target in documentLinkIcons" :key="target.key" :to="target.element"><WorkingDocumentIcon :document-id="target.documentId" title="" size="1em" readonly /></Teleport>
       <Teleport v-for="target in embeddedTargets" :key="target.key" :to="target.element">
         <div class="editorial-embedded-rendering">
         <slot name="embedded-code" :source="target.source" :language="target.language" :register-snapshot="(capture: RenderedDocumentCapture | undefined) => registerSnapshot(target.key, capture)"><div class="q-pa-md">{{ t('richEditor.embeddedApplication') }}</div></slot>
@@ -95,6 +96,8 @@ import EditorialContextActions from './EditorialContextActions.vue'
 import { useContextMenuDismissal } from '../contextMenuDismissal'
 import { withTableStyle, type TablePalette, type TableTreatment } from '../editorialTableStyles'
 import { editorialIcon } from '../editorialIcons'
+import { useDocumentLinkIcons } from '../documentLinkIcons'
+import WorkingDocumentIcon from './WorkingDocumentIcon.vue'
 import CodeBlockCopyButton from './CodeBlockCopyButton.vue'
 import { reserveEditorialToolbarSpace } from '../editorialScrollPadding'
 import { documentShortcut, editorialShortcuts, isAltGraphInput, readingShortcutCommands, shortcutKeys } from '../editorialShortcuts'
@@ -158,6 +161,7 @@ const pointerTextContext = ref(false)
 let pointerSelection: Selection | undefined, pointerRequest = 0
 const effectiveLayout = computed(() => fits.value ? layout.value : 'full')
 const embeddedTargets = shallowRef<EditorObject[]>([]), resourceEmbeds = shallowRef<ResourceEmbedTarget[]>([]), resourceDetail = shallowRef<ResourceDetailTarget | null>(null), pdfPreview = shallowRef<PdfPreviewSource | null>(null)
+const { targets: documentLinkIcons, mount: mountDocumentLinkIcon, decorate: decorateDocumentLink } = useDocumentLinkIcons()
 const objectPreview = shallowRef<EditorObject | null>(null)
 const captures = new Map<number, RenderedDocumentCapture>(), requests = new Set<AbortController>(), urls = new Set<string>()
 const resourceCaptures = new Map<number, RenderedDocumentCapture>()
@@ -230,6 +234,7 @@ function mountCodeCopy(element: HTMLElement, source: () => string): () => void {
 function mountCard(target: ObjectHost): () => void {
   const disposals: Array<() => void> = []
   const links = [...target.element.querySelectorAll('a')]
+  links.forEach(link => disposals.push(decorateDocumentLink(link)))
   const link = links[0], uri = link?.getAttribute('href') ?? ''
   for (const image of target.element.querySelectorAll('img')) { const src = image.getAttribute('src') ?? ''; image.dataset.editorAttachment = src; image.removeAttribute('src'); disposals.push(resolveAttachment(src, image)) }
   if ((target.element.matches('.galaris-process-diagram, .galaris-agent-card') || richLinkTarget(uri)?.kind === 'document') && richLinkTarget(uri)) {
@@ -251,7 +256,7 @@ function createEditor(): void {
     element: editorHost.value!,
     content: inputHtml(modelValue), editable: !readonly, enableInputRules: profile === 'document',
     extensions: contentExtensions({ profile, object: (target, mounted) => { embeddedTargets.value = mounted ? [...embeddedTargets.value, target] : embeddedTargets.value.filter(value => value.key !== target.key); if (!mounted) captures.delete(target.key) },
-      card: mountCard, image: resolveAttachment, openImage: navigate, readonly: () => readonly, codeCopy: mountCodeCopy }),
+      card: mountCard, image: resolveAttachment, openImage: navigate, readonly: () => readonly, codeCopy: mountCodeCopy, linkIcon: mountDocumentLinkIcon }),
     editorProps: { attributes: { class: 'rich-content', 'aria-label': ariaLabel || t('richEditor.content'), 'data-editor-surface': '', tabindex: '0' },
       handleDOMEvents: { keydown: (view, event) => {
         if (!readonly) return false
@@ -756,7 +761,7 @@ const contextActions = computed(() => {
     if (selectedType.value !== 'resourceCard') add('edit', editorialIcon('edit', 'edit'), selectedType.value.includes('Image') ? 'imageProperties' : 'link', () => showDialog(selectedType.value.includes('Image') ? 'image' : 'link'), readonly)
     if (selectedCardImage.value) add('image', editorialIcon('image', 'image'), 'resources.openImage', () => navigate(selectedCardImage.value))
     if (canConvertCard.value) add('convert', 'view_agenda', 'resources.' + (selectedType.value === 'resourceCard' ? 'asUrl' : 'asCard'), convertCard, readonly || busyCard.value)
-    add('remove', editorialIcon('remove', 'link_off'), 'remove', removeSelected, readonly)
+    add('remove', 'delete', selectedType.value === 'resourceCard' || selectedType.value.includes('Image') ? 'remove' : 'removeLink', removeSelected, readonly)
   }
   if (canInsertBeside.value && !readonly) {
     add('insertBefore', editorialIcon('insertBefore', 'vertical_align_top'), 'insertBefore', () => insertBeside(false))

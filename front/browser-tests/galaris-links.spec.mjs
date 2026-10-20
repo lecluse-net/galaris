@@ -2,18 +2,23 @@ import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
 import { result, document as documentFixture } from './data.mjs'
 
 for (const mode of ['read', 'edit', 'readonly']) for (const format of ['uri', 'url']) for (const card of [false, true]) {
-  test(`a document ${format} ${card ? 'card' : 'link'} navigates without a modal in ${mode} mode`, async ({ page, baseURL }) => {
+  test(`a document ${format} ${card ? 'card' : 'link'} navigates without a modal in ${mode} mode`, async ({ page, baseURL }, testInfo) => {
     const id = '00000000-0000-4000-8000-000000000245'
     const uri = format === 'uri' ? `document://${id}` : new URL(`/documents?document_id=${id}`, baseURL).href
     const link = `<p><a href="${uri}">${card ? '<strong>Referenced document</strong>' : 'Referenced document'}</a></p>`
     const html = card ? `<blockquote class="galaris-link-card">${link}<p>Reference summary</p></blockquote>` : link
     await jsonRoute(page, `**/api/memory/documents/${id}`, { item: { ...documentFixture, id, title: 'Referenced document' }, agent_id: null })
+    await jsonRoute(page, '**/api/memory/documents/icons/resolve', { [id]: 'emoji:1F680' })
+    const iconResponse = page.waitForResponse(response => response.url().endsWith('/documents/icons/resolve'))
     const popups = []
     page.on('popup', popup => popups.push(popup))
     await mount(page, `core/util/components/${mode === 'read' ? 'RichText' : 'RichTextEditor'}.vue`, {
       route: '/documents', props: { profile: 'document', ...(mode === 'read' ? { content: html } : { modelValue: html, readonly: mode === 'readonly' }) },
     })
     const reference = page.getByRole('link', { name: 'Referenced document', exact: true })
+    await iconResponse
+    await page.screenshot({ path: testInfo.outputPath('personal-document-link.png'), animations: 'disabled' })
+    if (mode !== 'read') expect(await editorHtml(page)).not.toMatch(/document-link-icon|document-icon|🚀/)
     if (mode === 'edit' && card) {
       await page.getByText('Reference summary', { exact: true }).click()
       expect(await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/documents')
