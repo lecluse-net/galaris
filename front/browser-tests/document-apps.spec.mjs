@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
 import { agent, document } from './data.mjs'
 
 const datasetId = '11111111-1111-4111-8111-111111111111'
@@ -22,6 +22,45 @@ const inner = page => page.frameLocator('iframe').frameLocator('iframe')
 const photoId = '22222222-2222-4222-8222-222222222222'
 const photoUri = `document://${datasetId}/attachments/${photoId}`
 const photoBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNkYPjPwMDAxMDAwMDAAAALHwEDmIWXfgAAAABJRU5ErkJggg==', 'base64')
+
+for (const width of [1440, 390]) test(`static styled documents keep a small runtime and usable disclosure at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 })
+  const rows = Array.from({ length: 6 }, (_, index) => `<tr><th>Item ${index + 1}</th><td>${index * 3}</td><td>Available</td></tr>`).join('')
+  const html = `<style>.inventory{border-collapse:collapse;width:100%}.inventory th,.inventory td{padding:8px;border:1px solid #777}</style><h2>Synthetic inventory</h2><table class="inventory">${rows}</table><details><summary>Show totals</summary><p>18 items available</p></details>`
+  const item = { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: html } }
+  await jsonRoute(page, '**/api/agents?*', [agent])
+  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
+  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/memory/documents/doc-a?*', { item, agent_id: 7 })
+  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
+  await mount(page, 'app/memory/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['MEMORY_EDIT'] })
+  const content = inner(page)
+  await expect(content.getByRole('heading', { name: 'Synthetic inventory' })).toBeVisible()
+  await expect(content.getByRole('row')).toHaveCount(6)
+  const totals = content.getByText('18 items available', { exact: true })
+  await expect(totals).toBeHidden()
+  await content.locator('summary').click()
+  await expect(totals).toBeVisible()
+  await content.locator('summary').click()
+  await expect(totals).toBeHidden()
+  await page.screenshot({ path: testInfo.outputPath('static-styled-document.png') })
+  expect(await editorHtml(page)).toBe(await page.evaluate(html => new DOMParser().parseFromString('<body>' + html, 'text/html').body.innerHTML, html))
+  const runtimeBytes = await page.locator('.document-application-frame').evaluate(frame => new TextEncoder().encode(frame.srcdoc).length)
+  await testInfo.attach('static-runtime.json', { body: JSON.stringify({ width, authoredBytes: Buffer.byteLength(html), runtimeBytes }), contentType: 'application/json' })
+  // A small static document must not carry a full 3D engine in each isolated frame.
+  expect(runtimeBytes).toBeLessThan(64_000)
+})
+
+for (const entry of ['javascript', 'script', 'handler']) test(`the local 3D library remains available to authored ${entry} code`, async ({ page }) => {
+  const code = `document.querySelector('output').textContent = [new THREE.Scene().type, typeof THREE.OrbitControls, typeof THREE.GLTFLoader].join(', ')`
+  const app = { id: 'library-check', title: 'Synthetic library check', html: '<output role="status">Waiting</output>' }
+  if (entry === 'javascript') app.javascript = code
+  else if (entry === 'script') app.html += `<script>${code}</script>`
+  else app.html += `<button onclick="${code}">Check library</button>`
+  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
+  if (entry === 'handler') await inner(page).getByRole('button', { name: 'Check library' }).click()
+  await expect(inner(page).getByRole('status')).toHaveText('Scene, function, function')
+})
 
 for (const width of [1440, 390]) test(`isolated HTML follows the host theme without restarting scripts or losing input at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
