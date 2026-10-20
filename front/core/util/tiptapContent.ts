@@ -158,7 +158,7 @@ const DocumentImage = (adapters: ContentAdapters, inline: boolean) => Node.creat
 
 const CodeBlock = Node.create({
   name: 'codeBlock', group: 'block', content: 'text*', marks: '', code: true, defining: true,
-  addAttributes: () => ({ language: { default: 'plaintext' }, lines: { default: false }, nowrap: { default: false } }),
+  addAttributes: () => ({ language: { default: 'plaintext' }, lines: { default: true }, nowrap: { default: false } }),
   parseHTML: () => [{ tag: 'pre', preserveWhitespace: 'full', getAttrs: element => {
     const code = element.querySelector('code')
     return { language: [...(code?.classList ?? [])].find(name => name.startsWith('language-'))?.slice(9) ?? 'plaintext', lines: code?.getAttribute('data-code-lines') === 'true', nowrap: code?.getAttribute('data-code-nowrap') === 'true' }
