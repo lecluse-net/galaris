@@ -38,6 +38,7 @@
           <q-item-label caption>{{ entry.owner_label }}</q-item-label>
           <div class="row q-gutter-xs"><q-chip v-for="keyword in entry.item.keywords" :key="keyword" dense class="bulk-keyword"><span class="ellipsis">{{ keyword }}</span></q-chip></div>
         </q-item-section>
+        <q-item-section side><DocumentRowMenu :entry="entry" :busy="busy || loading" target=".q-item" @select="emit('select', entry)" @create="emit('create', entry)" @action="emit('action', entry, $event)" /></q-item-section>
       </q-item>
     </q-list>
     <div v-if="!loading && !loadError && !entries.length" class="q-pa-md">{{ t('documents.empty') }}</div>
@@ -64,6 +65,7 @@ import { useDocumentMutations } from '../stores/documentMutations'
 import type { DocumentLibraryEntry, DocumentTag } from '../types'
 import DocumentBulkDialog from './DocumentBulkDialog.vue'
 import DocumentThumbnail from './DocumentThumbnail.vue'
+import DocumentRowMenu from './DocumentRowMenu.vue'
 import { documentRowShortcuts, vLibraryShortcuts, type DocumentRowAction } from '../libraryShortcuts'
 
 const props = defineProps<{ folder: DocumentTag | null }>()

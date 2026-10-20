@@ -1,5 +1,5 @@
 <template>
-  <div v-library-shortcuts="shortcuts" class="document-tag-row row items-center no-wrap full-width" :title="t('documents.shortcuts.folder')" aria-keyshortcuts="F2 F3 F4 F7 Delete" :draggable="!renaming && !busy" @contextmenu.stop @keydown="openKeyboardMenu">
+  <div v-library-shortcuts="shortcuts" class="document-tag-row row items-center no-wrap full-width" :title="t('documents.shortcuts.folder')" aria-keyshortcuts="F2 F3 F4 F7 Delete" :draggable="!renaming && !busy" @contextmenu.stop="openPointerMenu" @keydown="openKeyboardMenu">
     <q-btn flat dense round size="sm" class="folder-icon-button q-mr-xs" :aria-label="t('documents.library.changeIcon', { name: tag.name })" :disable="busy"
       @click="clickIcon">
       <DocumentTagIcon :icon="tag.icon" :expanded="selected" size="26px" />
@@ -26,12 +26,12 @@
       <q-btn flat dense round size="sm" icon="delete_outline" class="tag-delete" :disable="busy" :aria-label="t('documents.library.deleteNamedTag', { name: tag.name })" @click="emit('delete')">
         <q-tooltip>{{ t('documents.library.deleteTag') }}</q-tooltip>
       </q-btn>
-      <q-btn flat dense round size="sm" icon="more_vert" :aria-label="t('documents.library.tagActions', { name: tag.name })"
+      <q-btn ref="menuButton" flat dense round size="sm" icon="more_vert" :aria-label="t('documents.library.tagActions', { name: tag.name })"
         aria-haspopup="menu" :aria-expanded="menuOpen" @click="contextMenu?.toggle()">
         <q-tooltip>{{ t('documents.library.tagActions', { name: tag.name }) }}</q-tooltip>
       </q-btn>
     </div>
-    <q-menu v-if="!renaming" ref="contextMenu" v-model="menuOpen" context-menu class="tag-context-menu" role="menu" :aria-label="t('documents.library.tagActions', { name: tag.name })">
+    <q-menu v-if="!renaming" :id="menuId" ref="contextMenu" v-model="menuOpen" no-parent-event touch-position class="tag-context-menu" role="menu" :aria-label="t('documents.library.tagActions', { name: tag.name })">
       <q-list dense>
         <template v-for="action in contextActions" :key="action.key">
           <q-separator v-if="action.separator" />
@@ -48,7 +48,8 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { QMenu } from 'quasar'
+import type { QBtn, QMenu } from 'quasar'
+import { useContextMenuDismissal } from '@/core/util'
 import type { DocumentTag } from '../types'
 import { vLibraryShortcuts, type LibraryShortcuts } from '../libraryShortcuts'
 import DocumentTagIconPicker from './DocumentTagIconPicker.vue'
@@ -68,6 +69,13 @@ const name = ref('')
 const iconOpen = ref(false)
 const menuOpen = ref(false)
 const contextMenu = useTemplateRef<QMenu>('contextMenu')
+const menuButton = useTemplateRef<QBtn>('menuButton')
+const menuId = useContextMenuDismissal(menuOpen, () => contextMenu.value, () => menuButton.value?.$el)
+function openPointerMenu(event: MouseEvent): void {
+  if (renaming.value) return
+  event.preventDefault()
+  contextMenu.value?.show(event)
+}
 const shortcuts = computed<LibraryShortcuts>(() => props.busy || renaming.value ? {} : {
   F2: startRename, F3: () => emit('createDocument'), F4: () => emit('browse'), F7: () => { void createChild() }, Delete: () => emit('confirmDelete'),
 })

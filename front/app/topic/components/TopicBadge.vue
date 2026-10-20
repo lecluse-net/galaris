@@ -1,5 +1,6 @@
 <template>
   <button
+    v-if="!hideTrigger"
     type="button"
     class="topic-badge-shell"
     :aria-label="t('topic.assignmentAudit.open', { title: displayTitle })"
@@ -190,6 +191,7 @@ const props = withDefaults(defineProps<{
   subjectKind?: TopicAssignmentSubjectKind
   subjectId?: string
   allowTopicChange?: boolean
+  hideTrigger?: boolean
   reassignTopic?: (
     topicId: string,
     scope: TopicAssignmentChangeScope,
@@ -299,6 +301,7 @@ function formatDate(value: string): string {
     timeStyle: 'medium',
   }).format(new Date(value))
 }
+defineExpose({ open: openAssignmentAudit })
 </script>
 
 <style scoped>

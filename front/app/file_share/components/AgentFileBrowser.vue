@@ -93,7 +93,10 @@
               <div class="file-grid">
                 <div v-for="entry in sortedEntries" :key="`${entry.uri}:${current.version}`" class="file-entry">
                   <FileTile :entry="entry" :agent-id="agentId" :compact="selection" :selectable="selection" :selected="selected.some(value => value.uri === entry.uri)" @open="openEntry" @activate="activateEntry" />
-                  <RenameFileButton v-if="!selection && canEditFiles && fileBrowserService.canRename(entry)" class="file-entry-rename" :name="entry.name" :rename="name => renameEntry(entry, name)" />
+                  <FileContextMenu v-if="!selection" :name="entry.name" :uri="entry.uri" target=".file-entry"
+                    rename-class="file-entry-rename" menu-class="file-entry-menu" :open="() => openEntry(entry)"
+                    :download="!entry.is_collection && entry.capabilities.includes('read') ? () => downloadEntry(entry) : undefined"
+                    :rename="canEditFiles && fileBrowserService.canRename(entry) ? name => renameEntry(entry, name) : undefined" />
                 </div>
               </div>
               <template #loading><div class="q-pa-md text-center"><q-spinner color="primary" size="30px" :aria-label="t('files.loading')" /></div></template>
@@ -117,7 +120,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar, type QTreeNode } from 'quasar'
-import { FolderIcon, RenameFileButton, ResourceAttachments, ResourceDetailDialog, richLinkTarget, type ResourceDetailTarget, type AttachmentSource, type ResourceAttachment } from '@/core/util'
+import { FolderIcon, ResourceAttachments, ResourceDetailDialog, richLinkTarget, saveBlobAsResource, type ResourceDetailTarget, type AttachmentSource, type ResourceAttachment } from '@/core/util'
+import { FileContextMenu } from '@/core/util'
 import { usePrivilegeStore } from '@/core/authorize'
 import { fileBrowserService, type FileEntry, type FileScheme } from '../services/fileBrowserService'
 import { useFileDirectories } from '../browserState'
@@ -134,6 +138,10 @@ const canEditFiles = computed(() => ['MEMORY_EDIT', 'MEMORY_ADMIN', 'DATASET_EDI
 async function renameEntry(entry: FileEntry, name: string): Promise<void> {
   await fileBrowserService.rename(agentId, entry, name)
   if (active) refresh()
+}
+async function downloadEntry(entry: FileEntry): Promise<void> {
+  const blob = await fileBrowserService.content(agentId, entry.uri, false, undefined, true)
+  if (active) saveBlobAsResource(blob, entry.name)
 }
 const { directory, load } = useFileDirectories(agentId, selection)
 const schemes = ref<FileScheme[]>([])
@@ -336,6 +344,7 @@ onBeforeUnmount(() => { active = false; schemesRequest?.abort(); searchRequest?.
 .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); align-items: start; gap: 14px; }
 .file-entry { position: relative; min-width: 0; }
 .file-entry-rename { position: absolute; top: 0; right: 0; }
+.file-entry-menu { position: absolute; top: 32px; right: 0; }
 .file-state { padding: 60px 16px; text-align: center; }
 .file-warning { background: var(--solaire-yellow-light); }
 :global(body.body--dark .file-warning) { background: var(--solaire-yellow-dark); }

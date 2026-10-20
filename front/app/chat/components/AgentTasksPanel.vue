@@ -67,6 +67,7 @@
               </div>
               <div class="agent-task-heading">
                 <div class="agent-task-title-row">
+                  <ActionContextMenu target=".agent-task-row" :actions="taskContextActions(row.task)" />
                   <button
                     type="button"
                     class="agent-task-expansion-toggle"
@@ -235,6 +236,7 @@
 </template>
 
 <script setup lang="ts">
+import { ActionContextMenu, type ContextAction } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { richTextExcerpt } from '@/core/util'
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
@@ -747,6 +749,16 @@ function unsubscribe(): void {
   subscribed = false
 }
 
+function taskContextActions(task: Task): ContextAction[] {
+  const actions: ContextAction[] = [{ key: 'details', icon: 'info_outline', label: t('chat.details'), run: () => openTask(task.id) }]
+  if (!canEdit.value) return actions
+  const disabled = taskAction(task.id) !== null
+  if (canPauseTask(task)) actions.push({ key: 'pause', icon: 'pause', label: t('task.detail.pauseTooltip'), disabled, run: () => pauseTask(task) })
+  if (canResumeTask(task)) actions.push({ key: 'resume', icon: 'play_arrow', label: t('task.detail.resumeTooltip'), disabled, run: () => resumeTask(task) })
+  if (canForceTerminateTask(task)) actions.push({ key: 'terminate', icon: 'cancel', label: t('task.detail.forceTerminateTooltip'), negative: true, disabled, run: () => confirmTaskForceTerminate(task) })
+  actions.push({ key: 'delete', icon: 'delete', label: t('task.detail.deleteTooltip'), negative: true, separator: true, disabled, run: () => confirmTaskDelete(task) })
+  return actions
+}
 function openTask(taskId: string): void {
   selectedTaskId.value = taskId
   detailDialogOpen.value = true

@@ -23,6 +23,7 @@
           <q-tooltip>{{ t('documents.library.newSubdocument', { name: entry.item.title }) }}</q-tooltip>
         </q-btn>
       </div>
+      <DocumentRowMenu :entry="entry" :busy="busy" target=".document-branch-row" @select="emit('select', entry)" @create="emit('create', entry)" @action="emit('action', entry, $event)" />
     </div>
     <div v-if="open && !treeRow" class="document-children" :aria-label="t('documents.library.subdocuments', { name: entry.item.title })" @click.stop>
       <q-banner v-if="errors[branchKey]" dense role="alert">{{ t('documents.loadError') }}
@@ -43,6 +44,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DocumentLibraryEntry } from '../types'
 import DocumentLibraryEntryRow from './DocumentLibraryEntryRow.vue'
+import DocumentRowMenu from './DocumentRowMenu.vue'
 import { documentRowShortcuts, vLibraryShortcuts, type DocumentRowAction } from '../libraryShortcuts'
 
 const props = defineProps<{

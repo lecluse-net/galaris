@@ -145,6 +145,7 @@
 
         <template #body-cell-actions="props">
           <q-td :props="props" class="topic-actions-cell">
+            <ActionContextMenu target="tr" :actions="topicActions(props.row)" />
             <div v-if="canEdit" class="topic-actions">
               <q-btn flat round dense icon="edit" :aria-label="t('topic.edit')" @click="openEdit(props.row)">
                 <q-tooltip>{{ t('topic.edit') }}</q-tooltip>
@@ -221,6 +222,7 @@
                       </div>
                     </div>
                   </div>
+                  <ActionContextMenu target=".q-card" :actions="topicActions(props.row)" />
                   <div v-if="canEdit" class="topic-actions">
                     <q-btn flat round dense icon="edit" :aria-label="t('topic.edit')" @click="openEdit(props.row)">
                       <q-tooltip>{{ t('topic.edit') }}</q-tooltip>
@@ -403,6 +405,7 @@
 </template>
 
 <script setup lang="ts">
+import { ActionContextMenu, type ContextAction } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -631,6 +634,17 @@ function notifyError(key = 'topic.operationError'): void {
   $q.notify({ type: 'negative', message: t(key) })
 }
 
+function topicActions(topic: Topic): ContextAction[] {
+  return [
+    { key: 'open', icon: 'folder_open', label: t('common.open'), run: () => router.push(`/topic/${encodeURIComponent(topic.id)}`) },
+    ...(canEdit.value ? [
+    { key: 'edit', icon: 'edit', label: t('topic.edit'), run: () => openEdit(topic) },
+    { key: 'merge', icon: 'merge', label: t('topic.merge'), run: () => openMerge(topic) },
+    { key: 'split', icon: 'call_split', label: t('topic.split'), run: () => openSplit(topic) },
+    { key: 'delete', icon: 'delete', label: t('topic.delete'), negative: true, separator: true, run: () => openDelete(topic) },
+    ] : []),
+  ]
+}
 function openCreate(): void {
   editingTopic.value = null
   assignForm(topicForm)

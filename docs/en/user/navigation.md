@@ -30,6 +30,15 @@ theme preferences are separate from the instance's administrative **Preferences*
 
 ## The main sections
 
+Documents, files, attachments, conversations, Chat messages, goals, tasks and topics also
+offer actions through right-click or **⋮**. With the keyboard, focus the item or its **⋮**
+button and press **Shift+F10**. Available commands follow your permissions and the resource
+state; confirmations still apply. Right-clicking selected message text keeps the browser menu.
+Contextual submenus open on hover and stay open while the pointer moves toward their commands.
+Click, touch and keyboard access remain available; opening a sibling submenu closes the previous one.
+Clicking or tapping outside a menu immediately closes its entire submenu chain, including
+inside the original source area or embedded content. The clicked control remains usable.
+
 In development mode only (`APP_ENV=dev`), **Developers** appears directly after **Administer**
 as a section at the same level. **Developers → Visual reference** opens
 `/graphic-reference`. This page brings together the Solaire palette, form controls,

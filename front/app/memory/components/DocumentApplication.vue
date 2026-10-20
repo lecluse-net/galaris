@@ -1,5 +1,5 @@
 <template>
-  <div class="document-application" :aria-label="app.title">
+  <div ref="host" class="document-application" :aria-label="app.title">
     <div v-if="error" role="alert" class="text-negative q-mb-sm">{{ error }}</div>
     <iframe v-if="running" ref="frame" :srcdoc="source" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer" :title="app.title" class="document-application-frame" :style="{ height: height + 'px', colorScheme: $q.dark.isActive ? 'dark' : 'light' }" @load="connect" />
   </div>
@@ -19,6 +19,7 @@ const { app, documentId, revision, ready = true, registerSnapshot, resolveMedia 
 const { t } = useI18n()
 const $q = useQuasar()
 const frame = useTemplateRef('frame')
+const host = useTemplateRef('host')
 const running = ref(false), source = ref(''), error = ref('')
 const height = ref(240)
 let channel: MessageChannel | null = null
@@ -65,7 +66,7 @@ async function start(): Promise<void> {
   try {
     const materialized = await materializeAppResources(app, resolveMedia ?? ((id, attachment, signal) => memoryService.documentAttachmentBlob(id, attachment, null, signal)), controller.signal)
     if (current !== generation) return
-    source.value = appSandboxDocument(materialized, $q.dark.isActive)
+    source.value = appSandboxDocument(materialized, $q.dark.isActive, Boolean(host.value?.closest('[data-editor-surface][contenteditable="true"]')))
     running.value = true
   } catch {
     if (current === generation) error.value = t('documents.apps.failed')
@@ -119,8 +120,16 @@ watch(() => $q.dark.isActive, dark => { frame.value?.contentWindow?.postMessage(
 function navigated(event: MessageEvent): void {
   if (event.source !== frame.value?.contentWindow) return
   if (event.data === 'galaris-app-navigated') stop()
-  const data = event.data as { type?: string; height?: unknown } | null
+  const data = event.data as { type?: string; height?: unknown; x?: unknown; y?: unknown } | null
   if (data?.type === 'galaris-app-height' && typeof data.height === 'number' && Number.isFinite(data.height)) height.value = Math.max(40, Math.min(3000, data.height))
+  if (data?.type === 'galaris-app-context-menu' && running.value && host.value?.closest('[data-editor-surface][contenteditable="true"]')) {
+    const target = frame.value
+    if (!target || !target.offsetWidth || !target.offsetHeight || typeof data.x !== 'number' || typeof data.y !== 'number' || !Number.isFinite(data.x) || !Number.isFinite(data.y)
+      || data.x < 0 || data.y < 0 || data.x > target.clientWidth || data.y > target.clientHeight) return
+    const box = target.getBoundingClientRect()
+    target.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true,
+      clientX: box.left + data.x * box.width / target.offsetWidth, clientY: box.top + data.y * box.height / target.offsetHeight }))
+  }
 }
 onMounted(() => {
   registerSnapshot?.(capture)

@@ -106,7 +106,7 @@ watch(open, value => {
 onMounted(() => {
   trigger.value = anchor.value?.parentElement ?? undefined
   if (!trigger.value) return
-  parentId.value = trigger.value.closest('[data-context-submenu]')?.id
+  parentId.value = trigger.value.closest('.q-menu')?.id
   previous = Object.fromEntries(['aria-haspopup', 'aria-expanded', 'aria-controls'].map(name => [name, trigger.value!.getAttribute(name)]))
   trigger.value.setAttribute('aria-haspopup', 'menu')
   trigger.value.setAttribute('aria-expanded', 'false')

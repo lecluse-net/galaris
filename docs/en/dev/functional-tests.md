@@ -13,6 +13,14 @@ real persistence and preservation after reload.
 This journey also checks changing heading levels through the right-click **Style** menu,
 including persistence and reload.
 
+`context-menus.spec.mjs` protects pointer, button and keyboard opening, dismissal, changing
+availability, recoverable errors and native menus on selected text. It also checks document
+protection, terminal task states and archiving a conversation without changing selection.
+The suite also covers hovering submenus: crossing nested popups, switching siblings,
+dismissal, keyboard focus, touch and disabled items.
+Outside dismissal also covers the source area, stopped events and embedded frames while
+preserving focus and the clicked control's action.
+
 `attachment-rename.spec.mjs` checks name entry, recoverable errors and dialog dismissal
 in real components. Its E2E journey checks Document renaming, reopening, renaming from
 Files and preservation of the body, revision, identity and bytes on mobile and desktop.

@@ -14,6 +14,15 @@ leur sauvegarde réelle et leur conservation après rechargement.
 Ce parcours vérifie également le changement de niveau de titre depuis **Style** au clic droit,
 sa sauvegarde puis son rechargement.
 
+`context-menus.spec.mjs` protège l’ouverture au clic droit, par bouton et au clavier, la
+fermeture, les changements de disponibilité, les erreurs récupérables et la conservation du
+menu natif sur le texte sélectionné. Il vérifie aussi les protections documentaires,
+les états terminaux des tâches et l’archivage d’une conversation sans changer la sélection.
+Cette suite couvre aussi les sous-menus au survol : passage entre fenêtres imbriquées,
+remplacement des voisins, fermeture, focus clavier, tactile et éléments désactivés.
+La fermeture extérieure couvre aussi la zone d’origine, les événements dont la propagation
+est arrêtée et les cadres embarqués, en conservant le focus et l’action du contrôle cliqué.
+
 `attachment-rename.spec.mjs` vérifie la saisie d’un nom, les erreurs récupérables et
 la fermeture du dialogue dans les composants réels. Son parcours E2E vérifie sur mobile
 et bureau le renommage documentaire, la réouverture, le renommage depuis Fichiers et

@@ -44,7 +44,10 @@ const validationError = computed(() => {
   return !value || value.length > 500 || ['.', '..'].includes(value) || /[/\\\p{Cc}]/u.test(value)
     ? t('fileRename.invalid') : ''
 })
-function openDialog(): void { draft.value = name; error.value = ''; open.value = true }
+function openDialog(): void {
+  if (disabled || saving.value) return
+  draft.value = name; error.value = ''; open.value = true
+}
 async function save(): Promise<void> {
   if (disabled || saving.value || validationError.value || draft.value.trim() === name) return
   const request = generation
@@ -58,4 +61,5 @@ async function save(): Promise<void> {
 }
 watch(() => name, () => { generation++; open.value = false })
 onBeforeUnmount(() => { generation++ })
+defineExpose({ open: openDialog })
 </script>

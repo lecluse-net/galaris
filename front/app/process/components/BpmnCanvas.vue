@@ -87,8 +87,8 @@
                     <q-item clickable v-close-popup @click="connecting = { id: node.id, side: port.side, outcome: port.outcome }"><q-item-section avatar><q-icon name="link" /></q-item-section><q-item-section>{{ t('nativeProcesses.connect') }}</q-item-section></q-item>
                     <template v-if="port.side === 'output' && port.outcome === undefined && adjacent(node.id, port.side).length">
                       <q-item clickable><q-item-section avatar><q-icon name="call_split" /></q-item-section><q-item-section>{{ t('nativeProcesses.addBranch') }}</q-item-section>
-                        <q-menu anchor="top end" self="top start"><q-list><q-item v-for="kind in activityKinds" :key="kind" clickable v-close-popup
-                          :disable="kind === 'human_task' && !modelValue.actors?.some(actor => actor.kind === 'human')" @click="add(node.id, port.side, kind, true)"><q-item-section>{{ t('nativeProcesses.kinds.' + kind) }}</q-item-section></q-item></q-list></q-menu>
+                        <ContextSubmenu><q-list><q-item v-for="kind in activityKinds" :key="kind" clickable v-close-popup
+                          :disable="kind === 'human_task' && !modelValue.actors?.some(actor => actor.kind === 'human')" @click="add(node.id, port.side, kind, true)"><q-item-section>{{ t('nativeProcesses.kinds.' + kind) }}</q-item-section></q-item></q-list></ContextSubmenu>
                       </q-item>
                     </template>
                     <q-item v-for="flow in adjacent(node.id, port.side, port.outcome)" :key="flow.id" clickable v-close-popup @click="emit('flow', flow.id)"><q-item-section avatar><q-icon name="edit" /></q-item-section><q-item-section>{{ t('nativeProcesses.flow', { source: title(flow.source), target: title(flow.target) }) }}</q-item-section></q-item>
@@ -136,7 +136,7 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef, useId, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { GraphViewControls } from '@/core/util'
+import { ContextSubmenu, GraphViewControls } from '@/core/util'
 import ProcessRunStatusBadge from './ProcessRunStatusBadge.vue'
 import type { BpmnGraph, BpmnNode, BpmnFlow, NodeKind, ProcessActor, ProcessAgentOption } from '../services/nativeProcessService'
 import { activityKinds, nodeIcons, graphLayout, insertActivity, canConnectActivities, connectActivities, assignActivityActor, laneHeaderWidth, nodeStartX } from '../graphEditing'

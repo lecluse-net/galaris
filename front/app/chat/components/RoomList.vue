@@ -100,6 +100,7 @@
             <q-tooltip>{{ unreadMessageLabel(room.unread_count) }}</q-tooltip>
           </q-badge>
         </q-item-section>
+        <q-item-section side><RoomRowMenu :key="`${room.id}:${viewerAgentId}`" :room="room" :editable="viewerAgentId === null" @select="emit('select', room)" @changed="emit('changed', $event)" /></q-item-section>
       </q-item>
       <div v-if="loadingMore" class="room-list-loader"><q-spinner color="primary" size="22px" /></div>
     </q-list>
@@ -112,9 +113,10 @@ import { sourceTranslationKey } from '../sourcePresentation'
 import { displayMessageText } from '../messagePresentation'
 import type { ChatViewerAgent, MessengerRoom } from '../types'
 import InternalAgentAvatar from './InternalAgentAvatar.vue'
+import RoomRowMenu from './RoomRowMenu.vue'
 
 const props = defineProps<{ cards?: boolean; error?: boolean; searchValue?: string; showFilters?: boolean; rooms: MessengerRoom[]; selectedId?: string; canCreate: boolean; canImpersonate: boolean; viewerAgentId: number | null; viewerAgents: ChatViewerAgent[]; includeExternal: boolean; includeArchived: boolean; hasMore: boolean; loadingMore: boolean }>()
-const emit = defineEmits<{ select: [room: MessengerRoom]; search: [value: string]; create: []; 'load-more': []; 'view-agent': [value: number | null]; 'toggle-external': [value: boolean]; 'toggle-archived': [value: boolean] }>()
+const emit = defineEmits<{ changed: [room: MessengerRoom]; select: [room: MessengerRoom]; search: [value: string]; create: []; 'load-more': []; 'view-agent': [value: number | null]; 'toggle-external': [value: boolean]; 'toggle-archived': [value: boolean] }>()
 const search = ref(props.searchValue ?? '')
 watch(() => props.searchValue, value => { if (value !== undefined) search.value = value })
 const { t, locale } = useI18n()

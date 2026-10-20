@@ -50,7 +50,10 @@ test('creating documents in folders and under documents persists the personal hi
   await expect(page.getByLabel('Documents non classés', { exact: true }).getByText(document.title, { exact: true })).toHaveCount(0)
   await page.screenshot({ path: testInfo.outputPath('document-created-in-folder.png'), animations: 'disabled' })
 
-  await page.getByRole('button', { name: `Nouveau sous-document de ${document.title}`, exact: true }).click()
+  await folder.getByText(document.title, { exact: true }).click({ button: 'right' })
+  const documentMenu = page.getByRole('menu', { name: 'Actions', exact: true })
+  await expect(documentMenu.getByRole('menuitem', { name: 'Renommer', exact: true })).toBeVisible()
+  await documentMenu.getByRole('menuitem', { name: `Nouveau sous-document de ${document.title}`, exact: true }).click()
   await dialog.getByLabel('Titre', { exact: true }).fill('Synthetic child notes')
   const childCreatedResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/memory/documents'
     && response.request().method() === 'POST')

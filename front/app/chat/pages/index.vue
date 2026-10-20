@@ -14,7 +14,7 @@
             <div class="chat-home-list-header">
               <h2>{{ t('chat.conversations') }}</h2>
             </div>
-            <RoomList :search-value="roomSearch" cards show-filters :rooms="homeRooms" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="false" :loading-more="loadingHomeRooms" :error="homeRoomsError" @select="selectRoom" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @view-agent="changeViewerAgent" />
+            <RoomList :search-value="roomSearch" cards show-filters :rooms="homeRooms" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="false" :loading-more="loadingHomeRooms" :error="homeRoomsError" @select="selectRoom" @changed="roomUpdated" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @view-agent="changeViewerAgent" />
             <div v-if="homeRoomsError" role="alert" class="q-mt-md">
               {{ t('chat.error') }} <q-btn flat :label="t('chat.home.retry')" @click="homeRoomsRevision++" />
             </div>
@@ -104,7 +104,7 @@
                 </div>
               </q-item-section>
             </template>
-            <div class="sidebar-section-content"><RoomList :search-value="roomSearch" :show-filters="roomFiltersVisible" :rooms="store.rooms" :selected-id="store.selectedRoom?.id" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="store.hasMoreRooms" :loading-more="store.loadingMoreRooms" @select="selectRoom" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @load-more="loadMoreRooms" @view-agent="changeViewerAgent" @create="openCreate" /></div>
+            <div class="sidebar-section-content"><RoomList :search-value="roomSearch" :show-filters="roomFiltersVisible" :rooms="store.rooms" :selected-id="store.selectedRoom?.id" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="store.hasMoreRooms" :loading-more="store.loadingMoreRooms" @select="selectRoom" @changed="roomUpdated" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @load-more="loadMoreRooms" @view-agent="changeViewerAgent" @create="openCreate" /></div>
           </q-expansion-item>
           <q-expansion-item v-if="store.selectedRoom" v-model="documentsExpanded" dense-toggle expand-separator icon="description" :label="t('chat.workingDocuments')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': documentsExpanded }" header-class="sidebar-accordion-header">
             <template #header>
@@ -564,6 +564,14 @@ async function toggleExternalRooms(value:boolean){await report(()=>store.loadRoo
 async function toggleArchivedRooms(value:boolean){await report(()=>store.loadRooms(roomSearch.value,store.includeExternalRooms,value))}
 function loadMoreRooms(){void report(()=>store.loadMoreRooms())}
 async function changeViewerAgent(value:number|null){replyingTo.value=null;selectedTopicId.value=null;await report(()=>store.setViewerAgent(value));mobileView.value='details'}
+function roomUpdated(room: MessengerRoom): void {
+  if (store.viewerAgentId !== null) return
+  if (store.selectedRoom?.id === room.id) store.selectedRoom = room
+  store.rooms = store.rooms.map(value => value.id === room.id ? room : value).filter(value => store.includeArchivedRooms || !value.archived)
+  homeRooms.value = homeRooms.value.map(value => value.id === room.id ? room : value).filter(value => store.includeArchivedRooms || !value.archived)
+  homeRoomsRevision.value++
+  void report(() => store.loadRooms())
+}
 async function selectRoom(room:MessengerRoom){followingConversationBottom=true;historyScrollEnabled=false;showScrollToBottom.value=false;replyingTo.value=null;selectedTopicId.value=null;mobileView.value='conversation';await report(()=>store.selectRoom(room));if(store.selectedRoom?.id===room.id)await scrollInitialChatZonesToBottom()}
 async function selectRequestedRoom():Promise<boolean>{const value=route.query.room;const roomId=typeof value==='string'&&value.length>0?value:null;if(!roomId)return false;const room=store.rooms.find(item=>item.id===roomId)??await service.room(roomId);await selectRoom(room);return true}
 async function prepareMessage(): Promise<boolean> {

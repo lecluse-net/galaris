@@ -1,4 +1,9 @@
 // Reusable utility components.
+export { useContextMenuDismissal } from './contextMenuDismissal'
+export { default as ContextSubmenu } from './components/ContextSubmenu.vue'
+export { default as ActionContextMenu } from './components/ActionContextMenu.vue'
+export { default as FileContextMenu } from './components/FileContextMenu.vue'
+export type { ContextAction } from './contextActions'
 import { defineAsyncComponent } from 'vue'
 import { defineAsyncView } from './asyncView'
 export { defineAsyncView } from './asyncView'

@@ -62,7 +62,9 @@
           <AudioResourcePlayer :source="audioSource(attachment)" />
         </template>
         <template #actions>
-            <RenameFileButton v-if="canRename(attachment)" :key="`${resourceId}:${agentId}:${attachment.id}`" :name="attachment.name" :rename="name => renameAttachment(attachment, name)" />
+            <FileContextMenu :key="`${resourceId}:${agentId}:${attachment.id}`" :name="attachment.name" :uri="attachment.uri" target=".document-attachments__item"
+              :open="() => attachmentAction(attachment)" :download="() => download(attachment)"
+              :rename="canRename(attachment) ? name => renameAttachment(attachment, name) : undefined" />
             <q-btn
               v-if="editable && allowInsertion"
               flat
@@ -234,6 +236,7 @@ import {
 import type { BrowserResourceKind, Model3dSource } from '@/core/util'
 import type { AttachmentSource, ResourceAttachment } from '../resourceAttachments'
 import RenameFileButton from './RenameFileButton.vue'
+import FileContextMenu from './FileContextMenu.vue'
 
 const { resourceId, agentId = null, attachments, editable = false, loading = false, content = '', allowInsertion = false, previewOnly = false, showHeading = true, resourceSource, emptyLabel, heading, dragHtml } = defineProps<{
   dragHtml?: (attachment: T) => string

@@ -1,5 +1,19 @@
 import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
 
+test('clicking elsewhere in the same editor closes a right-click menu and its submenu', async ({ page }) => {
+  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<h2>Synthetic heading</h2><p>Outside target</p>' } })
+  const editor = page.locator('[data-editor-surface]')
+  await editor.locator('h2').click({ button: 'right' })
+  const menu = page.getByRole('menu', { name: 'Content', exact: true })
+  await menu.getByRole('menuitem', { name: 'Style', exact: true }).hover()
+  await expect(page.getByRole('menuitemradio', { name: 'Heading 2', exact: true })).toBeVisible()
+  await editor.locator('p').click({ position: { x: 10, y: 10 } })
+  await expect(menu).toBeHidden()
+  await expect(page.getByRole('menuitemradio', { name: 'Heading 2', exact: true })).toBeHidden()
+  await page.keyboard.type('Usable ')
+  await expect(editor.locator('p')).toContainText('Usable ')
+})
+
 for (const width of [1440, 390]) test(`text context menu preserves the selection and changes heading styles (${width}px)`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: {

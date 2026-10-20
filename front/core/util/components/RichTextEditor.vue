@@ -33,7 +33,7 @@
     <EditorialContextMenu v-if="activeContext" :key="activeContext.key" ref="contextMenu" :suppressed="pointerMenuOpen" :target="activeContext.target" :context-key="activeContext.key" :label="t(activeContext.kind === 'code' ? 'richEditor.codeTools.toolbar' : activeContext.kind === 'table' ? 'richEditor.table' : activeContext.kind === 'object' ? 'richEditor.embeddedApplication' : 'richEditor.resources.insert')" :code="activeContext.kind === 'code'" :refresh-key="`${revision}:${fullscreen}:${effectiveLayout}`" @dismiss="dismissContext" @keydown.capture="editorCaptureKeydown" @keydown="editorKeydown">
       <EditorialContextActions :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runContextAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
     </EditorialContextMenu>
-      <q-menu v-if="activeContext || pointerTextContext" ref="pointerMenu" v-model="pointerMenuOpen" :target="editorHost ?? false" no-parent-event touch-position no-refocus separate-close-popup :transition-duration="0" max-width="calc(100vw - 16px)" max-height="80vh" role="presentation" @escape-key="editor?.view.focus()">
+      <q-menu v-if="activeContext || pointerTextContext" :id="pointerMenuId" ref="pointerMenu" v-model="pointerMenuOpen" :target="editorHost ?? false" no-parent-event touch-position no-refocus separate-close-popup :transition-duration="0" max-width="calc(100vw - 16px)" max-height="80vh" role="presentation" @escape-key="editor?.view.focus()">
         <q-list dense role="menu" :aria-label="t(!activeContext ? 'richEditor.content' : activeContext.kind === 'code' ? 'richEditor.codeTools.toolbar' : activeContext.kind === 'table' ? 'richEditor.table' : activeContext.kind === 'object' ? 'richEditor.embeddedApplication' : 'richEditor.resources.insert')" @mousedown.prevent>
           <EditorialContextActions v-if="activeContext" menu :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runPointerAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
           <template v-if="pointerTextContext && editor && !readonly">
@@ -92,6 +92,7 @@ import EditorialToolbar from './EditorialToolbar.vue'
 import EditorialSource from './EditorialSource.vue'
 import EditorialContextMenu from './EditorialContextMenu.vue'
 import EditorialContextActions from './EditorialContextActions.vue'
+import { useContextMenuDismissal } from '../contextMenuDismissal'
 import { withTableStyle, type TablePalette, type TableTreatment } from '../editorialTableStyles'
 import { editorialIcon } from '../editorialIcons'
 import CodeBlockCopyButton from './CodeBlockCopyButton.vue'
@@ -150,6 +151,7 @@ const codeCopies = shallowRef<Array<{ key: number; element: HTMLElement; source:
 const contextMenu = useTemplateRef('contextMenu'), dismissedContext = ref('')
 const pointerMenu = useTemplateRef<QMenu>('pointerMenu')
 const pointerMenuOpen = ref(false)
+const pointerMenuId = useContextMenuDismissal(pointerMenuOpen, () => pointerMenu.value)
 const pointerTextContext = ref(false)
 let pointerSelection: Selection | undefined, pointerRequest = 0
 const effectiveLayout = computed(() => fits.value ? layout.value : 'full')

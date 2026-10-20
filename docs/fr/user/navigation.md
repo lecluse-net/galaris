@@ -33,6 +33,17 @@ distinctes des **Préférences** d’administration de l’instance.
 
 ## Les sections principales
 
+Les documents, fichiers, pièces jointes, conversations, messages du Chat, objectifs, tâches
+et sujets proposent aussi leurs actions au clic droit ou via **⋮**. Au clavier, placez le
+focus sur l’élément ou son bouton **⋮**, puis utilisez **Maj+F10**. Les commandes disponibles
+dépendent de vos droits et de l’état de la ressource ; les confirmations restent applicables.
+Dans les messages, un clic droit sur du texte sélectionné conserve le menu du navigateur.
+Dans les menus contextuels, les sous-menus s’ouvrent au survol et restent ouverts pendant le passage du pointeur vers
+leurs commandes. Le clic, le toucher et le clavier restent disponibles ; un sous-menu voisin
+remplace le précédent.
+Un clic ou un toucher hors du menu ferme immédiatement toute sa chaîne de sous-menus,
+y compris dans sa zone d’origine ou dans un contenu embarqué. L’élément cliqué reste utilisable.
+
 En mode développement uniquement (`APP_ENV=dev`), la rubrique **Développeurs** apparaît juste
 après **Administrer**, au même niveau. **Développeurs → Référence graphique**
 ouvre `/graphic-reference`. Cette page réunit la palette Solaire, les contrôles de

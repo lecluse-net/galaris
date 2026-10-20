@@ -52,6 +52,7 @@
         :class="{ 'message-stack--trace': entry.activity || entry.liveRound || entry.pendingTranscription }"
       >
         <div class="message-meta">
+          <ActionContextMenu v-if="entry.message" target=".message-row" preserve-selection :actions="messageActions(entry.message)" />
           <button
             type="button"
             class="message-round-copy"
@@ -66,7 +67,9 @@
             </template>
           </button>
           <TopicBadge
-            v-if="entry.message?.topic_id && !$q.screen.lt.md"
+            v-if="entry.message?.topic_id"
+            :hide-trigger="$q.screen.lt.md"
+            :ref="element => registerTopicBadge(entry.message!.id, element)"
             :topic-id="entry.message.topic_id"
             :title="topicTitle(entry.message.topic_id)"
             subject-kind="message"
@@ -226,7 +229,9 @@
                 >
                   <q-tooltip>{{ t('chat.downloadAttachment', { name: file.name }) }}</q-tooltip>
                 </q-btn>
-                <RenameFileButton v-if="allowReply && viewerAgentId === null" :key="`${roomId}:${viewerAgentId}:${file.id}`" :name="file.name" :rename="name => renameFile(file, name)" />
+                <FileContextMenu :key="`${roomId}:${viewerAgentId}:${file.id}`" :name="file.name" :uri="file.uri ?? undefined" target=".attachment"
+                  :open="() => canOpenPreview(file) ? openPreview(file) : download(file.id, file.name)" :download="() => download(file.id, file.name)"
+                  :rename="allowReply && viewerAgentId === null ? name => renameFile(file, name) : undefined" />
                 <q-btn
                   v-if="mediaLoadErrors[file.id]"
                   flat
@@ -328,10 +333,12 @@
 </template>
 <script setup lang="ts">
 import { RenameFileButton } from '@/core/util'
+import { ActionContextMenu, FileContextMenu, type ContextAction } from '@/core/util'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
-import { useQuasar } from 'quasar'
+import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail, AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { browserResourceKind, FullscreenPreview, isolatedBrowserResourceUrl, TextResourcePreview, shouldOpenInline, model3dFormat, Model3dThumbnail, Model3dViewer, queuePreview, type Model3dSource } from '@/core/util'
 import { TopicBadge, useTopicRefs, type TopicAssignmentChangeScope } from '@/app/topic'
 import SafeMessageContent from './SafeMessageContent.vue'
@@ -791,6 +798,20 @@ async function copyRoundId(roundId: string | undefined): Promise<void> {
   } catch {
     $q.notify({ type: 'negative', icon: 'error', message: t('chat.copyRoundIdError') })
   }
+}
+const topicBadges = new Map<string, { open: () => void }>()
+const topicPermissions = usePrivilegeStore()
+function registerTopicBadge(id: string, value: unknown): void {
+  if (value && typeof value === 'object' && 'open' in value && typeof value.open === 'function') topicBadges.set(id, value as { open: () => void })
+  else topicBadges.delete(id)
+}
+function messageActions(message: MessengerMessage): ContextAction[] {
+  return [
+    { key: 'copy', icon: 'content_copy', label: t('common.copy'), run: () => copyToClipboard(displayMessageText(message, t)) },
+    ...(props.allowReply && !message.is_mine ? [{ key: 'reply', icon: 'reply', label: t('chat.reply'), run: () => emit('reply', message) }] : []),
+    ...(canReadMessage(message) ? [{ key: 'speech', icon: speechPlayingMessageId.value === message.id ? 'stop_circle' : 'volume_up', label: t(speechPlayingMessageId.value === message.id ? 'chat.stopReadingMessage' : 'chat.readMessage'), disabled: speechLoadingMessageId.value !== null, run: () => toggleMessageSpeech(message) }] : []),
+    ...(message.topic_id && props.viewerAgentId === null && topicPermissions.hasPrivilege(privileges.TOPIC_EDIT) ? [{ key: 'topic', icon: 'edit', label: t('topic.assignmentAudit.changeTopic'), run: () => topicBadges.get(message.id)?.open() }] : []),
+  ]
 }
 function clearMedia(): void {
   for (const request of mediaRequests.values()) request.abort()

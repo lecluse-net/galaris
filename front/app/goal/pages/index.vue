@@ -245,6 +245,7 @@
 
             <q-separator />
             <q-card-actions class="goal-list-actions" align="right" @click.stop>
+              <ActionContextMenu target=".goal-mobile-card" :actions="goalActions(props.row)" />
               <q-btn
                 flat
                 round
@@ -435,6 +436,7 @@
       <template #body-cell-actions="props">
         <q-td :props="props" class="goal-list-actions-cell" @click.stop>
           <div class="goal-list-actions">
+            <ActionContextMenu target="tr" :actions="goalActions(props.row)" />
             <q-btn
               flat
               round
@@ -1276,6 +1278,7 @@
 </template>
 
 <script setup lang="ts">
+import { ActionContextMenu, type ContextAction } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
@@ -1331,6 +1334,21 @@ interface GoalFormState {
 
 interface GoalHierarchyItem extends GoalTreeNode {
   depth: number
+}
+function goalActions(goal: Goal): ContextAction[] {
+  const actions: ContextAction[] = [{ key: 'details', icon: 'visibility', label: t('goal.details'), run: () => openDetails(goal) }]
+  if (!canEdit.value) return actions
+  const disabled = commandGoalIds.has(goal.id)
+  actions.push({ key: 'edit', icon: 'edit', label: t('goal.editAction'), run: () => openEdit(goal) })
+  if (goal.status !== 'COMPLETED') actions.push(
+    { key: 'run', icon: 'rocket_launch', label: t('goal.runNow'), disabled: disabled || Boolean(goal.current_task_id), run: () => runCommand('runNow', goal) },
+    { key: 'complete', icon: 'stop_circle', label: t('goal.complete'), disabled, run: () => confirmComplete(goal) },
+  )
+  actions.push(goal.status === 'ACTIVE'
+    ? { key: 'pause', icon: 'pause', label: t('goal.pause'), disabled, run: () => runCommand('pause', goal) }
+    : { key: 'resume', icon: goal.status === 'COMPLETED' ? 'replay' : 'play_arrow', label: t(goal.status === 'COMPLETED' ? 'goal.restart' : goal.status === 'ERROR' ? 'goal.retry' : 'goal.resume'), disabled, run: () => runCommand('resume', goal) })
+  actions.push({ key: 'delete', icon: 'delete', label: t('goal.delete'), disabled, negative: true, separator: true, run: () => confirmDelete(goal) })
+  return actions
 }
 
 const UNIT_SECONDS: Record<DurationUnit, number> = {

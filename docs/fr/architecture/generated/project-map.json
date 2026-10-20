@@ -20456,11 +20456,11 @@
       },
       {
         "files": [
+          "front/app/memory/components/DocumentBulkDialog.vue",
           "front/app/memory/components/DocumentEditor.vue",
           "front/app/memory/components/DocumentLibraryFilters.vue",
           "front/app/memory/components/DocumentLibraryPage.vue",
           "front/app/memory/components/MemorySharingPanel.vue",
-          "front/app/memory/services/memoryService.ts",
           "front/app/memory/types.ts"
         ],
         "source": "app/memory",
@@ -20468,6 +20468,7 @@
       },
       {
         "files": [
+          "front/app/memory/components/DocumentBulkList.vue",
           "front/app/memory/components/DocumentLibraryNavigation.vue",
           "front/app/memory/components/DocumentThumbnail.vue",
           "front/app/memory/components/MemoryFileResources.vue",
@@ -20486,6 +20487,7 @@
       },
       {
         "files": [
+          "front/app/memory/components/DocumentBulkList.vue",
           "front/app/memory/components/DocumentEditor.vue",
           "front/app/memory/components/MemoryDreamActions.vue",
           "front/app/memory/navigation.ts",
@@ -20510,6 +20512,7 @@
           "front/app/memory/components/DocumentApplication.vue",
           "front/app/memory/components/DocumentApplicationBlock.vue",
           "front/app/memory/components/DocumentAttachments.vue",
+          "front/app/memory/components/DocumentBulkList.vue",
           "front/app/memory/components/DocumentDialog.vue",
           "front/app/memory/components/DocumentEditor.vue",
           "front/app/memory/components/DocumentFolderSelect.vue",
@@ -20540,6 +20543,7 @@
       {
         "files": [
           "front/app/memory/components/DocumentApplication.vue",
+          "front/app/memory/components/DocumentBulkList.vue",
           "front/app/memory/components/DocumentEditor.vue",
           "front/app/memory/components/DocumentLibraryNavigation.vue",
           "front/app/memory/components/DocumentLibraryPage.vue",
@@ -20685,11 +20689,10 @@
       },
       {
         "files": [
-          "front/app/share/components/OwnerAvatar.vue",
+          "front/app/share/components/OwnerSelect.vue",
           "front/app/share/components/ResourceSharingPanel.vue",
           "front/app/share/components/SharingPanel.vue",
           "front/app/share/components/SharingRecipients.vue",
-          "front/app/share/ownerCache.ts",
           "front/app/share/panel.ts"
         ],
         "source": "app/share",
@@ -21420,8 +21423,7 @@
       {
         "files": [
           "front/core/util/components/RenameFileButton.vue",
-          "front/core/util/components/ResourceAttachments.vue",
-          "front/core/util/sessionResources.ts"
+          "front/core/util/components/ResourceAttachments.vue"
         ],
         "source": "core/util",
         "target": "core/api"

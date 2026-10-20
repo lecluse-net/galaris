@@ -45,6 +45,7 @@
           :icon="pauseBadge(task)!.icon"
           class="active-task-badge"
         />
+        <TaskRowMenu :task="task" @select="$emit('select', $event)" />
       </div>
     </div>
 
@@ -67,6 +68,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAgentStore } from '../../agent/stores/agentStore'
 import type { Task } from '../types'
+import TaskRowMenu from './TaskRowMenu.vue'
 import TopicBadge from '@/app/topic/components/TopicBadge.vue'
 import { StatusBadge, richTextExcerpt } from '@/core/util'
 import {

@@ -16,7 +16,7 @@
       </div>
     </q-item-section>
 
-    <q-menu anchor="top end" self="top start">
+    <ContextSubmenu>
       <q-list class="language-menu-list" style="min-width: 160px">
         <q-item
           v-for="option in localeOptions"
@@ -31,7 +31,7 @@
           </q-item-section>
         </q-item>
       </q-list>
-    </q-menu>
+    </ContextSubmenu>
   </q-item>
 
   <q-item>
@@ -72,6 +72,7 @@
 </template>
 
 <script setup lang="ts">
+import { ContextSubmenu } from '@/core/util'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/core/user'
