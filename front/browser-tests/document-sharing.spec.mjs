@@ -290,12 +290,12 @@ test('search and category filtering reach recipients beyond the first page of 20
   state.owner_groups = []
   await mount(page, 'app/share/components/SharingPanel.vue', { props: { state, editable: true } })
   await picker(page).click()
-  await expect(page.getByText('1–10 of 2000', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Recipient .*: Read/ })).toHaveCount(10)
+  await expect(page.getByText('1–50 of 2000', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Recipient .*: Read/ })).toHaveCount(50)
   await page.getByRole('button', { name: 'Next page', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Recipient 0011: Write', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Recipient 0051: Write', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'People', exact: true }).click()
-  await expect(page.getByText('1–10 of 1000', { exact: true })).toBeVisible()
+  await expect(page.getByText('1–50 of 1000', { exact: true })).toBeVisible()
   await page.getByLabel('Search groups, people or agents', { exact: true }).fill('2000')
   await page.getByRole('button', { name: 'Recipient 2000: Write', exact: true }).click()
   await expect.poll(() => page.evaluate(() => window.testApp.events.at(-1)?.value?.grants)).toEqual([
