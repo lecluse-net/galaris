@@ -19,6 +19,7 @@ from sqlalchemy import and_, case, func, or_, select, tuple_, true, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.database import get_db, get_db_session
+from core.storage import rename_stored_file
 from core.i18n import normalize_language
 from core.user import UserModel as User
 
@@ -1618,6 +1619,7 @@ async def chat_file_access(
     if row is None:
         return None
     file, message = row
+    await journal.hydrate_file_names([file])
     return NativeMessengerFileAccess(
         id=file.id,
         room_id=room_id,
@@ -1627,6 +1629,18 @@ async def chat_file_access(
         size_bytes=file.size_bytes,
         kind=file.kind,
     )
+
+
+async def rename_internal_file(user_id: int, room_id: UUID, file_id: UUID, name: str) -> NativeMessengerFileAccess | None:
+    """Rename metadata in a writable internal room without replacing its bytes."""
+    if await get_internal_room(user_id, room_id) is None:
+        return None
+    access = await chat_file_access(user_id, room_id, file_id)
+    if access is None:
+        return None
+    await rename_stored_file(file_id, name)
+    await get_db().commit()
+    return await chat_file_access(user_id, room_id, file_id)
 
 
 async def fetch_chat_file_bytes(
@@ -2225,6 +2239,7 @@ async def internal_file_access(
     if row is None:
         return None
     file, message = row
+    await journal.hydrate_file_names([file])
     return NativeMessengerFileAccess(
         id=file.id,
         room_id=room_id,
@@ -2256,6 +2271,7 @@ async def internal_file_for_connection(
     if row is None:
         return None
     file, _message, room = row
+    await journal.hydrate_file_names([file])
     return NativeMessengerFileAccess(
         id=file.id,
         room_id=room.id,

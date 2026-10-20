@@ -2,6 +2,10 @@
 
 # Processus métier internes
 
+Dans le suivi d’une exécution, les fichiers proposent **Renommer** si vous avez les droits
+de contrôle du processus. Cette action change leur nom affiché et téléchargé sans modifier
+leur contenu, leur URI, les variables ni l’état de l’exécution.
+
 Les processus sont gérés exclusivement dans **Processus**. Leur définition BPMN et leur
 historique leur appartiennent ; ils ne figurent jamais dans la bibliothèque **Documents**,
 qui contient du HTML. Les variables et les pièces jointes de chaque run sont stockées directement dans Process.

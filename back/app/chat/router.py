@@ -16,6 +16,7 @@ from starlette.background import BackgroundTask
 from core.authorize import authorize, check_privilege
 from core import websocket
 from core.database import get_db
+from core.storage import FileRename
 from core.util import source_code_response_headers
 from core.i18n import current_language, tr
 from core.params import runtime_settings
@@ -33,6 +34,8 @@ from app.browser import (
     schedule_public_page_thumbnail,
 )
 from app.messenger import (
+    rename_internal_file,
+    NativeMessengerFileAccess,
     NativeMessengerInteraction,
     read_internal_interaction,
     answer_internal_interaction,
@@ -1279,6 +1282,16 @@ async def set_muted(room_id: UUID, data: MuteUpdate) -> MutationResult:
     if not await set_chat_room_muted(await _user_id(), room_id, data.muted):
         raise _not_found()
     return MutationResult()
+
+
+@router.patch("/rooms/{room_id}/files/{file_id}", response_model=NativeMessengerFileAccess)
+@authorize(privileges=SEND, assertion=InternalRoomAccessAssertion)
+async def rename_chat_attachment(room_id: UUID, file_id: UUID, data: FileRename) -> NativeMessengerFileAccess:
+    result = await rename_internal_file(await _user_id(), room_id, file_id, data.name)
+    if result is None:
+        raise _not_found()
+    await websocket.emit("chat", "message", {"room_id": str(room_id), "is_new": False}, room=ChatRoom(room_id))
+    return result
 
 
 @router.get("/rooms/{room_id}/files/{file_id}", response_class=Response)

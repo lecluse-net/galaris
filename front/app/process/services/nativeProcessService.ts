@@ -113,6 +113,9 @@ export const nativeProcessService = {
   async run(id: string, page = 1, pageSize = 50, afterEvent = 0, agentId?: number | null): Promise<NativeRun> {
     return (await api.get(`${base}/runs/${id}`, { params: { page, page_size: pageSize, after_event: afterEvent, agent_id: agentId ?? undefined } })).data
   },
+  async renameFile(id: string, fileId: string, name: string, agentId?: number | null): Promise<void> {
+    await api.patch(`${base}/runs/${id}/files/${fileId}`, { name }, { params: { agent_id: agentId } })
+  },
   async file(id: string, fileId: string, agentId?: number | null): Promise<Blob> {
     return (await api.get<Blob>(`${base}/runs/${id}/files/${fileId}`, { responseType: 'blob', params: { agent_id: agentId ?? undefined } })).data
   },

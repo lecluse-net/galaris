@@ -2,6 +2,13 @@
 
 # Functional guarantees catalogue
 
+`attachment-rename.spec.mjs` checks name entry, recoverable errors and dialog dismissal
+in real components. Its E2E journey checks Document renaming, reopening, renaming from
+Files and preservation of the body, revision, identity and bytes on mobile and desktop.
+Backend Document, Chat, Dataset and Process tests cover permissions and reading the single
+name in `files` without rewriting Document metadata. The browser and E2E journeys also open
+a cached file after a rename through another surface.
+
 `document-flows.spec.mjs` covers dropping a document from the list and folder tree: a titled
 link without moving the source, card conversion, saving, reopening and opening the target in
 a modal. `galaris-links.spec.mjs` checks title lookup when pasting a document URI or URL, undo,

@@ -4,7 +4,7 @@
     <q-linear-progress v-if="uriLoading" indeterminate color="primary" />
     <q-banner v-if="uriError" role="alert" class="file-error">
       {{ t('files.loadError') }}
-      <template #action><q-btn color="negative" :label="t('common.retry')" @click="initialUri && openUri(initialUri)" /></template>
+      <template #action><q-btn color="negative" :label="t('common.retry')" @click="retryUri && openUri(retryUri)" /></template>
     </q-banner>
     <q-splitter v-model="split" :limits="[18, 45]" :disable="$q.screen.lt.md" class="file-browser" :class="{ 'file-browser--tree-hidden': $q.screen.lt.md && !showTree }">
       <template #before>
@@ -91,7 +91,10 @@
             </q-banner>
             <q-infinite-scroll :key="currentUri + ':' + (query || '')" :scroll-target="scroll || undefined" :disable="current.error || current.incomplete || (current.loaded && !current.cursor)" :offset="180" @load="loadMore">
               <div class="file-grid">
-                <FileTile v-for="entry in sortedEntries" :key="`${entry.uri}:${current.version}`" :entry="entry" :agent-id="agentId" :compact="selection" :selectable="selection" :selected="selected.some(value => value.uri === entry.uri)" @open="openEntry" @activate="activateEntry" />
+                <div v-for="entry in sortedEntries" :key="`${entry.uri}:${current.version}`" class="file-entry">
+                  <FileTile :entry="entry" :agent-id="agentId" :compact="selection" :selectable="selection" :selected="selected.some(value => value.uri === entry.uri)" @open="openEntry" @activate="activateEntry" />
+                  <RenameFileButton v-if="!selection && canEditFiles && fileBrowserService.canRename(entry)" class="file-entry-rename" :name="entry.name" :rename="name => renameEntry(entry, name)" />
+                </div>
               </div>
               <template #loading><div class="q-pa-md text-center"><q-spinner color="primary" size="30px" :aria-label="t('files.loading')" /></div></template>
             </q-infinite-scroll>
@@ -104,7 +107,7 @@
       </template>
     </q-splitter>
     </q-card>
-    <ResourceDetailDialog v-if="target" :target="target" @close="target = null" @changed="refresh" />
+    <ResourceDetailDialog v-if="target" :target="target" @close="target = null; refresh()" @changed="refresh" />
     <ResourceAttachments ref="preview" :key="previewKey" :resource-id="String(agentId)" :agent-id="agentId" :attachments="previewEntries"
       :resource-source="previewSource" preview-only />
   </div>
@@ -114,7 +117,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar, type QTreeNode } from 'quasar'
-import { FolderIcon, ResourceAttachments, ResourceDetailDialog, richLinkTarget, type ResourceDetailTarget, type AttachmentSource, type ResourceAttachment } from '@/core/util'
+import { FolderIcon, RenameFileButton, ResourceAttachments, ResourceDetailDialog, richLinkTarget, type ResourceDetailTarget, type AttachmentSource, type ResourceAttachment } from '@/core/util'
+import { usePrivilegeStore } from '@/core/authorize'
 import { fileBrowserService, type FileEntry, type FileScheme } from '../services/fileBrowserService'
 import { useFileDirectories } from '../browserState'
 import { parentDirectory, resourceTarget } from '../presentation'
@@ -125,6 +129,12 @@ const selected = defineModel<FileEntry[]>('selected', { default: () => [] })
 const emit = defineEmits<{ confirm: [] }>()
 const { t, locale } = useI18n()
 const $q = useQuasar()
+const privileges = usePrivilegeStore()
+const canEditFiles = computed(() => ['MEMORY_EDIT', 'MEMORY_ADMIN', 'DATASET_EDIT', 'DATASET_ADMIN'].some(code => privileges.hasPrivilege(code)))
+async function renameEntry(entry: FileEntry, name: string): Promise<void> {
+  await fileBrowserService.rename(agentId, entry, name)
+  if (active) refresh()
+}
 const { directory, load } = useFileDirectories(agentId, selection)
 const schemes = ref<FileScheme[]>([])
 const schemesLoading = ref(false), schemesError = ref(false)
@@ -142,6 +152,7 @@ const searchState = ref({ entries: [] as FileEntry[], loading: false, loaded: fa
 let searchRequest: AbortController | undefined
 let uriRequest: AbortController | undefined
 const uriLoading = ref(false), uriError = ref(false)
+const retryUri = ref(initialUri)
 let anchor = ''
 const current = computed(() => query.value?.trim() ? searchState.value : currentUri.value ? directory(currentUri.value) : null)
 const parent = computed(() => parentDirectory(currentUri.value))
@@ -194,6 +205,7 @@ function toggleScheme(uri: string, opened: boolean): void {
   else if (openScheme.value === uri) openScheme.value = null
 }
 function navigate(uri: string, closeTree = true): void {
+  uriRequest?.abort(); uriLoading.value = false
   query.value = ''
   currentUri.value = uri
   const root = treeNodes.value.find(root => uri.startsWith(root.id))
@@ -210,7 +222,8 @@ function navigate(uri: string, closeTree = true): void {
   else reveal()
   if (closeTree && $q.screen.lt.md) showTree.value = false
 }
-async function openEntry(entry: FileEntry, event?: Event): Promise<void> {
+async function openEntry(entry: FileEntry, event?: Event, metadataFresh = false): Promise<void> {
+  if (!metadataFresh) { uriRequest?.abort(); uriLoading.value = false; uriError.value = false }
   if (selection && !entry.is_collection) {
     if (!entry.capabilities.includes('read')) return
     const mouse = event as MouseEvent | undefined
@@ -231,19 +244,26 @@ async function openEntry(entry: FileEntry, event?: Event): Promise<void> {
   if (entry.is_collection) { navigate(entry.uri); return }
   target.value = resourceTarget(entry, agentId) ?? richLinkTarget(entry.uri, String(entry.metadata?.label ?? entry.name), agentId)
   if (target.value) return
+  if (!metadataFresh && /^(file|document|data|messenger|galaris):\/\//.test(entry.uri)) {
+    await openUri(entry.uri, false)
+    return
+  }
   previewEntries.value = [{ id: entry.uri, uri: entry.uri, name: entry.name, media_type: entry.media_type, size_bytes: entry.size ?? 0 }]
   await nextTick()
   if (active) await preview.value?.openById(entry.uri)
 }
-async function openUri(uri: string): Promise<void> {
+async function openUri(uri: string, revealParent = true): Promise<void> {
   uriRequest?.abort(); const request = new AbortController(); uriRequest = request
+  const location = currentUri.value
+  retryUri.value = uri
   uriError.value = false; uriLoading.value = true
   try {
     const entry = await fileBrowserService.info(agentId, uri, request.signal)
-    if (request.signal.aborted || !active) return
-    if (!entry.is_collection) { const parent = parentDirectory(entry.uri); if (parent) navigate(parent) }
-    await openEntry(entry)
-  } catch { if (!request.signal.aborted && active) uriError.value = true }
+    if (request.signal.aborted || !active || currentUri.value !== location) return
+    if (current.value) current.value.entries = current.value.entries.map(value => value.uri === uri ? entry : value)
+    if (revealParent && !entry.is_collection) { const parent = parentDirectory(entry.uri); if (parent) navigate(parent) }
+    await openEntry(entry, undefined, true)
+  } catch { if (!request.signal.aborted && active && currentUri.value === location) uriError.value = true }
   finally { if (!request.signal.aborted && active) uriLoading.value = false }
 }
 function activateEntry(entry: FileEntry): void {
@@ -314,6 +334,8 @@ onBeforeUnmount(() => { active = false; schemesRequest?.abort(); searchRequest?.
 .file-main { display: flex; flex-direction: column; min-width: 0; height: 100%; }
 .file-scroll { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
 .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); align-items: start; gap: 14px; }
+.file-entry { position: relative; min-width: 0; }
+.file-entry-rename { position: absolute; top: 0; right: 0; }
 .file-state { padding: 60px 16px; text-align: center; }
 .file-warning { background: var(--solaire-yellow-light); }
 :global(body.body--dark .file-warning) { background: var(--solaire-yellow-dark); }

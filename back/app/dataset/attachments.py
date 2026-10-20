@@ -11,7 +11,7 @@ from app.file_share import ResourceContext, parse_resource_uri, resource_info
 from app.memory import validate_attachment_content
 from core.database import get_db
 from core.params import runtime_settings
-from core.storage import DiskFileDriver, StoredFile, file_key, fingerprint, register_file, ensure_disk_identity
+from core.storage import DiskFileDriver, FileAlias, StoredFile, file_key, fingerprint, register_file, ensure_disk_identity, registered_file_names, rename_stored_file
 from core.util import complete_io
 
 from .contracts import DataActor, DatasetPermissionError
@@ -33,9 +33,11 @@ async def attach_existing(identity: UUID, actor: DataActor, *, uri: str, agent_i
     descriptor = await resource_info(ResourceContext(agent_id=agent_id, runtime="internal"), str(reference))
     if descriptor.is_collection:
         raise ValueError("An attachment references an exact resource")
-    record = DatasetAttachment(dataset_id=identity, uri=str(reference), name=(name or descriptor.name)[:512],
+    file_id = UUID(reference.locator) if reference.scheme == "file" else await get_db().scalar(
+        select(FileAlias.file_id).where(FileAlias.uri == str(reference)))
+    record = DatasetAttachment(dataset_id=identity, uri=str(reference), name=(descriptor.name if file_id else name or descriptor.name)[:512],
         media_type=descriptor.media_type, size_bytes=descriptor.size, sha256=descriptor.checksum,
-        file_id=UUID(reference.locator) if reference.scheme == "file" else None)
+        file_id=file_id)
     get_db().add(record)
     await get_db().flush()
     if record.file_id is not None:
@@ -82,9 +84,22 @@ async def add_bytes(identity: UUID, actor: DataActor, content: bytes, *, name: s
 
 async def list_attachments(identity: UUID, actor: DataActor) -> list[dict[str, Any]]:
     await service.record(identity, actor)
-    rows = await get_db().scalars(select(DatasetAttachment).where(DatasetAttachment.dataset_id == identity).order_by(DatasetAttachment.created_at, DatasetAttachment.id))
-    return [{"id": str(row.id), "uri": row.uri, "name": row.name, "media_type": row.media_type,
+    rows = list(await get_db().scalars(select(DatasetAttachment).where(DatasetAttachment.dataset_id == identity).order_by(DatasetAttachment.created_at, DatasetAttachment.id)))
+    names = await registered_file_names(row.file_id for row in rows if row.file_id is not None)
+    return [{"id": str(row.id), "uri": row.uri, "name": names.get(row.file_id, row.name) if row.file_id else row.name, "media_type": row.media_type,
         "size_bytes": row.size_bytes, "sha256": row.sha256} for row in rows]
+
+
+async def rename_attachment(identity: UUID, attachment_id: UUID, actor: DataActor, name: str) -> None:
+    await service.record(identity, actor, write=True, lock=True)
+    row = await get_db().scalar(select(DatasetAttachment).where(
+        DatasetAttachment.dataset_id == identity, DatasetAttachment.id == attachment_id))
+    if row is None:
+        raise service.DatasetNotFoundError("Dataset attachment not found")
+    if row.file_id is None:
+        raise ValueError("Only registered internal files can be renamed")
+    await rename_stored_file(row.file_id, name)
+    await get_db().commit()
 
 
 async def native_path(identity: UUID, attachment_id: UUID, actor: DataActor) -> tuple[dict[str, Any], Path] | None:
@@ -95,7 +110,7 @@ async def native_path(identity: UUID, attachment_id: UUID, actor: DataActor) -> 
     stored = await get_db().get(StoredFile, item.file_id)
     if stored is None or stored.backend != "disk" or stored.size_bytes > runtime_settings.MEMORY_RESOURCE_MAX_BYTES:
         raise ValueError("Dataset attachment unavailable or exceeds the read limit")
-    return {"id": str(item.id), "name": item.name, "media_type": item.media_type,
+    return {"id": str(item.id), "name": stored.name, "media_type": item.media_type,
         "size_bytes": stored.size_bytes, "created_at": item.created_at}, DiskFileDriver().path(stored.storage_key)
 
 

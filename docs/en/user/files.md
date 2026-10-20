@@ -15,6 +15,12 @@ can be rendered and an icon otherwise. Click a file to preview it, or a Document
 Task, Dataset or conversation to open its existing domain view. Formats without an
 integrated viewer are downloaded.
 
+**Rename** changes the complete name of an internal file or Document attachment when
+you have edit access. Enter its name, including the extension, then confirm. Content
+and links stay identical; an error preserves your draft for retry. The same filename appears
+in Documents, Datasets, conversations, processes and Files, including previews and downloads.
+External references do not offer this action.
+
 Videos from Samba, Nextcloud/WebDAV, AFFiNE, the SSH console and internal files play
 progressively, without waiting for a complete download. The player can request a
 different portion when seeking; the 512 MiB downloaded-preview limit does not apply

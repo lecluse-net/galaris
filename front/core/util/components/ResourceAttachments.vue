@@ -62,6 +62,7 @@
           <AudioResourcePlayer :source="audioSource(attachment)" />
         </template>
         <template #actions>
+            <RenameFileButton v-if="canRename(attachment)" :key="`${resourceId}:${agentId}:${attachment.id}`" :name="attachment.name" :rename="name => renameAttachment(attachment, name)" />
             <q-btn
               v-if="editable && allowInsertion"
               flat
@@ -121,6 +122,8 @@
       : t('documents.attachments')"
   >
     <template #actions>
+      <RenameFileButton v-if="previewAttachment && canRename(previewAttachment)" :key="`${resourceId}:${agentId}:${previewAttachment.id}`" :name="previewAttachment.name"
+        :rename="name => renameAttachment(previewAttachment!, name)" />
       <q-btn
         v-if="previewAttachment"
         flat
@@ -186,6 +189,7 @@
         <div class="text-h6 ellipsis">{{ previewAttachment.name }}</div>
         <q-space />
         <q-btn flat round dense icon="download" :aria-label="t('documents.downloadAttachment', { name: previewAttachment.name })" @click="download(previewAttachment)" />
+        <RenameFileButton v-if="canRename(previewAttachment)" :key="`${resourceId}:${agentId}:${previewAttachment.id}`" :name="previewAttachment.name" :rename="name => renameAttachment(previewAttachment!, name)" />
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
       <AudioResourcePlayer :source="audioSource(previewAttachment)" />
@@ -229,6 +233,7 @@ import {
 } from '@/core/util'
 import type { BrowserResourceKind, Model3dSource } from '@/core/util'
 import type { AttachmentSource, ResourceAttachment } from '../resourceAttachments'
+import RenameFileButton from './RenameFileButton.vue'
 
 const { resourceId, agentId = null, attachments, editable = false, loading = false, content = '', allowInsertion = false, previewOnly = false, showHeading = true, resourceSource, emptyLabel, heading, dragHtml } = defineProps<{
   dragHtml?: (attachment: T) => string
@@ -249,6 +254,7 @@ const emit = defineEmits<{
   insert: [attachment: T]
   added: [attachment: T]
   removed: [attachmentId: string]
+  renamed: [attachment: T]
 }>()
 const { t, locale } = useI18n()
 const $q = useQuasar()
@@ -562,6 +568,20 @@ async function uploadFiles(files: File[]): Promise<void> {
 function requestRemoval(attachment: T): void {
   removalAttachment.value = attachment
   removeOpen.value = true
+}
+
+async function renameAttachment(attachment: T, name: string): Promise<void> {
+  const rename = resourceSource.rename
+  if (!rename) return
+  const id = resourceId, agent = agentId
+  const result = await rename(attachment, name)
+  if (disposed || id !== resourceId || agent !== agentId) return
+  if (previewAttachment.value?.id === result.id) previewAttachment.value = result
+  emit('renamed', result)
+}
+
+function canRename(attachment: T): boolean {
+  return Boolean(resourceSource.rename && (resourceSource.canRename?.(attachment) ?? true))
 }
 
 async function confirmRemoval(): Promise<void> {

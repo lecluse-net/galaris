@@ -14,6 +14,7 @@ from sqlalchemy import Select, select, exists
 from sqlalchemy.orm import aliased
 
 from core.database import get_db
+from core.storage import registered_file_names
 from core.util import visible_text
 
 from .attachment_description import write_attachment_description
@@ -64,9 +65,10 @@ async def attachment_analysis_source(item_id: UUID, *, allow_existing: bool = Fa
     attachment = next((value for value in attachments_from_item(document) if value.id == record.id), None)
     if attachment is None:
         return None
+    names = await registered_file_names([attachment.id])
     return AttachmentAnalysisSource(
         item.id, record.id, document.id, item.revision, document.owner_agent_id,
-        document.owner_user_id, attachment.name, attachment.media_type, attachment.size_bytes,
+        document.owner_user_id, names.get(attachment.id, attachment.name), attachment.media_type, attachment.size_bytes,
     )
 
 

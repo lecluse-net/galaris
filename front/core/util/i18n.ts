@@ -1,5 +1,7 @@
 export default {
   fr: {
+    resourceOwner: { title: 'Propriétaire', choose: 'Choisir un propriétaire', me: 'Moi', user: 'Utilisateurs', agent: 'Agents', all: 'Tous les propriétaires', clear: 'Effacer le propriétaire', search: 'Rechercher un propriétaire', empty: 'Aucun propriétaire disponible.', pages: 'Pagination : {type}', perPage: 'Résultats par page' },
+    fileRename: { action: 'Renommer {name}', title: 'Renommer le fichier', name: 'Nom du fichier', save: 'Renommer', invalid: 'Saisissez un nom de 1 à 500 caractères, sans séparateur de chemin ni caractère de contrôle.', error: 'Impossible de renommer ce fichier. Vérifiez vos droits et réessayez.' },
     resourceSharing: {
       title: 'Partage', access: 'Qui peut accéder à cette ressource ?',
       addShare: 'Ajouter un partage', addNamed: 'Partager avec {name}', close: 'Fermer',
@@ -188,6 +190,8 @@ unavailable: "Ce contenu est indisponible.",
     },
   },
   en: {
+    resourceOwner: { title: 'Owner', choose: 'Choose an owner', me: 'Me', user: 'Users', agent: 'Agents', all: 'All owners', clear: 'Clear owner', search: 'Search owners', empty: 'No owners available.', pages: 'Pagination: {type}', perPage: 'Results per page' },
+    fileRename: { action: 'Rename {name}', title: 'Rename file', name: 'File name', save: 'Rename', invalid: 'Enter a name of 1–500 characters without path separators or control characters.', error: 'Unable to rename this file. Check your permissions and retry.' },
     resourceSharing: {
       title: 'Sharing', access: 'Who can access this resource?',
       addShare: 'Add sharing', addNamed: 'Share with {name}', close: 'Close',
@@ -376,6 +380,8 @@ unavailable: "This content is unavailable.",
     },
   },
   zh: {
+    resourceOwner: { title: '所有者', choose: '选择所有者', me: '我', user: '用户', agent: '智能体', all: '所有所有者', clear: '清除所有者', search: '搜索所有者', empty: '没有可用的所有者。', pages: '分页：{type}', perPage: '每页结果数' },
+    fileRename: { action: '重命名 {name}', title: '重命名文件', name: '文件名', save: '重命名', invalid: '请输入 1–500 个字符的名称，不含路径分隔符或控制字符。', error: '无法重命名此文件。请检查权限并重试。' },
     resourceSharing: {
       title: '共享', access: '谁可以访问此资源？',
       addShare: '添加共享', addNamed: '与 {name} 共享', close: '关闭',

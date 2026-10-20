@@ -1,12 +1,12 @@
 """API routes exposing file-sharing bridges and configuration parameters."""
 
 from fastapi import APIRouter, HTTPException, Query, Response, UploadFile
-from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse, FileResponse
 from collections.abc import AsyncIterator
 import asyncio
 from uuid import UUID
 from core.database import get_db
+from core.storage import FileRename
 from core.util import source_code_response_headers
 from app.agent import current_management_scope
 from .indexing import start_index_run, cancel_index_run, index_progress, retry_repairs
@@ -27,10 +27,6 @@ router.include_router(browser_router)
 router.include_router(media_router, prefix="/browser")
 
 
-class ManagedFileRename(BaseModel):
-    name: str = Field(min_length=1, max_length=512)
-
-
 @router.post("/files", response_model=ResourceDescriptor, status_code=201)
 @authorize(privileges=Privileges.MEMORY_EDIT)
 async def create_managed_file(upload: UploadFile, agent_id: int) -> ResourceDescriptor:
@@ -45,7 +41,7 @@ async def create_managed_file(upload: UploadFile, agent_id: int) -> ResourceDesc
 
 @router.patch("/files/{file_id}", response_model=ResourceDescriptor)
 @authorize(privileges=Privileges.MEMORY_EDIT)
-async def rename_file(file_id: UUID, agent_id: int, data: ManagedFileRename) -> ResourceDescriptor:
+async def rename_file(file_id: UUID, agent_id: int, data: FileRename) -> ResourceDescriptor:
     from .managed_files import rename_managed_file
 
     await _index_access(agent_id)

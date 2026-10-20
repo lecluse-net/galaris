@@ -113,6 +113,7 @@ from .configuration import (
     resolve_messenger_configuration,
 )
 from .journal import hydrate_messages
+from .native_facade import rename_internal_file
 from .models import conversation_audio_transcripts
 from .resource_reference import attachment_resource_uri
 from .contact_memory import observe_contact
@@ -198,6 +199,7 @@ from .mcp import (
 )
 
 __all__ = [
+    "rename_internal_file",
     "NativeMessengerInteraction",
     "read_internal_interaction",
     "answer_internal_interaction",

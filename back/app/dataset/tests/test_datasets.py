@@ -94,6 +94,14 @@ async def test_obsolete_process_markers_do_not_override_dataset_deletion_rights(
     assert (await resource_read(context, attachment.uri)).content == "Synthetic former run attachment"
     attached = await db.scalar(select(DatasetAttachment).where(DatasetAttachment.dataset_id == dataset.id, DatasetAttachment.uri == attachment.uri))
     attachment_uri = f"data://{dataset.id}/attachments/{attached.id}"
+    from app.dataset.attachments import rename_attachment
+    before = (dataset.content, dataset.revision, attached.uri, attached.file_id)
+    with pytest.raises(service.DatasetNotFoundError):
+        await rename_attachment(dataset.id, attached.id, other.id, "denied.txt")
+    await rename_attachment(dataset.id, attached.id, owner.id, "Renamed dataset attachment.txt")
+    assert (await resource_info(context, attachment_uri)).name == "Renamed dataset attachment.txt"
+    assert (dataset.content, dataset.revision, attached.uri, attached.file_id) == before
+    assert (await resource_read(context, attachment_uri)).content == "Synthetic former run attachment"
     await resource_delete(context, attachment_uri)
     with pytest.raises(FileNotFoundError):
         await resource_info(context, attachment_uri)

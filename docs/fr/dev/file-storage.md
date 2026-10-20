@@ -35,8 +35,13 @@ conserve ses bornes de contenu existantes.
 
 L'API `/file-share/files` permet l'upload multipart pour un agent géré. Les routes
 `/{uuid}/content`, `/{uuid}/thumbnail` et le renommage `PATCH /{uuid}` appliquent RBAC,
-périmètre de gestion et droits du fichier. Seul le propriétaire d'un fichier indépendant
-peut le renommer ; les noms de PJ restent dans leurs manifests métier. Le navigateur
+périmètre de gestion et droits du fichier. Le propriétaire d’un fichier indépendant ou
+un éditeur du Document parent peut le renommer. Tout renommage d’un fichier interne modifie
+uniquement `files.name`. Documents, Datasets, Chat, Process et Fichiers relisent ce même nom,
+y compris dans les aperçus, téléchargements et exports. Les noms historiques d’import ne
+servent pas de libellés modifiables. Le renommage ne crée aucune révision du corps du Document.
+Le nom original, le MIME,
+l’UUID, les octets et leurs empreintes restent inchangés. Le navigateur
 reçoit des téléchargements HTTP autorisés, jamais un accès au disque local.
 
 Le moteur `core.preview.thumbnails`, sa racine `/data/thumbnails` et ses rendus restent

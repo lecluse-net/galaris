@@ -31,8 +31,12 @@ stream with the `MEMORY_RESOURCE_MAX_BYTES` bound. MCP retains its existing cont
 
 The `/file-share/files` API accepts multipart uploads for a managed agent. Its
 `/{uuid}/content`, `/{uuid}/thumbnail` and `PATCH /{uuid}` rename routes enforce RBAC,
-management scope and file access. Only an independent file's owner can rename it;
-attachment names remain in their domain manifests. Browsers use authorized HTTP
+management scope and file access. An independent file’s owner or an editor of its
+parent Document can rename it. Every internal-file rename updates only `files.name`.
+Documents, Datasets, Chat, Process and Files read this same name, including previews,
+downloads and exports. Historical ingestion names are not mutable display labels.
+Renaming creates no Document body revision. The original name, MIME, UUID, bytes and checksums stay unchanged.
+Browsers use authorized HTTP
 downloads, never direct local filesystem access.
 
 The `core.preview.thumbnails` engine, `/data/thumbnails` root and rendering remain

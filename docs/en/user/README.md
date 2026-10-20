@@ -289,6 +289,11 @@ requested action; contact and sharing permissions still apply.
 
 Attachments remain files. Specify their name and the expected action: “read,” “modify,” “compare,” “return,” or “share.” For a large file, the Agent may transfer it without loading all its content into the model.
 
+In a writable internal discussion, **Rename** changes an attachment’s name before or
+after sending it. Documents offer the same action on their attachments when you can
+edit them. Enter the complete name including the extension; file links and content
+are preserved. Closing the form without confirming discards the draft.
+
 To exchange files with agents from your PC, use a Nextcloud folder accessible to the agent's
 connected account, synchronized or mounted on your computer. Specify the folder and file.
 Names containing accents, spaces, `#`, `?`, and `%` are preserved. If you change a file while

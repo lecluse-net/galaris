@@ -13,6 +13,7 @@ from app.memory import MemoryNotFoundError, MemoryPermissionError, MemoryConflic
 from app.share import SharingUpdate as DocumentSharingLevelUpdate
 from core.authorize import authorize
 from core.database import get_db
+from core.storage import FileRename
 
 from . import service, organization, ownership, sharing as sharing_service, usage
 
@@ -265,6 +266,14 @@ async def attach(identity: UUID, data: Attach) -> dict[str, Any]:
         item = await attach_existing(identity, await current_management_scope(), **data.model_dump())
         await get_db().commit()
         return {"id": str(item.id), "uri": item.uri, "name": item.name}
+
+
+@router.patch("/{identity}/attachments/{attachment_id}")
+@authorize(privileges=EDIT)
+async def rename_dataset_attachment(identity: UUID, attachment_id: UUID, data: FileRename) -> None:
+    from .attachments import rename_attachment
+    with errors():
+        await rename_attachment(identity, attachment_id, await current_management_scope(), data.name)
 
 
 @router.put("/{identity}/classification")

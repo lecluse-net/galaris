@@ -14,6 +14,7 @@ from app.memory import MemoryConflictError, MemoryPermissionError, MemoryNotFoun
 from app.share import SharingUpdate as DocumentSharingLevelUpdate
 from core.authorize import authorize, Privileges
 from core.util import source_code_response_headers
+from core.storage import FileRename
 
 from . import native_definitions as definitions, native_runs as runs, process_service
 from . import native_sharing as definition_sharing
@@ -266,6 +267,14 @@ async def native_inspect_run(identity: UUID, page: int = Query(1, ge=1), page_si
 async def native_inspect_node(identity: UUID, node_identity: UUID, agent_id: int | None = None) -> dict[str, Any]:
     with domain_errors():
         return await runs.inspect_occurrence(identity, node_identity, await _preview_actor(agent_id))
+
+
+@routes.patch("/runs/{identity}/files/{file_id}")
+@authorize(privileges=[Privileges.PROCESS_LAUNCH, Privileges.PROCESS_ADMIN])
+async def native_rename_run_file(identity: UUID, file_id: UUID, data: FileRename, agent_id: int | None = None) -> None:
+    from .run_resources import rename_run_file
+    with domain_errors():
+        await rename_run_file(identity, file_id, await _preview_actor(agent_id), data.name)
 
 
 @routes.get("/runs/{identity}/files/{file_id}", response_class=FileResponse)

@@ -52,11 +52,12 @@
         <div v-else class="attachment-list">
           <div
             v-for="(pendingFile, index) in files"
-            :key="fileKey(pendingFile)"
+            :key="pendingFileKey(pendingFile)"
             class="attachment-item"
           >
             <q-icon name="attach_file" size="17px" color="primary" />
             <span class="attachment-name">{{ pendingFile.name }}</span>
+            <RenameFileButton :name="pendingFile.name" :disabled="sending" :rename="name => renamePendingFile(pendingFile, name)" />
             <q-btn
               flat
               round
@@ -233,11 +234,12 @@
     <div v-if="files.length" class="portrait-attachment-list">
       <div
         v-for="(pendingFile, index) in files"
-        :key="fileKey(pendingFile)"
+        :key="pendingFileKey(pendingFile)"
         class="attachment-item"
       >
         <q-icon name="attach_file" size="17px" color="primary" />
         <span class="attachment-name">{{ pendingFile.name }}</span>
+        <RenameFileButton :name="pendingFile.name" :disabled="sending" :rename="name => renamePendingFile(pendingFile, name)" />
         <q-btn
           flat
           round
@@ -257,6 +259,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { RenameFileButton } from '@/core/util'
 import { TopicSelect } from '@/app/topic'
 import { chatService, DictationNotConfiguredError } from '../services/chatService'
 import { visibleMessageText } from '../messageDirectives'
@@ -302,6 +305,17 @@ const emit = defineEmits<{
 const text = ref('')
 const preparingSend = ref(false)
 const files = ref<File[]>([])
+const pendingFileKeys = new WeakMap<File, number>()
+let nextFileKey = 0
+function pendingFileKey(file: File): number {
+  let key = pendingFileKeys.get(file)
+  if (key === undefined) { key = ++nextFileKey; pendingFileKeys.set(file, key) }
+  return key
+}
+async function renamePendingFile(file: File, name: string): Promise<void> {
+  if (props.sending) return
+  files.value = files.value.map(value => value === file ? new File([file], name, { type: file.type, lastModified: file.lastModified }) : value)
+}
 const reasoningEffortIndex = ref(DEFAULT_REASONING_LEVEL)
 const dictating = ref(false)
 const preparingDictation = ref(false)

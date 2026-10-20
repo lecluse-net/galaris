@@ -185,9 +185,10 @@ async def test_file_tool_delivers_to_user_with_independent_journal_transactions(
 
     monkeypatch.setattr(resource_delivery, "materialize_resource", materialize)
     async with get_db_session() as db:
-        agent, owner, _ = await _scope(db)
+        agent, owner, outsider = await _scope(db)
         room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
         agent_id, owner_id, room_id = agent.id, owner.id, room.id
+        outsider_id = outsider.id
         task_id = None
         if task_pinned:
             from app.task import Task
@@ -212,6 +213,24 @@ async def test_file_tool_delivers_to_user_with_independent_journal_transactions(
         assert result["uri"] == f"chat://{room.external_id}/{files[0].id}"
         assert await storage.read_bytes(files[0].id) == b"Synthetic report"
         assert [message.text for message in messages if message.text] == ["Here is the report."]
+        from core.storage import StoredFile
+        stored = await get_db().get(StoredFile, files[0].id)
+        original = (stored.original_name, stored.sha256, stored.storage_key)
+        assert await native_facade.rename_internal_file(outsider_id, room_id, files[0].id, "denied.txt") is None
+        assert await native_facade.rename_internal_file(owner_id, uuid4(), files[0].id, "denied.txt") is None
+        renamed = await native_facade.rename_internal_file(owner_id, room_id, files[0].id, "Final report.txt")
+        assert renamed.name == "Final report.txt"
+        assert (await native_facade.chat_file_access(owner_id, room_id, files[0].id)).name == renamed.name
+        assert (await journal.history(room.connection_id, room.external_id))[0].files[0].name == renamed.name
+        assert stored.name == renamed.name
+        stored.name = "Registered chat name.txt"
+        await get_db().commit()
+        assert (await journal.history(room.connection_id, room.external_id))[0].files[0].name == stored.name
+        assert (await native_facade.chat_file_access(owner_id, room_id, files[0].id)).name == stored.name
+        assert (await native_facade.internal_file_for_connection(connection_id=room.connection_id,
+            room_external_id=room.external_id, file_id=files[0].id)).name == stored.name
+        assert (stored.original_name, stored.sha256, stored.storage_key) == original
+        assert await storage.read_bytes(files[0].id) == b"Synthetic report"
 
 
 @pytest.mark.asyncio

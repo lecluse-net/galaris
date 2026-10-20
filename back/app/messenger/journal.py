@@ -12,9 +12,10 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.orm.attributes import set_committed_value
 
 from core.database import get_db, get_db_session
-from core.storage import file_path, register_file
+from core.storage import file_path, register_file, registered_file_names
 
 from ._observations import (
     ObservedMessengerFile,
@@ -41,6 +42,15 @@ Direction = Literal["inbound", "outbound"]
 _MAX_ATTACHMENTS = 20
 _MAX_METADATA_TEXT = 2_000
 _MAX_HISTORY_PAGE_SIZE = 500
+
+
+async def hydrate_file_names(files: list[File]) -> list[File]:
+    """Overlay registered names without writing back provider observations."""
+    names = await registered_file_names(file.id for file in files)
+    for file in files:
+        if file.id in names:
+            set_committed_value(file, "name", names[file.id])
+    return files
 
 
 def connection_id_for(message: ObservedMessengerMessage) -> int | None:
@@ -151,7 +161,7 @@ async def _synchronize_files(
                 set_={"file_id": file_id},
             )
         )
-    return list(
+    return await hydrate_file_names(list(
         (
             await get_db().scalars(
                 select(File)
@@ -163,7 +173,7 @@ async def _synchronize_files(
                 .order_by(Attachment.position)
             )
         ).all()
-    )
+    ))
 
 
 def _remote_datetime(timestamp: int) -> datetime | None:
@@ -534,6 +544,7 @@ async def _messages_from_records(
         else []
     )
     files_by_message: dict[UUID, list[File]] = {}
+    await hydrate_file_names([file for _, file in files])
     for message_id, file in files:
         files_by_message.setdefault(message_id, []).append(file)
     return [

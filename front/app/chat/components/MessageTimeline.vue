@@ -226,6 +226,7 @@
                 >
                   <q-tooltip>{{ t('chat.downloadAttachment', { name: file.name }) }}</q-tooltip>
                 </q-btn>
+                <RenameFileButton v-if="allowReply && viewerAgentId === null" :key="`${roomId}:${viewerAgentId}:${file.id}`" :name="file.name" :rename="name => renameFile(file, name)" />
                 <q-btn
                   v-if="mediaLoadErrors[file.id]"
                   flat
@@ -255,6 +256,8 @@
     :viewer-label="t('chat.resourcePreview.viewerLabel')"
   >
     <template #actions>
+      <RenameFileButton v-if="previewFile && allowReply && viewerAgentId === null" :key="`${roomId}:${viewerAgentId}:${previewFile.id}`"
+        :name="previewFile.name" :rename="name => renameFile(previewFile!, name)" />
       <q-btn
         v-if="previewFile"
         flat
@@ -324,6 +327,7 @@
   </FullscreenPreview>
 </template>
 <script setup lang="ts">
+import { RenameFileButton } from '@/core/util'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -373,6 +377,13 @@ const timestampFormatter = computed(() => new Intl.DateTimeFormat(locale.value, 
   timeStyle: 'short',
 }))
 const $q = useQuasar()
+async function renameFile(file: MessengerFile, name: string): Promise<void> {
+  const room = props.roomId, viewer = props.viewerAgentId
+  await chatService.renameAttachment(room, file.id, name)
+  if (room !== props.roomId || viewer !== props.viewerAgentId) return
+  emit('controlled')
+  if (previewFile.value?.id === file.id) previewFile.value = { ...file, name }
+}
 useMessagePreviewFreshness()
 const { resolveTopicRefs, topicTitle } = useTopicRefs()
 const timelineElement = useTemplateRef<HTMLElement>('timelineElement')

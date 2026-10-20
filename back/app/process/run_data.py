@@ -59,7 +59,7 @@ async def run_files(run_id: UUID) -> list[dict[str, Any]]:
         .order_by(ProcessRunFile.position, ProcessRunFile.created_at, ProcessRunFile.id))).all()
     return [{"uri": row.uri,
         **({"description": row.description} if row.description is not None else {}),
-        **({"filename": row.name} if row.name is not None else {}),
+        **({"filename": stored.name} if stored is not None else {"filename": row.name} if row.name is not None else {}),
         **({"origin_uri": row.origin_uri} if row.origin_uri is not None else {}),
         **({"content_type": stored.media_type, "size": stored.size_bytes, "sha256": stored.sha256}
             if stored is not None else {})} for row, stored in rows]

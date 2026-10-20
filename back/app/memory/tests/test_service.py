@@ -797,6 +797,21 @@ async def test_document_attachments_follow_document_acl_without_content_revision
     assert metadata.media_type == "image/png"
     assert content == _png_bytes()
 
+    with pytest.raises(service.MemoryPermissionError):
+        await document_attachment_service.rename_document_attachment(
+            document.id, attachment.id, actor_agent_id=peer.id, name="denied.png")
+    attachment = await document_attachment_service.rename_document_attachment(
+        document.id, attachment.id, actor_agent_id=owner.id, name="Illustration finale.png")
+    from core.storage import StoredFile
+    from core.database import get_db
+    stored = await get_db().get(StoredFile, attachment.id)
+    assert stored.name == attachment.name and stored.original_name == "preview.png"
+    info, unchanged = await document_attachment_service.read_document_attachment(
+        document.id, attachment.id, actor_agent_id=peer.id)
+    assert info.name == attachment.name and unchanged == content
+    assert (await resource_service.resource_info(ResourceContext(agent_id=owner.id, runtime="internal"),
+        f"file://{attachment.id}")).name == attachment.name
+
     current, _content, _access, _content_type, _media_type = await service.get_item(
         document.id,
         agent_id=owner.id,

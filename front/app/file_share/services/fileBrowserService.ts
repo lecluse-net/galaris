@@ -25,6 +25,25 @@ export interface FileListing {
 }
 
 export const fileBrowserService = {
+  canRename(entry: FileEntry): boolean {
+    return !entry.is_collection && ((entry.metadata?.can_rename === true)
+      || (/^document:\/\/[^/]+\/attachments\/[^/]+$/.test(entry.uri) && entry.capabilities.includes('delete')))
+  },
+  async rename(agent: number, entry: FileEntry, name: string): Promise<void> {
+    const reference = typeof entry.metadata?.rename_uri === 'string' ? entry.metadata.rename_uri : entry.uri
+    const dataset = /^data:\/\/([^/]+)\/attachments\/([^/]+)$/.exec(reference)
+    if (dataset) {
+      await api.patch(`/datasets/${dataset[1]}/attachments/${dataset[2]}`, { name })
+      return
+    }
+    if (entry.uri.startsWith('file://')) {
+      await api.patch(`/file-share/files/${entry.uri.slice('file://'.length)}`, { name }, { params: { agent_id: agent } })
+    } else {
+      const [, document, attachment] = /^document:\/\/([^/]+)\/attachments\/([^/]+)$/.exec(entry.uri) ?? []
+      if (!document || !attachment) throw new Error('Unsupported file rename')
+      await api.patch(`/memory/documents/${document}/attachments/${attachment}`, { name }, { params: { actor_agent_id: agent } })
+    }
+  },
   async videoUrl(agent: number, uri: string, management = false): Promise<string | null> {
     return (await api.post<{ url: string | null }>('/file-share/browser/media', null, {
       params: { agent_id: agent, uri, management },

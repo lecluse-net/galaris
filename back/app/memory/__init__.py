@@ -8,6 +8,7 @@ from .process_migration import legacy_process_snapshot as legacy_process_snapsho
 from .dataset_references import list_selectable_documents
 from .dataset_attachments import DatasetAttachmentReference, register_dataset_attachment_reader
 from .document_attachment_service import validate_attachment_content
+from .document_attachment_service import rename_document_attachment
 from .document_types import register_document_validator
 from .schemas import DocumentCollaborator, DocumentSharing, DocumentSharingLevelUpdate
 from .item_sharing import sharing_directory as resource_sharing_directory
@@ -118,6 +119,7 @@ from .file_facade import (
 from .internal_attachments import register_internal_attachment_reader
 
 __all__ = [
+    "rename_document_attachment",
     "register_internal_attachment_reader",
     "AppConsentRequired", "AppWriteLimitError",
     "dataset_budget_reserved",

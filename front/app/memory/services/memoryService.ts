@@ -470,6 +470,9 @@ export const memoryService = {
       params: { actor_agent_id: agentId },
     })
   },
+  async renameDocumentAttachment(id: string, attachmentId: string, agentId: number | null, name: string): Promise<DocumentAttachment> {
+    return (await api.patch<DocumentAttachment>(`/memory/documents/${id}/attachments/${attachmentId}`, { name }, { params: { actor_agent_id: agentId } })).data
+  },
 
   async listFilterOptions(agentId: number): Promise<MemoryFilterOptions> {
     const response = await api.get<MemoryFilterOptions>('/memory/filter-options', {

@@ -13,5 +13,7 @@ export interface AttachmentSource<T extends ResourceAttachment = ResourceAttachm
   thumbnail?: (attachment: T, signal?: AbortSignal) => Promise<Blob>
   add?: (file: File, signal: AbortSignal, progress: (value: number) => void) => Promise<T>
   remove?: (attachment: T) => Promise<void>
+  rename?: (attachment: T, name: string) => Promise<T>
+  canRename?: (attachment: T) => boolean
   info?: (id: string) => Promise<T>
 }

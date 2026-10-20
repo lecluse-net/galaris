@@ -133,6 +133,11 @@ for (const width of [390, 1280]) {
     await expect(post).toBeDisabled()
 
     await page.locator('input[type=file]').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Notes') })
+    await page.getByRole('button', { name: 'Rename notes.txt', exact: true }).click()
+    const rename = page.getByRole('dialog')
+    await rename.getByRole('textbox', { name: 'File name', exact: true }).fill('Final notes.txt')
+    await rename.getByRole('textbox', { name: 'File name', exact: true }).press('Enter')
+    await expect(rename).toHaveCount(0)
     await expect(post).toBeEnabled()
     const upload = page.getByRole('button', { name: 'Add attachments', exact: true })
     const nextFile = page.waitForEvent('filechooser')
@@ -144,6 +149,11 @@ for (const width of [390, 1280]) {
       await upload.click()
     }
     await (await nextFile).setFiles({ name: 'extra.txt', mimeType: 'text/plain', buffer: Buffer.from('Extra') })
+    await page.getByRole('button', { name: 'Rename extra.txt', exact: true }).click()
+    await page.getByRole('dialog').getByRole('textbox', { name: 'File name', exact: true }).fill('Final notes.txt')
+    await page.getByRole('dialog').getByRole('textbox', { name: 'File name', exact: true }).press('Enter')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Rename Final notes.txt', exact: true })).toHaveCount(2)
     await page.evaluate(() => window.testApp.setProps({ sending: true }))
     await expect(post).toBeDisabled()
     await input.press('Enter')
@@ -152,8 +162,12 @@ for (const width of [390, 1280]) {
     await post.click()
     await expect.poll(() => page.evaluate(() => {
       const sent = window.testApp.events.filter(event => event.name === 'send').at(-1)
-      return [sent.args[0], sent.args[1]?.map(file => file.name)]
-    })).toEqual(['', ['notes.txt', 'extra.txt']])
+      return [sent.args[0], sent.args[1]?.map(file => [file.name, file.type, file.size])]
+    })).toEqual(['', [['Final notes.txt', 'text/plain', 5], ['Final notes.txt', 'text/plain', 5]]])
+    expect(await page.evaluate(async () => {
+      const sent = window.testApp.events.filter(event => event.name === 'send').at(-1)
+      return Promise.all(sent.args[1].map(file => file.text()))
+    })).toEqual(['Notes', 'Extra'])
     await expect(post).toBeDisabled()
   })
 }

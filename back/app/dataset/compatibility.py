@@ -12,7 +12,7 @@ from pathlib import Path
 from sqlalchemy import delete, select
 from core.database import get_db
 from core.user import HumanActor
-from core.storage import StoredFile, FileAlias
+from core.storage import StoredFile, FileAlias, registered_file_names
 from app.memory import MemoryConflictError, MemoryNotFoundError, MemoryPermissionError
 from app.agent import AgentManagementScope
 
@@ -160,8 +160,9 @@ class LegacyDatasetAdapter:
     async def attachments(self, identity: UUID, actor: int | HumanActor) -> list[dict[str, Any]]:
         with legacy_errors():
             await service.record(identity, actor)
-            rows = await get_db().scalars(select(DatasetAttachment).where(DatasetAttachment.dataset_id == identity).order_by(DatasetAttachment.created_at, DatasetAttachment.id).limit(500))
-            return [{"id": str(item.id), "uri": item.uri, "name": item.name, "media_type": item.media_type,
+            rows = list(await get_db().scalars(select(DatasetAttachment).where(DatasetAttachment.dataset_id == identity).order_by(DatasetAttachment.created_at, DatasetAttachment.id).limit(500)))
+            names = await registered_file_names(item.file_id for item in rows if item.file_id is not None)
+            return [{"id": str(item.id), "uri": item.uri, "name": names.get(item.file_id, item.name) if item.file_id else item.name, "media_type": item.media_type,
                 "size_bytes": item.size_bytes or 0, "created_at": item.created_at} for item in rows]
 
     async def read_attachment(self, identity: UUID, attachment_id: UUID, actor: int | HumanActor) -> tuple[dict[str, Any], bytes] | None:

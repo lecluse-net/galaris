@@ -5,7 +5,7 @@
     :drag-html="resourceSource ? undefined : attachmentHtml"
     :heading="t(resourceSource ? 'memory.fileLocations' : 'documents.attachments')"
     :empty-label="t(resourceSource ? 'memory.noFileLocations' : 'documents.noAttachments')"
-    @insert="emit('insert', $event)" @added="emit('added', $event)" @removed="emit('removed', $event)" />
+    @insert="emit('insert', $event)" @added="emit('added', $event)" @removed="emit('removed', $event)" @renamed="emit('renamed', $event)" />
 </template>
 
 <script setup lang="ts">
@@ -31,6 +31,7 @@ const emit = defineEmits<{
   insert: [attachment: DocumentAttachment]
   added: [attachment: DocumentAttachment]
   removed: [attachmentId: string]
+  renamed: [attachment: DocumentAttachment]
 }>()
 const { t } = useI18n()
 const files = computed(() => props.resourceSource ? props.attachments : props.attachments.map(attachment => ({ ...attachment, uri: `file://${attachment.id}` })))
@@ -48,6 +49,9 @@ const source = computed<AttachmentSource<DocumentAttachment>>(() => {
     add: (file, signal, progress) => memoryService.addDocumentAttachment(id, agent, file, signal, progress),
     remove: attachment => memoryService.deleteDocumentAttachment(id, attachment.id, agent),
     info: attachmentId => memoryService.documentAttachmentInfo(id, attachmentId, agent),
+    rename: props.editable && !props.resourceSource
+      ? (attachment, name) => memoryService.renameDocumentAttachment(id, attachment.id, agent, name)
+      : props.resourceSource?.rename,
   }
 })
 defineExpose({ openById: (id: string) => list.value?.openById(id) })

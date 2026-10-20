@@ -2,6 +2,9 @@
 
 # Internal business processes
 
+In run details, files offer **Rename** when you have Process control rights. This changes
+their display and download name without changing their content, URI, variables or run state.
+
 Processes are managed exclusively in **Processes**. They own their BPMN definitions and
 history and never appear in the **Documents** library, which contains HTML. Their JSON
 run variables and attachment links belong directly to Process.

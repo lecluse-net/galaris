@@ -17,6 +17,13 @@ disponible sinon. Cliquez sur un fichier pour afficher son aperçu, sur un Docum
 une Task, un Dataset ou un échange pour ouvrir sa vue métier existante. Les formats
 sans lecteur intégré se téléchargent.
 
+L’action **Renommer** permet de modifier le nom complet d’un fichier interne ou d’une
+pièce jointe documentaire lorsque vous avez les droits d’édition. Saisissez le nom,
+extension comprise, puis validez. Le contenu et les liens restent identiques ; une erreur
+conserve votre saisie pour réessayer. Le nom est commun à toutes les vues de ce fichier :
+Documents, Datasets, conversations, processus et Fichiers, aperçus et téléchargements compris.
+Les références externes ne proposent pas cette action.
+
 Les vidéos des partages Samba, Nextcloud/WebDAV, AFFiNE, de la console SSH et des
 fichiers internes se lisent progressivement, sans attendre le téléchargement complet.
 Le lecteur peut demander directement une autre portion pour avancer dans la vidéo ;

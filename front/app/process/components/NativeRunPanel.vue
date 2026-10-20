@@ -121,6 +121,14 @@ const attachmentSource = computed(() => {
       if (!prefix || !attachment.id.startsWith(prefix)) return Promise.reject(new Error(t('documents.attachmentError')))
       return service.file(id, attachment.id.slice(prefix.length), props.agentId)
     },
+    canRename: (attachment: { id: string }) => Boolean(prefix && attachment.id.startsWith(prefix)),
+    rename: canControl.value ? async (attachment: typeof attachments.value[number], name: string) => {
+      if (!prefix || !attachment.id.startsWith(prefix)) throw new Error(t('fileRename.error'))
+      const agent = props.agentId
+      await service.renameFile(id, attachment.id.slice(prefix.length), name, agent)
+      if (id === props.runId && agent === props.agentId) await refresh()
+      return { ...attachment, name }
+    } : undefined,
   }
 })
 const loading = ref(false), mutating = ref(false), error = ref(''), selectedNode = ref<string | null>(null), selectedOccurrence = ref<string | null>(null)

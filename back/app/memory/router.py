@@ -14,6 +14,7 @@ from loguru import logger
 from core.authorize import Privileges, authorize, check_privilege
 from app.agent import AgentManagementScope, current_management_scope
 from core.database import get_db
+from core.storage import FileRename
 from core.params import runtime_settings
 from core.preview import PdfRenderError
 from core.user import get_current_user, get_user_record, HumanActor
@@ -1549,6 +1550,18 @@ async def read_document_attachment_thumbnail(
                 "X-Content-Type-Options": "nosniff",
             },
         )
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.patch("/documents/{document_id}/attachments/{attachment_id}", response_model=DocumentAttachmentPublic)
+@authorize(privileges=[Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
+async def rename_document_attachment(document_id: UUID, attachment_id: UUID, data: FileRename,
+    actor_agent_id: int | None = Query(default=None, gt=0)) -> DocumentAttachmentPublic:
+    try:
+        actor = await _document_request_actor(document_id, actor_agent_id)
+        return await document_attachment_service.rename_document_attachment(
+            document_id, attachment_id, actor_agent_id=actor, name=data.name)
     except Exception as exc:
         raise _http_error(exc) from exc
 

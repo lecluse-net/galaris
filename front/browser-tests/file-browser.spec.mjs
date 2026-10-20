@@ -31,6 +31,21 @@ async function selectAgent(page, name) {
   await expect(page.getByRole('listbox')).toHaveCount(0)
 }
 
+test('opening a cached internal file rereads its registered name before previewing it', async ({ page }) => {
+  await setup(page)
+  const uri = 'file://00000000-0000-4000-8000-000000000004'
+  await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'file', label: 'Files', capabilities: ['list'], native: true }])
+  await jsonRoute(page, '**/api/file-share/browser/entries?*', pageOf('file://', [entry(uri, 'Old name.txt')]))
+  await jsonRoute(page, '**/api/file-share/browser/info?*', entry(uri, 'Current registered name.txt'))
+  await page.route('**/api/file-share/browser/content?*', route => route.fulfill({ contentType: 'text/plain', body: 'Synthetic file content' }))
+  await mount(page, component, { route: '/files?agent_id=7', privileges: ['MEMORY_ACCESS'] })
+  await page.getByText('file://', { exact: true }).click()
+  await page.getByRole('button', { name: 'Open Old name.txt', exact: true }).click()
+  await expect(page.getByRole('article', { name: 'Current registered name.txt', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Open Current registered name.txt', exact: true })).toBeVisible()
+})
+
 test('an existing file citation opens through authorized file sharing and retries denied access', async ({ page }) => {
   await setup(page)
   const uri = 'file://00000000-0000-4000-8000-000000000004'

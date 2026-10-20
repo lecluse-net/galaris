@@ -18,6 +18,53 @@ from core.dbadmin import SchemaTransitionSet
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("reference_scheme", ["file", "document"])
+async def test_native_attachment_views_read_the_single_registered_name(agents, memory_storage, db, tmp_path, reference_scheme):
+    from io import BytesIO
+    from zipfile import ZipFile
+    from app.dataset import service as datasets
+    from app.dataset.attachments import attach_existing, list_attachments
+    from app.memory.document_export import export_document_bundle
+
+    owner, _ = agents
+    document, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+        title="Synthetic shared filename", node_kind="document", media_type="text/html",
+        payload=MemoryPayload(text="<p>Preserved body</p>")))
+    attachment = await attachments.add_document_attachment_bytes(document.id, actor_agent_id=owner.id,
+        name="Original.txt", media_type="text/plain", content=b"Synthetic shared bytes")
+    dataset = await datasets.create(owner.id, title="Synthetic file references", content="{}")
+    reference_uri = f"file://{attachment.id}" if reference_scheme == "file" else f"document://{document.id}/attachments/{attachment.id}"
+    reference = await attach_existing(dataset.id, owner.id, uri=reference_uri, agent_id=owner.id)
+    assert reference.file_id == attachment.id
+    await db.commit()
+    unchanged_document = (deepcopy(document.metadata_), document.revision, document.lock_version)
+    # Rename only the authoritative row; no consumer may need its own name update.
+    stored = await db.get(StoredFile, attachment.id)
+    stored.name = "Global name.txt"
+    await db.commit()
+    ctx = ResourceContext(agent_id=owner.id, runtime="internal")
+    uri = f"document://{document.id}/attachments/{attachment.id}"
+    assert (await attachments.list_document_attachments(document.id, actor_agent_id=owner.id))[0].name == stored.name
+    assert (await attachments.document_attachment_path(document.id, attachment.id, actor_agent_id=owner.id))[0].name == stored.name
+    assert (await attachments.read_document_attachment(document.id, attachment.id, actor_agent_id=owner.id))[0].name == stored.name
+    assert (await list_attachments(dataset.id, owner.id))[0]["name"] == stored.name
+    for source in (f"file://{attachment.id}", uri, f"data://{dataset.id}/attachments/{reference.id}"):
+        assert (await resource_info(ctx, source)).name == stored.name
+        exported = await materialize_resource(ctx, source, tmp_path / "download", max_bytes=100)
+        assert exported.name == stored.name
+    bundle = await export_document_bundle(document.id, f'<p><a href="{uri}">Attachment</a></p>', actor_agent_id=owner.id)
+    with ZipFile(BytesIO(bundle)) as archive:
+        assert f"attachments/{attachment.id}-{stored.name}" in archive.namelist()
+    await attachments.rename_document_attachment(document.id, attachment.id, actor_agent_id=owner.id, name="From document.txt")
+    assert (await resource_info(ctx, f"data://{dataset.id}/attachments/{reference.id}")).name == "From document.txt"
+    from app.dataset.attachments import rename_attachment
+    await rename_attachment(dataset.id, reference.id, owner.id, "From dataset.txt")
+    assert (await attachments.list_document_attachments(document.id, actor_agent_id=owner.id))[0].name == "From dataset.txt"
+    assert (document.metadata_, document.revision, document.lock_version) == unchanged_document
+    assert reference.name == "Original.txt"  # Historical ingestion metadata is never rewritten.
+
+
+@pytest.mark.asyncio
 async def test_standalone_upload_is_private_renameable_and_reuses_thumbnail_engine(agents, db, tmp_path, monkeypatch):
     from io import BytesIO
     from fastapi import UploadFile

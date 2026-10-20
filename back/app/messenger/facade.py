@@ -277,6 +277,7 @@ class MessengerFacade:
 
     async def stored_attachment_resource(self, room_id: str, ref: str) -> tuple[File, str] | None:
         """Resolve an immutable local file UUID without a recent-history cutoff."""
+        from . import journal
         from sqlalchemy import select
         from core.database import get_db
         from .models import Attachment
@@ -289,7 +290,10 @@ class MessengerFacade:
             .join(Message, Message.id == Attachment.message_id).join(Room, Room.id == Message.messenger_room_id)
             .where(File.id == identity, File.connection_id == self._connection_id,
                 Room.connection_id == self._connection_id, Room.external_id == locator).limit(1))).one_or_none()
-        return None if row is None else (row[0], row[1])
+        if row is None:
+            return None
+        await journal.hydrate_file_names([row[0]])
+        return row[0], row[1]
 
     async def _external_user_id(self, user_id: UUID | str) -> str:
         from sqlalchemy import select

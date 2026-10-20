@@ -10,6 +10,7 @@ from pydantic import Field
 from sqlalchemy import or_, select
 
 from core.database import get_db
+from core.storage import registered_file_names
 from core.util import complete_io
 from app.file_share import (MaterializedResource, ResourceContext, ResourceDescriptor, ResourceUri, parse_resource_uri,
     ResourceListing, ResourceMutation, ResourceRead, ResourceSchemeDescription, ResourceSearchHit, ResourceSearchResult)
@@ -75,12 +76,15 @@ class DatasetProvider:
                 return ResourceDescriptor(uri=f"data://{dataset.id}/attachments/", name="attachments", is_collection=True,
                     media_type="inode/directory", capabilities=["info", "list", "search", *(["create"] if state["can_write"] else [])])
             attachment = await self._attachment(uri, ctx)
+            names = await registered_file_names([attachment.file_id]) if attachment.file_id else {}
+            name = names.get(attachment.file_id, attachment.name) if attachment.file_id else attachment.name
+            rename_metadata = {"rename_uri": str(uri), "can_rename": bool(attachment.file_id and state["can_write"])}
             if not attachment.uri.startswith(("file://", f"document://{dataset.id}/attachments/")):
                 from app.file_share import resource_info
                 original = await resource_info(ctx, attachment.uri)
-                return original.model_copy(update={"name": attachment.name})
-            return ResourceDescriptor(uri=attachment.uri, name=attachment.name, media_type=attachment.media_type,
-                size=attachment.size_bytes, checksum=attachment.sha256, capabilities=["info", "read", "copy"])
+                return original.model_copy(update={"name": name, "metadata": {**original.metadata, **rename_metadata}})
+            return ResourceDescriptor(uri=attachment.uri, name=name, media_type=attachment.media_type,
+                size=attachment.size_bytes, checksum=attachment.sha256, capabilities=["info", "read", "copy"], metadata=rename_metadata)
         return ResourceDescriptor(uri=f"data://{dataset.id}", name=dataset.title, media_type="application/json",
             size=state["size"], revision=dataset.revision, checksum=state["checksum"],
             capabilities=["info", "read", "copy", *(["write", "append", "edit"] if state["can_write"] else []), *(["delete"] if state["can_delete"] else [])],
@@ -112,7 +116,7 @@ class DatasetProvider:
                     descriptor = await self.info(ctx, parse_resource_uri(f"data://{item.dataset_id}/attachments/{item.id}"))
                 except (FileNotFoundError, PermissionError):
                     continue
-                entries.append(descriptor.model_copy(update={"name": item.name}))
+                entries.append(descriptor)
             return ResourceListing(uri=str(uri), entries=entries, truncated=len(attachments) > limit,
                 next_cursor=str(attachments[limit - 1].id) if len(attachments) > limit else None)
         if cursor:
@@ -239,12 +243,12 @@ class DatasetProvider:
                 if attachment.size_bytes is None or attachment.size_bytes > int(options["max_bytes"]):
                     raise ValueError("Legacy attachment exceeds the materialization limit")
                 from app.memory import read_document_attachment_file_resource
-                _, content = await read_document_attachment_file_resource(attachment.dataset_id, attachment.id, agent_id=ctx.agent_id)
+                metadata, content = await read_document_attachment_file_resource(attachment.dataset_id, attachment.id, agent_id=ctx.agent_id)
                 if len(content) > int(options["max_bytes"]):
                     raise ValueError("Legacy attachment exceeds the materialization limit")
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 await complete_io(destination.write_bytes, content)
-                return MaterializedResource(uri=str(uri), name=attachment.name, media_type=attachment.media_type, size=len(content))
+                return MaterializedResource(uri=str(uri), name=str(metadata["name"]), media_type=attachment.media_type, size=len(content))
             return await materialize_resource(ctx, attachment.uri, destination, max_bytes=int(options["max_bytes"]))
         dataset = await service.record(root_id(uri), ctx.management_scope or ctx.agent_id)
         content = dataset.content.encode("utf-8")

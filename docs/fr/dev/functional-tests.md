@@ -2,6 +2,14 @@
 
 # Catalogue des garanties fonctionnelles
 
+`attachment-rename.spec.mjs` vérifie la saisie d’un nom, les erreurs récupérables et
+la fermeture du dialogue dans les composants réels. Son parcours E2E vérifie sur mobile
+et bureau le renommage documentaire, la réouverture, le renommage depuis Fichiers et
+la conservation du corps, de la révision, de l’identité et des octets. Les tests backend
+Documents, Chat, Dataset et Process couvrent les droits et la lecture du seul nom dans
+`files`, sans réécriture des métadonnées documentaires. Le navigateur et le parcours E2E
+ouvrent aussi un fichier déjà en cache après un renommage réalisé ailleurs.
+
 `document-apps.spec.mjs` vérifie le contraste du texte HTML isolé avec des couleurs CSS
 imposées et des panneaux clairs/sombres. La bascule de thème sur mobile et bureau ne
 redémarre pas les scripts, n’efface pas les champs et n’émet aucune modification du contenu.

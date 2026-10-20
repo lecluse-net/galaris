@@ -14,7 +14,7 @@ from uuid import UUID, uuid4
 from fastapi import UploadFile
 from sqlalchemy import select
 from core.database import get_db
-from core.storage import register_file
+from core.storage import register_file, registered_file_names, rename_stored_file
 from core.util import source_code_media_type
 
 from core.user import HumanActor
@@ -139,11 +139,13 @@ async def list_document_attachments(
 
 
 async def attachment_companions(attachments: list[DocumentAttachmentPublic]) -> list[DocumentAttachmentPublic]:
-    """Enrich an already authorized manifest with its persisted 1:1 pointers."""
+    """Resolve current file names and persisted pointers for an authorized manifest."""
+    names = await registered_file_names(attachment.id for attachment in attachments)
     pointers = {row.id: row.memory_item_id for row in await get_db().scalars(
         select(DocumentAttachment).where(DocumentAttachment.id.in_([attachment.id for attachment in attachments])),
     )}
-    return [attachment.model_copy(update={"memory_item_id": pointers.get(attachment.id)}) for attachment in attachments]
+    return [attachment.model_copy(update={"memory_item_id": pointers.get(attachment.id),
+        "name": names.get(attachment.id, attachment.name)}) for attachment in attachments]
 
 
 async def add_document_attachment(
@@ -316,7 +318,7 @@ async def read_document_attachment(
     )
     if attachment is None:
         raise service.MemoryNotFoundError("Document attachment not found.")
-    return attachment, await get_attachment_storage().read(str(attachment.id))
+    return (await attachment_companions([attachment]))[0], await get_attachment_storage().read(str(attachment.id))
 
 
 async def document_attachment_path(
@@ -340,7 +342,22 @@ async def document_attachment_path(
     if attachment is None:
         raise service.MemoryNotFoundError("Document attachment not found.")
     provider = get_attachment_storage()
-    return attachment, await provider.path_for_read(str(attachment.id))
+    return (await attachment_companions([attachment]))[0], await provider.path_for_read(str(attachment.id))
+
+
+async def rename_document_attachment(
+    document_id: UUID, attachment_id: UUID, *, actor_agent_id: int | HumanActor, name: str,
+) -> DocumentAttachmentPublic:
+    item, access = await service.get_item_metadata(document_id, agent_id=actor_agent_id)
+    _assert_document(item)
+    if not access.can_write:
+        raise service.MemoryPermissionError("Document edit access denied.")
+    attachment = next((value for value in attachments_from_item(item) if value.id == attachment_id), None)
+    if attachment is None:
+        raise service.MemoryNotFoundError("Document attachment not found.")
+    await rename_stored_file(attachment_id, name)
+    await get_db().commit()
+    return (await attachment_companions([attachment]))[0]
 
 
 async def delete_document_attachment(
@@ -403,4 +420,5 @@ __all__ = [
     "delete_document_attachment",
     "list_document_attachments",
     "read_document_attachment",
+    "rename_document_attachment",
 ]

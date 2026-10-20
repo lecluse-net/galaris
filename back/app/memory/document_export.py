@@ -31,8 +31,8 @@ async def export_document_bundle(document_id: UUID, html: str, *, actor_agent_id
     output = BytesIO()
     with ZipFile(output, "w", ZIP_DEFLATED) as archive:
         for attachment in attachments:
+            attachment, content = await read_document_attachment(document_id, attachment.id, actor_agent_id=actor_agent_id)
             name = f"attachments/{attachment.id}-{Path(attachment.name.replace(chr(92), '/')).name}"
-            _, content = await read_document_attachment(document_id, attachment.id, actor_agent_id=actor_agent_id)
             uri = f"document://{document_id}/attachments/{attachment.id}"
             html = html.replace(escape(uri, quote=True), escape(quote(name), quote=True))
             archive.writestr(name, content)

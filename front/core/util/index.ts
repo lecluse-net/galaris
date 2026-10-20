@@ -13,6 +13,7 @@ export { applyDocumentContrast } from './documentContrast'
 export { default as NetworkAccessNotice } from './components/NetworkAccessNotice.vue'
 export const CodeEditor = defineAsyncView(() => import('./components/CodeEditor.vue'))
 export { default as ResourceAttachments } from './components/ResourceAttachments.vue'
+export { default as RenameFileButton } from './components/RenameFileButton.vue'
 export type { AttachmentSource, ResourceAttachment } from './resourceAttachments'
 export { default as ExecutionDateFilters } from './components/ExecutionDateFilters.vue'
 export const FullscreenPreview = defineAsyncView(() => import('./components/FullscreenPreview.vue'))

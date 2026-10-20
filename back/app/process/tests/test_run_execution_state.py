@@ -137,6 +137,22 @@ async def test_run_data_and_files_use_process_rights_without_creating_a_dataset(
     assert (await list_runs(reader.id))["total"] == 1
     assert not (await inspect_run(run.id, reader.id))["can_control"]
     assert (await resource_list(foreign, collection)).entries[0].uri == added.uri
+    from app.process.run_resources import rename_run_file, run_file_path
+    from app.process.run_data import run_files
+    before = (run.status, deepcopy(run.data), deepcopy(run.execution_state), run.data_revision)
+    with pytest.raises(PermissionError):
+        await rename_run_file(run.id, link.file_id, reader.id, "denied.txt")
+    await rename_run_file(run.id, link.file_id, owner.id, "Renamed run report.txt")
+    assert (await run_files(run.id))[0]["filename"] == "Renamed run report.txt"
+    metadata, path = await run_file_path(run.id, link.file_id, reader.id)
+    assert metadata["name"] == "Renamed run report.txt" and path.read_bytes() == b"Entirely synthetic report"
+    from core.storage import StoredFile
+    registered = await db.get(StoredFile, link.file_id)
+    registered.name = "Registered process name.txt"
+    await db.commit()
+    assert (await run_files(run.id))[0]["filename"] == registered.name
+    assert (await run_file_path(run.id, link.file_id, reader.id))[0]["name"] == registered.name
+    assert (run.status, run.data, run.execution_state, run.data_revision) == before
     with pytest.raises(PermissionError):
         await resource_write(foreign, data_uri, b'{"kept": false, "approved": true}', expected_revision=1)
     with pytest.raises(PermissionError):

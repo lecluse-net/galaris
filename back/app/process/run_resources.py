@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.agent import AgentManagementScope
 from core.database import get_db
-from core.storage import DiskFileDriver, StoredFile, retire_file_reference
+from core.storage import DiskFileDriver, StoredFile, retire_file_reference, rename_stored_file
 from core.util import complete_io
 
 from .models import ProcessRunFile
@@ -61,8 +61,16 @@ async def run_file_path(identity: UUID, file_id: UUID, actor: int | AgentManagem
     stored = await get_db().get(StoredFile, file_id) if row is not None else None
     if row is None or stored is None or stored.backend != "disk":
         raise FileNotFoundError("Run attachment not found")
-    return {"uri": row.uri, "name": row.name or stored.name, "media_type": stored.media_type,
+    return {"uri": row.uri, "name": stored.name, "media_type": stored.media_type,
         "size": stored.size_bytes, "checksum": stored.sha256}, DiskFileDriver().path(stored.storage_key)
+
+
+async def rename_run_file(identity: UUID, file_id: UUID, actor: int | AgentManagementScope, name: str) -> None:
+    from .native_runs import require_run
+    await require_run(identity, actor, control=True)
+    await run_file_path(identity, file_id, actor)
+    await rename_stored_file(file_id, name)
+    await get_db().commit()
 
 
 async def add_run_file(identity: UUID, actor: int, content: bytes, *, name: str) -> dict[str, Any]:

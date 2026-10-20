@@ -364,6 +364,11 @@ Les pièces jointes restent des fichiers. Précisez leur nom et l’action atten
 « modifie », « compare », « renvoie » ou « partage ». Pour un fichier volumineux, l’agent peut
 le transférer sans charger tout son contenu dans le modèle.
 
+Dans une discussion interne modifiable, **Renommer** change le nom d’une pièce jointe,
+avant ou après son envoi. Dans un Document, la même action est disponible sur ses pièces
+jointes si vous pouvez le modifier. Le nom complet inclut l’extension ; les liens et le
+contenu du fichier sont conservés. Fermer le formulaire sans valider abandonne la saisie.
+
 Pour échanger des fichiers avec les agents depuis votre PC, utilisez un dossier Nextcloud
 accessible au compte connecté de l’agent, synchronisé ou monté sur votre ordinateur.
 Indiquez le dossier et le fichier concernés. Les noms avec accents, espaces, `#`, `?` et `%`

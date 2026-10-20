@@ -256,6 +256,7 @@
             :loading="attachmentsLoading"
             @added="onAttachmentAdded"
             @removed="onAttachmentRemoved"
+            @renamed="onAttachmentRenamed"
           />
           <DocumentResourceReferences v-if="canEditDocument && !isGoalDocument(currentDocument)" :key="currentDocument.id + ':' + agentId"
             v-model:picker-open="internalPickerOpen" @picked="finishInternalPick"
@@ -777,6 +778,10 @@ function onAttachmentAdded(attachment: DocumentAttachment): void {
 
 function onAttachmentRemoved(attachmentId: string): void {
   attachments.value = attachments.value.filter(value => value.id !== attachmentId)
+}
+
+function onAttachmentRenamed(attachment: DocumentAttachment): void {
+  attachments.value = attachments.value.map(value => value.id === attachment.id ? attachment : value)
 }
 
 function filterKeywordOptions(value: string, update: (callback: () => void) => void): void {
