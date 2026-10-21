@@ -2301,6 +2301,11 @@ async def resource_copy(
 @observe_operation
 async def resource_delete(ctx: ResourceContext, uri: object, *, expected_etag: str | None = None) -> ResourceMutation:
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
+    if reference.scheme == "file":
+        from .managed_files import delete_managed_file
+
+        await delete_managed_file(ctx, UUID(reference.locator))
+        return ResourceMutation(uri=str(reference), operation="delete", state="deleted")
     if provider := _resource_provider(reference):
         return await provider.delete(ctx, reference, expected_etag=expected_etag)
     if reference.scheme == "console":

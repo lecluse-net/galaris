@@ -9,7 +9,7 @@ import json
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import Text, and_, exists, func, or_, select, literal, update, delete
+from sqlalchemy import Text, and_, exists, func, or_, select, literal, update
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.selectable import CTE
@@ -19,7 +19,7 @@ from app.connection.facade import effective_param_value_expression
 from app.tools import ToolModel
 from app.tools.contracts import FILE_INDEXING_PARAM, FileIndexingMode
 from app.memory import project_catalogue_entry, link_catalogue_entries, catalogue_projection_write, detach_catalogue_parent_links
-from app.memory import update_catalogue_file_locations, associate_memory_url, MemoryURL, MemoryItem
+from app.memory import update_catalogue_file_locations, associate_memory_url, forget_resource_memories, MemoryURL, MemoryItem
 from core.database import get_db
 
 from .bridges import get_bridge
@@ -293,6 +293,7 @@ async def observe_descriptors(scope: ObservationScope, descriptors: list[Resourc
 
 
 async def refresh_file_locations(item_id: UUID) -> None:
+    await get_db().execute(select(MemoryItem.id).where(MemoryItem.id == item_id).with_for_update())
     uris = list(await get_db().scalars(select(FileCatalogEntry.uri).where(
         FileCatalogEntry.memory_node_id == item_id, FileCatalogEntry.present.is_(True),
     )))
@@ -305,7 +306,8 @@ async def refresh_file_locations(item_id: UUID) -> None:
         await get_db().execute(update(FileCatalogEntry).where(
             FileCatalogEntry.memory_url_id.in_(obsolete),
         ).values(memory_url_id=None))
-        await get_db().execute(delete(MemoryURL).where(MemoryURL.id.in_(obsolete)))
+        obsolete_urls = list(await get_db().scalars(select(MemoryURL.url).where(MemoryURL.id.in_(obsolete))))
+        await forget_resource_memories(obsolete_urls, item_ids=[item_id])
         node = await get_db().get(MemoryItem, item_id)
         if node is not None:
             await get_db().refresh(node, ["url_relations"])

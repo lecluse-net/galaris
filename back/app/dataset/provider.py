@@ -195,6 +195,8 @@ class DatasetProvider:
         if len(uri.segments) == 3:
             attachment = await self._attachment(uri, ctx)
             attachment.soft_delete()
+            from app.memory import forget_resource_memories
+            await forget_resource_memories([str(uri)])
         elif len(uri.segments) == 1:
             await service.remove(dataset.id, ctx.agent_id, expected_lock_version=dataset.lock_version)
         else:

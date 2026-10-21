@@ -77,8 +77,10 @@ processus qui le mentionnent et les agents dont les traces d'outils conservées 
 Chaque catégorie respecte vos droits sur les sources. Les URI construites dynamiquement et
 les historiques purgés peuvent manquer ; une mention ne prouve pas que l'accès a réussi.
 
-**Supprimer** demande confirmation et retire l'accès au jeu. Son historique reste conservé ;
-les références existantes peuvent devenir indisponibles. Les anciens jeux créés pour des
+**Supprimer** demande confirmation et retire l'accès au jeu. Son historique reste conservé.
+La projection mémoire des anciens jeux migrés est effacée avec ses contenus et index.
+Les items mémoire liés uniquement à ce jeu ou à ses pièces jointes sont également supprimés.
+Les références existantes peuvent devenir indisponibles. Les anciens jeux créés pour des
 processus suivent les mêmes droits. Les processus actuels stockent leurs données et fichiers
 dans leurs runs ; ils ne créent pas de Dataset pour conserver cet état. Au lancement d'un
 workflow, l'agent recueille les informations manquantes et prépare les variables attendues ;

@@ -71,7 +71,9 @@ it, and agents whose retained tool traces contain its URI. Each category respect
 on source objects. Dynamically constructed URIs and purged history may be missing; a mention
 does not prove successful access.
 
-**Delete** asks for confirmation and removes access. History remains retained; existing
+**Delete** asks for confirmation and removes access. History remains retained.
+Memory projections of migrated Datasets are erased with their content and indexes.
+Memory items linked only to this Dataset or its attachments are also deleted. Existing
 references may become unavailable. Old Datasets created for Processes follow the same
 permissions. Current Processes keep data and files in their own runs rather than creating
 a Dataset for execution state. Before a workflow launch, the agent collects missing inputs

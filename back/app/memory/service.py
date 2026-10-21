@@ -2187,6 +2187,7 @@ async def _forget_item_record(
     item: MemoryItem,
     *,
     forget_kind: Literal["explicit", "retention"],
+    commit: bool = True,
 ) -> MemoryForgetResult:
     """Erase one already-authorized memory, including every resource revision."""
 
@@ -2299,7 +2300,7 @@ async def _forget_item_record(
     # their durable source identity. Public ownerless projections must retain it:
     # an ownerless, non-source-managed item would violate the governed-memory
     # constraint, even after soft deletion.
-    if item.owner_agent_id is not None:
+    if item.owner_agent_id is not None and item.node_kind in {"memory", "document"}:
         item.source_managed = False
         item.managed_source_kind = None
         item.managed_source_ref = None
@@ -2391,6 +2392,15 @@ async def _forget_item_record(
 
         retired_files = await retire_file_references(f"document://{item_id}/attachments/")
         resources.update(("native", str(identifier)) for identifier in retired_files)
+        await forget_resource_memories([f"document://{item_id}", *(f"file://{identifier}" for identifier in retired_files)], descendants=True)
+    if not commit:
+        # The source owner must be able to roll back its deletion together with
+        # Memory. External payload cleanup runs only after this transaction commits.
+        for provider_code, resource_id in sorted(resources - inline_resources):
+            if resource_id:
+                await _schedule_resource_cleanup(provider_code, resource_id)
+        await db.flush()
+        return MemoryForgetResult(memory_id=item_id, resources_deleted=len(inline_resources))
     await db.commit()
 
     from .document_backup import archived_resources
@@ -2416,28 +2426,66 @@ async def _forget_item_record(
                 resource_id,
                 exc,
             )
-            key = hashlib.sha256(
-                f"resource_cleanup:{provider_code}:{resource_id}".encode()
-            ).hexdigest()
-            exists_job = await db.scalar(
-                select(MemoryAutomationJob.id).where(MemoryAutomationJob.idempotency_key == key)
-            )
-            if exists_job is None:
-                db.add(
-                    MemoryAutomationJob(
-                        kind="resource_cleanup",
-                        idempotency_key=key,
-                        payload={
-                            "provider_code": provider_code,
-                            "resource_id": resource_id,
-                        },
-                    )
-                )
+            await _schedule_resource_cleanup(provider_code, resource_id)
     await db.commit()
     await _emit_memory_event("delete", item)
     if item.node_kind == "document":
         await invalidate_memory_views()
     return MemoryForgetResult(memory_id=item_id, resources_deleted=deleted)
+
+
+async def _schedule_resource_cleanup(provider_code: str, resource_id: str) -> None:
+    key = hashlib.sha256(f"resource_cleanup:{provider_code}:{resource_id}".encode()).hexdigest()
+    if await get_db().scalar(select(MemoryAutomationJob.id).where(MemoryAutomationJob.idempotency_key == key)) is None:
+        get_db().add(MemoryAutomationJob(kind="resource_cleanup", idempotency_key=key,
+            payload={"provider_code": provider_code, "resource_id": resource_id}))
+
+
+async def forget_resource_memories(
+    uris: Sequence[str], *, descendants: bool = False, item_ids: Sequence[UUID] | None = None,
+) -> None:
+    """Source-owner hook: forget memories whose last resource disappeared.
+
+    The caller proves deletion and owns commit/rollback. Connection-scoped sources
+    must supply their affected item IDs: an external URI alone is not an identity
+    shared between accounts. Native UUID resources can invalidate all their links.
+    Editorial Documents have their own lifetime and are deleted by their owner.
+    """
+    if not uris:
+        return
+    db = get_db()
+    matches = or_(MemoryURL.url.in_(uris), *(MemoryURL.url.startswith(uri.rstrip("/") + "/", autoescape=True)
+        for uri in uris if descendants))
+    query = select(MemoryItem.id).where(MemoryItem.node_kind != "document",
+        MemoryItem.id.in_(select(MemoryURL.memory_node_id).where(matches)))
+    if item_ids is not None:
+        query = query.where(MemoryItem.id.in_(item_ids))
+    identities = list(await db.scalars(query.order_by(MemoryItem.id)))
+    for identity in identities:
+        # Serialize with URL association and recheck after acquiring the node lock.
+        if await db.scalar(select(MemoryItem.id).where(MemoryItem.id == identity).with_for_update()) is None:
+            continue
+        item = await _get_item_record(identity)
+        if item is None:
+            continue
+        removed = list(await db.scalars(select(MemoryURL).where(MemoryURL.memory_node_id == identity, matches)))
+        removed_ids = {location.id for location in removed}
+        remaining = [location for location in item.url_relations if location.id not in removed_ids]
+        item.primary_url = item.primary_url if item.primary_url in {location.url for location in remaining} else (
+            min(location.url for location in remaining) if remaining else None)
+        for location in removed:
+            await db.delete(location)
+        set_committed_value(item, "url_relations", remaining)
+        if not remaining:
+            await _forget_item_record(item, forget_kind="retention", commit=False)
+        await db.flush()
+
+
+async def forget_deleted_dataset_projection(document_id: UUID) -> None:
+    """Erase a legacy projection in its Dataset owner's deletion transaction."""
+    item = await _get_item_record(document_id)
+    if item is not None and item.document_type == "dataset":
+        await _forget_item_record(item, forget_kind="retention", commit=False)
 
 
 async def forget_item(

@@ -806,7 +806,11 @@ async def test_encounters_are_lexical_private_idempotent_and_notes_survive(conso
     await resource_service.resource_delete(ctx, moved.uri)
     assert await hits(ctx.agent_id, "planning") == []
     retained = await db.scalar(select(MemoryItem).where(MemoryItem.id == identity))
-    assert retained is not None and "planning" in retained.search_text
+    # Deleted sources no longer retain an active fiche or its personal content.
+    assert retained is None
+    tombstone = await db.scalar(select(MemoryItem).where(MemoryItem.id == identity)
+        .execution_options(include_historized=True))
+    assert tombstone.search_text == "" and tombstone.content == ""
     await resource_service.resource_write_text(ctx, moved.uri, "new occupant")
     replacement = await hits(ctx.agent_id, "final")
     assert replacement[0].item.id != identity
@@ -1404,7 +1408,7 @@ async def test_dream_rescan_catches_up_once_and_reconciles_changed_tree(catalogu
     assert await scheduler.run_cycle() == 0
     await db.refresh(old)
     assert not old.present and old.memory_url_id is None
-    assert await db.get(MemoryItem, original_id) is not None
+    assert await service.item_record(original_id) is None
     assert await hits(ctx.agent_id, 'old') == []
     assert len(await hits(ctx.agent_id, 'new')) == 1
     assert len(list(await db.scalars(select(FileIndexRun)))) == 2

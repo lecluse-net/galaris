@@ -1548,6 +1548,10 @@ pour choisir le propriétaire du catalogue ; il n'ajoute ni import privé ni cyc
 des URL, le SHA-256 des octets texte et binaires sur le nœud, la colonne nullable
 d'URL principale, sa stabilité et les déplacements/suppressions. La transition
 PostgreSQL couvre rollback, rejeu et retrait de l'ancienne colonne du catalogue.
+La disparition de la dernière ressource efface l'item mémoire, ses contenus et son
+index vectoriel ; les autres URI, les pannes temporaires et les rollbacks préservent
+la mémoire. `app/dataset/tests/test_datasets.py` couvre aussi l'effacement des projections
+migrées sans perte de l'historique Dataset, et son annulation transactionnelle.
 
 `back/app/memory/tests/test_file_catalogue.py` vérifie les observations, la séparation des
 agents et bindings, les champs personnels éditables, les tombes et réponses tardives,

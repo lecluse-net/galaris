@@ -2,6 +2,12 @@
 
 # Explorer les fichiers d’un agent
 
+Lorsqu'une suppression est confirmée, ou que l'indexation constate la disparition d'un
+fichier externe, l'item mémoire lié est supprimé avec ses contenus et index si aucune
+autre URI ne le rattache à une ressource. Une panne ou un refus d'accès ne déclenche
+pas cet effacement. Un item partagé entre plusieurs emplacements reste conservé
+jusqu'à la disparition du dernier emplacement.
+
 Dans **Connaissances → Fichiers**, cliquez sur la carte d’un agent pour ouvrir son
 navigateur. Le sélecteur permet ensuite de changer d’agent sans désélectionner
 l’agent courant. Le compteur à sa droite indique les éléments chargés

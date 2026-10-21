@@ -85,6 +85,7 @@ from .service import (
     ensure_topic_memory_link,
     delete_topic_contact_memory_scopes,
     forget_source_managed_item,
+    forget_resource_memories,
     list_topic_linked_memories,
     list_topics_linked_documents,
     move_topic_memory_links,
@@ -119,6 +120,7 @@ from .file_facade import (
 from .internal_attachments import register_internal_attachment_reader
 
 __all__ = [
+    "forget_resource_memories",
     "rename_document_attachment",
     "register_internal_attachment_reader",
     "AppConsentRequired", "AppWriteLimitError",

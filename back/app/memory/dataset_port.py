@@ -71,8 +71,8 @@ async def refresh_dataset_projection(identity: UUID, state: DatasetDocumentProje
     if item is None or item.document_type != "dataset":
         return
     if state is None:
-        item.soft_delete()
-        await get_db().flush()
+        from . import service
+        await service.forget_deleted_dataset_projection(identity)
         return
     item.title, item.revision = state.title, state.revision
     item.lock_version = state.lock_version

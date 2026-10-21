@@ -1487,6 +1487,10 @@ needed to select the catalogue owner; it introduces no private import or cycle.
 text and binary byte SHA-256 on the node, the nullable primary URL column, stability,
 moves and deletions. Its PostgreSQL transition covers rollback, replay and removal
 of the legacy catalogue column.
+Losing the last resource erases its Memory item, content and vector index; other URIs,
+temporary outages and rollbacks preserve Memory. `app/dataset/tests/test_datasets.py`
+covers erasure of migrated projections without losing Dataset history, including
+transactional rollback.
 
 `back/app/memory/tests/test_file_catalogue.py` verifies encounters, agent and binding
 isolation, editable personal fields, tombstones and late responses, durable repair without

@@ -60,12 +60,16 @@ async def _can_rename_file(ctx: ResourceContext, owner: int | None, aliases: Ite
     return False
 
 
-def _descriptor(record: StoredFile, *, can_rename: bool) -> ResourceDescriptor:
+def _can_delete_file(ctx: ResourceContext, file_id: UUID, owner: int | None, aliases: Iterable[str]) -> bool:
+    return owner == ctx.agent_id and set(aliases) == {f"agent-file://{ctx.agent_id}/{file_id}"}
+
+
+def _descriptor(record: StoredFile, *, can_rename: bool, can_delete: bool = False) -> ResourceDescriptor:
     if record.backend != "disk":
         raise ValueError("Unsupported managed file storage backend")
     return ResourceDescriptor(
         uri=f"file://{record.id}", name=record.name, media_type=record.media_type,
-        size=record.size_bytes, checksum=record.sha256, capabilities=["info", "read", "copy"],
+        size=record.size_bytes, checksum=record.sha256, capabilities=["info", "read", "copy", *(["delete"] if can_delete else [])],
         metadata={"can_rename": can_rename},
     )
 
@@ -79,7 +83,7 @@ async def managed_file_info(ctx: ResourceContext, file_id: UUID) -> ResourceDesc
     aliases = list(await db.scalars(select(FileAlias.uri).where(FileAlias.file_id == file_id).order_by(FileAlias.uri)))
     if not await _can_read_file(ctx, owner, aliases):
         raise PermissionError("Managed file unavailable")
-    return _descriptor(record, can_rename=await _can_rename_file(ctx, owner, aliases))
+    return _descriptor(record, can_rename=await _can_rename_file(ctx, owner, aliases), can_delete=_can_delete_file(ctx, file_id, owner, aliases))
 
 
 async def list_managed_files(ctx: ResourceContext, *, limit: int, cursor: str | None, name_query: str | None = None) -> ResourceListing:
@@ -112,7 +116,8 @@ async def list_managed_files(ctx: ResourceContext, *, limit: int, cursor: str | 
         if len(entries) == limit:
             return ResourceListing(uri="file://", entries=entries, truncated=True,
                 next_cursor=entries[-1].uri.removeprefix("file://"))
-        entries.append(_descriptor(record, can_rename=await _can_rename_file(ctx, owner, aliases.get(record.id, ()))))
+        entries.append(_descriptor(record, can_rename=await _can_rename_file(ctx, owner, aliases.get(record.id, ())),
+            can_delete=_can_delete_file(ctx, record.id, owner, aliases.get(record.id, ()))))
     # Bound authorization work per request, even when an entire batch is denied.
     more = len(records) > _LIST_SCAN_LIMIT
     return ResourceListing(uri="file://", entries=entries, truncated=more,
@@ -156,6 +161,25 @@ async def persist_managed_file(ctx: ResourceContext, source: Path, *, name: str,
     await db.flush()
     await db.commit()
     return await managed_file_info(ctx, file_id)
+
+
+async def delete_managed_file(ctx: ResourceContext, file_id: UUID) -> None:
+    from core.storage import retire_file_reference, purge_retired_file
+    from app.memory import forget_resource_memories
+
+    db = get_db()
+    await ensure_disk_identity(db)
+    await managed_file_info(ctx, file_id)
+    owner = await db.scalar(select(ManagedFileOwner).where(ManagedFileOwner.file_id == file_id).with_for_update())
+    aliases = list(await db.scalars(select(FileAlias.uri).where(FileAlias.file_id == file_id)))
+    if owner is None or not _can_delete_file(ctx, file_id, owner.agent_id, aliases):
+        raise PermissionError("A referenced file must be deleted through its owning domain")
+    await db.delete(owner)
+    await retire_file_reference(f"agent-file://{ctx.agent_id}/{file_id}")
+    await forget_resource_memories([f"file://{file_id}"])
+    await db.commit()
+    await purge_retired_file(file_id)
+    await db.commit()
 
 
 async def rename_managed_file(ctx: ResourceContext, file_id: UUID, name: str) -> ResourceDescriptor:

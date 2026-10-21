@@ -2,6 +2,11 @@
 
 # Browse an agent’s files
 
+When deletion is confirmed, or indexing detects that an external file has disappeared,
+its linked Memory item is deleted with its content and indexes if no other resource
+URI remains. An outage or access denial does not trigger erasure. An item shared
+between multiple locations is retained until its last location disappears.
+
 In **Knowledge → Files**, click an agent card to open their browser. Use the selector
 to change agents without clearing the current selection. The counter to its right shows
 the items loaded in the current directory. The tree presents the known schemes of

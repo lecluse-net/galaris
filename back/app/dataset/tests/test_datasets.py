@@ -242,3 +242,30 @@ async def test_legacy_public_sharing_and_revocation_apply_to_the_canonical_uri(d
     else:
         await service.remove(dataset.id, owner.id, expected_lock_version=dataset.lock_version)
     assert await memory.document_record(legacy.id) is None
+    from app.memory.models import MemoryRevision, MemorySummaryRevision
+    forgotten = await db.get(MemoryItem, legacy.id, execution_options={"include_historized": True})
+    assert forgotten.content == "" and forgotten.memory_content == "" and forgotten.search_text == ""
+    assert not list(await db.scalars(select(MemoryRevision.id).where(MemoryRevision.item_id == legacy.id)))
+    assert not list(await db.scalars(select(MemorySummaryRevision.id).where(MemorySummaryRevision.item_id == legacy.id)))
+
+
+@pytest.mark.asyncio
+async def test_cancelled_dataset_deletion_preserves_memory_and_canonical_history(db, agents, memory_storage):
+    from app.memory import service as memory
+    from app.memory.models import MemoryRevision
+    from app.dataset.models import DatasetRevision
+
+    owner, _other = agents
+    legacy = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic rollback data",
+        content='{"synthetic":"preserved"}', task_id=None, document_type="dataset")
+    dataset = await service.record(legacy.id, owner.id)
+    identity, version = dataset.id, dataset.lock_version
+    await db.commit()
+    async with db.begin_nested() as savepoint:
+        await service.remove(identity, owner.id, expected_lock_version=version)
+        assert await memory.document_record(identity) is None
+        await savepoint.rollback()
+    assert await service.record(identity, owner.id)
+    assert await memory.document_record(identity) is not None
+    assert await db.scalar(select(MemoryRevision.id).where(MemoryRevision.item_id == identity)) is not None
+    assert await db.scalar(select(DatasetRevision.source_revision_id).where(DatasetRevision.dataset_id == identity)) is not None

@@ -12,7 +12,7 @@ import math
 from typing import Any, Literal, cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import defer
 
 from app.agent import AgentManagementScope
@@ -340,6 +340,12 @@ async def remove(identity: UUID, actor: DataActor, *, expected_lock_version: int
     if dataset.lock_version != expected_lock_version:
         raise DatasetConflictError("Dataset changed; reload before deleting")
     dataset.soft_delete()
+    # Dataset owns its copied history; release migration pointers before Memory
+    # erases the obsolete legacy revisions, without changing canonical content.
+    await get_db().execute(update(DatasetRevision).where(DatasetRevision.dataset_id == identity)
+        .values(source_revision_id=None))
+    from app.memory import forget_resource_memories
+    await forget_resource_memories([f"data://{identity}"], descendants=True)
     await get_db().flush()
     from .projection import changed
     await changed(dataset)

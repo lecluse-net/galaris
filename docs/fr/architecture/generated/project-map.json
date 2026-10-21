@@ -1048,7 +1048,8 @@
           "back/app/dataset/migration.py",
           "back/app/dataset/projection.py",
           "back/app/dataset/provider.py",
-          "back/app/dataset/router.py"
+          "back/app/dataset/router.py",
+          "back/app/dataset/service.py"
         ],
         "source": "app.dataset",
         "target": "app.memory"
@@ -19656,7 +19657,6 @@
           "front/app/chat/components/ConversationProcessesPanel.vue",
           "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/components/MessageTimeline.vue",
-          "front/app/chat/components/RoomRowMenu.vue",
           "front/app/chat/pages/index.vue",
           "front/app/chat/services/chatService.ts",
           "front/app/chat/stores/chat.ts",
@@ -19671,8 +19671,6 @@
           "front/app/chat/components/AgentExecutionTrace.vue",
           "front/app/chat/components/AgentTasksPanel.vue",
           "front/app/chat/components/MessageResourcePreviews.vue",
-          "front/app/chat/components/MessageTimeline.vue",
-          "front/app/chat/components/RoomRowMenu.vue",
           "front/app/chat/navigation.ts",
           "front/app/chat/pages/index.vue",
           "front/app/chat/stores/chat.ts"
@@ -19718,8 +19716,6 @@
           "front/app/chat/components/MarkdownAttachmentPreview.vue",
           "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/components/MessageTimeline.vue",
-          "front/app/chat/components/RoomDiscussion.vue",
-          "front/app/chat/components/RoomRowMenu.vue",
           "front/app/chat/components/SafeMessageContent.vue",
           "front/app/chat/pages/index.vue",
           "front/app/chat/richContent.ts",
