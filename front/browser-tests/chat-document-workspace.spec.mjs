@@ -169,8 +169,7 @@ test('chat document navigation preserves drafts on failure and discards destinat
 test('the contextual dialog action leaves the chat document and its history in place', async ({ page }) => {
   const state = await linkedWorkspace(page)
   const pane = page.locator('.chat-document-pane')
-  await pane.getByRole('link', { name: 'Open Beta', exact: true }).click()
-  await page.keyboard.press('Shift+F10')
+  await pane.getByRole('link', { name: 'Open Beta', exact: true }).click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Open in a dialog', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Beta')

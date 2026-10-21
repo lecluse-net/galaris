@@ -29,6 +29,8 @@
 .tiptap-galaris-editor [data-editor-surface] { min-height: var(--editor-min-height); max-height: var(--editor-max-height); overflow: auto; outline: none; padding: 16px; border: 1px solid var(--rich-editor-border); font-size: 16px; }
 .editorial-body[data-document-layout] [data-editor-surface], .editorial-body[data-document-layout] .galaris-source-editing-area { box-sizing: border-box; width: 100%; max-width: 210mm; margin-inline: auto; padding: 10mm; }
 .editorial-body[data-document-layout="full"] [data-editor-surface], .editorial-body[data-document-layout="full"] .galaris-source-editing-area { max-width: none; padding: 16px; }
+.editorial-body[data-document-layout] [data-editor-surface] :is(a, .galaris-link-card),
+.rich-content-reader--document :is(a, .galaris-link-card) { cursor: pointer; }
 .editorial-embedded-rendering { position: relative; }
 .editorial-object-preview { position: absolute; inset: 0; width: 100%; height: 100%; }
 .editorial-fullscreen { position: fixed; inset: 0; width: 100vw !important; z-index: 5000; overflow: auto; border: 0; }

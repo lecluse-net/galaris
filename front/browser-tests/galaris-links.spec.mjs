@@ -20,14 +20,11 @@ for (const mode of ['read', 'edit', 'readonly']) for (const format of ['uri', 'u
     await page.screenshot({ path: testInfo.outputPath('personal-document-link.png'), animations: 'disabled' })
     if (mode !== 'read') expect(await editorHtml(page)).not.toMatch(/document-link-icon|document-icon|🚀/)
     if (mode === 'edit' && card) {
-      await page.getByText('Reference summary', { exact: true }).click()
+      await page.getByText('Reference summary', { exact: true }).click({ button: 'right' })
+      await page.keyboard.press('Escape')
       expect(await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/documents')
     }
-    await reference.click()
-    if (mode === 'edit' && !card) {
-      await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/documents')
-      await page.keyboard.press('Alt+Enter')
-    }
+    await (card ? page.getByText('Reference summary', { exact: true }) : reference).click()
     await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(`/documents?document_id=${id}`)
     await expect(page.getByRole('dialog')).toHaveCount(0)
     expect(popups).toHaveLength(0)
@@ -47,6 +44,7 @@ for (const mode of ['read', 'edit']) for (const width of [1440, 390]) test(`docu
   const card = page.locator('.galaris-link-card')
   await expect(card.locator('.document-thumbnail img')).toHaveJSProperty('naturalWidth', 1)
   await card.locator('.document-citation-thumbnail').click()
+  await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(`/documents?document_id=${id}`)
   await expect(page.getByRole('dialog')).toHaveCount(0)
   const copy = card.getByRole('button', { name: 'Copy content', exact: true })
   await expect(copy).toHaveText(id)
@@ -122,7 +120,6 @@ for (const mode of ['read', 'edit', 'readonly']) test(`a Task citation opens its
   page.on('popup', popup => popups.push(popup))
   const open = async () => {
     await page.getByRole('link', { name: 'Synthetic cited task', exact: true }).click()
-    if (mode === 'edit') await page.keyboard.press('Alt+Enter')
     await expect(page.getByRole('dialog').locator('.task-detail')).toContainText('Synthetic task objective')
     expect(page.url()).toBe(url); expect(popups).toHaveLength(0)
   }

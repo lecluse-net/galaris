@@ -170,13 +170,17 @@ processus, runs, Datasets et mémoires s'ouvrent dans leur modale sans quitter l
 une adresse `data://` ou un lien Dataset de cette installation pour retrouver son titre, puis
 choisissez **Afficher une carte** pour créer une référence cliquable vers la modale Dataset.
 Les liens externes
-s'ouvrent dans un nouvel onglet. En édition, le clic place le curseur ; Ctrl/Cmd-clic ou
-Alt+Entrée ouvre la cible. Le menu du lien propose aussi Ouvrir, modifier et retirer le lien.
+s'ouvrent dans un nouvel onglet. Dans les documents, un clic simple sur un lien ou une carte
+ouvre sa cible, même en édition : titre, fond, portrait ou diagramme sont cliquables.
+Le curseur en forme de main indique cette ouverture. Les boutons de copie, de zoom et les
+lecteurs intégrés conservent leurs propres actions. Le clic droit propose les commandes
+d’édition de l’objet ou du lien. Dans les autres champs
+éditoriaux, Ctrl/Cmd-clic ouvre la cible ; Alt+Entrée reste disponible au clavier.
 Pour un document, **Ouvrir dans une modale** ouvre une fenêtre distincte depuis Documents,
 le Chat ou une autre modale, sans remplacer le document courant ni modifier son historique.
 Pour un agent, **Afficher une carte** présente son avatar, son nom et son poste dans le texte.
-Cliquez sur son nom pour ouvrir sa carte complète, même en édition ; en lecture seule,
-l’avatar ouvre aussi la fiche. **Afficher l'URL** rétablit
+Cliquez sur la carte ou son avatar pour ouvrir sa fiche complète, même en édition.
+**Afficher l'URL** rétablit
 le lien avec son libellé.
 
 Dans la page **Documents**, les flèches **Document précédent** et **Document suivant**
@@ -192,9 +196,9 @@ dans la bibliothèque. Coller une référence `document://…` ou l’URL d’un
 installation retrouve également son titre, si vous pouvez le lire. Le menu **Afficher une carte**
 transforme ce lien en carte cliquable ; **Afficher l’URL** revient au lien en conservant le titre.
 La carte affiche la miniature du document et son UUID en petit sous le titre. Cliquez sur
-l’UUID pour le copier. Un clic simple sur le titre ouvre le document, même en édition ;
-les liens dans le texte conservent Ctrl/Cmd-clic ou Alt+Entrée en édition.
-La miniature n’ouvre pas de modale. Les cartes déjà enregistrées
+l’UUID pour le copier. Un clic simple sur le titre ou un lien dans le texte ouvre le document,
+même en édition.
+La miniature ouvre aussi le document dans le contexte courant. Les cartes déjà enregistrées
 bénéficient aussi de cet aperçu ; les droits du lecteur restent vérifiés pour la miniature.
 Le titre inséré est conservé dans votre texte : un renommage ultérieur ne le remplace pas.
 
@@ -276,7 +280,7 @@ nombre d’or (largeur / hauteur ≈ 1,618). L’icône **Ouvrir le PDF en plein
 visionneuse avec le fichier déjà chargé. L’impression et le PDF conservent
 la miniature et le lien. Les aperçus exigent une URL HTTPS
 publique ; un lien simple reste possible. La miniature est conservée avec le document.
-Un lien vers une pièce jointe ouvre sa visionneuse (Ctrl/Cmd-clic en édition).
+Un clic sur un lien vers une pièce jointe ouvre sa visionneuse, même en édition.
 
 Les aperçus ont deux présentations communes : **bloc en page**, intégré au contenu avec son
 lecteur éventuel, et **bloc sous page**, horizontal : miniature à gauche, informations à droite,

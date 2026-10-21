@@ -155,7 +155,7 @@ couvertes par `internal-file-picker.spec.mjs`.
 sans UI injectée et l'ouverture de la carte complète par son titre en lecture et en édition,
 sur mobile et bureau ; en lecture seule, l’avatar ouvre aussi la fiche.
 `galaris-links.spec.mjs` vérifie le clic simple sur le titre des cartes documentaires,
-la sélection du reste de la carte et le maintien des raccourcis pour les liens dans le texte. Il vérifie aussi que
+la sélection par clic droit et l’ouverture des cartes et liens dans le texte au clic simple, même en édition. Il vérifie aussi que
 les tâches s'ouvrent et se rouvrent en modale sans navigation, en lecture et en édition.
 
 `chat-document-workspace.spec.mjs` vérifie que les liens et cartes documentaires remplacent

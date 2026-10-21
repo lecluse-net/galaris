@@ -84,7 +84,7 @@ for (const mobile of [false, true]) {
     const title = page.getByLabel('Title', { exact: true })
     await expect(title).toHaveValue('Alpha')
     // Opening the document uses this library's navigation, including on mobile.
-    await page.getByRole('link', { name: 'Open Beta', exact: true }).click({ modifiers: ['Control'] })
+    await page.getByRole('link', { name: 'Open Beta', exact: true }).click()
     await expect(title).toHaveValue('Beta')
     await expect(page.getByRole('dialog')).toHaveCount(mobile ? 1 : 0)
     const buttons = mobile ? page.getByRole('dialog') : page.locator('.page-header')
@@ -114,8 +114,7 @@ test('the Documents contextual dialog action leaves the library selection and hi
     route: `/documents?document_id=${state.items[0].id}`, privileges: ['MEMORY_EDIT'],
   })
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Alpha')
-  await page.getByRole('link', { name: 'Open Beta', exact: true }).click()
-  await page.keyboard.press('Shift+F10')
+  await page.getByRole('link', { name: 'Open Beta', exact: true }).click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Open in a dialog', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Beta')

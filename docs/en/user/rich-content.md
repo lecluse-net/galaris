@@ -156,13 +156,16 @@ Document URLs copied from this installation use the same navigation. Agents, tas
 processes, runs, Datasets and memories open in their modal without leaving the document.
 Paste a `data://` address or a Dataset URL from this installation to retrieve its title,
 then choose **Show card** to create a clickable reference opening the Dataset modal.
-External links open in a new tab. In editing mode, click positions the
-cursor; Ctrl/Cmd-click or Alt+Enter opens the target. The link menu also offers Open, edit
-and remove actions. For documents, **Open in a dialog** opens a separate window from Documents,
+External links open in a new tab. In documents, a single click on a link or card opens its
+target, including while editing: titles, backgrounds, portraits and diagrams are clickable.
+The hand cursor indicates this action. Copy and zoom buttons and embedded players keep their
+own actions. Right-click offers editing commands for the object or link. In other editorial fields,
+Ctrl/Cmd-click opens the target; Alt+Enter remains available from the keyboard.
+For documents, **Open in a dialog** opens a separate window from Documents,
 Chat or another dialog, preserving the current document and its history.
 For an agent, **Show card** displays its avatar, name and job title in the
-text. Click its name to open the complete agent card, including while editing; in read-only
-mode, the avatar also opens the card. **Show URL** restores the
+text. Click the card or its avatar to open the complete agent details, including while editing.
+**Show URL** restores the
 link with its label.
 
 On the **Documents** page, **Previous document** and **Next document** retrace documents
@@ -177,8 +180,8 @@ location. Pasting a `document://…` reference or a document URL from this insta
 retrieves its title when you can read it. **Show card** turns the link into a clickable card;
 **Show URL** restores the link while keeping the title. The card displays the document thumbnail
 and its UUID in small text below the title. Click the UUID to copy it. A single click on the
-title opens the document, including while editing; text links still require Ctrl/Cmd-click
-or Alt+Enter while editing. The thumbnail does not open a modal. Existing saved cards also get this preview;
+title or a text link opens the document, including while editing.
+The thumbnail also opens the document in the current context. Existing saved cards also get this preview;
 thumbnail access follows the reader's rights.
 The inserted title is saved in your
 text: renaming the target later does not replace it.
@@ -257,7 +260,7 @@ Printing and PDF export retain the static thumbnail or link.
 The **Insert into document** icon is available in the preview actions only for files that are not
 already present in the document body.
 Previews require public HTTPS URLs; plain links remain available. Thumbnails are stored
-with the document. Attachment links open their viewer (Ctrl/Cmd-click while editing).
+with the document. Clicking an attachment link opens its viewer, including while editing.
 
 Previews have two shared presentations: **in-page blocks**, within the content with a player when
 appropriate, and horizontal **below-page blocks**, with the thumbnail on the left, information

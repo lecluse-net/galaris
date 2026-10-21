@@ -77,12 +77,12 @@ for (const width of [1440, 390]) test(`image alignment moves the image and survi
     }, alignment)).toBeLessThan(2)
   }
   for (const alignment of ['left', 'center', 'right']) {
-    await picture.click()
+    await picture.click({ button: 'right' })
+    await page.keyboard.press('Escape')
     await command(page, alignment === 'left' ? 'Align left' : alignment === 'right' ? 'Align right' : 'Center')
     await expectAlignment(alignment)
   }
-  await picture.click()
-  await page.keyboard.press('Shift+F10')
+  await picture.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Image properties', exact: true }).click()
   await page.getByRole('textbox', { name: 'Alternative text', exact: true }).fill('Aligned illustration')
   await page.getByRole('button', { name: 'Apply', exact: true }).click()
@@ -490,18 +490,25 @@ for (const editing of [false, true]) {
   })
 }
 
-for (const editing of [false, true]) {
+for (const mode of ['reader', 'editor', 'document editor']) {
+  const editing = mode !== 'reader'
+  const profile = mode === 'document editor' ? 'document' : 'rich-text'
   // Internal citations use the resource-detail contract covered by galaris-links and process-references.
-  test(`${editing ? 'editor' : 'reader'} opens external links in a new tab`, async ({ page, context }) => {
+  test(`${mode} opens external links in a new tab`, async ({ page, context }) => {
     const html = '<p><a target="_blank" href="https://example.com">External</a></p>'
-    await mount(page, editing ? 'core/util/components/RichTextEditor.vue' : 'core/util/components/RichText.vue', { props: editing ? { modelValue: html } : { content: html } })
+    await mount(page, editing ? 'core/util/components/RichTextEditor.vue' : 'core/util/components/RichText.vue', { props: { profile, ...(editing ? { modelValue: html } : { content: html }) } })
     const origin = await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)
     await context.route('https://example.com/**', route => route.fulfill({ contentType: 'text/html', body: 'External' }))
     for (const name of ['External']) {
       const link = page.getByRole('link', { name, exact: true })
       await expect(link).toHaveAttribute('target', '_blank')
+      if (mode === 'editor') {
+        await link.click()
+        expect(context.pages()).toHaveLength(1)
+        expect(await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(origin)
+      }
       const opened = context.waitForEvent('page')
-      await link.click(editing ? { modifiers: ['Control'] } : {})
+      await link.click(mode === 'editor' ? { modifiers: ['Control'] } : {})
       const tab = await opened
       await expect.poll(() => tab.url()).toContain('https://example.com')
       expect(await tab.evaluate(() => window.opener)).toBeNull()

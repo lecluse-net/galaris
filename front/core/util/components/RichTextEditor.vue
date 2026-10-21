@@ -534,16 +534,16 @@ function editorClick(event: MouseEvent): void {
   if (!(event.target instanceof Element) || !event.target.closest('[data-editor-surface]')) return
   selectedCardImage.value = event.target instanceof HTMLImageElement ? event.target.dataset.editorAttachment ?? '' : ''
   if (readonly && event.target.closest('.galaris-image-object')) return
-  if (readonly && event.target.closest('button, input, select, textarea, [data-document-player]')) return
+  if ((readonly || profile === 'document') && event.target.closest('.q-btn, input, select, textarea, [data-document-player]')) return
   const link = event.target.closest('[data-editor-surface] a')
-    ?? (readonly ? event.target.closest('blockquote.galaris-link-card')?.querySelector('a') : null)
+    ?? (readonly || profile === 'document' ? event.target.closest('blockquote.galaris-link-card')?.querySelector('a') : null)
   if (!link) return
   const uri = link.getAttribute('data-rich-reference') ?? link.getAttribute('href') ?? ''
   const card = link.closest('blockquote.galaris-link-card')
   const targetKind = richLinkTarget(uri)?.kind
   const cardTitle = card && card.querySelector('a') === link && (documentUriFromLink(uri, window.location.origin) || targetKind)
   event.preventDefault()
-  if (event.ctrlKey || event.metaKey || readonly || cardTitle) {
+  if (profile === 'document' || event.ctrlKey || event.metaKey || readonly || cardTitle) {
     event.stopPropagation()
     navigate(uri)
   }

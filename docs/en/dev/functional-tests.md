@@ -159,7 +159,7 @@ Navigation and multiple selection remain covered by `internal-file-picker.spec.m
 injected UI and opening the complete agent card through its title in reading and editing,
 on mobile and desktop; in read-only mode, the avatar also opens the card.
 `galaris-links.spec.mjs` checks single-click navigation through document card titles,
-selection through the rest of the card and preserved shortcuts for text links. It also checks that
+right-click selection and single-click card and text link navigation, including while editing. It also checks that
 Task citations open and reopen in a modal without navigation in reading and editing modes.
 
 `chat-document-workspace.spec.mjs` checks that document links and cards replace the Chat

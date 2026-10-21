@@ -1,6 +1,6 @@
 <template>
-  <div class="rich-content-reader" @contextmenu.capture="suppressDocumentContextMenu">
-    <div ref="root" class="rich-content" v-html="rendered" @click="openReference" />
+  <div class="rich-content-reader" :class="{ 'rich-content-reader--document': profile === 'document' }" @contextmenu.capture="suppressDocumentContextMenu">
+    <div ref="root" class="rich-content" v-html="rendered" @click.capture="openReference" />
     <ResourceReadMenu v-if="profile !== 'document'" :root="root" :content="rendered" @open="openUri" />
     <Teleport v-for="target in codeCopies" :key="target.key" :to="target.element"><CodeBlockCopyButton :source="target.source" /></Teleport>
     <Teleport v-for="target in documentLinkIcons" :key="target.key" :to="target.element"><WorkingDocumentIcon :document-id="target.documentId" title="" size="1em" readonly /></Teleport>
@@ -36,14 +36,14 @@ const rendered = ref('')
 const navigateDocument = useDocumentNavigation()
 const embeds = shallowRef<ResourceEmbedTarget[]>([]), detail = shallowRef<ResourceDetailTarget | null>(null)
 function openReference(event: MouseEvent): void {
-  if (!(event.target instanceof Element) || event.target.closest('button, input, select, textarea, [data-document-player]')) return
+  if (!(event.target instanceof Element) || event.target.closest('.q-btn, input, select, textarea, [data-document-player]')) return
   const link = event.target.closest('a')
     ?? (profile === 'document' ? event.target.closest('blockquote.galaris-link-card')?.querySelector('a') : null)
   if (!link) return
   const uri = link.getAttribute('data-rich-reference') ?? link.getAttribute('href') ?? ''
-  if (navigateDocument(uri)) { event.preventDefault(); return }
+  if (navigateDocument(uri)) { event.preventDefault(); event.stopPropagation(); return }
   const target = richLinkTarget(uri, link.textContent ?? '')
-  if (target) { event.preventDefault(); detail.value = target }
+  if (target) { event.preventDefault(); event.stopPropagation(); detail.value = target }
   else if (profile === 'document' && !event.target.closest('a')) {
     const href = richLinkHref(uri)
     if (href) { event.preventDefault(); window.open(href, '_blank', 'noopener,noreferrer') }
@@ -134,6 +134,7 @@ watch(() => [content, profile, resolveImage] as const, async () => {
       const target = targets[index]
       if (!target) return
       const player = createDocumentPlayer(card.ownerDocument, target, (documentId, attachmentId) => resolveImage?.(documentId, attachmentId), t, source => { pdfPreview.value = source })
+      player.element.dataset.documentPlayer = ''
       if (target.kind === 'youtube') card.classList.add('galaris-youtube-card')
       card.append(player.element)
       players.push(player)

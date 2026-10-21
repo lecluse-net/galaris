@@ -180,7 +180,6 @@ for (const width of [1440, 390]) for (const [kind, html, selector, label] of con
     await expect(toolbar).toBeHidden()
     await page.keyboard.press('Escape')
     await expect(menu).toBeHidden()
-    await target.click()
     await page.keyboard.press(width === 390 ? 'ContextMenu' : 'Shift+F10')
     await expect(menu.getByRole('menuitem').first()).toBeFocused()
     await page.keyboard.press('Escape')
