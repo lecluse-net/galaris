@@ -30,10 +30,11 @@ theme preferences are separate from the instance's administrative **Preferences*
 
 ## The main sections
 
-Documents, files, attachments, conversations, Chat messages, goals, tasks and topics also
-offer actions through right-click or **⋮**. With the keyboard, focus the item or its **⋮**
-button and press **Shift+F10**. Available commands follow your permissions and the resource
-state; confirmations still apply. Right-clicking selected message text keeps the browser menu.
+Documents, files, attachments, goals, tasks and topics also offer actions through right-click.
+With the keyboard, focus the item or one of its controls and press **Shift+F10**. Available
+commands follow your permissions and the resource state; confirmations still apply.
+Chat messages and conversation list items keep the browser menu.
+The Chat task menu also expands or collapses a task without opening its details.
 Contextual submenus open on hover and stay open while the pointer moves toward their commands.
 Click, touch and keyboard access remain available; opening a sibling submenu closes the previous one.
 Clicking or tapping outside a menu immediately closes its entire submenu chain, including

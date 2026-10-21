@@ -22,11 +22,11 @@ rétablit tous les propriétaires ; les autres filtres restent applicables.
 
 ## Classer dans les dossiers et sous-documents
 
-Le bouton **⋮** de chaque dossier et le clic droit ouvrent le même menu avec les icônes et les libellés de toutes ses
+Le clic droit sur chaque dossier ouvre un menu avec les icônes et les libellés de toutes ses
 actions : afficher en liste, créer un document ou un dossier, modifier, trier, déplier,
 replier et supprimer. Les raccourcis **Nouveau document**, **Nouveau sous-dossier**, **Modifier**
 et **Supprimer** restent visibles sur la ligne, y compris sur mobile.
-Au clavier, activez le bouton **⋮** ou utilisez **Maj + F10** sur le dossier ; **Échap** ferme le menu.
+Au clavier, utilisez **Maj + F10** sur le dossier ; **Échap** ferme le menu.
 
 Un document peut aussi contenir des **sous-documents**. Utilisez son icône
 **Nouveau sous-document**, ou glissez un document existant au centre de sa ligne.

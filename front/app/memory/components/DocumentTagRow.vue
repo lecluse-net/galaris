@@ -26,10 +26,6 @@
       <q-btn flat dense round size="sm" icon="delete_outline" class="tag-delete" :disable="busy" :aria-label="t('documents.library.deleteNamedTag', { name: tag.name })" @click="emit('delete')">
         <q-tooltip>{{ t('documents.library.deleteTag') }}</q-tooltip>
       </q-btn>
-      <q-btn ref="menuButton" flat dense round size="sm" icon="more_vert" :aria-label="t('documents.library.tagActions', { name: tag.name })"
-        aria-haspopup="menu" :aria-expanded="menuOpen" @click="contextMenu?.toggle()">
-        <q-tooltip>{{ t('documents.library.tagActions', { name: tag.name }) }}</q-tooltip>
-      </q-btn>
     </div>
     <q-menu v-if="!renaming" :id="menuId" ref="contextMenu" v-model="menuOpen" no-parent-event touch-position class="tag-context-menu" role="menu" :aria-label="t('documents.library.tagActions', { name: tag.name })">
       <q-list dense>
@@ -48,7 +44,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { QBtn, QMenu } from 'quasar'
+import type { QMenu } from 'quasar'
 import { useContextMenuDismissal } from '@/core/util'
 import type { DocumentTag } from '../types'
 import { vLibraryShortcuts, type LibraryShortcuts } from '../libraryShortcuts'
@@ -69,8 +65,7 @@ const name = ref('')
 const iconOpen = ref(false)
 const menuOpen = ref(false)
 const contextMenu = useTemplateRef<QMenu>('contextMenu')
-const menuButton = useTemplateRef<QBtn>('menuButton')
-const menuId = useContextMenuDismissal(menuOpen, () => contextMenu.value, () => menuButton.value?.$el)
+const menuId = useContextMenuDismissal(menuOpen, () => contextMenu.value)
 function openPointerMenu(event: MouseEvent): void {
   if (renaming.value) return
   event.preventDefault()

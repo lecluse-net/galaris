@@ -52,9 +52,9 @@ real persistence and preservation after reload.
 This journey also checks changing heading levels through the right-click **Style** menu,
 including persistence and reload.
 
-`context-menus.spec.mjs` protects pointer, button and keyboard opening, dismissal, changing
+`context-menus.spec.mjs` protects pointer and keyboard opening without a dedicated button, dismissal, changing
 availability, recoverable errors and native menus on selected text. It also checks document
-protection, terminal task states and archiving a conversation without changing selection.
+protection, terminal task states and opening a conversation without a custom context menu.
 The suite also covers hovering submenus: crossing nested popups, switching siblings,
 dismissal, keyboard focus, touch and disabled items.
 Outside dismissal also covers the source area, stopped events and embedded frames while

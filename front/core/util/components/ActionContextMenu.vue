@@ -1,7 +1,5 @@
 <template>
   <span ref="anchor" class="action-context-menu" @click.stop @dblclick.stop @keydown.enter.stop @keydown.space.stop>
-    <q-btn flat round dense size="sm" icon="more_vert" :aria-label="label || t('common.actions')"
-      aria-haspopup="menu" :aria-expanded="open" :disable="!actions.length" @click="menu?.toggle($event)" />
     <q-menu :id="menuId" ref="menu" v-model="open" :target="host ?? false" no-parent-event touch-position
       max-width="calc(100vw - 16px)" :transition-duration="0" @before-show="closeOthers">
       <q-list dense role="menu" :aria-label="label || t('common.actions')">
@@ -33,7 +31,7 @@ const { actions, target, label = '', preserveSelection = false } = defineProps<{
 const { t } = useI18n(), $q = useQuasar()
 const anchor = useTemplateRef('anchor'), menu = useTemplateRef<QMenu>('menu')
 const host = shallowRef<HTMLElement>(), open = ref(false)
-const menuId = useContextMenuDismissal(open, () => menu.value, () => anchor.value?.querySelector('button'))
+const menuId = useContextMenuDismissal(open, () => menu.value)
 const firstEnabled = computed(() => actions.find(action => !action.disabled)?.key)
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 const editing = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])'
@@ -76,5 +74,5 @@ onBeforeUnmount(() => {
 })
 </script>
 <style scoped>
-.action-context-menu { display: inline-flex; flex: 0 0 auto; }
+.action-context-menu { display: none; }
 </style>

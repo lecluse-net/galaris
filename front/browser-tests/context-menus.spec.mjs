@@ -26,9 +26,9 @@ for (const width of [1440, 390]) test(`outside clicks dismiss right-click menus 
   await frameAction.click()
   await expect(menu).toBeHidden()
   await expect(page.frameLocator('iframe').getByRole('button', { name: 'Frame clicked', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'first', exact: true }).click()
+  await source.click({ button: 'right', position: { x: 5, y: 5 } })
   await expect(menu).toBeVisible()
-  await page.getByRole('button', { name: 'first', exact: true }).click()
+  await page.keyboard.press('Escape')
   await expect(menu).toBeHidden()
 })
 
@@ -74,7 +74,7 @@ test.describe('touch submenus', () => {
   test.use({ hasTouch: true, viewport: { width: 390, height: 900 } })
   test('an outside tap dismisses the menu and activates the tapped control', async ({ page }) => {
     await mount(page, 'test-support/browser/ContextMenuHarness.vue')
-    await page.getByRole('button', { name: 'first', exact: true }).tap()
+    await page.getByRole('region', { name: 'first', exact: true }).click({ button: 'right' })
     await expect(page.getByRole('menu', { name: 'first', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Outside action', exact: true }).tap()
     await expect(page.getByRole('menu')).toHaveCount(0)
@@ -95,11 +95,12 @@ test.describe('touch submenus', () => {
   })
 })
 
-for (const width of [1440, 390]) test(`context menus support pointer, button, keyboard and state changes (${width}px)`, async ({ page }, testInfo) => {
+for (const width of [1440, 390]) test(`context menus support pointer, keyboard and state changes without an action button (${width}px)`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   await mount(page, 'test-support/browser/ContextMenuHarness.vue')
   const first = page.getByRole('region', { name: 'first', exact: true })
   const second = page.getByRole('region', { name: 'second', exact: true })
+  await expect(first.getByRole('button')).toHaveCount(0)
   await first.click({ button: 'right' })
   await expect(page.getByRole('menu', { name: 'first' })).toBeVisible()
   await second.click({ button: 'right' })
@@ -107,21 +108,22 @@ for (const width of [1440, 390]) test(`context menus support pointer, button, ke
   await page.getByRole('menuitem', { name: 'Apply', exact: true }).click()
   await expect(page.getByRole('menu')).toHaveCount(0)
   await expect(second.locator('span').last()).toHaveText('1')
-  await first.getByRole('button', { name: 'first', exact: true }).focus()
-  await expect(first.getByRole('button', { name: 'first', exact: true })).toBeFocused()
+  await first.focus()
+  await expect(first).toBeFocused()
   await page.keyboard.press('Shift+F10')
   await expect(page.getByRole('menu', { name: 'first' })).toBeVisible()
   await page.evaluate(() => window.testApp.setProps({ disabled: true }))
   await expect(page.getByRole('menuitem', { name: 'Apply' })).toHaveAttribute('aria-disabled', 'true')
   await page.keyboard.press('Escape')
   await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(first).toBeFocused()
   await page.evaluate(() => window.testApp.setProps({ disabled: false, fail: true }))
-  await first.getByRole('button', { name: 'first', exact: true }).click()
+  await first.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Apply' }).click()
   await expect(page.getByText('Synthetic failure', { exact: true })).toBeVisible()
   await expect(first.locator('span').last()).toHaveText('0')
   await page.evaluate(() => window.testApp.setProps({ fail: false }))
-  await first.getByRole('button', { name: 'first', exact: true }).click()
+  await first.click({ button: 'right' })
   await expect(page.getByRole('menu', { name: 'first' })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'Apply', exact: true })).toBeFocused()
   await expect(page.getByRole('menu', { name: 'first' })).toBeInViewport()
@@ -174,20 +176,18 @@ test('task menus preserve user pause and terminal state restrictions', async ({ 
   await page.evaluate(() => window.testApp.privileges.$patch({ privileges: [] }))
 })
 
-test('conversation menus edit the targeted room without selecting it', async ({ page }) => {
+test('conversation items open the selected room without a custom context menu', async ({ page }) => {
   await page.route('**/api/chat/agents/7/avatar', route => route.fulfill({ status: 404 }))
   const room = { id: 'room-context', label: 'Synthetic room', agent_id: 7, agent_name: 'Synthetic agent', agent_active: false, source: null, writable: true, members: [], muted: false, archived: false, unread_count: 0, show_last_message: true, last_message: null }
-  let changed
-  await page.route('**/api/chat/rooms/room-context/archive', route => { changed = route.request().postDataJSON(); return route.fulfill({ json: { ...room, ...changed } }) })
   await mount(page, 'app/chat/components/RoomList.vue', { props: { rooms: [room], canCreate: false, canImpersonate: false, viewerAgentId: null, viewerAgents: [], includeExternal: false, includeArchived: false, hasMore: false, loadingMore: false } })
   await page.locator('.room-item').click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Archive', exact: true }).click()
-  await expect.poll(() => changed).toEqual({ archived: true })
-  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'changed').length)).toBe(1)
+  await expect(page.getByRole('menu')).toHaveCount(0)
   expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'select'))).toEqual([])
+  await page.locator('.room-item').click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'select').map(event => event.args[0].id))).toEqual(['room-context'])
 })
 
-test('message menus reuse Reply without changing the message or selecting its text', async ({ page }) => {
+test('messages allow replying directly without changing the message or selecting its text', async ({ page }, testInfo) => {
   await jsonRoute(page, '**/api/chat/rooms/context-room/speech/status*', { available_agent_ids: [] })
   const message = { id: 'context-message', external_id: 'context-message', room_id: 'context-room', text: 'Synthetic reply target', files: [], sender: null,
     created_at: '2026-09-01T12:00:00Z', is_mine: false, topic_id: null }
@@ -195,8 +195,9 @@ test('message menus reuse Reply without changing the message or selecting its te
     roomId: 'context-room', agentId: 7, agentName: 'Synthetic agent', messages: [message], activity: [], liveRound: null,
   } })
   await page.locator('.message-text').click({ button: 'right' })
-  await expect(page.getByRole('menuitem', { name: 'Copy content', exact: true })).toBeVisible()
-  await page.getByRole('menuitem', { name: 'Reply', exact: true }).click()
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Reply', exact: true }).click()
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'reply').map(event => event.args[0].id))).toEqual(['context-message'])
   await expect(page.locator('.message-text')).toHaveText('Synthetic reply target')
+  await page.screenshot({ path: testInfo.outputPath('message-header.png') })
 })

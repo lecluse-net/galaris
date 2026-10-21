@@ -33,11 +33,12 @@ distinctes des **Préférences** d’administration de l’instance.
 
 ## Les sections principales
 
-Les documents, fichiers, pièces jointes, conversations, messages du Chat, objectifs, tâches
-et sujets proposent aussi leurs actions au clic droit ou via **⋮**. Au clavier, placez le
-focus sur l’élément ou son bouton **⋮**, puis utilisez **Maj+F10**. Les commandes disponibles
+Les documents, fichiers, pièces jointes, objectifs, tâches et sujets proposent aussi leurs
+actions au clic droit. Au clavier, placez le focus sur l’élément ou l’un de ses contrôles,
+puis utilisez **Maj+F10**. Les commandes disponibles
 dépendent de vos droits et de l’état de la ressource ; les confirmations restent applicables.
-Dans les messages, un clic droit sur du texte sélectionné conserve le menu du navigateur.
+Les messages et les éléments de la liste des conversations du Chat conservent le menu du navigateur.
+Le menu des tâches du Chat permet aussi de déplier ou replier la tâche sans ouvrir sa fiche.
 Dans les menus contextuels, les sous-menus s’ouvrent au survol et restent ouverts pendant le passage du pointeur vers
 leurs commandes. Le clic, le toucher et le clavier restent disponibles ; un sous-menu voisin
 remplace le précédent.

@@ -44,7 +44,7 @@ for (const width of [1440, 390]) test(`folder bulk actions preserve distinct set
   await page.goto('/documents')
   // The mobile drawer is independent of the Documents workspace.
   if (width < 1024) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }))
-  await page.getByRole('button', { name: `Actions du dossier ${folder.name}`, exact: true }).click()
+  await page.getByText(folder.name, { exact: true }).click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Afficher en liste', exact: true }).click()
   const list = page.getByRole('region', { name: folder.name, exact: true })
   await expect(list.getByRole('link', { name: docs[0].title, exact: true })).toBeVisible()

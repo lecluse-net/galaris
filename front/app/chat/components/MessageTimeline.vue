@@ -52,8 +52,6 @@
         :class="{ 'message-stack--trace': entry.activity || entry.liveRound || entry.pendingTranscription }"
       >
         <div class="message-meta">
-          <ActionContextMenu v-if="entry.message" target=".message-row" preserve-selection :actions="messageActions(entry.message)" />
-          <CopyResourceReference v-if="entry.copyRoundId" :uri="`galaris://text/${entry.copyRoundId}`" />
           <button
             type="button"
             class="message-round-copy"
@@ -70,7 +68,6 @@
           <TopicBadge
             v-if="entry.message?.topic_id"
             :hide-trigger="$q.screen.lt.md"
-            :ref="element => registerTopicBadge(entry.message!.id, element)"
             :topic-id="entry.message.topic_id"
             :title="topicTitle(entry.message.topic_id)"
             subject-kind="message"
@@ -334,12 +331,11 @@
 </template>
 <script setup lang="ts">
 import { RenameFileButton } from '@/core/util'
-import { CopyResourceReference, ActionContextMenu, FileContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
+import { FileContextMenu } from '@/core/util'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
-import { copyToClipboard, useQuasar } from 'quasar'
+import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail, AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
-import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { browserResourceKind, FullscreenPreview, isolatedBrowserResourceUrl, TextResourcePreview, shouldOpenInline, model3dFormat, Model3dThumbnail, Model3dViewer, queuePreview, type Model3dSource } from '@/core/util'
 import { TopicBadge, useTopicRefs, type TopicAssignmentChangeScope } from '@/app/topic'
 import SafeMessageContent from './SafeMessageContent.vue'
@@ -800,23 +796,6 @@ async function copyRoundId(roundId: string | undefined): Promise<void> {
     $q.notify({ type: 'negative', icon: 'error', message: t('chat.copyRoundIdError') })
   }
 }
-const topicBadges = new Map<string, { open: () => void }>()
-const topicPermissions = usePrivilegeStore()
-const { action: copyReferenceAction } = useResourceCopy()
-function registerTopicBadge(id: string, value: unknown): void {
-  if (value && typeof value === 'object' && 'open' in value && typeof value.open === 'function') topicBadges.set(id, value as { open: () => void })
-  else topicBadges.delete(id)
-}
-function messageActions(message: MessengerMessage): ContextAction[] {
-  const roundId = roundIdByMessageId.value.get(message.id)
-  return [
-    ...(roundId ? [copyReferenceAction(`galaris://text/${roundId}`)] : []),
-    { key: 'copy', icon: 'content_copy', label: t('common.copy'), run: () => copyToClipboard(displayMessageText(message, t)) },
-    ...(props.allowReply && !message.is_mine ? [{ key: 'reply', icon: 'reply', label: t('chat.reply'), run: () => emit('reply', message) }] : []),
-    ...(canReadMessage(message) ? [{ key: 'speech', icon: speechPlayingMessageId.value === message.id ? 'stop_circle' : 'volume_up', label: t(speechPlayingMessageId.value === message.id ? 'chat.stopReadingMessage' : 'chat.readMessage'), disabled: speechLoadingMessageId.value !== null, run: () => toggleMessageSpeech(message) }] : []),
-    ...(message.topic_id && props.viewerAgentId === null && topicPermissions.hasPrivilege(privileges.TOPIC_EDIT) ? [{ key: 'topic', icon: 'edit', label: t('topic.assignmentAudit.changeTopic'), run: () => topicBadges.get(message.id)?.open() }] : []),
-  ]
-}
 function clearMedia(): void {
   for (const request of mediaRequests.values()) request.abort()
   mediaRequests.clear()
@@ -1094,7 +1073,7 @@ onBeforeUnmount(() => {
 .message-meta { display: flex; width: auto; min-width: 0; max-width: 100%; min-height: 15px; align-items: center; flex-wrap: wrap; gap: 4px; margin: 0 5px 3px; color: var(--chat-text-secondary, #596274); font-size: .68rem; font-weight: 500; line-height: 1.2; }
 .message-row--sent .message-meta { justify-content: flex-end; }
 .message-sender { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
-.message-round-copy { display: inline-flex; min-width: 0; align-items: center; gap: 4px; padding: 0; color: inherit; font: inherit; line-height: inherit; text-align: inherit; background: transparent; border: 0; cursor: copy; }
+.message-round-copy { display: inline-flex; min-width: 0; align-items: center; gap: 4px; padding: 0; color: inherit; font: inherit; line-height: inherit; text-align: inherit; background: transparent; border: 0; cursor: default; }
 .message-round-copy:hover:not(:disabled),.message-round-copy:focus-visible:not(:disabled) { color: var(--q-primary); text-decoration: underline; text-underline-offset: 2px; }
 .message-round-copy:focus-visible { border-radius: 3px; outline: 2px solid color-mix(in srgb, var(--q-primary) 45%, transparent); outline-offset: 2px; }
 .message-round-copy:disabled { cursor: default; }

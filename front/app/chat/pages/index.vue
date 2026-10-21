@@ -29,7 +29,7 @@
         <div ref="documentWorkspace" class="chat-workspace-content" :class="{ 'chat-workspace-content--document': integratedWorkspace, 'chat-workspace-content--rows': effectiveDocumentLayout === 'rows', 'chat-workspace-content--resizing': resizingDocument }" :style="documentWorkspaceStyle">
       <main class="conversation-pane">
         <template v-if="store.selectedRoom">
-          <q-toolbar class="conversation-toolbar"><template v-if="!integratedWorkspace"><q-btn v-if="$q.screen.lt.md" flat round dense icon="arrow_back" :aria-label="t('chat.details')" @click="mobileView = 'details'" /></template><InternalAgentAvatar :agent-id="store.selectedRoom.agent_id" :name="store.selectedRoom.agent_name" size="36px" class="q-ml-xs" /><q-toolbar-title class="conversation-title">{{ store.selectedRoom.label }}</q-toolbar-title><CopyResourceReference :uri="`galaris://room/${store.selectedRoom.id}`" /><ResourceReferenceMenu :uri="`galaris://room/${store.selectedRoom.id}`" :title="store.selectedRoom.label" target=".conversation-toolbar" /><q-btn flat round dense size="xs" icon="content_copy" class="room-id-copy" :aria-label="t('chat.copyRoomId')" :title="store.selectedRoom.id" @click="copyRoomId"><q-tooltip>{{ store.selectedRoom.id }}</q-tooltip></q-btn><q-badge v-if="store.selectedRoom.source" outline color="grey-7" :label="t(sourceTranslationKey(store.selectedRoom.source))" /><q-chip v-if="!canWriteSelectedRoom" dense outline color="grey-7" icon="lock" class="read-only-chip">{{ t('chat.readOnly') }}</q-chip><q-btn v-if="(inboxStore.pushSupported && inboxStore.pushAvailable) || canWriteSelectedRoom" flat round :icon="store.selectedRoom.muted ? 'notifications_off' : 'notifications'" :aria-label="t('chat.notifications.settings')">
+          <q-toolbar class="conversation-toolbar"><template v-if="!integratedWorkspace"><q-btn v-if="$q.screen.lt.md" flat round dense icon="arrow_back" :aria-label="t('chat.details')" @click="mobileView = 'details'" /></template><InternalAgentAvatar :agent-id="store.selectedRoom.agent_id" :name="store.selectedRoom.agent_name" size="36px" class="q-ml-xs" /><q-toolbar-title class="conversation-title">{{ store.selectedRoom.label }}</q-toolbar-title><q-btn flat round dense size="xs" icon="content_copy" class="room-id-copy" :aria-label="t('chat.copyRoomId')" :title="store.selectedRoom.id" @click="copyRoomId"><q-tooltip>{{ store.selectedRoom.id }}</q-tooltip></q-btn><q-badge v-if="store.selectedRoom.source" outline color="grey-7" :label="t(sourceTranslationKey(store.selectedRoom.source))" /><q-chip v-if="!canWriteSelectedRoom" dense outline color="grey-7" icon="lock" class="read-only-chip">{{ t('chat.readOnly') }}</q-chip><q-btn v-if="(inboxStore.pushSupported && inboxStore.pushAvailable) || canWriteSelectedRoom" flat round :icon="store.selectedRoom.muted ? 'notifications_off' : 'notifications'" :aria-label="t('chat.notifications.settings')">
               <q-tooltip>{{ t('chat.notifications.settings') }}</q-tooltip>
               <q-menu>
                 <q-list style="min-width: 260px">
@@ -159,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { CopyResourceReference, ResourceReferenceMenu, ContextHelp, PageHeader } from '@/core/util'
+import { ContextHelp, PageHeader } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'

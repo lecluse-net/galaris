@@ -742,7 +742,11 @@ function unsubscribe(): void {
 }
 
 function taskContextActions(task: Task): ContextAction[] {
-  const actions: ContextAction[] = [{ key: 'details', icon: 'info_outline', label: t('chat.details'), run: () => openTask(task.id) }, copyReferenceAction(`galaris://task/${task.id}`)]
+  const actions: ContextAction[] = [
+    { key: 'details', icon: 'info_outline', label: t('chat.details'), run: () => openTask(task.id) },
+    { key: 'expansion', icon: isTaskExpanded(task) ? 'unfold_less' : 'unfold_more', label: t(isTaskExpanded(task) ? 'chat.collapseTask' : 'chat.expandTask'), run: () => toggleTask(task) },
+    copyReferenceAction(`galaris://task/${task.id}`),
+  ]
   if (!canEdit.value) return actions
   const disabled = taskAction(task.id) !== null
   if (canPauseTask(task)) actions.push({ key: 'pause', icon: 'pause', label: t('task.detail.pauseTooltip'), disabled, run: () => pauseTask(task) })

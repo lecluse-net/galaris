@@ -1,7 +1,7 @@
 <template>
   <div class="row q-col-gutter-lg">
     <div class="col-12 col-md-6">
-      <q-toolbar class="pattern-toolbar"><q-icon name="folder" /><q-toolbar-title>{{ t('graphicReference.before') }}</q-toolbar-title><q-btn flat round dense icon="more_vert" :aria-label="t('graphicReference.menu')"><q-menu><q-list><q-item clickable v-close-popup><q-item-section>{{ t('graphicReference.sample') }}</q-item-section></q-item></q-list></q-menu></q-btn></q-toolbar>
+      <q-toolbar class="pattern-toolbar"><q-icon name="folder" /><q-toolbar-title>{{ t('graphicReference.before') }}</q-toolbar-title></q-toolbar>
       <q-list bordered separator><q-item v-for="(tone, index) in ['active', 'success', 'neutral'] as const" :key="tone" clickable :active="selected === index" @click="selected = index"><q-item-section avatar><PersonAvatar :name="t('graphicReference.incoming')" /></q-item-section><q-item-section><q-item-label>{{ t('graphicReference.sample') }} {{ index + 1 }}</q-item-label><q-item-label caption>{{ t('graphicReference.paragraph') }}</q-item-label></q-item-section><q-item-section side><StatusBadge :tone="tone" :label="t(`graphicReference.${tone}`)" /></q-item-section></q-item></q-list>
       <q-pagination v-model="page" :max="5" class="q-mt-md" :aria-label="t('graphicReference.navigation')" />
       <q-btn-group outline class="q-mt-md"><q-btn v-for="key in ['first', 'second']" :key="key" outline :label="t(`graphicReference.${key}`)" @click="selected = selected === 0 ? 1 : 0" /></q-btn-group>

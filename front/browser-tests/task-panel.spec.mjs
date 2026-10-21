@@ -31,6 +31,17 @@ test('completed task expansion is local to the row and does not open task detail
   await expect(toggles.nth(1)).toHaveAttribute('aria-expanded', 'false')
   await expect(page.getByText('Objective 1', { exact: true })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
+  const first = page.locator('.agent-task-row').nth(0)
+  await first.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Collapse task', exact: true }).click()
+  await expect(toggles.nth(0)).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByText('Objective 1', { exact: true })).toHaveCount(0)
+  await first.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Expand task', exact: true }).click()
+  await expect(toggles.nth(0)).toHaveAttribute('aria-expanded', 'true')
+  await expect(toggles.nth(1)).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByText('Objective 1', { exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
 test('agent work loads without messages, refreshes and follows the selected conversation', async ({ page }) => {

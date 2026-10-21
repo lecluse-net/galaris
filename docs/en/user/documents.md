@@ -21,11 +21,11 @@ Clearing the field restores all owners while retaining the other filters.
 
 ## Organize folders and sub-documents
 
-Click a folder's **⋮** button or right-click the folder to open the same menu with icons and
+Right-click a folder to open its menu with icons and
 labels for all its actions: show as a list, create a document or folder, edit, sort, expand,
 collapse, and delete. **New document**, **New subfolder**, **Edit**, and **Delete** remain
-available directly on the row, including on mobile. Use the **⋮**
-button from the keyboard or press **Shift + F10** on the folder; **Escape** closes the menu.
+available directly on the row, including on mobile. Press **Shift + F10** on the folder
+from the keyboard; **Escape** closes the menu.
 
 A document can also contain **sub-documents**. Use its **New sub-document** icon,
 or drag an existing document onto the middle of its row. The arrow expands its children

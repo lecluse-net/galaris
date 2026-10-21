@@ -1,6 +1,5 @@
 <template>
   <div class="room-discussion">
-    <div class="row justify-end q-pa-xs"><CopyResourceReference :uri="`galaris://room/${room.id}`" /><ResourceReferenceMenu :uri="`galaris://room/${room.id}`" :title="room.label" target=".room-discussion" /></div>
     <q-banner v-if="error" class="q-ma-sm">
       {{ error }}
       <template #action><q-btn flat :label="t('common.retry')" @click="loadMessages(failedDirection, true)" /></template>
@@ -23,7 +22,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CopyResourceReference, ResourceReferenceMenu } from '@/core/util'
 import type { QScrollArea } from 'quasar'
 import MessageTimeline from './MessageTimeline.vue'
 import ScrollToBottomButton from './ScrollToBottomButton.vue'

@@ -11,7 +11,7 @@ async function openFolderIcon(button) {
 
 async function folderAction(page, folder, action) {
   const menuLabel = `Actions for folder ${folder}`
-  await page.getByRole('button', { name: menuLabel, exact: true }).click()
+  await page.getByText(folder, { exact: true }).click({ button: 'right' })
   if (action !== menuLabel) await page.getByRole('menuitem', { name: action, exact: true }).click()
 }
 
@@ -835,10 +835,11 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   await work.click({ button: 'right' })
   await page.getByText('Work', { exact: true }).click()
   await expect(menu).toHaveCount(0)
-  const trigger = page.getByRole('button', { name: 'Actions for folder Work', exact: true })
-  await trigger.click()
+  const trigger = page.getByText('Work', { exact: true })
+  await trigger.focus()
+  await page.keyboard.press('Shift+F10')
   await expect(menu).toBeVisible()
-  await trigger.click()
+  await page.keyboard.press('Escape')
   await expect(menu).toHaveCount(0)
   await work.click({ button: 'right' })
   await menu.getByRole('menuitem', { name: 'New document', exact: true }).click()
@@ -859,8 +860,9 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   await expect(page.getByLabel('Name', { exact: true })).toBeFocused()
   await expect.poll(() => mutations.at(-1)).toMatchObject({ name: 'New folder', parent_id: 'project' })
   await page.getByLabel('Name', { exact: true }).press('Escape')
-  // Left-click opens the same complete menu; the four shortcuts also remain usable.
-  await page.getByRole('button', { name: 'Actions for folder Work', exact: true }).click()
+  // Keyboard context access opens the same complete menu; shortcuts remain usable.
+  await trigger.focus()
+  await page.keyboard.press('Shift+F10')
   await page.getByRole('menuitem', { name: 'Edit folder', exact: true }).click()
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Work')
   await page.getByLabel('Name', { exact: true }).press('Escape')
@@ -893,13 +895,13 @@ for (const [folder, parent] of [['Work', null], ['Project', 'work']]) {
     await sibling.click()
     await expect(page.getByText('Empty folder', { exact: true })).toBeVisible()
     expect(requests).toHaveLength(requestCount)
-    await page.getByRole('button', { name: `Actions for folder ${folder}`, exact: true }).click()
+    await page.getByText(folder, { exact: true }).click({ button: 'right' })
     await page.locator('.library-navigation').screenshot({ path: testInfo.outputPath('folder-toolbar.png'), animations: 'disabled' })
     await page.keyboard.press('Escape')
     // Keyboard activation opens the complete action menu.
     await page.mouse.move(700, 700)
-    const actions = page.getByRole('button', { name: `Actions for folder ${folder}`, exact: true })
-    await actions.focus(); await page.keyboard.press('Enter')
+    const actions = page.getByText(folder, { exact: true })
+    await actions.focus(); await page.keyboard.press('Shift+F10')
     await page.getByRole('menuitem', { name: 'Edit folder', exact: true }).press('Enter')
     await expect(page.getByLabel('Name', { exact: true })).toHaveValue(folder)
     await page.getByLabel('Name', { exact: true }).press('Escape')

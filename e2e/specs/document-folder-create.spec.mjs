@@ -32,7 +32,7 @@ test('creating documents in folders and under documents persists the personal hi
   await page.getByText(child.name, { exact: true }).click({ button: 'right' })
   const folderMenu = page.getByRole('menu', { name: `Actions du dossier ${child.name}`, exact: true })
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: `Actions du dossier ${child.name}`, exact: true }).click()
+  await page.getByText(child.name, { exact: true }).click({ button: 'right' })
   await folderMenu.screenshot({ path: testInfo.outputPath('folder-context-menu.png'), animations: 'disabled' })
   await folderMenu.getByRole('menuitem', { name: `Nouveau document dans ${child.name}`, exact: true }).click()
   const dialog = page.getByRole('dialog')

@@ -56,10 +56,10 @@ leur sauvegarde réelle et leur conservation après rechargement.
 Ce parcours vérifie également le changement de niveau de titre depuis **Style** au clic droit,
 sa sauvegarde puis son rechargement.
 
-`context-menus.spec.mjs` protège l’ouverture au clic droit, par bouton et au clavier, la
+`context-menus.spec.mjs` protège l’ouverture au clic droit et au clavier sans bouton dédié, la
 fermeture, les changements de disponibilité, les erreurs récupérables et la conservation du
 menu natif sur le texte sélectionné. Il vérifie aussi les protections documentaires,
-les états terminaux des tâches et l’archivage d’une conversation sans changer la sélection.
+les états terminaux des tâches et l’ouverture d’une conversation sans menu contextuel.
 Cette suite couvre aussi les sous-menus au survol : passage entre fenêtres imbriquées,
 remplacement des voisins, fermeture, focus clavier, tactile et éléments désactivés.
 La fermeture extérieure couvre aussi la zone d’origine, les événements dont la propagation
