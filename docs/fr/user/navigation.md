@@ -488,6 +488,11 @@ la temporalité utilise des champs compacts. Le titre affiche la nature du souve
 la dernière activité, le nombre d'accès et la révision. Une suppression protégée y apparaît
 en badge d'avertissement avec son explication en infobulle.
 Les souvenirs autonomes sont privés à leur agent, sans titre à saisir ni partage.
+Dream fusionne automatiquement les doublons compatibles pendant l'inactivité lorsqu'ils
+atteignent le seuil de similarité configuré, fixé initialement à **92 %**. Ce seuil se règle
+dans **Préférences > Mémoire** ; la fusion n'a plus de choix de mode. Les anciens modes sont
+retirés à la mise à jour, en conservant le seuil personnalisé. Désactiver Dream suspend ce
+traitement avec les autres travaux d'entretien.
 Dream peut aussi retenir un fait durable issu d'un message audio transcrit ou d'une pièce
 jointe déjà analysée dans une Task liée à la conversation. Il conserve les preuves et leurs
 limites de couverture ; une pièce jointe non analysée ne suffit pas à produire un fait.

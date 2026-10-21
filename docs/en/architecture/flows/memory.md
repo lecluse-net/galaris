@@ -626,9 +626,14 @@ be relearned automatically from that source, while a different correction remain
 Lightweight maintenance no longer deletes a memory based on inactivity. `app.memory` owns the
 policies and `MemoryFinding`s of type `duplicate`, `contradiction`, or `aging`; the
 `memory.maintain_findings` mechanism detects and processes them sequentially in Dream during
-inactivity. Memory drives; Dream executes. Each policy has `off`, `manual`, and `automatic` modes;
-automatic mode calls exactly the same service as the UI's manual action. This mechanism uses no
-generative LLM and remains excluded from Dream gauges. Duplicates read the current embedding index
+inactivity. Memory drives; Dream executes. Dream always merges duplicates according to the
+configured similarity threshold (`0.92` by default), without an off or manual mode.
+The parameter dataset removes the retired `MEMORY_DUPLICATE_MODE` during synchronization,
+preserving the stored threshold. Globally disabling Dream suspends this treatment.
+Contradiction and aging policies retain `off`, `manual`, and `automatic` modes, defaulting
+to `manual`. A one-off manual inspection proposes findings without applying them; automatic
+merges and the manual action use the same service.
+This mechanism uses no generative LLM and remains excluded from Dream gauges. Duplicates read the current embedding index
 or file SHA values. Identical SHA values score 100% without embeddings; fingerprint
 acquisition performs no merge. Dream applies its duplicate policy while retaining
 URLs, notes, provenance and usage. Ownership and access must remain compatible;

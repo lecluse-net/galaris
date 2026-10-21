@@ -117,7 +117,7 @@ async def test_manual_checks_detect_suggestions_even_when_policies_are_off(
     )
     item.updated_at = datetime.now(timezone.utc) - timedelta(days=1000)
     await db.commit()
-    for setting in ("MEMORY_AGING_MODE", "MEMORY_DUPLICATE_MODE", "MEMORY_CONTRADICTION_MODE"):
+    for setting in ("MEMORY_AGING_MODE", "MEMORY_CONTRADICTION_MODE"):
         monkeypatch.setattr(runtime_settings, setting, "off")
     result = await manual.run_action(
         item.id, agents[0].id, "findings", AgentManagementScope(123, None)

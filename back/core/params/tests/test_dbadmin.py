@@ -8,6 +8,28 @@ from core.params.dbadmin import _reload_runtime_params, datasets
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("selected_mode", ["off", "manual", "automatic"])
+async def test_duplicate_mode_is_retired_without_changing_the_merge_threshold(db, selected_mode):
+    from sqlalchemy import select
+    from core.dbadmin import reconcile_dataset
+    from core.params.models import Param
+    from core.params.runtime_settings import runtime_settings
+
+    legacy_name = "MEMORY_DUPLICATE_MODE"
+    db.add(Param(name=legacy_name, value=selected_mode))
+    threshold = await db.get(Param, Params.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD)
+    assert threshold is not None
+    threshold.value = "0.97"
+    await db.flush()
+    await reconcile_dataset(db, datasets()[0])
+    assert await db.scalar(select(Param.value).where(Param.name == legacy_name)) is None
+    assert runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD == 0.97
+    result = await reconcile_dataset(db, datasets()[0])
+    assert result.inserted == result.updated == result.removed == 0
+    assert threshold.value == "0.97"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('legacy', [False, True])
 async def test_vapid_identity_is_generated_once_ignoring_old_environment(db, monkeypatch, legacy):
     from sqlalchemy import delete, select

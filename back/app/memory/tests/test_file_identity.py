@@ -49,10 +49,7 @@ async def test_sha_is_exact_evidence_and_dream_owns_the_merge(console_catalogue,
     chosen = min((first, second), key=lambda node: str(node.id))
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
     monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "automatic")
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "off")
-    assert await maintenance.detect_for_item(chosen.id) == []
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "manual")
-    finding_ids = await maintenance.detect_for_item(chosen.id)
+    finding_ids = await maintenance.detect_for_item(chosen.id, manual=True)
     assert len(finding_ids) == 1
     finding = await db.get(MemoryFinding, finding_ids[0])
     assert finding.kind == "duplicate" and finding.score == 1.0 and finding.status == "pending"
@@ -123,7 +120,6 @@ async def test_equal_attachments_merge_within_parent_and_preserve_live_access(db
         await write_attachment_description(node, description, agent_id=owner.id)
     assert nodes[0].file_sha256 == nodes[1].file_sha256
     assert nodes[0].file_size_bytes == len(png()) and nodes[0].file_media_type == "image/png"
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "automatic")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
     await maintenance.detect_for_item(min(node_ids, key=str))
     for row in children:
@@ -222,10 +218,9 @@ async def test_failed_merge_commit_keeps_sources_and_cleans_new_payload(console_
     identities = [entry.memory_node_id for entry in entries]
     for index, identity in enumerate(identities):
         await service.update_item(identity, MemoryItemUpdate(payload=MemoryPayload(text=f"<p>Synthetic note {index}</p>")), actor_agent_id=ctx.agent_id)
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "manual")
     monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "off")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
-    finding_id, = await maintenance.detect_for_item(min(identities, key=str))
+    finding_id, = await maintenance.detect_for_item(min(identities, key=str), manual=True)
     before = {path for path in memory_storage.rglob("*") if path.is_file()}
 
     async def failed_commit():

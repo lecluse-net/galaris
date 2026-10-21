@@ -15,8 +15,9 @@ modèle simple des `MemoryItem` actuels.
 
 `app.memory` possède une entité durable `MemoryFinding`, révisionnée par les deux souvenirs
 examinés. Elle représente un doublon, une contradiction ou un vieillissement et conserve le score,
-le seuil et l'action proposée. Chaque politique possède un mode global `off`, `manual` ou
-`automatic`. Les doublons réutilisent l'unique
+le seuil et l'action proposée. Les contradictions et le vieillissement possèdent un mode global
+`off`, `manual` ou `automatic`. Dream fusionne systématiquement les doublons compatibles,
+sans sélecteur de mode ; l'arrêt global de Dream reste disponible. Les doublons réutilisent l'unique
 `MEMORY_DUPLICATE_SIMILARITY_THRESHOLD` de l'acquisition et du rappel; seules les contradictions
 et l'ancienneté conservent leur seuil propre à leur nature.
 
@@ -47,8 +48,10 @@ marquage. L'ancien mécanisme Dream `memory.forget_stale` n'est plus enregistré
 
 ## Conséquences
 
-- Le mode manuel, livré par défaut, permet de comparer et qualifier les détections avant
-  d'autoriser l'automatisation.
+- La fusion des doublons est systématique selon le seuil de similarité configuré (`0.92`
+  par défaut). Le dataset des paramètres retire `MEMORY_DUPLICATE_MODE`, y compris les anciens
+  choix `off` ou `manual`, en conservant le seuil personnalisé. L'inspection manuelle ponctuelle
+  reste sans application automatique ; contradictions et vieillissement restent manuels par défaut.
 - L'interface Memory affiche les signalements par souvenir et ouvre une comparaison côte à côte.
 - Les signalements existants restent auditables lorsque leur politique est désactivée ; seuls les
   nouveaux scans sont arrêtés.

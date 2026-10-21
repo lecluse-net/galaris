@@ -53,7 +53,6 @@ async def test_dream_claims_memory_detection_without_exposing_it_in_gauges(
         .where(MemoryItem.id == item.id)
         .values(updated_at=datetime.now(timezone.utc) - timedelta(days=60))
     )
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "off")
     monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "off")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "manual")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_AFTER_DAYS", 30)
@@ -118,7 +117,6 @@ async def test_dream_memory_receipt_identity_keeps_embedding_state_correlated(
             embedding=[1.0, 0.0],
         )
     )
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "manual")
     monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "off")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
     policy_token = (
@@ -202,11 +200,10 @@ async def test_manual_duplicate_finding_compares_revisions_and_merges_sources(
         return [(related, 0.97)]
 
     monkeypatch.setattr(maintenance, "_indexed_candidates", candidates)
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "manual")
     monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "off")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
 
-    created_ids = await maintenance.detect_for_item(primary.id)
+    created_ids = await maintenance.detect_for_item(primary.id, manual=True)
 
     assert len(created_ids) == 1
     finding = await db.get(MemoryFinding, created_ids[0])
@@ -245,11 +242,13 @@ async def test_manual_duplicate_finding_compares_revisions_and_merges_sources(
 
 
 @pytest.mark.asyncio
-async def test_automatic_duplicate_mode_applies_an_existing_pending_finding(
+@pytest.mark.parametrize("threshold", [0.92, 1.0])
+async def test_dream_applies_pending_duplicates_when_other_policies_are_off(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
     monkeypatch: pytest.MonkeyPatch,
+    threshold: float,
 ) -> None:
     del memory_storage
     owner, _peer = agents
@@ -274,27 +273,37 @@ async def test_automatic_duplicate_mode_applies_an_existing_pending_finding(
     async def candidates(
         item: MemoryItem, *, minimum_similarity: float, limit: int = 10
     ) -> list[tuple[MemoryItem, float]]:
-        del item, minimum_similarity, limit
-        return [(related, 0.99)]
+        del minimum_similarity, limit
+        return [(related if item.id == primary.id else primary, 0.99)]
 
     monkeypatch.setattr(maintenance, "_indexed_candidates", candidates)
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "manual")
+    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_SIMILARITY_THRESHOLD", threshold)
     monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "off")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
 
-    finding_ids = await maintenance.detect_for_item(primary.id)
-    finding = await db.get(MemoryFinding, finding_ids[0])
-    assert finding is not None
-    assert finding.status == "pending"
+    finding_ids = await maintenance.detect_for_item(primary.id, manual=True)
+    if threshold <= 0.99:
+        finding = await db.get(MemoryFinding, finding_ids[0])
+        assert finding is not None
+        assert finding.status == "pending"
+    else:
+        assert finding_ids == []
 
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "automatic")
     claim = await memory_maintenance_mechanism.claim_one()
     assert claim is not None
-    assert claim.prepared_payload == {"item_id": str(primary.id)}
+    if threshold <= 0.99:
+        assert claim.prepared_payload == {"item_id": str(primary.id)}
     processed_count = await memory_maintenance_mechanism.apply(
         claim, claim.prepared_payload
     )
 
+    if threshold > 0.99:
+        assert processed_count == 0
+        assert await db.scalar(select(MemoryItem.id).where(MemoryItem.id == related.id)) == related.id
+        return
+
+    finding = await db.get(MemoryFinding, finding_ids[0])
+    assert finding is not None
     await db.refresh(finding)
     assert processed_count == 1
     assert finding.status == "applied"
@@ -327,7 +336,6 @@ async def test_automatic_aging_marks_without_removing_from_rag_and_edit_clears_i
         .values(created_at=old, updated_at=old)
     )
     await db.commit()
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "off")
     monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "off")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "automatic")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_AFTER_DAYS", 365)
@@ -383,13 +391,12 @@ async def test_dismissed_finding_is_not_recreated_for_the_same_revision_pair(
         return [(related, 0.99)]
 
     monkeypatch.setattr(maintenance, "_indexed_candidates", candidates)
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "manual")
     monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "off")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
-    first_scan = await maintenance.detect_for_item(primary.id)
+    first_scan = await maintenance.detect_for_item(primary.id, manual=True)
     await maintenance.dismiss_finding(first_scan[0])
 
-    second_scan = await maintenance.detect_for_item(primary.id)
+    second_scan = await maintenance.detect_for_item(primary.id, manual=True)
 
     assert second_scan == []
     findings = (
@@ -427,11 +434,10 @@ async def test_threshold_change_obsoletes_and_can_reactivate_pending_finding(
         return [(related, 0.93)]
 
     monkeypatch.setattr(maintenance, "_indexed_candidates", candidates)
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "manual")
     monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_SIMILARITY_THRESHOLD", 0.92)
     monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "off")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
-    finding_ids = await maintenance.detect_for_item(primary.id)
+    finding_ids = await maintenance.detect_for_item(primary.id, manual=True)
     finding = await db.get(MemoryFinding, finding_ids[0])
     assert finding is not None
 
@@ -484,11 +490,10 @@ async def test_contradiction_requires_an_explainable_textual_signal(
         return [(related, 0.91)]
 
     monkeypatch.setattr(maintenance, "_indexed_candidates", candidates)
-    monkeypatch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "manual")
     monkeypatch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "manual")
     monkeypatch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
 
-    finding_ids = await maintenance.detect_for_item(primary.id)
+    finding_ids = await maintenance.detect_for_item(primary.id, manual=True)
     findings = await maintenance.list_findings(agent_id=owner.id)
 
     assert finding_ids == [findings[0].id]

@@ -450,6 +450,11 @@ In **Memory**, previews of associated content appear before keywords and content
 by compact calendar fields. The title displays the memory kind, last activity, access count
 and revision. Protected deletion appears as a warning badge with an explanatory tooltip.
 Standalone memories are private to their agent, with no title input or sharing control.
+Dream automatically merges compatible duplicates during idle time when they reach the
+configured similarity threshold, initially **92%**. Set this threshold in
+**Preferences > Memory**; merging no longer has a mode selector. Updates remove the
+old modes while preserving custom thresholds. Disabling Dream suspends this treatment
+along with its other maintenance work.
 Dream can also retain a durable fact from a transcribed audio message or an attachment already
 analysed in a Task linked to the conversation. It preserves evidence and coverage limits;
 an unanalysed attachment cannot establish a fact. Late evidence can add memories.

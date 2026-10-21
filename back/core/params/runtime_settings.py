@@ -201,7 +201,6 @@ class RuntimeSettings(BaseModel):
     MEMORY_CAPTURE_MIN_CHARS: int = Field(default=120, ge=20, le=20_000)
     MEMORY_AUTOMATION_POLL_SECONDS: float = Field(default=5.0, ge=0.5, le=300.0)
     MEMORY_AUTOMATION_MAX_ATTEMPTS: int = Field(default=5, ge=1, le=50)
-    MEMORY_DUPLICATE_MODE: Literal["off", "manual", "automatic"] = "manual"
     MEMORY_DUPLICATE_SIMILARITY_THRESHOLD: float = Field(
         default=0.92, ge=0.8, le=1.0
     )

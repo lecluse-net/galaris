@@ -102,7 +102,6 @@ async def maintain_file_duplicates(db):
     from core.params import runtime_settings
 
     with pytest.MonkeyPatch.context() as patch:
-        patch.setattr(runtime_settings, "MEMORY_DUPLICATE_MODE", "automatic")
         patch.setattr(runtime_settings, "MEMORY_CONTRADICTION_MODE", "off")
         patch.setattr(runtime_settings, "MEMORY_AGING_MODE", "off")
         while (claim := await memory_maintenance_mechanism.claim_one()) is not None:

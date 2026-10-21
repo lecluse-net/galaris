@@ -32,8 +32,8 @@ MIME et la taille du fichier source. `media_type` et `size_bytes` décrivent le 
 
 L'acquisition du SHA n'effectue aucune fusion et son index n'est pas unique.
 Un SHA identique donne une similarité exacte de `1.0`, même sans embeddings.
-`memory.maintain_findings` applique la politique de doublons de Dream : `off` ne
-produit rien, `manual` conserve une proposition et `automatic` effectue la fusion.
+`memory.maintain_findings` fusionne systématiquement les doublons compatibles dans Dream,
+selon le seuil configuré. L'inspection manuelle ponctuelle conserve une proposition.
 Le premier nœud créé conserve son identité et sa source principale ; les notes,
 URL, provenance, usages et relations des autres sont transférés. Le score ne
 remplace pas les frontières de droits : les propriétaires et les accès doivent

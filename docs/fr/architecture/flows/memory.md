@@ -667,8 +667,13 @@ correction différente reste admissible.
 La maintenance légère ne supprime plus un souvenir selon son inactivité. `app.memory` possède les
 politiques et les `MemoryFinding` de type `duplicate`, `contradiction` ou `aging`; le mécanisme
 `memory.maintain_findings` les détecte et les traite séquentiellement dans Dream pendant
-l'inactivité. Memory pilote, Dream exécute. Chaque politique possède les modes `off`, `manual` et
-`automatic`; l'automatique appelle exactement le même service que l'action manuelle de l'IHM.
+l'inactivité. Memory pilote, Dream exécute. La fusion des doublons est systématique dans Dream,
+selon le seuil de similarité configuré (`0.92` par défaut), sans mode désactivé ou manuel.
+L'ancien paramètre `MEMORY_DUPLICATE_MODE` est retiré par le dataset des paramètres à la
+synchronisation, sans modifier le seuil enregistré. L'arrêt global de Dream suspend le traitement.
+Les contradictions et le vieillissement conservent les modes `off`, `manual` et `automatic`,
+avec `manual` par défaut. Une inspection ponctuelle manuelle produit des propositions sans les
+appliquer ; les fusions automatiques et l'action manuelle utilisent le même service.
 Ce mécanisme n'utilise aucun LLM génératif et reste exclu des jauges Dream. Les doublons lisent
 l'index d'embeddings courant ou les SHA de fichiers. Un SHA identique donne un
 match à 100 % sans embeddings ; l'acquisition du SHA ne fusionne rien. Dream

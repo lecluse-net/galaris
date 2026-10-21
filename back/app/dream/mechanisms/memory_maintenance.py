@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import String, case, cast, exists, func, literal, select, and_, or_
+from sqlalchemy import String, case, cast, exists, func, select, and_, or_
 
 from app.memory import (
     MemoryEmbeddingChunk,
@@ -32,18 +32,9 @@ class MemoryMaintenanceMechanism:
     monitoring_visible = False
 
     @staticmethod
-    def _enabled() -> bool:
-        return not (
-            runtime_settings.MEMORY_DUPLICATE_MODE == "off"
-            and runtime_settings.MEMORY_CONTRADICTION_MODE == "off"
-            and runtime_settings.MEMORY_AGING_MODE == "off"
-        )
-
-    @staticmethod
     def _policy_token() -> str:
         policy = (
-            "file-sha-backlog-v3:"
-            f"{runtime_settings.MEMORY_DUPLICATE_MODE}:"
+            "always-merge-backlog-v4:"
             f"{runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD}:"
             f"{runtime_settings.MEMORY_CONTRADICTION_MODE}:"
             f"{runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD}:"
@@ -81,9 +72,7 @@ class MemoryMaintenanceMechanism:
 
     @staticmethod
     def _automatic_finding_kinds() -> tuple[str, ...]:
-        kinds: list[str] = []
-        if runtime_settings.MEMORY_DUPLICATE_MODE == "automatic":
-            kinds.append("duplicate")
+        kinds: list[str] = ["duplicate"]
         if runtime_settings.MEMORY_CONTRADICTION_MODE == "automatic":
             kinds.append("contradiction")
         if runtime_settings.MEMORY_AGING_MODE == "automatic":
@@ -97,21 +86,18 @@ class MemoryMaintenanceMechanism:
             & or_(
                 and_(MemoryItem.owner_agent_id.is_not(None), MemoryItem.node_kind == "memory",
                      MemoryItem.source_managed.is_(False)),
-                and_(MemoryItem.node_kind.in_(("file", "attachment")), MemoryItem.file_sha256.is_not(None),
-                     literal(runtime_settings.MEMORY_DUPLICATE_MODE != "off")),
+                and_(MemoryItem.node_kind.in_(("file", "attachment")), MemoryItem.file_sha256.is_not(None)),
             )
         )
 
     async def is_available(self) -> bool:
-        return self._enabled()
+        return True
 
     async def count_pending(self) -> int:
         # This mechanism is intentionally hidden from monitoring gauges.
         return 0
 
     async def claim_one(self) -> DreamClaim | None:
-        if not self._enabled():
-            return None
         subject_id = self._subject_id()
         current_retry = exists(
             select(MemoryItem.id).where(
@@ -138,8 +124,6 @@ class MemoryMaintenanceMechanism:
                     ),
                     else_=1,
                 )
-                if automatic_kinds
-                else literal(1)
             )
             row = (
                 await get_db().execute(

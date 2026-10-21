@@ -285,17 +285,6 @@ export const memoryCaptureFields: SettingField[] = [
 
 export const memoryAutomationFields: SettingField[] = [
     {
-        name: 'MEMORY_DUPLICATE_MODE',
-        labelKey: 'memorySettings.fields.duplicateMode',
-        descriptionKey: 'memorySettings.fields.duplicateModeHint',
-        input: 'select',
-        options: [
-            { value: 'off', labelKey: 'memorySettings.maintenanceModes.off' },
-            { value: 'manual', labelKey: 'memorySettings.maintenanceModes.manual' },
-            { value: 'automatic', labelKey: 'memorySettings.maintenanceModes.automatic' },
-        ],
-    },
-    {
         name: 'MEMORY_DUPLICATE_SIMILARITY_THRESHOLD',
         labelKey: 'memorySettings.fields.duplicateThreshold',
         descriptionKey: 'memorySettings.fields.duplicateThresholdHint',

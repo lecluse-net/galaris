@@ -330,80 +330,74 @@ async def detect_for_item(item_id: UUID, *, manual: bool = False) -> list[UUID]:
         if finding is not None:
             actionable.append(finding)
 
-    duplicate_mode = "manual" if manual else runtime_settings.MEMORY_DUPLICATE_MODE
     contradiction_mode = "manual" if manual else runtime_settings.MEMORY_CONTRADICTION_MODE
-    if duplicate_mode != "off" or contradiction_mode != "off":
-        minimum = min(
-            runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD
-            if duplicate_mode != "off"
-            else 1.0,
-            runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD
-            if contradiction_mode != "off"
-            else 1.0,
-        )
-        item_scope = await _scope_signature(item.id)
-        candidates = (await _file_candidates(item) if item.file_sha256 is not None
-                      else await _indexed_candidates(item, minimum_similarity=minimum))
-        for candidate, similarity in candidates:
-            if item.file_sha256 is None and str(candidate.id) < str(item.id):
-                continue
-            if await _scope_signature(candidate.id) != item_scope:
-                continue
-            if candidate.temporal != item.temporal:
-                continue
-            signal = None if item.file_sha256 is not None else _contradiction_signal(item, candidate)
-            if (
-                contradiction_mode != "off"
-                and signal is not None
-                and similarity
-                >= runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD
-            ):
-                item_corrects = _has_correction_marker(item)
-                candidate_corrects = _has_correction_marker(candidate)
-                canonical = (
-                    item
-                    if item_corrects and not candidate_corrects
-                    else candidate
-                    if candidate_corrects and not item_corrects
-                    else max((item, candidate), key=_meaningful_at)
-                )
-                finding = await _store_finding(
-                    kind="contradiction",
-                    primary=item,
-                    related=candidate,
-                    score=similarity,
-                    threshold=runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD,
-                    proposed_action="keep_newest",
-                    details={
-                        "signal": signal,
-                        "proposed_canonical_item_id": str(canonical.id),
-                    },
-                    reuse_pending=contradiction_mode == "automatic",
-                )
-            elif (
-                duplicate_mode != "off"
-                and similarity >= runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD
-            ):
-                canonical = min((item, candidate), key=(lambda node: (node.created_at, str(node.id))) if item.file_sha256 else _meaningful_at)
-                finding = await _store_finding(
-                    kind="duplicate",
-                    primary=item,
-                    related=candidate,
-                    score=similarity,
-                    threshold=runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD,
-                    proposed_action="merge_keep_oldest",
-                    details={"proposed_canonical_item_id": str(canonical.id),
-                             **({"file_sha256": item.file_sha256} if item.file_sha256 else {})},
-                    reuse_pending=duplicate_mode == "automatic",
-                )
-            else:
-                finding = None
-            if finding is not None:
-                actionable.append(finding)
+    minimum = min(
+        runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD,
+        runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD
+        if contradiction_mode != "off"
+        else 1.0,
+    )
+    item_scope = await _scope_signature(item.id)
+    candidates = (await _file_candidates(item) if item.file_sha256 is not None
+                  else await _indexed_candidates(item, minimum_similarity=minimum))
+    for candidate, similarity in candidates:
+        if item.file_sha256 is None and str(candidate.id) < str(item.id):
+            continue
+        if await _scope_signature(candidate.id) != item_scope:
+            continue
+        if candidate.temporal != item.temporal:
+            continue
+        signal = None if item.file_sha256 is not None else _contradiction_signal(item, candidate)
+        if (
+            contradiction_mode != "off"
+            and signal is not None
+            and similarity
+            >= runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD
+        ):
+            item_corrects = _has_correction_marker(item)
+            candidate_corrects = _has_correction_marker(candidate)
+            canonical = (
+                item
+                if item_corrects and not candidate_corrects
+                else candidate
+                if candidate_corrects and not item_corrects
+                else max((item, candidate), key=_meaningful_at)
+            )
+            finding = await _store_finding(
+                kind="contradiction",
+                primary=item,
+                related=candidate,
+                score=similarity,
+                threshold=runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD,
+                proposed_action="keep_newest",
+                details={
+                    "signal": signal,
+                    "proposed_canonical_item_id": str(canonical.id),
+                },
+                reuse_pending=contradiction_mode == "automatic",
+            )
+        elif similarity >= runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD:
+            canonical = min((item, candidate), key=(lambda node: (node.created_at, str(node.id))) if item.file_sha256 else _meaningful_at)
+            finding = await _store_finding(
+                kind="duplicate",
+                primary=item,
+                related=candidate,
+                score=similarity,
+                threshold=runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD,
+                proposed_action="merge_keep_oldest",
+                details={"proposed_canonical_item_id": str(canonical.id),
+                         **({"file_sha256": item.file_sha256} if item.file_sha256 else {})},
+                # A manual inspection only proposes findings; Dream applies them.
+                reuse_pending=not manual,
+            )
+        else:
+            finding = None
+        if finding is not None:
+            actionable.append(finding)
     await get_db().commit()
     for finding in actionable:
         mode = {
-            "duplicate": duplicate_mode,
+            "duplicate": "manual" if manual else "automatic",
             "contradiction": contradiction_mode,
             "aging": aging_mode,
         }[finding.kind]
@@ -459,7 +453,7 @@ async def reconcile_policy_findings() -> int:
     policies: dict[str, tuple[float, str]] = {
         "duplicate": (
             runtime_settings.MEMORY_DUPLICATE_SIMILARITY_THRESHOLD,
-            runtime_settings.MEMORY_DUPLICATE_MODE,
+            "automatic",
         ),
         "contradiction": (
             runtime_settings.MEMORY_CONTRADICTION_SIMILARITY_THRESHOLD,
