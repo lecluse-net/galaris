@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime, timezone
+from uuid import uuid4
 
 from uuid import UUID
 
+from pydantic import EmailStr, TypeAdapter
+
 from sqlalchemy import delete, exists, func, or_, select, union_all, update
+from sqlalchemy.exc import IntegrityError
 
 from core.database import get_db
+from core.user import get_user_record
 
 from . import service
 from .contracts import (
@@ -16,8 +22,10 @@ from .contracts import (
     ContactReferenceRewriter,
     MessengerContactIdentity as ContactIdentityRecord,
     MessengerContactRecord,
+    MessengerContactObservation,
+    MessengerContactIdentityInput,
 )
-from .messenger_contact import MESSENGER_CONTACT_SOURCE_KIND
+from .messenger_contact import MESSENGER_CONTACT_SOURCE_KIND, contact_document
 from .models import (
     MemoryAssociation,
     MemoryContactIdentity,
@@ -27,6 +35,8 @@ from .models import (
     MemoryTopicContactItem,
     MemoryTopicContactScope,
 )
+
+_EMAIL_ADAPTER: TypeAdapter[EmailStr] = TypeAdapter(EmailStr)
 
 
 async def _contact_item(
@@ -38,13 +48,16 @@ async def _contact_item(
         MemoryItem.managed_source_kind == MESSENGER_CONTACT_SOURCE_KIND,
     )
     if for_update:
-        query = query.with_for_update()
+        query = query.with_for_update().execution_options(populate_existing=True)
     return await get_db().scalar(query)
 
 
 def _display_name(
     item: MemoryItem, identities: tuple[ContactIdentityRecord, ...]
 ) -> str:
+    override = str(item.metadata_.get("display_name_override") or "").strip()
+    if override:
+        return override
     for identity in identities:
         if identity.display_name:
             return identity.display_name
@@ -202,6 +215,222 @@ async def get_messenger_contact(contact_item_id: UUID) -> MessengerContactRecord
         (record for record in records if record.memory_item_id == contact_item_id),
         None,
     )
+
+
+async def create_mail_contact(
+    *, owner_agent_id: int, display_name: str, email: str,
+) -> MessengerContactRecord:
+    """Create a private address-book entry without a User or Messenger account."""
+    name = " ".join(display_name.split())
+    if not name or len(name) > 500:
+        raise service.MemoryConflictError("A contact name must contain 1 to 500 characters.")
+    address = str(_EMAIL_ADAPTER.validate_python(email)).casefold()
+    db = get_db()
+    if await db.scalar(select(MemoryContactIdentity.id).where(
+        MemoryContactIdentity.owner_agent_id == owner_agent_id,
+        MemoryContactIdentity.identity_kind == "messenger",
+        MemoryContactIdentity.namespace == "mail",
+        MemoryContactIdentity.external_id == address,
+    )) is not None:
+        raise service.MemoryConflictError("This email already belongs to a contact.")
+    identity = MessengerContactIdentityInput(kind="messenger", namespace="mail", external_id=address)
+    try:
+        item = await service.upsert_source_managed_item(contact_document(
+            MessengerContactObservation(owner_agent_id=owner_agent_id, messaging_id="mail", user_id=address),
+            source_ref=f"address-book:{uuid4().hex}", memory_item_id=None,
+            display_name=name, display_name_override=name, identities=(identity,),
+        ), defer_commit=True)
+        db.add(MemoryContactIdentity(owner_agent_id=owner_agent_id, contact_item_id=item.id,
+            identity_kind="messenger", namespace="mail", external_id=address))
+        await service.commit_source_managed_items((item,))
+    except IntegrityError as exc:
+        await db.rollback()
+        raise service.MemoryConflictError("This email already belongs to a contact.") from exc
+    except Exception:
+        await db.rollback()
+        raise
+    record = await get_messenger_contact(item.id)
+    assert record is not None
+    return record
+
+
+async def split_messenger_contact(
+    *, contact_item_id: UUID, identity_ids: tuple[UUID, ...],
+    expected_identity_ids: tuple[UUID, ...], display_name: str,
+) -> MessengerContactRecord:
+    """Move selected addresses into separate contacts; retain history on the original."""
+    name = " ".join(display_name.split())
+    if not name or len(name) > 500:
+        raise service.MemoryConflictError("A contact name must contain 1 to 500 characters.")
+    db = get_db()
+    source = await _contact_item(contact_item_id, for_update=True)
+    if source is None or source.owner_agent_id is None:
+        raise service.MemoryNotFoundError("Contact not found.")
+    rows = tuple((await db.scalars(select(MemoryContactIdentity).where(
+        MemoryContactIdentity.contact_item_id == contact_item_id,
+    ).with_for_update())).all())
+    current_ids = {row.id for row in rows}
+    selected_ids = set(identity_ids)
+    if set(expected_identity_ids) != current_ids:
+        raise service.MemoryConflictError("Contact identities have changed. Reopen the contact before saving.")
+    if (not selected_ids or len(selected_ids) != len(identity_ids)
+        or not selected_ids < current_ids):
+        raise service.MemoryConflictError("Split existing identities and retain at least one on the original contact.")
+    if source.managed_source_ref is None:
+        raise service.MemoryConflictError("The contact has no projection identity.")
+    def identity_input(row: MemoryContactIdentity) -> MessengerContactIdentityInput:
+        return MessengerContactIdentityInput(
+            id=row.id, kind="galaris_user" if row.identity_kind == "galaris_user" else "messenger",
+            namespace=row.namespace, external_id=row.external_id,
+            display_name=row.display_name, galaris_user_id=row.galaris_user_id,
+        )
+    staged: list[MemoryItem] = []
+    try:
+        for row in rows:
+            if row.id not in selected_ids:
+                continue
+            identity = identity_input(row)
+            target = await service.upsert_source_managed_item(contact_document(
+                MessengerContactObservation(owner_agent_id=source.owner_agent_id,
+                    messaging_id="internal" if row.identity_kind == "galaris_user" else row.namespace,
+                    user_id=row.external_id, galaris_user_id=row.galaris_user_id),
+                source_ref=f"split-contact:{uuid4().hex}", memory_item_id=None,
+                display_name=name, display_name_override=name, identities=(identity,),
+            ), defer_commit=True)
+            row.contact_item_id = target.id
+            staged.append(target)
+        remaining = tuple(identity_input(row) for row in rows if row.id not in selected_ids)
+        source = await service.upsert_source_managed_item(contact_document(
+            MessengerContactObservation(owner_agent_id=source.owner_agent_id,
+                messaging_id=remaining[0].namespace, user_id=remaining[0].external_id),
+            source_ref=source.managed_source_ref, memory_item_id=source.id,
+            display_name=name, display_name_override=name,
+            previous_metadata=dict(source.metadata_), identities=remaining,
+        ), defer_commit=True)
+        await service.commit_source_managed_items((*staged, source))
+    except Exception:
+        await db.rollback()
+        raise
+    record = await get_messenger_contact(contact_item_id)
+    assert record is not None
+    return record
+
+
+async def update_messenger_contact(
+    *, contact_item_id: UUID, display_name: str,
+    identities: tuple[MessengerContactIdentityInput, ...] | None = None,
+    expected_identities: tuple[ContactIdentityRecord, ...] | None = None,
+) -> MessengerContactRecord:
+    """Atomically edit a private contact and its explicitly managed addresses."""
+
+    name = " ".join(display_name.split())
+    if not name or len(name) > 500:
+        raise service.MemoryConflictError("A contact name must contain 1 to 500 characters.")
+    item = await _contact_item(contact_item_id, for_update=True)
+    if item is None or item.owner_agent_id is None:
+        raise service.MemoryNotFoundError("Contact not found.")
+    current = await get_messenger_contact(contact_item_id)
+    assert current is not None
+    rows = tuple((await get_db().scalars(
+        select(MemoryContactIdentity).where(MemoryContactIdentity.contact_item_id == item.id)
+    )).all())
+    if identities is not None:
+        if expected_identities is None or set(expected_identities) != set(current.identities):
+            raise service.MemoryConflictError("Contact identities have changed. Reopen the contact before saving.")
+        await _validate_identity_updates(item.owner_agent_id, item.id, rows, identities)
+    projection_identities = identities
+    if projection_identities is None and item.metadata_.get("identities_managed"):
+        projection_identities = tuple(MessengerContactIdentityInput(
+            id=identity.id, kind=identity.kind, namespace=identity.namespace,
+            external_id=identity.external_id, display_name=identity.display_name,
+            galaris_user_id=identity.galaris_user_id,
+        ) for identity in current.identities)
+    metadata = item.metadata_
+    if not item.managed_source_ref:
+        raise service.MemoryConflictError("The contact has no canonical source reference.")
+    user_id = metadata.get("galaris_user_id")
+    document = contact_document(
+        MessengerContactObservation(
+            owner_agent_id=item.owner_agent_id,
+            messaging_id=str(metadata["messaging_id"]),
+            user_id=str(metadata["user_id"]),
+            display_name=str(metadata.get("display_name") or ""),
+            galaris_user_id=user_id if isinstance(user_id, int) else None,
+        ),
+        source_ref=item.managed_source_ref,
+        memory_item_id=item.id,
+        display_name=str(metadata.get("display_name") or ""),
+        display_name_override=name,
+        previous_metadata=dict(metadata),
+        identities=projection_identities,
+    )
+    if identities is not None:
+        db = get_db()
+        try:
+            async with db.begin_nested():
+                await db.execute(delete(MemoryContactIdentity).where(MemoryContactIdentity.contact_item_id == item.id))
+                db.add_all([MemoryContactIdentity(
+                    id=identity.id or uuid4(), owner_agent_id=item.owner_agent_id,
+                    contact_item_id=item.id, identity_kind=identity.kind,
+                    namespace=identity.namespace, external_id=identity.external_id,
+                    display_name=identity.display_name, galaris_user_id=identity.galaris_user_id,
+                    created_at=next((row.created_at for row in rows if row.id == identity.id), datetime.now(timezone.utc)),
+                ) for identity in identities])
+                await db.flush()
+        except IntegrityError as exc:
+            raise service.MemoryConflictError("An identity is already linked to another contact or its user no longer exists.") from exc
+    try:
+        await service.upsert_source_managed_item(document)
+    except Exception:
+        # Projection preparation can fail before its own transaction guard.
+        # Discard the identity writes as well, even when a caller handles the error.
+        await get_db().rollback()
+        raise
+    record = await get_messenger_contact(contact_item_id)
+    if record is None:
+        raise service.MemoryNotFoundError("Contact not found.")
+    return record
+
+
+async def _validate_identity_updates(
+    owner_agent_id: int, contact_item_id: UUID, rows: tuple[MemoryContactIdentity, ...],
+    identities: tuple[MessengerContactIdentityInput, ...],
+) -> None:
+    ids = {row.id for row in rows}
+    seen_ids: set[UUID] = set()
+    addresses: set[tuple[str, str, str]] = set()
+    for identity in identities:
+        if identity.kind == "messenger" and identity.namespace == "internal":
+            raise service.MemoryConflictError("Use a Galaris user identity for internal Chat.")
+        if identity.id is not None:
+            if identity.id not in ids or identity.id in seen_ids:
+                raise service.MemoryConflictError("An identity does not belong to this contact or occurs twice.")
+            seen_ids.add(identity.id)
+        address = (identity.kind, identity.namespace, identity.external_id)
+        if address in addresses:
+            raise service.MemoryConflictError("Each identity must occur only once.")
+        addresses.add(address)
+        if identity.kind == "galaris_user":
+            if identity.namespace != "galaris" or identity.galaris_user_id is None or identity.external_id != str(identity.galaris_user_id):
+                raise service.MemoryConflictError("Invalid Galaris user identity.")
+            if await get_user_record(identity.galaris_user_id) is None:
+                raise service.MemoryConflictError("Galaris user not found.")
+        elif identity.galaris_user_id is not None:
+            raise service.MemoryConflictError("A messaging identity must not set a Galaris user.")
+        if not identity.namespace.strip() or not identity.external_id.strip():
+            raise service.MemoryConflictError("An identity requires a namespace and an identifier.")
+        if (len(identity.namespace) > 512 or len(identity.external_id) > 512
+            or len(identity.display_name) > 500 or len(identities) > 500):
+            raise service.MemoryConflictError("Contact identity limits exceeded.")
+        occupied = await get_db().scalar(select(MemoryContactIdentity.id).where(
+            MemoryContactIdentity.owner_agent_id == owner_agent_id,
+            MemoryContactIdentity.identity_kind == identity.kind,
+            MemoryContactIdentity.namespace == identity.namespace,
+            MemoryContactIdentity.external_id == identity.external_id,
+            MemoryContactIdentity.contact_item_id != contact_item_id,
+        ))
+        if occupied is not None:
+            raise service.MemoryConflictError("An identity is already linked to another contact. Merge the contacts to combine them.")
 
 
 async def _move_topic_contact_scopes(
@@ -411,6 +640,7 @@ async def merge_messenger_contacts(
     target.metadata_ = {
         **target.metadata_,
         "merged_contact_item_ids": list(dict.fromkeys(merged_ids)),
+        **({"identities_managed": True} if source.metadata_.get("identities_managed") else {}),
     }
     source_ref = source.managed_source_ref
     if source_ref is None:
@@ -508,4 +738,5 @@ __all__ = [
     "forget_messenger_contact",
     "list_messenger_contacts",
     "merge_messenger_contacts",
+    "update_messenger_contact",
 ]

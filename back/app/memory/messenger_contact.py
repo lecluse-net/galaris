@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from core.database import get_db
 
 from . import service
-from .contracts import MessengerContactObservation, SourceMemoryDocument
+from .contracts import MessengerContactIdentityInput, MessengerContactObservation, SourceMemoryDocument
 from .models import MemoryContactIdentity, MemoryItem
 
 
@@ -73,13 +73,18 @@ def _markdown_inline(value: str) -> str:
     )
 
 
-def _document(
+def contact_document(
     observation: MessengerContactObservation,
     *,
     source_ref: str,
     memory_item_id: UUID | None,
     display_name: str,
+    display_name_override: str | None = None,
+    previous_metadata: dict[str, object] | None = None,
+    identities: tuple[MessengerContactIdentityInput, ...] | None = None,
 ) -> SourceMemoryDocument:
+    observed_display_name = display_name
+    display_name = display_name_override or display_name
     presentation_name = display_name or observation.user_id
     safe_name = _markdown_inline(presentation_name)
     safe_display_name = _markdown_inline(display_name or observation.user_id)
@@ -110,15 +115,40 @@ def _document(
         keywords.append(display_name)
     if observation.galaris_user_id is not None:
         keywords.append(f"galaris_user:{observation.galaris_user_id}")
+    if observation.messaging_id == "internal" and observation.galaris_user_id is not None:
+        content = "\n".join((
+            "# Contact Messenger", "", f"- Nom affiché : {safe_display_name}",
+            f"- Compte Galaris : {observation.galaris_user_id}", "",
+        ))
+        keywords = ["contact", "messenger", f"galaris_user:{observation.galaris_user_id}"]
+        if display_name:
+            keywords.append(display_name)
+    if identities is not None:
+        content = "\n".join((
+            "# Contact Messenger", "", f"- Nom affiché : {safe_display_name}",
+            *(f"- {_markdown_inline(identity.namespace)} : {_markdown_inline(identity.external_id)}"
+              + (f" — {_markdown_inline(identity.display_name)}" if identity.display_name else "")
+              for identity in identities), "",
+        ))
+        keywords = ["contact", "messenger", display_name]
+        for identity in identities:
+            keywords.extend((identity.namespace, identity.external_id, identity.display_name))
     metadata: dict[str, object] = {
+        **(previous_metadata or {}),
         "projection_version": MESSENGER_CONTACT_PROJECTION_VERSION,
         "source_kind": MESSENGER_CONTACT_SOURCE_KIND,
         "messaging_id": observation.messaging_id,
         "user_id": observation.user_id,
-        "display_name": display_name,
+        "display_name": observed_display_name,
     }
+    if display_name_override:
+        metadata["display_name_override"] = display_name_override
+    if identities is not None:
+        metadata["identities_managed"] = True
     if observation.galaris_user_id is not None:
         metadata["galaris_user_id"] = observation.galaris_user_id
+    if identities is not None:
+        metadata.pop("galaris_user_id", None)
     return SourceMemoryDocument(
         source_kind=MESSENGER_CONTACT_SOURCE_KIND,
         source_ref=source_ref,
@@ -138,25 +168,38 @@ async def _existing_projection(source_ref: str) -> MemoryItem | None:
             MemoryItem.source_managed.is_(True),
             MemoryItem.managed_source_kind == MESSENGER_CONTACT_SOURCE_KIND,
             MemoryItem.managed_source_ref == source_ref,
-        )
+        ).with_for_update().execution_options(populate_existing=True)
     )
 
 
 async def _observe_once(
     observation: MessengerContactObservation,
+    *, source_ref: str | None = None,
 ) -> UUID:
-    source_ref = _projection_ref(observation)
+    source_ref = source_ref or _projection_ref(observation)
     existing = await _existing_projection(source_ref)
+    while existing is not None and existing.metadata_.get("identities_managed"):
+        # The old address no longer owns this manually managed contact. A new
+        # observation may create a separate contact, without restoring the removed address.
+        # A deterministic successor lets concurrent observations converge on the
+        # same new projection before either has attached the strong identity.
+        source_ref = hashlib.sha256(f"{source_ref}:{existing.id}".encode()).hexdigest()
+        existing = await _existing_projection(source_ref)
     display_name = _bounded_display_name(observation.display_name)
     if not display_name and existing is not None:
         display_name = _bounded_display_name(
             str(existing.metadata_.get("display_name") or "")
         )
-    document = _document(
+    document = contact_document(
         observation,
         source_ref=source_ref,
         memory_item_id=existing.id if existing is not None else None,
         display_name=display_name,
+        display_name_override=(
+            str(existing.metadata_.get("display_name_override") or "") or None
+            if existing is not None else None
+        ),
+        previous_metadata=dict(existing.metadata_) if existing is not None else None,
     )
     item = await service.upsert_source_managed_item(document)
     return item.id
@@ -189,6 +232,12 @@ async def _ensure_identity(
     display_name: str,
     galaris_user_id: int | None = None,
 ) -> None:
+    contact = await get_db().scalar(
+        select(MemoryItem).where(MemoryItem.id == contact_item_id)
+        .with_for_update().execution_options(populate_existing=True)
+    )
+    if contact is not None and contact.metadata_.get("identities_managed"):
+        return
     identity = await get_db().scalar(
         select(MemoryContactIdentity).where(
             MemoryContactIdentity.owner_agent_id == owner_agent_id,
@@ -225,6 +274,8 @@ async def _observe_and_attach_identities(
         external_id=observation.user_id,
     )
     existing_projection = await _existing_projection(source_ref)
+    if existing_projection is not None and existing_projection.metadata_.get("identities_managed"):
+        existing_projection = None
     user_contact_id = (
         await _identity_contact_item_id(
             owner_agent_id=observation.owner_agent_id,
@@ -242,20 +293,34 @@ async def _observe_and_attach_identities(
     )
     if contact_item_id is None:
         contact_item_id = await _observe_once(observation)
-    elif existing_projection is not None and existing_projection.id == contact_item_id:
+    else:
+        contact = await get_db().scalar(
+            select(MemoryItem).where(MemoryItem.id == contact_item_id)
+            .with_for_update().execution_options(populate_existing=True)
+        )
+        if contact is not None and contact.metadata_.get("identities_managed"):
+            # An explicit human snapshot remains authoritative across inbound
+            # messages and directory reconciliation, including names and removals.
+            await get_db().commit()
+            return contact_item_id
         # Preserve the historical rename behavior for the identity that owns the
         # source projection. Aliases attached after a merge must not recreate it.
-        contact_item_id = await _observe_once(observation)
+        if contact is not None and (
+            contact.metadata_.get("messaging_id") == observation.messaging_id
+            and contact.metadata_.get("user_id") == observation.user_id
+        ):
+            contact_item_id = await _observe_once(observation, source_ref=contact.managed_source_ref)
 
     display_name = _bounded_display_name(observation.display_name)
-    await _ensure_identity(
-        contact_item_id=contact_item_id,
-        owner_agent_id=observation.owner_agent_id,
-        identity_kind="messenger",
-        namespace=observation.messaging_id,
-        external_id=observation.user_id,
-        display_name=display_name,
-    )
+    if observation.messaging_id != "internal" or observation.galaris_user_id is None:
+        await _ensure_identity(
+            contact_item_id=contact_item_id,
+            owner_agent_id=observation.owner_agent_id,
+            identity_kind="messenger",
+            namespace=observation.messaging_id,
+            external_id=observation.user_id,
+            display_name=display_name,
+        )
     if observation.galaris_user_id is not None:
         await _ensure_identity(
             contact_item_id=contact_item_id,

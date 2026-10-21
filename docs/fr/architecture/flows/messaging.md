@@ -508,6 +508,24 @@ observations ne recréent pas le doublon. Cette fusion repointe dans une transac
 scellés, scopes Topic/contact, arêtes mémoire, messages, rounds et Tasks avant d'oublier l'ancienne
 projection.
 
+Le carnet d’adresses permet aussi de créer un contact privé par nom et adresse mail validée,
+sans ligne `users`, `agents` ou `messenger_users`. L’adresse normalisée est une identité
+`messenger / mail` du contact ; sa contrainte d’unicité par agent protège aussi les créations
+concurrentes. L’API d’édition accepte le nom et des scissions explicites, jamais un rattachement
+libre. Une scission déplace l’identité existante (UUID conservé) vers une nouvelle projection
+et conserve au moins une identité sur la fiche d’origine. Les deux projections deviennent
+gérées manuellement ; les observations futures respectent cette séparation. Les souvenirs,
+messages, rounds et Tasks restent sur le contact d’origine. Les contenus natifs inline et les
+identités sont enregistrés dans une seule transaction ; l’indexation et les notifications
+interviennent après ce commit. La fusion par sélection de contacts reste l’opération de regroupement.
+
+Pour le Chat natif, un utilisateur reconnu est représenté dans `memory_contact_identities`
+uniquement par son identité `galaris_user`. L’adresse de transport `internal / user:<ID>`
+ne crée pas un second alias de contact. Les lignes `messenger_users`, nécessaires au journal
+et au transport, sont conservées. Le reconciler `app.memory.internal_user_identities`
+retire seulement les anciens alias internes dont le même contact possède déjà l’identité
+utilisateur correspondante ; il préserve les identifiants de contact et les liens existants.
+
 L'administration peut également oublier explicitement un contact. Les souvenirs scellés à ce
 contact sont oubliés avec leurs révisions et ressources, les références des messages, rounds et
 Tasks sont vidées, puis la projection et ses identités sont purgées. Une nouvelle interaction avec

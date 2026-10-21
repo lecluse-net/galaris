@@ -567,6 +567,29 @@ Dataset. Prose drafted from this data does not automatically update when the Dat
 
 Agent profiles, Goals, and cycles are read-only projections: modify their source rather than their memory copy. Contacts from messaging systems contain only the minimum identity required and remain private to the owning Agent.
 
+In **Knowledge → Contacts**, select an agent and click a contact or its pencil action to edit
+its display name. One display name applies to the entire contact. The dialog offers neither
+direct account attachment nor account deletion: to group accounts, select two contacts with
+the checkboxes and use **Merge two contacts**.
+To separate an account, use **Split** in the contact dialog, then save. Each selected account
+gets a separate contact with the same initial name and is preserved. Keep at least one account
+on the original contact. Memories and history remain on that original contact; future messages
+from the separated account resolve to its new contact. Cancel discards staged splitting.
+A concurrent edit requires reopening the contact before retrying.
+
+**Add email contact** accepts a name and a valid email address. This address book remains private
+to the selected agent: the correspondent does not need to be a user or an agent. Creation sends
+no email, creates no account, and grants no access. An address already in this agent’s address
+book is rejected regardless of case. These actions require `MEMORY_EDIT` and management access to that agent.
+
+For internal Chat, the **Galaris user** identity is sufficient: no second internal messaging
+identity is created. DbAdmin synchronization removes existing redundant internal aliases
+without deleting the contact or its memories.
+
+Manually created and split contacts retain their names and accounts across future messages.
+Split contacts can be reunited by merging. If saving fails, the draft remains available for retry.
+Cancel closes the dialog without saving the draft.
+
 File entries remain empty until they have notes or a useful description.
 Their technical metadata (URI, size, type, date, fingerprint) does not fill the description.
 

@@ -52,6 +52,8 @@
           </q-input>
         </div>
         <div v-if="canEdit" class="col-12 col-md-auto">
+          <q-btn outline color="primary" icon="person_add" class="q-mr-sm"
+            :label="t('contacts.createTitle')" :disable="selectedAgentId === null" @click="createDialog = true" />
           <q-btn
             color="primary"
             icon="merge"
@@ -78,6 +80,7 @@
         :rows-per-page-options="[10, 20, 50, 100, 500]"
         :no-data-label="selectedAgentId === null ? t('contacts.selectAgent') : t('contacts.noRows')"
         @request="onRequest"
+        @row-click="openContactFromRow"
       >
         <template #body-cell-name="props">
           <q-td :props="props">
@@ -123,13 +126,21 @@
           <q-td :props="props">
             <q-btn
               v-if="canEdit"
+              flat round dense color="primary" icon="edit"
+              :aria-label="t('contacts.editNamed', { name: props.row.display_name })"
+              @click.stop="contactToEdit = props.row"
+            >
+              <q-tooltip>{{ t('contacts.edit') }}</q-tooltip>
+            </q-btn>
+            <q-btn
+              v-if="canEdit"
               flat
               round
               dense
               color="negative"
               icon="person_remove"
               :aria-label="t('contacts.forgetNamed', { name: props.row.display_name })"
-              @click="openForget(props.row)"
+              @click.stop="openForget(props.row)"
             >
               <q-tooltip>{{ t('contacts.forget') }}</q-tooltip>
             </q-btn>
@@ -138,9 +149,9 @@
 
         <template #item="props">
           <div class="q-pa-xs col-12 col-sm-6">
-            <q-card flat bordered>
+            <q-card flat bordered :class="{ 'cursor-pointer': canEdit }" @click="openContactFromRow($event, props.row)">
               <q-card-section class="row items-start no-wrap q-gutter-sm">
-                <q-checkbox v-if="canEdit" v-model="props.selected" dense />
+                <q-checkbox v-if="canEdit" v-model="props.selected" dense @click.stop />
                 <div class="col contact-mobile-content">
                   <div class="text-weight-medium">{{ props.row.display_name }}</div>
                   <div class="text-caption text-grey-7">{{ props.row.memory_title }}</div>
@@ -162,8 +173,17 @@
                     :label="String(props.row.linked_memory_count)"
                     :to="memoryLink(props.row)"
                     :aria-label="t('contacts.openMemory', { name: props.row.display_name })"
+                    @click.stop
                   />
                 </div>
+                <q-btn
+                  v-if="canEdit"
+                  flat round dense color="primary" icon="edit"
+                  :aria-label="t('contacts.editNamed', { name: props.row.display_name })"
+                  @click.stop="contactToEdit = props.row"
+                >
+                  <q-tooltip>{{ t('contacts.edit') }}</q-tooltip>
+                </q-btn>
                 <q-btn
                   v-if="canEdit"
                   flat
@@ -172,7 +192,7 @@
                   color="negative"
                   icon="person_remove"
                   :aria-label="t('contacts.forgetNamed', { name: props.row.display_name })"
-                  @click="openForget(props.row)"
+                  @click.stop="openForget(props.row)"
                 >
                   <q-tooltip>{{ t('contacts.forget') }}</q-tooltip>
                 </q-btn>
@@ -186,6 +206,17 @@
     <div v-if="canEdit" class="text-caption text-grey-7 q-mt-sm">
       {{ selectionHint }}
     </div>
+
+    <ContactCreateDialog v-if="createDialog && canEdit && selectedAgentId !== null"
+      :agent-id="selectedAgentId" @close="createDialog = false" @created="onContactCreated" />
+
+    <ContactEditDialog
+      v-if="contactToEdit && canEdit"
+      :key="contactToEdit.memory_item_id"
+      :contact="contactToEdit"
+      @close="contactToEdit = null"
+      @saved="onContactSaved"
+    />
 
     <q-dialog v-model="mergeDialog">
       <q-card class="contact-merge-dialog galaris-dialog-card">
@@ -280,6 +311,8 @@ import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { PageHeader } from '@/core/util'
 import { AgentSelect, useAgentStore, useAgentSelectionStore } from '@/app/agent'
 import { contactService } from '../services/contactService'
+import ContactEditDialog from '../components/ContactEditDialog.vue'
+import ContactCreateDialog from '../components/ContactCreateDialog.vue'
 import type { Contact, ContactIdentity } from '../types'
 
 const { t, locale } = useI18n()
@@ -299,6 +332,9 @@ const error = ref<unknown>(null)
 const mergeDialog = ref(false)
 const forgetDialog = ref(false)
 const contactToForget = ref<Contact | null>(null)
+const contactToEdit = ref<Contact | null>(null)
+const createDialog = ref(false)
+let loadGeneration = 0
 const canonicalContactItemId = ref<string | null>(null)
 const pagination = ref({
   page: 1,
@@ -351,6 +387,12 @@ function identityLabel(identity: ContactIdentity): string {
   return `${identity.namespace} · ${identity.external_id}`
 }
 
+function openContactFromRow(event: Event, contact: Contact): void {
+  if (!canEdit.value) return
+  if (event.target instanceof Element && event.target.closest('button, a, input, label, [role="checkbox"]')) return
+  contactToEdit.value = contact
+}
+
 function memoryLink(contact: Contact): { path: string, query: Record<string, string> } {
   return {
     path: '/memory',
@@ -362,9 +404,11 @@ function memoryLink(contact: Contact): { path: string, query: Record<string, str
 }
 
 async function load(): Promise<void> {
+  const generation = ++loadGeneration
   if (selectedAgentId.value === null) {
     contacts.value = []
     pagination.value.rowsNumber = 0
+    loading.value = false
     return
   }
   loading.value = true
@@ -376,14 +420,27 @@ async function load(): Promise<void> {
       limit: pagination.value.rowsPerPage,
       offset: (pagination.value.page - 1) * pagination.value.rowsPerPage,
     })
+    if (generation !== loadGeneration) return
     contacts.value = page.items
     pagination.value.rowsNumber = page.total
     selected.value = []
   } catch (caught) {
-    error.value = caught
+    if (generation === loadGeneration) error.value = caught
   } finally {
-    loading.value = false
+    if (generation === loadGeneration) loading.value = false
   }
+}
+
+function onContactSaved(): void {
+  contactToEdit.value = null
+  $q.notify({ type: 'positive', message: t('contacts.editDone') })
+  void load()
+}
+
+function onContactCreated(): void {
+  createDialog.value = false
+  $q.notify({ type: 'positive', message: t('contacts.createDone') })
+  reloadFromStart()
 }
 
 function reloadFromStart(): void {
@@ -457,7 +514,19 @@ async function confirmForget(): Promise<void> {
   }
 }
 
-watch(selectedAgentId, reloadFromStart)
+watch(selectedAgentId, () => {
+  createDialog.value = false
+  contactToEdit.value = null
+  contacts.value = []
+  selected.value = []
+  reloadFromStart()
+})
+watch(canEdit, allowed => {
+  if (!allowed) {
+    contactToEdit.value = null
+    createDialog.value = false
+  }
+})
 
 onMounted(async () => {
   await agentStore.fetchAgents()

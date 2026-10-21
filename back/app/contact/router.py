@@ -20,6 +20,9 @@ from .schemas import (
     ContactMergeRequest,
     ContactMergeResult,
     ContactPage,
+    ContactRead,
+    ContactUpdate,
+    ContactCreate,
 )
 
 
@@ -54,6 +57,31 @@ async def read_contacts(
         limit=limit,
         offset=offset,
     )
+
+
+@router.post("", response_model=ContactRead, status_code=status.HTTP_201_CREATED)
+@authorize(privileges=Privileges.MEMORY_EDIT)
+async def create_contact(data: ContactCreate) -> ContactRead:
+    await _require_agent_scope(data.agent_id)
+    try:
+        return await service.create_contact(data)
+    except (MemoryNotFoundError, MemoryConflictError) as exc:
+        raise _mutation_error(exc) from exc
+
+
+@router.patch("/{contact_item_id}", response_model=ContactRead)
+@authorize(privileges=Privileges.MEMORY_EDIT)
+async def update_contact(contact_item_id: UUID, data: ContactUpdate) -> ContactRead:
+    try:
+        contact = await get_messenger_contact(contact_item_id)
+        if contact is None:
+            raise MemoryNotFoundError("Contact not found.")
+        await _require_agent_scope(contact.owner_agent_id)
+        return await service.update_contact(
+            contact_item_id=contact_item_id, data=data
+        )
+    except (MemoryNotFoundError, MemoryConflictError) as exc:
+        raise _mutation_error(exc) from exc
 
 
 @router.post("/{source_contact_item_id}/merge", response_model=ContactMergeResult)

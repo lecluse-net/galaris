@@ -9,9 +9,12 @@ from sqlalchemy import update
 from app.conversation import ConversationRound
 from app.memory import (
     MessengerContactRecord,
+    create_mail_contact,
+    split_messenger_contact,
     forget_messenger_contact,
     list_messenger_contacts,
     merge_messenger_contacts,
+    update_messenger_contact,
 )
 from app.messenger import Message, search_agent_users
 from app.task import Task
@@ -24,6 +27,8 @@ from .schemas import (
     ContactMergeResult,
     ContactPage,
     ContactRead,
+    ContactUpdate,
+    ContactCreate,
 )
 
 
@@ -148,6 +153,21 @@ async def list_contacts(
     )
 
 
+async def update_contact(*, contact_item_id: UUID, data: ContactUpdate) -> ContactRead:
+    if data.split_identity_ids:
+        return _read(await split_messenger_contact(contact_item_id=contact_item_id,
+            identity_ids=tuple(data.split_identity_ids),
+            expected_identity_ids=tuple(data.expected_identity_ids or ()), display_name=data.display_name))
+    return _read(await update_messenger_contact(
+        contact_item_id=contact_item_id, display_name=data.display_name,
+    ))
+
+
+async def create_contact(data: ContactCreate) -> ContactRead:
+    return _read(await create_mail_contact(owner_agent_id=data.agent_id,
+        display_name=data.display_name, email=str(data.email)))
+
+
 def _rowcount(result: object) -> int:
     value = getattr(result, "rowcount", 0)
     return value if isinstance(value, int) else 0
@@ -234,4 +254,6 @@ __all__ = [
     "list_contacts",
     "list_reachable_humans",
     "merge_contacts",
+    "update_contact",
+    "create_contact",
 ]

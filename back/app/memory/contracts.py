@@ -136,6 +136,18 @@ class MessengerContactObservation:
 
 
 @dataclass(frozen=True, slots=True)
+class MessengerContactIdentityInput:
+    """A human-managed address; an existing UUID retains the identity's lineage."""
+
+    kind: Literal["messenger", "galaris_user"]
+    namespace: str
+    external_id: str
+    display_name: str = ""
+    galaris_user_id: int | None = None
+    id: UUID | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class MessengerContactIdentity:
     """One strong address attached to a canonical contact."""
 

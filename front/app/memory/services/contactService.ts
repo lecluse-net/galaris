@@ -1,7 +1,11 @@
 import { api } from '@/core/api'
-import type { ContactForgetResult, ContactMergeResult, ContactPage } from '../types'
+import type { Contact, ContactCreate, ContactForgetResult, ContactMergeResult, ContactPage, ContactUpdate } from '../types'
 
 export const contactService = {
+  async create(data: ContactCreate): Promise<Contact> {
+    const response = await api.post<Contact>('/contacts', data)
+    return response.data
+  },
   async list(params: {
     agentId: number
     query?: string
@@ -16,6 +20,13 @@ export const contactService = {
         offset: params.offset ?? 0,
       },
     })
+    return response.data
+  },
+
+  async update(contactItemId: string, data: ContactUpdate): Promise<Contact> {
+    const response = await api.patch<Contact>(
+      `/contacts/${encodeURIComponent(contactItemId)}`, data,
+    )
     return response.data
   },
 

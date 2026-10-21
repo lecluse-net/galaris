@@ -487,6 +487,22 @@ agent: the addresses then become durable aliases of the retained contact, and fu
 do not recreate the duplicate. This merge repoints sealed memories, Topic/contact scopes, memory
 edges, messages, rounds, and Tasks in one transaction before forgetting the old projection.
 
+The address book also creates a private contact from a name and validated email address,
+without a `users`, `agents`, or `messenger_users` row. The normalized address is a
+`messenger / mail` identity; its uniqueness constraint per agent also protects concurrent
+creation. The editing API accepts a name and explicit splits, never arbitrary attachment.
+A split moves the existing identity (preserving its UUID) into a new projection and retains
+at least one identity on the original contact. Both projections become manually managed;
+future observations respect their separation. Memories, messages, rounds, and Tasks remain
+on the original contact. Native inline content and identities commit in one transaction;
+indexing and notifications happen after that commit. Checkbox-based merging remains the grouping operation.
+
+For native Chat, a recognized user is represented in `memory_contact_identities` only by
+the `galaris_user` identity. The transport address `internal / user:<ID>` does not create a
+second contact alias. The `messenger_users` rows required by the journal and transport remain.
+The `app.memory.internal_user_identities` reconciler only removes existing internal aliases
+whose contact already carries the matching user identity; contact IDs and links remain intact.
+
 Administration may also explicitly forget a contact. Memories sealed to that contact are forgotten
 along with their revisions and resources, references from messages, rounds, and Tasks are cleared,
 and then the projection and its identities are purged. A new interaction with the same address

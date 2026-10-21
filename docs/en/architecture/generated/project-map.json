@@ -2924,6 +2924,7 @@
         "files": [
           "back/app/memory/access.py",
           "back/app/memory/bootstrap.py",
+          "back/app/memory/contact_directory.py",
           "back/app/memory/dataset_attachments.py",
           "back/app/memory/dataset_port.py",
           "back/app/memory/dataset_references.py",
@@ -14872,8 +14873,17 @@
         "declared_path": "/contacts",
         "file": "back/app/contact/router.py",
         "handler": "read_contacts",
-        "line": 44,
+        "line": 47,
         "method": "GET",
+        "module": "app.contact"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/contacts",
+        "file": "back/app/contact/router.py",
+        "handler": "create_contact",
+        "line": 64,
+        "method": "POST",
         "module": "app.contact"
       },
       {
@@ -14881,8 +14891,17 @@
         "declared_path": "/contacts/{contact_item_id}",
         "file": "back/app/contact/router.py",
         "handler": "forget_contact",
-        "line": 80,
+        "line": 108,
         "method": "DELETE",
+        "module": "app.contact"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/contacts/{contact_item_id}",
+        "file": "back/app/contact/router.py",
+        "handler": "update_contact",
+        "line": 74,
+        "method": "PATCH",
         "module": "app.contact"
       },
       {
@@ -14890,7 +14909,7 @@
         "declared_path": "/contacts/{source_contact_item_id}/merge",
         "file": "back/app/contact/router.py",
         "handler": "merge_contacts",
-        "line": 61,
+        "line": 89,
         "method": "POST",
         "module": "app.contact"
       },
@@ -20593,6 +20612,8 @@
       },
       {
         "files": [
+          "front/app/memory/components/ContactCreateDialog.vue",
+          "front/app/memory/components/ContactEditDialog.vue",
           "front/app/memory/components/DocumentBulkList.vue",
           "front/app/memory/components/DocumentLibraryNavigation.vue",
           "front/app/memory/components/DocumentThumbnail.vue",
@@ -20634,6 +20655,8 @@
       },
       {
         "files": [
+          "front/app/memory/components/ContactCreateDialog.vue",
+          "front/app/memory/components/ContactEditDialog.vue",
           "front/app/memory/components/DocumentApplication.vue",
           "front/app/memory/components/DocumentApplicationBlock.vue",
           "front/app/memory/components/DocumentAttachments.vue",

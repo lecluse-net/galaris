@@ -40,6 +40,18 @@ export interface Contact {
   updated_at: string | null
 }
 
+export interface ContactCreate {
+  agent_id: number
+  display_name: string
+  email: string
+}
+
+export interface ContactUpdate {
+  display_name: string
+  split_identity_ids?: string[]
+  expected_identity_ids?: string[]
+}
+
 export interface ContactPage {
   items: Contact[]
   total: number

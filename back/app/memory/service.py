@@ -1053,9 +1053,12 @@ async def upsert_source_managed_item(
     *,
     provider_code: str | None = None,
     recreate: bool = False,
+    defer_commit: bool = False,
 ) -> MemoryItem:
     """Create or refresh one immutable-to-users projection from canonical data."""
 
+    if defer_commit and recreate:
+        raise ValueError("Deferred projections cannot recreate an existing resource.")
     source_kind = document.source_kind.strip()
     source_ref = document.source_ref.strip()
     if not source_kind or len(source_kind) > 80:
@@ -1121,6 +1124,14 @@ async def upsert_source_managed_item(
         item = None
 
     selected_provider_code = (provider_code or "native").strip()
+    if defer_commit:
+        # Contact creation/splitting stages several row-owned projections in one
+        # transaction. External providers need their own compensation protocol.
+        from .storage import NativeFileStorage
+
+        actual_provider = item.provider_code if item is not None else selected_provider_code
+        if actual_provider != "native" or type(get_storage(actual_provider)) is not NativeFileStorage:
+            raise MemoryConflictError("Atomic contact changes require native inline storage.")
     if item is not None and provider_code is not None:
         if item.provider_code != selected_provider_code:
             raise MemoryConflictError("Changing a managed memory provider requires recreation.")
@@ -1165,14 +1176,16 @@ async def upsert_source_managed_item(
                 )
             )
             await _upsert_managed_source(item, document, content_hash=digest)
-            await db.commit()
+            if not defer_commit:
+                await db.commit()
         except Exception:
             await db.rollback()
             await provider.delete(resource_id)
             raise
         loaded = await _get_item_record(item.id)
         assert loaded is not None
-        await _enqueue_semantic_projection(loaded)
+        if not defer_commit:
+            await _enqueue_semantic_projection(loaded)
         return loaded
 
     new_resource_id: str | None = None
@@ -1228,10 +1241,14 @@ async def upsert_source_managed_item(
         await refresh_document_search(item)
     _set_semantic_fingerprint(item)
     if not changed:
-        await db.commit()
+        if defer_commit:
+            await db.flush()
+        else:
+            await db.commit()
         loaded = await _get_item_record(item.id)
         assert loaded is not None
-        await _enqueue_semantic_projection(loaded)
+        if not defer_commit:
+            await _enqueue_semantic_projection(loaded)
         return loaded
 
     if content_changed or keywords_changed:
@@ -1247,7 +1264,10 @@ async def upsert_source_managed_item(
             )
         )
     try:
-        await db.commit()
+        if defer_commit:
+            await db.flush()
+        else:
+            await db.commit()
     except Exception:
         await db.rollback()
         if new_resource_id is not None:
@@ -1255,9 +1275,19 @@ async def upsert_source_managed_item(
         raise
     loaded = await _get_item_record(item.id)
     assert loaded is not None
-    await _enqueue_semantic_projection(loaded)
-    await _emit_memory_event("update", loaded)
+    if not defer_commit:
+        await _enqueue_semantic_projection(loaded)
+        await _emit_memory_event("update", loaded)
     return loaded
+
+
+async def commit_source_managed_items(items: tuple[MemoryItem, ...]) -> None:
+    """Publish a set of staged inline projections only after their atomic commit."""
+
+    await get_db().commit()
+    for item in items:
+        await _enqueue_semantic_projection(item)
+        await _emit_memory_event("update", item)
 
 
 async def get_item(

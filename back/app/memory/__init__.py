@@ -41,6 +41,7 @@ from .contracts import (
     MemoryUsageObservation,
     MessengerContactObservation,
     MessengerContactIdentity,
+    MessengerContactIdentityInput,
     MessengerContactRecord,
     ResourceStorage,
     TaskMemoryAssociationResult,
@@ -54,10 +55,13 @@ from .contracts import (
 )
 from .messenger_contact import observe_messenger_contact
 from .contact_directory import (
+    create_mail_contact,
+    split_messenger_contact,
     forget_messenger_contact,
     get_messenger_contact,
     list_messenger_contacts,
     merge_messenger_contacts,
+    update_messenger_contact,
 )
 from .models import DocumentTag, MemoryEmbeddingChunk, MemoryFinding, MemoryItem, MemorySource, MemoryURL
 from .urls import associate_memory_url, memory_urls, register_url_reference_merger
@@ -151,6 +155,7 @@ __all__ = [
     "ContactReferenceRewriter",
     "ContactReferenceCleaner",
     "MessengerContactIdentity",
+    "MessengerContactIdentityInput",
     "MessengerContactObservation",
     "MessengerContactRecord",
     "MemoryAcquisitionCreate",
@@ -194,6 +199,9 @@ __all__ = [
     "forget_messenger_contact",
     "list_messenger_contacts",
     "merge_messenger_contacts",
+    "update_messenger_contact",
+    "create_mail_contact",
+    "split_messenger_contact",
     "register_storage",
     "register_memory",
     "upsert_source_managed_item",

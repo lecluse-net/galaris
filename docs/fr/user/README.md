@@ -703,6 +703,30 @@ Les fiches Agent, Goals et cycles sont des projections en lecture seule : modifi
 plutôt que leur copie mémoire. Les contacts issus des messageries ne contiennent que l’identité
 minimale nécessaire et restent privés à l’agent propriétaire.
 
+Dans **Connaissances → Contacts**, choisissez un agent puis cliquez sur le contact ou sur son
+crayon pour modifier son nom affiché. Un seul nom d’affichage s’applique à tout le contact.
+La modale ne propose ni rattachement direct ni suppression de compte : pour regrouper des comptes,
+cochez deux contacts dans la liste puis utilisez **Fusionner deux contacts**.
+Pour séparer un compte, utilisez **Scinder** dans la fiche, puis enregistrez. Chaque compte choisi
+obtient une fiche distincte, avec le même nom initial, sans être supprimé. Il faut conserver au
+moins un compte sur la fiche d’origine. Les souvenirs et l’historique restent sur cette fiche ;
+les prochains échanges avec le compte séparé retrouveront sa nouvelle fiche. Annuler abandonne
+la scission préparée. Une modification concurrente exige de rouvrir le contact avant de réessayer.
+
+**Ajouter un contact mail** ouvre une fiche à renseigner avec un nom et une adresse mail valide.
+Ce carnet d’adresses reste privé à l’agent sélectionné : il n’est pas nécessaire que le correspondant
+possède un compte utilisateur ou soit un agent. La création n’envoie aucun mail, ne crée aucun
+compte et ne lui accorde aucun accès. Une adresse déjà présente dans le carnet de cet agent est
+refusée, indépendamment des majuscules. Ces actions nécessitent `MEMORY_EDIT` et la gestion de cet agent.
+
+Pour le Chat interne, l’identité **Utilisateur Galaris** suffit : aucune seconde identité de
+messagerie interne n’est créée. Les anciens alias internes redondants sont retirés lors de
+la synchronisation DbAdmin, sans supprimer le contact ni ses souvenirs.
+
+Les fiches créées manuellement ou scindées conservent leur nom et leurs comptes lors des prochains
+messages. Une scission peut être réunie par la fusion. En cas d’erreur, le brouillon reste
+disponible pour réessayer. Annuler ferme la fenêtre sans enregistrer le brouillon.
+
 Les fiches de fichiers restent vides tant qu'elles n'ont ni notes ni description utile.
 Leurs métadonnées techniques (URI, taille, type, date, empreinte) ne remplissent pas la description.
 

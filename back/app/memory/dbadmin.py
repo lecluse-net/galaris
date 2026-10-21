@@ -2,8 +2,9 @@
 
 from loguru import logger
 import asyncio
-from sqlalchemy import select, text, update, func
+from sqlalchemy import String, cast, delete, exists, select, text, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from core.dbadmin import (
     DbAdminAction, DbAdminPhase, DbAdminReconciler, DbAdminRegistry, SchemaTransitionSet,
@@ -15,7 +16,7 @@ from .goal_document_adapter import (
 )
 from .semantic_index import reconcile_embedding_index
 from .source_projection import rebuild_source_memories
-from .models import MemoryItem
+from .models import MemoryContactIdentity, MemoryItem
 from .catalogue_projection import reconcile_catalogue_descriptions
 from . import document_thumbnail_cache
 
@@ -63,6 +64,25 @@ async def _reconcile_catalogue_editability(session: AsyncSession) -> None:
 
 async def _reconcile_catalogue_descriptions(_session: AsyncSession) -> None:
     await reconcile_catalogue_descriptions()
+
+
+async def _reconcile_internal_user_identities(session: AsyncSession) -> None:
+    """Retire only native Chat aliases already represented by the same user."""
+    user_identity = aliased(MemoryContactIdentity)
+    await session.execute(
+        delete(MemoryContactIdentity).where(
+            MemoryContactIdentity.identity_kind == "messenger",
+            MemoryContactIdentity.namespace == "internal",
+            exists(select(user_identity.id).where(
+                user_identity.contact_item_id == MemoryContactIdentity.contact_item_id,
+                user_identity.owner_agent_id == MemoryContactIdentity.owner_agent_id,
+                user_identity.identity_kind == "galaris_user",
+                user_identity.namespace == "galaris",
+                user_identity.external_id == cast(user_identity.galaris_user_id, String),
+                MemoryContactIdentity.external_id == "user:" + cast(user_identity.galaris_user_id, String),
+            )),
+        )
+    )
 
 
 def needs_document_append_backfill(transitions: SchemaTransitionSet) -> bool:
@@ -130,6 +150,11 @@ async def _enqueue_goal_folders(_session: AsyncSession) -> None:
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    registry.register_reconciler(DbAdminReconciler(
+        key="app.memory.internal_user_identities",
+        handler=_reconcile_internal_user_identities,
+        depends_on=("app.memory.source_projections",),
+    ))
     from .content_migration import register_inline_content
     register_inline_content(registry)
     registry.register_action(DbAdminAction(
