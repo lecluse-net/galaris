@@ -1,7 +1,7 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { document as documentFixture } from './data.mjs'
 
-async function conversation(page, privileges = ['CHAT_SEND'], commandsHandler = null, activityHandler = null) {
+async function conversation(page, privileges = ['CHAT_SEND'], commandsHandler = null, activityHandler = null, options = {}) {
   const rooms = ['a', 'b'].map(code => ({ id: `room-${code}`, label: `Conversation ${code}`,
     agent_id: 7, agent_name: 'Alice', agent_active: false, source: null, writable: true,
     members: [], muted: false, archived: false, unread_count: 0, conversation_type: 'text' }))
@@ -25,11 +25,72 @@ async function conversation(page, privileges = ['CHAT_SEND'], commandsHandler = 
     await jsonRoute(page, `**/api/chat/rooms/${room.id}/speech/status*`, { available_agent_ids: [] })
   }
   await jsonRoute(page, '**/api/chat/inbox', { unread_count: 0 })
+  await jsonRoute(page, '**/api/chat/recipients?*', { agents: [], total: 0 })
   await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
   await jsonRoute(page, '**/api/chat/agents/7/avatar', {})
-  await mount(page, 'app/chat/pages/index.vue', { route: '/chat?room=room-a', privileges })
-  await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+  await mount(page, 'app/chat/pages/index.vue', { route: options.route ?? '/chat?room=room-a', browserHistory: true, privileges })
+  if (options.route !== '/chat') await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
   return { rooms, messages }
+}
+
+for (const width of [1440, 390]) {
+  test(`browser history returns to visited conversations and the Chat home at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await conversation(page, ['CHAT_SEND'], null, null, { route: '/chat' })
+    const open = async label => {
+      if (width < 1024 && await page.locator('.conversation-pane').isVisible()) {
+        await page.getByRole('button', { name: 'Details', exact: true }).click()
+      }
+      await page.locator('.room-item').filter({ hasText: label }).click()
+    }
+    await open('Conversation a')
+    await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+    await expect(page).toHaveURL(/\/chat\?room=room-a$/)
+    await open('Conversation b')
+    await expect(page.locator('.conversation-pane')).toContainText('Content room-b')
+    await expect(page).toHaveURL(/\/chat\?room=room-b$/)
+    await page.evaluate(() => window.history.back())
+    await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+    await expect(page.locator('.conversation-pane')).not.toContainText('Content room-b')
+    await page.evaluate(() => window.history.forward())
+    await expect(page.locator('.conversation-pane')).toContainText('Content room-b')
+    // Selecting the current conversation must not insert a duplicate browser visit.
+    await open('Conversation b')
+    await page.evaluate(() => window.history.back())
+    await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+    await page.evaluate(() => window.history.back())
+    await expect(page).toHaveURL(/\/chat$/)
+    await expect(page.getByRole('textbox', { name: 'Search conversations…', exact: true })).toBeVisible()
+    await expect(page.locator('.conversation-pane')).toHaveCount(0)
+    await page.evaluate(() => window.history.forward())
+    await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+  })
+}
+
+for (const status of [200, 403]) {
+  test(`a late off-list room response cannot replace a browser return (${status})`, async ({ page }) => {
+    await conversation(page)
+    let release, started = false
+    const gate = new Promise(resolve => { release = resolve })
+    await page.route('**/api/chat/rooms/off-list', async route => {
+      started = true
+      await gate
+      await route.fulfill({ status, json: status === 200
+        ? { id: 'off-list', label: 'Late conversation', agent_id: 7, agent_name: 'Alice', writable: true }
+        : { detail: 'Access denied' } })
+    })
+    await page.evaluate(() => window.testApp.navigate('/chat?room=off-list'))
+    const response = page.waitForResponse(response => new URL(response.url()).pathname === '/api/chat/rooms/off-list')
+    try {
+      await expect.poll(() => started).toBe(true)
+      await page.evaluate(() => window.history.back())
+      await expect(page).toHaveURL(/\/chat\?room=room-a$/)
+    } finally { release() }
+    await response
+    await page.evaluate(() => new Promise(requestAnimationFrame))
+    await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+    await expect(page.getByRole('alert')).toHaveCount(0)
+  })
 }
 
 test('messages and composer remain usable while optional commands are slow or unavailable', async ({ page }) => {

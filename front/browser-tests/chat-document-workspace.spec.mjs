@@ -415,6 +415,36 @@ test('document_show cannot switch rooms while waiting for a document save', asyn
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
+test('browser conversation navigation keeps a document draft when saving fails and retries after recovery', async ({ page }) => {
+  const state = await workspace(page)
+  const room = { id: 'room-b', label: 'Other conversation', agent_id: 7, agent_name: 'Alice',
+    agent_active: false, source: null, writable: true, members: [], muted: false, archived: false,
+    unread_count: 0, conversation_type: 'text' }
+  await jsonRoute(page, '**/api/chat/rooms/room-b', room)
+  await jsonRoute(page, '**/api/chat/rooms/room-b/messages?*', { items: [], total: 0 })
+  await jsonRoute(page, '**/api/chat/rooms/room-b/activity?*', { items: [], total: 0 })
+  await jsonRoute(page, '**/api/chat/rooms/room-b/commands', { commands: [] })
+  await jsonRoute(page, '**/api/chat/rooms/room-b/speech/status*', { available_agent_ids: [] })
+  await page.evaluate(() => window.testApp.navigate('/chat?room=room-b'))
+  await expect(page.locator('.conversation-title')).toHaveText('Other conversation')
+  await page.evaluate(() => window.testApp.navigate('/chat?room=room-a'))
+  await expect(page.locator('.conversation-title')).toHaveText('Document conversation')
+  await openFromSearch(page)
+  const title = page.locator('.chat-document-pane').getByLabel('Title', { exact: true })
+  state.refuseSave(true)
+  await title.fill('Document draft before changing conversation')
+  await page.evaluate(() => window.history.back())
+  await expect(page.getByText('Automatic save failed', { exact: true }).first()).toBeVisible()
+  await expect(title).toHaveValue('Document draft before changing conversation')
+  await expect(page).toHaveURL(/\/chat\?room=room-a$/)
+  await expect(page.locator('.conversation-title')).toHaveText('Document conversation')
+  state.refuseSave(false)
+  await page.evaluate(() => window.history.back())
+  await expect(page.locator('.conversation-title')).toHaveText('Other conversation')
+  await expect(page.locator('.chat-document-pane')).toHaveCount(0)
+  expect(state.documentWrites.at(-1)).toMatchObject({ title: 'Document draft before changing conversation' })
+})
+
 test('document_show respects denied access and leaves the chat usable', async ({ page }) => {
   const state = await workspace(page, false)
   state.deny(true)

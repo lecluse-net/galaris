@@ -164,7 +164,7 @@ import { navigationIcon } from '@/core/navigation'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { apiErrorDetail } from '@/core/api'
 import { websocket } from '@/core/websocket'
 import { privileges } from '@/core/authorize'
@@ -189,6 +189,24 @@ import { useChatStore } from '../stores/chat'; import { chatService as service }
 
 const $q=useQuasar(); const {t,locale}=useI18n(); const route=useRoute(); const store=useChatStore(); const inboxStore=useChatInboxStore(); const privilegeStore=usePrivilegeStore(); const mobileView=ref<'conversation'|'details'>('details'); const createDialog=ref(false); const creatingRoom=ref(false); const preferencesDialog=ref(false); const savingRoomPreferences=ref(false); const archivingRoom=ref(false); const conversationsExpanded=ref(false); const tasksExpanded=ref(false); const documentsExpanded=ref(false); const processesExpanded=ref(false); const recipients=ref<RecipientCatalog>({agents:[]}); const viewerAgents=ref<ChatViewerAgent[]>([]); const roomSearch=ref(''); const replyingTo=ref<MessengerMessage|null>(null); const selectedTopicId=ref<string|null>(null)
 const roomFiltersVisible = ref(false)
+const router = useRouter()
+let chatReady = false
+let roomSelectionRequest = 0
+let roomNavigationRequest = 0
+function requestedRoomId(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null
+}
+const removeRoomNavigationGuard = router.beforeEach(async (to, from) => {
+  const request = ++roomNavigationRequest
+  if (!chatReady || from.path !== route.path || to.path !== from.path
+    || requestedRoomId(to.query.room) === requestedRoomId(from.query.room)) return
+  const saved = await flushDisplayedDocument()
+  if (request !== roomNavigationRequest) return
+  if (!saved) {
+    $q.notify({ type: 'negative', message: t('documents.autosaveError') })
+    return false
+  }
+})
 const initialAgentId = ref<number | null>(null)
 const loadingRecipients = ref(false)
 const recipientsError = ref(false)
@@ -581,8 +599,37 @@ function roomUpdated(room: MessengerRoom): void {
   homeRoomsRevision.value++
   void report(() => store.loadRooms())
 }
-async function selectRoom(room:MessengerRoom){followingConversationBottom=true;historyScrollEnabled=false;showScrollToBottom.value=false;replyingTo.value=null;selectedTopicId.value=null;mobileView.value='conversation';await report(()=>store.selectRoom(room));if(store.selectedRoom?.id===room.id)await scrollInitialChatZonesToBottom()}
-async function selectRequestedRoom():Promise<boolean>{const value=route.query.room;const roomId=typeof value==='string'&&value.length>0?value:null;if(!roomId)return false;const room=store.rooms.find(item=>item.id===roomId)??await service.room(roomId);await selectRoom(room);return true}
+async function selectRoom(room: MessengerRoom): Promise<void> {
+  if (requestedRoomId(route.query.room) === room.id) {
+    mobileView.value = 'conversation'
+    return
+  }
+  await report(async () => {
+    await router.push({ path: route.path, query: { ...route.query, room: room.id }, hash: route.hash })
+  })
+}
+async function selectRequestedRoom(initial = false): Promise<boolean> {
+  const request = ++roomSelectionRequest
+  const roomId = requestedRoomId(route.query.room)
+  if (!roomId && initial) return false
+  let room: MessengerRoom | null
+  try {
+    room = roomId ? store.rooms.find(item => item.id === roomId) ?? await service.room(roomId, store.viewerAgentId) : null
+  } catch (error) {
+    if (!documentPageDisposed && request === roomSelectionRequest && requestedRoomId(route.query.room) === roomId) throw error
+    return false
+  }
+  if (documentPageDisposed || request !== roomSelectionRequest || requestedRoomId(route.query.room) !== roomId) return false
+  followingConversationBottom = true
+  historyScrollEnabled = false
+  showScrollToBottom.value = false
+  replyingTo.value = null
+  selectedTopicId.value = null
+  mobileView.value = room ? 'conversation' : 'details'
+  await store.selectRoom(room)
+  if (room && store.selectedRoom?.id === room.id) await scrollInitialChatZonesToBottom()
+  return room !== null
+}
 async function prepareMessage(): Promise<boolean> {
   const roomId = store.selectedRoom?.id
   if (documentPane.value && !await documentPane.value.flush()) {
@@ -616,9 +663,42 @@ watch(conversationSurfaceVisible, visible => {if(visible)retryVisibleRead()})
 watch(displayedConversationRoomId, roomId => {inboxStore.setDisplayedRoom(roomId);store.setDisplayedRoom(roomId)}, {immediate:true})
 watch(
   () => route.query.room,
-  value => {if(typeof value==='string'&&value&&store.enabled&&store.selectedRoom?.id!==value)void report(()=>selectRequestedRoom().then(()=>undefined))},
+  value => {
+    if (chatReady && store.enabled && store.selectedRoom?.id !== requestedRoomId(value)) {
+      void report(() => selectRequestedRoom().then(() => undefined))
+    }
+  },
 )
-onMounted(()=>{document.addEventListener('visibilitychange',updateChatPageVisibility);window.addEventListener('focus',updateChatPageFocus);window.addEventListener('blur',updateChatPageFocus);void report(async()=>{await store.initialize();if(canImpersonate.value)viewerAgents.value=await service.viewerAgents();const requestedRoomSelected=await selectRequestedRoom();if(!requestedRoomSelected&&store.selectedRoom){mobileView.value='conversation';await scrollInitialChatZonesToBottom()}})}); onBeforeUnmount(()=>{document.removeEventListener('visibilitychange',updateChatPageVisibility);window.removeEventListener('focus',updateChatPageFocus);window.removeEventListener('blur',updateChatPageFocus);inboxStore.setDisplayedRoom(null);store.setDisplayedRoom(null);store.releaseSelectedRoom()})
+onMounted(() => {
+  document.addEventListener('visibilitychange', updateChatPageVisibility)
+  window.addEventListener('focus', updateChatPageFocus)
+  window.addEventListener('blur', updateChatPageFocus)
+  void report(async () => {
+    await store.initialize()
+    if (documentPageDisposed) return
+    if (canImpersonate.value) viewerAgents.value = await service.viewerAgents()
+    if (documentPageDisposed) return
+    chatReady = true
+    const requestedRoomSelected = await selectRequestedRoom(true)
+    if (!requestedRoomSelected && !requestedRoomId(route.query.room) && store.selectedRoom) {
+      await router.replace({ path: route.path, query: { ...route.query, room: store.selectedRoom.id }, hash: route.hash })
+      mobileView.value = 'conversation'
+      await scrollInitialChatZonesToBottom()
+    }
+  })
+})
+onBeforeUnmount(() => {
+  chatReady = false
+  ++roomSelectionRequest
+  ++roomNavigationRequest
+  removeRoomNavigationGuard()
+  document.removeEventListener('visibilitychange', updateChatPageVisibility)
+  window.removeEventListener('focus', updateChatPageFocus)
+  window.removeEventListener('blur', updateChatPageFocus)
+  inboxStore.setDisplayedRoom(null)
+  store.setDisplayedRoom(null)
+  store.releaseSelectedRoom()
+})
 </script>
 
 <style scoped>

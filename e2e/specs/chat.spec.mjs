@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { collectPageErrors } from '../page-errors.mjs'
 
 const socketEvents = new WeakMap()
 test.beforeEach(async ({ page }) => {
@@ -323,15 +324,28 @@ test('failed HTTP projections are retried after the final socket event, without 
 })
 
 test('switching rooms isolates live content and preserves the finished response', async ({ page, request }) => {
+  const errors = collectPageErrors(page)
   const fixture = await prepare(page, request)
   await send(page)
-  await page.goto(`/chat?room=${fixture.rooms[1]}`)
+  const otherRoom = page.locator('.conversation-list .room-item:not([aria-current="true"])')
+  await expect(otherRoom).toHaveCount(1)
+  await otherRoom.click()
+  await expect(page).toHaveURL(new RegExp(`/chat\\?room=${fixture.rooms[1]}$`))
   await expect(page.locator('.composer-fields textarea')).toBeVisible()
   await release(request, fixture.rooms[0])
   await expect.poll(async () => (await (await request.get(`/api/__test/rounds/${fixture.rooms[0]}`)).json())[0]?.status).toBe('SUCCEEDED')
   await expect(page.locator('.message-timeline')).not.toContainText('Réponse progressive')
-  await page.goto(`/chat?room=${fixture.rooms[0]}`)
+  await page.goBack()
+  await expect(page.locator('.room-id-copy')).toHaveAttribute('title', fixture.rooms[0])
   await final(page)
+  await page.goForward()
+  await expect(page.locator('.room-id-copy')).toHaveAttribute('title', fixture.rooms[1])
+  await expect(page.locator('.message-timeline')).not.toContainText('Réponse progressive')
+  await page.locator('.conversation-list .room-item[aria-current="true"]').click()
+  await page.goBack()
+  await expect(page.locator('.room-id-copy')).toHaveAttribute('title', fixture.rooms[0])
+  await final(page)
+  expect(errors()).toEqual([])
 })
 
 test('partial provider failure reaches a durable error and leaves the composer usable', async ({ page, request }) => {

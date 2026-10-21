@@ -1167,6 +1167,13 @@ are in `front/browser-tests/`.
 
 ### Topic selection and creation
 
+`chat-recovery.spec.mjs` checks browser back/forward between conversations and the Chat home
+on mobile and desktop, without duplicate visits when selecting the current room. Late responses
+from an off-list room cannot replace the restored conversation. `chat-document-workspace.spec.mjs`
+cancels the change if the open document cannot be saved, then allows retrying.
+`e2e/specs/chat.spec.mjs` alternates clicks and native history during an ongoing response,
+without mixing conversations or losing the finished response.
+
 `front/browser-tests/chat-window.spec.mjs` measures mounted bubbles for 1,000 synthetic
 messages and protects both ends, replies and read visibility. The full chat and discussion
 viewer cross the virtualization threshold by loading pages of 50 messages on desktop
@@ -1320,8 +1327,16 @@ user infrastructure adds neither private imports nor cycles.
 `front/browser-tests/dataset-dialog.spec.mjs` checks opening the Dataset editor from Chat,
 confirmation before closing an invalid draft, reopening, library filter preservation and
 conversion of pasted Dataset URIs/URLs into persisted cards opening the modal in reading
-and editing without copying JSON. The assembled `e2e/specs/datasets.spec.mjs` journey
-preserves saving, history, restoration and sharing inside the modal.
+and editing without copying JSON. The library opens its editor in the page on desktop and
+mobile; the scenario checks mouse and keyboard resizing, returning to the list and reopening
+with the filter preserved. The assembled `e2e/specs/datasets.spec.mjs` journey preserves
+saving, history, restoration, sharing and draft confirmation in the inline editor.
+
+`dataset-navigation.spec.mjs` mounts the actual route and uses browser history on mobile and
+desktop: visits, returning to the list, preserved filters, reselection without duplicate visits,
+invalid JSON, cancelling or discarding drafts and retrying a failed save.
+`e2e/specs/dataset-browser-history.spec.mjs` exercises this journey in the complete application
+with real APIs, in Chromium, Firefox and WebKit.
 
 ### Personal document classification
 

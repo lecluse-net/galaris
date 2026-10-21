@@ -212,6 +212,11 @@ Permissions remain configurable, and updates preserve previously saved choices.
 
 The **Messenger** entry opens Galaris’s native messaging system when it is enabled and your role has the necessary permissions. You can create separate direct conversations with an Agent, search rooms, track unread messages, reply, attach a file, record a voice note, and start a browser call. The **Activity** panel shows publishable steps and Tools from the round. Archiving a conversation removes it from the current list without deleting its history; you can find it again in the archives. Internal messaging does not offer group creation or participant management.
 
+Switching conversations updates the browser address. **Back** and **Forward** return to
+visited conversations; going back before the first opening returns to the Chat home.
+Selecting the current conversation again does not add a visit. Any open document is saved
+before switching; if saving fails, the conversation and document draft stay open.
+
 In native Chat, the small buttons beside “Thinking” control that response: **Pause** saves
 progress, **Resume** continues from it, and **Stop** removes the Agent’s response from the
 round, including its provisional text. Your message remains visible. **Reply now** requests an answer using available

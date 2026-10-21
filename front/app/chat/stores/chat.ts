@@ -404,7 +404,14 @@ export const useChatStore = defineStore('chat', () => {
       }).catch(optionalError)
     } catch (error) { if (request.canApply()) handleScopeError(error) }
   }
-  async function selectRoom(room: MessengerRoom): Promise<void> {
+  async function selectRoom(room: MessengerRoom | null): Promise<void> {
+    if (!room) {
+      releaseSelectedRoom()
+      selectedRoom.value = null
+      loadingRoomId.value = null
+      connect()
+      return
+    }
     selectedRoomGeneration += 1
     if (subscribedRoom) websocket.leaveRoom(subscribedRoom)
     loadingRoomId.value = room.id

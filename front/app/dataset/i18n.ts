@@ -1,5 +1,6 @@
 export default {
   fr: { datasets: {
+    resizeList: 'Redimensionner la liste des jeux de données',
     deleteDataset: 'Supprimer le jeu de données',
     agentFilter: 'Agent propriétaire', allAgents: 'Tous les agents', agentFilterError: 'Impossible de charger les agents. Rouvrez la liste pour réessayer.',
     itemsPerPage: '{count} par page', lastModified: 'Dernière modification : {date}',
@@ -30,6 +31,7 @@ export default {
     titleField: 'Titre',
   } },
   en: { datasets: {
+    resizeList: 'Resize Dataset list',
     deleteDataset: 'Delete Dataset',
     agentFilter: 'Owner agent', allAgents: 'All agents', agentFilterError: 'Unable to load agents. Reopen the list to retry.',
     itemsPerPage: '{count} per page', lastModified: 'Last modified: {date}',
@@ -60,6 +62,7 @@ export default {
     titleField: 'Title',
   } },
   zh: { datasets: {
+    resizeList: '调整数据集列表宽度',
     deleteDataset: '删除数据集',
     agentFilter: '所属智能体', allAgents: '所有智能体', agentFilterError: '无法加载智能体，请重新打开列表重试。',
     itemsPerPage: '每页 {count} 项', lastModified: '最后修改：{date}',

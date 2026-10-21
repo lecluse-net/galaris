@@ -9,10 +9,17 @@ title, owner, sharing and history. They do not appear in the Documents library, 
 HTML content. Legacy Document links to migrated Datasets open the same Dataset editor
 under current permissions.
 
-Click a Dataset to open its modal on desktop or mobile. The cross, Escape or backdrop
-returns to the list while preserving search and page. Unsaved drafts require confirmation
-before closing. Chat Dataset cards open this same modal, with full JSON, history and
+Click a Dataset to open its editor in the page. On desktop, the flat list stays on the left
+and a draggable separator adjusts the two panes, as in Documents. The separator also supports
+the left/right arrow keys. On mobile, the editor fills the page. **Back to list** preserves
+search and pagination. Unsaved drafts require confirmation before switching Datasets or
+leaving the editor. Chat Dataset cards continue to open a modal with full JSON, history and
 authorized actions.
+
+The browser's **Back** and **Forward** buttons return to visited Datasets and the list,
+preserving its filters and pagination. This navigation also asks for confirmation when you
+have an unsaved draft, including invalid JSON. **Cancel** keeps the current Dataset and
+your input; **Discard changes** continues navigation.
 
 The **Owner agent** filter limits the list to a managed agent's Datasets. **All agents**
 restores all accessible Datasets, including user-owned ones. Search and pagination apply

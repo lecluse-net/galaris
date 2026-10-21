@@ -1219,6 +1219,13 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 
 ### Sélection et création de sujets
 
+`chat-recovery.spec.mjs` vérifie sur mobile et bureau le retour et l’avance du navigateur
+entre conversations et vers l’accueil du Chat, sans doublon lors d’une resélection. Les réponses
+tardives d’une conversation hors liste ne remplacent pas la conversation retrouvée.
+`chat-document-workspace.spec.mjs` annule le changement si le document ouvert ne peut pas être
+sauvegardé, puis permet le réessai. `e2e/specs/chat.spec.mjs` alterne clics et historique natif
+pendant une réponse en cours, sans mélange entre conversations ni perte de la réponse achevée.
+
 `front/browser-tests/chat-window.spec.mjs` compare le nombre de bulles montées pour
 1 000 messages synthétiques et protège les extrémités, les réponses et la visibilité de lecture.
 Le chat complet et le lecteur de discussions franchissent le seuil de virtualisation
@@ -1370,8 +1377,17 @@ applicative vers l’infrastructure utilisateur n’ajoute ni import privé ni c
 `front/browser-tests/dataset-dialog.spec.mjs` vérifie l’ouverture de l’éditeur Dataset depuis
 le Chat, la confirmation de fermeture avec brouillon invalide, la réouverture, la conservation
 du filtre de bibliothèque et la conversion des URI/URL Dataset collées en cartes persistantes
-ouvrant la modale en lecture et en édition sans copier leur JSON. Le parcours assemblé
-`e2e/specs/datasets.spec.mjs` conserve sauvegarde, historique, restauration et partage dans la modale.
+ouvrant la modale en lecture et en édition sans copier leur JSON. La bibliothèque ouvre
+l'éditeur dans la page sur ordinateur et mobile ; le scénario vérifie le séparateur à la
+souris et au clavier, puis le retour à la liste et la réouverture avec le filtre conservé.
+Le parcours assemblé `e2e/specs/datasets.spec.mjs` conserve sauvegarde, historique,
+restauration, partage et confirmation des brouillons dans l'éditeur intégré.
+
+`dataset-navigation.spec.mjs` monte la route réelle et utilise l'historique du navigateur
+sur mobile et bureau : visites, retours à la liste, filtres conservés, resélection sans doublon,
+JSON invalide, annulation ou abandon du brouillon et réessai après échec de sauvegarde.
+`e2e/specs/dataset-browser-history.spec.mjs` exerce ce parcours dans l'application complète
+avec les vraies API, sur Chromium, Firefox et WebKit.
 
 ### Classement personnel des documents
 

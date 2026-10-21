@@ -9,10 +9,18 @@ Elles ont leur propre titre, propriétaire, partage et historique. Elles ne figu
 dans la bibliothèque Documents, réservée aux contenus HTML. Les anciens liens documentaires
 vers les jeux migrés ouvrent le même éditeur Dataset, avec les droits actuels.
 
-Cliquez sur un jeu pour ouvrir sa modale sur ordinateur comme sur mobile. La croix,
-Échap ou le clic sur l'arrière-plan ramène à la liste, en conservant recherche et page.
-Un brouillon non enregistré demande confirmation avant fermeture. Les cartes Dataset du
-Chat ouvrent cette même modale, avec le JSON complet, l'historique et les actions autorisées.
+Cliquez sur un jeu pour ouvrir son éditeur dans la page. Sur ordinateur, la liste sans
+arborescence reste à gauche et un séparateur déplaçable règle la largeur des deux volets,
+comme dans Documents. Le séparateur se règle aussi au clavier avec les flèches gauche/droite.
+Sur mobile, l'éditeur occupe la page. **Retour à la liste** conserve recherche et pagination.
+Un brouillon non enregistré demande confirmation avant de changer de jeu ou de quitter
+l'éditeur. Les cartes Dataset du Chat continuent d'ouvrir une modale, avec le JSON complet,
+l'historique et les actions autorisées.
+
+Les boutons **Précédent** et **Suivant** du navigateur retrouvent les jeux visités et la
+liste, en conservant ses filtres et sa pagination. Cette navigation demande aussi confirmation
+si vous avez un brouillon non enregistré, même avec un JSON invalide. **Annuler** conserve
+le jeu courant et votre saisie ; **Abandonner les modifications** poursuit la navigation.
 
 Le filtre **Agent propriétaire** limite la liste aux jeux d'un agent géré. **Tous les agents**
 rétablit tous les jeux accessibles, y compris ceux d'un utilisateur. La recherche et la

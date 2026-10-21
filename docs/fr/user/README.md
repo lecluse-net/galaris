@@ -281,6 +281,12 @@ publiables du round. Archiver une conversation la retire de la liste courante sa
 historique ; vous pouvez la retrouver dans les archives. La création de groupes et la gestion
 des participants ne sont pas proposées dans la messagerie interne.
 
+Changer de conversation met son adresse à jour dans le navigateur. Les boutons **Précédent**
+et **Suivant** retrouvent les conversations visitées ; un retour avant la première ouverture
+retrouve l’accueil du Chat. Sélectionner à nouveau la conversation courante n’ajoute pas de
+visite. Le document ouvert est sauvegardé avant le changement ; si la sauvegarde échoue,
+la conversation et le brouillon restent affichés.
+
 Après l'admission de votre message, « Réflexion en cours » apparaît dès que le
 round en attente est reçu par l'interface, avant ses premiers fragments. Une
 réponse déjà en cours reste affichée si vous envoyez une nouvelle demande.
