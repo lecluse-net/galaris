@@ -1,5 +1,5 @@
 <template>
-  <q-page class="datasets-page q-pa-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }">
+  <q-page class="datasets-page q-pa-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }" :style-fn="pageStyle">
     <PageHeader icon="data_object" :title="t('datasets.title')" :description="t('datasets.description')" />
     <q-card flat bordered class="datasets-workspace">
       <q-splitter v-model="splitter" :limits="[20, 55]" :disable="$q.screen.lt.md" class="datasets-splitter"
@@ -59,6 +59,7 @@ const splitter = ref(30), title = ref(''), creating = ref(false), creatingBusy =
 const navigation = useTemplateRef<InstanceType<typeof DatasetLibraryNavigation>>('navigation')
 const editor = useTemplateRef<InstanceType<typeof DatasetEditor>>('editor')
 let mounted = true, createFolderId: string | undefined, pendingAction: { id: string; action: 'rename' | 'delete' } | null = null
+function pageStyle(offset: number, height: number): { height: string } { return { height: `${height - offset}px` } }
 function refresh(): void { void navigation.value?.refresh() }
 function openCreate(folderId?: string): void { createFolderId = folderId; createError.value = ''; title.value = ''; creating.value = true }
 function resizeList(event: KeyboardEvent): void {
@@ -99,8 +100,10 @@ async function removed(id: string): Promise<void> { refresh(); if (selectedId.va
 onBeforeUnmount(() => { mounted = false })
 </script>
 <style scoped>
-.datasets-workspace { overflow: hidden; }
-.datasets-splitter { height: calc(100dvh - 230px); min-height: 420px; }
+.datasets-page { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
+.datasets-page > :not(.datasets-workspace) { flex-shrink: 0; }
+.datasets-workspace { flex: 1; min-height: 0; overflow: hidden; }
+.datasets-splitter { height: 100%; min-height: 0; }
 .datasets-splitter :deep(> .q-splitter__after) { overflow: auto; }
 .datasets-splitter :deep(> .q-splitter__separator) { background: color-mix(in srgb, var(--q-dark) 10%, transparent); }
 .dataset-splitter-handle { display: flex; width: 20px; height: 42px; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 10px; color: var(--solaire-gray-accent); background: var(--q-card-background, #fff); box-shadow: 0 2px 8px rgba(35, 46, 66, .12); }
@@ -109,10 +112,6 @@ onBeforeUnmount(() => { mounted = false })
 :global(body.body--dark) .dataset-splitter-handle { background: var(--q-dark-page); box-shadow: 0 2px 8px rgba(0, 0, 0, .38); }
 .dataset-placeholder { height: 100%; min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 16px; }
 @media (min-width: 1024px) {
-  .datasets-page { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
-  .datasets-page > :not(.datasets-workspace) { flex-shrink: 0; }
-  .datasets-workspace { flex: 1; min-height: 0; }
-  .datasets-splitter { height: 100%; min-height: 0; }
   .datasets-splitter :deep(> .q-splitter__before),
   .datasets-splitter :deep(> .q-splitter__after) { min-height: 0; }
 }

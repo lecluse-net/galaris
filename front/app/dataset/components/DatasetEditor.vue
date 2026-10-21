@@ -10,7 +10,7 @@
         <q-icon name="data_object" size="40px" class="q-mr-sm dataset-editor-icon" aria-hidden="true" />
         <q-toolbar-title class="dataset-editor-identity">
           <div class="row items-center no-wrap">
-            <h2 class="text-h6 ellipsis q-ma-none dataset-heading" :title="title || dataset.title">{{ title || dataset.title }}</h2>
+            <h2 class="text-h6 q-ma-none dataset-heading" :title="title || dataset.title">{{ title || dataset.title }}</h2>
           </div>
           <div class="dataset-editor-details row items-center text-caption text-grey-7">
             <q-badge outline color="primary" class="dataset-uri-badge dataset-editor-detail-control">
@@ -25,26 +25,20 @@
               <q-icon name="history" size="13px" class="q-mr-xs" aria-hidden="true" />
               {{ t('datasets.revision') }} {{ dataset.revision }}
             </q-badge>
-            <q-btn
-              v-if="editable && dataset.can_delete"
-              dense
-              no-caps
-              size="12px"
-              padding="0 6px"
-              color="negative"
-              icon="delete_outline"
-              class="dataset-editor-detail-control q-ml-auto"
-              :label="t('datasets.deleteDataset')"
-              :disable="busy"
-              @click="error = ''; confirmDelete = true"
-            />
           </div>
         </q-toolbar-title>
         <div class="dataset-editor-actions row items-center q-gutter-xs">
-          <q-btn flat round dense icon="refresh" :aria-label="t('datasets.reload')" :disable="busy" @click="reload">
+          <q-btn flat round dense icon="refresh" class="dataset-editor-refresh" :aria-label="t('datasets.reload')" :disable="busy" @click="reload">
             <q-tooltip>{{ t('datasets.reload') }}</q-tooltip>
           </q-btn>
-          <q-btn v-if="editable && dataset.can_write" color="primary" dense no-caps icon="save" :label="t('datasets.save')" :loading="busy" @click="save" />
+          <q-btn v-if="editable && dataset.can_delete" dense color="negative" icon="delete_outline"
+            :aria-label="t('datasets.deleteDataset')" :disable="busy"
+            @click="error = ''; confirmDelete = true">
+            <q-tooltip>{{ t('datasets.deleteDataset') }}</q-tooltip>
+          </q-btn>
+          <q-btn v-if="editable && dataset.can_write" color="primary" dense no-caps icon="save" :label="t('datasets.save')" :loading="busy" @click="save">
+            <q-tooltip>{{ t('datasets.save') }}</q-tooltip>
+          </q-btn>
         </div>
       </q-toolbar>
       <q-separator />
@@ -60,12 +54,26 @@
         <div class="dataset-editor-sharing-cell">
           <DatasetSharing :key="dataset.id" :id="dataset.id" :lock-version="dataset.lock_version" :editable="!busy && editable && dataset.can_manage" @changed="sharingChanged" />
         </div>
-        <div class="col-12">
-          <CodeEditor v-model="content" language="json" :label="t('datasets.content')" :readonly="busy || !editable || !dataset.can_write" />
-        </div>
       </q-card-section>
-      <q-expansion-item :label="t('datasets.usages')" icon="hub" @show="showUsages = true"><DatasetUsages v-if="showUsages" :key="dataset.id" :id="dataset.id" /></q-expansion-item>
-      <q-expansion-item :label="t('datasets.history')" icon="history" @show="loadHistory"><q-table v-model:pagination="pagination" :rows="history" :columns="columns" row-key="revision" :rows-per-page-options="[10, 20, 50, 100, 500]" @request="requestHistory"><template #body-cell-revision="slot"><q-td :props="slot"><q-btn flat :label="String(slot.row.revision)" @click="preview(slot.row.revision)" /></q-td></template></q-table></q-expansion-item>
+      <q-tabs v-model="activeTab" dense no-caps align="left" active-color="primary" class="dataset-editor-tabs">
+        <q-tab name="content" :label="t('datasets.contentTab')" />
+        <q-tab name="history" :label="t('datasets.history')" :disable="busy" />
+        <q-tab name="usages" :label="t('datasets.usages')" />
+      </q-tabs>
+      <q-separator />
+      <q-tab-panels v-model="activeTab" keep-alive class="dataset-editor-panels">
+        <q-tab-panel name="content" class="dataset-editor-content q-pa-sm">
+          <CodeEditor v-model="content" language="json" fill-height :label="t('datasets.content')" :readonly="busy || !editable || !dataset.can_write" />
+        </q-tab-panel>
+        <q-tab-panel name="history" class="q-pa-sm">
+          <q-table v-model:pagination="pagination" :rows="history" :columns="columns" row-key="revision" :rows-per-page-options="[10, 20, 50, 100, 500]" :loading="busy" @request="requestHistory">
+            <template #body-cell-revision="slot"><q-td :props="slot"><q-btn outline :label="String(slot.row.revision)" @click="preview(slot.row.revision)" /></q-td></template>
+          </q-table>
+        </q-tab-panel>
+        <q-tab-panel name="usages" class="q-pa-none">
+          <DatasetUsages :key="dataset.id" :id="dataset.id" />
+        </q-tab-panel>
+      </q-tab-panels>
     </template>
     <q-dialog v-model="showRevision"><q-card style="width: 800px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('datasets.revision') }} {{ revision }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('datasets.close')" /></q-card-section><q-card-section><CodeEditor :model-value="historical" language="json" readonly :label="t('datasets.content')" /></q-card-section><q-card-actions align="right"><q-btn v-if="editable && dataset?.can_write" :label="t('datasets.restore')" @click="restore" /></q-card-actions></q-card></q-dialog>
     <q-dialog v-model="confirmDelete"><q-card style="width: 480px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('datasets.delete') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('datasets.close')" /></q-card-section><q-card-section><q-banner v-if="error" role="alert">{{ error }}</q-banner>{{ t('datasets.deleteConfirm') }}<p class="q-mt-md">{{ t('datasets.deleteImpact') }}</p></q-card-section><q-card-actions align="right"><q-btn v-close-popup flat :label="t('datasets.cancel')" /><q-btn flat :label="t('datasets.delete')" :loading="busy" @click="remove" /></q-card-actions></q-card></q-dialog>
@@ -85,7 +93,7 @@
   </section>
 </template>
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { QInput, QTableProps } from 'quasar'
@@ -103,7 +111,8 @@ const props = defineProps<{ id: string }>()
 const titleInput = ref<QInput>()
 const emit = defineEmits<{ loaded: [dataset: Dataset]; updated: [dataset: Dataset]; deleted: [id: string] }>()
 const { t } = useI18n(), dataset = shallowRef<Dataset>(), content = ref(''), title = ref(''), error = ref(''), busy = ref(false)
-const privileges = usePrivilegeStore(), confirmDelete = ref(false), showUsages = ref(false)
+const privileges = usePrivilegeStore(), confirmDelete = ref(false)
+const activeTab = ref('content')
 const confirmDiscard = ref(false)
 const ownerState = shallowRef<DatasetOwnerOptions>()
 const savedContent = ref('')
@@ -160,8 +169,9 @@ function sharingChanged(state: SharingState): void { if (dataset.value) dataset.
 async function remove(): Promise<void> { const current = dataset.value; if (!current?.can_delete || !editable.value) return; await action(async () => { await service.remove(current.id, current.lock_version); if (mounted) { deleted = true; confirmDelete.value = false; emit('deleted', current.id) } }, true) }
 async function loadHistory(): Promise<void> { if (dataset.value) await action(async () => { const page = await service.history(props.id, pagination.value.page, pagination.value.rowsPerPage); if (mounted) { history.value = page.items; pagination.value.rowsNumber = page.total } }) }
 function requestHistory({ pagination: value }: { pagination: { page: number; rowsPerPage: number } }): void { Object.assign(pagination.value, value); void loadHistory() }
+watch(activeTab, tab => { if (tab === 'history') void loadHistory() })
 async function preview(number: number): Promise<void> { if (dataset.value) await action(async () => { const value = await service.revision(props.id, number); if (mounted) { historical.value = formatJson(value.content); revision.value = number; showRevision.value = true } }) }
-async function restore(): Promise<void> { const current = dataset.value; if (!current) return; if (dirty.value && !await canLeave()) return; await action(async () => { const value = await service.restore(current.id, revision.value, current.revision); if (mounted) { accept(value); showRevision.value = false; emit('updated', value) } }, true) }
+async function restore(): Promise<void> { const current = dataset.value; if (!current) return; if (dirty.value && !await canLeave()) return; await action(async () => { const value = await service.restore(current.id, revision.value, current.revision); if (mounted) { accept(value); showRevision.value = false; activeTab.value = 'content'; emit('updated', value) } }, true) }
 function resolveDiscard(discard: boolean): void { const resolve = pendingDiscard; pendingDiscard = undefined; confirmDiscard.value = false; resolve?.(discard) }
 function canLeave(): boolean | Promise<boolean> {
   if (deleted) return true
@@ -184,11 +194,15 @@ onMounted(() => { window.addEventListener('beforeunload', beforeUnload); void lo
 onBeforeUnmount(() => { mounted = false; window.removeEventListener('beforeunload', beforeUnload); resolveDiscard(false) })
 </script>
 <style scoped>
-.dataset-editor { min-width: 0; }
+.dataset-editor { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; }
+.dataset-editor > :not(.dataset-editor-panels) { flex-shrink: 0; }
+.dataset-editor-panels { flex: 1; min-height: 180px; background: transparent; }
+.dataset-editor-content { display: flex; flex-direction: column; }
 .dataset-editor-state { min-height: 320px; display: flex; align-items: center; justify-content: center; }
 .dataset-editor-toolbar { min-height: 72px; gap: 8px; }
 .dataset-editor-icon { color: var(--solaire-blue-accent); flex-shrink: 0; }
 .dataset-editor-identity, .dataset-heading, .dataset-editor-fields { min-width: 0; }
+.dataset-heading { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dataset-editor-details { gap: 4px; margin-top: 4px; }
 .dataset-editor-detail-control { height: 24px; min-height: 24px; }
 .dataset-uri-badge { max-width: min(100%, 360px); padding: 4px 7px; font-weight: 400; }
@@ -202,8 +216,14 @@ onBeforeUnmount(() => { mounted = false; window.removeEventListener('beforeunloa
 .dataset-editor-owner-field :deep(.q-field__native) { flex-wrap: nowrap; }
 .dataset-editor-fields :deep(.q-field--dense .q-field__control) { min-height: 40px; }
 .dataset-editor-fields :deep(.q-field--dense .q-field__marginal) { height: 40px; }
-@media (max-width: 599.98px) {
-  .dataset-editor-toolbar { align-items: flex-start; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; }
-  .dataset-editor-actions { width: 100%; justify-content: flex-end; }
+@media (max-width: 1023.98px) {
+  .dataset-editor-toolbar { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: start; padding: 10px 8px; }
+  .dataset-editor-icon { margin-right: 0; }
+  .dataset-editor-identity { padding: 0; white-space: normal; }
+  .dataset-heading { white-space: normal; overflow-wrap: anywhere; }
+  .dataset-editor-details { flex-wrap: wrap; }
+  .dataset-uri-badge { max-width: 100%; }
+  .dataset-editor-actions { grid-column: 1 / -1; flex-wrap: wrap; justify-content: flex-end; margin-left: 0; }
+  .dataset-editor-refresh { margin-right: auto; }
 }
 </style>

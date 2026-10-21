@@ -36,6 +36,10 @@ with 10, 20, 50, 100 or 500 available.
 
 ## Create and edit JSON
 
+The editor has three tabs: **Content**, **History** and **Usages**.
+In **Content**, the JSON editor fills the available height to the bottom of the view.
+Switching tabs preserves your draft, including invalid JSON.
+
 Create a Dataset from this library. Content can be an object, array or scalar without an
 associated schema. Use a root array `[]` to collect successive additions. An agent uses
 `file_create(path="data://", name="Responses", content="[]")` and retains the returned URI.

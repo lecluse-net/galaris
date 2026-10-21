@@ -15,6 +15,8 @@ async function fixtures(page) {
 
 test('a chat Dataset card opens the dedicated editor and protects unsaved drafts on dismissal', async ({ page }, testInfo) => {
   await fixtures(page)
+  await jsonRoute(page, `**/api/datasets/${id}/revisions?*`, { items: [{ revision: 1, created_at: dataset.created_at }], total: 1 })
+  await jsonRoute(page, `**/api/datasets/${id}/usages?*`, { items: [], total: 0 })
   await jsonRoute(page, '**/api/chat/rooms/room/messages/message/previews*', [{ uri, kind: 'resource', title: dataset.title,
     description: '', metadata: {}, media_type: 'application/json', download_available: false, image_available: false, open_mode: 'inline', content_format: 'json', content: dataset.content }])
   await mount(page, 'app/chat/components/MessageResourcePreviews.vue', { props: { roomId: 'room', messageId: 'message' }, privileges: ['DATASET_EDIT'] })
@@ -24,6 +26,12 @@ test('a chat Dataset card opens the dedicated editor and protects unsaved drafts
   await expect(input).toHaveValue('{\n  "amount": 0\n}')
   await page.screenshot({ path: testInfo.outputPath('dataset-dialog-desktop.png'), animations: 'disabled' })
   await input.fill('{')
+  await page.getByRole('tab', { name: 'History', exact: true }).click()
+  await expect(page.getByRole('button', { name: '1', exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'Usages', exact: true }).click()
+  await expect(page.getByText('No usage found in this category')).toBeVisible()
+  await page.getByRole('tab', { name: 'Content', exact: true }).click()
+  await expect(input).toHaveValue('{')
   await page.locator('.q-dialog__backdrop').click({ position: { x: 5, y: 5 } })
   const discard = page.getByRole('dialog').filter({ hasText: 'Discard unsaved changes before continuing?' })
   await discard.getByRole('button', { name: 'Cancel', exact: true }).click()

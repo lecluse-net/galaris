@@ -37,5 +37,5 @@ function canLeave(): boolean | Promise<boolean> { return editor.value?.canLeave(
 defineExpose({ canLeave })
 </script>
 <style scoped>
-.dataset-dialog { width: 1100px; }
+.dataset-dialog { width: 1100px; height: calc(100dvh - 32px); }
 </style>

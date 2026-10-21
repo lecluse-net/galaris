@@ -38,6 +38,10 @@ titre et le JSON. La pagination propose 50 éléments par défaut, avec les choi
 
 ## Créer et modifier du JSON
 
+L’éditeur propose trois onglets : **Contenu**, **Historique** et **Utilisations**.
+Dans **Contenu**, l’éditeur JSON occupe la hauteur disponible jusqu’en bas de la vue.
+Changer d’onglet conserve votre brouillon, y compris un JSON invalide.
+
 Créez un jeu depuis cette bibliothèque. Son contenu peut être un objet, un tableau ou une
 valeur simple, sans schéma associé. Pour recueillir des ajouts successifs, partez d'un tableau
 racine `[]`. Un agent utilise `file_create(path="data://", name="Réponses", content="[]")`
