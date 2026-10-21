@@ -2,6 +2,11 @@ export default {
   fr: {
     nav: { files: 'Fichiers', files_desc: 'Explorer les fichiers et ressources accessibles à chaque agent' },
     files: {
+      actions: 'Actions pour {name}', deleteTitle: 'Supprimer un élément',
+      renameDirectory: 'Renommer le répertoire', directoryName: 'Nom du répertoire',
+      deleteFile: 'Supprimer définitivement « {name} » ?',
+      deleteDirectory: 'Supprimer définitivement le répertoire « {name} » et tout son contenu ?',
+      deleteError: 'La suppression a échoué. Actualisez le répertoire pour vérifier les éléments restants avant de réessayer.',
       selectItem: 'Sélectionner {name}', searchLocation: 'Rechercher dans cet emplacement', selection: 'Fichiers sélectionnés', selectedCount: '{count} élément(s) sélectionné(s)', selectFiles: 'Sélectionner',
       title: 'Fichiers', chooseAgent: 'Choisissez un agent pour explorer ses fichiers.',
       openAgent: 'Explorer les fichiers de {name}',
@@ -19,6 +24,11 @@ export default {
   en: {
     nav: { files: 'Files', files_desc: 'Browse files and resources available to each agent' },
     files: {
+      actions: 'Actions for {name}', deleteTitle: 'Delete an item',
+      renameDirectory: 'Rename directory', directoryName: 'Directory name',
+      deleteFile: 'Permanently delete “{name}”?',
+      deleteDirectory: 'Permanently delete the directory “{name}” and all its contents?',
+      deleteError: 'Deletion failed. Refresh the directory to check remaining entries before retrying.',
       selectItem: 'Select {name}', searchLocation: 'Search this location', selection: 'Selected files', selectedCount: '{count} item(s) selected', selectFiles: 'Select',
       title: 'Files', chooseAgent: 'Choose an agent to browse their files.',
       openAgent: 'Browse files for {name}',
@@ -36,6 +46,11 @@ export default {
   zh: {
     nav: { files: '文件', files_desc: '浏览每个智能体可访问的文件和资源' },
     files: {
+      actions: '{name} 的操作', deleteTitle: '删除项目',
+      renameDirectory: '重命名目录', directoryName: '目录名称',
+      deleteFile: '永久删除“{name}”？',
+      deleteDirectory: '永久删除目录“{name}”及其全部内容？',
+      deleteError: '删除失败。请刷新目录并检查剩余项目后再重试。',
       selectItem: '选择 {name}', searchLocation: '搜索此位置', selection: '已选文件', selectedCount: '已选择 {count} 项', selectFiles: '选择',
       title: '文件', chooseAgent: '请选择一个智能体以浏览其文件。',
       openAgent: '浏览 {name} 的文件',

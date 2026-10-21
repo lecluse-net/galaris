@@ -54,7 +54,7 @@ The route is excluded from builds for other environments.
 |---|---|
 | **Configure** | Providers & models, Agents, Tools & connections, Skills |
 | **Act** | Chat, Goals, Processes |
-| **Knowledge** | Documents, Datasets, Memory, Contacts, Thematic dossiers |
+| **Knowledge** | Documents, Datasets, Files, Memory, Contacts, Thematic dossiers |
 | **Monitor** | Dashboard, Activity, Dream, Mail journal, Failure journal |
 | **Administer** | Preferences, Laboratory, Console, Users, Teams, Roles & permissions |
 | **Developers** (dev mode only) | Visual reference |

@@ -25,16 +25,27 @@ export interface FileListing {
 }
 
 export const fileBrowserService = {
-  canRename(entry: FileEntry): boolean {
-    return !entry.is_collection && ((entry.metadata?.can_rename === true)
-      || (/^document:\/\/[^/]+\/attachments\/[^/]+$/.test(entry.uri) && entry.capabilities.includes('delete')))
+  canMove(entry: FileEntry): boolean {
+    return entry.capabilities.includes('move') && !/^(galaris|document|data|memory):\/\//.test(entry.uri)
   },
-  async rename(agent: number, entry: FileEntry, name: string): Promise<void> {
+  canDelete(entry: FileEntry): boolean {
+    return entry.capabilities.includes('delete') && !/^(galaris|data|memory):\/\//.test(entry.uri)
+      && (!entry.uri.startsWith('document://') || /^document:\/\/[^/]+\/attachments\/[^/]+$/.test(entry.uri))
+      && !!entry.uri.split('://')[1]
+  },
+  canRename(entry: FileEntry): boolean {
+    return fileBrowserService.canMove(entry) || (!entry.is_collection && ((entry.metadata?.can_rename === true)
+      || (/^document:\/\/[^/]+\/attachments\/[^/]+$/.test(entry.uri) && entry.capabilities.includes('delete'))))
+  },
+  async rename(agent: number, entry: FileEntry, name: string): Promise<string> {
+    if (fileBrowserService.canMove(entry)) {
+      return (await api.patch<{ uri: string }>('/file-share/browser/entry', { name }, { params: { agent_id: agent, uri: entry.uri } })).data.uri
+    }
     const reference = typeof entry.metadata?.rename_uri === 'string' ? entry.metadata.rename_uri : entry.uri
     const dataset = /^data:\/\/([^/]+)\/attachments\/([^/]+)$/.exec(reference)
     if (dataset) {
       await api.patch(`/datasets/${dataset[1]}/attachments/${dataset[2]}`, { name })
-      return
+      return entry.uri
     }
     if (entry.uri.startsWith('file://')) {
       await api.patch(`/file-share/files/${entry.uri.slice('file://'.length)}`, { name }, { params: { agent_id: agent } })
@@ -43,6 +54,10 @@ export const fileBrowserService = {
       if (!document || !attachment) throw new Error('Unsupported file rename')
       await api.patch(`/memory/documents/${document}/attachments/${attachment}`, { name }, { params: { actor_agent_id: agent } })
     }
+    return entry.uri
+  },
+  async remove(agent: number, entry: FileEntry): Promise<void> {
+    await api.delete('/file-share/browser/entry', { params: { agent_id: agent, uri: entry.uri, recursive: entry.is_collection } })
   },
   async videoUrl(agent: number, uri: string, management = false): Promise<string | null> {
     return (await api.post<{ url: string | null }>('/file-share/browser/media', null, {

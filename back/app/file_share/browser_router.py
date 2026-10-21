@@ -8,13 +8,16 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 import httpx
+import asyncssh
 
 from app.agent import current_management_scope, get_agent_record
 from app.memory import MemoryNotFoundError, MemoryPermissionError
+from core.storage import FileRename
 from core.authorize import Privileges, authorize
 from core.util import source_code_response_headers
-from .browser import browser_content, browser_context, browser_thumbnail
-from .resource_contracts import ResourceDescriptor, ResourceListing, ResourceSchemeDescription, ResourceSearchResult
+from .browser import browser_content, browser_context, browser_thumbnail, browser_rename, browser_delete
+from .resource_contracts import ResourceDescriptor, ResourceListing, ResourceSchemeDescription, ResourceSearchResult, ResourceTransfer, ResourceMutation
+from .resource_uri import ResourceRevisionConflict
 from .resource_service import list_schemes, resource_info, resource_list, resource_search
 
 router = APIRouter(prefix="/browser")
@@ -27,14 +30,31 @@ async def browser_access(agent_id: int) -> AsyncGenerator[None]:
     try:
         async with asyncio.timeout(120):
             yield
-    except (PermissionError, FileNotFoundError, MemoryNotFoundError, MemoryPermissionError) as exc:
+    except (FileExistsError, ResourceRevisionConflict, asyncssh.SFTPFileAlreadyExists) as exc:
+        raise HTTPException(409, "Resource changed or destination already exists") from exc
+    except (PermissionError, FileNotFoundError, MemoryNotFoundError, MemoryPermissionError,
+            asyncssh.SFTPPermissionDenied, asyncssh.SFTPNoSuchFile) as exc:
         raise HTTPException(404, "Resource unavailable") from exc
     except (ValueError, NotImplementedError) as exc:
         raise HTTPException(422, "Unsupported resource operation or invalid reference") from exc
     except TimeoutError as exc:
         raise HTTPException(504, "Resource provider timed out") from exc
-    except (OSError, httpx.HTTPError) as exc:
+    except (OSError, httpx.HTTPError, asyncssh.SFTPError) as exc:
         raise HTTPException(502, "Resource provider unavailable") from exc
+
+
+@router.patch("/entry", response_model=ResourceTransfer)
+@authorize(privileges=Privileges.MEMORY_EDIT)
+async def rename_entry(agent_id: int, data: FileRename, uri: str = Query(max_length=4096)) -> ResourceTransfer:
+    async with browser_access(agent_id), browser_context(agent_id) as ctx:
+        return await browser_rename(ctx, uri, data.name)
+
+
+@router.delete("/entry", response_model=ResourceMutation)
+@authorize(privileges=Privileges.MEMORY_EDIT)
+async def delete_entry(agent_id: int, uri: str = Query(max_length=4096), recursive: bool = False) -> ResourceMutation:
+    async with browser_access(agent_id), browser_context(agent_id) as ctx:
+        return await browser_delete(ctx, uri, recursive=recursive)
 
 
 @router.get("/schemes", response_model=list[ResourceSchemeDescription])

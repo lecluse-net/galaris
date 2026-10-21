@@ -61,7 +61,7 @@ La route est exclue des constructions des autres environnements.
 |---|---|
 | **Configurer** | Fournisseurs & modèles, Agents, Outils & connexions, Compétences |
 | **Agir** | Discussion, Objectifs, Processus |
-| **Connaissances** | Documents, Jeux de données, Mémoire, Contacts, Sujets |
+| **Connaissances** | Documents, Jeux de données, Fichiers, Mémoire, Contacts, Sujets |
 | **Superviser** | Tableau de bord, Activité, Dream, Journal des mails, Journal des échecs |
 | **Administrer** | Préférences, Laboratoire, Console, Utilisateurs, Équipes, Rôles & autorisations |
 | **Développeurs** (mode dev uniquement) | Référence graphique |

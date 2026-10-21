@@ -3,10 +3,10 @@
   <NativeRunDialog v-else-if="target.kind === 'process_run'" :key="target.id + ':' + target.agentId"
     :run-id="target.id" :agent-id="target.agentId" :title="target.title" @close="emit('close')" />
   <ExternalRunDialog v-else-if="target.kind === 'external_process_run'" :key="target.id" :run-id="target.id" @close="emit('close')" />
-  <WorkingDocumentDialog v-else-if="target.kind === 'document'" :model-value="true"
+  <WorkingDocumentDialog v-else-if="target.kind === 'document'" ref="resourceEditor" :model-value="true"
     :document-id="target.id" :agent-id="target.agentId ?? null" :title="target.title"
     @update:model-value="!$event && emit('close')" @deleted="changedAndClose" />
-  <DatasetDialog v-else-if="target.kind === 'dataset'" :key="target.id" :id="target.id" :title="target.title"
+  <DatasetDialog v-else-if="target.kind === 'dataset'" ref="resourceEditor" :key="target.id" :id="target.id" :title="target.title"
     @close="emit('close')" @updated="emit('changed')" @deleted="changedAndClose" />
   <ConversationTurnDialog v-else :model-value="true" :title="resolvedTitle || target.title || t(titleKeys[target.kind] || 'common.open')" :icon="icons[target.kind] || 'info'"
     :width="target.kind === 'agent' ? '700px' : undefined" :close-label="t('common.close')" @update:model-value="!$event && emit('close')">
@@ -72,7 +72,7 @@ export async function preload(kind: string): Promise<void> {
 </script>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CopyResourceReference, ResourceReferenceMenu, defineAsyncView, EditorialContent, ConversationTurnDialog, WorkingDocumentDialog, type ResourceDetailTarget } from '@/core/util'
 import type { TaskFull } from '@/app/task'
@@ -95,6 +95,12 @@ const VoiceConversationDetailView = defineAsyncView(async () => (await import('@
 const RoomDiscussion = defineAsyncView(async () => (await import('@/app/chat/interface')).RoomDiscussion)
 const props = defineProps<{ target: ResourceDetailTarget }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
+const resourceEditor = useTemplateRef<{ canLeave?: () => boolean | Promise<boolean>; flush?: () => Promise<boolean> }>('resourceEditor')
+async function canLeave(): Promise<boolean> {
+  const editor = resourceEditor.value
+  return editor?.canLeave ? await editor.canLeave() : editor?.flush ? await editor.flush() : true
+}
+defineExpose({ canLeave })
 const { t } = useI18n()
 const titleKeys: Record<string, string> = { topic: 'topic.detail.title', task: 'task.detailTitle', round: 'conversation.history.detail.title', voice: 'voice.history.detail.title', voice_session: 'voice.history.tab', room: 'chat.conversations' }
 const icons: Record<string, string> = { topic: 'folder', voice_session: 'phone_in_talk', agent: 'person', task: 'task_alt', process_run: 'account_tree', dataset: 'data_object', round: 'forum', voice: 'record_voice_over', room: 'hub', document: 'description', memory: 'memory' }

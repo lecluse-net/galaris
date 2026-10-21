@@ -120,13 +120,22 @@ class DavServer:
             dirs.add(path)
             return httpx.Response(status)
         if request.method in {"MOVE", "COPY"}:
-            if path not in self.files:
+            if path not in self.files and path not in dirs:
                 return httpx.Response(404)
             destination = unquote(urlsplit(request.headers["destination"]).path)[len(self.prefix) :]
-            if request.headers.get("overwrite") == "F" and destination in self.files:
+            if request.headers.get("overwrite") == "F" and (destination in self.files or destination in dirs):
                 return httpx.Response(412)
             if request.headers.get("if-match") != self.etag(path):
                 return httpx.Response(412)
+            if path in dirs:
+                assert request.method == "MOVE"
+                for source in list(self.files):
+                    if source.startswith(path + "/"):
+                        self.put(destination + source[len(path):], self.files.pop(source))
+                moved_dirs = {name for name in dirs if name == path or name.startswith(path + "/")}
+                dirs.difference_update(moved_dirs)
+                dirs.update(destination + name[len(path):] for name in moved_dirs)
+                return httpx.Response(201)
             self.put(destination, self.files[path])
             if request.method == "MOVE":
                 del self.files[path]
@@ -134,7 +143,13 @@ class DavServer:
         if request.method == "DELETE":
             if request.headers.get("if-match") != self.etag(path):
                 return httpx.Response(412)
-            del self.files[path]
+            if path in dirs:
+                for child in list(self.files):
+                    if child.startswith(path + "/"):
+                        del self.files[child]
+                self.dirs = {name for name in dirs if name != path and not name.startswith(path + "/")}
+            else:
+                del self.files[path]
             return httpx.Response(204)
         raise AssertionError(request.method)
 
@@ -152,6 +167,33 @@ def dav(monkeypatch):
 
     monkeypatch.setattr(files, "resolve_resource_transport_with_service", resolve)
     return server, adapter, ResourceContext(agent_id=1, runtime="internal")
+
+
+@pytest.mark.asyncio
+async def test_browser_directory_mutations_use_dav_preconditions_and_preserve_existing_destinations(dav):
+    from app.file_share.browser import browser_rename, browser_delete
+
+    server, adapter, ctx = dav
+    server.put("source/sub/file.txt", b"Synthetic directory bytes")
+    server.dirs.add("existing")
+    with pytest.raises(FileExistsError):
+        await browser_rename(ctx, "nextcloud://source/", "existing")
+    assert server.files["source/sub/file.txt"] == b"Synthetic directory bytes"
+    renamed = await browser_rename(ctx, "nextcloud://source/", "renamed")
+    assert renamed.uri == "nextcloud://renamed/"
+    assert server.files == {"renamed/sub/file.txt": b"Synthetic directory bytes"}
+    with pytest.raises(IsADirectoryError):
+        await adapter.resource_delete("renamed")
+    with pytest.raises(ValueError):
+        await browser_delete(ctx, renamed.uri, recursive=False)
+    await browser_delete(ctx, renamed.uri, recursive=True)
+    assert server.files == {} and "renamed" not in server.dirs
+    for request in server.requests:
+        if request.method in {"MOVE", "DELETE"}:
+            assert request.headers["if-match"]
+    server.forced_status = 403
+    with pytest.raises(PermissionError):
+        await browser_delete(ctx, "nextcloud://restricted/", recursive=True)
 
 
 @pytest.mark.asyncio

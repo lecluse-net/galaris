@@ -117,5 +117,22 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
     assert (await client.get(endpoint, headers=human, params={"resource_agent_id": other_id})).status_code == 404
     assert (await client.put(endpoint, headers=admin, json={**body, "resource_agent_id": other_id})).status_code in {403, 404}
     assert (await client.get(f"{browser}/entries", params={"agent_id": owner_id, "uri": "file://", "cursor": "invalid"}, headers=human)).status_code == 422
+    # A domain reference keeps shared bytes alive. Only independent owned files are removable here.
+    domain_attachment = await client.post(f"/api/memory/documents/{document.json()['id']}/attachments",
+        params={"actor_agent_id": owner_id}, headers=human,
+        files={"file": ("Domain-owned.txt", b"Synthetic domain attachment", "text/plain")})
+    assert domain_attachment.status_code == 201, domain_attachment.text
+    domain_params = {"agent_id": owner_id, "uri": f"file://{domain_attachment.json()['id']}"}
+    info = await client.get(f"{browser}/info", params=domain_params, headers=human)
+    assert "delete" not in info.json()["capabilities"]
+    assert (await client.delete(f"{browser}/entry", params=domain_params, headers=human)).status_code == 404
+    disposable = await client.post(f"/api/file-share/files?agent_id={owner_id}", headers=human,
+        files={"upload": ("Disposable.txt", b"Synthetic disposable bytes", "text/plain")})
+    disposable_params = {"agent_id": owner_id, "uri": disposable.json()["uri"]}
+    assert "delete" in disposable.json()["capabilities"]
+    assert (await client.delete(f"{browser}/entry", params={**disposable_params, "agent_id": other_id}, headers=admin)).status_code == 404
+    removed = await client.delete(f"{browser}/entry", params=disposable_params, headers=human)
+    assert removed.status_code == 200, removed.text
+    assert (await client.get(f"{browser}/info", params=disposable_params, headers=human)).status_code == 404
     client.cookies.clear()
     assert (await client.get(f"{browser}/schemes", params={"agent_id": owner_id})).status_code in {401, 403}

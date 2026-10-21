@@ -23,12 +23,33 @@ disponible sinon. Cliquez sur un fichier pour afficher son aperçu, sur un Docum
 une Task, un Dataset ou un échange pour ouvrir sa vue métier existante. Les formats
 sans lecteur intégré se téléchargent.
 
-L’action **Renommer** permet de modifier le nom complet d’un fichier interne ou d’une
-pièce jointe documentaire lorsque vous avez les droits d’édition. Saisissez le nom,
-extension comprise, puis validez. Le contenu et les liens restent identiques ; une erreur
-conserve votre saisie pour réessayer. Le nom est commun à toutes les vues de ce fichier :
-Documents, Datasets, conversations, processus et Fichiers, aperçus et téléchargements compris.
-Les références externes ne proposent pas cette action.
+Les boutons **Précédent** et **Suivant** du navigateur retrouvent les agents,
+emplacements et répertoires visités. Le fil d’Ariane et le bouton de répertoire parent
+participent au même historique. L’URL conserve l’agent et l’emplacement courants :
+vous pouvez la copier ou recharger la page pour les retrouver, sous réserve de vos droits.
+La navigation du sélecteur de pièces jointes reste locale à sa fenêtre.
+Si un jeu de données ouvert contient un brouillon non enregistré, le retour demande
+confirmation avant de le fermer ; annuler conserve le brouillon et l’emplacement courant.
+
+Un clic droit sur un fichier ou un répertoire ouvre son menu contextuel ; au clavier,
+utilisez **Maj+F10** sur l’élément. Dans la grille, le bouton **⋮** donne accès aux mêmes
+actions, y compris sur mobile. Le menu propose **Renommer** et **Supprimer** selon vos
+droits d’édition et les capacités du fournisseur. Les répertoires de la console SSH,
+de Nextcloud et de Samba peuvent ainsi être renommés et supprimés ; les racines restent protégées.
+
+Pour renommer, saisissez le nom complet, extension comprise pour un fichier, puis validez.
+Le contenu est conservé et aucun élément existant n’est écrasé. Les fichiers internes et
+pièces jointes gardent leur URI ; un fichier ou répertoire externe change de chemin.
+Une erreur conserve la saisie pour réessayer. Le nom interne est commun aux vues métier,
+aux aperçus et aux téléchargements.
+
+La suppression demande confirmation et, pour un répertoire, inclut tout son contenu.
+Seuls les fichiers internes indépendants de l’agent sont supprimables depuis `file://` ;
+les pièces jointes possédées par un domaine conservent ses règles de suppression.
+Les projections métier et sources en lecture seule ne proposent pas de mutation.
+Après une action, la grille et l’arbre sont actualisés. Si le répertoire ouvert est
+supprimé, le navigateur revient à son parent. En cas d’échec pendant une suppression,
+actualisez pour vérifier les éléments restants avant de réessayer.
 
 Les vidéos des partages Samba, Nextcloud/WebDAV, AFFiNE, de la console SSH et des
 fichiers internes se lisent progressivement, sans attendre le téléchargement complet.

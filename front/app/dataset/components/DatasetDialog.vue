@@ -33,6 +33,8 @@ async function close(): Promise<void> {
   } finally { closing = false }
 }
 function updated(dataset: Dataset): void { resolvedTitle.value = dataset.title; emit('updated', dataset) }
+function canLeave(): boolean | Promise<boolean> { return editor.value?.canLeave() ?? true }
+defineExpose({ canLeave })
 </script>
 <style scoped>
 .dataset-dialog { width: 1100px; }

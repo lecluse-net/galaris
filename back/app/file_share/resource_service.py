@@ -31,6 +31,7 @@ from .resource_contracts import (
     ResourceContext,
     ResourceDescriptor,
     ResourceDeletionTransport,
+    ResourceCollectionDeletionTransport,
     ResourceConditionalDeletionTransport,
     ResourceListing,
     ResourceListingTransport,
@@ -166,7 +167,7 @@ def _transport_capabilities(service: str, entry: FileEntry) -> list[ResourceCapa
         return _MAIL_CAPABILITIES
     if service in {"nextcloud", "samba"}:
         if entry.is_dir:
-            return ["create", "info", "list", "search"]
+            return ["create", "info", "list", "search", "move", "delete"] if entry.path.strip("/.") else ["create", "info", "list", "search"]
         return ["append", "copy", "delete", "edit", "info", "move", "read", "write"]
     return _TRANSPORT_CAPABILITIES
 
@@ -2299,7 +2300,7 @@ async def resource_copy(
 
 
 @observe_operation
-async def resource_delete(ctx: ResourceContext, uri: object, *, expected_etag: str | None = None) -> ResourceMutation:
+async def resource_delete(ctx: ResourceContext, uri: object, *, expected_etag: str | None = None, recursive: bool = False) -> ResourceMutation:
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
     if reference.scheme == "file":
         from .managed_files import delete_managed_file
@@ -2310,7 +2311,12 @@ async def resource_delete(ctx: ResourceContext, uri: object, *, expected_etag: s
         return await provider.delete(ctx, reference, expected_etag=expected_etag)
     if reference.scheme == "console":
         transport, path = await _console_reference(ctx, reference)
-        result = await transport.file_delete(path)
+        if recursive:
+            if not isinstance(transport, ResourceCollectionDeletionTransport):
+                raise NotImplementedError("This console cannot delete a directory.")
+            result = await transport.resource_delete_collection(path)
+        else:
+            result = await transport.file_delete(path)
         return ResourceMutation(
             uri=_console_uri(result.path),
             operation="delete",
@@ -2359,7 +2365,11 @@ async def resource_delete(ctx: ResourceContext, uri: object, *, expected_etag: s
         )
     if not isinstance(transport, ResourceDeletionTransport):
         raise NotImplementedError(f"{reference.scheme}:// does not support deletion.")
-    if expected_etag is not None:
+    if recursive:
+        if not isinstance(transport, ResourceCollectionDeletionTransport):
+            raise NotImplementedError("This provider cannot delete a directory.")
+        result = await transport.resource_delete_collection(reference.decoded_locator)
+    elif expected_etag is not None:
         if not isinstance(transport, ResourceConditionalDeletionTransport):
             raise NotImplementedError("This provider cannot conditionally delete a file.")
         result = await transport.resource_delete_conditional(reference.decoded_locator, expected_etag=expected_etag)
@@ -2377,6 +2387,7 @@ async def resource_move(
     destination: object,
     *,
     overwrite: bool = False,
+    exact_destination: bool = False,
 ) -> ResourceTransfer:
     source_ref = await resolve_native_alias(ctx, parse_resource_uri(source))
     destination_ref = await resolve_native_alias(ctx, parse_resource_uri(destination, allow_empty=True))
@@ -2414,11 +2425,8 @@ async def resource_move(
             f"{source_ref.scheme}:// resources cannot be moved because generic file tools "
             "cannot delete the source; use file_copy instead."
         )
-    destination_ref = await _resolve_transfer_destination(
-        ctx,
-        source_ref,
-        destination_ref,
-    )
+    if not exact_destination:
+        destination_ref = await _resolve_transfer_destination(ctx, source_ref, destination_ref)
     if source_ref.scheme == destination_ref.scheme == "console":
         transport, source_path = await _console_reference(ctx, source_ref)
         _same, destination_path = await _console_reference(ctx, destination_ref)
@@ -2438,7 +2446,7 @@ async def resource_move(
                 pass
             else:
                 raise FileExistsError(str(destination_ref))
-        result = await transport.file_move(source_path, destination_path)
+        result = await transport.file_move(source_path, destination_path, overwrite=overwrite)
         return ResourceTransfer(
             source_uri=_console_uri(source_path),
             uri=_console_uri(result.path),

@@ -223,12 +223,14 @@ class TemporaryFileTransport:
             state="copied",
         )
 
-    async def file_move(self, source: str, destination: str) -> FileMutation:
+    async def file_move(self, source: str, destination: str, *, overwrite: bool = False) -> FileMutation:
         src = self.resolve_path(source, create_parent=False)
-        if not src.is_file():
+        if not src.exists():
             raise FileNotFoundError(source)
         source_path = self._relative(src)
         dest = self.resolve_path(destination)
+        if dest.exists() and not overwrite:
+            raise FileExistsError(destination)
         shutil.move(str(src), str(dest))
         return FileMutation(
             self._relative(dest),
@@ -245,3 +247,11 @@ class TemporaryFileTransport:
         relative = self._relative(target)
         target.unlink()
         return FileMutation(relative, size, state="deleted")
+
+    async def resource_delete_collection(self, path: str) -> FileMutation:
+        target = self.resolve_path(path, create_parent=False)
+        if target == self._root:
+            raise PermissionError(path)
+        relative = self._relative(target)
+        shutil.rmtree(target)
+        return FileMutation(relative, state="deleted")

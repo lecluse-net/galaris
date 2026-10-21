@@ -19,8 +19,22 @@ export function useFileDirectories(agentId: number, management = false) {
     })
     return directories.get(uri)!
   }
-  async function load(uri: string, more = false): Promise<void> {
+  function invalidate(uri: string): void {
+    const prefix = uri.replace(/\/?$/, '/')
+    // Cancel pending pages before a mutation refresh can publish stale paths again.
+    for (const [key, request] of requests) { request.abort(); directory(key).loading = false }
+    requests.clear()
+    for (const [key, state] of directories) {
+      if (key === uri || key.startsWith(prefix)) directories.delete(key)
+      else {
+        state.entries = state.entries.filter(entry => entry.uri !== uri && !entry.uri.startsWith(prefix))
+        state.version++
+      }
+    }
+  }
+  async function load(uri: string, more = false, force = false): Promise<void> {
     const state = directory(uri)
+    if (force) { requests.get(uri)?.abort(); state.loading = false }
     if (state.loading || (more && !state.cursor)) return
     const request = new AbortController()
     requests.set(uri, request)
@@ -44,6 +58,6 @@ export function useFileDirectories(agentId: number, management = false) {
     }
   }
   onBeforeUnmount(() => { for (const request of requests.values()) request.abort() })
-  return { directory, load }
+  return { directory, load, invalidate }
 }
 export type FileDirectories = ReturnType<typeof useFileDirectories>

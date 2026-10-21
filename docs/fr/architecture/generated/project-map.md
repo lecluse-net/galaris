@@ -17,7 +17,7 @@ tests restent l’autorité sur le comportement.
 - 27 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 720 handlers HTTP/WebSocket détectés ;
+- 722 handlers HTTP/WebSocket détectés ;
 - 174 tables SQLAlchemy détectées ;
 - 272 outils MCP natifs détectés ;
 - 51 pages Vue détectées.
@@ -313,7 +313,7 @@ tests restent l’autorité sur le comportement.
 | `app.file_share` | `core.preview` | `back/app/file_share/__init__.py`, `back/app/file_share/browser.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/web_preview.py` |
 | `app.file_share` | `core.secrets` | `back/app/file_share/media_access.py` |
 | `app.file_share` | `core.settings` | `back/app/file_share/media_router.py` |
-| `app.file_share` | `core.storage` | `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py` |
+| `app.file_share` | `core.storage` | `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py` |
 | `app.file_share` | `core.user` | `back/app/file_share/media_access.py` |
 | `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/media_router.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
 | `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
@@ -816,10 +816,10 @@ tests restent l’autorité sur le comportement.
 | `app/dream` | `core/util` | `front/app/dream/pages/index.vue` |
 | `app/dream` | `core/websocket` | `front/app/dream/pages/index.vue` |
 | `app/file_share` | `app/agent` | `front/app/file_share/components/FileTile.vue`, `front/app/file_share/pages/index.vue` |
-| `app/file_share` | `core/api` | `front/app/file_share/pages/index.vue`, `front/app/file_share/services/fileBrowserService.ts` |
-| `app/file_share` | `core/authorize` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/navigation.ts` |
+| `app/file_share` | `core/api` | `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/services/fileBrowserService.ts` |
+| `app/file_share` | `core/authorize` | `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/navigation.ts` |
 | `app/file_share` | `core/navigation` | `front/app/file_share/navigation.ts` |
-| `app/file_share` | `core/util` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/presentation.ts` |
+| `app/file_share` | `core/util` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/presentation.ts` |
 | `app/goal` | `app/agent` | `front/app/goal/pages/index.vue` |
 | `app/goal` | `core/api` | `front/app/goal/pages/index.vue`, `front/app/goal/services/goalService.ts`, `front/app/goal/stores/goalStore.ts` |
 | `app/goal` | `core/authorize` | `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue` |
@@ -1278,14 +1278,16 @@ tests restent l’autorité sur le comportement.
 | POST | `/authorize/roles/{role_id}/privileges` | `core.authorize` | `add_privileges_to_role` | oui | `back/core/authorize/router.py:211` |
 | POST | `/authorize/switch-role` | `core.authorize` | `switch_role` | oui | `back/core/authorize/router.py:366` |
 | GET | `/authorize/users/{user_id}/assignments` | `core.authorize` | `get_user_assignments` | oui | `back/core/authorize/router.py:307` |
-| GET | `/browser/content` | `app.file_share` | `content` | oui | `back/app/file_share/browser_router.py:84` |
-| GET | `/browser/entries` | `app.file_share` | `entries` | oui | `back/app/file_share/browser_router.py:49` |
-| GET | `/browser/info` | `app.file_share` | `info` | oui | `back/app/file_share/browser_router.py:67` |
+| GET | `/browser/content` | `app.file_share` | `content` | oui | `back/app/file_share/browser_router.py:104` |
+| GET | `/browser/entries` | `app.file_share` | `entries` | oui | `back/app/file_share/browser_router.py:69` |
+| DELETE | `/browser/entry` | `app.file_share` | `delete_entry` | oui | `back/app/file_share/browser_router.py:55` |
+| PATCH | `/browser/entry` | `app.file_share` | `rename_entry` | oui | `back/app/file_share/browser_router.py:48` |
+| GET | `/browser/info` | `app.file_share` | `info` | oui | `back/app/file_share/browser_router.py:87` |
 | POST | `/browser/network/authorize` | `app.browser` | `network_authorization` | non | `back/app/browser/router.py:17` |
-| GET | `/browser/schemes` | `app.file_share` | `schemes` | oui | `back/app/file_share/browser_router.py:42` |
-| GET | `/browser/search` | `app.file_share` | `search` | oui | `back/app/file_share/browser_router.py:58` |
+| GET | `/browser/schemes` | `app.file_share` | `schemes` | oui | `back/app/file_share/browser_router.py:62` |
+| GET | `/browser/search` | `app.file_share` | `search` | oui | `back/app/file_share/browser_router.py:78` |
 | GET | `/browser/status` | `app.browser` | `status` | oui | `back/app/browser/router.py:34` |
-| GET | `/browser/thumbnail` | `app.file_share` | `thumbnail` | oui | `back/app/file_share/browser_router.py:74` |
+| GET | `/browser/thumbnail` | `app.file_share` | `thumbnail` | oui | `back/app/file_share/browser_router.py:94` |
 | GET | `/calendars` | `bridge.calendar` | `read_calendars` | oui | `back/bridge/calendar/router.py:54` |
 | POST | `/calendars` | `bridge.calendar` | `create_calendar` | oui | `back/bridge/calendar/router.py:61` |
 | DELETE | `/calendars/{calendar_id}` | `bridge.calendar` | `delete_calendar` | oui | `back/bridge/calendar/router.py:89` |

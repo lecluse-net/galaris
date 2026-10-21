@@ -614,6 +614,17 @@ class NextcloudFileClient:
             )
         return await self.resource_delete_conditional(path, expected_etag=_strong_etag(info.etag))
 
+    async def resource_delete_collection(self, path: str) -> FileMutation:
+        if not path.strip("/."):
+            raise PermissionError("The provider root cannot be deleted")
+        info = await self.resource_info(path)
+        if not info.is_dir:
+            raise NotADirectoryError(path)
+        response = await self._request("DELETE", self._webdav_url(path.strip("/")),
+            headers={"If-Match": _strong_etag(info.etag)})
+        _check_status(response, {200, 204}, path)
+        return FileMutation(path=path.strip("/"), state="deleted")
+
     async def resource_delete_conditional(self, path: str, *, expected_etag: str) -> FileMutation:
         info = await self.resource_info(path)
         if info.is_dir:
@@ -641,10 +652,12 @@ class NextcloudFileClient:
         overwrite: bool,
     ) -> FileMutation:
         source_info = await self.resource_info(source)
-        if source_info.is_dir:
+        if source_info.is_dir and method != "MOVE":
             raise IsADirectoryError(
                 "Use explicit file operations; collection relocation is not supported."
             )
+        if not source.strip("/."):
+            raise PermissionError("The provider root cannot be moved")
         folder = destination.strip("/").rpartition("/")[0]
         async with asyncio.timeout(_REQUEST_SECONDS), self._client() as http:
             if folder:

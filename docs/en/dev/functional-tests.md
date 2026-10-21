@@ -1597,6 +1597,17 @@ and Messenger.
 The **Knowledge → Files** browser is covered by
 `front/browser-tests/file-browser.spec.mjs`: navigation, loading on scroll, retry
 without losing entries, keyboard preview and agent changes during a late response.
+It also covers mutation menus, confirmations, access denials and renaming the open directory.
+The same scenario uses real browser history on desktop and mobile to restore Agents
+and directories without duplicating the current selection, after errors and late
+responses, and from a copied URL. `internal-file-picker.spec.mjs` preserves selections
+across directories and searches without changing the host page's navigation.
+History scenarios mount the actual route to exercise navigation guards: a Dataset
+draft survives a cancelled Back action and closes only after confirmed discard.
+`app/file_share/tests/test_browser_mutations.py` protects HTTP scope checks, invalid names,
+collisions without overwriting and explicit recursive confirmation. The Nextcloud, Samba
+and SFTP scenarios check directory operations, preserved content and protected roots;
+Samba and SFTP use real isolated servers.
 `app/file_share/tests/test_managed_http.py` checks the assembled HTTP routes, scope
 and resource denials, authorized content and continuation of independent files.
 `app/memory/tests/test_managed_files.py` checks that `file://` listing and search

@@ -30,6 +30,8 @@
                     <div class="file-tree-entry row items-center no-wrap full-width" :title="scope.node.entry.uri">
                       <FolderIcon :expanded="scope.expanded" size="26px" class="q-mr-xs" />
                       <span class="ellipsis">{{ scope.node.label }}</span>
+                      <FileEntryActions v-if="!selection" :entry="scope.node.entry" :agent-id="agentId" target=".q-tree__node-header" context-only
+                        :open="() => openEntry(scope.node.entry)" @changed="entryChanged" />
                     </div>
                   </template>
                 </q-tree>
@@ -93,10 +95,10 @@
               <div class="file-grid">
                 <div v-for="entry in sortedEntries" :key="`${entry.uri}:${current.version}`" class="file-entry">
                   <FileTile :entry="entry" :agent-id="agentId" :compact="selection" :selectable="selection" :selected="selected.some(value => value.uri === entry.uri)" @open="openEntry" @activate="activateEntry" />
-                  <FileContextMenu v-if="!selection" :name="entry.name" :uri="entry.uri" target=".file-entry"
-                    rename-class="file-entry-rename" menu-class="file-entry-menu" :open="() => openEntry(entry)"
+                  <FileEntryActions v-if="!selection" :entry="entry" :agent-id="agentId" target=".file-entry"
+                    :open="() => openEntry(entry)" @changed="entryChanged"
                     :download="!entry.is_collection && entry.capabilities.includes('read') ? () => downloadEntry(entry) : undefined"
-                    :rename="canEditFiles && fileBrowserService.canRename(entry) ? name => renameEntry(entry, name) : undefined" />
+                  />
                 </div>
               </div>
               <template #loading><div class="q-pa-md text-center"><q-spinner color="primary" size="30px" :aria-label="t('files.loading')" /></div></template>
@@ -110,7 +112,7 @@
       </template>
     </q-splitter>
     </q-card>
-    <ResourceDetailDialog v-if="target" :target="target" @close="target = null; refresh()" @changed="refresh" />
+    <ResourceDetailDialog v-if="target" ref="detail" :target="target" @close="target = null; refresh()" @changed="refresh" />
     <ResourceAttachments ref="preview" :key="previewKey" :resource-id="String(agentId)" :agent-id="agentId" :attachments="previewEntries"
       :resource-source="previewSource" preview-only />
   </div>
@@ -121,40 +123,48 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, wa
 import { useI18n } from 'vue-i18n'
 import { useQuasar, type QTreeNode } from 'quasar'
 import { FolderIcon, ResourceAttachments, ResourceDetailDialog, richLinkTarget, saveBlobAsResource, type ResourceDetailTarget, type AttachmentSource, type ResourceAttachment } from '@/core/util'
-import { FileContextMenu } from '@/core/util'
-import { usePrivilegeStore } from '@/core/authorize'
 import { fileBrowserService, type FileEntry, type FileScheme } from '../services/fileBrowserService'
 import { useFileDirectories } from '../browserState'
 import { parentDirectory, resourceTarget } from '../presentation'
 import FileTile from './FileTile.vue'
+import FileEntryActions from './FileEntryActions.vue'
 
 const { agentId, selection = false, initialUri = null } = defineProps<{ agentId: number; selection?: boolean; initialUri?: string | null }>()
 const selected = defineModel<FileEntry[]>('selected', { default: () => [] })
-const emit = defineEmits<{ confirm: [] }>()
+const emit = defineEmits<{ confirm: []; navigate: [uri: string, replace: boolean] }>()
 const { t, locale } = useI18n()
 const $q = useQuasar()
-const privileges = usePrivilegeStore()
-const canEditFiles = computed(() => ['MEMORY_EDIT', 'MEMORY_ADMIN', 'DATASET_EDIT', 'DATASET_ADMIN'].some(code => privileges.hasPrivilege(code)))
-async function renameEntry(entry: FileEntry, name: string): Promise<void> {
-  await fileBrowserService.rename(agentId, entry, name)
-  if (active) refresh()
+function entryChanged(entry: FileEntry, replacement: string | null): void {
+  if (!active) return
+  const affected = (uri: string): boolean => uri === entry.uri || entry.is_collection && uri.startsWith(entry.uri.replace(/\/?$/, '/'))
+  const previous = currentUri.value
+  const parent = parentDirectory(entry.uri)
+  invalidate(entry.uri)
+  expanded.value = expanded.value.filter(uri => !affected(uri))
+  if (affected(previous)) {
+    navigate(replacement ? replacement + previous.slice(entry.uri.length) : parent ?? '', true, 'replace')
+  }
+  if (parent) void load(parent, false, true)
+  if (!affected(previous) && previous !== parent) refresh()
 }
 async function downloadEntry(entry: FileEntry): Promise<void> {
   const blob = await fileBrowserService.content(agentId, entry.uri, false, undefined, true)
   if (active) saveBlobAsResource(blob, entry.name)
 }
-const { directory, load } = useFileDirectories(agentId, selection)
+const { directory, load, invalidate } = useFileDirectories(agentId, selection)
 const schemes = ref<FileScheme[]>([])
 const schemesLoading = ref(false), schemesError = ref(false)
 const currentUri = ref(''), showTree = ref(false), expanded = ref<string[]>([])
 const openScheme = ref<string | null>(null)
 const split = ref(24)
 const target = ref<ResourceDetailTarget | null>(null)
+const detail = useTemplateRef<{ canLeave?: () => Promise<boolean> }>('detail')
 const preview = useTemplateRef<{ openById: (id: string) => Promise<void> }>('preview')
 const previewEntries = ref<ResourceAttachment[]>([]), previewKey = ref(0)
 const scroll = useTemplateRef<HTMLElement>('scroll')
 let schemesRequest: AbortController | undefined
 let active = true
+let ready = false
 const query = ref<string | null>('')
 const searchState = ref({ entries: [] as FileEntry[], loading: false, loaded: false, error: false, incomplete: false, cursor: null as string | null, version: 0 })
 let searchRequest: AbortController | undefined
@@ -167,7 +177,8 @@ const parent = computed(() => parentDirectory(currentUri.value))
 const unlistable = computed(() => schemes.value.some(scheme => `${scheme.scheme}://` === currentUri.value && (!scheme.capabilities.includes('list') || scheme.root_listable === false)))
 const sortedEntries = computed(() => (current.value?.entries ?? []).filter(isVisible).sort((a, b) => Number(b.is_collection) - Number(a.is_collection) || a.name.localeCompare(b.name, locale.value)))
 const loadedCount = computed(() => schemesError.value || unlistable.value ? 0 : sortedEntries.value.length)
-defineExpose({ loadedCount })
+async function canLeave(): Promise<boolean> { return await detail.value?.canLeave?.() ?? true }
+defineExpose({ loadedCount, canLeave })
 const previewSource: AttachmentSource = {
   content: (entry, convert, signal) => fileBrowserService.content(agentId, entry.id, convert, signal),
   videoUrl: entry => fileBrowserService.videoUrl(agentId, entry.id),
@@ -212,10 +223,14 @@ function toggleScheme(uri: string, opened: boolean): void {
   if (opened) { openScheme.value = uri; navigate(uri, false) }
   else if (openScheme.value === uri) openScheme.value = null
 }
-function navigate(uri: string, closeTree = true): void {
+function navigate(uri: string, closeTree = true, history: false | 'push' | 'replace' = 'push'): void {
+  const changed = currentUri.value !== uri
   uriRequest?.abort(); uriLoading.value = false
+  uriError.value = false
+  target.value = null; previewEntries.value = []; previewKey.value++
   query.value = ''
   currentUri.value = uri
+  if (changed && history && !selection) emit('navigate', uri, history === 'replace')
   const root = treeNodes.value.find(root => uri.startsWith(root.id))
   openScheme.value = root?.id ?? null
   if (root && root.id !== uri && !root.disabledRoot && !directory(root.id).loaded && !directory(root.id).error) void load(root.id)
@@ -226,7 +241,7 @@ function navigate(uri: string, closeTree = true): void {
     for (let current: string | null = uri; current; current = parentDirectory(current)) ancestors.push(current)
     expanded.value = [...new Set([...expanded.value, ...ancestors])]
   }
-  if (!unlistable.value && !directory(uri).loaded && !directory(uri).error) void load(uri).then(reveal)
+  if (uri && !unlistable.value && !directory(uri).loaded && !directory(uri).error) void load(uri).then(reveal)
   else reveal()
   if (closeTree && $q.screen.lt.md) showTree.value = false
 }
@@ -249,7 +264,7 @@ async function openEntry(entry: FileEntry, event?: Event, metadataFresh = false)
     return
   }
   if (selection && entry.is_collection && event?.type === 'click' && (event as MouseEvent).detail) return
-  if (entry.is_collection) { navigate(entry.uri); return }
+  if (entry.is_collection) { navigate(entry.uri, true, metadataFresh ? false : 'push'); return }
   target.value = resourceTarget(entry, agentId) ?? richLinkTarget(entry.uri, String(entry.metadata?.label ?? entry.name), agentId)
   if (target.value) return
   if (!metadataFresh && /^(file|document|data|messenger|galaris):\/\//.test(entry.uri)) {
@@ -269,7 +284,7 @@ async function openUri(uri: string, revealParent = true): Promise<void> {
     const entry = await fileBrowserService.info(agentId, uri, request.signal)
     if (request.signal.aborted || !active || currentUri.value !== location) return
     if (current.value) current.value.entries = current.value.entries.map(value => value.uri === uri ? entry : value)
-    if (revealParent && !entry.is_collection) { const parent = parentDirectory(entry.uri); if (parent) navigate(parent) }
+    if (revealParent && !entry.is_collection) { const parent = parentDirectory(entry.uri); if (parent) navigate(parent, true, false) }
     await openEntry(entry, undefined, true)
   } catch { if (!request.signal.aborted && active && currentUri.value === location) uriError.value = true }
   finally { if (!request.signal.aborted && active) uriLoading.value = false }
@@ -324,7 +339,16 @@ async function search(append = false): Promise<void> {
   } catch { if (!request.signal.aborted) searchState.value = { ...searchState.value, loading: false, error: true } }
 }
 watch(query, () => { searchRequest?.abort(); if (query.value?.trim()) void search() })
-onMounted(async () => { await loadSchemes(); if (active && initialUri) void openUri(initialUri) })
+function restoreLocation(uri: string | null): void {
+  if ((uri ?? '') === currentUri.value) {
+    target.value = null; previewEntries.value = []; previewKey.value++
+    return
+  }
+  if (!uri || uri.endsWith('/')) navigate(uri ?? '', true, false)
+  else { target.value = null; previewEntries.value = []; previewKey.value++; void openUri(uri) }
+}
+watch(() => initialUri, uri => { if (ready && active) restoreLocation(uri) })
+onMounted(async () => { await loadSchemes(); ready = true; if (active) restoreLocation(initialUri) })
 onBeforeUnmount(() => { active = false; schemesRequest?.abort(); searchRequest?.abort(); uriRequest?.abort() })
 </script>
 
@@ -349,13 +373,12 @@ onBeforeUnmount(() => { active = false; schemesRequest?.abort(); searchRequest?.
 .file-scroll { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
 .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); align-items: start; gap: 0; }
 .file-entry { position: relative; min-width: 0; }
-.file-entry :deep(.file-entry-rename) { position: absolute; top: 0; right: 32px; }
-.file-entry :deep(.file-entry-menu) { position: absolute; top: 0; right: 0; opacity: 0; pointer-events: none; }
-.file-entry:hover :deep(.file-entry-menu),
-.file-entry:focus-within :deep(.file-entry-menu),
-.file-entry :deep(.file-entry-menu:has([aria-expanded="true"])) { opacity: 1; pointer-events: auto; }
-@media (hover: none) {
-  .file-entry :deep(.file-entry-menu) { opacity: 1; pointer-events: auto; }
+.file-entry > :deep(.file-entry-actions) { position: absolute; top: 0; right: 0; z-index: 1; }
+@media (hover: hover) {
+  .file-entry > :deep(.file-entry-actions) { opacity: 0; }
+  .file-entry:hover > :deep(.file-entry-actions),
+  .file-entry:focus-within > :deep(.file-entry-actions),
+  .file-entry > :deep(.file-entry-actions:has([aria-expanded="true"])) { opacity: 1; }
 }
 .file-state { padding: 60px 16px; text-align: center; }
 .file-warning { background: var(--solaire-yellow-light); }

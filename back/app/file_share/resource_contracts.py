@@ -232,6 +232,13 @@ class ResourceDeletionTransport(Protocol):
 
 
 @runtime_checkable
+class ResourceCollectionDeletionTransport(Protocol):
+    """Explicit recursive removal; ordinary file deletion remains non-recursive."""
+
+    async def resource_delete_collection(self, path: str) -> "FileMutation": ...
+
+
+@runtime_checkable
 class ResourceConditionalDeletionTransport(Protocol):
     async def resource_delete_conditional(
         self, path: str, *, expected_etag: str

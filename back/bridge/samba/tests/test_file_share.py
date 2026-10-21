@@ -15,6 +15,19 @@ from app.tools import FileShareConfig
 from app.tools.schemas import Tool
 from bridge.samba.file_share import SambaFileClient
 from bridge.samba import sdk
+from smbprotocol.header import NtStatus
+
+
+@pytest.mark.parametrize("status", [NtStatus.STATUS_ACCESS_DENIED, 0xC00000A2, 0xC0000001])
+def test_nested_sdk_boundaries_preserve_denials_and_sanitized_statuses(status):
+    original = OSError("Synthetic private provider response")
+    original.ntstatus = status
+    with pytest.raises(PermissionError if status != 0xC0000001 else OSError) as failure:
+        with sdk._errors(), sdk._errors():
+            raise original
+    assert "private provider response" not in str(failure.value)
+    if status == 0xC0000001:
+        assert "0xc0000001" in str(failure.value)
 
 
 def test_bridge_discovery_and_connection_parameter_mapping():
@@ -207,6 +220,28 @@ async def test_large_video_seeks_to_tail_and_closing_releases_the_smb_handle(smb
         assert (await anext(chunks))[:4] == b"head"
     # SMB's read handle denies deletion until its streaming owner closes it.
     await files.resource_delete(ctx, uri)
+
+
+@pytest.mark.asyncio
+async def test_browser_directory_rename_delete_and_read_only_denial_on_real_smb(smb):
+    from app.file_share.browser import browser_rename, browser_delete
+
+    client, reader, ctx, folder = smb
+    await files.resource_create(ctx, f"team-share://{folder}/sub/", b"Synthetic directory bytes", name="item.txt")
+    renamed = await browser_rename(ctx, f"team-share://{folder}/", folder + "-renamed")
+    assert renamed.uri == f"team-share://{folder}-renamed/"
+    assert (await files.resource_read(ctx, renamed.uri + "sub/item.txt")).content == "Synthetic directory bytes"
+    with pytest.raises(PermissionError):
+        await reader.resource_delete_collection(folder + "-renamed")
+    with pytest.raises(PermissionError):
+        await reader.resource_move(folder + "-renamed", folder + "-denied", overwrite=False)
+    with pytest.raises(IsADirectoryError):
+        await client.resource_delete(folder + "-renamed")
+    await browser_delete(ctx, renamed.uri, recursive=True)
+    with pytest.raises(FileNotFoundError):
+        await files.resource_info(ctx, renamed.uri)
+    with pytest.raises(ValueError):
+        await client.resource_delete_collection(".")
 
 
 @pytest.mark.asyncio

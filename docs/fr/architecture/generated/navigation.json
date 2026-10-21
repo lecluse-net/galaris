@@ -264,38 +264,6 @@
       ]
     },
     {
-      "id": "knowledge.files",
-      "labels": {
-        "fr": "Fichiers",
-        "en": "Files"
-      },
-      "breadcrumbs": {
-        "fr": [
-          "Connaissances",
-          "Fichiers"
-        ],
-        "en": [
-          "Knowledge",
-          "Files"
-        ]
-      },
-      "route": "/files",
-      "href": null,
-      "description": {
-        "fr": "Explorer les fichiers et ressources accessibles à chaque agent",
-        "en": "Browse files and resources available to each agent"
-      },
-      "privilege_groups": [
-        [
-          "MEMORY_ACCESS"
-        ]
-      ],
-      "conditions": [],
-      "sources": [
-        "front/app/file_share/navigation.ts"
-      ]
-    },
-    {
       "id": "knowledge.datasets",
       "labels": {
         "fr": "Jeux de données",
@@ -327,6 +295,38 @@
       "conditions": [],
       "sources": [
         "front/app/dataset/navigation.ts"
+      ]
+    },
+    {
+      "id": "knowledge.files",
+      "labels": {
+        "fr": "Fichiers",
+        "en": "Files"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Connaissances",
+          "Fichiers"
+        ],
+        "en": [
+          "Knowledge",
+          "Files"
+        ]
+      },
+      "route": "/files",
+      "href": null,
+      "description": {
+        "fr": "Explorer les fichiers et ressources accessibles à chaque agent",
+        "en": "Browse files and resources available to each agent"
+      },
+      "privilege_groups": [
+        [
+          "MEMORY_ACCESS"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/file_share/navigation.ts"
       ]
     },
     {

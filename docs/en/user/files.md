@@ -20,11 +20,32 @@ can be rendered and an icon otherwise. Click a file to preview it, or a Document
 Task, Dataset or conversation to open its existing domain view. Formats without an
 integrated viewer are downloaded.
 
-**Rename** changes the complete name of an internal file or Document attachment when
-you have edit access. Enter its name, including the extension, then confirm. Content
-and links stay identical; an error preserves your draft for retry. The same filename appears
-in Documents, Datasets, conversations, processes and Files, including previews and downloads.
-External references do not offer this action.
+Your browser's **Back** and **Forward** buttons restore previously visited Agents,
+locations and directories. Breadcrumbs and the parent-directory button use the same
+history. The URL retains the current Agent and location, so copying it or reloading
+the page restores them subject to your access rights. Navigation inside the attachment
+picker remains local to its dialog.
+If an open Dataset contains an unsaved draft, browser traversal asks for confirmation
+before closing it; cancelling preserves both the draft and the current location.
+
+Right-click a file or directory to open its context menu, or use **Shift+F10** while
+the item has focus. In the grid, the **⋮** button provides the same actions on desktop
+and mobile. **Rename** and **Delete** appear according to your edit access and the
+provider's capabilities. SSH console, Nextcloud and Samba directories support both
+actions; their roots remain protected.
+
+To rename an item, enter its complete name, including the extension for a file, then
+confirm. Content is preserved and existing items are never overwritten. Internal files
+and attachments retain their URI; external files and directories change their path.
+An error preserves your draft for retry. Internal filenames are shared across domain
+views, previews and downloads.
+
+Deletion requires confirmation and includes all contents when deleting a directory.
+Only the Agent's independent internal files can be deleted from `file://`; attachments
+owned by a domain retain that domain's deletion rules. Business snapshots and read-only
+sources do not offer mutations. The grid and tree refresh after an action. Deleting the
+open directory returns to its parent. If deletion fails partway through, refresh to
+inspect the remaining entries before retrying.
 
 Videos from Samba, Nextcloud/WebDAV, AFFiNE, the SSH console and internal files play
 progressively, without waiting for a complete download. The player can request a

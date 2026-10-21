@@ -1642,6 +1642,8 @@
       },
       {
         "files": [
+          "back/app/file_share/browser.py",
+          "back/app/file_share/browser_router.py",
           "back/app/file_share/managed_files.py",
           "back/app/file_share/resource_service.py",
           "back/app/file_share/router.py"
@@ -13845,7 +13847,7 @@
         "declared_path": "/browser/content",
         "file": "back/app/file_share/browser_router.py",
         "handler": "content",
-        "line": 84,
+        "line": 104,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -13854,8 +13856,26 @@
         "declared_path": "/browser/entries",
         "file": "back/app/file_share/browser_router.py",
         "handler": "entries",
-        "line": 49,
+        "line": 69,
         "method": "GET",
+        "module": "app.file_share"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/browser/entry",
+        "file": "back/app/file_share/browser_router.py",
+        "handler": "delete_entry",
+        "line": 55,
+        "method": "DELETE",
+        "module": "app.file_share"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/browser/entry",
+        "file": "back/app/file_share/browser_router.py",
+        "handler": "rename_entry",
+        "line": 48,
+        "method": "PATCH",
         "module": "app.file_share"
       },
       {
@@ -13863,7 +13883,7 @@
         "declared_path": "/browser/info",
         "file": "back/app/file_share/browser_router.py",
         "handler": "info",
-        "line": 67,
+        "line": 87,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -13881,7 +13901,7 @@
         "declared_path": "/browser/schemes",
         "file": "back/app/file_share/browser_router.py",
         "handler": "schemes",
-        "line": 42,
+        "line": 62,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -13890,7 +13910,7 @@
         "declared_path": "/browser/search",
         "file": "back/app/file_share/browser_router.py",
         "handler": "search",
-        "line": 58,
+        "line": 78,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -13908,7 +13928,7 @@
         "declared_path": "/browser/thumbnail",
         "file": "back/app/file_share/browser_router.py",
         "handler": "thumbnail",
-        "line": 74,
+        "line": 94,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -20027,6 +20047,7 @@
       },
       {
         "files": [
+          "front/app/file_share/components/FileEntryActions.vue",
           "front/app/file_share/pages/index.vue",
           "front/app/file_share/services/fileBrowserService.ts"
         ],
@@ -20035,7 +20056,7 @@
       },
       {
         "files": [
-          "front/app/file_share/components/AgentFileBrowser.vue",
+          "front/app/file_share/components/FileEntryActions.vue",
           "front/app/file_share/navigation.ts"
         ],
         "source": "app/file_share",
@@ -20051,6 +20072,7 @@
       {
         "files": [
           "front/app/file_share/components/AgentFileBrowser.vue",
+          "front/app/file_share/components/FileEntryActions.vue",
           "front/app/file_share/components/FileTile.vue",
           "front/app/file_share/pages/index.vue",
           "front/app/file_share/presentation.ts"

@@ -464,14 +464,19 @@ class SshAgentFileTransport:
         finally:
             sftp.exit()
 
-    async def file_move(self, source: str, destination: str) -> FileMutation:
+    async def file_move(self, source: str, destination: str, *, overwrite: bool = False) -> FileMutation:
         sftp = await self._client()
         try:
             src, src_relative = await self._resolve_existing(sftp, source)
             dest, dest_relative = await self._resolve_destination(sftp, destination)
-            try:
-                await sftp.posix_rename(src, dest)
-            except asyncssh.SFTPOpUnsupported:
+            if src_relative in {"", "."} or dest_relative in {"", "."}:
+                raise PermissionError("The SSH home cannot be moved")
+            if overwrite:
+                try:
+                    await sftp.posix_rename(src, dest)
+                except asyncssh.SFTPOpUnsupported:
+                    await sftp.rename(src, dest)
+            else:
                 await sftp.rename(src, dest)
             attrs = await sftp.stat(dest)
             return FileMutation(
@@ -492,5 +497,49 @@ class SshAgentFileTransport:
                 raise IsADirectoryError(path)
             await sftp.remove(target)
             return FileMutation(relative, int(attrs.size or 0), state="deleted")
+        finally:
+            sftp.exit()
+
+    async def resource_delete_collection(self, path: str) -> FileMutation:
+        """Remove an explicitly selected tree, bounded and without following links."""
+        sftp = await self._client()
+        try:
+            target, relative = await self._resolve_existing(sftp, path)
+            if relative in {"", "."}:
+                raise PermissionError("The SSH home cannot be deleted")
+            attrs = await sftp.lstat(target)
+            if attrs.type != _SFTP_TYPE_DIRECTORY:
+                raise NotADirectoryError(path)
+            pending = [(target, 0)]
+            entries: list[tuple[str, bool]] = []
+            while pending:
+                current, depth = pending.pop()
+                current_attrs = await sftp.lstat(current)
+                if current_attrs.type == _SFTP_TYPE_SYMLINK:
+                    raise PermissionError("Directory deletion cannot follow symbolic links")
+                directory = current_attrs.type == _SFTP_TYPE_DIRECTORY
+                entries.append((current, directory))
+                if len(entries) > 10_000 or depth > 64:
+                    raise ValueError("Directory deletion exceeds its bounded traversal limit")
+                if directory:
+                    async for child in sftp.scandir(current):
+                        name = str(child.filename)
+                        if name in {".", ".."}:
+                            continue
+                        if "/" in name or "\\" in name:
+                            raise ValueError("Invalid directory entry")
+                        pending.append((str(PurePosixPath(current) / name), depth + 1))
+                        if len(entries) + len(pending) > 10_000:
+                            raise ValueError("Directory deletion exceeds its bounded traversal limit")
+            for current, directory in reversed(entries):
+                resolved, _ = await self._resolve_existing(sftp, current)
+                current_attrs = await sftp.lstat(current)
+                if resolved != current or current_attrs.type == _SFTP_TYPE_SYMLINK or (current_attrs.type == _SFTP_TYPE_DIRECTORY) != directory:
+                    raise ValueError("The directory changed; inspect remaining entries before retrying deletion")
+                if directory:
+                    await sftp.rmdir(current)
+                else:
+                    await sftp.remove(current)
+            return FileMutation(relative, state="deleted")
         finally:
             sftp.exit()

@@ -32,6 +32,12 @@ from .share_rpc import ShareInfo, ShareEnumerationError, list_shares
 _CONNECT_SECONDS = 10
 _RESPONSE_SECONDS = 30
 _OPERATION_SECONDS = 300
+# MS-ERREF STATUS_MEDIA_WRITE_PROTECTED; absent from smbprotocol's NtStatus subset.
+_STATUS_MEDIA_WRITE_PROTECTED = 0xC00000A2
+
+
+class _SmbOperationError(OSError):
+    """A sanitized SDK diagnostic which must survive nested boundaries."""
 
 
 @dataclass(frozen=True)
@@ -57,11 +63,11 @@ def _errors() -> Generator[None]:
         # smbclient does not map ACCESS_DENIED to POSIX errno.
         if getattr(exc, "ntstatus", None) in {
             NtStatus.STATUS_ACCESS_DENIED,
-            NtStatus.STATUS_PRIVILEGE_NOT_HELD, NtStatus.STATUS_LOGON_FAILURE,
+            NtStatus.STATUS_PRIVILEGE_NOT_HELD, NtStatus.STATUS_LOGON_FAILURE, _STATUS_MEDIA_WRITE_PROTECTED,
         }:
             raise PermissionError("SMB denied the file operation.") from None
         if isinstance(exc, (FileNotFoundError, FileExistsError, PermissionError,
-                            IsADirectoryError, NotADirectoryError)):
+                            IsADirectoryError, NotADirectoryError, _SmbOperationError)):
             raise
         if isinstance(exc, TimeoutError):
             raise TimeoutError("SMB operation timed out.") from None
@@ -77,14 +83,14 @@ def _errors() -> Generator[None]:
             raise IsADirectoryError("SMB operation requires a file.") from None
         status = getattr(exc, "ntstatus", None)
         code = f"0x{status:08x}" if isinstance(status, int) else str(exc.errno)
-        raise OSError(f"SMB file operation failed (status {code}); check the share before retrying a mutation.") from None
+        raise _SmbOperationError(f"SMB file operation failed (status {code}); check the share before retrying a mutation.") from None
     except SMBResponseException as exc:
         if exc.status == NtStatus.STATUS_BAD_NETWORK_NAME:
             raise FileNotFoundError("SMB share was not found.") from None
         if exc.status in {NtStatus.STATUS_ACCESS_DENIED, NtStatus.STATUS_PRIVILEGE_NOT_HELD,
-                          NtStatus.STATUS_LOGON_FAILURE}:
+                          NtStatus.STATUS_LOGON_FAILURE, _STATUS_MEDIA_WRITE_PROTECTED}:
             raise PermissionError("SMB authentication or file access was denied.") from None
-        raise OSError("SMB server refused the operation; check the share before retrying a mutation.") from None
+        raise _SmbOperationError("SMB server refused the operation; check the share before retrying a mutation.") from None
     except SMBException:
         raise ConnectionError("SMB connection failed or closed; check the share before retrying a mutation.") from None
 
@@ -257,6 +263,10 @@ class SmbSession:
     @_translate
     def mkdir(self, path: str) -> None:
         smbclient.mkdir(path, **self.kwargs)
+
+    @_translate
+    def rmdir(self, path: str) -> None:
+        smbclient.rmdir(path, **self.kwargs)
 
     @_translate
     def rename(self, source: str, destination: str, overwrite: bool) -> None:

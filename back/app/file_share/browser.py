@@ -5,15 +5,50 @@ import hashlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import quote
 from tempfile import TemporaryDirectory
 from app.agent import AgentManagementScope
 
 from app.console import ConsoleRunResource, resolve_ssh_connection
 from app.skill import can_manage_skill_resources
 from core.preview import PreviewFile, prepare_preview, thumbnails
+from core.storage import validate_file_name
 
-from .resource_contracts import ResourceContext
-from .resource_service import materialize_resource, resource_info
+from .resource_contracts import ResourceContext, ResourceMutation, ResourceTransfer
+from .resource_service import materialize_resource, resource_info, resource_move, resource_delete
+from .resource_uri import NATIVE_RESOURCE_SCHEMES, parse_resource_uri
+
+
+async def browser_rename(ctx: ResourceContext, uri: str, name: str) -> ResourceTransfer:
+    """Rename within the canonical parent; never accept a client-supplied destination."""
+    name = validate_file_name(name)
+    source = parse_resource_uri(uri)
+    if source.scheme in NATIVE_RESOURCE_SCHEMES and source.scheme != "console":
+        raise PermissionError("Use the owning domain to rename this resource")
+    descriptor = await resource_info(ctx, uri)
+    reference = parse_resource_uri(descriptor.uri)
+    if "move" not in descriptor.capabilities or not reference.locator.strip("/."):
+        raise PermissionError("This resource cannot be renamed")
+    parent = reference.locator.rstrip("/").rpartition("/")[0]
+    destination = f"{reference.scheme}://{parent + '/' if parent else ''}{quote(name, safe='')}"
+    result = await resource_move(ctx, reference, destination, overwrite=False, exact_destination=True)
+    if descriptor.is_collection:
+        result.uri = result.uri.rstrip("/") + "/"
+    return result
+
+
+async def browser_delete(ctx: ResourceContext, uri: str, *, recursive: bool) -> ResourceMutation:
+    source = parse_resource_uri(uri)
+    document_attachment = source.scheme == "document" and len(source.segments) == 3 and source.segments[1] == "attachments"
+    if source.scheme in NATIVE_RESOURCE_SCHEMES and source.scheme not in {"console", "file"} and not document_attachment:
+        raise PermissionError("Use the owning domain to delete this resource")
+    descriptor = await resource_info(ctx, uri)
+    reference = parse_resource_uri(descriptor.uri)
+    if "delete" not in descriptor.capabilities or not reference.locator.strip("/."):
+        raise PermissionError("This resource cannot be deleted")
+    if descriptor.is_collection != recursive:
+        raise ValueError("Directory deletion requires explicit recursive confirmation")
+    return await resource_delete(ctx, reference, recursive=recursive)
 
 
 async def read_internal_attachment(uri: str, agent_id: int, scope: AgentManagementScope | None) -> dict[str, object]:

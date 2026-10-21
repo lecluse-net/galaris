@@ -1662,7 +1662,20 @@ groupée des fichiers d'un Tool combinant File Share et Messenger.
 Le navigateur **Connaissances → Fichiers** est couvert par
 `front/browser-tests/file-browser.spec.mjs` : navigation, chargement au défilement,
 reprise après erreur sans perte des entrées, aperçu au clavier et changement d’agent
-pendant une réponse tardive. `app/file_share/tests/test_managed_http.py` vérifie ses
+pendant une réponse tardive, menus de mutation, confirmations, refus d’accès et
+renommage du répertoire ouvert.
+Le même scénario utilise l’historique réel du navigateur sur mobile et bureau pour
+restaurer agent et répertoire, sans doubler une sélection courante, après erreur ou
+réponse tardive, et depuis une URL copiée. `internal-file-picker.spec.mjs` conserve
+la sélection entre dossiers et recherches sans modifier la navigation de la page hôte.
+Les scénarios d’historique montent la vraie route, afin d’exercer ses gardes : un
+brouillon Dataset reste intact après l’annulation du retour, puis se ferme seulement
+après confirmation d’abandon.
+`app/file_share/tests/test_browser_mutations.py` protège les contrôles HTTP de portée,
+les noms invalides, les collisions sans écrasement et la confirmation récursive explicite.
+Les scénarios Nextcloud, Samba et SFTP vérifient les opérations sur répertoires,
+la conservation du contenu et les racines protégées ; Samba et SFTP utilisent de vrais serveurs isolés.
+`app/file_share/tests/test_managed_http.py` vérifie ses
 routes HTTP assemblées, les refus de portée et de ressource, le contenu autorisé et
 la continuation des fichiers indépendants. `app/memory/tests/test_managed_files.py`
 vérifie que la liste et la recherche `file://` incluent les pièces jointes Document et

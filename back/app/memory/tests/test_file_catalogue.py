@@ -47,7 +47,7 @@ class SyntheticShare(TemporaryFileTransport):
             return FileMutation(path=path, state="deleted")
         return await super().file_delete(path)
 
-    async def file_move(self, source, destination):
+    async def file_move(self, source, destination, *, overwrite=False):
         path = self.resolve_path(source, create_parent=False)
         if path.is_dir():
             target = self.resolve_path(destination)

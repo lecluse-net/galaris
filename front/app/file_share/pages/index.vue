@@ -13,7 +13,7 @@
       {{ t('files.agentError') }}
       <template #action><q-btn outline :label="t('common.retry')" @click="loadAgents" /></template>
     </q-banner>
-    <AgentFileBrowser v-if="agentId !== null" ref="browser" :key="`${agentId}:${session}:${resourceUri}`" :agent-id="agentId" :initial-uri="resourceUri" />
+    <AgentFileBrowser v-if="agentId !== null" ref="browser" :key="`${agentId}:${session}`" :agent-id="agentId" :initial-uri="resourceUri" @navigate="locationChanged" />
     <section v-else class="file-agent-picker" :aria-label="t('files.chooseAgent')">
       <p class="text-body1">{{ t('files.chooseAgent') }}</p>
       <div v-if="loading" class="row items-center q-gutter-sm" role="status">
@@ -33,9 +33,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+import { onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { AgentAvatar, AgentSelect, getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 import { FolderIcon, PageHeader } from '@/core/util'
 import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
@@ -43,18 +43,31 @@ import AgentFileBrowser from '../components/AgentFileBrowser.vue'
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 const resourceUri = computed(() => typeof route.query.uri === 'string' && route.query.uri.length <= 4096 ? route.query.uri : null)
 function pageStyle(offset: number, height: number): { height: string } {
   return { height: `${Math.max(0, height - offset)}px` }
 }
-const agentId = ref<number | null>(null), agents = ref<AgentSelectionOption[]>([])
+const agents = ref<AgentSelectionOption[]>([])
+const agentId = computed<number | null>({
+  get: () => typeof route.query.agent_id === 'string'
+    ? agents.value.find(agent => String(agent.id) === route.query.agent_id)?.id ?? null : null,
+  set: value => {
+    if (value === agentId.value) return
+    void router.push({ path: route.path, query: { ...route.query, agent_id: value === null ? undefined : String(value), uri: undefined } })
+  },
+})
 const loading = ref(false), error = ref(false), session = ref(0)
 const browser = useTemplateRef<InstanceType<typeof AgentFileBrowser>>('browser')
+onBeforeRouteUpdate((to, from) => to.query.agent_id === from.query.agent_id && to.query.uri === from.query.uri
+  ? true : browser.value?.canLeave() ?? true)
 let controller: AbortController | undefined
 const agentOptions = computed(() => agents.value.map(agent => ({ value: agent.id, label: agent.label, hasAvatar: agent.has_avatar })))
-watch(() => route.query.agent_id, value => {
-  if (typeof value === 'string') agentId.value = agents.value.find(agent => String(agent.id) === value)?.id ?? null
-})
+function locationChanged(uri: string, replace = false): void {
+  if (agentId.value === null || uri === (resourceUri.value ?? '')) return
+  const destination = { path: route.path, query: { ...route.query, agent_id: String(agentId.value), uri: uri || undefined } }
+  void (replace ? router.replace(destination) : router.push(destination))
+}
 async function loadAgents(): Promise<void> {
   controller?.abort()
   const request = new AbortController(); controller = request
@@ -63,15 +76,11 @@ async function loadAgents(): Promise<void> {
     const result = await getAgentSelection('management', request.signal)
     if (request.signal.aborted) return
     agents.value = result
-    if (agentId.value !== null && !result.some(agent => agent.id === agentId.value)) agentId.value = null
-    if (agentId.value === null && typeof route.query.agent_id === 'string') {
-      agentId.value = result.find(agent => String(agent.id) === route.query.agent_id)?.id ?? null
-    }
   } catch { if (!request.signal.aborted) error.value = true }
   finally { if (!request.signal.aborted) loading.value = false }
 }
 function sessionChanged(event: Event): void {
-  session.value++; controller?.abort(); agents.value = []; agentId.value = null
+  session.value++; controller?.abort(); agents.value = []
   if ((event as CustomEvent<string | null>).detail) void loadAgents()
 }
 onMounted(() => { void loadAgents(); window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, sessionChanged) })

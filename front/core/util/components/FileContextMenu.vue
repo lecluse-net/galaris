@@ -24,7 +24,7 @@ async function transfer(): Promise<void> {
 const actions = computed<ContextAction[]>(() => [
   { key: 'open', icon: 'open_in_full', label: t('common.open'), run: open },
   ...(download ? [{ key: 'download', icon: 'download', label: t('common.download'), disabled: busy.value, run: transfer }] : []),
-  ...(rename ? [{ key: 'rename', icon: 'drive_file_rename_outline', label: t('fileRename.action', { name }), run: () => renameButton.value?.open() }] : []),
+  ...(rename ? [{ key: 'rename', icon: 'drive_file_rename_outline', label: t('fileRename.label'), run: () => renameButton.value?.open() }] : []),
   ...(uri ? [{ key: 'copy', icon: 'content_copy', label: t('common.copyReference'), run: () => copyToClipboard(uri) }] : []),
   ...extraActions,
 ])

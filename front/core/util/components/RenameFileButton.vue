@@ -1,17 +1,17 @@
 <template>
   <q-btn v-bind="$attrs" flat round dense icon="drive_file_rename_outline" :disable="disabled || saving"
     :aria-label="t('fileRename.action', { name })" @click.stop="openDialog">
-    <q-tooltip>{{ t('fileRename.action', { name }) }}</q-tooltip>
+    <q-tooltip>{{ t('fileRename.label') }}</q-tooltip>
   </q-btn>
   <q-dialog v-model="open">
     <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
       <q-form @submit="save">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('fileRename.title') }}</div><q-space />
+          <div class="text-h6">{{ title || t('fileRename.title') }}</div><q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
         <q-card-section>
-          <q-input v-model="draft" outlined autofocus :label="t('fileRename.name')" :disable="saving"
+          <q-input v-model="draft" outlined autofocus :label="nameLabel || t('fileRename.name')" :disable="saving"
             maxlength="500" :error="Boolean(validationError)" :error-message="validationError" />
           <q-banner v-if="error" class="q-mt-sm" role="alert">{{ error }}</q-banner>
         </q-card-section>
@@ -31,10 +31,12 @@ import { apiErrorDetail } from '@/core/api'
 
 defineOptions({ inheritAttrs: false })
 
-const { name, rename, disabled = false } = defineProps<{
+const { name, rename, disabled = false, title = '', nameLabel = '' } = defineProps<{
   name: string
   rename: (name: string) => Promise<unknown>
   disabled?: boolean
+  title?: string
+  nameLabel?: string
 }>()
 const { t } = useI18n()
 const open = ref(false), saving = ref(false), draft = ref(''), error = ref('')

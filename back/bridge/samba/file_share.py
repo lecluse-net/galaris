@@ -414,6 +414,47 @@ class SambaFileClient:
     async def resource_delete_conditional(self, path: str, *, expected_etag: str) -> FileMutation:
         return await self._delete(path, expected_etag)
 
+    async def resource_delete_collection(self, path: str) -> FileMutation:
+        path = _path(path)
+        self._require_file_path(path)
+
+        def remove_tree(active: sdk.SmbSession) -> FileMutation:
+            root = self._check(active, path)
+            if root is None or not root.attributes & _DIRECTORY:
+                raise NotADirectoryError(path)
+            pending = [(path, 0)]
+            entries: list[tuple[str, sdk.Metadata]] = []
+            while pending:
+                current, depth = pending.pop()
+                metadata = self._check(active, current)
+                assert metadata is not None
+                entries.append((current, metadata))
+                if len(entries) > _DIRECTORY_ENTRIES or depth > 64:
+                    raise ResourceValidationError("Directory deletion exceeds its bounded traversal limit")
+                if metadata.attributes & _DIRECTORY:
+                    for name in active.children(self._unc(active, current)):
+                        pending.append((_path(f"{current}/{name}"), depth + 1))
+                        if len(entries) + len(pending) > _DIRECTORY_ENTRIES:
+                            raise ResourceValidationError("Directory deletion exceeds its bounded traversal limit")
+            for current, metadata in reversed(entries):
+                live = self._check(active, current)
+                if live is None or live.inode != metadata.inode or live.attributes != metadata.attributes or (
+                    not metadata.attributes & _DIRECTORY and live != metadata
+                ):
+                    raise ResourceRevisionConflict("The directory changed during deletion; inspect remaining entries before retrying")
+                if metadata.attributes & _DIRECTORY:
+                    active.rmdir(self._unc(active, current))
+                else:
+                    with active.open(self._unc(active, current), "rb", delete=True) as handle:
+                        actual = active.fstat(handle)
+                        _safe(actual)
+                        if actual != metadata:
+                            raise ResourceRevisionConflict("A file changed during directory deletion")
+                        active.delete_handle(handle)
+            return FileMutation(path=path, state="deleted")
+
+        return await self._run(remove_tree)
+
     async def _delete(self, path: str, expected_etag: str | None) -> FileMutation:
         path = _path(path)
         self._require_file_path(path)
@@ -466,8 +507,6 @@ class SambaFileClient:
         def move(active: sdk.SmbSession) -> FileMutation:
             metadata = self._check(active, source)
             assert metadata is not None
-            if metadata.attributes & _DIRECTORY:
-                raise IsADirectoryError(source)
             self._parents(active, destination)
             self._check(active, destination, missing=True)
             active.rename(self._unc(active, source), self._unc(active, destination), overwrite)
