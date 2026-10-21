@@ -301,7 +301,7 @@ const TASK_BOTTOM_THRESHOLD = 24
 type TaskSnapshotEvent = { data?: Task }
 type TaskDeleteEvent = { data?: { id?: string } }
 type FlatTask = { task: ConversationTask; depth: number }
-type TaskAction = 'pause' | 'resume' | 'force-terminate' | 'delete'
+type TaskAction = 'run' | 'retry' | 'pause' | 'resume' | 'force-terminate' | 'delete'
 type TaskScrollArea = {
   $el: HTMLElement
   setScrollPosition: (axis: 'vertical', offset: number, duration?: number) => void
@@ -430,6 +430,14 @@ function canResumeTask(task: Task): boolean {
     && !['SUCCESS', 'ERROR'].includes(task.status)
 }
 
+function canRunTask(task: Task): boolean {
+  return canPauseTask(task) && (task.status === 'CREATE' || task.paused)
+}
+
+function canRetryTask(task: Task): boolean {
+  return task.status === 'ERROR'
+}
+
 function canForceTerminateTask(task: Task): boolean {
   return !['SUCCESS', 'ERROR'].includes(task.status)
 }
@@ -438,6 +446,36 @@ function applyLocalTaskSnapshot(snapshot: Task): void {
   tasks.value = tasks.value.map(task => task.id === snapshot.id
     ? { ...task, ...snapshot, tree_parent_id: task.tree_parent_id, directly_linked: task.directly_linked }
     : task)
+}
+
+async function startTask(task: Task, action: 'run' | 'retry'): Promise<void> {
+  if (!canEdit.value || taskAction(task.id)) return
+  if (action === 'run' ? !canRunTask(task) : !canRetryTask(task)) return
+  pendingTaskActions.value[task.id] = action
+  try {
+    const updated = action === 'run'
+      ? await taskStore.runTask(task.id)
+      : await taskStore.retryTask(task.id, task.revision)
+    applyLocalTaskSnapshot(updated)
+    $q.notify({
+      message: t(`task.notify.${action}Success`),
+      color: 'positive',
+      icon: action === 'run' ? 'play_circle' : 'replay',
+      timeout: 3000,
+      position: 'top',
+    })
+    scheduleRefresh()
+  } catch (caught) {
+    $q.notify({
+      message: apiErrorDetail(caught) || t(`task.notify.${action}Error`),
+      color: 'negative',
+      icon: 'error',
+      timeout: 5000,
+      position: 'top',
+    })
+  } finally {
+    delete pendingTaskActions.value[task.id]
+  }
 }
 
 async function pauseTask(task: Task): Promise<void> {
@@ -749,8 +787,10 @@ function taskContextActions(task: Task): ContextAction[] {
   ]
   if (!canEdit.value) return actions
   const disabled = taskAction(task.id) !== null
+  if (canRunTask(task)) actions.push({ key: 'run', icon: 'play_arrow', label: t('task.detail.run'), disabled, run: () => startTask(task, 'run') })
   if (canPauseTask(task)) actions.push({ key: 'pause', icon: 'pause', label: t('task.detail.pauseTooltip'), disabled, run: () => pauseTask(task) })
   if (canResumeTask(task)) actions.push({ key: 'resume', icon: 'play_arrow', label: t('task.detail.resumeTooltip'), disabled, run: () => resumeTask(task) })
+  if (canRetryTask(task)) actions.push({ key: 'retry', icon: 'replay', label: t('task.detail.retry'), disabled, run: () => startTask(task, 'retry') })
   if (canForceTerminateTask(task)) actions.push({ key: 'terminate', icon: 'cancel', label: t('task.detail.forceTerminateTooltip'), negative: true, disabled, run: () => confirmTaskForceTerminate(task) })
   actions.push({ key: 'delete', icon: 'delete', label: t('task.detail.deleteTooltip'), negative: true, separator: true, disabled, run: () => confirmTaskDelete(task) })
   return actions

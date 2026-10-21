@@ -1,9 +1,9 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 import { result, call } from './data.mjs'
 
 const task = index => ({ id: `task-${index}`, label: `Task ${index}`, objective: `Objective ${index}`, status: 'SUCCESS', paused: false, agent_id: null, tree_parent_id: null, parent_id: null, directly_linked: true, topic_id: null, data: {}, execution_result: result, revision: 1, created_at: `2026-09-01T12:${String(index % 60).padStart(2, '0')}:00Z`, updated_at: null })
 
-async function panel(page, items, total = items.length, activity = []) {
+async function panel(page, items, total = items.length, activity = [], privileges = []) {
   const requests = []
   await page.route('**/api/tasks/activity', route => route.fulfill({ json: activity }))
   await jsonRoute(page, '**/api/chat/recipients?*', { agents: [], users: [] })
@@ -12,6 +12,7 @@ async function panel(page, items, total = items.length, activity = []) {
     return route.fulfill({ json: { items, total, page: 1, page_size: 10 } })
   })
   await mount(page, 'app/chat/components/AgentTasksPanel.vue', {
+    privileges,
     props: { roomId: 'room-a', fromMessageId: 'message-a', canRead: true },
     containerStyle: { height: '180px', display: 'flex', flexDirection: 'column' },
   })
@@ -20,6 +21,56 @@ async function panel(page, items, total = items.length, activity = []) {
 }
 const scrolling = page => page.locator('.agent-tasks-scroll .q-scrollarea__container')
 const bottomGap = page => scrolling(page).evaluate(node => node.scrollHeight - node.clientHeight - node.scrollTop)
+
+for (const [action, label, initial, next] of [
+  ['run', 'RUN', { status: 'CREATE' }, { status: 'EXEC' }],
+  ['retry', 'Retry', { status: 'ERROR' }, { status: 'EXEC' }],
+  ['pause', 'Pause this task and its sub-tasks', { status: 'EXEC' }, { status: 'EXEC', paused: true, data: { pause_reasons: ['user'] } }],
+  ['resume', 'Resume this task and its sub-tasks', { status: 'EXEC', paused: true, data: { pause_reasons: ['user'] } }, { status: 'EXEC', paused: false, data: {} }],
+]) test(`chat task menu executes ${action} and reconciles the returned state`, async ({ page }, testInfo) => {
+  const items = [{ ...task(1), ...initial }]
+  const commands = []
+  await jsonRoute(page, '**/api/tasks/recent?*', { items: [], total: 0 })
+  await page.route(`**/api/tasks/task-1/${action}`, route => {
+    commands.push({ method: route.request().method(), body: route.request().postDataJSON() })
+    items[0] = { ...items[0], ...next, revision: 2 }
+    return route.fulfill({ json: items[0] })
+  })
+  await panel(page, items, 1, [], ['TASK_EDIT'])
+  const row = page.locator('.agent-task-row')
+  await row.click({ button: 'right' })
+  await expect(page.getByRole('menuitem', { name: 'Copy reference', exact: true })).toBeVisible()
+  if (action === 'retry') await page.screenshot({ path: testInfo.outputPath('task-actions.png') })
+  await page.getByRole('menuitem', { name: label, exact: true }).click()
+  await expect.poll(() => commands.length).toBe(1)
+  expect(commands[0]).toEqual({ method: 'POST', body: action === 'retry' ? { expected_revision: 1 } : null })
+  await row.click({ button: 'right' })
+  await expect(page.getByRole('menuitem', { name: label, exact: true })).toHaveCount(0)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await setPrivileges(page, [])
+  await expect(page.getByRole('menuitem', { name: /^(RUN|Retry|Pause this task and its sub-tasks|Resume this task and its sub-tasks|Permanently stop the task and unblock related workflows|Delete task)$/ })).toHaveCount(0)
+})
+
+test('chat retry remains available after failure and cannot be submitted twice while pending', async ({ page }) => {
+  let finish
+  let calls = 0
+  await page.route('**/api/tasks/task-1/retry', async route => {
+    calls++
+    await new Promise(resolve => { finish = resolve })
+    await route.fulfill({ status: 409, json: { detail: 'Synthetic revision conflict' } })
+  })
+  await panel(page, [{ ...task(1), status: 'ERROR' }], 1, [], ['TASK_EDIT'])
+  const row = page.locator('.agent-task-row')
+  await row.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Retry', exact: true }).click()
+  await expect.poll(() => calls).toBe(1)
+  await row.click({ button: 'right' })
+  await expect(page.getByRole('menuitem', { name: 'Retry', exact: true })).toHaveAttribute('aria-disabled', 'true')
+  finish()
+  await expect(page.locator('.q-notification').filter({ hasText: 'Synthetic revision conflict' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Retry', exact: true })).not.toHaveAttribute('aria-disabled', 'true')
+  expect(calls).toBe(1)
+})
 
 test('completed task expansion is local to the row and does not open task details', async ({ page }) => {
   await panel(page, [task(1), task(2)])
