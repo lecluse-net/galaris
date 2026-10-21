@@ -38,12 +38,12 @@ agents closes previews and immediately removes the previous agent’s files.
 Schemes open as accordion sections without arrows. The tree contains only visible
 directories. Status messages and errors appear in the central file area; errors
 and their **Retry** button are highlighted in red. Hidden files and directories
-whose names start with a dot are omitted. All known schemes are displayed, including
-HTTPS. A message explains when a scheme supports URI access without a root listing.
+whose names start with a dot are omitted. Only schemes that can list files at their
+root are displayed. Other schemes remain accessible through their URIs.
 
 On mobile, **Show locations**, next to the breadcrumbs, reveals the tree.
-Navigate using locations, directories and breadcrumbs. Providers without a root
-listing or a continuation cursor report that limitation; open an available
+Navigate using locations, directories and breadcrumbs. Providers without a
+continuation cursor report that limitation; open an available
 subdirectory to continue.
 
 The `file://` root contains independent internal files owned by the selected agent

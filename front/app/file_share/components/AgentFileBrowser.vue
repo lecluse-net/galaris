@@ -198,7 +198,7 @@ function treeNode(entry: FileEntry, ancestors: Set<string> = new Set()): Browser
   }
   return node
 }
-const treeNodes = computed(() => schemes.value.map(scheme => ({ ...treeNode({ uri: `${scheme.scheme}://`,
+const treeNodes = computed(() => schemes.value.filter(scheme => scheme.capabilities.includes('list') && scheme.root_listable !== false).map(scheme => ({ ...treeNode({ uri: `${scheme.scheme}://`,
   name: scheme.label, is_collection: true, media_type: '', size: null, capabilities: scheme.capabilities }), scheme: scheme.scheme })))
 async function loadSchemes(): Promise<void> {
   schemesRequest?.abort()

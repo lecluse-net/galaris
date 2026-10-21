@@ -44,13 +44,13 @@ Les schémas s’ouvrent comme des rubriques d’accordéon sans flèche. L’ar
 contient uniquement les répertoires visibles. Les messages d’état et les erreurs
 s’affichent dans la zone centrale des fichiers ; les erreurs et leur bouton
 **Réessayer** sont signalés en rouge. Les fichiers et répertoires cachés, dont le nom commence par un
-point, sont masqués. Tous les schémas connus sont affichés, y compris HTTPS.
-Un message précise lorsqu’un schéma permet l’accès par URI sans liste à sa racine.
+point, sont masqués. Seuls les schémas permettant de lister les fichiers à leur racine
+sont affichés. Les autres restent accessibles par leurs URI.
 
 Sur mobile, **Afficher les emplacements**, près du fil d’Ariane, ouvre l’arborescence.
 La navigation se fait par les emplacements, les répertoires et le fil d’Ariane.
-Les fournisseurs sans liste à leur racine ou sans curseur de continuation
-signalent cette limite ; ouvrez un sous-répertoire disponible pour poursuivre.
+Les fournisseurs sans curseur de continuation signalent cette limite ; ouvrez un
+sous-répertoire disponible pour poursuivre.
 
 La racine `file://` contient les fichiers internes indépendants de l’agent sélectionné
 et les pièces jointes auxquelles il a accès. Chaque fichier apparaît une seule fois,

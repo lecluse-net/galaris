@@ -247,7 +247,7 @@ test('a Galaris document opens its existing modal with the selected agent scope'
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
-test('agent changes discard late responses and scheme accordions reopen with empty or URI access states', async ({ page }, testInfo) => {
+test('agent changes discard late responses and browsable scheme accordions reopen with empty states', async ({ page }, testInfo) => {
   await setup(page)
   let failMail = true
   let release
@@ -282,11 +282,8 @@ test('agent changes discard late responses and scheme accordions reopen with emp
   await expect(consoleHeader).toHaveAttribute('aria-expanded', 'true')
   await expect(page.getByText('Alice private.txt', { exact: true })).toHaveCount(0)
   for (const scheme of ['Messenger', 'HTTPS']) {
-    await page.getByText(scheme, { exact: true }).click()
-    await expect(consoleHeader).toHaveAttribute('aria-expanded', 'false')
-    await expect(page.locator('.file-main').getByText('This scheme supports access by URI, with no file listing at its root.', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: scheme, exact: true })).toHaveCount(0)
   }
-  await page.screenshot({ path: testInfo.outputPath('file-browser-https.png'), fullPage: true })
   await page.getByText('Mail', { exact: true }).click()
   const main = page.locator('.file-main')
   await expect(main.getByRole('alert')).toBeVisible()
