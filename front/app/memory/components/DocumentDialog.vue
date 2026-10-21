@@ -1,5 +1,5 @@
 <template>
-  <q-dialog v-model="open" allow-focus-outside :maximized="$q.screen.lt.md" @before-hide="beforeHide">
+  <q-dialog v-model="open" allow-focus-outside no-route-dismiss :maximized="$q.screen.lt.md" @before-hide="beforeHide">
     <q-card class="document-navigation-dialog galaris-detail-dialog galaris-dialog-card" :class="cardClass">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <DocumentNavigationButtons class="q-mr-sm" :can-go-back="!busy && history.canGoBack.value" :can-go-forward="!busy && history.canGoForward.value" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
@@ -44,7 +44,18 @@ const emit = defineEmits<{
 }>()
 const { t } = useI18n(), $q = useQuasar()
 const router = useRouter()
-const history = useDocumentHistory()
+const history = useDocumentHistory({
+  active: () => open.value,
+  leave: async () => {
+    if (!await flush()) return false
+    open.value = false
+    return true
+  },
+  navigate: async (id, position) => {
+    await selectDocument(id, position)
+    return current.value?.id === id
+  },
+})
 const editor = useTemplateRef<InstanceType<typeof DocumentEditor>>('editor')
 const current = shallowRef<MemoryItemDetail | null>(null)
 const currentAgentId = ref<number | null>(null)
@@ -95,7 +106,7 @@ async function selectDocument(id: string, position?: number, initial = false): P
 async function navigateHistory(direction: -1 | 1): Promise<void> {
   if (busy.value) return
   const target = history.target(direction)
-  if (target) await selectDocument(target.id, target.position)
+  if (target) await history.go(direction)
 }
 provide(documentNavigationKey, async id => {
   if (current.value?.id !== id) await selectDocument(id)
@@ -111,6 +122,7 @@ watch([open, () => documentId, () => agentId], ([visible, id], previous) => {
   if (!previous?.[0]) current.value = null
   if (id) void selectDocument(id, undefined, true)
 }, { immediate: true })
+watch(() => router.currentRoute.value.fullPath, () => { open.value = false })
 onBeforeUnmount(() => { disposed = true; ++generation })
 defineExpose({ flush })
 </script>

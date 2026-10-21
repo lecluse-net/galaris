@@ -40,7 +40,7 @@ for (const width of [1440, 390]) {
     const editable = width === 1440
     await page.setViewportSize({ width, height: 900 })
     await mount(page, 'app/chat/components/ConversationDocumentDialog.vue', {
-      route: '/chat', props: { modelValue: true, documentId: state.items[0].id, agentId: 7, title: 'Alpha', editable }, privileges: ['MEMORY_EDIT'],
+      route: '/chat', browserHistory: true, props: { modelValue: true, documentId: state.items[0].id, agentId: 7, title: 'Alpha', editable }, privileges: ['MEMORY_EDIT'],
     })
     const dialog = page.getByRole('dialog')
     const title = dialog.getByLabel('Title', { exact: true })
@@ -54,12 +54,12 @@ for (const width of [1440, 390]) {
     await expect(title).toHaveValue('Beta')
     await open('Open Gamma')
     await expect(title).toHaveValue('Gamma')
-    await back.click()
+    await page.evaluate(() => window.history.back())
     await expect(title).toHaveValue('Beta')
     await back.focus()
     await page.keyboard.press('Enter')
     await expect(title).toHaveValue('Alpha')
-    await forward.click()
+    await page.evaluate(() => window.history.forward())
     await expect(title).toHaveValue('Beta')
     await open('Open Alpha')
     await expect(title).toHaveValue('Alpha')
@@ -88,7 +88,7 @@ for (const width of [1440, 390]) {
 test('modal navigation preserves unsaved changes after refusal and edits made while a destination loads', async ({ page }) => {
   const state = await documents(page)
   await mount(page, 'core/util/components/WorkingDocumentDialog.vue', {
-    route: '/chat', props: { modelValue: true, documentId: state.items[0].id, agentId: 7, editable: true }, privileges: ['MEMORY_EDIT'],
+    route: '/chat', browserHistory: true, props: { modelValue: true, documentId: state.items[0].id, agentId: 7, editable: true }, privileges: ['MEMORY_EDIT'],
   })
   const dialog = page.getByRole('dialog')
   const title = dialog.getByLabel('Title', { exact: true })
@@ -113,6 +113,13 @@ test('modal navigation preserves unsaved changes after refusal and edits made wh
   } finally { release() }
   await expect(title).toHaveValue('Beta')
   expect(state.writes.at(-1)).toMatchObject({ title: 'Alpha edited during loading' })
+  state.refuseSave = true
+  await title.fill('Beta draft')
+  await page.evaluate(() => window.history.back())
+  await expect(page.getByText('Automatic save failed', { exact: true }).first()).toBeVisible()
+  await expect(title).toHaveValue('Beta draft')
+  await expect(dialog.getByRole('button', { name: 'Next document', exact: true })).toBeDisabled()
+  state.refuseSave = false
   await dialog.getByRole('button', { name: 'Previous document', exact: true }).click()
   await expect(title).toHaveValue('Alpha edited during loading')
 })
@@ -147,7 +154,7 @@ test('a denied destination keeps the current document and closing discards a lat
 test('opening a separate dialog from a document dialog preserves each navigation context', async ({ page }) => {
   const state = await documents(page)
   await mount(page, 'core/util/components/WorkingDocumentDialog.vue', {
-    route: '/chat', props: { modelValue: true, documentId: state.items[0].id, agentId: 7, editable: true }, privileges: ['MEMORY_EDIT'],
+    route: '/chat', browserHistory: true, props: { modelValue: true, documentId: state.items[0].id, agentId: 7, editable: true }, privileges: ['MEMORY_EDIT'],
   })
   const parent = page.getByRole('dialog').first()
   await expect(parent.getByLabel('Title', { exact: true })).toHaveValue('Alpha')
@@ -161,7 +168,7 @@ test('opening a separate dialog from a document dialog preserves each navigation
   await expect(child.getByLabel('Title', { exact: true })).toHaveValue('Gamma')
   await expect(page.getByRole('dialog')).toHaveCount(2)
   await expect(page.getByRole('button', { name: 'Open in a dialog', exact: true })).toBeHidden()
-  await child.getByRole('button', { name: 'Previous document', exact: true }).click()
+  await page.evaluate(() => window.history.back())
   await expect(child.getByLabel('Title', { exact: true })).toHaveValue('Beta')
   await child.getByRole('link', { name: 'Open Alpha', exact: true }).click()
   await expect(child.getByLabel('Title', { exact: true })).toHaveValue('Alpha')
@@ -169,4 +176,37 @@ test('opening a separate dialog from a document dialog preserves each navigation
   await expect(child.getByLabel('Title', { exact: true })).toHaveValue('Beta')
   await expect(parent.getByRole('button', { name: 'Previous document', exact: true })).toBeDisabled()
   expect(await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe('/chat')
+})
+
+test('rapid browser traversal ignores a late document without rolling back the latest visit', async ({ page }) => {
+  const state = await documents(page)
+  await mount(page, 'core/util/components/WorkingDocumentDialog.vue', {
+    route: '/chat', browserHistory: true,
+    props: { modelValue: true, documentId: state.items[0].id, agentId: 7 },
+  })
+  const dialog = page.getByRole('dialog')
+  const title = dialog.getByLabel('Title', { exact: true })
+  await dialog.getByRole('link', { name: 'Open Beta', exact: true }).click()
+  await expect(title).toHaveValue('Beta')
+  await dialog.getByRole('link', { name: 'Open Gamma', exact: true }).click()
+  await expect(title).toHaveValue('Gamma')
+  let release, started = false, finished = false
+  const gate = new Promise(resolve => { release = resolve })
+  await page.route(new RegExp(`/api/memory/documents/${state.items[1].id}(?:\\?|$)`), async route => {
+    started = true
+    await gate
+    await route.fallback()
+    finished = true
+  })
+  await page.evaluate(() => window.history.back())
+  try {
+    await expect.poll(() => started).toBe(true)
+    await page.evaluate(() => window.history.back())
+    await expect(title).toHaveValue('Alpha')
+  } finally { release() }
+  await expect.poll(() => finished).toBe(true)
+  await expect(title).toHaveValue('Alpha')
+  // The native cursor must still be on Alpha: forward restores Beta, not Gamma.
+  await page.evaluate(() => window.history.forward())
+  await expect(title).toHaveValue('Beta')
 })

@@ -162,8 +162,11 @@ En lecture, cliquez pour ouvrir la cible. Les liens et cartes vers un document r
 document dans le contexte courant : la page Documents, le panneau du Chat ou la modale ouverte.
 Dans le Chat, vous restez dans la conversation ; les flèches précédent/suivant sont à droite
 du titre, avant les boutons de positionnement du panneau. Chaque contexte possède son propre
-historique. Celui du Chat repart de zéro à la fermeture du panneau ou au changement de
-conversation ; celui d’une modale repart de zéro à sa réouverture. Les flèches ont une bordure
+historique. Les boutons **Précédent** et **Suivant** du navigateur parcourent aussi ces
+visites, dans Documents, le Chat et les modales. Dans le Chat ou une modale, la conversation
+ou la page reste affichée pendant le changement de document. L’historique du Chat repart de
+zéro à la fermeture du panneau ou au changement de conversation ; celui d’une modale repart
+de zéro à sa réouverture. Les flèches ont une bordure
 bleue arrondie et des infobulles. Les URL de documents
 copiées depuis cette installation utilisent aussi cette navigation. Les agents, tâches, objectifs,
 processus, runs, Datasets et mémoires s'ouvrent dans leur modale sans quitter le document. Collez
@@ -188,7 +191,8 @@ retracent les documents ouverts pendant votre visite, y compris depuis un lien v
 Sur mobile, elles sont aussi disponibles dans la fenêtre du document. Après un retour,
 ouvrir un autre document remplace la suite de l’historique. Les modifications sont sauvegardées
 avant de changer de document ; si la sauvegarde échoue, le document courant reste ouvert.
-L’historique est réinitialisé lorsque vous quittez ou rechargez la page.
+Les flèches documentaires repartent de zéro lorsque vous quittez ou rechargez la page ;
+l’historique des URL du navigateur reste disponible.
 
 Pour citer un autre document, glissez-le depuis l’arborescence des dossiers ou la liste vers
 l’endroit voulu dans le texte. Le lien affiche son titre et le document reste à sa place

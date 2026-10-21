@@ -1380,6 +1380,13 @@ sur bureau et mobile : ouvertures depuis la bibliothèque ou une route documenta
 activation au clavier, nouvelle branche après un retour, absence de doublon consécutif,
 retrait des visites supprimées et préservation du brouillon et du curseur d’historique
 après un refus de sauvegarde, puis sauvegarde et réouverture après reprise.
+Les parcours Documents, Chat et modales utilisent aussi le véritable historique du navigateur :
+retour/avance natifs alternés avec les flèches documentaires, URL et conversation conservées,
+annulation du retour après un échec de sauvegarde et indépendance des modales imbriquées.
+Ils retiennent aussi une réponse pendant des retours rapides et vérifient qu’une branche
+créée dans une modale conserve la navigation du parent et sauvegarde son brouillon.
+`e2e/specs/document-browser-history.spec.mjs` exerce les trois contextes dans le shell complet,
+ainsi que les retours/avances après rechargement, sur Chromium, Firefox et WebKit.
 Les liens et cartes documentaires naviguent dans le même onglet en lecture, édition et lecture
 seule, pour les URI et les URL locales (`galaris-links.spec.mjs`) ; les autres ressources gardent
 leur modale et les pièces jointes leur lecteur. `document-flows.spec.mjs` et

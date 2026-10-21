@@ -1,6 +1,6 @@
 import { createApp, h, nextTick, shallowRef } from 'vue'
 import { createPinia, disposePinia } from 'pinia'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { createMemoryHistory, createWebHistory, createRouter } from 'vue-router'
 import { Quasar, QLayout, QPageContainer, Dialog, Notify, Loading } from 'quasar'
 import quasarUserOptions, { useBrowserTheme } from '/quasar-user-options.ts'
 import { getThemeMode, toQuasarDark } from '/core/theme.ts'
@@ -24,12 +24,12 @@ window.testApp = {
     this.pendingMount = this.mountComponent(options)
     return this.pendingMount
   },
-  async mountComponent({ component, props = {}, slots = {}, setProps = [], containerStyle = {}, route = '/', authenticated = true, dark = toQuasarDark(getThemeMode()), locale = 'en' }) {
+  async mountComponent({ component, props = {}, slots = {}, setProps = [], containerStyle = {}, route = '/', browserHistory = false, authenticated = true, dark = toQuasarDark(getThemeMode()), locale = 'en' }) {
     this.unmount?.()
     errors.length = 0
     const pinia = createPinia()
     const router = createRouter({
-      history: createMemoryHistory(),
+      history: browserHistory ? createWebHistory() : createMemoryHistory(),
       routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }],
     })
     await router.push(route)

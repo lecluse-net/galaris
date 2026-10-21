@@ -147,7 +147,14 @@ const mobileDocumentOpen = ref(false)
 const mobileDocumentId = ref<string | null>(null)
 const mobileDocumentAgentId = ref<number | null>(null)
 const mobileInitialDocument = ref<MemoryItemDetail | null>(null)
-const history = useDocumentHistory()
+const history = useDocumentHistory({
+  active: () => !disposed,
+  href: documentResourceHref,
+  navigate: async (id, position) => {
+    await openRouteDocument(id, position)
+    return ($q.screen.lt.md ? mobileDocumentId.value : selectedDocumentId.value) === id
+  },
+})
 const navigatingHistory = ref(false)
 const canGoBack = computed(() => !navigatingHistory.value && history.canGoBack.value)
 const canGoForward = computed(() => !navigatingHistory.value && history.canGoForward.value)
@@ -187,7 +194,6 @@ function preferredAgent(entry: DocumentLibraryEntry): number | null {
 }
 function recordNavigation(id: string, position?: number): void {
   history.record(id, position)
-  if (documentIdFromRouteQuery(route.query.document_id) !== id) void router.replace(documentResourceHref(id))
 }
 async function navigateHistory(direction: -1 | 1): Promise<void> {
   if (navigatingHistory.value) return
@@ -195,7 +201,7 @@ async function navigateHistory(direction: -1 | 1): Promise<void> {
   if (!target) return
   navigatingHistory.value = true
   try {
-    await openRouteDocument(target.id, target.position)
+    await history.go(direction)
   } finally {
     navigatingHistory.value = false
   }

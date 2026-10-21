@@ -150,8 +150,10 @@ does not share the target: access is checked when it opens. In reading mode, cli
 Document links and cards replace the document in the current context: the Documents page,
 the Chat pane or the open dialog. In Chat, you stay in the conversation; back/forward arrows
 appear to the right of the title, before the pane positioning buttons. Each context has its own
-history. Chat history resets when the pane closes or the conversation changes; dialog history
-resets when the dialog reopens. The arrows have rounded blue borders and tooltips.
+history. The browser's **Back** and **Forward** buttons also retrace these visits in Documents,
+Chat and dialogs. In Chat or a dialog, the conversation or underlying page stays open while
+the document changes. Chat history resets when the pane closes or the conversation changes;
+dialog history resets when the dialog reopens. The arrows have rounded blue borders and tooltips.
 Document URLs copied from this installation use the same navigation. Agents, tasks, goals,
 processes, runs, Datasets and memories open in their modal without leaving the document.
 Paste a `data://` address or a Dataset URL from this installation to retrieve its title,
@@ -172,7 +174,8 @@ On the **Documents** page, **Previous document** and **Next document** retrace d
 opened during your visit, including links to this page. On mobile, the arrows also appear
 in the document dialog. Opening another document after going back replaces the forward
 history. Changes are saved before switching documents; if saving fails, the current document
-stays open. History resets when you leave or reload the page.
+stays open. Document arrows reset when you leave or reload the page; browser URL history
+remains available.
 
 To reference another document, drag it from the folder tree or the list to the desired
 position in the text. The link displays its title and the document stays in its library

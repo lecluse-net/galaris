@@ -1329,6 +1329,13 @@ preserves saving, history, restoration and sharing inside the modal.
 and mobile: library and document route openings, keyboard activation, branching after going
 back, consecutive duplicate suppression, skipping deleted visits, and retaining the draft
 and history position after a refused save, followed by saving and reopening after recovery.
+The Documents, Chat and dialog journeys also use real browser history: native back/forward
+alternating with document arrows, preserving URLs and conversations, cancelling traversal
+after a failed save and keeping nested dialogs independent.
+They also hold a response during rapid traversal and verify that a branch created in a
+dialog preserves the parent's navigation and saves its draft.
+`e2e/specs/document-browser-history.spec.mjs` exercises all three contexts in the complete
+shell, plus back/forward after reloading, in Chromium, Firefox and WebKit.
 Document links and cards navigate in the same tab in reading, editing and read-only mode,
 for URIs and local URLs (`galaris-links.spec.mjs`); other resources keep their modal and
 attachments keep their viewer. `document-flows.spec.mjs` and `e2e/specs/document-links.spec.mjs`

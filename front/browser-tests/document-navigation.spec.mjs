@@ -38,7 +38,7 @@ for (const mobile of [false, true]) {
     const { items } = await library(page)
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
     await mount(page, 'app/memory/components/DocumentLibraryPage.vue', {
-      route: `/documents?document_id=${items[0].id}`, privileges: ['MEMORY_EDIT'],
+      route: `/documents?document_id=${items[0].id}`, browserHistory: true, privileges: ['MEMORY_EDIT'],
     })
     const title = page.getByLabel('Title', { exact: true })
     const buttons = () => mobile ? page.getByRole('dialog') : page.locator('.page-header')
@@ -54,11 +54,15 @@ for (const mobile of [false, true]) {
     await expect(forward()).toBeDisabled()
     await open(items[1])
     await open(items[2])
-    await back().click()
+    await page.evaluate(() => window.history.back())
     await expect(title).toHaveValue('Beta')
     await back().click()
     await expect(title).toHaveValue('Alpha')
     await expect(back()).toBeDisabled()
+    await page.evaluate(() => window.history.forward())
+    await expect(title).toHaveValue('Beta')
+    await back().click()
+    await expect(title).toHaveValue('Alpha')
     // Keyboard activation follows the same history and reads the current document.
     await forward().focus()
     await page.keyboard.press('Enter')
@@ -79,7 +83,7 @@ for (const mobile of [false, true]) {
     state.items[0].payload.text += `<p><a href="document://${state.items[1].id}">Open Beta</a></p>`
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
     await mount(page, 'app/memory/components/DocumentLibraryPage.vue', {
-      route: `/documents?document_id=${state.items[0].id}`, privileges: ['MEMORY_EDIT'],
+      route: `/documents?document_id=${state.items[0].id}`, browserHistory: true, privileges: ['MEMORY_EDIT'],
     })
     const title = page.getByLabel('Title', { exact: true })
     await expect(title).toHaveValue('Alpha')
@@ -92,9 +96,10 @@ for (const mobile of [false, true]) {
     const forward = buttons.getByRole('button', { name: 'Next document', exact: true })
     state.refuseSave = true
     await title.fill('Beta edited')
-    await back.click()
+    await page.evaluate(() => window.history.back())
     await expect(page.getByText('Automatic save failed', { exact: true }).first()).toBeVisible()
     await expect(title).toHaveValue('Beta edited')
+    await expect(page).toHaveURL(new RegExp(`document_id=${state.items[1].id}$`))
     await expect(back).toBeEnabled()
     await expect(forward).toBeDisabled()
     state.refuseSave = false
@@ -122,4 +127,30 @@ test('the Documents contextual dialog action leaves the library selection and hi
   await expect(dialog).toHaveCount(0)
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Alpha')
   await expect(page.locator('.page-header').getByRole('button', { name: 'Previous document', exact: true })).toBeDisabled()
+})
+
+test('a dialog branch preserves the library forward action without reloading or losing its draft', async ({ page }) => {
+  const state = await library(page)
+  state.items[0].payload.text += `<p><a href="document://${state.items[1].id}">Open Beta</a></p>`
+  state.items[1].payload.text += `<p><a href="document://${state.items[2].id}">Open Gamma</a></p>`
+  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', {
+    route: `/documents?document_id=${state.items[0].id}`, browserHistory: true, privileges: ['MEMORY_EDIT'],
+  })
+  const title = page.getByLabel('Title', { exact: true })
+  const header = page.locator('.page-header')
+  await page.getByRole('link', { name: 'Open Beta', exact: true }).click()
+  await expect(title).toHaveValue('Beta')
+  await header.getByRole('button', { name: 'Previous document', exact: true }).click()
+  await expect(title).toHaveValue('Alpha')
+  await page.getByRole('link', { name: 'Open Beta', exact: true }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Open in a dialog', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('link', { name: 'Open Gamma', exact: true }).click()
+  await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue('Gamma')
+  await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
+  await expect(dialog).toHaveCount(0)
+  await title.fill('Alpha draft after dialog')
+  await header.getByRole('button', { name: 'Next document', exact: true }).click()
+  await expect(title).toHaveValue('Beta')
+  expect(state.writes.at(-1)).toMatchObject({ title: 'Alpha draft after dialog' })
 })

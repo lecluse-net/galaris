@@ -234,7 +234,13 @@ const mobileCodeOpen = computed({ get: () => $q.screen.lt.md && selectedCodeId.v
 })
 const selectedDocumentAgentId = ref<number | null>(null)
 const selectedDocumentSeed = shallowRef<WorkingDocumentSnapshot | null>(null)
-const documentHistory = useDocumentHistory()
+const documentHistory = useDocumentHistory({
+  active: () => integratedDocument.value !== null,
+  navigate: async (id, position) => {
+    await navigateChatDocument(id, position)
+    return selectedDocument.value?.id === id
+  },
+})
 const documentNavigationBusy = ref(false)
 let pendingHistoryPosition: number | undefined
 const displayedDocumentId = ref<string | null>(null)
@@ -369,7 +375,7 @@ async function flushDisplayedDocument(): Promise<boolean> {
 async function navigateChatDocument(id: string, historyPosition?: number): Promise<void> {
   if (!canReadDocuments.value || !store.selectedRoom) return
   const request = ++documentDisplayRequest, roomId = store.selectedRoom.id
-  if (selectedDocument.value?.id === id) { documentNavigationBusy.value = false; return }
+  if (selectedDocument.value?.id === id) { documentHistory.record(id, historyPosition); documentNavigationBusy.value = false; return }
   const current = () => !documentPageDisposed && request === documentDisplayRequest && store.selectedRoom?.id === roomId && canReadDocuments.value
   documentNavigationBusy.value = true
   try {
@@ -380,6 +386,9 @@ async function navigateChatDocument(id: string, historyPosition?: number): Promi
     selectedDocumentAgentId.value = detail.agentId
     pendingHistoryPosition = historyPosition
     selectedDocument.value = { id, title: detail.item.title }
+    // The seed is already resolved; commit the visit before the router guard completes.
+    documentHistory.record(id, historyPosition)
+    pendingHistoryPosition = undefined
     mobileView.value = 'conversation'
   } catch (error) { if (current()) reportError(error) }
   finally { if (current()) documentNavigationBusy.value = false }
@@ -387,7 +396,7 @@ async function navigateChatDocument(id: string, historyPosition?: number): Promi
 async function navigateDocumentHistory(direction: -1 | 1): Promise<void> {
   if (documentNavigationBusy.value) return
   const target = documentHistory.target(direction)
-  if (target) await navigateChatDocument(target.id, target.position)
+  if (target) await documentHistory.go(direction)
 }
 provide(documentNavigationKey, id => navigateChatDocument(id))
 onBeforeUnmount(() => { documentPageDisposed = true; ++documentDisplayRequest })

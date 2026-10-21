@@ -50,7 +50,7 @@ async function workspace(page, editable = true, extraDocuments = [], content = '
   await page.route('**/api/memory/documents/library', route => route.fulfill({ json: { entries: [{ item: { ...document, id: 'doc-b', title: 'Off-list document' }, agent_ids: [] }], total: 1, has_more: false } }))
   await jsonRoute(page, '**/api/chat/rooms/room-a/documents?*', { items: [{ id: document.id, label: document.title, uri: 'document://doc-a', revision: 3 }, ...extraDocuments], total: 1 + extraDocuments.length })
   await page.route('**/api/chat/rooms/room-a/documents', route => route.fulfill({ json: { id: document.id, label: route.request().postDataJSON().title, uri: 'document://doc-a' } }))
-  await mount(page, 'app/chat/pages/index.vue', { route: '/chat?room=room-a', privileges: ['CHAT_SEND', 'MEMORY_ACCESS', ...(editable ? ['MEMORY_EDIT'] : [])] })
+  await mount(page, 'app/chat/pages/index.vue', { route: '/chat?room=room-a', browserHistory: true, privileges: ['CHAT_SEND', 'MEMORY_ACCESS', ...(editable ? ['MEMORY_EDIT'] : [])] })
   await expect(page.locator('.conversation-pane')).toContainText(message.text)
   return {
     message,
@@ -106,11 +106,11 @@ for (const width of [1600, 1024]) test(`chat document links and cards stay in th
   expect(state.documentWrites.at(-1)).toMatchObject({ title: 'Saved before navigating' })
   await pane.getByRole('link', { name: 'Open Gamma', exact: true }).click()
   await expect(title).toHaveValue('Gamma')
-  await back.click()
+  await page.evaluate(() => window.history.back())
   await expect(title).toHaveValue('Beta')
   await back.focus(); await page.keyboard.press('Enter')
   await expect(title).toHaveValue('Off-list document')
-  await forward.click()
+  await page.evaluate(() => window.history.forward())
   await expect(title).toHaveValue('Beta')
   await back.click()
   await pane.getByRole('link', { name: 'Open Delta', exact: true }).click({ modifiers: ['Control'] })
