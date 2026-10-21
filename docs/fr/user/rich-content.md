@@ -247,7 +247,7 @@ Une progression permet d’annuler l’envoi. Les images gardent également les 
 L’action **Insérer une PJ** du groupe **Insertion** ouvre le sélecteur de fichiers et intègre
 les fichiers envoyés à la position du curseur. La zone de pièces jointes sous le contenu
 reste accessible même lorsqu’elle est vide : déposez-y des fichiers ou utilisez **Téléverser**,
-puis l’icône **Insérer dans le document** dans les actions de l’aperçu pour les intégrer au texte.
+puis **Insérer dans le document** dans le menu contextuel de la PJ pour les intégrer au texte.
 Vous pouvez également glisser une PJ déjà téléversée vers l'endroit voulu dans le texte.
 L'action d'insertion reste disponible pour afficher plusieurs fois le même fichier, sans nouvel envoi.
 Les images s’affichent dans le texte ; les vidéos, sons et PDF disposent d’un lecteur intégré,
@@ -281,6 +281,10 @@ visionneuse avec le fichier déjà chargé. L’impression et le PDF conservent
 la miniature et le lien. Les aperçus exigent une URL HTTPS
 publique ; un lien simple reste possible. La miniature est conservée avec le document.
 Un clic sur un lien vers une pièce jointe ouvre sa visionneuse, même en édition.
+Le clic droit sur une PJ, ou **Maj+F10** lorsqu’elle a le focus, propose l’ouverture,
+le téléchargement, le renommage, la copie de référence, l’insertion et le retrait selon
+les droits disponibles. Les vignettes conservent les icônes de téléchargement et de retrait ;
+un clic sur la vignette ouvre son aperçu.
 
 Les aperçus ont deux présentations communes : **bloc en page**, intégré au contenu avec son
 lecteur éventuel, et **bloc sous page**, horizontal : miniature à gauche, informations à droite,

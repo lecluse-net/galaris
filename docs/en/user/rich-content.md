@@ -228,8 +228,8 @@ and thumbnail mechanisms as other files and also open from Chat without creating
 Import keeps the supplied file; images, styles and other resources referenced by URLs inside
 it are neither downloaded nor added as attachments. **Insert attachment** in the toolbar's **Insert** group
 opens a file picker and inserts uploaded files at the cursor. The attachment area below the content
-remains available even when empty: drop files there or use **Upload**, then the **Insert into document**
-icon in the preview actions to insert them into the text. You can also drag an uploaded
+remains available even when empty: drop files there or use **Upload**, then **Insert into document**
+in the attachment’s context menu to insert them into the text. You can also drag an uploaded
 attachment to the desired position in the text. Insertion remains available to show the same
 file several times without uploading it again. Images appear in the text; audio, video and PDF files have inline
 players. Other files become clickable cards opening their viewer.
@@ -257,10 +257,11 @@ thumbnail. Videos fit entirely without cropping; PDF attachments also have full-
 in a golden-ratio frame (width / height ≈ 1.618). **Open PDF in fullscreen**, to the right of the title, opens the existing
 viewer using the already loaded file.
 Printing and PDF export retain the static thumbnail or link.
-The **Insert into document** icon is available in the preview actions only for files that are not
-already present in the document body.
 Previews require public HTTPS URLs; plain links remain available. Thumbnails are stored
 with the document. Clicking an attachment link opens its viewer, including while editing.
+Right-click an attachment, or press **Shift+F10** while it has focus, to open, download,
+rename, copy its reference, insert or remove it according to the available permissions.
+Thumbnails retain download and remove icons; clicking the thumbnail opens its preview.
 
 Previews have two shared presentations: **in-page blocks**, within the content with a player when
 appropriate, and horizontal **below-page blocks**, with the thumbnail on the left, information

@@ -10,9 +10,6 @@
         <p v-if="preview.description" class="q-mt-sm">{{ preview.description }}</p>
       </div>
       <BpmnCanvas :model-value="graph" readonly auto-fit :show-guide="!inline" :selected="selected" @select="selected = $event" @dismiss="selected = null">
-        <template v-if="inline" #toolbar-leading>
-          <q-btn outline round dense icon="open_in_full" :aria-label="t('nativeProcesses.resources.open')" @click="open = true" />
-        </template>
         <template #inspector>
           <div v-if="selectedNode" class="q-pa-sm">
             <div class="text-subtitle2">{{ selectedNode.title }}</div>
@@ -23,20 +20,18 @@
       </BpmnCanvas>
       <q-btn v-if="path.length" outline icon="arrow_back" :label="t('nativeProcesses.resources.parentDiagram')" @click="path.pop(); selected = null" />
     </template>
-    <ResourceDetailDialog v-if="open && target" :target="target" @close="open = false" />
   </section>
 </template>
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, shallowRef, watch, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ResourceDetailDialog, captureElementRendering } from '@/core/util'
+import { captureElementRendering } from '@/core/util'
 import BpmnCanvas from './BpmnCanvas.vue'
-import { processResourceTarget } from '../contracts'
 import { processResourceService, type ProcessResourcePreview } from '../services/processResourceService'
 const { uri, agentId = null, inline = false } = defineProps<{ uri: string; agentId?: number | null; inline?: boolean }>()
 const emit = defineEmits<{ loaded: [preview: ProcessResourcePreview] }>()
 const { t } = useI18n()
-const preview = shallowRef<ProcessResourcePreview | null>(null), error = ref(false), loading = ref(false), open = ref(false)
+const preview = shallowRef<ProcessResourcePreview | null>(null), error = ref(false), loading = ref(false)
 const selected = ref<string | null>(null), path = ref<string[]>([])
 const graph = computed(() => {
   let value = preview.value!.graph
@@ -44,7 +39,6 @@ const graph = computed(() => {
   return value
 })
 const selectedNode = computed(() => preview.value ? graph.value.nodes.find(node => node.id === selected.value) : null)
-const target = computed(() => processResourceTarget(uri, preview.value?.title ?? '', agentId))
 const root = useTemplateRef('root')
 async function capture(signal: AbortSignal): Promise<string> {
   const board = root.value?.querySelector<HTMLElement>('.diagram-board')
@@ -55,7 +49,7 @@ defineExpose({ capture })
 let request: AbortController | undefined
 async function load(): Promise<void> {
   request?.abort(); const controller = new AbortController(); request = controller
-  preview.value = null; error.value = false; loading.value = true; selected.value = null; path.value = []; open.value = false
+  preview.value = null; error.value = false; loading.value = true; selected.value = null; path.value = []
   try {
     const value = await processResourceService.preview(uri, agentId, controller.signal)
     if (!controller.signal.aborted) { preview.value = value; emit('loaded', value) }

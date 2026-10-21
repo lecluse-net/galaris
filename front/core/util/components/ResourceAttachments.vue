@@ -64,18 +64,9 @@
         <template #actions>
             <FileContextMenu :key="`${resourceId}:${agentId}:${attachment.id}`" :name="attachment.name" :uri="attachment.uri" target=".document-attachments__item"
               :open="() => attachmentAction(attachment)" :download="() => download(attachment)"
-              :rename="canRename(attachment) ? name => renameAttachment(attachment, name) : undefined" />
-            <q-btn
-              v-if="editable && allowInsertion"
-              flat
-              round
-              dense
-              icon="post_add"
-              :aria-label="t('richEditor.resources.insertAttachment')"
-              @click="emit('insert', attachment)"
-            >
-              <q-tooltip>{{ t('richEditor.resources.insertAttachment') }}</q-tooltip>
-            </q-btn>
+              rename-class="hidden"
+              :rename="canRename(attachment) ? name => renameAttachment(attachment, name) : undefined"
+              :extra-actions="attachmentActions(attachment)" />
             <q-btn
               flat
               round
@@ -92,21 +83,11 @@
               round
               dense
               icon="close"
+              color="negative"
               :aria-label="t('documents.removeAttachment', { name: attachment.name })"
               @click="requestRemoval(attachment)"
             >
               <q-tooltip>{{ t('documents.removeAttachment', { name: attachment.name }) }}</q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="canPreview(attachment)"
-              flat
-              round
-              dense
-              icon="open_in_full"
-              :aria-label="t('documents.openAttachment', { name: attachment.name })"
-              @click="openPreview(attachment)"
-            >
-              <q-tooltip>{{ t('documents.openAttachment', { name: attachment.name }) }}</q-tooltip>
             </q-btn>
         </template>
       </ResourcePreviewBlock>
@@ -235,6 +216,7 @@ import {
 } from '@/core/util'
 import type { BrowserResourceKind, Model3dSource } from '@/core/util'
 import type { AttachmentSource, ResourceAttachment } from '../resourceAttachments'
+import type { ContextAction } from '../contextActions'
 import RenameFileButton from './RenameFileButton.vue'
 import FileContextMenu from './FileContextMenu.vue'
 
@@ -262,6 +244,13 @@ const emit = defineEmits<{
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const attachmentsTitle = computed(() => heading || t('documents.attachments'))
+function attachmentActions(attachment: T): ContextAction[] {
+  if (!editable) return []
+  return [
+    ...(allowInsertion ? [{ key: 'insert', icon: 'post_add', label: t('richEditor.resources.insertAttachment'), run: () => emit('insert', attachment) }] : []),
+    { key: 'remove', icon: 'close', label: t('documents.removeAttachment', { name: attachment.name }), negative: true, separator: true, run: () => requestRemoval(attachment) },
+  ]
+}
 function dragAttachment(event: DragEvent, attachment: T): void {
   if (!editable || !allowInsertion || !dragHtml || !event.dataTransfer) { event.preventDefault(); return }
   event.dataTransfer.effectAllowed = 'copy'

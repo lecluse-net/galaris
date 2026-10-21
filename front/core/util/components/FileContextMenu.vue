@@ -9,9 +9,9 @@ import { useI18n } from 'vue-i18n'
 import ActionContextMenu from './ActionContextMenu.vue'
 import RenameFileButton from './RenameFileButton.vue'
 import type { ContextAction } from '../contextActions'
-const { name, uri, target, open, download, rename, renameClass = '', menuClass = '' } = defineProps<{
+const { name, uri, target, open, download, rename, renameClass = '', menuClass = '', extraActions = [] } = defineProps<{
   name: string; uri?: string; target: string; open: () => unknown; download?: () => unknown;
-  rename?: (name: string) => Promise<unknown>; renameClass?: string; menuClass?: string
+  rename?: (name: string) => Promise<unknown>; renameClass?: string; menuClass?: string; extraActions?: ContextAction[]
 }>()
 const { t } = useI18n()
 const renameButton = useTemplateRef<InstanceType<typeof RenameFileButton>>('renameButton')
@@ -26,5 +26,6 @@ const actions = computed<ContextAction[]>(() => [
   ...(download ? [{ key: 'download', icon: 'download', label: t('common.download'), disabled: busy.value, run: transfer }] : []),
   ...(rename ? [{ key: 'rename', icon: 'drive_file_rename_outline', label: t('fileRename.action', { name }), run: () => renameButton.value?.open() }] : []),
   ...(uri ? [{ key: 'copy', icon: 'content_copy', label: t('common.copyReference'), run: () => copyToClipboard(uri) }] : []),
+  ...extraActions,
 ])
 </script>
