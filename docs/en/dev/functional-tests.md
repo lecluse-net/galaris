@@ -1194,8 +1194,10 @@ original downloads are excluded. `services/chatPreviews.test.mjs` verifies reque
 sharing, independent copies and metadata enrichment after a capture.
 
 `front/browser-tests/topic-detail.spec.mjs` checks desktop and mobile dossier target dialogs
-for tasks, text/voice rounds, spaces, documents, Datasets and memories, including keyboard activation,
+for tasks, conversations, documents, Datasets and memories in their dedicated tab, including keyboard activation,
 backdrop dismissal, retry after a denied read and late responses after closing.
+Direct text/voice round access from topics is retired with those tabs and counters;
+round inspection remains covered in `execution.spec.mjs` and `voice.spec.mjs`.
 
 `app/dream/tests/test_resource_topics.py` covers direct Document and Dataset associations:
 checkpoint replay, creation modes, preserved content, late decisions, permission filtering,

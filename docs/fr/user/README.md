@@ -733,8 +733,12 @@ Leurs métadonnées techniques (URI, taille, type, date, empreinte) ne remplisse
 Les **Dossiers thématiques** regroupent les connaissances autour d’un sujet global, même si elles
 proviennent de salons, Tasks ou appels différents. Dream effectue ce classement en arrière-plan ;
 il peut aussi associer les documents et les datasets à ces sujets. Dans la fiche d'un sujet,
-l'onglet **Espaces et ressources** permet d'ouvrir les documents et datasets associés auxquels
-vous avez accès. Une fusion conserve ces associations ; supprimer le sujet conserve les ressources.
+l'onglet **Contenus liés**, affiché en premier et ouvert par défaut, permet d'ouvrir les conversations,
+documents et jeux de données associés auxquels vous avez accès. Les tâches disposent de leur onglet,
+et l'onglet **Mémoires** rassemble les souvenirs liés avec leur aperçu et leur détail.
+Les compteurs portent sur les conversations, tâches, mémoires, documents et jeux de données ;
+les rounds texte et tours audio ne sont plus présentés séparément.
+Une fusion conserve ces associations ; supprimer le sujet conserve les ressources.
 Dans l'éditeur d'un document ou d'un dataset, l'en-tête affiche l'UUID puis le badge du sujet,
 comme dans le Chat. Cliquez sur ce badge (ou **Sans sujet**) pour consulter l'affectation et
 la changer si vous avez les droits de modification de la ressource et des sujets. Le brouillon

@@ -89,10 +89,9 @@
           outside-arrows
           mobile-arrows
         >
-          <q-tab name="tasks" icon="task_alt" :label="t('topic.detail.tasks')" />
-          <q-tab name="conversations" icon="forum" :label="t('topic.detail.conversationRounds')" />
-          <q-tab name="voice" icon="record_voice_over" :label="t('topic.detail.voiceTurns')" />
           <q-tab name="spaces" icon="hub" :label="t('topic.detail.participants')" />
+          <q-tab name="tasks" icon="task_alt" :label="t('topic.detail.tasks')" />
+          <q-tab name="memories" icon="memory" :label="t('topic.detail.memories')" />
         </q-tabs>
         <q-separator />
 
@@ -118,21 +117,19 @@
             <div v-else class="topic-empty">{{ t('topic.detail.noTasks') }}</div>
           </q-tab-panel>
 
-          <q-tab-panel name="conversations" class="q-pa-none">
-            <TopicSectionLimit :shown="content.conversation_rounds.length" :total="content.summary.conversation_rounds" />
-            <RoundList
-              :rounds="content.conversation_rounds"
-              :empty-label="t('topic.detail.noConversationRounds')"
-            />
-          </q-tab-panel>
-
-          <q-tab-panel name="voice" class="q-pa-none">
-            <TopicSectionLimit :shown="content.voice_turns.length" :total="content.summary.voice_turns" />
-            <RoundList
-              :rounds="content.voice_turns"
-              :empty-label="t('topic.detail.noVoiceTurns')"
-              voice
-            />
+          <q-tab-panel name="memories" class="q-pa-none">
+            <TopicSectionLimit :shown="content.memories.length" :total="content.summary.memories" />
+            <q-list v-if="content.memories.length" separator>
+              <q-item v-for="memory in content.memories" :key="memory.id" clickable
+                @click="openTarget('memory', memory.id, memory.title, memory.owner_agent_id)">
+                <q-item-section avatar><q-icon name="memory" color="deep-purple" /></q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ memory.title }}</q-item-label>
+                  <q-item-label v-if="memory.excerpt" caption lines="2">{{ memory.excerpt }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+            <div v-else class="topic-empty">{{ t('topic.detail.noMemories') }}</div>
           </q-tab-panel>
 
           <q-tab-panel name="spaces" class="q-pa-md">
@@ -180,19 +177,6 @@
                   </q-item>
                 </q-list>
                 <div v-else class="topic-empty topic-empty--bordered q-mb-md">{{ t('topic.detail.noDatasets') }}</div>
-
-                <div class="text-subtitle1 q-mb-sm">{{ t('topic.detail.memories') }}</div>
-                <q-list v-if="content.memories.length" bordered separator class="rounded-borders">
-                  <q-item v-for="memory in content.memories" :key="memory.id" clickable
-                    @click="openTarget('memory', memory.id, memory.title, memory.owner_agent_id)">
-                    <q-item-section avatar><q-icon name="memory" color="deep-purple" /></q-item-section>
-                    <q-item-section>
-                      <q-item-label>{{ memory.title }}</q-item-label>
-                      <q-item-label v-if="memory.excerpt" caption lines="2">{{ memory.excerpt }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-                <div v-else class="topic-empty topic-empty--bordered">{{ t('topic.detail.noMemories') }}</div>
               </div>
             </div>
           </q-tab-panel>
@@ -214,12 +198,12 @@ import { navigationIcon } from '@/core/navigation'
 import { computed, defineComponent, h, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { QBadge, QIcon, QItem, QItemLabel, QItemSection, QList, QPage } from 'quasar'
+import { QPage } from 'quasar'
 import { CopyResourceReference, ResourceReferenceMenu, PageHeader, ResourceDetailDialog, richTextExcerpt } from '@/core/util'
 import { topicService } from '../services/topicService'
-import type { TopicContent, TopicRound, TopicVoiceTurn, TopicTarget } from '../types'
+import type { TopicContent, TopicTarget } from '../types'
 
-type DetailTab = 'tasks' | 'conversations' | 'voice' | 'spaces'
+type DetailTab = 'tasks' | 'memories' | 'spaces'
 
 const { topicId, embedded = false } = defineProps<{ topicId: string; embedded?: boolean }>()
 const emit = defineEmits<{ loaded: [title: string] }>()
@@ -228,14 +212,12 @@ const { t, te, locale } = useI18n()
 const content = ref<TopicContent | null>(null)
 const loading = ref(false)
 const error = ref('')
-const activeTab = ref<DetailTab>('tasks')
+const activeTab = ref<DetailTab>('spaces')
 const selectedTarget = ref<TopicTarget | null>(null)
 
 const metrics = computed(() => content.value ? [
   { key: 'rooms', label: t('topic.detail.rooms'), value: content.value.summary.rooms, icon: 'meeting_room', color: 'blue-grey' },
   { key: 'tasks', label: t('topic.detail.tasks'), value: content.value.summary.tasks, icon: 'task_alt', color: 'primary' },
-  { key: 'conversation_rounds', label: t('topic.detail.conversationRounds'), value: content.value.summary.conversation_rounds, icon: 'forum', color: 'teal' },
-  { key: 'voice_turns', label: t('topic.detail.voiceTurns'), value: content.value.summary.voice_turns, icon: 'record_voice_over', color: 'orange' },
   { key: 'memories', label: t('topic.detail.memories'), value: content.value.summary.memories, icon: 'memory', color: 'deep-purple' },
   { key: 'documents', label: t('topic.detail.documents'), value: content.value.summary.documents, icon: 'description', color: 'secondary' },
   { key: 'datasets', label: t('topic.detail.datasets'), value: content.value.summary.datasets || 0, icon: 'data_object', color: undefined },
@@ -247,34 +229,6 @@ const TopicSectionLimit = defineComponent({
     return () => props.total > props.shown
       ? h('div', { class: 'text-caption text-grey-7 q-px-md q-py-sm' }, t('topic.detail.recentLimit', { count: props.shown, total: props.total }))
       : null
-  },
-})
-
-const RoundList = defineComponent({
-  props: {
-    rounds: { type: Array as () => Array<TopicRound | TopicVoiceTurn>, required: true },
-    emptyLabel: { type: String, required: true },
-    voice: { type: Boolean, default: false },
-  },
-  setup(props) {
-    return () => props.rounds.length
-      ? h(QList, { separator: true }, () => props.rounds.map(round => h(QItem, {
-        key: round.id, clickable: true,
-        onClick: () => openTarget(props.voice ? 'voice' : 'round', round.id,
-          props.voice && 'sequence' in round ? t('topic.detail.voiceTurn', { sequence: round.sequence }) : round.room_label),
-      }, () => [
-        h(QItemSection, { avatar: true }, () => h(QIcon, { name: props.voice ? 'record_voice_over' : 'forum', color: 'primary' })),
-        h(QItemSection, {}, () => [
-          h(QItemLabel, { class: 'text-weight-medium' }, () => props.voice && 'sequence' in round
-            ? t('topic.detail.voiceTurn', { sequence: round.sequence })
-            : round.room_label),
-          h(QItemLabel, { caption: true }, () => `${round.room_label} · ${formatDate(round.created_at)}`),
-          h(QItemLabel, { caption: true, lines: 2 }, () => `${t('topic.detail.request')}: ${round.preview || t('topic.detail.noPreview')}`),
-          round.response ? h(QItemLabel, { caption: true, lines: 2 }, () => `${t('topic.detail.response')}: ${round.response}`) : null,
-        ]),
-        h(QItemSection, { side: true }, () => h(QBadge, { color: statusColor(round.status) }, () => statusLabel(round.status))),
-      ])))
-      : h('div', { class: 'topic-empty' }, props.emptyLabel)
   },
 })
 

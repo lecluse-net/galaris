@@ -44,14 +44,6 @@ for (const width of [1440, 390]) test(`topic rows open their target dialogs with
   await jsonRoute(page, '**/api/tasks/topic-task/children', [])
   await jsonRoute(page, '**/api/tasks/activity', [])
   await jsonRoute(page, '**/api/tasks/topic-task/budget', { enabled: false })
-  await jsonRoute(page, '**/api/conversations/rounds/topic-round', round)
-  await jsonRoute(page, '**/api/llm-calls?*', [])
-  await jsonRoute(page, '**/api/voice/conversations/turns/topic-turn', turn)
-  await page.route('**/api/voice/conversations/turns/topic-turn/deletion', route => route.fulfill({ status: 404, json: {} }))
-  await jsonRoute(page, '**/api/voice/conversations/topic-session', {
-    id: 'topic-session', agent_id: 7, agent_name: 'Synthetic agent', status: 'COMPLETED',
-    transport_kind: 'chat', room_id: 'topic-room', language: 'en', turns: [turn],
-  })
   await jsonRoute(page, '**/api/chat/rooms/topic-room', room)
   await jsonRoute(page, '**/api/chat/rooms/topic-room/speech/status', { available_agent_ids: [] })
   await jsonRoute(page, '**/api/chat/rooms/topic-room/messages?*', { items: [{ id: 'topic-message',
@@ -76,16 +68,15 @@ for (const width of [1440, 390]) test(`topic rows open their target dialogs with
     level: 'private', grants: [], options: [], owner: null, owner_groups: [] })
   await openTopic(page, width)
   const dialog = page.getByRole('dialog')
+  await page.getByRole('tab', { name: 'Tasks', exact: true }).click()
   await page.getByText('Synthetic task objective', { exact: true }).click()
   await expect(dialog.locator('.task-detail').getByText('Synthetic task', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('topic-task-dialog.png') })
   await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
   for (const [tab, line, expected] of [
-    ['Text rounds', 'Text summary', 'Synthetic text answer'],
-    ['Voice rounds', 'Audio summary', 'Synthetic audio answer'],
-    ['Spaces and resources', 'Synthetic space', 'Synthetic space message'],
-    ['Spaces and resources', 'Memory summary', 'Synthetic memory body'],
-    ['Spaces and resources', 'Synthetic document', 'Initial body'],
+    ['Linked content', 'Synthetic space', 'Synthetic space message'],
+    ['Memories', 'Memory summary', 'Synthetic memory body'],
+    ['Linked content', 'Synthetic document', 'Initial body'],
   ]) {
     await page.getByRole('tab', { name: tab, exact: true }).click()
     const row = page.locator('.q-item').filter({ hasText: line }).first()
@@ -112,39 +103,32 @@ for (const width of [1440, 390]) test(`topic rows open their target dialogs with
   expect(await page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/topic/topic-a')
 })
 
-test('target dialogs recover denied reads and ignore replies after closing', async ({ page }) => {
+test('memory details recover denied reads and ignore replies after closing', async ({ page }) => {
   let release
-  let releaseCalls
   const pending = new Promise(resolve => { release = resolve })
-  const pendingCalls = new Promise(resolve => { releaseCalls = resolve })
-  let callsWaiting = false
   let mode = 'denied'
-  await page.route('**/api/conversations/rounds/topic-round', async route => {
+  await page.route('**/api/memory/items/topic-memory', async route => {
     if (mode === 'denied') return route.fulfill({ status: 403, json: { detail: 'Synthetic denied read' } })
     if (mode === 'late') await pending
-    await route.fulfill({ json: round })
-  })
-  await page.route('**/api/llm-calls?*', async route => {
-    if (mode === 'ok') { callsWaiting = true; await pendingCalls }
-    await route.fulfill({ json: [] })
+    await route.fulfill({ json: {
+      ...document, id: 'topic-memory', node_kind: 'memory', payload: { text: 'Synthetic memory body' },
+    } })
   })
   await openTopic(page)
-  await page.getByRole('tab', { name: 'Text rounds', exact: true }).click()
-  await page.locator('.q-item').filter({ hasText: 'Text summary' }).click()
+  await page.getByRole('tab', { name: 'Memories', exact: true }).click()
+  await page.locator('.q-item').filter({ hasText: 'Memory summary' }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByText(/This item could not be loaded/)).toBeVisible()
   mode = 'ok'
   await dialog.getByRole('button', { name: 'Retry', exact: true }).click()
-  await expect.poll(() => callsWaiting).toBe(true)
-  await expect(dialog.getByText('Synthetic text answer', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('Synthetic memory body', { exact: true })).toBeVisible()
   await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
-  releaseCalls()
   mode = 'late'
-  const request = page.waitForRequest('**/api/conversations/rounds/topic-round')
-  await page.locator('.q-item').filter({ hasText: 'Text summary' }).click()
+  const request = page.waitForRequest('**/api/memory/items/topic-memory')
+  await page.locator('.q-item').filter({ hasText: 'Memory summary' }).click()
   await request
   await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
-  const response = page.waitForResponse('**/api/conversations/rounds/topic-round')
+  const response = page.waitForResponse('**/api/memory/items/topic-memory')
   release()
   await response
   await expect(dialog).toHaveCount(0)

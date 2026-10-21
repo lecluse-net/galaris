@@ -1251,8 +1251,10 @@ des requêtes, les copies indépendantes et l’enrichissement des métadonnées
 `TopicSelect` centralise la recherche paginée et la sélection par identifiant de sujet.
 
 `front/browser-tests/topic-detail.spec.mjs` vérifie sur desktop et mobile l’ouverture des
-cibles d’un sujet en modale (tâches, rounds texte/audio, espaces, documents, datasets et mémoires),
+cibles d’un sujet en modale (tâches, conversations, documents, jeux de données et mémoires dans leur onglet dédié),
 le clavier, la fermeture par l’arrière-plan, le réessai après refus et les réponses tardives.
+L'accès direct aux rounds texte/audio depuis le sujet est retiré avec leurs onglets et compteurs ;
+leur consultation reste couverte dans `execution.spec.mjs` et `voice.spec.mjs`.
 `app/dream/tests/test_resource_topics.py` couvre les associations directes aux documents et
 datasets : reprise du checkpoint, modes de création, contenu conservé, décisions tardives,
 filtrage par droits, fusion et suppression du sujet.
