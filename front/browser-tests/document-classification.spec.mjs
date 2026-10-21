@@ -4,6 +4,7 @@ import { document } from './data.mjs'
 async function openFolderIcon(button) {
   const row = button.locator('..')
   if (!await row.getByRole('textbox').count()) {
+    await row.hover()
     await row.getByRole('button', { name: /^(Edit folder|Modifier le dossier) / }).click()
   }
   await button.click()

@@ -47,6 +47,16 @@ Les utilisations Dataset incluent ces références après filtrage des droits du
 Les écritures utilisent `expected_revision` ; le partage utilise `expected_lock_version`.
 Le provider `data://` enregistré dans File Sharing utilise les mêmes services.
 
+Le classement personnel utilise exclusivement `dataset_tags`, `dataset_tag_assignments` et
+`dataset_appearances`, sans partager les dossiers Memory. Les routes `/datasets/tags` et
+`/datasets/library/move` exigent la lecture Dataset ; organiser une ressource lisible ne donne
+aucun droit d'écriture. Les mutations d'une même arborescence sont sérialisées et refusent
+les cycles. Supprimer une branche retire les classements de son utilisateur, jamais le JSON.
+`GET /datasets` combine recherche titre/JSON, classement, propriétaire utilisateur/agent,
+mot-clé, bornes temporelles inclusives/exclusives et tri. La bibliothèque demande les non
+classés et l'ordre manuel par défaut ; les autres consommateurs conservent la liste complète.
+`/datasets/library/facets` ne propose que les propriétaires et mots-clés de ressources lisibles.
+
 Les lectures MCP gardent le JSON exact et leurs offsets en caractères. Elles donnent aussi
 `start_line`, `end_line` et `total_lines` (lignes à partir de 1), ainsi que
 `start_line_complete` et `end_line_complete`. Ces indicateurs signalent les lignes coupées

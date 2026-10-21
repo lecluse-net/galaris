@@ -1351,6 +1351,14 @@ with real APIs, in Chromium, Firefox and WebKit.
 
 ### Personal document classification
 
+The Dataset library uses the same tree/list concept with independent personal folders.
+`back/app/dataset/tests/test_library.py` verifies user isolation, combined filters and paged
+sorting, JSON and permission preservation, HTTP denials and concurrent cycle prevention.
+`front/browser-tests/dataset-library.spec.mjs` exercises menus, subfolders, moves, branch
+deletion returning resources to the unclassified list, filters and late responses.
+`e2e/specs/datasets.spec.mjs` verifies persistent folders and moves in the assembled
+application alongside editing and sharing.
+
 `front/browser-tests/document-navigation.spec.mjs` covers back/forward history on desktop
 and mobile: library and document route openings, keyboard activation, branching after going
 back, consecutive duplicate suppression, skipping deleted visits, and retaining the draft

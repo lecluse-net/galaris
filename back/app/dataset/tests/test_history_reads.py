@@ -99,6 +99,7 @@ async def test_history_http_keeps_permissions_and_metadata_only_response(client)
     assert (await client.get(path)).status_code == 401
     headers = []
     for index in range(3):
+        client.cookies.clear()  # Each actor has an independent browser session.
         login = await client.post("/api/auth/login-json", json={
             "email": f"history-reader-{index}@example.com", "password": password,
         })

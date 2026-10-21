@@ -1,4 +1,8 @@
 // Reusable utility components.
+export { default as LibraryIcon } from './components/LibraryIcon.vue'
+export { default as LibraryIconPicker } from './components/LibraryIconPicker.vue'
+export { default as LibrarySplitterHandle } from './components/LibrarySplitterHandle.vue'
+export { vLibraryShortcuts, type LibraryShortcuts } from './libraryShortcuts'
 export { default as DialogHeader } from './components/DialogHeader.vue'
 export { default as MetricCard } from './components/MetricCard.vue'
 export { default as PanelState } from './components/PanelState.vue'

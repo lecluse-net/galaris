@@ -12,12 +12,12 @@ tests remain authoritative for behavior.
 - 77 declared backend modules;
 - 39 declared frontend modules;
 - 603 backend dependency edges;
-- 211 frontend dependency edges;
+- 210 frontend dependency edges;
 - 286 edges between `app`/`bridge` domains;
 - 27 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 723 detected HTTP/WebSocket handlers;
+- 728 detected HTTP/WebSocket handlers;
 - 174 detected SQLAlchemy tables;
 - 272 detected native MCP tools;
 - 51 detected Vue pages.
@@ -259,9 +259,9 @@ tests remain authoritative for behavior.
 | `app.dataset` | `app.agent` | `back/app/dataset/access.py`, `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/contracts.py`, `back/app/dataset/ownership.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py`, `back/app/dataset/topic_assignment.py`, `back/app/dataset/usage.py` |
 | `app.dataset` | `app.file_share` | `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/provider.py`, `back/app/dataset/values.py` |
 | `app.dataset` | `app.memory` | `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/migration.py`, `back/app/dataset/projection.py`, `back/app/dataset/provider.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py` |
-| `app.dataset` | `app.share` | `back/app/dataset/access.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/dbadmin.py`, `back/app/dataset/migration.py`, `back/app/dataset/models.py`, `back/app/dataset/ownership.py`, `back/app/dataset/projection.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py`, `back/app/dataset/sharing.py` |
+| `app.dataset` | `app.share` | `back/app/dataset/access.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/dbadmin.py`, `back/app/dataset/library.py`, `back/app/dataset/migration.py`, `back/app/dataset/models.py`, `back/app/dataset/ownership.py`, `back/app/dataset/projection.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py`, `back/app/dataset/sharing.py` |
 | `app.dataset` | `core.authorize` | `back/app/dataset/access.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/router.py` |
-| `app.dataset` | `core.database` | `back/app/dataset/access.py`, `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/migration.py`, `back/app/dataset/models.py`, `back/app/dataset/organization.py`, `back/app/dataset/ownership.py`, `back/app/dataset/projection.py`, `back/app/dataset/provider.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py`, `back/app/dataset/sharing.py`, `back/app/dataset/topic_assignment.py`, `back/app/dataset/usage.py` |
+| `app.dataset` | `core.database` | `back/app/dataset/access.py`, `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/library.py`, `back/app/dataset/migration.py`, `back/app/dataset/models.py`, `back/app/dataset/organization.py`, `back/app/dataset/ownership.py`, `back/app/dataset/projection.py`, `back/app/dataset/provider.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py`, `back/app/dataset/sharing.py`, `back/app/dataset/topic_assignment.py`, `back/app/dataset/usage.py` |
 | `app.dataset` | `core.dbadmin` | `back/app/dataset/dbadmin.py` |
 | `app.dataset` | `core.params` | `back/app/dataset/attachments.py` |
 | `app.dataset` | `core.storage` | `back/app/dataset/attachments.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/migration.py`, `back/app/dataset/provider.py`, `back/app/dataset/router.py` |
@@ -805,12 +805,11 @@ tests remain authoritative for behavior.
 | `app/conversation` | `core/api` | `front/app/conversation/components/ConversationRoundDetail.vue`, `front/app/conversation/components/DeliveryResolution.vue`, `front/app/conversation/services/conversationService.ts` |
 | `app/conversation` | `core/authorize` | `front/app/conversation/components/ConversationRoundDetail.vue` |
 | `app/conversation` | `core/util` | `front/app/conversation/components/ConversationExecutionDetails.vue`, `front/app/conversation/components/ConversationHistory.vue`, `front/app/conversation/components/ConversationRoundDetail.vue`, `front/app/conversation/richContent.ts` |
-| `app/dataset` | `app/agent` | `front/app/dataset/pages/[[id]].vue` |
-| `app/dataset` | `app/share` | `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetSharing.vue`, `front/app/dataset/services/datasetService.ts`, `front/app/dataset/types.ts` |
-| `app/dataset` | `core/api` | `front/app/dataset/services/datasetService.ts` |
-| `app/dataset` | `core/authorize` | `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/pages/[[id]].vue` |
+| `app/dataset` | `app/share` | `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetLibraryFilters.vue`, `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/components/DatasetSharing.vue`, `front/app/dataset/services/datasetService.ts`, `front/app/dataset/types.ts` |
+| `app/dataset` | `core/api` | `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/services/datasetService.ts` |
+| `app/dataset` | `core/authorize` | `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/components/DatasetLibraryRow.vue` |
 | `app/dataset` | `core/navigation` | `front/app/dataset/navigation.ts` |
-| `app/dataset` | `core/util` | `front/app/dataset/components/DatasetDialog.vue`, `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/pages/[[id]].vue`, `front/app/dataset/richContent.ts` |
+| `app/dataset` | `core/util` | `front/app/dataset/components/DatasetDialog.vue`, `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetFolderRow.vue`, `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/components/DatasetLibraryRow.vue`, `front/app/dataset/pages/[[id]].vue`, `front/app/dataset/richContent.ts` |
 | `app/dream` | `app/agent` | `front/app/dream/components/FileIndexTab.vue` |
 | `app/dream` | `app/llm` | `front/app/dream/pages/index.vue`, `front/app/dream/types.ts` |
 | `app/dream` | `core/api` | `front/app/dream/services/dreamService.ts`, `front/app/dream/services/fileIndexService.ts` |
@@ -867,7 +866,7 @@ tests remain authoritative for behavior.
 | `app/memory` | `core/api` | `front/app/memory/components/DocumentBulkList.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/documentIcons.ts`, `front/app/memory/stores/documentMutations.ts` |
 | `app/memory` | `core/authorize` | `front/app/memory/components/DocumentBulkList.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/MemoryDreamActions.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/navigation` | `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
-| `app/memory` | `core/util` | `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentApplicationBlock.vue`, `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentBulkList.vue`, `front/app/memory/components/DocumentDialog.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentFolderSelect.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentRowMenu.vue`, `front/app/memory/components/DocumentTagIcon.vue`, `front/app/memory/components/DocumentTagIconPicker.vue`, `front/app/memory/components/DocumentTagRow.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/documentAppResources.ts`, `front/app/memory/documentAppSandbox.ts`, `front/app/memory/documentEditor.ts`, `front/app/memory/documentFolders.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
+| `app/memory` | `core/util` | `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentApplicationBlock.vue`, `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentBulkList.vue`, `front/app/memory/components/DocumentDialog.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentFolderSelect.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentRowMenu.vue`, `front/app/memory/components/DocumentSplitterHandle.vue`, `front/app/memory/components/DocumentTagIcon.vue`, `front/app/memory/components/DocumentTagIconPicker.vue`, `front/app/memory/components/DocumentTagRow.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/documentAppResources.ts`, `front/app/memory/documentAppSandbox.ts`, `front/app/memory/documentEditor.ts`, `front/app/memory/documentFolders.ts`, `front/app/memory/libraryShortcuts.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/tagEmojiCatalog.ts`, `front/app/memory/tagIcon.ts` |
 | `app/memory` | `core/websocket` | `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentBulkList.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/stores/memoryStore.ts` |
 | `app/onboarding` | `core/api` | `front/app/onboarding/services/onboardingService.ts` |
 | `app/onboarding` | `core/authorize` | `front/app/onboarding/components/WelcomePage.vue` |
@@ -1131,11 +1130,11 @@ tests remain authoritative for behavior.
 | `app/process` | 4 | `app/agent`, `app/dataset`, `app/share`, `app/task` |
 | `app/connection` | 3 | `app/agent`, `app/console`, `app/tools` |
 | `app/agent` | 2 | `app/harnesses`, `app/llm` |
-| `app/dataset` | 2 | `app/agent`, `app/share` |
 | `app/dream` | 2 | `app/agent`, `app/llm` |
 | `app/llm` | 2 | `app/agent`, `app/task` |
 | `app/memory` | 2 | `app/agent`, `app/share` |
 | `app/browser` | 1 | `app/connection` |
+| `app/dataset` | 1 | `app/share` |
 | `app/file_share` | 1 | `app/agent` |
 | `app/goal` | 1 | `app/agent` |
 | `app/lab` | 1 | `app/task` |
@@ -1148,7 +1147,7 @@ tests remain authoritative for behavior.
 
 | Module | Count | Dependents |
 |---|---:|---|
-| `app/agent` | 15 | `app/chat`, `app/connection`, `app/conversation`, `app/dataset`, `app/dream`, `app/file_share`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
+| `app/agent` | 14 | `app/chat`, `app/connection`, `app/conversation`, `app/dream`, `app/file_share`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
 | `app/llm` | 7 | `app/agent`, `app/conversation`, `app/dream`, `app/index`, `app/task`, `app/voice`, `bridge/ollama` |
 | `app/task` | 7 | `app/chat`, `app/conversation`, `app/index`, `app/lab`, `app/llm`, `app/process`, `app/voice` |
 | `app/topic` | 4 | `app/chat`, `app/conversation`, `app/task`, `app/voice` |
@@ -1177,7 +1176,7 @@ tests remain authoritative for behavior.
 
 ### Strongly Connected Frontend Components
 
-- `app/agent`, `app/conversation`, `app/dataset`, `app/lab`, `app/llm`, `app/memory`, `app/process`, `app/task`, `app/voice`
+- `app/agent`, `app/conversation`, `app/lab`, `app/llm`, `app/memory`, `app/process`, `app/task`, `app/voice`
 - `app/connection`, `app/tools`
 
 ## Declared Backend Routes
@@ -1401,27 +1400,32 @@ tests remain authoritative for behavior.
 | POST | `/conversations/rounds/{round_id}/delivery-resolution` | `app.conversation` | `resolve_conversation_delivery` | yes | `back/app/conversation/router.py:136` |
 | PUT | `/conversations/rounds/{round_id}/topic` | `app.conversation` | `update_conversation_round_topic` | yes | `back/app/conversation/router.py:101` |
 | GET | `/dashboard` | `app.dashboard` | `read_dashboard` | yes | `back/app/dashboard/router.py:17` |
-| GET | `/datasets` | `app.dataset` | `list_datasets` | yes | `back/app/dataset/router.py:103` |
-| POST | `/datasets` | `app.dataset` | `create_dataset` | yes | `back/app/dataset/router.py:110` |
-| GET | `/datasets/tags` | `app.dataset` | `list_tags` | yes | `back/app/dataset/router.py:120` |
-| POST | `/datasets/tags` | `app.dataset` | `create_tag` | yes | `back/app/dataset/router.py:127` |
-| DELETE | `/datasets/{identity}` | `app.dataset` | `delete_dataset` | yes | `back/app/dataset/router.py:170` |
-| GET | `/datasets/{identity}` | `app.dataset` | `read_dataset` | yes | `back/app/dataset/router.py:136` |
-| PATCH | `/datasets/{identity}` | `app.dataset` | `update_dataset` | yes | `back/app/dataset/router.py:159` |
-| GET | `/datasets/{identity}/attachments` | `app.dataset` | `attachments` | yes | `back/app/dataset/router.py:255` |
-| POST | `/datasets/{identity}/attachments` | `app.dataset` | `attach` | yes | `back/app/dataset/router.py:263` |
-| PATCH | `/datasets/{identity}/attachments/{attachment_id}` | `app.dataset` | `rename_dataset_attachment` | yes | `back/app/dataset/router.py:273` |
-| PUT | `/datasets/{identity}/classification` | `app.dataset` | `classify` | yes | `back/app/dataset/router.py:281` |
-| PUT | `/datasets/{identity}/content` | `app.dataset` | `write_dataset` | yes | `back/app/dataset/router.py:144` |
-| GET | `/datasets/{identity}/owner` | `app.dataset` | `owner_options` | yes | `back/app/dataset/router.py:210` |
-| PATCH | `/datasets/{identity}/owner` | `app.dataset` | `transfer_owner` | yes | `back/app/dataset/router.py:217` |
-| GET | `/datasets/{identity}/revisions` | `app.dataset` | `read_history` | yes | `back/app/dataset/router.py:178` |
-| GET | `/datasets/{identity}/revisions/{number}` | `app.dataset` | `read_revision` | yes | `back/app/dataset/router.py:185` |
-| POST | `/datasets/{identity}/revisions/{number}/restore` | `app.dataset` | `restore_revision` | yes | `back/app/dataset/router.py:193` |
-| GET | `/datasets/{identity}/sharing` | `app.dataset` | `sharing` | yes | `back/app/dataset/router.py:203` |
-| PUT | `/datasets/{identity}/sharing` | `app.dataset` | `set_grant` | yes | `back/app/dataset/router.py:245` |
-| PUT | `/datasets/{identity}/sharing-level` | `app.dataset` | `sharing_level` | yes | `back/app/dataset/router.py:227` |
-| GET | `/datasets/{identity}/usages` | `app.dataset` | `usages` | yes | `back/app/dataset/router.py:236` |
+| GET | `/datasets` | `app.dataset` | `list_datasets` | yes | `back/app/dataset/router.py:118` |
+| POST | `/datasets` | `app.dataset` | `create_dataset` | yes | `back/app/dataset/router.py:133` |
+| GET | `/datasets/library/facets` | `app.dataset` | `library_facets` | yes | `back/app/dataset/router.py:159` |
+| POST | `/datasets/library/move` | `app.dataset` | `move_placement` | yes | `back/app/dataset/router.py:191` |
+| GET | `/datasets/tags` | `app.dataset` | `list_tags` | yes | `back/app/dataset/router.py:143` |
+| POST | `/datasets/tags` | `app.dataset` | `create_tag` | yes | `back/app/dataset/router.py:150` |
+| DELETE | `/datasets/tags/{identity}` | `app.dataset` | `delete_tag` | yes | `back/app/dataset/router.py:174` |
+| PUT | `/datasets/tags/{identity}` | `app.dataset` | `update_tag` | yes | `back/app/dataset/router.py:166` |
+| POST | `/datasets/tags/{identity}/sort` | `app.dataset` | `sort_tag` | yes | `back/app/dataset/router.py:183` |
+| DELETE | `/datasets/{identity}` | `app.dataset` | `delete_dataset` | yes | `back/app/dataset/router.py:233` |
+| GET | `/datasets/{identity}` | `app.dataset` | `read_dataset` | yes | `back/app/dataset/router.py:199` |
+| PATCH | `/datasets/{identity}` | `app.dataset` | `update_dataset` | yes | `back/app/dataset/router.py:222` |
+| GET | `/datasets/{identity}/attachments` | `app.dataset` | `attachments` | yes | `back/app/dataset/router.py:318` |
+| POST | `/datasets/{identity}/attachments` | `app.dataset` | `attach` | yes | `back/app/dataset/router.py:326` |
+| PATCH | `/datasets/{identity}/attachments/{attachment_id}` | `app.dataset` | `rename_dataset_attachment` | yes | `back/app/dataset/router.py:336` |
+| PUT | `/datasets/{identity}/classification` | `app.dataset` | `classify` | yes | `back/app/dataset/router.py:344` |
+| PUT | `/datasets/{identity}/content` | `app.dataset` | `write_dataset` | yes | `back/app/dataset/router.py:207` |
+| GET | `/datasets/{identity}/owner` | `app.dataset` | `owner_options` | yes | `back/app/dataset/router.py:273` |
+| PATCH | `/datasets/{identity}/owner` | `app.dataset` | `transfer_owner` | yes | `back/app/dataset/router.py:280` |
+| GET | `/datasets/{identity}/revisions` | `app.dataset` | `read_history` | yes | `back/app/dataset/router.py:241` |
+| GET | `/datasets/{identity}/revisions/{number}` | `app.dataset` | `read_revision` | yes | `back/app/dataset/router.py:248` |
+| POST | `/datasets/{identity}/revisions/{number}/restore` | `app.dataset` | `restore_revision` | yes | `back/app/dataset/router.py:256` |
+| GET | `/datasets/{identity}/sharing` | `app.dataset` | `sharing` | yes | `back/app/dataset/router.py:266` |
+| PUT | `/datasets/{identity}/sharing` | `app.dataset` | `set_grant` | yes | `back/app/dataset/router.py:308` |
+| PUT | `/datasets/{identity}/sharing-level` | `app.dataset` | `sharing_level` | yes | `back/app/dataset/router.py:290` |
+| GET | `/datasets/{identity}/usages` | `app.dataset` | `usages` | yes | `back/app/dataset/router.py:299` |
 | GET | `/definitions` | `app.process` | `read_definitions` | yes | `back/app/process/router.py:156` |
 | POST | `/definitions` | `app.process` | `create_definition` | yes | `back/app/process/router.py:170` |
 | POST | `/definitions/sync` | `app.process` | `sync_definitions` | yes | `back/app/process/router.py:181` |

@@ -1401,6 +1401,14 @@ avec les vraies API, sur Chromium, Firefox et WebKit.
 
 ### Classement personnel des documents
 
+La bibliothèque Datasets possède le même principe d'arborescence et de liste, avec un
+classement indépendant. `back/app/dataset/tests/test_library.py` vérifie l'isolation entre
+utilisateurs, les filtres combinés et le tri paginé, la conservation du JSON et des droits,
+les refus HTTP et les cycles concurrents. `front/browser-tests/dataset-library.spec.mjs`
+exerce les menus, sous-dossiers, déplacements, suppression avec retour aux non classés,
+filtres et réponses tardives. `e2e/specs/datasets.spec.mjs` vérifie la persistance des dossiers
+et déplacements dans l'application assemblée, en plus de l'édition et du partage.
+
 `front/browser-tests/document-navigation.spec.mjs` couvre l’historique précédent/suivant
 sur bureau et mobile : ouvertures depuis la bibliothèque ou une route documentaire,
 activation au clavier, nouvelle branche après un retour, absence de doublon consécutif,

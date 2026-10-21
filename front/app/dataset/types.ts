@@ -6,12 +6,15 @@ export type TypedValue = { type: ValueType; value: JsonValue }
 export interface Variable { name: string; type: ValueType; nullable: boolean; default?: TypedValue }
 export interface Dataset {
   topic_id?: string | null
+  tag_ids?: string[]; icon?: string | null
   id: string; uri: string; title: string; revision: number; lock_version: number; content: string
   can_write: boolean; can_manage: boolean; can_delete: boolean; read_only: boolean
   global_access: number; group_access: number; keywords: string[]
   owner_agent_id: number | null; owner_user_id: number | null
   created_at: string | null; updated_at: string | null
 }
+export interface DatasetFolder { id: string; name: string; parent_id: string | null; position: number; icon: string | null }
+export interface DatasetMove { kind: 'tag' | 'dataset'; identity: string; parent_id: string | null; anchor_kind?: 'tag' | 'dataset'; anchor_id?: string; after?: boolean }
 export interface DatasetOwnerOptions { owner: Collaborator | null; options: Collaborator[]; current_user_id: number }
 export interface Page<T> { items: T[]; total: number }
 export type DatasetSharing = SharingState

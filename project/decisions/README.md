@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0211 — Dossiers Dataset indépendants et visuels communs](0211-independent-dataset-library.md)
+
 - [0208 — Suivi des réflexions Task et lignes d'édition Dataset](0208-task-reasoning-progress-and-dataset-lines.md)
 
 - [0207 — Streaming borné et supervision incrémentale](0207-bounded-stream-supervision.md)

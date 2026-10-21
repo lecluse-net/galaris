@@ -12,7 +12,7 @@ import math
 from typing import Any, Literal, cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import defer
 
 from app.agent import AgentManagementScope
@@ -22,6 +22,7 @@ from core.user import HumanActor
 from .access import accessible_clause, access, is_administrator
 from .contracts import DataActor, DatasetAccess, DatasetConflictError, DatasetNotFoundError, DatasetPermissionError, DatasetWriteLimitError
 from .models import Dataset, DatasetRevision, DatasetWriteBudget
+from .library import LibraryFilters
 
 MAX_BYTES = 2_000_000
 MAX_WRITES = 30
@@ -297,13 +298,17 @@ async def metadata(identity: UUID, actor: DataActor, *, expected_lock_version: i
 
 async def list_datasets(actor: DataActor, *, page: int = 1, page_size: int = 50,
                         query: str = "", tag_id: UUID | None = None,
-                        owner_agent_id: int | None = None) -> dict[str, Any]:
+                        owner_agent_id: int | None = None, filters: LibraryFilters | None = None) -> dict[str, Any]:
     from .models import DatasetTagAssignment
     statement = select(Dataset).where(accessible_clause(actor))
+    from .library import filter_statement, placement, decorate
+    filters = filters or LibraryFilters()
+    statement = await filter_statement(statement, actor, filters)
     if owner_agent_id is not None:
         statement = statement.where(Dataset.owner_agent_id == owner_agent_id)
     if query.strip():
-        statement = statement.where(Dataset.title.icontains(query.strip(), autoescape=True))
+        statement = statement.where(or_(Dataset.title.icontains(query.strip(), autoescape=True),
+            Dataset.content.icontains(query.strip(), autoescape=True)))
     if tag_id is not None:
         from .models import DatasetTag
         if isinstance(actor, int) or await get_db().scalar(select(DatasetTag.id).where(DatasetTag.id == tag_id, DatasetTag.user_id == actor.user_id)) is None:
@@ -313,17 +318,22 @@ async def list_datasets(actor: DataActor, *, page: int = 1, page_size: int = 50,
     # One page snapshot contains both metadata and the live permissions. Large
     # JSON values stay in PostgreSQL; checksum/size retain their exact UTF-8 contract.
     administrator = await is_administrator(actor)
+    column = {"position": placement(actor, tag_id), "title": func.lower(Dataset.title),
+        "created_at": Dataset.created_at, "updated_at": func.coalesce(Dataset.updated_at, Dataset.created_at)}[filters.sort_by]
     rows = await get_db().execute(statement.add_columns(
         accessible_clause(actor, write=True).label("can_write"),
         accessible_clause(actor, manage=True).label("can_manage"),
         func.octet_length(func.convert_to(Dataset.content, "UTF8")).label("size"),
         func.encode(func.sha256(func.convert_to(Dataset.content, "UTF8")), "hex").label("checksum"),
     ).options(defer(Dataset.content, raiseload=True))
-        .order_by(Dataset.updated_at.desc().nulls_last(), Dataset.created_at.desc(), Dataset.id)
+        .order_by((column.desc() if filters.sort_desc else column.asc()).nulls_last(), Dataset.id)
         .limit(page_size).offset((page - 1) * page_size))
-    return {"total": total, "items": [_description(dataset,
+    items = [_description(dataset,
         DatasetAccess(True, bool(write), bool(manage) or administrator), content=False,
-        size_checksum=(int(size), str(checksum))) for dataset, write, manage, size, checksum in rows]}
+        size_checksum=(int(size), str(checksum))) for dataset, write, manage, size, checksum in rows]
+    if not isinstance(actor, int):
+        await decorate(items, actor)
+    return {"total": total, "items": items}
 
 
 async def sharing(identity: UUID, actor: DataActor) -> dict[str, Any]:

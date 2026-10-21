@@ -82,6 +82,7 @@ async def test_owner_http_requires_edit_privilege_and_management_and_restricts_u
     assert (await client.get(path)).status_code == 401
     headers = []
     for index in range(5):
+        client.cookies.clear()  # Each actor has an independent browser session.
         login = await client.post("/api/auth/login-json", json={"email": f"dataset-owner-{index}@example.com", "password": password})
         assert login.status_code == 200, login.text
         headers.append({"Authorization": f"Bearer {login.json()['access_token']}"})

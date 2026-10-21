@@ -6,6 +6,8 @@ const dataset = { id, uri, title: 'Synthetic linked Dataset', content: '{"amount
   lock_version: 1, can_write: true, can_manage: true, can_delete: true, read_only: false,
   global_access: 0, group_access: 0, keywords: [], created_at: '2026-01-01T00:00:00Z' }
 async function fixtures(page) {
+  await jsonRoute(page, '**/api/datasets/tags', [])
+  await jsonRoute(page, '**/api/datasets/library/facets', { owners: [], keywords: [], current_user_id: 1 })
   await jsonRoute(page, `**/api/datasets/${id}`, dataset)
   await jsonRoute(page, `**/api/datasets/${id}/owner`, { owner: null, options: [] })
   await jsonRoute(page, `**/api/datasets/${id}/sharing`, { lock_version: 1, can_manage: true, level: 'private', can_write: false, grants: [], options: [], owner: null, owner_groups: [] })
@@ -111,7 +113,7 @@ for (const width of [1440, 390]) test(`the Dataset library opens inline and keep
     await expect.poll(async () => Number(await separator.getAttribute('aria-valuenow'))).toBeGreaterThan(32)
   }
   await page.screenshot({ path: testInfo.outputPath(`dataset-library-${width}.png`), animations: 'disabled' })
-  await page.getByRole('link', { name: 'Back to list', exact: true }).click()
+  await page.evaluate(() => window.testApp.router.push('/dataset'))
   await expect(search).toHaveValue('Synthetic')
   await page.getByRole('link', { name: dataset.title, exact: true }).click()
   await expect(input).toHaveValue('{\n  "amount": 0\n}')

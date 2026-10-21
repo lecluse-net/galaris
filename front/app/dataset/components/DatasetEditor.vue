@@ -50,7 +50,7 @@
       <q-separator />
       <q-card-section class="row q-col-gutter-sm dataset-editor-fields q-pa-sm">
         <div class="col-12">
-          <q-input v-model="title" outlined dense stack-label hide-bottom-space :label="t('datasets.titleField')" :readonly="busy || !editable || !dataset.can_write" />
+          <q-input ref="titleInput" v-model="title" outlined dense stack-label hide-bottom-space :label="t('datasets.titleField')" :readonly="busy || !editable || !dataset.can_write" />
         </div>
         <div class="dataset-editor-owner-cell">
           <OwnerSelect :model-value="ownerState?.owner ? ownerKey(ownerState.owner) : ''" :options="ownerChoices" :current="currentOwner" :current-user-id="ownerState?.current_user_id"
@@ -88,7 +88,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import type { QTableProps } from 'quasar'
+import type { QInput, QTableProps } from 'quasar'
 import { CodeEditor } from '@/core/util'
 import { OwnerSelect, ownerKey, type OwnerOption, type Collaborator } from '@/app/share'
 import { usePrivilegeStore } from '@/core/authorize'
@@ -100,6 +100,7 @@ import DatasetSharing from './DatasetSharing.vue'
 import DatasetUsages from './DatasetUsages.vue'
 import { errorMessage } from '../errors'
 const props = defineProps<{ id: string }>()
+const titleInput = ref<QInput>()
 const emit = defineEmits<{ loaded: [dataset: Dataset]; updated: [dataset: Dataset]; deleted: [id: string] }>()
 const { t } = useI18n(), dataset = shallowRef<Dataset>(), content = ref(''), title = ref(''), error = ref(''), busy = ref(false)
 const privileges = usePrivilegeStore(), confirmDelete = ref(false), showUsages = ref(false)
@@ -171,7 +172,12 @@ function canLeave(): boolean | Promise<boolean> {
   return new Promise(resolve => { pendingDiscard = resolve })
 }
 function beforeUnload(event: BeforeUnloadEvent): void { if (dirty.value && !deleted) { event.preventDefault(); event.returnValue = '' } }
-defineExpose({ canLeave })
+function requestRowAction(action: 'rename' | 'delete'): void {
+  if (!editable.value || !dataset.value?.can_write) return
+  if (action === 'delete') { if (dataset.value.can_delete) confirmDelete.value = true }
+  else { titleInput.value?.focus(); titleInput.value?.select() }
+}
+defineExpose({ canLeave, requestRowAction })
 onBeforeRouteLeave(canLeave)
 onBeforeRouteUpdate((to, from) => to.params.id === from.params.id || canLeave())
 onMounted(() => { window.addEventListener('beforeunload', beforeUnload); void load() })

@@ -43,6 +43,16 @@ deletion of the attached resource. Dataset usages include these references under
 Writes require `expected_revision`; sharing requires `expected_lock_version`. File Sharing's
 registered `data://` provider uses these same services.
 
+Personal classification uses only `dataset_tags`, `dataset_tag_assignments` and
+`dataset_appearances`, independently of Memory folders. `/datasets/tags` and
+`/datasets/library/move` require Dataset read access; organizing a readable resource never
+grants write access. Tree mutations are serialized per user and reject cycles. Deleting a
+branch removes that user's classifications and preserves JSON. `GET /datasets` combines
+title/JSON search, classification, user/agent ownership, keywords, inclusive/exclusive date
+bounds and sorting. The library requests unclassified items in manual order by default;
+other consumers retain the full list. `/datasets/library/facets` returns owners and keywords
+only for readable resources.
+
 MCP reads retain exact JSON and character offsets. They also expose one-based `start_line`,
 `end_line` and `total_lines`, plus `start_line_complete` and `end_line_complete`. These flags
 identify lines cut by pagination: read their missing text before replacing them with

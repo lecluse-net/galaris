@@ -9,10 +9,11 @@ title, owner, sharing and history. They do not appear in the Documents library, 
 HTML content. Legacy Document links to migrated Datasets open the same Dataset editor
 under current permissions.
 
-Click a Dataset to open its editor in the page. On desktop, the flat list stays on the left
+Click a Dataset to open its editor in the page. On desktop, the tree and list stay on the left
 and a draggable separator adjusts the two panes, as in Documents. The separator also supports
-the left/right arrow keys. On mobile, the editor fills the page. **Back to list** preserves
-search and pagination. Unsaved drafts require confirmation before switching Datasets or
+the left/right arrow keys. Tree items show only their fixed icon and name on one line.
+On mobile, the editor fills the page. Return to the list through browser history or the
+**Datasets** menu entry; search and pagination are preserved. Unsaved drafts require confirmation before switching Datasets or
 leaving the editor. Chat Dataset cards continue to open a modal with full JSON, history and
 authorized actions.
 
@@ -21,9 +22,17 @@ preserving its filters and pagination. This navigation also asks for confirmatio
 have an unsaved draft, including invalid JSON. **Cancel** keeps the current Dataset and
 your input; **Discard changes** continues navigation.
 
-The **Owner agent** filter limits the list to a managed agent's Datasets. **All agents**
-restores all accessible Datasets, including user-owned ones. Search and pagination apply
-to the filtered results: 50 items by default, with choices 10, 20, 50, 100 or 500.
+The personal folder tree appears above the list, with an adjustable separator. These folders
+are independent of Documents folders and belong to your account. Context menus create child
+or sibling folders, rename and change icons, sort by name, expand/collapse branches and delete
+them. **Show as a list** opens a folder's contents. Drag folders and Datasets to move them,
+or use a Dataset's **Move to a folder** action. Deleting a branch preserves its Datasets and
+returns them to your unclassified list.
+
+The list shows **Unclassified** Datasets by default. **Filters** can disable this restriction,
+select a user or agent owner, a keyword, creation/modification dates and manual, title or date
+sorting in either direction. Search covers titles and JSON. Pagination defaults to 50 items,
+with 10, 20, 50, 100 or 500 available.
 
 ## Create and edit JSON
 

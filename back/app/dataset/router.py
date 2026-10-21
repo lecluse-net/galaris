@@ -2,6 +2,7 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
+from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -16,6 +17,7 @@ from core.database import get_db
 from core.storage import FileRename
 
 from . import service, organization, ownership, sharing as sharing_service, usage
+from .library import LibraryFilters, facets
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 READ = ["DATASET_READ", "DATASET_EDIT", "DATASET_ADMIN"]
@@ -86,6 +88,19 @@ class TagCreate(Request):
     parent_id: UUID | None = None
 
 
+class TagUpdate(TagCreate):
+    icon: str | None = Field(default=None, max_length=100_000)
+
+
+class Move(Request):
+    kind: Literal["tag", "dataset"]
+    identity: UUID
+    parent_id: UUID | None = None
+    anchor_kind: Literal["tag", "dataset"] | None = None
+    anchor_id: UUID | None = None
+    after: bool = True
+
+
 class Classification(Request):
     tags: list[UUID] = Field(max_length=100)
     icon: str | None = Field(default=None, max_length=1000)
@@ -100,9 +115,17 @@ class Attach(Request):
 
 @router.get("")
 @authorize(privileges=READ)
-async def list_datasets(page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500), q: str = Query("", max_length=500), tag_id: UUID | None = None, owner_agent_id: int | None = Query(None, gt=0)) -> dict[str, Any]:
+async def list_datasets(page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500), q: str = Query("", max_length=500), tag_id: UUID | None = None, owner_agent_id: int | None = Query(None, gt=0),
+    classification: Literal["all", "unclassified", "classified"] = "all", keyword: str | None = Query(None, max_length=200),
+    owner_kind: Literal["agent", "user"] | None = None, owner: int | None = Query(None, gt=0),
+    created_from: datetime | None = None, created_until: datetime | None = None,
+    updated_from: datetime | None = None, updated_until: datetime | None = None,
+    sort_by: Literal["position", "title", "created_at", "updated_at"] = "updated_at", sort_desc: bool = True) -> dict[str, Any]:
     with errors():
-        return await service.list_datasets(await current_management_scope(), page=page, page_size=page_size, query=q, tag_id=tag_id, owner_agent_id=owner_agent_id)
+        filters = LibraryFilters(classification=classification, keyword=keyword, owner_kind=owner_kind, owner=owner,
+            created_from=created_from, created_until=created_until, updated_from=updated_from, updated_until=updated_until,
+            sort_by=sort_by, sort_desc=sort_desc)
+        return await service.list_datasets(await current_management_scope(), page=page, page_size=page_size, query=q, tag_id=tag_id, owner_agent_id=owner_agent_id, filters=filters)
 
 
 @router.post("")
@@ -123,12 +146,52 @@ async def list_tags() -> list[dict[str, Any]]:
 
 
 @router.post("/tags")
-@authorize(privileges=EDIT)
+@authorize(privileges=READ)
 async def create_tag(data: TagCreate) -> dict[str, Any]:
     with errors():
         item = await organization.save_tag(await current_management_scope(), **data.model_dump())
         await get_db().commit()
         return {"id": str(item.id), "name": item.name, "parent_id": str(item.parent_id) if item.parent_id else None}
+
+
+@router.get("/library/facets")
+@authorize(privileges=READ)
+async def library_facets() -> dict[str, Any]:
+    with errors():
+        return await facets(await current_management_scope())
+
+
+@router.put("/tags/{identity}")
+@authorize(privileges=READ)
+async def update_tag(identity: UUID, data: TagUpdate) -> None:
+    with errors():
+        await organization.update_tag(await current_management_scope(), identity, **data.model_dump())
+        await get_db().commit()
+
+
+@router.delete("/tags/{identity}")
+@authorize(privileges=READ)
+async def delete_tag(identity: UUID, confirmed: bool = False) -> dict[str, object]:
+    with errors():
+        result = await organization.remove_tag(await current_management_scope(), identity, confirmed=confirmed)
+        await get_db().commit()
+        return result
+
+
+@router.post("/tags/{identity}/sort")
+@authorize(privileges=READ)
+async def sort_tag(identity: UUID, descending: bool = False) -> None:
+    with errors():
+        await organization.sort_folder(await current_management_scope(), identity, descending=descending)
+        await get_db().commit()
+
+
+@router.post("/library/move")
+@authorize(privileges=READ)
+async def move_placement(data: Move) -> None:
+    with errors():
+        await organization.move(await current_management_scope(), **data.model_dump())
+        await get_db().commit()
 
 
 @router.get("/{identity}")

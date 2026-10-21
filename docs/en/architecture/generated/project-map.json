@@ -1060,6 +1060,7 @@
           "back/app/dataset/access.py",
           "back/app/dataset/compatibility.py",
           "back/app/dataset/dbadmin.py",
+          "back/app/dataset/library.py",
           "back/app/dataset/migration.py",
           "back/app/dataset/models.py",
           "back/app/dataset/ownership.py",
@@ -1087,6 +1088,7 @@
           "back/app/dataset/attachments.py",
           "back/app/dataset/bootstrap.py",
           "back/app/dataset/compatibility.py",
+          "back/app/dataset/library.py",
           "back/app/dataset/migration.py",
           "back/app/dataset/models.py",
           "back/app/dataset/organization.py",
@@ -14969,7 +14971,7 @@
         "declared_path": "/datasets",
         "file": "back/app/dataset/router.py",
         "handler": "list_datasets",
-        "line": 103,
+        "line": 118,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14978,7 +14980,25 @@
         "declared_path": "/datasets",
         "file": "back/app/dataset/router.py",
         "handler": "create_dataset",
-        "line": 110,
+        "line": 133,
+        "method": "POST",
+        "module": "app.dataset"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/datasets/library/facets",
+        "file": "back/app/dataset/router.py",
+        "handler": "library_facets",
+        "line": 159,
+        "method": "GET",
+        "module": "app.dataset"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/datasets/library/move",
+        "file": "back/app/dataset/router.py",
+        "handler": "move_placement",
+        "line": 191,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -14987,7 +15007,7 @@
         "declared_path": "/datasets/tags",
         "file": "back/app/dataset/router.py",
         "handler": "list_tags",
-        "line": 120,
+        "line": 143,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -14996,7 +15016,34 @@
         "declared_path": "/datasets/tags",
         "file": "back/app/dataset/router.py",
         "handler": "create_tag",
-        "line": 127,
+        "line": 150,
+        "method": "POST",
+        "module": "app.dataset"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/datasets/tags/{identity}",
+        "file": "back/app/dataset/router.py",
+        "handler": "delete_tag",
+        "line": 174,
+        "method": "DELETE",
+        "module": "app.dataset"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/datasets/tags/{identity}",
+        "file": "back/app/dataset/router.py",
+        "handler": "update_tag",
+        "line": 166,
+        "method": "PUT",
+        "module": "app.dataset"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/datasets/tags/{identity}/sort",
+        "file": "back/app/dataset/router.py",
+        "handler": "sort_tag",
+        "line": 183,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -15005,7 +15052,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "delete_dataset",
-        "line": 170,
+        "line": 233,
         "method": "DELETE",
         "module": "app.dataset"
       },
@@ -15014,7 +15061,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "read_dataset",
-        "line": 136,
+        "line": 199,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15023,7 +15070,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "update_dataset",
-        "line": 159,
+        "line": 222,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -15032,7 +15079,7 @@
         "declared_path": "/datasets/{identity}/attachments",
         "file": "back/app/dataset/router.py",
         "handler": "attachments",
-        "line": 255,
+        "line": 318,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15041,7 +15088,7 @@
         "declared_path": "/datasets/{identity}/attachments",
         "file": "back/app/dataset/router.py",
         "handler": "attach",
-        "line": 263,
+        "line": 326,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -15050,7 +15097,7 @@
         "declared_path": "/datasets/{identity}/attachments/{attachment_id}",
         "file": "back/app/dataset/router.py",
         "handler": "rename_dataset_attachment",
-        "line": 273,
+        "line": 336,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -15059,7 +15106,7 @@
         "declared_path": "/datasets/{identity}/classification",
         "file": "back/app/dataset/router.py",
         "handler": "classify",
-        "line": 281,
+        "line": 344,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15068,7 +15115,7 @@
         "declared_path": "/datasets/{identity}/content",
         "file": "back/app/dataset/router.py",
         "handler": "write_dataset",
-        "line": 144,
+        "line": 207,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15077,7 +15124,7 @@
         "declared_path": "/datasets/{identity}/owner",
         "file": "back/app/dataset/router.py",
         "handler": "owner_options",
-        "line": 210,
+        "line": 273,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15086,7 +15133,7 @@
         "declared_path": "/datasets/{identity}/owner",
         "file": "back/app/dataset/router.py",
         "handler": "transfer_owner",
-        "line": 217,
+        "line": 280,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -15095,7 +15142,7 @@
         "declared_path": "/datasets/{identity}/revisions",
         "file": "back/app/dataset/router.py",
         "handler": "read_history",
-        "line": 178,
+        "line": 241,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15104,7 +15151,7 @@
         "declared_path": "/datasets/{identity}/revisions/{number}",
         "file": "back/app/dataset/router.py",
         "handler": "read_revision",
-        "line": 185,
+        "line": 248,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15113,7 +15160,7 @@
         "declared_path": "/datasets/{identity}/revisions/{number}/restore",
         "file": "back/app/dataset/router.py",
         "handler": "restore_revision",
-        "line": 193,
+        "line": 256,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -15122,7 +15169,7 @@
         "declared_path": "/datasets/{identity}/sharing",
         "file": "back/app/dataset/router.py",
         "handler": "sharing",
-        "line": 203,
+        "line": 266,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15131,7 +15178,7 @@
         "declared_path": "/datasets/{identity}/sharing",
         "file": "back/app/dataset/router.py",
         "handler": "set_grant",
-        "line": 245,
+        "line": 308,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15140,7 +15187,7 @@
         "declared_path": "/datasets/{identity}/sharing-level",
         "file": "back/app/dataset/router.py",
         "handler": "sharing_level",
-        "line": 227,
+        "line": 290,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15149,7 +15196,7 @@
         "declared_path": "/datasets/{identity}/usages",
         "file": "back/app/dataset/router.py",
         "handler": "usages",
-        "line": 236,
+        "line": 299,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -19987,14 +20034,9 @@
       },
       {
         "files": [
-          "front/app/dataset/pages/[[id]].vue"
-        ],
-        "source": "app/dataset",
-        "target": "app/agent"
-      },
-      {
-        "files": [
           "front/app/dataset/components/DatasetEditor.vue",
+          "front/app/dataset/components/DatasetLibraryFilters.vue",
+          "front/app/dataset/components/DatasetLibraryNavigation.vue",
           "front/app/dataset/components/DatasetSharing.vue",
           "front/app/dataset/services/datasetService.ts",
           "front/app/dataset/types.ts"
@@ -20004,6 +20046,7 @@
       },
       {
         "files": [
+          "front/app/dataset/components/DatasetLibraryNavigation.vue",
           "front/app/dataset/services/datasetService.ts"
         ],
         "source": "app/dataset",
@@ -20012,7 +20055,8 @@
       {
         "files": [
           "front/app/dataset/components/DatasetEditor.vue",
-          "front/app/dataset/pages/[[id]].vue"
+          "front/app/dataset/components/DatasetLibraryNavigation.vue",
+          "front/app/dataset/components/DatasetLibraryRow.vue"
         ],
         "source": "app/dataset",
         "target": "core/authorize"
@@ -20028,6 +20072,9 @@
         "files": [
           "front/app/dataset/components/DatasetDialog.vue",
           "front/app/dataset/components/DatasetEditor.vue",
+          "front/app/dataset/components/DatasetFolderRow.vue",
+          "front/app/dataset/components/DatasetLibraryNavigation.vue",
+          "front/app/dataset/components/DatasetLibraryRow.vue",
           "front/app/dataset/pages/[[id]].vue",
           "front/app/dataset/richContent.ts"
         ],
@@ -20597,6 +20644,7 @@
           "front/app/memory/components/DocumentHistoryDialog.vue",
           "front/app/memory/components/DocumentLibraryPage.vue",
           "front/app/memory/components/DocumentRowMenu.vue",
+          "front/app/memory/components/DocumentSplitterHandle.vue",
           "front/app/memory/components/DocumentTagIcon.vue",
           "front/app/memory/components/DocumentTagIconPicker.vue",
           "front/app/memory/components/DocumentTagRow.vue",
@@ -20612,10 +20660,13 @@
           "front/app/memory/documentAppSandbox.ts",
           "front/app/memory/documentEditor.ts",
           "front/app/memory/documentFolders.ts",
+          "front/app/memory/libraryShortcuts.ts",
           "front/app/memory/pages/contacts.vue",
           "front/app/memory/pages/index.vue",
           "front/app/memory/richContent.ts",
-          "front/app/memory/services/memoryService.ts"
+          "front/app/memory/services/memoryService.ts",
+          "front/app/memory/tagEmojiCatalog.ts",
+          "front/app/memory/tagIcon.ts"
         ],
         "source": "app/memory",
         "target": "core/util"
@@ -21557,16 +21608,15 @@
           "app/voice"
         ]
       ],
-      "domain_edges": 51,
+      "domain_edges": 50,
       "fan_in": [
         {
-          "count": 15,
+          "count": 14,
           "module": "app/agent",
           "modules": [
             "app/chat",
             "app/connection",
             "app/conversation",
-            "app/dataset",
             "app/dream",
             "app/file_share",
             "app/goal",
@@ -21793,14 +21843,6 @@
         },
         {
           "count": 2,
-          "module": "app/dataset",
-          "modules": [
-            "app/agent",
-            "app/share"
-          ]
-        },
-        {
-          "count": 2,
           "module": "app/dream",
           "modules": [
             "app/agent",
@@ -21828,6 +21870,13 @@
           "module": "app/browser",
           "modules": [
             "app/connection"
+          ]
+        },
+        {
+          "count": 1,
+          "module": "app/dataset",
+          "modules": [
+            "app/share"
           ]
         },
         {
@@ -21884,7 +21933,6 @@
         [
           "app/agent",
           "app/conversation",
-          "app/dataset",
           "app/lab",
           "app/llm",
           "app/memory",

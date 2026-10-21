@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 const [translations] = process.argv.slice(2)
 if (!translations) throw new Error('Expected an emojibase-data directory')
 const root = path.resolve(import.meta.dirname, '..')
-const generated = path.join(root, 'app/memory/emoji')
+const generated = path.join(root, 'core/util/emoji')
 const extras = path.join(path.dirname(fileURLToPath(import.meta.resolve('@quasar/extras/package.json'))), 'exports')
 await mkdir(generated, { recursive: true })
 const normalize = code => code.toUpperCase().split('-').filter(part => part !== 'FE0F').join('-')

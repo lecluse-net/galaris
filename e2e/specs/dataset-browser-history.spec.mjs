@@ -25,17 +25,23 @@ for (const width of [1440, 390]) {
     }
     await errors.settle()
     await page.goto('/dataset')
-    if (width < 1024) await page.locator('.q-drawer__backdrop').click({ position: { x: width - 10, y: 150 } })
+    const initialBackdrop = page.locator('.q-drawer__backdrop')
+    if (width < 1024 && await initialBackdrop.isVisible()) await initialBackdrop.click({ position: { x: width - 10, y: 150 } })
     const search = page.getByRole('textbox', { name: /^(Search|Rechercher)$/, exact: true })
     const json = page.getByRole('textbox', { name: /^(JSON content|Contenu JSON)$/, exact: true })
-    const list = page.getByRole('link', { name: /^(Back to list|Retour à la liste)$/, exact: true })
+    const openList = async () => {
+      await page.locator('.mobile-taskbar').getByRole('button', { name: /^(Expand sidebar|Déployer la sidebar)$/, exact: true }).click()
+      await page.getByRole('link', { name: /^(Datasets|Jeux de données)$/, exact: true }).click()
+      const backdrop = page.locator('.q-drawer__backdrop')
+      if (await backdrop.isVisible()) await backdrop.click({ position: { x: width - 10, y: 150 } })
+    }
     const value = label => `{\n  "value": "${label}"\n}`
     const back = () => page.evaluate(() => window.history.back())
     const forward = () => page.evaluate(() => window.history.forward())
     await search.fill('Synthetic navigation')
     await page.getByRole('link', { name: items[0].title, exact: true }).click()
     await expect(json).toHaveValue(value('Alpha'))
-    if (width < 1024) await list.click()
+    if (width < 1024) await openList()
     await page.getByRole('link', { name: items[1].title, exact: true }).click()
     await expect(json).toHaveValue(value('Beta'))
     if (width >= 1024) await page.getByRole('link', { name: items[1].title, exact: true }).click()

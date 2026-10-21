@@ -42,7 +42,7 @@ for (const width of [1440, 390]) {
     await search.fill('Synthetic')
     await page.getByRole('link', { name: items[0].title, exact: true }).click()
     await expect(title).toHaveValue(items[0].title)
-    if (width < 1024) await page.getByRole('link', { name: 'Back to list', exact: true }).click()
+    if (width < 1024) await page.evaluate(() => window.testApp.router.push('/dataset'))
     await page.getByRole('link', { name: items[1].title, exact: true }).click()
     await expect(title).toHaveValue(items[1].title)
     if (width >= 1024) await page.getByRole('link', { name: items[1].title, exact: true }).click()

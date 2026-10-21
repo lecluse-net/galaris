@@ -9,10 +9,12 @@ Elles ont leur propre titre, propriétaire, partage et historique. Elles ne figu
 dans la bibliothèque Documents, réservée aux contenus HTML. Les anciens liens documentaires
 vers les jeux migrés ouvrent le même éditeur Dataset, avec les droits actuels.
 
-Cliquez sur un jeu pour ouvrir son éditeur dans la page. Sur ordinateur, la liste sans
-arborescence reste à gauche et un séparateur déplaçable règle la largeur des deux volets,
+Cliquez sur un jeu pour ouvrir son éditeur dans la page. Sur ordinateur, l'arborescence et
+la liste restent à gauche et un séparateur déplaçable règle la largeur des deux volets,
 comme dans Documents. Le séparateur se règle aussi au clavier avec les flèches gauche/droite.
-Sur mobile, l'éditeur occupe la page. **Retour à la liste** conserve recherche et pagination.
+Les jeux de l'arborescence affichent uniquement leur icône fixe et leur nom sur une ligne.
+Sur mobile, l'éditeur occupe la page. Revenez à la liste par l'historique du navigateur ou
+l'entrée **Jeux de données** du menu ; recherche et pagination sont conservées.
 Un brouillon non enregistré demande confirmation avant de changer de jeu ou de quitter
 l'éditeur. Les cartes Dataset du Chat continuent d'ouvrir une modale, avec le JSON complet,
 l'historique et les actions autorisées.
@@ -22,9 +24,17 @@ liste, en conservant ses filtres et sa pagination. Cette navigation demande auss
 si vous avez un brouillon non enregistré, même avec un JSON invalide. **Annuler** conserve
 le jeu courant et votre saisie ; **Abandonner les modifications** poursuit la navigation.
 
-Le filtre **Agent propriétaire** limite la liste aux jeux d'un agent géré. **Tous les agents**
-rétablit tous les jeux accessibles, y compris ceux d'un utilisateur. La recherche et la
-pagination s'appliquent au résultat filtré : 50 éléments par défaut, choix 10, 20, 50, 100 ou 500.
+L'arborescence se trouve au-dessus de la liste, avec un séparateur réglable. Ses dossiers sont
+indépendants de ceux des Documents et propres à votre compte. Le menu contextuel permet de
+créer un sous-dossier ou un dossier voisin, renommer et changer l'icône, trier par nom,
+déplier/replier une branche et la supprimer. **Afficher en liste** ouvre le contenu d'un dossier.
+Déplacez les dossiers et les jeux par glisser-déposer, ou utilisez **Déplacer vers un dossier**
+sur un jeu. Supprimer une branche conserve ses jeux et les remet parmi vos non classés.
+
+La liste affiche les **Non classés** par défaut. **Filtres** permet de désactiver cette option,
+choisir un propriétaire utilisateur ou agent, un mot-clé, des dates de création/modification
+et le tri manuel, par titre ou par date, croissant ou décroissant. La recherche porte sur le
+titre et le JSON. La pagination propose 50 éléments par défaut, avec les choix 10, 20, 50, 100 ou 500.
 
 ## Créer et modifier du JSON
 
