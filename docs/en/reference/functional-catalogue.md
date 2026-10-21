@@ -1679,7 +1679,7 @@ Internal links never share their target. Their label belongs to the document and
 survive target renaming. Page mode adapts to available width, including read-only/full-screen views,
 while preserving content and manual preference. Mobile editing, formatting, voice, link, file and
 sharing actions remain accessible as compact icons. **More tools** groups additional commands,
-including find/replace and fullscreen. Main and contextual toolbars share GNOME icons
+including find/replace and fullscreen. The main toolbar and context menus share GNOME icons
 where a suitable icon exists. Width changes preserve typing/dictation; fixed toolbars follow
 panel resizing and dialogs/backdrops appear above them.
 
@@ -1822,7 +1822,7 @@ Document links open in the current library, Chat panel or modal, each with back/
 keeps the draft open. Dragging a Document from the library inserts its reference without moving it.
 Pasting `document://`, `data://` or a recognised local URL resolves authorised titles.
 
-Editing provides context menus and quick toolbars for text, lists, links, cards, images, tables,
+Editing provides context menus for text, lists, links, cards, images, tables,
 code and applications. Clipboard commands preserve formatting when supported; before/after-block
 paragraph insertion, styles, links, captions and removal follow selection. Escape, outside clicks
 and keyboard close or navigate menus. Code blocks support language, indentation, copy and line

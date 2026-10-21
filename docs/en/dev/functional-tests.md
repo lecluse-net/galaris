@@ -41,8 +41,7 @@ prevents an old session from changing the profile. `locale-catalogs.test.mjs` pr
 all generated catalog messages; `report-build.test.mjs` checks startup measurements by language.
 
 `editor-toolbar.spec.mjs` checks right-click menus for tables, links, images, cards,
-agents, processes, code blocks and HTML objects on mobile and desktop: matching commands
-and icons with the quick toolbars, mutually exclusive menu and toolbar, direct targeting, cell merge/split, styles, language,
+agents, processes, code blocks and HTML objects on mobile and desktop: pointer and keyboard commands, direct targeting, cell merge/split, styles, language,
 read-only restrictions and dismissal when switching documents.
 The same suite covers text selections, headings and lists, formatting commands inside links
 and cells, the rich clipboard, rejected or delayed cuts, blocked right-click and absent contextual

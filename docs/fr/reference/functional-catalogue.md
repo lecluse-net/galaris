@@ -2203,7 +2203,7 @@ Le mode page s’adapte à la largeur disponible, y compris en lecture seule et 
 préservant le contenu et la préférence manuelle. Sur mobile, les actions disponibles d’édition,
 formatage, voix, liens, fichiers et partage restent accessibles en icônes compactes. **Autres outils**
 regroupe les commandes supplémentaires, notamment recherche/remplacement et plein écran.
-Les barres principales et contextuelles partagent les icônes GNOME lorsqu’une icône adaptée existe.
+La barre principale et les menus contextuels partagent les icônes GNOME lorsqu’une icône adaptée existe.
 Une variation de largeur conserve la saisie et la dictée. Les barres fixes suivent le
 redimensionnement de leur panneau ; les dialogues et leur fond passent au-dessus des barres d’outils.
 
@@ -2388,7 +2388,7 @@ le document courant disponible. Les changements sont sauvegardés avant navigati
 conserve le brouillon ouvert. Glisser un document depuis la bibliothèque insère sa référence sans
 le déplacer. Coller `document://`, `data://` ou une URL interne reconnue retrouve le titre autorisé.
 
-L’édition expose menus contextuels et barres rapides pour texte, listes, liens, cartes, images,
+L’édition expose menus contextuels pour texte, listes, liens, cartes, images,
 tableaux, code et applications. Copier/couper/coller conserve la mise en forme selon le navigateur ;
 insertion de paragraphes avant/après les blocs, styles, liens, légendes et suppression restent
 propres à la sélection. Échap, clic extérieur et clavier ferment ou parcourent les menus.

@@ -44,8 +44,7 @@ Les tests `locale-catalogs.test.mjs` préservent tous les messages des catalogue
 `report-build.test.mjs` vérifie les mesures de démarrage par langue.
 
 `editor-toolbar.spec.mjs` vérifie les menus au clic droit des tableaux, liens, images,
-cartes, agents, processus, blocs de code et objets HTML sur mobile et bureau : mêmes
-commandes et icônes que les barres rapides, exclusion entre menu et barre, ciblage direct, fusion/scission des cellules,
+cartes, agents, processus, blocs de code et objets HTML sur mobile et bureau : commandes au pointeur et au clavier, ciblage direct, fusion/scission des cellules,
 styles, langage, lecture seule et fermeture lors d’un changement de document.
 La même suite couvre les sélections de texte, titres et listes, les commandes de mise en forme
 dans les liens et cellules, le presse-papiers enrichi, les coupes refusées ou tardives et le

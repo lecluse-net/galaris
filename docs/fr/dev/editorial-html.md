@@ -178,9 +178,9 @@ la vue d’édition, sans effet sur les données ni l’historique d’annulatio
 modifiés sont recolorés. Le lecteur et l’impression colorent une copie du HTML filtré ;
 les classes de coloration ne sont jamais enregistrées dans le document.
 
-En édition, un clic dans un bloc affiche une barre flottante : langage, numéros de ligne, retour à la
+En édition, le menu au clic droit d’un bloc propose langage, numéros de ligne, retour à la
 ligne et copie. Le changement de langage cible explicitement ce bloc sans en créer ni en
-fusionner d’autres. `Alt+F10` place le focus dans la barre et `Échap` la ferme. En lecture
+fusionner d’autres. `Maj+F10` ouvre le menu au clavier et `Échap` le ferme. En lecture
 seule, aucune barre contextuelle ni aucun menu au clic droit n’est affiché, y compris sur
 le texte. La copie reste disponible au clavier et via le bouton dédié du bloc.
 

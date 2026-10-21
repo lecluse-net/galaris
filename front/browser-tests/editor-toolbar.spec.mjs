@@ -162,7 +162,7 @@ for (const mode of ['read', 'readonly']) for (const width of [1440, 390]) test(`
 })
 
 for (const width of [1440, 390]) for (const [kind, html, selector, label] of contextCases) {
-  test(`right-click ${kind} offers the same commands and hides the quick toolbar (${width}px)`, async ({ page }, testInfo) => {
+  test(`right-click ${kind} preserves content and exposes its editing commands (${width}px)`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
     await page.route('**/api/agents/7/avatar?*', route => route.fulfill({ status: 404 }))
     await jsonRoute(page, '**/api/processes/internal/resource-preview?*', {
@@ -180,25 +180,19 @@ for (const width of [1440, 390]) for (const [kind, html, selector, label] of con
     await expect(toolbar).toBeHidden()
     await page.keyboard.press('Escape')
     await expect(menu).toBeHidden()
-    await expect(toolbar).toBeVisible()
-    const buttons = await toolbar.getByRole('button').evaluateAll(buttons => buttons.map(button => ({
-      name: button.getAttribute('aria-label'), icon: button.querySelector('.q-icon')?.innerHTML, disabled: button.disabled,
-    })))
+    await target.click()
+    await page.keyboard.press(width === 390 ? 'ContextMenu' : 'Shift+F10')
+    await expect(menu.getByRole('menuitem').first()).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(menu).toBeHidden()
     await target.click({ button: 'right' })
     await expect(menu).toBeVisible()
     await expect(toolbar).toBeHidden()
-    for (const button of buttons) {
-      const { name } = button
-      const item = menu.getByRole('menuitem', { name, exact: true })
-      await expect(item).toBeVisible()
-      expect(await item.locator('.q-icon').first().innerHTML()).toBe(button.icon)
-      if (button.disabled) await expect(item).toHaveAttribute('aria-disabled', 'true')
-    }
     expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
     await page.screenshot({ path: testInfo.outputPath(`${kind}-right-click.png`) })
     await page.keyboard.press('Escape')
     await expect(menu).toBeHidden()
-    await expect(toolbar).toBeVisible()
+    await expect(toolbar).toBeHidden()
     await target.click({ button: 'right' })
     if (kind === 'link') {
       await menu.getByRole('menuitem', { name: 'Insert or edit link', exact: true }).click()
@@ -259,47 +253,7 @@ test('right-click code menus keep language controls and close when editing right
   expect(await editorHtml(page)).toBe(saved)
 })
 
-for (const width of [1440, 390]) for (const [kind, html, selector, label] of [
-  ['code', '<pre><code class="language-javascript">const answer = 42;</code></pre>', 'pre code', 'Code block options'],
-  ['table', '<table><tbody><tr><td><p>Selected cell</p></td><td><p>Other cell</p></td></tr></tbody></table>', 'td p', 'Table'],
-  ['card', '<blockquote class="galaris-link-card"><p><a href="https://example.org/guide"><strong>Synthetic guide</strong></a></p><p>Preserved description</p></blockquote>', 'blockquote strong', 'Insert a link or file'],
-  ['link', '<p><a href="https://example.org/guide">Synthetic link</a></p>', 'a', 'Insert a link or file'],
-  ['image', '<figure class="image"><img src="document://00000000-0000-4000-8000-000000000001/attachments/00000000-0000-4000-8000-000000000002" width="120" height="80" alt="Synthetic image"></figure>', 'img', 'Insert a link or file'],
-]) test(`contextual ${kind} actions stay next to their target through scrolling and reopening (${width}px)`, async ({ page }, testInfo) => {
-  await page.setViewportSize({ width, height: 900 })
-  await mount(page, 'core/util/components/RichTextEditor.vue', { props: {
-    profile: 'document', modelValue: '<p>First paragraph</p><p>Second paragraph</p>' + html + '<p>Following paragraph</p>'.repeat(30),
-    maxHeight: '420px',
-  } })
-  const editor = page.locator('[data-editor-surface]')
-  const target = editor.locator(selector).first()
-  const toolbar = page.getByRole('toolbar', { name: label, exact: true })
-  const nearTarget = async () => {
-    const object = await target.boundingBox(), menu = await toolbar.boundingBox()
-    if (!object || !menu) return false
-    const verticalGap = Math.max(object.y - menu.y - menu.height, menu.y - object.y - object.height, 0)
-    return verticalGap < 65 && menu.x >= 0 && menu.x + menu.width <= width
-  }
-  await target.click()
-  await expect(toolbar).toBeInViewport()
-  await expect.poll(nearTarget).toBe(true)
-  await editor.evaluate(element => { element.scrollTop += 20 })
-  await expect.poll(nearTarget).toBe(true)
-  await page.screenshot({ path: testInfo.outputPath(`${kind}-context.png`) })
-  if (kind === 'code' && width === 1440) {
-    const scroll = await editor.evaluate(element => element.scrollTop)
-    await editor.evaluate(element => { element.scrollTop = element.scrollHeight })
-    await expect(toolbar).toBeHidden()
-    await editor.evaluate((element, scroll) => { element.scrollTop = scroll }, scroll)
-    await expect(toolbar).toBeInViewport()
-  }
-  await page.keyboard.press('Escape')
-  await expect(toolbar).toBeHidden()
-  await target.click()
-  await expect(toolbar).toBeInViewport()
-  await expect.poll(nearTarget).toBe(true)
-  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
-})
+// Floating-toolbar placement is retired; pointer and keyboard menu actions are covered above.
 
 for (const profile of ['document', 'rich-text']) test(`${profile} toolbar stays pinned after clicking the background and stops at the document boundary`, async ({ page }) => {
   await mount(page, 'core/util/components/RichTextEditor.vue', {

@@ -35,16 +35,10 @@ In read-only mode, **Read text** remains available and dictation is hidden. Sele
 to read only that passage, or leave the selection collapsed to read the entire text.
 **Reading controls** opens a menu with icons and labels for **Pause**, **Resume** and **Stop reading**.
 The toolbar stays accessible while scrolling through the document, even after clicking the page background.
-While editing, contextual actions for links, cards, images, tables and code blocks appear in a bubble near
-the selection. They follow scrolling and resizing without adding a bar below the document.
-**Escape** closes the bubble; click the object again to reopen it. **Alt+F10** moves keyboard
-focus to its controls.
-These bubbles share the main toolbar's GNOME icons wherever a suitable icon exists.
-Right-clicking any element with a contextual toolbar also opens a menu at the pointer,
-with the same actions, icons, labels and restrictions. This includes tables, links, images,
-agent or process cards, code blocks and HTML objects. The selection toolbar is hidden while
-the right-click menu is open, avoiding duplicate controls. **Escape** closes the menu and
-restores the selection toolbar.
+While editing, right-click links, cards, images, tables, code blocks and HTML objects to open
+their context menu. **Shift+F10** or the Menu key opens this menu for the current selection;
+**Escape** closes it and returns focus to the editor. Menus share the main toolbar’s GNOME
+icons wherever a suitable icon exists. **Alt+F10** focuses the main toolbar.
 Right-click also works in paragraphs, headings, lists and quotations. **Style** offers normal
 text, all six heading levels and callouts, with the current style checked. **Bold**, **Italic**,
 **Underline** and **Remove format** are available directly; **Text**, **Paragraph** and **Insert**
@@ -56,7 +50,7 @@ In read-only or viewing mode, right-click is disabled, including on text, and no
 toolbar appears. Left-click opens links and objects directly; a card's background also opens
 its target. Keyboard selection and copying remain available.
 While editing, images and noneditable HTML regions select as a single object with a yellow
-outline. Clicking displays their commands; **Open** in an image's menu opens its preview.
+outline. Right-clicking displays their commands; **Open** in an image's menu opens its preview.
 In read-only mode, clicking opens the fullscreen preview directly, without selection or
 editing menus. An HTML block's preview uses a static isolated copy of its current rendering,
 without rerunning its scripts or Dataset writes.
@@ -71,8 +65,7 @@ including Full width and exports. Source remains limited to non-document rich-te
 
 The context menu for cards, block images, tables, code blocks and embedded applications
 offers **Insert paragraph before block** and **Insert paragraph after block**. These commands
-move the cursor into the new paragraph. An application's menu also opens when you enter its
-form, without interrupting input. Tooltips describe each icon's action. These controls stay
+move the cursor into the new paragraph. Right-clicking inside an application’s form also opens its menu, preserving input. Tooltips describe each icon's action. These controls stay
 out of saved content and are hidden in read-only and Source views.
 
 ## Document formatting shortcuts
@@ -112,7 +105,7 @@ Heading level 6 and Galaris-specific commands extend this baseline.
 | Document start / end, add Shift to extend selection | Ctrl+Home / Ctrl+End; on Mac: Cmd+Up / Cmd+Down |
 | Editor fullscreen | Ctrl+Shift+J |
 | Print the document | Ctrl+P |
-| Keyboard help / toolbar / context toolbar | F1 / F10 / Shift+F10 |
+| Keyboard help / toolbar / context menu | F1 / F10 / Shift+F10 |
 
 In tables, **Tab** and **Shift+Tab** move between cells. In code blocks, they adjust
 indentation. At the start of a heading, they demote or promote its level.
@@ -194,7 +187,7 @@ text: renaming the target later does not replace it.
 
 **Galaris link → Galaris objects** searches Tasks, Goals, Topics, discussions, text rounds,
 calls and voice turns. Their details and menus offer **Copy reference**. Paste it into a
-Document to insert a titled link, then choose **Show card** from its toolbar or context
+Document to insert a titled link, then choose **Show card** from its context
 menu while editing. **Show URL** restores the link.
 
 Task and exchange cards retain essential information from insertion time without copying
@@ -246,8 +239,8 @@ Custom HTML with CSS and JavaScript stays preserved in existing documents or con
 by tools and agents; its interactive rendering remains isolated. The document editor does not display source code.
 
 Paste a URL on its own into the document: it becomes a clickable link without a modal.
-Click the link and choose **Show card** in the editor’s contextual toolbar to insert its title,
-available description and thumbnail, including for YouTube. **Show URL** on the card’s toolbar
+Right-click the link and choose **Show card** in the editor’s context menu to insert its title,
+available description and thumbnail, including for YouTube. **Show URL** in the card’s context menu
 converts it back to a link. The card is fetched only after you choose it. You can repeat these appearance
 changes: a card with a thumbnail is reused during editing without downloading the page again or
 duplicating its attachment. If a site refuses automated previews, the card retains its address without
@@ -322,7 +315,7 @@ HTML and SVG files keep their usual isolated previews.
 ## Document images
 
 Ordinary working documents accept local images through the editor’s selection, paste or
-drop controls. The contextual toolbar provides alternative text, captions and width settings.
+drop controls. The context menu provides alternative text, captions and width settings.
 Uploads show progress. Images remain document attachments and appear in the content when embedded.
 
 Images are unavailable in other memories, agent profiles, tasks and Goal descriptions/tracking,
@@ -383,12 +376,12 @@ scripts continue without restarting.
 
 Select an image to show the native resize handles: drag a corner to change its width while
 preserving its aspect ratio, or use the size menu. Move images by dragging and dropping them.
-The contextual toolbar also controls wrapping, captions and alternative text. Changes can be undone.
+The context menu also controls wrapping, captions and alternative text. Changes can be undone.
 To align a block image to the left, center or right, select it and use the alignment buttons
 in the main toolbar. Alignment is preserved when editing its caption or alternative text and
 after reopening the document.
 
-Inside a table, the contextual toolbar exposes rows, columns, headers, merge/split and deletion.
+Inside a table, the context menu exposes rows, columns, headers, merge/split and deletion.
 Drag across multiple cells before merging them; drag a vertical cell border to resize a column.
 Unavailable commands are disabled. Active formatting is shown in blue in the main toolbar,
 with grouped commands and compact icons.

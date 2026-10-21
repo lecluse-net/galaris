@@ -170,9 +170,9 @@ and blocks exceeding 50,000 characters remain readable without highlighting.
 without affecting data or undo history. Only changed blocks are highlighted again. Reading
 and printing highlight a copy of sanitized HTML; syntax classes are never saved in documents.
 
-While editing, clicking inside a block shows a floating toolbar: language, line numbers, line wrapping and
+While editing, the block’s right-click menu offers language, line numbers, line wrapping and
 copy. Changing the language explicitly targets that block without inserting or merging other
-blocks. `Alt+F10` focuses the toolbar and `Escape` dismisses it. In read-only mode, no contextual
+blocks. `Shift+F10` opens the menu from the keyboard and `Escape` dismisses it. In read-only mode, no contextual
 toolbar or right-click menu appears, including on text. Copying remains available through
 the keyboard and the block's dedicated copy button.
 

@@ -39,16 +39,11 @@ laissez le curseur sans sélection pour lire tout le texte. **Commandes de lectu
 un menu avec icônes et libellés pour **Pause**, **Reprendre** et **Arrêter la lecture**.
 La barre reste accessible au défilement tant que le document est à l’écran, même après un clic sur le fond.
 Cliquer dans le document conserve sa bordure neutre.
-En édition, les commandes contextuelles des liens, cartes, images, tableaux et blocs de code apparaissent
-dans une bulle près de la sélection. Elles suivent le défilement et les redimensionnements,
-sans ajouter de barre sous le document. **Échap** ferme la bulle ; cliquez à nouveau sur
-l’objet pour la rouvrir. **Alt+F10** donne accès à ses commandes au clavier.
-Ces bulles reprennent les icônes GNOME de la barre principale lorsqu’une icône adaptée existe.
-Un clic droit sur tout élément doté d’une barre contextuelle ouvre aussi un menu à l’endroit
-du clic, avec les mêmes actions, icônes, libellés et restrictions. Cela comprend les tableaux,
-liens, images, cartes d’agents ou de processus, blocs de code et objets HTML. Les barres
-contextuelles se masquent pendant l’ouverture du menu au clic droit pour éviter les doublons.
-**Échap** ferme ce menu et réaffiche la barre rapide de la sélection.
+En édition, un clic droit ouvre les commandes des liens, cartes, images, tableaux, blocs de code
+et objets HTML dans un menu contextuel. **Maj+F10** ou la touche Menu ouvre ce menu pour
+la sélection courante ; **Échap** le ferme et ramène le focus dans le texte.
+Les menus reprennent les icônes GNOME de la barre principale lorsqu’une icône adaptée existe.
+**Alt+F10** donne accès à la barre principale au clavier.
 Le clic droit fonctionne aussi dans les paragraphes, titres, listes et citations. **Style**
 propose le texte normal, les six niveaux de titre et les encadrés, avec le style courant
 coché. **Gras**, **Italique**, **Souligné** et **Supprimer la mise en forme** sont accessibles
@@ -62,7 +57,7 @@ et aucune barre contextuelle n’apparaît. Le clic gauche ouvre directement les
 les objets ; le fond d’une carte ouvre aussi sa cible. La sélection et la copie au clavier
 restent disponibles.
 En édition, les images et les portions HTML non éditables se sélectionnent comme un seul
-objet, entouré de jaune. Un clic affiche leurs commandes ; **Ouvrir** dans le menu de
+objet, entouré de jaune. Un clic droit affiche leurs commandes ; **Ouvrir** dans le menu de
 l’image affiche son aperçu. En lecture seule, un clic ouvre directement l’aperçu plein
 écran, sans sélection ni menu d’édition. L’aperçu d’un bloc HTML reprend son rendu courant
 dans une copie statique isolée, sans relancer ses scripts ni ses écritures Dataset.
@@ -78,9 +73,7 @@ champs de texte enrichi hors documents.
 
 Le menu contextuel des cartes, images de bloc, tableaux, blocs de code et applications
 intégrées propose **Insérer un paragraphe avant le bloc** et **Insérer un paragraphe après
-le bloc**. Ces commandes placent le curseur dans le nouveau paragraphe. Le menu d’une
-application s’ouvre aussi lorsque vous entrez dans son formulaire, sans interrompre la
-saisie. Les infobulles précisent l’action de chaque icône. Ces commandes restent hors du
+le bloc**. Ces commandes placent le curseur dans le nouveau paragraphe. Le clic droit dans le formulaire d’une application ouvre aussi ce menu, en conservant la saisie. Les infobulles précisent l’action de chaque icône. Ces commandes restent hors du
 contenu enregistré et sont masquées en lecture seule et dans Source.
 
 ## Raccourcis de mise en forme des documents
@@ -210,7 +203,7 @@ Le titre inséré est conservé dans votre texte : un renommage ultérieur ne le
 **Lien Galaris → Objets Galaris** recherche les tâches, objectifs, sujets, discussions,
 rounds texte, appels et tours vocaux. Leurs fiches et menus proposent **Copier la référence**.
 Collez cette référence dans un document pour insérer un lien titré, puis choisissez
-**Afficher une carte** dans sa barre ou son menu contextuel en édition. **Afficher l'URL**
+**Afficher une carte** dans son menu contextuel en édition. **Afficher l'URL**
 restaure le lien.
 
 Les cartes de tâches et d'échanges gardent les informations essentielles au moment de
@@ -265,7 +258,7 @@ ou fournis par les outils et les agents ; son rendu interactif reste isolé. L�
 documents n’affiche pas leur code source. Three.js reste disponible localement via `THREE`.
 
 Collez une URL seule dans le document : elle devient un lien cliquable, sans modale.
-Cliquez sur ce lien puis **Afficher une carte** dans la barre contextuelle de l’éditeur pour insérer
+Cliquez sur ce lien avec le bouton droit puis **Afficher une carte** dans le menu contextuel de l’éditeur pour insérer
 le titre, la description disponible et une miniature, notamment pour YouTube. **Afficher l’URL**
 dans le menu de la carte permet de revenir au lien. La carte est récupérée seulement après ce choix.
 Vous pouvez répéter ces changements d’affichage : une carte avec miniature est réutilisée pendant
@@ -343,7 +336,7 @@ Les fichiers HTML et SVG conservent leurs aperçus isolés habituels.
 ## Images des documents
 
 Les documents de travail ordinaires permettent de choisir une image locale, de la coller ou
-de la déposer avec les commandes de l’éditeur. Sa barre contextuelle permet de renseigner
+de la déposer avec les commandes de l’éditeur. Son menu contextuel permet de renseigner
 le texte alternatif, la légende et la largeur. Le téléversement affiche sa progression.
 Les images restent des pièces jointes du document et s’affichent dans le contenu lorsqu’elles y sont intégrées.
 
@@ -410,13 +403,13 @@ texte. Les formulaires conservent la saisie et les scripts continuent sans redé
 
 Sélectionnez une image pour afficher les poignées natives : faites glisser un coin pour régler
 sa largeur en conservant les proportions, ou utilisez le menu de taille. Déplacez l’image par
-glisser-déposer. La barre contextuelle permet aussi de régler l’habillage, la légende et le
+glisser-déposer. Le menu contextuel permet aussi de régler l’habillage, la légende et le
 texte alternatif. Chaque modification peut être annulée.
 Pour déplacer une image en bloc à gauche, au centre ou à droite, sélectionnez-la puis utilisez
 les boutons d’alignement de la barre principale. L’alignement reste conservé lors d’une
 modification de sa légende ou de son texte alternatif et après réouverture du document.
 
-Dans un tableau, la barre contextuelle expose directement lignes, colonnes, en-têtes,
+Dans un tableau, le menu contextuel expose directement lignes, colonnes, en-têtes,
 fusion/séparation et suppression. Sélectionnez plusieurs cellules par glissement avant de les
 fusionner ; faites glisser leur bordure verticale pour redimensionner une colonne. Les commandes
 inapplicables sont désactivées. Les mises en forme actives sont indiquées en bleu dans la barre

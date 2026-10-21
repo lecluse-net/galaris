@@ -1,5 +1,5 @@
 <template>
-  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown.esc="fullscreen = false" @keydown.capture="editorCaptureKeydown" @keydown="editorKeydown" @click.capture="editorClick" @contextmenu.capture="openContextMenu">
+  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown.esc="fullscreen = false" @keydown="editorKeydown" @click.capture="editorClick" @contextmenu.capture="openContextMenu">
     <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :document="profile === 'document'" :source="sourceMode" :single-row="singleRowToolbar" :hidden-groups="hiddenToolbarGroups" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
       <template v-if="personalVoice" #voice>
         <EditorialToolButton v-if="!readonly" flat dense :color="voice?.dictating || voice?.dictationPending ? 'negative' : 'primary'" :icon="voice?.dictating || voice?.dictationPending ? 'stop' : 'mic'" :label="voice?.dictating ? voice.labels.finishDictation : voice?.dictationPending ? voice.labels.processing : voice?.labels.dictate ?? ''" :disable="sourceMode || voice?.reading" @click="voice?.toggleDictation()" />
@@ -31,12 +31,9 @@
       </Teleport>
       <Teleport v-for="target in resourceEmbeds" :key="target.key" :to="target.element"><ResourceEmbed :uri="target.uri" :title="target.title" :agent-id="resourceAgentId" :register-snapshot="(capture: RenderedDocumentCapture | undefined) => registerResourceSnapshot(target.key, capture)" /></Teleport>
     </template>
-    <EditorialContextMenu v-if="activeContext" :key="activeContext.key" ref="contextMenu" :suppressed="pointerMenuOpen" :target="activeContext.target" :context-key="activeContext.key" :label="t(activeContext.kind === 'code' ? 'richEditor.codeTools.toolbar' : activeContext.kind === 'table' ? 'richEditor.table' : activeContext.kind === 'object' ? 'richEditor.embeddedApplication' : 'richEditor.resources.insert')" :code="activeContext.kind === 'code'" :refresh-key="`${revision}:${fullscreen}:${effectiveLayout}`" @dismiss="dismissContext" @keydown.capture="editorCaptureKeydown" @keydown="editorKeydown">
-      <EditorialContextActions :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runContextAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
-    </EditorialContextMenu>
-      <q-menu v-if="activeContext || pointerTextContext" :id="pointerMenuId" ref="pointerMenu" v-model="pointerMenuOpen" :target="editorHost ?? false" no-parent-event touch-position no-refocus separate-close-popup :transition-duration="0" max-width="calc(100vw - 16px)" max-height="80vh" role="presentation" @escape-key="editor?.view.focus()">
+      <q-menu v-if="activeContext || pointerTextContext" :id="pointerMenuId" ref="pointerMenu" v-model="pointerMenuOpen" :target="editorHost ?? false" no-parent-event touch-position no-refocus separate-close-popup :transition-duration="0" max-width="calc(100vw - 16px)" max-height="80vh" role="presentation" @escape-key="queueContextFocus" @hide="restoreContextFocus">
         <q-list dense role="menu" :aria-label="t(!activeContext ? 'richEditor.content' : activeContext.kind === 'code' ? 'richEditor.codeTools.toolbar' : activeContext.kind === 'table' ? 'richEditor.table' : activeContext.kind === 'object' ? 'richEditor.embeddedApplication' : 'richEditor.resources.insert')" @mousedown.prevent>
-          <EditorialContextActions v-if="activeContext" menu :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runPointerAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
+          <EditorialContextActions v-if="activeContext" :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runPointerAction" @language="setCodeLanguage" @table-style="applyTableStyle" />
           <template v-if="pointerTextContext && editor && !readonly">
             <q-separator v-if="activeContext" />
             <q-item v-for="key in clipboardActions" :key="key" clickable role="menuitem" :aria-label="t('richEditor.clipboard.' + key)" :disable="key !== 'paste' && editor.state.selection.empty" @click="clipboardAction(key)">
@@ -91,7 +88,6 @@ import { marked } from 'marked'
 import EditorialToolButton from './EditorialToolButton.vue'
 import EditorialToolbar from './EditorialToolbar.vue'
 import EditorialSource from './EditorialSource.vue'
-import EditorialContextMenu from './EditorialContextMenu.vue'
 import EditorialContextActions from './EditorialContextActions.vue'
 import { useContextMenuDismissal } from '../contextMenuDismissal'
 import { withTableStyle, type TablePalette, type TableTreatment } from '../editorialTableStyles'
@@ -151,14 +147,13 @@ const keyboardShortcuts = computed(() => [
 const root = useTemplateRef('root'), fileInput = useTemplateRef('fileInput'), playbackElement = useTemplateRef('playbackElement')
 const editorHost = useTemplateRef('editorHost'), selectedCardImage = ref('')
 const editor = shallowRef<Editor>(), revision = ref(0), sourceMode = ref(false), sourceDraft = ref(''), fullscreen = ref(false), layout = ref<'fixed' | 'full'>('fixed'), fits = ref(true)
-const codeToolsOpen = ref(true)
 const codeCopies = shallowRef<Array<{ key: number; element: HTMLElement; source: () => string }>>([])
-const contextMenu = useTemplateRef('contextMenu'), dismissedContext = ref('')
 const pointerMenu = useTemplateRef<QMenu>('pointerMenu')
 const pointerMenuOpen = ref(false)
 const pointerMenuId = useContextMenuDismissal(pointerMenuOpen, () => pointerMenu.value)
 const pointerTextContext = ref(false)
 let pointerSelection: Selection | undefined, pointerRequest = 0
+let restoreContextOnHide = false
 const effectiveLayout = computed(() => fits.value ? layout.value : 'full')
 const embeddedTargets = shallowRef<EditorObject[]>([]), resourceEmbeds = shallowRef<ResourceEmbedTarget[]>([]), resourceDetail = shallowRef<ResourceDetailTarget | null>(null), pdfPreview = shallowRef<PdfPreviewSource | null>(null)
 const { targets: documentLinkIcons, mount: mountDocumentLinkIcon, decorate: decorateDocumentLink } = useDocumentLinkIcons()
@@ -289,7 +284,8 @@ function createEditor(): void {
           if (!readonly && profile === 'document' && insertAtObjectEdge()) return true
           const link = window.getSelection()?.anchorNode?.parentElement?.closest('a'); const uri = link?.dataset.richReference ?? link?.getAttribute('href') ?? selectionUri(); if (uri) { navigate(uri); return true }
         }
-        if (event.altKey && !mod && !event.shiftKey && event.key === 'F10') { if (contextMenu.value) contextMenu.value.focus(); else root.value?.querySelector<HTMLElement>('[role="toolbar"] button')?.focus(); return true }
+        if (event.altKey && !mod && !event.shiftKey && event.key === 'F10') { root.value?.querySelector<HTMLElement>('[role="toolbar"] button')?.focus(); return true }
+        if (!mod && !event.altKey && (event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10')) { event.preventDefault(); void openKeyboardContextMenu(); return true }
         const shortcut = profile === 'document' ? documentShortcut(event, altGraphPressed) : undefined
         if (shortcut && readingShortcutCommands.has(shortcut[2])) { event.preventDefault(); action(shortcut[2], shortcut[3]); return true }
         if (readonly) return false
@@ -309,14 +305,13 @@ function createEditor(): void {
         if (shortcut) { event.preventDefault(); const [, , command, value] = shortcut; action(command, value); return true }
         return false
       },
-      handleClick: (_view, pos, event) => { const link = event.target instanceof Element ? event.target.closest('a') : null; if (event.target instanceof Element && event.target.closest('pre')) { codeToolsOpen.value = true; if (readonly) editor.value?.commands.setTextSelection(pos) }; if (!link || !(event.ctrlKey || event.metaKey || readonly)) return false; event.preventDefault(); navigate(link.dataset.richReference ?? link.getAttribute('href') ?? ''); return true },
+      handleClick: (_view, pos, event) => { const link = event.target instanceof Element ? event.target.closest('a') : null; if (readonly && event.target instanceof Element && event.target.closest('pre')) editor.value?.commands.setTextSelection(pos); if (!link || !(event.ctrlKey || event.metaKey || readonly)) return false; event.preventDefault(); navigate(link.dataset.richReference ?? link.getAttribute('href') ?? ''); return true },
     },
     onTransaction: ({ transaction, editor: current }) => {
       // Native focus restoration may move the caret inside the same code block;
       // its commands still apply to that whole block. Table cells keep exact selections.
       const sameCode = pointerSelection && transaction.selection.$from.parent.type.name === 'codeBlock' && transaction.selection.$from.sameParent(pointerSelection.$from)
       if (transaction.docChanged || transaction.selectionSet && pointerSelection && !transaction.selection.eq(pointerSelection) && !sameCode) pointerMenu.value?.hide()
-      if (transaction.selectionSet) dismissedContext.value = ''
       for (const value of anchors) { const from = transaction.mapping.mapResult(value.from, 1), to = transaction.mapping.mapResult(value.to, -1); value.from = from.pos; value.to = Math.max(from.pos, to.pos); if (from.deletedAcross && to.deletedAcross) value.valid = false }
       revision.value++; nextTick(() => { if (!current.isDestroyed) resolveEditorLinks(current) })
     },
@@ -328,36 +323,23 @@ const personalVoice = editorVoiceProvider?.({ html, editable: () => !readonly &&
 const voice = computed(() => personalVoice?.controls.value)
 const selectedType = computed(() => { void revision.value; const current = editor.value; if (!current) return ''; const selection = current.state.selection; return selection instanceof NodeSelection ? selection.node.type.name : current.isActive('codeBlock') ? 'codeBlock' : '' })
 const selectedAttributes = computed(() => { void revision.value; return editor.value?.getAttributes(selectedType.value) ?? {} })
-const contextTarget = computed(() => {
+const activeContext = computed(() => {
   void revision.value
   const current = editor.value
   if (readonly || !current || current.isDestroyed || sourceMode.value) return null
-  const { selection } = current.state
-  const dom = selection instanceof NodeSelection ? current.view.nodeDOM(selection.from) : current.view.domAtPos(selection.from, 1).node
-  const element = dom instanceof HTMLElement ? dom : dom?.parentElement
-  if (!element) return null
-  let target: HTMLElement | null, kind: 'code' | 'table' | 'resource' | 'object'
-  if (selectedType.value === 'codeBlock') { if (!codeToolsOpen.value) return null; target = element.closest('pre'); kind = 'code' }
-  else if (['documentImage', 'inlineImage', 'resourceCard'].includes(selectedType.value)) { if (readonly && selectedType.value !== 'resourceCard') return null; target = element; kind = 'resource' }
-  else if (selectedType.value === 'rawObject' && !readonly) { target = element; kind = 'object' }
-  else if (current.isActive('link')) { target = element.closest('a'); kind = 'resource' }
-  else if (current.isActive('table') && !readonly) { target = element.closest('table'); kind = 'table' }
+  let kind: 'code' | 'table' | 'resource' | 'object'
+  if (selectedType.value === 'codeBlock') kind = 'code'
+  else if (['documentImage', 'inlineImage', 'resourceCard'].includes(selectedType.value) || current.isActive('link')) kind = 'resource'
+  else if (selectedType.value === 'rawObject') kind = 'object'
+  else if (current.isActive('table')) kind = 'table'
   else return null
-  if (!target) return null
-  const position = current.view.posAtDOM(target, 0)
-  return { target, kind, key: `${generation}:${kind}:${position}` }
+  return { kind }
 })
-const activeContext = computed(() => contextTarget.value?.key === dismissedContext.value ? null : contextTarget.value)
 const canInsertBeside = computed(() => {
   void revision.value
   const selection = editor.value?.state.selection
   return Boolean(selection instanceof NodeSelection && selection.node.isBlock) || ['code', 'table'].includes(activeContext.value?.kind ?? '')
 })
-function dismissContext(key: string, restoreFocus = false): void {
-  if (contextTarget.value?.key !== key) return
-  dismissedContext.value = key
-  if (restoreFocus) editor.value?.view.focus()
-}
 const canConvertCard = computed(() => { void revision.value; const uri = selectionUri(); return profile === 'document' && (richLinkHasCard(uri) || Boolean(createLinkCard) && /^https?:\/\//i.test(uri)) })
 const selectedDocumentUri = computed(() => { void revision.value; return documentUriFromLink(selectionUri(), window.location.origin) })
 const languageNames: Record<string, string> = { javascript: 'JavaScript', typescript: 'TypeScript', graphql: 'GraphQL', cpp: 'C++', cs: 'C#', html: 'HTML', css: 'CSS', scss: 'SCSS', xml: 'XML', yaml: 'YAML', json: 'JSON', sql: 'SQL', php: 'PHP', ini: 'INI' }
@@ -482,7 +464,6 @@ function openSelection(): void { const attrs = selectedAttributes.value; navigat
 function openSelectionDialog(): void {
   const uri = selectedDocumentUri.value
   if (!uri) return
-  dismissedContext.value = contextTarget.value?.key ?? ''
   resourceDetail.value = richLinkTarget(uri)
 }
 async function openContextMenu(event: MouseEvent): Promise<void> {
@@ -505,9 +486,38 @@ async function openContextMenu(event: MouseEvent): Promise<void> {
     // Keep multi-cell and text selections when the pointer is inside them.
     if (!target.closest('.selectedCell') && (selection.empty || position < selection.from || position > selection.to)) current.commands.setTextSelection(position)
   }
-  codeToolsOpen.value = true
-  dismissedContext.value = ''
+  selectContextLink(target)
   selectedCardImage.value = target instanceof HTMLImageElement ? target.dataset.editorAttachment ?? '' : ''
+  await showContextMenu(event, request)
+}
+async function openKeyboardContextMenu(): Promise<void> {
+  const current = editor.value
+  if (readonly || !current || current.isDestroyed || sourceMode.value) return
+  const request = ++pointerRequest
+  pointerMenu.value?.hide()
+  pointerSelection = undefined
+  const anchor = window.getSelection()?.anchorNode
+  selectContextLink(anchor instanceof Element ? anchor : anchor?.parentElement)
+  const box = current.view.coordsAtPos(current.state.selection.from)
+  await showContextMenu(new MouseEvent('contextmenu', { clientX: box.left, clientY: box.bottom }), request)
+  await nextTick()
+  const menuElement = document.getElementById(pointerMenuId)
+  if (request === pointerRequest && pointerMenuOpen.value) menuElement?.querySelector<HTMLElement>('[role="menuitem"], [role="menuitemcheckbox"]')?.focus()
+}
+function selectContextLink(target: Element | null | undefined): void {
+  const current = editor.value
+  if (current && target && current.view.dom.contains(target) && target.closest('a') && current.state.selection.empty && !current.isActive('link')) current.commands.extendMarkRange('link')
+}
+function queueContextFocus(): void { restoreContextOnHide = true }
+async function restoreContextFocus(): Promise<void> {
+  if (!restoreContextOnHide) return
+  restoreContextOnHide = false
+  await nextTick()
+  editor.value?.view.focus()
+}
+async function showContextMenu(event: MouseEvent, request: number): Promise<void> {
+  const current = editor.value
+  if (!current || current.isDestroyed) return
   pointerTextContext.value = !readonly && !(current.state.selection instanceof NodeSelection) && !current.isActive('codeBlock')
   if (!activeContext.value && !pointerTextContext.value) return
   event.preventDefault()
@@ -522,7 +532,6 @@ async function openContextMenu(event: MouseEvent): Promise<void> {
 }
 function editorClick(event: MouseEvent): void {
   if (!(event.target instanceof Element) || !event.target.closest('[data-editor-surface]')) return
-  dismissedContext.value = ''
   selectedCardImage.value = event.target instanceof HTMLImageElement ? event.target.dataset.editorAttachment ?? '' : ''
   if (readonly && event.target.closest('.galaris-image-object')) return
   if (readonly && event.target.closest('button, input, select, textarea, [data-document-player]')) return
@@ -592,17 +601,10 @@ function clearDirectFormat(): void {
   current.view.dispatch(tr)
 }
 function editorKeydown(event: KeyboardEvent): void {
-  if (!event.defaultPrevented && event.key === 'Escape' && selectedType.value === 'codeBlock' && codeToolsOpen.value) { codeToolsOpen.value = false; editor.value?.commands.focus(); event.preventDefault() }
   if (!event.defaultPrevented && event.altKey && event.key === 'Enter') {
     const link = event.target instanceof Element ? event.target.closest('a') : null
     const uri = link?.getAttribute('data-rich-reference') ?? link?.getAttribute('href') ?? selectionUri()
     if (uri) { event.preventDefault(); navigate(uri) }
-  }
-}
-function editorCaptureKeydown(event: KeyboardEvent): void {
-  const target = event.target instanceof Element ? event.target : null
-  if (event.key === 'Escape' && activeContext.value && target?.closest('[role="combobox"]')?.getAttribute('aria-expanded') !== 'true') {
-    dismissContext(activeContext.value.key, true); event.preventDefault(); event.stopPropagation()
   }
 }
 function removeSelected(): void { if (selectedType.value === 'resourceCard' || selectedType.value.includes('Image')) editor.value?.commands.deleteSelection(); else editor.value?.chain().focus().unsetLink().run() }
@@ -832,7 +834,7 @@ function action(key: string, value?: string): void {
   if (key === 'layout.full') { layout.value = layout.value === 'fixed' ? 'full' : 'fixed'; return }
   if (key === 'help') { showDialog('help'); return }
   if (key === 'shortcuts.toolbarFocus' || key === 'shortcuts.contextFocus') {
-    if (key === 'shortcuts.contextFocus' && contextMenu.value) contextMenu.value.focus()
+    if (key === 'shortcuts.contextFocus') void openKeyboardContextMenu()
     else root.value?.querySelector<HTMLElement>('[role="toolbar"] button')?.focus()
     return
   }
