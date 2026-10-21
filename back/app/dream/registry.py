@@ -29,6 +29,10 @@ def register_default_mechanisms() -> None:
     from .mechanisms.file_thumbnails import file_thumbnails_mechanism
     from .mechanisms.attachment_memory import attachment_memory_mechanisms
     from .mechanisms.document_structure import document_structure_mechanism
+    from .mechanisms.resource_topic_classification import (
+        document_topic_classification_mechanism,
+        dataset_topic_classification_mechanism,
+    )
     from .mechanisms.sequential_topic_classification import (
         message_topic_classification_mechanism,
     )
@@ -43,6 +47,8 @@ def register_default_mechanisms() -> None:
 
     register_mechanism(message_topic_classification_mechanism)
     register_mechanism(task_topic_classification_mechanism)
+    register_mechanism(document_topic_classification_mechanism)
+    register_mechanism(dataset_topic_classification_mechanism)
     register_mechanism(task_memory_mechanism)
     register_mechanism(conversation_memory_mechanism)
     register_mechanism(skill_learning_mechanism)

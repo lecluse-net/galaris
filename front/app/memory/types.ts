@@ -91,6 +91,7 @@ export interface CatalogueResource extends DocumentAttachment {
 export type DocumentType = 'html' | 'dataset' | 'process'
 
 export interface MemoryItem {
+  topic_id?: string | null
   document_id?: string | null
   document_revision?: number | null
   summary_document_revision?: number | null

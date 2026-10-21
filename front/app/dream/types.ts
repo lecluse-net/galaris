@@ -47,6 +47,8 @@ export type DreamMechanismKey =
   | 'topic.classify_message'
   | 'topic.classify_voice_turn'
   | 'topic.classify_task'
+  | 'topic.classify_document'
+  | 'topic.classify_dataset'
   | 'topic.classify_voice_session'
   | 'memory.extract_task'
   | 'memory.attachment_text'

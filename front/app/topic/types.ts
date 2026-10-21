@@ -15,6 +15,8 @@ export interface TopicRef {
 }
 
 export type TopicAssignmentSubjectKind =
+  | 'document'
+  | 'dataset'
   | 'task'
   | 'message'
   | 'conversation_round'
@@ -39,6 +41,7 @@ export interface TopicAssignmentAudit {
 }
 
 export interface TopicMonthlyUsage extends Topic {
+  datasets: TopicRelatedDataset[]
   inference_cost: number
   llm_calls: number
   agents: TopicRelatedAgent[]
@@ -67,6 +70,11 @@ export interface TopicRelatedDocument {
   id: string
   title: string
   filename: string | null
+}
+
+export interface TopicRelatedDataset {
+  id: string
+  title: string
 }
 
 export interface TopicPage {
@@ -101,6 +109,7 @@ export interface TopicMutationResult {
 }
 
 export interface TopicContentSummary {
+  datasets: number
   rooms: number
   tasks: number
   conversation_rounds: number
@@ -144,6 +153,7 @@ export interface TopicVoiceTurn extends TopicRound {
 }
 
 export interface TopicContent {
+  datasets: TopicRelatedDataset[]
   topic: Topic
   summary: TopicContentSummary
   rooms: TopicRoom[]
@@ -155,7 +165,7 @@ export interface TopicContent {
 }
 
 export interface TopicTarget {
-  kind: 'task' | 'round' | 'voice' | 'room' | 'document' | 'memory'
+  kind: 'task' | 'round' | 'voice' | 'room' | 'document' | 'dataset' | 'memory'
   id: string
   title: string
   agentId?: number | null

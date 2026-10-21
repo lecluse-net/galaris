@@ -708,7 +708,17 @@ Leurs métadonnées techniques (URI, taille, type, date, empreinte) ne remplisse
 
 Les **Dossiers thématiques** regroupent les connaissances autour d’un sujet global, même si elles
 proviennent de salons, Tasks ou appels différents. Dream effectue ce classement en arrière-plan ;
-les comptes autorisés peuvent aussi corriger l’affectation d’un élément. Dream peut consolider des
+il peut aussi associer les documents et les datasets à ces sujets. Dans la fiche d'un sujet,
+l'onglet **Espaces et ressources** permet d'ouvrir les documents et datasets associés auxquels
+vous avez accès. Une fusion conserve ces associations ; supprimer le sujet conserve les ressources.
+Dans l'éditeur d'un document ou d'un dataset, l'en-tête affiche l'UUID puis le badge du sujet,
+comme dans le Chat. Cliquez sur ce badge (ou **Sans sujet**) pour consulter l'affectation et
+la changer si vous avez les droits de modification de la ressource et des sujets. Le brouillon
+ouvert est conservé ; une affectation concurrente exige une actualisation avant de réessayer.
+Le bouton de référence du document conserve la copie de son adresse complète.
+La création automatique de sujets suit le réglage Dream existant ; en mode proposition,
+ces ressources sont uniquement rattachées aux sujets existants.
+Les comptes autorisés peuvent aussi corriger l’affectation d’un élément. Dream peut consolider des
 souvenirs et analyser séparément les résultats de Tasks afin de renforcer des skills propres à
 l'agent. Une skill auto-apprise n'est ajoutée aux futures exécutions qu'après avoir atteint les
 seuils de preuves et de score configurés ; la page **Skills → Auto-apprises** permet d'en consulter

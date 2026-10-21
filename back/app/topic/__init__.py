@@ -37,9 +37,11 @@ from .qualification import (
     qualify_topic_continuity,
 )
 from .evaluation import TopicDetectionLabInput
+from .classifier import classify as classify_topic
 from . import service
 
 __all__ = [
+    "classify_topic",
     "TOPIC_ACCESS",
     "TOPIC_EDIT",
     "Topic",

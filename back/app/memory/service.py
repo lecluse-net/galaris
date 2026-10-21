@@ -25,7 +25,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.agent import Agent, get_agent_record
+from app.agent import Agent, AgentManagementScope, get_agent_record
 from core import websocket
 from core.util import convert_to_html, visible_text, image_references, attachment_reference, archived_document_html
 from .document_types import validate_document_content
@@ -1831,7 +1831,7 @@ async def update_item(
     if not fields:
         return item
     if "metadata" in fields and data.metadata is not None:
-        protected_workflow = ("creation_command", "process_code")
+        protected_workflow = ("creation_command", "process_code", "topic_assignment")
         if any(data.metadata.get(key) != item.metadata_.get(key) for key in protected_workflow):
             raise MemoryPermissionError("Workflow metadata is server-owned")
     if item.document_type == "process" and "metadata" in fields and data.metadata is not None and data.metadata.get("process_code") != item.metadata_.get("process_code"):
@@ -4276,6 +4276,7 @@ async def list_topics_linked_documents(
     topic_item_ids: set[UUID],
     *,
     agent_ids: Collection[int] | None = None,
+    resource_scope: "AgentManagementScope | None" = None,
 ) -> list[TopicLinkedDocument]:
     """Return working documents for several Topic projections in one query."""
 
@@ -4293,7 +4294,10 @@ async def list_topics_linked_documents(
         )
         .order_by(MemoryLink.source_item_id, MemoryItem.title, MemoryItem.id)
     )
-    if agent_ids is not None:
+    if resource_scope is not None:
+        from .access import readable_workflow_document_clause
+        query = query.where(readable_workflow_document_clause(resource_scope))
+    elif agent_ids is not None:
         query = query.where(MemoryItem.owner_agent_id.in_(agent_ids))
     rows = await get_db().execute(query)
     return [

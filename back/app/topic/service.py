@@ -27,6 +27,9 @@ from app.memory import (
     rank_topic_projections,
     upsert_source_managed_item,
 )
+from app.agent import AgentManagementScope
+from app.memory.facade import list_documents_by_topics, reassign_topic_documents, change_document_topic
+from app.dataset.facade import list_datasets_by_topics, reassign_topic_datasets, change_dataset_topic
 from core.database import get_db
 from core.i18n import current_language, normalize_language, t
 from core.util import local_timezone_name, month_bounds
@@ -49,8 +52,12 @@ from .schemas import (
     TopicPage,
     TopicRead,
     TopicRef,
+    TopicResourceKind,
+    TopicResourceAssignmentWrite,
+    TopicResourceAssignmentRead,
     TopicRelatedAgent,
     TopicRelatedDocument,
+    TopicRelatedDataset,
     TopicRelatedTeam,
     TopicRelatedUser,
     TopicRoomRead,
@@ -186,6 +193,21 @@ async def _record(topic_id: UUID, *, for_update: bool = False) -> Topic | None:
     return await get_db().scalar(query)
 
 
+async def lock_for_resource_assignment(topic_id: UUID) -> bool:
+    """Serialize a resource assignment against retiring its target Topic."""
+    return await _record(topic_id, for_update=True) is not None
+
+
+async def change_resource_topic(kind: TopicResourceKind, identity: UUID, data: TopicResourceAssignmentWrite,
+                                scope: AgentManagementScope) -> TopicResourceAssignmentRead:
+    if not await lock_for_resource_assignment(data.topic_id):
+        raise TopicNotFoundError("Topic not found")
+    change = change_document_topic if kind == "document" else change_dataset_topic
+    version = await change(identity, scope, **data.model_dump())
+    await get_db().commit()
+    return TopicResourceAssignmentRead(topic_id=data.topic_id, lock_version=version)
+
+
 async def _create_record(
     data: TopicCreate,
     *,
@@ -265,6 +287,8 @@ async def merge(source_topic_id: UUID, target_topic_id: UUID) -> TopicMutationRe
     target = await _record(target_topic_id, for_update=True)
     if source is None or target is None:
         raise TopicNotFoundError("Source or target Topic not found.")
+    await reassign_topic_documents(source.id, target.id)
+    await reassign_topic_datasets(source.id, target.id)
     if source.memory_item_id is None:
         await project_memory(source)
     if target.memory_item_id is None:
@@ -401,6 +425,8 @@ async def delete_topic(topic_id: UUID) -> bool:
     topic = await _record(topic_id, for_update=True)
     if topic is None:
         return False
+    await reassign_topic_documents(topic.id, None)
+    await reassign_topic_datasets(topic.id, None)
 
     from app.conversation import ConversationRound
     from app.messenger import Message, Room
@@ -704,6 +730,7 @@ async def get_content(
     *,
     limit: int = 50,
     agent_ids: Collection[int] | None = None,
+    resource_scope: AgentManagementScope | None = None,
 ) -> TopicContentRead:
     """Return a cross-domain, read-only recap of one thematic dossier."""
 
@@ -906,6 +933,7 @@ async def get_content(
         linked_documents = await list_topics_linked_documents(
             {topic.memory_item_id},
             agent_ids=agent_ids,
+            resource_scope=resource_scope,
         )
         documents = [
             TopicRelatedDocument(
@@ -916,6 +944,14 @@ async def get_content(
             for document in linked_documents
         ]
 
+    direct_documents = await list_documents_by_topics({topic_id}, scope=resource_scope, agent_ids=agent_ids)
+    by_id = {document.id: document for document in documents}
+    by_id.update({identity: TopicRelatedDocument(id=identity, title=title, filename=filename)
+                  for _, identity, title, filename in direct_documents})
+    documents = sorted(by_id.values(), key=lambda document: (document.title.casefold(), str(document.id)))
+    datasets = [TopicRelatedDataset(id=identity, title=title) for _, identity, title in
+                await list_datasets_by_topics({topic_id}, scope=resource_scope, agent_ids=agent_ids)]
+
     return TopicContentRead(
         topic=_read(topic),
         summary=TopicContentSummary(
@@ -925,6 +961,7 @@ async def get_content(
             voice_turns=int(voice_turn_count),
             memories=len(memories),
             documents=len(documents),
+            datasets=len(datasets),
         ),
         rooms=[
             TopicRoomRead(
@@ -980,6 +1017,7 @@ async def get_content(
         ],
         memories=memories[:limit],
         documents=documents[:limit],
+        datasets=datasets[:limit],
     )
 
 
@@ -1874,6 +1912,7 @@ async def list_page(
     search: str | None,
     month: str | None = None,
     agent_ids: Collection[int] | None = None,
+    resource_scope: AgentManagementScope | None = None,
 ) -> TopicPage:
     from app.llm import LLMCall
 
@@ -1946,6 +1985,7 @@ async def list_page(
     documents = await list_topics_linked_documents(
         set(topic_id_by_projection_id),
         agent_ids=agent_ids,
+        resource_scope=resource_scope,
     )
     for document in documents:
         topic_id_for_document = topic_id_by_projection_id.get(document.topic_item_id)
@@ -1958,6 +1998,14 @@ async def list_page(
                 filename=document.filename,
             )
         )
+    for topic_id, identity, title, filename in await list_documents_by_topics(topic_ids, scope=resource_scope, agent_ids=agent_ids):
+        attached = documents_by_topic.setdefault(topic_id, [])
+        if not any(document.id == identity for document in attached):
+            attached.append(TopicRelatedDocument(id=identity, title=title, filename=filename))
+    datasets_by_topic: dict[UUID, list[TopicRelatedDataset]] = {}
+    for topic_id, identity, title in await list_datasets_by_topics(topic_ids, scope=resource_scope, agent_ids=agent_ids):
+        datasets_by_topic.setdefault(topic_id, []).append(TopicRelatedDataset(id=identity, title=title))
+
     items = [
         TopicMonthlyUsage(
             **_read(topic).model_dump(),
@@ -1967,6 +2015,7 @@ async def list_page(
             users=users_by_topic.get(topic.id, []),
             teams=teams_by_topic.get(topic.id, []),
             documents=documents_by_topic.get(topic.id, []),
+            datasets=datasets_by_topic.get(topic.id, []),
         )
         for topic, inference_cost, llm_calls in topic_rows
     ]

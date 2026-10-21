@@ -12,6 +12,12 @@ import type {
 } from '../types'
 
 export const topicService = {
+  async reassignResource(kind: 'document' | 'dataset', id: string, topicId: string,
+    expectedTopicId: string | null, expectedLockVersion: number): Promise<{ topic_id: string; lock_version: number }> {
+    return (await api.put<{ topic_id: string; lock_version: number }>(`/topics/resources/${kind}/${id}`, {
+      topic_id: topicId, expected_topic_id: expectedTopicId, expected_lock_version: expectedLockVersion,
+    })).data
+  },
   async refs(ids: string[]): Promise<TopicRef[]> {
     const uniqueIds = [...new Set(ids.filter(Boolean))]
     if (!uniqueIds.length) return []

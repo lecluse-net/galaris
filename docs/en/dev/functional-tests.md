@@ -1194,8 +1194,19 @@ original downloads are excluded. `services/chatPreviews.test.mjs` verifies reque
 sharing, independent copies and metadata enrichment after a capture.
 
 `front/browser-tests/topic-detail.spec.mjs` checks desktop and mobile dossier target dialogs
-for tasks, text/voice rounds, spaces, documents and memories, including keyboard activation,
+for tasks, text/voice rounds, spaces, documents, Datasets and memories, including keyboard activation,
 backdrop dismissal, retry after a denied read and late responses after closing.
+
+`app/dream/tests/test_resource_topics.py` covers direct Document and Dataset associations:
+checkpoint replay, creation modes, preserved content, late decisions, permission filtering,
+Topic merging and deletion.
+`resource-topic-assignment.spec.mjs` exercises the shared badge in Document and Dataset
+editors on desktop/mobile: initial assignment, reassignment, audit, permissions, error retry
+and preserved drafts, including invalid JSON. PostgreSQL coverage also verifies metadata
+locking, denied access and manual assignment taking precedence over an older Dream receipt,
+without creating a content revision.
+`e2e/specs/resource-topics.spec.mjs` verifies assignment from both editors in the assembled
+application, persistence after reload and the resources listed under the topic.
 
 `front/browser-tests/room-discussion.spec.mjs` covers initial positioning and reopening,
 automatic history loading at the top while preserving the reading position, refresh at the bottom,

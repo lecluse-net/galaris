@@ -115,6 +115,12 @@ async def read_dream_receipts(
         Privileges.CHAT_ACCESS,
         Privileges.TOPIC_ACCESS,
         Privileges.TOPIC_EDIT,
+        Privileges.MEMORY_ACCESS,
+        Privileges.MEMORY_EDIT,
+        Privileges.MEMORY_ADMIN,
+        Privileges.DATASET_READ,
+        Privileges.DATASET_EDIT,
+        Privileges.DATASET_ADMIN,
     ]
 )
 async def read_topic_assignment(
@@ -125,6 +131,12 @@ async def read_topic_assignment(
     """Explain whether the displayed Topic came from Dream or a human."""
 
     scope = await current_management_scope()
+    if subject_kind in ("document", "dataset"):
+        try:
+            return await monitoring_service.get_topic_assignment_audit(topic_id=topic_id,
+                subject_kind=subject_kind, subject_id=subject_id, resource_scope=scope)
+        except (LookupError, FileNotFoundError, MemoryNotFoundError, MemoryPermissionError) as exc:
+            raise HTTPException(status_code=404, detail="Topic assignment not found") from exc
     agent_id = await monitoring_service.get_topic_assignment_agent_id(
         subject_kind=subject_kind,
         subject_id=subject_id,

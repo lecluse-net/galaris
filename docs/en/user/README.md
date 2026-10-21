@@ -572,6 +572,16 @@ Their technical metadata (URI, size, type, date, fingerprint) does not fill the 
 
 **Topics** group knowledge around a global subject, even if it comes from different rooms, Tasks, or calls. Dream performs this classification in the background; authorized accounts can also correct an item’s assignment. Dream can consolidate memories and separately analyze Task results to strengthen Skills specific to the Agent. A self-learned Skill is added to future executions only after reaching the configured evidence and score thresholds; the **Skills → Self-learned** page lets you view its evidence and suspend it.
 
+Dream also associates documents and Datasets with topics. Open a topic's **Spaces and resources**
+tab to view and open associated resources you can read. Merging topics preserves these
+associations; deleting a topic preserves its resources. Topic creation follows the existing
+Dream setting; in proposal mode, these resources only reuse existing topics.
+
+Document and Dataset editor headers show the UUID followed by the same topic badge as Chat.
+Click the badge (or **No topic**) to inspect the assignment and change it with resource editing
+and Topic editing rights. The open draft is preserved; concurrent changes require a refresh
+before retrying. The document reference button still copies the complete address.
+
 ## Organizing and following work
 
 Galaris distinguishes effort level, work method and coordination. A simple action can run

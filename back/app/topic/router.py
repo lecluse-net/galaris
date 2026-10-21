@@ -4,7 +4,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from core.authorize import Privileges, authorize
+from core.authorize import Privileges, authorize, check_privilege
+from core.user import get_user_record
+from core.database import get_db
+from app.memory import MemoryNotFoundError, MemoryConflictError, MemoryPermissionError
+from app.dataset.facade import DatasetNotFoundError, DatasetConflictError, DatasetPermissionError
 from app.agent import current_management_scope
 from app.connection.facade import get_connection
 
@@ -18,6 +22,9 @@ from .schemas import (
     TopicPage,
     TopicRead,
     TopicRef,
+    TopicResourceKind,
+    TopicResourceAssignmentWrite,
+    TopicResourceAssignmentRead,
     TopicSplitRequest,
     TopicUpdate,
 )
@@ -49,6 +56,7 @@ async def read_topics(
         search=q,
         month=month,
         agent_ids=scope.agent_ids,
+        resource_scope=scope,
     )
 
 
@@ -92,6 +100,24 @@ async def create_topic(data: TopicCreate) -> TopicRead:
     return await service.create(data)
 
 
+@router.put("/resources/{kind}/{identity}", response_model=TopicResourceAssignmentRead)
+@authorize(privileges=Privileges.TOPIC_EDIT)
+async def change_resource_topic(kind: TopicResourceKind, identity: UUID, data: TopicResourceAssignmentWrite) -> TopicResourceAssignmentRead:
+    scope = await current_management_scope()
+    user = await get_user_record(scope.user_id)
+    required = (Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN) if kind == "document" else (Privileges.DATASET_EDIT, Privileges.DATASET_ADMIN)
+    if not any([await check_privilege(user, privilege, get_db()) for privilege in required]):
+        raise HTTPException(status_code=403, detail="Resource editing is required")
+    try:
+        return await service.change_resource_topic(kind, identity, data, scope)
+    except (MemoryNotFoundError, DatasetNotFoundError, service.TopicNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (MemoryPermissionError, DatasetPermissionError) as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except (MemoryConflictError, DatasetConflictError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 def _mutation_error(exc: Exception) -> HTTPException:
     if isinstance(exc, service.TopicNotFoundError):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
@@ -123,6 +149,7 @@ async def read_topic_content(
             topic_id,
             limit=limit,
             agent_ids=scope.agent_ids,
+            resource_scope=scope,
         )
     except service.TopicNotFoundError as exc:
         raise _mutation_error(exc) from exc

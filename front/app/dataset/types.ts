@@ -5,6 +5,7 @@ export type JsonValue = null | boolean | number | string | JsonValue[] | { [key:
 export type TypedValue = { type: ValueType; value: JsonValue }
 export interface Variable { name: string; type: ValueType; nullable: boolean; default?: TypedValue }
 export interface Dataset {
+  topic_id?: string | null
   id: string; uri: string; title: string; revision: number; lock_version: number; content: string
   can_write: boolean; can_manage: boolean; can_delete: boolean; read_only: boolean
   global_access: number; group_access: number; keywords: string[]

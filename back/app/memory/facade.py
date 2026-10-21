@@ -7,6 +7,17 @@ from datetime import datetime
 from uuid import UUID
 
 from .contracts import MemorySearchItem
+from .topic_assignment import (
+    assignment as document_topic_assignment,
+    change_assignment as change_document_topic,
+    count_pending as count_pending_topic_documents,
+    claim_one as claim_topic_document,
+    source as topic_document_source,
+    is_current as topic_document_is_current,
+    assign as assign_document_topic,
+    list_related as list_documents_by_topics,
+    reassign as reassign_topic_documents,
+)
 from .source_access import register_source_evidence_access
 from .retrieval import recall_items
 from .schemas import (
@@ -211,6 +222,8 @@ async def enqueue_goal_folder_reconciliation(
     return await enqueue(user_id=user_id, goal_id=goal_id)
 
 
-__all__ = ["register_source_evidence_access", "dream_action_item", "dream_structure_identity", "search_memory", "search_memory_detailed", "record_attachment_description", "reconcile_structure_subject", "enqueue_goal_folder_reconciliation",
+__all__ = ["count_pending_topic_documents", "claim_topic_document", "topic_document_source", "topic_document_is_current", "assign_document_topic", "list_documents_by_topics", "reassign_topic_documents",
+           "document_topic_assignment", "change_document_topic",
+           "register_source_evidence_access", "dream_action_item", "dream_structure_identity", "search_memory", "search_memory_detailed", "record_attachment_description", "reconcile_structure_subject", "enqueue_goal_folder_reconciliation",
            "AttachmentAnalysisSource", "attachment_analysis_path", "attachment_analysis_source",
            "empty_attachment_items", "fill_attachment_description"]

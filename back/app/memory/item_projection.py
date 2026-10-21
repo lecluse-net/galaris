@@ -11,6 +11,7 @@ def item_to_public(
     item: MemoryItem, access: MemoryAccess, *, memory_content: bool = False
 ) -> MemoryItemPublic:
     values = {
+        "topic_id": item.document.topic_id if item.document is not None else item.topic_id,
         "document_id": item.document.id if item.document is not None else None,
         "thumbnail_id": item.document.thumbnail_id if item.document is not None else None,
         "document_revision": item.document.revision if item.document is not None else None,

@@ -69,8 +69,8 @@ allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.
 max_domain_fan_out = 9
 
 [module."app.topic"]
-allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.llm", "app.memory", "app.messenger", "app.process", "app.task", "app.tools"]
-max_domain_fan_out = 9
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dataset", "app.llm", "app.memory", "app.messenger", "app.process", "app.task", "app.tools"]
+max_domain_fan_out = 10
 
 [module."app.memory"]
 allowed_dependencies = ["app.agent", "app.conversation", "app.goal", "app.llm", "app.process", "app.share", "app.task", "app.tools", "app.topic", "app.voice"]
@@ -81,8 +81,8 @@ allowed_dependencies = ["app.agent", "app.conversation", "app.memory", "app.mess
 max_domain_fan_out = 5
 
 [module."app.dream"]
-allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.topic", "app.voice"]
-max_domain_fan_out = 12
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dataset", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.topic", "app.voice"]
+max_domain_fan_out = 13
 
 [module."app.task"]
 allowed_dependencies = ["app.agent", "app.goal", "app.llm", "app.messenger", "app.tools"]

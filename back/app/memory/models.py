@@ -608,6 +608,7 @@ class Document(ShareReference, HistoryMixin, Base):
     __tablename__ = "documents"
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    topic_id: Mapped[UUID | None] = mapped_column(ForeignKey("topics.id", ondelete="SET NULL"), nullable=True, index=True)
     memory_item_id: Mapped[UUID] = mapped_column(
         ForeignKey("memory_items.id", ondelete="CASCADE"), nullable=False, unique=True,
     )

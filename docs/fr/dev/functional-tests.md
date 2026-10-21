@@ -1251,8 +1251,18 @@ des requêtes, les copies indépendantes et l’enrichissement des métadonnées
 `TopicSelect` centralise la recherche paginée et la sélection par identifiant de sujet.
 
 `front/browser-tests/topic-detail.spec.mjs` vérifie sur desktop et mobile l’ouverture des
-cibles d’un sujet en modale (tâches, rounds texte/audio, espaces, documents et mémoires),
+cibles d’un sujet en modale (tâches, rounds texte/audio, espaces, documents, datasets et mémoires),
 le clavier, la fermeture par l’arrière-plan, le réessai après refus et les réponses tardives.
+`app/dream/tests/test_resource_topics.py` couvre les associations directes aux documents et
+datasets : reprise du checkpoint, modes de création, contenu conservé, décisions tardives,
+filtrage par droits, fusion et suppression du sujet.
+`resource-topic-assignment.spec.mjs` exerce le badge partagé dans les éditeurs Documents et
+Datasets sur mobile/bureau : première affectation, réaffectation, audit, droits, réessai après
+erreur et conservation des brouillons, y compris du JSON invalide. Le test PostgreSQL couvre
+également le verrou de métadonnées, les refus et la priorité de l'affectation manuelle sur
+un ancien reçu Dream, sans nouvelle révision de contenu.
+`e2e/specs/resource-topics.spec.mjs` vérifie l'affectation depuis les deux éditeurs dans
+l'application assemblée, la persistance après rechargement et les ressources listées dans le sujet.
 `front/browser-tests/room-discussion.spec.mjs` couvre le calage initial et à la réouverture,
 le chargement automatique en haut avec conservation de la position, l’actualisation en bas,
 la flèche de retour aux derniers messages, les requêtes bornées, les erreurs et les changements

@@ -18,18 +18,19 @@ const room = { id: 'topic-room', agent_id: 7, agent_name: 'Synthetic agent', lab
   external_id: 'synthetic-space', kind: 'chat', conversation_type: 'text', members: [] }
 const content = {
   topic: { id: 'topic-a', title: 'Synthetic dossier', description: '', keywords: [], created_at: at },
-  summary: { tasks: 1, conversation_rounds: 1, voice_turns: 1, rooms: 1, memories: 1, documents: 1 },
+  summary: { tasks: 1, conversation_rounds: 1, voice_turns: 1, rooms: 1, memories: 1, documents: 1, datasets: 1 },
   tasks: [task], conversation_rounds: [{ ...round, room_label: 'Synthetic text round', preview: 'Text summary' }],
   voice_turns: [{ ...turn, room_label: 'Synthetic audio round', preview: 'Audio summary' }], rooms: [room],
   memories: [{ id: 'topic-memory', title: 'Synthetic memory', excerpt: 'Memory summary', owner_agent_id: null }],
   documents: [{ id: 'doc-a', title: 'Synthetic document', filename: null }],
+  datasets: [{ id: 'topic-dataset', title: 'Synthetic linked Dataset' }],
 }
 
 async function openTopic(page, width = 1440) {
   await page.setViewportSize({ width, height: 900 })
   await jsonRoute(page, '**/api/topics/topic-a/content?*', content)
   await jsonRoute(page, '**/api/topics/refs?*', [])
-  await mount(page, 'app/topic/pages/[id].vue', { privileges: ['TOPIC_ACCESS', 'TASK_ACCESS', 'MEMORY_ACCESS'] })
+  await mount(page, 'app/topic/pages/[id].vue', { privileges: ['TOPIC_ACCESS', 'TASK_ACCESS', 'MEMORY_ACCESS', 'DATASET_READ'] })
   await page.evaluate(async () => {
     window.testApp.router.addRoute({ path: '/topic/:id', component: { render: () => null } })
     await window.testApp.navigate('/topic/topic-a')
@@ -66,6 +67,13 @@ for (const width of [1440, 390]) test(`topic rows open their target dialogs with
   await jsonRoute(page, '**/api/memory/documents/doc-a/attachments', [])
   await jsonRoute(page, '**/api/memory/documents/keywords', [])
   await jsonRoute(page, '**/api/memory/documents/doc-a/content/revisions?*', { items: [], total: 0 })
+  await jsonRoute(page, '**/api/datasets/topic-dataset', { id: 'topic-dataset', uri: 'data://topic-dataset',
+    title: 'Synthetic linked Dataset', content: '{"quantity":3}', revision: 1, lock_version: 1,
+    can_write: false, can_manage: false, can_delete: false, keywords: [], read_only: false,
+    global_access: 0, group_access: 0, owner_agent_id: null, owner_user_id: null })
+  await jsonRoute(page, '**/api/datasets/topic-dataset/owner', { owner: null, options: [] })
+  await jsonRoute(page, '**/api/datasets/topic-dataset/sharing', { lock_version: 1, can_manage: false,
+    level: 'private', grants: [], options: [], owner: null, owner_groups: [] })
   await openTopic(page, width)
   const dialog = page.getByRole('dialog')
   await page.getByText('Synthetic task objective', { exact: true }).click()
@@ -95,6 +103,13 @@ for (const width of [1440, 390]) test(`topic rows open their target dialogs with
     await expect(dialog).toHaveCount(0)
     expect(await page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/topic/topic-a')
   }
+  await page.getByText('Synthetic linked Dataset', { exact: true }).click()
+  await expect(dialog.getByRole('textbox', { name: 'JSON content', exact: true })).toHaveValue('{\n  "quantity": 3\n}')
+  await page.screenshot({ path: testInfo.outputPath('topic-dataset-dialog.png'), animations: 'disabled' })
+  await dialog.getByRole('button', { name: 'Close', exact: true }).first().click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByText('Synthetic linked Dataset', { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/topic/topic-a')
 })
 
 test('target dialogs recover denied reads and ignore replies after closing', async ({ page }) => {

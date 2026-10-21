@@ -617,6 +617,8 @@ const mechanismTranslationKeys = {
   'topic.classify_message': 'dream.mechanisms.messageTopicClassification',
   'topic.classify_voice_turn': 'dream.mechanisms.voiceTurnTopicClassification',
   'topic.classify_task': 'dream.mechanisms.taskTopicClassification',
+  'topic.classify_document': 'dream.mechanisms.documentTopicClassification',
+  'topic.classify_dataset': 'dream.mechanisms.datasetTopicClassification',
   'topic.classify_voice_session': 'dream.mechanisms.voiceTopicClassification',
   'memory.extract_task': 'dream.mechanisms.taskMemory',
   'memory.extract_conversation_round': 'dream.mechanisms.conversationMemory',

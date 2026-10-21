@@ -71,6 +71,17 @@ messages couvrent les conversations textuelles comme vocales. Leur
 politique de création est checkpointée avant application et respecte le mode
 `DREAM_TOPIC_CREATION_MODE`.
 
+`topic.classify_document` et `topic.classify_dataset` classent également les Documents HTML
+et Datasets JSON sans sujet. Chaque domaine conserve sa FK nullable `topic_id` et fournit
+ses sources par sa façade publique. Le reçu identifie la version de la ressource ; une
+édition, une suppression ou une association intervenue pendant l'inférence empêche
+l'application de la décision tardive. Le contenu et ses révisions ne sont pas modifiés.
+Ces ressources réutilisent les sujets existants ; une création n'est appliquée qu'en mode
+`auto`, car elles n'ont pas de conversation permettant de demander une approbation en mode
+`propose`. Un reçu sans association n'est pas rescanné tant que la ressource ne change pas.
+La fiche d'un sujet présente les documents et datasets lisibles par le compte courant,
+sans étendre leurs droits. La fusion transfère les associations ; la suppression les détache.
+
 Les mécanismes `memory.extract_task` et `memory.extract_conversation_round` attendent un Topic et,
 pour les sources conversationnelles textuelles comme vocales, le contact
 exact. Ils utilisent une unique décision structurée `CREATE`, `LINK` ou `IGNORE`, sans outil ni

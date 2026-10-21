@@ -17,6 +17,7 @@ class Dataset(Shareable, HistoryMixin, Base):
     __tablename__ = "datasets"
     __mapper_args__ = {"eager_defaults": True}
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    topic_id: Mapped[UUID | None] = mapped_column(ForeignKey("topics.id", ondelete="SET NULL"), nullable=True, index=True)
     owner_agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="RESTRICT"), index=True)
     owner_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), index=True)
     title: Mapped[str] = mapped_column(String(500))

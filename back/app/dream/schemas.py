@@ -108,6 +108,8 @@ class DreamReceiptPage(BaseModel):
 
 
 TopicAssignmentSubjectKind = Literal[
+    "document",
+    "dataset",
     "task",
     "message",
     "conversation_round",

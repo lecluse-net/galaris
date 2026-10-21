@@ -29,6 +29,21 @@ class TopicRef(BaseModel):
     title: str
 
 
+TopicResourceKind = Literal["document", "dataset"]
+
+
+class TopicResourceAssignmentWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    topic_id: UUID
+    expected_topic_id: UUID | None
+    expected_lock_version: int = Field(ge=1)
+
+
+class TopicResourceAssignmentRead(BaseModel):
+    topic_id: UUID
+    lock_version: int
+
+
 class TopicRelatedAgent(BaseModel):
     id: int
     name: str
@@ -51,6 +66,11 @@ class TopicRelatedDocument(BaseModel):
     filename: str | None
 
 
+class TopicRelatedDataset(BaseModel):
+    id: UUID
+    title: str
+
+
 def _empty_related_agents() -> list[TopicRelatedAgent]:
     return []
 
@@ -64,6 +84,7 @@ def _empty_related_documents() -> list[TopicRelatedDocument]:
 
 
 class TopicMonthlyUsage(TopicRead):
+    datasets: list[TopicRelatedDataset] = Field(default_factory=list[TopicRelatedDataset])
     inference_cost: float = Field(default=0.0, ge=0.0)
     llm_calls: int = Field(default=0, ge=0)
     agents: list[TopicRelatedAgent] = Field(default_factory=_empty_related_agents)
@@ -131,6 +152,7 @@ class TopicLinkedMemoryRead(BaseModel):
 
 
 class TopicContentSummary(BaseModel):
+    datasets: int = Field(default=0, ge=0)
     rooms: int = Field(default=0, ge=0)
     tasks: int = Field(default=0, ge=0)
     conversation_rounds: int = Field(default=0, ge=0)
@@ -174,6 +196,7 @@ class TopicVoiceTurnRead(TopicRoundRead):
 
 
 class TopicContentRead(BaseModel):
+    datasets: list[TopicRelatedDataset] = Field(default_factory=list[TopicRelatedDataset])
     topic: TopicRead
     summary: TopicContentSummary
     rooms: list[TopicRoomRead]

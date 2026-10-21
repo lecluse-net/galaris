@@ -104,6 +104,7 @@ def _description(dataset: Dataset, permissions: DatasetAccess, *, content: bool,
         len(dataset.content.encode()), hashlib.sha256(dataset.content.encode()).hexdigest())
     result: dict[str, Any] = {
         "id": str(dataset.id), "uri": f"data://{dataset.id}", "title": dataset.title,
+        "topic_id": str(dataset.topic_id) if dataset.topic_id is not None else None,
         "revision": dataset.revision, "lock_version": dataset.lock_version,
         "owner_agent_id": dataset.owner_agent_id, "owner_user_id": dataset.owner_user_id,
         "global_access": dataset.global_access, "group_access": dataset.group_access,
@@ -263,7 +264,7 @@ async def metadata(identity: UUID, actor: DataActor, *, expected_lock_version: i
         await record(identity, actor, manage=True)
     if "metadata" in values:
         updated: dict[str, Any] = values["metadata"]
-        if updated.get("creation_command") != dataset.metadata_.get("creation_command"):
+        if any(updated.get(key) != dataset.metadata_.get(key) for key in ("creation_command", "topic_assignment")):
             raise DatasetPermissionError("Dataset creation identity is server-owned")
         dataset.metadata_ = deepcopy(updated)
     if "title" in values:

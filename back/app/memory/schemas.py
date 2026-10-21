@@ -214,6 +214,7 @@ def _empty_grants() -> list[MemoryGrantPublic]:
 
 
 class MemoryItemPublic(BaseModel):
+    topic_id: UUID | None = None
     document_id: UUID | None = None
     thumbnail_id: UUID | None = None
     document_revision: int | None = None

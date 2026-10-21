@@ -67,7 +67,8 @@
         >
           <q-card flat bordered class="full-height topic-metric-card">
             <q-card-section class="row items-center no-wrap q-pa-sm">
-              <q-avatar :icon="metric.icon" :color="metric.color" text-color="white" size="34px" />
+              <q-avatar :icon="metric.icon" :color="metric.color" text-color="white" size="34px"
+                :style="metric.key === 'datasets' ? { backgroundColor: 'var(--solaire-iris-accent)' } : undefined" />
               <div class="q-ml-sm metric-copy">
                 <div class="text-h6">{{ metric.value }}</div>
                 <div class="text-caption text-grey-7 ellipsis">{{ metric.label }}</div>
@@ -156,6 +157,7 @@
 
               <div class="col-12 col-lg-6">
                 <div class="text-subtitle1 q-mb-sm">{{ t('topic.detail.documents') }}</div>
+                <TopicSectionLimit :shown="content.documents.length" :total="content.summary.documents" />
                 <q-list v-if="content.documents.length" bordered separator class="rounded-borders q-mb-md">
                   <q-item v-for="document in content.documents" :key="document.id" clickable
                     @click="openTarget('document', document.id, document.title)">
@@ -167,6 +169,17 @@
                   </q-item>
                 </q-list>
                 <div v-else class="topic-empty topic-empty--bordered q-mb-md">{{ t('topic.detail.noDocuments') }}</div>
+
+                <div class="text-subtitle1 q-mb-sm">{{ t('topic.detail.datasets') }}</div>
+                <TopicSectionLimit :shown="content.datasets?.length || 0" :total="content.summary.datasets || 0" />
+                <q-list v-if="content.datasets?.length" bordered separator class="rounded-borders q-mb-md">
+                  <q-item v-for="dataset in content.datasets" :key="dataset.id" clickable
+                    @click="openTarget('dataset', dataset.id, dataset.title)">
+                    <q-item-section avatar><q-icon name="data_object" style="color: var(--solaire-iris-accent)" /></q-item-section>
+                    <q-item-section><q-item-label>{{ dataset.title }}</q-item-label></q-item-section>
+                  </q-item>
+                </q-list>
+                <div v-else class="topic-empty topic-empty--bordered q-mb-md">{{ t('topic.detail.noDatasets') }}</div>
 
                 <div class="text-subtitle1 q-mb-sm">{{ t('topic.detail.memories') }}</div>
                 <q-list v-if="content.memories.length" bordered separator class="rounded-borders">
@@ -225,6 +238,7 @@ const metrics = computed(() => content.value ? [
   { key: 'voice_turns', label: t('topic.detail.voiceTurns'), value: content.value.summary.voice_turns, icon: 'record_voice_over', color: 'orange' },
   { key: 'memories', label: t('topic.detail.memories'), value: content.value.summary.memories, icon: 'memory', color: 'deep-purple' },
   { key: 'documents', label: t('topic.detail.documents'), value: content.value.summary.documents, icon: 'description', color: 'secondary' },
+  { key: 'datasets', label: t('topic.detail.datasets'), value: content.value.summary.datasets || 0, icon: 'data_object', color: undefined },
 ] : [])
 
 const TopicSectionLimit = defineComponent({

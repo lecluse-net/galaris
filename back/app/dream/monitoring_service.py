@@ -21,6 +21,9 @@ from app.llm.schemas import LLMCallRead
 from app.messenger import Interaction, Message, Room
 from app.task import Task, TaskStatus
 from app.voice import VoiceConversationSession
+from app.agent import AgentManagementScope
+from app.memory.facade import document_topic_assignment
+from app.dataset.facade import dataset_topic_assignment
 from core.database import get_db
 
 from .models import DreamReceipt
@@ -246,10 +249,28 @@ async def get_topic_assignment_audit(
     topic_id: UUID,
     subject_kind: TopicAssignmentSubjectKind,
     subject_id: UUID,
+    resource_scope: AgentManagementScope | None = None,
 ) -> DreamTopicAssignmentAudit:
     """Explain the current Topic using direct and inherited Dream evidence."""
 
-    refs = await _topic_subject_refs(subject_kind, subject_id)
+    if subject_kind in ("document", "dataset"):
+        if resource_scope is None:
+            raise LookupError("Resource scope is required")
+        resolve = document_topic_assignment if subject_kind == "document" else dataset_topic_assignment
+        assigned_topic_id, manual = await resolve(subject_id, resource_scope)
+        if assigned_topic_id != topic_id:
+            raise LookupError("Topic assignment changed")
+        if manual:
+            return DreamTopicAssignmentAudit(topic_id=topic_id, subject_kind=subject_kind, subject_id=subject_id, origin="manual")
+        identities = await get_db().scalars(select(DreamReceipt.subject_id).where(
+            DreamReceipt.subject_kind == subject_kind,
+            DreamReceipt.mechanism_key == f"topic.classify_{subject_kind}",
+            DreamReceipt.subject_id.startswith(f"{subject_id}:"),
+            DreamReceipt.status == "success",
+        ).order_by(DreamReceipt.updated_at.desc(), DreamReceipt.id).limit(100))
+        refs = [(subject_kind, identity) for identity in identities]
+    else:
+        refs = await _topic_subject_refs(subject_kind, subject_id)
     rank = {key: index for index, key in enumerate(refs)}
     if not refs:
         return DreamTopicAssignmentAudit(
@@ -389,6 +410,9 @@ async def get_topic_assignment_agent_id(
     subject_id: UUID,
 ) -> int | None:
     """Resolve the Agent owning a topic-assignment subject."""
+
+    if subject_kind in ("document", "dataset"):
+        return None  # Resource ACLs, including human ownership, are checked separately.
 
     if subject_kind == "task":
         return await get_db().scalar(

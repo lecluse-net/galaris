@@ -69,6 +69,16 @@ messages cover both text and voice conversations. Their
 creation policy is checkpointed before application and respects
 `DREAM_TOPIC_CREATION_MODE`.
 
+`topic.classify_document` and `topic.classify_dataset` also classify HTML Documents and
+JSON Datasets without a topic. Each domain owns its nullable `topic_id` foreign key and
+exposes sources through its public facade. Receipts identify the resource version; an
+edit, deletion or assignment during inference prevents applying a late decision. Content
+and its revisions remain unchanged. Resources reuse existing topics; creation is applied
+only in `auto` mode because resources have no conversation in which to request approval
+in `propose` mode. An unassigned receipt is not rescanned until the resource changes.
+Topic details list documents and datasets readable by the current account without
+extending permissions. Merging transfers associations; deleting a topic detaches them.
+
 The mechanisms `memory.extract_task` and `memory.extract_conversation_round` wait for a Topic and,
 for text and voice conversational sources, the
 exact contact. They use a single structured decision `CREATE`, `LINK`, or `IGNORE`, without a tool or

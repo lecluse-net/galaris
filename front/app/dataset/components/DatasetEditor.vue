@@ -13,11 +13,14 @@
             <h2 class="text-h6 ellipsis q-ma-none dataset-heading" :title="title || dataset.title">{{ title || dataset.title }}</h2>
           </div>
           <div class="dataset-editor-details row items-center text-caption text-grey-7">
-            <q-badge outline color="primary" class="dataset-uri-badge">
+            <q-badge outline color="primary" class="dataset-uri-badge dataset-editor-detail-control">
               <q-icon name="link" size="13px" class="q-mr-xs" aria-hidden="true" />
-              <span class="ellipsis">{{ dataset.uri }}</span>
+              <span class="ellipsis">{{ dataset.id }}</span>
               <q-tooltip>{{ dataset.uri }}</q-tooltip>
             </q-badge>
+            <ResourceTopicBadge :key="dataset.id" :topic-id="dataset.topic_id ?? null"
+              kind="dataset" :id="dataset.id" :editable="editable && dataset.can_write && !busy"
+              :reassign-topic="changeDatasetTopic" />
             <q-badge outline class="dataset-revision-badge">
               <q-icon name="history" size="13px" class="q-mr-xs" aria-hidden="true" />
               {{ t('datasets.revision') }} {{ dataset.revision }}
@@ -89,6 +92,7 @@ import type { QTableProps } from 'quasar'
 import { CodeEditor } from '@/core/util'
 import { OwnerSelect, ownerKey, type OwnerOption, type Collaborator } from '@/app/share'
 import { usePrivilegeStore } from '@/core/authorize'
+import { ResourceTopicBadge, reassignResourceTopic } from '@/core/util'
 import { datasetService as service } from '../services/datasetService'
 import type { Dataset, DatasetOwnerOptions, DatasetSharing as SharingState } from '../types'
 import { formatJson } from '../formatJson'
@@ -113,6 +117,19 @@ const history = ref<{ revision: number; created_at: string }[]>([]), pagination 
 const columns = computed<QTableProps['columns']>(() => [{ name: 'revision', field: 'revision', label: t('datasets.revision'), align: 'left' }, { name: 'created_at', field: 'created_at', label: t('datasets.history'), align: 'left' }])
 async function action(work: () => Promise<void>, mutation = false): Promise<void> { if (busy.value) return; busy.value = true; mutating = mutation; error.value = ''; try { await work() } catch (err) { if (mounted) error.value = errorMessage(err, t('datasets.error')) } finally { if (mounted) { busy.value = false; mutating = false } } }
 function accept(value: Dataset): void { if (!mounted) return; dataset.value = value; title.value = value.title; content.value = savedContent.value = formatJson(value.content) }
+async function changeDatasetTopic(topicId: string): Promise<number> {
+  const current = dataset.value
+  if (!current || busy.value || !editable.value || !current.can_write) throw new Error(t('topic.assignmentAudit.changeError'))
+  busy.value = true; mutating = true
+  try {
+    const result = await reassignResourceTopic('dataset', current.id, topicId, current.topic_id ?? null, current.lock_version)
+    if (mounted && dataset.value?.id === current.id) {
+      dataset.value = { ...dataset.value, ...result }
+      emit('updated', dataset.value)
+    }
+    return 1
+  } finally { if (mounted) { busy.value = false; mutating = false } }
+}
 async function load(): Promise<void> { await action(async () => { const value = await service.read(props.id); accept(value); if (mounted) emit('loaded', value); const owners = await service.owner(props.id, value.lock_version); if (mounted) ownerState.value = owners }) }
 async function refreshOwners(): Promise<void> {
   const current = dataset.value

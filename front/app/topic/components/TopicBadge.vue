@@ -3,11 +3,12 @@
     v-if="!hideTrigger"
     type="button"
     class="topic-badge-shell"
+    :class="{ 'topic-badge-shell--regular': size === 'regular' }"
     :aria-label="t('topic.assignmentAudit.open', { title: displayTitle })"
     @click.stop="openAssignmentAudit"
   >
     <q-badge outline color="deep-purple" class="topic-badge no-wrap">
-      <q-icon name="folder" size="10px" class="q-mr-xs" />
+      <q-icon name="folder" :size="size === 'regular' ? '13px' : '10px'" class="q-mr-xs" />
       <span class="topic-badge-title ellipsis">{{ displayTitle }}</span>
     </q-badge>
     <q-tooltip>{{ displayTitle }}</q-tooltip>
@@ -51,6 +52,7 @@
                 {{ displayTitle }}
               </q-badge>
               <q-chip
+                v-if="topicId"
                 dense
                 :color="audit.origin === 'dream' ? 'primary' : 'grey-7'"
                 text-color="white"
@@ -90,7 +92,7 @@
 
             <q-banner v-else rounded class="bg-grey-2 text-grey-8">
               <q-icon name="person" class="q-mr-xs" />
-              {{ t('topic.assignmentAudit.manualHint') }}
+              {{ t(topicId ? 'topic.assignmentAudit.manualHint' : 'topic.unassignedBadge') }}
             </q-banner>
           </q-card-section>
 
@@ -122,12 +124,13 @@
                   no-caps
                   color="primary"
                   icon="edit"
-                  :label="t('topic.assignmentAudit.changeThisMessage')"
+                  :label="t(subjectKind === 'message' ? 'topic.assignmentAudit.changeThisMessage' : 'topic.saveAssignment')"
                   :disable="!canSubmitTopicChange"
                   :loading="topicChangeLoading && topicChangeScope === 'message'"
                   @click="changeTopic('message')"
                 />
                 <q-btn
+                  v-if="subjectKind === 'message'"
                   unelevated
                   no-caps
                   color="primary"
@@ -146,7 +149,7 @@
           <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
             <q-btn
               v-if="canOpenTopic"
-              flat
+              outline
               no-caps
               color="deep-purple"
               icon="folder_open"
@@ -170,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -186,18 +189,20 @@ import type {
 } from '../types'
 
 const props = withDefaults(defineProps<{
-  topicId: string
+  topicId: string | null
   title?: string
   subjectKind?: TopicAssignmentSubjectKind
   subjectId?: string
   allowTopicChange?: boolean
   hideTrigger?: boolean
+  size?: 'compact' | 'regular'
   reassignTopic?: (
     topicId: string,
     scope: TopicAssignmentChangeScope,
   ) => Promise<number>
 }>(), {
   allowTopicChange: true,
+  size: 'compact',
   reassignTopic: undefined,
 })
 
@@ -214,13 +219,13 @@ const topicChangeLoading = ref(false)
 const topicChangeError = ref('')
 const topicChangeScope = ref<TopicAssignmentChangeScope | null>(null)
 const canOpenTopic = computed(() => (
-  privilegeStore.hasPrivilege(privileges.TOPIC_ACCESS)
-  || privilegeStore.hasPrivilege(privileges.TOPIC_EDIT)
+  Boolean(props.topicId) && (privilegeStore.hasPrivilege(privileges.TOPIC_ACCESS)
+  || privilegeStore.hasPrivilege(privileges.TOPIC_EDIT))
 ))
 const canOpenDream = computed(() => privilegeStore.hasPrivilege(privileges.TASK_ACCESS))
 const canReassignTopic = computed(() => (
   props.allowTopicChange
-  && props.subjectKind === 'message'
+  && ['message', 'document', 'dataset'].includes(props.subjectKind || '')
   && Boolean(props.reassignTopic)
   && privilegeStore.hasPrivilege(privileges.TOPIC_EDIT)
 ))
@@ -229,7 +234,12 @@ const canSubmitTopicChange = computed(() => (
   && selectedTopicId.value !== props.topicId
   && !topicChangeLoading.value
 ))
-const displayTitle = computed(() => props.title?.trim() || t('topic.unnamedBadge'))
+const displayTitle = computed(() => props.topicId ? props.title?.trim() || t('topic.unnamedBadge') : t('topic.unassignedBadge'))
+let auditGeneration = 0
+let disposed = false
+watch(() => [props.topicId, props.subjectId, props.subjectKind], () => { auditGeneration++; auditOpen.value = false }, { flush: 'sync' })
+watch(auditOpen, open => { if (!open) auditGeneration++ }, { flush: 'sync' })
+onBeforeUnmount(() => { disposed = true; auditGeneration++ })
 
 async function openAssignmentAudit(): Promise<void> {
   if (!props.subjectKind || !props.subjectId) {
@@ -237,40 +247,53 @@ async function openAssignmentAudit(): Promise<void> {
     return
   }
   auditOpen.value = true
+  const generation = ++auditGeneration
   auditLoading.value = true
   auditError.value = ''
   audit.value = null
   selectedTopicId.value = props.topicId
   topicChangeError.value = ''
   topicChangeScope.value = null
+  if (!props.topicId) {
+    audit.value = { topic_id: '', subject_id: props.subjectId, subject_kind: props.subjectKind,
+      origin: 'manual', reason: null, action: null, confidence: null, human_confirmed: false,
+      dream_receipt_id: null, dream_mechanism_key: null, dream_subject_kind: null, dream_subject_id: null, decided_at: null }
+    auditLoading.value = false
+    return
+  }
   try {
-    audit.value = await topicService.assignmentAudit({
+    const result = await topicService.assignmentAudit({
       topicId: props.topicId,
       subjectKind: props.subjectKind,
       subjectId: props.subjectId,
     })
+    if (generation === auditGeneration) audit.value = result
   } catch (error) {
-    auditError.value = apiErrorDetail(error) ?? t('topic.assignmentAudit.loadError')
+    if (generation === auditGeneration) auditError.value = apiErrorDetail(error) ?? t('topic.assignmentAudit.loadError')
   } finally {
-    auditLoading.value = false
+    if (generation === auditGeneration) auditLoading.value = false
   }
 }
 
 async function changeTopic(scope: TopicAssignmentChangeScope): Promise<void> {
   if (!selectedTopicId.value || !canSubmitTopicChange.value || !props.reassignTopic) return
+  const subjectId = props.subjectId, subjectKind = props.subjectKind
   topicChangeLoading.value = true
   topicChangeScope.value = scope
   topicChangeError.value = ''
   try {
     const updated = await props.reassignTopic(selectedTopicId.value, scope)
+    if (disposed || subjectId !== props.subjectId || subjectKind !== props.subjectKind) return
     auditOpen.value = false
     $q.notify({
       type: 'positive',
-      message: t('topic.assignmentAudit.changeSuccess', { count: updated }),
+      message: subjectKind === 'message' ? t('topic.assignmentAudit.changeSuccess', { count: updated }) : t('topic.assignmentUpdated'),
     })
   } catch (error) {
-    topicChangeError.value = apiErrorDetail(error)
-      ?? t('topic.assignmentAudit.changeError')
+    if (!disposed && subjectId === props.subjectId && subjectKind === props.subjectKind) {
+      topicChangeError.value = apiErrorDetail(error)
+        ?? t('topic.assignmentAudit.changeError')
+    }
   } finally {
     topicChangeLoading.value = false
     topicChangeScope.value = null
@@ -278,7 +301,7 @@ async function changeTopic(scope: TopicAssignmentChangeScope): Promise<void> {
 }
 
 function openTopic(): void {
-  if (!canOpenTopic.value) return
+  if (!canOpenTopic.value || !props.topicId) return
   auditOpen.value = false
   void router.push(`/topic/${encodeURIComponent(props.topicId)}`)
 }
@@ -334,6 +357,15 @@ defineExpose({ open: openAssignmentAudit })
   font-size: 10px;
   font-weight: 500;
   line-height: 1.25;
+}
+
+.topic-badge-shell--regular > .topic-badge {
+  height: 24px;
+  min-height: 24px;
+  padding: 4px 7px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
 }
 
 .topic-reassignment-actions {

@@ -1023,6 +1023,7 @@
           "back/app/dataset/ownership.py",
           "back/app/dataset/router.py",
           "back/app/dataset/service.py",
+          "back/app/dataset/topic_assignment.py",
           "back/app/dataset/usage.py"
         ],
         "source": "app.dataset",
@@ -1095,6 +1096,7 @@
           "back/app/dataset/router.py",
           "back/app/dataset/service.py",
           "back/app/dataset/sharing.py",
+          "back/app/dataset/topic_assignment.py",
           "back/app/dataset/usage.py"
         ],
         "source": "app.dataset",
@@ -1164,6 +1166,7 @@
         "files": [
           "back/app/dream/events.py",
           "back/app/dream/manual.py",
+          "back/app/dream/monitoring_service.py",
           "back/app/dream/router.py"
         ],
         "source": "app.dream",
@@ -1193,6 +1196,14 @@
       },
       {
         "files": [
+          "back/app/dream/mechanisms/resource_topic_classification.py",
+          "back/app/dream/monitoring_service.py"
+        ],
+        "source": "app.dream",
+        "target": "app.dataset"
+      },
+      {
+        "files": [
           "back/app/dream/outcome_evidence.py"
         ],
         "source": "app.dream",
@@ -1209,6 +1220,7 @@
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/memory_decisions.py",
           "back/app/dream/mechanisms/memory_extraction.py",
+          "back/app/dream/mechanisms/resource_topic_classification.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
           "back/app/dream/mechanisms/skill_learning.py",
           "back/app/dream/mechanisms/task_memory.py",
@@ -1233,9 +1245,11 @@
           "back/app/dream/mechanisms/memory_extraction.py",
           "back/app/dream/mechanisms/memory_maintenance.py",
           "back/app/dream/mechanisms/process_memory.py",
+          "back/app/dream/mechanisms/resource_topic_classification.py",
           "back/app/dream/mechanisms/stale_memory.py",
           "back/app/dream/mechanisms/task_memory.py",
           "back/app/dream/mechanisms/task_outcome_reflection.py",
+          "back/app/dream/monitoring_service.py",
           "back/app/dream/outcome_evidence.py",
           "back/app/dream/router.py",
           "back/app/dream/scheduler.py"
@@ -1289,6 +1303,7 @@
         "files": [
           "back/app/dream/dbadmin.py",
           "back/app/dream/mechanisms/conversation_memory.py",
+          "back/app/dream/mechanisms/resource_topic_classification.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
           "back/app/dream/mechanisms/task_memory.py",
           "back/app/dream/mechanisms/task_outcome_reflection.py",
@@ -1326,6 +1341,7 @@
           "back/app/dream/mechanisms/file_thumbnails.py",
           "back/app/dream/mechanisms/memory_maintenance.py",
           "back/app/dream/mechanisms/process_memory.py",
+          "back/app/dream/mechanisms/resource_topic_classification.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
           "back/app/dream/mechanisms/skill_learning.py",
           "back/app/dream/mechanisms/stale_memory.py",
@@ -2636,6 +2652,7 @@
           "back/app/memory/router.py",
           "back/app/memory/service.py",
           "back/app/memory/source_projection.py",
+          "back/app/memory/topic_assignment.py",
           "back/app/memory/workflow_documents.py"
         ],
         "source": "app.memory",
@@ -2803,6 +2820,7 @@
           "back/app/memory/source_access.py",
           "back/app/memory/source_projection.py",
           "back/app/memory/storage_reconciliation.py",
+          "back/app/memory/topic_assignment.py",
           "back/app/memory/topic_maintenance.py",
           "back/app/memory/topic_ranking.py",
           "back/app/memory/urls.py",
@@ -2953,7 +2971,8 @@
           "back/app/memory/source_projection.py",
           "back/app/memory/storage.py",
           "back/app/memory/storage_reconciliation.py",
-          "back/app/memory/temporal.py"
+          "back/app/memory/temporal.py",
+          "back/app/memory/topic_assignment.py"
         ],
         "source": "app.memory",
         "target": "core.util"
@@ -3994,6 +4013,14 @@
       },
       {
         "files": [
+          "back/app/topic/router.py",
+          "back/app/topic/service.py"
+        ],
+        "source": "app.topic",
+        "target": "app.dataset"
+      },
+      {
+        "files": [
           "back/app/topic/classifier.py",
           "back/app/topic/evaluation.py",
           "back/app/topic/runtime_detection.py",
@@ -4005,6 +4032,7 @@
       },
       {
         "files": [
+          "back/app/topic/router.py",
           "back/app/topic/service.py"
         ],
         "source": "app.topic",
@@ -4048,6 +4076,7 @@
       {
         "files": [
           "back/app/topic/models.py",
+          "back/app/topic/router.py",
           "back/app/topic/runtime_detection.py",
           "back/app/topic/service.py"
         ],
@@ -4069,6 +4098,13 @@
         ],
         "source": "app.topic",
         "target": "core.params"
+      },
+      {
+        "files": [
+          "back/app/topic/router.py"
+        ],
+        "source": "app.topic",
+        "target": "core.user"
       },
       {
         "files": [
@@ -6038,7 +6074,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 284,
+      "domain_edges": 286,
       "fan_in": [
         {
           "count": 43,
@@ -6435,6 +6471,15 @@
           ]
         },
         {
+          "count": 3,
+          "module": "app.dataset",
+          "modules": [
+            "app.dream",
+            "app.process",
+            "app.topic"
+          ]
+        },
+        {
           "count": 2,
           "module": "app.documentation",
           "modules": [
@@ -6455,13 +6500,6 @@
           "module": "app.browser",
           "modules": [
             "app.chat"
-          ]
-        },
-        {
-          "count": 1,
-          "module": "app.dataset",
-          "modules": [
-            "app.process"
           ]
         },
         {
@@ -6535,12 +6573,13 @@
           ]
         },
         {
-          "count": 12,
+          "count": 13,
           "module": "app.dream",
           "modules": [
             "app.agent",
             "app.connection",
             "app.conversation",
+            "app.dataset",
             "app.goal",
             "app.llm",
             "app.memory",
@@ -6584,6 +6623,22 @@
             "app.tools",
             "app.topic",
             "app.voice"
+          ]
+        },
+        {
+          "count": 10,
+          "module": "app.topic",
+          "modules": [
+            "app.agent",
+            "app.connection",
+            "app.conversation",
+            "app.dataset",
+            "app.llm",
+            "app.memory",
+            "app.messenger",
+            "app.process",
+            "app.task",
+            "app.tools"
           ]
         },
         {
@@ -6659,21 +6714,6 @@
             "app.messenger",
             "app.task",
             "app.util"
-          ]
-        },
-        {
-          "count": 9,
-          "module": "app.topic",
-          "modules": [
-            "app.agent",
-            "app.connection",
-            "app.conversation",
-            "app.llm",
-            "app.memory",
-            "app.messenger",
-            "app.process",
-            "app.task",
-            "app.tools"
           ]
         },
         {
@@ -9741,7 +9781,7 @@
           "documents.id"
         ],
         "history_mixin": false,
-        "line": 69,
+        "line": 70,
         "module": "app.dataset",
         "table": "dataset_aliases"
       },
@@ -9754,7 +9794,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 134,
+        "line": 135,
         "module": "app.dataset",
         "table": "dataset_app_consents"
       },
@@ -9766,7 +9806,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 105,
+        "line": 106,
         "module": "app.dataset",
         "table": "dataset_appearances"
       },
@@ -9779,7 +9819,7 @@
           "files.id"
         ],
         "history_mixin": true,
-        "line": 80,
+        "line": 81,
         "module": "app.dataset",
         "table": "dataset_attachments"
       },
@@ -9793,7 +9833,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 55,
+        "line": 56,
         "module": "app.dataset",
         "table": "dataset_grants"
       },
@@ -9807,7 +9847,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 42,
+        "line": 43,
         "module": "app.dataset",
         "table": "dataset_revisions"
       },
@@ -9819,7 +9859,7 @@
           "datasets.id"
         ],
         "history_mixin": false,
-        "line": 125,
+        "line": 126,
         "module": "app.dataset",
         "table": "dataset_tag_assignments"
       },
@@ -9831,7 +9871,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 115,
+        "line": 116,
         "module": "app.dataset",
         "table": "dataset_tags"
       },
@@ -9843,7 +9883,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 94,
+        "line": 95,
         "module": "app.dataset",
         "table": "dataset_write_budgets"
       },
@@ -9852,6 +9892,7 @@
         "file": "back/app/dataset/models.py",
         "foreign_keys": [
           "agents.id",
+          "topics.id",
           "users.id"
         ],
         "history_mixin": true,
@@ -9978,7 +10019,7 @@
           "memory_revisions.id"
         ],
         "history_mixin": false,
-        "line": 650,
+        "line": 651,
         "module": "app.memory",
         "table": "document_revisions"
       },
@@ -10027,7 +10068,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 719,
+        "line": 720,
         "module": "app.memory",
         "table": "document_team_grants"
       },
@@ -10039,7 +10080,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 708,
+        "line": 709,
         "module": "app.memory",
         "table": "document_user_grants"
       },
@@ -10056,7 +10097,8 @@
         "class_name": "Document",
         "file": "back/app/memory/models.py",
         "foreign_keys": [
-          "memory_items.id"
+          "memory_items.id",
+          "topics.id"
         ],
         "history_mixin": true,
         "line": 600,
@@ -10604,7 +10646,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1272,
+        "line": 1273,
         "module": "app.memory",
         "table": "memory_associations"
       },
@@ -10613,7 +10655,7 @@
         "file": "back/app/memory/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 1454,
+        "line": 1455,
         "module": "app.memory",
         "table": "memory_automation_jobs"
       },
@@ -10626,7 +10668,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 1184,
+        "line": 1185,
         "module": "app.memory",
         "table": "memory_candidates"
       },
@@ -10639,7 +10681,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 990,
+        "line": 991,
         "module": "app.memory",
         "table": "memory_contact_identities"
       },
@@ -10651,7 +10693,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 952,
+        "line": 953,
         "module": "app.memory",
         "table": "memory_contact_items"
       },
@@ -10663,7 +10705,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 915,
+        "line": 916,
         "module": "app.memory",
         "table": "memory_context_edges"
       },
@@ -10674,7 +10716,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 860,
+        "line": 861,
         "module": "app.memory",
         "table": "memory_context_nodes"
       },
@@ -10685,7 +10727,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1329,
+        "line": 1330,
         "module": "app.memory",
         "table": "memory_embedding_chunks"
       },
@@ -10696,7 +10738,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1306,
+        "line": 1307,
         "module": "app.memory",
         "table": "memory_embedding_manifests"
       },
@@ -10708,7 +10750,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 1383,
+        "line": 1384,
         "module": "app.memory",
         "table": "memory_findings"
       },
@@ -10743,7 +10785,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 684,
+        "line": 685,
         "module": "app.memory",
         "table": "memory_item_grants"
       },
@@ -10768,7 +10810,7 @@
           "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 808,
+        "line": 809,
         "module": "app.memory",
         "table": "memory_links"
       },
@@ -10781,7 +10823,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 730,
+        "line": 731,
         "module": "app.memory",
         "table": "memory_revisions"
       },
@@ -10794,7 +10836,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 1134,
+        "line": 1135,
         "module": "app.memory",
         "table": "memory_sources"
       },
@@ -10807,7 +10849,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 661,
+        "line": 662,
         "module": "app.memory",
         "table": "memory_summary_revisions"
       },
@@ -10819,7 +10861,7 @@
           "memory_topic_contact_scopes.id"
         ],
         "history_mixin": false,
-        "line": 1095,
+        "line": 1096,
         "module": "app.memory",
         "table": "memory_topic_contact_items"
       },
@@ -10831,7 +10873,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1054,
+        "line": 1055,
         "module": "app.memory",
         "table": "memory_topic_contact_scopes"
       },
@@ -10842,7 +10884,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 790,
+        "line": 791,
         "module": "app.memory",
         "table": "memory_urls"
       },
@@ -10855,7 +10897,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 1237,
+        "line": 1238,
         "module": "app.memory",
         "table": "memory_usages"
       },
@@ -15206,7 +15248,7 @@
         "declared_path": "/dream/receipts/{receipt_id}",
         "file": "back/app/dream/router.py",
         "handler": "read_dream_receipt",
-        "line": 144,
+        "line": 156,
         "method": "GET",
         "module": "app.dream"
       },
@@ -15224,7 +15266,7 @@
         "declared_path": "/dream/topic-assignment",
         "file": "back/app/dream/router.py",
         "handler": "read_topic_assignment",
-        "line": 120,
+        "line": 126,
         "method": "GET",
         "module": "app.dream"
       },
@@ -19211,7 +19253,7 @@
         "declared_path": "/topics",
         "file": "back/app/topic/router.py",
         "handler": "read_topics",
-        "line": 39,
+        "line": 46,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19220,7 +19262,7 @@
         "declared_path": "/topics",
         "file": "back/app/topic/router.py",
         "handler": "create_topic",
-        "line": 90,
+        "line": 98,
         "method": "POST",
         "module": "app.topic"
       },
@@ -19229,7 +19271,7 @@
         "declared_path": "/topics/conversation",
         "file": "back/app/topic/router.py",
         "handler": "read_conversation_topics",
-        "line": 57,
+        "line": 65,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19238,7 +19280,7 @@
         "declared_path": "/topics/keywords",
         "file": "back/app/topic/router.py",
         "handler": "read_topic_keywords",
-        "line": 72,
+        "line": 80,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19247,8 +19289,17 @@
         "declared_path": "/topics/refs",
         "file": "back/app/topic/router.py",
         "handler": "read_topic_refs",
-        "line": 80,
+        "line": 88,
         "method": "GET",
+        "module": "app.topic"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/topics/resources/{kind}/{identity}",
+        "file": "back/app/topic/router.py",
+        "handler": "change_resource_topic",
+        "line": 105,
+        "method": "PUT",
         "module": "app.topic"
       },
       {
@@ -19256,7 +19307,7 @@
         "declared_path": "/topics/{topic_id}",
         "file": "back/app/topic/router.py",
         "handler": "delete_topic",
-        "line": 177,
+        "line": 204,
         "method": "DELETE",
         "module": "app.topic"
       },
@@ -19265,7 +19316,7 @@
         "declared_path": "/topics/{topic_id}",
         "file": "back/app/topic/router.py",
         "handler": "read_topic",
-        "line": 185,
+        "line": 212,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19274,7 +19325,7 @@
         "declared_path": "/topics/{topic_id}",
         "file": "back/app/topic/router.py",
         "handler": "update_topic",
-        "line": 133,
+        "line": 160,
         "method": "PUT",
         "module": "app.topic"
       },
@@ -19283,7 +19334,7 @@
         "declared_path": "/topics/{topic_id}/content",
         "file": "back/app/topic/router.py",
         "handler": "read_topic_content",
-        "line": 116,
+        "line": 142,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19292,7 +19343,7 @@
         "declared_path": "/topics/{topic_id}/memories",
         "file": "back/app/topic/router.py",
         "handler": "read_topic_memories",
-        "line": 103,
+        "line": 129,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19301,7 +19352,7 @@
         "declared_path": "/topics/{topic_id}/merge",
         "file": "back/app/topic/router.py",
         "handler": "merge_topic",
-        "line": 145,
+        "line": 172,
         "method": "POST",
         "module": "app.topic"
       },
@@ -19310,7 +19361,7 @@
         "declared_path": "/topics/{topic_id}/split",
         "file": "back/app/topic/router.py",
         "handler": "split_topic",
-        "line": 163,
+        "line": 190,
         "method": "POST",
         "module": "app.topic"
       },

@@ -35,7 +35,7 @@
             />
           </div>
           <div class="document-editor-details row items-center text-caption text-grey-7">
-            <div class="document-editor-reference row items-center no-wrap">
+            <div class="document-editor-reference row items-center">
               <q-badge
                 outline
                 color="primary"
@@ -48,9 +48,13 @@
                 @keyup.space.prevent="copyDocumentUri"
               >
                 <q-icon name="link" size="13px" class="q-mr-xs" />
-                <span class="ellipsis">{{ documentUri }}</span>
+                <span class="ellipsis">{{ currentDocument.id }}</span>
                 <q-tooltip>{{ t('documents.copyUrl') }}</q-tooltip>
               </q-badge>
+              <ResourceTopicBadge :key="currentDocument.id" :topic-id="currentDocument.topic_id ?? null"
+                kind="document" :id="currentDocument.id"
+                :editable="canEditDocument && !historyOpen && !topicChangeInFlight"
+                :reassign-topic="changeDocumentTopic" />
               <q-btn
                 flat
                 dense
@@ -247,6 +251,7 @@ import { RichTextEditor, richLinkHref, documentResourceHtml, documentResourceHre
 import { websocket } from '@/core/websocket'
 import { useAgentStore } from '@/app/agent'
 import { OwnerSelect, type OwnerOption } from '@/app/share'
+import { ResourceTopicBadge, reassignResourceTopic } from '@/core/util'
 import { DatasetDocumentRedirect, memoryService } from '../services/memoryService'
 import { useDocumentMutations } from '../stores/documentMutations'
 import { reconcileLibrarySnapshot } from '../librarySnapshot'
@@ -327,6 +332,27 @@ const deletingDocument = ref(false)
 const refreshing = ref(false)
 const refreshError = ref(false)
 const currentDocument = ref<MemoryItemDetail | null>(null)
+const topicChangeInFlight = ref(false)
+async function changeDocumentTopic(topicId: string): Promise<number> {
+  if (!canEditDocument.value || topicChangeInFlight.value) throw new Error(t('topic.assignmentAudit.changeError'))
+  topicChangeInFlight.value = true
+  const generation = loadGeneration
+  try {
+    if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = undefined }
+    await waitForActiveSave()
+    const current = currentDocument.value
+    if (!current || disposed || generation !== loadGeneration) throw new Error(t('topic.assignmentAudit.changeError'))
+    const result = await reassignResourceTopic('document', current.id, topicId, current.topic_id ?? null, current.lock_version)
+    if (!disposed && generation === loadGeneration && currentDocument.value?.id === current.id) {
+      currentDocument.value = { ...currentDocument.value, ...result }
+      emit('updated', currentDocument.value)
+    }
+    return 1
+  } finally {
+    topicChangeInFlight.value = false
+    if (!disposed && generation === loadGeneration) scheduleAutosave()
+  }
+}
 const autosaveState = ref<AutosaveState>('saved')
 const editorTitle = ref('')
 const editorOwner = ref('')
@@ -792,6 +818,7 @@ async function persistSharingChange(
 }
 
 function scheduleAutosave(delay = 700): void {
+  if (topicChangeInFlight.value) return
   if (deletingDocument.value) return
   if (conflictDocument.value) return
   if (applyingDocument || !canSaveDocument.value || !currentDocument.value) return
@@ -888,6 +915,7 @@ function mergeDocument(latest: MemoryItemDetail): void {
 }
 
 async function persistAutosave(): Promise<void> {
+  if (topicChangeInFlight.value) return
   if (deletingDocument.value) return
   if (conflictDocument.value) return
   if (pendingExternalRevision > 0) { await refreshFromRealtime(); return }
