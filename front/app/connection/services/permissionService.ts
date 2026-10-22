@@ -38,6 +38,7 @@ export interface ActionAuthorization {
   can_remember?: boolean
   can_cancel?: boolean
   arguments?: Record<string, unknown>
+  presentation?: { title: string; fields: { label: string; value: string }[] }
 }
 
 export async function listActionAuthorizations(params: { agent_id?: number; status?: string; offset: number; limit: number }, signal?: AbortSignal) {

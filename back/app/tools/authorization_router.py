@@ -11,11 +11,13 @@ from sqlalchemy import func, select, or_
 from app.agent import current_management_scope, authorization_policy
 from core.authorize import Privileges, authorize
 from core.database import get_db
+from core.i18n import current_language
 from core.user import require_web_session
 from core.util import get_encryption_service
 
 from .authorization import answer_action, can_remember_action, redacted_action_arguments
 from .authorization_models import ActionAuthorization
+from .authorization_presentation import present_action
 
 router = APIRouter(prefix="/action-authorizations", tags=["permissions"], dependencies=[Depends(require_web_session)])
 
@@ -90,6 +92,8 @@ async def get_request(identifier: UUID) -> dict[str, Any]:
     result["can_cancel"] = scope.allows(row.agent_id) and row.status in ("pending", "approved")
     if can_answer and row.encrypted_arguments is not None:
         result["arguments"] = redacted(json.loads(get_encryption_service().decrypt(row.encrypted_arguments)))
+        result["presentation"] = present_action(name=row.capability_name, source=row.source,
+            arguments=result["arguments"], language=await current_language(user_id=scope.user_id))
     return result
 
 

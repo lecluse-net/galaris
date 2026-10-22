@@ -3942,6 +3942,8 @@
         "files": [
           "back/app/tools/agent_registry.py",
           "back/app/tools/authorization_notifications.py",
+          "back/app/tools/authorization_presentation.py",
+          "back/app/tools/authorization_router.py",
           "back/app/tools/connection_functions.py",
           "back/app/tools/mcp.py",
           "back/app/tools/mcp_diagnostics.py",
@@ -13046,7 +13048,7 @@
         "declared_path": "/action-authorizations",
         "file": "back/app/tools/authorization_router.py",
         "handler": "list_requests",
-        "line": 35,
+        "line": 37,
         "method": "GET",
         "module": "app.tools"
       },
@@ -13055,7 +13057,7 @@
         "declared_path": "/action-authorizations/runtime-permissions",
         "file": "back/app/tools/authorization_router.py",
         "handler": "list_runtime_permissions",
-        "line": 56,
+        "line": 58,
         "method": "GET",
         "module": "app.tools"
       },
@@ -13064,7 +13066,7 @@
         "declared_path": "/action-authorizations/runtime-permissions/{identifier}",
         "file": "back/app/tools/authorization_router.py",
         "handler": "delete_runtime_permission",
-        "line": 65,
+        "line": 67,
         "method": "DELETE",
         "module": "app.tools"
       },
@@ -13073,7 +13075,7 @@
         "declared_path": "/action-authorizations/{identifier}",
         "file": "back/app/tools/authorization_router.py",
         "handler": "get_request",
-        "line": 75,
+        "line": 77,
         "method": "GET",
         "module": "app.tools"
       },
@@ -13082,7 +13084,7 @@
         "declared_path": "/action-authorizations/{identifier}/answer",
         "file": "back/app/tools/authorization_router.py",
         "handler": "answer_request",
-        "line": 103,
+        "line": 107,
         "method": "POST",
         "module": "app.tools"
       },
@@ -13091,7 +13093,7 @@
         "declared_path": "/action-authorizations/{identifier}/cancel",
         "file": "back/app/tools/authorization_router.py",
         "handler": "cancel_request",
-        "line": 115,
+        "line": 119,
         "method": "POST",
         "module": "app.tools"
       },

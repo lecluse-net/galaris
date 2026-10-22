@@ -1,6 +1,17 @@
 """English messages for tool discovery and search."""
 
 default: dict[str, object] = {
+    "approval_preview": {
+        "send_mail": "Send an email",
+        "run_function": "Use function ${function}",
+        "to": "Recipients", "cc": "Cc", "bcc": "Bcc",
+        "subject": "Subject", "body": "Message", "html_body": "HTML version (source text)",
+        "reply_to": "Reply address", "attachments": "Attachments",
+        "command": "Command", "cwd": "Working directory", "path": "Path",
+        "url": "Web address", "content": "Content", "destination": "Destination", "source": "Source",
+        "yes": "Yes", "no": "No",
+        "truncated": "Shortened preview. Open the request in Permissions to review the complete content before deciding.",
+    },
     "tools": {
         "no_search_results": "No results found.",
         "summary": "Summary: ${content}...",

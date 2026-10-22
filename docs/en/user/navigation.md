@@ -216,6 +216,12 @@ is preserved. Prepare an MCP
 candidate under **Tools → New Tool → Test connection**; send only its temporary reference
 to the agent, keeping secrets server-side.
 
+New authorization requests show the action and its parameters as readable fields.
+For an email, review the recipients, Cc and Bcc, subject, message and attachments of the
+prepared email. In **Permissions**, **Technical details** reveals the JSON parameters.
+HTML content remains inert source text. Shortened notifications are marked: open the
+request to read its complete content.
+
 A configurable MCP function request, such as `topic_create`, offers **Allow this action**,
 **Deny this action**, and **Always allow this function**. The last choice saves consent for
 that function on this agent's connection, with any arguments in future calls. Other functions

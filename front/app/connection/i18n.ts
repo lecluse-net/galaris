@@ -2,6 +2,8 @@ export default {
   fr: {
     permissions: {
       title: 'Permissions', description: 'Décisions pour une action et permissions mémorisées des agents',
+      technicalDetails: 'Détails techniques',
+      sendMail: 'Envoyer un e-mail',
       remembered: 'Permissions mémorisées', oneAction: 'Autorisation pour une action', cancelAction: 'Annuler la demande',
       actionEmpty: 'Aucune demande d’autorisation', inspect: 'Examiner la demande', loading: 'Chargement',
       expiresAt: 'Échéance',
@@ -215,6 +217,8 @@ export default {
   en: {
     permissions: {
       title: 'Permissions', description: 'Decisions for one action and remembered agent permissions',
+      technicalDetails: 'Technical details',
+      sendMail: 'Send an email',
       remembered: 'Remembered permissions', oneAction: 'Authorization for one action', cancelAction: 'Cancel request',
       actionEmpty: 'No authorization requests', inspect: 'Review request', loading: 'Loading',
       expiresAt: 'Expires at',
@@ -428,6 +432,8 @@ export default {
   zh: {
     permissions: {
       title: '权限', description: '单次操作的决定及智能体已记住的权限',
+      technicalDetails: '技术详情',
+      sendMail: '发送电子邮件',
       remembered: '已记住的权限', oneAction: '单次操作授权', cancelAction: '取消请求',
       actionEmpty: '暂无授权请求', inspect: '查看请求', loading: '加载中',
       expiresAt: '到期时间',

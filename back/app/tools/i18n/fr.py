@@ -1,6 +1,17 @@
 """French messages for tool discovery and search."""
 
 default: dict[str, object] = {
+    "approval_preview": {
+        "send_mail": "Envoyer un e-mail",
+        "run_function": "Utiliser la fonction ${function}",
+        "to": "Destinataires", "cc": "Copie", "bcc": "Copie cachée",
+        "subject": "Objet", "body": "Message", "html_body": "Version HTML (texte source)",
+        "reply_to": "Adresse de réponse", "attachments": "Pièces jointes",
+        "command": "Commande", "cwd": "Dossier de travail", "path": "Chemin",
+        "url": "Adresse web", "content": "Contenu", "destination": "Destination", "source": "Source",
+        "yes": "Oui", "no": "Non",
+        "truncated": "Aperçu abrégé. Ouvrez la demande dans Permissions pour consulter le contenu complet avant de décider.",
+    },
     "tools": {
         "no_search_results": "Aucun résultat trouvé.",
         "summary": "Résumé : ${content}...",

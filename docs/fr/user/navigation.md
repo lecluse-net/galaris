@@ -236,6 +236,12 @@ désactivation ultérieure est conservée.
 Le candidat MCP se prépare depuis **Outils → Nouvel outil → Tester la connexion** ; seul
 sa référence temporaire est transmise à l’agent, les secrets restent côté serveur.
 
+Les nouvelles demandes d’autorisation présentent l’action et ses paramètres par champs lisibles.
+Pour un e-mail, vérifiez les destinataires, les copies et copies cachées, l’objet, le message
+et les pièces jointes du mail préparé. Dans **Permissions**, **Détails techniques** permet
+de consulter les paramètres JSON. Les contenus HTML restent du texte source inerte.
+Une notification abrégée le signale : ouvrez la demande pour lire le contenu complet.
+
 Une demande d’autorisation pour une fonction MCP configurable, par exemple `topic_create`,
 propose **Autoriser cette action**, **Refuser cette action** et **Toujours autoriser cette
 fonction**. Ce dernier choix mémorise l’accord pour cette fonction sur la connexion de cet

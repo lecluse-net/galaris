@@ -17,8 +17,8 @@
         <q-btn flat icon="visibility" :aria-label="t('permissions.inspect')" @click="open(props.row.id)" />
       </q-td></template>
       <template #item="props"><div class="col-12 q-pa-xs"><q-card flat bordered>
-        <q-card-section>{{ props.row.preview }}<div>{{ t(`permissions.actionStatus.${props.row.status}`) }}</div></q-card-section>
-        <q-card-actions><q-btn flat :label="t('permissions.inspect')" @click="open(props.row.id)" /></q-card-actions>
+        <q-card-section>{{ displayPreview(props.row) }}<div>{{ t(`permissions.actionStatus.${props.row.status}`) }}</div></q-card-section>
+        <q-card-actions><q-btn outline :label="t('permissions.inspect')" @click="open(props.row.id)" /></q-card-actions>
       </q-card></div></template>
     </q-table>
     <q-dialog v-model="detailOpen">
@@ -29,12 +29,24 @@
         </q-card-section>
         <q-card-section v-if="detailLoading"><q-spinner :aria-label="t('permissions.loading')" /></q-card-section>
         <q-card-section v-if="selected">
-          <div>{{ selected.preview }}</div>
+          <h3 class="text-h6 q-mt-none q-mb-md">{{ selected.presentation?.title ?? selected.preview }}</h3>
+          <dl v-if="selected.presentation" class="action-fields">
+            <template v-for="(field, index) in selected.presentation.fields" :key="index">
+              <dt class="text-weight-medium">{{ field.label }}</dt>
+              <dd>{{ field.value }}</dd>
+            </template>
+          </dl>
           <div>{{ t(`permissions.actionStatus.${selected.status}`) }}</div>
           <div>{{ t('permissions.expiresAt') }}: {{ selected.expires_at }}</div>
           <p v-if="selected.notification_failed" role="status">{{ t('permissions.notificationFailed') }}</p>
-          <div>{{ t('permissions.approver') }}: {{ selected.approver_user_id }}</div>
-          <pre v-if="selected.arguments" class="action-arguments">{{ JSON.stringify(selected.arguments, null, 2) }}</pre>
+          <q-expansion-item :label="t('permissions.technicalDetails')" dense class="q-mt-md">
+            <div class="q-pa-sm">
+              <div>{{ selected.capability_name }}</div>
+              <div class="action-arguments">{{ selected.preview }}</div>
+              <div>{{ t('permissions.approver') }}: {{ selected.approver_user_id }}</div>
+              <pre v-if="selected.arguments" class="action-arguments">{{ JSON.stringify(selected.arguments, null, 2) }}</pre>
+            </div>
+          </q-expansion-item>
           <p v-if="selected.can_remember">{{ t(selected.source === 'runtime' ? 'permissions.runtimeScope' : 'permissions.functionScope', { function: selected.capability_name, runtime: selected.runtime }) }}</p>
         </q-card-section>
         <q-card-section v-if="detailError" role="alert">{{ t('permissions.error') }}
@@ -81,8 +93,10 @@ const error = ref(false)
 const detailError = ref(false)
 const answering = ref(false)
 const pagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0 })
+const displayPreview = (row: ActionAuthorization) => row.source === 'domain' && ['mail_send', 'mail_reply', 'mail_forward'].includes(row.capability_name)
+  ? t('permissions.sendMail') : row.preview.split('\n')[0]
 const columns = computed<QTableColumn[]>(() => [
-  { name: 'preview', field: 'preview', label: t('permissions.question'), align: 'left' },
+  { name: 'preview', field: displayPreview, label: t('permissions.question'), align: 'left' },
   { name: 'status', field: 'status', label: t('permissions.decision'), align: 'left' },
   { name: 'actions', field: 'id', label: t('permissions.actions'), align: 'right' },
 ])
@@ -164,4 +178,6 @@ onBeforeUnmount(() => { disposed = true; generation++; listController?.abort(); 
 
 <style scoped>
 .action-arguments { white-space: pre-wrap; overflow-wrap: anywhere; }
+.action-fields dd { margin: 4px 0 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.action-fields dt { overflow-wrap: anywhere; }
 </style>

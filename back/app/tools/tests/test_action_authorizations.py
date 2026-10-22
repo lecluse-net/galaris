@@ -561,6 +561,8 @@ async def test_remembered_approval_enables_only_this_connection_function_and_pre
         assert interaction.title == t("permissions.title", selected_language)
         assert [option["label"] for option in interaction.options] == expected
         assert interaction.metadata_["language"] == selected_language
+        assert "Synthetic topic" in interaction.body
+        assert '{"title":' not in interaction.body
         assert render_prompt(t("permissions.function_scope", selected_language), function="topic_create") in interaction.body
         prompt = await db.get(Message, UUID(interaction.prompt_message_id))
         assert interaction.title in prompt.text
@@ -749,6 +751,13 @@ async def test_human_runtime_permission_api_revokes_unconsumed_consent_and_prese
             refresh = await sessions.create_refresh_session(user.id)
             tokens.append(await auth_service.create_access_token_for_user(user, session_family=await sessions.family_for_token(refresh)))
     headers, other_headers = [{"Authorization": f"Bearer {token}"} for token in tokens]
+    review_path = f"/api/tools/action-authorizations/{identifier}"
+    review = await client.get(review_path, headers=headers)
+    assert review.status_code == 200
+    assert review.json()["presentation"]["fields"]
+    other_review = await client.get(review_path, headers=other_headers)
+    assert other_review.status_code == 200
+    assert "presentation" not in other_review.json() and "arguments" not in other_review.json()
     answer = await client.post(f"/api/tools/action-authorizations/{identifier}/answer", headers=headers,
         json={"approved": True, "remember": True})
     assert answer.status_code == 200

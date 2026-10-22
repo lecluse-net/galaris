@@ -1,5 +1,40 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
+for (const width of [390, 1440]) {
+  test(`mail approval preserves review content and exposes technical details on demand at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const row = { id: 'mail-review', agent_id: 7, approver_user_id: 1, source: 'domain', runtime: 'internal',
+      capability_kind: 'tool', capability_name: 'mail_send', status: 'pending', can_answer: true,
+      expires_at: '2026-12-01T12:00:00Z', preview: 'Mail: mail_send\ndomain/tool: mail_send\nsoftware\n{}',
+      arguments: { prepared: { delivery_id: 'synthetic-delivery' } },
+      presentation: { title: 'Envoyer un e-mail', fields: [
+        { label: 'Destinataires', value: 'recipient@example.test' },
+        { label: 'Copie cachée', value: 'hidden@example.test' },
+        { label: 'Objet', value: 'Une nouvelle du jardin' },
+        { label: 'Message', value: 'Bonjour,\n\nLes premières fleurs sont arrivées.\nÀ bientôt !' },
+        { label: 'Pièces jointes', value: 'fleurs.txt' },
+        { label: 'Version HTML (texte source)', value: '<script>window.syntheticMailExecuted = true</script>' },
+      ] } }
+    await jsonRoute(page, '**/api/tools/action-authorizations?*', { items: [row], total: 1 })
+    await jsonRoute(page, '**/api/tools/action-authorizations/mail-review', row)
+    await mount(page, 'app/connection/components/ActionAuthorizations.vue', {
+      locale: 'fr', privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'],
+    })
+    await page.getByRole('button', { name: 'Examiner la demande' }).click()
+    const dialog = page.getByRole('dialog')
+    for (const field of row.presentation.fields) await expect(dialog.getByText(field.value, { exact: true })).toBeVisible()
+    expect(await page.evaluate(() => window.syntheticMailExecuted)).toBeUndefined()
+    await expect(dialog.getByText(/synthetic-delivery/)).toBeHidden()
+    await page.screenshot({ path: testInfo.outputPath('mail-review.png'), fullPage: true, animations: 'disabled' })
+    await dialog.getByText('Détails techniques', { exact: true }).click()
+    await expect(dialog.getByText(/synthetic-delivery/)).toBeVisible()
+    // Application dialogs occupy the mobile viewport, so their backdrop is covered.
+    if (width < 1024) await dialog.getByRole('button', { name: 'Annuler', exact: true }).first().click()
+    else await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
+    await expect(dialog).toHaveCount(0)
+  })
+}
+
 for (const [locale, reviewName, allowName] of [
   ['en', 'Review request', 'Allow this action'],
   ['fr', 'Examiner la demande', 'Autoriser cette action'],
@@ -8,7 +43,10 @@ for (const [locale, reviewName, allowName] of [
     const row = { id: 'action-a', agent_id: 7, approver_user_id: 1, source: 'mcp',
       capability_kind: 'tool', capability_name: 'file_write', status: 'pending',
       preview: 'Write the synthetic document', decision_source: null, can_answer: true,
-      arguments: { path: 'console://example.txt', content: 'synthetic' } }
+      arguments: { path: 'console://example.txt', content: 'synthetic' },
+      presentation: { title: 'Write the synthetic document', fields: [
+        { label: 'Path', value: 'console://example.txt' }, { label: 'Content', value: 'synthetic' },
+      ] } }
     const answers = [], queries = []
     await page.route('**/api/tools/action-authorizations?*', route => {
       queries.push(Object.fromEntries(new URL(route.request().url()).searchParams))

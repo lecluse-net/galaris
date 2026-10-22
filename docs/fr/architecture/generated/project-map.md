@@ -517,7 +517,7 @@ tests restent l’autorité sur le comportement.
 | `app.tools` | `core.database` | `back/app/tools/admin_service.py`, `back/app/tools/administration_lock.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_models.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/documentation_service.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/models.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_authorization_router.py`, `back/app/tools/runtime_permissions.py`, `back/app/tools/tool_search_service.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `core.dbadmin` | `back/app/tools/dbadmin.py`, `back/app/tools/mandatory_tools.py` |
 | `app.tools` | `core.failure_journal` | `back/app/tools/mcp_loader.py` |
-| `app.tools` | `core.i18n` | `back/app/tools/agent_registry.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/connection_functions.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_diagnostics.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/router.py`, `back/app/tools/search_tool.py`, `back/app/tools/tool_errors.py`, `back/app/tools/tool_service.py` |
+| `app.tools` | `core.i18n` | `back/app/tools/agent_registry.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_presentation.py`, `back/app/tools/authorization_router.py`, `back/app/tools/connection_functions.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_diagnostics.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/router.py`, `back/app/tools/search_tool.py`, `back/app/tools/tool_errors.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `core.params` | `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_loader.py` |
 | `app.tools` | `core.user` | `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py` |
 | `app.tools` | `core.util` | `back/app/tools/admin_candidates.py`, `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/assertions.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/catalog.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/secrets.py`, `back/app/tools/tool_service.py` |
@@ -1186,12 +1186,12 @@ tests restent l’autorité sur le comportement.
 
 | Méthode | Chemin déclaré | Module | Handler | RBAC local | Source |
 |---|---|---|---|---:|---|
-| GET | `/action-authorizations` | `app.tools` | `list_requests` | oui | `back/app/tools/authorization_router.py:35` |
-| GET | `/action-authorizations/runtime-permissions` | `app.tools` | `list_runtime_permissions` | oui | `back/app/tools/authorization_router.py:56` |
-| DELETE | `/action-authorizations/runtime-permissions/{identifier}` | `app.tools` | `delete_runtime_permission` | oui | `back/app/tools/authorization_router.py:65` |
-| GET | `/action-authorizations/{identifier}` | `app.tools` | `get_request` | oui | `back/app/tools/authorization_router.py:75` |
-| POST | `/action-authorizations/{identifier}/answer` | `app.tools` | `answer_request` | oui | `back/app/tools/authorization_router.py:103` |
-| POST | `/action-authorizations/{identifier}/cancel` | `app.tools` | `cancel_request` | oui | `back/app/tools/authorization_router.py:115` |
+| GET | `/action-authorizations` | `app.tools` | `list_requests` | oui | `back/app/tools/authorization_router.py:37` |
+| GET | `/action-authorizations/runtime-permissions` | `app.tools` | `list_runtime_permissions` | oui | `back/app/tools/authorization_router.py:58` |
+| DELETE | `/action-authorizations/runtime-permissions/{identifier}` | `app.tools` | `delete_runtime_permission` | oui | `back/app/tools/authorization_router.py:67` |
+| GET | `/action-authorizations/{identifier}` | `app.tools` | `get_request` | oui | `back/app/tools/authorization_router.py:77` |
+| POST | `/action-authorizations/{identifier}/answer` | `app.tools` | `answer_request` | oui | `back/app/tools/authorization_router.py:107` |
+| POST | `/action-authorizations/{identifier}/cancel` | `app.tools` | `cancel_request` | oui | `back/app/tools/authorization_router.py:119` |
 | POST | `/agent/openai/chat/completions` | `app.agent` | `agent_chat_completions` | oui | `back/app/agent/openai_router.py:77` |
 | GET | `/agent/openai/models` | `app.agent` | `get_agent_models` | oui | `back/app/agent/openai_router.py:66` |
 | GET | `/agents` | `app.agent` | `read_agents` | oui | `back/app/agent/router.py:202` |

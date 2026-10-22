@@ -17,6 +17,7 @@ from core.i18n import current_language, render_prompt, t
 from .authorization import answer_action, can_remember_action, wake_authorization_context, AuthorizationAction, resolve_action_mode
 from .authorization import redacted_action_arguments
 from .authorization_models import ActionAuthorization
+from .authorization_presentation import notification_body, present_action
 from .contracts import ToolCallRejectedError
 from . import authorization_metrics as metrics
 
@@ -127,7 +128,8 @@ async def deliver_authorization_notifications() -> None:
                 import json
                 from core.util import get_encryption_service
                 arguments = redacted_action_arguments(json.loads(get_encryption_service().decrypt(row.encrypted_arguments)))
-                body += "\n\n" + json.dumps(arguments, ensure_ascii=False)[:6000]
+                body = notification_body(present_action(name=row.capability_name, source=row.source,
+                    arguments=arguments, language=language), language=language)
             if await can_remember_action(row):
                 runtime = row.source == "runtime"
                 options.append(ChoiceOption(id="allow_always", label=t(
