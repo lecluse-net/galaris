@@ -125,7 +125,7 @@
         </q-card-section>
         <q-linear-progress v-if="detailLoading" indeterminate />
 
-        <q-card-section v-if="selected" class="q-gutter-md galaris-dialog-body">
+        <q-card-section v-if="selected" class="mail-detail-content galaris-dialog-body">
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-6"><strong>{{ t('mailJournal.agent') }}:</strong> {{ selected.agent_label }}</div>
             <div class="col-12 col-sm-6"><strong>{{ t('mailJournal.sender') }}:</strong> {{ selected.sender_address }}</div>
@@ -173,8 +173,8 @@
         </q-card-section>
 
         <q-separator />
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn flat :label="t('common.close')" v-close-popup />
+        <q-card-actions align="right" class="q-px-lg q-py-md galaris-dialog-actions">
+          <q-btn outline color="primary" :label="t('common.close')" v-close-popup />
           <template v-if="selected?.status === 'pending_approval' && selected.can_review">
             <q-btn
               outline
@@ -411,6 +411,18 @@ onMounted(() => { void refreshAll(false) })
   max-width: 900px;
   max-height: 90vh;
   overflow-y: auto;
+}
+
+.mail-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  overflow-wrap: anywhere;
+}
+
+.mail-detail-content > * {
+  flex-shrink: 0;
 }
 
 .mail-body {
