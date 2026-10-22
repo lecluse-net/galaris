@@ -141,7 +141,7 @@ async def deliver_authorization_notifications() -> None:
                 agent_id=row.agent_id, user_id=row.approver_user_id,
                 request=ChoiceRequest(
                     kind=KIND, title=t("permissions.title", language),
-                    body=body + f"\n\n/connection/permissions?request={row.id}",
+                    body=body,
                     options=options,
                     metadata={"authorization_request_id": str(row.id)},
                     timeout_seconds=max(1, int((row.expires_at - now).total_seconds())), language=language,
