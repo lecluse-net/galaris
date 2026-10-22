@@ -63,6 +63,7 @@ from app.harness.runtime import build_model_for_llm as original_model_builder
 pydantic_ai.models.ALLOW_MODEL_REQUESTS = False
 gates: dict[UUID, asyncio.Event] = {}
 modes: dict[UUID, str] = {}
+tool_trace_gates: dict[int, asyncio.Event] = {}
 quota_fixture = {"used": 2500, "status": 200, "codex_credits": 125.5}
 
 
@@ -94,7 +95,7 @@ class ScriptedController:
                         pass
         else:
             await asyncio.wait_for(gates[turn.room_id].wait(), timeout=45)
-        if modes.get(turn.room_id) in {"task", "call-recovery"}:
+        if modes.get(turn.room_id) in {"task", "task-tools", "call-recovery"}:
             assert turn.admit_background_task is not None
             async with get_db_session():
                 await turn.admit_background_task(
@@ -131,8 +132,18 @@ async def task_stream(request):
         async for event in internal_task_stream(request):
             yield event
         return
+    messages = []
+    if request.agent.id in tool_trace_gates:
+        for name, success in (("fixture_lookup", True), ("fixture_denied", False)):
+            message = AIMessage(type="tool", tool_name=name, tool_call_external_id=f"{name}-1",
+                tool_arguments={"query": "Synthetic Task query", "secret": "synthetic-task-secret"},
+                tool_result={"value": 42} if success else {"error": "Synthetic denial"},
+                content="Synthetic lookup complete" if success else "Synthetic denial", success=success)
+            messages.append(message)
+            yield AgentEvent.from_message(message)
+        await asyncio.wait_for(tool_trace_gates[request.agent.id].wait(), timeout=60)
     yield AgentEvent.from_message(AIMessage(type="text", content="Résultat durable de la tâche."))
-    yield AgentEvent.from_result(ExecutionResult(prompt=request.objective, result="Résultat durable de la tâche."))
+    yield AgentEvent.from_result(ExecutionResult(prompt=request.objective, messages=messages, result="Résultat durable de la tâche."))
 
 
 async def harness_model(llm, **kwargs):
@@ -314,7 +325,7 @@ async def elevenlabs_voices():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = True):
-    if mode not in {"normal", "tools", "error", "task", "call-recovery", "conversation-control", "process-human", "missing-terminal", "interruptible", "mail", "mail-common", "file-catalogue"}:
+    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "process-human", "missing-terminal", "interruptible", "mail", "mail-common", "file-catalogue"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -372,6 +383,8 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             rooms.append(str(room.id))
         fixture = {"email": owner.email, "password": "Browser-test-password-42!", "rooms": rooms,
                    "agent_id": agent.id}
+        if mode == "task-tools":
+            tool_trace_gates[agent.id] = asyncio.Event()
         if mode == "call-recovery":
             e2e_call_recovery.register(agent.id)
         if mode in {"conversation-control", "process-human"}:
@@ -523,6 +536,12 @@ async def rounds(room_id: UUID):
     async with get_db_session() as db:
         rows = list(await db.scalars(select(ConversationRound).where(ConversationRound.room_id == room_id)))
         return [{"id": str(row.id), "status": row.status, "delivery_state": row.delivery_state} for row in rows]
+
+
+@app.post("/api/__test/task-tools/{agent_id}/release")
+async def release_tool_trace(agent_id: int):
+    tool_trace_gates[agent_id].set()
+    return {"released": True}
 
 
 @app.get("/api/__test/tasks")

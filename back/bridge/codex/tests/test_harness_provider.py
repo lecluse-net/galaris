@@ -56,7 +56,7 @@ async def test_provider_provisions_private_codex_runtime(
     )
     monkeypatch.setattr(
         harness_provider.mcp_token_service,
-        "rotate_system_token",
+        "ensure_system_token",
         AsyncMock(return_value="mcp-secret"),
     )
     monkeypatch.setattr(harness_provider, "_sync_skills", AsyncMock(return_value="revision-1"))
@@ -121,7 +121,7 @@ async def test_provider_ignores_retained_internal_token_on_reinstall(
     monkeypatch.setattr(harness_provider, "manager", manager)
     monkeypatch.setattr(
         harness_provider.mcp_token_service,
-        "rotate_system_token",
+        "ensure_system_token",
         AsyncMock(return_value="mcp-secret"),
     )
     monkeypatch.setattr(harness_provider, "_sync_skills", AsyncMock(return_value="revision-1"))
@@ -138,8 +138,10 @@ async def test_provider_ignores_retained_internal_token_on_reinstall(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("cleanup_available", [True, False])
 async def test_provider_cleans_partial_runtime_when_start_fails(
     monkeypatch: pytest.MonkeyPatch,
+    cleanup_available: bool,
 ) -> None:
     manager = SimpleNamespace(
         create_instance=AsyncMock(),
@@ -149,12 +151,12 @@ async def test_provider_cleans_partial_runtime_when_start_fails(
         upload_file_from=AsyncMock(),
         write_text_file=AsyncMock(),
         run_action=AsyncMock(side_effect=RuntimeError("build failed")),
-        delete_instance=AsyncMock(),
+        delete_instance=AsyncMock(side_effect=None if cleanup_available else RuntimeError("cleanup failed")),
     )
     monkeypatch.setattr(harness_provider, "manager", manager)
     monkeypatch.setattr(
         harness_provider.mcp_token_service,
-        "rotate_system_token",
+        "ensure_system_token",
         AsyncMock(return_value="mcp-secret"),
     )
     monkeypatch.setattr(
@@ -169,6 +171,7 @@ async def test_provider_cleans_partial_runtime_when_start_fails(
         await CodexHarnessProvider().provision(_agent(), _request(), token=None)
 
     manager.delete_instance.assert_awaited_once_with("alice")
+    assert harness_provider.mcp_token_service.revoke_system_tokens.await_count == int(cleanup_available)
 
 
 @pytest.mark.asyncio

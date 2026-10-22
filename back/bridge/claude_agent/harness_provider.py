@@ -9,6 +9,7 @@ import secrets
 from typing import Any
 
 import yaml
+from loguru import logger
 
 from app.agent import Agent, DriverPipelinePolicy
 from app.harnesses import (
@@ -148,7 +149,7 @@ async def _sync_runtime(agent: Agent, *, api_token: str) -> str:
         raise RuntimeError("The Claude Agent Harness requires APP_HOST.")
     from app.mcp import mcp_token_service
 
-    system_token = await mcp_token_service.rotate_system_token(agent.id)
+    system_token = await mcp_token_service.ensure_system_token(agent.id)
     system_info = await manager.get_system_info()
     await _sync_template(agent.code)
     skill_revision = await _sync_skills(agent)
@@ -253,14 +254,11 @@ class ClaudeAgentHarnessProvider:
         except Exception:
             try:
                 await manager.delete_instance(agent.code)
-            except Exception:
-                pass
-            try:
                 from app.mcp import mcp_token_service
 
                 await mcp_token_service.revoke_system_tokens(agent.id)
             except Exception:
-                pass
+                logger.exception("Claude Agent cleanup failed after provisioning error: agent={}", agent.code)
             raise
         return HarnessProvisioningResult(
             base_url=_runtime_base_url(agent.code),

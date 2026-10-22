@@ -1,6 +1,14 @@
 # Décisions d'architecture
 
 - [0217 — Journal Mail relié aux autorisations communes](0217-mail-journal-common-authorizations.md)
+- [0216 — Reprise des accords gérés après réclamation de la Task](0216-managed-approval-resumption.md)
+
+- [0215 — Identité MCP stable pendant la synchronisation des harnais](0215-stable-managed-runtime-principal.md)
+
+- [0214 — Nouvelle inférence à chaque relance explicite d'une Task réseau](0214-explicit-task-retry-fresh-inference.md)
+
+- [0213 — Pilotage Galaris des runs API Hermès managés](0213-hermes-managed-api-ownership.md)
+
 - [0211 — Dossiers Dataset indépendants et visuels communs](0211-independent-dataset-library.md)
 
 - [0208 — Suivi des réflexions Task et lignes d'édition Dataset](0208-task-reasoning-progress-and-dataset-lines.md)

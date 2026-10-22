@@ -1259,9 +1259,9 @@ class DriverCheckpointPolicy(Protocol):
 
 @runtime_checkable
 class DriverCheckpointRetryPolicy(Protocol):
-    """Optional preparation of an explicit retry of the same runtime identity."""
+    """Prepare an explicit retry; None requests a fresh inference operation."""
 
-    def prepare_retry(self, checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint: ...
+    def prepare_retry(self, checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint | None: ...
 
 
 ToolEffectPolicy = Literal["read", "idempotent", "non_idempotent"]

@@ -1962,7 +1962,8 @@
       {
         "files": [
           "back/app/harnesses/driver.py",
-          "back/app/harnesses/mcp.py"
+          "back/app/harnesses/mcp.py",
+          "back/app/harnesses/openai_client.py"
         ],
         "source": "app.harnesses",
         "target": "app.tools"
@@ -12096,7 +12097,8 @@
           "models.py",
           "privileges.py",
           "router.py",
-          "schemas.py"
+          "schemas.py",
+          "tests/"
         ],
         "conditional": false,
         "exists": true,
@@ -18708,7 +18710,7 @@
         "declared_path": "/runtime-authorizations/context",
         "file": "back/app/tools/runtime_authorization_router.py",
         "handler": "context_status",
-        "line": 72,
+        "line": 75,
         "method": "GET",
         "module": "app.tools"
       },
@@ -18717,7 +18719,7 @@
         "declared_path": "/runtime-authorizations/receipt",
         "file": "back/app/tools/runtime_authorization_router.py",
         "handler": "action_receipt",
-        "line": 94,
+        "line": 97,
         "method": "POST",
         "module": "app.tools"
       },
@@ -18726,7 +18728,7 @@
         "declared_path": "/runtime-authorizations/{identifier}",
         "file": "back/app/tools/runtime_authorization_router.py",
         "handler": "action_status",
-        "line": 81,
+        "line": 84,
         "method": "GET",
         "module": "app.tools"
       },

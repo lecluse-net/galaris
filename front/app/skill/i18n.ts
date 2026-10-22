@@ -95,7 +95,7 @@ export default {
                 error: 'L’opération sur la catégorie a échoué.',
             },
             learning: {
-                hint: 'Dream analyse aussi les Tasks historiques et regroupe les actions répétées en procédures candidates. Elles sont injectées en plus des compétences attribuées uniquement après le nombre d’occurrences et la note configurés.',
+                hint: 'Dream analyse aussi les tâches historiques et regroupe les actions répétées en procédures candidates. Elles sont injectées en plus des compétences attribuées uniquement après le nombre d’occurrences et la note configurés.',
                 agent: 'Agent',
                 agentFilter: 'Filtrer par agent',
                 unknownAgent: 'Agent inconnu',

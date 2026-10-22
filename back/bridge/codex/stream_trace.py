@@ -3,10 +3,25 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from collections.abc import Mapping, Sequence
+import json
+from typing import cast
 
 
 _COMMENTARY_PHASES = frozenset({"commentary", "analysis"})
 _FINAL_PHASES = frozenset({"final", "final_answer"})
+
+
+def _mapping(value: object) -> Mapping[str, object]:
+    return cast(Mapping[str, object], value) if isinstance(value, Mapping) else {}
+
+
+def _tool_payload(value: object) -> dict[str, object]:
+    payload: dict[str, object] = dict(_mapping(value))
+    if not isinstance(value, Mapping):
+        payload = {"value": value}
+    encoded = json.dumps(payload, ensure_ascii=False, default=str)
+    return payload if len(encoded) <= 8_000 else {"truncated": True, "preview": encoded[:4_000]}
 
 
 @dataclass
@@ -41,6 +56,65 @@ class CodexStreamTrace:
     _active_anonymous_agent_id: str | None = None
     _active_anonymous_reasoning_id: str | None = None
     _streamed_final_items: set[str] = field(default_factory=set[str])
+    _completed_tools: set[str] = field(default_factory=set[str])
+
+    def complete_tool_item(self, item: Mapping[str, object]) -> dict[str, object] | None:
+        """Project completed SDK tool items, using their invocation identity once."""
+        kind = item.get("type")
+        if kind not in {"mcpToolCall", "dynamicToolCall", "commandExecution", "fileChange", "webSearch"}:
+            return None
+        identifier = str(item.get("id") or "")
+        if not identifier or identifier in self._completed_tools:
+            return None
+        status = item.get("status")
+        if status == "inProgress":
+            return None
+        self._completed_tools.add(identifier)
+        success = status not in {"failed", "declined", "interrupted"} and item.get("success") is not False
+        arguments: object
+        result: object
+        content: object
+        if kind == "commandExecution":
+            name = "command_execution"
+            arguments = {"command": item.get("command"), "cwd": item.get("cwd")}
+            result = {"exit_code": item.get("exitCode"), "output": item.get("aggregatedOutput")}
+            content = item.get("aggregatedOutput")
+            success = success and item.get("exitCode") in (None, 0)
+        elif kind == "fileChange":
+            name = "apply_patch"
+            arguments = {"changes": item.get("changes")}
+            result = {"status": status, "changes": item.get("changes")}
+            content = json.dumps(item.get("changes"), ensure_ascii=False)
+        elif kind == "webSearch":
+            name = "web_search"
+            arguments = {"query": item.get("query"), "action": item.get("action")}
+            result = dict(item)
+            content = item.get("query")
+        else:
+            name = str(item.get("tool") or "tool")
+            arguments = item.get("arguments")
+            result = item.get("result") if kind == "mcpToolCall" else {"content": item.get("contentItems")}
+            outcome = _mapping(result)
+            blocks = outcome.get("content")
+            texts = [str(block.get("text") or "") for raw in cast(Sequence[object], blocks)
+                     if isinstance(raw, Mapping) and (block := cast(Mapping[str, object], raw)).get("type") in {"text", "inputText"}
+                     ] if isinstance(blocks, list) else []
+            content = "\n".join(texts)
+            success = success and not item.get("error") and outcome.get("isError") is not True
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments)
+            except ValueError:
+                arguments = {"raw": arguments}
+        error = item.get("error")
+        if error:
+            result = {"result": result, "error": error}
+        duration = item.get("durationMs")
+        return {"type": "tool", "tool_name": name, "tool_call_external_id": identifier,
+                "tool_arguments": _tool_payload(arguments),
+                "tool_result": _tool_payload(result),
+                "content": str(content or json.dumps(result, ensure_ascii=False, default=str))[:8_000],
+                "success": success, "execution_time": duration / 1_000 if isinstance(duration, (int, float)) else 0.0}
 
     @staticmethod
     def _normalized_phase(phase: str | None) -> str:

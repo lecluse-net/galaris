@@ -160,4 +160,17 @@ const fr: typeof en = {
   kinds: { start: 'Début', end: 'Fin', task: 'Tâche', human_task: 'Tâche humaine', tool_call: 'Opération Tool', rest: 'API REST', code: 'Code', program: 'Programme',
     call: 'Appeler un processus', if: 'Choix conditionnel', parallel: 'Passerelle parallèle', for: 'Boucle FOR', while: 'Boucle WHILE' },
 }
-export const nativeProcessMessages = { en, fr, zh: en }
+const zh: typeof en = {
+  ...en,
+  instructions: '任务指令',
+  taskTypeHint: '只能分配与此任务类型匹配的参与者。',
+  handleHint: '拖动连接点以连接活动；拖动任务以更换参与者。',
+  incompatibleActorDrop: '请选择与此任务类型匹配的参与者。',
+  dropToCreateActor: '将任务拖放到泳道外以创建新参与者。',
+  execution: { ...en.execution, result: '任务或操作结果', task: '打开任务' },
+  lastTaskError: '最近的任务错误：{error}',
+  confirmStop: '停止此次执行及其子流程？进行中的任务将被中断，待处理的人工请求将被关闭。停止后无法恢复此次执行。',
+  waitKinds: { ...en.waitKinds, task_queue: '任务排队中', task_paused: '任务已暂停', task_wait: '任务等待回复' },
+  kinds: { ...en.kinds, task: '任务', human_task: '人工任务' },
+}
+export const nativeProcessMessages = { en, fr, zh }

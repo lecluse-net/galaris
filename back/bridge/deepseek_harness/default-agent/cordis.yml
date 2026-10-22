@@ -5,12 +5,37 @@
     maxTokensAsSuccess: true
 
 - id: llm-deepseek
+  disabled: true
+
+- id: llm-deepseek-account
+  disabled: true
+
+# The native DeepSeek adapter now speaks Messages exclusively. Keep Galaris's
+# OpenAI gateway through the upstream generic pi-ai adapter instead.
+- id: llm-pi-ai
   config:
-    # Galaris exposes the OpenAI gateway; upstream now defaults to Messages.
-    protocol: chat-completions
-    thinking: enabled
-    reasoningEffort: !!js process.env.DSH_REASONING_EFFORT ?? 'high'
-    maxTokens: 32768
+    providers:
+      deepseek-official:
+        displayName: Galaris
+        api: openai-completions
+        baseURL: !!js process.env.DEEPSEEK_BASE_URL
+        apiKeyEnv: DEEPSEEK_API_KEY
+        reasoning: !!js process.env.DSH_REASONING_EFFORT ?? 'high'
+        retryPolicy:
+          mode: normal
+          maxRetries: 0
+        compat:
+          supportsReasoningEffort: true
+          thinkingFormat: deepseek
+          requiresReasoningContentOnAssistantMessages: true
+        models:
+          - id: !!js process.env.GALARIS_MODEL
+            contextWindow: 262144
+            maxTokens: 32768
+            reasoningEfforts:
+              low: low
+              high: high
+              max: max
 
 - id: sandbox-policy
   config:

@@ -255,6 +255,46 @@ async def test_retry_preserves_uncertain_effects_and_durable_working_set(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("planned", [False, True])
+@pytest.mark.parametrize("status", ["completed", "failed", "outcome_unknown", "cancelled", "running", "waiting_for_authorization"])
+async def test_retry_starts_fresh_managed_operation_on_same_task_and_keeps_evidence(db, monkeypatch, planned, status):
+    from copy import deepcopy
+
+    checkpoint = {"request_run_id": str(uuid4()), "driver_code": "openai_messages", "runtime_run_id": "a" * 64,
+        "status": status, "data": {"version": 1, "run_context": "synthetic-authority"}}
+    failed = _task(status=TaskStatus.ERROR, data={"_agent_run_checkpoint": checkpoint},
+        execution_result={"prompt": "", "result": "Original runtime failure", "success": False},
+        last_error="Original runtime failure", attempt_count=1)
+    root = _task(status=TaskStatus.ERROR, plan={"steps": [{}], "cursor": 1}) if planned else failed
+    if planned:
+        failed.parent_id = root.id
+        failed.data = {**failed.data, "plan_step": 0}
+        db.add(root)
+    db.add(failed)
+    await db.commit()
+    failed_id, root_id, revision = failed.id, root.id, root.revision
+    saved_checkpoint = deepcopy(checkpoint)
+    original_parameters = (failed.label, failed.objective, failed.agent_id, failed.effort,
+                           failed.forced_route, failed.forced_effort)
+    emit = AsyncMock()
+    monkeypatch.setattr(task_service.websocket, "emit", emit)
+
+    await task_service.retry(root_id, revision)
+
+    await db.refresh(failed)
+    await db.refresh(root)
+    assert failed.id == failed_id
+    assert failed.status == TaskStatus.DISPATCH
+    assert failed.last_error is None and failed.execution_result is None
+    assert failed.data['_agent_run_retry_checkpoint'] == saved_checkpoint
+    assert '_agent_run_checkpoint' not in failed.data
+    assert '_agent_run_identity' not in failed.data
+    assert failed.attempt_count == 1
+    assert (failed.label, failed.objective, failed.agent_id, failed.effort,
+            failed.forced_route, failed.forced_effort) == original_parameters
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("planned", [False, True])
 @pytest.mark.parametrize("driver", ["internal", "hermes", "openai_messages"])
 async def test_retry_preserves_driver_recovery_and_remote_effect_receipts(db, monkeypatch, planned, driver):
     from copy import deepcopy
@@ -292,6 +332,12 @@ async def test_retry_preserves_driver_recovery_and_remote_effect_receipts(db, mo
     await task_service.retry(root.id, root.revision)
     await db.refresh(failed)
 
+    if driver == "openai_messages":
+        assert failed.data["_agent_run_retry_checkpoint"] == original
+        assert "_agent_run_checkpoint" not in failed.data
+        assert not has_resumable_run_checkpoint(failed)
+        assert failed.execution_result is None
+        return
     saved = failed.data["_agent_run_checkpoint"]
     assert has_resumable_run_checkpoint(failed)
     assert saved["runtime_run_id"] == original["runtime_run_id"]

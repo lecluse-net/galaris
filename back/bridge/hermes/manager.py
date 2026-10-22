@@ -60,9 +60,9 @@ _DEFAULT_AGENT_DIR = Path(__file__).parent / "default-agent"
 
 # Defaults
 
-_HERMES_VERSION = "0.21.3"
-_HERMES_RELEASE = "v2026.9.14"
-_HERMES_UPSTREAM_IMAGE = f"nousresearch/hermes-agent:{_HERMES_RELEASE}@sha256:99641e57ec762c59e54cb44aa6746b7fc68c18b3c5ddb088af54234c613d9294"
+_HERMES_VERSION = "0.22.4"
+_HERMES_RELEASE = "v0.22.4"
+_HERMES_UPSTREAM_IMAGE = f"nousresearch/hermes-agent:{_HERMES_RELEASE}@sha256:7a69201726bc64db2072a1371557137c23312d29705cda2b8ea2a0214a50a4cf"
 _HERMES_HARNESS_IMAGE = f"galaris/hermes-harness:{_HERMES_RELEASE}"
 
 _DEFAULT_COMPOSE: dict[str, Any] = {
@@ -1433,13 +1433,13 @@ class HermesAgent:
         except Exception as e:
             logger.warning("Hermes sync: API key rotation failed for agent={}: {}", self.code, e)
 
-        # Rotate the hidden system MCP token used by the per-agent HTTP endpoint.
+        # Preserve the principal until the runtime is explicitly deprovisioned.
         mcp_token: str | None = None
         try:
             from app.mcp import mcp_token_service
-            mcp_token = await mcp_token_service.rotate_system_token(self.agent.id)
+            mcp_token = await mcp_token_service.ensure_system_token(self.agent.id)
         except Exception as e:
-            logger.warning("Hermes sync: MCP system token rotation failed for agent={}: {}", self.code, e)
+            logger.warning("Hermes sync: MCP system token synchronization failed for agent={}: {}", self.code, e)
 
         default_compose = await params_service.get(Params.HARNESS_DEFAULT_COMPOSE)
         default_config  = await params_service.get(Params.HERMES_DEFAULT_CONFIG)

@@ -260,6 +260,39 @@ test('tool progress and final text survive persistence', async ({ page, request 
   expect(JSON.stringify(result)).toContain('fixture_lookup')
 })
 
+test('Task tool details remain inspectable live, after reload and after completion', async ({ page, request }) => {
+  test.setTimeout(120_000)
+  const errors = collectPageErrors(page)
+  const fixture = await prepare(page, request, 'task-tools')
+  await send(page)
+  await release(request, fixture.rooms[0])
+  const row = page.locator('.agent-task-row')
+  const inspect = async () => {
+    await expect(row).toHaveCount(1, { timeout: 40_000 })
+    await row.locator('.agent-task-status-dot').click()
+    const dialog = page.getByRole('dialog')
+    const tool = dialog.getByRole('button', { name: /fixture_denied/ })
+    await expect(tool).toHaveCount(1)
+    if (await tool.getAttribute('aria-expanded') !== 'true') await tool.click()
+    await expect(tool).toContainText('Échec')
+    await expect(dialog.getByRole('cell', { name: 'Synthetic Task query', exact: true })).toBeVisible()
+    await expect(dialog.getByRole('region', { name: 'Contenu retourné', exact: true })).toContainText('Synthetic denial')
+    await expect(dialog.getByRole('cell', { name: '[REDACTED]', exact: true })).toBeVisible()
+    await expect(dialog).not.toContainText('synthetic-task-secret')
+  }
+  try {
+    await inspect()
+    await page.reload()
+    await inspect()
+    expect((await request.post(`/api/__test/task-tools/${fixture.agent_id}/release`)).ok()).toBeTruthy()
+    await expect(page.getByRole('dialog')).toContainText('Résultat durable de la tâche.', { timeout: 40_000 })
+    await page.screenshot({ path: '/artifacts/task-tool-details.png' })
+  } finally {
+    await request.post(`/api/__test/task-tools/${fixture.agent_id}/release`)
+  }
+  expect(errors()).toEqual([])
+})
+
 test('reconnection catches up when completion happened offline', async ({ page, context, request }) => {
   const fixture = await prepare(page, request)
   await send(page)

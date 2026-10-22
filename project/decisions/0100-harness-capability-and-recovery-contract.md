@@ -18,6 +18,10 @@ l’absence de contrat, une identité différente ou une enveloppe corrompue int
 redémarrage automatique. Un amendement conserve les preuves d’effets ; le driver peut
 refuser le rebasage d’un historique distant.
 
+La [décision 0214](0214-explicit-task-retry-fresh-inference.md) remplace, pour les réessais
+manuels des harnais réseau gérés, la conservation obligatoire de l'identité décrite ci-dessous.
+La récupération automatique conserve ce contrat.
+
 Précision du 12 octobre 2026 : la préparation d'un réessai explicite appartient aussi
 au driver, via le contrat facultatif `DriverCheckpointRetryPolicy`. Sans ce contrat,
 le checkpoint reste inchangé. La façade interdit de changer son driver ou son identité

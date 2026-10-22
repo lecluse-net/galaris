@@ -136,6 +136,24 @@ async def test_template_projects_the_stream_trace_adapter(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("cleanup_available", [True, False])
+async def test_provision_failure_preserves_principal_until_runtime_removal(monkeypatch, cleanup_available):
+    manager = harness_provider.manager
+    monkeypatch.setattr(type(manager), "configured", property(lambda _self: True))
+    monkeypatch.setattr(manager, "list_instances", AsyncMock(return_value=["alice"]))
+    monkeypatch.setattr(harness_provider, "_sync_runtime", AsyncMock(side_effect=RuntimeError("Synthetic provisioning failure")))
+    monkeypatch.setattr(manager, "delete_instance", AsyncMock(
+        side_effect=None if cleanup_available else RuntimeError("Synthetic cleanup failure"),
+    ))
+    revoke = AsyncMock()
+    monkeypatch.setattr(mcp_token_service, "revoke_system_tokens", revoke)
+
+    with pytest.raises(RuntimeError, match="Synthetic provisioning failure"):
+        await harness_provider.provider.provision(_agent(), _request(), token="synthetic-api-token")
+    assert revoke.await_count == int(cleanup_available)
+
+
+@pytest.mark.asyncio
 async def test_provider_deprovision_destroys_runtime_and_revokes_system_tokens(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

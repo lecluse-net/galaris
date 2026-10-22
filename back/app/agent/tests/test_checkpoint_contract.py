@@ -60,6 +60,28 @@ def test_retry_with_an_unavailable_driver_keeps_evidence_and_still_blocks_execut
     assert not has_resumable_run_checkpoint(SimpleNamespace(data=data))
 
 
+def test_driver_can_request_new_inference_without_losing_prior_evidence(monkeypatch):
+    from app.agent import facade
+
+    class Policy:
+        def prepare_retry(self, checkpoint):
+            return None
+
+    monkeypatch.setattr(checkpoints, "checkpoint_policy", lambda _: Policy())
+    data = {"_agent_run_checkpoint": {"driver_code": "synthetic", "runtime_run_id": "old",
+        "request_run_id": "ba25131c-ae3e-46d9-8ffa-295165e4087c", "status": "failed",
+        "data": {"receipt": "saved output"}}, "_agent_run_identity": {"request_run_id": "old"},
+        "authorization_requests": ["stale-approval"], "working_set": {"items": ["kept"]}}
+    original = deepcopy(data)
+    retried = facade.prepare_run_retry(data)
+    assert retried["_agent_run_retry_checkpoint"] == original["_agent_run_checkpoint"]
+    assert retried["working_set"] == original["working_set"]
+    assert "authorization_requests" not in retried
+    assert facade._read_run_checkpoint(retried) is None
+    assert facade._persisted_request_run_id(retried, driver_code="synthetic") is None
+    assert data == original
+
+
 @pytest.mark.parametrize("data,expected", [
     ({"version": 99, "resume_safe": True}, "unsafe"),
     ({"version": True, "resume_safe": True}, "unsafe"),

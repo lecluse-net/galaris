@@ -98,7 +98,7 @@ export default {
           },
           execution: {
             title: 'Travail durable',
-            text: 'Tasks persistées, plans multi-étapes, tentatives, checkpoints, reprise après incident, Goals de long terme et processus métier traçables.',
+            text: 'Tâches persistées, plans multi-étapes, tentatives, checkpoints, reprise après incident, objectifs de long terme et processus métier traçables.',
           },
           conversations: {
             title: 'Conversations multicanales',

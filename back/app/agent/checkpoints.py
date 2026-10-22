@@ -40,8 +40,8 @@ def rebase_checkpoint(checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint:
     return rebased
 
 
-def prepare_retry_checkpoint(checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint:
-    """Preserve opaque state unless its driver explicitly prepares the same run."""
+def prepare_retry_checkpoint(checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint | None:
+    """Negotiate explicit retry without changing automatic recovery semantics."""
     candidate = deepcopy(checkpoint)
     try:
         policy = checkpoint_policy(checkpoint.driver_code)
@@ -51,6 +51,8 @@ def prepare_retry_checkpoint(checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoi
         return candidate
     if isinstance(policy, DriverCheckpointRetryPolicy):
         candidate = policy.prepare_retry(candidate)
+    if candidate is None:
+        return None
     if (candidate.driver_code != checkpoint.driver_code
             or candidate.runtime_run_id != checkpoint.runtime_run_id):
         raise HarnessCheckpointError("Retry preparation cannot replace the checkpoint runtime identity.")

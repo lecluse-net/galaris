@@ -121,7 +121,11 @@
                                 <!-- Content column: header + expanded content -->
                                 <div class="timeline-content-col">
                                     <!-- Step header (always visible) -->
-                                    <div class="timeline-header" @click="toggleStep(stepKey(step, index))">
+                                    <div class="timeline-header" role="button" tabindex="0"
+                                        :aria-expanded="expandedSteps.has(stepKey(step, index))"
+                                        @click="toggleStep(stepKey(step, index))"
+                                        @keydown.enter.prevent="toggleStep(stepKey(step, index))"
+                                        @keydown.space.prevent="toggleStep(stepKey(step, index))">
                                         <div class="timeline-header-left">
                                             <q-icon :name="getStepIcon(step)" :color="getStepColor(step)" size="xs" class="q-mr-xs" />
                                             <span v-if="stepKind(step) === 'thinking'" class="tool-name text-body2">{{ $t('task.execution.thinking') }}</span>
@@ -190,6 +194,11 @@
 
                                                     <!-- Response -->
                                                     <Markdown :content="step.content" />
+                                                    <div v-if="step.tool_result && Object.keys(step.tool_result).length"
+                                                        role="region" :aria-label="$t('task.execution.returnedContent')">
+                                                        <div class="text-caption q-mt-sm">{{ $t('task.execution.returnedContent') }}</div>
+                                                        <pre class="tool-result">{{ JSON.stringify(step.tool_result, null, 2) }}</pre>
+                                                    </div>
                                                 </q-card-section>
                                             </q-card>
                                         </div>
@@ -748,6 +757,12 @@ const formatCostShort = (cost: number): string => {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     word-break: break-word;
+}
+
+.tool-result {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-width: 100%;
 }
 
 .argument-name {

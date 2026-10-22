@@ -83,7 +83,9 @@ class ModelService(BaseHTTPRequestHandler):
                 result = {"protocolVersion": "2025-03-26", "capabilities": {"tools": {}},
                           "serverInfo": {"name": "qualification", "version": "1"}}
             elif method == "tools/list":
-                result = {"tools": []}
+                result = {"tools": [{"name": "qualification_write" if gate.get("deepseek_mcp") else "qualification_echo",
+                    "description": "Synthetic qualification tool", "inputSchema": {"type": "object", "properties": {
+                        "path": {"type": "string"}, "content": {"type": "string"}} if gate.get("deepseek_mcp") else {}}}]}
             elif method == "tools/call" and gate.get("managed_mcp"):
                 parameters = body.get("params", {})
                 metadata = parameters.get("_meta", {})
@@ -94,6 +96,7 @@ class ModelService(BaseHTTPRequestHandler):
                         "continuation": "synthetic-exact-continuation"}}}
                 elif gate.get("decision") == "approved":
                     Path(gate["path"]).write_text("approved")
+                    gate["mcp_effects"] = gate.get("mcp_effects", 0) + 1
                     result = {"content": [{"type": "text", "text": "written"}], "isError": False}
                 else:
                     result = {"content": [{"type": "text", "text": "denied"}], "isError": True}
@@ -195,6 +198,8 @@ class ModelService(BaseHTTPRequestHandler):
                     "usage": {"prompt_tokens": 10, "completion_tokens": 2, "total_tokens": 12}}
             if gate and not gate.get("model_dispatched"):
                 tools = body.get("tools", [])
+                if gate.get("deepseek_mcp"):
+                    tools = [tool for tool in tools if "mcp__galaris__" in str(tool.get("function", {}).get("name", ""))]
                 selected = next((tool["function"] for tool in tools if "write" in str(tool.get("function", {}).get("name", "")).lower()
                     and any("path" in key.lower() for key in tool.get("function", {}).get("parameters", {}).get("properties", {}))), None)
                 assert selected, [tool.get("function", {}).get("name") for tool in tools]
@@ -202,6 +207,7 @@ class ModelService(BaseHTTPRequestHandler):
                 path_key = next((key for key in properties if "path" in key.lower()), "path")
                 content_key = next((key for key in properties if "content" in key.lower()), "content")
                 arguments = {path_key: gate["path"], content_key: "approved"}
+                gate["tool_call"] = {"name": selected["name"], "arguments": arguments}
                 item = {"id": "call_qualification", "type": "function", "function": {"name": selected["name"], "arguments": json.dumps(arguments)}}
                 gate["model_dispatched"] = True
                 if body.get("stream"):
@@ -362,6 +368,14 @@ async def http_adapter(runtime: str) -> None:
                     assert target.read_text() == "approved"
                     assert len(gate["receipts"]) == 1, gate["receipts"]
                 assert all(item == gate["requests"][0] for item in gate["requests"]), "The approved SDK arguments changed"
+                tools = [message for message in status["messages"]
+                         if message.get("type") == "tool" and message.get("tool_name") not in {"thinking", "approval"}]
+                assert tools, f"{runtime} discarded the actual SDK tool details: {status}"
+                tool = tools[-1]
+                assert tool["tool_arguments"] and str(target) in json.dumps(tool["tool_arguments"]), tool
+                assert tool["tool_result"] and tool["content"], tool
+                assert tool["tool_call_external_id"], tool
+                assert tool["success"] is allowed, tool
                 print(json.dumps({"runtime": runtime, "authorization": "allow" if allowed else "deny", "effect": target.exists()}))
                 gate.clear()
         finally:
@@ -390,6 +404,8 @@ def main() -> None:
     elif runtime == "hermes":
         cancellation_probe = module_from_file("/probe_hermes_cancellation.py")
         asyncio.run(cancellation_probe.qualify())
+        cancellation_probe.qualify_gateway(origin, gate)
+        gate.clear()
         agent = importlib.import_module("run_agent").AIAgent(
             base_url=origin + "/v1", api_key="qualification-token", provider="custom", api_mode="chat_completions",
             model="qualification", max_iterations=2, enabled_toolsets=[], quiet_mode=True,
@@ -448,6 +464,15 @@ def main() -> None:
             if allowed:
                 assert target.read_text() == "approved"
             assert len(gate["requests"]) == 1, "The SDK asked again after common one-action authorization"
+            history = results[0]["messages"]
+            native_calls = [call for message in history if message.get("role") == "assistant"
+                            for call in message.get("tool_calls", [])]
+            native_results = [message for message in history if message.get("role") == "tool"]
+            assert native_calls and native_results, history
+            assert native_calls[0]["function"]["name"], native_calls
+            assert str(target) in json.dumps(native_calls[0]["function"]["arguments"]), native_calls
+            assert native_results[0]["tool_call_id"] == native_calls[0]["id"], native_results
+            assert native_results[0]["content"], native_results
             print(f"PASS Hermes real SDK local write: {'approved' if allowed else 'denied'}")
         asyncio.run(qualify_hermes_managed(origin))
     elif runtime == "deepseek_harness":
@@ -477,22 +502,23 @@ def main() -> None:
         adapter_thread.start()
         import urllib.request
         try:
-            for allowed in (False, True):
+            for managed_mcp, allowed in ((False, False), (False, True), (True, False), (True, True)):
                 gate.clear()
-                target = config.workspace / f"approval-{allowed}.txt"
+                target = config.workspace / f"approval-{managed_mcp}-{allowed}.txt"
                 gate.update(path=str(target), decision="pending", requests=[], receipts=[], authorization_response_delay=0.1,
-                    network_recovery=allowed)
+                    network_recovery=allowed and not managed_mcp, managed_mcp=managed_mcp, deepseek_mcp=managed_mcp)
                 headers = {"Content-Type": "application/json", "Authorization": "Bearer qualification-token",
-                    "X-Galaris-Run-Context": f"synthetic-context-{allowed}"}
+                    "X-Galaris-Run-Context": f"synthetic-context-{managed_mcp}-{allowed}"}
                 request = urllib.request.Request("http://127.0.0.1:8080/v1/galaris/runs", headers=headers,
                     data=json.dumps({"model": "qualification", "messages": [{"role": "user", "content": "Perform the synthetic write, then reply qualification-ok"}],
                         "galaris_network_retry": {"max_attempts": 2, "base_seconds": 0, "max_seconds": 0}}).encode())
                 with urllib.request.urlopen(request, timeout=10) as response:
                     identifier = json.load(response)["runtime_run_id"]
                 deadline = time.monotonic() + 25
-                while not gate["requests"] and time.monotonic() < deadline:
+                request_key = "mcp_requests" if managed_mcp else "requests"
+                while not gate.get(request_key) and time.monotonic() < deadline:
                     time.sleep(0.05)
-                assert gate["requests"], "The actual DeepSeek SDK did not intercept its write"
+                assert gate.get(request_key), "The actual DeepSeek SDK did not intercept its write"
                 assert not target.exists(), "The DeepSeek effect happened before agreement"
                 status = adapter_server.runs.get(identifier)
                 while status["status"] == "running" and time.monotonic() < deadline:
@@ -500,7 +526,8 @@ def main() -> None:
                     status = adapter_server.runs.get(identifier)
                 assert status["status"] == "waiting_for_authorization", status
                 assert not target.exists(), "The DeepSeek effect happened while awaiting agreement"
-                gate["decision"] = "executing" if allowed else "denied"
+                time.sleep(0.5)
+                gate["decision"] = ("approved" if managed_mcp else "executing") if allowed else "denied"
                 status = adapter_server.runs.get(identifier)
                 while time.monotonic() < deadline:
                     status = adapter_server.runs.get(identifier)
@@ -510,9 +537,31 @@ def main() -> None:
                 assert status["status"] == "completed", status
                 assert target.exists() is allowed, (allowed, status)
                 if allowed:
-                    assert target.read_text() == "approved" and len(gate["receipts"]) == 1
-                    assert gate.get("provider_failures") and gate.get("continued") and gate.get("retained_tool_result"), gate
-                print(json.dumps({"runtime": runtime, "authorization": "allow" if allowed else "deny", "effect": target.exists()}))
+                    assert target.read_text() == "approved"
+                    if managed_mcp:
+                        assert gate["mcp_effects"] == 1 and len(gate["mcp_requests"]) == 2
+                    else:
+                        assert len(gate["receipts"]) == 1
+                        assert gate.get("provider_failures") and gate.get("continued") and gate.get("retained_tool_result"), gate
+                tools = [message for message in status["messages"]
+                         if message.get("type") == "tool" and message.get("tool_name") != "thinking"]
+                assert len(tools) == 1, tools
+                tool = tools[0]
+                assert tool["tool_name"] == gate["tool_call"]["name"], tool
+                assert tool["tool_arguments"] == gate["tool_call"]["arguments"], tool
+                assert tool["tool_call_external_id"] == "call_qualification", tool
+                assert tool["content"] and tool["content"] != "Tool completed", tool
+                # Native DeepSeek Messages nests a tool-result block; the generic
+                # OpenAI route returns the SDK's ordinary role=tool message.
+                result_message = tool["tool_result"]
+                assert result_message["source"]["callId"] == tool["tool_call_external_id"], tool
+                assert result_message["content"], tool
+                assert result_message.get("toolCallId") == tool["tool_call_external_id"] or (
+                    result_message["content"][0].get("toolCallId") == tool["tool_call_external_id"]
+                ), tool
+                assert tool["success"] is allowed, tool
+                print(json.dumps({"runtime": runtime, "transport": "mcp" if managed_mcp else "native",
+                    "authorization": "allow" if allowed else "deny", "effect": target.exists()}))
                 gate.clear()
         finally:
             # An assertion must not leave SDK workers waiting for a human decision.

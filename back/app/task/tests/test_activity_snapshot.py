@@ -25,23 +25,31 @@ async def test_reconnect_recovers_current_attempt_without_leaking_payloads_or_re
     await db.flush()
     first = AgentLiveEvent(task_id=task.id, run_id=run_id, sequence=1, kind="message",
                            message=AIMessage(type="tool", tool_name="search", content="Found", stream_id="tool",
-                                             tool_arguments={"secret": "hidden"}, tool_result={"token": "hidden"}))
+                                             tool_arguments={"query": "synthetic report", "secret": "hidden"},
+                                             tool_result={"count": 3, "token": "hidden"}))
     await live_checkpoint.checkpoint_live_event(first)
-    live_checkpoint._cache.clear()  # Simulate a new worker after a reconnect/restart.
+    # A second completed tool can arrive before the text checkpoint interval.
     await live_checkpoint.checkpoint_live_event(AgentLiveEvent(
         task_id=task.id, run_id=run_id, sequence=2, kind="message",
+        message=AIMessage(type="tool", tool_name="lookup", content="Denied", success=False,
+                          tool_call_external_id="second-tool", tool_result={"error": "Synthetic denial"})))
+    live_checkpoint._cache.clear()  # Simulate a new worker after a reconnect/restart.
+    await live_checkpoint.checkpoint_live_event(AgentLiveEvent(
+        task_id=task.id, run_id=run_id, sequence=3, kind="message",
         message=AIMessage(type="text", content="Hello", stream_id="text")))
     await db.refresh(attempt)
     snapshot = (await activity_snapshots([task]))[0]
     assert snapshot.pause_pending and snapshot.operational["operational_state"] == "PAUSED"
     assert snapshot.attempt_number == 1 and not snapshot.streams_ai_messages
-    assert [message.content for message in snapshot.live.result.messages] == ["Found", "Hello"]
+    assert [message.content for message in snapshot.live.result.messages] == ["Found", "Denied", "Hello"]
     assert "hidden" not in snapshot.model_dump_json()
+    assert snapshot.live.result.messages[0].tool_arguments == {"query": "synthetic report", "secret": "[REDACTED]"}
+    assert snapshot.live.result.messages[0].tool_result == {"count": 3, "token": "[REDACTED]"}
     assert attempt.data["effect_checkpoint"] == {"receipt": "delivered"}
     # Duplicate and old sequences cannot concatenate a second copy.
     assert await live_checkpoint.checkpoint_live_event(first) is None
     await live_checkpoint.checkpoint_live_event(AgentLiveEvent(
-        task_id=task.id, run_id=run_id, sequence=3, kind="result",
+        task_id=task.id, run_id=run_id, sequence=4, kind="result",
         result=ExecutionResult(prompt="private prompt", system_prompt="private system", result="Done")))
     await db.refresh(attempt)
     assert attempt.data["live_activity"]["result"]["prompt"] == ""

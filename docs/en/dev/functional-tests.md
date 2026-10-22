@@ -788,8 +788,17 @@ for agreement, denial, revocation and cancellation, without restarting the SDK.
 `make tests-harness-runtimes` exercises the embedded Codex, Claude, Hermes and DeepSeek SDKs
 with synthetic model and external transports: no effect before agreement, denial, resumption
 of the exact call, and MCP continuation. This qualification does not prove a deployment.
+The scenarios also check tool names, arguments, results, identities and failures for
+Codex, Claude and DeepSeek; Hermes retains its native history. Task projection and
+reconnection tests preserve bounded, redacted previews without changing effect receipts.
+`execution.spec.mjs` exercises reading and keyboard reopening at 390 and 1280 pixels;
+the Task scenario in `e2e/specs/chat.spec.mjs` crosses WebSocket, reload and completion.
 The synthetic transport delays the DeepSeek authorization response: the test waits for
 the suspended state before answering and cancels any active workers if it fails.
+`test_runtime_adapter.py` sets an HTTP idle deadline shorter than human waiting:
+immediate headers, MCP and native keepalives, late agreement and denial, a single call
+and no effect before agreement. SDK qualification also exercises the real MCP client
+against the SSE response, with one effect after continuation and none after denial.
 ToolAdmin diagnostics use successive synthetic HTTP/SSE servers and check catalogue bounds
 without executing its functions. Each server starts with a reset SSE shutdown flag, which
 the library retains at the test process level.
@@ -1103,7 +1112,7 @@ are in `front/browser-tests/`.
 | Skill loading | Load only authorized skills according to their configuration, independently of agent identity; discover and load supporting templates in text and turn-based voice conversations, preserve revocations and fallback for invalid configuration | `app/harness/tests/test_skills.py`, `app/harness/tests/test_conversation_prompt.py`, `app/harness/tests/test_executor_streaming.py` |
 | Harness boundary | Reject invalid results and events before publication, close streams, honor declared capabilities | `make tests-harness-contracts`, `app/agent/tests/test_driver_boundary.py` |
 | Harness policies | Shared configuration, SQL conflicts, call-time tool restrictions, opaque checkpoints and safe retry | `test_execution_configuration.py`, `test_checkpoint_contract.py`, `harness-policy.spec.mjs` |
-| Driver-owned retry | Preserve historical internal preparation; retain remote identity, cursor and receipts in simple Tasks and plans; observe without resubmission for DeepSeek, Claude Agent, Codex and generic network transport; missing, revoked or expired authority still refuses recovery | `back/app/task/tests/test_task_service.py`, `back/app/harnesses/tests/test_checkpoint_recovery.py`, `back/app/tools/tests/test_action_authorizations.py` |
+| Driver-owned retry | Preserve internal effect journals; explicit managed-network retry starts a new inference with the same Task parameters and archived receipts in simple Tasks and plans; stop or observe the previous actor before issuing fresh authority; automatic recovery observes the same actor without resubmission | `back/app/task/tests/test_task_service.py`, `back/app/harnesses/tests/test_checkpoint_recovery.py`, `back/app/agent/tests/test_checkpoint_contract.py`, `back/app/tools/tests/test_action_authorizations.py` |
 | Real Harness SDKs | Execute all four pinned images against a local model; verify DeepSeek MCP loading | `make tests-harness-runtimes`, `artifacts/harness-runtimes/summary.txt` |
 | `harnesses` | Runtime selection and configuration without losing active work | `test_service.py`, `test_runtime_actions.py`, `test_router.py`, `configuration.spec.mjs` |
 | `task` | Creation, pause, resume, completion and deletion; budgets and lease ownership | `test_task_service.py`, `test_workflow.py`, `test_active_lease.py`, `test_budget.py`, `task-panel.spec.mjs` |

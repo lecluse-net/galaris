@@ -170,6 +170,25 @@ Le rollback restaure l'organisation sans réécrire les sources.
 
 ## Autres axes conservés
 
+Le [programme identité et qualité des contenus](fiabilisation-conversationnelle.md#contexte-et-prompts--travail-regroupé)
+coordonne la décision rechercher/enrichir/créer et la rédaction sans journal d'édition.
+Les lots MEM-002/003/004/005 ci-dessous portent son volet Memory/Dream :
+
+- Préserver l'auteur et le sujet de chaque fait, y compris citations, résultats de Tasks
+  et profils d'agents ; ne pas convertir une auto-description d'agent en fait humain.
+- Pour un fait déjà intégralement couvert, réutiliser la ressource et sa provenance selon
+  les contrats existants. LINK n'enrichit pas le contenu : un complément important ou une
+  contradiction ne doit pas être absorbé par un rattachement qui perdrait son sens.
+- Qualifier les faits présents dans un document, son éventuelle synthèse et les souvenirs
+  autonomes sans multiplier les copies. L'acquisition ne devient pas un éditeur de Documents.
+- Mesurer doublons et omissions ensemble. Aucune réduction des critères de rétention,
+  expiration supplémentaire, désactivation d'extraction ou fusion/purge du stock n'est
+  décidée par ce programme. La provenance, les ACL et l'oubli restent prioritaires.
+
+Ce volet est en conception au 22 octobre 2026 ; aucune campagne ni modification du runtime
+n'est lancée par son ajout au plan. Le protocole et la réception communs restent dans le
+plan conversationnel, sans seconde campagne ou infrastructure indépendante.
+
 | ID | Question encore ouverte |
 |---|---|
 | MEM-002 | Sélectivité de capture : faits utiles ignorés et détails ponctuels retenus. |

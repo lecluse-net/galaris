@@ -11,8 +11,8 @@ Chaque nouvelle version est qualifiée avant de modifier ces références.
 Les mises à jour interviennent lors d'une construction/reconstruction explicite, jamais au
 milieu d'une Task. Les conteneurs existants ne changent pas à la seule modification du code.
 
-Au 17 septembre 2026, Hermès cible `v2026.9.14` (0.21.3) et DeepSeek Harness cible
-`dsh-v0.1.6-alpha.1`, au commit `0a15e36e7f82b6ed45af6fa9759f29b40dcd965d`.
+Au 21 octobre 2026, Hermès cible `v0.22.4` (0.22.4) et DeepSeek Harness cible
+`dsh-v0.2.1-rc.2`, au commit `687f282e8625c6b8d11ff58211a90524be2e4317`.
 DeepSeek reste une préversion ; ces deux références restent épinglées.
 Codex utilise `openai-codex==0.154.0` et Claude Agent `claude-agent-sdk==0.2.154`.
 

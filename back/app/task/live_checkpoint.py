@@ -12,6 +12,7 @@ from app.agent import AgentLiveEvent, AIResult
 from core.database import get_db_session
 from .activity_snapshot import LiveActivity
 from .models import TaskAttempt
+from .trace_projection import project_tool_payload
 
 _cache: dict[tuple[UUID, UUID, UUID | None], tuple[LiveActivity, float]] = {}
 _MAX_MESSAGES = 40
@@ -39,8 +40,6 @@ async def checkpoint_live_event(event: AgentLiveEvent) -> LiveActivity | None:
         result = AIResult.model_validate(event.result.model_dump())
     elif event.message is not None:
         message = event.message.model_copy(deep=True)
-        message.tool_arguments = None
-        message.tool_result = None
         result.add_message(message)
     result.prompt = ""
     result.system_prompt = ""
@@ -49,13 +48,14 @@ async def checkpoint_live_event(event: AgentLiveEvent) -> LiveActivity | None:
     result.messages = result.messages[-_MAX_MESSAGES:]
     for message in result.messages:
         message.content = message.content[-_MAX_CHARS:]
-        message.tool_arguments = None
-        message.tool_result = None
+        message.tool_arguments = project_tool_payload(message.tool_arguments)
+        message.tool_result = project_tool_payload(message.tool_result)
     snapshot = LiveActivity(run_id=event.run_id, attempt_id=event.attempt_id, sequence=event.sequence, result=result,
                             last_activity_at=datetime.now(timezone.utc))
     terminal = event.kind in {"result", "failed", "cancelled"}
     now = time.monotonic()
-    persist = terminal or cached is None or now - cached[1] >= 1.0
+    tool_event = event.message is not None and event.message.type == "tool" and event.message.tool_name != "thinking"
+    persist = terminal or tool_event or cached is None or now - cached[1] >= 1.0
     if persist:
         async with get_db_session() as db:
             await db.execute(update(TaskAttempt).where(

@@ -374,6 +374,10 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
                             _string_field(item, "id"),
                             _reasoning_summary_parts(item),
                         )
+                    else:
+                        tool_message = trace.complete_tool_item(item.model_dump(mode="json", by_alias=True))
+                        if tool_message is not None:
+                            semantic_messages.append(tool_message)
                     for message in semantic_messages:
                         yield semantic_event(message)
                     continue

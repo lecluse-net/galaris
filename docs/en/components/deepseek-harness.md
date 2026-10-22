@@ -6,15 +6,22 @@ This bridge provisions one DeepSeek Harness instance per Agent through the gener
 `bridge.harness` manager. Execution returns exclusively through the shared `app.harnesses` Chat
 Completions client, so `app.agent` depends on neither the Python SDK nor DSH's native JSON-RPC.
 
-The Galaris profile explicitly sets `llm-deepseek.protocol: chat-completions` for the LLM
-gateway. DSH 0.1.6 defaults to Messages, which does not match the OpenAI URL injected by
-the provisioner.
+The Galaris profile uses `llm-pi-ai` with the `openai-completions` protocol for the LLM
+gateway. The native DeepSeek adapters, which speak Messages exclusively, are disabled.
+The current model is passed to the profile for each execution.
 
 The container builds the DSH revision pinned by `harness_provider.py`, then exposes:
 
 - `GET /v1/models`;
 - `POST /v1/chat/completions`, streamed or non-streamed;
 - `GET /healthz` for Compose.
+
+DSH 0.2.1-rc.2 uses Node 24.22.1 and pnpm 11.28.5 for this build.
+The Node version and digest are pinned to keep the runtime reproducible.
+
+The image disables the temporary native cache (`NARB_DISABLE_NATIVE_CACHE=1`):
+the SDK loads the library directly from the installed package. It therefore does not
+try to load a copy from `/tmp`, which remains non-executable.
 
 SSE mode subscribes to the SDK's official `on_notification` callback. It immediately relays
 `assistant/chunk` events as Chat Completions deltas, completed reasoning and `tool/result` as
@@ -23,7 +30,10 @@ Keepalive comments are now used only while the SDK produces no event; content is
 by splitting the response afterward.
 
 The provisioner injects two distinct secrets into `.env` on the Harness Manager host: the Harness
-API token, stored encrypted by `app.harnesses`, and a rotating MCP system token. The latter
+API token, stored encrypted by `app.harnesses`, and an MCP system token retained during
+synchronization. A manager failure after configuration preparation therefore does not
+invalidate the running container's identity. Runtime removal revokes this token;
+per-run authority remains independent. The MCP token
 authenticates both `/api/mcp/{agent_code}` and the `/api/llm/openai` gateway. No LLM-provider or
 business-connection credential enters the container.
 
@@ -33,7 +43,19 @@ initialization up to three times, before any business action. Without a catalogu
 an explicit error instead of letting the agent produce a false result without tools.
 Existing provisioned instances need their image rebuilt to apply this check.
 
-The MCP run context retains the `deepseek_harness` provider for authorization. The tool catalogue
+An HTTP 401/403 rejection during the initial identity check becomes a configuration
+failure before SDK startup, with effects confirmed absent. It does not become an unknown
+delivery outcome and exposes neither the secret nor the remote response body.
+
+The MCP run context retains the `deepseek_harness` provider for authorization.
+During human waiting, the proxy immediately sends headers and keepalives: SSE comments for
+MCP calls, JSON whitespace for native authorization. The SDK client therefore does not abandon
+the call after five minutes without a response. One final response resumes the original call
+after the decision; keepalives never create another tool call. The SDK's wall-clock RPC deadline
+is disabled for managed actors: run cancellation and authorization expiry bound their waiting.
+Unmanaged calls retain their timeout. Existing instances need their image rebuilt for this fix.
+
+The tool catalogue
 uses the validated assignment's `openai_messages` driver; the Task comes from the server-issued
 context, allowing Process activities to ask a human question and record results in their own run.
 
@@ -49,6 +71,9 @@ through Galaris MCP. The local DSH workspace is a compute area: a file becomes d
 Galaris Tool records its URI and effect.
 
 The first image build downloads and compiles the pinned DSH revision and may therefore take a long
-time. `update` rebuilds the image; `refresh` resynchronizes the model, MCP token, and Skills, then
-restarts the instance. Only one run is admitted at a time per instance, in accordance with the
+time. In Galaris supervision, **Restart** or **Update** recreates the selected runtime with
+its credentials; **Refresh** only requests Skill projection. To repair an older container
+with a stale token, use **Restart**, wait until it is ready, then retry the Task. This
+management operation does not retry any delivery. Only one run is admitted at a time per
+instance, in accordance with the
 current per-Agent Task serialization.

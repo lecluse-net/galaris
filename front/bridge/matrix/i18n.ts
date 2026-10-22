@@ -2,7 +2,7 @@ export default {
     fr: {
         messagingProviders: {
             matrix: {
-                networkHint: "Aucune URL publique Galaris requise pour les messages : Galaris se connecte au homeserver via /sync. Le homeserver doit être joignable depuis Galaris. Utilisez une room non chiffrée.",
+                networkHint: "Aucune URL publique Galaris requise pour les messages : Galaris se connecte au homeserver via /sync. Le homeserver doit être joignable depuis Galaris. Utilisez un salon non chiffré.",
                 guide: 'Chaque agent utilise un compte Matrix. Galaris reçoit les messages avec la synchronisation standard du homeserver.',
                 steps: [
                     'Créez un compte Matrix dédié pour chaque agent et invitez-le dans les salons voulus.',

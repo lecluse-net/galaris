@@ -975,9 +975,12 @@ async def test_orphan_recovery_is_side_effect_and_history_safe(
         cost=0.0,
         deleted_at=datetime.now(timezone.utc),
     )
-    db.add_all([safe, unsafe, deleted])
+    waiting = Task(id=uuid4(), label="awaiting-approval", status=TaskStatus.EXEC,
+                   paused=True, data={"pause_reasons": ["approval"]})
+    db.add_all([safe, unsafe, deleted, waiting])
     await db.commit()
     safe_id, unsafe_id, deleted_id = safe.id, unsafe.id, deleted.id
+    waiting_id = waiting.id
 
     terminal_resume = AsyncMock()
     monkeypatch.setattr(scheduler, "_resume_after_terminal_failure", terminal_resume)
@@ -991,7 +994,7 @@ async def test_orphan_recovery_is_side_effect_and_history_safe(
         for task in (
             await db.scalars(
                 select(Task)
-                .where(Task.id.in_([safe_id, unsafe_id, deleted_id]))
+                .where(Task.id.in_([safe_id, unsafe_id, deleted_id, waiting_id]))
                 .execution_options(include_historized=True)
             )
         ).all()
@@ -999,9 +1002,10 @@ async def test_orphan_recovery_is_side_effect_and_history_safe(
     assert rows[safe_id].status == TaskStatus.DISPATCH
     assert rows[unsafe_id].status == TaskStatus.ERROR
     assert rows[deleted_id].status == TaskStatus.EXEC
+    assert rows[waiting_id].status == TaskStatus.EXEC and rows[waiting_id].paused
     terminal_resume.assert_awaited_once_with(unsafe_id)
 
-    await db.execute(delete(Task).where(Task.id.in_([safe_id, unsafe_id, deleted_id])))
+    await db.execute(delete(Task).where(Task.id.in_([safe_id, unsafe_id, deleted_id, waiting_id])))
     await db.commit()
 
 

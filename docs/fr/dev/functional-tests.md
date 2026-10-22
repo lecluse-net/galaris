@@ -831,8 +831,17 @@ du runtime pour l'accord, le refus, la révocation et l'annulation, sans relance
 `make tests-harness-runtimes` exerce les SDK embarqués Codex, Claude, Hermes et DeepSeek,
 avec modèle et transports externes synthétiques : aucun effet avant accord, refus, reprise
 de l’appel exact et continuation MCP. Cette qualification ne prouve pas un déploiement.
+Les scénarios vérifient aussi les noms, arguments, retours, identités et échecs des outils
+Codex, Claude et DeepSeek ; Hermes conserve son historique natif. Les tests de projection
+Task et de reconnexion conservent des aperçus bornés et masqués sans modifier les reçus.
+`execution.spec.mjs` exerce leur lecture et réouverture au clavier à 390 et 1280 pixels ;
+le scénario Task de `e2e/specs/chat.spec.mjs` traverse WebSocket, rechargement et terminaison.
 La réponse d’autorisation DeepSeek est retardée dans le transport synthétique : le test
 attend l’état suspendu avant de répondre et annule les workers encore actifs en cas d’échec.
+`test_runtime_adapter.py` impose un délai d'inactivité HTTP inférieur au temps d'attente humaine :
+en-têtes immédiats, keepalives MCP et natifs, accord et refus tardifs, un seul appel et aucun
+effet avant accord. La qualification SDK exerce aussi le vrai client MCP sur la réponse SSE,
+avec un seul effet après la continuation et aucun après refus.
 Les diagnostics ToolAdmin utilisent des serveurs HTTP/SSE synthétiques successifs et vérifient
 les bornes du catalogue sans exécuter ses fonctions. Chaque serveur repart avec son indicateur
 d'arrêt SSE réinitialisé, car la bibliothèque le conserve au niveau du processus de test.
@@ -1154,7 +1163,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | Chargement des compétences | Charger les seules compétences autorisées selon leur configuration, indépendamment de l'identité de l'agent ; découvrir et charger les modèles associés en conversation texte et voix par tours, préserver les révocations et le repli sur configuration invalide | `app/harness/tests/test_skills.py`, `app/harness/tests/test_conversation_prompt.py`, `app/harness/tests/test_executor_streaming.py` |
 | Frontière des harnais | Refuser les résultats et événements invalides avant publication, fermer les flux, respecter les capacités déclarées | `make tests-harness-contracts`, `app/agent/tests/test_driver_boundary.py` |
 | Politique des harnais | Même configuration pour tous, conflits SQL, restriction des outils à l’appel, checkpoints opaques et retry sûr | `test_execution_configuration.py`, `test_checkpoint_contract.py`, `harness-policy.spec.mjs` |
-| Réessai par driver | Préparation historique de l'interne conservée ; identité, curseur et reçus distants préservés dans les Tasks simples et les plans ; observation sans nouvelle soumission pour DeepSeek, Claude Agent, Codex et transport réseau générique ; autorité absente, révoquée ou expirée toujours refusée | `back/app/task/tests/test_task_service.py`, `back/app/harnesses/tests/test_checkpoint_recovery.py`, `back/app/tools/tests/test_action_authorizations.py` |
+| Réessai par driver | Journal d'effets interne conservé ; réessai réseau géré explicite avec nouvelle inférence, mêmes paramètres Task et reçus archivés, pour Tasks simples et plans ; arrêt ou observation de l'ancien acteur avant nouvelle autorité ; récupération automatique par observation du même acteur sans nouvelle soumission | `back/app/task/tests/test_task_service.py`, `back/app/harnesses/tests/test_checkpoint_recovery.py`, `back/app/agent/tests/test_checkpoint_contract.py`, `back/app/tools/tests/test_action_authorizations.py` |
 | SDK réels des harnais | Exécuter dans les quatre images épinglées avec modèle local ; vérifier la connexion MCP DeepSeek | `make tests-harness-runtimes`, `artifacts/harness-runtimes/summary.txt` |
 | `harnesses` | Changer de runtime sans perdre une tâche active ; révoquer/configurer selon les droits | `test_service.py`, `test_runtime_actions.py`, `test_router.py`, `configuration.spec.mjs` |
 | `task` | Créer, suspendre, reprendre, terminer et supprimer une tâche ; préserver budget et propriété du lease | `test_task_service.py`, `test_workflow.py`, `test_active_lease.py`, `test_budget.py`, `task-panel.spec.mjs` |

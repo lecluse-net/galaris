@@ -10,11 +10,20 @@ requête et applique le périmètre de gestion des agents. `task_get` réutilise
 et conserve ses diagnostics détaillés en cas d’échec.
 
 `TaskAttempt.data.live_activity` contient un checkpoint visuel cumulatif : au plus 40 messages,
-4 000 caractères par contenu, sans prompts, arguments ou résultats structurés d’outils.
+4 000 caractères par contenu, sans prompts.
 Une session indépendante écrit uniquement cette clé JSONB, au premier événement, au plus
-une fois par seconde ensuite, puis au terminal. Les checkpoints de reprise des effets et
+une fois par seconde pour le texte et la réflexion, puis à chaque événement d’outil et au terminal. Les checkpoints de reprise des effets et
 les reçus restent propriétaires de leurs domaines. Un arrêt brutal peut perdre la dernière
 seconde d’activité visuelle ; cette projection ne décide jamais de rejouer un effet.
+
+### Détails d’outils (21 octobre 2026)
+
+Les lectures autorisées du flux Task et du checkpoint conservent désormais les arguments et
+retours structurés, chacun borné à 4 000 octets sérialisés. Les clés de secrets sont masquées,
+les aperçus tronqués portent un marqueur explicite et les événements d’origine restent intacts.
+Cela remplace leur suppression systématique, qui empêchait l’inspection en direct et après
+reconnexion. Les identités d’appels permettent de réconcilier les projections avec les résultats
+durables sans doublon. Les anciens checkpoints incomplets ne sont pas réécrits.
 
 Le chat et la fiche tâche partagent les références d’abonnement aux rooms actives. L’ouverture,
 la reconnexion, les changements durables et un rafraîchissement de secours toutes les 15 secondes

@@ -25,7 +25,10 @@ La première décision valide gagne. Un état réconcilié reste terminal. L’a
 Les UUIDs sont sérialisés en chaînes JSON avant la persistance du résultat en JSONB ; leur
 identité reste conservée lors du rechargement.
 La tentative Task termine en `WAITING_APPROVAL`, libère son lease et conserve son checkpoint ;
-la phase de Task reste inchangée, avec une raison de pause d’autorisation. Une pause humaine
+la Task revient à la phase reprenable `DISPATCH`, avec une raison de pause d’autorisation.
+L'accord reste acquis, mais le runtime voit encore l'appel en attente jusqu'à la reprise
+d'une tentative après la décision et le transfert de son grant vers ce lease actif.
+La récupération des orphelins ignore les Tasks suspendues. Une pause humaine
 indépendante reste prioritaire au réveil. Les rounds et la voix conservent la même disposition.
 Voir [0153](../../../project/decisions/0153-common-action-authorizations.md).
 

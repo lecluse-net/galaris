@@ -154,6 +154,11 @@ Les profils et les voix sont actualisés à l’ouverture de **Modèles**. L’a
 **Administrer → Préférences → Harnais** (`/params/harnesses`). Les entrées de harnais
 dépendent du catalogue serveur : utilisez le lien affiché, sans inventer leur identifiant.
 
+Si un harnais géré refuse son identité technique (`Invalid runtime principal`), utiliser
+**Redémarrer** dans sa supervision pour recréer le runtime avec ses credentials, attendre
+sa disponibilité, puis réessayer la Task. **Actualiser** ne demande que la projection des
+skills. La recréation du runtime ne relance aucune action métier.
+
 Dans **Modèles**, choisissez le **Profil principal** et, si nécessaire, un
 **Profil secondaire (secours)**, puis enregistrez la fiche. Un principal vide suit le
 profil courant ; **Aucun profil de secours** désactive la bascule. Configurez les mêmes

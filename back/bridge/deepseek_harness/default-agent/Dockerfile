@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:24-bookworm-slim AS dsh-builder
+# Keep the Node carrier reproducible alongside the pinned DSH revision.
+FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS dsh-builder
 
 ARG DSH_REF
 ARG TARGETARCH=amd64
@@ -12,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN corepack enable && corepack prepare pnpm@11.7.0 --activate
+RUN corepack enable && corepack prepare pnpm@11.28.5 --activate
 RUN git init /src \
     && git -C /src remote add origin https://github.com/deepseek-ai/deepseek-harness.git \
     && git -C /src fetch --depth 1 origin "${DSH_REF}" \
@@ -71,6 +72,9 @@ RUN groupadd --gid "${RUNTIME_GID}" dsh \
 
 USER dsh
 WORKDIR /workspace
+
+# Load the packaged native binding in place; /tmp is deliberately non-executable.
+ENV NARB_DISABLE_NATIVE_CACHE=1
 
 LABEL org.galaris.harness="deepseek-harness"
 

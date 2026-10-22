@@ -7,7 +7,7 @@ The orchestrator issues the extra credential and owns its lifetime and replaceme
 from datetime import datetime, timedelta, timezone
 import hashlib
 from uuid import UUID
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 
 from sqlalchemy import select, update
@@ -17,10 +17,54 @@ from core.database import get_db_session
 from core.util import get_encryption_service
 
 from .authorization import fingerprint, authorization_context_snapshot
-from .authorization_models import RuntimeRunGrant
+from .authorization_models import ActionAuthorization, RuntimeRunGrant
 from .runtime_principals import RuntimePrincipal, runtime_principal_port
 
 _runtime_configurations: dict[str, Callable[[int], Awaitable[dict[str, Any]]]] = {}
+_runtime_dispatch_guards: dict[str, Callable[[int, str, UUID | None, datetime | None], Awaitable[bool]]] = {}
+
+
+def register_runtime_dispatch_guard(prefix: str, callback: Callable[[int, str, UUID | None, datetime | None], Awaitable[bool]]) -> None:
+    _runtime_dispatch_guards[prefix] = callback
+
+
+async def runtime_dispatch_ready(grant: RuntimeRunGrant, *, decided_at: datetime | None = None) -> bool:
+    """Human consent cannot release a managed actor before its owner has resumed."""
+    prefix = grant.context_key.split(":", 1)[0]
+    callback = _runtime_dispatch_guards.get(prefix)
+    if callback is None:
+        return prefix != "task"
+    return await callback(grant.agent_id, grant.context_key, grant.attempt_key, decided_at)
+
+
+async def runtime_action_status(grant: RuntimeRunGrant, row: ActionAuthorization) -> str:
+    if row.status in ("approved", "denied", "expired", "invalidated") and not await runtime_dispatch_ready(grant,
+            decided_at=row.finished_at or (row.decided_at if row.decision_source == "human" else None)):
+        # Consent remains durable until the owner can admit the exact callback.
+        return "pending"
+    return row.status
+
+
+async def runtime_authorizations_ready(credential: str, *, agent_id: int, identifiers: Sequence[UUID]) -> bool:
+    """Keep the owner's lease while an actor catches up with usable decisions.
+
+    A fast answer during the old attempt still requires suspension and a new
+    claim. Use the same readiness rule as runtime polling, not durable status alone.
+    """
+    if not identifiers:
+        return False
+    async with get_db_session() as db:
+        grant = await db.scalar(select(RuntimeRunGrant).where(
+            RuntimeRunGrant.credential_hash == fingerprint(credential), RuntimeRunGrant.agent_id == agent_id,
+            RuntimeRunGrant.active.is_(True), RuntimeRunGrant.expires_at > datetime.now(timezone.utc)))
+        if grant is None:
+            return False
+        rows = list(await db.scalars(select(ActionAuthorization).where(
+            ActionAuthorization.id.in_(identifiers), ActionAuthorization.agent_id == agent_id,
+            ActionAuthorization.runtime_grant_id == grant.id, ActionAuthorization.context_key == grant.context_key)))
+        if len(rows) != len(set(identifiers)):
+            return False
+        return all([await runtime_action_status(grant, row) != "pending" for row in rows])
 
 
 def register_runtime_authorization_configuration(runtime: str, callback: Callable[[int], Awaitable[dict[str, Any]]]) -> None:

@@ -73,7 +73,7 @@ export default {
       def: {
         ai_executor_system_prompt: {
           label: 'Exécuteur de tâches',
-          description: 'Instructions ajoutées à la fin du prompt des Tasks pour tous les runtimes. Vide = aucune instruction supplémentaire.',
+          description: 'Instructions ajoutées à la fin du prompt des tâches pour tous les runtimes. Vide = aucune instruction supplémentaire.',
         },
         ai_conversation_executor_system_prompt: {
           label: 'Exécuteur de conversations textuelles',
@@ -85,7 +85,7 @@ export default {
         },
         ai_conversation_action_policy: {
           label: 'Politique des actions conversationnelles',
-          description: 'Règle commune qui décide quelles actions restent dans la conversation et lesquelles doivent lancer une Task ou un Process. Vide = politique anglaise canonique.',
+          description: 'Règle commune qui décide quelles actions restent dans la conversation et lesquelles doivent lancer une tâche ou un processus. Vide = politique anglaise canonique.',
         },
         janus_aliases: {
           label: 'Alias Janus',
@@ -251,7 +251,7 @@ export default {
         title: 'Réconciliation des liens mémoire',
         subtitle: 'Reconstruit les liens déduits depuis les sources canoniques sans modifier les liens créés explicitement.',
         executionTitle: 'Quand la réconciliation est-elle exécutée ?',
-        idleHint: 'Le bouton exécute immédiatement un sweep global dans la requête courante, même si une Task ou un appel Voice est actif. Seuls les sweeps planifiés attendent une période d’inactivité ; les réconciliations ciblées après Dream restent asynchrones.',
+        idleHint: 'Le bouton exécute immédiatement un sweep global dans la requête courante, même si une tâche ou un appel Voice est actif. Seuls les sweeps planifiés attendent une période d’inactivité ; les réconciliations ciblées après Dream restent asynchrones.',
         afterDreamEnabled: 'Après chaque succès Dream',
         afterDreamDisabled: 'Déclenchement après Dream désactivé',
         scheduledEvery: 'Planifié toutes les {hours} h',
@@ -298,7 +298,7 @@ export default {
         skillLearningMode: 'Compétences auto-apprises',
         skillLearningModeHint: 'Dream peut auditer ses propositions ou renforcer des compétences dédiées, sans créer de nœud Memory.',
         skillMinEvidence: 'Occurrences répétées requises',
-        skillMinEvidenceHint: 'Nombre de Tasks distinctes confirmant la même procédure avant sa promotion en compétence injectable. La valeur par défaut est 3.',
+        skillMinEvidenceHint: 'Nombre de tâches distinctes confirmant la même procédure avant sa promotion en compétence injectable. La valeur par défaut est 3.',
         skillActivationScore: 'Note minimale d’injection',
         skillActivationScoreHint: 'Seuil bayésien entre 0 et 1. Une preuve négative peut faire repasser une compétence sous ce seuil.',
         skillMaxActive: 'Compétences apprises injectées au maximum',
@@ -387,7 +387,7 @@ export default {
         llmRetention: 'Conservation des traces LLM (jours)', llmRetentionHint: '0 conserve tout. Purge les détails anciens éligibles ; coûts et références sont conservés. Les conversations, processus et tâches encore actives sont protégés.',
         planDepth: 'Profondeur maximale d’un plan', planDepthHint: 'Au-delà, les sous-tâches sont exécutées directement sans créer un niveau supplémentaire.',
         planLeaves: 'Nombre maximal de feuilles dans un plan', planLeavesHint: 'Borne le nombre d’étapes réellement exécutables produites par le planner.',
-        taskObjectiveSystemPrompt: 'System prompt de construction des objectifs', taskObjectiveSystemPromptHint: 'Consigne Markdown utilisée par le modèle standard pour produire le libellé et l’objectif autonomes d’une nouvelle Task issue d’une conversation.',
+        taskObjectiveSystemPrompt: 'System prompt de construction des objectifs', taskObjectiveSystemPromptHint: 'Consigne Markdown utilisée par le modèle standard pour produire le libellé et l’objectif autonomes d’une nouvelle tâche issue d’une conversation.',
         plannerSystemPrompt: 'System prompt du planner', plannerSystemPromptHint: 'Consigne Markdown de décomposition utilisée en production. Le Lab en copie une version indépendante dans chaque jeu de données Planner.',
         maxRequests: 'Requêtes modèle maximales par exécution', maxRequestsHint: 'Inclut les requêtes successives nécessaires aux tours d’outils.',
         maxToolCalls: 'Appels d’outils maximaux par exécution', maxToolCallsHint: 'Coupe une exécution qui enchaîne trop d’outils.',

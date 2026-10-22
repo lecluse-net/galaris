@@ -27,8 +27,8 @@ from core.params import runtime_settings as settings
 
 _DEFAULT_AGENT_DIR = Path(__file__).parent / "default-agent"
 _MANAGED_SKILLS_ROOT = "data/skills"
-_DSH_VERSION = "0.1.6-alpha.1"
-_DSH_REF = "0a15e36e7f82b6ed45af6fa9759f29b40dcd965d"
+_DSH_VERSION = "0.2.1-rc.2"
+_DSH_REF = "687f282e8625c6b8d11ff58211a90524be2e4317"
 
 
 def _runtime_name(agent_code: str, harness_id: object) -> str:
@@ -115,7 +115,7 @@ async def _runtime_env(
     model = str(request.model or llm.code).strip()
     if not model:
         raise RuntimeError("DeepSeek Harness resolved an empty executor model.")
-    mcp_token = await mcp_token_service.rotate_system_token(agent.id)
+    mcp_token = await mcp_token_service.ensure_system_token(agent.id)
     system_info = await harness_manager.get_system_info()
     runtime_name = _runtime_name(agent.code, request.harness_id)
     return (
@@ -234,7 +234,11 @@ class DeepSeekHarnessProvider:
                     "DeepSeek Harness cleanup failed after provisioning error: agent={}",
                     agent.code,
                 )
-            await mcp_token_service.revoke_system_tokens(agent.id)
+            else:
+                try:
+                    await mcp_token_service.revoke_system_tokens(agent.id)
+                except Exception:
+                    logger.exception("DeepSeek Harness token cleanup failed: agent={}", agent.code)
             raise
         return HarnessProvisioningResult(
             base_url=base_url,
@@ -257,10 +261,8 @@ class DeepSeekHarnessProvider:
         request: HarnessProvisioningRequest,
     ) -> None:
         del request
-        try:
-            await harness_manager.delete_instance(agent.code)
-        finally:
-            await mcp_token_service.revoke_system_tokens(agent.id)
+        await harness_manager.delete_instance(agent.code)
+        await mcp_token_service.revoke_system_tokens(agent.id)
 
     async def status(self, agent: Agent) -> str:
         return await harness_manager.get_instance_status(agent.code)

@@ -25,6 +25,12 @@ Harness Manager to create, start, stop, update, and delete the instance. Data ar
 Execution uses the structured Hermes APIs (`/api/sessions`, `/v1/runs`, and run cancellation).
 The Harness Manager never receives a Hermes command, Kanban payload, or agentic execution decision.
 
+With Hermes 0.22.4, runs carrying Galaris context retain the direct API worker:
+Galaris owns their admission, serialization, and reconciliation. They are not transferred
+to the native session queue or another Hermes conversation owner, which does not carry
+that context. Their stop and approval commands follow the same owner; stop evidence remains
+bound to the worker's actual exit.
+
 To replace a task, Galaris waits for the local worker to release its lease and for confirmation
 from the original Hermes run. A stop request alone is insufficient: the API must confirm that
 the execution thread has exited. A refusal, lost response or missing run leaves the replacement

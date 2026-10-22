@@ -69,6 +69,7 @@ from .execution_errors import HarnessCheckpointError, classify_execution_error
 
 
 RUN_CHECKPOINT_DATA_KEY = "_agent_run_checkpoint"
+RUN_RETRY_CHECKPOINT_DATA_KEY = "_agent_run_retry_checkpoint"
 RUN_IDENTITY_DATA_KEY = "_agent_run_identity"
 _CHECKPOINT_OBJECTIVE_FINGERPRINT_KEY = "objective_fingerprint"
 
@@ -279,12 +280,17 @@ def has_resumable_run_checkpoint(task: Any) -> bool:
 
 
 def prepare_run_retry(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Prepare driver state without converting a remote retry into a fresh run."""
+    """Prepare explicit retry and preserve evidence of a superseded operation."""
     prepared = dict(data)
     checkpoint = _read_run_checkpoint(data)
     if checkpoint is None:
         return prepared
     candidate = prepare_retry_checkpoint(checkpoint)
+    if candidate is None:
+        prepared[RUN_RETRY_CHECKPOINT_DATA_KEY] = prepared.pop(RUN_CHECKPOINT_DATA_KEY)
+        prepared.pop(RUN_IDENTITY_DATA_KEY, None)
+        prepared.pop("authorization_requests", None)
+        return prepared
     if candidate != checkpoint:
         prepared[RUN_CHECKPOINT_DATA_KEY] = {
             **_string_keyed_dict(data[RUN_CHECKPOINT_DATA_KEY]),

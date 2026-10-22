@@ -23,7 +23,7 @@ from claude_agent_sdk import (
     PermissionResultDeny,
     query,
 )
-from claude_agent_sdk.types import ResultMessage, StreamEvent
+from claude_agent_sdk.types import AssistantMessage, UserMessage, ToolUseBlock, ToolResultBlock, ResultMessage, StreamEvent
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -179,6 +179,7 @@ async def _run_events(
     tool_limit = _header_int(request, "X-Galaris-Tool-Call-Limit", 80, 2_000)
 
     semantic_events: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+    trace = ClaudeStreamTrace()
     tool_started: dict[str, float] = {}
     tool_count = 0
     permitted: dict[str, tuple[str, dict[str, Any]]] = {}
@@ -209,6 +210,7 @@ async def _run_events(
                 }
             }
         name = str(input_data.get("tool_name") or "")
+        trace.record_tool_call(call_id, name, _bounded_json(input_data.get("tool_input") or {}))
         if name.startswith("mcp__galaris__"):
             return {}
         if name in {"Read", "Glob", "Grep", "ToolSearch"}:
@@ -232,17 +234,10 @@ async def _run_events(
         if actor and actor.approvals:
             await asyncio.to_thread(actor.approvals.finish, call_id, outcome="completed", receipt=_bounded_json(response))
         permitted.pop(call_id, None)
-        message = {
-            "type": "tool",
-            "content": str(response)[:4_000] if response is not None else "Tool completed",
-            "tool_name": str(input_data.get("tool_name") or "unknown"),
-            "tool_arguments": _bounded_json(input_data.get("tool_input") or {}),
-            "tool_result": _bounded_json(response),
-            "execution_time": elapsed,
-            "cost": 0.0,
-            "success": True,
-        }
-        await semantic_events.put(message)
+        message = trace.complete_tool_result(call_id, str(response) if response is not None else "Tool completed",
+            result=_bounded_json(response), elapsed=elapsed)
+        if message is not None:
+            await semantic_events.put(message)
         return {}
 
     async def failed_tool(input_data: dict[str, Any], tool_use_id: str | None, _context: Any):
@@ -252,18 +247,9 @@ async def _run_events(
         if actor and actor.approvals:
             await asyncio.to_thread(actor.approvals.finish, call_id, outcome="outcome_unknown", receipt={"error": error[:8_000]})
         permitted.pop(call_id, None)
-        await semantic_events.put(
-            {
-                "type": "tool",
-                "content": error[:4_000],
-                "tool_name": str(input_data.get("tool_name") or "unknown"),
-                "tool_arguments": _bounded_json(input_data.get("tool_input") or {}),
-                "tool_result": {"error": error[:8_000]},
-                "execution_time": elapsed,
-                "cost": 0.0,
-                "success": False,
-            }
-        )
+        message = trace.complete_tool_result(call_id, error, failed=True, result={"error": error[:8_000]}, elapsed=elapsed)
+        if message is not None:
+            await semantic_events.put(message)
         return {}
 
     async def permission(tool_name: str, input_data: dict[str, Any], _context: Any):
@@ -354,12 +340,21 @@ async def _run_events(
     started_at = time.perf_counter()
     emitted_text = ""
     terminal: ResultMessage | None = None
-    trace = ClaudeStreamTrace()
     try:
         async for message in query(prompt=_prompt_messages(prompt), options=options):
             while not semantic_events.empty():
                 yield "tool", semantic_events.get_nowait()
-            if isinstance(message, StreamEvent):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, ToolUseBlock):
+                        trace.record_tool_call(block.id, block.name, _bounded_json(block.input))
+            elif isinstance(message, UserMessage) and isinstance(message.content, list):
+                for block in message.content:
+                    if isinstance(block, ToolResultBlock):
+                        tool = trace.complete_tool_result(block.tool_use_id, block.content, failed=block.is_error is True)
+                        if tool is not None:
+                            yield "tool", tool
+            elif isinstance(message, StreamEvent):
                 event = message.event
                 for thinking in trace.consume(event):
                     yield "tool", thinking

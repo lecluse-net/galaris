@@ -7,9 +7,83 @@ from typing import Any, cast
 from uuid import uuid4
 
 import pytest
+import httpx
 
 from app.llm.trace import agent_run_id_from_messages
 from bridge.deepseek_harness import runtime_adapter
+
+
+@pytest.mark.parametrize("native", [False, True])
+@pytest.mark.parametrize("allowed", [False, True, None])
+def test_human_wait_keeps_http_alive_and_dispatches_once(tmp_path, monkeypatch, native, allowed):
+    """A slow human decision must outlive the client's HTTP idle deadline."""
+    import json
+    import time
+    from app.harnesses import RuntimeActor
+
+    monkeypatch.setattr(runtime_adapter, "_CONTROL_HEARTBEAT_SECONDS", 0.01, raising=False)
+    monkeypatch.setenv("GALARIS_MCP_TOKEN", "synthetic-token")
+    server = runtime_adapter.HarnessHTTPServer(("127.0.0.1", 0), _config(tmp_path))
+    actor = RuntimeActor("a" * 64, tmp_path / "actor.json", "synthetic")
+    pending, decision = threading.Event(), threading.Event()
+    calls, effects = [], []
+
+    def authorize(*_args, **_kwargs):
+        calls.append("call")
+        pending.set()
+        assert decision.wait(3)
+        if allowed:
+            effects.append("effect")
+        return allowed
+
+    def mcp(_body):
+        result = authorize()
+        return 200, json.dumps({"jsonrpc": "2.0", "id": 7,
+            "result": {"content": [{"type": "text", "text": "allowed" if result else "denied"}],
+                       "isError": not result}}).encode()
+
+    actor.approvals = SimpleNamespace(mcp=mcp, authorize=authorize, run_context="synthetic-context",
+                                      cancelled=threading.Event())
+    server.runs.actors[actor.identifier] = actor
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        path = f"/local/{actor.identifier}" if native else f"/mcp/{actor.identifier}"
+        body = {"callback": "one", "name": "write", "arguments": {}} if native else {
+            "jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "write"}}
+        with httpx.Client(timeout=0.1, trust_env=False) as client:
+            with client.stream("POST", f"http://127.0.0.1:{server.server_port}{path}", json=body,
+                               headers={"Authorization": "Bearer synthetic-token", "X-Galaris-Run-Context": "synthetic-context"}) as response:
+                assert response.status_code == 200
+                assert pending.wait(1)
+                chunks = response.iter_bytes()
+                if allowed is None:
+                    next(chunks)
+                    response.close()
+                    assert actor.approvals.cancelled.wait(1)
+                    assert calls == ["call"] and effects == []
+                    return
+                received = bytearray()
+                started = time.monotonic()
+                while time.monotonic() - started < 0.2:
+                    received.extend(next(chunks))
+                    assert effects == []
+                decision.set()
+                for chunk in chunks:
+                    received.extend(chunk)
+                if native:
+                    assert json.loads(received)["allowed"] is allowed
+                else:
+                    payloads = [json.loads(line[5:]) for line in received.decode().splitlines() if line.startswith("data:")]
+                    assert len(payloads) == 1 and payloads[0]["id"] == 7
+                    assert payloads[0]["result"]["isError"] is not allowed
+        assert calls == ["call"]
+        assert effects == (["effect"] if allowed else [])
+    finally:
+        decision.set()
+        server.shutdown()
+        server.server_close()
+        thread.join()
 
 
 def _config(tmp_path: Path) -> runtime_adapter.AdapterConfig:
@@ -23,6 +97,56 @@ def _config(tmp_path: Path) -> runtime_adapter.AdapterConfig:
         cordis=cordis,
         request_timeout_seconds=30.0,
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [401, 403])
+async def test_rejected_runtime_identity_fails_before_sdk_with_a_safe_diagnostic(tmp_path, monkeypatch, status):
+    import asyncio
+    import hashlib
+    from urllib.error import HTTPError
+    from unittest.mock import Mock
+
+    from app.agent import AgentRunEnvelopeV1, AgentRunIdentityV1, ResolvedExecutionTarget
+    from app.harnesses import OpenAIHarnessClient
+
+    def reject(_self):
+        raise HTTPError("https://example.test/private?credential=synthetic-secret", status,
+                        "synthetic-secret-response", None, None)
+
+    monkeypatch.setattr(runtime_adapter.ActionApprovals, "validate", reject)
+    monkeypatch.setenv("GALARIS_MCP_URL", "https://example.test/api/mcp/synthetic")
+    monkeypatch.setenv("GALARIS_MCP_TOKEN", "synthetic-secret")
+    sdk = Mock(side_effect=AssertionError("SDK must not start after a preflight rejection"))
+    monkeypatch.setattr(runtime_adapter, "run_completion", sdk)
+    server = runtime_adapter.HarnessHTTPServer(("127.0.0.1", 0), _config(tmp_path))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    context = "synthetic-run-context"
+    envelope = AgentRunEnvelopeV1(
+        identity=AgentRunIdentityV1(run_id=uuid4()),
+        target=ResolvedExecutionTarget(provider_code="deepseek_harness", target_ref=f"harness:{uuid4()}",
+                                       metadata={"model": "synthetic-model"}),
+        agent_id=7, agent_code="synthetic", effort="standard", objective="Synthetic work",
+        model_id=1, model_code="synthetic-model", model_name="Synthetic",
+    )
+    client = OpenAIHarnessClient(base_url=f"http://127.0.0.1:{server.server_port}/v1", token="secret", run_context=context)
+    try:
+        result = await asyncio.wait_for(client.control_run(
+            envelope, runtime_run_id=hashlib.sha256(context.encode()).hexdigest(), start=True,
+        ), timeout=5)
+        assert result.success is False
+        assert result.metadata["runtime_status"] == "failed"
+        assert result.failure is not None
+        assert result.failure.code == "configuration" and result.failure.effects == "none"
+        assert result.failure.retry == "never"
+        assert str(status) in result.result and "No model call or action was started" in result.result
+        assert "synthetic-secret" not in result.model_dump_json()
+        sdk.assert_not_called()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
 
 
 def test_runtime_never_accepts_conversation_round_context() -> None:
@@ -67,9 +191,11 @@ def test_gateway_can_recover_the_agent_run_from_the_rendered_prompt() -> None:
     assert agent_run_id_from_messages([{"role": "user", "content": prompt}]) == run_id
 
 
+@pytest.mark.parametrize("managed", [False, True])
 def test_completion_uses_one_isolated_session_and_final_response(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
+    managed: bool,
 ) -> None:
     calls: list[tuple[str, str]] = []
 
@@ -82,6 +208,8 @@ def test_completion_uses_one_isolated_session_and_final_response(
             assert options["profile"] == "sdk"
             assert options["patches"] == (str(tmp_path / "cordis.yml"),)
             assert Path(options["dsh_home"]).parent == tmp_path / "sessions"
+            assert options["env"]["GALARIS_MODEL"] == options["model"]
+            assert options["request_timeout_seconds"] == (None if managed else 30.0)
 
         def __enter__(self):
             return self
@@ -104,6 +232,7 @@ def test_completion_uses_one_isolated_session_and_final_response(
             "messages": [{"role": "user", "content": "Do the work"}],
         },
         _config(tmp_path),
+        actor_id="synthetic-actor" if managed else "",
     )
 
     assert completion.content == "Done"
@@ -149,8 +278,11 @@ def test_mcp_startup_is_retried_before_any_model_execution(tmp_path, monkeypatch
     assert closes == starts
 
 
-@pytest.mark.parametrize("status", [502, 503, 504])
-def test_transient_provider_error_continues_same_session_without_replaying_tool(tmp_path, monkeypatch, status):
+@pytest.mark.parametrize("failure", [
+    {"status": 502}, {"status": 503}, {"status": 504},
+    {"code": "SERVER"}, {"code": "RATE_LIMIT"}, {"code": "TIMEOUT"}, {"code": "TRANSPORT"},
+])
+def test_transient_provider_error_continues_same_session_without_replaying_tool(tmp_path, monkeypatch, failure):
     calls = []
     effects = []
 
@@ -177,7 +309,7 @@ def test_transient_provider_error_continues_same_session_without_replaying_tool(
                         "source": {"kind": "tool", "callId": "write-1"},
                         "content": [{"type": "tool-result", "toolCallId": "write-1", "isError": False}],
                     }}},
-                    {"type": "turn/end", "data": {"reason": {"kind": "error", "error": {"status": status}}}},
+                    {"type": "turn/end", "data": {"reason": {"kind": "error", "error": failure}}},
                 ])
             return SimpleNamespace(final_response="Finished", finish_reason="completed", events=[])
 
@@ -194,11 +326,13 @@ def test_transient_provider_error_continues_same_session_without_replaying_tool(
     assert effects == ["acknowledged write"]
 
 
-@pytest.mark.parametrize("status,unfinished,attempts,blocked", [
-    (400, False, 1, False), (502, True, 1, False),
-    (502, False, 3, False), (502, False, 1, True),
+@pytest.mark.parametrize("failure,unfinished,attempts,blocked", [
+    ({"status": 400}, False, 1, False), ({"status": 502}, True, 1, False),
+    ({"status": 502}, False, 3, False), ({"status": 502}, False, 1, True),
+    ({"code": "AUTH"}, False, 1, False), ({"code": "SERVER"}, True, 1, False),
+    ({"code": "SERVER"}, False, 1, True), ({"status": 401, "code": "SERVER"}, False, 1, False),
 ])
-def test_provider_error_does_not_publish_partial_success_or_replay_unknown_tool(tmp_path, monkeypatch, status, unfinished, attempts, blocked):
+def test_provider_error_does_not_publish_partial_success_or_replay_unknown_tool(tmp_path, monkeypatch, failure, unfinished, attempts, blocked):
     calls = []
 
     class FailedHarness:
@@ -218,7 +352,7 @@ def test_provider_error_does_not_publish_partial_success_or_replay_unknown_tool(
             calls.append(session_id)
             return SimpleNamespace(final_response="Partial response", finish_reason="error", events=[
                 *([{"type": "tool/call", "data": {"callId": "unconfirmed-write"}}] if unfinished else []),
-                {"type": "turn/end", "data": {"reason": {"kind": "error", "error": {"status": status}}}},
+                {"type": "turn/end", "data": {"reason": {"kind": "error", "error": failure}}},
             ])
 
     monkeypatch.setattr(runtime_adapter, "_harness_factory", lambda: FailedHarness)
@@ -349,7 +483,11 @@ def test_completion_subscribes_to_official_sdk_notifications(
     assert received == [notification]
 
 
-def test_stream_adapter_emits_text_reasoning_and_completed_tools() -> None:
+@pytest.mark.parametrize("nested_result", [False, True])
+@pytest.mark.parametrize("failed", [False, True])
+def test_stream_adapter_emits_text_reasoning_and_completed_tools(
+    nested_result: bool, failed: bool,
+) -> None:
     adapter = runtime_adapter.DeepSeekStreamAdapter()
 
     def notification(event: dict[str, object]) -> SimpleNamespace:
@@ -386,14 +524,20 @@ def test_stream_adapter_emits_text_reasoning_and_completed_tools() -> None:
             "arguments": '{"path":"README.md"}',
         },
     }))
+    content = [{"type": "text", "text": "Read denied" if failed else "Loaded"}]
+    # The pinned SDK's ToolResultMessage has a source and a tool-result block.
+    # Keep the former flat representation covered for older runtime events.
+    message = {
+        "role": "user",
+        "source": {"kind": "tool", "callId": "call-1"},
+        "content": [{"type": "tool-result", "toolCallId": "call-1",
+                     "content": content, "isError": failed}],
+    } if nested_result else {
+        "toolCallId": "call-1", "content": content, "isError": failed,
+    }
     tool = adapter.consume(notification({
         "type": "tool/result",
-        "data": {
-            "message": {
-                "toolCallId": "call-1",
-                "content": [{"type": "text", "text": "Loaded"}],
-            }
-        },
+        "data": {"message": message},
     }))
 
     assert text[0].kind == "text"
@@ -402,7 +546,10 @@ def test_stream_adapter_emits_text_reasoning_and_completed_tools() -> None:
     assert thinking[0].payload["content"] == "Inspect files"
     assert tool[0].payload["tool_name"] == "file_read"
     assert tool[0].payload["tool_arguments"] == {"path": "README.md"}
-    assert tool[0].payload["content"] == "Loaded"
+    assert tool[0].payload["content"] == ("Read denied" if failed else "Loaded")
+    assert tool[0].payload["tool_result"] == message
+    assert tool[0].payload["success"] is not failed
+    assert tool[0].payload["tool_call_external_id"] == "call-1"
 
 
 def test_http_stream_forwards_sdk_delta_before_the_run_completes(

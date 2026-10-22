@@ -1,4 +1,30 @@
 from bridge.codex.stream_trace import CodexStreamTrace
+import pytest
+
+
+@pytest.mark.parametrize("failed", [False, True])
+@pytest.mark.parametrize("kind", ["mcpToolCall", "dynamicToolCall", "commandExecution", "fileChange"])
+def test_completed_tools_keep_arguments_results_identity_and_failure(kind, failed):
+    trace = CodexStreamTrace()
+    item = {"id": "tool-1", "type": kind, "status": "failed" if failed else "completed", "durationMs": 250}
+    if kind == "commandExecution":
+        item.update(command="echo synthetic", cwd="/workspace", aggregatedOutput="Synthetic output",
+                    exitCode=1 if failed else 0)
+    elif kind == "fileChange":
+        item.update(changes=[{"path": "/workspace/report.txt", "diff": "+Synthetic output"}])
+    else:
+        item.update(tool="file_read", arguments={"uri": "synthetic://report"},
+                    result={"content": [{"type": "text", "text": "Synthetic output"}]},
+                    contentItems=[{"type": "inputText", "text": "Synthetic output"}], success=not failed)
+    message = trace.complete_tool_item(item)
+    assert message["type"] == "tool"
+    assert message["tool_name"] == {"commandExecution": "command_execution", "fileChange": "apply_patch"}.get(kind, "file_read")
+    assert message["tool_call_external_id"] == "tool-1"
+    assert message["success"] is not failed
+    assert "Synthetic output" in message["content"]
+    assert message["tool_arguments"]
+    assert message["tool_result"]
+    assert trace.complete_tool_item(item) is None
 
 
 def test_commentary_becomes_thinking_and_final_answer_stays_separate() -> None:

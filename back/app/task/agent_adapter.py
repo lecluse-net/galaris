@@ -562,6 +562,8 @@ class SqlAlchemyAgentTaskAdapter:
         return result.task
 
     def suspend(self, task: Any, reason: str) -> None:
+        if reason == task_service.PAUSE_APPROVAL and task.status == TaskStatus.EXEC:
+            transition(task, TaskEvent.INTERRUPT_EXECUTION)
         task_service.suspend(task, reason)
 
     def release(self, task: Any, reason: str) -> bool:
@@ -683,6 +685,10 @@ async def _wake_authorization_context(agent_id: int, context_key: str) -> bool:
         if any([await authorization_status(UUID(str(identifier)), agent_id=agent_id) == "pending" for identifier in identifiers]):
             return False
         task_service.release(task, task_service.PAUSE_APPROVAL)
+        # Compatibility for a wait persisted before approval suspension retained
+        # the scheduler's resumable phase instead of transient EXEC.
+        if not task.paused and task.status == TaskStatus.EXEC:
+            transition(task, TaskEvent.RECOVER_EXECUTION)
         await db.commit()
     from .runner import go_next
     go_next(task_id, fast=True)
@@ -708,6 +714,25 @@ async def _authorization_dispatch_available(agent_id: int, context_key: str) -> 
     return task is not None and task.agent_id == agent_id and not task_service.is_paused_for(task, task_service.PAUSE_USER)
 
 
+async def _runtime_dispatch_ready(agent_id: int, context_key: str, attempt_id: UUID | None,
+                                 decided_at: datetime | None) -> bool:
+    from core.database import get_db
+    if attempt_id is None:
+        return False
+    task_id = UUID(context_key.removeprefix("task:"))
+    row = (await get_db().execute(select(Task, TaskAttempt).join(TaskAttempt,
+        TaskAttempt.task_id == Task.id).where(Task.id == task_id, Task.agent_id == agent_id,
+        TaskAttempt.id == attempt_id).execution_options(populate_existing=True))).one_or_none()
+    if row is None:
+        return False
+    task, attempt = row
+    return bool(task.status == TaskStatus.EXEC and not task.paused and not task.cancel_requested
+        and task.deleted_at is None and task.lease_token is not None and task.lease_token == attempt.lease_token
+        and task.lease_expires_at is not None and task.lease_expires_at > datetime.now(timezone.utc)
+        and attempt.status == "CLAIMED" and attempt.finished_at is None
+        and (decided_at is None or attempt.started_at >= decided_at))
+
+
 async def _deferred_authorization_snapshot(agent_id: int, context_key: str) -> dict[str, Any] | None:
     from core.database import get_db
     task = await get_db().get(Task, UUID(context_key.removeprefix("task:")), populate_existing=True)
@@ -717,6 +742,8 @@ async def _deferred_authorization_snapshot(agent_id: int, context_key: str) -> d
 
 
 from app.tools.facade import register_authorization_waker, register_authorization_context_guard, register_authorization_dispatch_guard, register_deferred_authorization_guard
+from app.tools.facade import register_runtime_dispatch_guard
+register_runtime_dispatch_guard("task", _runtime_dispatch_ready)
 register_deferred_authorization_guard("task", _deferred_authorization_snapshot)
 register_authorization_dispatch_guard("task", _authorization_dispatch_available)
 register_authorization_waker("task", _wake_authorization_context)

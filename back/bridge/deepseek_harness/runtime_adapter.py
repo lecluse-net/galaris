@@ -24,6 +24,7 @@ import threading
 import time
 from typing import Any, Callable, Protocol, TYPE_CHECKING, cast
 from uuid import uuid4
+from urllib.error import HTTPError
 
 if TYPE_CHECKING or __package__:
     from app.harnesses import ActionApprovals, RuntimeActor, RuntimeRuns, file_precondition
@@ -32,6 +33,7 @@ else:
 
 
 _MAX_REQUEST_BYTES = 2_000_000
+_CONTROL_HEARTBEAT_SECONDS = 10.0
 _RUN_SLOT = threading.BoundedSemaphore(1)
 _LOG = logging.getLogger("galaris.deepseek_harness")
 
@@ -119,6 +121,8 @@ def _content_text(value: object) -> str:
             text = block.get("text")
             if isinstance(text, str):
                 parts.append(text)
+        elif block.get("type") == "tool-result":
+            parts.append(_content_text(block.get("content")))
     return "".join(parts)
 
 
@@ -252,22 +256,35 @@ class DeepSeekStreamAdapter:
         if event_type != "tool/result":
             return []
         message = _mapping(data.get("message"))
+        source = _mapping(message.get("source"))
+        raw_content = message.get("content")
+        result_blocks = [
+            _mapping(block) for block in cast(Sequence[object], raw_content)
+            if _mapping(block).get("type") == "tool-result"
+        ] if isinstance(raw_content, list) else []
         call_id = str(
-            message.get("toolCallId")
+            source.get("callId")
+            or message.get("toolCallId")
             or message.get("tool_call_id")
+            or next((block.get("toolCallId") for block in result_blocks), None)
             or data.get("callId")
             or ""
         )
         name, arguments = self._tool_calls.get(call_id, ("tool", {}))
-        content = _content_text(message.get("content")) or "Tool completed"
         error = _mapping(data.get("error"))
-        success = not bool(error) and message.get("isError") is not True
+        success = not bool(error) and message.get("isError") is not True and not any(
+            block.get("isError") is True for block in result_blocks
+        )
+        content = _content_text(message.get("content")) or str(error.get("reason") or (
+            "Tool completed" if success else "Tool failed"
+        ))
         return [
             StreamEmission(
                 "semantic",
                 {
                     "type": "tool",
                     "tool_name": name,
+                    "tool_call_external_id": call_id or None,
                     "tool_arguments": arguments,
                     "tool_result": self._bounded(message),
                     "content": content[:4_000],
@@ -425,9 +442,12 @@ def run_completion(
             dsh_home=str(run_root),
             profile="sdk",
             patches=(str(config.cordis),),
-            request_timeout_seconds=config.request_timeout_seconds,
+            # A managed turn may wait for a human outside the Task lease. Its
+            # lifetime is bounded by run cancellation and authorization expiry;
+            # the SDK's wall-clock RPC timeout must not count that waiting time.
+            request_timeout_seconds=None if actor_id else config.request_timeout_seconds,
             shutdown_timeout_seconds=2.0,
-            env={"DSH_SESSION_ROOT": str(run_root / "sessions"), **({
+            env={"DSH_SESSION_ROOT": str(run_root / "sessions"), "GALARIS_MODEL": model, **({
                 "GALARIS_RUN_CONTEXT": run_context,
                 "GALARIS_AUTHORIZATION_PROXY": f"http://127.0.0.1:8080/local/{actor_id}",
                 "GALARIS_MCP_URL": f"http://127.0.0.1:8080/mcp/{actor_id}",
@@ -457,10 +477,16 @@ def run_completion(
                     raise RuntimeError("DeepSeek Harness finished with an unresolved tool call")
                 break
             status = failure.get("status")
-            transient = isinstance(status, int) and status in {408, 429, 500, 502, 503, 504}
+            code = failure.get("code")
+            transient = (
+                isinstance(status, int) and status in {408, 429, 500, 502, 503, 504}
+            ) or (
+                status is None and isinstance(code, str)
+                and code in {"SERVER", "RATE_LIMIT", "TIMEOUT", "TRANSPORT"}
+            )
             if (not transient or pending_tools or attempt + 1 == attempts
                     or (can_continue is not None and not can_continue())):
-                raise RuntimeError(f"DeepSeek Harness turn failed: {result.finish_reason}; HTTP {status}")
+                raise RuntimeError(f"DeepSeek Harness turn failed: {result.finish_reason}; HTTP {status}; code {code}")
             delay = min(max_delay, base_delay * 2 ** attempt)
             if active is not None:
                 if not active.wait_for_retry(delay):
@@ -469,7 +495,7 @@ def run_completion(
                 time.sleep(delay)
             if can_continue is not None and not can_continue():
                 raise RuntimeError("DeepSeek Harness has an unresolved action before automatic continuation")
-            _LOG.warning("Resuming interrupted SDK session after HTTP %s (attempt %s/%s)", status, attempt + 2, attempts)
+            _LOG.warning("Resuming interrupted SDK session after provider failure (HTTP %s, code %s; attempt %s/%s)", status, code, attempt + 2, attempts)
             rendered_prompt = (
                 "Continue the current task from this session's recorded history after the temporary "
                 "provider error. Preserve completed work. Do not repeat completed actions or actions "
@@ -701,7 +727,23 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
                         token=os.environ.get("GALARIS_MCP_TOKEN", ""), run_context=credential,
                         session=actor.identifier, on_pending=actor.pending, on_running=actor.running)
                     actor.approvals = approvals
-                    await asyncio.to_thread(approvals.validate)
+                    try:
+                        await asyncio.to_thread(approvals.validate)
+                    except HTTPError as error:
+                        if error.code not in (401, 403):
+                            raise
+                        message = (
+                            f"Managed runtime authorization rejected (HTTP {error.code}). "
+                            "Recreate the Harness credentials before retrying. "
+                            "No model call or action was started."
+                        )
+                        # Never expose the response body, URL or bearer. This is
+                        # before SDK startup, so effects are known to be absent.
+                        yield "result", {"success": False, "result": message, "failure": {
+                            "code": "configuration", "message": message,
+                            "retry": "never", "effects": "none",
+                        }}
+                        return
                     notifications: queue.Queue[object] = queue.Queue()
                     adapter = DeepSeekStreamAdapter()
                     augmented = {**body, **{key: value for key, value in {
@@ -738,7 +780,12 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
                 actor = server.runs.actors.get(identifier)
             if actor is None or actor.approvals is None:
                 raise LookupError("Runtime continuation not found")
+            approvals = actor.approvals
             if parts[0] == "mcp":
+                if body.get("method") == "tools/call":
+                    self._waiting_control_response(lambda: approvals.mcp(body), approvals,
+                                                   request_id=body.get("id"), mcp=True)
+                    return
                 status, raw = actor.approvals.mcp(body)
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
@@ -755,11 +802,60 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
                 self._json(HTTPStatus.OK, {"recorded": True})
             else:
                 arguments = body["arguments"]
-                allowed = actor.approvals.authorize(str(body["callback"]), str(body["name"]), arguments,
-                    precondition=lambda: file_precondition(arguments, self.config.workspace))
-                self._json(HTTPStatus.OK, {"allowed": allowed})
+                def authorize() -> tuple[int, bytes]:
+                    allowed = approvals.authorize(str(body["callback"]), str(body["name"]), arguments,
+                        precondition=lambda: file_precondition(arguments, self.config.workspace))
+                    return HTTPStatus.OK, json.dumps({"allowed": allowed}).encode()
+                self._waiting_control_response(authorize, approvals)
         except (ValueError, KeyError, LookupError, PermissionError, OSError):
             self._json(HTTPStatus.CONFLICT, {"error": "runtime_control_failed_closed"})
+
+    def _waiting_control_response(self, operation: Callable[[], tuple[int, bytes]], approvals: ActionApprovals,
+                                  *, request_id: object = None, mcp: bool = False) -> None:
+        """Keep the SDK transport alive without replaying a pending operation."""
+        outcome: queue.Queue[tuple[int, bytes] | BaseException] = queue.Queue(maxsize=1)
+        def work() -> None:
+            try:
+                outcome.put(operation())
+            except BaseException as error:
+                outcome.put(error)
+        threading.Thread(target=work, name="dsh-control", daemon=True).start()
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/event-stream" if mcp else "application/json")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.close_connection = True
+        heartbeat = b": keepalive\n\n" if mcp else b" \n"
+        try:
+            self.wfile.write(heartbeat)
+            self.wfile.flush()
+            while True:
+                try:
+                    result = outcome.get(timeout=_CONTROL_HEARTBEAT_SECONDS)
+                except queue.Empty:
+                    self.wfile.write(heartbeat)
+                    self.wfile.flush()
+                    continue
+                if isinstance(result, BaseException) or result[0] >= 400:
+                    payload: dict[str, object] = ({"jsonrpc": "2.0", "id": request_id,
+                        "error": {"code": -32603, "message": "MCP continuation failed without replay"}}
+                        if mcp else {"allowed": False, "error": "runtime_control_failed_closed"})
+                    raw = json.dumps(payload).encode()
+                else:
+                    raw = result[1]
+                if mcp:
+                    # One JSON-RPC response, on the original request id. Comments
+                    # are SSE keepalives and never become model-visible tool output.
+                    self.wfile.write(b"event: message\ndata: " + raw + b"\n\n")
+                else:
+                    self.wfile.write(raw)
+                self.wfile.flush()
+                return
+        except OSError:
+            # The SDK abandoned its exact call. Stop its waiter, without executing
+            # or resubmitting an action on behalf of a disconnected client.
+            approvals.cancelled.set()
 
     def _stream_completion(self, body: Mapping[str, object]) -> None:
         active = ActiveRun()

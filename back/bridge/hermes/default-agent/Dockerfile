@@ -1,4 +1,4 @@
-ARG HERMES_IMAGE=nousresearch/hermes-agent:v2026.9.14@sha256:99641e57ec762c59e54cb44aa6746b7fc68c18b3c5ddb088af54234c613d9294
+ARG HERMES_IMAGE=nousresearch/hermes-agent:v0.22.4@sha256:7a69201726bc64db2072a1371557137c23312d29705cda2b8ea2a0214a50a4cf
 FROM ${HERMES_IMAGE}
 
 COPY patch_run_stop.py.txt /tmp/galaris-patch-run-stop.py

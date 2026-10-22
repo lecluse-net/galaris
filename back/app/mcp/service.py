@@ -14,11 +14,11 @@ Usage:
 import secrets
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from loguru import logger
 
 from core.database import get_db
-from core.util.encryption import encrypt_value
+from core.util.encryption import decrypt_value, encrypt_value
 from core.util.token_hash import hash_token
 
 from .models import AgentMcpToken
@@ -48,6 +48,35 @@ async def list_tokens_for_agent(agent_id: int) -> List[AgentMcpToken]:
     return list(result.scalars().all())
 
 
+async def _lock_system_token_owner(agent_id: int) -> None:
+    # No token row exists on first creation. A transaction lock also works during
+    # cleanup after the agent has been deleted, without depending on Agent internals.
+    await get_db().execute(select(func.pg_advisory_xact_lock(0x4D4350, agent_id)))
+
+
+async def ensure_system_token(agent_id: int) -> str:
+    """Reuse the runtime principal during synchronization, creating it if absent.
+
+    Rotating before remote configuration succeeds strands a running container.
+    The agent lock also serializes first creation across independent workers.
+    Per-run grants, rather than configuration refreshes, bound execution authority.
+    """
+    await _lock_system_token_owner(agent_id)
+    db = get_db()
+    token = await db.scalar(select(AgentMcpToken).where(
+        AgentMcpToken.agent_id == agent_id,
+        AgentMcpToken.hidden.is_(True),
+        AgentMcpToken.enabled.is_(True),
+    ))
+    if token is None:
+        return await rotate_system_token(agent_id)
+    value = decrypt_value(token.token_encrypted)
+    if not value or hash_token(value) != token.token_hash:
+        raise RuntimeError("The managed-runtime MCP token is inconsistent")
+    await db.commit()
+    return value
+
+
 async def rotate_system_token(agent_id: int) -> str:
     """Rotate an agent's hidden system MCP token and return its plaintext value.
 
@@ -56,6 +85,7 @@ async def rotate_system_token(agent_id: int) -> str:
     The token is omitted from user-facing lists, and rotation removes every old
     system token so that only one remains.
     """
+    await _lock_system_token_owner(agent_id)
     db = get_db()
     result = await db.execute(
         select(AgentMcpToken).where(
@@ -84,6 +114,7 @@ async def rotate_system_token(agent_id: int) -> str:
 async def revoke_system_tokens(agent_id: int) -> int:
     """Revoke every hidden token after the owning managed runtime is destroyed."""
 
+    await _lock_system_token_owner(agent_id)
     db = get_db()
     result = await db.execute(
         select(AgentMcpToken).where(

@@ -47,6 +47,11 @@ The result automatically returns to the discussion even if a tool or attachment 
 Agent already sent that exact result to this discussion, Galaris does not send it again. An
 unavailable attachment does not prevent the text from being published.
 
+After human approval of a managed Harness action, the same Task resumes the same call
+once its executor has regained ownership. Agreement remains recorded during this wait;
+do not create another Task to bypass a resumption refusal or repeat the action.
+A manual pause still takes precedence.
+
 ## What Happens After Submission
 
 A request continuing existing work can reuse its tracking document without repeating
@@ -98,6 +103,11 @@ The executor can update it with
 retained; declaring one complete does not replace evidence of the result or its delivery.
 Tracking has its own revision, so execution checkpoints do not block progress updates.
 
+In reasoning steps, expanding a tool call shows its name, arguments and returned content,
+with its success or failure state. These details remain available during live monitoring and
+after reconnection. Large previews are explicitly truncated and secret keys are redacted;
+older activity records that did not contain these details remain incomplete.
+
 During long reasoning, intermediate saves are spaced out so execution can keep moving.
 Tool results, errors and block completions are still saved immediately; reopening the
 Task restores its latest saved activity.
@@ -146,10 +156,12 @@ produce it after the failed work. Other dependent steps are skipped. A successfu
 preserves the plan's error; a manual retry resumes unfinished work and refreshes the
 report while preserving other successful results.
 
-For remote harnesses, **Retry** preserves the execution identity and its receipts;
-it checks the existing execution before continuing. If its authority is missing,
-revoked or expired, recovery remains refused with the corresponding reason.
-Creating a new Task starts another execution rather than recovering the checkpoint.
+For managed network harnesses, **Retry** starts a new inference with the same Task
+parameters. The Task and its previous attempts remain available; no new-Task dialog is
+required, including when the previous runtime has no resumable state. Galaris retires the
+previous operation and issues a new runtime identity and authority. Previous tool receipts
+remain available to check effects already performed. Automatic recovery after an interruption
+still observes the existing operation.
 
 A small mechanical batch of up to five known items can remain one Task, such as renaming
 three documents to supplied names. Reading, transforming and verifying each document remains

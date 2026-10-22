@@ -45,6 +45,11 @@ Le résultat revient automatiquement dans la discussion, même si un outil ou un
 a échoué. Si l’agent a déjà envoyé ce même résultat dans cette discussion, Galaris ne le renvoie
 pas. Une pièce jointe indisponible n’empêche pas la publication du texte.
 
+Après un accord humain sur une action d'un harnais géré, la même Task reprend le même
+appel lorsque son exécuteur a repris la main. L'accord reste enregistré pendant cette
+attente ; ne créez pas une autre Task pour contourner un refus de reprise et ne répétez
+pas l'action. Une pause manuelle reste prioritaire.
+
 ## Ce qui se passe après l’envoi
 
 Une demande qui poursuit un travail peut réutiliser son document de suivi sans recopier
@@ -116,6 +121,11 @@ avec `task_work_update`, sur sa Task active, avec contrôle de révision. Jusqu�
 sont conservés ; un jalon déclaré terminé ne remplace pas la preuve du résultat ou de sa livraison.
 Le suivi possède sa propre révision : les sauvegardes d’exécution ne bloquent pas ses mises à jour.
 
+Dans les étapes de réflexion, ouvrir un appel d’outil affiche son nom, ses arguments et son
+retour, avec son état de réussite ou d’échec. Ces détails restent disponibles pendant le suivi
+en direct et après reconnexion. Les aperçus volumineux sont tronqués explicitement et les clés
+de secrets sont masquées ; les anciens suivis qui ne contenaient pas ces détails restent incomplets.
+
 Pendant une réflexion longue, les sauvegardes intermédiaires sont espacées pour laisser
 l'exécution avancer. Les résultats d'outils, erreurs et fins de blocs restent enregistrés
 immédiatement ; rouvrir la Task retrouve le dernier suivi sauvegardé.
@@ -168,10 +178,12 @@ peut le produire après les travaux échoués. Les autres étapes dépendantes s
 Un bilan réussi conserve l’erreur du plan ; un réessai manuel reprend le travail inachevé
 et actualise ce bilan, en préservant les autres réussites.
 
-Pour les harnais distants, **Réessayer** conserve l'identité de l'exécution et ses reçus ;
-il vérifie l'exécution existante avant de poursuivre. Si son autorisation a disparu,
-a été révoquée ou a expiré, la reprise reste refusée avec la cause correspondante.
-Créer une nouvelle Task constitue une nouvelle exécution, pas une récupération du checkpoint.
+Pour les harnais réseau gérés, **Réessayer** lance une nouvelle inférence avec les mêmes
+paramètres de tâche. La tâche et ses tentatives précédentes restent disponibles ; aucune
+modale de nouvelle tâche n'est nécessaire, même si l'ancien runtime n'a plus d'état reprenable.
+Galaris retire l'ancienne opération et attribue une nouvelle identité et une nouvelle autorité
+runtime. Les reçus d'outils précédents restent disponibles pour vérifier les effets déjà produits.
+La récupération automatique après interruption observe toujours l'opération existante.
 
 Un petit lot mécanique d'au plus cinq éléments connus peut rester une seule tâche, par
 exemple renommer trois documents avec les noms fournis. Lire, transformer et vérifier chaque

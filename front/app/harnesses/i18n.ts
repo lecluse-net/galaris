@@ -131,6 +131,12 @@ const preferencesFr: typeof preferencesEn = {
   empty: 'Aucun harnais externe pour le moment. Ajoutez une API pour connecter un service hébergé indépendamment.',
   search: 'Rechercher par nom, URL ou modèle', noResults: 'Aucun harnais ne correspond à cette recherche.', view: 'Consulter',
 }
+const preferencesZh: typeof preferencesEn = {
+  ...preferencesEn,
+  internalHint: '配置 Galaris 内置引擎。调度、预算、单次执行限制、重试、协作和规划器均在“任务与执行”中配置。',
+  plannerHint: '配置 Galaris 的任务分解。以下列出的执行框架使用规划功能时，才会应用这些共享设置。',
+  executionLimitsHint: '模型请求和工具调用的共享限制。内置引擎会强制执行这些限制；兼容的外部执行框架会接收这些限制，但是否执行取决于其实现。这些限制与任务的总体预算分别设置。',
+}
 const policyI18n = {
   fr: {
     title: 'Fiabilité et capacités des harnais', provider: 'Harnais', disabled: 'Capacités désactivées',
@@ -426,7 +432,7 @@ export default {
       policy: policyI18n.zh,
       setup: managerSetupI18n.zh,
       release: releaseEn,
-      preferences: preferencesEn,
+      preferences: preferencesZh,
       inputFiles: {
         title: '内置运行框架文件',
         maxBytes: '发送给模型的二进制文件大小上限（MB）',

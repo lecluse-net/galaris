@@ -304,6 +304,29 @@ class OpenAIHarnessClient:
             response.raise_for_status()
         return _mapping(response.json()).get("stopped") is True
 
+    async def stop_control_run_for_retry(self, runtime_run_id: str, *, timeout_seconds: float = 10) -> None:
+        """Retire an existing actor before explicitly starting another inference."""
+        async with asyncio.timeout(timeout_seconds):
+            async with httpx.AsyncClient(timeout=timeout_seconds, follow_redirects=False,
+                                         trust_env=False, transport=self.transport) as client:
+                url = f"{self.base_url}/galaris/runs/{runtime_run_id}"
+                cancellation_requested = False
+                while True:
+                    response = await client.get(url, headers=self._headers())
+                    if response.status_code == 404:
+                        return
+                    response.raise_for_status()
+                    state = _mapping(response.json())
+                    if state.get("stopped") is True or state.get("status") in {
+                        "completed", "failed", "cancelled", "outcome_unknown",
+                    }:
+                        return
+                    if not cancellation_requested:
+                        response = await client.post(f"{url}/cancel", headers=self._headers(), json={})
+                        response.raise_for_status()
+                        cancellation_requested = True
+                    await asyncio.sleep(0.1)
+
     async def control_run(self, envelope: AgentRunEnvelopeV1, *, runtime_run_id: str, start: bool,
                           on_progress: Callable[[AIMessage], Awaitable[None]] | None = None,
                           cursor: Mapping[str, object] | None = None) -> ExecutionResult:
@@ -342,6 +365,15 @@ class OpenAIHarnessClient:
                 # status. A stopped actor cannot make progress or accept an approval.
                 if state.get("stopped") is True and status in {"running", "waiting_for_authorization"}:
                     status = "outcome_unknown"
+                if status == "waiting_for_authorization":
+                    from app.tools.facade import runtime_authorizations_ready
+
+                    pending_ids = [UUID(str(value)) for value in cast(Sequence[object], state.get("authorization_requests") or [])]
+                    if await runtime_authorizations_ready(self.run_context, agent_id=envelope.agent_id, identifiers=pending_ids):
+                        # The actor polls independently. Releasing our lease on its
+                        # old snapshot would gate its next poll and lose the wake.
+                        await asyncio.sleep(0.25)
+                        continue
                 if status != "running":
                     break
                 await asyncio.sleep(0.25)
@@ -349,14 +381,19 @@ class OpenAIHarnessClient:
         waiting = status == "waiting_for_authorization"
         identifiers = [UUID(str(value)) for value in cast(Sequence[object], state.get("authorization_requests") or [])] if waiting else []
         unknown = status == "outcome_unknown"
+        failure: HarnessFailure | None = None
+        if unknown:
+            failure = HarnessFailure(code="effect_unknown", message="The managed runtime outcome is unknown; no action was replayed",
+                retry="reconcile", effects="possible")
+        elif status == "failed" and state.get("failure"):
+            failure = HarnessFailure.model_validate(state["failure"])
         return ExecutionResult(
             schema_version="galaris.execution-result/v2", prompt=envelope.objective, system_prompt=envelope.system_instructions,
             result=str(state.get("result") or ""), messages=_trace_messages(state.get("messages")),
             execution_time=_float(state.get("execution_time")), cost=usage.cost, usage=usage,
             success=status == "completed" and state.get("success") is not False,
             disposition="waiting_for_authorization" if waiting else "completed", authorization_requests=identifiers,
-            failure=HarnessFailure(code="effect_unknown", message="The managed runtime outcome is unknown; no action was replayed",
-                retry="reconcile", effects="possible") if unknown else None,
+            failure=failure,
             metadata={"runtime_run_id": runtime_run_id, "runtime_status": status,
                 "runtime_cursor": {"messages": message_count, "text": text_offset}, **accounting_metadata},
         )

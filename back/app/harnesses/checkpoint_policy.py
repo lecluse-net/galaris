@@ -1,6 +1,6 @@
 """A remote checkpoint addresses the existing runtime actor; it never restarts work."""
 
-from app.agent import AgentRunCheckpoint
+from app.agent import AgentRunCheckpoint, HarnessCheckpointError
 from app.agent.contracts import CheckpointAssessment
 
 
@@ -20,6 +20,16 @@ class RuntimeCheckpointPolicy:
 
     def rebase(self, checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint | None:
         # Changing the objective requires stopping and observing the previous actor first.
+        return None
+
+    def prepare_retry(self, checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint | None:
+        # An explicit user retry starts a new inference. Automatic lease recovery
+        # still uses assess() and observes the original actor.
+        if (type(checkpoint.data.get("version")) is not int
+                or checkpoint.data.get("version") != 1
+                or not checkpoint.data.get("run_context")
+                or len(checkpoint.runtime_run_id) != 64):
+            raise HarnessCheckpointError("The managed runtime checkpoint identity is incomplete or unsupported.")
         return None
 
 

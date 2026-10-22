@@ -156,10 +156,10 @@ def reset_run(token):
     _run_approvals.reset(token)
 
 
-async def call_galaris_tool(session, server_name, tool_name, arguments):
+async def call_galaris_tool(session, server_name, tool_name, arguments, **kwargs):
     collector = _run_approvals.get()
     if server_name != "galaris":
-        return await session.call_tool(tool_name, arguments=arguments)
+        return await session.call_tool(tool_name, arguments=arguments, **kwargs)
     if collector is None:
         raise PermissionError("The managed Galaris MCP call has no server-issued run context")
     from uuid import uuid4

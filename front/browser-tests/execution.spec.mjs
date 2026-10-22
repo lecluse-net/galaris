@@ -1,6 +1,33 @@
 import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 import { agent, call, document, result } from './data.mjs'
 
+for (const width of [390, 1280]) {
+  test(`tool details survive live updates and reopening (${width})`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const message = { type: 'tool', tool_name: 'file_read', tool_call_external_id: 'synthetic-call',
+      content: 'Synthetic result', tool_arguments: { uri: 'synthetic://report', query: 'Synthetic query' },
+      tool_result: { count: 3, uri: 'synthetic://result' }, success: true }
+    await mount(page, 'app/task/components/ExecutionResult.vue', { props: {
+      executionResult: { ...result, messages: [message] }, running: true, embedded: true,
+    } })
+    const header = page.getByRole('button', { name: /file_read/ })
+    const output = page.getByRole('region', { name: 'Returned content', exact: true })
+    await expect(page.getByRole('cell', { name: 'synthetic://report', exact: true })).toBeVisible()
+    await expect(output).toContainText('"count": 3')
+    await page.evaluate(({ message, result }) => window.testApp.setProps({ running: false,
+      executionResult: { ...result, messages: [{ ...message,
+        success: false, content: 'Synthetic denial', tool_result: { error: 'Synthetic denial' } }] },
+    }), { message, result })
+    await expect(header).toContainText('Failure')
+    await expect(output).toContainText('Synthetic denial')
+    await header.press('Enter')
+    await expect(output).not.toBeVisible()
+    await header.press('Space')
+    await expect(output).toBeInViewport({ ratio: 1 })
+    await page.screenshot({ path: `/artifacts/tool-details-${width}.png` })
+  })
+}
+
 test('task activity warns only during silence and clears as soon as motion resumes', async ({ page }) => {
   const at = new Date()
   await page.clock.install({ time: at })

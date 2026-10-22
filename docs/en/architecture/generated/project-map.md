@@ -65,7 +65,7 @@ tests remain authoritative for behavior.
 | `app.code` | app | no | yes | `contracts.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.process` | app | no | yes | `facade.py`, `i18n/`, `interface.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.multimedia` | app | no | yes | `mcp.py`, `models.py`, `router.py`, `tests/` |
-| `app.mcp` | app | no | yes | `i18n/`, `models.py`, `privileges.py`, `router.py`, `schemas.py` |
+| `app.mcp` | app | no | yes | `i18n/`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `bridge.harness` | bridge | no | yes | `i18n/`, `router.py`, `tests/` |
 | `bridge.claude_agent` | bridge | no | yes | `tests/` |
 | `bridge.codex` | bridge | no | yes | `router.py`, `tests/` |
@@ -345,7 +345,7 @@ tests remain authoritative for behavior.
 | `app.harness` | `core.i18n` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `core.params` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/media.py`, `back/app/harness/runtime.py` |
 | `app.harnesses` | `app.agent` | `back/app/harnesses/agent_adapter.py`, `back/app/harnesses/agent_driver.py`, `back/app/harnesses/checkpoint_policy.py`, `back/app/harnesses/configuration.py`, `back/app/harnesses/contracts.py`, `back/app/harnesses/dbadmin.py`, `back/app/harnesses/driver.py`, `back/app/harnesses/facade.py`, `back/app/harnesses/mcp.py`, `back/app/harnesses/models.py`, `back/app/harnesses/openai_client.py`, `back/app/harnesses/openai_provider.py`, `back/app/harnesses/router.py`, `back/app/harnesses/service.py`, `back/app/harnesses/skill_sync.py`, `back/app/harnesses/supervision.py` |
-| `app.harnesses` | `app.tools` | `back/app/harnesses/driver.py`, `back/app/harnesses/mcp.py` |
+| `app.harnesses` | `app.tools` | `back/app/harnesses/driver.py`, `back/app/harnesses/mcp.py`, `back/app/harnesses/openai_client.py` |
 | `app.harnesses` | `core.authorize` | `back/app/harnesses/router.py` |
 | `app.harnesses` | `core.database` | `back/app/harnesses/configuration.py`, `back/app/harnesses/models.py`, `back/app/harnesses/service.py`, `back/app/harnesses/skill_sync.py` |
 | `app.harnesses` | `core.dbadmin` | `back/app/harnesses/dbadmin.py` |
@@ -1814,9 +1814,9 @@ tests remain authoritative for behavior.
 | POST | `/runs/{run_id}/retry` | `app.process` | `retry_run` | yes | `back/app/process/router.py:382` |
 | POST | `/runtime-agents/{id}/sync-skills` | `app.harness` | `sync_harness_skills` | yes | `back/app/harness/router.py:99` |
 | POST | `/runtime-authorizations` | `app.tools` | `request_action` | no | `back/app/tools/runtime_authorization_router.py:47` |
-| GET | `/runtime-authorizations/context` | `app.tools` | `context_status` | no | `back/app/tools/runtime_authorization_router.py:72` |
-| POST | `/runtime-authorizations/receipt` | `app.tools` | `action_receipt` | no | `back/app/tools/runtime_authorization_router.py:94` |
-| GET | `/runtime-authorizations/{identifier}` | `app.tools` | `action_status` | no | `back/app/tools/runtime_authorization_router.py:81` |
+| GET | `/runtime-authorizations/context` | `app.tools` | `context_status` | no | `back/app/tools/runtime_authorization_router.py:75` |
+| POST | `/runtime-authorizations/receipt` | `app.tools` | `action_receipt` | no | `back/app/tools/runtime_authorization_router.py:97` |
+| GET | `/runtime-authorizations/{identifier}` | `app.tools` | `action_status` | no | `back/app/tools/runtime_authorization_router.py:84` |
 | GET | `/skills` | `app.skill` | `list_skills` | yes | `back/app/skill/router.py:80` |
 | POST | `/skills` | `app.skill` | `create_skill` | yes | `back/app/skill/router.py:346` |
 | GET | `/skills/agents` | `app.skill` | `list_skill_agents` | yes | `back/app/skill/router.py:117` |

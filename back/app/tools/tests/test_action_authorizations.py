@@ -171,6 +171,139 @@ async def test_refused_arguments_cannot_create_a_new_question_under_a_new_callba
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("runtime_action", ["openai_messages", "codex", "claude_agent", "deepseek_harness"], indirect=True)
+@pytest.mark.parametrize("approved", [True, False])
+async def test_managed_approval_waits_for_the_resumed_task_attempt(action, runtime_action, approved):
+    from datetime import datetime, timedelta, timezone
+    from httpx import ASGITransport, AsyncClient
+    from app.agent import AgentSnapshot, ResolvedExecutionTarget
+    from app.agent.tests.test_driver_testkit import _request
+    from app.harnesses.models import AgentHarness
+    from app.mcp.service import ensure_system_token
+    from app.task import task_service
+    from app.task.agent_adapter import SqlAlchemyAgentTaskAdapter, _wake_authorization_context
+    from app.task.models import Task, TaskAttempt, TaskStatus
+    from app.tools.runtime_authorization import issue_runtime_run_grant, renew_runtime_run_grant, runtime_authorizations_ready
+    from main import app
+
+    lease = uuid4()
+    async with get_db_session() as db:
+        assignment = await db.scalar(select(AgentHarness).where(AgentHarness.agent_id == action.agent_id))
+        task = Task(agent_id=action.agent_id, label="Synthetic approved effect", objective="<p>Write once.</p>",
+                    status=TaskStatus.EXEC, lease_token=lease,
+                    lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5))
+        db.add(task)
+        await db.flush()
+        attempt = TaskAttempt(task_id=task.id, attempt_number=1, phase="DISPATCH", status="CLAIMED",
+                              worker_id="synthetic-first-worker", lease_token=lease)
+        db.add(attempt)
+        await db.flush()
+        task_id, attempt_id, assignment_id = task.id, attempt.id, assignment.id
+        bearer = await ensure_system_token(action.agent_id)
+    request = replace(_request(), task_id=task_id, attempt_id=attempt_id, driver_code="openai_messages",
+        agent=AgentSnapshot(id=action.agent_id, code="synthetic", first_name="Synthetic", last_name="Runtime", driver_code="openai_messages"),
+        target=ResolvedExecutionTarget(provider_code=runtime_action.runtime, target_ref=f"harness:{assignment_id}", revision="1"))
+    credential = await issue_runtime_run_grant(request)
+    headers = {"Authorization": f"Bearer {bearer}", "X-Galaris-Run-Context": credential}
+    endpoint = "/api/tools/runtime-authorizations"
+    payload = {"callback_key": "same-effect", "name": "write_file", "session": "synthetic", "arguments": {"content": "write once"}}
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://localhost") as client:
+        response = await client.post(endpoint, headers=headers, json=payload)
+        assert response.status_code == 200 and response.json()["status"] == "pending"
+        identifier = UUID(response.json()["request_id"])
+        assert not await runtime_authorizations_ready(credential, agent_id=action.agent_id, identifiers=[identifier])
+        # Even an immediate answer must wait for the first attempt to settle.
+        async with get_db_session() as db:
+            row = await db.get(ActionAuthorization, identifier)
+            assert await answer_action(identifier, user_id=row.approver_user_id, approved=approved)
+        assert (await client.get(f"{endpoint}/{identifier}", headers=headers)).json()["status"] == "pending"
+        assert (await client.post(endpoint, headers=headers, json=payload)).json()["status"] == "pending"
+        assert not await runtime_authorizations_ready(credential, agent_id=action.agent_id, identifiers=[identifier])
+        async with get_db_session() as db:
+            task = await db.get(Task, task_id)
+            SqlAlchemyAgentTaskAdapter().suspend(task, task_service.PAUSE_APPROVAL)
+            task.data = {**(task.data or {}), "authorization_requests": [str(identifier)]}
+            task.lease_token = task.lease_expires_at = None
+            (await db.get(TaskAttempt, attempt_id)).status = "WAITING_APPROVAL"
+        assert (await client.get(f"{endpoint}/{identifier}", headers=headers)).json()["status"] == "pending"
+        assert (await client.post(endpoint, headers=headers, json=payload)).json()["status"] == "pending"
+        async with get_db_session() as db:
+            assert (await db.get(ActionAuthorization, identifier)).status == ("approved" if approved else "denied")
+        assert await _wake_authorization_context(action.agent_id, f"task:{task_id}")
+        async with get_db_session() as db:
+            task = await db.get(Task, task_id)
+            assert task.status == TaskStatus.DISPATCH and not task.paused
+        assert (await client.get(f"{endpoint}/{identifier}", headers=headers)).json()["status"] == "pending"
+
+        resumed_lease = uuid4()
+        async with get_db_session() as db:
+            task = await db.get(Task, task_id)
+            task.status = TaskStatus.EXEC
+            task.lease_token, task.lease_expires_at = resumed_lease, datetime.now(timezone.utc) + timedelta(minutes=5)
+            attempt = TaskAttempt(task_id=task_id, attempt_number=2, phase="DISPATCH", status="CLAIMED",
+                                  worker_id="synthetic-resumed-worker", lease_token=resumed_lease)
+            db.add(attempt)
+            await db.flush()
+            resumed_attempt_id = attempt.id
+        # A new lease alone cannot release an actor still bound to the old attempt.
+        assert (await client.get(f"{endpoint}/{identifier}", headers=headers)).json()["status"] == "pending"
+        await renew_runtime_run_grant(credential, replace(request, run_id=uuid4(), attempt_id=resumed_attempt_id))
+        assert await runtime_authorizations_ready(credential, agent_id=action.agent_id, identifiers=[identifier])
+        assert not await runtime_authorizations_ready(credential, agent_id=action.agent_id + 100000, identifiers=[identifier])
+        assert not await runtime_authorizations_ready(credential, agent_id=action.agent_id, identifiers=[identifier, uuid4()])
+        async with get_db_session() as db:
+            (await db.get(Task, task_id)).lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        assert (await client.get(f"{endpoint}/{identifier}", headers=headers)).json()["status"] == "pending"
+        assert not await runtime_authorizations_ready(credential, agent_id=action.agent_id, identifiers=[identifier])
+        async with get_db_session() as db:
+            task = await db.get(Task, task_id)
+            task.lease_expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+            task_service.suspend(task, task_service.PAUSE_USER)
+        assert (await client.get(f"{endpoint}/{identifier}", headers=headers)).json()["status"] == "pending"
+        async with get_db_session() as db:
+            task_service.release(await db.get(Task, task_id), task_service.PAUSE_USER)
+        # The driver observes the old waiting snapshot before the actor's next
+        # authorization poll. Returning WAITING here would release the lease again
+        # and strand the already answered request after its wake was consumed.
+        import httpx
+        from app.harnesses.openai_client import OpenAIHarnessClient
+        state = {"status": "waiting_for_authorization", "authorization_requests": [str(identifier)]}
+        observed = asyncio.Event()
+
+        def runtime_snapshot(_request):
+            observed.set()
+            return httpx.Response(200, json=dict(state))
+
+        async def delayed_actor_poll():
+            await observed.wait()
+            await asyncio.sleep(0.35)
+            assert (await client.get(f"{endpoint}/{identifier}", headers=headers)).json()["status"] == ("approved" if approved else "denied")
+            async with get_db_session():
+                scope = await SqlAlchemyAgentTaskAdapter().record_scope_preflight(task_id, agent_id=action.agent_id,
+                    descriptor=None, tool_name="synthetic_write", arguments={})
+                assert scope.decision == "allow_and_record"
+            assert (await client.post(endpoint, headers=headers, json=payload)).json()["claimed"] is approved
+            assert (await client.post(endpoint, headers=headers, json=payload)).json()["claimed"] is False
+            async with get_db_session():
+                if approved:
+                    await finish_action(identifier, receipt={"synthetic_effect": "completed"})
+            state.update(status="completed", authorization_requests=[])
+
+        runtime_client = OpenAIHarnessClient(base_url="http://runtime.example.test/v1", token="synthetic",
+            run_context=credential, transport=httpx.MockTransport(runtime_snapshot))
+        result, _ = await asyncio.wait_for(asyncio.gather(
+            runtime_client.control_run(request.to_envelope(), runtime_run_id="synthetic-actor", start=False),
+            delayed_actor_poll()), timeout=5)
+        assert result.disposition == "completed" and result.success
+        async with get_db_session() as db:
+            if not approved:
+                assert (await db.get(ActionAuthorization, identifier)).claimed_at is None
+                return
+            task_service.suspend(await db.get(Task, task_id), task_service.PAUSE_USER)
+        assert (await client.get(f"{endpoint}/{identifier}", headers=headers)).json()["status"] == "completed"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("runtime_action", ["openai_messages", "codex", "claude_agent", "deepseek_harness"], indirect=True)
 async def test_runtime_run_grant_is_scoped_renewable_and_revoked_by_assignment_changes(action, runtime_action, monkeypatch):
     from app.agent import AgentSnapshot, ResolvedExecutionTarget, AgentRunCheckpoint
     from app.agent.tests.test_driver_testkit import _request
@@ -381,7 +514,8 @@ async def test_expired_approval_releases_waiting_task_without_dispatch(action, m
         assert row.finished_at is not None and row.wake_due_at is None
         task = await db.get(Task, task_id)
         assert not task_service.is_paused_for(task, task_service.PAUSE_APPROVAL)
-        assert task.status == TaskStatus.EXEC
+        # The continuation must be schedulable without orphan recovery.
+        assert task.status == TaskStatus.DISPATCH
     schedule.assert_called_once_with(task_id, fast=True)
 
 

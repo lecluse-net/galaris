@@ -66,9 +66,11 @@ from .runtime_authorization import (
     close_runtime_run_grant,
     renew_runtime_run_grant,
     revoke_runtime_run_grant,
+    runtime_authorizations_ready,
 )
 from .runtime_authorization import (
     register_runtime_authorization_configuration as register_runtime_authorization_configuration,
+    register_runtime_dispatch_guard as register_runtime_dispatch_guard,
 )
 from .authorization import fingerprint as authorization_fingerprint
 from .authorization import (
@@ -111,6 +113,7 @@ __all__ = [
     "execute_rest_request",
     "execute_workflow_tool",
     "register_runtime_authorization_configuration",
+    "register_runtime_dispatch_guard",
     "authorization_fingerprint",
     "continued_deferred_dispatch",
     "release_buffered_dispatch",
@@ -129,6 +132,7 @@ __all__ = [
     "resolve_runtime_run_grant",
     "close_runtime_run_grant",
     "renew_runtime_run_grant",
+    "runtime_authorizations_ready",
     "AuthorizationAction",
     "AuthorizationRequired",
     "AuthorizationClosed",

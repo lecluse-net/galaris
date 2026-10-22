@@ -139,6 +139,11 @@ Profiles and voices refresh when **Models** opens. Administer harnesses under
 **Administer → Preferences → Harnesses** (`/params/harnesses`). Harness entries depend
 on the server catalog: use the displayed link without inventing an identifier.
 
+If a managed Harness rejects its technical identity (`Invalid runtime principal`), use
+**Restart** in its supervision view to recreate the runtime with its credentials, wait
+until it is ready, then retry the Task. **Refresh** only requests Skill projection.
+Recreating the runtime does not retry any business action.
+
 Under **Models**, choose the **Primary profile** and, if needed, a
 **Secondary profile (fallback)**, then save the record. An empty primary selection follows
 the current profile; **No fallback profile** disables failover. Configure the same usages

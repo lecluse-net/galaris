@@ -311,6 +311,7 @@ export default {
         runtimeUnknown: 'statut inconnu',
         argument: 'Argument',
         value: 'Valeur',
+        returnedContent: 'Contenu retourné',
       },
       memory: {
         tab: 'Mémoire',
@@ -677,6 +678,7 @@ export default {
         runtimeUnknown: 'unknown status',
         argument: 'Argument',
         value: 'Value',
+        returnedContent: 'Returned content',
       },
       memory: {
         tab: 'Memory',
@@ -860,7 +862,7 @@ export default {
         successCriteria: '成功标准', deliverables: '交付成果', steps: '生成的计划', rootSteps: '根步骤', totalSteps: '步骤总数', progress: '进度', substeps: '{count} 个子步骤',
         clarifications: '说明问题', noPlan: '没有可用计划', noPrompt: '没有可用的规划器提示词', noSystemPrompt: '没有可用的规划器系统提示词',
       },
-      execution: { title: '执行结果', thoughtSteps: '推理步骤', budget: '预算', details: '详情', ai: 'AI', thinking: '思考中', starting: '正在开始执行…', noTrace: '没有可用跟踪', llmCalls: 'LLM 调用', runtimeRun: '运行框架执行', copyRunId: '复制运行 ID', runtimeUnknown: '未知状态', argument: '参数', value: '值' },
+      execution: { title: '执行结果', thoughtSteps: '推理步骤', budget: '预算', details: '详情', ai: 'AI', thinking: '思考中', starting: '正在开始执行…', noTrace: '没有可用跟踪', llmCalls: 'LLM 调用', runtimeRun: '运行框架执行', copyRunId: '复制运行 ID', runtimeUnknown: '未知状态', argument: '参数', value: '值', returnedContent: '返回内容' },
       memory: {
         tab: '记忆', contextTitle: '自动使用的记忆', contextHint: '这些记忆用于在执行器开始工作前准备上下文。', executionTitle: '执行期间的第 {index} 次记忆调用',
         query: '执行器试图回忆的内容', arguments: '提交的参数', returnedContent: '返回内容', results: '{count} 个结果', memoriesUsed: '使用了 {count} 条记忆',

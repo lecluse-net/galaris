@@ -69,13 +69,17 @@ pour l’orchestration ; leur driver déclare si une reprise ou un amendement es
 Une réponse d’annulation distingue demande reçue et arrêt confirmé. Voir
 [0100](../../../../project/decisions/0100-harness-capability-and-recovery-contract.md).
 
-Un réessai explicite conserve aussi le checkpoint opaque. Seul le driver peut préparer
-son état via `DriverCheckpointRetryPolicy`, sans changer l'identité de l'exécution.
-L'interne réinitialise le résultat de tentative tout en conservant son journal d'effets ;
-les harnais distants conservent leurs reçus et observent l'acteur existant. Une ancienne
-enveloppe réseau marquée `interrupted` reste une demande de réconciliation, sans nouvelle
-soumission. Une autorité absente, révoquée ou expirée interdit cette reprise et conserve
-un diagnostic distinct ; le réessai ne restaure pas les droits d'exécution.
+Un réessai explicite est négocié via `DriverCheckpointRetryPolicy`. Un checkpoint retourné
+conserve son driver et son identité runtime ; `None` demande une nouvelle opération d'inférence.
+Les harnais réseau gérés choisissent toujours une nouvelle opération : la façade archive le
+checkpoint précédent, efface l'identité active et les approbations périmées, et conserve la
+Task et l'historique des tentatives. Le driver révoque l'ancienne autorité et confirme l'arrêt
+ou l'absence de l'acteur avant d'émettre une nouvelle autorité et de soumettre les mêmes
+objectif et paramètres. Des observations d'outils précédentes, bornées, renseignent la nouvelle
+inférence sur les effets existants. Le harnais interne conserve son journal d'effets.
+La récupération automatique observe toujours l'acteur existant, y compris avec les anciens
+checkpoints `interrupted` ; elle ne soumet jamais un run de remplacement.
+Voir [0214](../../../../project/decisions/0214-explicit-task-retry-fresh-inference.md).
 
 ## Inférence élémentaire
 
@@ -219,7 +223,9 @@ LLM attendent `completed_at`. Les fragments internes restent disponibles aux gar
 checkpoints. Voir [0087](../../../../project/decisions/0087-task-activity-snapshots.md).
 
 Le checkpoint visuel `TaskAttempt.data.live_activity` est limité à 40 messages de 4 000 caractères,
-sans prompts ni charges structurées d’outils. Une écriture JSONB indépendante préserve les reçus
+sans prompts. Les arguments et retours structurés d’outils disposent chacun d’un aperçu de
+4 000 octets maximum, avec masquage des clés de secrets et indication de troncature. Le flux
+Task autorisé conserve les mêmes détails, y compris à la reconnexion. Une écriture JSONB indépendante préserve les reçus
 et checkpoints d’effets. Le harnais personnalisé peut sélectionner les appels LLM corrélés avec
 `streams_ai_messages=false` ; les harnais intégrés conservent leurs messages natifs. Le frontend
 signale la limite de 500 appels chargés et n’additionne pas les deux sources.

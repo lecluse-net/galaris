@@ -528,6 +528,13 @@ async def _sync_hermes_session_messages(
             if tool_call_id:
                 existing = tool_messages_by_id.get(tool_call_id)
                 content = _tool_value_to_text(message.get("content"))
+                outcome = _coerce_tool_args(message.get("content")) or {"output": content[:8_000]}
+                success = (message.get("is_error") is not True and message.get("isError") is not True
+                           and outcome.get("isError") is not True and outcome.get("success") is not False
+                           and not outcome.get("error"))
+                encoded = json.dumps(outcome, ensure_ascii=False, default=str)
+                if len(encoded) > 8_000:
+                    outcome = {"truncated": True, "preview": encoded[:4_000]}
                 if existing is None:
                     existing = AIMessage(
                         type="tool",
@@ -542,6 +549,8 @@ async def _sync_hermes_session_messages(
                 else:
                     existing.tool_call_external_id = tool_call_id
                     existing.content = content or _message(language, "tool_completed")
+                existing.tool_result = outcome
+                existing.success = success
 
         seen_message_ids.add(message_key)
 

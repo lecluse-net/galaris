@@ -66,13 +66,16 @@ their driver decides whether recovery or objective amendment is safe. Cancellati
 receipts distinguish a request from a confirmed stop. See
 [0100](../../../../project/decisions/0100-harness-capability-and-recovery-contract.md).
 
-An explicit retry also preserves the opaque checkpoint. Only its driver may prepare
-that state through `DriverCheckpointRetryPolicy`, without changing the execution identity.
-The internal harness resets the attempt result while keeping its effect journal;
-remote harnesses retain receipts and observe the existing actor. Older network checkpoints
-marked `interrupted` require reconciliation without submitting another run. Missing,
-revoked or expired authority prevents recovery with a distinct diagnostic; retry never
-restores execution rights.
+An explicit retry is negotiated through `DriverCheckpointRetryPolicy`. A returned checkpoint
+keeps its driver and runtime identity; `None` requests a new inference operation. Managed
+network harnesses always choose a new operation: the facade archives the previous checkpoint,
+clears the active identity and stale approvals, and preserves the Task and attempt history.
+The driver revokes the old authority and confirms the actor is stopped or absent before
+issuing fresh authority and submitting the same objective and parameters. Bounded previous
+tool observations inform the new inference about existing effects. The internal harness
+keeps its effect journal. Automatic recovery remains observation of the existing actor,
+including older checkpoints marked `interrupted`; it never submits a replacement run.
+See [0214](../../../../project/decisions/0214-explicit-task-retry-fresh-inference.md).
 
 ## Elementary inference
 
@@ -210,7 +213,9 @@ or terminal result, and call-based views wait for `completed_at`. Internal fragm
 available to guards and checkpoints. See [0087](../../../../project/decisions/0087-task-activity-snapshots.md).
 
 The visual `TaskAttempt.data.live_activity` checkpoint is limited to 40 messages of 4,000 characters,
-without prompts or structured tool payloads. An independent JSONB write preserves effect receipts
+without prompts. Tool arguments and structured results each retain a preview of at most
+4,000 bytes, with secret keys redacted and explicit truncation markers. The authorized Task
+stream preserves the same details, including after reconnection. An independent JSONB write preserves effect receipts
 and checkpoints. Custom Harnesses can select correlated LLM calls with `streams_ai_messages=false`;
 built-in Harnesses retain their native messages. The frontend indicates the 500 loaded call limit
 and never combines the two sources.

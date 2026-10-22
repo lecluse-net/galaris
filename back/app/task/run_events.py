@@ -16,6 +16,7 @@ from core.database import get_db
 from core.user import UserModel, get_user_record
 
 from .models import Task
+from .trace_projection import project_tool_payload
 
 
 class TaskRunRoom(websocket.BaseRoom):
@@ -61,8 +62,8 @@ async def publish_task_run(event: AgentLiveEvent) -> None:
     if isinstance(message, dict):
         message_data = cast(dict[str, object], message)
         message_data["content"] = str(message_data.get("content") or "")[:8_000]
-        message_data.pop("tool_arguments", None)
-        message_data.pop("tool_result", None)
+        for field in ("tool_arguments", "tool_result"):
+            message_data[field] = project_tool_payload(cast(dict[str, Any] | None, message_data.get(field)))
     result = data.get("result")
     if isinstance(result, dict):
         result_data = cast(dict[str, object], result)
@@ -73,8 +74,8 @@ async def publish_task_run(event: AgentLiveEvent) -> None:
         # without invocation IDs. Keep the same bounded projection as live messages.
         for raw_message in cast(list[dict[str, object]], result_data.get("messages", [])):
             raw_message["content"] = str(raw_message.get("content") or "")[:8_000]
-            raw_message.pop("tool_arguments", None)
-            raw_message.pop("tool_result", None)
+            for field in ("tool_arguments", "tool_result"):
+                raw_message[field] = project_tool_payload(cast(dict[str, Any] | None, raw_message.get(field)))
         result_data.pop("metadata", None)
     await websocket.emit(
         "agent_run",

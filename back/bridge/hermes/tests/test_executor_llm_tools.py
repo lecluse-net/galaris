@@ -203,8 +203,9 @@ async def test_sync_llm_tool_messages_excludes_previous_attempts(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("failed", [False, True])
 async def test_sync_hermes_session_messages_restores_native_reasoning_and_tools(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, failed: bool,
 ) -> None:
     messages = [
         {"id": 10, "role": "user", "content": "current objective"},
@@ -230,7 +231,7 @@ async def test_sync_hermes_session_messages_restores_native_reasoning_and_tools(
             "role": "tool",
             "tool_call_id": "call-1",
             "tool_name": "terminal",
-            "content": "/opt/data",
+            "content": '{"error":"Synthetic denial"}' if failed else "/opt/data",
         },
     ]
     monkeypatch.setattr(
@@ -259,10 +260,12 @@ async def test_sync_hermes_session_messages_restores_native_reasoning_and_tools(
 
     assert [(message.tool_name, message.content) for message in result.messages] == [
         ("thinking", "I should inspect the workspace."),
-        ("terminal", "/opt/data"),
+        ("terminal", '{"error":"Synthetic denial"}' if failed else "/opt/data"),
     ]
     assert result.messages[1].tool_arguments == {"command": "pwd"}
     assert result.messages[1].tool_call_external_id == "call-1"
+    assert result.messages[1].success is not failed
+    assert result.messages[1].tool_result == ({"error": "Synthetic denial"} if failed else {"value": "/opt/data"})
     assert result.tools_used == ["terminal"]
     assert seen == {"10", "11", "12"}
 

@@ -1280,6 +1280,7 @@ async def _recover_expired_leases() -> None:
                     .where(
                         Task.status == TaskStatus.EXEC,
                         Task.lease_token.is_(None),
+                        Task.paused.is_(False),
                         Task.deleted_at.is_(None),
                     )
                     .with_for_update(skip_locked=True)

@@ -17,7 +17,7 @@ export default {
         live: 'En direct',
         recentActivity: 'Conversations récentes',
         recentMessages: 'Messages récents',
-        search: 'Rechercher une room, un interlocuteur ou un canal',
+        search: 'Rechercher une conversation, un interlocuteur ou un canal',
         messageSearch: 'Rechercher un message, une conversation ou un interlocuteur',
         agentFilter: 'Agent',
         statusFilter: 'Statut',

@@ -7,6 +7,8 @@ import re
 import secrets
 from pathlib import Path
 
+from loguru import logger
+
 from app.agent import Agent, DriverPipelinePolicy
 from app.harnesses import (
     HarnessAction,
@@ -299,7 +301,7 @@ class CodexHarnessProvider:
         del request, token
         instance_id = _instance_id(agent.code)
         service_token = _SERVICE_TOKEN_PREFIX + secrets.token_urlsafe(36)
-        mcp_token = await mcp_token_service.rotate_system_token(agent.id)
+        mcp_token = await mcp_token_service.ensure_system_token(agent.id)
         created = False
         try:
             system_info = await manager.get_system_info()
@@ -320,9 +322,9 @@ class CodexHarnessProvider:
             if created:
                 try:
                     await manager.delete_instance(instance_id)
+                    await mcp_token_service.revoke_system_tokens(agent.id)
                 except Exception:
-                    pass
-            await mcp_token_service.revoke_system_tokens(agent.id)
+                    logger.exception("Codex cleanup failed after provisioning error: agent={}", agent.code)
             raise
 
         return HarnessProvisioningResult(

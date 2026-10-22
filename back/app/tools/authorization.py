@@ -521,7 +521,13 @@ async def claim_action(action: AuthorizationAction) -> UUID | None:
         elif row.status == "pending":
             pending = row.id
         elif row.status == "approved":
-            if not await _dispatch_available(action.agent_id, action.context_key):
+            runtime_ready = True
+            if action.runtime_grant_id is not None:
+                from .runtime_authorization import runtime_dispatch_ready
+                grant = await db.get(RuntimeRunGrant, action.runtime_grant_id)
+                runtime_ready = grant is not None and await runtime_dispatch_ready(grant,
+                    decided_at=row.decided_at if row.decision_source == "human" else None)
+            if not runtime_ready or not await _dispatch_available(action.agent_id, action.context_key):
                 pending = row.id
             else:
                 row.status = "executing"

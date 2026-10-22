@@ -12,7 +12,7 @@ from core.database import get_db_session
 
 from .authorization import AuthorizationAction, AuthorizationClosed, AuthorizationRequired, claim_action, finish_action
 from .authorization_models import ActionAuthorization, RuntimeRunGrant
-from .runtime_authorization import resolve_runtime_run_grant, runtime_authorization_configuration
+from .runtime_authorization import resolve_runtime_run_grant, runtime_authorization_configuration, runtime_action_status
 from .runtime_principals import RuntimePrincipal, runtime_principal_port
 
 router = APIRouter(prefix="/runtime-authorizations", tags=["runtime-authorizations"])
@@ -56,7 +56,10 @@ async def request_action(request: Request, data: RuntimeAction) -> dict[str, Any
     except AuthorizationRequired as pending:
         return {"status": "pending", "request_id": str(pending.request_id)}
     except AuthorizationClosed as closed:
-        return {"status": closed.status, "request_id": str(closed.request_id), "claimed": False}
+        async with get_db_session() as db:
+            row = await db.get(ActionAuthorization, closed.request_id)
+            current_status = await runtime_action_status(grant, row) if row is not None else closed.status
+        return {"status": current_status, "request_id": str(closed.request_id), "claimed": False}
     return {"status": "executing", "request_id": str(identifier), "claimed": True}
 
 
@@ -86,7 +89,7 @@ async def action_status(request: Request, identifier: UUID) -> dict[str, str]:
             ActionAuthorization.context_key == grant.context_key))
         if row is None:
             raise HTTPException(404, "Authorization not found")
-        return {"status": row.status}
+        return {"status": await runtime_action_status(grant, row)}
 
 
 @router.post("/receipt")
