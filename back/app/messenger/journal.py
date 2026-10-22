@@ -313,6 +313,11 @@ async def record(
         files = await _synchronize_files(inserted_id, connection_id, message.attachments)
         await observe_file_catalogue(connection_id, room_id, files)
         return True
+    if platform == "internal" and direction == "inbound":
+        # Native client IDs identify immutable submissions, including retries
+        # after a lost HTTP response. Provider history refreshes below may update
+        # remote snapshots; a native retry must retain its original file URIs.
+        return False
     existing = (
         await get_db().execute(
             select(Message.id, Message.metadata_)

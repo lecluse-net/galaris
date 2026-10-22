@@ -129,6 +129,135 @@ async function settled(page, key) {
   await expect.poll(() => page.evaluate(key => window.refreshResults[key], key)).toBeTruthy()
 }
 
+for (const attachment of [false, true]) {
+  test(`a failed message preserves its draft and attachments for an explicit retry (${attachment})`, async ({ page }) => {
+    const { messages } = await conversation(page)
+    const attempts = []
+    const endpoint = attachment ? 'attachments' : 'messages'
+    await page.route(`**/api/chat/rooms/room-a/${endpoint}`, async route => {
+      const body = route.request().postData()
+      const clientId = attachment
+        ? body.match(/name="client_message_id"\r\n\r\n([^\r]+)/)[1]
+        : JSON.parse(body).client_message_id
+      attempts.push(clientId)
+      if (attempts.length === 1) return route.abort('connectionreset')
+      return route.fulfill({ status: 201, json: { ...messages['room-a'], id: 'saved-message',
+        external_id: clientId, text: 'Synthetic recoverable message' } })
+    })
+    const draft = page.getByPlaceholder('Write a message…')
+    await draft.fill('Synthetic recoverable message')
+    if (attachment) await page.locator('input[type=file]').setInputFiles({
+      name: 'synthetic-notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic attachment'),
+    })
+    const post = page.getByRole('button', { name: 'Post', exact: true })
+    await post.click()
+    await expect(page.locator('.q-notification')).toBeVisible()
+    await expect(draft).toHaveValue('Synthetic recoverable message')
+    await expect(post).toBeEnabled()
+    if (attachment) await expect(page.getByRole('button', { name: 'Rename synthetic-notes.txt', exact: true })).toBeVisible()
+    await expect(page.locator('input[type=file]')).toBeEnabled()
+    await post.click()
+    await expect(draft).toHaveValue('')
+    await expect.poll(() => attempts.length).toBe(2)
+    expect(attempts[1]).toBe(attempts[0])
+    await expect(page.getByRole('button', { name: 'Rename synthetic-notes.txt', exact: true })).toHaveCount(0)
+  })
+}
+
+for (const refresh of ['blocked', 'failed']) {
+  test(`an accepted message releases the composer when refresh is ${refresh}`, async ({ page }) => {
+    const { messages } = await conversation(page)
+    let posted = false, refreshStarted = false, release
+    const pending = new Promise(resolve => { release = resolve })
+    await page.route('**/api/chat/rooms/room-a/messages', route => {
+      posted = true
+      const { client_message_id, text } = route.request().postDataJSON()
+      return route.fulfill({ status: 201, json: { ...messages['room-a'], id: 'saved-message', external_id: client_message_id, text } })
+    })
+    await page.route('**/api/chat/rooms/room-a/messages?*', async route => {
+      if (!posted) return route.fallback()
+      refreshStarted = true
+      if (refresh === 'blocked') await pending
+      return route.abort('connectionreset')
+    })
+    try {
+      const draft = page.getByPlaceholder('Write a message…')
+      await draft.fill('Synthetic accepted message')
+      await page.getByRole('button', { name: 'Post', exact: true }).click()
+      await expect.poll(() => refreshStarted).toBe(true)
+      await expect.poll(() => page.evaluate(async () => {
+        const { useChatStore } = await import('/app/chat/stores/chat.ts')
+        return useChatStore(window.testApp.pinia).sending
+      })).toBe(false)
+      await expect(draft).toHaveValue('')
+      await expect(page.locator('input[type=file]')).toBeEnabled()
+      await draft.fill('Synthetic next message')
+      await expect(page.getByRole('button', { name: 'Post', exact: true })).toBeEnabled()
+      await expect(page.locator('.q-notification')).toHaveCount(0)
+    } finally { release() }
+  })
+}
+
+test('a canonical receipt recovers a lost POST response without erasing a newer draft', async ({ page }) => {
+  const { messages } = await conversation(page)
+  let submitted, release
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/chat/rooms/room-a/messages', async route => {
+    submitted = route.request().postDataJSON()
+    await pending
+    return route.abort('connectionreset')
+  })
+  const draft = page.getByPlaceholder('Write a message…')
+  await draft.fill('Synthetic first message')
+  await page.getByRole('button', { name: 'Post', exact: true }).click()
+  await expect.poll(() => submitted).toBeTruthy()
+  await draft.fill('Synthetic next draft')
+  await page.route('**/api/chat/rooms/room-a/messages?*', route => route.fulfill({ json: {
+    items: [messages['room-a'], { ...messages['room-a'], id: 'saved-message',
+      external_id: submitted.client_message_id, text: submitted.text }], total: 2,
+  } }))
+  try {
+    await page.evaluate(() => window.testApp.emitSocket('chat.message', { data: { room_id: 'room-a', message_id: 'saved-message', is_new: true } }))
+    await expect.poll(() => page.evaluate(async () => {
+      const { useChatStore } = await import('/app/chat/stores/chat.ts')
+      return useChatStore(window.testApp.pinia).messages.some(message => message.id === 'saved-message')
+    })).toBe(true)
+    release()
+    await expect(page.getByRole('button', { name: 'Post', exact: true })).toBeEnabled()
+    await expect(draft).toHaveValue('Synthetic next draft')
+    await expect(page.locator('.q-notification')).toHaveCount(0)
+    await expect(page.locator('input[type=file]')).toBeEnabled()
+  } finally { release() }
+})
+
+test('a late POST receipt cannot clear another conversation draft', async ({ page }) => {
+  const { rooms, messages } = await conversation(page)
+  let submitted, release
+  const pending = new Promise(resolve => { release = resolve })
+  await page.route('**/api/chat/rooms/room-a/messages', async route => {
+    submitted = route.request().postDataJSON()
+    await pending
+    return route.fulfill({ status: 201, json: { ...messages['room-a'], id: 'saved-message',
+      external_id: submitted.client_message_id, text: submitted.text } })
+  })
+  const draft = page.getByPlaceholder('Write a message…')
+  await draft.fill('Synthetic first message')
+  await page.getByRole('button', { name: 'Post', exact: true }).click()
+  await expect.poll(() => submitted).toBeTruthy()
+  try {
+    await page.evaluate(async room => {
+      const { useChatStore } = await import('/app/chat/stores/chat.ts')
+      await useChatStore(window.testApp.pinia).selectRoom(room)
+    }, rooms[1])
+    await expect(page.locator('.conversation-pane')).toContainText('Content room-b')
+    await draft.fill('Synthetic other conversation draft')
+    release()
+    await expect(page.getByRole('button', { name: 'Post', exact: true })).toBeEnabled()
+    await expect(draft).toHaveValue('Synthetic other conversation draft')
+    await expect(page.locator('.conversation-pane')).not.toContainText('Synthetic first message')
+  } finally { release() }
+})
+
 test('conversation activity bursts retain new messages without concurrent history reloads', async ({ page }) => {
   const state = await conversation(page)
   let release, requests = 0, active = 0, peak = 0, roomLists = 0

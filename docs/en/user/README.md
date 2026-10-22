@@ -217,6 +217,12 @@ visited conversations; going back before the first opening returns to the Chat h
 Selecting the current conversation again does not add a visit. Any open document is saved
 before switching; if saving fails, the conversation and document draft stay open.
 
+Text and selected attachments remain in the composer until sending is confirmed. After an
+error, you can retry without entering them again; an unchanged retry keeps the message identity
+to avoid a second admission if the first send was already received. Once confirmed, a slow or
+unavailable conversation refresh does not block the next send or attachment selection. These
+drafts remain in page memory: save any unsent content before reloading the page.
+
 In native Chat, the small buttons beside “Thinking” control that response: **Pause** saves
 progress, **Resume** continues from it, and **Stop** removes the Agent’s response from the
 round, including its provisional text. Your message remains visible. **Reply now** requests an answer using available

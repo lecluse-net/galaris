@@ -287,6 +287,13 @@ retrouve l’accueil du Chat. Sélectionner à nouveau la conversation courante 
 visite. Le document ouvert est sauvegardé avant le changement ; si la sauvegarde échoue,
 la conversation et le brouillon restent affichés.
 
+Le texte et les pièces jointes sélectionnées restent dans la saisie tant que l’envoi n’est
+pas confirmé. Après une erreur, vous pouvez réessayer sans les ressaisir ; un réessai
+inchangé conserve l’identifiant du message pour éviter une seconde admission si le premier
+envoi avait déjà été reçu. Après confirmation, un rafraîchissement lent ou indisponible du
+fil ne bloque pas l’envoi suivant ni la sélection des pièces jointes. Ces brouillons restent
+en mémoire dans la page : rechargez-la seulement après avoir conservé le contenu non envoyé.
+
 Après l'admission de votre message, « Réflexion en cours » apparaît dès que le
 round en attente est reçu par l'interface, avant ses premiers fragments. Une
 réponse déjà en cours reste affichée si vous envoyez une nouvelle demande.

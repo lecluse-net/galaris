@@ -1,7 +1,8 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { document as documentFixture } from './data.mjs'
 
-const events = (page, name) => page.evaluate(name => window.testApp.events.filter(event => event.name === name).map(event => event.args), name)
+const events = (page, name) => page.evaluate(name => window.testApp.events.filter(event => event.name === name).map(event => name === 'send' ? event.args.slice(0, 4) : event.args), name)
+const acknowledgeSend = page => page.evaluate(() => window.testApp.events.filter(event => event.name === 'send').at(-1).args[4](true))
 
 for (const suggestedLabel of ['Alice', 'Alice (3)']) {
 test(`room creation uses the available name ${suggestedLabel} and preserves custom names and preferences`, async ({ page }) => {
@@ -104,12 +105,15 @@ test('composer sends task intent and the selected effort then resets', async ({ 
   await expect(slider).toHaveAttribute('aria-valuenow', '5')
   await page.getByRole('button', { name: 'Post', exact: true }).click()
   await expect.poll(() => events(page, 'send')).toEqual([['@effort Analyse the report', undefined, 'max', true]])
+  await expect(input).toHaveValue('@effort Analyse the report')
+  await acknowledgeSend(page)
   await expect(input).toHaveValue('')
   await expect(slider).toHaveCount(0)
   await input.fill('Ordinary message')
   await input.press('Enter')
   await expect.poll(() => events(page, 'send')).toHaveLength(2)
   expect((await events(page, 'send'))[1]).toEqual(['Ordinary message', undefined, undefined, false])
+  await acknowledgeSend(page)
 })
 
 for (const width of [390, 1280]) {
@@ -129,6 +133,7 @@ for (const width of [390, 1280]) {
     await input.fill(`  ${message}  `)
     await post.click()
     await expect.poll(() => events(page, 'send')).toEqual([[message, undefined, undefined, false]])
+    await acknowledgeSend(page)
     await expect(input).toHaveValue('')
     await expect(post).toBeDisabled()
 
@@ -168,6 +173,7 @@ for (const width of [390, 1280]) {
       const sent = window.testApp.events.filter(event => event.name === 'send').at(-1)
       return Promise.all(sent.args[1].map(file => file.text()))
     })).toEqual(['Notes', 'Extra'])
+    await acknowledgeSend(page)
     await expect(post).toBeDisabled()
   })
 }

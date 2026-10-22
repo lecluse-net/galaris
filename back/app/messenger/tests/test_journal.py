@@ -794,16 +794,40 @@ async def test_journal_preserves_native_attachment_uuid(db: AsyncSession) -> Non
                 kind="document",
             )
         ],
-        time=100,
+        time=0,
     )
 
     assert await journal.persist_inbound(
-        message, connection_id=connection.id, platform="internal"
+        message, connection_id=connection.id, platform="internal", metadata={"language": "fr"},
     )
 
     stored = await db.get(FileModel, file_id)
     assert stored is not None
     assert stored.name == "document.txt"
+
+    original = await journal.stored_message(
+        connection_id=connection.id, remote_message_id=message.id, direction="inbound",
+    )
+    assert original is not None
+    timestamp = original.created_at
+    replacement_file_id = uuid4()
+    # An upload retry allocates new temporary blobs. The committed attachment
+    # URI, timestamp and context must still refer to the first receipt.
+    retry = message.model_copy(update={"attachments": [ObservedMessengerFile(
+        id=str(replacement_file_id), local_id=replacement_file_id,
+        name="document.txt", mime="text/plain", size=4, kind="document",
+    )]})
+    assert not await journal.persist_inbound(
+        retry, connection_id=connection.id, platform="internal", metadata={"language": "en"},
+    )
+    replayed = await journal.stored_message(
+        connection_id=connection.id, remote_message_id=message.id, direction="inbound",
+    )
+    assert replayed is not None
+    assert [file.id for file in replayed.files] == [file_id]
+    assert replayed.created_at == timestamp
+    assert replayed.metadata_["language"] == "fr"
+    assert await db.get(FileModel, replacement_file_id) is None
 
 
 @pytest.mark.asyncio

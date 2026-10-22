@@ -126,7 +126,7 @@
                   icon="send"
                   class="composer-send-button"
                   :aria-label="t('chat.post')"
-                  :loading="sending || preparingSend"
+                  :loading="sending || submitting"
                   :disable="!canSubmit"
                   @click="submit"
                 >
@@ -297,13 +297,15 @@ const props = withDefaults(defineProps<{
   maxAttachmentBytes: 0,
 })
 const emit = defineEmits<{
-  send: [text: string, files?: File[], reasoningEffortOverride?: ReasoningEffort, taskRequested?: boolean]
+  send: [text: string, files: File[] | undefined, reasoningEffortOverride: ReasoningEffort | undefined, taskRequested: boolean, acknowledge: (accepted: boolean) => void]
   error: [error: unknown]
   'cancel-reply': []
   'update:topicId': [value: string | null]
 }>()
 const text = ref('')
 const preparingSend = ref(false)
+const submitting = ref(false)
+let roomGeneration = 0
 const files = ref<File[]>([])
 const pendingFileKeys = new WeakMap<File, number>()
 let nextFileKey = 0
@@ -339,7 +341,7 @@ const outgoingText = computed(() => {
   return withoutTopic.trim()
 })
 const canSubmit = computed(() => (
-  !props.sending && !preparingSend.value && !dictationBusy.value && Boolean(outgoingText.value || files.value.length)
+  !props.sending && !submitting.value && !dictationBusy.value && Boolean(outgoingText.value || files.value.length)
 ))
 type MessageInputRef = {
   getNativeElement: () => HTMLInputElement | HTMLTextAreaElement
@@ -881,30 +883,37 @@ async function submit(): Promise<void> {
   if (!canSubmit.value) return
   const oversized = files.value.find(rejectOversized)
   if (oversized) return
-  if (props.beforeSend) {
-    const roomId = props.roomId
-    preparingSend.value = true
-    try {
-      if (!await props.beforeSend() || props.roomId !== roomId) return
-    } catch (error) {
-      emit('error', error)
-      return
-    } finally {
-      preparingSend.value = false
+  const generation = roomGeneration
+  submitting.value = true
+  try {
+    if (props.beforeSend) {
+      preparingSend.value = true
+      try {
+        if (!await props.beforeSend() || roomGeneration !== generation) return
+      } finally {
+        preparingSend.value = false
+      }
     }
+    cancelDictation()
+    const submittedText = text.value
+    const submittedFiles = [...files.value]
+    const submittedEffort = reasoningEffortIndex.value
+    const accepted = await new Promise<boolean>(acknowledge => emit(
+      'send', outgoingText.value, submittedFiles.length ? submittedFiles : undefined,
+      effortSelectOpen.value ? reasoningEffort.value : undefined, taskRequested.value,
+      acknowledge,
+    ))
+    if (!accepted || generation !== roomGeneration) return
+    // Acknowledging this message must not erase text typed while it was in flight.
+    if (text.value === submittedText) text.value = ''
+    files.value = files.value.filter(file => !submittedFiles.includes(file))
+    if (reasoningEffortIndex.value === submittedEffort) reasoningEffortIndex.value = DEFAULT_REASONING_LEVEL
+    commandHelpOpen.value = false
+  } catch (error) {
+    emit('error', error)
+  } finally {
+    submitting.value = false
   }
-  cancelDictation()
-  emit(
-    'send',
-    outgoingText.value,
-    files.value.length ? [...files.value] : undefined,
-    effortSelectOpen.value ? reasoningEffort.value : undefined,
-    taskRequested.value,
-  )
-  commandHelpOpen.value = false
-  text.value = ''
-  files.value = []
-  reasoningEffortIndex.value = DEFAULT_REASONING_LEVEL
 }
 
 onBeforeUnmount(() => {
@@ -944,6 +953,7 @@ watch(effortSelectOpen, (visible, wasVisible) => {
 })
 
 watch(() => props.roomId, () => {
+  roomGeneration += 1
   cancelDictation()
   commandHelpOpen.value = false
   reasoningEffortIndex.value = DEFAULT_REASONING_LEVEL

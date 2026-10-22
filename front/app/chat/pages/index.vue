@@ -638,13 +638,16 @@ async function prepareMessage(): Promise<boolean> {
   }
   return store.selectedRoom?.id === roomId
 }
-async function sendMessage(text:string,files?:File[],reasoningEffortOverride?:ReasoningEffort,taskRequested=false){
+async function sendMessage(text:string,files:File[]|undefined,reasoningEffortOverride:ReasoningEffort|undefined,taskRequested:boolean,acknowledge:(accepted:boolean)=>void){
+  let accepted = false
+  const roomId = store.selectedRoom?.id
   try {
     const documentId = integratedDocument.value?.id === displayedDocumentId.value
       ? displayedDocumentId.value : null
-    await store.send(text,files,replyingTo.value?.id ?? null,selectedTopicId.value,reasoningEffortOverride ?? null,taskRequested,documentId,locale.value,documentId ? documentPane.value?.captureFocus() ?? null : null, codeStore.active?.loaded && !codeStore.active.error ? selectedCodeId.value : null)
-    replyingTo.value=null;selectedTopicId.value=null
+    accepted = await store.send(text,files,replyingTo.value?.id ?? null,selectedTopicId.value,reasoningEffortOverride ?? null,taskRequested,documentId,locale.value,documentId ? documentPane.value?.captureFocus() ?? null : null, codeStore.active?.loaded && !codeStore.active.error ? selectedCodeId.value : null)
+    if (accepted && store.selectedRoom?.id === roomId) { replyingTo.value=null;selectedTopicId.value=null }
   } catch(error) { reportError(error) }
+  finally { acknowledge(accepted) }
 }
 async function onMessageScroll(info:MessageScrollInfo){const atBottom=info.verticalSize-info.verticalContainerSize-info.verticalPosition<=conversationBottomThreshold;showScrollToBottom.value=historyScrollEnabled&&!atBottom;if(!historyScrollEnabled||restoringHistoryPosition)return;if(atBottom&&(info.verticalPosition>120||!store.hasOlderMessages))void store.loadRecentMessages().catch(()=>undefined);if(!historyNavigationRequested||info.verticalPosition>120||store.loadingOlderMessages||!store.hasOlderMessages)return;restoringHistoryPosition=true;const roomId=store.selectedRoom?.id;const previousSize=info.verticalSize;const previousPosition=info.verticalPosition;try{await store.loadOlderMessages();await nextTick();if(store.selectedRoom?.id!==roomId)return;const currentSize=messageScrollArea.value?.getScroll().verticalSize ?? previousSize;messageScrollArea.value?.setScrollPosition('vertical',previousPosition+currentSize-previousSize);await nextAnimationFrame();await nextAnimationFrame()}finally{restoringHistoryPosition=false}}
 async function openCreate(agentId?:number){if(!canCreateRoom.value)return;await report(async()=>{const result=agentId === undefined ? await service.recipients() : {agents:homeAgents.value};if(!canCreateRoom.value)return;recipients.value=result;initialAgentId.value=result.agents.some(agent=>agent.agent_id===agentId)?agentId??null:null;createDialog.value=true})}

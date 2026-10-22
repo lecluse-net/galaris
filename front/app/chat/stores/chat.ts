@@ -3,7 +3,7 @@ import type { DocumentFocus } from '../documentFocus'
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { usePrivilegeStore } from '@/core/authorize'
-import { AUTH_TOKEN_CHANGED_EVENT, getStoredAccessToken } from '@/core/api'
+import { AUTH_TOKEN_CHANGED_EVENT, getStoredAccessToken, sessionGeneration } from '@/core/api'
 import { websocket, BaseRoom } from '@/core/websocket'
 import { chatService as service } from '../services/chatService'
 import { applyVoiceTranscriptionEvent, loadMessageActivitySnapshot, mergeConversationActivity, mergeChatMessages, orderChatMessages, reconcileLiveRoundFromActivitySnapshot, reconcileVoiceTranscriptions, shouldShowLiveConversationRound, startLiveConversationRound } from '../liveState'
@@ -61,6 +61,8 @@ export const useChatStore = defineStore('chat', () => {
   const activityPageSize = ref(50)
   const loading = ref(false)
   const sending = ref(false)
+  let sendSequence = 0
+  let unconfirmedSend: { signature: string; files: readonly File[]; clientMessageId: ReturnType<typeof crypto.randomUUID> } | null = null
   const roomSearch = ref('')
   const viewerAgentId = ref<number | null>(null)
   const incomingMessageNotification = ref<{ roomId: string; messageId: string } | null>(null)
@@ -505,11 +507,24 @@ export const useChatStore = defineStore('chat', () => {
     } catch (error) { if (request.canApply()) handleScopeError(error) }
     finally { loadingRecentMessages.value = false }
   }
-  async function send(text: string, files?: readonly File[], replyToMessageId: string | null = null, topicId: string | null = null, reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null): Promise<void> {
-    if (!selectedRoom.value?.writable || viewerAgentId.value !== null || sending.value) return
+  async function send(text: string, files?: readonly File[], replyToMessageId: string | null = null, topicId: string | null = null, reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null): Promise<boolean> {
+    if (!selectedRoom.value?.writable || viewerAgentId.value !== null || sending.value) return false
     const room = selectedRoom.value
-    const clientMessageId = crypto.randomUUID()
-    const messagesTotalBeforeSend = messagesTotal.value
+    const session = sessionGeneration()
+    const generation = selectedRoomGeneration
+    const operation = ++sendSequence
+    const active = (): boolean => operation === sendSequence && session === sessionGeneration()
+    const current = (): boolean => active() && generation === selectedRoomGeneration && selectedRoom.value?.id === room.id
+    const attachments = files ?? []
+    const signature = JSON.stringify([session, room.id, text, replyToMessageId, topicId, reasoningEffortOverride,
+      taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId])
+    // An explicit retry of unchanged content retains its admission identity. It
+    // can recover a lost HTTP receipt without creating a second message/round.
+    const retry = unconfirmedSend?.signature === signature
+      && unconfirmedSend.files.length === attachments.length
+      && unconfirmedSend.files.every((file, index) => file === attachments[index])
+    const clientMessageId = retry && unconfirmedSend ? unconfirmedSend.clientMessageId : crypto.randomUUID()
+    unconfirmedSend = { signature, files: [...attachments], clientMessageId }
     const repliedMessage = replyToMessageId
       ? messages.value.find(message => message.id === replyToMessageId) ?? null
       : null
@@ -538,20 +553,40 @@ export const useChatStore = defineStore('chat', () => {
       const sentMessage = files?.length
         ? await service.upload(room.id, files, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId)
         : await service.send(room.id, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId)
-      if (selectedRoom.value?.id === room.id) mergeSentMessage(sentMessage)
-      messagesPage.value = 1
-      await refreshSelected()
-      await refreshRooms()
+      if (!active()) return false
+      unconfirmedSend = null
+      if (current()) {
+        mergeSentMessage(sentMessage)
+        messagesPage.value = 1
+        // Optional reads cannot hold the composer or turn an accepted POST into
+        // a failed send. They retain their normal access-denial handling.
+        void refreshSelected().catch(() => undefined)
+        void refreshRooms().catch(() => undefined)
+      }
+      return true
     } catch (error) {
-      if (selectedRoom.value?.id === room.id) {
+      if (!active()) return false
+      if (current()) {
+        const confirmed = messages.value.some(message => message.external_id === clientMessageId
+          && message.room_id === room.id && !message.id.startsWith('pending:'))
+        if (confirmed && axios.isAxiosError(error) && !error.response) {
+          unconfirmedSend = null
+          return true
+        }
         const optimisticStillExists = messages.value.some(message => message.id === optimisticMessage.id)
         if (optimisticStillExists) {
           messages.value = messages.value.filter(message => message.id !== optimisticMessage.id)
-          messagesTotal.value = messagesTotalBeforeSend
+          messagesTotal.value = Math.max(messages.value.length, messagesTotal.value - 1)
         }
+        handleScopeError(error)
       }
-      handleScopeError(error)
-    } finally { sending.value = false }
+      throw error
+    } finally {
+      if (operation === sendSequence) {
+        sending.value = false
+        if (session !== sessionGeneration()) unconfirmedSend = null
+      }
+    }
   }
   function applyMessageTopicChange(change: MessageTopicChange): void {
     const anchor = messages.value.find(message => message.id === change.message_id)
@@ -841,6 +876,9 @@ export const useChatStore = defineStore('chat', () => {
     pendingVoiceTranscriptions.value = []
   }
   function purge(): void {
+    sendSequence += 1
+    sending.value = false
+    unconfirmedSend = null
     selectedRoomGeneration += 1
     roomsRequestSequence += 1
     viewerAgentId.value = null; rooms.value = []; roomsTotal.value = 0; roomsPage.value = 1; loadingMoreRooms.value = false; includeExternalRooms.value = false; includeArchivedRooms.value = false; selectedRoom.value = null; loadingRoomId.value = null; messages.value = []; messagesTotal.value = 0; resetProviderHistory(); activity.value = []; activityTotal.value = 0; commands.value = []; activeCall.value = null; stoppingCallId.value = null; endedCallId.value = null; callAvailable.value = false; liveRound.value = null; pendingVoiceTranscriptions.value = []; incomingMessageNotification.value = null; observedRealtimeMessageIds.clear()
