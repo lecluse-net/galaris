@@ -71,8 +71,17 @@ reconciliation by `Message-ID` in Sent.
 
 New MCP calls use Enabled/Disabled/Ask modes and the common authorization journal. The final
 MIME and attachments are prepared before asking; after agreement, only those persisted bytes
-are submitted. Only the designated Mail approver may answer. One visible request suffices; the SMTP journal
-still handles duplicates and unknown outcomes.
+are submitted. Only the designated Mail approver may answer. The Mail row references this
+authorization through `authorization_id`. The Mail journal projects its pending state and
+decision: accepting or rejecting there calls `app.tools.answer_action`, like the conversation
+choice. Approval wakes the original caller; the journal does not submit the message to SMTP
+itself. Its receipt distinguishes a recorded approval from an actual SMTP acceptance.
+The SMTP journal still handles duplicates and unknown outcomes. Repeating the same decision
+has no additional effect; an opposite or expired decision is rejected.
+
+DbAdmin links previously prepared rows to their common authorization in bounded pages,
+checking the agent and connection. This repair preserves MIME bytes and transport state;
+it neither decides requests nor triggers sends.
 
 For historical requests created with `approval_required`, the first claim transitions to
 `pending_approval` and immediately returns this receipt to the agent without contacting SMTP.
@@ -81,7 +90,7 @@ to the connections, can approve or reject the message. An approval locks the row
 exactly the persisted MIME; a rejection is terminal and preserves the optional reason. A later
 change to the connection policy does not affect an email already awaiting approval.
 
-Each pending email also produces a `mail_approval` choice in a private internal Chat conversation
+Each historical pending email also produces a `mail_approval` choice in a private internal Chat conversation
 with that approver. The request shows To/Cc/Bcc recipients, the subject, each body preview limited
 to 6,000 characters, and attachment metadata; the Mail journal retains the full content.
 **Allow sending** and **Reject** call the same domain operations as the journal. Identity,
@@ -104,6 +113,13 @@ Ce message a été envoyé par un agent d'intelligence artificielle via Galaris.
 
 This signature is neither a connection parameter nor an MCP argument, so an agent cannot disable
 it. `Bcc` is passed to the SMTP envelope without being written to the MIME headers.
+
+After SMTP acceptance, the bridge archives the exact durable MIME through IMAP in the
+configured or advertised Sent mailbox. It first searches for its `Message-ID`: a provider
+copy or an earlier APPEND whose response was lost is not duplicated. Replays are serialized
+through the durable delivery row. Archive failure remains explicit in the receipt detail,
+preserves `sent`, and never resubmits to SMTP; replaying the same idempotency key and content
+can repair only the Sent copy.
 
 A durably `sent` submission also projects each distinct recipient from `To`, `Cc`, and
 `Bcc` as a private contact. An idempotent replay refreshes this projection without creating a
@@ -131,8 +147,9 @@ to Ask without enabling blocked functions. An active policy without an active US
 before the mail is created. The Tool is not auto-connected and remains absent from an agent's
 catalog until an administrator has created and activated its connection.
 
-The `/connection/mail` page, protected by `CONNECTION_ACCESS`, displays `pending_approval`
-emails first, followed by the complete history. Both lists use server-side pagination capped
+The `/connection/mail` page, protected by `CONNECTION_ACCESS`, displays emails with a pending
+common authorization and historical `pending_approval` emails first, followed by the complete
+history. Both lists use server-side pagination capped
 at 500, an agent filter, and a search across the agent, sender, recipients, subject, and
 body. The details expose the relevant content, reviewer, and SMTP outcome, but never the raw
 MIME payload. Its navigation entry is visible only if at least one active Mail connection

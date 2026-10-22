@@ -9,6 +9,12 @@ from .mcp_authorization import bind_native_action
 from .authorization import authorization_policy as agent_authorization_policy
 from .secrets import public_connection_schema as public_connection_schema
 from .secrets import resolve_connection_references as resolve_connection_references
+from .authorization_views import (
+    AuthorizationReview as AuthorizationReview,
+    authorization_reviews as authorization_reviews,
+    pending_authorization_ids as pending_authorization_ids,
+    prepared_authorization_links as prepared_authorization_links,
+)
 from .admin_network import diagnostic_client as mcp_http_client
 
 
@@ -126,6 +132,10 @@ __all__ = [
     "AuthorizationAction",
     "AuthorizationRequired",
     "AuthorizationClosed",
+    "AuthorizationReview",
+    "authorization_reviews",
+    "pending_authorization_ids",
+    "prepared_authorization_links",
     "claim_action",
     "answer_action",
     "finish_action",

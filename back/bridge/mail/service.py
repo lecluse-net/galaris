@@ -17,10 +17,11 @@ from urllib.parse import unquote
 from uuid import UUID, uuid4
 
 from pydantic import EmailStr, TypeAdapter
-from sqlalchemy import Text, cast as sql_cast, func, or_, select
+from sqlalchemy import Text, and_, cast as sql_cast, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.agent.contracts import RuntimeName
+from app.tools.facade import AuthorizationReview, authorization_reviews, pending_authorization_ids
 from app.file_share import ResourceContext, materialize_resource
 from core.database import get_db
 from core.user import UserModel
@@ -453,15 +454,39 @@ async def _reconcile_uncertain(
     return _receipt(delivery, "Submission outcome remains uncertain; it was not retried")
 
 
+async def _archive_sent_copy(
+    config: MailConnectionConfig, delivery: MailOutboundDelivery, receipt: MailSendReceipt,
+) -> MailSendReceipt:
+    db = get_db()
+    try:
+        # Serialize repairs and idempotent replays through the durable delivery.
+        # SMTP success was already committed; IMAP failure must never undo it.
+        current = await db.scalar(select(MailOutboundDelivery).where(MailOutboundDelivery.id == delivery.id)
+            .with_for_update().execution_options(populate_existing=True))
+        if (current is None or current.status != "sent" or current.raw_message is None or current.sent_at is None
+                or current.connection_id != config.connection_id or current.agent_id != config.agent_id
+                or current.sender_address.casefold() != str(config.email_address).casefold()):
+            raise ValueError("The accepted Mail payload is unavailable for this account")
+        await complete_io(ImapClient(config).store_sent_message, bytes(current.raw_message),
+            message_id=current.rfc_message_id, sent_at=current.sent_at)
+        return receipt.model_copy(update={"detail": f"{receipt.detail}; Sent copy verified"})
+    except Exception as exc:
+        return receipt.model_copy(update={"detail": f"{receipt.detail}; Sent copy unavailable ({type(exc).__name__}). "
+            "SMTP acceptance is unchanged; retry the same idempotency key to repair the archive."})
+    finally:
+        await db.commit()
+
+
 async def _project_sent_recipient_contacts(
     config: MailConnectionConfig,
     delivery: MailOutboundDelivery,
     receipt: MailSendReceipt,
 ) -> MailSendReceipt:
-    """Refresh private contact memories only after durable SMTP success."""
+    """Archive accepted MIME and refresh contacts only after durable SMTP success."""
 
     if receipt.status != "sent":
         return receipt
+    receipt = await _archive_sent_copy(config, delivery, receipt)
     from app.messenger import observe_contact
 
     recipients = dict.fromkeys(
@@ -586,14 +611,22 @@ async def send_outgoing(
             raise PermissionError("Mail authorization targets a different connection")
         # The durable MIME is frozen before asking, and is the only MIME submitted.
         await get_db().commit()
-        identifier = await claim_prepared_action(snapshot={
+        snapshot = {
             "delivery_id": str(delivery.id), "message_id": delivery.rfc_message_id,
             "mime_sha256": hashlib.sha256(delivery.raw_message or b"").hexdigest(),
             "payload_fingerprint": delivery.payload_fingerprint,
             "to": delivery.to_addresses, "cc": delivery.cc_addresses, "bcc": delivery.bcc_addresses,
             "subject": delivery.subject, "body": delivery.body, "html_body": delivery.html_body,
             "attachments": delivery.attachment_metadata,
-        }, approver_user_id=config.approver_user_id)
+        }
+        from app.tools.facade import AuthorizationRequired, AuthorizationClosed
+        try:
+            identifier = await claim_prepared_action(snapshot=snapshot, approver_user_id=config.approver_user_id)
+        except (AuthorizationRequired, AuthorizationClosed) as decision:
+            await _bind_delivery_authorization(delivery, decision.request_id)
+            raise
+        if identifier is not None:
+            await _bind_delivery_authorization(delivery, identifier)
     try:
         receipt = await _submit_delivery(config, delivery)
     except BaseException:
@@ -602,6 +635,16 @@ async def send_outgoing(
     await finish_action(identifier, receipt=receipt.model_dump(mode="json"),
                         outcome="outcome_unknown" if receipt.status == "uncertain" else "failed" if receipt.status == "error" else "completed")
     return receipt
+
+
+async def _bind_delivery_authorization(delivery: MailOutboundDelivery, identifier: UUID) -> None:
+    review = (await authorization_reviews([identifier])).get(identifier)
+    if review is None or review.agent_id != delivery.agent_id or review.connection_id != delivery.connection_id:
+        raise MailApprovalForbiddenError("The authorization does not belong to this Mail delivery")
+    delivery.authorization_id = identifier
+    delivery.approval_required = True
+    delivery.approver_user_id = review.approver_user_id
+    await get_db().commit()
 
 
 async def send(
@@ -809,8 +852,19 @@ def _list_item(
     *,
     labels: dict[int, str],
     current_user_id: int,
+    authorization: AuthorizationReview | None = None,
 ) -> MailDeliveryListItem:
     preview = re.sub(r"\s+", " ", delivery.body).strip()[:240]
+    delivery_status = _delivery_status(delivery)
+    if authorization is not None and delivery_status in ("claimed", "pending_approval"):
+        delivery_status = {
+            "pending": "pending_approval", "denied": "rejected", "expired": "error",
+            "invalidated": "error", "failed": "error", "outcome_unknown": "uncertain",
+        }.get(authorization.status, "claimed")
+    reviewed_by = delivery.reviewed_by_user_id
+    reviewed_at = delivery.reviewed_at
+    if authorization is not None and authorization.decision_source == "human" and authorization.decided_at is not None:
+        reviewed_by, reviewed_at = authorization.approver_user_id, authorization.decided_at
     return MailDeliveryListItem(
         id=delivery.id,
         connection_id=delivery.connection_id,
@@ -824,13 +878,15 @@ def _list_item(
         subject=delivery.subject,
         body_preview=preview,
         attachment_count=len(delivery.attachment_metadata),
-        status=_delivery_status(delivery),
+        status=cast(MailDeliveryStatus, delivery_status),
         approval_required=delivery.approval_required,
+        authorization_id=delivery.authorization_id,
+        authorization_status=authorization.status if authorization else None,
         approver_user_id=delivery.approver_user_id,
         approver_label=labels.get(delivery.approver_user_id or -1),
-        reviewed_by_user_id=delivery.reviewed_by_user_id,
-        reviewed_by_label=labels.get(delivery.reviewed_by_user_id or -1),
-        reviewed_at=delivery.reviewed_at,
+        reviewed_by_user_id=reviewed_by,
+        reviewed_by_label=labels.get(reviewed_by or -1),
+        reviewed_at=reviewed_at,
         rejection_reason=delivery.rejection_reason,
         accepted_recipients=delivery.accepted_recipients,
         rejected_recipients=delivery.rejected_recipients,
@@ -838,7 +894,8 @@ def _list_item(
         updated_at=delivery.updated_at,
         sent_at=delivery.sent_at,
         can_review=(
-            delivery.status == "pending_approval"
+            delivery_status == "pending_approval"
+            and (authorization is None or authorization.status == "pending")
             and delivery.approver_user_id == current_user_id
         ),
     )
@@ -855,10 +912,16 @@ async def list_deliveries(
     agent_ids: Collection[int] | None = None,
 ) -> MailDeliveryPage:
     query = select(MailOutboundDelivery)
+    pending = or_(
+        and_(MailOutboundDelivery.authorization_id.is_(None), MailOutboundDelivery.status == "pending_approval"),
+        and_(MailOutboundDelivery.authorization_id.is_not(None),
+            MailOutboundDelivery.authorization_id.in_(pending_authorization_ids()),
+            MailOutboundDelivery.status.in_(("claimed", "pending_approval"))),
+    )
     if scope == "pending":
-        query = query.where(MailOutboundDelivery.status == "pending_approval")
+        query = query.where(pending)
     elif scope == "history":
-        query = query.where(MailOutboundDelivery.status != "pending_approval")
+        query = query.where(~pending)
     if agent_id is not None:
         query = query.where(MailOutboundDelivery.agent_id == agent_id)
     if agent_ids is not None:
@@ -892,9 +955,11 @@ async def list_deliveries(
         ).scalars()
     )
     labels = await _user_labels(deliveries)
+    reviews = await authorization_reviews({item.authorization_id for item in deliveries if item.authorization_id is not None})
     return MailDeliveryPage(
         items=[
-            _list_item(item, labels=labels, current_user_id=current_user_id)
+            _list_item(item, labels=labels, current_user_id=current_user_id,
+                authorization=reviews.get(item.authorization_id) if item.authorization_id is not None else None)
             for item in deliveries
         ],
         total=total,
@@ -957,7 +1022,9 @@ async def get_delivery(
         raise MailDeliveryNotFoundError
     await get_db().refresh(delivery)
     labels = await _user_labels([delivery])
-    item = _list_item(delivery, labels=labels, current_user_id=current_user_id)
+    reviews = await authorization_reviews([delivery.authorization_id]) if delivery.authorization_id is not None else {}
+    item = _list_item(delivery, labels=labels, current_user_id=current_user_id,
+        authorization=reviews.get(delivery.authorization_id) if delivery.authorization_id is not None else None)
     return MailDeliveryDetail(
         **item.model_dump(),
         body=delivery.body,
@@ -989,6 +1056,10 @@ async def approve_delivery(
         raise MailDeliveryNotFoundError
     if delivery.approver_user_id != current_user_id:
         raise MailApprovalForbiddenError
+    if delivery.authorization_id is not None:
+        await _answer_delivery_authorization(delivery, current_user_id=current_user_id, approved=True)
+        await get_db().refresh(delivery)
+        return _receipt(delivery, "Authorization recorded; the original caller resumes the prepared Mail operation")
     if delivery.status != "pending_approval":
         raise MailDeliveryStateError("This Mail delivery is no longer awaiting approval")
     if delivery.connection_id is None:
@@ -1002,6 +1073,28 @@ async def approve_delivery(
     from .approvals import close_approval
     await close_approval(delivery)
     return receipt
+
+
+async def _answer_delivery_authorization(delivery: MailOutboundDelivery, *, current_user_id: int, approved: bool) -> None:
+    from app.tools.facade import answer_action
+
+    identifier = delivery.authorization_id
+    if identifier is None:
+        raise MailDeliveryStateError("This Mail delivery has no common authorization")
+    review = (await authorization_reviews([identifier])).get(identifier)
+    if (review is None or review.agent_id != delivery.agent_id or review.connection_id != delivery.connection_id
+            or review.approver_user_id != current_user_id):
+        raise MailApprovalForbiddenError
+    if review.status == "pending" and delivery.status in ("claimed", "pending_approval"):
+        if await answer_action(identifier, user_id=current_user_id, approved=approved):
+            return
+        review = (await authorization_reviews([identifier])).get(identifier)
+    # Idempotent same decisions are harmless; an opposite or expired decision
+    # cannot be overwritten, even when Chat and journal arrive concurrently.
+    settled = ("approved", "executing", "completed") if approved else ("denied",)
+    if review is None or review.status not in settled:
+        raise MailDeliveryStateError("Authorization already closed or approver no longer authorized")
+    await get_db().commit()
 
 
 async def reject_delivery(
@@ -1025,6 +1118,11 @@ async def reject_delivery(
         raise MailDeliveryNotFoundError
     if delivery.approver_user_id != current_user_id:
         raise MailApprovalForbiddenError
+    if delivery.authorization_id is not None:
+        await _answer_delivery_authorization(delivery, current_user_id=current_user_id, approved=False)
+        delivery.rejection_reason = reason.strip() or None
+        await get_db().commit()
+        return await get_delivery(delivery_id, current_user_id=current_user_id, agent_ids=agent_ids)
     if delivery.status != "pending_approval":
         raise MailDeliveryStateError("This Mail delivery is no longer awaiting approval")
     delivery.status = "rejected"

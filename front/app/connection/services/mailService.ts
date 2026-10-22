@@ -46,6 +46,8 @@ export interface MailDeliveryListItem {
   attachment_count: number
   status: MailDeliveryStatus
   approval_required: boolean
+  authorization_id: string | null
+  authorization_status: string | null
   approver_user_id: number | null
   approver_label: string | null
   reviewed_by_user_id: number | null

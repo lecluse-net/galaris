@@ -212,10 +212,18 @@ restent actifs. Voir [l’administration du Navigateur](../admin/tool-administra
 
 Si une connexion Mail exige une validation humaine, son responsable désigné reçoit une demande
 privée dans le Chat pour chaque mail préparé. Vérifiez les destinataires, l’objet, l’aperçu du
-contenu et la liste des pièces jointes, puis choisissez **Autoriser l’envoi** ou **Refuser**.
+contenu et la liste des pièces jointes, puis autorisez ou refusez l'action.
 Le **Journal des mails** présente le contenu complet et le résultat de l’envoi ; il permet aussi
-de décider. L’accord concerne uniquement ce mail. Sans réponse, il reste non envoyé ; après
-sept jours, utilisez le journal car la demande du Chat a expiré.
+de répondre à la même autorisation. La décision prise à un endroit s'applique aux deux.
+L’accord concerne uniquement ce mail et permet à la tâche de reprendre l'appel préparé :
+« accord enregistré » ne signifie pas encore « envoyé ». Sans réponse, le mail reste non envoyé ;
+une autorisation expirée exige une nouvelle demande. Les anciennes validations Mail encore
+en attente restent accessibles dans le journal.
+
+Après acceptation du mail par SMTP, Galaris en conserve une copie dans le dossier « Envoyés »
+configuré ou annoncé par votre serveur. Si cette copie échoue, le reçu le précise sans
+annuler l'envoi réel. Une reprise avec la même clé et le même contenu répare la copie
+sans envoyer un second mail.
 
 Une information essentielle peut manquer : destinataire, fichier, période, autorisation ou
 choix irréversible. L’agent doit alors poser une question courte et attendre au lieu de

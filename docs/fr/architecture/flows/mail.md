@@ -72,8 +72,17 @@ l’état `submitting` au lieu de lancer un deuxième SMTP. Une coupure dont l�
 Les nouveaux appels MCP utilisent les modes Actif/Bloqué/Sur demande et le journal commun
 d’autorisation. Le MIME final et ses pièces jointes sont préparés avant la demande ; après accord,
 seuls ces octets persistés sont envoyés. Seul le responsable Mail désigné peut répondre.
-Une seule demande visible suffit ;
-le journal SMTP continue de gérer les doublons et résultats incertains.
+La ligne Mail référence cette autorisation par `authorization_id`. Le Journal des mails
+projette son attente et sa décision sans créer un second circuit : accepter ou refuser dans
+le journal appelle `app.tools.answer_action`, comme le choix de la conversation. L'accord
+réveille l'appelant d'origine ; le journal ne soumet pas lui-même le message à SMTP.
+Le reçu distingue donc un accord enregistré d'un envoi effectivement accepté par SMTP.
+Le journal SMTP continue de gérer les doublons et résultats incertains. Une décision répétée
+identique est sans effet supplémentaire ; une décision opposée ou expirée est refusée.
+
+DbAdmin rattache les lignes préparées antérieures à leur autorisation commune par pages
+bornées, en vérifiant l'agent et la connexion. Ce rattrapage conserve les octets MIME et
+l'état de transport ; il ne décide aucune demande et ne déclenche aucun envoi.
 
 Pour les demandes historiques créées avec `approval_required`, la première réclamation passe en
 `pending_approval` et retourne immédiatement ce reçu à l’agent sans contacter SMTP. Le
@@ -82,7 +91,7 @@ aux connexions, peut approuver ou rejeter le message. Une approbation verrouille
 exactement le MIME persisté ; un rejet est terminal et conserve le motif facultatif. Une modification
 ultérieure de la politique de connexion ne réaffecte pas un mail déjà en attente.
 
-Chaque mail en attente produit aussi un choix `mail_approval` dans une conversation privée du
+Chaque mail historique en attente produit aussi un choix `mail_approval` dans une conversation privée du
 Chat interne avec ce responsable. La demande présente les destinataires To/Cc/Bcc, l’objet,
 un aperçu de chaque corps limité à 6 000 caractères et les métadonnées des pièces jointes ;
 le Journal des mails conserve le contenu complet. **Autoriser l’envoi** et **Refuser** appellent
@@ -108,6 +117,13 @@ This message was sent by an artificial intelligence agent via Galaris.
 
 Cette signature n’est ni un paramètre de connexion ni un argument MCP : un agent ne peut donc pas
 la désactiver. `Bcc` est transmis à l’enveloppe SMTP sans être écrit dans les en-têtes MIME.
+
+Après acceptation SMTP, le bridge archive le MIME durable exact par IMAP dans le dossier Sent
+configuré ou annoncé par le serveur. Il recherche d'abord son `Message-ID` : une copie créée
+par le serveur ou un précédent APPEND dont la réponse a été perdue n'est pas dupliquée.
+Les reprises d'un même envoi sont sérialisées sur son reçu durable. L'échec de l'archivage
+reste explicite dans le détail du reçu, conserve `sent` et ne relance jamais SMTP ; un rejeu
+avec la même clé d'idempotence et le même contenu peut réparer uniquement la copie Sent.
 
 Une soumission durablement `sent` projette aussi chaque destinataire distinct de `To`, `Cc` et
 `Bcc` comme contact privé. Un rejeu idempotent rafraîchit cette projection sans créer de doublon ;
@@ -139,7 +155,8 @@ avant la création du mail. Le Tool n’est pas auto-connecté et reste absent d
 tant qu’un administrateur n’a pas créé et activé sa connexion.
 
 La page `/connection/mail`, protégée par `CONNECTION_ACCESS`, affiche en premier les mails
-`pending_approval`, puis tout l’historique. Les deux listes utilisent une pagination serveur bornée
+dont l'autorisation commune est en attente ainsi que les anciens `pending_approval`, puis
+tout l’historique. Les deux listes utilisent une pagination serveur bornée
 à 500, un filtre agent et une recherche sur l’agent, l’expéditeur, les destinataires, le sujet et le
 corps. Le détail expose le contenu utile, le reviewer et l’issue SMTP, mais jamais le payload MIME
 brut. Son entrée de navigation n’est visible que si au moins une connexion Mail active existe ; le

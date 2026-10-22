@@ -769,6 +769,15 @@ response, makes successive UI choices, reads back the policies and exercises the
 `app/harnesses/tests/test_runtime_control.py` checks suspended calls, lost claim replies and
 restart without re-execution. Mail and Process workflows check permits before effects and
 reconciliation after an unknown outcome.
+`bridge/mail/tests/test_common_authorizations.py` also checks archiving the accepted MIME
+in Sent, repair after an IMAP outage or lost APPEND response, and no second SMTP submission.
+`test_imap_client.py` covers Message-ID readback and deduplication of an existing provider copy.
+The common authorization scenarios cover Chat/journal decisions, concurrent calls, denial of
+other users and opposite decisions, idempotent DbAdmin linking of older rows, and continuation
+with the exact MIME without SMTP at decision time. `e2e/specs/mail-approval.spec.mjs` exercises
+common approvals and denials from both interfaces as well as historical Mail approvals,
+including journal details and actions on mobile and desktop.
+Only external transports and the runtime continuation are synthetic.
 `app/process/tests/test_common_authorizations.py` exercises real MCP transport and transactions:
 pause, revocation, workflow changes, continuation after Task completion, lost replies,
 and precedence of a terminal callback over revoked observation.

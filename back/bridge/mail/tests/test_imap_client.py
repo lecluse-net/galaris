@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from typing import Generator
+from datetime import datetime, timezone
 
 from pydantic import SecretStr
 import pytest
@@ -29,6 +30,40 @@ def _client() -> imap_client.ImapClient:
             max_total_attachment_bytes=2_000,
         )
     )
+
+
+@pytest.mark.parametrize("provider_already_saved", [False, True])
+def test_sent_copy_uses_exact_mime_and_does_not_duplicate_provider_copy(monkeypatch, provider_already_saved):
+    from bridge.mail.contracts import MailboxInfo
+    client = _client()
+    raw = b"Message-ID: <synthetic@example.test>\r\n\r\nSynthetic greeting\r\n"
+    appended = []
+    exists = provider_already_saved
+    sent_at = datetime(2026, 1, 2, 12, 0, tzinfo=timezone.utc)
+
+    class FakeImap:
+        def uid(self, *args):
+            assert args == ("SEARCH", "CHARSET", "UTF-8", "HEADER", "Message-ID", b'"<synthetic@example.test>"')
+            return "OK", [b"41" if exists else b""]
+
+        def append(self, mailbox, flags, internal_date, message):
+            nonlocal exists
+            assert mailbox == b'"Sent Items"' and flags == r"(\Seen)"
+            assert internal_date == '"02-Jan-2026 12:00:00 +0000"'
+            appended.append(message)
+            exists = True
+            return "OK", [b"APPEND completed"]
+
+    @contextmanager
+    def session():
+        yield FakeImap()
+
+    monkeypatch.setattr(client, "_session", session)
+    monkeypatch.setattr(client, "_mailboxes", lambda _: [MailboxInfo(name="Sent Items", role="sent")])
+    monkeypatch.setattr(client, "_select", lambda _imap, mailbox, *, readonly: 1)
+    for _ in range(2):
+        assert client.store_sent_message(raw, message_id="<synthetic@example.test>", sent_at=sent_at) == "Sent Items"
+    assert appended == ([] if provider_already_saved else [raw])
 
 
 def test_search_criteria_encode_unicode_as_utf8_imap_argument() -> None:

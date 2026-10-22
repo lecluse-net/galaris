@@ -74,6 +74,9 @@ class MailOutboundDelivery(Base):
     approval_required: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    authorization_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("tool_action_authorizations.id", ondelete="RESTRICT"), nullable=True, index=True,
+    )
     approver_user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )

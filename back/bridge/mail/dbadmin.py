@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent import Agent
 from app.connection import Connection
+from app.tools.facade import authorization_reviews, prepared_authorization_links
 from core.dbadmin import (
     DbAdminAction,
     DbAdminPhase,
@@ -86,6 +87,87 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
             postcondition=_all_connected_deliveries_have_agents,
         )
     )
+    registry.register_action(
+        DbAdminAction(
+            key="bridge.mail.link_prepared_authorizations",
+            phase=DbAdminPhase.AFTER_EXPAND,
+            checksum="prepared-mail-authorization-links-v1",
+            predicate=_introduces_authorization_link,
+            handler=_backfill_authorization_links,
+            postcondition=_all_prepared_authorizations_linked,
+        )
+    )
+
+
+def _introduces_authorization_link(transitions: SchemaTransitionSet) -> bool:
+    return transitions.column_added("mail_outbound_deliveries", "authorization_id")
+
+
+async def _backfill_authorization_links(
+    session: AsyncSession, _transitions: SchemaTransitionSet,
+) -> None:
+    cursor = None
+    while True:
+        links, next_cursor = await prepared_authorization_links(
+            capability_names=("mail_send", "mail_reply", "mail_forward"),
+            resource_key="delivery_id", after_id=cursor,
+        )
+        deliveries = {
+            item.id: item for item in await session.scalars(
+                select(MailOutboundDelivery)
+                .where(MailOutboundDelivery.id.in_([identity for _, identity in links]))
+            )
+        } if links else {}
+        reviews = await authorization_reviews({
+            item.authorization_id for item in deliveries.values()
+            if item.authorization_id is not None
+        })
+        for review, identity in links:
+            delivery = deliveries.get(identity)
+            if delivery is None or delivery.agent_id != review.agent_id or delivery.connection_id != review.connection_id:
+                continue
+            existing = reviews.get(delivery.authorization_id) if delivery.authorization_id is not None else None
+            if existing is not None and existing.created_at >= review.created_at:
+                continue
+            delivery.authorization_id = review.id
+            delivery.approver_user_id = review.approver_user_id
+            delivery.approval_required = True
+            reviews[review.id] = review
+        await session.flush()
+        if next_cursor is None:
+            return
+        cursor = next_cursor
+
+
+async def _all_prepared_authorizations_linked(
+    session: AsyncSession, _transitions: SchemaTransitionSet,
+) -> bool:
+    cursor = None
+    while True:
+        links, next_cursor = await prepared_authorization_links(
+            capability_names=("mail_send", "mail_reply", "mail_forward"),
+            resource_key="delivery_id", after_id=cursor,
+        )
+        deliveries = {
+            item.id: item for item in await session.scalars(
+                select(MailOutboundDelivery)
+                .where(MailOutboundDelivery.id.in_([identity for _, identity in links]))
+            )
+        } if links else {}
+        reviews = await authorization_reviews({
+            item.authorization_id for item in deliveries.values()
+            if item.authorization_id is not None
+        })
+        for review, identity in links:
+            delivery = deliveries.get(identity)
+            if delivery is None or delivery.agent_id != review.agent_id or delivery.connection_id != review.connection_id:
+                continue
+            existing = reviews.get(delivery.authorization_id) if delivery.authorization_id is not None else None
+            if existing is None or existing.created_at < review.created_at:
+                return False
+        if next_cursor is None:
+            return True
+        cursor = next_cursor
 
 
 __all__ = ["register_dbadmin"]

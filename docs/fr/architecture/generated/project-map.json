@@ -3909,6 +3909,7 @@
           "back/app/tools/authorization_models.py",
           "back/app/tools/authorization_notifications.py",
           "back/app/tools/authorization_router.py",
+          "back/app/tools/authorization_views.py",
           "back/app/tools/catalog_refresh_service.py",
           "back/app/tools/documentation_service.py",
           "back/app/tools/mandatory_tools.py",
@@ -3982,6 +3983,7 @@
           "back/app/tools/authorization.py",
           "back/app/tools/authorization_notifications.py",
           "back/app/tools/authorization_router.py",
+          "back/app/tools/authorization_views.py",
           "back/app/tools/catalog.py",
           "back/app/tools/runtime_authorization.py",
           "back/app/tools/secrets.py",
@@ -4981,6 +4983,7 @@
       {
         "files": [
           "back/bridge/mail/connection_service.py",
+          "back/bridge/mail/dbadmin.py",
           "back/bridge/mail/mcp.py",
           "back/bridge/mail/service.py"
         ],
@@ -10637,6 +10640,7 @@
         "foreign_keys": [
           "agents.id",
           "connections.id",
+          "tool_action_authorizations.id",
           "users.id"
         ],
         "history_mixin": false,
@@ -20617,6 +20621,7 @@
           "front/app/memory/components/ContactCreateDialog.vue",
           "front/app/memory/components/ContactEditDialog.vue",
           "front/app/memory/components/DocumentBulkList.vue",
+          "front/app/memory/components/DocumentEditor.vue",
           "front/app/memory/components/DocumentLibraryNavigation.vue",
           "front/app/memory/components/DocumentThumbnail.vue",
           "front/app/memory/components/MemoryFileResources.vue",

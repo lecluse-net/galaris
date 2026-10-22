@@ -10,7 +10,7 @@ import ssl
 import socket
 from threading import Timer
 from contextlib import contextmanager
-from datetime import date
+from datetime import date, datetime
 from collections.abc import Generator, Iterable
 from typing import Sequence, cast
 
@@ -553,16 +553,29 @@ class ImapClient:
         with self._session() as client:
             self._validate_mailbox(client, mailbox)
             self._select(client, mailbox, readonly=True)
-            status, data = client.uid(
-                "SEARCH",
-                "CHARSET",
-                "UTF-8",
-                "HEADER",
-                "Message-ID",
-                _quote(message_id[:255]),
-            )
-            self._require_ok(status, data, "SEARCH")
-            return any(isinstance(item, bytes) and bool(item.strip()) for item in data or [])
+            return self._contains_message_id(client, message_id)
+
+    @staticmethod
+    def _contains_message_id(client: imaplib.IMAP4, message_id: str) -> bool:
+        status, data = client.uid("SEARCH", "CHARSET", "UTF-8", "HEADER", "Message-ID", _quote(message_id[:255]))
+        ImapClient._require_ok(status, data, "SEARCH")
+        return any(isinstance(item, bytes) and bool(item.strip()) for item in data or [])
+
+    def store_sent_message(self, raw_message: bytes, *, message_id: str, sent_at: datetime) -> str:
+        """Archive the accepted MIME, reconciling a provider copy or lost APPEND reply."""
+        with self._session() as client:
+            mailboxes = self._mailboxes(client)
+            mailbox = self.config.sent_mailbox or next(
+                (item.name for item in mailboxes if item.role == "sent" and item.selectable), None)
+            if mailbox is None or not any(item.name == mailbox and item.selectable for item in mailboxes):
+                raise ValueError("No selectable IMAP Sent mailbox is configured or advertised")
+            self._select(client, mailbox, readonly=False)
+            if not self._contains_message_id(client, message_id):
+                status, data = client.append(_quote(mailbox), r"(\Seen)", imaplib.Time2Internaldate(sent_at), raw_message)
+                self._require_ok(status, data, "APPEND")
+                if not self._contains_message_id(client, message_id):
+                    raise RuntimeError("The appended Sent copy could not be verified")
+            return mailbox
 
 
 __all__ = ["ImapClient"]

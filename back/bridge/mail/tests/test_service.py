@@ -177,6 +177,7 @@ async def test_delivery_waits_for_the_responsible_user_before_smtp(
     config = _config(connection_id, agent_id=agent_id).model_copy(
         update={"approval_required": True, "approver_user_id": approver.id}
     )
+    monkeypatch.setattr(service.ImapClient, "store_sent_message", lambda *_args, **_kwargs: "Sent")
     smtp_send = AsyncMock()
     monkeypatch.setattr(service.SmtpClient, "send", smtp_send)
     observe = AsyncMock(return_value=None)
@@ -283,6 +284,7 @@ async def test_sent_mail_projects_each_distinct_recipient_and_replay_heals_memor
 ) -> None:
     connection_id, agent_id = await _persist_connection(db)
     config = _config(connection_id, agent_id=agent_id)
+    monkeypatch.setattr(service.ImapClient, "store_sent_message", lambda *_args, **_kwargs: "Sent")
     observe = AsyncMock(return_value=None)
     monkeypatch.setattr("app.messenger.observe_contact", observe)
     monkeypatch.setattr(

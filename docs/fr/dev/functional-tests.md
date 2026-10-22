@@ -811,6 +811,16 @@ enchaîne les choix dans l’interface, relit les règles et exerce leurs effets
 `app/harnesses/tests/test_runtime_control.py` vérifie les appels suspendus, la réponse de claim
 perdue et le redémarrage sans réexécution. Les workflows Mail et Process vérifient les permis
 avant effet et la réconciliation après une issue inconnue.
+`bridge/mail/tests/test_common_authorizations.py` vérifie aussi la copie du MIME accepté dans
+Sent, sa réparation après panne IMAP ou perte de réponse APPEND et l'absence de second envoi
+SMTP. `test_imap_client.py` couvre la relecture par Message-ID et la déduplication d'une copie
+déjà créée par le serveur.
+Il couvre les décisions Chat/journal, leurs appels concurrents, le refus des autres utilisateurs
+et des décisions opposées, le rattachement idempotent des anciens liens par DbAdmin et la reprise
+du MIME exact sans SMTP au moment de la décision. `e2e/specs/mail-approval.spec.mjs` exerce les
+accords et refus communs depuis les deux interfaces ainsi que les anciennes validations Mail,
+avec accès au détail et aux actions du journal sur mobile et bureau.
+Seuls les transports externes et la continuation du runtime sont synthétiques.
 `app/process/tests/test_common_authorizations.py` exerce le transport MCP et les transactions
 réels : pause, révocation, changement de workflow, reprise après la fin de la Task,
 réponse perdue et priorité d'un callback terminal sur une observation révoquée.

@@ -50,6 +50,7 @@ async def _setup_mail_chat(db, monkeypatch):
     )
     smtp = Mock(return_value=(1, 0))
     monkeypatch.setattr(service.SmtpClient, "send", smtp)
+    monkeypatch.setattr(service.ImapClient, "store_sent_message", lambda *_args, **_kwargs: "Sent")
     monkeypatch.setattr(service, "resolve_connection", AsyncMock(return_value=config))
     return config, approver, outsider, smtp
 

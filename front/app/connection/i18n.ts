@@ -202,6 +202,7 @@ export default {
       reject: 'Rejeter',
       approveAndSend: 'Valider et envoyer',
       sentAfterApproval: 'Le mail a été validé et soumis au serveur SMTP.',
+      approvalRecorded: 'Accord enregistré. La tâche reprendra l’envoi du mail.',
       rejectedConfirmation: 'Le mail a été rejeté et ne sera pas envoyé.',
       statuses: {
         pending_approval: 'En attente de validation',
@@ -417,6 +418,7 @@ export default {
       reject: 'Reject',
       approveAndSend: 'Approve and send',
       sentAfterApproval: 'The email was approved and submitted to the SMTP server.',
+      approvalRecorded: 'Approval recorded. The task will resume sending the email.',
       rejectedConfirmation: 'The email was rejected and will not be sent.',
       statuses: {
         pending_approval: 'Waiting for approval',
@@ -533,7 +535,7 @@ export default {
       loadError: '无法加载邮件日志', agent: '智能体', sender: '发件人', recipients: '收件人', to: '收件人', cc: '抄送', bcc: '密送', subject: '主题',
       status: '状态', requestedAt: '请求时间', approver: '审批负责人', reviewedBy: '审核人', body: '正文', attachments: '附件', attachment: '附件',
       rejectionReason: '拒绝原因', rejectionReasonOptional: '拒绝原因（可选）', review: '审核', view: '查看邮件', reject: '拒绝', approveAndSend: '批准并发送',
-      sentAfterApproval: '邮件已批准并提交给 SMTP 服务器。', rejectedConfirmation: '邮件已被拒绝，不会发送。',
+      sentAfterApproval: '邮件已批准并提交给 SMTP 服务器。', approvalRecorded: '批准已记录，任务将继续发送邮件。', rejectedConfirmation: '邮件已被拒绝，不会发送。',
       statuses: { pending_approval: '等待批准', claimed: '已准备', submitting: '正在发送', sent: '已发送', rejected: '已拒绝', uncertain: '投递状态不确定', error: '错误' },
     },
   },

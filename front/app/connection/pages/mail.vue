@@ -40,7 +40,7 @@
       </div>
     </div>
 
-    <q-card flat bordered class="q-mb-lg">
+    <q-card flat bordered class="q-mb-lg" role="region" :aria-label="t('mailJournal.pendingTitle')">
       <q-card-section class="row items-center bg-orange-1 text-orange-10">
         <q-icon name="approval" size="sm" class="q-mr-sm" />
         <div>
@@ -62,6 +62,11 @@
         @request="requestPending"
         @row-click="openRow"
       >
+        <template #item="props">
+          <MailDeliveryCard :delivery="props.row" :requested-at="formatDate(props.row.created_at)" @open="openDelivery">
+            <template #status><StatusChip :status="props.row.status" /></template>
+          </MailDeliveryCard>
+        </template>
         <template #body-cell-status="props">
           <q-td :props="props"><StatusChip :status="props.row.status" /></q-td>
         </template>
@@ -82,7 +87,7 @@
       </q-table>
     </q-card>
 
-    <q-card flat bordered>
+    <q-card flat bordered role="region" :aria-label="t('mailJournal.historyTitle')">
       <q-card-section class="row items-center">
         <q-icon name="outbox" color="primary" size="sm" class="q-mr-sm" />
         <div>
@@ -104,6 +109,11 @@
         @request="requestHistory"
         @row-click="openRow"
       >
+        <template #item="props">
+          <MailDeliveryCard :delivery="props.row" :requested-at="formatDate(props.row.created_at)" @open="openDelivery">
+            <template #status><StatusChip :status="props.row.status" /></template>
+          </MailDeliveryCard>
+        </template>
         <template #body-cell-status="props">
           <q-td :props="props"><StatusChip :status="props.row.status" /></q-td>
         </template>
@@ -207,6 +217,7 @@ import { QChip, useQuasar, type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { PageHeader, formatFileSize } from '@/core/util'
 import { AgentSelect } from '@/app/agent'
+import MailDeliveryCard from '../components/MailDeliveryCard.vue'
 import {
   mailService,
   type MailDeliveryDetail,
@@ -365,8 +376,9 @@ async function approveSelected(): Promise<void> {
   if (!selected.value) return
   reviewing.value = 'approve'
   try {
-    await mailService.approveDelivery(selected.value.id)
-    $q.notify({ type: 'positive', message: t('mailJournal.sentAfterApproval') })
+    const { data: receipt } = await mailService.approveDelivery(selected.value.id)
+    $q.notify({ type: 'positive', message: t(receipt.status === 'sent'
+      ? 'mailJournal.sentAfterApproval' : 'mailJournal.approvalRecorded') })
     detailOpen.value = false
     await refreshAll(false)
   } catch (error) {

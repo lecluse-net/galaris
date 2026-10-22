@@ -19,10 +19,14 @@ def test_agent_snapshot_action_only_targets_the_new_column() -> None:
 
     assert dbadmin._introduces_agent_snapshot(applicable)  # pyright: ignore[reportPrivateUsage]
     assert not dbadmin._introduces_agent_snapshot(unrelated)  # pyright: ignore[reportPrivateUsage]
+    assert dbadmin._introduces_authorization_link(SchemaTransitionSet(
+        added_columns=frozenset({"mail_outbound_deliveries.authorization_id"})))
+    assert not dbadmin._introduces_authorization_link(unrelated)
     registry = DbAdminRegistry()
     dbadmin.register_dbadmin(registry)
     assert [action.key for action in registry.actions] == [
-        "bridge.mail.backfill_outbound_agent_snapshots"
+        "bridge.mail.backfill_outbound_agent_snapshots",
+        "bridge.mail.link_prepared_authorizations",
     ]
 
 

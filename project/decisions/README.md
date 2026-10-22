@@ -1,5 +1,6 @@
 # Décisions d'architecture
 
+- [0217 — Journal Mail relié aux autorisations communes](0217-mail-journal-common-authorizations.md)
 - [0211 — Dossiers Dataset indépendants et visuels communs](0211-independent-dataset-library.md)
 
 - [0208 — Suivi des réflexions Task et lignes d'édition Dataset](0208-task-reasoning-progress-and-dataset-lines.md)

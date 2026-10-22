@@ -32,6 +32,8 @@ class MailDeliveryListItem(BaseModel):
     attachment_count: int = Field(ge=0)
     status: MailDeliveryStatus
     approval_required: bool
+    authorization_id: UUID | None = None
+    authorization_status: str | None = None
     approver_user_id: int | None
     approver_label: str | None
     reviewed_by_user_id: int | None

@@ -186,9 +186,17 @@ default; filters and explicit denials stay active. See [Browser administration](
 
 If a Mail connection requires human approval, its designated approver receives a private Chat
 request for each prepared email. Review the recipients, subject, content preview, and attachment
-list, then choose **Allow sending** or **Reject**. The **Mail journal** shows the complete content
-and delivery result and also lets you decide. Approval applies only to this email. Without a
-response, it stays unsent; after seven days, use the journal because the Chat request has expired.
+list, then allow or deny the action. The **Mail journal** shows the complete content and delivery
+result and also lets you answer the same authorization. A decision in either place applies to
+both. Approval covers only this email and lets the task resume its prepared call: a recorded
+approval does not yet mean the email was sent. Without a response it stays unsent; an expired
+authorization requires a new request. Historical pending Mail approvals remain accessible
+from the journal.
+
+After SMTP accepts the email, Galaris stores a copy in the Sent mailbox configured or
+advertised by your server. If archiving fails, the receipt reports it without undoing
+the actual send. A replay with the same key and content repairs the copy without
+sending a second email.
 
 Essential information may be missing: recipient, file, period, authorization, or an irreversible choice. The Agent must then ask a short question and wait rather than guess. A question is a valid result of the current turn; reply in the same conversation to continue.
 
