@@ -372,12 +372,17 @@ async def test_client_passes_galaris_model_and_correlation_headers() -> None:
 
 
 @pytest.mark.asyncio
-async def test_client_streams_optional_semantic_tool_events_and_terminal_usage() -> None:
+@pytest.mark.parametrize(("tool_name", "expected_name"), [
+    ("Read", "Read"),
+    ("mcp__galaris__file_read", "file_read"),
+    ("mcp_galaris_file_read", "file_read"),
+])
+async def test_client_streams_optional_semantic_tool_events_and_terminal_usage(tool_name, expected_name) -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         content = (
             'data: {"choices":[{"delta":{"content":"Done"}}]}\n\n'
             'event: galaris.agent-message/v1\n'
-            'data: {"type":"tool","content":"ok","tool_name":"Read",'
+            f'data: {{"type":"tool","content":"ok","tool_name":"{tool_name}",'
             '"tool_arguments":{"file_path":"README.md"},"tool_result":{"bytes":12},'
             '"execution_time":0.2,"success":true}\n\n'
             'event: galaris.agent-result/v1\n'
@@ -404,8 +409,9 @@ async def test_client_streams_optional_semantic_tool_events_and_terminal_usage()
 
     assert [event.kind for event in events] == ["message", "message", "result"]
     assert events[1].message is not None
-    assert events[1].message.tool_name == "Read"
+    assert events[1].message.tool_name == expected_name
     assert events[-1].result is not None
+    assert events[-1].result.messages[0].tool_name == expected_name
     assert events[-1].result.usage.tool_calls == 1
     assert events[-1].result.cost == pytest.approx(0.01)
     assert events[-1].result.metadata["runtime_run_id"] == "session-1"

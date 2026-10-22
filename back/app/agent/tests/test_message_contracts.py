@@ -2,7 +2,33 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from app.agent.contracts import AIMessage, AIResult, TaskMessage
+import pytest
+
+from app.agent.contracts import AIMessage, AIResult, ExecutionResult, TaskMessage
+
+
+@pytest.mark.parametrize(("name", "expected"), [
+    ("mcp__galaris__file_read", "file_read"),
+    ("mcp_galaris_file_read", "file_read"),
+    ("mcp__galaris__galaris_file_read", "file_read"),
+    ("file_read", "file_read"),
+    ("mcp__external__file_read", "mcp__external__file_read"),
+    ("Read", "Read"),
+])
+def test_tool_names_are_normalized_at_trace_ingress_and_reload(name: str, expected: str) -> None:
+    payload = {"type": "tool", "tool_name": name, "content": "Synthetic result",
+               "tool_call_external_id": "call-1", "tool_arguments": {"uri": "synthetic://file"}}
+    message = AIMessage.model_validate(payload)
+    assert message.tool_name == expected
+    assert message.tool_call_external_id == "call-1"
+    assert message.tool_arguments == payload["tool_arguments"]
+
+    for result_type in (AIResult, ExecutionResult):
+        result = result_type.model_validate({"prompt": "Inspect synthetic data",
+            "messages": [payload], "tools_used": [name, name]})
+        assert result.messages[0].tool_name == expected
+        assert result.tools_used == [expected, expected]
+        assert result_type.model_validate_json(result.model_dump_json()).tools_used == [expected, expected]
 
 
 def test_text_fragments_merge_only_inside_the_same_semantic_stream() -> None:

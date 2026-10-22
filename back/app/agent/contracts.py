@@ -378,6 +378,7 @@ class TaskTransition(str, Enum):
 
 MCP_GALARIS_TOOL_PREFIXES = (
     "mcp__galaris__",
+    "mcp_galaris_",
     "galaris_",
 )
 
@@ -508,6 +509,12 @@ class AIMessage(BaseModel):
         description="Whether an identified text/reasoning block is complete; null for legacy drivers.",
     )
 
+    @field_validator("tool_name")
+    @classmethod
+    def normalize_trace_tool_name(cls, value: str | None) -> str | None:
+        # Driver events and stored traces can bypass AIResult.add_message().
+        return normalize_tool_name(value) if value is not None else None
+
     def has_visible_content(self) -> bool:
         if self.content.strip():
             return True
@@ -528,6 +535,11 @@ class AIResult(BaseModel):
     tools_used: list[str] = Field(default_factory=list[str])
     metadata: dict[str, Any] = Field(default_factory=dict[str, Any])
     success: bool = True
+
+    @field_validator("tools_used")
+    @classmethod
+    def normalize_trace_tools_used(cls, value: list[str]) -> list[str]:
+        return [normalize_tool_name(name) for name in value]
 
     def add_message(self, ai_message: AIMessage) -> None:
         if ai_message.tool_name:
