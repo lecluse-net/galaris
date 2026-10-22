@@ -1188,13 +1188,6 @@ are in `front/browser-tests/`.
 
 ### Topic selection and creation
 
-`front/core/apiRecovery.test.mjs` closes real HTTP connections with Axios/Fetch:
-bounded recovery for opted-in reads, preserved parameters and identity, HTTP refusals
-without replay, excluded writes, cancellation, session changes and an unchanged budget
-across authentication renewal. `chat-recovery.spec.mjs` exercises interrupted room,
-message and activity reads in Chromium, retained content and drafts during a lasting
-outage, recovery and rejection of a late response after switching conversations.
-
 `chat-recovery.spec.mjs` checks browser back/forward between conversations and the Chat home
 on mobile and desktop, without duplicate visits when selecting the current room. Late responses
 from an off-list room cannot replace the restored conversation. `chat-document-workspace.spec.mjs`

@@ -287,10 +287,6 @@ retrouve l’accueil du Chat. Sélectionner à nouveau la conversation courante 
 visite. Le document ouvert est sauvegardé avant le changement ; si la sauvegarde échoue,
 la conversation et le brouillon restent affichés.
 
-Si le chargement des messages ou de l'activité subit une coupure réseau passagère,
-Discussion réessaie automatiquement jusqu'à deux fois. Si la panne persiste, l'erreur
-reste signalée. Les envois de messages ne sont pas répétés par cette reprise de lecture.
-
 Le texte et les pièces jointes sélectionnées restent dans la saisie tant que l’envoi n’est
 pas confirmé. Après une erreur, vous pouvez réessayer sans les ressaisir ; un réessai
 inchangé conserve l’identifiant du message pour éviter une seconde admission si le premier

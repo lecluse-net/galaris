@@ -1,13 +1,6 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig, type AxiosError } from 'axios'
 import { i18n } from './i18n'
 
-declare module 'axios' {
-    interface AxiosRequestConfig {
-        /** Opt in only for repeatable reads; mutations are never retried. */
-        retryNetworkRead?: boolean
-    }
-}
-
 // Use the Nginx API proxy. Requests go through /api in development and production.
 const API_URL = '/api'
 const ACCESS_TOKEN_KEY = 'access_token'
@@ -24,7 +17,6 @@ interface TokenResponse {
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
     _retriedAfterRefresh?: boolean
     _sessionGeneration?: string
-    _networkReadRetries?: number
 }
 
 let refreshInFlight: Promise<string> | null = null
@@ -186,20 +178,6 @@ function isAuthenticationRequest(url?: string): boolean {
     ].some(path => url.includes(path))
 }
 
-/** Brief, cancellable backoff; permanent failures still reach the caller. */
-async function waitForNetworkReadRetry(config: RetryableRequestConfig, delay: number): Promise<void> {
-    await new Promise<void>(resolve => {
-        const finish = (): void => {
-            clearTimeout(timer)
-            config.signal?.removeEventListener?.('abort', finish)
-            resolve()
-        }
-        const timer = setTimeout(finish, delay)
-        config.signal?.addEventListener?.('abort', finish, { once: true })
-        if (config.signal?.aborted) finish()
-    })
-}
-
 export function refreshAccessToken(): Promise<string> {
     if (refreshInFlight) return refreshInFlight
 
@@ -284,24 +262,6 @@ api.interceptors.response.use(
         const config = error.config as RetryableRequestConfig | undefined
         if (config?._sessionGeneration !== undefined && config._sessionGeneration !== sessionGeneration()) {
             return Promise.reject(new SupersededSessionError())
-        }
-        if (
-            config?.retryNetworkRead === true
-            && config.method?.toLowerCase() === 'get'
-            && !isAuthenticationRequest(config.url)
-            && error.code === 'ERR_NETWORK'
-            && !error.response
-            && !config.signal?.aborted
-            && !config.cancelToken
-            && (typeof navigator === 'undefined' || navigator.onLine !== false)
-            && (config._networkReadRetries ?? 0) < 2
-        ) {
-            const retry = config._networkReadRetries ?? 0
-            config._networkReadRetries = retry + 1
-            await waitForNetworkReadRetry(config, (retry === 0 ? 250 : 750) + Math.random() * 250)
-            // The request interceptor rejects a superseded session and Axios
-            // honours cancellation before sending anything over the network.
-            return api.request(config)
         }
         if (
             error.response?.status === 401

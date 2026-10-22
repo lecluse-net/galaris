@@ -32,12 +32,6 @@ document transfers and harness operations. Explicit cancellation uses `AbortSign
 and responses from a previous session remain rejected. Server, provider and proxy
 limits are independent.
 
-Reads of the selected conversation, its messages and its activity can recover from a
-network interruption without an HTTP response: at most two retries, with a short increasing
-delay. These services explicitly opt in; writes, authentication and HTTP refusals are never
-replayed by this mechanism. Cancellation and session changes still take precedence.
-A lasting outage retains its diagnostic error.
-
 ## 1. Development Environment
 
 The [Make command catalog](make-commands.md) lists every repository target, its purpose,
