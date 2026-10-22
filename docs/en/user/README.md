@@ -217,6 +217,10 @@ visited conversations; going back before the first opening returns to the Chat h
 Selecting the current conversation again does not add a visit. Any open document is saved
 before switching; if saving fails, the conversation and document draft stay open.
 
+If loading messages or activity encounters a temporary network interruption, Chat retries
+automatically up to twice. A lasting outage still reports an error. Message sends are
+not repeated by this read recovery.
+
 Text and selected attachments remain in the composer until sending is confirmed. After an
 error, you can retry without entering them again; an unchanged retry keeps the message identity
 to avoid a second admission if the first send was already received. Once confirmed, a slow or

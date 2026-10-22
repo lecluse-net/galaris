@@ -1241,6 +1241,14 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 
 ### Sélection et création de sujets
 
+`front/core/apiRecovery.test.mjs` coupe de vraies connexions HTTP avec Axios/Fetch :
+reprise bornée des lectures explicitement activées, paramètres et identité conservés,
+refus HTTP sans rejeu, écritures exclues, annulation, changement de session et budget
+préservé pendant un renouvellement d'authentification. `chat-recovery.spec.mjs` exerce
+les coupures sur les lectures de conversation, messages et activité dans Chromium,
+la conservation du contenu et du brouillon pendant une panne persistante, puis la
+reprise et le rejet d'une réponse tardive après changement de conversation.
+
 `chat-recovery.spec.mjs` vérifie sur mobile et bureau le retour et l’avance du navigateur
 entre conversations et vers l’accueil du Chat, sans doublon lors d’une resélection. Les réponses
 tardives d’une conversation hors liste ne remplacent pas la conversation retrouvée.

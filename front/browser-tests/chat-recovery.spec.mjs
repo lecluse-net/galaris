@@ -33,6 +33,80 @@ async function conversation(page, privileges = ['CHAT_SEND'], commandsHandler = 
   return { rooms, messages }
 }
 
+for (const projection of ['', '/messages?*', '/activity?*']) {
+  test(`opening a conversation recovers from interrupted projection reads (${projection || 'room'})`, async ({ page }) => {
+    const { rooms, messages } = await conversation(page, ['CHAT_SEND'], null, null, { route: '/chat' })
+    let attempts = 0
+    const failures = []
+    page.on('requestfailed', request => {
+      if (new URL(request.url()).pathname === `/api/chat/rooms/room-a${projection.split('?')[0]}`) {
+        failures.push(request.failure().errorText)
+      }
+    })
+    await page.route(`**/api/chat/rooms/room-a${projection}`, route => {
+      attempts++
+      if (attempts < 3) return route.abort('connectionreset')
+      return route.fulfill({ json: projection === '' ? rooms[0]
+        : projection === '/messages?*' ? { items: [messages['room-a']], total: 1, page: 1 }
+          : { items: [], total: 0 } })
+    })
+    await page.locator('.room-item').filter({ hasText: 'Conversation a' }).click()
+    await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+    await expect(page.locator('.composer-shell textarea')).toBeEditable()
+    await expect(page.locator('.q-notification')).toHaveCount(0)
+    expect(attempts).toBe(3)
+    expect(failures).toHaveLength(2)
+  })
+}
+
+test('a lasting network failure preserves existing content and a later refresh recovers', async ({ page }) => {
+  const { messages } = await conversation(page)
+  const composer = page.locator('.composer-shell textarea')
+  await composer.fill('Draft retained through the outage')
+  let attempts = 0
+  let recovered = false
+  await page.route('**/api/chat/rooms/room-a/messages?*', route => {
+    attempts++
+    return recovered ? route.fulfill({ json: { items: [{ ...messages['room-a'], text: 'Recovered history' }], total: 1 } })
+      : route.abort('connectionreset')
+  })
+  await refresh(page, 'outage')
+  await settled(page, 'outage')
+  expect(await page.evaluate(() => window.refreshResults.outage)).toBe('error')
+  expect(attempts).toBe(3)
+  await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+  await expect(composer).toHaveValue('Draft retained through the outage')
+  recovered = true
+  await refresh(page, 'recovered')
+  await settled(page, 'recovered')
+  expect(await page.evaluate(() => window.refreshResults.recovered)).toBe('done')
+  await expect(page.locator('.conversation-pane')).toContainText('Recovered history')
+  await expect(composer).toHaveValue('Draft retained through the outage')
+})
+
+test('a conversation change during network recovery rejects the obsolete projection', async ({ page }) => {
+  await conversation(page)
+  let attempts = 0
+  let release
+  const gate = new Promise(resolve => { release = resolve })
+  await page.route('**/api/chat/rooms/room-a/messages?*', async route => {
+    attempts++
+    if (attempts === 1) return route.abort('connectionreset')
+    await gate
+    return route.fulfill({ json: { items: [{ id: 'late-message', room_id: 'room-a', text: 'Obsolete recovered message',
+      files: [], created_at: '2026-09-01T12:01:00Z', is_mine: true, status: 'sent' }], total: 1 } })
+  })
+  await refresh(page, 'network-recovery')
+  await expect.poll(() => attempts).toBe(2)
+  try {
+    await page.locator('.room-item').filter({ hasText: 'Conversation b' }).click()
+    await expect(page.locator('.conversation-pane')).toContainText('Content room-b')
+  } finally { release() }
+  await settled(page, 'network-recovery')
+  await expect(page.locator('.conversation-pane')).toContainText('Content room-b')
+  await expect(page.getByText('Obsolete recovered message', { exact: true })).toHaveCount(0)
+})
+
 for (const width of [1440, 390]) {
   test(`browser history returns to visited conversations and the Chat home at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })

@@ -34,6 +34,12 @@ locale lente peut attendre sa réponse ; l'annulation explicite utilise `AbortSi
 une réponse issue d'une ancienne session reste rejetée. Aucun paramètre de délai navigateur
 n'est nécessaire. Les limites du serveur, du fournisseur et des proxys sont indépendantes.
 
+Les lectures de la conversation sélectionnée, de ses messages et de son activité peuvent
+reprendre après une rupture réseau sans réponse HTTP : deux réessais au maximum, avec
+une courte attente progressive. Cette reprise est explicitement activée par ces services ;
+elle ne rejoue ni écriture, ni authentification, ni refus HTTP. L'annulation et le changement
+de session restent prioritaires. Une panne persistante conserve son erreur de diagnostic.
+
 ## 1. Environnement de développement
 
 Le [catalogue des commandes Make](make-commands.md) recense toutes les cibles du dépôt,
