@@ -2382,7 +2382,10 @@ async def _forget_item_record(
             metadata_=forgotten_metadata,
         )
     )
-    if forget_kind == "explicit":
+    # New acquisition tombstones belong to the Agent whose learning they block.
+    # Human-owned Documents have no such Agent; existing acquisitions above
+    # retain their original Agent and rejection metadata after ownership changes.
+    if forget_kind == "explicit" and item.owner_agent_id is not None:
         existing_sources = set(
             (
                 await db.execute(

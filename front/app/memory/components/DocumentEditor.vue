@@ -228,6 +228,9 @@
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
         </q-card-section>
         <q-card-section class="galaris-dialog-body">{{ t('documents.deleteConfirm', { title: editorTitle || currentDocument?.title }) }}</q-card-section>
+        <q-card-section v-if="deletionError" role="alert" class="text-negative">
+          {{ deletionError }}
+        </q-card-section>
         <q-card-actions align="right">
           <q-btn v-close-popup flat :label="t('common.cancel')" />
           <q-btn color="negative" :label="t('documents.deleteDocument')" :loading="deletingDocument" :disable="!canDeleteDocument" @click="deleteDocument" />
@@ -242,6 +245,7 @@ import DocumentIcon from './DocumentIcon.vue'
 import DocumentApplicationBlock from './DocumentApplicationBlock.vue'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { isAxiosError } from 'axios'
+import { apiErrorDetail } from '@/core/api'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { copyToClipboard, useQuasar, type QInput } from 'quasar'
@@ -329,6 +333,8 @@ const requestedRowAction = ref<DocumentRowAction | null>(null)
 const ownerOptionsReady = ref(false)
 const deleteDialogOpen = ref(false)
 const deletingDocument = ref(false)
+const deletionError = ref('')
+watch(deleteDialogOpen, () => { deletionError.value = '' })
 const refreshing = ref(false)
 const refreshError = ref(false)
 const currentDocument = ref<MemoryItemDetail | null>(null)
@@ -1059,6 +1065,7 @@ async function deleteDocument(): Promise<void> {
   const finishDeletion = documentMutations.beginDeletion(document.id)
   if (!finishDeletion) return
   deletingDocument.value = true
+  deletionError.value = ''
   if (autosaveTimer) clearTimeout(autosaveTimer)
   if (realtimeTimer) clearTimeout(realtimeTimer)
   try {
@@ -1073,9 +1080,10 @@ async function deleteDocument(): Promise<void> {
     $q.notify({ type: 'positive', message: t('documents.deleted') })
     emit('deleted', document.id)
     emit('unavailable', document.id)
-  } catch {
+  } catch (error) {
     if (!disposed && currentDocument.value?.id === document.id) {
-      $q.notify({ type: 'negative', message: t('documents.deleteError') })
+      deletionError.value = apiErrorDetail(error) || t('documents.deleteError')
+      $q.notify({ type: 'negative', message: t('documents.deleteError'), caption: deletionError.value })
     }
   } finally {
     finishDeletion()

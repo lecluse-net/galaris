@@ -33,7 +33,7 @@ async function setup(page, { human = false, item = {}, privileges = ['MEMORY_EDI
     payload: { text: '<p>Keep my content</p>' },
     ...(human ? { owner_agent_id: null, owner_user_id: 1 } : {}), ...item }
   const requests = []
-  const state = { fail: false }
+  const state = { fail: false, failureResponse: { status: 403, json: { detail: 'Access denied' } } }
   await jsonRoute(page, '**/api/agents?*', [agent])
   await jsonRoute(page, '**/api/memory/documents/owner-options?*', {
     agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '' }],
@@ -45,7 +45,7 @@ async function setup(page, { human = false, item = {}, privileges = ['MEMORY_EDI
     const request = route.request()
     if (request.method() === 'DELETE') {
       requests.push(request)
-      return route.fulfill(state.fail ? { status: 403, json: { detail: 'Access denied' } } : { json: {} })
+      return route.fulfill(state.fail ? state.failureResponse : { json: {} })
     }
     if (request.method() !== 'GET') document = { ...document, ...request.postDataJSON(), revision: document.revision + 1 }
     return route.fulfill({ json: request.method() === 'GET' ? { item: document, agent_id: human ? null : 7 } : document })
@@ -107,8 +107,13 @@ for (const human of [false, true]) {
     expect(requests).toHaveLength(0)
     await button.click()
     state.fail = true
+    const reason = human ? 'Unexpected memory error. Reference: synthetic-delete.' : 'Access denied'
+    const status = human ? 500 : 403
+    state.failureResponse = { status, json: { detail: reason } }
     await dialog.getByRole('button', { name: 'Delete document', exact: true }).click()
     await expect(page.getByText('Unable to delete the document.', { exact: true })).toBeVisible()
+    await expect(dialog.getByRole('alert')).toContainText(reason)
+    await expect(dialog.getByRole('alert')).toContainText(`HTTP ${status}`)
     await expect(page.locator('[data-editor-surface]')).toContainText('Keep my content')
     state.fail = false
     await dialog.getByRole('button', { name: 'Delete document', exact: true }).click()

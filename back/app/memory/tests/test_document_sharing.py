@@ -11,7 +11,7 @@ from app.agent import AgentManagementScope, AgentTeamModel
 from app.memory import service, document_sharing, item_sharing, document_attachment_service, document_export
 from app.memory.access import effective_access, readable_item_clause
 from app.memory.models import MemoryItem
-from app.memory.schemas import DocumentLibraryRequest, DocumentSharingUpdate, MemoryItemCreate, MemoryItemUpdate, MemoryPayload
+from app.memory.schemas import DocumentLibraryRequest, DocumentSharingUpdate, MemoryItemCreate, MemoryItemUpdate, MemoryPayload, MemorySourceCreate
 from core.team import TeamModel, TeamUserModel
 from core.user import HumanActor, UserModel
 
@@ -29,7 +29,8 @@ async def document(owner):
 
 
 @pytest.mark.asyncio
-async def test_human_can_delete_own_document_but_not_a_shared_document(db, agents, memory_storage, monkeypatch):
+@pytest.mark.parametrize("with_source", [False, True])
+async def test_human_can_delete_own_document_but_not_a_shared_document(db, agents, memory_storage, monkeypatch, with_source):
     from fastapi import HTTPException
     from app.memory import router
     from app.memory.schemas import DocumentSharingLevelUpdate
@@ -51,9 +52,17 @@ async def test_human_can_delete_own_document_but_not_a_shared_document(db, agent
         await router.delete_managed_document(shared.id, actor_agent_id=None)
     assert denied.value.status_code == 403
 
+    source = None
+    if with_source:
+        from .conftest import create_memory_task
+
+        task_id = await create_memory_task(db, owner.id)
+        source = MemorySourceCreate(
+            source_kind="task", source_ref=f"task:{task_id}",
+        )
     own, _ = await service.create_item(MemoryItemCreate(
         owner_agent_id=owner.id, title="Personal document", node_kind="document",
-         payload=MemoryPayload(text="Personal content"),
+        payload=MemoryPayload(text="Personal content"), source=source,
     ), owner_user_id=human.id)
     with pytest.raises(HTTPException) as denied:
         await router.forget_memory_item(own.id, actor_agent_id=None)
