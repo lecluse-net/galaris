@@ -317,6 +317,44 @@ async def test_permission_http_management_is_scoped_and_sidecar_requires_credent
     assert (await client.post("/api/browser/network/authorize", json=body, headers=own)).status_code == 401
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("option_id", ["allow", "deny", "allow_always"])
+async def test_pending_network_permission_can_be_answered_from_permissions_and_syncs_chat(client, option_id):
+    from core.database import get_db_session
+    from core.authorize.models import Assignment, Role
+    from core.user import auth_service, refresh_session_service as sessions
+    async with get_db_session() as db:
+        agents, users, _ = await setup_scope(db)
+        admin = await db.scalar(select(Role).where(Role.code == "admin"))
+        db.add_all([Assignment(user_id=user.id, role_id=admin.id, is_default=True) for user in users])
+        record = await request_permission(agents[0].id, "synthetic:site", "Allow this synthetic site?",
+            always_key="synthetic:all-sites", always_question="Allow all synthetic sites?")
+        identifier, interaction_id = record.id, record.interaction_id
+        headers = []
+        for user in users:
+            refresh = await sessions.create_refresh_session(user.id)
+            token = await auth_service.create_access_token_for_user(user, session_family=await sessions.family_for_token(refresh))
+            headers.append({"Authorization": f"Bearer {token}"})
+        await db.commit()
+    path = "/api/messenger/permissions"
+    pending = await client.get(path, params={"pending": True, "agent_id": agents[0].id}, headers=headers[0])
+    assert pending.status_code == 200
+    row = pending.json()["items"][0]
+    assert row["can_answer"] and {option["id"] for option in row["options"]} == {"allow", "deny", "allow_always"}
+    other = await client.get(path, params={"pending": True, "agent_id": agents[0].id}, headers=headers[1])
+    assert not other.json()["items"][0]["can_answer"]
+    assert (await client.post(f"{path}/{identifier}/answer", json={"option_id": option_id}, headers=headers[1])).status_code == 409
+    response = await client.post(f"{path}/{identifier}/answer", json={"option_id": option_id}, headers=headers[0])
+    assert response.status_code == 200
+    assert (await client.get(path, params={"pending": True}, headers=headers[0])).json()["total"] == 0
+    grants = (await client.get(path, params={"allowed": True}, headers=headers[0])).json()["items"]
+    assert len(grants) == (0 if option_id == "deny" else 1)
+    async with get_db_session() as db:
+        choice = await db.get(Interaction, interaction_id)
+        assert choice.status == "RESOLVED" and choice.resolution["option_id"] == option_id
+    assert (await client.post(f"{path}/{identifier}/answer", json={"option_id": "deny"}, headers=headers[0])).status_code == 409
+
+
 def test_equivalent_origins_filters_and_mapped_local_addresses():
     assert canonical_origin("https://EXAMPLE.com./a?x=1")[0] == canonical_origin("https://example.com:443/b")[0]
     assert canonical_origin("https://example.com:8443")[0] != canonical_origin("http://example.com")[0]

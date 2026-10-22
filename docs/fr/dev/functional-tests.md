@@ -763,7 +763,9 @@ y compris sans paramètre enregistré, sont vérifiés avec deux synchronisation
 `browser-executor/network-proxy.test.mjs` utilise Chromium et des serveurs
 synthétiques pour vérifier POST, redirections, isolation, HTTPS avec validation du certificat,
 WebSocket et révocation. `front/browser-tests/permissions.spec.mjs` vérifie la liste réelle,
-ses filtres, la suppression, la fermeture par fond de modale et le réessai après erreur.
+les demandes sans réponse, les réponses ponctuelles exclues des accords permanents, la révocation
+MCP vers « Sur demande », la fermeture par fond de modale et le réessai après erreur sur mobile et
+desktop. Elle couvre aussi les réponses réseau et les réponses tardives après changement d’onglet.
 La même suite backend vérifie l’accord couvrant tous les sites, sa révocation, la priorité des
 filtres et la séparation du réseau local, ainsi que le français, le chinois et la langue par défaut.
 Les accords historiques par site ne sont pas élargis ; les anciennes questions sont remplacées

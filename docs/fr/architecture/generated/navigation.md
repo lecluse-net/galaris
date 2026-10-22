@@ -147,7 +147,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 ## Superviser → Permissions
 
 - Route : `/connection/permissions`
-- Usage : Décisions pour une action et permissions mémorisées des agents
+- Usage : Répondez aux demandes en attente et gérez les autorisations permanentes des agents
 - Visibilité du menu (privilèges) : (CONNECTION_ACCESS OR CONNECTION_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/app/connection/navigation.ts`

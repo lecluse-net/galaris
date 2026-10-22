@@ -1,6 +1,7 @@
 """Human-only approval API; runtime credentials cannot answer for a human."""
 
 import json
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -44,6 +45,8 @@ async def list_requests(agent_id: int | None = None, status: str | None = None,
         query = query.where(ActionAuthorization.agent_id == agent_id)
     if status is not None:
         query = query.where(ActionAuthorization.status == status)
+    if status == "pending":
+        query = query.where(ActionAuthorization.expires_at > datetime.now(timezone.utc))
     total = await get_db().scalar(select(func.count()).select_from(query.subquery()))
     rows = (await get_db().scalars(query.order_by(ActionAuthorization.created_at.desc()).offset(offset).limit(limit))).all()
     return {"items": [projection(row) for row in rows], "total": total or 0}

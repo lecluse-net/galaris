@@ -1,7 +1,9 @@
 export default {
   fr: {
     permissions: {
-      title: 'Permissions', description: 'Décisions pour une action et permissions mémorisées des agents',
+      title: 'Permissions', description: 'Répondez aux demandes en attente et gérez les autorisations permanentes des agents',
+      pendingApprovals: 'Approbations en attente', permanentPermissions: 'Autorisations permanentes',
+      functionPermissions: 'Fonctions autorisées', pendingNetwork: 'Demandes d’accès réseau en attente', networkPermissions: 'Accès réseau autorisés',
       technicalDetails: 'Détails techniques',
       sendMail: 'Envoyer un e-mail',
       remembered: 'Permissions mémorisées', oneAction: 'Autorisation pour une action', cancelAction: 'Annuler la demande',
@@ -16,12 +18,12 @@ export default {
       runtimePermissions: 'Types d’action autorisés pour les harnais', runtime: 'Harnais',
       runtimePermissionEmpty: 'Aucun type d’action autorisé', runtimePermissionStale: 'Nouvel accord requis',
       revokeRuntimePermission: 'Révoquer l’accord', runtimeRevokeExplanation: 'Les prochaines actions de ce type demanderont à nouveau votre autorisation. Une action déjà commencée peut se terminer.',
-      functionScope: 'Cela autorise {function} pour cet agent sur cette connexion, quels que soient ses paramètres. Vous pouvez révoquer cet accord dans les autorisations des fonctions de la connexion.',
+      functionScope: 'Cela autorise {function} pour cet agent sur cette connexion, quels que soient ses paramètres. Vous pouvez révoquer cet accord dans l’onglet Autorisations permanentes de Permissions.',
       actionStatus: { pending: 'En attente', approved: 'Autorisée', denied: 'Refusée', expired: 'Expirée', invalidated: 'Invalidée', executing: 'En cours', completed: 'Terminée', failed: 'Échec', outcome_unknown: 'Résultat incertain' },
       agent: 'Agent', decision: 'Décision', question: 'Question', key: 'Permission', date: 'Date de réponse', approver: 'Utilisateur responsable',
       allowed: 'Autorisé', denied: 'Refusé', pending: 'En attente', empty: 'Aucune permission enregistrée',
       refresh: 'Actualiser', error: 'Impossible de charger ou modifier les permissions', retry: 'Réessayer', actions: 'Actions',
-      delete: 'Supprimer la décision', cancel: 'Annuler',
+      delete: 'Révoquer l’autorisation', cancel: 'Annuler',
       deleteExplanation: 'La prochaine demande équivalente reposera la question. L’historique sera conservé.',
     },
     nav: {
@@ -217,7 +219,9 @@ export default {
   },
   en: {
     permissions: {
-      title: 'Permissions', description: 'Decisions for one action and remembered agent permissions',
+      title: 'Permissions', description: 'Answer pending requests and manage permanent agent permissions',
+      pendingApprovals: 'Pending approvals', permanentPermissions: 'Permanent permissions',
+      functionPermissions: 'Allowed functions', pendingNetwork: 'Pending network requests', networkPermissions: 'Allowed network access',
       technicalDetails: 'Technical details',
       sendMail: 'Send an email',
       remembered: 'Remembered permissions', oneAction: 'Authorization for one action', cancelAction: 'Cancel request',
@@ -232,12 +236,12 @@ export default {
       runtimePermissions: 'Allowed Harness action types', runtime: 'Harness',
       runtimePermissionEmpty: 'No allowed action types', runtimePermissionStale: 'New consent required',
       revokeRuntimePermission: 'Revoke consent', runtimeRevokeExplanation: 'Future actions of this type will ask for approval again. An action that has already started may finish.',
-      functionScope: 'This allows {function} for this agent on this connection, with any arguments. You can revoke it in the connection’s function permissions.',
+      functionScope: 'This allows {function} for this agent on this connection, with any arguments. You can revoke it in the Permanent permissions tab of Permissions.',
       actionStatus: { pending: 'Pending', approved: 'Approved', denied: 'Denied', expired: 'Expired', invalidated: 'Invalidated', executing: 'Executing', completed: 'Completed', failed: 'Failed', outcome_unknown: 'Unknown outcome' },
       agent: 'Agent', decision: 'Decision', question: 'Question', key: 'Permission', date: 'Answered at', approver: 'Responsible user',
       allowed: 'Allowed', denied: 'Denied', pending: 'Pending', empty: 'No remembered permissions',
       refresh: 'Refresh', error: 'Could not load or change permissions', retry: 'Retry', actions: 'Actions',
-      delete: 'Delete decision', cancel: 'Cancel',
+      delete: 'Revoke permission', cancel: 'Cancel',
       deleteExplanation: 'The next equivalent request will ask again. History will be preserved.',
     },
     nav: {
@@ -433,7 +437,9 @@ export default {
   },
   zh: {
     permissions: {
-      title: '权限', description: '单次操作的决定及智能体已记住的权限',
+      title: '权限', description: '回复待审批请求并管理智能体的永久权限',
+      pendingApprovals: '待审批请求', permanentPermissions: '永久权限',
+      functionPermissions: '已允许的功能', pendingNetwork: '待审批的网络请求', networkPermissions: '已允许的网络访问',
       technicalDetails: '技术详情',
       sendMail: '发送电子邮件',
       remembered: '已记住的权限', oneAction: '单次操作授权', cancelAction: '取消请求',
@@ -448,12 +454,12 @@ export default {
       runtimePermissions: '已授权的执行框架操作类型', runtime: '执行框架',
       runtimePermissionEmpty: '无已授权的操作类型', runtimePermissionStale: '需要重新授权',
       revokeRuntimePermission: '撤销授权', runtimeRevokeExplanation: '此类操作将再次请求授权。已经开始的操作可能会完成。',
-      functionScope: '这将允许此代理在此连接上使用 {function}，无论参数如何。您可以在连接的功能权限中撤销此授权。',
+      functionScope: '这将允许此代理在此连接上使用 {function}，无论参数如何。您可以在权限页面的永久权限选项卡中撤销此授权。',
       actionStatus: { pending: '待处理', approved: '已批准', denied: '已拒绝', expired: '已过期', invalidated: '已失效', executing: '执行中', completed: '已完成', failed: '失败', outcome_unknown: '结果不确定' },
       agent: '智能体', decision: '决定', question: '问题', key: '权限', date: '回复时间', approver: '负责用户',
       allowed: '已允许', denied: '已拒绝', pending: '待处理', empty: '没有已保存的权限',
       refresh: '刷新', error: '无法加载或修改权限', retry: '重试', actions: '操作',
-      delete: '删除决定', cancel: '取消',
+      delete: '撤销权限', cancel: '取消',
       deleteExplanation: '下次同类请求会再次询问。历史记录将被保留。',
     },
     nav: { connection: '连接', connection_desc: '连接管理', mailJournal: '邮件日志', mailJournal_desc: '审批并记录智能体发送的邮件' },

@@ -580,8 +580,8 @@
       "route": "/connection/permissions",
       "href": null,
       "description": {
-        "fr": "Décisions pour une action et permissions mémorisées des agents",
-        "en": "Decisions for one action and remembered agent permissions"
+        "fr": "Répondez aux demandes en attente et gérez les autorisations permanentes des agents",
+        "en": "Answer pending requests and manage permanent agent permissions"
       },
       "privilege_groups": [
         [

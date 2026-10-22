@@ -280,10 +280,20 @@ Les filtres, les refus explicites et les permissions distinctes du réseau local
 Les boutons **Autoriser et mémoriser** et **Refuser et mémoriser** restent limités au type
 d’accès demandé. En mode **Autorisation par site**, supprimez l’accord « tous les sites » pour que
 ces accès nécessitent à nouveau un choix. Revenir à ce mode ne crée aucun accord implicite. Les anciens accords limités à un seul site conservent cette portée.
-**Superviser → Permissions mémorisées** (`/connection/permissions`) permet de retrouver la
-question et la réponse, filtrer par agent ou décision et supprimer un choix. L’agent redemandera
-à sa prochaine tentative autorisée par la configuration. Une action bloquée attend une nouvelle
-tentative après votre réponse ; les formulaires ne sont pas resoumis automatiquement.
+**Superviser → Permissions** (`/connection/permissions`) ouvre **Approbations en attente** :
+examinez les demandes sans réponse, puis autorisez l’action, refusez-la ou choisissez un accord
+permanent lorsque cette option est disponible. Les demandes d’accès réseau se traitent aussi ici.
+Le filtre Agent s’applique à toute la page. Les demandes traitées quittent cette liste ; les demandes
+d’action expirées n’y figurent plus. Une réponse ponctuelle ne crée aucune autorisation permanente.
+
+L’onglet **Autorisations permanentes** rassemble les fonctions explicitement autorisées sur une
+connexion, les types d’action des harnais et les accès réseau mémorisés autorisés. Vous pouvez y
+révoquer un accord ; une fonction MCP revient alors sur **Sur demande**, même si son réglage global
+est actif. Les refus réseau restent appliqués mais ne figurent pas parmi les autorisations accordées.
+Les traces techniques d’exécution restent conservées pour empêcher les doubles exécutions et permettre
+la reprise des tâches ; cette page ne les présente pas comme des permissions.
+Pour le navigateur, une action bloquée attend une nouvelle tentative après votre réponse ; les
+formulaires ne sont pas resoumis automatiquement.
 
 Pour donner la connaissance du produit à un agent, partez de **Connexions**, trouvez sa
 connexion **Galaris Admin**, puis suivez le [guide de connaissance produit](../admin/product-knowledge.md).

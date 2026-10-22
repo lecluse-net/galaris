@@ -257,10 +257,19 @@ Filters, explicit denials and separate local-network permissions still apply.
 In **Per-site approval** mode, delete the all-sites agreement to require a choice again for those
 accesses. Returning to that mode creates no implicit grant. Existing
 single-site agreements keep their original scope.
-**Monitor → Remembered permissions**
-(`/connection/permissions`) shows the original question and answer, filters by agent or decision,
-and lets you delete a choice. The agent asks again on its next attempt allowed by configuration.
-A blocked action requires a new attempt after your reply; forms are not resubmitted automatically.
+**Monitor → Permissions** (`/connection/permissions`) opens **Pending approvals**:
+review unanswered requests, then allow the action, deny it or choose permanent consent when
+available. Pending network requests can also be answered here. The Agent filter applies to the
+whole page. Answered requests leave the list; expired action requests are excluded.
+A one-time approval creates no permanent permission.
+
+The **Permanent permissions** tab lists functions explicitly allowed on a connection, allowed
+Harness action types and remembered network approvals. Revoke consent here; a revoked MCP function
+returns to **On request**, even when its global setting is active. Network denials still apply but
+are excluded from granted permissions. Technical execution records remain available internally
+to prevent duplicate execution and support task recovery; this page does not present them as grants.
+For browser access, a blocked action requires a new attempt after your reply; forms are not
+resubmitted automatically.
 
 To give an agent product knowledge, start in **Connections**, find its **Galaris Admin**
 connection, then follow the [product knowledge guide](../admin/product-knowledge.md).

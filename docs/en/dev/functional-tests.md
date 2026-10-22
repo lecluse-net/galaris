@@ -722,7 +722,9 @@ The public default for new installations and preserved policy on existing instan
 those without a saved parameter, are verified through two consecutive synchronizations.
 `browser-executor/network-proxy.test.mjs` uses Chromium and synthetic servers to verify POST,
 redirects, owner isolation, HTTPS certificate validation, WebSockets and revocation.
-`front/browser-tests/permissions.spec.mjs` exercises the real list, filters, deletion,
+`front/browser-tests/permissions.spec.mjs` exercises pending requests, one-time answers excluded
+from permanent grants, MCP revocation back to “On request”, network answers and late responses
+after changing tabs, as well as the real list, filters, deletion,
 dialog backdrop dismissal and retry after failure.
 The same backend suite checks all-sites consent, revocation, filter priority, local-network
 isolation, and French, Chinese, and the instance's default language.

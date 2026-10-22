@@ -10,10 +10,16 @@ export interface RememberedPermission {
   approver_label: string
   created_at: string
   answered_at: string | null
+  can_answer?: boolean
+  options?: { id: string; label: string }[]
 }
 
-export async function listPermissions(params: { agent_id?: number; allowed?: boolean; offset: number; limit: number }, signal?: AbortSignal) {
+export async function listPermissions(params: { agent_id?: number; allowed?: boolean; pending?: boolean; offset: number; limit: number }, signal?: AbortSignal) {
   return (await api.get<{ items: RememberedPermission[]; total: number }>('/messenger/permissions', { params, signal })).data
+}
+
+export async function answerPermission(id: string, option_id: string) {
+  await api.post(`/messenger/permissions/${id}/answer`, { option_id })
 }
 
 export async function deletePermission(id: string) {
@@ -65,6 +71,24 @@ export interface RuntimePermission {
   created_at: string
   active: boolean
   can_revoke: boolean
+}
+
+export interface FunctionPermission {
+  id: string
+  agent_id: number
+  connection_id: number
+  tool_label: string
+  capability_name: string
+  active: boolean
+  can_revoke: boolean
+}
+
+export async function listFunctionPermissions(params: { agent_id?: number; offset: number; limit: number }, signal?: AbortSignal) {
+  return (await api.get<{ items: FunctionPermission[]; total: number }>('/connections/function-permissions', { params, signal })).data
+}
+
+export async function revokeFunctionPermission(permission: FunctionPermission) {
+  await api.put(`/connections/${permission.connection_id}/functions/${encodeURIComponent(permission.capability_name)}`, { state: 'ask', capability_kind: 'tool' })
 }
 
 export async function listRuntimePermissions(params: { agent_id?: number; offset: number; limit: number }, signal?: AbortSignal) {

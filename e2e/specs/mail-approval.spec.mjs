@@ -8,6 +8,8 @@ for (const scenario of [
   { label: 'Refuser cette action', status: 'rejected', mobile: true, mode: 'mail-common', channel: 'chat' },
   { label: 'Autoriser cette action', status: 'sent', mobile: false, mode: 'mail-common', channel: 'journal' },
   { label: 'Refuser cette action', status: 'rejected', mobile: true, mode: 'mail-common', channel: 'journal' },
+  { label: 'Autoriser cette action', status: 'sent', mobile: false, mode: 'mail-common', channel: 'permissions' },
+  { label: 'Refuser cette action', status: 'rejected', mobile: true, mode: 'mail-common', channel: 'permissions' },
 ]) {
   test(`mail approval from ${scenario.channel} (${scenario.mode}): ${scenario.status}`, async ({ page, request }, testInfo) => {
     if (scenario.mobile) await page.setViewportSize({ width: 390, height: 844 })
@@ -30,7 +32,25 @@ for (const scenario of [
     await expect(page.locator('.message-timeline')).toContainText('rapport.txt')
     const action = page.getByRole('button', { name: scenario.label, exact: true })
     await expect(action).toBeEnabled()
-    if (scenario.channel === 'journal') {
+    if (scenario.channel === 'permissions') {
+      await errors.settle()
+      await page.goto('/connection/permissions')
+      await expect(page.getByRole('tab', { name: 'Approbations en attente', exact: true })).toHaveAttribute('aria-selected', 'true')
+      if (scenario.mobile && await page.locator('.q-drawer__backdrop').isVisible()) {
+        await page.locator('.q-drawer__backdrop').click({ position: { x: 380, y: 150 } })
+      }
+      await page.getByRole('button', { name: 'Examiner la demande', exact: true }).click()
+      const dialog = page.getByRole('dialog')
+      await expect(dialog).toContainText('recipient@example.org')
+      await expect(dialog).toContainText('Compte rendu synthétique')
+      await page.screenshot({ path: testInfo.outputPath('permissions-review.png'), fullPage: true, animations: 'disabled' })
+      await dialog.getByRole('button', { name: scenario.label, exact: true }).click()
+      await expect(dialog.getByRole('button', { name: scenario.label, exact: true })).toHaveCount(0)
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('button', { name: 'Examiner la demande', exact: true })).toHaveCount(0)
+      await page.getByRole('tab', { name: 'Autorisations permanentes', exact: true }).click()
+      await expect(page.getByText('mail_send', { exact: true })).toHaveCount(0)
+    } else if (scenario.channel === 'journal') {
       await errors.settle()
       await page.goto('/connection/mail')
       const pending = page.getByRole('region', { name: 'En attente d’envoi', exact: true })

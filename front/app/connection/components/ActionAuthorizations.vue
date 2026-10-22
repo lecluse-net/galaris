@@ -1,13 +1,11 @@
 <template>
   <div>
     <div class="row items-center q-mb-sm">
-      <h2 class="text-h6 q-my-none">{{ t('permissions.oneAction') }}</h2>
+      <h2 class="text-h6 q-my-none">{{ t('permissions.pendingApprovals') }}</h2>
       <q-space /><q-btn flat icon="refresh" :aria-label="t('permissions.refresh')" :loading="loading" @click="load" />
     </div>
-    <q-select v-model="statusFilter" :options="statusOptions" emit-value map-options clearable
-      :label="t('permissions.requestStatus')" class="q-mb-sm" />
     <q-banner v-if="error" role="alert">{{ t('permissions.error') }}
-      <template #action><q-btn flat :label="t('permissions.retry')" @click="load" /></template>
+      <template #action><q-btn outline :label="t('permissions.retry')" @click="load" /></template>
     </q-banner>
     <q-table :rows="rows" :columns="columns" row-key="id" v-model:pagination="pagination"
       :grid="$q.screen.lt.md" :loading="loading" wrap-cells
@@ -17,7 +15,10 @@
         <q-btn flat icon="visibility" :aria-label="t('permissions.inspect')" @click="open(props.row.id)" />
       </q-td></template>
       <template #item="props"><div class="col-12 q-pa-xs"><q-card flat bordered>
-        <q-card-section>{{ displayPreview(props.row) }}<div>{{ t(`permissions.actionStatus.${props.row.status}`) }}</div></q-card-section>
+        <q-card-section>{{ displayPreview(props.row) }}
+          <div>{{ t('permissions.agent') }}: {{ agentLabel(props.row.agent_id) }}</div>
+          <div>{{ t(`permissions.actionStatus.${props.row.status}`) }}</div>
+        </q-card-section>
         <q-card-actions><q-btn outline :label="t('permissions.inspect')" @click="open(props.row.id)" /></q-card-actions>
       </q-card></div></template>
     </q-table>
@@ -50,10 +51,10 @@
           <p v-if="selected.can_remember">{{ t(selected.source === 'runtime' ? 'permissions.runtimeScope' : 'permissions.functionScope', { function: selected.capability_name, runtime: selected.runtime }) }}</p>
         </q-card-section>
         <q-card-section v-if="detailError" role="alert">{{ t('permissions.error') }}
-          <q-btn v-if="detailId" flat :label="t('permissions.retry')" @click="open(detailId)" />
+          <q-btn v-if="detailId" outline :label="t('permissions.retry')" @click="open(detailId)" />
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn v-close-popup flat :label="t('permissions.cancel')" />
+          <q-btn v-close-popup outline :label="t('permissions.cancel')" />
           <q-btn v-if="selected?.can_cancel && canAnswer" :label="t('permissions.cancelAction')"
             :loading="answering" @click="cancel" />
           <template v-if="selected?.can_answer && canAnswer">
@@ -73,8 +74,10 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { QTableColumn, QTableProps } from 'quasar'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
+import type { AgentSelectionOption } from '@/app/agent'
 import { answerActionAuthorization, cancelActionAuthorization, getActionAuthorization, listActionAuthorizations, type ActionAuthorization } from '../services/permissionService'
-const { agentId = null } = defineProps<{ agentId?: number | null }>()
+const { agentId = null, agents = [] } = defineProps<{ agentId?: number | null; agents?: AgentSelectionOption[] }>()
+const agentLabel = (id: number) => agents.find(agent => agent.id === id)?.label ?? String(id)
 const emit = defineEmits<{ answered: [] }>()
 const { t } = useI18n()
 const route = useRoute()
@@ -83,9 +86,6 @@ const canAnswer = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTI
 const rows = ref<ActionAuthorization[]>([])
 const selected = ref<ActionAuthorization | null>(null)
 const detailId = ref<string | null>(null)
-const statusFilter = ref<ActionAuthorization['status'] | null>(null)
-const statusOptions = computed(() => ['pending', 'approved', 'denied', 'expired', 'invalidated', 'executing', 'completed', 'failed', 'outcome_unknown']
-  .map(value => ({ value, label: t(`permissions.actionStatus.${value}`) })))
 const loading = ref(false)
 const detailLoading = ref(false)
 const detailOpen = ref(false)
@@ -96,6 +96,7 @@ const pagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0 })
 const displayPreview = (row: ActionAuthorization) => row.source === 'domain' && ['mail_send', 'mail_reply', 'mail_forward'].includes(row.capability_name)
   ? t('permissions.sendMail') : row.preview.split('\n')[0]
 const columns = computed<QTableColumn[]>(() => [
+  { name: 'agent', field: 'agent_id', label: t('permissions.agent'), align: 'left', format: agentLabel },
   { name: 'preview', field: displayPreview, label: t('permissions.question'), align: 'left' },
   { name: 'status', field: 'status', label: t('permissions.decision'), align: 'left' },
   { name: 'actions', field: 'id', label: t('permissions.actions'), align: 'right' },
@@ -114,7 +115,7 @@ async function load() {
   error.value = false
   try {
     const result = await listActionAuthorizations({ agent_id: agentId ?? undefined,
-      status: statusFilter.value ?? undefined,
+      status: 'pending',
       offset: (pagination.value.page - 1) * pagination.value.rowsPerPage, limit: pagination.value.rowsPerPage }, listController.signal)
     if (current !== generation || disposed) return
     rows.value = result.items
@@ -122,15 +123,15 @@ async function load() {
   } catch { if (current === generation && !disposed) error.value = true }
   finally { if (current === generation && !disposed) loading.value = false }
 }
-async function open(id: string) {
-  if (disposed || !active) return
+async function open(id: string, reveal = true) {
+  if (disposed || !active || (!reveal && !detailOpen.value)) return
   detailId.value = id
   detailController?.abort()
   const controller = new AbortController()
   detailController = controller
   selected.value = null
   detailLoading.value = true
-  detailOpen.value = true
+  if (reveal) detailOpen.value = true
   detailError.value = false
   try {
     const result = await getActionAuthorization(id, controller.signal)
@@ -145,7 +146,7 @@ async function answer(approved: boolean, remember = false) {
   try {
     await answerActionAuthorization(id, approved, remember)
     emit('answered')
-    if (!disposed && detailOpen.value && selected.value?.id === id) await open(id)
+    if (!disposed && detailOpen.value && selected.value?.id === id) await open(id, false)
     await load()
   } catch { if (selected.value?.id === id) detailError.value = true }
   finally { answering.value = false }
@@ -156,7 +157,7 @@ async function cancel() {
   answering.value = true
   try {
     await cancelActionAuthorization(id)
-    if (!disposed && detailOpen.value && selected.value?.id === id) await open(id)
+    if (!disposed && detailOpen.value && selected.value?.id === id) await open(id, false)
     if (!disposed) await load()
   } catch { if (!disposed && selected.value?.id === id) detailError.value = true }
   finally { if (!disposed) answering.value = false }
@@ -166,8 +167,7 @@ const requestPage: NonNullable<QTableProps['onRequest']> = ({ pagination: next }
   pagination.value.rowsPerPage = next.rowsPerPage
   void load()
 }
-watch(() => agentId, () => { pagination.value.page = 1; selected.value = null; detailOpen.value = false; void load() })
-watch(statusFilter, () => { pagination.value.page = 1; void load() })
+watch(() => agentId, () => { pagination.value.page = 1; rows.value = []; selected.value = null; detailOpen.value = false; void load() })
 watch(detailOpen, value => { if (!value) { detailController?.abort(); selected.value = null } })
 watch(() => route.query.request, value => { if (typeof value === 'string') void open(value) })
 onMounted(() => { void load(); if (typeof route.query.request === 'string') void open(route.query.request) })

@@ -84,6 +84,15 @@ async def _editable_tool(tool_id: int) -> None:
 # =============================================================================
 
 
+@router.get("/function-permissions", dependencies=[Depends(require_web_session)])
+@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+async def list_function_permissions(agent_id: int | None = None,
+                                    offset: int = Query(0, ge=0),
+                                    limit: int = Query(50, ge=1, le=500)) -> dict[str, object]:
+    from .function_permissions import list_permissions
+    return await list_permissions(await current_management_scope(), agent_id=agent_id, offset=offset, limit=limit)
+
+
 def _oauth_user() -> int:
     user_id = get_current_user_id()
     if user_id is None:

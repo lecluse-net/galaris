@@ -22,13 +22,16 @@ KIND = "remembered_permission"
 
 async def list_decisions(*, managed_agent_ids: frozenset[int] | None,
                          agent_id: int | None, allowed: bool | None,
-                         offset: int, limit: int) -> PermissionPage:
+                         offset: int, limit: int, pending: bool = False,
+                         user_id: int | None = None) -> PermissionPage:
     query = select(PermissionDecision)
     if managed_agent_ids is not None:
         query = query.where(PermissionDecision.agent_id.in_(managed_agent_ids))
     if agent_id is not None:
         query = query.where(PermissionDecision.agent_id == agent_id)
-    if allowed is not None:
+    if pending:
+        query = query.where(PermissionDecision.allowed.is_(None))
+    elif allowed is not None:
         query = query.where(PermissionDecision.allowed.is_(allowed))
     db = get_db()
     total = await db.scalar(select(func.count()).select_from(query.subquery())) or 0
@@ -37,11 +40,50 @@ async def list_decisions(*, managed_agent_ids: frozenset[int] | None,
                             .order_by(PermissionDecision.created_at.desc(), PermissionDecision.id)
                             .offset(offset).limit(limit))
     items: list[PermissionRead] = []
-    for record, label in rows:
+    records = list(rows)
+    interactions = {row.id: row for row in await db.scalars(select(Interaction).where(
+        Interaction.id.in_([record.interaction_id for record, _ in records if record.allowed is None
+                           and record.interaction_id is not None]),
+    ))} if pending else {}
+    for record, label in records:
         item = PermissionRead.model_validate(record)
         item.approver_label = label or str(record.approver_user_id)
+        interaction = interactions.get(record.interaction_id) if record.interaction_id else None
+        if interaction is not None:
+            item.question = interaction.body
+            from app.agent import authorization_policy
+            try:
+                policy = await authorization_policy(record.agent_id)
+                item.can_answer = (user_id == record.approver_user_id == policy.manager_user_id
+                    and interaction.status == "PENDING" and interaction.expires_at > datetime.now(timezone.utc))
+            except PermissionError:
+                pass
+            if item.can_answer:
+                item.options = [{"id": str(option["id"]), "label": str(option["label"])}
+                                for option in interaction.options]
         items.append(item)
     return PermissionPage(items=items, total=total)
+
+
+async def answer_permission(identifier: UUID, *, user_id: int, option_id: str) -> bool:
+    """Resolve the persisted human choice through its canonical delivery mechanism."""
+    from app.agent import authorization_policy
+    from .interactions import resolve_pending_choice
+    db = get_db()
+    record = await db.get(PermissionDecision, identifier)
+    if record is None or record.approver_user_id != user_id or record.allowed is not None:
+        return False
+    policy = await authorization_policy(record.agent_id)
+    if policy.manager_user_id != user_id or record.interaction_id is None:
+        return False
+    interaction = await db.get(Interaction, record.interaction_id)
+    if interaction is None or interaction.room_id is None:
+        return False
+    _, delivered = await resolve_pending_choice(reference=interaction.reference, option_id=option_id,
+        response_text="", agent_id=record.agent_id, connection_id=interaction.connection_id,
+        tool_id=interaction.tool_id, room_id=interaction.room_id, user_id=interaction.user_id)
+    await db.refresh(record)
+    return delivered and record.allowed is not None
 
 
 async def delete_decision(identifier: UUID, *, managed_agent_ids: frozenset[int] | None) -> bool:

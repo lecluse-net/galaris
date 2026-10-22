@@ -597,6 +597,58 @@ async def test_runtime_approval_cannot_be_made_permanent(action):
         assert row.status == "pending"
 
 
+@pytest.mark.asyncio
+async def test_function_permissions_list_only_reusable_grants_and_revoke_to_ask(action, client):
+    from app.connection import Connection, facade as connections
+    from app.tools.models import Tool
+    from core.authorize.models import Assignment, Role, Privilege
+    from core.user import auth_service, refresh_session_service as sessions
+    async with get_db_session() as db:
+        tool = await db.scalar(select(Tool).where(Tool.code == "topic"))
+        connection = Connection(agent_id=action.agent_id, tool_id=tool.id, active=True)
+        db.add(connection)
+        await db.flush()
+        action = replace(action, source="mcp", tool_id=tool.id, connection_id=connection.id,
+            name="topic_create", arguments={"title": "Synthetic topic"})
+        manager = await db.get(UserModel, (await db.get(Agent, action.agent_id)).user_id)
+        other = UserModel(email=f"scope-{uuid4().hex}@example.test", hashed_password="synthetic")
+        role = Role(code=f"permissions-{uuid4().hex}", display_name="Synthetic permission manager")
+        role.privileges = list(await db.scalars(select(Privilege).where(
+            Privilege.code.in_(["CONNECTION_ACCESS", "CONNECTION_EDIT"]))))
+        db.add_all([other, role])
+        await db.flush()
+        db.add_all([Assignment(user_id=user.id, role_id=role.id, is_default=True) for user in (manager, other)])
+        tokens = []
+        for user in (manager, other):
+            refresh = await sessions.create_refresh_session(user.id)
+            tokens.append(await auth_service.create_access_token_for_user(user, session_family=await sessions.family_for_token(refresh)))
+    headers, other_headers = [{"Authorization": f"Bearer {token}"} for token in tokens]
+    path = "/api/connections/function-permissions"
+    assert (await client.get(path)).status_code == 401
+    once = await pending(action)
+    assert (await client.get(path, headers=headers)).json()["total"] == 0
+    async with get_db_session() as db:
+        assert await answer_action(once, user_id=manager.id, approved=True)
+    assert (await client.get(path, headers=headers)).json()["total"] == 0
+    permanent = replace(action, callback_key=str(uuid4()))
+    identifier = await pending(permanent)
+    async with get_db_session():
+        assert await answer_action(identifier, user_id=manager.id, approved=True, remember=True)
+    result = await client.get(path, headers=headers, params={"limit": 500})
+    assert result.status_code == 200
+    assert result.json()["total"] == 1
+    assert result.json()["items"][0]["capability_name"] == "topic_create"
+    assert result.json()["items"][0]["connection_id"] == connection.id
+    assert (await client.get(path, headers=other_headers)).json()["total"] == 0
+    revoke = f"/api/connections/{connection.id}/functions/topic_create"
+    assert (await client.put(revoke, headers=other_headers, json={"state": "ask"})).status_code == 404
+    assert (await client.put(revoke, headers=headers, json={"state": "ask"})).status_code == 200
+    assert (await client.get(path, headers=headers)).json()["total"] == 0
+    async with get_db_session():
+        assert (await connections.resolve_function(connection, "topic_create"))["effective_state"] == "ask"
+    await pending(replace(permanent, callback_key=str(uuid4())))
+
+
 @pytest_asyncio.fixture(params=[provider.code for provider in all_providers()])
 async def runtime_action(action, request, monkeypatch):
     from app.harnesses.models import AgentHarness, Harness
@@ -752,6 +804,14 @@ async def test_human_runtime_permission_api_revokes_unconsumed_consent_and_prese
             tokens.append(await auth_service.create_access_token_for_user(user, session_family=await sessions.family_for_token(refresh)))
     headers, other_headers = [{"Authorization": f"Bearer {token}"} for token in tokens]
     review_path = f"/api/tools/action-authorizations/{identifier}"
+    from datetime import datetime, timedelta, timezone
+    expired = await pending(replace(runtime_action, callback_key=str(uuid4())))
+    async with get_db_session() as db:
+        (await db.get(ActionAuthorization, expired)).expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    pending_path = "/api/tools/action-authorizations"
+    requests = await client.get(pending_path, headers=headers,
+        params={"status": "pending", "agent_id": runtime_action.agent_id, "limit": 500})
+    assert {item["id"] for item in requests.json()["items"]} == {str(identifier), str(second)}
     review = await client.get(review_path, headers=headers)
     assert review.status_code == 200
     assert review.json()["presentation"]["fields"]
@@ -761,6 +821,9 @@ async def test_human_runtime_permission_api_revokes_unconsumed_consent_and_prese
     answer = await client.post(f"/api/tools/action-authorizations/{identifier}/answer", headers=headers,
         json={"approved": True, "remember": True})
     assert answer.status_code == 200
+    requests = await client.get(pending_path, headers=headers,
+        params={"status": "pending", "agent_id": runtime_action.agent_id})
+    assert [item["id"] for item in requests.json()["items"]] == [str(second)]
     with pytest.raises(AuthorizationRequired) as waiting:
         await claim_action(already_pending)
     assert waiting.value.request_id == second

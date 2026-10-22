@@ -16,6 +16,8 @@ class PermissionRead(BaseModel):
     approver_label: str = ""
     created_at: datetime
     answered_at: datetime | None
+    can_answer: bool = False
+    options: list[dict[str, str]] = []
 
 
 class PermissionPage(BaseModel):
