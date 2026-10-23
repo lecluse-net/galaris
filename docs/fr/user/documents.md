@@ -4,8 +4,9 @@
 
 Ouvrez **Connaissances → Documents** (`/documents`) pour créer et classer les contenus
 HTML accessibles. Les [jeux de données JSON](datasets.md) et les [processus](internal-processes.md)
-ont leurs bibliothèques propres. Le classement est personnel : il ne donne aucun droit
-supplémentaire et ne change pas l'organisation des autres lecteurs.
+ont leurs bibliothèques propres. Le classement est personnel et ne change pas
+l'organisation des autres lecteurs. Un répertoire peut accorder automatiquement des droits
+supplémentaires sur vos documents, sans partager votre arborescence.
 
 
 ## Créer et retrouver
@@ -34,7 +35,8 @@ La flèche permet de déplier ses enfants, sur plusieurs niveaux ; cliquer sur l
 continue d'ouvrir le document. Pour sortir un enfant de son parent, glissez-le dans la zone
 des documents non classés ou dans un dossier.
 Cette hiérarchie est personnelle, comme les dossiers : chaque document conserve ses
-propres droits de partage. Supprimer le parent conserve les enfants ; ceux qui restent
+propres droits de partage, auxquels s'ajoutent ceux de ses répertoires et documents parents.
+Supprimer le parent conserve les enfants ; ceux qui restent
 lisibles réapparaissent parmi les non-classés, également si l'accès au parent est retiré.
 
 Après confirmation du serveur, un document déplacé prend sa nouvelle place et un document
@@ -89,3 +91,18 @@ ou un compte rendu : cette chronologie reste alors pertinente dans le document.
 Le [guide des contenus riches](rich-content.md) explique l'édition, les liens et cartes,
 les pièces jointes, le partage, les versions et les exports. Pour travailler à côté d'un
 agent, ouvrez un document depuis la rubrique Documents de la discussion.
+
+## Partage automatique des répertoires
+
+En haut de la liste d'un répertoire (**F4**), le bloc **Partage automatique du répertoire**
+permet d'accorder un accès en lecture ou modification à des utilisateurs, agents et groupes,
+ou un accès public aux utilisateurs authentifiés. Ces droits se propagent aux sous-répertoires,
+documents et sous-documents, y compris ceux ajoutés ensuite. Un document cumule les partages
+de tous les répertoires dans lesquels il est classé ; le droit le plus permissif gagne.
+Classer un document appartenant à autrui, même modifiable, ne permet pas de le repartager.
+Votre arborescence reste personnelle.
+
+Retirer un partage du répertoire, déplacer un document ou supprimer son répertoire retire
+uniquement la contribution correspondante. Les partages propres et les autres sources restent
+présents. Un droit hérité retiré directement sur un document revient tant que son ancêtre
+l'accorde. Chaque `make update` réapplique l'ensemble de ces règles de manière idempotente.

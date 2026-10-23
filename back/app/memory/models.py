@@ -69,6 +69,17 @@ class MemoryGraphPosition(Base):
     __table_args__ = (UniqueConstraint("view_id", "node_key"),)
 
 
+class DocumentSharingIntent(Base):
+    """Authoritative own ACL; common sharing tables are the effective projection."""
+
+    __tablename__ = "document_sharing_intents"
+    share_id: Mapped[UUID] = mapped_column(ForeignKey("share_configs.id", ondelete="CASCADE"), primary_key=True)
+    global_access: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    group_access: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    grants: Mapped[list[dict[str, int | bool | str]]] = mapped_column(JSONB, default=list, server_default="[]")
+    __table_args__ = (CheckConstraint("global_access IN (0,1,2) AND group_access IN (0,1,2)", name="ck_document_sharing_intents_access"),)
+
+
 class DocumentTag(HistoryMixin, Base):
     """A human's private document classification, independent of document ownership."""
 

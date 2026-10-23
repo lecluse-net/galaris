@@ -214,10 +214,13 @@ class MemoryGoalDocumentStore(GoalDocumentStore):
                 allow_goal_document_metadata_sync=True,
             )
         if owner_agent_id is not None and owner_agent_id != item.owner_agent_id:
+            from .sharing_inheritance import prepare_own_sharing, finish_own_sharing
+            await prepare_own_sharing(item)
             item.owner_agent_id = owner_agent_id
             await get_db().execute(
                 delete(ShareGrant).where(ShareGrant.share_id == MemoryItem.share_for(document_id))
             )
+            await finish_own_sharing(item)
             await get_db().commit()
 
     async def discard(self, document_id: UUID) -> None:

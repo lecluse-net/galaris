@@ -12,6 +12,7 @@ from app.agent import AgentManagementScope
 from app.goal.tests.factories import make_goal
 from app.memory import document_tags, service
 from app.memory import goal_folders as filing
+from app.memory.sharing_inheritance import capture_intent
 from app.memory.goal_document_adapter import register_goal_document_adapter
 from app.memory.models import DocumentTag, DocumentTagAssignment, MemoryAutomationJob, MemoryItem
 from app.memory.schemas import DocumentTagWrite, MemorySourceCreate
@@ -114,6 +115,9 @@ async def test_filing_is_personal_idempotent_and_preserves_manual_classification
     await document_tags.write_tag(other.id, DocumentTagWrite(name="Objectifs", icon="emoji:1F4C1"))
     for identity in (goal.description_document_id, goal.tracking_document_id):
         db.add(ShareGrant(share_id=MemoryItem.share_for(identity), user_id=other.id, can_write=False))
+        await db.flush()
+        # This fixture authors an own ACL, rather than corrupting its projection.
+        await capture_intent((await db.get(MemoryItem, identity)).share_id)
     await db.commit()
     manual = await document_tags.write_tag(user.id, DocumentTagWrite(name="Mes projets"))
     await document_tags.move_document(
@@ -147,6 +151,8 @@ async def test_filing_is_personal_idempotent_and_preserves_manual_classification
 async def test_filing_renames_generated_folders_and_recreates_deleted_branches(db, agents, memory_storage):
     goal, user, other = await setup_goal(db, agents)
     db.add(ShareGrant(share_id=MemoryItem.share_for(goal.tracking_document_id), user_id=other.id, can_write=False))
+    await db.flush()
+    await capture_intent((await db.get(MemoryItem, goal.tracking_document_id)).share_id)
     await db.commit()
     await filing.enqueue_goal_folder_reconciliation(goal_id=goal.id)
     await drain(db)
@@ -182,14 +188,19 @@ async def test_global_filing_handles_late_access_rechecks_revocation_and_skips_e
     await drain(db)
     assert await db.scalar(select(DocumentTag.id).where(DocumentTag.goal_id == goal.id)) is None
     db.add(ShareGrant(share_id=MemoryItem.share_for(goal.description_document_id), user_id=other.id, can_write=False))
+    await db.flush()
+    await capture_intent((await db.get(MemoryItem, goal.description_document_id)).share_id)
     await db.commit()
     await filing.enqueue_goal_folder_reconciliation(user_id=other.id, goal_id=goal.id)
     # Permissions are evaluated at execution, not when enqueuing.
     await db.execute(delete(ShareGrant).where(ShareGrant.user_id == other.id))
+    await capture_intent((await db.get(MemoryItem, goal.description_document_id)).share_id)
     await db.commit()
     await drain(db)
     assert await locations(db, other.id) == {}
     db.add(ShareGrant(share_id=MemoryItem.share_for(goal.description_document_id), user_id=other.id, can_write=False))
+    await db.flush()
+    await capture_intent((await db.get(MemoryItem, goal.description_document_id)).share_id)
     await db.commit()
     await filing.on_user_change(other.id)
     await drain(db)

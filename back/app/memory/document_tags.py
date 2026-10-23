@@ -31,6 +31,8 @@ async def require_tag(user_id: int, tag_id: UUID) -> DocumentTag:
 
 
 async def lock_tree(user_id: int) -> None:
+    from .sharing_inheritance import lock_sharing
+    await lock_sharing()
     # Serialize one user's tree edits, including concurrent moves and assignments.
     await get_db().execute(select(func.pg_advisory_xact_lock(1195656263, user_id)))
 
@@ -165,6 +167,8 @@ async def sync_classified_document(document_id: UUID) -> None:
     from .document_structure import sync_document_classification
     await get_db().flush()
     await sync_document_classification(document_id)
+    from .sharing_inheritance import reconcile_sharing
+    await reconcile_sharing()
 
 
 async def list_icons(user_id: int) -> list[DocumentTagIconPublic]:

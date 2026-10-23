@@ -821,6 +821,26 @@ async def create_personal_document_tag(data: DocumentTagWrite) -> DocumentTagPub
         raise _http_error(exc) from exc
 
 
+@router.get("/documents/tags/{tag_id}/sharing", response_model=DocumentSharing)
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
+async def read_folder_sharing(tag_id: UUID) -> DocumentSharing:
+    from . import folder_sharing
+    try:
+        return await folder_sharing.sharing(tag_id, await current_management_scope())
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.put("/documents/tags/{tag_id}/sharing", response_model=DocumentSharing)
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
+async def update_folder_sharing(tag_id: UUID, data: DocumentSharingLevelUpdate) -> DocumentSharing:
+    from . import folder_sharing
+    try:
+        return await folder_sharing.update(tag_id, data, await current_management_scope())
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
 @router.put("/documents/tags/{tag_id}", response_model=DocumentTagPublic)
 @authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
 async def update_personal_document_tag(tag_id: UUID, data: DocumentTagWrite) -> DocumentTagPublic:

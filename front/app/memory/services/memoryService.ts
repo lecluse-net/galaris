@@ -201,6 +201,8 @@ export const memoryService = {
   async updateItemSharing(id: string, data: import('../types').DocumentSharingLevelUpdate): Promise<DocumentSharing> { return (await api.put<DocumentSharing>(`/memory/items/${id}/sharing`, data)).data },
   async updateDocumentSharingLevel(id: string, data: import('../types').DocumentSharingLevelUpdate): Promise<DocumentSharing> { return (await api.put<DocumentSharing>(`/memory/documents/${id}/sharing-level`, data)).data },
   async documentSharing(id: string): Promise<DocumentSharing> { return (await api.get<DocumentSharing>(`/memory/documents/${id}/sharing`)).data },
+  async folderSharing(id: string): Promise<DocumentSharing> { return (await api.get<DocumentSharing>(`/memory/documents/tags/${id}/sharing`)).data },
+  async updateFolderSharing(id: string, data: import('../types').DocumentSharingLevelUpdate): Promise<DocumentSharing> { return (await api.put<DocumentSharing>(`/memory/documents/tags/${id}/sharing`, data)).data },
   async updateDocumentSharing(id: string, data: DocumentSharingUpdate): Promise<DocumentSharing> { return (await api.put<DocumentSharing>(`/memory/documents/${id}/sharing`, data)).data },
   async createDocumentLinkCard(id: string, agentId: number | null, url: string): Promise<{ html: string; attachment: DocumentAttachment | null }> {
     const response = await api.post<{ html: string; attachment: DocumentAttachment | null }>(`/memory/documents/${id}/link-card`, { url }, { params: { actor_agent_id: agentId } })

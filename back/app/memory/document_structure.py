@@ -291,6 +291,8 @@ async def sync_folder_structure(user_id: int) -> None:
     for tag in tags:
         if tag.memory_item_id is not None:
             await _edges(tag.memory_item_id, children[tag.id])
+    from .sharing_inheritance import reconcile_sharing
+    await reconcile_sharing()
 
 
 async def reconcile_document_structure() -> int:

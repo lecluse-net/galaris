@@ -320,6 +320,8 @@ export default {
         deleteKey: 'Suppr',
       },
       bulk: {
+        folderSharing: 'Partage automatique du répertoire',
+        folderSharingHint: 'Ces droits s’ajoutent à ceux des documents et sous-répertoires, récursivement, uniquement pour les documents dont vous pouvez gérer le partage. Votre arborescence reste personnelle.',
         title: 'Opération sur {count} document(s)', operation: 'Opération', actions: 'Actions sur la sélection',
         openFolder: 'Afficher le dossier {name} en liste', openUnclassified: 'Afficher les documents non classés en liste', closeList: 'Fermer la liste',
         recursive: 'Inclure les sous-dossiers et sous-documents', selectPage: 'Sélectionner cette page', selected: '{count} sélectionné(s)', selectDocument: 'Sélectionner {title}',
@@ -864,6 +866,8 @@ export default {
       },
       bulk: {
         title: 'Operation on {count} document(s)', operation: 'Operation', actions: 'Selection actions',
+        folderSharing: 'Automatic folder sharing',
+        folderSharingHint: 'These permissions are added recursively to documents and subfolders, only for documents whose sharing you can manage. Your tree remains personal.',
         openFolder: 'Show folder {name} as a list', openUnclassified: 'Show unclassified documents as a list', closeList: 'Close list',
         recursive: 'Include subfolders and sub-documents', selectPage: 'Select this page', selected: '{count} selected', selectDocument: 'Select {title}',
         keywordsAdd: 'Add keywords', keywordsRemove: 'Remove keywords', keywords: 'Keywords', keywordsHint: 'Press Enter after each keyword.',
@@ -1203,6 +1207,8 @@ export default {
       },
       bulk: {
         title: '对 {count} 个文档执行操作', operation: '操作', actions: '批量操作',
+        folderSharing: '文件夹自动共享',
+        folderSharingHint: '这些权限会递归添加到文档和子文件夹，但仅适用于您有权管理共享的文档。您的目录树仍为个人所有。',
         openFolder: '以列表显示文件夹 {name}', openUnclassified: '以列表显示未分类文档', closeList: '关闭列表',
         recursive: '包括子文件夹和子文档', selectPage: '选择本页', selected: '已选择 {count} 项', selectDocument: '选择 {title}',
         keywordsAdd: '添加关键词', keywordsRemove: '移除关键词', keywords: '关键词', keywordsHint: '输入每个关键词后按回车。',

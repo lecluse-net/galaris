@@ -53,3 +53,27 @@ of resharing, reloading, reopening and revocation.
 
 These fixtures are entirely synthetic; they are neither a production copy nor a
 migration duration estimate for a real installation.
+
+## Document inheritance across personal classifications
+
+Memory stores authoritative own ACLs in `document_sharing_intents`. Common configurations
+and grants remain the effective projection used by SQL admission, agents, lists and exports.
+Existing ACLs become own intent on first reconciliation; inherited results never become
+sources during replay.
+
+Edges from `document_tags`, `document_tag_assignments` and `document_nesting` add every
+ancestor's permissions. Only the human owner's classification, or that of the owning agent's
+manager, can transmit permissions to a document whose sharing they can manage. Filing a
+received document, even with edit access, cannot reshare it. Trees stay private even when
+folder policies grant public access. Dataset and Process policies remain independent.
+
+The additive closure starts exclusively from own rights and takes the maximum read/edit
+permission. It also terminates on legacy cyclic graphs. Sharing and placement changes rebuild
+the projection in the business transaction under a common advisory lock. Deletions and
+ownership transfers recalculate contributions that no longer apply. The required
+`app.memory.sharing_inheritance` reconciler runs after document structure, repairing the
+complete projection on every DbAdmin synchronization and `make update`. A replay without
+drift changes neither rights nor versions. The F4 form reuses the common sharing component;
+saving unchanged effective rights does not turn them into own grants.
+
+See [decision 0218](../../../project/decisions/0218-personal-tree-sharing-inheritance.md).

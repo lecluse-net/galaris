@@ -151,6 +151,10 @@ async def _enqueue_goal_folders(_session: AsyncSession) -> None:
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_reconciler(DbAdminReconciler(
+        key="app.memory.sharing_inheritance", handler=_reconcile_sharing,
+        depends_on=("app.memory.document_structure",),
+    ))
+    registry.register_reconciler(DbAdminReconciler(
         key="app.memory.internal_user_identities",
         handler=_reconcile_internal_user_identities,
         depends_on=("app.memory.source_projections",),
@@ -223,3 +227,9 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
             required=False,
         )
     )
+
+
+async def _reconcile_sharing(_session: AsyncSession) -> None:
+    from .sharing_inheritance import reconcile_sharing
+    changed = await reconcile_sharing()
+    logger.info("Document sharing reconciliation: changed={}", changed)

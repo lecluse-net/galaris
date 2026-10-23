@@ -5,6 +5,14 @@
       <h2 class="text-h6 col q-ma-none bulk-heading">{{ heading }}</h2>
       <q-btn flat round icon="refresh" :aria-label="t('documents.retry')" :disable="busy" @click="load" />
     </div>
+    <q-card v-if="folder" :key="folder.id" flat bordered class="q-mb-md">
+      <q-card-section>
+        <h3 class="text-subtitle1 q-mt-none q-mb-xs">{{ t('documents.bulk.folderSharing') }}</h3>
+        <p class="text-caption q-mb-sm">{{ t('documents.bulk.folderSharingHint') }}</p>
+        <MemorySharingPanel :item-id="folder.id" :editable="!busy && privilegeStore.hasPrivilege(privileges.MEMORY_EDIT)"
+          :reader="memoryService.folderSharing" :writer="memoryService.updateFolderSharing" @changed="load" />
+      </q-card-section>
+    </q-card>
     <div class="row items-center q-gutter-sm q-mb-sm">
       <q-input v-model="query" outlined dense clearable debounce="350" class="bulk-search" :label="t('documents.search')" :disable="busy" />
       <q-checkbox v-if="folder" v-model="recursive" :label="t('documents.bulk.recursive')" :disable="busy" />
@@ -57,7 +65,7 @@ import { useI18n } from 'vue-i18n'
 import { isAxiosError } from 'axios'
 import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { documentResourceHref } from '@/core/util'
+import { defineAsyncView, documentResourceHref } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { memoryService } from '../services/memoryService'
 import { applyDocumentBulkOperation, documentEntryActor, type DocumentBulkOperation } from '../services/documentBulkService'
@@ -69,6 +77,7 @@ import DocumentRowMenu from './DocumentRowMenu.vue'
 import { documentRowShortcuts, vLibraryShortcuts, type DocumentRowAction } from '../libraryShortcuts'
 
 const props = defineProps<{ folder: DocumentTag | null }>()
+const MemorySharingPanel = defineAsyncView(() => import('./MemorySharingPanel.vue'))
 const emit = defineEmits<{ action: [entry: DocumentLibraryEntry, action: DocumentRowAction]; create: [entry: DocumentLibraryEntry]; select: [entry: DocumentLibraryEntry]; close: []; changed: [ids: string[]]; deleted: [id: string] }>()
 const { t } = useI18n()
 const privilegeStore = usePrivilegeStore()

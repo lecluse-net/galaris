@@ -2220,7 +2220,9 @@ async def _forget_item_record(
     commit: bool = True,
 ) -> MemoryForgetResult:
     """Erase one already-authorized memory, including every resource revision."""
-
+    if item.node_kind == "document":
+        from .sharing_inheritance import lock_sharing
+        await lock_sharing()
     item_id = item.id
     original_content_hash = item.content_hash
     source_rows = list(
@@ -2426,6 +2428,9 @@ async def _forget_item_record(
         retired_files = await retire_file_references(f"document://{item_id}/attachments/")
         resources.update(("native", str(identifier)) for identifier in retired_files)
         await forget_resource_memories([f"document://{item_id}", *(f"file://{identifier}" for identifier in retired_files)], descendants=True)
+    if item.node_kind == "document":
+        from .sharing_inheritance import reconcile_sharing
+        await reconcile_sharing()
     if not commit:
         # The source owner must be able to roll back its deletion together with
         # Memory. External payload cleanup runs only after this transaction commits.
@@ -2755,6 +2760,8 @@ async def set_item_grant(
     actor_task_id: UUID | None = None,
     include_revisions: bool = True,
 ) -> MemoryItem:
+    from .sharing_inheritance import lock_sharing, prepare_own_sharing, finish_own_sharing
+    await lock_sharing()
     item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
@@ -2776,6 +2783,7 @@ async def set_item_grant(
         )
     if agent_id == item.owner_agent_id:
         raise MemoryConflictError("The owner already has direct access to this memory.")
+    await prepare_own_sharing(item)
     db = get_db()
     grant = await db.scalar(
         select(ShareGrant).where(
@@ -2802,6 +2810,7 @@ async def set_item_grant(
                 task_id=actor_task_id,
             )
         )
+    await finish_own_sharing(item)
     await _commit_with_conflict(
         "The document changed while sharing was being edited; reload and retry."
     )
@@ -2827,7 +2836,8 @@ async def set_document_global_access(
     include_revisions: bool = True,
 ) -> MemoryItem:
     """Set the durable public permission for authenticated humans and Agents."""
-
+    from .sharing_inheritance import lock_sharing, prepare_own_sharing, finish_own_sharing
+    await lock_sharing()
     item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
@@ -2843,13 +2853,12 @@ async def set_document_global_access(
         raise MemoryConflictError(
             "The document changed while sharing was being edited; reload and retry."
         )
-    if item.global_access == data.global_access and item.group_access == 0:
-        return item
-
+    await prepare_own_sharing(item)
     has_grants = await has_document_grants(item_id)
     item.global_access = data.global_access
     item.group_access = 0
     item.visibility = "shared" if data.global_access > 0 or has_grants else "private"
+    await finish_own_sharing(item)
     await commit_item_sharing(item)
     loaded = await _get_item_record(item_id, revisions=include_revisions)
     assert loaded is not None
@@ -2874,6 +2883,8 @@ async def remove_item_grant(
     expected_lock_version: int | None = None,
     include_revisions: bool = True,
 ) -> MemoryItem:
+    from .sharing_inheritance import lock_sharing, prepare_own_sharing, finish_own_sharing
+    await lock_sharing()
     item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
@@ -2892,6 +2903,7 @@ async def remove_item_grant(
         raise MemoryConflictError(
             "The document changed while sharing was being edited; reload and retry."
         )
+    await prepare_own_sharing(item)
     db = get_db()
     grant = await db.scalar(
         select(ShareGrant).where(
@@ -2918,9 +2930,10 @@ async def remove_item_grant(
             # Deleting a grant may leave visibility unchanged, so make the
             # document row participate in optimistic concurrency explicitly.
             item.lock_version += 1
-        await _commit_with_conflict(
-            "The document changed while sharing was being edited; reload and retry."
-        )
+    await finish_own_sharing(item)
+    await _commit_with_conflict(
+        "The document changed while sharing was being edited; reload and retry."
+    )
     loaded = await _get_item_record(item_id, revisions=include_revisions)
     assert loaded is not None
     if grant is not None:
@@ -3350,7 +3363,8 @@ async def transfer_document_owner(
     include_revisions: bool = True,
 ) -> MemoryItem:
     """Transfer a document while preserving the current editor's write access."""
-
+    from .sharing_inheritance import lock_sharing, prepare_own_sharing, finish_own_sharing
+    await lock_sharing()
     item = await _get_item_record(document_id, revisions=include_revisions)
     if item is None or item.node_kind != "document":
         raise MemoryNotFoundError("Document not found.")
@@ -3386,6 +3400,7 @@ async def transfer_document_owner(
         if owner_user is None or not owner_user.is_active:
             raise ValueError("User owner not found.")
 
+    await prepare_own_sharing(item)
     db = get_db()
     if data.kind == "agent":
         item.owner_agent_id = data.id
@@ -3433,6 +3448,7 @@ async def transfer_document_owner(
     await db.flush()
     has_grants = await has_document_grants(document_id)
     item.visibility = "shared" if has_grants or item.global_access > 0 or item.group_access > 0 else "private"
+    await finish_own_sharing(item)
     await commit_item_sharing(item)
     loaded = await _get_item_record(document_id, revisions=include_revisions)
     assert loaded is not None

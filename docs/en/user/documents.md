@@ -4,8 +4,8 @@
 
 Open **Knowledge → Documents** (`/documents`) to create and organize accessible HTML
 content. [JSON Datasets](datasets.md) and [Processes](internal-processes.md) have their own
-libraries. Classification is personal: it grants no additional rights and does not change
-other readers' organization.
+libraries. Classification is personal and does not change other readers' organization.
+A folder can automatically grant additional access to your documents without sharing your tree.
 
 
 ## Create and find Documents
@@ -31,7 +31,8 @@ A document can also contain **sub-documents**. Use its **New sub-document** icon
 or drag an existing document onto the middle of its row. The arrow expands its children
 across multiple levels; clicking the title still opens the document. To move a child out of
 its parent, drag it into the unclassified documents area or a folder.
-This hierarchy is personal, like folders: each document retains its own sharing rights.
+This hierarchy is personal, like folders: each document retains its own sharing rights,
+with permissions from its folders and parent documents added to them.
 Deleting a parent preserves its children; readable children reappear in the unclassified
 list, including when access to their parent is revoked.
 
@@ -82,3 +83,17 @@ then remains relevant in the document.
 The [rich content guide](rich-content.md) covers editing, links and cards, attachments,
 sharing, revisions and exports. To work alongside an agent, open a document from the
 discussion's Documents section.
+
+## Automatic folder sharing
+
+Open a folder as a list (**F4**) and use **Automatic folder sharing** at the top.
+Grant read or edit access to users, agents and teams, or public access for authenticated
+users. These rights apply recursively to subfolders, documents and sub-documents,
+including later additions. A document combines permissions from every folder containing
+it and every parent document; the most permissive permission wins. Filing somebody else's
+document, even with edit access, never authorizes resharing it. Your tree stays personal.
+
+Removing a folder grant, moving a document or deleting a folder removes only that source's
+contribution. Own grants and other sources remain. A permission inherited from an ancestor
+returns when removed directly on the document while the ancestor still grants it.
+Every `make update` idempotently reapplies all these rules.

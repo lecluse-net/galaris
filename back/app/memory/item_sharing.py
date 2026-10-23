@@ -17,6 +17,7 @@ from . import service
 from .access import human_item_access, managed_item_agent_ids
 from .models import MemoryItem
 from .schemas import DocumentSharing, DocumentSharingUpdate, DocumentSharingLevelUpdate
+from . import sharing_inheritance
 
 
 async def item_actor(
@@ -83,17 +84,21 @@ async def sharing_directory(*, owner_agent_id: int | None, owner_user_id: int | 
 async def update_level(document_id: UUID, data: DocumentSharingLevelUpdate, scope: AgentManagementScope) -> DocumentSharing:
     item = await _editable_sharing(document_id, data.expected_lock_version, scope)
     current = await sharing(document_id, scope)
+    data = DocumentSharingLevelUpdate.model_validate((await sharing_inheritance.replacement_intent(item, data, current)).model_dump())
+    await sharing_inheritance.prepare_own_sharing(item)
     try:
         await replace_sharing(item.share_id, data, current)
     except LookupError as error:
         raise service.MemoryNotFoundError(str(error)) from error
     item.visibility = "shared" if data.level == "public" or data.grants else "private"
     item.lock_version += 1
+    await sharing_inheritance.finish_own_sharing(item)
     await service.commit_item_sharing(item)
     return await sharing(document_id, scope)
 
 
 async def _editable_sharing(document_id: UUID, expected: int, scope: AgentManagementScope) -> MemoryItem:
+    await sharing_inheritance.lock_sharing()
     # Serialize edits to the same document, including concurrent first-time grants.
     await get_db().scalar(select(MemoryItem.id).where(MemoryItem.id == document_id).with_for_update())
     item = await service.item_record(document_id, revisions=False, contents=False)
@@ -115,10 +120,12 @@ async def _update_grant(item: MemoryItem, data: DocumentSharingUpdate) -> None:
     directory = await principal_directory(owner_agent_id=item.owner_agent_id, owner_user_id=item.owner_user_id)
     if data.can_write is not None and not any(p.kind == data.kind and p.id == data.id for p in directory.options):
         raise service.MemoryNotFoundError("Collaborator not found")
+    await sharing_inheritance.prepare_own_sharing(item)
     await set_grant(item.share_id, data.kind, data.id, data.can_write)
     if item.visibility != "public":
         item.visibility = "shared" if item.global_access or item.group_access or await service.has_document_grants(item.id) else "private"
     item.lock_version += 1
+    await sharing_inheritance.finish_own_sharing(item)
     await service.commit_item_sharing(item)
 
 
@@ -140,6 +147,7 @@ async def update_agent_sharing(
     expected_lock_version: int | None = None, document_only: bool = False,
 ) -> DocumentSharing:
     """Update one explicit grant atomically; edits do not grant the right to reshare."""
+    await sharing_inheritance.lock_sharing()
     await get_db().scalar(select(MemoryItem.id).where(MemoryItem.id == item_id).with_for_update())
     item = await service.item_record(item_id)
     if item is None:

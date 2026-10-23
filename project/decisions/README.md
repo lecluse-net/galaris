@@ -1,5 +1,6 @@
 # Décisions d'architecture
 
+- [0218 — Partages additifs dans les arborescences personnelles](0218-personal-tree-sharing-inheritance.md)
 - [0217 — Journal Mail relié aux autorisations communes](0217-mail-journal-common-authorizations.md)
 - [0216 — Reprise des accords gérés après réclamation de la Task](0216-managed-approval-resumption.md)
 

@@ -34,7 +34,9 @@ async def emit_classification(
     user_id: int, *, tag_ids: Sequence[UUID] = (), document_ids: Sequence[UUID] = (),
     tags_changed: bool = False, list_changed: bool = False,
 ) -> None:
-    """Refresh only this user's affected classification, without invalidating access."""
+    """Refresh personal classification and discard ACL snapshots after propagation."""
+    if get_db().info.pop("memory_sharing_changed", False):
+        await websocket.emit("memory", "invalidate", {})
     await websocket.emit("memory", "classification", {
         "user_id": user_id,
         "tag_ids": [str(value) for value in tag_ids],

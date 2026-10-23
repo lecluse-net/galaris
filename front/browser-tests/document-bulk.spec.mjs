@@ -16,6 +16,10 @@ async function fixture(page, { count = 2, folder: initialFolder = folder } = {})
     grants: index ? [{ ...recipient, can_write: true }] : [other], options: [recipient, other],
   }))
   let failId = null
+  await jsonRoute(page, '**/api/memory/documents/tags/*/sharing', {
+    lock_version: 1, can_manage: true, owner: null, owner_groups: [],
+    level: 'private', can_write: false, grants: [], options: [recipient, other],
+  })
   await page.route('**/api/memory/documents/library', route => {
     const body = route.request().postDataJSON(); reads.push(body)
     const matches = docs.filter(item => !body.query || item.title.includes(body.query))
