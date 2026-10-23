@@ -191,6 +191,16 @@ def _require_resolver() -> MessengerResolver:
 # Resolution API.
 
 
+async def require_internal_peer_contact(
+    agent_id: int, peer_agent_id: int, *, connection_id: int | None = None,
+) -> None:
+    """Authorize both ends of a native peer Task before its admission."""
+    from .contact_access import require_peer_contact
+
+    await require_peer_contact(agent_id, peer_agent_id, connection_id=connection_id)
+    await require_peer_contact(peer_agent_id, agent_id)
+
+
 async def get_messenger(connection_id: int) -> MessengerFacade:
     """Return the messenger associated with an agent connection."""
     resolved = await _require_resolver().messenger_for_connection(connection_id)

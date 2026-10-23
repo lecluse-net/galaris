@@ -1,4 +1,4 @@
-"""Contact access derived exclusively from teams and agent management."""
+"""Human contact access and connection-scoped peer dialogue decisions."""
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,11 +53,20 @@ async def current_dialogue_scope() -> AgentManagementScope:
     return await dialogue_scope_for(user, get_db())
 
 
-async def require_agent_contact(agent_id: int, *, peer_agent_id: int | None = None, human_user_id: int | None = None) -> None:
+async def require_agent_contact(
+    agent_id: int, *, peer_agent_id: int | None = None,
+    human_user_id: int | None = None, peer_scope: str = "team",
+) -> None:
     policy = await policy_snapshot()
     decision = DialogueDecision(allowed=False, source="default")
     if peer_agent_id is not None:
-        decision = policy.peers(agent_id, peer_agent_id)
+        if peer_scope == "team":
+            decision = policy.peers(agent_id, peer_agent_id)
+        elif peer_scope == "all":
+            decision = DialogueDecision(
+                allowed=agent_id in policy.agents and peer_agent_id in policy.agents,
+                source="global",
+            )
     elif human_user_id is not None:
         user = await get_db().scalar(select(UserModel).where(UserModel.id == human_user_id))
         if user is not None:
@@ -68,7 +77,7 @@ async def require_agent_contact(agent_id: int, *, peer_agent_id: int | None = No
                 role_id_ctx.reset(token)
             decision = policy.human(user.id, agent_id, active=user.is_active, global_access=global_access)
     if not decision.allowed:
-        raise AgentScopeDeniedError("Contact is not authorized by the team dialogue policy")
+        raise AgentScopeDeniedError("Contact is not authorized by the dialogue policy")
 
 
 async def set_agent_membership(team_id: int, agent_id: int, present: bool) -> None:

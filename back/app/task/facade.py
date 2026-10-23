@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from typing import Any
 from sqlalchemy import select
 
-from app.agent import get_agent_record, require_agent_contact
+from app.agent import get_agent_record
 from core.i18n import render_prompt, t
 from core.util import convert_to_html
 from core.database import get_db
@@ -71,6 +71,7 @@ async def request_peer_message(
     message: str,
     language: str,
     source_task_id: UUID,
+    connection_id: int | None = None,
 ) -> UUID:
     """Admit a colleague request without inventing a human Chat room.
 
@@ -85,7 +86,9 @@ async def request_peer_message(
     peer = await get_agent_record(peer_agent_id)
     if peer is None:
         raise ValueError("The recipient agent does not exist.")
-    await require_agent_contact(requester_agent_id, peer_agent_id=peer_agent_id)
+    from app.messenger.facade import require_internal_peer_contact
+
+    await require_internal_peer_contact(requester_agent_id, peer_agent_id, connection_id=connection_id)
     source = await task_service.get_by_id(source_task_id)
     if source is None or source.agent_id != requester_agent_id:
         raise PermissionError("The source task does not belong to the requesting agent.")

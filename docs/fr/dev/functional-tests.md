@@ -719,6 +719,10 @@ seule lecture des filtres à l'initialisation de l'agent de la page Mémoire.
 1 000 révisions : contenu courant frais sans matérialiser l’historique, ancienne version
 lisible et pagination bornée. Il mesure aussi identité, Agents, bibliothèque, propriétaires
 et cycles Goal, puis vérifie les refus après retrait du gestionnaire et du rôle.
+`app/messenger/tests/test_contact_access.py` vérifie `tools.management_scope` aux frontières
+émission directe, salon et réception, la révocation immédiate, l'isolation des connexions et
+les droits humains indépendants. `test_mcp_routing.py` couvre aussi les demandes internes,
+le refus avant création de Task et les portées des deux agents.
 `app/agent/tests/test_management_scope.py` couvre l’invalidation du périmètre à l’écriture,
 aux changements de rôle, aux fins de transaction et après la réponse ;
 `core/user/tests/test_refresh_session.py` couvre le contrôle compte/session regroupé,

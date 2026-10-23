@@ -348,7 +348,7 @@ async def _process_incoming(message: Message) -> None:
     if contact_sender is None or not contact_sender.external_id:
         return
     try:
-        await require_incoming_contact(connection.agent_id, message)
+        await require_incoming_contact(connection.agent_id, message, connection_id=connection.id)
     except PermissionError:
         logger.info("Incoming contact denied by admission policy: agent={}", connection.agent_id)
         return

@@ -695,7 +695,9 @@ def mandatory_tool_rows() -> list[dict[str, Any]]:
                 if name != "tools.management_scope":
                     option["label"] = f"tools.connectionParamOptions.{spec.code}.{name}.{option['value']}"
         connection_schema = with_standard_params(connection_schema, code=spec.code,
-            file_share_config={"service": spec.file_share_service} if spec.file_share_service else None)
+            file_share_config={"service": spec.file_share_service} if spec.file_share_service else None,
+            messenger_config={"service": spec.messenger_service or bridge_kind or runtime_settings.MESSENGER_DRIVER}
+            if spec.messenger_service or bridge_kind or spec.code == "messenger" else None)
         global_params = default_global_params(connection_schema)
         if spec.code == "browser":
             # Installation seed only: DbAdmin derives defaults for existing Tools

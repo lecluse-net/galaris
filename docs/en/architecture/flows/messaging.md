@@ -18,6 +18,15 @@ The receipt returns the request URI, without claiming a reply or completed actio
 and document permissions, human pauses and collaboration limits still apply.
 This path requires a current Task; it does not create a Task from a short conversation.
 
+Each messaging connection has a protected local `tools.management_scope` parameter:
+`none` denies peer contacts, `team` requires a shared team, and `all` permits other active
+agents. There is no personal scope. Without a local value, `team` preserves existing behavior;
+unknown values or inactive connections deny contact. Global parameters cannot widen this scope.
+Canonical guards check direct sends, rooms and incoming messages using persisted identities
+and the exact connection. Internal request admission also checks the recipient's Chat connection.
+Human contacts and document ACLs remain independent; already admitted Tasks continue their
+lifecycle. Only a global human manager can change this parameter.
+
 Chat can embed the full document component beside or below the conversation, with the
 same permissions and saves as its dialog. Before sending a message, the client waits for
 document saves and includes `displayed_document_id` only when that document has loaded

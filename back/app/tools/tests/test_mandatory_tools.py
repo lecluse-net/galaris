@@ -258,7 +258,24 @@ def test_mail_connection_parameters_keep_transport_and_reviewer_configuration() 
         "max_attachment_mb",
         "max_total_attachment_mb",
         "approver_user_id",
+        "tools.management_scope",
     }
+
+
+def test_messaging_scopes_are_connection_only_and_exclude_personal_management() -> None:
+    for row in mandatory_tools.mandatory_tool_rows():
+        if not row["messenger_config"]:
+            continue
+        scope = row["connection_schema"]["params"]["tools.management_scope"]
+        assert scope["default"] == "team"
+        assert {item["value"] for item in scope["options"]} == {"none", "team", "all"}
+        assert "tools.management_scope" not in row["global_params"]
+
+    from app.tools.tool_service import connection_schema_for_tool
+    custom = Tool(code="synthetic-messaging", label="Synthetic transport", description="",
+                  connection_schema={}, messenger_config={"service": "matrix"})
+    schema = connection_schema_for_tool(custom)
+    assert schema["params"]["tools.management_scope"]["default"] == "team"
 
 
 def test_calendar_requires_an_administrator_connection() -> None:

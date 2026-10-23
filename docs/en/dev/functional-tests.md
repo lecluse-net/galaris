@@ -680,6 +680,10 @@ selected agent on the Memory page.
 1,000 revisions: fresh current content without materializing history, readable older versions
 and bounded pagination. It also measures identity, Agents, the library, owners and Goal
 cycles, then checks denials after manager reassignment and role removal.
+`app/messenger/tests/test_contact_access.py` checks `tools.management_scope` at direct-send,
+room and incoming boundaries, immediate revocation, connection isolation and independent
+human rights. `test_mcp_routing.py` also covers internal requests, denial before Task creation
+and both agents' scopes.
 `app/agent/tests/test_management_scope.py` covers scope invalidation on writes, role changes,
 transaction boundaries and after the response; `core/user/tests/test_refresh_session.py`
 covers combined account/session validation, legacy tokens, expiry, revocation and UserToken.

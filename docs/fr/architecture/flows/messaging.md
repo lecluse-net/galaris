@@ -19,6 +19,16 @@ Le reçu rend l'URI de la demande, sans attester de réponse ni d'action accompl
 contact et d'accès documentaire, la pause humaine et la limite de collaboration restent appliqués.
 Cette voie exige une Task courante ; elle ne crée pas de Task depuis une conversation courte.
 
+Chaque connexion de messagerie porte le paramètre local protégé `tools.management_scope` :
+`none` refuse les contacts inter-agents, `team` exige une équipe commune et `all` autorise
+les autres agents actifs. Il n'existe pas de portée personnelle. Sans valeur locale, `team`
+préserve le comportement historique ; une valeur inconnue ou une connexion inactive refuse
+le contact. Les paramètres globaux ne peuvent pas étendre cette portée. Les gardes canoniques
+contrôlent envois directs, salons et réception avec l'identité persistée et la connexion exacte.
+L'admission d'une demande interne vérifie aussi la connexion Chat du destinataire. Les contacts
+humains et les ACL documentaires restent indépendants ; les Tasks déjà admises poursuivent
+leur cycle. Seul un gestionnaire humain global peut modifier ce paramètre.
+
 Le chat peut intégrer le composant documentaire complet dans sa page, à côté de la
 conversation ou au-dessous, avec les mêmes droits et sauvegardes que dans sa modale.
 Lors de l'envoi, le client attend les sauvegardes puis transmet `displayed_document_id`

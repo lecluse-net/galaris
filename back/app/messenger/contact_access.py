@@ -18,18 +18,37 @@ def register_inbound_contact_authorizer(platform: str, authorizer: InboundContac
     _inbound_authorizers[platform] = authorizer
 
 
-async def require_incoming_contact(agent_id: int, message: Message) -> None:
+async def require_incoming_contact(agent_id: int, message: Message, *, connection_id: int | None = None) -> None:
+    if message.sender is not None and message.sender.agent_id is not None:
+        await require_contact_with_identity(agent_id, message.sender, connection_id=connection_id)
+        return
     if authorizer := _inbound_authorizers.get(message.platform or ""):
         if await authorizer(agent_id, message):
             return
         raise PermissionError("The incoming message has no valid contact authorization")
     if message.sender is None:
         raise PermissionError("The incoming message has no sender")
-    await require_contact_with_identity(agent_id, message.sender)
+    await require_contact_with_identity(agent_id, message.sender, connection_id=connection_id)
 
 
-async def require_contact_with_identity(agent_id: int, identity: MessengerUser) -> None:
-    await require_agent_contact(agent_id, peer_agent_id=identity.agent_id, human_user_id=identity.galaris_user_id)
+async def require_peer_contact(agent_id: int, peer_agent_id: int, *, connection_id: int | None = None) -> None:
+    """Check the exact channel's local policy, defaulting to native Chat for peer Tasks."""
+    from app.connection.facade import get_management_scope
+
+    scope = await get_management_scope(
+        agent_id, "chat" if connection_id is None else None,
+        connection_id=connection_id, default="team",
+    )
+    await require_agent_contact(agent_id, peer_agent_id=peer_agent_id, peer_scope=scope)
+
+
+async def require_contact_with_identity(
+    agent_id: int, identity: MessengerUser, *, connection_id: int | None = None,
+) -> None:
+    if identity.agent_id is not None:
+        await require_peer_contact(agent_id, identity.agent_id, connection_id=connection_id)
+    else:
+        await require_agent_contact(agent_id, human_user_id=identity.galaris_user_id)
 
 
 async def require_outgoing_user(connection_id: int, tool_id: int, external_id: str) -> None:
@@ -39,7 +58,7 @@ async def require_outgoing_user(connection_id: int, tool_id: int, external_id: s
     identity = await get_db().scalar(select(MessengerUser).where(MessengerUser.tool_id == tool_id, MessengerUser.external_id == external_id))
     if identity is None:
         raise PermissionError("The recipient needs a verified Galaris identity before contact")
-    await require_contact_with_identity(source.agent_id, identity)
+    await require_contact_with_identity(source.agent_id, identity, connection_id=connection_id)
 
 
 async def require_outgoing_room(connection_id: int, room_id: UUID) -> None:
@@ -52,4 +71,4 @@ async def require_outgoing_room(connection_id: int, room_id: UUID) -> None:
     if not others:
         raise PermissionError("The room needs verified recipients before contact")
     for member in others:
-        await require_contact_with_identity(source.agent_id, member)
+        await require_contact_with_identity(source.agent_id, member, connection_id=connection_id)

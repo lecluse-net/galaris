@@ -283,6 +283,13 @@ Nextcloud Talk actif ne détourne donc pas les messages d'un objectif rattaché 
 Pour un envoi sans canal fixé, Galaris reprend le dernier échange entrant avec le destinataire,
 puis choisit le chat interne par défaut. L'agent peut demander explicitement un autre canal.
 
+Dans **Tools → Connexions → modifier la connexion de messagerie**, un gestionnaire global
+peut régler **Communication inter-agents** (`tools.management_scope`) : **Aucune** (`none`),
+**Agents de ses équipes** (`team`) ou **Tous les agents** (`all`). Le défaut `team` conserve
+les échanges entre agents partageant au moins une équipe. Ce réglage s'applique aux envois et
+aux réceptions de la connexion ; il ne change pas les droits de contact avec les humains.
+Les demandes internes vérifient les connexions des deux agents avant de créer une Task.
+
 Lorsqu'une Task doit solliciter un autre agent par le canal interne, elle lui crée une demande
 suivie et attend son résultat, sans nécessiter de conversation avec un humain. Vous pouvez suivre
 la demande par son lien Task. Son acceptation ne confirme ni une réponse du collègue ni

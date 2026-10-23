@@ -25,37 +25,71 @@ from app.tools.mcp_loader import McpToolContext
 @pytest.mark.asyncio
 @pytest.mark.parametrize("scenario", [
     "accepted", "canonical_uuid", "denied", "paused", "round_limit", "terminal", "outside_task", "self",
+    "scope_none", "scope_all", "scope_invalid", "receiver_none", "receiver_inactive",
+    "sender_inactive", "sender_missing", "receiver_missing", "sender_deleted", "receiver_deleted",
+    "sender_team_revoked", "receiver_team_revoked", "sender_team_added", "receiver_team_added",
+    "receiver_invalid", "sender_scope_revoked", "receiver_scope_revoked",
+    "sender_scope_restored", "receiver_scope_restored",
+    *[
+        pytest.param((left, right, shared, reverse),
+                     id=f"{left}-{right}-{'same-team' if shared else 'other-team'}-{'B-to-A' if reverse else 'A-to-B'}")
+        for left in ("none", "team", "all")
+        for right in ("none", "team", "all")
+        for shared in (False, True)
+        for reverse in (False, True)
+    ],
 ])
 async def test_internal_peer_message_creates_an_awaited_request_without_a_human_room(
     db, monkeypatch, scenario,
 ):
     from app.agent.models import Agent, Title
-    from app.connection import Connection
+    from app.connection import Connection, ConnectionParam
     from app.task import Task, TaskStatus, runner
     from app.tools import ToolModel
+    from app.messenger.facade import require_internal_peer_contact
     from core.params import runtime_settings
     from core.team import TeamModel
     from sqlalchemy import select
 
+    matrix = isinstance(scenario, tuple)
+    left, right, shared, reverse = scenario if matrix else (None, None, True, False)
+    if matrix:
+        scenario = "matrix_allowed" if left != "none" and right != "none" and (shared or left == right == "all") else "matrix_denied"
     title = Title(label="Synthetic colleague", gender="X")
     team = TeamModel(name=f"Synthetic dialogue {uuid4().hex}")
     db.add_all([title, team])
     await db.flush()
     sender = Agent(code=f"sender-{uuid4().hex}", first_name="Sender", last_name="Test",
-                   title_id=title.id, group_id=team.id, agent_driver="internal")
+                   title_id=title.id, group_id=None if scenario == "sender_team_added" else team.id, agent_driver="internal")
     peer = Agent(code=f"peer-{uuid4().hex}", first_name="Peer", last_name="Test",
-                 title_id=title.id, group_id=None if scenario == "denied" else team.id, agent_driver="internal")
+                 title_id=title.id, group_id=None if not shared or scenario in {"denied", "scope_all", "receiver_team_added"} else team.id, agent_driver="internal")
     tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
     assert tool is not None
     db.add_all([sender, peer])
     await db.flush()
+    if reverse:
+        sender, peer = peer, sender
+        left, right = right, left
     identity = MessengerUser(tool_id=tool.id, external_id=f"agent:{peer.id}",
                              display_name="Peer Test", agent_id=peer.id, is_ai=True)
     db.add(identity)
     connection = Connection(agent_id=sender.id, tool_id=tool.id, active=True)
+    peer_connection = Connection(agent_id=peer.id, tool_id=tool.id, active=scenario != "receiver_inactive")
     parent = Task(agent_id=sender.id, label="Synthetic update", objective="<p>Ask the peer.</p>",
                   status=TaskStatus.EXEC, data={"language": "en"})
-    db.add_all([connection, parent])
+    db.add_all([connection, peer_connection, parent])
+    await db.flush()
+    if matrix:
+        db.add_all([ConnectionParam(connection_id=connection.id, param_name="tools.management_scope", param_value=left),
+                    ConnectionParam(connection_id=peer_connection.id, param_name="tools.management_scope", param_value=right)])
+    scopes = {"scope_none": "none", "scope_all": "all", "scope_invalid": "personal"}
+    if scenario in scopes:
+        db.add(ConnectionParam(connection_id=connection.id, param_name="tools.management_scope", param_value=scopes[scenario]))
+    if scenario in {"receiver_none", "scope_all"}:
+        db.add(ConnectionParam(connection_id=peer_connection.id, param_name="tools.management_scope",
+                               param_value="none" if scenario == "receiver_none" else "all"))
+    if scenario == "receiver_invalid":
+        db.add(ConnectionParam(connection_id=peer_connection.id, param_name="tools.management_scope", param_value="personal"))
     if scenario == "paused":
         parent.paused = True
         parent.data = {"language": "en", "pause_reasons": ["user"]}
@@ -63,6 +97,38 @@ async def test_internal_peer_message_creates_an_awaited_request_without_a_human_
         parent.data = {"language": "en", "collab_rounds": runtime_settings.TASK_ASK_AGENT_MAX_ROUNDS}
     elif scenario == "terminal":
         parent.status = TaskStatus.SUCCESS
+    await db.flush()
+    if scenario.endswith("_scope_revoked") or scenario.endswith("_scope_restored"):
+        changing_connection = connection if scenario.startswith("sender") else peer_connection
+        setting = ConnectionParam(connection_id=changing_connection.id, param_name="tools.management_scope",
+                                  param_value="none" if scenario.endswith("_scope_restored") else "team")
+        db.add(setting)
+        await db.flush()
+        if scenario.endswith("_scope_restored"):
+            with pytest.raises(PermissionError):
+                await require_internal_peer_contact(sender.id, peer.id, connection_id=connection.id)
+            setting.param_value = "team"
+        else:
+            await require_internal_peer_contact(sender.id, peer.id, connection_id=connection.id)
+            setting.param_value = "none"
+    elif scenario.endswith("_team_revoked") or scenario.endswith("_team_added"):
+        changing = sender if scenario.startswith("sender") else peer
+        if scenario.endswith("_team_revoked"):
+            await require_internal_peer_contact(sender.id, peer.id, connection_id=connection.id)
+            changing.group_id = None
+        else:
+            with pytest.raises(PermissionError):
+                await require_internal_peer_contact(sender.id, peer.id, connection_id=connection.id)
+            changing.group_id = team.id
+    elif scenario in {"sender_inactive", "sender_missing", "receiver_missing"}:
+        await require_internal_peer_contact(sender.id, peer.id, connection_id=connection.id)
+        if scenario == "sender_inactive":
+            connection.active = False
+        else:
+            await db.delete(connection if scenario == "sender_missing" else peer_connection)
+    elif scenario in {"sender_deleted", "receiver_deleted"}:
+        await require_internal_peer_contact(sender.id, peer.id, connection_id=connection.id)
+        (sender if scenario == "sender_deleted" else peer).soft_delete()
     await db.flush()
     scheduled = []
     monkeypatch.setattr(runner, "go_next", lambda task_id, **kwargs: scheduled.append(task_id))
@@ -73,7 +139,15 @@ async def test_internal_peer_message_creates_an_awaited_request_without_a_human_
     if scenario == "self":
         recipient = f"agent:{sender.id}"
     errors = {"denied": "not authorized", "paused": "paused", "round_limit": "limit",
-              "terminal": "terminal", "outside_task": "from a Task", "self": "another agent"}
+              "terminal": "terminal", "outside_task": "from a Task", "self": "another agent",
+              "scope_none": "not authorized", "scope_invalid": "not authorized",
+              "receiver_none": "not authorized", "receiver_inactive": "not authorized",
+              "sender_inactive": "no active", "sender_missing": "no active", "receiver_missing": "not authorized",
+              "sender_deleted": "unavailable", "receiver_deleted": "does not exist",
+              "sender_team_revoked": "not authorized", "receiver_team_revoked": "not authorized",
+              "receiver_invalid": "not authorized", "sender_scope_revoked": "not authorized",
+              "receiver_scope_revoked": "not authorized",
+              "matrix_denied": "not authorized"}
     if scenario in errors:
         with pytest.raises(RuntimeError, match=errors[scenario]):
             await mcp.mcp_send_message_to_user(ctx, recipient, "**Synthetic** update", "internal")

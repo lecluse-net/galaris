@@ -58,7 +58,8 @@ async def get_tool_codes(tool_ids: set[int]) -> dict[int, str]:
 
 def connection_schema_for_tool(record: ToolModel) -> Dict[str, Any]:
     return with_standard_params(record.connection_schema or {}, code=record.code,
-                                file_share_config=record.file_share_config)
+                                file_share_config=record.file_share_config,
+                                messenger_config=record.messenger_config)
 
 
 def _connection_param_definitions(record: ToolModel) -> Dict[str, Dict[str, Any]]:
@@ -412,7 +413,8 @@ async def create_tool(data: ToolCreate, *, commit: bool = True) -> ToolModel:
         raise ValueError("Integrated Tool definitions are software-owned")
     db = get_db()
     connection_schema = with_standard_params(data.connection_schema.model_dump(), code=data.code,
-        file_share_config=data.file_share_config.model_dump() if data.file_share_config else None)
+        file_share_config=data.file_share_config.model_dump() if data.file_share_config else None,
+        messenger_config=data.messenger_config.model_dump() if data.messenger_config else None)
     await _validate_connection_schema(connection_schema)
     _validate_rest_config(data.rest_config, connection_schema)
     messenger_config = (
@@ -539,7 +541,7 @@ async def update_tool(tool_id: int, data: ToolUpdate, *, commit: bool = True) ->
             connection_schema = cast(Dict[str, Any], value)
             await _validate_connection_schema(connection_schema)
         setattr(record, field, value)
-    if {"connection_schema", "file_share_config"} & data.model_fields_set:
+    if {"connection_schema", "file_share_config", "messenger_config"} & data.model_fields_set:
         record.connection_schema = connection_schema_for_tool(record)
         record.global_params = merge_default_global_params(
             record.global_params,

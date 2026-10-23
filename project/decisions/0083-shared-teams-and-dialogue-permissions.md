@@ -23,8 +23,15 @@ Pour un humain actif : management global (`AGENT_MANAGE_ALL`, dont dispose l’a
 manager de l’agent ou équipe commune. Sans l’un de ces trois cas, le dialogue est refusé.
 Aucune exception individuelle, liaison entre équipes ou règle héritée n’est conservée.
 
-Pour deux agents : une équipe commune permet le dialogue dans les deux sens.
-Les accès ne sont jamais transitifs. Le retrait de la dernière équipe commune révoque le contact.
+Pour deux agents, la messagerie applique depuis le 23 octobre 2026 le paramètre local protégé
+`tools.management_scope` de la connexion : `none`, `team` ou `all`, sans portée personnelle.
+Le défaut `team` exige une équipe commune ; `none` bloque les contacts inter-agents et `all`
+permet le contact entre agents actifs sans équipe commune. Les accès d'équipe ne sont jamais
+transitifs. Le retrait de la dernière équipe commune révoque le contact en portée `team`.
+Le réglage s'applique à la connexion exacte, en émission et en réception, sans héritage global
+et avec refus des valeurs inconnues. L'admission native d'une demande entre agents vérifie
+les deux connexions avant de créer la Task. Seul un humain gestionnaire global peut déléguer
+cette portée. La délégation directe `task_run` conserve sa politique d'équipe existante.
 Les documents conservent leur politique distincte de partage individuel/par équipe et de
 lecture/modification ; cette simplification ne modifie pas leurs ACL.
 
@@ -52,7 +59,8 @@ restent soumises à leurs privilèges propres. Les identifiants de session API s
 utilisateur, même si deux clients envoient le même `conversation_id`.
 
 Une autorisation ne crée pas un nouveau transport. Les échanges utilisent les capacités
-des canaux configurés ; notamment le Chat natif reste un canal humain ↔ agent.
+des canaux configurés. Le Chat natif transporte les conversations humaines ; les demandes
+entre agents passent par la façade Task, sans inventer de salon humain.
 
 ## Administration et revue des dépendances
 

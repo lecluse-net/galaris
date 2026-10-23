@@ -314,6 +314,13 @@ Nextcloud Talk active therefore does not redirect messages from a Goal assigned 
 For an outgoing message without a fixed channel, Galaris uses the recipient's latest inbound
 exchange, then internal Chat by default. The Agent may explicitly request another channel.
 
+In **Tools → Connections → edit the messaging connection**, a global manager can set
+**Inter-agent communication** (`tools.management_scope`): **None** (`none`),
+**Agents in its teams** (`team`) or **All agents** (`all`). The default `team` preserves
+communication between agents sharing at least one team. This setting applies to sending and
+receiving on that connection; human contact rights remain independent. Internal requests
+check both agents' connections before creating a Task.
+
 When a Task asks another Agent for help over the internal channel, it creates a tracked request
 and waits for its result, without requiring a conversation with a human. Follow the request
 through its Task link. Acceptance confirms neither the colleague's reply nor completion of the

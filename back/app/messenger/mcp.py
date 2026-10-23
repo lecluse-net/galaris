@@ -407,6 +407,7 @@ async def mcp_send_message_to_user(
                 message=message,
                 language=language,
                 source_task_id=ctx.task_id,
+                connection_id=messenger.connection_id,
             )
             return _message(
                 language,

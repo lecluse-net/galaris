@@ -163,6 +163,7 @@ export default {
       removeParamOption: 'Supprimer ce choix',
       connectionParamLabels: {
         managementScope: 'Portée de gestion',
+        peerCommunication: 'Communication inter-agents',
         fileindexing: 'Indexation des fichiers',
         host: 'Serveur', port: 'Port', username: 'Nom d’utilisateur', login: 'Identifiant',
         password: 'Mot de passe', access_token: 'Jeton d’accès', bot_token: 'Jeton du bot',
@@ -183,6 +184,7 @@ export default {
         allowed_phone_numbers: 'Numéros de téléphone autorisés', template_name: 'Nom du modèle de message', template_language: 'Langue du modèle de message',
       },
       connectionParamOptions: {
+        peerCommunication: { none: 'Aucune', team: 'Agents de ses équipes', all: 'Tous les agents' },
         managementScope: {
           usage: 'Usage sans droit de modification',
           personal: "Gestion pour l'agent uniquement",
@@ -349,6 +351,7 @@ export default {
       },
       connectionParamDescriptions: {
         managementScope: 'Portée propre à cette connexion : usage, gestion personnelle, agents de toutes ses équipes ou administration globale. Une connexion inactive ne donne aucun pouvoir de gestion.',
+        peerCommunication: 'Communication inter-agents sur cette connexion : aucune, agents partageant une équipe ou tous les agents. Les droits de contact avec les humains restent indépendants.',
         fileindexing: 'Désactiver l’indexation, indexer uniquement les fichiers déjà connus, ou découvrir et indexer tous les contenus accessibles via cette connexion. La connexion peut hériter du réglage du Tool ou le personnaliser.',
         browser: {
           default_output: 'Réponse par défaut après une action : content ou screenshot',
@@ -596,6 +599,7 @@ export default {
       removeParamOption: 'Remove this choice',
       connectionParamLabels: {
         managementScope: 'Management scope',
+        peerCommunication: 'Inter-agent communication',
         fileindexing: 'File indexing',
         host: 'Server', port: 'Port', username: 'Username', login: 'Login',
         password: 'Password', access_token: 'Access token', bot_token: 'Bot token',
@@ -616,6 +620,7 @@ export default {
         allowed_phone_numbers: 'Allowed phone numbers', template_name: 'Message template name', template_language: 'Message template language',
       },
       connectionParamOptions: {
+        peerCommunication: { none: 'None', team: 'Agents in its teams', all: 'All agents' },
         managementScope: {
           usage: 'Usage without modification rights',
           personal: 'Management for this agent only',
@@ -782,6 +787,7 @@ export default {
       },
       connectionParamDescriptions: {
         managementScope: 'Scope for this connection: usage, personal management, agents in any of its teams, or global administration. An inactive connection grants no management power.',
+        peerCommunication: 'Inter-agent communication on this connection: none, agents sharing a team, or all agents. Human contact rights remain independent.',
         fileindexing: 'Disable indexing, index only files already known, or discover and index all content accessible through this connection. The connection can inherit or override the Tool setting.',
         browser: {
           default_output: 'Default response after an action: content or screenshot',
@@ -936,6 +942,7 @@ export default {
       paramOptionsHint: '选项替代自由文本输入。保存值，显示标签。', paramOptionValue: '值 *', paramOptionLabel: '选项标签', removeParamOption: '删除此选项',
       connectionParamLabels: {
         managementScope: '管理范围',
+        peerCommunication: '智能体间通信',
         fileindexing: '文件索引',
         host: '服务器', port: '端口', username: '用户名', login: '登录名', password: '密码', access_token: '访问令牌', bot_token: '机器人令牌',
         private_key: 'SSH 私钥', private_key_passphrase: 'SSH 密钥密码', known_host_key: 'SSH 服务器公钥',
@@ -951,6 +958,7 @@ export default {
         allowed_phone_numbers: '允许的电话号码', template_name: '消息模板名称', template_language: '消息模板语言',
       },
       connectionParamOptions: {
+        peerCommunication: { none: '禁止', team: '所在团队的智能体', all: '所有智能体' },
         managementScope: {
           usage: '使用（无修改权限）',
           personal: '仅管理当前智能体',
@@ -1107,6 +1115,7 @@ export default {
       },
       connectionParamDescriptions: {
         managementScope: '此连接的权限：使用、个人管理、所在任一团队的智能体管理或全局管理。未启用的连接不授予管理权限。',
+        peerCommunication: '此连接上的智能体间通信：禁止、共享团队的智能体或所有智能体。与人类联系的权限单独管理。',
         fileindexing: '禁用索引、仅索引已知文件，或发现并索引通过此连接可访问的所有内容。连接可以继承或覆盖工具设置。',
         browser: { default_output: '操作后的默认回复：内容或截图',
           public_access_mode: '允许公共网站而无需逐站询问，或按网站请求批准。过滤器、明确拒绝和本地网络限制仍然有效。',

@@ -3923,6 +3923,7 @@
       {
         "files": [
           "back/app/task/collab.py",
+          "back/app/task/facade.py",
           "back/app/task/scheduler.py",
           "back/app/task/task_service.py"
         ],
@@ -9284,7 +9285,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_list_rooms",
-        "line": 747,
+        "line": 748,
         "module": "app.messenger",
         "name": "messenger_list_rooms",
         "namespace": "messenger"
@@ -9292,7 +9293,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_history",
-        "line": 785,
+        "line": 786,
         "module": "app.messenger",
         "name": "messenger_room_history",
         "namespace": "messenger"
@@ -9300,7 +9301,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_send_file",
-        "line": 999,
+        "line": 1000,
         "module": "app.messenger",
         "name": "messenger_room_send_file",
         "namespace": "messenger"
@@ -9316,7 +9317,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_search_users",
-        "line": 857,
+        "line": 858,
         "module": "app.messenger",
         "name": "messenger_search_users",
         "namespace": "messenger"
@@ -9324,7 +9325,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_audio_message",
-        "line": 636,
+        "line": 637,
         "module": "app.messenger",
         "name": "messenger_send_audio_message",
         "namespace": "messenger"
@@ -9332,7 +9333,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_file_to_user",
-        "line": 945,
+        "line": 946,
         "module": "app.messenger",
         "name": "messenger_send_file_to_user",
         "namespace": "messenger"

@@ -1112,6 +1112,11 @@ exchange exists. Supported channel values are `internal`, `nextcloud_talk`, `mat
   the calling Task waits for its result. No human Chat room is required. Acceptance does not prove
   that the colleague has replied or completed the requested action. Contact and document access
   checks still apply. This path requires a current Task.
+  Each messaging connection's server-owned `tools.management_scope` controls peer contacts:
+  `none` blocks them, `team` (the default) requires a shared team, and `all` permits any active
+  agent. There is no personal scope. Native requests check both agents' connections. Only a
+  global human manager can change this setting; action approval does not bypass it. Human
+  contact and document permissions remain independent.
 - `messenger_send_audio_message(user: str, message: str, channel: str = "", ...) -> str` generates
   an MP3 with the TTS configured on this agent and attaches it to the recipient's latest room on
   the selected connection. It applies the same channel selection as `messenger_send_message_to_user`.

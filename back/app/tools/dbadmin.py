@@ -37,7 +37,7 @@ def _legacy_indexing_defaults(record: Tool, schema: dict[str, object]) -> dict[s
 async def _reconcile_standard_params(session: AsyncSession) -> None:
     for record in await session.scalars(select(Tool)):
         schema = with_standard_params(record.connection_schema or {}, code=record.code,
-                                      file_share_config=record.file_share_config)
+            file_share_config=record.file_share_config, messenger_config=record.messenger_config)
         if schema != record.connection_schema:
             record.connection_schema = schema
         defaults = _legacy_indexing_defaults(record, schema)

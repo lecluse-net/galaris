@@ -44,7 +44,7 @@ async def contact_policy(db):
     await db.flush()
 
 
-def _wire_common(
+async def _wire_common(
     monkeypatch: pytest.MonkeyPatch,
     *,
     agent_id: int,
@@ -57,6 +57,19 @@ def _wire_common(
     from app.messenger import contact_memory, interactions, directory, facade, ingest
     from app import conversation
     from app.task import task_service, runner, collab
+    from app.connection import Connection
+    from app.tools import ToolModel
+    from core.database import get_db
+
+    # Admission now revalidates the exact durable connection, even when workflow
+    # ports below are isolated. Keep that authorization boundary real.
+    db = get_db()
+    if await db.get(ToolModel, 3) is None:
+        db.add(ToolModel(id=3, code="incoming-choice-test", label="Synthetic transport",
+                         description="", connection_schema={}))
+        await db.flush()
+    db.add(Connection(id=7, tool_id=3, agent_id=agent_id, active=True))
+    await db.flush()
 
     tool = SimpleNamespace(
         code="mail" if kind == "mail" else "custom-nextcloud",
@@ -185,7 +198,7 @@ async def test_incoming_peer_reply_is_anchored_under_await(
 ) -> None:
     from app.task import collab
 
-    created, contact_observer = _wire_common(
+    created, contact_observer = await _wire_common(
         monkeypatch, agent_id=1519
     )  # Orion receives the message.
     await_id = uuid4()
@@ -217,7 +230,7 @@ async def test_incoming_peer_reply_is_anchored_under_await(
 async def test_incoming_without_await_stays_root(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.task import collab
 
-    created, _contact_observer = _wire_common(monkeypatch, agent_id=1519)
+    created, _contact_observer = await _wire_common(monkeypatch, agent_id=1519)
     monkeypatch.setattr(collab, "awaited_for_incoming", AsyncMock(return_value=None))
 
     await service._process_incoming(_incoming(sender_agent_id=1))
@@ -235,7 +248,7 @@ async def test_direct_messenger_task_inherits_the_room_topic(
 ) -> None:
     from app.task import collab
 
-    created, _contact_observer = _wire_common(monkeypatch, agent_id=1519)
+    created, _contact_observer = await _wire_common(monkeypatch, agent_id=1519)
     monkeypatch.setattr(collab, "awaited_for_incoming", AsyncMock(return_value=None))
     topic_id = uuid4()
     message = _incoming(sender_agent_id=1)
@@ -254,7 +267,7 @@ async def test_incoming_platform_cannot_override_connection_kind(
 ) -> None:
     from app.task import collab
 
-    created, contact_observer = _wire_common(monkeypatch, agent_id=1519)
+    created, contact_observer = await _wire_common(monkeypatch, agent_id=1519)
     monkeypatch.setattr(collab, "awaited_for_incoming", AsyncMock(return_value=None))
     message = _incoming(sender_agent_id=1)
     message.platform = "telegram"
@@ -274,7 +287,7 @@ async def test_incoming_peer_reply_during_open_exchange_is_created_for_dispatche
 ) -> None:
     from app.task import collab
 
-    created, _contact_observer = _wire_common(
+    created, _contact_observer = await _wire_common(
         monkeypatch, agent_id=1
     )  # Aster receives the message.
     await_id = uuid4()
@@ -302,7 +315,7 @@ async def test_human_sender_is_projected_with_server_owned_bridge_identity(
 ) -> None:
     from app.task import collab
 
-    created, contact_observer = _wire_common(monkeypatch, agent_id=1519)
+    created, contact_observer = await _wire_common(monkeypatch, agent_id=1519)
     monkeypatch.setattr(
         collab, "awaited_for_incoming", AsyncMock(return_value=None)
     )
@@ -346,7 +359,7 @@ async def test_audio_transcription_failure_does_not_block_conversation_admission
     from app.messenger import ingest
     from app.task import collab
 
-    created, _contact_observer = _wire_common(monkeypatch, agent_id=1519)
+    created, _contact_observer = await _wire_common(monkeypatch, agent_id=1519)
     monkeypatch.setattr(collab, "awaited_for_incoming", AsyncMock(return_value=None))
     ingest.transcribe_audio_for_conversation.side_effect = RuntimeError("STT offline")
     message = _incoming(sender_agent_id=None)
@@ -371,7 +384,7 @@ async def test_mail_sender_is_admitted_as_task_only_with_bridge_consent(
     from app.messenger import contact_access
     from app.task import collab
 
-    created, contact_observer = _wire_common(
+    created, contact_observer = await _wire_common(
         monkeypatch,
         agent_id=1519,
         kind="mail",
@@ -408,18 +421,11 @@ async def test_interaction_reply_is_projected_before_it_is_consumed(
     db,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.connection import Connection
     from app.messenger import interactions
-    from app.tools import ToolModel
 
     resolve_from_message = interactions.resolve_from_message
-    created, contact_observer = _wire_common(monkeypatch, agent_id=1519)
+    created, contact_observer = await _wire_common(monkeypatch, agent_id=1519)
     monkeypatch.setattr(interactions, "resolve_from_message", resolve_from_message)
-    if await db.get(ToolModel, 3) is None:
-        db.add(ToolModel(id=3, code="incoming-choice-test", label="Choice test", description="", connection_schema={}))
-        await db.flush()
-    db.add(Connection(id=7, tool_id=3, agent_id=1519, active=True))
-    await db.flush()
     handler = AsyncMock()
     monkeypatch.setitem(interactions._choice_handlers, "incoming-choice-test", handler)
     await interactions.create_choice(
@@ -458,7 +464,7 @@ async def test_memory_failure_does_not_prevent_conversation_admission(
 ) -> None:
     from app.task import collab
 
-    created, contact_observer = _wire_common(monkeypatch, agent_id=1519)
+    created, contact_observer = await _wire_common(monkeypatch, agent_id=1519)
     contact_observer.side_effect = RuntimeError("memory unavailable")
     monkeypatch.setattr(
         collab, "awaited_for_incoming", AsyncMock(return_value=None)
@@ -493,7 +499,7 @@ async def test_memory_failure_does_not_prevent_interaction_resolution(
 ) -> None:
     from app.messenger import interactions
 
-    created, contact_observer = _wire_common(monkeypatch, agent_id=1519)
+    created, contact_observer = await _wire_common(monkeypatch, agent_id=1519)
     contact_observer.side_effect = RuntimeError("memory unavailable")
     interaction_resolver = AsyncMock(
         return_value=SimpleNamespace(
@@ -525,7 +531,7 @@ async def test_absent_or_empty_sender_is_not_projected(
 ) -> None:
     from app.task import collab
 
-    created, contact_observer = _wire_common(monkeypatch, agent_id=1519)
+    created, contact_observer = await _wire_common(monkeypatch, agent_id=1519)
     monkeypatch.setattr(
         collab, "awaited_for_incoming", AsyncMock(return_value=None)
     )
@@ -547,7 +553,7 @@ async def test_sender_enriched_as_ai_is_not_projected(
 ) -> None:
     from app.messenger import interactions
 
-    created, contact_observer = _wire_common(monkeypatch, agent_id=1519)
+    created, contact_observer = await _wire_common(monkeypatch, agent_id=1519)
 
     monkeypatch.setattr(
         interactions,
@@ -572,7 +578,7 @@ async def test_revoked_or_unmapped_sender_is_never_admitted(db, monkeypatch):
     from app.agent import AgentTeamModel as AgentTeam
     from app import conversation
 
-    created, contact_observer = _wire_common(monkeypatch, agent_id=1519)
+    created, contact_observer = await _wire_common(monkeypatch, agent_id=1519)
     await db.execute(delete(AgentTeam).where(AgentTeam.agent_id == 1519))
     for peer in (None, 1):
         await service._process_incoming(_incoming(sender_agent_id=peer))
