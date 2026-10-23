@@ -625,6 +625,11 @@ for (const mobile of [false, true]) {
         await expect(page.getByRole('combobox', { name: 'Select a connection (agent + connector)', exact: true })).toHaveValue('Alice Example — Optional Tool')
         await expect(page.getByText('external_read', { exact: true })).toBeVisible()
       }
+      await page.locator('.q-field').filter({ has: filter }).locator('.q-field__focusable-action').click()
+      await expect(filter).toHaveValue('')
+      if (component === 'ConnectionList') {
+        await expect(page.locator(mobile ? '.connection-mobile-card' : 'tbody tr')).toHaveCount(6)
+      }
     })
   }
 
