@@ -34,6 +34,82 @@ from core.user import UserModel
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("snapshot_change", ["none", "expire", "rollback", "failure"])
+async def test_contact_startup_reconciliation_replays_existing_senders_without_implicit_io(
+    db, agents, memory_storage, snapshot_change,
+):
+    from sqlalchemy import event
+    from sqlalchemy.exc import IntegrityError
+    from app.connection import Connection
+    from app.messenger import Message, MessengerUser
+    from app.messenger.dbadmin import _reconcile_contacts
+    from app.tools import ToolModel
+
+    owner, _ = agents
+    owner_id = owner.id
+    tool = ToolModel(code="synthetic-contact-backfill", label="Synthetic contact backfill",
+        messenger_config={"service": "matrix"}, connection_schema={})
+    db.add(tool)
+    await db.flush()
+    connection = Connection(agent_id=owner_id, tool_id=tool.id, active=True)
+    db.add(connection)
+    await db.flush()
+    connection_id = connection.id
+    for index in range(3):
+        identity = f"@synthetic-{index}:example.test"
+        db.add(MessengerUser(tool_id=tool.id, external_id=identity, display_name=f"Synthetic sender {index}"))
+        message = Message(connection_id=connection_id, tool_id=tool.id, platform="matrix",
+            user_id=identity, remote_message_id=f"synthetic-inbound-{index}", direction="inbound",
+            text="Entirely synthetic content", metadata_={"sender_display_name": f"Synthetic sender {index}"})
+        db.add(message)
+    await db.commit()
+    db.expunge_all()
+
+    def expire_access_snapshots(session):
+        # A contact projection may recover from a rollback or refresh the shared
+        # session. Reconciliation must not rely on live ORM snapshots across it.
+        for instance in tuple(session.identity_map.values()):
+            if isinstance(instance, (Connection, ToolModel)):
+                session.expire(instance)
+
+    interrupted = False
+
+    class SyntheticProjectionFailure(RuntimeError):
+        pass
+
+    def interrupt_identity_flush(session, _context, _instances):
+        nonlocal interrupted
+        target = MemoryItem if snapshot_change == "failure" else MemoryContactIdentity
+        if not interrupted and any(isinstance(instance, target) for instance in session.new):
+            interrupted = True
+            if snapshot_change == "failure":
+                raise SyntheticProjectionFailure("Synthetic projection storage failure")
+            raise IntegrityError("Synthetic identity race", None, RuntimeError("Synthetic concurrent insertion"))
+
+    if snapshot_change == "expire":
+        event.listen(db.sync_session, "after_commit", expire_access_snapshots)
+    elif snapshot_change in {"rollback", "failure"}:
+        event.listen(db.sync_session, "before_flush", interrupt_identity_flush)
+    try:
+        if snapshot_change == "failure":
+            with pytest.raises(RuntimeError, match="error_type=SyntheticProjectionFailure"):
+                await _reconcile_contacts(db)
+        await _reconcile_contacts(db)
+        first = (await db.execute(select(Message.id, Message.contact_memory_item_id).where(
+            Message.connection_id == connection_id))).all()
+        assert len(first) == 3 and all(contact_id is not None for _, contact_id in first)
+        await _reconcile_contacts(db)
+    finally:
+        if snapshot_change == "expire":
+            event.remove(db.sync_session, "after_commit", expire_access_snapshots)
+        elif snapshot_change in {"rollback", "failure"}:
+            event.remove(db.sync_session, "before_flush", interrupt_identity_flush)
+            assert interrupted
+    assert (await db.execute(select(Message.id, Message.contact_memory_item_id).where(
+        Message.connection_id == connection_id))).all() == first
+
+
+@pytest.mark.asyncio
 async def test_address_book_entries_are_independent_private_and_unique(db, agents, memory_storage):
     from app.messenger import MessengerUser
 

@@ -110,10 +110,10 @@ async def observe_contact(
         return None
 
 
-def _messaging_kind(tool: ToolModel | None) -> str | None:
-    if tool is None or not isinstance(tool.messenger_config, Mapping):
+def _messaging_kind(messenger_config: object) -> str | None:
+    if not isinstance(messenger_config, Mapping):
         return None
-    config = cast(Mapping[str, Any], tool.messenger_config)
+    config = cast(Mapping[str, Any], messenger_config)
     service = config.get("service")
     kind = facade.normalize_kind(str(service)) if service is not None else None
     if kind not in _CONTACT_MESSAGING_KINDS:
@@ -214,24 +214,23 @@ async def rebuild_messenger_contacts(
         rows_scanned += len(rows)
 
         connection_ids = {int(row.connection_id) for row in rows}
+        # Contact projection can commit or recover from a rollback in this
+        # contextual session. Keep scalar snapshots, never expirable ORM rows.
         connections = {
-            int(connection.id): connection
-            for connection in (
-                await db.scalars(
-                    select(Connection).where(Connection.id.in_(connection_ids))
-                )
+            int(identity): (int(tool_id), int(agent_id))
+            for identity, tool_id, agent_id in (
+                await db.execute(select(Connection.id, Connection.tool_id, Connection.agent_id)
+                    .where(Connection.id.in_(connection_ids)))
             ).all()
         }
         tool_ids = {
-            int(connection.tool_id)
-            for connection in connections.values()
+            tool_id for tool_id, _agent_id in connections.values()
         }
         tools = {
-            int(tool.id): tool
-            for tool in (
-                await db.scalars(
-                    select(ToolModel).where(ToolModel.id.in_(tool_ids))
-                )
+            int(tool_id): _messaging_kind(config)
+            for tool_id, config in (
+                await db.execute(select(ToolModel.id, ToolModel.messenger_config)
+                    .where(ToolModel.id.in_(tool_ids)))
             ).all()
         }
 
@@ -242,21 +241,21 @@ async def rebuild_messenger_contacts(
             if connection is None or not user_id.strip() or len(user_id) > 512:
                 invalid_senders_skipped += 1
                 continue
-            tool = tools.get(int(connection.tool_id))
-            messaging_id = _messaging_kind(tool)
+            tool_id, owner_agent_id = connection
+            messaging_id = tools.get(tool_id)
             if messaging_id is None:
                 invalid_senders_skipped += 1
                 continue
             resolved_sender = await directory.resolve_user(
-                int(connection.tool_id),
+                tool_id,
                 user_id,
             )
             if resolved_sender.is_ai:
                 ai_senders_skipped += 1
                 continue
-            canonical_sender = await db.scalar(
-                select(MessengerUser).where(
-                    MessengerUser.tool_id == int(connection.tool_id),
+            galaris_user_id = await db.scalar(
+                select(MessengerUser.galaris_user_id).where(
+                    MessengerUser.tool_id == tool_id,
                     MessengerUser.external_id == user_id,
                 )
             )
@@ -269,7 +268,7 @@ async def rebuild_messenger_contacts(
                 invalid_senders_skipped += 1
                 continue
             scope = (
-                int(connection.agent_id),
+                owner_agent_id,
                 messaging_id,
                 canonical_user_id,
             )
@@ -278,15 +277,11 @@ async def rebuild_messenger_contacts(
             try:
                 contact_item_id = await observe_messenger_contact(
                     MessengerContactObservation(
-                        owner_agent_id=int(connection.agent_id),
+                        owner_agent_id=owner_agent_id,
                         messaging_id=messaging_id,
                         user_id=canonical_user_id,
                         display_name=_display_name(row.metadata, user_id),
-                        galaris_user_id=(
-                            canonical_sender.galaris_user_id
-                            if canonical_sender is not None
-                            else None
-                        ),
+                        galaris_user_id=galaris_user_id,
                     )
                 )
             except Exception as exc:
@@ -301,7 +296,7 @@ async def rebuild_messenger_contacts(
                     "Messenger contact backfill failed: connection_id={} "
                     "owner_agent_id={} messaging_id={} error_type={}",
                     connection_id,
-                    connection.agent_id,
+                    owner_agent_id,
                     messaging_id,
                     type(exc).__name__,
                 )
