@@ -103,6 +103,8 @@ async def test_system_definitions_are_immutable_and_function_modes_are_editable(
         lambda: tool_service.update_global_params(tool.id, ToolGlobalParamsUpdate()),
         lambda: tool_service.update_tool(tool.id, ToolUpdate(label="Changed")),
         lambda: tool_service.delete_tool(tool.id),
+        lambda: tool_service.deletion_impact(tool.id),
+        lambda: tool_service.delete_tool(tool.id, cascade=True, expected_version="synthetic-confirmation"),
     ):
         with pytest.raises(ValueError):
             await operation()

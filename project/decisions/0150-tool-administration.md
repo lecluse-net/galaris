@@ -45,7 +45,9 @@ and dependencies. Connection fingerprints include the parent configuration and g
 permissions. Reads by code or agent/Tool pair reconcile lost responses.
 
 Parameter batches validate before writing and commit once. Connected custom Tools
-cannot be deleted; dependencies are inspected again under the lock. Existing domain
+cannot be deleted through delegated MCP; dependencies are inspected again under the lock.
+Human-confirmed cascading deletion is defined separately in
+[decision 0219](0219-human-confirmed-tool-deletion.md). Existing domain
 foreign-key cleanup and listener reconciliation remain authoritative. Refresh failures
 after commit return `persisted=true` with a separate partial refresh outcome.
 

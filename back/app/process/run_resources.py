@@ -9,12 +9,39 @@ from uuid import UUID
 from sqlalchemy import select
 
 from app.agent import AgentManagementScope
+from app.tools.facade import ToolDeletionSelection, AfterToolDeletion
 from core.database import get_db
-from core.storage import DiskFileDriver, StoredFile, retire_file_reference, rename_stored_file
+from core.storage import DiskFileDriver, StoredFile, retire_file_reference, retire_file_references, rename_stored_file
 from core.util import complete_io
 
 from .models import ProcessRunFile
 from .run_data import lock_run, require_active, run_files, stage_run_file, validate_run_data
+
+
+async def prepare_tool_deletion(selection: ToolDeletionSelection) -> AfterToolDeletion | None:
+    """Retire owned file aliases; settle collaboration waits after the purge commits."""
+    from .models import ProcessRun
+    run_ids = [key[0] for key in selection.get("process_runs", ()) if isinstance(key[0], UUID)]
+    if not run_ids:
+        return None
+    rows = (await get_db().execute(select(ProcessRun.id, ProcessRun.await_task_id,
+        ProcessRun.status, ProcessRun.output, ProcessRun.error_message,
+        ProcessRun.launch_snapshot, ProcessRun.await_resolved_at).where(ProcessRun.id.in_(run_ids)))).all()
+    from .process_service import TERMINAL_STATUSES
+    waits = [(row.id, row.await_task_id, row.status if row.status in TERMINAL_STATUSES else "cancelled",
+              row.output, row.error_message or "The owning Tool was deleted.",
+              str(row.launch_snapshot.get("process_label") or row.launch_snapshot.get("workflow_id") or row.id))
+             for row in rows if row.await_task_id is not None and row.await_resolved_at is None]
+    for run_id in run_ids:
+        await retire_file_references(f"galaris://processes/runs/{run_id}/attachments/")
+
+    async def settle_waits() -> None:
+        from app.task import collab
+        for run_id, task_id, status, output, error, label in waits:
+            await collab.resolve_process_await(await_task_id=task_id, process_label=label,
+                run_id=run_id, status=status, output=output, error=error)
+
+    return settle_waits
 
 
 async def read_run_data(identity: UUID, actor: int | AgentManagementScope) -> dict[str, Any]:

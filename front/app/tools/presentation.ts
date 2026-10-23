@@ -1,4 +1,4 @@
-import type { ConnectionParamDef, ConnectionParamOption } from './services/toolService'
+import type { ConnectionParamDef, ConnectionParamOption, Tool } from './services/toolService'
 
 const BUILT_IN_TOOL_CODES = new Set([
   "galaris",
@@ -32,6 +32,14 @@ const BUILT_IN_TOOL_CODES = new Set([
   "nextcloud",
   "affine"
 ])
+
+export type ToolOrigin = 'galaris' | 'custom'
+
+export function toolOrigin(tool: Pick<Tool, 'code' | 'can_edit'>): ToolOrigin {
+  // Built-in connectors may be editable; editability alone does not describe origin.
+  return !tool.can_edit || BUILT_IN_TOOL_CODES.has(tool.code) || tool.code === 'lab'
+    ? 'galaris' : 'custom'
+}
 
 const CONNECTION_PARAM_CODES: Record<string, ReadonlySet<string>> = {
   browser: new Set(['default_output', 'public_access_mode', 'allow_local_network', 'network_filter_mode', 'network_filter', 'permission_methods']),

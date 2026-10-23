@@ -102,7 +102,10 @@ from .authorization import (
     invalidate_authorization_context,
 )
 
+from .deletion import register_tool_deletion_cleanup, ToolDeletionSelection, AfterToolDeletion
+
 __all__ = [
+    "register_tool_deletion_cleanup", "ToolDeletionSelection", "AfterToolDeletion",
     "mcp_http_client",
     "resolve_connection_references",
     "RestAuth",

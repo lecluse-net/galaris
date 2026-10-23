@@ -13,6 +13,7 @@ from core.util import get_encryption_service
 from .models import Tool as ToolModel
 from .rest_contracts import RestConfig
 from .administration_lock import lock_tools, finish_write
+from .deletion import DeletionConflict, ToolDeletionImpact
 from .parameter_definitions import with_standard_params
 from .secrets import (
     SecretPlaceholderWithoutValue,
@@ -563,7 +564,20 @@ async def update_conversation_access(
     return record
 
 
-async def delete_tool(tool_id: int, *, commit: bool = True) -> bool:
+async def deletion_impact(tool_id: int) -> ToolDeletionImpact | None:
+    from .assertions import tool_can_edit
+    from .deletion import collect
+
+    record = await get_tool_record_by_id(tool_id)
+    if record is None:
+        return None
+    if not tool_can_edit(record):
+        raise ValueError(await tr("tools.errors.system_read_only"))
+    return (await collect(record)).impact(record)
+
+
+async def delete_tool(tool_id: int, *, commit: bool = True, cascade: bool = False,
+                      expected_version: str | None = None) -> bool:
     db = get_db()
     await lock_tools([tool_id], db=get_db())
     record = await db.get(ToolModel, tool_id)
@@ -573,6 +587,44 @@ async def delete_tool(tool_id: int, *, commit: bool = True) -> bool:
 
     if not tool_can_edit(record):
         raise ValueError(await tr("tools.errors.system_read_only"))
+    if cascade:
+        import hmac
+        from .deletion import collect, execute
+        from .authorization_models import ActionAuthorization
+
+        if not commit:
+            raise ValueError("Confirmed Tool deletion must own its commit")
+        plan = await collect(record, lock=True)
+        if not expected_version or not hmac.compare_digest(expected_version, plan.impact(record).version):
+            raise DeletionConflict(await tr("tools.deletion_changed"))
+        pending = list((await db.scalars(select(ActionAuthorization).where(
+            ActionAuthorization.id.in_([key[0] for key in plan.deleted.get("tool_action_authorizations", set())]),
+            ActionAuthorization.status.in_(("pending", "approved")),
+        ))).all())
+        effects = await execute(plan, record)
+        await finish_write(commit=commit, db=db)
+        for effect in effects:
+            try:
+                await effect()
+            except Exception:
+                logger.exception("Tool deleted but a dependent domain could not finish its notification")
+        # Missing authorizations resolve as invalidated. Withdraw their prompts and
+        # wake suspended callers only after the deletion has actually committed.
+        from .authorization import wake_authorization_context
+        from .authorization_notifications import sync_authorization_choice
+
+        for authorization in pending:
+            authorization.status = "invalidated"
+            authorization.decision_source = None
+            try:
+                await sync_authorization_choice(authorization)
+            except Exception:
+                logger.exception("Tool deleted but an approval prompt could not be withdrawn")
+            try:
+                await wake_authorization_context(authorization.agent_id, authorization.context_key)
+            except Exception:
+                logger.exception("Tool deleted but an authorization context could not be notified")
+        return True
     from app.connection.facade import get_agent_ids_by_tool, administration
 
     if await get_agent_ids_by_tool(tool_id) or await administration.references([], tool_id=tool_id):

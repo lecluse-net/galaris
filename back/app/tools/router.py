@@ -21,6 +21,7 @@ from .schemas import (
 )
 from .mcp_diagnostics import diagnose_mcp_connection
 from . import tool_service
+from .deletion import DeletionConflict, ToolDeletionImpact
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 from .authorization_router import router as authorization_router
@@ -205,11 +206,25 @@ async def update_conversation_access(
     return _to_public(record)
 
 
+@router.get("/{tool_id}/deletion-impact", response_model=ToolDeletionImpact)
+@authorize(privileges=[Privileges.TOOL_EDIT], assertion=ToolCanEditAssertion)
+async def tool_deletion_impact(tool_id: int) -> ToolDeletionImpact:
+    try:
+        impact = await tool_service.deletion_impact(tool_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if impact is None:
+        raise HTTPException(status_code=404, detail=await _detail("tool_not_found", tool_id=tool_id))
+    return impact
+
+
 @router.delete("/{tool_id}", status_code=204)
 @authorize(privileges=[Privileges.TOOL_EDIT], assertion=ToolCanEditAssertion)
-async def delete_tool(tool_id: int):
+async def delete_tool(tool_id: int, cascade: bool = False, expected_version: str | None = None):
     try:
-        deleted = await tool_service.delete_tool(tool_id)
+        deleted = await tool_service.delete_tool(tool_id, cascade=cascade, expected_version=expected_version)
+    except DeletionConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not deleted:

@@ -28,15 +28,10 @@
         />
       </div>
       <div class="col-12 col-md-3">
-        <q-select
+        <ToolFilterSelect
           v-model="filterTool"
-          :options="toolFilterOptions"
+          :tools="toolStore.tools"
           :label="$t('connection.filterTool')"
-          clearable
-          dense
-          outlined
-          emit-value
-          map-options
         />
       </div>
     </div>
@@ -61,7 +56,17 @@
           map-options
           :loading="connectionsLoading"
           :disable="connectionOptions.length === 0"
-        />
+        >
+          <template #option="scope">
+            <q-item v-bind="scope.itemProps">
+              <q-item-section>{{ scope.opt.label }}</q-item-section>
+              <q-item-section side><ToolOriginBadge :tool="scope.opt.tool" /></q-item-section>
+            </q-item>
+          </template>
+          <template #selected-item="scope">
+            <span>{{ scope.opt.label }} <ToolOriginBadge :tool="scope.opt.tool" class="q-ml-sm" /></span>
+          </template>
+        </q-select>
       </div>
     </div>
 
@@ -287,7 +292,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { toolMessageKey } from '@/app/tools/presentation'
 import { AgentSelect } from '@/app/agent'
-import { SystemToolIcon } from '@/app/tools'
+import { SystemToolIcon, ToolFilterSelect, ToolOriginBadge } from '@/app/tools'
 import connectionService, {
   saveFunctionPolicy,
   waitForFunctionPolicyWrites,
@@ -358,10 +363,6 @@ const agentFilterOptions = computed(() =>
   agentStore.agents.map(a => ({ label: `${a.first_name} ${a.last_name}`, value: a.id }))
 )
 
-const toolFilterOptions = computed(() =>
-  toolStore.tools.map(tool => ({ label: localizedToolLabel(tool), value: tool.id }))
-)
-
 function localizedToolLabel(tool: { code: string; label: string; can_edit?: boolean }): string {
   const key = toolMessageKey(tool.code, 'label')
   return key && (!tool.can_edit || tool.label === t(key, {}, { locale: 'en' })) ? t(key) : tool.label
@@ -385,7 +386,8 @@ function getToolLabel(toolId: number): string {
 }
 
 // Only active connections can expose MCP functions and therefore be selected.
-const activeConnections = computed(() => connections.value.filter(connection => connection.active))
+const activeConnections = computed(() => connections.value.filter(connection =>
+  connection.active && toolStore.tools.some(tool => tool.id === connection.tool_id)))
 const hasConnectionFilters = computed(() => filterAgent.value !== null || filterTool.value !== null)
 
 const connectionOptions = computed(() =>
@@ -395,6 +397,7 @@ const connectionOptions = computed(() =>
     .map(c => ({
       label: `${getAgentName(c.agent_id)} — ${getToolLabel(c.tool_id)}`,
       value: c.id,
+      tool: toolStore.tools.find(tool => tool.id === c.tool_id),
     }))
 )
 
@@ -678,6 +681,10 @@ onMounted(async () => {
 
 onActivated(() => {
   if (initialized) void loadConnections()
+})
+
+watch(() => toolStore.tools.map(tool => tool.id), ids => {
+  if (!toolStore.loading && filterTool.value !== null && !ids.includes(filterTool.value)) filterTool.value = null
 })
 </script>
 

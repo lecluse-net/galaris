@@ -14,16 +14,11 @@
           emit-value
           map-options
         />
-        <q-select
+        <ToolFilterSelect
           v-model="filterTool"
-          :options="toolFilterOptions"
+          :tools="toolStore.tools"
           :label="$t('connection.filterTool')"
-          clearable
           style="min-width: 200px"
-          dense
-          outlined
-          emit-value
-          map-options
         />
         <q-btn-toggle
           v-model="filterState"
@@ -73,6 +68,7 @@
         <q-td :props="props">
           {{ getToolLabel(props.row.tool_id) }}
           <SystemToolIcon v-if="isSystemTool(props.row.tool_id)" class="q-ml-xs" />
+          <ToolOriginBadge :tool="toolStore.tools.find(tool => tool.id === props.row.tool_id)" class="q-ml-sm" />
         </q-td>
       </template>
       <template v-slot:body-cell-active="props">
@@ -119,7 +115,8 @@
                 <div class="col connection-mobile-heading">
                   <div class="text-weight-medium ellipsis">
                     {{ getToolLabel(props.row.tool_id) }}
-          <SystemToolIcon v-if="isSystemTool(props.row.tool_id)" class="q-ml-xs" />
+                    <SystemToolIcon v-if="isSystemTool(props.row.tool_id)" class="q-ml-xs" />
+                    <ToolOriginBadge :tool="toolStore.tools.find(tool => tool.id === props.row.tool_id)" class="q-ml-sm" />
                   </div>
                   <div class="text-caption text-grey-7 ellipsis">
                     {{ getAgentName(props.row.agent_id) }}
@@ -257,7 +254,7 @@ import { AgentSelect } from '@/app/agent'
 import { useToolStore } from '@/app/tools/stores/toolStore'
 import type { Tool } from '@/app/tools/services/toolService'
 import ConnectionForm from './ConnectionForm.vue'
-import { SystemToolIcon } from '@/app/tools'
+import { SystemToolIcon, ToolFilterSelect, ToolOriginBadge } from '@/app/tools'
 import { useI18n } from 'vue-i18n'
 import { toolMessageKey } from '@/app/tools/presentation'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -352,10 +349,6 @@ const isEdit = computed(() => !!currentConnection.value)
 
 const agentFilterOptions = computed(() =>
   agentStore.agents.map(e => ({ label: `${e.first_name} ${e.last_name}`, value: e.id }))
-)
-
-const toolFilterOptions = computed(() =>
-  toolStore.tools.map(tool => ({ label: localizedToolLabel(tool), value: tool.id }))
 )
 
 const stateFilterOptions = computed(() => [
@@ -751,6 +744,10 @@ watch([filterAgent, filterTool], async () => {
 
 // Apply the status filter client-side without reloading.
 watch(filterState, saveFiltersToSession)
+
+watch(() => toolStore.tools.map(tool => tool.id), ids => {
+  if (!toolStore.loading && filterTool.value !== null && !ids.includes(filterTool.value)) filterTool.value = null
+})
 
 onMounted(async () => {
   loadFiltersFromSession()

@@ -258,6 +258,13 @@ export interface ImportResult extends Tool {
     created: boolean
 }
 
+export interface ToolDeletionImpact {
+    tool_id: number
+    version: string
+    deleted: { kind: 'connections' | 'parameters' | 'authorizations' | 'accounts' | 'messaging' | 'processes' | 'fileIndex' | 'workspaces' | 'other'; count: number }[]
+    detached_count: number
+}
+
 export default {
     getTools(): Promise<AxiosResponse<Tool[]>> {
         return api.get('/tools')
@@ -306,8 +313,13 @@ export default {
         return api.post('/tools/mcp-candidates', { agent_id: agentId, definition, params })
     },
 
-    deleteTool(id: number): Promise<AxiosResponse<void>> {
-        return api.delete(`/tools/${id}`)
+    getDeletionImpact(id: number): Promise<AxiosResponse<ToolDeletionImpact>> {
+        return api.get(`/tools/${id}/deletion-impact`)
+    },
+
+    deleteTool(id: number, confirmationVersion?: string): Promise<AxiosResponse<void>> {
+        return api.delete(`/tools/${id}`, confirmationVersion
+            ? { params: { cascade: true, expected_version: confirmationVersion } } : undefined)
     },
 
     exportToolUrl(id: number): string {

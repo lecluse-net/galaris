@@ -1,5 +1,9 @@
 <template>
   <div>
+    <q-tabs v-model="origin" dense align="left" active-color="primary" indicator-color="primary" class="q-mb-md" no-caps>
+      <q-tab name="galaris" :label="$t('tools.internalTools')" />
+      <q-tab name="custom" :label="$t('tools.customTools')" />
+    </q-tabs>
     <div class="row items-center q-gutter-sm q-mb-md tools-actions">
       <q-input
         v-model="search"
@@ -14,7 +18,7 @@
     </div>
 
     <q-table
-      :rows="toolStore.tools"
+      :rows="visibleTools"
       :filter="search"
       :filter-method="filterTools"
       :no-results-label="$t('tools.noSearchResults')"
@@ -33,6 +37,7 @@
           <button v-if="toolDescription(props.row)" class="tool-description-link" @click.stop="openDescription(props.row)">{{ localizedToolLabel(props.row) }}</button>
           <span v-else>{{ localizedToolLabel(props.row) }}</span>
           <SystemToolIcon v-if="props.row.can_disable === false" class="q-ml-xs" />
+          <ToolOriginBadge :tool="props.row" class="q-ml-sm" />
         </q-td>
       </template>
       <template v-slot:body-cell-has_mcp="props">
@@ -105,7 +110,7 @@
             <q-tooltip>{{ $t('tools.globalParams') }}</q-tooltip>
           </q-btn>
           <q-btn v-if="canEdit && props.row.can_edit && props.row.can_disable !== false" flat round icon="edit" size="sm" color="primary" :aria-label="$t('tools.editTool')" @click="openEdit(props.row)" />
-          <q-btn v-if="canEdit && props.row.can_edit && props.row.can_disable !== false" flat round icon="delete" size="sm" color="negative" @click="confirmDelete(props.row)" />
+          <q-btn v-if="canEdit && props.row.can_edit && props.row.can_disable !== false" flat round icon="delete" size="sm" color="negative" :aria-label="$t('common.delete')" @click="confirmDelete(props.row)" />
         </q-td>
       </template>
 
@@ -119,6 +124,7 @@
                     <button v-if="toolDescription(props.row)" class="tool-description-link" @click="openDescription(props.row)">{{ localizedToolLabel(props.row) }}</button>
                     <span v-else>{{ localizedToolLabel(props.row) }}</span>
                     <SystemToolIcon v-if="props.row.can_disable === false" class="q-ml-xs" />
+                    <ToolOriginBadge :tool="props.row" class="q-ml-sm" />
                   </div>
                   <div class="text-caption text-grey-7 ellipsis">{{ props.row.code }}</div>
                 </div>
@@ -735,18 +741,36 @@
 
     <!-- Deletion dialog. -->
     <q-dialog v-model="deleteDialogOpen">
-      <q-card class="galaris-dialog-card" style="min-width: 340px">
-        <q-card-section class="galaris-dialog-title">
+      <q-card class="galaris-dialog-card" style="width: min(600px, 95vw); max-width: 95vw">
+        <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ $t('tools.deleteTool') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
         </q-card-section>
         <q-card-section class="galaris-dialog-body">
-          {{ $t('tools.deleteMessage', { name: deletingTool ? localizedToolLabel(deletingTool) : '' }) }}
+          <p>{{ $t('tools.deleteMessage', { name: deletingTool ? localizedToolLabel(deletingTool) : '' }) }}</p>
+          <div v-if="deleteImpactLoading" role="status" class="row items-center q-gutter-sm">
+            <q-spinner color="primary" /> <span>{{ $t('tools.deletion.loading') }}</span>
+          </div>
+          <template v-else-if="deleteImpact">
+            <p class="text-weight-medium">{{ $t('tools.deletion.includes') }}</p>
+            <ul v-if="deleteImpact.deleted.length">
+              <li v-for="item in deleteImpact.deleted" :key="item.kind">{{ $t(`tools.deletion.kinds.${item.kind}`) }} : {{ item.count }}</li>
+            </ul>
+            <p v-else>{{ $t('tools.deletion.noDependencies') }}</p>
+            <p v-if="deleteImpact.detached_count">{{ $t('tools.deletion.detached', { count: deleteImpact.detached_count }) }}</p>
+            <p class="q-mb-none">{{ $t('tools.deletion.remoteData') }}</p>
+          </template>
+          <q-banner v-if="deleteImpactError" rounded class="q-mt-md bg-negative text-white" role="alert">
+            {{ deleteImpactError }}
+            <template v-if="!deleteImpact" #action>
+              <q-btn outline color="white" :label="$t('common.retry')" @click="loadDeleteImpact" />
+            </template>
+          </q-banner>
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn flat :label="$t('common.cancel')" v-close-popup />
-          <q-btn v-if="canEdit" color="negative" :label="$t('common.delete')" :loading="saving" @click="doDelete" />
+          <q-btn outline :label="$t('common.cancel')" v-close-popup />
+          <q-btn v-if="canEdit" color="negative" :label="$t('common.delete')" :loading="deleting" :disable="deleteImpactLoading || !deleteImpact" @click="doDelete" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -758,6 +782,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { Markdown, NetworkAccessNotice } from '@/core/util'
 import SystemToolIcon from './SystemToolIcon.vue'
+import ToolOriginBadge from './ToolOriginBadge.vue'
 import ConnectionParamInput from './ConnectionParamInput.vue'
 import RestConfigEditor from './RestConfigEditor.vue'
 import { McpCandidateAgent } from '@/app/connection'
@@ -783,8 +808,10 @@ import type {
   ToolGlobalParamUpdate,
 } from '../services/toolService'
 import api from '@/core/api'
+import { isAxiosError } from 'axios'
+import type { ToolDeletionImpact } from '../services/toolService'
 import { useI18n } from 'vue-i18n'
-import { connectionParamLabel, connectionParamMessageKey, sortedConnectionParamEntries, toolMessageKey } from '../presentation'
+import { connectionParamLabel, connectionParamMessageKey, sortedConnectionParamEntries, toolMessageKey, toolOrigin, type ToolOrigin } from '../presentation'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { mailService, type MailApproverOption } from '@/app/connection'
 
@@ -794,6 +821,8 @@ const toolStore = useToolStore()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.TOOL_EDIT))
 const search = ref<string | null>('')
+const origin = ref<ToolOrigin>('galaris')
+const visibleTools = computed(() => toolStore.tools.filter(tool => toolOrigin(tool) === origin.value))
 const conversationAccessLoading = ref<Set<number>>(new Set())
 const candidateAgentId = ref<number | null>(null)
 const candidateReference = ref('')
@@ -1123,6 +1152,9 @@ async function doImport(overwrite: boolean) {
     })
     await toolStore.fetchTools()
     importDialogOpen.value = false
+    const imported = toolStore.tools.find(tool => tool.code === data.code)
+    origin.value = imported ? toolOrigin(imported) : 'custom'
+    search.value = ''
     resetImport()
   } catch (e: unknown) {
     const err = e as { response?: { status?: number; data?: { detail?: string } } }
@@ -1573,6 +1605,8 @@ async function saveTool() {
       $q.notify({ type: 'positive', message: t('tools.updated') })
     } else {
       await toolStore.createTool({ code: form.value.code, label: form.value.label, description: form.value.description, ...payload })
+      origin.value = 'custom'
+      search.value = ''
       $q.notify({ type: 'positive', message: t('tools.created') })
     }
     dialogOpen.value = false
@@ -1588,20 +1622,63 @@ async function saveTool() {
   }
 }
 
-function confirmDelete(tool: Tool) { if (!canEdit.value || tool.can_disable === false) return; deletingTool.value = tool; deleteDialogOpen.value = true }
+const deleteImpact = ref<ToolDeletionImpact | null>(null)
+const deleteImpactLoading = ref(false)
+const deleteImpactError = ref('')
+const deleting = ref(false)
+let deleteImpactRequest = 0
+
+function confirmDelete(tool: Tool) {
+  if (!canEdit.value || !tool.can_edit || tool.can_disable === false) return
+  deletingTool.value = tool
+  deleteDialogOpen.value = true
+  void loadDeleteImpact()
+}
+
+watch(deleteDialogOpen, open => {
+  if (!open) {
+    deleteImpactRequest++
+    deleteImpact.value = null
+  }
+})
+
+async function loadDeleteImpact() {
+  const target = deletingTool.value
+  if (!target || !deleteDialogOpen.value) return
+  const request = ++deleteImpactRequest
+  deleteImpact.value = null
+  deleteImpactLoading.value = true
+  deleteImpactError.value = ''
+  try {
+    const { data } = await toolService.getDeletionImpact(target.id)
+    if (request === deleteImpactRequest) deleteImpact.value = data
+  } catch {
+    if (request === deleteImpactRequest) deleteImpactError.value = t('tools.deletion.loadError')
+  } finally {
+    if (request === deleteImpactRequest) deleteImpactLoading.value = false
+  }
+}
 
 async function doDelete() {
   if (!canEdit.value) return
-  if (!deletingTool.value) return
-  saving.value = true
+  const target = deletingTool.value
+  const impact = deleteImpact.value
+  if (!target || !impact || deleteImpactLoading.value || deleting.value) return
+  deleting.value = true
   try {
-    await toolStore.deleteTool(deletingTool.value.id)
+    await toolStore.deleteTool(target.id, impact.version)
     $q.notify({ type: 'positive', message: t('tools.deleted') })
-    deleteDialogOpen.value = false
-  } catch {
-    $q.notify({ type: 'negative', message: t('tools.deleteError') })
+    if (deletingTool.value?.id === target.id) deleteDialogOpen.value = false
+  } catch (error) {
+    if (!deleteDialogOpen.value || deletingTool.value?.id !== target.id) return
+    if (isAxiosError(error) && error.response?.status === 409) {
+      await loadDeleteImpact()
+      if (deleteDialogOpen.value && deletingTool.value?.id === target.id) deleteImpactError.value = t('tools.deletion.changed')
+    } else {
+      deleteImpactError.value = t('tools.deleteError')
+    }
   } finally {
-    saving.value = false
+    deleting.value = false
   }
 }
 

@@ -13,6 +13,33 @@ du responsable humain de l’agent. AgentAdmin conserve son propre périmètre e
 
 ## Activer et limiter la délégation
 
+Dans **Outils**, les sous-onglets **Outils internes à Galaris** et **Outils personnalisés**
+séparent les outils fournis par la plateforme de ceux que vous ajoutez. Une création ou un
+import affiche automatiquement le sous-onglet de l’outil enregistré. Dans **Connexions** et
+**Autorisations**, le filtre **Filtrer par outil** regroupe les choix sous **Galaris** et
+**Personnalisé**. Les badges des listes rappellent cette origine ; les outils Galaris
+optionnels restent dans le groupe Galaris même lorsqu’ils sont modifiables ou désactivables.
+
+### Supprimer un outil personnalisé
+
+Dans **Outils → Outils personnalisés**, cliquer sur **Supprimer** sur l’outil concerné.
+La confirmation calcule et affiche les données supprimées avec lui : connexions des agents,
+paramètres partagés et locaux, permissions, demandes d’accord, comptes OAuth et autres données
+dépendantes éventuelles, notamment messagerie et processus. **Annuler**, le bouton de fermeture
+et le clic sur l’arrière-plan ferment le bilan sans rien supprimer. Un bilan indisponible
+doit être rechargé avant de pouvoir confirmer.
+
+La suppression confirmée est définitive et transactionnelle. Si son périmètre a changé depuis
+l’ouverture du bilan, le serveur refuse cette confirmation ; l’interface actualise le bilan
+et demande de confirmer à nouveau. Les tâches, objectifs et autres ressources indépendantes
+liés par une référence facultative sont conservés sans cette référence. Les données d’autres
+outils sont conservées. Les données du service externe et les actions déjà lancées chez lui
+ne sont pas supprimées ou annulées par cette opération.
+
+Les définitions intégrées protégées restent non supprimables. Le ToolAdmin MCP conserve sa
+règle de suppression sans dépendances ; la cascade décrite ici est une confirmation humaine
+de l’interface, sous le privilège d’édition des Tools.
+
 Dans **Configurer → Outils & connexions → Connexions** (`/tools?tab=connections`), activer
 la connexion ToolAdmin de l’agent. Dans **Autorisations**, limiter les fonctions au travail
 attendu. Pour le Chat, activer aussi le mode conversation du Tool dans **Outils** ; les
@@ -376,7 +403,7 @@ Une mutation d’un objet existant fournit `expected_version` obtenu par sa dern
 Cette empreinte couvre définition, paramètres, permissions et dépendances. Sur `conflict`,
 relire et réconcilier ; ne pas rejouer aveuglément. Une réponse perdue se réconcilie par code
 du Tool ou par couple agent/Tool. L’identité d’une connexion est immuable dans cette commande.
-La suppression d’un Tool lié refuse toute cascade : retirer explicitement les connexions,
+La suppression par ToolAdmin MCP d’un Tool lié refuse toute cascade : retirer explicitement les connexions,
 examiner les références techniques, puis refaire la lecture et supprimer avec l’empreinte courante.
 
 Après une mutation, `persisted=true` confirme l’enregistrement, même si le rafraîchissement

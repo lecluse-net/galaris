@@ -15,6 +15,59 @@ const connections = tools.slice(0, 5).map(tool => ({ id: tool.id, tool_id: tool.
 const privileges = ['TOOL_ACCESS', 'TOOL_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL']
 
 for (const width of [390, 1400]) {
+  test(`Tool deletion requires the current impact, retains failures and ignores closed previews (${width})`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await routes(page)
+    let reads = 0
+    let releaseOld
+    const oldResponse = new Promise(resolve => { releaseOld = resolve })
+    await page.route('**/api/tools/6/deletion-impact', async route => {
+      reads++
+      const read = reads
+      if (read === 1) return route.fulfill({ status: 503, json: { detail: 'Synthetic unavailable impact' } })
+      if (read === 2) await oldResponse
+      return route.fulfill({ json: { tool_id: 6, version: read === 4 ? 'review-2' : 'review-1',
+        deleted: [{ kind: 'connections', count: read === 2 ? 99 : read === 4 ? 2 : 1 }], detached_count: 1 } })
+    })
+    const removals = []
+    await page.route('**/api/tools/6?*', async route => {
+      const url = new URL(route.request().url())
+      removals.push(Object.fromEntries(url.searchParams))
+      if (removals.length === 1) return route.fulfill({ status: 409, json: { detail: 'Synthetic impact changed' } })
+      return route.fulfill({ status: 204 })
+    })
+    await mount(page, 'app/tools/components/ToolsList.vue', { privileges, dark: width === 390 })
+    await page.getByRole('tab', { name: 'Custom tools', exact: true }).click()
+    const row = page.locator(width === 390 ? '.tool-mobile-card' : 'tbody tr').filter({ hasText: 'No description' })
+    const dialog = page.getByRole('dialog')
+    const confirm = dialog.getByRole('button', { name: 'Delete', exact: true })
+    await row.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(dialog.getByRole('alert')).toContainText('Could not calculate related data')
+    await expect(confirm).toBeDisabled()
+    await dialog.getByRole('button', { name: 'Retry', exact: true }).click()
+    await expect.poll(() => reads).toBe(2)
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await row.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(dialog).toContainText('Agent connections : 1')
+    releaseOld()
+    await expect(dialog).not.toContainText('99')
+    expect(removals).toEqual([])
+    await confirm.click()
+    await expect(dialog.getByRole('alert')).toContainText('Related data has changed')
+    await expect(dialog).toContainText('Agent connections : 2')
+    await page.screenshot({ path: testInfo.outputPath('confirmed-tool-deletion.png'), animations: 'disabled' })
+    await confirm.click()
+    await expect(dialog).toHaveCount(0)
+    await expect(row).toHaveCount(0)
+    expect(removals).toEqual([
+      { cascade: 'true', expected_version: 'review-1' },
+      { cascade: 'true', expected_version: 'review-2' },
+    ])
+    await page.getByRole('tab', { name: 'Galaris built-in tools', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Optional Tool', exact: true })).toBeVisible()
+  })
+
   test(`REST configuration survives save and reopening, and can be disabled (${width})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
     await routes(page)
@@ -46,6 +99,8 @@ for (const width of [390, 1400]) {
     await page.screenshot({ path: testInfo.outputPath('rest-configuration.png'), animations: 'disabled' })
     await dialog.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(dialog).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: 'Custom tools', exact: true })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByText('Synthetic REST service', { exact: true })).toBeVisible()
     expect(writes[0].rest_config.auth).toMatchObject({ type: 'bearer', param: 'api_token' })
     expect(writes[0].connection_schema.params.api_token.type).toBe('password')
     await page.getByRole('button', { name: 'Edit tool', exact: true }).click()
@@ -383,6 +438,48 @@ async function routes(page) {
 }
 
 for (const mobile of [false, true]) {
+  for (const component of ['ConnectionList', 'AuthorizationManager']) {
+    test(`Tool origin filters retain selectable tools and their connections (${component}, ${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
+      await routes(page)
+      const customConnection = { id: 6, tool_id: 6, agent_id: 7, active: true }
+      await jsonRoute(page, '**/api/connections?*', [...connections, customConnection])
+      await jsonRoute(page, '**/api/connections/6/params?*', { connection_id: 6, params: {}, configured_params: [] })
+      await jsonRoute(page, '**/api/connections/6/functions', { success: true, functions: [] })
+      await mount(page, `app/connection/components/${component}.vue`, { privileges, dark: mobile })
+      const filter = page.getByRole('combobox', { name: 'Filter by tool', exact: true })
+      await filter.press('ArrowDown')
+      const popup = page.getByRole('listbox')
+      await expect(popup.getByText('Galaris', { exact: true }).first()).toBeVisible()
+      await expect(popup.getByText('Custom', { exact: true })).toBeVisible()
+      await expect(popup.getByRole('option', { name: 'Custom', exact: true })).toHaveCount(0)
+      await page.getByRole('option', { name: 'No description', exact: true }).click()
+      if (component === 'ConnectionList') {
+        const rows = page.locator(mobile ? '.connection-mobile-card' : 'tbody tr')
+        await expect(rows).toHaveCount(1)
+        await expect(rows).toContainText('No description')
+        await expect(rows).toContainText('Custom')
+      } else {
+        const selection = page.getByRole('combobox', { name: 'Select a connection (agent + connector)', exact: true })
+        await expect(selection).toHaveValue('Alice Example — No description')
+        await expect(page.getByRole('status').filter({ hasText: 'Custom' })).toBeVisible()
+      }
+      await filter.click()
+      await page.getByRole('option', { name: 'Optional Tool', exact: true }).click()
+      await expect(page.getByRole('option', { name: 'Optional Tool', exact: true })).toHaveCount(0)
+      await page.screenshot({ path: testInfo.outputPath('tool-origin-filter.png'), animations: 'disabled' })
+      if (component === 'ConnectionList') {
+        const rows = page.locator(mobile ? '.connection-mobile-card' : 'tbody tr')
+        await expect(rows).toHaveCount(1)
+        await expect(rows).toContainText('Optional Tool')
+        await expect(rows).toContainText('Galaris')
+      } else {
+        await expect(page.getByRole('combobox', { name: 'Select a connection (agent + connector)', exact: true })).toHaveValue('Alice Example — Optional Tool')
+        await expect(page.getByText('external_read', { exact: true })).toBeVisible()
+      }
+    })
+  }
+
   test(`Tool search filters localized content across pages and can be cleared (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
     await routes(page)
@@ -398,7 +495,13 @@ for (const mobile of [false, true]) {
     await mount(page, 'app/tools/components/ToolsList.vue', { locale, privileges: ['TOOL_ACCESS'] })
     const rows = page.locator(mobile ? '.tool-mobile-card' : 'tbody tr')
     const search = page.getByRole('textbox', { name: mobile ? 'Rechercher un outil' : 'Search tools', exact: true })
+    await expect(rows).toHaveCount(5)
+    await expect(rows.filter({ hasText: 'Optional Tool' })).toBeVisible()
+    const customTab = page.getByRole('tab', { name: mobile ? 'Outils personnalisés' : 'Custom tools', exact: true })
+    const galarisTab = page.getByRole('tab', { name: mobile ? 'Outils internes à Galaris' : 'Galaris built-in tools', exact: true })
+    await customTab.click()
     await expect(rows).toHaveCount(50)
+    await expect(rows.filter({ hasText: 'Optional Tool' })).toHaveCount(0)
     await expect(rows.filter({ hasText: 'Équipe distante' })).toHaveCount(0)
     for (const query of [' REMOTE_ARCHIVE ', 'EQUIPE DISTANTE', 'archive connector']) {
       await search.fill(query)
@@ -406,6 +509,7 @@ for (const mobile of [false, true]) {
       await expect(rows).toContainText('Équipe distante')
     }
     await page.screenshot({ path: testInfo.outputPath('tool-search.png'), animations: 'disabled' })
+    await galarisTab.click()
     await search.fill(mobile ? 'mémoire' : 'memory')
     await expect(rows.filter({ hasText: mobile ? 'Mémoire' : 'Memory' })).toBeVisible()
     await expect(rows.filter({ hasText: 'Équipe distante' })).toHaveCount(0)
@@ -415,6 +519,7 @@ for (const mobile of [false, true]) {
     await search.fill('no-such-synthetic-tool')
     await expect(rows).toHaveCount(0)
     await expect(page.locator('.q-table__bottom--nodata')).toContainText(mobile ? 'Aucun outil ne correspond à votre recherche.' : 'No tools match your search.')
+    await customTab.click()
     await search.fill('   ')
     await expect(rows).toHaveCount(50)
     await search.fill('remote_archive')
@@ -450,10 +555,11 @@ for (const mobile of [false, true]) {
     await page.getByRole('button', { name: 'Optional Tool', exact: true }).click()
     await expect(page.getByRole('dialog')).toContainText('Team handbook')
     await page.keyboard.press('Escape')
+    await expect(rows.filter({ hasText: 'Optional Tool' }).getByRole('switch')).toBeEnabled()
+    await page.getByRole('tab', { name: 'Custom tools', exact: true }).click()
     await expect(page.getByRole('button', { name: 'No description', exact: true })).toHaveCount(0)
     await page.getByText('No description', { exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await expect(rows.filter({ hasText: 'Optional Tool' }).getByRole('switch')).toBeEnabled()
   })
 
   test(`System connections stay visible without edit or delete actions (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {

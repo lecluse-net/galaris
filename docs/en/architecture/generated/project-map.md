@@ -17,7 +17,7 @@ tests remain authoritative for behavior.
 - 27 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 734 detected HTTP/WebSocket handlers;
+- 735 detected HTTP/WebSocket handlers;
 - 175 detected SQLAlchemy tables;
 - 272 detected native MCP tools;
 - 51 detected Vue pages.
@@ -471,8 +471,8 @@ tests remain authoritative for behavior.
 | `app.process` | `app.llm` | `back/app/process/__init__.py`, `back/app/process/agent_capabilities.py`, `back/app/process/dbadmin.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py` |
 | `app.process` | `app.memory` | `back/app/process/definition_migration.py`, `back/app/process/events.py`, `back/app/process/native_actors.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/router.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
 | `app.process` | `app.share` | `back/app/process/definition_migration.py`, `back/app/process/models.py`, `back/app/process/native_access.py`, `back/app/process/native_router.py`, `back/app/process/native_sharing.py` |
-| `app.process` | `app.task` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/native_engine.py`, `back/app/process/process_service.py`, `back/app/process/retention.py`, `back/app/process/run_observation.py` |
-| `app.process` | `app.tools` | `back/app/process/activity_jobs.py`, `back/app/process/catalogue.py`, `back/app/process/dbadmin.py`, `back/app/process/mcp.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/run_resources.py` |
+| `app.process` | `app.task` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/native_engine.py`, `back/app/process/process_service.py`, `back/app/process/retention.py`, `back/app/process/run_observation.py`, `back/app/process/run_resources.py` |
+| `app.process` | `app.tools` | `back/app/process/__init__.py`, `back/app/process/activity_jobs.py`, `back/app/process/catalogue.py`, `back/app/process/dbadmin.py`, `back/app/process/mcp.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/run_resources.py` |
 | `app.process` | `core.authorize` | `back/app/process/dataset_usage.py`, `back/app/process/facade.py`, `back/app/process/native_access.py`, `back/app/process/native_router.py`, `back/app/process/native_sharing.py`, `back/app/process/router.py` |
 | `app.process` | `core.database` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/catalogue.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/export.py`, `back/app/process/facade.py`, `back/app/process/human_requests.py`, `back/app/process/interface.py`, `back/app/process/mcp.py`, `back/app/process/models.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/native_sharing.py`, `back/app/process/process_service.py`, `back/app/process/progress.py`, `back/app/process/query_policy.py`, `back/app/process/replacement.py`, `back/app/process/resource_facade.py`, `back/app/process/resource_previews.py`, `back/app/process/retention.py`, `back/app/process/run_data.py`, `back/app/process/run_observation.py`, `back/app/process/run_resources.py`, `back/app/process/workers.py` |
 | `app.process` | `core.dbadmin` | `back/app/process/dbadmin.py`, `back/app/process/definition_migration.py` |
@@ -514,7 +514,7 @@ tests remain authoritative for behavior.
 | `app.tools` | `app.task` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `app.util` | `back/app/tools/search_tool.py` |
 | `app.tools` | `core.authorize` | `back/app/tools/assertions.py`, `back/app/tools/authorization_router.py`, `back/app/tools/router.py`, `back/app/tools/runtime_authorization_router.py` |
-| `app.tools` | `core.database` | `back/app/tools/admin_service.py`, `back/app/tools/administration_lock.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_models.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/authorization_views.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/documentation_service.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/models.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_authorization_router.py`, `back/app/tools/runtime_permissions.py`, `back/app/tools/tool_search_service.py`, `back/app/tools/tool_service.py` |
+| `app.tools` | `core.database` | `back/app/tools/admin_service.py`, `back/app/tools/administration_lock.py`, `back/app/tools/authorization.py`, `back/app/tools/authorization_models.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_router.py`, `back/app/tools/authorization_views.py`, `back/app/tools/catalog_refresh_service.py`, `back/app/tools/deletion.py`, `back/app/tools/documentation_service.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/models.py`, `back/app/tools/runtime_authorization.py`, `back/app/tools/runtime_authorization_router.py`, `back/app/tools/runtime_permissions.py`, `back/app/tools/tool_search_service.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `core.dbadmin` | `back/app/tools/dbadmin.py`, `back/app/tools/mandatory_tools.py` |
 | `app.tools` | `core.failure_journal` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `core.i18n` | `back/app/tools/agent_registry.py`, `back/app/tools/authorization_notifications.py`, `back/app/tools/authorization_presentation.py`, `back/app/tools/authorization_router.py`, `back/app/tools/connection_functions.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_diagnostics.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/router.py`, `back/app/tools/search_tool.py`, `back/app/tools/tool_errors.py`, `back/app/tools/tool_service.py` |
@@ -902,7 +902,7 @@ tests remain authoritative for behavior.
 | `app/task` | `core/user` | `front/app/task/components/TaskDetail.vue`, `front/app/task/stores/taskStore.ts` |
 | `app/task` | `core/util` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/DispatchResult.vue`, `front/app/task/components/ExecutionResult.vue`, `front/app/task/components/MemoryItemCard.vue`, `front/app/task/components/PlannerResult.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/components/TaskRowMenu.vue`, `front/app/task/pages/index.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskStatusService.ts` |
 | `app/task` | `core/websocket` | `front/app/task/stores/taskStore.ts`, `front/app/task/useTaskActivity.ts` |
-| `app/tools` | `app/connection` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/pages/index.vue` |
+| `app/tools` | `app/connection` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/pages/index.vue`, `front/app/tools/stores/toolStore.ts` |
 | `app/tools` | `core/api` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/services/toolService.ts` |
 | `app/tools` | `core/authorize` | `front/app/tools/components/ToolsList.vue`, `front/app/tools/navigation.ts` |
 | `app/tools` | `core/navigation` | `front/app/tools/navigation.ts`, `front/app/tools/pages/index.vue` |
@@ -1873,20 +1873,21 @@ tests remain authoritative for behavior.
 | PUT | `/teams/{team_id}/humans/{user_id}` | `core.team` | `set_human_membership` | yes | `back/core/team/router.py:79` |
 | PUT | `/teams/{team_id}/position` | `core.team` | `move_team` | yes | `back/core/team/router.py:60` |
 | GET | `/tools` | `app.process` | `read_process_tools` | yes | `back/app/process/router.py:130` |
-| GET | `/tools` | `app.tools` | `list_tools` | yes | `back/app/tools/router.py:67` |
-| POST | `/tools` | `app.tools` | `create_tool` | yes | `back/app/tools/router.py:158` |
-| GET | `/tools/agents/{agent_id}/mcp-tools` | `app.tools` | `list_agent_mcp_tools` | yes | `back/app/tools/router.py:77` |
-| POST | `/tools/import` | `app.tools` | `import_tool` | yes | `back/app/tools/router.py:248` |
-| POST | `/tools/mcp-candidates` | `app.tools` | `prepare_mcp_candidate` | yes | `back/app/tools/router.py:37` |
-| POST | `/tools/test-mcp` | `app.tools` | `test_mcp_connection` | yes | `back/app/tools/router.py:86` |
+| GET | `/tools` | `app.tools` | `list_tools` | yes | `back/app/tools/router.py:68` |
+| POST | `/tools` | `app.tools` | `create_tool` | yes | `back/app/tools/router.py:159` |
+| GET | `/tools/agents/{agent_id}/mcp-tools` | `app.tools` | `list_agent_mcp_tools` | yes | `back/app/tools/router.py:78` |
+| POST | `/tools/import` | `app.tools` | `import_tool` | yes | `back/app/tools/router.py:263` |
+| POST | `/tools/mcp-candidates` | `app.tools` | `prepare_mcp_candidate` | yes | `back/app/tools/router.py:38` |
+| POST | `/tools/test-mcp` | `app.tools` | `test_mcp_connection` | yes | `back/app/tools/router.py:87` |
 | GET | `/tools/{tool_code}/health` | `app.process` | `read_process_tool_health` | yes | `back/app/process/router.py:136` |
-| DELETE | `/tools/{tool_id}` | `app.tools` | `delete_tool` | yes | `back/app/tools/router.py:210` |
-| GET | `/tools/{tool_id}` | `app.tools` | `get_tool` | yes | `back/app/tools/router.py:106` |
-| PUT | `/tools/{tool_id}` | `app.tools` | `update_tool` | yes | `back/app/tools/router.py:174` |
-| PATCH | `/tools/{tool_id}/conversation-access` | `app.tools` | `update_conversation_access` | yes | `back/app/tools/router.py:190` |
-| GET | `/tools/{tool_id}/export` | `app.tools` | `export_tool` | yes | `back/app/tools/router.py:225` |
-| GET | `/tools/{tool_id}/global-params` | `app.tools` | `get_global_params` | yes | `back/app/tools/router.py:118` |
-| PUT | `/tools/{tool_id}/global-params` | `app.tools` | `update_global_params` | yes | `back/app/tools/router.py:135` |
+| DELETE | `/tools/{tool_id}` | `app.tools` | `delete_tool` | yes | `back/app/tools/router.py:223` |
+| GET | `/tools/{tool_id}` | `app.tools` | `get_tool` | yes | `back/app/tools/router.py:107` |
+| PUT | `/tools/{tool_id}` | `app.tools` | `update_tool` | yes | `back/app/tools/router.py:175` |
+| PATCH | `/tools/{tool_id}/conversation-access` | `app.tools` | `update_conversation_access` | yes | `back/app/tools/router.py:191` |
+| GET | `/tools/{tool_id}/deletion-impact` | `app.tools` | `tool_deletion_impact` | yes | `back/app/tools/router.py:211` |
+| GET | `/tools/{tool_id}/export` | `app.tools` | `export_tool` | yes | `back/app/tools/router.py:240` |
+| GET | `/tools/{tool_id}/global-params` | `app.tools` | `get_global_params` | yes | `back/app/tools/router.py:119` |
+| PUT | `/tools/{tool_id}/global-params` | `app.tools` | `update_global_params` | yes | `back/app/tools/router.py:136` |
 | GET | `/topics` | `app.topic` | `read_topics` | yes | `back/app/topic/router.py:46` |
 | POST | `/topics` | `app.topic` | `create_topic` | yes | `back/app/topic/router.py:98` |
 | GET | `/topics/conversation` | `app.topic` | `read_conversation_topics` | yes | `back/app/topic/router.py:65` |

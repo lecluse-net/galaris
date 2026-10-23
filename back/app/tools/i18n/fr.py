@@ -13,6 +13,7 @@ default: dict[str, object] = {
         "truncated": "Aperçu abrégé. Ouvrez la demande dans Permissions pour consulter le contenu complet avant de décider.",
     },
     "tools": {
+        "deletion_changed": "Les données liées à cet outil ont changé. Vérifiez le nouveau bilan avant de confirmer à nouveau.",
         "no_search_results": "Aucun résultat trouvé.",
         "summary": "Résumé : ${content}...",
         "search_unavailable": (

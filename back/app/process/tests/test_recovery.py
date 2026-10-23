@@ -47,6 +47,23 @@ async def waiting_run(db, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_human_tool_deletion_releases_process_waiters(db, waiting_run):
+    from app.tools import tool_service
+
+    run, parent, child = waiting_run
+    run_id = run.id
+    tool_id = await db.scalar(select(ProcessDefinition.tool_id).where(ProcessDefinition.id == run.process_id))
+    preview = await tool_service.deletion_impact(tool_id)
+    assert preview is not None
+    assert await tool_service.delete_tool(tool_id, cascade=True, expected_version=preview.version)
+    assert await db.get(ProcessRun, run_id) is None
+    await db.refresh(parent)
+    await db.refresh(child)
+    assert child.status == TaskStatus.ERROR and not child.paused
+    assert not parent.paused
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("terminal_status", ["success", "error", "cancelled"])
 async def test_callback_completion_resumes_wait_once_and_survives_redelivery(
     db, waiting_run, terminal_status,

@@ -216,6 +216,110 @@ async def test_direct_tool_dependencies_are_visible_and_block_deletion(delegated
     assert await db.get(MessengerUser, identity_id) is not None
     assert await db.get(Tool, tool_id) is not None
 
+    # The human UI can explicitly confirm the complete purge. Delegated MCP
+    # deletion keeps its existing, dependency-free contract above.
+    preview = await tool_service.deletion_impact(tool_id)
+    assert preview is not None
+    counts = {item.kind: item.count for item in preview.deleted}
+    assert counts["processes"] == counts["messaging"] == 1
+    assert await tool_service.delete_tool(tool_id, cascade=True, expected_version=preview.version)
+    assert await db.get(ProcessDefinition, workflow_id) is None
+    assert await db.get(MessengerUser, identity_id) is None
+    assert await db.get(Tool, tool_id) is None
+
+
+@pytest.mark.asyncio
+async def test_confirmed_tool_deletion_is_atomic_complete_and_keeps_unrelated_data(delegated, db, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import AsyncMock
+    from app.connection.models import ConnectionFunctionState, ConnectionOAuth, ToolFunctionState
+    from app.process.models import ProcessDefinition, ProcessRun
+    from app.share.models import ShareConfig
+    from app.task.models import Task
+    from app.tools import deletion
+    from app.tools.authorization_models import ActionAuthorization
+    from app.tools import authorization
+
+    _, agent_id, _ = delegated
+    tool = await tool_service.create_tool(ToolCreate(code=f"purge_{uuid4().hex}", label="Synthetic purge"))
+    other = await tool_service.create_tool(ToolCreate(code=f"keep_{uuid4().hex}", label="Synthetic preserved"))
+    connection = await connection_service.get_or_create_connection(tool.id, agent_id)
+    other_connection = await connection_service.get_or_create_connection(other.id, agent_id)
+    approver = User(email=f"purge-{uuid4().hex}@example.test", hashed_password="synthetic")
+    db.add(approver)
+    await db.flush()
+    approval = ActionAuthorization(operation_key=uuid4().hex, agent_id=agent_id,
+        approver_user_id=approver.id, tool_id=tool.id, connection_id=connection.id,
+        source="mcp", capability_kind="tool", capability_name="read", runtime="internal",
+        context_key="principal:synthetic-purge", fingerprint="0" * 64, configuration_fingerprint="0" * 64,
+        policy_source="connection", mode="ask", policy_version=1, preview="Synthetic approval",
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
+    db.add(approval)
+    db.add_all([
+        ConnectionParam(connection_id=connection.id, param_name="credential", param_value="synthetic-encrypted-value"),
+        ConnectionFunctionState(connection_id=connection.id, function_name="read", state="ask", enabled=False),
+        ToolFunctionState(tool_id=tool.id, function_name="read", state="disabled", enabled=False),
+        ConnectionOAuth(connection_id=connection.id, grant="synthetic-encrypted-grant"),
+    ])
+    definitions = [ProcessDefinition(tool_id=item.id, engine_process_id=f"synthetic-{item.id}", label="Synthetic process") for item in (tool, other)]
+    db.add_all(definitions)
+    task = Task(label="Preserved business task", agent_id=agent_id, messenger_connection_id=connection.id)
+    db.add(task)
+    await db.flush()
+    run = ProcessRun(process_id=definitions[0].id, launcher_agent_id=agent_id, engine_code="n8n",
+        correlation_id=uuid4().hex, callback_token="synthetic-token", status="success")
+    db.add(run)
+    await db.flush()
+    # Nullable ancestry cycles are legal durable state, not a deletion blocker.
+    run.root_run_id = run.id
+    await db.commit()
+    tool_id, connection_id, task_id = tool.id, connection.id, task.id
+    other_connection_id, approval_id = other_connection.id, approval.id
+    deleted_policy, kept_policy = definitions[0].share_id, definitions[1].share_id
+
+    preview = await tool_service.deletion_impact(tool_id)
+    assert preview is not None and preview.detached_count == 1
+    counts = {item.kind: item.count for item in preview.deleted}
+    assert counts["connections"] == counts["parameters"] == counts["accounts"] == 1
+    assert counts["authorizations"] == 3 and counts["processes"] == 2
+    assert "synthetic-encrypted" not in preview.model_dump_json()
+
+    original = deletion.execute
+    async def interrupted(plan, record):
+        await original(plan, record)
+        raise RuntimeError("Synthetic failure before commit")
+    monkeypatch.setattr(deletion, "execute", interrupted)
+    wake = AsyncMock(return_value=True)
+    monkeypatch.setattr(authorization, "wake_authorization_context", wake)
+    with pytest.raises(RuntimeError, match="Synthetic failure"):
+        await tool_service.delete_tool(tool_id, cascade=True, expected_version=preview.version)
+    await db.rollback()
+    wake.assert_not_awaited()
+    assert await db.get(Tool, tool_id) is not None
+    assert await db.get(Connection, connection_id) is not None
+    assert await db.get(ShareConfig, deleted_policy) is not None
+    monkeypatch.setattr(deletion, "execute", original)
+
+    # A rule added after the dialog opened must require a fresh review.
+    db.add(ToolFunctionState(tool_id=tool_id, function_name="write", state="disabled", enabled=False))
+    await db.commit()
+    with pytest.raises(deletion.DeletionConflict):
+        await tool_service.delete_tool(tool_id, cascade=True, expected_version=preview.version)
+    await db.rollback()
+    current = await tool_service.deletion_impact(tool_id)
+    assert current is not None and current.version != preview.version
+    assert await tool_service.delete_tool(tool_id, cascade=True, expected_version=current.version)
+    assert await db.get(Tool, tool_id) is None
+    assert await db.get(Connection, connection_id) is None
+    assert await db.get(ShareConfig, deleted_policy) is None
+    assert await db.get(ConnectionOAuth, connection_id) is None
+    assert await db.get(ActionAuthorization, approval_id) is None
+    wake.assert_awaited_once_with(agent_id, "principal:synthetic-purge")
+    assert await db.scalar(select(Task.messenger_connection_id).where(Task.id == task_id)) is None
+    assert await db.scalar(select(Task.id).where(Task.id == task_id)) == task_id
+    assert await db.get(ShareConfig, kept_policy) is not None
+    assert await db.scalar(select(Connection.id).where(Connection.id == other_connection_id)) == other_connection_id
+
 
 @pytest.mark.asyncio
 async def test_batches_are_atomic_and_secret_literals_never_replace_values(delegated, db):

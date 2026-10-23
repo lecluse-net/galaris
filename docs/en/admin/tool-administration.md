@@ -12,6 +12,30 @@ AgentAdmin retains its own scope and delegation.
 
 ## Enable and restrict delegation
 
+Under **Tools**, the **Galaris built-in tools** and **Custom tools** subtabs separate tools
+provided by the platform from those you add. Creating or importing a tool automatically
+shows the saved tool’s subtab. Under **Connections** and **Authorizations**, the **Filter by
+tool** selector groups choices under **Galaris** and **Custom**. List badges identify the
+same origin; optional Galaris tools stay in the Galaris group even when editable or disableable.
+
+### Delete a custom tool
+
+Under **Tools → Custom tools**, click the tool’s **Delete** action. The confirmation calculates
+and displays related data to remove: agent connections, shared and local parameters, permissions,
+approval requests, OAuth accounts and any other dependent data, including messaging and processes.
+**Cancel**, the close button and the backdrop dismiss the impact without deleting anything.
+An unavailable impact must be reloaded before confirmation becomes available.
+
+Confirmed deletion is permanent and transactional. If the affected scope has changed since the
+impact was opened, the server rejects that confirmation; the interface refreshes the impact and
+requires another confirmation. Tasks, goals and other independent resources linked by optional
+references are retained without those references. Other tools’ data is retained. This operation
+does not delete external service data or cancel actions already started there.
+
+Protected built-in definitions remain non-deletable. ToolAdmin MCP keeps its dependency-free
+deletion rule; the cascade described here requires human confirmation through the interface and
+the Tool editing privilege.
+
 In **Configure → Tools & connections → Connections** (`/tools?tab=connections`), enable
 the agent's ToolAdmin connection. In **Authorizations**, limit functions to the intended work.
 For Chat, also enable the Tool's conversation mode under **Tools**; long operations follow

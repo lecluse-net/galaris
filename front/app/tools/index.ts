@@ -1,3 +1,5 @@
 export { default as SystemToolIcon } from './components/SystemToolIcon.vue'
+export { default as ToolOriginBadge } from './components/ToolOriginBadge.vue'
+export { default as ToolFilterSelect } from './components/ToolFilterSelect.vue'
 export { default as ConnectionParamInput } from './components/ConnectionParamInput.vue'
 export type { ConnectionParamDef, ConnectionParamOption } from './services/toolService'

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import toolService, { type Tool, type ToolCreate, type ToolUpdate } from '../services/toolService'
+import { useConnectionStore } from '@/app/connection'
 
 interface ToolState {
     tools: Tool[]
@@ -42,9 +43,11 @@ export const useToolStore = defineStore('tool', {
             return response.data
         },
 
-        async deleteTool(id: number): Promise<void> {
-            await toolService.deleteTool(id)
+        async deleteTool(id: number, confirmationVersion?: string): Promise<void> {
+            const connections = useConnectionStore()
+            await toolService.deleteTool(id, confirmationVersion)
             this.tools = this.tools.filter(t => t.id !== id)
+            connections.forgetDeletedTool(id)
         },
     },
 })

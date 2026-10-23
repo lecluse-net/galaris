@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
-test('REST Tool configuration persists with connection credentials kept write-only', async ({ page, request }) => {
+test('REST Tool configuration persists with connection credentials kept write-only', async ({ page, request }, testInfo) => {
   const pageErrors = collectPageErrors(page)
   const fixture = await (await request.post('/api/__test/seed')).json()
   const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
@@ -35,6 +35,7 @@ test('REST Tool configuration persists with connection credentials kept write-on
   expect(createdResponse.ok(), await createdResponse.text()).toBe(true)
   const tool = await createdResponse.json()
   await expect(editor).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Outils personnalisés', exact: true })).toHaveAttribute('aria-selected', 'true')
   expect(tool.has_api).toBe(true)
   const connectionResponse = await request.post('/api/connections', { headers, data: { tool_id: tool.id, agent_id: fixture.agent_id, active: true } })
   expect(connectionResponse.ok(), await connectionResponse.text()).toBe(true)
@@ -50,7 +51,29 @@ test('REST Tool configuration persists with connection credentials kept write-on
   expect(await projection.text()).not.toContain(token)
   const exported = await request.get(`/api/tools/${tool.id}/export`, { headers })
   expect(await exported.text()).not.toContain(token)
-  await page.reload()
+  for (const tab of ['connections', 'authorizations']) {
+    await pageErrors.settle()
+    const catalogueLoaded = page.waitForResponse(response => new URL(response.url()).pathname === '/api/tools' && response.request().method() === 'GET')
+    await page.goto(`/tools?tab=${tab}`)
+    await (await catalogueLoaded).finished()
+    const filter = page.getByRole('combobox', { name: 'Filtrer par outil', exact: true })
+    await filter.press('ArrowDown')
+    const popup = page.getByRole('listbox')
+    await expect(popup.getByText('Galaris', { exact: true }).first()).toBeVisible()
+    await filter.press('End')
+    await expect(popup.getByText('Personnalisé', { exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath(`${tab}-tool-groups.png`), animations: 'disabled' })
+    await page.getByRole('option', { name: 'Synthetic REST service', exact: true }).click()
+    await expect(page.getByRole('option', { name: 'Synthetic REST service', exact: true })).toHaveCount(0)
+    if (tab === 'connections') {
+      await expect(page.locator('tbody tr').filter({ hasText: 'Synthetic REST service' })).toContainText('Personnalisé')
+    } else {
+      await expect(page.getByRole('status').filter({ hasText: 'Personnalisé' })).toBeVisible()
+    }
+  }
+  await pageErrors.settle()
+  await page.goto('/tools')
+  await page.getByRole('tab', { name: 'Outils personnalisés', exact: true }).click()
   const row = page.locator('tbody tr').filter({ hasText: code })
   await row.getByRole('button', { name: "Modifier l'outil", exact: true }).click()
   await editor.getByRole('tab', { name: 'API REST', exact: true }).click()
@@ -62,6 +85,30 @@ test('REST Tool configuration persists with connection credentials kept write-on
   expect(updated.ok(), await updated.text()).toBe(true)
   expect((await updated.json()).rest_config).toBeNull()
   await expect(editor).toHaveCount(0)
+  // Prime the kept-alive Connections view before deleting the shared Tool.
+  await page.getByRole('tab', { name: 'Connexions', exact: true }).click()
+  await expect(page.locator('tbody tr').filter({ hasText: 'Synthetic REST service' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Outils', exact: true }).click()
+  await page.getByRole('tab', { name: 'Outils personnalisés', exact: true }).click()
+  await row.getByRole('button', { name: 'Supprimer', exact: true }).click()
+  const deletion = page.getByRole('dialog')
+  await expect(deletion).toContainText('Connexions des agents : 1')
+  await expect(deletion).toContainText('Paramètres locaux et partagés')
+  await deletion.getByRole('button', { name: 'Annuler', exact: true }).click()
+  await expect(deletion).toHaveCount(0)
+  await expect(row).toBeVisible()
+  await row.getByRole('button', { name: 'Supprimer', exact: true }).click()
+  await expect(deletion).toContainText('Connexions des agents : 1')
+  await page.screenshot({ path: testInfo.outputPath('tool-deletion-impact.png'), animations: 'disabled' })
+  const removal = page.waitForResponse(response => response.request().method() === 'DELETE' && new URL(response.url()).pathname === `/api/tools/${tool.id}`)
+  await deletion.getByRole('button', { name: 'Supprimer', exact: true }).click()
+  expect((await removal).status()).toBe(204)
+  await expect(deletion).toHaveCount(0)
+  await expect(row).toHaveCount(0)
+  const remaining = await request.get(`/api/connections?tool_id=${tool.id}`, { headers })
+  expect(await remaining.json()).toEqual([])
+  await page.getByRole('tab', { name: 'Connexions', exact: true }).click()
+  await expect(page.locator('tbody tr').filter({ hasText: 'Synthetic REST service' })).toHaveCount(0)
   expect(failures).toEqual([])
   expect(pageErrors()).toEqual([])
 })

@@ -8,6 +8,7 @@ import connectionService, {
     type RefreshToolCatalogsResponse
 } from '../services/connectionService'
 import type { Connection, ConnectionParam } from '../services/connectionService'
+import { CONNECTIONS_CHANGED_EVENT } from '../events'
 
 export type { Connection, ConnectionParam, ConnectionParamsResponse }
 
@@ -36,6 +37,16 @@ export const useConnectionStore = defineStore('connection', {
         error: null
     }),
     actions: {
+        forgetDeletedTool(toolId: number): void {
+            this.connections = this.connections.filter(connection => connection.tool_id !== toolId)
+            if (this.currentConnection?.tool_id === toolId) {
+                this.currentConnection = null
+                this.currentConnectionParams = null
+            }
+            this.paramsCache = {}
+            this.configuredParamsCache = {}
+            window.dispatchEvent(new Event(CONNECTIONS_CHANGED_EVENT))
+        },
         // =====================================================================
         // Actions for Connection (parent table).
         // =====================================================================

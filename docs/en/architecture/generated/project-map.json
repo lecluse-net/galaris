@@ -3425,13 +3425,15 @@
           "back/app/process/native_engine.py",
           "back/app/process/process_service.py",
           "back/app/process/retention.py",
-          "back/app/process/run_observation.py"
+          "back/app/process/run_observation.py",
+          "back/app/process/run_resources.py"
         ],
         "source": "app.process",
         "target": "app.task"
       },
       {
         "files": [
+          "back/app/process/__init__.py",
           "back/app/process/activity_jobs.py",
           "back/app/process/catalogue.py",
           "back/app/process/dbadmin.py",
@@ -3924,6 +3926,7 @@
           "back/app/tools/authorization_router.py",
           "back/app/tools/authorization_views.py",
           "back/app/tools/catalog_refresh_service.py",
+          "back/app/tools/deletion.py",
           "back/app/tools/documentation_service.py",
           "back/app/tools/mandatory_tools.py",
           "back/app/tools/mcp_loader.py",
@@ -19260,7 +19263,7 @@
         "declared_path": "/tools",
         "file": "back/app/tools/router.py",
         "handler": "list_tools",
-        "line": 67,
+        "line": 68,
         "method": "GET",
         "module": "app.tools"
       },
@@ -19269,7 +19272,7 @@
         "declared_path": "/tools",
         "file": "back/app/tools/router.py",
         "handler": "create_tool",
-        "line": 158,
+        "line": 159,
         "method": "POST",
         "module": "app.tools"
       },
@@ -19278,7 +19281,7 @@
         "declared_path": "/tools/agents/{agent_id}/mcp-tools",
         "file": "back/app/tools/router.py",
         "handler": "list_agent_mcp_tools",
-        "line": 77,
+        "line": 78,
         "method": "GET",
         "module": "app.tools"
       },
@@ -19287,7 +19290,7 @@
         "declared_path": "/tools/import",
         "file": "back/app/tools/router.py",
         "handler": "import_tool",
-        "line": 248,
+        "line": 263,
         "method": "POST",
         "module": "app.tools"
       },
@@ -19296,7 +19299,7 @@
         "declared_path": "/tools/mcp-candidates",
         "file": "back/app/tools/router.py",
         "handler": "prepare_mcp_candidate",
-        "line": 37,
+        "line": 38,
         "method": "POST",
         "module": "app.tools"
       },
@@ -19305,7 +19308,7 @@
         "declared_path": "/tools/test-mcp",
         "file": "back/app/tools/router.py",
         "handler": "test_mcp_connection",
-        "line": 86,
+        "line": 87,
         "method": "POST",
         "module": "app.tools"
       },
@@ -19323,7 +19326,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "delete_tool",
-        "line": 210,
+        "line": 223,
         "method": "DELETE",
         "module": "app.tools"
       },
@@ -19332,7 +19335,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "get_tool",
-        "line": 106,
+        "line": 107,
         "method": "GET",
         "module": "app.tools"
       },
@@ -19341,7 +19344,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "update_tool",
-        "line": 174,
+        "line": 175,
         "method": "PUT",
         "module": "app.tools"
       },
@@ -19350,8 +19353,17 @@
         "declared_path": "/tools/{tool_id}/conversation-access",
         "file": "back/app/tools/router.py",
         "handler": "update_conversation_access",
-        "line": 190,
+        "line": 191,
         "method": "PATCH",
+        "module": "app.tools"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/tools/{tool_id}/deletion-impact",
+        "file": "back/app/tools/router.py",
+        "handler": "tool_deletion_impact",
+        "line": 211,
+        "method": "GET",
         "module": "app.tools"
       },
       {
@@ -19359,7 +19371,7 @@
         "declared_path": "/tools/{tool_id}/export",
         "file": "back/app/tools/router.py",
         "handler": "export_tool",
-        "line": 225,
+        "line": 240,
         "method": "GET",
         "module": "app.tools"
       },
@@ -19368,7 +19380,7 @@
         "declared_path": "/tools/{tool_id}/global-params",
         "file": "back/app/tools/router.py",
         "handler": "get_global_params",
-        "line": 118,
+        "line": 119,
         "method": "GET",
         "module": "app.tools"
       },
@@ -19377,7 +19389,7 @@
         "declared_path": "/tools/{tool_id}/global-params",
         "file": "back/app/tools/router.py",
         "handler": "update_global_params",
-        "line": 135,
+        "line": 136,
         "method": "PUT",
         "module": "app.tools"
       },
@@ -21110,7 +21122,8 @@
       {
         "files": [
           "front/app/tools/components/ToolsList.vue",
-          "front/app/tools/pages/index.vue"
+          "front/app/tools/pages/index.vue",
+          "front/app/tools/stores/toolStore.ts"
         ],
         "source": "app/tools",
         "target": "app/connection"
