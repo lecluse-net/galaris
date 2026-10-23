@@ -16,7 +16,7 @@ from uuid import UUID, uuid4
 from loguru import logger
 from app.agent import AgentManagementScope
 from pydantic import ValidationError
-from sqlalchemy import DateTime, String, case, cast as sa_cast, func, or_, and_, select, true
+from sqlalchemy import DateTime, String, case, cast as sa_cast, func, or_, and_, select, true, false
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.exc import IntegrityError
 
@@ -156,8 +156,11 @@ async def _transition(
     return True
 
 
-async def get_definition(process_id: int) -> Optional[ProcessDefinition]:
-    return await get_db().get(ProcessDefinition, process_id)
+async def get_definition(process_id: int, *, for_update: bool = False) -> Optional[ProcessDefinition]:
+    query = select(ProcessDefinition).where(ProcessDefinition.id == process_id).execution_options(populate_existing=True)
+    if for_update:
+        query = query.with_for_update()
+    return await get_db().scalar(query)
 
 
 async def get_definition_by_workflow_id(
@@ -179,6 +182,7 @@ async def list_definitions(
     agent_id: int | None = None,
     limit: int = 500,
     agent_ids: Collection[int] | None = None,
+    assigned_only: bool = False,
 ) -> list[ProcessDefinition]:
     query = select(ProcessDefinition)
     if agent_id is not None:
@@ -186,7 +190,7 @@ async def list_definitions(
     if agent_ids is not None:
         query = query.where(
             or_(
-                ProcessDefinition.agent_id.is_(None),
+                false() if assigned_only else ProcessDefinition.agent_id.is_(None),
                 ProcessDefinition.agent_id.in_(agent_ids),
             )
         )
@@ -415,8 +419,11 @@ async def list_resource_definitions_for_agent(
 ) -> list[ProcessDefinition]:
     """Return one bounded page of definitions visible to an agent."""
 
+    from .native_access import administrative_definition_clause
+    administrative = await administrative_definition_clause(management_scope or agent_id)
     statement = select(ProcessDefinition).where(
-        _agent_definition_clause(agent_id, management_scope),
+        or_(_agent_definition_clause(agent_id, management_scope),
+            and_(ProcessDefinition.code.is_not(None), administrative)),
         ProcessDefinition.archived.is_(False),
         ~ProcessDefinition.engine_process_id.startswith("agent_admin:"),
     )
@@ -954,17 +961,20 @@ async def list_runs(
     status: str | None = None,
     limit: int = 100,
     participant_agent_id: int | None = None,
+    administrative_agent_ids: Collection[int] | None = None,
 ) -> list[ProcessRun]:
     query = select(ProcessRun).join(ProcessDefinition, ProcessDefinition.id == ProcessRun.process_id)
+    if administrative_agent_ids is not None:
+        query = query.where(ProcessRun.launcher_agent_id.in_(administrative_agent_ids))
     if agent_id is not None:
         query = query.where(ProcessRun.launcher_agent_id == agent_id)
     if participant_agent_id is not None:
         from .native_runs import readable_run_clause
-        from app.tools import has_process_admin_access
-        administrative = await has_process_admin_access(participant_agent_id)
+        from .native_access import administrative_run_clause
+        administrative = await administrative_run_clause(participant_agent_id)
         query = query.where(or_(
             and_(ProcessRun.engine_code == "galaris", readable_run_clause(participant_agent_id, administrative=administrative)),
-            and_(ProcessRun.engine_code != "galaris", true() if administrative else ProcessRun.launcher_agent_id == participant_agent_id)))
+            and_(ProcessRun.engine_code != "galaris", or_(administrative, ProcessRun.launcher_agent_id == participant_agent_id))))
     if workflow_id:
         query = query.where(ProcessDefinition.engine_process_id == workflow_id)
     if status:

@@ -9,6 +9,7 @@ import pytest
 
 from app.process import mcp
 from app.tools.mcp_loader import McpToolContext
+from app.tools.facade import AdministrationScope
 
 
 @asynccontextmanager
@@ -95,6 +96,7 @@ async def test_process_admin_can_create_update_and_delete_for_another_agent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from core.database import database as database_module
+    monkeypatch.setattr(mcp, "administration_scope", AsyncMock(return_value=AdministrationScope("all", None)))
 
     now = datetime.now(timezone.utc)
     tool = SimpleNamespace(id=5, code="n8n")
@@ -167,6 +169,7 @@ async def test_process_admin_can_inspect_another_agents_run(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from core.database import database as database_module
+    monkeypatch.setattr(mcp, "administration_scope", AsyncMock(return_value=AdministrationScope("all", None)))
 
     run_id = uuid4()
 
@@ -183,7 +186,7 @@ async def test_process_admin_can_inspect_another_agents_run(
     get_run_detail = AsyncMock(return_value=Detail())
     monkeypatch.setattr(database_module, "get_db_session", _db_session)
     monkeypatch.setattr(mcp.process_service, "get_run_detail", get_run_detail)
-    monkeypatch.setattr(mcp.process_service, "get_run", AsyncMock(return_value=SimpleNamespace(engine_code="n8n")))
+    monkeypatch.setattr(mcp.process_service, "get_run", AsyncMock(return_value=SimpleNamespace(engine_code="n8n", launcher_agent_id=77)))
 
     result = await mcp.process_admin_get_run(
         McpToolContext(agent_id=1, runtime="internal"),

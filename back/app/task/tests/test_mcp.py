@@ -230,8 +230,16 @@ async def test_task_run_returns_canonical_task_uri(
     from app.tools import ToolModel
 
     admin_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris_admin"))
-    db.add(Connection(agent_id=7, tool_id=admin_tool.id, active=True))
+    connection = Connection(agent_id=7, tool_id=admin_tool.id, active=True)
+    db.add(connection)
     await db.flush()
+    with pytest.raises(PermissionError):
+        await task_mcp.mcp_run_task(
+            McpToolContext(agent_id=7, runtime="internal"),
+            agent_id=8, label="Undelegated administration", objective="Execute",
+        )
+    from app.connection.facade import set_params_bulk
+    await set_params_bulk(connection.id, {"tools.management_scope": "all"}, commit=False, scope_edit_authorized=True)
     result = await task_mcp.mcp_run_task(
         McpToolContext(agent_id=7, runtime="internal"),
         agent_id=8, label="Administrative delegation", objective="Execute",

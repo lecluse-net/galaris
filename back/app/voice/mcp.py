@@ -12,7 +12,6 @@ from uuid import UUID
 
 from loguru import logger
 
-from app.tools import require_galaris_admin_access
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.i18n import default_language, is_supported, render_prompt, t
 
@@ -60,8 +59,10 @@ async def voice_turn_get(
     from .inspection_service import inspect_turn
 
     identifier = _turn_id(turn_id)
-    await require_galaris_admin_access(ctx.agent_id)
-    payload = await inspect_turn(identifier)
+    from app.tools.facade import administration_scope
+    scope = await administration_scope(ctx.agent_id, "galaris_admin")
+    scope.require_administration()
+    payload = await inspect_turn(identifier, agent_ids=scope.agent_ids)
     if payload is None:
         raise ValueError(f"Voice conversation turn not found: {identifier}")
     return payload

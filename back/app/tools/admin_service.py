@@ -96,6 +96,7 @@ async def get(actor: AdministrationContext, tool_id: int | None = None, code: st
     allowed: list[str] = []
     for action, definition in (("settings", False), ("definition", True)):
         try:
+            actor.require_global()
             actor.require_target(tool.code, can_disable=tool.can_disable, definition=definition,
                                  executable=(tool.mcp_config or {}).get("type") == "stdio")
             allowed.append(action)
@@ -137,6 +138,7 @@ async def list_tools(actor: AdministrationContext, search: str = "", kind: str =
 
 async def impact(actor: AdministrationContext, tool_id: int, offset: int = 0, limit: int = 50) -> dict[str, Any]:
     await actor.require()
+    actor.require_global()
     PageRequest(offset=offset, limit=limit)
     from app.connection.facade import administration
 
@@ -153,13 +155,16 @@ async def impact(actor: AdministrationContext, tool_id: int, offset: int = 0, li
 
 
 async def _lock_mutation(actor: AdministrationContext, tool_id: int, expected_version: str,
-                         *, connection_id: int | None = None, definition: bool = False) -> Tool:
+                         *, connection_id: int | None = None, definition: bool = False,
+                         global_mutation: bool = True) -> Tool:
     from app.connection.facade import administration
 
     caller = await tool_service.get_tool_record("tool_admin") if actor.agent_id is not None else None
     await lock_tools([tool_id, *([caller.id] if caller else [])])
     await actor.require()
     tool = await record(tool_id)
+    if connection_id is None and global_mutation:
+        actor.require_global()
     actor.require_target(tool.code, can_disable=tool.can_disable, definition=definition,
                          executable=(tool.mcp_config or {}).get("type") == "stdio")
     if connection_id is not None:
@@ -197,6 +202,8 @@ async def refresh_batch(agent_ids: list[int], *, actor: AdministrationContext | 
         async with asyncio.timeout(timeout_seconds):
             if actor is not None:
                 await actor.require()
+                for identifier in selected:
+                    actor.require_agent(identifier)
             await release_db_transaction()
             result = await refresh_agents_tool_catalogs(selected, allow_stdio=False)
             if actor is not None:
@@ -291,6 +298,7 @@ def _secret_definition(data: AdminToolCreate | AdminToolUpdate) -> None:
 async def create(actor: AdministrationContext, definition: dict[str, Any] | None = None,
                  candidate_reference: str = "") -> dict[str, Any]:
     await actor.require()
+    actor.require_global()
     candidate = resolve_candidate(candidate_reference, actor.agent_id or 0) if candidate_reference else None
     if candidate is not None and definition is not None:
         raise AdministrationError("configuration_invalid", "Choose a definition or a prepared candidate.")
@@ -411,6 +419,8 @@ async def mcp_test(actor: AdministrationContext, tool_id: int | None = None, con
                    candidate: dict[str, Any] | None = None, candidate_reference: str = "",
                    offset: int = 0, limit: int = 50, include_details: bool = False) -> dict[str, Any]:
     await actor.require()
+    if tool_id is not None and connection_id is None:
+        actor.require_global()
     PageRequest(offset=offset, limit=limit)
     from app.connection.facade import get_connection, get_params_as_dict, mcp_oauth_auth
 
@@ -507,6 +517,8 @@ async def function_list(actor: AdministrationContext, tool_id: int, connection_i
         raise AdministrationError("not_found", "Connection does not belong to this Tool.")
     if connection is not None:
         actor.require_agent(connection.agent_id)
+    else:
+        actor.require_global()
     target_agent = connection.agent_id if connection is not None else actor.agent_id
     selected_runtime = validate_agent_driver(runtime, require_available=False)
     server = build_galaris_fastmcp(target_agent or 0, runtime=selected_runtime, enabled_tool_codes=set(native_tool_codes_for_tool(tool)))
@@ -576,7 +588,10 @@ async def connection_list(actor: AdministrationContext, tool_id: int | None = No
 
     await actor.require()
     PageRequest(offset=offset, limit=limit)
-    return await administration.list_connections(tool_id=tool_id, agent_id=agent_id, active=active, offset=offset, limit=limit)
+    if agent_id is not None:
+        actor.require_agent(agent_id)
+    return await administration.list_connections(tool_id=tool_id, agent_id=agent_id, active=active,
+        offset=offset, limit=limit, agent_ids=actor.allowed_agent_ids)
 
 
 async def connection_get(actor: AdministrationContext, connection_id: int | None = None,
@@ -598,7 +613,8 @@ async def connection_get(actor: AdministrationContext, connection_id: int | None
 async def connection_create(actor: AdministrationContext, tool_id: int, agent_id: int, expected_version: str) -> dict[str, Any]:
     from app.connection.facade import administration
 
-    await _lock_mutation(actor, tool_id, expected_version)
+    await _lock_mutation(actor, tool_id, expected_version, global_mutation=False)
+    actor.require_agent(agent_id)
     connection = await administration.create(actor, tool_id, agent_id)
     return await _saved(actor, tool_id, connection_id=connection.id, agent_ids=[agent_id])
 
@@ -661,12 +677,15 @@ async def catalog_refresh(actor: AdministrationContext, tool_id: int | None = No
     if tool_id is not None:
         await record(tool_id)
         agents = await get_agent_ids_by_tool(tool_id)
+        if actor.allowed_agent_ids is not None:
+            agents = [agent for agent in agents if agent in actor.allowed_agent_ids]
     else:
         agents: list[int] = []
         for connection_id in connection_ids or []:
             connection = await get_connection(connection_id)
             if connection is None:
                 raise AdministrationError("not_found", "Connection not found.")
+            actor.require_agent(connection.agent_id)
             agents.append(connection.agent_id)
     await release_db_transaction()
     return {"refresh": await refresh_catalogs(actor, agents)}

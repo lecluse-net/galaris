@@ -31,7 +31,8 @@ for (const mobile of [false, true]) {
       headers, data: { tool_id: admin.id, agent_id: fixture.agent_id, active: false },
     })).json()
     expect(grant.active).toBe(false)
-    expect((await request.patch(`/api/connections/${grant.id}`, { headers, data: { active: true } })).ok()).toBeTruthy()
+    expect((await request.patch(`/api/connections/${grant.id}`, { headers, data: { active: true,
+      params: { 'tools.management_scope': 'all' } } })).ok()).toBeTruthy()
     // This administration scenario starts with explicit human authorization.
     const definitions = await (await request.get(`/api/connections/${grant.id}/functions`, { headers })).json()
     for (const definition of definitions.functions) {

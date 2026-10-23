@@ -140,12 +140,19 @@ async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_
         with pytest.raises(PermissionError):
             await operation()
     global_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris_admin"))
-    db.add(Connection(agent_id=observer.id, tool_id=global_tool.id, active=True)); await db.commit()
+    global_connection = Connection(agent_id=observer.id, tool_id=global_tool.id, active=True)
+    db.add(global_connection)
+    await db.flush()
+    from app.connection.facade import set_params_bulk
+    await set_params_bulk(global_connection.id, {"tools.management_scope": "all"}, scope_edit_authorized=True)
     with pytest.raises(PermissionError):
         await processus_get(McpToolContext(agent_id=observer.id, runtime="internal"), str(run_id))
     tool = await db.scalar(select(ToolModel).where(ToolModel.code == "process_admin"))
     connection = Connection(agent_id=observer.id, tool_id=tool.id, active=True)
     db.add(connection); await db.commit()
+    with pytest.raises(PermissionError):
+        await inspect_run(run_id, observer.id)
+    await set_params_bulk(connection.id, {"tools.management_scope": "all"}, scope_edit_authorized=True)
     assert (await inspect_run(run_id, observer.id))["can_control"]
     assert (await resource_read(denied_ctx, uri)).uri == uri
     assert (await list_runs(observer.id))["total"] == 1

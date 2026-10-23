@@ -2,6 +2,20 @@
 
 # Functional guarantees catalogue
 
+`app/tools/tests/test_management_scopes.py` protects connection-local Process,
+ToolAdmin, Goal and Galaris Admin scopes: no implicit delegation, filtering before
+pagination, denial of out-of-scope assignments and revocation after team removal.
+`app/agent/tests/test_agent_admin.py` covers team creation and the ban on self-mutation;
+avatar, connection and Harness journeys now target a separate managed agent.
+Conversation and LLM inspection, Tasks and `galaris://` projections use the same scopes.
+`tool-parameters.spec.mjs` exercises the shared form, atomic saving, errors and reopening.
+`management-scopes.spec.mjs` exercises all five forms, real MCP calls, revocation
+and saving/running/reopening a campaign backed by a native Dataset. Process campaign
+tests also cover idempotency, conflicts and the absence of a Document created to
+store synthetic inputs.
+`app/goal/tests/test_goal_runner.py` checks Goal documents independent of Memory,
+their protections and reconciliation, and cycle reads without document content.
+
 This catalogue locates existing evidence before a contract changes. It describes
 guarantees covered by suites; their presence does not mean they have run on your checkout.
 For commands and the scope of their results, see the [testing method](testing.md).

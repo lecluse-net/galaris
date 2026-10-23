@@ -201,6 +201,34 @@
       "target": "core/util"
     },
     {
+      "source": "app/document",
+      "target": "app/agent"
+    },
+    {
+      "source": "app/document",
+      "target": "app/share"
+    },
+    {
+      "source": "app/document",
+      "target": "core/api"
+    },
+    {
+      "source": "app/document",
+      "target": "core/authorize"
+    },
+    {
+      "source": "app/document",
+      "target": "core/navigation"
+    },
+    {
+      "source": "app/document",
+      "target": "core/util"
+    },
+    {
+      "source": "app/document",
+      "target": "core/websocket"
+    },
+    {
       "source": "app/dream",
       "target": "app/agent"
     },
@@ -407,6 +435,10 @@
     {
       "source": "app/memory",
       "target": "app/agent"
+    },
+    {
+      "source": "app/memory",
+      "target": "app/document"
     },
     {
       "source": "app/memory",
@@ -1336,6 +1368,7 @@
     [
       "app/agent",
       "app/conversation",
+      "app/document",
       "app/lab",
       "app/llm",
       "app/memory",

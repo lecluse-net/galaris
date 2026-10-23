@@ -7,7 +7,7 @@ from difflib import SequenceMatcher
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.orm import defer, undefer
 
 from app.agent import Agent, AgentManagementScope
@@ -17,7 +17,7 @@ from core.user import get_user_record
 
 from .bpmn import Workflow, compile_bpmn, to_bpmn
 from .models import ProcessDefinition, ProcessDefinitionRevision
-from .native_access import ProcessActor, accessible_clause
+from .native_access import ProcessActor, accessible_clause, administrative_definition_clause
 from .query_policy import prepare_process_read
 
 
@@ -67,7 +67,7 @@ async def get(code: str, actor: ProcessActor, *, write: bool = False, lock: bool
     if record is None:
         raise LookupError("Process not found")
     if not await get_db().scalar(select(ProcessDefinition.id).where(ProcessDefinition.id == record.id,
-        accessible_clause(actor, write=write))):
+        or_(accessible_clause(actor, write=write), await administrative_definition_clause(actor)))):
         raise PermissionError("Process edit access denied")
     return record, actor
 
@@ -144,7 +144,8 @@ async def update(code: str, actor: int | AgentManagementScope, *, expected_revis
 
 async def list_for(actor: int | AgentManagementScope, *, offset: int = 0, limit: int = 50) -> list[dict[str, Any]]:
     await prepare_process_read()
-    records = await get_db().scalars(select(ProcessDefinition).where(accessible_clause(actor),
+    records = await get_db().scalars(select(ProcessDefinition).where(
+        or_(accessible_clause(actor), await administrative_definition_clause(actor)),
         ProcessDefinition.bpmn_xml.is_not(None)).order_by(ProcessDefinition.label, ProcessDefinition.id).offset(offset).limit(limit))
     return [{"id": record.id, "code": record.code, "title": record.label,
              "archived": record.archived} for record in records]
@@ -153,7 +154,7 @@ async def list_for(actor: int | AgentManagementScope, *, offset: int = 0, limit:
 async def page_for(actor: int | AgentManagementScope, *, page: int = 1, page_size: int = 50) -> dict[str, Any]:
     await prepare_process_read()
     total = await get_db().scalar(select(func.count()).select_from(ProcessDefinition).where(
-        accessible_clause(actor), ProcessDefinition.bpmn_xml.is_not(None)))
+        or_(accessible_clause(actor), await administrative_definition_clause(actor)), ProcessDefinition.bpmn_xml.is_not(None)))
     return {"items": await list_for(actor, offset=(page - 1) * page_size, limit=page_size),
         "total": total or 0, "page": page, "page_size": page_size}
 

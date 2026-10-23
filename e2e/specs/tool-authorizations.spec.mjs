@@ -20,15 +20,23 @@ for (const width of [390, 1440]) {
     const headers = { Authorization: `Bearer ${session.access_token}` }
     const prefix = `/api/__test/agent-admin/${fixture.agent_id}`
     const setup = await (await request.post(`${prefix}/setup`)).json()
+    const targetResponse = await request.post('/api/agents', {
+      headers: { ...headers, 'X-Editorial-Profile-Version': '1' },
+      data: { user_id: setup.user_id, title_id: setup.title_id, code: `approval-target-${fixture.agent_id}`,
+        first_name: 'Synthetic', last_name: `Approval target ${fixture.agent_id}` },
+    })
+    expect(targetResponse.ok(), await targetResponse.text()).toBeTruthy()
+    const target = await targetResponse.json()
+    const operator = await (await request.get(`/api/agents/${fixture.agent_id}`, { headers })).json()
     const setMode = state => request.put(`/api/connections/${setup.connection_id}/functions/agent_update`, { headers, data: { state } })
     expect((await setMode('ask')).ok()).toBeTruthy()
-    const read = async () => (await request.get(`/api/agents/${fixture.agent_id}`, { headers })).json()
+    const read = async () => (await request.get(`/api/agents/${target.id}`, { headers })).json()
     const original = await read()
     const invoke = async (operation, title, continuation) => {
       const query = new URLSearchParams({ operation_id: operation })
       if (continuation) query.set('continuation', continuation)
       const response = await request.post(`${prefix}/call/agent_update?${query}`, {
-        data: { agent_id: fixture.agent_id, changes: { job_title: title } },
+        data: { agent_id: target.id, changes: { job_title: title } },
       })
       expect(response.ok(), await response.text()).toBeTruthy()
       return response.json()
@@ -48,7 +56,7 @@ for (const width of [390, 1440]) {
       await expect(page.getByRole('dialog')).toHaveCount(0)
       await errors.settle()
       await page.goto('/agent')
-      await expect(page.getByText(`${original.first_name} ${original.last_name}`, { exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Agents', exact: true })).toBeVisible()
       await errors.settle()
       await page.goto(path)
       const dialog = page.getByRole('dialog')
@@ -98,7 +106,7 @@ for (const width of [390, 1440]) {
       }, { times: 1 })
     }
     await page.getByRole('tab', { name: 'Autorisations', exact: true }).click()
-    await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${original.first_name} ${original.last_name}`)
+    await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${operator.first_name} ${operator.last_name}`)
     await page.getByRole('combobox', { name: 'Filtrer par outil', exact: true }).click()
     await page.getByRole('option', { name: 'AgentAdmin', exact: true }).click()
     await page.getByRole('textbox', { name: 'Rechercher une fonction', exact: true }).fill('agent_update')

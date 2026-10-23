@@ -35,6 +35,8 @@ async def setup(caller_id: int) -> dict[str, int]:
         tool = await db.scalar(select(ToolModel).where(ToolModel.code == "agent_admin"))
         connection = await db.scalar(select(Connection).where(Connection.agent_id == caller_id, Connection.tool_id == tool.id))
         connection.active = True
+        await connections.set_params_bulk(connection.id, {"tools.management_scope": "all"},
+                                          commit=False, scope_edit_authorized=True)
         # This existing journey exercises portraits, with delegation explicitly granted.
         from app.tools.mcp_loader import load_mcp_tools
         for definition in load_mcp_tools():
@@ -67,7 +69,8 @@ async def call(caller_id: int, function: str, arguments: dict[str, Any],
         if continuation:
             metadata["galaris.authorization/v1"] = {"continuation": continuation}
         result = await client.call_tool(function, arguments, raise_on_error=False, meta=metadata)
-        return {"is_error": result.is_error, "data": result.data, "meta": result.meta}
+        return {"is_error": result.is_error, "data": result.data, "meta": result.meta,
+                "content": [item.model_dump(mode="json") for item in result.content]}
 
 
 @router.post("/{caller_id}/revoke")

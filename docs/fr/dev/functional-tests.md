@@ -21,6 +21,21 @@ consultez la [méthode de test](testing.md).
 
 ## Interface partagée et édition documentaire
 
+`app/tools/tests/test_management_scopes.py` protège les portées locales des connexions
+Process, ToolAdmin, Goals et Galaris Admin : absence de délégation implicite, filtrage
+avant pagination, refus des réaffectations hors périmètre et révocation après retrait
+d'une équipe. `app/agent/tests/test_agent_admin.py` vérifie la création en équipe et
+l'interdiction de s'automodifier ; les scénarios d'avatar, connexion et harnais ciblent
+un autre agent. Les lectures de conversations et traces LLM, les Tasks et les projections
+`galaris://` appliquent les mêmes portées. `tool-parameters.spec.mjs` couvre le formulaire
+commun, sa sauvegarde atomique, les erreurs et la réouverture.
+`management-scopes.spec.mjs` vérifie les cinq formulaires, leurs appels MCP réels,
+la révocation et la création/exécution/réouverture d'une campagne sur Dataset natif.
+Les tests de campagnes Process couvrent aussi l'idempotence, les conflits et
+l'absence de Document créé pour conserver les entrées synthétiques.
+`app/goal/tests/test_goal_runner.py` vérifie les documents Goal indépendants de
+Memory, leurs protections, leur réconciliation et la lecture des cycles sans contenu.
+
 `metric-card.spec.mjs` protège la valeur affichée, le chargement, l’activation facultative
 à la souris et au clavier et l’état sélectionné de `MetricCard`. Les historiques texte et
 voix gardent leurs paramètres de filtre et leur remise à zéro ; `execution.spec.mjs` couvre

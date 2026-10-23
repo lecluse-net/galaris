@@ -7,6 +7,7 @@ from typing import Any, Optional, Literal
 from uuid import UUID
 
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
+from app.tools.facade import AdministrationScope, administration_scope
 from core.i18n import render_prompt, t
 from core.database import get_db
 
@@ -68,15 +69,25 @@ async def _process_tool_codes() -> dict[int, str]:
 
 
 async def _admin_native_definition(ctx: McpToolContext, identity: int, *, write: bool = False) -> None:
-    record = await process_service.get_definition(identity)
-    if record is not None and record.code is not None:
-        await native_definitions.get(record.code or "", ctx.agent_id, write=write)
+    record = await process_service.get_definition(identity, for_update=write)
+    scope = await _process_administration(ctx)
+    if record is None:
+        raise PermissionError("Process not found in the administration scope")
+    scope.require(record.agent_id)
 
 
 async def _admin_native_run(ctx: McpToolContext, identity: UUID, *, control: bool = False) -> None:
     run = await process_service.get_run(identity)
-    if run is not None and run.engine_code == "galaris":
-        await native_runs.require_run(identity, ctx.agent_id, control=control)
+    scope = await _process_administration(ctx)
+    if run is None:
+        raise PermissionError("Run not found in the administration scope")
+    scope.require(run.launcher_agent_id)
+
+
+async def _process_administration(ctx: McpToolContext) -> AdministrationScope:
+    scope = await administration_scope(ctx.agent_id, "process_admin")
+    scope.require_administration()
+    return scope
 
 
 async def _require_visible_run(ctx: McpToolContext, identity: UUID) -> None:
@@ -87,7 +98,7 @@ async def _require_visible_run(ctx: McpToolContext, identity: UUID) -> None:
         raise PermissionError("Run not found in this agent's participation scope")
     if run.engine_code == "galaris":
         await native_runs.require_run(identity, ctx.agent_id)
-    elif run.launcher_agent_id != ctx.agent_id and not await has_process_admin_access(ctx.agent_id):
+    elif run.launcher_agent_id != ctx.agent_id and not await has_process_admin_access(ctx.agent_id, target_agent_id=run.launcher_agent_id):
         raise PermissionError("Run not found in this agent's participation scope")
 
 
@@ -326,7 +337,7 @@ async def process_start(
 @mcp_tool("galaris", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_list_runs",
-    description="List participating internal runs and the current agent's external runs. An active process_admin grant permits global visibility.",
+    description="List participating internal runs and the current agent's external runs. An explicit process_admin management scope widens visibility to its delegated agents.",
 )
 async def process_list_runs(
     ctx: McpToolContext,
@@ -340,7 +351,7 @@ async def process_list_runs(
     visible: list[dict[str, Any]] = []
     for run in runs:
         try:
-            await _admin_native_run(ctx, run.id)
+            await _require_visible_run(ctx, run.id)
         except (PermissionError, LookupError):
             continue
         visible.append((await process_service._run_read(run)).model_dump(mode="json"))  # pyright: ignore[reportPrivateUsage]
@@ -370,7 +381,7 @@ async def process_analyze_run(ctx: McpToolContext, run_id: str) -> dict[str, Any
     run = await process_service.get_run(_run_id(run_id))
     if run is None:
         raise PermissionError(t("process.errors.run_not_visible", await context_language(ctx)))
-    await _admin_native_run(ctx, run.id)
+    await _require_visible_run(ctx, run.id)
     return (await process_service.analyze_run(run.id)).model_dump(mode="json")
 
 
@@ -383,6 +394,7 @@ async def process_admin_engines(
     ctx: McpToolContext,  # noqa: ARG001
 ) -> list[dict[str, Any]]:
 
+    await _process_administration(ctx)
     tools = await process_service.list_process_tools()
     return [
         dict(ProcessToolRead.model_validate(tool).model_dump(mode="json"))
@@ -403,6 +415,7 @@ async def process_admin_sync(
     tool_code: str = "n8n",
 ) -> list[dict[str, Any]]:
 
+    (await _process_administration(ctx)).require_global()
     await process_service.get_process_tool_by_code(tool_code)
     return await process_service.sync_tool_definitions(tool_code)
 
@@ -417,25 +430,25 @@ async def process_admin_sync(
 async def process_admin_list(
     ctx: McpToolContext,  # noqa: ARG001
     agent_id: int | None = None,
-    limit: int = 100,
+    limit: int = 50,
 ) -> list[dict[str, Any]]:
 
     if agent_id is not None and agent_id <= 0:
         raise ValueError("agent_id must be greater than zero")
     if not 1 <= limit <= 500:
         raise ValueError("limit must be between 1 and 500")
+    scope = await _process_administration(ctx)
+    if agent_id is not None:
+        scope.require(agent_id)
     definitions = await process_service.list_definitions(
         agent_id=agent_id,
         limit=limit,
+        agent_ids=scope.agent_ids,
+        assigned_only=True,
     )
     tool_codes = await _process_tool_codes()
     visible: list[dict[str, Any]] = []
     for item in definitions:
-        if item.code is not None:
-            try:
-                await native_definitions.get(item.code or "", ctx.agent_id)
-            except (PermissionError, LookupError):
-                continue
         visible.append(_definition_payload(item, tool_codes))
     return visible
 
@@ -474,6 +487,7 @@ async def process_admin_create(
     tool_code: str = "n8n",
 ) -> dict[str, Any]:
 
+    (await _process_administration(ctx)).require(agent_id)
     tool = await process_service.get_process_tool_by_code(tool_code)
     definition = await process_service.create_definition(
         ProcessDefinitionCreate(
@@ -509,6 +523,8 @@ async def process_admin_update(
     if process_id <= 0:
         raise ValueError("process_id must be greater than zero")
     await _admin_native_definition(ctx, process_id, write=True)
+    if agent_id is not None:
+        (await _process_administration(ctx)).require(agent_id)
     if clear_description and description is not None:
         raise ValueError("description and clear_description cannot be supplied together")
     values: dict[str, Any] = {}
@@ -575,6 +591,7 @@ async def process_admin_start(
     idempotency_key: str | None = None,
 ) -> dict[str, Any]:
 
+    (await _process_administration(ctx)).require(agent_id)
     refs = [ProcessFileInput.model_validate(item) for item in (files or [])]
     if agent_id <= 0:
         raise ValueError("agent_id must be greater than zero")
@@ -608,16 +625,19 @@ async def process_admin_list_runs(
     agent_id: int | None = None,
     workflow_id: str | None = None,
     status: str | None = None,
-    limit: int = 20,
+    limit: int = 50,
 ) -> list[dict[str, Any]]:
 
     if agent_id is not None and agent_id <= 0:
         raise ValueError("agent_id must be greater than zero")
     if not 1 <= limit <= 500:
         raise ValueError("limit must be between 1 and 500")
+    scope = await _process_administration(ctx)
+    if agent_id is not None:
+        scope.require(agent_id)
     runs = await process_service.list_runs(
         agent_id=agent_id,
-        participant_agent_id=ctx.agent_id,
+        administrative_agent_ids=scope.agent_ids,
         workflow_id=workflow_id,
         status=status,
         limit=limit,

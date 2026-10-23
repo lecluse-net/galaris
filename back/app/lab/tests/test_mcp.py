@@ -577,6 +577,8 @@ async def test_capture_confirmation_survives_real_mcp_and_requires_source_access
                 .where(Connection.agent_id == agent_id, Tool.code == "galaris_admin")
             )
             admin.active = True
+            from app.connection.facade import set_params_bulk
+            await set_params_bulk(admin.id, {"tools.management_scope": "all"}, commit=False, scope_edit_authorized=True)
         conflict = await client.call_tool("lab_case_import", args, raise_on_error=False)
         assert conflict.is_error
         text = " ".join(item.text for item in conflict.content if hasattr(item, "text"))
@@ -633,6 +635,8 @@ async def test_async_task_diagnosis_uses_real_evidence_and_persisted_diagnosis(d
     monkeypatch.setattr(analysis_service.llm_service, "get_profile_llm_for_agent_id", AsyncMock(return_value=llm))
     admin = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == ctx.agent_id, Tool.code == "galaris_admin"))
     admin.active = True
+    from app.connection.facade import set_params_bulk
+    await set_params_bulk(admin.id, {"tools.management_scope": "all"}, commit=False, scope_edit_authorized=True)
     task = Task(label="Synthetic diagnosis", objective="<p>Report observatory opening hours.</p>", status=TaskStatus.SUCCESS,
         execution_result={"success": True, "result": "Opens at nine."})
     db.add(task)

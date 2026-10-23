@@ -58,6 +58,7 @@ async def agent_create(ctx: McpToolContext, configuration: AdminAgentCreate) -> 
     async with delegated_admin(ctx.agent_id, "agent_create", "AGENT_EDIT") as grant:
         assert configuration.user_id is not None
         grant.manager_change(None, configuration.user_id)
+        await grant.team(configuration.group_id)
         if configuration.agent_driver != INTERNAL_HARNESS.code:
             raise ValueError("Create with the internal Harness before selecting another")
         created = await agent_service.create(configuration, actor_user_id=grant.manager.id)
@@ -70,6 +71,8 @@ async def agent_update(ctx: McpToolContext, agent_id: int, changes: AdminAgentUp
         raise ValueError("Code and Harness cannot be updated here")
     async with delegated_admin(ctx.agent_id, "agent_update", "AGENT_EDIT") as grant:
         await grant.target(agent_id)
+        if "group_id" in changes.model_fields_set:
+            await grant.team(changes.group_id)
         if "user_id" in changes.model_fields_set:
             assert changes.user_id is not None
             if not grant.scope.is_global:
@@ -115,6 +118,7 @@ async def agent_team_list(ctx: McpToolContext, agent_id: int, skip: PageOffset =
 async def agent_team_set(ctx: McpToolContext, agent_id: int, team_id: int, present: bool) -> dict[str, Any]:
     async with delegated_admin(ctx.agent_id, "agent_team_set", "AGENT_EDIT", "TEAM_ACCESS", "TEAM_MEMBERS_EDIT") as grant:
         await grant.target(agent_id)
+        await grant.team(team_id)
         return await admin_service.team_set(agent_id, team_id, present)
 
 
@@ -132,7 +136,8 @@ async def agent_title_create(ctx: McpToolContext, configuration: TitleCreate) ->
 
 @mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_title_update", description="Update a shared title; requires global management.", effect_policy="idempotent")
 async def agent_title_update(ctx: McpToolContext, title_id: int, changes: TitleUpdate) -> dict[str, Any]:
-    async with delegated_admin(ctx.agent_id, "agent_title_update", "AGENT_EDIT", global_scope=True):
+    async with delegated_admin(ctx.agent_id, "agent_title_update", "AGENT_EDIT", global_scope=True) as grant:
+        await grant.reference(title_id, title=True)
         if any(v is None for v in changes.model_dump(exclude_unset=True).values()):
             raise ValueError("Title fields cannot be null")
         title = await title_service.update(title_id, changes)
@@ -143,7 +148,8 @@ async def agent_title_update(ctx: McpToolContext, title_id: int, changes: TitleU
 
 @mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_title_delete", description="Delete an unused shared title; referenced titles cannot be removed.", effect_policy="idempotent")
 async def agent_title_delete(ctx: McpToolContext, title_id: int) -> dict[str, Any]:
-    async with delegated_admin(ctx.agent_id, "agent_title_delete", "AGENT_EDIT", global_scope=True):
+    async with delegated_admin(ctx.agent_id, "agent_title_delete", "AGENT_EDIT", global_scope=True) as grant:
+        await grant.reference(title_id, title=True)
         if not await title_service.delete(title_id):
             raise LookupError("Title not found")
         return {"title_id": title_id, "deleted": True}
@@ -163,7 +169,8 @@ async def agent_group_create(ctx: McpToolContext, configuration: AgentGroupCreat
 
 @mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_group_update", description="Rename or reorder a shared group/team.", effect_policy="idempotent")
 async def agent_group_update(ctx: McpToolContext, group_id: int, changes: AgentGroupUpdate) -> dict[str, Any]:
-    async with delegated_admin(ctx.agent_id, "agent_group_update", "AGENT_EDIT", "TEAM_ACCESS", "TEAM_EDIT", global_scope=True):
+    async with delegated_admin(ctx.agent_id, "agent_group_update", "AGENT_EDIT", "TEAM_ACCESS", "TEAM_EDIT", global_scope=True) as grant:
+        await grant.reference(group_id)
         if any(v is None for v in changes.model_dump(exclude_unset=True).values()):
             raise ValueError("Group fields cannot be null")
         group = await agent_group_service.update(group_id, changes)
@@ -174,7 +181,8 @@ async def agent_group_update(ctx: McpToolContext, group_id: int, changes: AgentG
 
 @mcp_tool("agent_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="agent_group_delete", description="Soft-delete a shared team, detach legacy group references and revoke its memberships.", effect_policy="idempotent")
 async def agent_group_delete(ctx: McpToolContext, group_id: int) -> dict[str, Any]:
-    async with delegated_admin(ctx.agent_id, "agent_group_delete", "AGENT_EDIT", "TEAM_ACCESS", "TEAM_EDIT", global_scope=True):
+    async with delegated_admin(ctx.agent_id, "agent_group_delete", "AGENT_EDIT", "TEAM_ACCESS", "TEAM_EDIT", global_scope=True) as grant:
+        await grant.reference(group_id)
         if not await agent_group_service.delete(group_id):
             raise LookupError("Group not found")
         await notify_team_access_changed()

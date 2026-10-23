@@ -234,6 +234,29 @@ included in at least one of those teams. Files are read-only
 in this tab; agent editing, activation and deletion use MCP. These packages remain separate
 from the generic library and cannot be shared.
 
+### Delegating administration to an agent
+
+In **Tools → Connections → edit a connection → Management scope**,
+`tools.management_scope` also configures Process administration, ToolAdmin,
+Goal management, Galaris Admin and AgentAdmin. Levels are `usage` (no administration),
+`personal` (own resources), `team` (agents sharing an active team) and `all` (global).
+Only a human with connection editing and global agent management may change this local
+value. Function permissions still apply. Team removals take effect on the next call.
+
+ToolAdmin limits personal and team scopes to connections; shared definitions and global
+settings require `all`. Process definitions follow their assigned agent, runs their
+launcher and Goals their responsible agent. Galaris Admin scopes Tasks, conversations
+and LLM traces without widening Document or private-memory permissions.
+
+AgentAdmin only offers `usage`, `team`, `all`. Team scope allows creation in an explicitly
+selected team of the caller, bounded by the human manager's rights. Even with global
+scope, an agent cannot administer itself or indirectly change its own title or team
+through a shared-reference mutation. Administrative delegation remains human-only.
+
+An inactive connection or missing scope grants no administration. After upgrading,
+configure existing administrative connections that lack this parameter: activation
+alone no longer grants access to everyone's data.
+
 ### Using a Messaging System
 
 In the default installation, `galaris-lab` and `galaris-knowledge` are globally disabled

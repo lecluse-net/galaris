@@ -35,6 +35,7 @@ async def inspect_round(
     round_id: UUID,
     *,
     actor_agent_id: int | None = None,
+    agent_ids: frozenset[int] | None = None,
 ) -> dict[str, Any] | None:
     """Return the run, canonical messages, lineage, attempts, and LLM calls."""
 
@@ -47,6 +48,8 @@ async def inspect_round(
     )
     if actor_agent_id is not None:
         statement = statement.where(Agent.id == actor_agent_id)
+    if agent_ids is not None:
+        statement = statement.where(Agent.id.in_(agent_ids))
     row = (
         await get_db().execute(statement)
     ).one_or_none()

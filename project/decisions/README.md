@@ -1,5 +1,8 @@
 # Décisions d'architecture
 
+- [0225 — Datasets natifs pour les campagnes Process du Lab](0225-process-lab-native-datasets.md)
+- [0224 — Portées d'administration locales aux connexions](0224-connection-administration-scopes.md)
+
 - [0223 — Souvenirs personnels et documents indépendants](0223-memory-document-independence.md)
 - [0222 — Frontière des packages de skills personnels](0222-personal-skill-package-boundary.md)
 - [0221 — Réception Mail, consentement et journal](0221-mail-inbound-consent-and-journal.md)

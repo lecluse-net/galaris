@@ -12,7 +12,7 @@ function setup() {
     if (failure) throw Error('offline')
     if (delayed) return delayed.promise
     const person = { kind: 'user', id: 1, label: generation, is_current_user: true }
-    return { data: url.startsWith('/memory') ? { agents: [], users: [person] }
+    return { data: url.startsWith('/documents') ? { agents: [], users: [person] }
       : url.endsWith('/owner') ? { owner: person, options: [person], current_user_id: 1 } : [person] }
   } }
   const apiModule = { api, __esModule: true, default: api, AUTH_TOKEN_CHANGED_EVENT: 'auth', sessionGeneration: () => generation }
@@ -23,13 +23,13 @@ function setup() {
     '@/core/util/facade': { ...helpers, ...resources },
   })
   const dependencies = { '@/core/api': apiModule, '@/app/share': shared,
-    '@/core/util': {}, '../thumbnailEvents': {} }
-  const memory = loadTypescript(new URL('../memory/services/memoryService.ts', import.meta.url), dependencies).memoryService
+    '@/core/util/facade': { thumbnailReady: () => assert.fail('An owner catalogue must not load thumbnails') } }
+  const documents = loadTypescript(new URL('../document/services/documentService.ts', import.meta.url), dependencies).documentService
   const process = loadTypescript(new URL('../process/services/nativeProcessService.ts', import.meta.url), dependencies).nativeProcessService
   const dataset = loadTypescript(new URL('../dataset/services/datasetService.ts', import.meta.url), dependencies).datasetService
   return { calls, helpers, api,
-    reads: { document: () => memory.listDocumentOwnerOptions(), process: () => process.ownerOptions(), dataset: () => dataset.owner('synthetic', 1) },
-    memory, dataset,
+    reads: { document: () => documents.listDocumentOwnerOptions(), process: () => process.ownerOptions(), dataset: () => dataset.owner('synthetic', 1) },
+    documents, dataset,
     switchSession() { generation = 'two'; window.dispatchEvent(new Event('auth')) },
     fail(value) { failure = value }, delay() { delayed = deferred(); return delayed },
   }
@@ -61,7 +61,7 @@ test('domains, searches, datasets and lock versions never share owner permission
   const state = setup()
   await Promise.all(Object.values(state.reads).map(read => read()))
   assert.equal(state.calls.length, 3)
-  await state.memory.listDocumentOwnerOptions('another person')
+  await state.documents.listDocumentOwnerOptions('another person')
   await state.dataset.owner('different', 1)
   await state.dataset.owner('synthetic', 2)
   assert.equal(state.calls.length, 6)

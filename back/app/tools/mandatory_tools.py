@@ -46,6 +46,7 @@ class IntegratedToolSpec:
 INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
     IntegratedToolSpec(
         code="tool_admin", label="ToolAdmin", description=DESCRIPTIONS["tool_admin"],
+        management_scopes=("usage", "personal", "team", "all"),
         mcp_tools=(
             "tool_admin_list", "tool_admin_get", "tool_admin_create", "tool_admin_update",
             "tool_admin_impact", "tool_admin_delete", "tool_admin_global_params_set",
@@ -217,6 +218,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
     ),
     IntegratedToolSpec(
         code="process_admin",
+        management_scopes=("usage", "personal", "team", "all"),
         label="Process administration",
         description=DESCRIPTIONS["process_admin"],
         mcp_tools=(
@@ -240,6 +242,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
     ),
     IntegratedToolSpec(
         code="agent_admin", label="AgentAdmin", description=DESCRIPTIONS["agent_admin"],
+        management_scopes=("usage", "team", "all"),
         mcp_tools=(
             "agent_create", "agent_update", "agent_delete", "agent_options",
             "agent_avatar_set", "agent_avatar_delete", "agent_avatar_generate",
@@ -273,6 +276,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
     ),
     IntegratedToolSpec(
         code="goal_management",
+        management_scopes=("usage", "personal", "team", "all"),
         label="Gestion des objectifs",
         description=DESCRIPTIONS["goal_management"],
         mcp_tools=(
@@ -296,6 +300,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
     ),
     IntegratedToolSpec(
         code="galaris_admin",
+        management_scopes=("usage", "personal", "team", "all"),
         label="Galaris Admin",
         description=DESCRIPTIONS["galaris_admin"],
         mcp_tools=("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls",
@@ -770,6 +775,14 @@ async def initialize_admin_agent_connections(agent_id: int) -> None:
             )),
         ).values(active=True)
     )
+    from app.connection.facade import set_params_bulk
+    for connection in await get_db().scalars(select(Connection).where(
+        Connection.agent_id == agent_id,
+        Connection.tool_id.in_(select(ToolModel.id).where(
+            ToolModel.code.in_(("galaris_admin", "tool_admin", "agent_admin"))
+        )),
+    )):
+        await set_params_bulk(connection.id, {"tools.management_scope": "all"}, commit=False, scope_edit_authorized=True)
 
 
 async def sync_integrated_tool_connections(agent_id: int | None = None) -> int:

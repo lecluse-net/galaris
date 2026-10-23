@@ -53,7 +53,7 @@ async def read_run_data(identity: UUID, actor: int | AgentManagementScope) -> di
         ProcessDefinition.id == run.process_id, accessible_clause(actor, write=True))))
     from .process_service import TERMINAL_STATUSES
     from app.tools import has_process_admin_access
-    if isinstance(actor, int) and await has_process_admin_access(actor):
+    if isinstance(actor, int) and await has_process_admin_access(actor, target_agent_id=run.launcher_agent_id):
         can_write = True
     native = run.engine_metadata.get("native", {})
     can_write = (can_write and run.status not in TERMINAL_STATUSES and

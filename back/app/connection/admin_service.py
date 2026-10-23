@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from collections.abc import Collection
 
 from sqlalchemy import func, select
 
@@ -14,8 +15,11 @@ from .models import Connection, ConnectionParam, ConnectionFunctionState
 
 
 async def list_connections(*, tool_id: int | None = None, agent_id: int | None = None,
-                           active: bool | None = None, offset: int = 0, limit: int = 50) -> dict[str, Any]:
+                           active: bool | None = None, offset: int = 0, limit: int = 50,
+                           agent_ids: Collection[int] | None = None) -> dict[str, Any]:
     query = select(Connection)
+    if agent_ids is not None:
+        query = query.where(Connection.agent_id.in_(agent_ids))
     if tool_id is not None:
         query = query.where(Connection.tool_id == tool_id)
     if agent_id is not None:

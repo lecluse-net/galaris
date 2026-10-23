@@ -21,7 +21,6 @@ from app.task import STARTUP_TIMING_DATA_KEY, TaskAdmissionTiming, Task, TaskCre
 from app.tools import (
     McpToolContext,
     mcp_tool,
-    require_galaris_admin_access,
 )
 from core.database import get_db
 
@@ -253,8 +252,10 @@ async def conversation_round_get(
 
 
     identifier = _round_id(round_id)
-    await require_galaris_admin_access(ctx.agent_id)
-    payload = await inspect_round(identifier)
+    from app.tools.facade import administration_scope
+    scope = await administration_scope(ctx.agent_id, "galaris_admin")
+    scope.require_administration()
+    payload = await inspect_round(identifier, agent_ids=scope.agent_ids)
     if payload is None:
         raise ValueError(f"Text conversation round not found: {identifier}")
     return payload

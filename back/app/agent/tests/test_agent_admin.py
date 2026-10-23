@@ -44,6 +44,25 @@ async def durable_admin_fixture(inference_db):
     return await _make_admin_fixture(inference_db)
 
 
+async def _make_subject(db, fixture):
+    caller, owner, _, _, title, _, _ = fixture
+    subject = Agent(user_id=owner.id, title_id=title.id, code=f"subject-{uuid4().hex}",
+                    first_name="Admin", last_name="Synthetic", agent_driver="internal", profile_id=caller.profile_id)
+    db.add(subject)
+    await db.commit()
+    return subject
+
+
+@pytest_asyncio.fixture
+async def admin_subject(db, admin_fixture):
+    return await _make_subject(db, admin_fixture)
+
+
+@pytest_asyncio.fixture
+async def durable_admin_subject(inference_db, durable_admin_fixture):
+    return await _make_subject(inference_db, durable_admin_fixture)
+
+
 async def _make_admin_fixture(db):
     owner = UserModel(email=f"admin-{uuid4().hex}@example.test", hashed_password="unused", is_active=True)
     other = UserModel(email=f"other-{uuid4().hex}@example.test", hashed_password="unused", is_active=True)
@@ -69,6 +88,7 @@ async def _make_admin_fixture(db):
     connection = await db.scalar(select(Connection).where(Connection.agent_id == caller.id, Connection.tool_id == admin_tool.id))
     assert connection.active is False
     connection.active = True
+    db.add(ConnectionParam(connection_id=connection.id, param_name="tools.management_scope", param_value="all"))
     # Domain journeys below have a human-enabled function policy. The real MCP
     # one-action suspension is verified in Tools authorization integration tests.
     from app.connection import facade as connections
@@ -77,6 +97,70 @@ async def _make_admin_fixture(db):
             await connections.set_connection_function_state(connection.id, definition.name, "enabled")
     await db.commit()
     return caller, owner, other, outsider, title, role, connection
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("level", ["usage", "team", "all"])
+async def test_agent_administration_never_allows_self_mutation(db, admin_fixture, level):
+    from app.connection import connection_service
+    caller, _, _, _, _, _, connection = admin_fixture
+    await connection_service.set_param(connection.id, "tools.management_scope", level, scope_edit_authorized=True)
+    ctx = mcp_loader.McpToolContext(caller.id, "internal")
+    with pytest.raises(PermissionError):
+        await agent_mcp.agent_update(ctx, caller.id, AdminAgentUpdate(personality="<p>Forbidden change.</p>"))
+    with pytest.raises(PermissionError):
+        await agent_mcp.agent_delete(ctx, caller.id)
+    tool = await db.scalar(select(Tool).where(Tool.code == "browser"))
+    with pytest.raises(PermissionError):
+        await connections_mcp.agent_connection_create(ctx, caller.id, tool.id)
+
+
+@pytest.mark.asyncio
+async def test_team_management_creates_in_scope_and_rechecks_membership(db, admin_fixture, admin_subject):
+    from app.agent.models import AgentTeam
+    from app.connection import connection_service
+    from core.team import TeamModel
+    caller, owner, _, outsider, title, _, connection = admin_fixture
+    team = TeamModel(name="Synthetic delegated team")
+    db.add(team)
+    await db.flush()
+    memberships = [AgentTeam(agent_id=agent.id, team_id=team.id) for agent in (caller, admin_subject)]
+    db.add_all(memberships)
+    await db.commit()
+    await connection_service.set_param(connection.id, "tools.management_scope", "team", scope_edit_authorized=True)
+    ctx = mcp_loader.McpToolContext(caller.id, "internal")
+    await agent_mcp.agent_update(ctx, admin_subject.id, AdminAgentUpdate(job_title="Team observer"))
+    with pytest.raises(PermissionError):
+        await agent_mcp.agent_update(ctx, outsider.id, AdminAgentUpdate(job_title="Forbidden"))
+    created = await agent_mcp.agent_create(ctx, AdminAgentCreate(user_id=owner.id, title_id=title.id,
+        group_id=team.id, code=f"team-created-{uuid4().hex}", first_name="Synthetic colleague"))
+    assert created["team_ids"] == [team.id]
+    with pytest.raises(PermissionError):
+        await agent_mcp.agent_create(ctx, AdminAgentCreate(user_id=owner.id, title_id=title.id,
+            code=f"outside-created-{uuid4().hex}", first_name="Outside team"))
+    await db.delete(memberships[1])
+    await db.commit()
+    with pytest.raises(PermissionError):
+        await agent_mcp.agent_update(ctx, admin_subject.id, AdminAgentUpdate(job_title="Revoked"))
+
+
+@pytest.mark.asyncio
+async def test_global_management_cannot_modify_self_through_shared_references(db, admin_fixture):
+    from app.agent.models import AgentTeam
+    from core.team import TeamModel
+    caller, _, _, _, title, role, _ = admin_fixture
+    await db.refresh(role, ["privileges"])
+    role.privileges.append(await db.scalar(select(Privilege).where(Privilege.code == "AGENT_MANAGE_ALL")))
+    team = TeamModel(name="Synthetic protected own team")
+    db.add(team)
+    await db.flush()
+    db.add(AgentTeam(agent_id=caller.id, team_id=team.id))
+    await db.commit()
+    ctx = mcp_loader.McpToolContext(caller.id, "internal")
+    with pytest.raises(PermissionError, match="own shared references"):
+        await agent_mcp.agent_title_update(ctx, title.id, TitleUpdate(label="Forbidden title"))
+    with pytest.raises(PermissionError, match="own shared references"):
+        await agent_mcp.agent_group_delete(ctx, team.id)
 
 
 @pytest.mark.asyncio
@@ -188,12 +272,12 @@ def test_portrait_data_and_decoding_guarantees():
 
 
 @pytest.mark.asyncio
-async def test_avatar_uri_transfer_validates_bytes_cleans_temporary_and_rechecks_delegation(db, admin_fixture, monkeypatch, tmp_path):
+async def test_avatar_uri_transfer_validates_bytes_cleans_temporary_and_rechecks_delegation(db, admin_fixture, admin_subject, monkeypatch, tmp_path):
     from app.file_share import resource_service
     from app.file_share.tests.local_file_transport import TemporaryFileTransport
 
     caller, _, _, _, _, _, connection = admin_fixture
-    caller_id = caller.id
+    caller_id = admin_subject.id
     old, new = image_bytes(), image_bytes("red")
     await agent_service.update_avatar(caller_id, old)
     root = tmp_path / "provider"
@@ -213,12 +297,12 @@ async def test_avatar_uri_transfer_validates_bytes_cleans_temporary_and_rechecks
             return size
 
     async def resolve(agent_id, scheme, locator, **kwargs):
-        assert agent_id == caller_id and scheme == "synthetic-files"
+        assert agent_id == caller.id and scheme == "synthetic-files"
         return FileProvider(root), "synthetic-files"
 
     # Replace the provider boundary; use the real URI, bounded materialization and storage.
     monkeypatch.setattr(resource_service, "resolve_resource_transport_with_service", resolve)
-    ctx = mcp_loader.McpToolContext(caller_id, "internal")
+    ctx = mcp_loader.McpToolContext(caller.id, "internal")
     result = await agent_mcp.agent_avatar_set(ctx, caller_id, "synthetic-files://portrait.png")
     stored = await agent_service.get_avatar(caller_id)
     assert result["has_avatar"]
@@ -317,7 +401,7 @@ async def test_mounted_catalogue_has_exact_functions_and_rechecks_every_call(db,
 @pytest.mark.asyncio
 @pytest.mark.parametrize("revoked", [False, True])
 async def test_avatar_requires_approval_and_approved_call_completes_without_replay(
-    inference_db, durable_admin_fixture, durable_image_configuration, monkeypatch, revoked,
+    inference_db, durable_admin_fixture, durable_admin_subject, durable_image_configuration, monkeypatch, revoked,
 ):
     from app.connection import facade as connections
     from app.task.models import Task, TaskStatus
@@ -334,7 +418,7 @@ async def test_avatar_requires_approval_and_approved_call_completes_without_repl
     async def call():
         with tool_execution(ToolExecutionContext(operation_id=operation, tool_name="agent_avatar_generate")):
             return await mcp_loader.execute_native_mcp_tool(caller.id, runtime="internal", task_id=task.id,
-                tool_name="agent_avatar_generate", arguments={"agent_id": caller.id, "instructions": "Synthetic studio background"})
+                tool_name="agent_avatar_generate", arguments={"agent_id": durable_admin_subject.id, "instructions": "Synthetic studio background"})
     provider = AsyncMock(return_value=(image_bytes(), "image/png"))
     import app.image
     monkeypatch.setattr(app.image, "generate_image_bytes", provider)
@@ -360,19 +444,19 @@ async def test_avatar_requires_approval_and_approved_call_completes_without_repl
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("outcome", ["success", "invalid", "provider_error", "revoked", "profile_changed", "late_avatar", "deleted"])
-async def test_direct_generation_preserves_old_avatar_on_failure(db, admin_fixture, image_configuration, monkeypatch, outcome):
+@pytest.mark.parametrize("outcome", ["success", "invalid", "provider_error", "revoked", "profile_changed", "manager_changed", "late_avatar", "deleted"])
+async def test_direct_generation_preserves_old_avatar_on_failure(db, admin_fixture, admin_subject, image_configuration, monkeypatch, outcome):
     caller, _, _, _, _, _, connection = admin_fixture
     model, _ = image_configuration
-    caller_id, model_id = caller.id, model.id
+    caller_id, model_id = admin_subject.id, model.id
     old, new, late = image_bytes(), image_bytes("red"), image_bytes("green")
     await agent_service.update_avatar(caller_id, old)
     old = await agent_service.get_avatar(caller_id)
-    ctx = mcp_loader.McpToolContext(caller_id, "internal")
+    ctx = mcp_loader.McpToolContext(caller.id, "internal")
     async def provider(prompt, **kwargs):
         nonlocal late
         assert "Admin" in prompt and "gender" in prompt and "personality" in prompt
-        assert kwargs["agent_id"] == caller_id and kwargs["model_id"] == model_id
+        assert kwargs["agent_id"] == caller.id and kwargs["model_id"] == model_id
         assert kwargs["task_id"] is None
         if outcome == "provider_error":
             raise TimeoutError("Synthetic ambiguous timeout")
@@ -381,6 +465,8 @@ async def test_direct_generation_preserves_old_avatar_on_failure(db, admin_fixtu
             await db.commit()
         if outcome == "profile_changed":
             await agent_service.update(caller_id, AdminAgentUpdate(job_title="Changed during generation"))
+        if outcome == "manager_changed":
+            await agent_service.update(caller_id, AdminAgentUpdate(user_id=admin_fixture[2].id))
         if outcome == "late_avatar":
             await agent_service.update_avatar(caller_id, late)
             late = await agent_service.get_avatar(caller_id)
@@ -409,11 +495,11 @@ async def test_direct_generation_preserves_old_avatar_on_failure(db, admin_fixtu
 
 
 @pytest.mark.asyncio
-async def test_avatar_generation_registers_directly_without_creating_processes(db, admin_fixture, image_configuration, monkeypatch):
+async def test_avatar_generation_registers_directly_without_creating_processes(db, admin_fixture, admin_subject, image_configuration, monkeypatch):
     from app.process.models import ProcessDefinition, ProcessRun
     from sqlalchemy import func
 
-    caller = admin_fixture[0]
+    caller = admin_subject
     caller.personality = "<p>Patient synthetic astronomer</p>"
     caller.job_title = "Astronomer"
     caller.job_description = "<p>Observe distant galaxies.</p>"
@@ -423,7 +509,7 @@ async def test_avatar_generation_registers_directly_without_creating_processes(d
     import app.image
     provider = AsyncMock(return_value=(image_bytes("red", (1200, 800)), "image/png"))
     monkeypatch.setattr(app.image, "generate_image_bytes", provider)
-    result = await agent_mcp.agent_avatar_generate(mcp_loader.McpToolContext(caller.id, "internal"), caller.id)
+    result = await agent_mcp.agent_avatar_generate(mcp_loader.McpToolContext(admin_fixture[0].id, "internal"), caller.id)
     assert result["registered"] is True and result["status"] == "success"
     provider.assert_awaited_once()
     prompt = provider.await_args.args[0]
@@ -438,25 +524,25 @@ async def test_avatar_generation_registers_directly_without_creating_processes(d
 
 
 @pytest.mark.asyncio
-async def test_direct_generation_without_image_model_fails_before_calling_provider(db, admin_fixture):
-    caller = admin_fixture[0]
+async def test_direct_generation_without_image_model_fails_before_calling_provider(db, admin_fixture, admin_subject):
+    caller = admin_subject
     with pytest.raises(ValueError, match="image generation model"):
-        await agent_mcp.agent_avatar_generate(mcp_loader.McpToolContext(caller.id, "internal"), caller.id)
+        await agent_mcp.agent_avatar_generate(mcp_loader.McpToolContext(admin_fixture[0].id, "internal"), caller.id)
 
 
 @pytest.mark.asyncio
-async def test_connection_parameters_are_atomic_encrypted_and_masked(db, admin_fixture):
+async def test_connection_parameters_are_atomic_encrypted_and_masked(db, admin_fixture, admin_subject):
     caller = admin_fixture[0]
     ctx = mcp_loader.McpToolContext(caller.id, "internal")
     tool = Tool(code=f"synthetic_{uuid4().hex}", label="Synthetic optional connector",
                 connection_schema={"params": {"token": {"type": "password"}, "count": {"type": "integer", "default": "2"}}})
     db.add(tool)
     await db.commit()
-    created = await connections_mcp.agent_connection_create(ctx, caller.id, tool.id)
+    created = await connections_mcp.agent_connection_create(ctx, admin_subject.id, tool.id)
     identifier = created["id"]
     assert created["active"] is False
     with pytest.raises(ValueError, match="already exists"):
-        await connections_mcp.agent_connection_create(ctx, caller.id, tool.id)
+        await connections_mcp.agent_connection_create(ctx, admin_subject.id, tool.id)
     secret = "synthetic-secret-never-return"
     updated = await connections_mcp.agent_connection_params_set(ctx, identifier, {"token": secret, "count": "3"})
     assert secret not in repr(updated)
@@ -478,7 +564,7 @@ async def test_connection_parameters_are_atomic_encrypted_and_masked(db, admin_f
 
 
 @pytest.mark.asyncio
-async def test_shared_references_and_membership_preserve_legacy_consistency(db, admin_fixture):
+async def test_shared_references_and_membership_preserve_legacy_consistency(db, admin_fixture, admin_subject):
     caller, _, _, _, _, role, _ = admin_fixture
     ctx = mcp_loader.McpToolContext(caller.id, "internal")
     with pytest.raises(PermissionError):
@@ -490,18 +576,18 @@ async def test_shared_references_and_membership_preserve_legacy_consistency(db, 
     title = await agent_mcp.agent_title_update(ctx, title["id"], TitleUpdate(label="Synthetic Professor"))
     group = await agent_mcp.agent_group_create(ctx, AgentGroupCreate(name="Synthetic astronomy team"))
     group = await agent_mcp.agent_group_update(ctx, group["id"], AgentGroupUpdate(name="Synthetic observers", order=4))
-    await agent_mcp.agent_update(ctx, caller.id, AdminAgentUpdate(title_id=title["id"], group_id=group["id"]))
+    await agent_mcp.agent_update(ctx, admin_subject.id, AdminAgentUpdate(title_id=title["id"], group_id=group["id"]))
     for _ in range(2):
-        member = await agent_mcp.agent_team_set(ctx, caller.id, group["id"], True)
+        member = await agent_mcp.agent_team_set(ctx, admin_subject.id, group["id"], True)
         assert member["team_ids"] == [group["id"]]
     with pytest.raises(ValueError, match="referenced"):
         await agent_mcp.agent_title_delete(ctx, title["id"])
-    member = await agent_mcp.agent_team_set(ctx, caller.id, group["id"], False)
+    member = await agent_mcp.agent_team_set(ctx, admin_subject.id, group["id"], False)
     assert member["group_id"] is None and member["team_ids"] == []
-    await agent_mcp.agent_team_set(ctx, caller.id, group["id"], True)
+    await agent_mcp.agent_team_set(ctx, admin_subject.id, group["id"], True)
     await agent_mcp.agent_group_delete(ctx, group["id"])
-    assert (await agent_service.get(caller.id)).team_ids == []
-    await agent_mcp.agent_update(ctx, caller.id, AdminAgentUpdate(title_id=admin_fixture[4].id))
+    assert (await agent_service.get(admin_subject.id)).team_ids == []
+    await agent_mcp.agent_update(ctx, admin_subject.id, AdminAgentUpdate(title_id=admin_fixture[4].id))
     assert (await agent_mcp.agent_title_delete(ctx, title["id"]))["deleted"]
 
 

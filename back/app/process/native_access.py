@@ -46,3 +46,20 @@ def accessible_clause(actor: ProcessActor, *, write: bool = False, manage: bool 
         Definition.global_access == 2 if write else Definition.global_access >= 1, _principal_clause(actor, write=write))
     active = true() if isinstance(actor, int) else exists(select(UserModel.id).where(UserModel.id == actor.user_id, UserModel.is_active.is_(True)))
     return and_(Definition.code.is_not(None), active, policy_clause(actor), allowed)
+
+
+async def administrative_definition_clause(actor: ProcessActor) -> ColumnElement[bool]:
+    if not isinstance(actor, int):
+        return false()
+    from app.tools.facade import administration_scope
+    scope = await administration_scope(actor, "process_admin")
+    return true() if scope.is_global else Definition.agent_id.in_(scope.agent_ids or ())
+
+
+async def administrative_run_clause(actor: ProcessActor) -> ColumnElement[bool]:
+    if not isinstance(actor, int):
+        return false()
+    from app.tools.facade import administration_scope
+    from .models import ProcessRun
+    scope = await administration_scope(actor, "process_admin")
+    return true() if scope.is_global else ProcessRun.launcher_agent_id.in_(scope.agent_ids or ())

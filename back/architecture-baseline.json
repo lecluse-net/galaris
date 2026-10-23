@@ -1093,6 +1093,7 @@
       "app.console",
       "app.conversation",
       "app.dataset",
+      "app.document",
       "app.file_share",
       "app.goal",
       "app.image",

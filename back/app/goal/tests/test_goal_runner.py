@@ -38,12 +38,11 @@ from app.goal.tests.factories import make_goal
 from app.llm.models import LLMCall
 from app.llm.structured_service import StructuredInferenceResult
 from app.llm.trace import infer_call_type
-from app.memory import service as memory_service
+from app.document import Document, resource_service as document_service
 from app.document.goal_document_adapter import reconcile_goal_document_paths
 from app.memory.models import MemoryItem
 from app.messenger.models import MessengerUser
-from app.memory.schemas import MemoryItemUpdate, MemoryPayload
-from app.document.schemas import DocumentOwnerUpdate
+from app.document.schemas import DocumentOwnerUpdate, DocumentPayload, DocumentUpdate
 from app.task.models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
 from app.task import task_service
 from app.tools.models import Tool
@@ -462,10 +461,12 @@ async def test_goal_markdown_is_stored_in_editable_protected_documents(
         )
     )
 
-    description = await db.get(MemoryItem, created.description_document_id)
-    tracking = await db.get(MemoryItem, created.tracking_document_id)
+    description = await db.get(Document, created.description_document_id)
+    tracking = await db.get(Document, created.tracking_document_id)
     assert description is not None
     assert tracking is not None
+    assert await db.get(MemoryItem, created.description_document_id) is None
+    assert await db.get(MemoryItem, created.tracking_document_id) is None
     assert description.node_kind == tracking.node_kind == "document"
     assert description.deletion_protected is True
     assert tracking.deletion_protected is True
@@ -475,39 +476,39 @@ async def test_goal_markdown_is_stored_in_editable_protected_documents(
     assert tracking.title == "Document / backed Goal — Suivi"
     assert description.metadata_["document_path"] == "Objectifs/Document backed Goal"
     assert tracking.metadata_["document_path"] == "Objectifs/Document backed Goal"
-    with pytest.raises(memory_service.MemoryPermissionError, match="cannot be forgotten"):
-        await memory_service.forget_item(
+    with pytest.raises(document_service.DocumentPermissionError, match="cannot be forgotten"):
+        await document_service.delete_document(
             description.id, actor_agent_id=agent.id
         )
-    with pytest.raises(memory_service.MemoryPermissionError, match="controlled by its Goal"):
-        await memory_service.update_item(
+    with pytest.raises(document_service.DocumentPermissionError, match="controlled by its Goal"):
+        await document_service.update_item(
             description.id,
-            MemoryItemUpdate(
+            DocumentUpdate(
                 expected_revision=description.revision,
                 metadata={**description.metadata_, "document_path": "Elsewhere"},
             ),
             actor_agent_id=agent.id,
         )
-    with pytest.raises(memory_service.MemoryPermissionError, match="controlled by its Goal"):
-        await memory_service.update_item(
+    with pytest.raises(document_service.DocumentPermissionError, match="controlled by its Goal"):
+        await document_service.update_item(
             description.id,
-            MemoryItemUpdate(
+            DocumentUpdate(
                 expected_revision=description.revision,
                 metadata={"document_path": description.metadata_["document_path"]},
             ),
             actor_agent_id=agent.id,
         )
-    with pytest.raises(memory_service.MemoryPermissionError, match="controlled by its Goal"):
-        await memory_service.update_item(
+    with pytest.raises(document_service.DocumentPermissionError, match="controlled by its Goal"):
+        await document_service.update_item(
             description.id,
-            MemoryItemUpdate(
+            DocumentUpdate(
                 expected_revision=description.revision,
                 title="Renamed outside the Goal",
             ),
             actor_agent_id=agent.id,
         )
-    with pytest.raises(memory_service.MemoryPermissionError, match="controlled by its Goal"):
-        await memory_service.transfer_document_owner(
+    with pytest.raises(document_service.DocumentPermissionError, match="controlled by its Goal"):
+        await document_service.transfer_document_owner(
             description.id,
             DocumentOwnerUpdate(
                 expected_revision=description.revision,
@@ -518,11 +519,11 @@ async def test_goal_markdown_is_stored_in_editable_protected_documents(
             actor_agent_id=agent.id,
         )
 
-    await memory_service.update_item(
+    await document_service.update_item(
         description.id,
-        MemoryItemUpdate(
+        DocumentUpdate(
             expected_revision=description.revision,
-            payload=MemoryPayload(text="<h1>Revised objective</h1>"),
+            payload=DocumentPayload(text="<h1>Revised objective</h1>"),
         ),
         actor_agent_id=agent.id,
     )
@@ -539,8 +540,8 @@ async def test_goal_markdown_is_stored_in_editable_protected_documents(
         ),
     )
     assert renamed is not None
-    renamed_description = await db.get(MemoryItem, created.description_document_id)
-    renamed_tracking = await db.get(MemoryItem, created.tracking_document_id)
+    renamed_description = await db.get(Document, created.description_document_id)
+    renamed_tracking = await db.get(Document, created.tracking_document_id)
     assert renamed_description is not None
     assert renamed_tracking is not None
     assert renamed_description.title == "Cap / Nord — Description"
@@ -570,8 +571,8 @@ async def test_goal_document_reconciliation_repairs_legacy_folders_and_titles(
         )
     )
     documents = [
-        await db.get(MemoryItem, created.description_document_id),
-        await db.get(MemoryItem, created.tracking_document_id),
+        await db.get(Document, created.description_document_id),
+        await db.get(Document, created.tracking_document_id),
     ]
     assert all(document is not None for document in documents)
     for index, document in enumerate(documents):
@@ -973,13 +974,13 @@ async def test_goal_cycles_are_paginated_newest_first(db) -> None:
 
     # Cycle evidence is independent of document storage. Full detail still
     # reports a missing document instead of silently returning incomplete text.
-    description = await db.get(MemoryItem, goal.description_document_id)
+    description = await db.get(Document, goal.description_document_id)
     assert description is not None
     description.soft_delete()
     await db.commit()
     allowed = await goal_service.list_cycles(goal.id, managed_agent_ids=[agent.id, referrer.id])
     assert allowed is not None and allowed.total == 55
-    with pytest.raises(memory_service.MemoryNotFoundError):
+    with pytest.raises(document_service.DocumentNotFoundError):
         await goal_service.get_detail(goal.id)
     goal.soft_delete()
     await db.commit()

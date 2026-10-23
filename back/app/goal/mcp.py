@@ -8,6 +8,8 @@ from uuid import UUID
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
 
 from . import goal_service
+from .access import owner_scope, readable_agents
+from app.tools.facade import administration_scope
 from .models import GoalStatus
 from .referrer_wait import ask_human_referrer
 from .schemas import (
@@ -39,14 +41,9 @@ def _goal_payload(goal: Any) -> dict[str, Any]:
 
 
 async def _has_goal_management_access(ctx: McpToolContext) -> bool:
-    """Treat one active Goal-management connection as the live admin witness."""
+    """Require an active connection with an explicit local management scope."""
 
-    from app.connection import connection_service
-
-    return await connection_service.has_active_tool_connection(
-        agent_id=ctx.agent_id,
-        tool_code=_GOAL_MANAGEMENT_TOOL_CODE,
-    )
+    return (await administration_scope(ctx.agent_id, _GOAL_MANAGEMENT_TOOL_CODE)).level != "usage"
 
 
 async def _require_goal_management_access(ctx: McpToolContext) -> None:
@@ -58,12 +55,10 @@ async def _require_goal_management_access(ctx: McpToolContext) -> None:
         )
 
 
-async def _goal_owner_scope(ctx: McpToolContext) -> int | None:
-    """Return an exact owner filter, or no filter for a live Goal administrator."""
+async def _goal_owner_scope(ctx: McpToolContext, goal_id: UUID) -> int:
+    """Resolve the exact owner after checking ordinary or delegated access."""
 
-    if await _has_goal_management_access(ctx):
-        return None
-    return ctx.agent_id
+    return await owner_scope(ctx.agent_id, goal_id)
 
 
 async def _goal_visible_to_caller(
@@ -74,7 +69,7 @@ async def _goal_visible_to_caller(
 
     goal = await goal_service.get_detail(
         goal_id,
-        owner_agent_id=await _goal_owner_scope(ctx),
+        owner_agent_id=await _goal_owner_scope(ctx, goal_id),
     )
     if goal is None:
         raise ValueError(f"Goal not found: {goal_id}")
@@ -91,10 +86,11 @@ async def _goal_list_agent_scope(
         raise ValueError("agent_id must be greater than zero")
     if requested_agent_id == ctx.agent_id:
         return ctx.agent_id
-    if await _has_goal_management_access(ctx):
+    scope = await readable_agents(ctx.agent_id)
+    if scope is None or requested_agent_id in scope:
         return requested_agent_id
     if requested_agent_id is None:
-        return ctx.agent_id
+        return ctx.agent_id if scope == frozenset({ctx.agent_id}) else None
     raise ValueError("goal_list can only list Goals owned by the current agent")
 
 
@@ -108,6 +104,7 @@ async def _goal_management_command(
 
     await _require_goal_management_access(ctx)
     identifier = _goal_id(goal_id)
+    await owner_scope(ctx.agent_id, identifier, manage=True)
     command = GoalCommand(expected_revision=expected_revision)
     method = getattr(goal_service, operation)
     result = await method(identifier, command)
@@ -170,6 +167,7 @@ async def mcp_goal_create(
     """Create an agent-owned Goal with an explicit human referrer."""
 
     await _require_goal_management_access(ctx)
+    (await administration_scope(ctx.agent_id, _GOAL_MANAGEMENT_TOOL_CODE)).require(agent_id)
     data = GoalCreate(
         title=title,
         description=description,
@@ -202,8 +200,8 @@ async def mcp_goal_list(
 
     if offset < 0:
         raise ValueError("offset must be greater than or equal to zero")
-    if not 1 <= limit <= 200:
-        raise ValueError("limit must be between 1 and 200")
+    if not 1 <= limit <= 500:
+        raise ValueError("limit must be between 1 and 500")
     goal_status: GoalStatus | None = None
     if status is not None:
         try:
@@ -217,6 +215,7 @@ async def mcp_goal_list(
         skip=offset,
         limit=limit,
         agent_id=scoped_agent_id,
+        agent_ids=await readable_agents(ctx.agent_id),
         status=goal_status,
         search=search,
     )
@@ -250,7 +249,7 @@ async def mcp_goal_get_suivi(
         identifier,
         page=1,
         page_size=limit,
-        owner_agent_id=await _goal_owner_scope(ctx),
+        owner_agent_id=await _goal_owner_scope(ctx, identifier),
     )
     if cycles is None:
         raise ValueError(f"Goal not found: {goal_id}")
@@ -263,7 +262,7 @@ async def mcp_goal_get_suivi(
     description=(
         "Replace the tracking HTML of one visible Goal using the revision returned by "
         "file_read on galaris://goal/<uuid>. By default only the current agent's Goals can "
-        "be updated; goal_management grants access to every Goal."
+        "be updated; an explicit goal_management scope permits the delegated agents' Goals."
     ),
 )
 async def mcp_goal_update_suivi(
@@ -283,7 +282,7 @@ async def mcp_goal_update_suivi(
     result = await goal_service.update(
         identifier,
         data,
-        owner_agent_id=await _goal_owner_scope(ctx),
+        owner_agent_id=await _goal_owner_scope(ctx, identifier),
     )
     if result is None:
         raise ValueError(f"Goal not found: {goal_id}")
@@ -320,6 +319,9 @@ async def mcp_goal_update(
 
 
     await _require_goal_management_access(ctx)
+    await owner_scope(ctx.agent_id, _goal_id(goal_id), manage=True)
+    if agent_id is not None:
+        (await administration_scope(ctx.agent_id, _GOAL_MANAGEMENT_TOOL_CODE)).require(agent_id)
     values: dict[str, Any] = {"expected_revision": expected_revision}
     for key, value in (
         ("title", title),
@@ -453,7 +455,7 @@ async def mcp_goal_run_now(
     result = await goal_service.run_now(
         identifier,
         command,
-        owner_agent_id=await _goal_owner_scope(ctx),
+        owner_agent_id=await _goal_owner_scope(ctx, identifier),
     )
     if result is None:
         raise ValueError(f"Goal not found: {goal_id}")
@@ -477,6 +479,7 @@ async def mcp_goal_delete(
 
     identifier = _goal_id(goal_id)
     await _require_goal_management_access(ctx)
+    await owner_scope(ctx.agent_id, identifier, manage=True)
     deleted = await goal_service.delete(identifier)
     if not deleted:
         raise ValueError(f"Goal not found: {goal_id}")

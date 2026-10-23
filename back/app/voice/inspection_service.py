@@ -16,11 +16,13 @@ from .models import VoiceConversationSession
 from .monitoring_service import get_turn
 
 
-async def inspect_turn(turn_id: UUID) -> dict[str, Any] | None:
+async def inspect_turn(turn_id: UUID, *, agent_ids: frozenset[int] | None = None) -> dict[str, Any] | None:
     """Return the canonical round, session, agent, and correlated LLM calls."""
 
     detail = await get_turn(turn_id)
     if detail is None:
+        return None
+    if agent_ids is not None and detail.agent_id not in agent_ids:
         return None
     db = get_db()
     round_ = await db.get(ConversationRound, turn_id)

@@ -8,7 +8,7 @@ import json
 from typing import Any, Literal
 from uuid import UUID
 
-from sqlalchemy import func, select, true, literal
+from sqlalchemy import func, select, true, literal, or_, false
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.agent import AgentManagementScope
@@ -20,13 +20,14 @@ from core.database import get_db
 from .models import ProcessDefinition, ProcessNodeAttempt, ProcessNodeRun, ProcessRun, ProcessRunEvent
 from .process_service import TERMINAL_STATUSES
 from .run_data import run_files
+from .native_access import administrative_run_clause
 
 
-def readable_run_clause(actor: int | AgentManagementScope, *, administrative: bool = False) -> ColumnElement[bool]:
+def readable_run_clause(actor: int | AgentManagementScope, *, administrative: bool | ColumnElement[bool] = False) -> ColumnElement[bool]:
     """Runs inherit their process's existing access policy, before pagination."""
     from .native_access import accessible_clause
-    return true() if administrative else ProcessRun.process_id.in_(
-        select(ProcessDefinition.id).where(accessible_clause(actor)))
+    granted = (true() if administrative else false()) if isinstance(administrative, bool) else administrative
+    return or_(granted, ProcessRun.process_id.in_(select(ProcessDefinition.id).where(accessible_clause(actor))))
 
 
 async def require_run(identity: UUID, actor: int | AgentManagementScope, *, control: bool = False) -> ProcessRun:
@@ -37,7 +38,7 @@ async def require_run(identity: UUID, actor: int | AgentManagementScope, *, cont
     if run is None or run.engine_code != "galaris":
         raise LookupError("Internal run not found")
     from .native_access import accessible_clause
-    if isinstance(actor, int) and await has_process_admin_access(actor):
+    if isinstance(actor, int) and await has_process_admin_access(actor, target_agent_id=run.launcher_agent_id):
         return run
     if not await get_db().scalar(select(ProcessDefinition.id).where(
         ProcessDefinition.id == run.process_id, accessible_clause(actor, write=control))):
@@ -121,7 +122,7 @@ async def inspect_run(identity: UUID, actor: int | AgentManagementScope, *, page
     from .native_access import accessible_clause
     can_control = bool(await get_db().scalar(select(ProcessDefinition.id).where(
         ProcessDefinition.id == run.process_id, accessible_clause(actor, write=True))))
-    if isinstance(actor, int) and await has_process_admin_access(actor):
+    if isinstance(actor, int) and await has_process_admin_access(actor, target_agent_id=run.launcher_agent_id):
         can_control = True
     latest = select(ProcessNodeRun.node_key, ProcessNodeRun.status,
         func.row_number().over(partition_by=ProcessNodeRun.node_key, order_by=(ProcessNodeRun.admission_order.desc(), ProcessNodeRun.id.desc())).label("rank")
@@ -130,10 +131,10 @@ async def inspect_run(identity: UUID, actor: int | AgentManagementScope, *, page
     from .run_observation import observe_run
     visible_children = set(str(value) for value in await get_db().scalars(select(ProcessRun.id).where(
         ProcessRun.parent_run_id == identity, readable_run_clause(actor,
-            administrative=await has_process_admin_access(actor) if isinstance(actor, int) else False))))
+            administrative=await administrative_run_clause(actor)))))
     operational = await observe_run(run, can_control=can_control, visible_children=visible_children)
     visible_parent = await get_db().scalar(select(ProcessRun.id).where(ProcessRun.id == run.parent_run_id,
-        readable_run_clause(actor, administrative=await has_process_admin_access(actor) if isinstance(actor, int) else False))) if run.parent_run_id else None
+        readable_run_clause(actor, administrative=await administrative_run_clause(actor)))) if run.parent_run_id else None
     return {"id": str(run.id), "status": run.status, "graph": run.launch_snapshot.get("definition", {}).get("graph"),
         "label": run.launch_snapshot.get("process_label", ""), "workflow_id": run.launch_snapshot.get("workflow_id"),
         "operational": operational,
@@ -164,7 +165,7 @@ async def list_runs(actor: int | AgentManagementScope, *, code: str | None = Non
     # The parent process policy applies before counting and pagination.
     query = select(ProcessRun).join(ProcessDefinition, ProcessDefinition.id == ProcessRun.process_id).where(
         ProcessRun.engine_code == "galaris", readable_run_clause(actor,
-            administrative=await has_process_admin_access(actor) if isinstance(actor, int) else False))
+            administrative=await administrative_run_clause(actor)))
     if code is not None:
         query = query.where(ProcessDefinition.code == code)
     total = await get_db().scalar(select(func.count()).select_from(query.subquery()))
@@ -200,7 +201,7 @@ async def inspect_occurrence(identity: UUID, node_identity: UUID, actor: int | A
         .order_by(ProcessNodeAttempt.number)))
     visible_children = set(await get_db().scalars(select(ProcessRun.id).where(
         ProcessRun.id.in_([attempt.child_run_id for attempt in attempts if attempt.child_run_id]),
-        readable_run_clause(actor, administrative=await has_process_admin_access(actor) if isinstance(actor, int) else False))))
+        readable_run_clause(actor, administrative=await administrative_run_clause(actor)))))
     return {**_occurrence_payload(node), "attempts": [{"id": str(attempt.id), "number": attempt.number,
         "status": attempt.status, "input": attempt.input, "prompt": attempt.prompt, "receipt": _inspection_receipt(attempt.receipt),
         "task_uri": f"galaris://task/{attempt.task_id}" if attempt.task_id else None,
@@ -219,7 +220,7 @@ async def children(identity: UUID, actor: int | AgentManagementScope, *, page: i
     await prepare_process_read()
     await require_run(identity, actor)
     query = select(ProcessRun).where(ProcessRun.parent_run_id == identity, readable_run_clause(actor,
-        administrative=await has_process_admin_access(actor) if isinstance(actor, int) else False))
+        administrative=await administrative_run_clause(actor)))
     total = await get_db().scalar(select(func.count()).select_from(query.subquery()))
     rows = await get_db().scalars(query.order_by(ProcessRun.created_at, ProcessRun.id).offset((page - 1) * page_size).limit(page_size))
     return {"items": [{"id": str(run.id), "status": run.status, "process_label": run.launch_snapshot.get("process_label", ""),
@@ -232,7 +233,7 @@ async def run_metrics(identity: UUID, actor: int | AgentManagementScope) -> dict
     descendants = select(ProcessRun.id).where(ProcessRun.id == identity).cte(recursive=True)
     descendants = descendants.union_all(select(ProcessRun.id).join(descendants, ProcessRun.parent_run_id == descendants.c.id))
     visible = select(ProcessRun.id).where(ProcessRun.id.in_(select(descendants.c.id)), readable_run_clause(actor,
-        administrative=await has_process_admin_access(actor) if isinstance(actor, int) else False))
+        administrative=await administrative_run_clause(actor)))
     calls = list(await get_db().scalars(select(LLMCall).where(LLMCall.process_run_id.in_(visible))))
     direct = [call for call in calls if call.process_run_id == identity]
 

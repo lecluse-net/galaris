@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Literal, cast as typing_cast
 from uuid import UUID
 
-from sqlalchemy import String, cast, exists, or_, select
+from sqlalchemy import String, cast, exists, or_, select, true
 
 from app.connection import Connection
 from app.messenger import Message, Room
@@ -13,6 +13,7 @@ from core.database import get_db
 
 from .inspection_service import inspect_round
 from .models import ConversationRound, ConversationRoundMessage
+from app.tools.facade import administration_scope
 
 
 ConversationResourceMedium = Literal["text", "voice"]
@@ -32,9 +33,11 @@ async def read_conversation_round_resource(
     actor_agent_id: int,
     medium: ConversationResourceMedium = "text",
 ) -> dict[str, Any] | None:
-    """Return a complete round only through its owning agent's connection."""
+    """Return an owned round or a round within the live administration scope."""
 
-    payload = await inspect_round(round_id, actor_agent_id=actor_agent_id)
+    scope = await administration_scope(actor_agent_id, "galaris_admin")
+    ids = None if scope.is_global else (scope.agent_ids or frozenset()) | {actor_agent_id}
+    payload = await inspect_round(round_id, agent_ids=ids)
     if payload is None:
         return None
     round_payload = payload.get("round")
@@ -61,8 +64,10 @@ async def list_conversation_round_resources(
     offset: int = 0,
     limit: int = 100,
 ) -> list[dict[str, Any]]:
-    """Return bounded summaries of rounds owned by one agent."""
+    """Filter owned and administrable rounds before applying the page limit."""
 
+    scope = await administration_scope(actor_agent_id, "galaris_admin")
+    ids = (scope.agent_ids or frozenset()) | {actor_agent_id}
     statement = (
         select(
             ConversationRound.id,
@@ -78,7 +83,7 @@ async def list_conversation_round_resources(
         .join(Room, Room.id == ConversationRound.room_id)
         .join(Connection, Connection.id == Room.connection_id)
         .where(
-            Connection.agent_id == actor_agent_id,
+            true() if scope.is_global else Connection.agent_id.in_(ids),
             _medium_filter(medium),
         )
     )

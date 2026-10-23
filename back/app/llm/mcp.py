@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from typing import Any
+from collections.abc import Collection
 from uuid import UUID
 
 from sqlalchemy import String, cast, select
@@ -69,10 +70,10 @@ async def document_analysis_cancel(ctx: McpToolContext, run_id: str) -> dict[str
 async def mcp_llm_call(ctx: McpToolContext, llm_call_id: str) -> str:  # noqa: ARG001
     """Return the complete JSON representation of an LLM call."""
 
-    from app.tools import require_galaris_admin_access
-
-    await require_galaris_admin_access(ctx.agent_id)
-    payload = await inspect_llm_call(llm_call_id)
+    from app.tools.facade import administration_scope
+    scope = await administration_scope(ctx.agent_id, "galaris_admin")
+    scope.require_administration()
+    payload = await inspect_llm_call(llm_call_id, agent_ids=scope.agent_ids)
     return json.dumps(payload, ensure_ascii=False)
 
 
@@ -92,10 +93,10 @@ async def mcp_llm_calls(
 ) -> str:
     """Return LLM-call IDs in an inclusive datetime range as JSON text."""
 
-    from app.tools import require_galaris_admin_access
-
-    await require_galaris_admin_access(ctx.agent_id)
-    payload = await inspect_llm_calls(date_debut, date_fin, limit=limit)
+    from app.tools.facade import administration_scope
+    scope = await administration_scope(ctx.agent_id, "galaris_admin")
+    scope.require_administration()
+    payload = await inspect_llm_calls(date_debut, date_fin, limit=limit, agent_ids=scope.agent_ids)
     return json.dumps(payload, ensure_ascii=False)
 
 
@@ -121,16 +122,19 @@ def _isoformat_or_none(value: Any) -> str | None:
     return value.isoformat() if value is not None and hasattr(value, "isoformat") else None
 
 
-async def _resolve_llm_call(llm_call_id: str | UUID) -> LLMCall | None:
+async def _resolve_llm_call(llm_call_id: str | UUID, *, agent_ids: Collection[int] | None = None) -> LLMCall | None:
     """Resolve an LLM call by full UUID or a unique prefix."""
     raw_id = str(llm_call_id).strip()
+    query = select(LLMCall)
+    if agent_ids is not None:
+        query = query.where(LLMCall.agent_id.in_(agent_ids))
     try:
         call_uuid = llm_call_id if isinstance(llm_call_id, UUID) else UUID(raw_id)
     except ValueError:
         if len(raw_id) < 8:
             raise ValueError(f"Invalid LLM-call UUID or prefix: {llm_call_id}") from None
         result = await get_db().execute(
-            select(LLMCall)
+            query
             .where(cast(LLMCall.id, String).ilike(f"{raw_id}%"))
             .limit(2)
         )
@@ -138,17 +142,17 @@ async def _resolve_llm_call(llm_call_id: str | UUID) -> LLMCall | None:
         if len(matches) > 1:
             raise ValueError(f"Ambiguous LLM-call UUID prefix: {llm_call_id}")
         return matches[0] if matches else None
-    return await get_db().get(LLMCall, call_uuid)
+    return await get_db().scalar(query.where(LLMCall.id == call_uuid))
 
 
-async def inspect_llm_call(llm_call_id: str | UUID) -> dict[str, Any]:
+async def inspect_llm_call(llm_call_id: str | UUID, *, agent_ids: Collection[int] | None = None) -> dict[str, Any]:
     """Build the complete, JSON-compatible inspection payload for one LLM call."""
     from app.agent.models import Agent
     from app.llm.provider_models import LLM
     from app.process.models import ProcessRun
     from app.task.models import Task, TaskStatus
 
-    call = await _resolve_llm_call(llm_call_id)
+    call = await _resolve_llm_call(llm_call_id, agent_ids=agent_ids)
     if call is None:
         raise ValueError(f"LLM call not found: {llm_call_id}")
 
@@ -253,11 +257,15 @@ async def inspect_llm_calls(
     date_fin: datetime,
     *,
     limit: int = 20,
+    agent_ids: Collection[int] | None = None,
 ) -> list[str]:
     """List recent LLM-call IDs in an inclusive datetime range."""
     start, end, safe_limit = _inspection_window(date_debut, date_fin, limit)
+    query = select(LLMCall.id)
+    if agent_ids is not None:
+        query = query.where(LLMCall.agent_id.in_(agent_ids))
     result = await get_db().execute(
-        select(LLMCall.id)
+        query
         .where(LLMCall.started_at >= start, LLMCall.started_at <= end)
         .order_by(LLMCall.started_at.desc(), LLMCall.id.desc())
         .limit(safe_limit)

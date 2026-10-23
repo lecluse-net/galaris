@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import axios from 'axios'
 import { deferred, loadTypescript } from '../test-support/load-typescript.mjs'
-import * as thumbnailEvents from '../app/memory/thumbnailEvents.ts'
+import * as thumbnailEvents from './util/resourceThumbnailEvents.ts'
 import { sessionReadCache } from '../test-support/session-read-cache.mjs'
 
 function setup() {
@@ -50,20 +50,20 @@ function setup() {
     }),
     '@/core/api': { __esModule: true, default: loaded.api, api: loaded.api },
     '@/core/util': { attachmentReference: unexpectedPreview, browserResourceKind: unexpectedPreview },
-    '../thumbnailEvents': thumbnailEvents,
+    '@/core/util/facade': thumbnailEvents,
   }
   return {
     ...loaded, entered, response,
     workbench: loadTypescript(new URL('../app/lab/services/labWorkbenchService.ts', import.meta.url), dependencies).labWorkbenchService,
-    memory: loadTypescript(new URL('../app/memory/services/memoryService.ts', import.meta.url), dependencies).memoryService,
+    documents: loadTypescript(new URL('../app/document/services/documentService.ts', import.meta.url), dependencies).documentService,
     harness: loadTypescript(new URL('../app/harnesses/services/harnessService.ts', import.meta.url), dependencies).harnessService,
   }
 }
 
 const operations = {
   'benchmark analysis': client => client.workbench.analyze('dispatcher', 'synthetic-run', 'fr'),
-  'document PDF': client => client.memory.exportDocumentPdf('synthetic-document', '<p>Test</p>', new AbortController().signal),
-  'document dataset': client => client.memory.appDataset('synthetic-document', 1, 'test-app', 'rows', { operation: 'read' }, new AbortController().signal),
+  'document PDF': client => client.documents.exportDocumentPdf('synthetic-document', '<p>Test</p>', new AbortController().signal),
+  'document dataset': client => client.documents.appDataset('synthetic-document', 1, 'test-app', 'rows', { operation: 'read' }, new AbortController().signal),
   'harness installation': client => client.harness.install(1, 'synthetic-harness'),
   'session renewal': client => client.refreshAccessToken(),
   'multipart upload': client => { const data = new FormData(); data.set('file', new Blob(['test']), 'test.txt'); return client.api.post('/files', data) },

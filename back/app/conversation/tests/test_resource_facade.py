@@ -86,6 +86,32 @@ async def test_conversation_round_resources_are_scoped_by_connection_owner(
     ) is None
     assert foreign_owner.id != owner.id
 
+    # A delegated scope widens both File Share and dedicated administrative reads;
+    # mere team membership above continues to confer no administrative power.
+    from app.agent.models import AgentTeam
+    from app.connection import connection_service
+    from app.conversation.mcp import conversation_round_get
+    from app.tools import McpToolContext
+    from core.team import TeamModel
+    team = TeamModel(name="Synthetic conversation administration")
+    db.add(team)
+    await db.flush()
+    memberships = [AgentTeam(agent_id=agent.id, team_id=team.id) for agent in (owner, foreign_owner)]
+    db.add_all(memberships)
+    await db.flush()
+    assert await read_conversation_round_resource(foreign_round.id, actor_agent_id=owner.id) is None
+    tool = await db.scalar(select(Tool).where(Tool.code == "galaris_admin"))
+    connection = await connection_service.get_or_create_connection(tool.id, owner.id, active=True)
+    await connection_service.set_param(connection.id, "tools.management_scope", "team", scope_edit_authorized=True)
+    assert {row["id"] for row in await list_conversation_round_resources(actor_agent_id=owner.id)} == {
+        str(own_round.id), str(foreign_round.id)}
+    assert await conversation_round_get(McpToolContext(owner.id, "internal"), round_id=str(foreign_round.id)) is not None
+    await db.delete(memberships[1])
+    await db.commit()
+    assert await read_conversation_round_resource(foreign_round.id, actor_agent_id=owner.id) is None
+    with pytest.raises(ValueError, match="not found"):
+        await conversation_round_get(McpToolContext(owner.id, "internal"), round_id=str(foreign_round.id))
+
 
 @pytest.mark.asyncio
 async def test_conversation_round_resource_exposes_task_amendment_lineage(

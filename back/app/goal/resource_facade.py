@@ -7,21 +7,13 @@ from uuid import UUID
 
 from sqlalchemy import String, cast, or_, select
 
-from app.connection import connection_service
 from app.task import Task, TaskStatus
 from core.database import get_db
 
 from . import goal_service
+from .access import owner_scope, readable_agents
 from .models import Goal, GoalCycle
 from .schemas import GoalCycleRead
-
-
-async def _owner_scope(actor_agent_id: int) -> int | None:
-    allowed = await connection_service.has_active_tool_connection(
-        agent_id=actor_agent_id,
-        tool_code="goal_management",
-    )
-    return None if allowed else actor_agent_id
 
 
 async def read_goal_resource(
@@ -29,9 +21,13 @@ async def read_goal_resource(
     *,
     actor_agent_id: int,
 ) -> dict[str, Any] | None:
+    try:
+        owner_agent_id = await owner_scope(actor_agent_id, goal_id)
+    except ValueError:
+        return None
     goal = await goal_service.get_detail(
         goal_id,
-        owner_agent_id=await _owner_scope(actor_agent_id),
+        owner_agent_id=owner_agent_id,
     )
     if goal is None:
         return None
@@ -51,7 +47,7 @@ async def list_goal_resources(
         skip=max(0, offset),
         # The resource provider requests one look-ahead row after its public page of 500.
         limit=max(1, min(limit, 501)),
-        agent_id=await _owner_scope(actor_agent_id),
+        agent_ids=await readable_agents(actor_agent_id),
         search=query.strip() or None,
     )
     return [
@@ -100,9 +96,9 @@ async def read_goal_cycle_resource(
         .outerjoin(Task, Task.id == GoalCycle.task_id)
         .where(GoalCycle.id == cycle_id)
     )
-    owner_agent_id = await _owner_scope(actor_agent_id)
-    if owner_agent_id is not None:
-        statement = statement.where(Goal.agent_id == owner_agent_id)
+    agent_ids = await readable_agents(actor_agent_id)
+    if agent_ids is not None:
+        statement = statement.where(Goal.agent_id.in_(agent_ids))
     row = (await get_db().execute(statement)).one_or_none()
     return _cycle_payload(*row) if row is not None else None
 
@@ -120,9 +116,9 @@ async def list_goal_cycle_resources(
         .join(Goal, Goal.id == GoalCycle.goal_id)
         .outerjoin(Task, Task.id == GoalCycle.task_id)
     )
-    owner_agent_id = await _owner_scope(actor_agent_id)
-    if owner_agent_id is not None:
-        statement = statement.where(Goal.agent_id == owner_agent_id)
+    agent_ids = await readable_agents(actor_agent_id)
+    if agent_ids is not None:
+        statement = statement.where(Goal.agent_id.in_(agent_ids))
     if goal_id is not None:
         statement = statement.where(GoalCycle.goal_id == goal_id)
     normalized_query = query.strip()

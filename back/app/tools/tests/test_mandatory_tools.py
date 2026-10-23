@@ -262,6 +262,24 @@ def test_mail_connection_parameters_keep_transport_and_reviewer_configuration() 
     }
 
 
+def test_administration_scopes_are_explicit_local_and_domain_bounded() -> None:
+    scopes = {
+        "skills": ["usage", "personal", "team", "all"],
+        "tool_admin": ["usage", "personal", "team", "all"],
+        "process_admin": ["usage", "personal", "team", "all"],
+        "goal_management": ["usage", "personal", "team", "all"],
+        "galaris_admin": ["usage", "personal", "team", "all"],
+        "agent_admin": ["usage", "team", "all"],
+    }
+    for row in mandatory_tools.mandatory_tool_rows():
+        if row["code"] not in scopes:
+            continue
+        parameter = row["connection_schema"]["params"]["tools.management_scope"]
+        assert parameter["default"] == "usage"
+        assert [item["value"] for item in parameter["options"]] == scopes[row["code"]]
+        assert "tools.management_scope" not in row["global_params"]
+
+
 def test_messaging_scopes_are_connection_only_and_exclude_personal_management() -> None:
     for row in mandatory_tools.mandatory_tool_rows():
         if not row["messenger_config"]:

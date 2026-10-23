@@ -40,6 +40,7 @@ async def delegated(db):
     grant = Connection(tool_id=tool.id, agent_id=agents[0].id, active=True)
     db.add(grant)
     await db.flush()
+    await connection_service.set_param(grant.id, "tools.management_scope", "all", scope_edit_authorized=True)
     # Exercise domain behavior under an explicit human function policy; the
     # one-use MCP approval boundary has its own real persistence scenarios.
     from app.tools.mcp_loader import load_mcp_tools
@@ -813,6 +814,7 @@ async def test_concurrent_mutations_only_apply_one_examined_version(committed_da
         grant = Connection(tool_id=admin.id, agent_id=agent.id, active=True)
         db.add(grant)
         await db.flush()
+        await connection_service.set_param(grant.id, "tools.management_scope", "all", scope_edit_authorized=True)
         await connection_service.set_connection_function_state(grant.id, "tool_admin_update", "enabled")
         agent_id, tool_id = agent.id, tool.id
     ctx = McpToolContext(agent_id, "internal")

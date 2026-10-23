@@ -285,6 +285,31 @@ dans au moins l'une des trois. Les fichiers sont en
 consultation dans cet onglet ; leur édition, activation et suppression agentiques passent
 par MCP. Les packages restent séparés de la bibliothèque générique et ne sont pas partageables.
 
+### Déléguer une administration à un agent
+
+Dans **Tools → Connexions → modifier une connexion → Portée de gestion**,
+`tools.management_scope` configure aussi Administration des processus, ToolAdmin,
+Gestion des objectifs, Galaris Admin et AgentAdmin. Les niveaux sont `usage` (aucune
+administration), `personal` (ses ressources), `team` (agents partageant une équipe
+active) et `all` (global). Seul un humain avec édition des connexions et gestion globale
+des agents peut changer cette valeur locale. Les autorisations des fonctions restent
+nécessaires. Les retraits d'équipe prennent effet dès l'appel suivant.
+
+ToolAdmin limite les niveaux personnel et équipe aux connexions ; les définitions et
+réglages partagés exigent `all`. Les définitions de processus suivent l'agent affecté,
+les exécutions leur lanceur et les objectifs leur responsable. Galaris Admin applique
+la portée aux Tasks, conversations et traces LLM sans élargir les droits des documents
+ou souvenirs privés.
+
+AgentAdmin propose seulement `usage`, `team`, `all`. Il permet la création dans une
+équipe explicitement choisie de l'appelant, sous les droits du responsable humain.
+Même au niveau global, un agent ne peut s'administrer lui-même ni modifier son propre
+titre ou équipe par une mutation partagée. Les délégations restent humaines.
+
+Une connexion inactive ou sans portée explicite n'accorde aucune administration.
+Après mise à jour, configurez les anciennes connexions administratives dépourvues de
+ce paramètre : leur activation seule ne donne plus accès à toutes les données.
+
 ### Passer par une messagerie
 
 Les messages d'un cycle d'objectif utilisent la messagerie choisie pour son référent. Garder

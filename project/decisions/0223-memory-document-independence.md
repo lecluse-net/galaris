@@ -65,8 +65,9 @@ uniquement pour les références natives facultatives. Document ne dépend pas d
 Memory. Le frontend extrait sept dépendances de la bibliothèque et ajoute
 Memory → Document pour ses aperçus. Les ensembles cycliques existants incluent
 alors Document en plus de Memory ; aucun nouvel ensemble cyclique n'apparaît.
-Cette extension des ensembles nécessite une revue explicite avant adaptation
-des baselines, conformément à `AGENTS.md`. La suppression complète des cycles
+La revue explicite du 23 octobre 2026 retient dans les baselines ces huit
+dépendances frontend et l'ajout de Document aux deux ensembles cycliques existants,
+sans nouvel import privé, conformément à `AGENTS.md`. La suppression complète des cycles
 historiques dépasse l'extraction ; les masquer dans le vérificateur est exclu.
 
 Les suites `app/document/tests/test_boundary.py`, `test_independence_upgrade.py`

@@ -1115,7 +1115,7 @@ async def test_native_domain_not_found_message_selects_lookup_recovery(
     async def missing_goal(*_args: object, **_kwargs: object) -> None:
         return None
 
-    async def owner_scope(_ctx: mcp_loader.McpToolContext) -> int:
+    async def owner_scope(_ctx: mcp_loader.McpToolContext, _goal_id: UUID) -> int:
         return 7
 
     monkeypatch.setattr(goal_service, "get_detail", missing_goal)

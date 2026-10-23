@@ -11,6 +11,8 @@ from sqlalchemy import select
 
 from app.agent.models import Agent, Title
 from app.connection.models import Connection
+from app.connection import connection_service
+from app.tools.facade import AdministrationScope
 from app.tools.mcp_loader import McpToolContext, build_galaris_fastmcp
 from app.tools.models import Tool
 
@@ -92,6 +94,7 @@ async def test_goal_create_selects_owner_and_human_referrer(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     create = AsyncMock(return_value=_Response())
+    monkeypatch.setattr(mcp, "administration_scope", AsyncMock(return_value=AdministrationScope("all", None)))
     monkeypatch.setattr(mcp.goal_service, "create", create)
     monkeypatch.setattr(
         mcp,
@@ -122,6 +125,7 @@ async def test_goal_create_selects_owner_and_human_referrer(
 
 @pytest.mark.asyncio
 async def test_goal_list_normalizes_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(mcp, "readable_agents", AsyncMock(return_value=frozenset({90})))
     page = _Response()
     list_page = AsyncMock(return_value=page)
     monkeypatch.setattr(mcp.goal_service, "list_page", list_page)
@@ -142,6 +146,7 @@ async def test_goal_list_rejects_another_owner_without_management(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     list_page = AsyncMock()
+    monkeypatch.setattr(mcp, "readable_agents", AsyncMock(return_value=frozenset({90})))
     monkeypatch.setattr(mcp.goal_service, "list_page", list_page)
     monkeypatch.setattr(mcp, "_has_goal_management_access", AsyncMock(return_value=False))
     monkeypatch.setattr("core.database.database.get_db_session", _session)
@@ -160,6 +165,7 @@ async def test_goal_list_management_scope_can_list_every_owner(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     page = _Response()
+    monkeypatch.setattr(mcp, "readable_agents", AsyncMock(return_value=None))
     list_page = AsyncMock(return_value=page)
     monkeypatch.setattr(mcp.goal_service, "list_page", list_page)
     monkeypatch.setattr(mcp, "_has_goal_management_access", AsyncMock(return_value=True))
@@ -174,9 +180,9 @@ async def test_goal_list_management_scope_can_list_every_owner(
 async def test_goal_management_access_requires_the_active_package(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    active_connection = AsyncMock(side_effect=[False, True])
+    active_connection = AsyncMock(side_effect=["usage", "all"])
     monkeypatch.setattr(
-        "app.connection.connection_service.has_active_tool_connection",
+        "app.connection.facade.get_management_scope",
         active_connection,
     )
     ctx = McpToolContext(agent_id=90, runtime="internal")
@@ -187,10 +193,7 @@ async def test_goal_management_access_requires_the_active_package(
     assert await mcp._has_goal_management_access(  # pyright: ignore[reportPrivateUsage]
         ctx
     ) is True
-    assert active_connection.await_args_list[0].kwargs == {
-        "agent_id": 90,
-        "tool_code": "goal_management",
-    }
+    assert active_connection.await_args_list[0].args == (90, "goal_management")
 
 
 @pytest.mark.asyncio
@@ -354,6 +357,7 @@ async def test_live_management_connection_controls_cross_owner_goal_access(db: A
 
     connection.active = True
     await db.commit()
+    await connection_service.set_param(connection.id, "tools.management_scope", "all", scope_edit_authorized=True)
     foreign = await mcp.mcp_goal_get(ctx, str(foreign_goal.id))
     assert foreign["agent_id"] == owner.id
     administered = await mcp.mcp_goal_update(
@@ -412,7 +416,7 @@ async def test_goal_get_suivi_returns_bounded_newest_cycles(
     result = await mcp.mcp_goal_get_suivi(ctx, str(identifier), limit=7)
 
     assert result == [{"id": "cycle-1", "revision": 1, "agent_id": 90}]
-    owner_scope.assert_awaited_once_with(ctx)
+    owner_scope.assert_awaited_once_with(ctx, identifier)
     list_cycles.assert_awaited_once_with(
         identifier,
         page=1,

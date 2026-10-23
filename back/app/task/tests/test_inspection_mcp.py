@@ -86,6 +86,8 @@ async def test_task_access_separates_delegated_reads_from_management_and_live_ad
         await mcp_stop_task(ctx, uri)
     connection.active = True
     await db.flush()
+    from app.connection.connection_service import set_param
+    await set_param(connection.id, "tools.management_scope", "all", scope_edit_authorized=True)
     assert (await mcp_get_task(ctx, uri))["id"] == str(target.id)
     assert await read_task_resource(target.id, actor_agent_id=peer.id) is not None
     assert [row["id"] for row in await list_task_resources(actor_agent_id=peer.id)] == [str(target.id)]
@@ -343,6 +345,8 @@ async def test_llm_call_and_llm_calls_return_complete_json_and_ids(db: AsyncSess
     connection = Connection(agent_id=agent.id, tool_id=admin_tool.id, active=True)
     db.add(connection)
     await db.commit()
+    from app.connection.connection_service import set_param
+    await set_param(connection.id, "tools.management_scope", "all", scope_edit_authorized=True)
     detail = json.loads(await mcp_llm_call(ctx, str(first.id)))
     ids = json.loads(await mcp_llm_calls(ctx, start, end, limit=2))
     connection.active = False

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -29,6 +29,8 @@ class AdministrationContext:
     agent_id: int | None = None
     function_name: str = ""
     managed_agent_ids: frozenset[int] | None = None
+    _delegated_agent_ids: frozenset[int] | None = field(default=frozenset(), init=False, compare=False)
+    _scope_level: str = field(default="usage", init=False, compare=False)
 
     async def require(self) -> None:
         if self.agent_id is not None:
@@ -36,6 +38,23 @@ class AdministrationContext:
 
             if not await has_active_tool_function(self.agent_id, "tool_admin", self.function_name):
                 raise AdministrationError("access_denied", "The exact live ToolAdmin function grant is required.")
+            from .management_scope import administration_scope
+            scope = await administration_scope(self.agent_id, "tool_admin")
+            if scope.level == "usage":
+                raise AdministrationError("access_denied", "An explicit ToolAdmin management scope is required.")
+            object.__setattr__(self, "_delegated_agent_ids", scope.agent_ids)
+            object.__setattr__(self, "_scope_level", scope.level)
+
+    @property
+    def allowed_agent_ids(self) -> frozenset[int] | None:
+        delegated = self._delegated_agent_ids if self.agent_id is not None else None
+        if self.managed_agent_ids is None:
+            return delegated
+        return self.managed_agent_ids if delegated is None else self.managed_agent_ids & delegated
+
+    def require_global(self) -> None:
+        if self.agent_id is not None and self._scope_level != "all":
+            raise AdministrationError("access_denied", "Global ToolAdmin management scope is required.")
 
     def require_target(self, code: str, *, can_disable: bool, definition: bool = False,
                        executable: bool = False) -> None:
@@ -47,7 +66,7 @@ class AdministrationContext:
             raise AdministrationError("access_denied", "This capability can only be delegated by a human.")
 
     def require_agent(self, agent_id: int) -> None:
-        if self.managed_agent_ids is not None and agent_id not in self.managed_agent_ids:
+        if self.allowed_agent_ids is not None and agent_id not in self.allowed_agent_ids:
             raise AdministrationError("not_found", "Agent not found in the management scope.")
 
 

@@ -22,7 +22,7 @@ async def read_process_run_resource(identity: UUID, *, actor_agent_id: int, mana
     if run.engine_code == "galaris":
         payload = await native_runs.inspect_run(identity, management_scope or actor_agent_id)
     else:
-        if run.launcher_agent_id != actor_agent_id and not await has_process_admin_access(actor_agent_id):
+        if run.launcher_agent_id != actor_agent_id and not await has_process_admin_access(actor_agent_id, target_agent_id=run.launcher_agent_id):
             raise PermissionError("Run not found in this agent's participation scope")
         detail = await process_service.get_run_detail(identity)
         if detail is None:
@@ -104,12 +104,12 @@ async def list_process_run_resources(*, actor_agent_id: int | AgentManagementSco
     from .models import ProcessRun
     from . import native_runs
     from .query_policy import prepare_process_read
-    from app.tools import has_process_admin_access
+    from .native_access import administrative_run_clause
 
     await prepare_process_read()
     statement = select(ProcessRun).join(ProcessDefinition, ProcessDefinition.id == ProcessRun.process_id).where(
         ProcessRun.engine_code == "galaris", native_runs.readable_run_clause(actor_agent_id,
-            administrative=await has_process_admin_access(actor_agent_id) if isinstance(actor_agent_id, int) else False))
+            administrative=await administrative_run_clause(actor_agent_id)))
     if query:
         escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         statement = statement.where(ProcessDefinition.label.ilike(f"%{escaped}%", escape="\\"))

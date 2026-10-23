@@ -16,6 +16,7 @@ from .authorization_views import (
     prepared_authorization_links as prepared_authorization_links,
 )
 from .admin_network import diagnostic_client as mcp_http_client
+from .management_scope import AdministrationScope as AdministrationScope, administration_scope as administration_scope
 
 
 from .rest_contracts import RestAuth, RestConfig, RestError, RestRequest, RestResponse

@@ -18,13 +18,11 @@ async def require_documentation_access(agent_id: int) -> None:
         raise PermissionError("An active galaris_admin connection with documentation_catalog enabled is required.")
 
 
-async def has_galaris_admin_access(agent_id: int) -> bool:
-    """Resolve the live global administration grant, without caching revocations."""
-    from app.connection import facade as connection_service
-
-    return await connection_service.has_active_tool_connection(
-        agent_id=agent_id, tool_code=GALARIS_ADMIN_TOOL_CODE,
-    )
+async def has_galaris_admin_access(agent_id: int, *, target_agent_id: int | None = None) -> bool:
+    """Check a target owner; omitting the target requires global administration."""
+    from .management_scope import administration_scope
+    scope = await administration_scope(agent_id, GALARIS_ADMIN_TOOL_CODE)
+    return scope.allows(target_agent_id)
 
 
 async def require_galaris_admin_access(agent_id: int) -> None:
@@ -32,15 +30,14 @@ async def require_galaris_admin_access(agent_id: int) -> None:
 
     if not await has_galaris_admin_access(agent_id):
         raise PermissionError(
-            "An active galaris_admin connection is required to inspect execution datasets."
+            "An active galaris_admin connection with global management scope is required to inspect global execution datasets."
         )
 
 
-async def has_process_admin_access(agent_id: int) -> bool:
-    """Only the dedicated, currently active Process administration grant is sufficient."""
-    from app.connection import facade as connection_service
-
-    return await connection_service.has_active_tool_connection(agent_id=agent_id, tool_code="process_admin")
+async def has_process_admin_access(agent_id: int, *, target_agent_id: int | None = None) -> bool:
+    """Check a run owner against the live Process administration scope."""
+    from .management_scope import administration_scope
+    return (await administration_scope(agent_id, "process_admin")).allows(target_agent_id)
 
 
 __all__ = ["GALARIS_ADMIN_TOOL_CODE", "has_galaris_admin_access", "require_galaris_admin_access",
