@@ -1427,8 +1427,9 @@ watch(() => form.agentId, invalidateMessengerSearch, { flush: 'sync' })
 watch(goalDialogOpen, open => { if (!open) invalidateMessengerSearch() }, { flush: 'sync' })
 
 const agentOptions = computed(() => agentStore.sortedAgents.map(agent => ({
-  label: `${agentStore.getFullName(agent, t)} (@${agent.code})`,
+  label: `${agent.first_name} ${agent.last_name}`.trim() || agent.code,
   value: agent.id,
+  hasAvatar: agent.has_avatar,
 })))
 
 const statusOptions = computed(() => (
@@ -2136,7 +2137,6 @@ onMounted(async () => {
       store.fetchTree(),
       store.fetchSettings(),
       agentStore.fetchAgents(),
-      agentStore.fetchTitles(),
     ])
     if (disposed) return
     registerSettingsRefresh(() => {
