@@ -50,10 +50,16 @@ async def lab_process_dataset_generate(ctx: McpToolContext, code: str, title: st
 
 @mcp_tool("lab", name="lab_process_campaign_start", description="Benchmark a process with real runs using a synthetic Dataset. Each admission resolves the latest saved definition. Real external effects may occur.", approval="ask", approval_reason="Start a campaign of real process executions", effect_policy="idempotent")
 @lab_call(mutation=True)
-async def lab_process_campaign_start(ctx: McpToolContext, code: str, dataset_document_id: UUID,
-                                     title: str, invocation_key: str) -> dict[str, Any]:
+async def lab_process_campaign_start(ctx: McpToolContext, code: str,
+                                     title: str, invocation_key: str, dataset_id: UUID | None = None,
+                                     dataset_document_id: UUID | None = None) -> dict[str, Any]:
+    if dataset_id is not None and dataset_document_id is not None and dataset_id != dataset_document_id:
+        raise ValueError("Choose one Dataset identity")
+    identity = dataset_id or dataset_document_id
+    if identity is None:
+        raise ValueError("A Dataset identity is required")
     campaign = await process_evaluations.start_campaign(ctx.agent_id, agent_id=ctx.agent_id,
-        code=code, dataset_document_id=dataset_document_id, title=title, invocation_key=invocation_key)
+        code=code, dataset_id=identity, title=title, invocation_key=invocation_key)
     return await process_evaluations.inspect_campaign(campaign.id, ctx.agent_id)
 
 

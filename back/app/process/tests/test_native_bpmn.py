@@ -11,10 +11,9 @@ import pytest_asyncio
 from sqlalchemy import select, func
 
 from app.agent import Agent, Title
-from app.document import read_workflow_document, write_workflow_document
 from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 from app.memory import service as memory
-from app.document.schemas import DocumentGrantUpdate
+from app.dataset.facade import create_dataset, replace_dataset, set_dataset_grant
 from app.process import process_service, registry
 from app.process.bpmn import Flow, Node, Workflow, compile_bpmn, to_bpmn
 from app.process.bpmn import Actor, validate_graph
@@ -437,7 +436,7 @@ async def test_http_native_and_lab_pagination_accepts_encoded_sizes_with_real_au
     dataset = await create_synthetic_dataset(scope, agent_id=owner_id, title="Synthetic HTTP inputs",
         cases=[ProcessCaseInput(input={})], invocation_key=uuid4().hex)
     campaign = await start_campaign(scope, agent_id=owner_id, code=code,
-        dataset_document_id=UUID(dataset["document_id"]), title="Synthetic HTTP campaign", invocation_key=uuid4().hex)
+        dataset_id=UUID(dataset["dataset_id"]), title="Synthetic HTTP campaign", invocation_key=uuid4().hex)
     campaign_id = campaign.id
     await db.commit()
     paths = ["/api/processes/internal/definitions", f"/api/processes/internal/definitions/{code}/history",
@@ -837,23 +836,21 @@ async def test_typed_invalid_output_is_not_integrated_and_does_not_launch_succes
 
 @pytest.mark.asyncio
 async def test_typed_file_manifests_keep_source_uris_without_transferring_bytes(db, native, monkeypatch):
-    from app.document import document_service
     from app.process import ProcessFileInput
     import app.file_share as file_share
     owner, _ = native
-    source = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic reference",
-        content='{"invented": true}', task_id=None, document_type="dataset")
+    source = await create_dataset(owner.id, title="Synthetic reference", content='{"invented": true}')
     async def no_transfer(*args, **kwargs):
         raise AssertionError("Typed admission must not materialize files")
     monkeypatch.setattr(file_share, "materialize_resource", no_transfer)
     definition = await create(actor_agent_id=owner.id, title="Synthetic references", graph=typed_graph())
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code,
-        input_data={}, files=[ProcessFileInput(uri=f"document://{source.id}")])
+        input_data={}, files=[ProcessFileInput(uri=f"data://{source.id}")])
     await process_service.process_start_jobs(engine_code="galaris")
     run = await finish_run(db, launched.run_id, result={})
     assert run.status == "success", run.error_message
     content = await read_run_data(run.id, owner.id)
-    assert [entry["uri"] for entry in content["files"]] == [f"document://{source.id}"]
+    assert [entry["uri"] for entry in content["files"]] == [f"data://{source.id}"]
     assert "workflow_attachments" not in run.data
 
 
@@ -1401,14 +1398,12 @@ async def test_if_admits_only_the_selected_branch(db, native, amount, branch, ty
 
 @pytest.mark.asyncio
 async def test_shared_files_are_copied_once_and_forwarded_to_child_run_workspaces(db, native):
-    from app.document import document_service
     from app.process import ProcessFileInput
     owner, _ = native
-    source = await document_service.create_document(owner_agent_id=owner.id, title="Invented input file",
-        content='{"value": 7}', task_id=None, document_type="dataset")
+    source = await create_dataset(owner.id, title="Invented input file", content='{"value": 7}')
     child_graph = graph()
     child = await create(actor_agent_id=owner.id, title="Synthetic shared child", graph=child_graph)
-    reference = ProcessFileInput(uri=f"document://{source.id}")
+    reference = ProcessFileInput(uri=f"data://{source.id}")
     parent_graph = Workflow(nodes=[Node(id="begin", kind="start"), Node(id="child", kind="call", config={"process_code": child.code}),
         Node(id="finish", kind="end", config={"output": {"$expr": "results.child"}})],
         flows=[Flow(id="a", source="begin", target="child"), Flow(id="b", source="child", target="finish")])
@@ -1428,7 +1423,8 @@ async def test_shared_files_are_copied_once_and_forwarded_to_child_run_workspace
     engine = NativeProcessEngine()
     await engine.start_run(parent.code, process_service._engine_run_reference(root), ProcessStartPayload())
     assert len((await resource_list(context, f"galaris://processes/runs/{root.id}/attachments/")).entries) == 1
-    await write_workflow_document(source.id, owner.id, '{"value": 9}', expected_revision=source.revision)
+    await replace_dataset(source.id, owner.id, content='{"value": 9}', expected_revision=source.revision)
+    await db.commit()
     await process_service.refresh_run(launched.run_id)
     await process_service.refresh_run(launched.run_id)
     nested = await db.scalar(select(ProcessRun).where(ProcessRun.parent_run_id == launched.run_id))
@@ -1452,21 +1448,21 @@ async def test_shared_files_are_copied_once_and_forwarded_to_child_run_workspace
 
 @pytest.mark.asyncio
 async def test_revoked_source_file_access_prevents_any_node_admission(db, native):
-    from app.document import document_service
     from app.process import ProcessFileInput
     from app.file_share import ResourceContext, resource_list
 
     owner, reader = native
-    source = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic revocable source",
-        content='{"value": 7}', task_id=None, document_type="dataset")
+    source = await create_dataset(owner.id, title="Synthetic revocable source", content='{"value": 7}')
     value = graph()
     definition = await create(actor_agent_id=owner.id, title="Synthetic revocable file process", graph=value)
-    await memory.set_item_grant(source.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    await set_dataset_grant(source.id, owner.id, kind="agent", principal=reader.id, can_write=False,
+                            expected_lock_version=source.lock_version)
     from app.process.native_sharing import grant_agent
     await grant_agent(definition.code, owner.id, reader.id)
     launched = await process_service.start_process(agent_id=reader.id, workflow_id=definition.code, input_data={},
-        files=[ProcessFileInput(uri=f"document://{source.id}", slot="data")])
-    await memory.remove_item_grant(source.id, reader.id, actor_agent_id=owner.id)
+        files=[ProcessFileInput(uri=f"data://{source.id}", slot="data")])
+    await set_dataset_grant(source.id, owner.id, kind="agent", principal=reader.id, can_write=None,
+                            expected_lock_version=source.lock_version)
     await process_service.process_start_jobs(engine_code="galaris")
     run = await db.get(ProcessRun, launched.run_id)
     assert run.execution_state["data_initialized"]
@@ -1479,18 +1475,16 @@ async def test_revoked_source_file_access_prevents_any_node_admission(db, native
 
 @pytest.mark.asyncio
 async def test_cancellation_during_file_materialization_prevents_copy_and_node_admission(db, native, monkeypatch):
-    from app.document import document_service
     from app.process import ProcessFileInput
     from app.file_share import ResourceContext, resource_list
     import app.file_share as file_share
 
     owner, _ = native
-    source = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic cancellable source",
-        content='{"value": 7}', task_id=None, document_type="dataset")
+    source = await create_dataset(owner.id, title="Synthetic cancellable source", content='{"value": 7}')
     value = graph()
     definition = await create(actor_agent_id=owner.id, title="Synthetic cancelled preparation", graph=value)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={},
-        files=[ProcessFileInput(uri=f"document://{source.id}", slot="data")])
+        files=[ProcessFileInput(uri=f"data://{source.id}", slot="data")])
     materialize = file_share.materialize_resource
 
     async def cancel_after_transfer(*args, **kwargs):
@@ -1970,16 +1964,15 @@ async def test_native_start_timeout_stops_without_an_automatic_retry(db, native,
     import app.file_share as file_share
     from app.process import ProcessFileInput
     from app.process.models import ProcessStartJob
-    from app.document import document_service
     owner, _ = native
-    source = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic timeout file", content='{}', task_id=None, document_type="dataset")
+    source = await create_dataset(owner.id, title="Synthetic timeout file", content='{}')
     definition = await create(actor_agent_id=owner.id, title="Synthetic timed-out launch", graph=graph())
     async def stalled_transfer(*args, **kwargs):
         await asyncio.Future()
     monkeypatch.setattr(file_share, "materialize_resource", stalled_transfer)
     monkeypatch.setattr(NativeProcessEngine, "start_timeout_seconds", 0.05)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={},
-        files=[ProcessFileInput(uri=f"document://{source.id}")])
+        files=[ProcessFileInput(uri=f"data://{source.id}")])
     await process_service.process_start_jobs(engine_code="galaris")
     run = await db.get(ProcessRun, launched.run_id)
     assert run.status == "error" and run.error_code == "engine_timeout"
@@ -2178,12 +2171,25 @@ async def test_lab_real_campaign_idempotency_exact_evidence_and_private_inputs(d
     definition = await create(actor_agent_id=owner.id, title="Synthetic benchmark workflow", graph=Workflow(
         nodes=[Node(id="start", kind="start"), Node(id="end", kind="end", config={"output": {"$expr": "input"}})],
         flows=[Flow(id="f1", source="start", target="end")]))
+    from app.document import Document
+    from app.dataset.facade import dataset_record, DatasetNotFoundError, DatasetConflictError
+    documents_before = await db.scalar(select(func.count()).select_from(Document))
     dataset = await lab.create_synthetic_dataset(owner.id, agent_id=owner.id, title="Invented cases",
         cases=[lab.ProcessCaseInput(input={"value": 7}, expected={"value": 7})], invocation_key="synthetic-inputs")
+    assert dataset["dataset_uri"] == f"data://{dataset['dataset_id']}"
+    assert await db.scalar(select(func.count()).select_from(Document)) == documents_before
+    assert await lab.create_synthetic_dataset(owner.id, agent_id=owner.id, title="Invented cases",
+        cases=[lab.ProcessCaseInput(input={"value": 7}, expected={"value": 7})], invocation_key="synthetic-inputs") == dataset
+    with pytest.raises(DatasetConflictError):
+        await lab.create_synthetic_dataset(owner.id, agent_id=owner.id, title="Different cases",
+            cases=[lab.ProcessCaseInput(input={"value": 8})], invocation_key="synthetic-inputs")
+    with pytest.raises(DatasetNotFoundError):
+        await dataset_record(UUID(dataset["dataset_id"]), stranger.id)
     campaign = await lab.start_campaign(owner.id, agent_id=owner.id, code=definition.code,
-        dataset_document_id=UUID(dataset["document_id"]), title="Real synthetic benchmark", invocation_key="one-campaign")
+        dataset_id=UUID(dataset["dataset_id"]), title="Real synthetic benchmark", invocation_key="one-campaign")
+    assert campaign.dataset_id == UUID(dataset["dataset_id"]) and campaign.dataset_document_id is None
     assert (await lab.start_campaign(owner.id, agent_id=owner.id, code=definition.code,
-        dataset_document_id=UUID(dataset["document_id"]), title="Real synthetic benchmark", invocation_key="one-campaign")).id == campaign.id
+        dataset_id=UUID(dataset["dataset_id"]), title="Real synthetic benchmark", invocation_key="one-campaign")).id == campaign.id
     with pytest.raises(PermissionError):
         await lab.inspect_campaign(campaign.id, stranger.id)
     await lab.tick()
@@ -2219,7 +2225,7 @@ async def test_lab_rechecks_launch_rights_and_can_cancel_admitted_runs_after_cam
     dataset = await lab.create_synthetic_dataset(owner.id, agent_id=owner.id, title="Invented revocation cases",
         cases=[lab.ProcessCaseInput(input={"value": 1}), lab.ProcessCaseInput(input={"value": 2})], invocation_key="revocation-inputs")
     campaign = await lab.start_campaign(owner.id, agent_id=owner.id, code=definition.code,
-        dataset_document_id=UUID(dataset["document_id"]), title="Synthetic interrupted benchmark", invocation_key="revocation-campaign")
+        dataset_id=UUID(dataset["dataset_id"]), title="Synthetic interrupted benchmark", invocation_key="revocation-campaign")
     cases = list(await db.scalars(select(LabProcessCase).where(LabProcessCase.campaign_id == campaign.id).order_by(LabProcessCase.position)))
     # One real admission predates the revocation; the next case is still queued.
     cases[0].run_id = await launch_current(definition.code, owner.id, agent_id=owner.id,

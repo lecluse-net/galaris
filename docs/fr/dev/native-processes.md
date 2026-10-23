@@ -2,6 +2,14 @@
 
 # Profils BPMN natifs et contrats de données
 
+Les campagnes du Lab conservent leurs entrées synthétiques dans `app.dataset`,
+via sa façade publique : `dataset_id`, révision et URI `data://`. Elles ne créent
+pas de Document. À l'admission, les droits sont vérifiés et les cas sont figés.
+La FK native `lab_process_campaigns.dataset_id` est additive ; l'ancienne FK
+nullable `dataset_document_id` préserve les campagnes existantes. Une contrainte
+impose exactement une source. Voir la décision
+[0225](../../../project/decisions/0225-process-lab-native-datasets.md).
+
 ## Propriété des ressources
 
 Le BPMN courant est stocké directement dans `process_definitions.bpmn_xml`.

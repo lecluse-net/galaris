@@ -8,7 +8,7 @@ from app.incident.models import FailureIncident, FailurePattern
 from app.lab.models import LabTask
 from app.lab.process_evaluation_models import LabProcessCampaign, LabProcessCase
 from app.llm.provider_models import LLM, LLMProvider
-from app.document import document_service
+from app.dataset.facade import create_dataset
 from app.memory.tests.conftest import memory_storage as memory_storage
 from app.process.bpmn import to_bpmn
 from app.process.models import ProcessDefinition, ProcessDefinitionRevision
@@ -66,10 +66,10 @@ async def test_read_lot_http_rights_scope_and_reopening(client, memory_storage):
         await db.flush()
         db.add(ProcessDefinitionRevision(process_id=process.id, revision=1, bpmn_xml=process.bpmn_xml,
                                           author_agent_id=owner_id))
-        document = await document_service.create_document(owner_agent_id=owner_id, title="Synthetic HTTP campaign source",
-                                                          task_id=None, content="<p>Synthetic source</p>")
+        dataset = await create_dataset(owner_id, title="Synthetic HTTP campaign source",
+                                       content='{"synthetic":true,"cases":[{"input":{}}]}')
         campaign = LabProcessCampaign(owner_agent_id=owner_id, owner_user_id=users[0].id,
-                                       dataset_document_id=document.id, process_code=process.code,
+                                       dataset_id=dataset.id, process_code=process.code,
                                        title="Synthetic campaign", invocation_key="synthetic-http", fingerprint="s" * 64)
         db.add(campaign)
         await db.flush()

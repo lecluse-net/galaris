@@ -239,6 +239,18 @@ differences and verdict disagreements. Your independent assessment is immutable 
 disclosure and does not alter the judge. Each user and judgment campaign has a separate
 review. This mode cannot undo prior exposure to results viewed elsewhere.
 
+## Evaluate a process with synthetic inputs
+
+In the **Process Lab** (`/lab/processes`), enter the executing agent,
+process code and a title. **Save synthetic cases** stores the JSON array in a
+native Dataset; its `data://` URI appears in the input Dataset field. This creates
+no Document in the library. Dataset permissions remain independent of process
+permissions.
+
+**Start real runs** freezes the authorized cases and executes the current process,
+including its external effects. Inspect each case's measured evidence and keep
+the campaign identifier to reopen it with **Inspect a campaign**.
+
 ## Organize coverage
 
 Choose the dataset role: **Work** for tuning, **Validation** for release checks, or

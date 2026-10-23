@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 from datetime import datetime, timedelta, timezone
 
@@ -11,7 +11,7 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.orm import load_only
 
 from app.agent import AgentManagementScope, management_scope_for
-from app.document import create_workflow_document, read_workflow_document, workflow_document_actor
+from app.dataset.facade import create_dataset, dataset_record
 from app.process.facade import current_definition, launch_current, run_evidence, stop_run
 from app.process import ProcessFileInput
 from core.database import get_db
@@ -47,10 +47,10 @@ async def create_synthetic_dataset(actor: int | AgentManagementScope, *, agent_i
     elif actor != agent_id:
         raise PermissionError("Dataset owner access denied")
     content = json.dumps({"synthetic": True, "cases": [case.model_dump(mode="json") for case in cases]}, allow_nan=False)
-    document = await create_workflow_document(owner_agent_id=agent_id,
-        owner_user_id=actor.user_id if isinstance(actor, AgentManagementScope) else None,
-        title=title, content=content, kind="dataset", command=f"lab-process-dataset:{agent_id}:{invocation_key}")
-    return {"document_uri": f"document://{document.id}", "document_id": str(document.id), "revision": document.revision}
+    dataset = await create_dataset(actor, title=title, content=content,
+        creation_key=f"lab-process-dataset:{agent_id}:{invocation_key}")
+    await get_db().commit()
+    return {"dataset_uri": f"data://{dataset.id}", "dataset_id": str(dataset.id), "revision": dataset.revision}
 
 
 async def generate_synthetic_dataset(actor: int | AgentManagementScope, *, agent_id: int, code: str,
@@ -72,26 +72,24 @@ async def generate_synthetic_dataset(actor: int | AgentManagementScope, *, agent
 
 
 async def start_campaign(actor: int | AgentManagementScope, *, agent_id: int, code: str,
-                         dataset_document_id: UUID, title: str, invocation_key: str) -> LabProcessCampaign:
+                         dataset_id: UUID, title: str, invocation_key: str) -> LabProcessCampaign:
     definition = await current_definition(code, actor)
     if definition["archived"]:
         raise ValueError("An archived workflow cannot be benchmarked")
     if isinstance(actor, AgentManagementScope):
         actor.require(agent_id)
-        document_actor = await workflow_document_actor(dataset_document_id, actor)
     else:
         if actor != agent_id:
             raise PermissionError("Campaign launcher access denied")
         from app.connection.facade import has_active_tool_function
         if not await has_active_tool_function(actor, "galaris", "process_start"):
             raise PermissionError("The campaign agent requires the process_start capability")
-        document_actor = actor
-    source = await read_workflow_document(dataset_document_id, document_actor)
-    value = json.loads(source["content"])
-    if source["type"] != "dataset" or value.get("synthetic") is not True:
+    source = await dataset_record(dataset_id, actor)
+    value = json.loads(source.content)
+    if not isinstance(value, dict) or cast(dict[str, Any], value).get("synthetic") is not True:
         raise ValueError("Use a Dataset explicitly containing synthetic cases")
-    cases = ProcessSyntheticCases.model_validate(value).cases
-    digest = hashlib.sha256(json.dumps({"code": code, "dataset": str(dataset_document_id), "revision": source["revision"], "cases": [case.model_dump() for case in cases]}, sort_keys=True).encode()).hexdigest()
+    cases = ProcessSyntheticCases.model_validate({"cases": cast(dict[str, Any], value).get("cases")}).cases
+    digest = hashlib.sha256(json.dumps({"code": code, "dataset": str(dataset_id), "revision": source.revision, "cases": [case.model_dump() for case in cases]}, sort_keys=True).encode()).hexdigest()
     await get_db().execute(select(func.pg_advisory_xact_lock(int.from_bytes(hashlib.sha256(f"lab-process:{agent_id}:{invocation_key}".encode()).digest()[:8], "big", signed=True))))
     existing = await get_db().scalar(select(LabProcessCampaign).where(LabProcessCampaign.owner_agent_id == agent_id, LabProcessCampaign.invocation_key == invocation_key))
     if existing:
@@ -99,7 +97,7 @@ async def start_campaign(actor: int | AgentManagementScope, *, agent_id: int, co
             raise ValueError("This invocation key belongs to different campaign inputs")
         return existing
     campaign = LabProcessCampaign(owner_agent_id=agent_id, owner_user_id=actor.user_id if isinstance(actor, AgentManagementScope) else None,
-        dataset_document_id=dataset_document_id, process_code=code, title=title, invocation_key=invocation_key, fingerprint=digest)
+        dataset_id=dataset_id, process_code=code, title=title, invocation_key=invocation_key, fingerprint=digest)
     get_db().add(campaign)
     await get_db().flush()
     get_db().add_all([LabProcessCase(campaign_id=campaign.id, position=index, input=case.input, expected=case.expected,
@@ -129,7 +127,8 @@ async def inspect_campaign(identity: UUID, actor: int | AgentManagementScope, *,
     )).where(LabProcessCase.campaign_id == identity).order_by(LabProcessCase.position).offset((page - 1) * page_size).limit(page_size)))
     total = await get_db().scalar(select(func.count()).select_from(LabProcessCase).where(LabProcessCase.campaign_id == identity))
     return {"id": str(campaign.id), "title": campaign.title, "code": campaign.process_code, "status": campaign.status,
-        "dataset_uri": f"document://{campaign.dataset_document_id}", "total": total, "page": page, "page_size": page_size,
+        "dataset_uri": f"data://{campaign.dataset_id}" if campaign.dataset_id is not None else f"document://{campaign.dataset_document_id}",
+        "total": total, "page": page, "page_size": page_size,
         "items": [{"id": str(case.id), "position": case.position, "status": case.status, "run_id": str(case.run_id) if case.run_id else None, "evidence": case.evidence} for case in rows]}
 
 

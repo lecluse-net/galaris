@@ -102,7 +102,7 @@ allowed_dependencies = ["app.agent", "app.llm", "app.task"]
 max_domain_fan_out = 3
 
 [module."app.lab"]
-allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.document", "app.dream", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "app.topic", "app.voice"]
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dataset", "app.dream", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "app.topic", "app.voice"]
 max_domain_fan_out = 15
 
 [module."app.messenger"]

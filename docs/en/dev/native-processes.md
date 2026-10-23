@@ -2,6 +2,14 @@
 
 # Native BPMN profiles and data contracts
 
+Lab campaigns store synthetic inputs in `app.dataset` through its public facade:
+`dataset_id`, revision and a `data://` URI. They create no Document. Admission
+checks permissions and freezes the cases. The native
+`lab_process_campaigns.dataset_id` FK is additive; the nullable legacy
+`dataset_document_id` FK preserves existing campaigns. A constraint requires
+exactly one source. See decision
+[0225](../../../project/decisions/0225-process-lab-native-datasets.md).
+
 ## Resource ownership
 
 Current BPMN is stored directly in `process_definitions.bpmn_xml`. Process owns its

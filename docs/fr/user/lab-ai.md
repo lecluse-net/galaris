@@ -266,6 +266,18 @@ le juge. Après révélation, elle ne peut plus être corrigée. Chaque utilisat
 propre revue ; un rejugement ouvre une nouvelle campagne indépendante. Une revue
 n'efface pas une connaissance préalable des résultats consultés ailleurs.
 
+## Évaluer un processus avec des entrées synthétiques
+
+Dans le **Lab des processus** (`/lab/processes`), indiquez l'agent exécutant,
+le code du processus et un titre. **Enregistrer les cas synthétiques** conserve
+le tableau JSON dans un Dataset natif ; son URI `data://` apparaît dans le champ
+du jeu d'entrées. Cette opération n'ajoute aucun Document à la bibliothèque.
+Les droits du Dataset restent indépendants de ceux du processus.
+
+**Démarrer les runs réels** fige les cas autorisés et exécute le processus courant,
+y compris ses effets externes. Consultez les mesures de chaque cas et conservez
+l'identifiant de campagne pour la rouvrir avec **Afficher une campagne**.
+
 ## Organiser la couverture
 
 Dans les paramètres, choisissez le rôle du jeu : **Travail** pour les ajustements,

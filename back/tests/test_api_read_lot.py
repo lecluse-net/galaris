@@ -23,8 +23,7 @@ from app.lab.models import LabTask
 from app.lab.process_evaluation_models import LabProcessCampaign, LabProcessCase
 from app.llm import llm_service
 from app.llm.provider_models import LLM, LLMProvider
-from app.memory import MemoryNotFoundError
-from app.document import document_service
+from app.document import DocumentNotFoundError, document_service
 from app.memory.tests.conftest import memory_storage as memory_storage
 from app.process import native_definitions as definitions
 from app.process.bpmn import to_bpmn
@@ -108,7 +107,7 @@ async def test_legacy_history_keeps_utf8_hashes_and_explicit_content_reads(db, r
     assert all(item["media_type"] == "application/json" and item["author_agent_id"] == owner_id for item in result["items"])
     assert (await adapter.history(identity, owner_id, 10, 10))["items"] == result["items"][10:20]
     assert (await adapter.history(identity, owner_id, 500, 500))["items"] == []
-    with pytest.raises(MemoryNotFoundError):
+    with pytest.raises(DocumentNotFoundError):
         await adapter.history(identity, peer_id, 50, 0)
     assert (await adapter.read(identity, owner_id, revision=1))["content"] == values[0]
     assert report["bytes"] == 0, report
@@ -308,6 +307,7 @@ async def test_process_campaign_inspection_leaves_worker_inputs_unloaded(db, rea
     ids = [case.id for case in cases]
     async with measured(db, "process-campaign", {LabProcessCase: ("input", "expected", "files")}) as report:
         result = await process_evaluation.inspect_campaign(identity, owner_id)
+    assert result["dataset_uri"] == f"document://{document.id}"
     assert result["total"] == 41 and [item["id"] for item in result["items"]] == [str(value) for value in ids]
     assert [item["evidence"] for item in result["items"]] == [{"synthetic": index} for index in range(41)]
     assert (await process_evaluation.inspect_campaign(identity, owner_id, page=2, page_size=10))["items"] == result["items"][10:20]
