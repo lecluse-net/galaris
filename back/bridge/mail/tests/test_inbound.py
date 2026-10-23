@@ -305,6 +305,50 @@ async def test_generic_file_read_keeps_its_waiting_context_for_consent(inbox):
 
 
 @pytest.mark.asyncio
+async def test_mail_search_schema_rejects_unsupported_filter_before_imap(inbox, monkeypatch):
+    from fastmcp import Client
+    from app.tools import build_agent_galaris_fastmcp
+    from bridge.mail.contracts import MailSearchPage
+
+    config, _manager, _outsider, _read = inbox
+    search = AsyncMock(return_value=MailSearchPage(mailbox="INBOX", uid_validity=1))
+    monkeypatch.setattr(service, "search", search)
+    async with get_db_session():
+        server = await build_agent_galaris_fastmcp(config.agent_id, allowed_tool_names={"mail_search"})
+    async with Client(server) as client:
+        refused = await client.call_tool("mail_search", {"has_attachments": False}, raise_on_error=False)
+        assert refused.is_error
+        search.assert_not_called()
+        for value in (None, True):
+            result = await client.call_tool("mail_search", {"has_attachments": value}, raise_on_error=False)
+            assert not result.is_error
+            assert search.call_args.args[1].has_attachments is value
+
+
+@pytest.mark.asyncio
+async def test_empty_flag_change_is_rejected_before_requesting_consent(inbox, monkeypatch):
+    from fastmcp import Client
+    from app.tools import build_agent_galaris_fastmcp
+
+    config, _manager, _outsider, _read = inbox
+    mutate = AsyncMock()
+    monkeypatch.setattr(service, "set_flags", mutate)
+    async with get_db_session():
+        server = await build_agent_galaris_fastmcp(config.agent_id, allowed_tool_names={"mail_set_flags"})
+    async with Client(server) as client:
+        args = {"message_ref": _summary(112).ref}
+        refused = await client.call_tool("mail_set_flags", args, raise_on_error=False)
+        assert refused.is_error
+        assert not (refused.meta or {}).get("galaris.authorization/v1")
+        assert "seen or flagged" in str(refused.content)
+        async with get_db_session() as db:
+            assert await db.scalar(select(func.count()).select_from(ActionAuthorization)) == 0
+        corrected = await client.call_tool("mail_set_flags", {**args, "seen": False}, raise_on_error=False)
+        assert corrected.meta["galaris.authorization/v1"]["disposition"] == "authorization_required"
+        mutate.assert_not_called()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("approved", [True, False])
 async def test_managed_mail_read_resumes_only_its_registered_waiter(inbox, monkeypatch, approved):
     from dataclasses import replace

@@ -48,6 +48,12 @@ terminal à l’expéditeur : toute réponse ou mutation exige un appel explicit
 
 ## Identité et contenu entrant
 
+Le schéma MCP de `mail_search` expose `has_attachments=true` pour exiger une pièce jointe,
+et l'omission ou `null` pour ne pas filtrer. `false` est refusé avant IMAP : le bridge
+n'annonce pas une recherche sans pièces jointes qu'il ne sait pas réaliser de façon bornée.
+`mail_set_flags` exige au moins `seen` ou `flagged` avant toute demande d'accord ; `false`
+efface le flag concerné. Un appel vide ne crée ni attente humaine ni effet incertain.
+
 Une référence de message encode de façon opaque le triplet `mailbox + UIDVALIDITY + UID`. Le
 bridge refuse la référence lorsque `UIDVALIDITY` a changé, afin de ne jamais agir sur un autre
 message après une reconstruction de boîte. Les corps sont paginés dans la réponse MCP, la taille

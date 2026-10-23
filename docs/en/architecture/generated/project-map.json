@@ -9169,7 +9169,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_connection_status",
-        "line": 35,
+        "line": 40,
         "module": "bridge.mail",
         "name": "mail_connection_status",
         "namespace": "mail"
@@ -9177,7 +9177,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_forward",
-        "line": 197,
+        "line": 206,
         "module": "bridge.mail",
         "name": "mail_forward",
         "namespace": "mail"
@@ -9185,7 +9185,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_get",
-        "line": 100,
+        "line": 109,
         "module": "bridge.mail",
         "name": "mail_get",
         "namespace": "mail"
@@ -9193,7 +9193,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_list_mailboxes",
-        "line": 44,
+        "line": 49,
         "module": "bridge.mail",
         "name": "mail_list_mailboxes",
         "namespace": "mail"
@@ -9201,7 +9201,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_move",
-        "line": 257,
+        "line": 273,
         "module": "bridge.mail",
         "name": "mail_move",
         "namespace": "mail"
@@ -9209,7 +9209,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_process",
-        "line": 24,
+        "line": 29,
         "module": "bridge.mail",
         "name": "mail_process",
         "namespace": "mail"
@@ -9217,7 +9217,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_reply",
-        "line": 163,
+        "line": 172,
         "module": "bridge.mail",
         "name": "mail_reply",
         "namespace": "mail"
@@ -9225,7 +9225,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_search",
-        "line": 56,
+        "line": 63,
         "module": "bridge.mail",
         "name": "mail_search",
         "namespace": "mail"
@@ -9233,7 +9233,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_send",
-        "line": 125,
+        "line": 134,
         "module": "bridge.mail",
         "name": "mail_send",
         "namespace": "mail"
@@ -9241,7 +9241,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_set_flags",
-        "line": 234,
+        "line": 250,
         "module": "bridge.mail",
         "name": "mail_set_flags",
         "namespace": "mail"
@@ -9249,7 +9249,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_trash",
-        "line": 266,
+        "line": 282,
         "module": "bridge.mail",
         "name": "mail_trash",
         "namespace": "mail"

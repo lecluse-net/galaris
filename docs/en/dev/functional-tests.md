@@ -795,6 +795,9 @@ denial and registered-waiter checks. DeepSeek qualification also runs Landlock a
 two writable mounts: workspace writes succeed and writes outside it fail.
 The same qualification reads a file outside the workspace through the actual native `read`
 tool without mutation consent, and refuses that read after revoking its run context.
+Mail MCP scenarios reject `has_attachments=false` before IMAP and an empty flag mutation
+before requesting consent; `true`/`null` filters and explicitly clearing a flag retain
+their normal paths.
 `bridge/mail/tests/test_common_authorizations.py` also checks archiving the accepted MIME
 in Sent, repair after an IMAP outage or lost APPEND response, and no second SMTP submission.
 `test_imap_client.py` covers Message-ID readback and deduplication of an existing provider copy.

@@ -47,6 +47,12 @@ to the sender: any reply or mutation requires an explicit call to `mail_reply`,
 
 ## Identity and inbound content
 
+The MCP `mail_search` schema exposes `has_attachments=true` to require an attachment,
+and omission or `null` to disable this filter. `false` is rejected before IMAP: the bridge
+does not advertise a search without attachments that it cannot perform within bounds.
+`mail_set_flags` requires `seen` or `flagged` before requesting consent; `false` clears
+the corresponding flag. An empty call creates neither a human wait nor an uncertain effect.
+
 A message reference opaquely encodes the `mailbox + UIDVALIDITY + UID` tuple. The
 bridge rejects the reference when `UIDVALIDITY` has changed, so it can never act on another
 message after a mailbox reconstruction. Bodies are paginated in the MCP response, the RFC822

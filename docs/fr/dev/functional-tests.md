@@ -839,6 +839,9 @@ DeepSeek exécute aussi Landlock sur deux montages inscriptibles : workspace aut
 écriture hors workspace refusée.
 La même qualification lit un fichier hors workspace avec le véritable outil natif `read`,
 sans accord de modification, et refuse cette lecture après révocation du contexte de run.
+Les scénarios MCP Mail refusent `has_attachments=false` avant IMAP et une mutation de
+flags vide avant la demande d'accord ; les filtres `true`/`null` et l'effacement explicite
+d'un flag conservent leurs chemins normaux.
 `bridge/mail/tests/test_common_authorizations.py` vérifie aussi la copie du MIME accepté dans
 Sent, sa réparation après panne IMAP ou perte de réponse APPEND et l'absence de second envoi
 SMTP. `test_imap_client.py` couvre la relecture par Message-ID et la déduplication d'une copie
