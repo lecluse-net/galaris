@@ -295,6 +295,12 @@ active) et `all` (global). Seul un humain avec édition des connexions et gestio
 des agents peut changer cette valeur locale. Les autorisations des fonctions restent
 nécessaires. Les retraits d'équipe prennent effet dès l'appel suivant.
 
+À sa création, l'assistant **Galaris** reçoit le périmètre global (`all`) sur toutes
+ses connexions intégrées proposant une portée : Galaris Admin, ToolAdmin, AgentAdmin,
+Administration des processus, Gestion des objectifs, Compétences et Chat. Ces connexions
+sont actives. Les synchronisations suivantes conservent vos restrictions et désactivations ;
+un assistant déjà initialisé se configure dans le formulaire de chaque connexion.
+
 ToolAdmin limite les niveaux personnel et équipe aux connexions ; les définitions et
 réglages partagés exigent `all`. Les définitions de processus suivent l'agent affecté,
 les exécutions leur lanceur et les objectifs leur responsable. Galaris Admin applique

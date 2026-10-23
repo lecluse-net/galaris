@@ -6,9 +6,12 @@
 agent connections and function permissions. Its connection starts active when the bundled
 Galaris assistant is first created for the administrator, and inactive for other agents.
 Later deactivations remain preserved; previously initialized assistants do not automatically
-receive this new grant. Conversation access is initially disabled. Human activation delegates global administration,
-narrowed by individual function grants; it does not inherit the agent manager's human rights.
-AgentAdmin retains its own scope and delegation.
+receive this new grant. Conversation access is initially disabled. The local
+`tools.management_scope` parameter bounds administration; activating the connection alone
+does not grant global scope. At creation, the Galaris assistant receives `all` on every
+built-in connection offering a scope, and those connections start active. Individual
+function grants further restrict delegation. ToolAdmin does not inherit the agent manager's
+human rights. AgentAdmin retains its own scope and delegation.
 
 ## Enable and restrict delegation
 

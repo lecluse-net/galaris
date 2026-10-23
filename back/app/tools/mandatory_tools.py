@@ -762,27 +762,23 @@ async def sync_mandatory_tools() -> list[ToolModel]:
 
 
 async def initialize_admin_agent_connections(agent_id: int) -> None:
-    """Initialize optional administration grants for a newly seeded Galaris agent."""
-    from sqlalchemy import update
+    """Initialize global scopes on the newly seeded Galaris agent's built-in connections."""
     from app.connection import Connection
+    from app.connection.facade import set_params_bulk
+    from .contracts import MANAGEMENT_SCOPE_PARAM
 
     await sync_integrated_tool_connections(agent_id)
-    await get_db().execute(
-        update(Connection).where(
+    for connection, tool in await get_db().execute(
+        select(Connection, ToolModel).join(ToolModel, ToolModel.id == Connection.tool_id).where(
             Connection.agent_id == agent_id,
-            Connection.tool_id.in_(select(ToolModel.id).where(
-                ToolModel.code.in_(("galaris_admin", "tool_admin", "agent_admin"))
-            )),
-        ).values(active=True)
-    )
-    from app.connection.facade import set_params_bulk
-    for connection in await get_db().scalars(select(Connection).where(
-        Connection.agent_id == agent_id,
-        Connection.tool_id.in_(select(ToolModel.id).where(
-            ToolModel.code.in_(("galaris_admin", "tool_admin", "agent_admin"))
-        )),
-    )):
-        await set_params_bulk(connection.id, {"tools.management_scope": "all"}, commit=False, scope_edit_authorized=True)
+            ToolModel.code.in_(AUTO_CONNECTED_INTEGRATED_TOOL_CODES),
+        )
+    ):
+        if MANAGEMENT_SCOPE_PARAM not in tool.connection_schema.get("params", {}):
+            continue
+        connection.active = True
+        await set_params_bulk(connection.id, {MANAGEMENT_SCOPE_PARAM: "all"},
+                              commit=False, scope_edit_authorized=True)
 
 
 async def sync_integrated_tool_connections(agent_id: int | None = None) -> int:

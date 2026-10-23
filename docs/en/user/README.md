@@ -236,6 +236,12 @@ from the generic library and cannot be shared.
 
 ### Delegating administration to an agent
 
+When first created, the **Galaris** assistant receives global scope (`all`) on all its
+built-in connections offering a scope: Galaris Admin, ToolAdmin, AgentAdmin, Process
+administration, Goal management, Skills and Chat. These connections start active.
+Later synchronizations preserve your restrictions and deactivations; configure an
+already initialized assistant through each connection's form.
+
 In **Tools → Connections → edit a connection → Management scope**,
 `tools.management_scope` also configures Process administration, ToolAdmin,
 Goal management, Galaris Admin and AgentAdmin. Levels are `usage` (no administration),

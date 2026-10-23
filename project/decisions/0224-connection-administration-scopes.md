@@ -54,7 +54,9 @@ refus d'écriture agentique du paramètre existants restent applicables.
 Les connexions administratives existantes sans paramètre doivent recevoir une portée
 explicite via leur formulaire humain : leur activation ne vaut plus administration
 globale. La création initiale de l'assistant système configure explicitement `all`
-pour ses trois connexions d'administration déjà prévues ; la synchronisation ordinaire
+pour toutes ses connexions intégrées proposant ce paramètre : `galaris_admin`,
+`tool_admin`, `agent_admin`, `process_admin`, `goal_management`, `skills` et `chat`.
+Ces connexions sont actives à sa création ; la synchronisation ordinaire
 ne réactive ni n'élargit les connexions existantes. Skills conserve sa migration propre.
 
 `app/tools/tests/test_management_scopes.py` couvre les refus, la séparation entre Tools,

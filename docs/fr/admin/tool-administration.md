@@ -7,9 +7,11 @@ les connexions des agents et les permissions des fonctions. Sa connexion est act
 création de l’assistant Galaris proposé à l’administrateur, et inactive par défaut pour les
 autres agents. Une désactivation ultérieure reste conservée ; les assistants déjà initialisés
 ne reçoivent pas automatiquement ce nouveau droit. Son mode conversation est initialement
-désactivé. Activer cette connexion constitue
-une délégation globale, affinée par les fonctions autorisées ; elle ne reprend pas les droits
-du responsable humain de l’agent. AgentAdmin conserve son propre périmètre et sa délégation.
+désactivé. Le paramètre local `tools.management_scope` délimite l'administration ; activer
+la connexion seule ne donne pas de portée globale. L'assistant Galaris reçoit `all` à sa
+création sur toutes ses connexions intégrées proposant une portée, qui démarrent actives.
+Les fonctions autorisées continuent d'affiner la délégation. ToolAdmin ne reprend pas les
+droits du responsable humain de l’agent. AgentAdmin conserve son propre périmètre et sa délégation.
 
 ## Activer et limiter la délégation
 

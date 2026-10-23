@@ -9,7 +9,7 @@ from sqlalchemy import select
 from app.agent.defaults import default_agent_dataset
 from app.agent.models import Agent, Title
 from app.connection import Connection
-from app.connection.facade import has_active_tool_function
+from app.connection.facade import get_management_scope, has_active_tool_function, set_params_bulk
 from app.skill import AgentSkill, skill_service
 from app.tools import ToolModel, has_documentation_access, has_galaris_admin_access, initialize_admin_agent_connections
 from app.tools.dbadmin import datasets as tool_datasets
@@ -60,6 +60,10 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     assert await has_documentation_access(agent.id)
     assert await has_active_tool_function(agent.id, "tool_admin", "tool_admin_list")
     assert await has_active_tool_function(agent.id, "agent_admin", "agent_options")
+    scoped_tools = {"galaris_admin", "tool_admin", "agent_admin", "skills",
+                    "process_admin", "goal_management", "chat"}
+    for tool_code in scoped_tools:
+        assert await get_management_scope(agent.id, tool_code) == "all", tool_code
     skill = await skill_service.get_by_code(skill_code)
     assert skill is not None and not skill.global_enabled
     assert skill_code in await skill_service.get_assigned_codes(agent.id)
@@ -75,11 +79,13 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     await db.flush()
     agent.profile_id = custom_profile.id
     agent.agent_driver = "hermes"
-    for tool_code in ("galaris_admin", "tool_admin", "agent_admin"):
+    for tool_code in scoped_tools:
         admin_tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == tool_code))
         connection = (await db.scalars(select(Connection).where(
             Connection.agent_id == agent.id, Connection.tool_id == admin_tool_id,
         ))).one()
+        await set_params_bulk(connection.id, {"tools.management_scope": "team"},
+                              commit=False, scope_edit_authorized=True)
         connection.active = False
     await db.commit()
     await skill_service.set_agent_authorization(skill.id, agent.id, "disabled")
@@ -103,6 +109,17 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     assert assignment.active is False
     assert agent.profile_id == custom_profile.id and agent.agent_driver == "hermes"
     assert agent.avatar == custom_avatar
+    from app.connection.models import ConnectionParam
+
+    scoped_connections = (await db.execute(
+        select(Connection.active, ConnectionParam.param_value)
+        .join(ToolModel, ToolModel.id == Connection.tool_id)
+        .join(ConnectionParam, ConnectionParam.connection_id == Connection.id)
+        .where(Connection.agent_id == agent.id, ToolModel.code.in_(scoped_tools),
+               ConnectionParam.param_name == "tools.management_scope")
+    )).all()
+    assert len(scoped_connections) == len(scoped_tools)
+    assert all(not active and scope == "team" for active, scope in scoped_connections)
 
     agent.soft_delete()
     await db.commit()
