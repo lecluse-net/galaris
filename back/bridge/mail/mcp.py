@@ -6,11 +6,25 @@ from app.tools.mcp_loader import McpToolContext, mcp_tool
 
 from .contracts import MailSearchQuery
 from . import service
+from .inbound import PROCESS_NAME, PROCESS_REASON, ensure_readable
+from .connection_service import resolve_mail_connection
+from app.tools.facade import authorization_context_key
 
 
 def _json(value: object) -> object:
     model_dump = getattr(value, "model_dump", None)
     return model_dump(mode="json") if callable(model_dump) else value
+
+
+@mcp_tool("mail", name=PROCESS_NAME, approval="ask", approval_reason=PROCESS_REASON,
+    authorization_boundary="prepared",
+    description=("Authorize processing one email before reading it. By default known contacts "
+        "are accepted; unknown senders require human consent. Explicit Ask applies to all senders; "
+        "Enabled always allows processing. This does not authorize sending a reply."))
+async def mail_process(ctx: McpToolContext, message_ref: str) -> object:
+    row = await ensure_readable(await resolve_mail_connection(ctx.agent_id), message_ref,
+        parent_context=authorization_context_key(ctx.task_id, ctx.resources))
+    return {"receipt_id": str(row.id), "message_ref": row.message_ref, "status": row.status}
 
 
 @mcp_tool("mail", approval='enabled', approval_reason='Governed bounded read or polling',
@@ -95,6 +109,7 @@ async def mail_get(
             message_ref,
             body_offset=body_offset,
             body_limit=body_limit,
+            parent_context=authorization_context_key(ctx.task_id, ctx.resources),
         )
     )
 

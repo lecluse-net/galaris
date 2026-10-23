@@ -1,11 +1,31 @@
 """Contact checks at the canonical transport boundary, using persisted identities."""
 from uuid import UUID
+from collections.abc import Awaitable, Callable
 from sqlalchemy import select
 
 from core.database import get_db
 from app.agent import require_agent_contact
 from app.connection import Connection
-from .models import MessengerUser, RoomUser
+from .models import Message, MessengerUser, RoomUser
+
+
+InboundContactAuthorizer = Callable[[int, Message], Awaitable[bool]]
+_inbound_authorizers: dict[str, InboundContactAuthorizer] = {}
+
+
+def register_inbound_contact_authorizer(platform: str, authorizer: InboundContactAuthorizer) -> None:
+    """Let a bridge prove durable, message-specific human consent for external senders."""
+    _inbound_authorizers[platform] = authorizer
+
+
+async def require_incoming_contact(agent_id: int, message: Message) -> None:
+    if authorizer := _inbound_authorizers.get(message.platform or ""):
+        if await authorizer(agent_id, message):
+            return
+        raise PermissionError("The incoming message has no valid contact authorization")
+    if message.sender is None:
+        raise PermissionError("The incoming message has no sender")
+    await require_contact_with_identity(agent_id, message.sender)
 
 
 async def require_contact_with_identity(agent_id: int, identity: MessengerUser) -> None:

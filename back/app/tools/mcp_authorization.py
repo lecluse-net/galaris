@@ -75,6 +75,8 @@ async def bind_native_action(ctx: McpToolContext, definition: McpToolDefinition,
         preview=f"{tool.label}: {definition.name}",
         continuation=execution.authorization_continuation if execution else None,
     )
+    if execution is not None:
+        execution.authorization_context = action.context_key
     if definition.authorization_boundary == "prepared" and action.continuation:
         callback = restore_prepared_callback(action)
         action = replace(action, callback_key=callback)

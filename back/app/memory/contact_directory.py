@@ -217,6 +217,25 @@ async def get_messenger_contact(contact_item_id: UUID) -> MessengerContactRecord
     )
 
 
+async def has_mail_contact(*, owner_agent_id: int, address: str) -> bool:
+    """A name or another agent's address book never grants email trust."""
+    try:
+        normalized = str(_EMAIL_ADAPTER.validate_python(address)).casefold()
+    except ValueError:
+        return False
+    return await get_db().scalar(
+        select(MemoryContactIdentity.id).join(
+            MemoryItem, MemoryItem.id == MemoryContactIdentity.contact_item_id
+        ).where(
+            MemoryItem.owner_agent_id == owner_agent_id,
+            MemoryContactIdentity.owner_agent_id == owner_agent_id,
+            MemoryContactIdentity.identity_kind == "messenger",
+            MemoryContactIdentity.namespace == "mail",
+            func.lower(MemoryContactIdentity.external_id) == normalized,
+        ).limit(1)
+    ) is not None
+
+
 async def create_mail_contact(
     *, owner_agent_id: int, display_name: str, email: str,
 ) -> MessengerContactRecord:

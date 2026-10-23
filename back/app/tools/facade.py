@@ -5,7 +5,7 @@ from uuid import UUID
 from collections.abc import Collection
 from .schemas import Tool
 from .runtime_principals import RuntimePrincipal, register_runtime_principal_port
-from .mcp_authorization import bind_native_action
+from .mcp_authorization import bind_native_action, authorization_context_key as authorization_context_key
 from .authorization import authorization_policy as agent_authorization_policy
 from .secrets import public_connection_schema as public_connection_schema
 from .secrets import resolve_connection_references as resolve_connection_references
@@ -74,6 +74,7 @@ from .runtime_authorization import (
 )
 from .authorization import fingerprint as authorization_fingerprint
 from .authorization import (
+    tool_authorization_configuration as tool_authorization_configuration,
     register_authorization_dispatch_guard as register_authorization_dispatch_guard,
     register_deferred_authorization_guard as register_deferred_authorization_guard,
     continued_deferred_dispatch as continued_deferred_dispatch,

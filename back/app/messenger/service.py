@@ -343,14 +343,14 @@ async def _process_incoming(message: Message) -> None:
         logger.warning("Incoming-message agent {} not found", connection.agent_id)
         return
 
-    from .contact_access import require_contact_with_identity
+    from .contact_access import require_incoming_contact
     contact_sender = message.sender
     if contact_sender is None or not contact_sender.external_id:
         return
     try:
-        await require_contact_with_identity(connection.agent_id, contact_sender)
+        await require_incoming_contact(connection.agent_id, message)
     except PermissionError:
-        logger.info("Incoming contact denied by team policy: agent={}", connection.agent_id)
+        logger.info("Incoming contact denied by admission policy: agent={}", connection.agent_id)
         return
 
     connection_kind = _bridge_kind_for_tool(tool)

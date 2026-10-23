@@ -108,6 +108,12 @@ export interface MailDeliveryQuery {
 }
 
 export const mailService = {
+  listInbound(query: Omit<MailDeliveryQuery, 'scope'>, signal?: AbortSignal): Promise<AxiosResponse<MailInboundPage>> {
+    return api.get('/mail/inbound', { params: query, signal })
+  },
+  getInbound(id: string, signal?: AbortSignal): Promise<AxiosResponse<MailInboundDetail>> {
+    return api.get(`/mail/inbound/${id}`, { signal })
+  },
   status(): Promise<AxiosResponse<MailStatus>> {
     return api.get('/mail/status')
   },
@@ -132,4 +138,36 @@ export const mailService = {
   rejectDelivery(deliveryId: string, reason: string): Promise<AxiosResponse<MailDeliveryDetail>> {
     return api.post(`/mail/outbound/${deliveryId}/reject`, { reason })
   },
+}
+
+export interface MailInboundItem {
+  id: string
+  connection_id: number | null
+  agent_id: number | null
+  agent_label: string
+  sender_address: string
+  subject: string
+  message_ref: string
+  to_addresses: string[]
+  known_contact: boolean
+  status: string
+  authorization_id: string | null
+  authorization_status: string | null
+  can_review: boolean
+  created_at: string
+  authorized_at: string | null
+  admitted_at: string | null
+  read_at: string | null
+  error: string | null
+}
+
+export interface MailInboundDetail extends MailInboundItem {
+  content: { body?: string; body_total?: number; body_end?: number; attachments?: Array<{ filename: string }> } | null
+}
+
+export interface MailInboundPage {
+  items: MailInboundItem[]
+  total: number
+  offset: number
+  limit: number
 }

@@ -1,6 +1,12 @@
 <template>
   <q-page class="mail-journal-page q-pa-md">
     <PageHeader :icon="navigationIcon('outbox')" :title="t('mailJournal.title')" :description="t('mailJournal.description')" />
+    <q-tabs v-model="tab" align="left" active-color="primary" class="q-mb-md">
+      <q-tab name="outbound" icon="outbox" :label="t('mailJournal.outboundTab')" />
+      <q-tab name="inbound" icon="inbox" :label="t('mailJournal.inboundTab')" />
+    </q-tabs>
+    <MailInboundJournal v-if="tab === 'inbound'" :agents="agents" />
+    <div v-else>
 
     <div class="row q-col-gutter-md q-mb-lg">
       <div class="col-12 col-md-7">
@@ -74,7 +80,7 @@
           <q-td :props="props">
             <q-btn
               v-if="props.row.can_review"
-              flat
+              outline
               dense
               color="positive"
               icon="send"
@@ -207,6 +213,7 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    </div>
   </q-page>
 </template>
 
@@ -218,6 +225,7 @@ import { useI18n } from 'vue-i18n'
 import { PageHeader, formatFileSize } from '@/core/util'
 import { AgentSelect } from '@/app/agent'
 import MailDeliveryCard from '../components/MailDeliveryCard.vue'
+import MailInboundJournal from '../components/MailInboundJournal.vue'
 import {
   mailService,
   type MailDeliveryDetail,
@@ -226,6 +234,7 @@ import {
 } from '../services/mailService'
 
 const { t, locale } = useI18n()
+const tab = ref('outbound')
 const $q = useQuasar()
 const rowsPerPageOptions = [10, 20, 50, 100, 500]
 const pendingRows = ref<MailDeliveryListItem[]>([])

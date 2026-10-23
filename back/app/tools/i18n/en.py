@@ -3,6 +3,8 @@
 default: dict[str, object] = {
     "approval_preview": {
         "send_mail": "Send an email",
+        "process_mail": "Allow reading and processing this email",
+        "sender": "Sender",
         "run_function": "Use function ${function}",
         "to": "Recipients", "cc": "Cc", "bcc": "Bcc",
         "subject": "Subject", "body": "Message", "html_body": "HTML version (source text)",

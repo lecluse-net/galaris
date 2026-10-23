@@ -27,6 +27,7 @@ from .interface import HistoryPage, BridgeSpec, ParamDef, NotSupported
 from .events import Signal, message_journaled, message_received, message_sent, interaction_changed, message_admitting
 from .native_interactions import read_internal_interaction, answer_internal_interaction
 from .inbound import on_message, dispatch_incoming
+from .contact_access import register_inbound_contact_authorizer as register_inbound_contact_authorizer
 from .facade import (
     MessengerFacade,
     register_bridge,

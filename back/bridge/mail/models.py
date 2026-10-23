@@ -1,4 +1,4 @@
-"""Durable journal and approval state for every outbound Mail delivery."""
+"""Durable reception and delivery journals with their Mail authorization state."""
 
 from __future__ import annotations
 
@@ -134,4 +134,49 @@ class MailOutboundDelivery(Base):
     )
 
 
-__all__ = ["MailOutboundDelivery"]
+class MailInboundReceipt(Base):
+    """Header-only receipt; no body is fetched before processing is authorized."""
+
+    __tablename__ = "mail_inbound_receipts"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    connection_id: Mapped[int | None] = mapped_column(
+        ForeignKey("connections.id", ondelete="SET NULL"), index=True
+    )
+    agent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("agents.id", ondelete="SET NULL"), index=True
+    )
+    agent_label: Mapped[str] = mapped_column(String(255), default="")
+    message_ref: Mapped[str] = mapped_column(String(2048))
+    sender_address: Mapped[str] = mapped_column(String(320), default="")
+    subject: Mapped[str] = mapped_column(Text, default="")
+    summary: Mapped[dict[str, object]] = mapped_column(JSONB)
+    content: Mapped[dict[str, object] | None] = mapped_column(JSONB)
+    known_contact: Mapped[bool] = mapped_column(Boolean, default=False)
+    dispatch_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(32), default="received")
+    authorization_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("tool_action_authorizations.id", ondelete="RESTRICT"), index=True
+    )
+    configuration_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    waiting_contexts: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    authorized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    admitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("connection_id", "message_ref", name="uq_mail_inbound_connection_ref"),
+        CheckConstraint(
+            "status IN ('received', 'pending_approval', 'authorized', 'admitted', 'rejected', 'blocked', 'error')",
+            name="ck_mail_inbound_status",
+        ),
+        Index("ix_mail_inbound_agent_created", "agent_id", "created_at"),
+    )
+
+
+__all__ = ["MailOutboundDelivery", "MailInboundReceipt"]

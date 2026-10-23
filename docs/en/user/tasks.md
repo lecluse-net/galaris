@@ -210,6 +210,27 @@ advertised by your server. If archiving fails, the receipt reports it without un
 the actual send. A replay with the same key and content repairs the copy without
 sending a second email.
 
+The **Mail journal** has **Sending** and **Reception** tabs. Reception keeps headers, sender,
+receiving agent, consent/read/Task admission timestamps, denials, blocks and errors. Bodies and
+attachments are not downloaded before consent. After reading, the journal retains a content
+page of up to 50,000 characters and attachment metadata, with an explicit truncation notice.
+The complete email remains available in pages from its source mailbox.
+
+By default, an exact email identity in this agent’s **Contacts** allows processing directly.
+A display name, another address or another agent’s directory cannot grant this permission.
+Unknown senders require the agent manager’s common authorization, available in private Chat,
+**Permissions**, and the Reception detail. Denial or expiration causes neither reading nor Task
+creation. Consent resumes reception automatically without creating duplicate Tasks. Messenger
+projects contacts after admission.
+
+The **mail_process** function uses the same global and local policies as other functions:
+**Enabled** processes every sender; **Ask** requires consent for every email, including contacts;
+**Blocked** prevents processing. Without an explicit policy, contacts are accepted and unknown
+senders require consent. **Always process emails** enables the function only on this agent’s
+connection; revoke it in Permissions. Sending permissions remain independent of reading and
+processing permission. The journal covers newly observed incoming mail and mail discovered by
+tools; startup preserves the existing cursor and does not replay old mailbox contents.
+
 Essential information may be missing: recipient, file, period, authorization, or an irreversible choice. The Agent must then ask a short question and wait rather than guess. A question is a valid result of the current turn; reply in the same conversation to continue.
 
 Two waits have different outcomes. When choosing the organization of an ambiguous mission,

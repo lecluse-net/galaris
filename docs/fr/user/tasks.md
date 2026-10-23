@@ -237,6 +237,29 @@ configuré ou annoncé par votre serveur. Si cette copie échoue, le reçu le pr
 annuler l'envoi réel. Une reprise avec la même clé et le même contenu répare la copie
 sans envoyer un second mail.
 
+Le **Journal des mails** possède les onglets **Envoi** et **Réception**. Réception conserve
+les en-têtes, l’expéditeur, l’agent destinataire, les dates d’accord, de lecture et d’admission
+en tâche, ainsi que les refus, blocages et erreurs. Avant l’accord, le corps et les pièces
+jointes ne sont pas téléchargés. Après lecture, le journal conserve une page de contenu
+de 50 000 caractères maximum et les métadonnées des pièces jointes ; un éventuel abrègement
+est indiqué. Le mail complet reste disponible par pages dans la boîte source.
+
+Par défaut, une adresse mail présente dans les **Contacts** de cet agent autorise directement
+le traitement. Un nom affiché, une autre adresse ou le carnet d’un autre agent ne suffit pas.
+Un expéditeur inconnu déclenche une autorisation commune auprès du responsable de l’agent,
+dans le Chat privé et dans **Permissions** ; elle peut aussi être examinée depuis Réception.
+Un refus ou une expiration ne déclenche aucune lecture ni tâche. L’accord reprend automatiquement
+la réception, sans créer de tâche en double. Les contacts sont projetés par Messenger après admission.
+
+La fonction **mail_process** utilise les mêmes règles globales et locales que les autres fonctions :
+**Actif** permet de traiter tous les expéditeurs ; **Sur demande** impose un accord pour chaque mail,
+y compris ceux des contacts ; **Bloqué** interdit le traitement. Sans règle explicite, les contacts
+sont admis et les inconnus demandent un accord. **Toujours traiter les mails** active cette fonction
+uniquement pour la connexion de cet agent ; révoquez cet accord dans Permissions.
+Les autorisations d’envoi restent indépendantes du droit de lire et traiter le mail.
+Le journal couvre les nouveaux mails observés par l’écoute et les mails retrouvés par les outils ;
+le démarrage conserve le curseur existant et ne relance pas les anciens mails de la boîte.
+
 Une information essentielle peut manquer : destinataire, fichier, période, autorisation ou
 choix irréversible. L’agent doit alors poser une question courte et attendre au lieu de
 deviner. Une question est un résultat valide du tour en cours ; répondez dans la même

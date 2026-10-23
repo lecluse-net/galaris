@@ -543,8 +543,8 @@
       "route": "/connection/mail",
       "href": null,
       "description": {
-        "fr": "Validation et journal des courriels envoyés par les agents",
-        "en": "Approval and journal of emails sent by agents"
+        "fr": "Autorisations et journal des courriels envoyés et reçus par les agents",
+        "en": "Permissions and journal of emails sent and received by agents"
       },
       "privilege_groups": [
         [

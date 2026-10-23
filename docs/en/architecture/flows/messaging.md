@@ -370,7 +370,12 @@ caller actually ends the conversation.
 Senders recognized as AI agents retain the Task collaboration workflow. A human entry without an
 exact reply address temporarily remains on the legacy path to avoid silent loss.
 
-Mail declares a transport-specific `task` admission policy: each newly journaled email immediately
+Mail journals headers before advancing its IMAP cursor. The first poll establishes a baseline
+without replaying history; a generation change or a cursor beyond the current mailbox watermark
+reestablishes that baseline. The body is read only after `mail_process` authorization: by default,
+exact addresses in the agent's Contacts are accepted and unknown senders require common consent.
+Explicit Enabled, Ask and Blocked policies take precedence; sending approval remains independent.
+Mail declares a transport-specific `task` admission policy: each newly authorized incoming email
 creates a Task that receives its `mail_get` reference, without passing through the short
 conversational controller. This exception remains owned by `app.messenger`; the IMAP bridge never
 creates a Task itself. The terminal result is not implicitly returned over SMTP, because every

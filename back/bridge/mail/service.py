@@ -17,7 +17,7 @@ from urllib.parse import unquote
 from uuid import UUID, uuid4
 
 from pydantic import EmailStr, TypeAdapter
-from sqlalchemy import Text, and_, cast as sql_cast, func, or_, select
+from sqlalchemy import Text, and_, cast as sql_cast, func, or_, select, union_all
 from sqlalchemy.dialects.postgresql import insert
 
 from app.agent.contracts import RuntimeName
@@ -45,7 +45,7 @@ from .contracts import (
 )
 from .imap_client import ImapClient
 from .mime import AI_DISCLOSURE_VERSION, build_message
-from .models import MailOutboundDelivery
+from .models import MailInboundReceipt, MailOutboundDelivery
 from .schemas import (
     MailApproverOption,
     MailDeliveryAgentOption,
@@ -132,7 +132,12 @@ async def list_mailboxes(agent_id: int) -> list[MailboxInfo]:
 
 async def search(agent_id: int, query: MailSearchQuery) -> MailSearchPage:
     config = await resolve_mail_connection(agent_id)
-    return await _thread(lambda: ImapClient(config).search(query))
+    page = await _thread(lambda: ImapClient(config).search(query))
+    from .inbound import record_receipt
+
+    for summary in page.messages:
+        await record_receipt(config, summary)
+    return page
 
 
 async def get_message(
@@ -141,16 +146,22 @@ async def get_message(
     *,
     body_offset: int = 0,
     body_limit: int = 20_000,
+    parent_context: str | None = None,
 ) -> MailMessageDetail:
     config = await resolve_mail_connection(agent_id)
+    from .inbound import ensure_readable, record_read
+
+    row = await ensure_readable(config, message_ref, parent_context=parent_context)
     ref = MailMessageRef.decode(message_ref)
-    return await _thread(
+    detail = await _thread(
         lambda: ImapClient(config).get_message(
             ref,
             body_offset=max(0, body_offset),
             body_limit=max(1, min(body_limit, 50_000)),
         )
     )
+    await record_read(row, detail)
+    return detail
 
 
 async def set_flags(
@@ -708,11 +719,8 @@ async def reply(
     idempotency_key: str,
 ) -> MailSendReceipt:
     config = await resolve_mail_connection(agent_id)
-    original = await _thread(
-        lambda: ImapClient(config).get_message(
-            MailMessageRef.decode(message_ref), body_offset=0, body_limit=50_000
-        )
-    )
+    original = await get_message(agent_id, message_ref, body_limit=50_000,
+        parent_context=f"task:{task_id}" if task_id else None)
     primary = original.reply_to_addresses or ([original.from_address] if original.from_address else [])
     recipients = [*primary, *additional_to]
     cc = original.to_addresses + original.cc_addresses if reply_all else []
@@ -765,9 +773,8 @@ async def forward(
 ) -> MailSendReceipt:
     config = await resolve_mail_connection(agent_id)
     ref = MailMessageRef.decode(message_ref)
-    original = await _thread(
-        lambda: ImapClient(config).get_message(ref, body_offset=0, body_limit=50_000)
-    )
+    original = await get_message(agent_id, message_ref, body_limit=50_000,
+        parent_context=f"task:{task_id}" if task_id else None)
     suffix = ""
     if include_original:
         suffix = (
@@ -971,17 +978,15 @@ async def list_deliveries(
 async def list_delivery_agents(
     *, agent_ids: Collection[int] | None = None
 ) -> list[MailDeliveryAgentOption]:
-    query = (
-        select(
-                MailOutboundDelivery.agent_id,
-                func.max(MailOutboundDelivery.agent_label),
-            )
-            .where(MailOutboundDelivery.agent_id.is_not(None))
-            .group_by(MailOutboundDelivery.agent_id)
-            .order_by(func.max(MailOutboundDelivery.agent_label))
-    )
+    journal = union_all(
+        select(MailOutboundDelivery.agent_id, MailOutboundDelivery.agent_label),
+        select(MailInboundReceipt.agent_id, MailInboundReceipt.agent_label),
+    ).subquery()
+    query = select(journal.c.agent_id, func.max(journal.c.agent_label)).where(
+        journal.c.agent_id.is_not(None)
+    ).group_by(journal.c.agent_id).order_by(func.max(journal.c.agent_label))
     if agent_ids is not None:
-        query = query.where(MailOutboundDelivery.agent_id.in_(agent_ids))
+        query = query.where(journal.c.agent_id.in_(agent_ids))
     rows = (await get_db().execute(query)).all()
     return [
         MailDeliveryAgentOption(id=agent_id, label=str(label or f"Agent {agent_id}"))
@@ -1146,6 +1151,9 @@ async def get_attachment(
     *, max_bytes: int | None = None,
 ) -> OutgoingAttachment:
     config = await resolve_mail_connection(agent_id)
+    from .inbound import ensure_readable
+
+    await ensure_readable(config, message_ref)
     ref = MailMessageRef.decode(message_ref)
     from core.util import buffered_io_budget
 

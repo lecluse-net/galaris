@@ -1310,7 +1310,7 @@ denials and retries, not delivery to a real remote account.
 | `one_bot` | Event/API routing and hub connections | `test_hub.py`, `test_router_routing.py`, `test_messenger_routing.py` |
 | `telegram` | Messaging and delivery retry | `test_messenger.py`, `test_delivery_retry.py` |
 | `whatsapp` | Bridge authentication, API and Messenger delivery | `test_router.py`, `test_client.py`, `test_messenger_send.py` |
-| `mail` | MIME, identity, authorized connections, files and private Chat/journal approval (recovery, concurrency, rejection) | `test_assertions.py`, `test_connection_resolution.py`, `test_mime.py`, `test_messenger.py`, `test_file_transport.py`, `test_chat_approvals.py`; E2E `mail-approval.spec.mjs` |
+| `mail` | MIME, identity, authorized connections, files and private Chat/journal approval; reception before reading, agent-private contacts, one-time/permanent consent, rejection, concurrent duplicates and crash recovery | `test_assertions.py`, `test_connection_resolution.py`, `test_mime.py`, `test_messenger.py`, `test_file_transport.py`, `test_chat_approvals.py`, `test_inbound.py`; browser `mail-inbound.spec.mjs`; E2E `mail-approval.spec.mjs`, `mail-inbound.spec.mjs` |
 | `calendar` | Dates/recurrence, limits and authorized operations | `test_ical.py`, `test_calculation_limits.py`, `test_service.py`, `test_mcp.py` |
 | `n8n` | Translate startup, callbacks and cancellation to Process | `test_n8n_bridge.py` |
 | `harness` | Manager diagnostics and container lifecycle | `test_manager.py`, `test_diagnostics.py`, `make tests-harness-manager` |

@@ -761,10 +761,6 @@
       "target": "app.messenger._observations"
     },
     {
-      "source": "back/bridge/mail/messenger.py",
-      "target": "app.messenger.inbound"
-    },
-    {
       "source": "back/bridge/matrix/call.py",
       "target": "app.voice.models"
     },

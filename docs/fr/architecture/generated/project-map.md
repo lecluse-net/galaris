@@ -11,15 +11,15 @@ tests restent l’autorité sur le comportement.
 
 - 77 modules backend déclarés ;
 - 39 modules frontend déclarés ;
-- 603 arêtes de dépendance backend ;
+- 604 arêtes de dépendance backend ;
 - 210 arêtes de dépendance frontend ;
-- 286 arêtes entre domaines `app`/`bridge` ;
+- 287 arêtes entre domaines `app`/`bridge` ;
 - 27 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 735 handlers HTTP/WebSocket détectés ;
-- 175 tables SQLAlchemy détectées ;
-- 272 outils MCP natifs détectés ;
+- 737 handlers HTTP/WebSocket détectés ;
+- 176 tables SQLAlchemy détectées ;
+- 273 outils MCP natifs détectés ;
 - 51 pages Vue détectées.
 
 ## Modules backend
@@ -228,7 +228,7 @@ tests restent l’autorité sur le comportement.
 | `app.console` | `core.util` | `back/app/console/file_transport.py` |
 | `app.contact` | `app.agent` | `back/app/contact/router.py` |
 | `app.contact` | `app.conversation` | `back/app/contact/service.py` |
-| `app.contact` | `app.memory` | `back/app/contact/router.py`, `back/app/contact/service.py` |
+| `app.contact` | `app.memory` | `back/app/contact/facade.py`, `back/app/contact/router.py`, `back/app/contact/service.py` |
 | `app.contact` | `app.messenger` | `back/app/contact/service.py` |
 | `app.contact` | `app.task` | `back/app/contact/service.py` |
 | `app.contact` | `core.authorize` | `back/app/contact/router.py` |
@@ -635,12 +635,13 @@ tests restent l’autorité sur le comportement.
 | `bridge.hermes` | `core.util` | `back/bridge/hermes/client.py`, `back/bridge/hermes/config_service.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/kanban.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/session_binding.py` |
 | `bridge.huggingface` | `app.llm` | `back/bridge/huggingface/__init__.py` |
 | `bridge.mail` | `app.agent` | `back/bridge/mail/approvals.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
-| `bridge.mail` | `app.connection` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/router.py` |
+| `bridge.mail` | `app.connection` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/router.py` |
+| `bridge.mail` | `app.contact` | `back/bridge/mail/inbound.py` |
 | `bridge.mail` | `app.file_share` | `back/bridge/mail/__init__.py`, `back/bridge/mail/file_transport.py`, `back/bridge/mail/service.py` |
-| `bridge.mail` | `app.messenger` | `back/bridge/mail/__init__.py`, `back/bridge/mail/approvals.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/service.py` |
-| `bridge.mail` | `app.tools` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/mcp.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `app.messenger` | `back/bridge/mail/__init__.py`, `back/bridge/mail/approvals.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `app.tools` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/mcp.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `core.authorize` | `back/bridge/mail/approvals.py`, `back/bridge/mail/assertions.py`, `back/bridge/mail/router.py` |
-| `bridge.mail` | `core.database` | `back/bridge/mail/approvals.py`, `back/bridge/mail/models.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `core.database` | `back/bridge/mail/approvals.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/models.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `core.dbadmin` | `back/bridge/mail/dbadmin.py` |
 | `bridge.mail` | `core.i18n` | `back/bridge/mail/approvals.py`, `back/bridge/mail/messenger.py` |
 | `bridge.mail` | `core.user` | `back/bridge/mail/approvals.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
@@ -786,11 +787,11 @@ tests restent l’autorité sur le comportement.
 | `app/chat` | `core/user` | `front/app/chat/code/components/CodeEditorHost.vue`, `front/app/chat/components/ChatProfilePreferences.vue`, `front/app/chat/components/MessageResourcePreviews.vue` |
 | `app/chat` | `core/util` | `front/app/chat/code/components/RepositoryBrowser.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ChatDocumentPane.vue`, `front/app/chat/components/ChatDocumentSearchDialog.vue`, `front/app/chat/components/Composer.vue`, `front/app/chat/components/ConversationDocumentDialog.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessDialog.vue`, `front/app/chat/components/ConversationProcessesPanel.vue`, `front/app/chat/components/MarkdownAttachmentPreview.vue`, `front/app/chat/components/MessageResourcePreviews.vue`, `front/app/chat/components/MessageTimeline.vue`, `front/app/chat/components/SafeMessageContent.vue`, `front/app/chat/pages/index.vue`, `front/app/chat/richContent.ts`, `front/app/chat/services/chatService.ts`, `front/app/chat/useChatAvatar.ts` |
 | `app/chat` | `core/websocket` | `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessesPanel.vue`, `front/app/chat/pages/index.vue`, `front/app/chat/stores/chat.ts`, `front/app/chat/stores/inbox.ts`, `front/app/chat/useMessagePreviewFreshness.ts` |
-| `app/connection` | `app/agent` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/McpCandidateAgent.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue` |
+| `app/connection` | `app/agent` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/McpCandidateAgent.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue` |
 | `app/connection` | `app/console` | `front/app/connection/components/ConnectionForm.vue` |
 | `app/connection` | `app/tools` | `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue` |
 | `app/connection` | `core/api` | `front/app/connection/availability.ts`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/McpOAuthConnection.vue`, `front/app/connection/pages/oauth-callback.vue`, `front/app/connection/services/calendarService.ts`, `front/app/connection/services/connectionService.ts`, `front/app/connection/services/mailService.ts`, `front/app/connection/services/mcpOAuthService.ts`, `front/app/connection/services/permissionService.ts` |
-| `app/connection` | `core/authorize` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/navigation.ts`, `front/app/connection/pages/permissions.vue` |
+| `app/connection` | `core/authorize` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/navigation.ts`, `front/app/connection/pages/permissions.vue` |
 | `app/connection` | `core/navigation` | `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue` |
 | `app/connection` | `core/util` | `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/FunctionPolicyToggle.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue` |
 | `app/console` | `core/api` | `front/app/console/services/consoleService.ts` |
@@ -1000,12 +1001,12 @@ tests restent l’autorité sur le comportement.
 | `app.goal` | 6 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.task`, `app.tools` |
 | `bridge.codex` | 6 | `app.agent`, `app.harnesses`, `app.llm`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.deepseek_harness` | 6 | `app.agent`, `app.harnesses`, `app.llm`, `app.mcp`, `app.skill`, `bridge.harness` |
+| `bridge.mail` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.messenger`, `app.tools` |
 | `bridge.nextcloud` | 6 | `app.agent`, `app.connection`, `app.file_share`, `app.messenger`, `app.tools`, `app.voice` |
 | `app.contact` | 5 | `app.agent`, `app.conversation`, `app.memory`, `app.messenger`, `app.task` |
 | `app.task` | 5 | `app.agent`, `app.goal`, `app.llm`, `app.messenger`, `app.tools` |
 | `bridge.calendar` | 5 | `app.agent`, `app.connection`, `app.file_share`, `app.process`, `app.tools` |
 | `bridge.claude_agent` | 5 | `app.agent`, `app.harnesses`, `app.mcp`, `app.skill`, `bridge.harness` |
-| `bridge.mail` | 5 | `app.agent`, `app.connection`, `app.file_share`, `app.messenger`, `app.tools` |
 | `bridge.matrix` | 5 | `app.agent`, `app.connection`, `app.messenger`, `app.tools`, `app.voice` |
 | `app.browser` | 4 | `app.connection`, `app.file_share`, `app.messenger`, `app.tools` |
 | `app.console` | 4 | `app.agent`, `app.connection`, `app.file_share`, `app.tools` |
@@ -1075,6 +1076,7 @@ tests restent l’autorité sur le comportement.
 | `app.documentation` | 2 | `app.file_share`, `app.tools` |
 | `app.image` | 2 | `app.agent`, `app.file_share` |
 | `app.browser` | 1 | `app.chat` |
+| `app.contact` | 1 | `bridge.mail` |
 | `app.dream` | 1 | `app.lab` |
 | `app.util` | 1 | `app.tools` |
 | `bridge.affine` | 1 | `app.file_share` |
@@ -1667,14 +1669,16 @@ tests restent l’autorité sur le comportement.
 | GET | `/llm/openai/runs/{agent_run_id}/usage` | `app.llm` | `llm_run_usage` | non | `back/app/llm/call_router.py:419` |
 | GET | `/llm/users/{user_id}/preferences` | `app.llm` | `get_user_preferences` | oui | `back/app/llm/personal_router.py:68` |
 | PUT | `/llm/users/{user_id}/preferences` | `app.llm` | `put_user_preferences` | oui | `back/app/llm/personal_router.py:75` |
-| GET | `/mail/approvers` | `bridge.mail` | `list_mail_approvers` | oui | `back/bridge/mail/router.py:100` |
-| POST | `/mail/connections/{connection_id}/test` | `bridge.mail` | `test_connection` | oui | `back/bridge/mail/router.py:167` |
-| GET | `/mail/outbound` | `bridge.mail` | `list_outbound_mail` | oui | `back/bridge/mail/router.py:64` |
-| GET | `/mail/outbound/agents` | `bridge.mail` | `list_outbound_mail_agents` | oui | `back/bridge/mail/router.py:87` |
-| GET | `/mail/outbound/{delivery_id}` | `bridge.mail` | `read_outbound_mail` | oui | `back/bridge/mail/router.py:106` |
-| POST | `/mail/outbound/{delivery_id}/approve` | `bridge.mail` | `approve_outbound_mail` | oui | `back/bridge/mail/router.py:123` |
-| POST | `/mail/outbound/{delivery_id}/reject` | `bridge.mail` | `reject_outbound_mail` | oui | `back/bridge/mail/router.py:145` |
-| GET | `/mail/status` | `bridge.mail` | `read_mail_status` | oui | `back/bridge/mail/router.py:53` |
+| GET | `/mail/approvers` | `bridge.mail` | `list_mail_approvers` | oui | `back/bridge/mail/router.py:131` |
+| POST | `/mail/connections/{connection_id}/test` | `bridge.mail` | `test_connection` | oui | `back/bridge/mail/router.py:198` |
+| GET | `/mail/inbound` | `bridge.mail` | `list_inbound_mail` | oui | `back/bridge/mail/router.py:35` |
+| GET | `/mail/inbound/{receipt_id}` | `bridge.mail` | `read_inbound_mail` | oui | `back/bridge/mail/router.py:52` |
+| GET | `/mail/outbound` | `bridge.mail` | `list_outbound_mail` | oui | `back/bridge/mail/router.py:95` |
+| GET | `/mail/outbound/agents` | `bridge.mail` | `list_outbound_mail_agents` | oui | `back/bridge/mail/router.py:118` |
+| GET | `/mail/outbound/{delivery_id}` | `bridge.mail` | `read_outbound_mail` | oui | `back/bridge/mail/router.py:137` |
+| POST | `/mail/outbound/{delivery_id}/approve` | `bridge.mail` | `approve_outbound_mail` | oui | `back/bridge/mail/router.py:154` |
+| POST | `/mail/outbound/{delivery_id}/reject` | `bridge.mail` | `reject_outbound_mail` | oui | `back/bridge/mail/router.py:176` |
+| GET | `/mail/status` | `bridge.mail` | `read_mail_status` | oui | `back/bridge/mail/router.py:84` |
 | POST | `/mcp/{identifier}` | `app.harnesses` | `mcp` | non | `back/app/harnesses/runtime_web.py:60` |
 | POST | `/media` | `app.file_share` | `prepare_media` | oui | `back/app/file_share/media_router.py:38` |
 | DELETE | `/media/{identifier}` | `app.file_share` | `release_media` | oui | `back/app/file_share/media_router.py:116` |
@@ -2028,6 +2032,7 @@ tests restent l’autorité sur le comportement.
 | `llm_profiles` | `LlmProfile` | `app.llm` | non | `llms.id` | `back/app/llm/profile_models.py:19` |
 | `llm_providers` | `LLMProvider` | `app.llm` | oui | `users.id` | `back/app/llm/provider_models.py:9` |
 | `llms` | `LLM` | `app.llm` | oui | `llm_providers.id` | `back/app/llm/provider_models.py:123` |
+| `mail_inbound_receipts` | `MailInboundReceipt` | `bridge.mail` | non | `agents.id`, `connections.id`, `tool_action_authorizations.id` | `back/bridge/mail/models.py:137` |
 | `mail_outbound_deliveries` | `MailOutboundDelivery` | `bridge.mail` | non | `agents.id`, `connections.id`, `tool_action_authorizations.id`, `users.id` | `back/bridge/mail/models.py:28` |
 | `memory_associations` | `MemoryAssociation` | `app.memory` | non | `memory_items.id` | `back/app/memory/models.py:1284` |
 | `memory_automation_jobs` | `MemoryAutomationJob` | `app.memory` | non | — | `back/app/memory/models.py:1466` |
@@ -2303,16 +2308,17 @@ tests restent l’autorité sur le comportement.
 | `lab_topic_messages_import` | `lab` | `app.lab` | `lab_topic_messages_import` | `back/app/lab/mcp.py:456` |
 | `lab_topic_messages_preview` | `lab` | `app.lab` | `lab_topic_messages_preview` | `back/app/lab/mcp.py:443` |
 | `lab_topic_person_list` | `lab` | `app.lab` | `lab_topic_person_list` | `back/app/lab/mcp.py:430` |
-| `mail_connection_status` | `mail` | `bridge.mail` | `mail_connection_status` | `back/bridge/mail/mcp.py:21` |
-| `mail_forward` | `mail` | `bridge.mail` | `mail_forward` | `back/bridge/mail/mcp.py:182` |
-| `mail_get` | `mail` | `bridge.mail` | `mail_get` | `back/bridge/mail/mcp.py:86` |
-| `mail_list_mailboxes` | `mail` | `bridge.mail` | `mail_list_mailboxes` | `back/bridge/mail/mcp.py:30` |
-| `mail_move` | `mail` | `bridge.mail` | `mail_move` | `back/bridge/mail/mcp.py:242` |
-| `mail_reply` | `mail` | `bridge.mail` | `mail_reply` | `back/bridge/mail/mcp.py:148` |
-| `mail_search` | `mail` | `bridge.mail` | `mail_search` | `back/bridge/mail/mcp.py:42` |
-| `mail_send` | `mail` | `bridge.mail` | `mail_send` | `back/bridge/mail/mcp.py:110` |
-| `mail_set_flags` | `mail` | `bridge.mail` | `mail_set_flags` | `back/bridge/mail/mcp.py:219` |
-| `mail_trash` | `mail` | `bridge.mail` | `mail_trash` | `back/bridge/mail/mcp.py:251` |
+| `mail_connection_status` | `mail` | `bridge.mail` | `mail_connection_status` | `back/bridge/mail/mcp.py:35` |
+| `mail_forward` | `mail` | `bridge.mail` | `mail_forward` | `back/bridge/mail/mcp.py:197` |
+| `mail_get` | `mail` | `bridge.mail` | `mail_get` | `back/bridge/mail/mcp.py:100` |
+| `mail_list_mailboxes` | `mail` | `bridge.mail` | `mail_list_mailboxes` | `back/bridge/mail/mcp.py:44` |
+| `mail_move` | `mail` | `bridge.mail` | `mail_move` | `back/bridge/mail/mcp.py:257` |
+| `mail_process` | `mail` | `bridge.mail` | `mail_process` | `back/bridge/mail/mcp.py:24` |
+| `mail_reply` | `mail` | `bridge.mail` | `mail_reply` | `back/bridge/mail/mcp.py:163` |
+| `mail_search` | `mail` | `bridge.mail` | `mail_search` | `back/bridge/mail/mcp.py:56` |
+| `mail_send` | `mail` | `bridge.mail` | `mail_send` | `back/bridge/mail/mcp.py:125` |
+| `mail_set_flags` | `mail` | `bridge.mail` | `mail_set_flags` | `back/bridge/mail/mcp.py:234` |
+| `mail_trash` | `mail` | `bridge.mail` | `mail_trash` | `back/bridge/mail/mcp.py:266` |
 | `document_share` | `memory` | `app.memory` | `document_share` | `back/app/memory/mcp.py:187` |
 | `memory_forget` | `memory` | `app.memory` | `memory_forget` | `back/app/memory/mcp.py:382` |
 | `memory_remember` | `memory` | `app.memory` | `memory_remember` | `back/app/memory/mcp.py:310` |

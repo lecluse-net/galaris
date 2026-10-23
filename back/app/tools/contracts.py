@@ -22,6 +22,7 @@ class ToolExecutionContext:
     outcome: Literal["unknown", "rejected", "returned"] = "unknown"
     entered: bool = False
     authorization_continuation: str | None = None
+    authorization_context: str | None = None
     scope_rejection: Literal["clarify", "deny"] | None = None
 
 

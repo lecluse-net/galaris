@@ -174,3 +174,37 @@ def test_attachment_budget_rejects_mime_before_body_fetch(monkeypatch):
     with pytest.raises(ValueError, match="read limit"):
         client.get_attachment(MailMessageRef(mailbox="INBOX", uid_validity=1, uid=1), "part-2", max_bytes=100)
     assert queries == ["(UID RFC822.SIZE)"]
+
+
+@pytest.mark.parametrize("uidnext, existing, expected", [
+    (b"8", b"7", 7),
+    (None, b"2 7 4", 7),
+    (None, b"", 0),
+])
+def test_poll_reports_current_mailbox_high_watermark_after_uid_validity_reset(monkeypatch, uidnext, existing, expected):
+    """An old-generation cursor must not become the baseline of a rebuilt mailbox."""
+    client = _client()
+
+    class RebuiltMailbox:
+        def response(self, name):
+            assert name == "UIDNEXT"
+            return "UIDNEXT", [uidnext]
+
+        def uid(self, *args):
+            # IMAP's reversed range can return the current highest UID, even
+            # though it is lower than the previous generation's cursor.
+            if args == ("SEARCH", "UID", "101:*"):
+                return "OK", [b"7"]
+            assert args == ("SEARCH", "ALL")
+            return "OK", [existing]
+
+    @contextmanager
+    def session():
+        yield RebuiltMailbox()
+
+    monkeypatch.setattr(client, "_session", session)
+    monkeypatch.setattr(client, "_select", lambda _imap, mailbox, *, readonly: 12)
+    batch = client.poll_inbox(after_uid=100)
+    assert batch.uid_validity == 12
+    assert batch.latest_uid == expected
+    assert batch.messages == []

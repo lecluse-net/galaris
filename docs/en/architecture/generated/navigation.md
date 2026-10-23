@@ -139,7 +139,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 ## Monitor → Mail journal
 
 - Route : `/connection/mail`
-- Purpose : Approval and journal of emails sent by agents
+- Purpose : Permissions and journal of emails sent and received by agents
 - Menu visibility (privileges) : (CONNECTION_ACCESS)
 - Additional conditions : monitor.mailJournal: dynamic
 - Sources : `front/app/connection/navigation.ts`

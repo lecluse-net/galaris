@@ -206,8 +206,10 @@ async def lifespan(_app: FastAPI):
         patches.enter_context(patch("app.llm.structured_service.build_model_for_llm", harness_model))
         # External mail boundaries only; approval persistence, Chat and RBAC remain real.
         from bridge.mail.contracts import MailPollBatch
+        from tests.e2e_mail import synthetic_inbound_message
         patches.enter_context(patch("bridge.mail.smtp_client.SmtpClient.send", return_value=(1, 0)))
         patches.enter_context(patch("bridge.mail.imap_client.ImapClient.store_sent_message", return_value="Sent"))
+        patches.enter_context(patch("bridge.mail.imap_client.ImapClient.get_message", synthetic_inbound_message))
         patches.enter_context(patch("bridge.mail.imap_client.ImapClient.poll_inbox",
                                     return_value=MailPollBatch(uid_validity=1, latest_uid=0)))
         async with main.app.other_asgi_app.router.lifespan_context(main.app.other_asgi_app):
@@ -325,7 +327,7 @@ async def elevenlabs_voices():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = True):
-    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "process-human", "missing-terminal", "interruptible", "mail", "mail-common", "file-catalogue"}:
+    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "process-human", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -407,7 +409,7 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
         if mode == 'file-catalogue':
             from tests.e2e_file_catalogue import seed_catalogue
             fixture.update(await seed_catalogue(agent.id, app.state.file_catalogue_root))
-        if mode in ("mail", "mail-common"):
+        if mode in ("mail", "mail-common", "mail-inbound"):
             from app.connection.models import ConnectionParam
             from bridge.mail.connection_service import resolve_connection
             from bridge.mail.contracts import OutgoingAttachment, OutgoingMail
@@ -437,7 +439,10 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
                 subject="Compte rendu synthétique", body="Voici le compte rendu à valider.", html_body=None,
                 attachments=(OutgoingAttachment("rapport.txt", "text/plain", b"Synthetic report"),),
             )
-            if mode == "mail-common":
+            if mode == "mail-inbound":
+                from tests.e2e_mail import seed_inbound_mail
+                fixture.update(await seed_inbound_mail(historical_config.model_copy(update={"approval_required": False})))
+            elif mode == "mail-common":
                 from tests.e2e_mail import seed_common_mail
                 fixture.update(await seed_common_mail(historical_config.model_copy(update={"approval_required": False}),
                     outgoing, f"e2e-mail:{suffix}"))

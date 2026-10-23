@@ -17,6 +17,38 @@ class MailStatus(BaseModel):
     enabled: bool
 
 
+class MailInboundItem(BaseModel):
+    id: UUID
+    connection_id: int | None
+    agent_id: int | None
+    agent_label: str
+    sender_address: str
+    subject: str
+    message_ref: str
+    to_addresses: list[str]
+    known_contact: bool
+    status: str
+    authorization_id: UUID | None
+    authorization_status: str | None
+    can_review: bool
+    created_at: datetime
+    authorized_at: datetime | None
+    admitted_at: datetime | None
+    read_at: datetime | None
+    error: str | None
+
+
+class MailInboundPage(BaseModel):
+    items: list[MailInboundItem]
+    total: int
+    offset: int
+    limit: int
+
+
+class MailInboundDetail(MailInboundItem):
+    content: dict[str, object] | None
+
+
 class MailDeliveryListItem(BaseModel):
     id: UUID
     connection_id: int | None

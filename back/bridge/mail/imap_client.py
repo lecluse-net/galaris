@@ -343,6 +343,23 @@ class ImapClient:
                 truncated=truncated,
             )
 
+    def _latest_uid(self, client: imaplib.IMAP4) -> int:
+        """Read the selected mailbox's watermark, never a previous generation's cursor."""
+        response = client.response("UIDNEXT")
+        values = response[1] if response else None
+        if values and isinstance(values[0], bytes):
+            try:
+                return max(0, int(values[0].split()[0]) - 1)
+            except (ValueError, IndexError) as exc:
+                raise RuntimeError("Invalid IMAP UIDNEXT response") from exc
+        status, data = client.uid("SEARCH", "ALL")
+        self._require_ok(status, data, "SEARCH")
+        raw_ids = next((item for item in (data or []) if isinstance(item, bytes)), b"")
+        try:
+            return max((int(value) for value in raw_ids.split()), default=0)
+        except ValueError as exc:
+            raise RuntimeError("Invalid IMAP SEARCH response") from exc
+
     def poll_inbox(
         self,
         *,
@@ -352,37 +369,16 @@ class ImapClient:
         """Return new INBOX summaries in ascending UID order.
 
         A missing cursor establishes a baseline without downloading existing messages.
-        Callers persist each returned UID only after its canonical admission succeeds.
+        Callers persist each returned UID only after its durable receipt is recorded.
         """
 
         safe_limit = max(1, min(limit, 50))
         with self._session() as client:
             uid_validity = self._select(client, "INBOX", readonly=True)
             if after_uid is None:
-                response = client.response("UIDNEXT")
-                values = response[1] if response else None
-                if values and isinstance(values[0], bytes):
-                    try:
-                        latest_uid = max(0, int(values[0].split()[0]) - 1)
-                    except (ValueError, IndexError) as exc:
-                        raise RuntimeError("Invalid IMAP UIDNEXT response") from exc
-                else:
-                    status, data = client.uid("SEARCH", "ALL")
-                    self._require_ok(status, data, "SEARCH")
-                    raw_ids = next(
-                        (item for item in (data or []) if isinstance(item, bytes)),
-                        b"",
-                    )
-                    try:
-                        latest_uid = max(
-                            (int(value) for value in raw_ids.split()),
-                            default=0,
-                        )
-                    except ValueError as exc:
-                        raise RuntimeError("Invalid IMAP SEARCH response") from exc
                 return MailPollBatch(
                     uid_validity=uid_validity,
-                    latest_uid=latest_uid,
+                    latest_uid=self._latest_uid(client),
                 )
 
             status, data = client.uid(
@@ -426,10 +422,20 @@ class ImapClient:
                 )
             return MailPollBatch(
                 uid_validity=uid_validity,
-                latest_uid=max(uids, default=after_uid),
+                latest_uid=max(uids) if uids else self._latest_uid(client),
                 messages=summaries,
                 truncated=len(uids) > safe_limit,
             )
+
+    def get_summary(self, ref: MailMessageRef) -> MailMessageSummary:
+        """Fetch only headers, without setting Seen or downloading any MIME body."""
+        with self._session() as client:
+            self._assert_ref(client, ref, readonly=True)
+            metadata, headers = self._fetch(
+                client, ref.uid,
+                "(UID FLAGS BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE MESSAGE-ID CONTENT-TYPE)])",
+            )
+            return parse_summary(headers, ref, self._flags(metadata))
 
     def get_message(
         self,

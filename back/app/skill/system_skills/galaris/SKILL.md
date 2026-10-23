@@ -1000,6 +1000,12 @@ materialize it temporarily through file_share, so no preliminary local copy is r
   returns a bounded page of message summaries and opaque references.
 - `mail_get(message_ref: str, body_offset: int = 0, body_limit: int = 20000) -> object` reads one
   bounded body page and returns canonical attachment URIs.
+- `mail_process(message_ref: str) -> object` authorizes reading and processing one message.
+  By default, the agent's existing email contacts are accepted and unknown senders require
+  the manager's consent. An explicit Ask policy requires consent even for contacts; Enabled
+  permits every sender and Blocked prevents processing. Reading, replying, forwarding and
+  attachment access enforce this gate too. Do not bypass a pending or denied decision.
+  Processing permission does not grant sending permission.
 - `mail_send(to: list[str], subject: str, body: str, idempotency_key: str, ...,
   attachment_uris: list[str] | None = None) -> object` sends a new message exactly once per
   idempotency key.

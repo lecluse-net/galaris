@@ -9,7 +9,7 @@ from app.tools.authorization import prepared_authorization
 from app.tools.facade import AuthorizationAction, AuthorizationRequired, AuthorizationClosed, register_authorization_waker
 from app.tools.authorization_notifications import deliver_authorization_notifications
 from bridge.mail import service
-from bridge.mail.contracts import MailConnectionConfig, OutgoingMail
+from bridge.mail.contracts import MailConnectionConfig, MailMessageDetail, MailMessageRef, MailMessageSummary, OutgoingMail
 from core.database import get_db
 
 _continuations: dict[str, tuple[MailConnectionConfig, OutgoingMail, str, AuthorizationAction]] = {}
@@ -33,6 +33,27 @@ async def _resume(agent_id: int, context_key: str) -> bool:
 
 
 register_authorization_waker("synthetic-mail-runtime", _resume)
+
+
+def synthetic_inbound_message(client, ref, *, body_offset, body_limit):
+    body = "Contenu synthétique du courriel reçu."
+    return MailMessageDetail(ref=ref.encode(), from_address="sender@example.org",
+        to_addresses=[str(client.config.email_address)], subject=f"Courriel entrant synthétique — {client.config.agent_label}",
+        body=body, body_format="plain", body_start=0, body_end=len(body), body_total=len(body))
+
+
+async def seed_inbound_mail(config: MailConnectionConfig) -> dict[str, str]:
+    from bridge.mail.inbound import record_receipt, process_receipt
+
+    subject = f"Courriel entrant synthétique — {config.agent_label}"
+    summary = MailMessageSummary(ref=MailMessageRef(mailbox="INBOX", uid_validity=1, uid=10).encode(),
+        from_address="sender@example.org", subject=subject,
+        to_addresses=[str(config.email_address)])
+    row = await record_receipt(config, summary, dispatch=True)
+    await process_receipt(row.id)
+    assert row.authorization_id is not None
+    await deliver_authorization_notifications()
+    return {"receipt_id": str(row.id), "authorization_id": str(row.authorization_id), "inbound_subject": subject}
 
 
 async def seed_common_mail(config: MailConnectionConfig, outgoing: OutgoingMail, key: str) -> dict[str, str]:

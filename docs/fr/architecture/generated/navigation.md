@@ -139,7 +139,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 ## Superviser → Journal des mails
 
 - Route : `/connection/mail`
-- Usage : Validation et journal des courriels envoyés par les agents
+- Usage : Autorisations et journal des courriels envoyés et reçus par les agents
 - Visibilité du menu (privilèges) : (CONNECTION_ACCESS)
 - Conditions supplémentaires : monitor.mailJournal: dynamic
 - Sources : `front/app/connection/navigation.ts`

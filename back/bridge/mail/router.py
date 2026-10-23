@@ -20,12 +20,43 @@ from .schemas import (
     MailDeliveryPage,
     MailDeliveryReview,
     MailStatus,
+    MailInboundPage,
+    MailInboundDetail,
 )
 from .contracts import MailSendReceipt
 from . import service
 
 
 router = APIRouter(prefix="/mail", tags=["mail"])
+
+
+@router.get("/inbound", response_model=MailInboundPage)
+@authorize(privileges=Privileges.CONNECTION_ACCESS)
+async def list_inbound_mail(
+    agent_id: int | None = Query(default=None, gt=0),
+    search: str = Query(default="", max_length=200),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
+) -> MailInboundPage:
+    from .inbound import list_receipts
+
+    scope = await current_management_scope()
+    if agent_id is not None and not scope.allows(agent_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return await list_receipts(current_user_id=_current_user_id(), agent_ids=scope.agent_ids,
+        agent_id=agent_id, search=search, offset=offset, limit=limit)
+
+
+@router.get("/inbound/{receipt_id}", response_model=MailInboundDetail)
+@authorize(privileges=Privileges.CONNECTION_ACCESS)
+async def read_inbound_mail(receipt_id: UUID) -> MailInboundDetail:
+    from .inbound import get_receipt
+
+    scope = await current_management_scope()
+    result = await get_receipt(receipt_id, current_user_id=_current_user_id(), agent_ids=scope.agent_ids)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return result
 
 
 def _current_user_id() -> int:

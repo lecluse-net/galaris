@@ -55,6 +55,7 @@ from .contracts import (
 )
 from .messenger_contact import observe_messenger_contact
 from .contact_directory import (
+    has_mail_contact,
     create_mail_contact,
     split_messenger_contact,
     forget_messenger_contact,
@@ -201,6 +202,7 @@ __all__ = [
     "merge_messenger_contacts",
     "update_messenger_contact",
     "create_mail_contact",
+    "has_mail_contact",
     "split_messenger_contact",
     "register_storage",
     "register_memory",

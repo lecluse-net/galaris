@@ -36,6 +36,9 @@ def present_action(*, name: str, source: str, arguments: dict[str, object], lang
     mail = source == "domain" and name in {"mail_send", "mail_reply", "mail_forward"}
     title = t("approval_preview.send_mail", language) if mail else render_prompt(
         t("approval_preview.run_function", language), function=name)
+    if name == "mail_process" and source == "mcp":
+        title = t("approval_preview.process_mail", language)
+        arguments = {key: value for key, value in arguments.items() if key != "message_ref"}
     if mail and isinstance(arguments.get("prepared"), dict):
         # The frozen delivery is what will be sent, even when original inputs differ.
         snapshot = cast(dict[str, object], arguments["prepared"])
@@ -47,7 +50,7 @@ def present_action(*, name: str, source: str, arguments: dict[str, object], lang
         if value is None or value == "" or value == [] or value == {}:
             continue
         label_key = key if key in {"to", "cc", "bcc", "subject", "body", "html_body", "reply_to", "attachments",
-                                   "command", "cwd", "path", "url", "content", "destination", "source"} else None
+                                   "command", "cwd", "path", "url", "content", "destination", "source", "sender"} else None
         label = t(f"approval_preview.{label_key}", language) if label_key else key.replace("_", " ").capitalize()
         if mail and key == "attachments" and isinstance(value, list):
             value = [cast(dict[str, object], item).get("filename", cast(dict[str, object], item)) if isinstance(item, dict) else item

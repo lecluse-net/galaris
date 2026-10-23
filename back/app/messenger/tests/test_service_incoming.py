@@ -362,10 +362,13 @@ async def test_audio_transcription_failure_does_not_block_conversation_admission
 
 
 @pytest.mark.asyncio
-async def test_mail_sender_is_admitted_directly_as_task_without_automatic_delivery(
+@pytest.mark.parametrize("authorized", [True, False])
+async def test_mail_sender_is_admitted_as_task_only_with_bridge_consent(
     monkeypatch: pytest.MonkeyPatch,
+    authorized: bool,
 ) -> None:
     from app import conversation
+    from app.messenger import contact_access
     from app.task import collab
 
     created, contact_observer = _wire_common(
@@ -379,9 +382,16 @@ async def test_mail_sender_is_admitted_directly_as_task_without_automatic_delive
     assert message.sender is not None
     message.sender.external_id = "astertest@example.com"
     message.text = "Read this email with mail_get using reference m1_ref."
+    consent = AsyncMock(return_value=authorized)
+    monkeypatch.setitem(contact_access._inbound_authorizers, "mail", consent)
 
     await service._process_incoming(message)
 
+    consent.assert_awaited_once_with(1519, message)
+    if not authorized:
+        created.assert_not_awaited()
+        contact_observer.assert_not_awaited()
+        return
     created.assert_awaited_once()
     task_create = created.await_args.args[0]
     assert task_create.objective == "<p>Read this email with mail_get using reference m1_ref.</p>"

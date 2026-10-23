@@ -15,9 +15,9 @@ from app.messenger._observations import (
     ObservedMessengerRoom,
     ObservedMessengerUser,
 )
-from app.messenger.inbound import dispatch_incoming
 from app.messenger.interface import Messenger, NotSupported
 from core.i18n import default_language, render_prompt, t
+from core.database import get_db_session
 
 from .connection_service import resolve_connection
 from .contracts import MailConnectionConfig, MailMessageRef, MailMessageSummary
@@ -119,7 +119,7 @@ class MailMessenger(Messenger):
         del room_id, limit
         return []
 
-    def _message(self, summary: MailMessageSummary) -> ObservedMessengerMessage:
+    def message(self, summary: MailMessageSummary) -> ObservedMessengerMessage:
         ref = MailMessageRef.decode(summary.ref)
         observed_at = summary.date or datetime.now(timezone.utc)
         if observed_at.tzinfo is None:
@@ -154,6 +154,8 @@ class MailMessenger(Messenger):
         )
 
     async def listen(self) -> None:
+        from .inbound import receive, resume_receipts
+
         raw_cursor = await journal.listener_cursor(self.connection_id)
         cursor = _decode_cursor(raw_cursor)
         backoff = 5.0
@@ -164,6 +166,8 @@ class MailMessenger(Messenger):
         )
         while True:
             try:
+                async with get_db_session():
+                    await resume_receipts(self.connection_id)
                 after_uid = cursor[1] if cursor is not None else None
                 batch = await asyncio.to_thread(
                     ImapClient(self.config).poll_inbox,
@@ -171,7 +175,14 @@ class MailMessenger(Messenger):
                     limit=_POLL_LIMIT,
                 )
                 backoff = 5.0
-                if cursor is None or cursor[0] != batch.uid_validity:
+                if (cursor is None or cursor[0] != batch.uid_validity
+                        or cursor[1] > batch.latest_uid):
+                    if cursor is not None and cursor[0] == batch.uid_validity:
+                        logger.warning(
+                            "Mail polling cursor exceeds current mailbox watermark "
+                            "connection={} uid_validity={} previous_uid={} latest_uid={}",
+                            self.connection_id, batch.uid_validity, cursor[1], batch.latest_uid,
+                        )
                     cursor = (batch.uid_validity, batch.latest_uid)
                     await journal.update_listener_state(
                         self.connection_id,
@@ -187,7 +198,8 @@ class MailMessenger(Messenger):
                 else:
                     for summary in batch.messages:
                         ref = MailMessageRef.decode(summary.ref)
-                        await dispatch_incoming(self._message(summary))
+                        async with get_db_session():
+                            await receive(self.config, summary)
                         cursor = (ref.uid_validity, ref.uid)
                         await journal.update_listener_state(
                             self.connection_id,

@@ -376,8 +376,14 @@ Les expéditeurs reconnus comme agents IA conservent le workflow de collaboratio
 humaine sans adresse de réponse exacte reste temporairement sur le chemin legacy afin d’éviter
 une perte silencieuse.
 
+Mail journalise les en-têtes avant d'avancer son curseur IMAP. La première écoute établit
+une référence sans rejouer l'historique ; un changement de génération ou un curseur supérieur
+au watermark courant rétablit cette référence. Le corps n'est lu qu'après autorisation de
+`mail_process` : par défaut les adresses exactes des Contacts de l'agent sont acceptées et
+les expéditeurs inconnus demandent le consentement commun. Les règles explicites Actif,
+Sur demande et Bloqué restent prioritaires ; l'accord d'envoi est indépendant.
 Mail déclare une politique d’admission `task` propre au transport : chaque nouveau courriel
-journalisé crée immédiatement une Task qui reçoit sa référence `mail_get`, sans passer par le
+autorisé pour réception crée une Task qui reçoit sa référence `mail_get`, sans passer par le
 contrôleur conversationnel court. Cette exception reste possédée par `app.messenger`; le bridge
 IMAP ne crée jamais lui-même une Task. Le résultat terminal n’est pas renvoyé implicitement par
 SMTP, car toute réponse doit rester un effet explicite et idempotent d’un outil `mail_*`.

@@ -197,8 +197,8 @@ allowed_dependencies = ["app.process"]
 max_domain_fan_out = 1
 
 [module."bridge.mail"]
-allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.messenger", "app.tools"]
-max_domain_fan_out = 5
+allowed_dependencies = ["app.agent", "app.connection", "app.contact", "app.file_share", "app.messenger", "app.tools"]
+max_domain_fan_out = 6
 
 [module."bridge.calendar"]
 allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.process", "app.tools"]

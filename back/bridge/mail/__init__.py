@@ -4,7 +4,8 @@ from app.messenger.facade import register_bridge
 from app.messenger.interface import BridgeSpec
 
 from .messenger import MailMessenger
-from .models import MailOutboundDelivery
+from .models import MailOutboundDelivery, MailInboundReceipt
+from . import inbound as inbound
 from .file_transport import MailAttachmentTransport
 from .approvals import retry_approval_notifications
 from app.file_share.interface import register_resource_transport
@@ -22,4 +23,4 @@ SPEC = BridgeSpec(
 register_bridge(SPEC.kind, MailMessenger, SPEC)
 register_resource_transport("mail", MailAttachmentTransport)
 
-__all__ = ["MailMessenger", "MailOutboundDelivery", "SPEC", "retry_approval_notifications"]
+__all__ = ["MailMessenger", "MailOutboundDelivery", "MailInboundReceipt", "SPEC", "retry_approval_notifications"]

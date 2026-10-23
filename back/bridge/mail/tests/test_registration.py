@@ -16,6 +16,7 @@ EXPECTED_FUNCTIONS = {
     "mail_list_mailboxes",
     "mail_search",
     "mail_get",
+    "mail_process",
     "mail_send",
     "mail_reply",
     "mail_forward",
