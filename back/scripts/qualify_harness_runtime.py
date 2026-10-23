@@ -49,7 +49,7 @@ class ModelService(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         if self.path.endswith("/runtime-authorizations/context"):
-            self.send({"active": True})
+            self.send({"active": not (gate.get("read_revoked") and gate.get("model_dispatched"))})
         elif "/runtime-authorizations/" in self.path:
             self.send({"status": gate.get("decision", "pending")})
         elif self.path.endswith("/models"):
@@ -200,13 +200,14 @@ class ModelService(BaseHTTPRequestHandler):
                 tools = body.get("tools", [])
                 if gate.get("deepseek_mcp"):
                     tools = [tool for tool in tools if "mcp__galaris__" in str(tool.get("function", {}).get("name", ""))]
-                selected = next((tool["function"] for tool in tools if "write" in str(tool.get("function", {}).get("name", "")).lower()
+                selected = next((tool["function"] for tool in tools if (tool.get("function", {}).get("name") == "read"
+                    if gate.get("native_read") else "write" in str(tool.get("function", {}).get("name", "")).lower())
                     and any("path" in key.lower() for key in tool.get("function", {}).get("parameters", {}).get("properties", {}))), None)
                 assert selected, [tool.get("function", {}).get("name") for tool in tools]
                 properties = selected.get("parameters", {}).get("properties", {})
                 path_key = next((key for key in properties if "path" in key.lower()), "path")
                 content_key = next((key for key in properties if "content" in key.lower()), "content")
-                arguments = {path_key: gate["path"], content_key: "approved"}
+                arguments = {path_key: gate["path"]} if gate.get("native_read") else {path_key: gate["path"], content_key: "approved"}
                 gate["tool_call"] = {"name": selected["name"], "arguments": arguments}
                 item = {"id": "call_qualification", "type": "function", "function": {"name": selected["name"], "arguments": json.dumps(arguments)}}
                 gate["model_dispatched"] = True
@@ -522,6 +523,33 @@ console.log('PASS DeepSeek shell confinement: workspace write allowed, sessions 
         adapter_thread.start()
         import urllib.request
         try:
+            # Projected skills live outside the workspace. A native text read
+            # validates the run context but must not request a mutation permit.
+            for revoked in (False, True):
+                source = Path("/sessions/synthetic-read.txt")
+                source.write_text("synthetic-read-only")
+                gate.update(native_read=True, path=str(source), read_revoked=revoked,
+                    decision="pending", requests=[], receipts=[])
+                request = urllib.request.Request("http://127.0.0.1:8080/v1/galaris/runs", headers={
+                    "Content-Type": "application/json", "Authorization": "Bearer qualification-token",
+                    "X-Galaris-Run-Context": f"synthetic-native-read-context-{revoked}"},
+                    data=json.dumps({"model": "qualification", "messages": [{"role": "user", "content": "Read the synthetic fixture."}]}).encode())
+                with urllib.request.urlopen(request, timeout=10) as response:
+                    identifier = json.load(response)["runtime_run_id"]
+                deadline = time.monotonic() + 25
+                status = adapter_server.runs.get(identifier)
+                while time.monotonic() < deadline:
+                    status = adapter_server.runs.get(identifier)
+                    if status["status"] != "running":
+                        break
+                    time.sleep(0.05)
+                assert status["status"] == "completed", status
+                reads = [message for message in status["messages"] if message.get("type") == "tool" and message.get("tool_name") == "read"]
+                assert len(reads) == 1 and reads[0]["success"] is not revoked, reads
+                assert ("synthetic-read-only" in reads[0]["content"]) is not revoked, reads
+                assert gate["requests"] == [] and gate["receipts"] == [], gate
+                print(f"PASS DeepSeek native read without mutation consent: revoked={revoked}")
+                gate.clear()
             for managed_mcp, allowed in ((False, False), (False, True), (True, False), (True, True)):
                 gate.clear()
                 target = config.workspace / f"approval-{managed_mcp}-{allowed}.txt"

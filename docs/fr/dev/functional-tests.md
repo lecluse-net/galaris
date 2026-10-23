@@ -837,6 +837,8 @@ message puis la suspension et la nouvelle tentative Task : suivi HTTP sans 404, 
 de lecture avant accord, refus et contrôle du demandeur enregistré. La qualification
 DeepSeek exécute aussi Landlock sur deux montages inscriptibles : workspace autorisé,
 écriture hors workspace refusée.
+La même qualification lit un fichier hors workspace avec le véritable outil natif `read`,
+sans accord de modification, et refuse cette lecture après révocation du contexte de run.
 `bridge/mail/tests/test_common_authorizations.py` vérifie aussi la copie du MIME accepté dans
 Sent, sa réparation après panne IMAP ou perte de réponse APPEND et l'absence de second envoi
 SMTP. `test_imap_client.py` couvre la relecture par Message-ID et la déduplication d'une copie

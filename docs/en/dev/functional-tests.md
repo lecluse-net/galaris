@@ -793,6 +793,8 @@ reconciliation after an unknown outcome.
 Task suspension and a new attempt: HTTP tracking without 404, no read before consent,
 denial and registered-waiter checks. DeepSeek qualification also runs Landlock against
 two writable mounts: workspace writes succeed and writes outside it fail.
+The same qualification reads a file outside the workspace through the actual native `read`
+tool without mutation consent, and refuses that read after revoking its run context.
 `bridge/mail/tests/test_common_authorizations.py` also checks archiving the accepted MIME
 in Sent, repair after an IMAP outage or lost APPEND response, and no second SMTP submission.
 `test_imap_client.py` covers Message-ID readback and deduplication of an existing provider copy.

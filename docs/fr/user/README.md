@@ -486,6 +486,9 @@ Si une Task attend votre accord pour lire un mail, répondez à la demande d’a
 Le harnais reprend la lecture du même message après la reprise de la Task ; un refus
 laisse son contenu privé. Cet accord de lecture n’autorise pas l’envoi d’un mail.
 
+La consultation d'une compétence déjà disponible dans le harnais DeepSeek ne demande pas
+d'accord de modification. Les opérations qui modifient des fichiers conservent leur autorisation.
+
 Un message reçu n’est plus systématiquement transformé en Task. Le contrôleur conversationnel
 agrège les messages arrivés en rafale, reconstruit l’historique utile et prépare une réponse courte.
 Lorsqu’un outil doit produire un effet durable ou qu’un travail va prendre du temps, il crée une

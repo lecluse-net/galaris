@@ -1,7 +1,7 @@
 // One-action permissions are owned by Galaris, including PTC inner dispatches.
 export const name = 'galaris-authorizations';
 export const inject = ['tools'];
-const safeReads = new Set(['read_file', 'list_directory', 'grep', 'glob', 'search_files']);
+const safeReads = new Set(['read', 'read_file', 'list_directory', 'grep', 'glob', 'search_files']);
 
 async function control(suffix, body, signal) {
   const root = process.env.GALARIS_AUTHORIZATION_PROXY;

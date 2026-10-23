@@ -75,6 +75,11 @@ with `includeDefaultRoots: false`. Durable memory, canonical files, and external
 through Galaris MCP. The local DSH workspace is a compute area: a file becomes durable only when a
 Galaris Tool records its URI and effect.
 
+The native `read` tool validates the current run context without requesting a mutation
+permit, including when reading a projected Skill outside the workspace. A revoked context
+still blocks that read. Qualification uses the real SDK to check both cases; write-only
+scenarios did not cover this native tool name.
+
 The first image build downloads and compiles the pinned DSH revision and may therefore take a long
 time. In Galaris supervision, **Restart** or **Update** recreates the selected runtime with
 its credentials; **Refresh** only requests Skill projection. To repair an older container

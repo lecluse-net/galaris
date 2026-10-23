@@ -77,6 +77,11 @@ est isolé avec `includeDefaultRoots: false`. La mémoire durable, les fichiers 
 effets externes passent par le MCP Galaris. Le workspace DSH local reste un espace de calcul : un
 fichier n'est durable que lorsqu'un Tool Galaris enregistre son URI et son effet.
 
+L'outil natif `read` valide le contexte de run courant sans demander de permis de
+modification, y compris pour lire une compétence projetée hors du workspace. Un contexte
+révoqué bloque toujours cette lecture. La qualification utilise le vrai SDK pour vérifier
+ces deux cas ; les scénarios d'écriture seuls ne couvraient pas ce nom d'outil natif.
+
 La première construction de l'image télécharge et compile la révision DSH épinglée ; elle peut
 donc être longue. Depuis la supervision Galaris, **Redémarrer** ou **Mettre à jour** recrée
 le runtime sélectionné avec ses credentials ; **Actualiser** ne demande que la projection
