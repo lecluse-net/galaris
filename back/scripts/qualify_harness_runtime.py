@@ -476,6 +476,26 @@ def main() -> None:
             print(f"PASS Hermes real SDK local write: {'approved' if allowed else 'denied'}")
         asyncio.run(qualify_hermes_managed(origin))
     elif runtime == "deepseek_harness":
+        import subprocess
+
+        # A file-write SDK test does not exercise shell confinement. Check the
+        # shipped launcher on writable mounts, under the runtime's real limits.
+        subprocess.run(["node", "--input-type=module", "-e", """
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+import {existsSync, writeFileSync} from 'node:fs';
+import {grantArgs, launcherPath, probe} from '@deepseek-ai/node-addon-system/landlock-run';
+assert.notEqual(probe(), 'unusable', 'The packaged Landlock launcher must be usable');
+writeFileSync('/sessions/sandbox-control.txt', 'writable without confinement');
+const result = spawnSync(launcherPath(), [...grantArgs({readOnly: ['/'], readWrite: ['/workspace', '/tmp', '/dev/null']}),
+  '--', 'bash', '-c', 'printf allowed > /workspace/sandbox-ok.txt; printf forbidden > /sessions/sandbox-denied.txt'],
+  {encoding: 'utf8', timeout: 10000});
+assert.equal(result.error, undefined);
+assert.notEqual(result.status, 0, 'An out-of-workspace write must fail');
+assert.ok(existsSync('/workspace/sandbox-ok.txt'), result.stderr);
+assert.ok(!existsSync('/sessions/sandbox-denied.txt'));
+console.log('PASS DeepSeek shell confinement: workspace write allowed, sessions write denied');
+"""], cwd="/opt/dsh/python/deepseek_harness_runtime/runtime/node", check=True, timeout=15)
         sys.path.insert(0, "/opt/galaris")
         module = module_from_file("/opt/galaris/runtime_adapter.py")
         result = module.run_completion(

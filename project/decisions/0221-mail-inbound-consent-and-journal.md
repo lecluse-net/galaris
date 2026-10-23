@@ -32,6 +32,15 @@ second task workflow. Reading, replies, forwarding and attachment downloads chec
 receipt, live connection and processing policy. Changes to connection configuration invalidate
 reuse of a previous grant. Context waiters and recovery batches are bounded.
 
+Managed runtimes observe message-owned consent through an `app.tools` waiter port.
+Mail proves the exact receipt, authorization, agent and server-registered parent context;
+knowing an authorization UUID is insufficient. This grants status observation only,
+never runtime receipt writes. Both HTTP polling and orchestrator readiness use this
+proof and the parent Task's current lease/attempt guard, including when Mail has already
+completed its own consent. The next MCP call retains the original arguments and operation
+identity and rechecks Mail rights. This corrects the assumption that every MCP wait shares
+its runtime grant's context; Mail consent intentionally belongs to the message instead.
+
 Reception and Sending are separate tabs on the existing Mail page. Reception displays all
 observed receipts and their decisions, read/admission timestamps and failures, scoped to
 managed agents. Content snapshots contain a bounded initial page, with truncation explicit;
@@ -45,3 +54,5 @@ policies, common consent, permanent grants, denials, cross-agent isolation, all 
 access paths, duplicate delivery, revocation and recovery after a claimed consent. Browser
 journeys exercise approval and retry on mobile and desktop, with inert content and read-only
 viewers. Assembled application scenarios cover reception and existing outbound approval.
+The managed MCP regression includes consent tracking, fast decisions, suspension, domain
+completion before Task resumption, exact attempt renewal and denied/absent waiter access.

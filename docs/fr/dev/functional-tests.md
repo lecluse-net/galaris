@@ -832,6 +832,11 @@ enchaîne les choix dans l’interface, relit les règles et exerce leurs effets
 `app/harnesses/tests/test_runtime_control.py` vérifie les appels suspendus, la réponse de claim
 perdue et le redémarrage sans réexécution. Les workflows Mail et Process vérifient les permis
 avant effet et la réconciliation après une issue inconnue.
+`bridge/mail/tests/test_inbound.py` fait passer une lecture MCP par l’accord propre au
+message puis la suspension et la nouvelle tentative Task : suivi HTTP sans 404, absence
+de lecture avant accord, refus et contrôle du demandeur enregistré. La qualification
+DeepSeek exécute aussi Landlock sur deux montages inscriptibles : workspace autorisé,
+écriture hors workspace refusée.
 `bridge/mail/tests/test_common_authorizations.py` vérifie aussi la copie du MIME accepté dans
 Sent, sa réparation après panne IMAP ou perte de réponse APPEND et l'absence de second envoi
 SMTP. `test_imap_client.py` couvre la relecture par Message-ID et la déduplication d'une copie

@@ -1858,7 +1858,7 @@ tests restent l’autorité sur le comportement.
 | POST | `/runtime-agents/{id}/sync-skills` | `app.harness` | `sync_harness_skills` | oui | `back/app/harness/router.py:99` |
 | POST | `/runtime-authorizations` | `app.tools` | `request_action` | non | `back/app/tools/runtime_authorization_router.py:47` |
 | GET | `/runtime-authorizations/context` | `app.tools` | `context_status` | non | `back/app/tools/runtime_authorization_router.py:75` |
-| POST | `/runtime-authorizations/receipt` | `app.tools` | `action_receipt` | non | `back/app/tools/runtime_authorization_router.py:97` |
+| POST | `/runtime-authorizations/receipt` | `app.tools` | `action_receipt` | non | `back/app/tools/runtime_authorization_router.py:96` |
 | GET | `/runtime-authorizations/{identifier}` | `app.tools` | `action_status` | non | `back/app/tools/runtime_authorization_router.py:84` |
 | GET | `/skills` | `app.skill` | `list_skills` | oui | `back/app/skill/router.py:108` |
 | POST | `/skills` | `app.skill` | `create_skill` | oui | `back/app/skill/router.py:418` |

@@ -19190,7 +19190,7 @@
         "declared_path": "/runtime-authorizations/receipt",
         "file": "back/app/tools/runtime_authorization_router.py",
         "handler": "action_receipt",
-        "line": 97,
+        "line": 96,
         "method": "POST",
         "module": "app.tools"
       },

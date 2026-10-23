@@ -397,6 +397,10 @@ in conversation mode by default. An administrator can enable each Tool for conve
 in the Tool catalog. This setting does not change access in Tasks; updates preserve
 previously saved choices.
 
+If a Task waits for your consent to read an email, answer its authorization request.
+The Harness continues reading the same message once the Task resumes; denial keeps
+its content private. Reading consent does not authorize sending an email.
+
 A received message is no longer systematically turned into a Task. The conversational controller aggregates messages arriving in bursts, reconstructs the useful history, and prepares a short response. When a Tool must produce a lasting effect or work will take time, it creates a background Task or Process and gives you its reference.
 
 In **Execution Tracking → Text conversations**, you can see processed or pending messages, rounds, their attempts, LLM calls, delivery, and any errors. A response between two Agents is admitted only when a fresh request is waiting for it; this safeguard prevents automatic loops of polite exchanges.

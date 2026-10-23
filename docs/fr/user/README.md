@@ -476,6 +476,10 @@ accessibles en mode conversation par défaut. Un administrateur peut autoriser c
 pour les conversations depuis le catalogue des outils. Ce réglage ne change pas leur accès
 dans les Tasks ; les mises à jour conservent les choix déjà enregistrés.
 
+Si une Task attend votre accord pour lire un mail, répondez à la demande d’autorisation.
+Le harnais reprend la lecture du même message après la reprise de la Task ; un refus
+laisse son contenu privé. Cet accord de lecture n’autorise pas l’envoi d’un mail.
+
 Un message reçu n’est plus systématiquement transformé en Task. Le contrôleur conversationnel
 agrège les messages arrivés en rafale, reconstruit l’historique utile et prépare une réponse courte.
 Lorsqu’un outil doit produire un effet durable ou qu’un travail va prendre du temps, il crée une

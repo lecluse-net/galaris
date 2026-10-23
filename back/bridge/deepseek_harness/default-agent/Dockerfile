@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     git \
+    musl-tools \
     python3 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -21,6 +22,9 @@ RUN git init /src \
 
 WORKDIR /src
 RUN pnpm install --frozen-lockfile
+# The workspace install builds only the host flock addon. Build the declared
+# Landlock launcher as well before staging the SDK's Node carrier.
+RUN pnpm --dir native/system run build:native
 RUN pnpm run build
 RUN case "${TARGETARCH}" in \
         amd64) dsh_arch=x64 ;; \

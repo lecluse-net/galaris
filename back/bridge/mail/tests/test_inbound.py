@@ -226,6 +226,110 @@ async def test_generic_file_read_keeps_its_waiting_context_for_consent(inbox):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("approved", [True, False])
+async def test_managed_mail_read_resumes_only_its_registered_waiter(inbox, monkeypatch, approved):
+    from dataclasses import replace
+    from datetime import datetime, timedelta, timezone
+    from uuid import UUID, uuid4
+    from fastmcp import Client
+    from httpx import ASGITransport, AsyncClient
+    from app.agent import AgentSnapshot, ResolvedExecutionTarget
+    from app.agent.tests.test_driver_testkit import _request
+    from app.harnesses.models import AgentHarness
+    from app.mcp.service import ensure_system_token
+    from app.task import task_service
+    from app.task.agent_adapter import SqlAlchemyAgentTaskAdapter
+    from app.task.models import TaskAttempt, TaskStatus
+    from app.tools import build_agent_galaris_fastmcp
+    from app.tools.authorization_models import RuntimeRunGrant
+    from app.tools.runtime_authorization import issue_runtime_run_grant, renew_runtime_run_grant, runtime_authorizations_ready
+    from core.params import Params, params_service
+    from main import app
+
+    config, manager, _outsider, read = inbox
+    await params_service.get_all()
+    monkeypatch.setitem(params_service._params_cache, Params.HARNESS_DEEPSEEK_ENABLED, "true")
+    async with get_db_session() as db:
+        assignment = AgentHarness(agent_id=config.agent_id, provider_code="deepseek_harness",
+            lifecycle_status="ready", runtime_base_url="http://synthetic.example.test/v1", runtime_model="synthetic")
+        task = Task(agent_id=config.agent_id, label="Synthetic mail read", objective="<p>Read one email.</p>",
+            status=TaskStatus.EXEC, lease_token=uuid4(),
+            lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5))
+        db.add_all([assignment, task])
+        await db.flush()
+        attempt = TaskAttempt(task_id=task.id, attempt_number=1, phase="DISPATCH", status="CLAIMED",
+            worker_id="synthetic", lease_token=task.lease_token)
+        db.add(attempt)
+        await db.flush()
+        task_id, attempt_id, assignment_id = task.id, attempt.id, assignment.id
+        bearer = await ensure_system_token(config.agent_id)
+    request = replace(_request(), task_id=task_id, attempt_id=attempt_id, driver_code="openai_messages",
+        agent=AgentSnapshot(id=config.agent_id, code="synthetic", first_name="Synthetic", last_name="Reader", driver_code="openai_messages"),
+        target=ResolvedExecutionTarget(provider_code="deepseek_harness", target_ref=f"harness:{assignment_id}", revision="1"))
+    credential = await issue_runtime_run_grant(request)
+    async with get_db_session() as db:
+        grant = await db.scalar(select(RuntimeRunGrant).where(RuntimeRunGrant.run_key == request.run_id))
+        grant_id = grant.id
+        server = await build_agent_galaris_fastmcp(config.agent_id, runtime="openai_messages", task_id=task_id,
+            resources={"runtime_grant_id": str(grant_id), "authorization_context": f"task:{task_id}"},
+            allowed_tool_names={"mail_get"})
+    arguments = {"message_ref": _summary(111).ref, "body_limit": 1200}
+    async with Client(server) as mcp:
+        pending = await mcp.call_tool("mail_get", arguments, raise_on_error=False)
+        assert pending.is_error
+        identifier = UUID(pending.meta["galaris.authorization/v1"]["request_id"])
+        read.assert_not_called()
+        headers = {"Authorization": f"Bearer {bearer}", "X-Galaris-Run-Context": credential}
+        endpoint = f"/api/tools/runtime-authorizations/{identifier}"
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://localhost") as http:
+            response = await http.get(endpoint, headers=headers)
+            assert response.status_code == 200, response.text
+            assert response.json()["status"] == "pending"
+            # Knowing a UUID does not register a waiter or authorize a receipt write.
+            assert (await http.get(f"/api/tools/runtime-authorizations/{uuid4()}", headers=headers)).status_code == 404
+            assert (await http.post("/api/tools/runtime-authorizations/receipt", headers=headers,
+                json={"request_id": str(identifier), "outcome": "completed", "receipt": {}})).status_code == 404
+            async with get_db_session() as db:
+                receipt = await db.scalar(select(MailInboundReceipt).where(MailInboundReceipt.authorization_id == identifier))
+                receipt_id = receipt.id
+                receipt.waiting_contexts = []
+            assert (await http.get(endpoint, headers=headers)).status_code == 404
+            async with get_db_session() as db:
+                receipt = await db.get(MailInboundReceipt, receipt_id)
+                receipt.waiting_contexts = [f"task:{task_id}"]
+                assert await answer_action(identifier, user_id=manager, approved=approved)
+            assert (await http.get(endpoint, headers=headers)).json()["status"] == "pending"
+            async with get_db_session() as db:
+                task = await db.get(Task, task_id)
+                SqlAlchemyAgentTaskAdapter().suspend(task, task_service.PAUSE_APPROVAL)
+                task.data = {**(task.data or {}), "authorization_requests": [str(identifier)]}
+                task.lease_token = task.lease_expires_at = None
+                (await db.get(TaskAttempt, attempt_id)).status = "WAITING_APPROVAL"
+            async with get_db_session():
+                assert await inbound._wake(config.agent_id, f"mail-inbound:{receipt_id}")
+            # The domain can finish its approval before the Task acquires a new lease.
+            assert (await http.get(endpoint, headers=headers)).json()["status"] == "pending"
+            assert not await runtime_authorizations_ready(credential, agent_id=config.agent_id, identifiers=[identifier])
+            async with get_db_session() as db:
+                task = await db.get(Task, task_id)
+                task.status = TaskStatus.EXEC
+                task.lease_token = uuid4()
+                task.lease_expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+                resumed = TaskAttempt(task_id=task_id, attempt_number=2, phase="DISPATCH", status="CLAIMED",
+                    worker_id="synthetic-resumed", lease_token=task.lease_token)
+                db.add(resumed)
+                await db.flush()
+                resumed_id = resumed.id
+            assert (await http.get(endpoint, headers=headers)).json()["status"] == "pending"
+            await renew_runtime_run_grant(credential, replace(request, run_id=uuid4(), attempt_id=resumed_id))
+            assert await runtime_authorizations_ready(credential, agent_id=config.agent_id, identifiers=[identifier])
+            assert (await http.get(endpoint, headers=headers)).json()["status"] == ("completed" if approved else "denied")
+        result = await mcp.call_tool("mail_get", arguments, raise_on_error=False)
+        assert result.is_error is not approved
+        assert read.call_count == int(approved)
+
+
+@pytest.mark.asyncio
 async def test_reception_http_requires_privilege_and_hides_other_agents(inbox, client):
     from core.authorize import Assignment, Role
     from core.user import UserModel

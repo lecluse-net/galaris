@@ -12,7 +12,7 @@ from core.database import get_db_session
 
 from .authorization import AuthorizationAction, AuthorizationClosed, AuthorizationRequired, claim_action, finish_action
 from .authorization_models import ActionAuthorization, RuntimeRunGrant
-from .runtime_authorization import resolve_runtime_run_grant, runtime_authorization_configuration, runtime_action_status
+from .runtime_authorization import resolve_runtime_run_grant, runtime_authorization_configuration, runtime_action_status, runtime_authorization_visible
 from .runtime_principals import RuntimePrincipal, runtime_principal_port
 
 router = APIRouter(prefix="/runtime-authorizations", tags=["runtime-authorizations"])
@@ -85,9 +85,8 @@ async def action_status(request: Request, identifier: UUID) -> dict[str, str]:
     _, grant = await runtime_scope(request)
     async with get_db_session() as db:
         row = await db.scalar(select(ActionAuthorization).where(ActionAuthorization.id == identifier,
-            ActionAuthorization.agent_id == grant.agent_id, ActionAuthorization.runtime_grant_id == grant.id,
-            ActionAuthorization.context_key == grant.context_key))
-        if row is None:
+            ActionAuthorization.agent_id == grant.agent_id))
+        if row is None or not await runtime_authorization_visible(grant, row):
             raise HTTPException(404, "Authorization not found")
         return {"status": await runtime_action_status(grant, row)}
 

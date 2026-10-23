@@ -22,6 +22,24 @@ from .runtime_principals import RuntimePrincipal, runtime_principal_port
 
 _runtime_configurations: dict[str, Callable[[int], Awaitable[dict[str, Any]]]] = {}
 _runtime_dispatch_guards: dict[str, Callable[[int, str, UUID | None, datetime | None], Awaitable[bool]]] = {}
+_runtime_authorization_waiters: dict[str, Callable[[int, str, UUID, str], Awaitable[bool]]] = {}
+
+
+def register_runtime_authorization_waiter(prefix: str, callback: Callable[[int, str, UUID, str], Awaitable[bool]]) -> None:
+    """Let an owning domain prove a durable wait on its separate approval context."""
+    _runtime_authorization_waiters[prefix] = callback
+
+
+async def runtime_authorization_visible(grant: RuntimeRunGrant, row: ActionAuthorization) -> bool:
+    if row.agent_id != grant.agent_id:
+        return False
+    if row.runtime_grant_id == grant.id and row.context_key == grant.context_key:
+        return True
+    # A domain approval can have several waiters, but never lends another run's authority.
+    if row.runtime_grant_ref is not None or row.runtime_grant_id is not None or row.source != "mcp":
+        return False
+    callback = _runtime_authorization_waiters.get(row.context_key.split(":", 1)[0])
+    return bool(callback and await callback(grant.agent_id, row.context_key, row.id, grant.context_key))
 
 
 def register_runtime_dispatch_guard(prefix: str, callback: Callable[[int, str, UUID | None, datetime | None], Awaitable[bool]]) -> None:
@@ -38,8 +56,11 @@ async def runtime_dispatch_ready(grant: RuntimeRunGrant, *, decided_at: datetime
 
 
 async def runtime_action_status(grant: RuntimeRunGrant, row: ActionAuthorization) -> str:
-    if row.status in ("approved", "denied", "expired", "invalidated") and not await runtime_dispatch_ready(grant,
-            decided_at=row.finished_at or (row.decided_at if row.decision_source == "human" else None)):
+    domain_wait = row.runtime_grant_id != grant.id
+    decided_at = ((row.decided_at or row.created_at) if domain_wait else
+                  row.finished_at or (row.decided_at if row.decision_source == "human" else None))
+    if (domain_wait or row.status in ("approved", "denied", "expired", "invalidated")) and not await runtime_dispatch_ready(grant,
+            decided_at=decided_at):
         # Consent remains durable until the owner can admit the exact callback.
         return "pending"
     return row.status
@@ -60,9 +81,10 @@ async def runtime_authorizations_ready(credential: str, *, agent_id: int, identi
         if grant is None:
             return False
         rows = list(await db.scalars(select(ActionAuthorization).where(
-            ActionAuthorization.id.in_(identifiers), ActionAuthorization.agent_id == agent_id,
-            ActionAuthorization.runtime_grant_id == grant.id, ActionAuthorization.context_key == grant.context_key)))
+            ActionAuthorization.id.in_(identifiers), ActionAuthorization.agent_id == agent_id)))
         if len(rows) != len(set(identifiers)):
+            return False
+        if not all([await runtime_authorization_visible(grant, row) for row in rows]):
             return False
         return all([await runtime_action_status(grant, row) != "pending" for row in rows])
 

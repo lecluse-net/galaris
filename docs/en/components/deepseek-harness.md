@@ -19,6 +19,11 @@ The container builds the DSH revision pinned by `harness_provider.py`, then expo
 DSH 0.2.1-rc.2 uses Node 24.22.1 and pnpm 11.28.5 for this build.
 The Node version and digest are pinned to keep the runtime reproducible.
 
+The build also compiles the native Landlock launcher before staging the runtime.
+The shell retains `workspace-write` mode: workspace writes are allowed, while writes
+to other mounts remain denied. Existing instances must rebuild their image to receive
+this launcher.
+
 The image disables the temporary native cache (`NARB_DISABLE_NATIVE_CACHE=1`):
 the SDK loads the library directly from the installed package. It therefore does not
 try to load a copy from `/tmp`, which remains non-executable.

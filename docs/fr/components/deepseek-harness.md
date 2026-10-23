@@ -19,6 +19,11 @@ Le conteneur construit la révision DSH épinglée par `harness_provider.py`, pu
 DSH 0.2.1-rc.2 utilise Node 24.22.1 et pnpm 11.28.5 pour cette construction.
 La version et le digest de Node sont épinglés pour rendre le runtime reproductible.
 
+La construction compile aussi le lanceur Landlock natif avant de préparer le runtime.
+Le shell conserve le mode `workspace-write` : les écritures dans son workspace sont
+permises, celles dans les autres montages restent refusées. Les instances existantes
+doivent reconstruire leur image pour recevoir ce lanceur.
+
 Le cache natif temporaire est désactivé dans l'image (`NARB_DISABLE_NATIVE_CACHE=1`) :
 le SDK charge directement la bibliothèque fournie dans le paquet installé. Il n'essaie
 donc pas de charger une copie depuis `/tmp`, qui reste non exécutable.

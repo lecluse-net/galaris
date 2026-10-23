@@ -72,6 +72,7 @@ from .runtime_authorization import (
 from .runtime_authorization import (
     register_runtime_authorization_configuration as register_runtime_authorization_configuration,
     register_runtime_dispatch_guard as register_runtime_dispatch_guard,
+    register_runtime_authorization_waiter as register_runtime_authorization_waiter,
 )
 from .authorization import fingerprint as authorization_fingerprint
 from .authorization import (
@@ -119,6 +120,7 @@ __all__ = [
     "execute_workflow_tool",
     "register_runtime_authorization_configuration",
     "register_runtime_dispatch_guard",
+    "register_runtime_authorization_waiter",
     "authorization_fingerprint",
     "continued_deferred_dispatch",
     "release_buffered_dispatch",

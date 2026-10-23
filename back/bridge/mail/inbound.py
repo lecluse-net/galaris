@@ -18,6 +18,7 @@ from app.tools.facade import (
     AuthorizationAction, AuthorizationClosed, AuthorizationRequired, AuthorizationReview,
     authorization_reviews, claim_action, finish_action, get_tool_by_id,
     register_authorization_context_guard, register_authorization_waker,
+    register_runtime_authorization_waiter,
     tool_authorization_configuration, authorization_fingerprint, wake_authorization_context,
 )
 from app.tools.contracts import ToolCallRejectedError, current_tool_execution
@@ -71,6 +72,18 @@ async def _context(agent_id: int, key: str) -> dict[str, object] | None:
     if row is None or row.agent_id != agent_id or row.connection_id is None:
         return None
     return {"receipt_id": str(row.id), "connection_id": row.connection_id, "summary": row.summary}
+
+
+async def _runtime_waiter(agent_id: int, key: str, authorization_id: UUID, parent_context: str) -> bool:
+    try:
+        identifier = UUID(key.split(":", 1)[1])
+    except (ValueError, IndexError):
+        return False
+    return bool(await get_db().scalar(select(MailInboundReceipt.id).where(
+        MailInboundReceipt.id == identifier, MailInboundReceipt.agent_id == agent_id,
+        MailInboundReceipt.authorization_id == authorization_id,
+        MailInboundReceipt.waiting_contexts.contains([parent_context]),
+    )))
 
 
 async def authorize_receipt(row: MailInboundReceipt) -> None:
@@ -296,6 +309,7 @@ def _item(row: MailInboundReceipt, current_user_id: int, review: AuthorizationRe
 
 register_authorization_context_guard(_CONTEXT_PREFIX, _context)
 register_authorization_waker(_CONTEXT_PREFIX, _wake)
+register_runtime_authorization_waiter(_CONTEXT_PREFIX, _runtime_waiter)
 
 
 async def _authorized_contact(agent_id: int, message: Message) -> bool:
