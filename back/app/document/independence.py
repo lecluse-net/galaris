@@ -32,6 +32,33 @@ def needs_independence(delta: SchemaTransitionSet) -> bool:
         or delta.table_added("document_summary_revisions") or delta.table_added("document_urls"))
 
 
+def needs_nullable_legacy_memory_policy(delta: SchemaTransitionSet) -> bool:
+    return bool({"memory_items.share_id", "memory_items.share_kind"}.intersection(delta.removed_columns))
+
+
+async def _required_legacy_memory_policy_columns(session: AsyncSession) -> tuple[str, ...]:
+    return tuple(str(column) for column in await session.scalars(text("""
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='memory_items'
+          AND column_name IN ('share_id','share_kind') AND is_nullable='NO'
+        ORDER BY column_name
+    """)))
+
+
+async def legacy_memory_policy_nullable(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
+    return not await _required_legacy_memory_policy_columns(session)
+
+
+async def relax_legacy_memory_policy(session: AsyncSession, delta: SchemaTransitionSet) -> None:
+    # Expansion retains retired columns until all reconcilers succeed. New
+    # private memories have no sharing policy, so those retained columns must
+    # allow their inserts before contraction. Preserve and verify sources first;
+    # this action must work independently of other BEFORE_EXPAND action ordering.
+    await backup(session, delta)
+    for column in await _required_legacy_memory_policy_columns(session):
+        await session.execute(text(f'ALTER TABLE public.memory_items ALTER COLUMN "{column}" DROP NOT NULL'))
+
+
 async def _exists(session: AsyncSession, table: str) -> bool:
     return bool(await session.scalar(text("SELECT to_regclass(:table) IS NOT NULL"), {"table": table}))
 
@@ -329,6 +356,11 @@ async def retire_policies(session: AsyncSession, _delta: SchemaTransitionSet) ->
 
 
 def register_independence(registry: DbAdminRegistry) -> None:
+    registry.register_action(DbAdminAction(
+        key="app.document.independence_memory_policy_nullable", phase=DbAdminPhase.BEFORE_EXPAND,
+        checksum="verified-archive-nullable-retired-memory-policy-columns-v1",
+        predicate=needs_nullable_legacy_memory_policy, handler=relax_legacy_memory_policy,
+        postcondition=legacy_memory_policy_nullable))
     for key,phase,handler,postcondition in (
         ("preserve",DbAdminPhase.BEFORE_EXPAND,backup,backup_complete),
         ("transfer",DbAdminPhase.AFTER_EXPAND,transfer,transfer_complete),

@@ -10,7 +10,7 @@ from app.memory.models import MemoryItem,MemoryRevision,MemoryURL
 from app.share import ShareConfig,ShareGrant
 from app.document.independence import register_independence,transfer_complete
 from core import settings
-from core.dbadmin import DbAdminRegistry,DbAdminVerdict,SchemaTransitionSet,orchestrator
+from core.dbadmin import DbAdminReconciler,DbAdminRegistry,DbAdminVerdict,SchemaTransitionSet,orchestrator
 from core.dbadmin._internal import atlas
 from core.user import UserModel
 
@@ -67,6 +67,24 @@ async def old_schema(session):
     session.add(personal_policy);await session.flush()
     for node_id,policy,kind in ((identity,document.share_id,"document"),(folder_node,folder.share_id,"memory"),(private_id,personal_policy.id,"memory")):
         await session.execute(text("UPDATE memory_items SET share_id=:policy,share_kind=:kind WHERE id=:id"),{"policy":policy,"kind":kind,"id":node_id})
+    await session.execute(text("ALTER TABLE memory_items ALTER COLUMN share_id SET NOT NULL, ALTER COLUMN share_kind SET NOT NULL"))
+    from app.connection import Connection
+    from app.messenger import Message
+    from app.tools import ToolModel
+    tool = ToolModel(code="synthetic-upgrade-mail", label="Synthetic upgrade Mail",
+        messenger_config={"service": "mail"}, connection_schema={})
+    session.add(tool)
+    await session.flush()
+    connection = Connection(agent_id=owner.id, tool_id=tool.id, active=True)
+    session.add(connection)
+    await session.flush()
+    message = Message(connection_id=connection.id, tool_id=tool.id, platform="mail",
+        user_id="synthetic-sender@example.org", remote_message_id="synthetic-upgrade-message",
+        direction="inbound", text="Entirely synthetic upgrade input",
+        metadata_={"sender_display_name": "Synthetic upgrade sender"})
+    session.add(message)
+    await session.flush()
+    expected["message"] = message.id
     await session.execute(text("ALTER TABLE document_tags DROP COLUMN share_id CASCADE, DROP COLUMN share_kind CASCADE, DROP COLUMN lock_version"))
     await session.execute(text("UPDATE share_configs SET resource_kind='memory' WHERE id=:policy"),{"policy":folder.share_id})
     await session.execute(text("ALTER TABLE memory_items ADD UNIQUE(id,share_id)"))
@@ -90,7 +108,7 @@ async def old_schema(session):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("interrupted",[False,True])
+@pytest.mark.parametrize("interrupted",[False,True,"reconciler"])
 async def test_real_upgrade_preserves_document_summary_history_policies_and_replay(committed_database,monkeypatch,interrupted):
     engine=committed_database.kw["bind"]
     monkeypatch.setattr(orchestrator,"engine",engine)
@@ -100,7 +118,9 @@ async def test_real_upgrade_preserves_document_summary_history_policies_and_repl
     async with committed_database() as session:
         expected=await old_schema(session)
     registry=DbAdminRegistry();register_independence(registry)
-    if interrupted:
+    from app.messenger.dbadmin import _reconcile_contacts
+    registry.register_reconciler(DbAdminReconciler(key="synthetic.upgrade_contacts", handler=_reconcile_contacts))
+    if interrupted is True:
         interrupted_registry=DbAdminRegistry()
         for action in registry.actions:
             if action.key=="app.document.independence_transfer":
@@ -115,6 +135,18 @@ async def test_real_upgrade_preserves_document_summary_history_policies_and_repl
         async with committed_database() as session:
             assert await session.scalar(text("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='memory_items' AND column_name='share_id')"))
             assert await session.scalar(text("SELECT resource_id FROM memory_items WHERE id=:id"),{"id":expected["id"]})==expected["summary_pointer"]
+    elif interrupted == "reconciler":
+        previous_registry = DbAdminRegistry()
+        for action in registry.actions:
+            if action.key != "app.document.independence_memory_policy_nullable":
+                previous_registry.register_action(action)
+        previous_registry.register_reconciler(DbAdminReconciler(
+            key="synthetic.upgrade_contacts", handler=_reconcile_contacts))
+        result = await orchestrator.synchronize_database(target_registry=previous_registry)
+        assert result.verdict is DbAdminVerdict.FATAL
+        async with committed_database() as session:
+            assert await transfer_complete(session, SchemaTransitionSet())
+            assert await session.scalar(text("SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='memory_items' AND column_name IN ('share_id','share_kind') AND is_nullable='NO'")) == 2
     for _ in range(2):
         result=await orchestrator.synchronize_database(target_registry=registry)
         assert result.verdict is DbAdminVerdict.CONVERGED
@@ -133,3 +165,8 @@ async def test_real_upgrade_preserves_document_summary_history_policies_and_repl
             assert await transfer_complete(session,SchemaTransitionSet())
             assert await session.scalar(select(DocumentURL.url).where(DocumentURL.id==expected["url"]))=="https://example.test/synthetic-source"
             assert await session.scalar(select(ShareGrant.can_write).where(ShareGrant.share_id==document.share_id,ShareGrant.agent_id==expected["reader"])) is False
+            from app.messenger import Message
+            contact_id = await session.scalar(select(Message.contact_memory_item_id).where(Message.id == expected["message"]))
+            assert contact_id is not None
+            contact = await session.get(MemoryItem, contact_id)
+            assert contact.owner_agent_id == expected["owner"] and contact.node_kind == "memory"

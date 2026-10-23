@@ -48,6 +48,15 @@ bloque le retrait des sources. Les actions historiques indispensables gardent
 une identité reprenable. Les archives sont conservées ; leur purge n'appartient
 pas à ce chantier.
 
+Pendant l'expansion, les anciennes colonnes de politique `memory_items.share_id` et
+`share_kind` restent présentes jusqu'à la contraction. Une action `BEFORE_EXPAND`
+vérifie d'abord l'archive, puis les rend temporairement nullables pour que les reconcilers
+puissent créer des souvenirs privés dépourvus de partage. Elle ne modifie ni les valeurs
+historiques ni les droits documentaires, et reprend aussi une installation dont le
+transfert a déjà été validé mais dont la création de contacts a bloqué la contraction.
+Le test d'upgrade reproduit les contraintes `NOT NULL` du schéma historique et exécute
+le vrai reconciler de contacts avant la contraction, y compris après un échec antérieur.
+
 ## Vérification
 
 ### Revue des dépendances extraites

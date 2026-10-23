@@ -176,6 +176,11 @@ with the same name; an unknown reference fails before any container changes.
 Local source modifications block Git synchronization; ignored `.env` and override files
 are preserved. Use `make update` to apply configuration changes only.
 Without `.git`, `update` continues building existing sources and rejects `VERSION`.
+
+If an update separating Memory from Documents stopped on a `memory_items.share_id` or
+`share_kind` constraint while creating contacts, fetch the fix and run `make update` again.
+DbAdmin automatically resumes the transfer and prepares the retained columns; existing
+archives and permissions remain preserved.
 Distribution through an image registry is not yet supported by this path.
 
 If startup fails, check `make logs-back` or `make logs`.

@@ -110,6 +110,12 @@ adaptée. Une action indispensable en échec avant l’expansion arrête le DDL.
 différée conserve les sources et permet les ajouts. La contraction destructive et les actions
 `AFTER_CONTRACT` attendent la fin des préparations et du remplissage des colonnes obligatoires.
 
+Une colonne retirée du modèle peut rester présente pendant cette phase et bloquer les nouvelles
+écritures si elle est encore `NOT NULL` sans défaut. La transition Memory/Document traite ce cas
+par une action `BEFORE_EXPAND` : après vérification de l'archive, les anciens `share_id` et
+`share_kind` deviennent nullables jusqu'à leur retrait par Atlas. Les tests d'upgrade conservent
+les contraintes historiques et font créer un contact par le vrai reconciler avant la contraction.
+
 ## Modifier le schéma
 
 Pour une évolution ordinaire :

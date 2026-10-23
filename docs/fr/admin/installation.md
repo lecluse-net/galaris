@@ -180,6 +180,11 @@ inconnue provoque une erreur avant toute action sur les conteneurs.
 Les sources modifiées localement bloquent la récupération Git ; `.env` et les overrides
 ignorés sont conservés. Pour appliquer seulement leur configuration, utilisez `make update`.
 Sans `.git`, `update` conserve la construction depuis les sources présentes et refuse `VERSION`.
+
+Si une mise à jour de la séparation Memory/Document a été arrêtée sur une contrainte
+`memory_items.share_id` ou `share_kind` lors de la création de contacts, récupérez le correctif
+puis relancez `make update`. DbAdmin reprend le transfert et la préparation des anciennes
+colonnes automatiquement ; les archives et les droits existants restent conservés.
 La distribution par registre d’images n’est pas encore prise en charge par ce chemin.
 
 Si le démarrage échoue, consultez `make logs-back` ou `make logs`.
