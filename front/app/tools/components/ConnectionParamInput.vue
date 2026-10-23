@@ -4,7 +4,8 @@
     v-model="value"
     :options="choices"
     :label="label"
-    :clearable="name !== 'tools.fileindexing'"
+    :clearable="!['tools.fileindexing', 'tools.management_scope'].includes(name)"
+    :disable="disable"
     emit-value map-options dense outlined
   />
   <q-select
@@ -12,12 +13,14 @@
     v-model="value"
     :options="userOptions"
     :loading="loadingUsers"
+    :disable="disable"
     :label="label"
     emit-value map-options clearable dense outlined
   />
   <q-toggle
     v-else-if="definition.type === 'boolean'"
     :model-value="value === 'true'"
+    :disable="disable"
     :label="label"
     color="primary"
     @update:model-value="value = $event ? 'true' : 'false'"
@@ -25,6 +28,7 @@
   <q-input
     v-else
     v-model="value"
+    :disable="disable"
     :type="definition.type === 'password' ? 'password' : definition.type === 'integer' ? 'number' : 'text'"
     :label="label"
     :placeholder="placeholder ?? (definition.type === 'password' ? '' : String(definition.default ?? ''))"
@@ -47,6 +51,7 @@ const props = defineProps<{
   placeholder?: string
   userOptions?: Array<{ value: string; label: string }>
   loadingUsers?: boolean
+  disable?: boolean
 }>()
 const value = defineModel<string | null>()
 const { t, te } = useI18n()

@@ -54,6 +54,7 @@ async def sync_managed_skills(agent: Agent, manager: "HermesManager") -> dict[st
     """Rebuild the Galaris-managed namespace from the assigned skill packages."""
     codes = await _assigned_codes(agent.id)
     snapshot = await build_skill_projection(agent.id, skill_codes=codes)
+    codes = list(snapshot.skill_codes)
     desired: dict[str, dict[str, Any]] = {
         f"{MANAGED_ROOT}/{item.skill_code}/{item.relative_path}": {
             "sha256": item.sha256,

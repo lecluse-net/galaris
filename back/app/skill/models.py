@@ -55,8 +55,17 @@ class Skill(HistoryMixin, Base):
     __tablename__ = "skills"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    code: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
+    code: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
     label: Mapped[str] = mapped_column(String(255), nullable=False)
+    owner_agent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("agents.id"), nullable=True, index=True,
+    )
+    creator_agent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("agents.id"), nullable=True, index=True,
+    )
+    revision: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1",
+    )
     system: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
@@ -80,6 +89,37 @@ class Skill(HistoryMixin, Base):
         back_populates="skill",
         cascade="all, delete-orphan",
         passive_deletes=True,
+    )
+
+    __table_args__ = (
+        Index("uq_skill_generic_code", "code", unique=True,
+              postgresql_where=owner_agent_id.is_(None)),
+        Index("uq_skill_personal_code", "owner_agent_id", "code", unique=True,
+              postgresql_where=owner_agent_id.is_not(None)),
+        CheckConstraint(
+            "owner_agent_id IS NULL OR (NOT system AND NOT global_enabled AND category_id IS NULL)",
+            name="ck_skill_private_package",
+        ),
+        CheckConstraint("revision >= 1", name="ck_skill_revision"),
+    )
+
+
+class SkillOwnershipRelease(Base):
+    """Immutable receipt, committed atomically with a personal-to-generic conversion."""
+
+    __tablename__ = "skill_ownership_releases"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id"), index=True)
+    actor_agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id"), nullable=True)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    owner_agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"))
+    source_code: Mapped[str] = mapped_column(String(100))
+    target_code: Mapped[str] = mapped_column(String(100))
+    requested_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    expected_revision: Mapped[int] = mapped_column(Integer)
+    result_revision: Mapped[int] = mapped_column(Integer)
+    __table_args__ = (
+        CheckConstraint("(actor_agent_id IS NULL) <> (actor_user_id IS NULL)", name="ck_skill_release_actor"),
     )
 
 

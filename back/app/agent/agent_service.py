@@ -393,6 +393,8 @@ async def delete(id: int) -> bool:
         return False
 
     await _release_code(agent)
+    from app.skill.interface import deactivate_agent_skills
+    await deactivate_agent_skills(id)
     agent.soft_delete()
     await db.commit()
     logger.info(f"Agent deleted: {id}")

@@ -904,7 +904,7 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
         assert "Reply now" in captured["runtime_prompt"]
         assert outcome.execution_result.metadata["dispatch_result"] == {"forced_response": True}
     else:
-        assigned_skills.assert_awaited_once_with(turn.agent_id)
+        assigned_skills.assert_any_await(turn.agent_id)  # Construction and resource calls recheck live rights.
         assert [capability.id for capability in captured["capabilities"]] == ["galaris-lab", "conversation-turn-protocol"]
         assert captured["capabilities"][0].defer_loading is True
     assert outcome.text == "Réponse rapide."
@@ -1638,3 +1638,11 @@ async def test_conversation_controller_skips_runtime_when_dispatcher_ends_peer_e
     assert outcome.execution_result.cost == 0.01
     assert outcome.execution_result.metadata["dispatch_result"]["decision"]["route"] == "END"
     agent_get.assert_not_awaited()
+
+
+@pytest.fixture(autouse=True)
+def generic_catalogue_only_in_prompt_units(monkeypatch):
+    # Real personal catalogue/context assembly is exercised by app.skill/tests/test_mcp.py.
+    from unittest.mock import AsyncMock
+    from app.skill import interface
+    monkeypatch.setattr(interface, 'personal_packages', AsyncMock(return_value=[]))

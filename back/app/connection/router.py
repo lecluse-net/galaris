@@ -1,6 +1,6 @@
 """API routes for connections and their EAV parameters."""
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Annotated, List, Literal, Optional, Dict, Any
@@ -311,7 +311,7 @@ async def get_connection(connection_id: int):
 
 @router.post("", response_model=ConnectionSchema, status_code=status.HTTP_201_CREATED)
 @authorize(privileges=Privileges.CONNECTION_EDIT)
-async def create_connection(data: ConnectionCreate):
+async def create_connection(data: ConnectionCreate, request: Request):
     scope = await current_management_scope()
     await _require_agent(scope, data.agent_id)
     await _editable_tool(data.tool_id)
@@ -328,8 +328,15 @@ async def create_connection(data: ConnectionCreate):
             ),
         )
     connection = await connection_service.get_or_create_connection(
-        data.tool_id, data.agent_id, active=data.active
+        data.tool_id, data.agent_id, active=data.active, commit=data.params is None
     )
+    if data.params is not None:
+        try:
+            await connection_service.set_params_bulk(connection.id, data.params, commit=False,
+                scope_edit_authorized=await _authorize_scope_parameter(request, list(data.params)))
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        await get_db().commit()
     if connection.active != data.active:
         updated = await connection_service.set_connection_active(
             connection.id,
@@ -343,7 +350,7 @@ async def create_connection(data: ConnectionCreate):
 
 @router.patch("/{connection_id}", response_model=ConnectionSchema)
 @authorize(privileges=Privileges.CONNECTION_EDIT)
-async def update_connection(connection_id: int, update: ConnectionUpdate):
+async def update_connection(connection_id: int, update: ConnectionUpdate, request: Request):
     db = get_db()
     connection = await _managed_connection(connection_id)
     from app.tools.facade import lock_tools
@@ -361,6 +368,11 @@ async def update_connection(connection_id: int, update: ConnectionUpdate):
 
     if (update.tool_id is not None or update.agent_id is not None) and \
        (new_tool_id != connection.tool_id or new_agent_id != connection.agent_id):
+        from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+        scoped = await db.scalar(select(ConnectionParam.id).where(
+            ConnectionParam.connection_id == connection_id, ConnectionParam.param_name == MANAGEMENT_SCOPE_PARAM))
+        if scoped is not None:
+            await _authorize_scope_parameter(request, [MANAGEMENT_SCOPE_PARAM])
         existing = await connection_service.get_connection_by_agent_tool(
             new_tool_id, new_agent_id
         )
@@ -380,6 +392,13 @@ async def update_connection(connection_id: int, update: ConnectionUpdate):
         connection.agent_id = update.agent_id
     if update.active is not None:
         connection.active = update.active
+
+    if update.params is not None:
+        try:
+            await connection_service.set_params_bulk(connection_id, update.params, commit=False,
+                scope_edit_authorized=await _authorize_scope_parameter(request, list(update.params)))
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     await db.commit()
     await db.refresh(connection)
@@ -404,6 +423,15 @@ async def delete_connection(connection_id: int):
 # =============================================================================
 # EAV parameter endpoints.
 # =============================================================================
+
+async def _authorize_scope_parameter(request: Request, names: list[str]) -> bool:
+    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+    if MANAGEMENT_SCOPE_PARAM not in names:
+        return False
+    await require_web_session(request)
+    if not (await current_management_scope()).is_global:
+        raise HTTPException(status_code=403, detail=await _message("errors.scope_delegation"))
+    return True
 
 @router.get("/{connection_id}/params", response_model=ConnectionParamsResponse)
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
@@ -454,7 +482,7 @@ async def get_single_param(
 
 @router.post("/{connection_id}/params", response_model=ConnectionParamSchema, status_code=status.HTTP_201_CREATED)
 @authorize(privileges=Privileges.CONNECTION_EDIT)
-async def create_or_update_param(connection_id: int, param: ConnectionParamCreate):
+async def create_or_update_param(connection_id: int, param: ConnectionParamCreate, request: Request):
     await _managed_connection(connection_id, editable=True)
     if param.connection_id != connection_id:
         raise HTTPException(
@@ -467,7 +495,8 @@ async def create_or_update_param(connection_id: int, param: ConnectionParamCreat
         )
     try:
         saved = await connection_service.set_param(
-            param.connection_id, param.param_name, param.param_value
+            param.connection_id, param.param_name, param.param_value,
+            scope_edit_authorized=await _authorize_scope_parameter(request, [param.param_name]),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -479,7 +508,7 @@ async def create_or_update_param(connection_id: int, param: ConnectionParamCreat
 
 @router.post("/{connection_id}/params/bulk", response_model=List[ConnectionParamSchema], status_code=status.HTTP_201_CREATED)
 @authorize(privileges=Privileges.CONNECTION_EDIT)
-async def create_or_update_params_bulk(connection_id: int, bulk_data: ConnectionParamBulkCreate):
+async def create_or_update_params_bulk(connection_id: int, bulk_data: ConnectionParamBulkCreate, request: Request):
     await _managed_connection(connection_id, editable=True)
     if bulk_data.connection_id != connection_id:
         raise HTTPException(
@@ -492,7 +521,8 @@ async def create_or_update_params_bulk(connection_id: int, bulk_data: Connection
         )
     try:
         saved = await connection_service.set_params_bulk(
-            bulk_data.connection_id, bulk_data.params
+            bulk_data.connection_id, bulk_data.params,
+            scope_edit_authorized=await _authorize_scope_parameter(request, list(bulk_data.params)),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -508,6 +538,7 @@ async def update_connection_param(
     connection_id: int,
     param_name: str,
     update: ConnectionParamUpdate,
+    request: Request,
 ):
     await _managed_connection(connection_id, editable=True)
     db = get_db()
@@ -524,7 +555,8 @@ async def update_connection_param(
         )
     try:
         saved = await connection_service.set_param(
-            connection_id, param_name, update.param_value
+            connection_id, param_name, update.param_value,
+            scope_edit_authorized=await _authorize_scope_parameter(request, [param_name]),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -536,9 +568,10 @@ async def update_connection_param(
 
 @router.delete("/{connection_id}/params/{param_name}", status_code=status.HTTP_204_NO_CONTENT)
 @authorize(privileges=Privileges.CONNECTION_EDIT)
-async def delete_param(connection_id: int, param_name: str):
+async def delete_param(connection_id: int, param_name: str, request: Request):
     await _managed_connection(connection_id, editable=True)
-    deleted = await connection_service.delete_param(connection_id, param_name)
+    deleted = await connection_service.delete_param(connection_id, param_name,
+        scope_edit_authorized=await _authorize_scope_parameter(request, [param_name]))
     if not deleted:
         raise HTTPException(
             status_code=404,

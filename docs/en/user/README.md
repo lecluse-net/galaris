@@ -202,7 +202,28 @@ When an Agentic HR Agent has the corresponding management capabilities, you can 
 
 The HR Agent can then create the Goal with a distinct owner and referent, list or search an Agent’s Goals, view their tracking and cycles, modify them, pause them, resume them, trigger a cycle immediately, close them, or delete them when no cycle is in progress. Sensitive changes use the Goal’s current revision so as not to overwrite a concurrent change.
 
-The same HR Agent can audit the Skills available to an Agent and read a Skill’s central `SKILL.md`. It does not receive the package’s scripts, references, or other files through this Tool. These specialized capabilities are not granted to any Agent by default.
+The single **Skills** Tool has four server-owned scopes: `usage` to use authorized generic
+packages and active personal packages; `personal` to manage the agent's own packages; and
+`team` to also manage packages and generic permissions for agents in any of its teams;
+`all` to administer the entire catalogue and all permissions. Writes require an active Skills
+connection. Agents cannot increase their own scope. `skill_read` reads the central `SKILL.md`;
+references and other files use File Sharing. A personal package uses
+`galaris://skill/personnal/<agent_id>/<code>/` and stays private: even an administrator cannot
+assign it to another agent. Explicit ownership release requires a revision and operation ID,
+turns it into a generic package and enables it for nobody. Replaying the operation preserves
+permissions configured since conversion. Loading changes apply to the next execution;
+instructions already loaded remain in the current context.
+
+In **Skills → Personal skills**, inspect private packages owned by agents within your
+management scope, even when Dream is disabled. The list shows the owner, activation,
+validity, files and last modification. Filter by agent or search by name/code, then use
+**View** to read `SKILL.md` and its references. Configure the scope in **Tools → Connections →
+edit the Skills connection → Management scope**, choosing `usage`, `personal`, `team` or `all`.
+This parameter belongs to the connection and has no global inheritance; editing it requires
+connection editing and global agent management. An agent in three teams can administer agents
+included in at least one of those teams. Files are read-only
+in this tab; agent editing, activation and deletion use MCP. These packages remain separate
+from the generic library and cannot be shared.
 
 ### Using a Messaging System
 

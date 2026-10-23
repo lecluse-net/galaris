@@ -252,9 +252,29 @@ mettre en pause, les reprendre, déclencher un cycle immédiatement, les clôtur
 lorsqu’aucun cycle n’est en cours. Les modifications sensibles utilisent la révision courante de
 l’objectif afin de ne pas écraser une évolution concurrente.
 
-La même DRH peut auditer les skills disponibles pour un agent et lire le `SKILL.md` central d’un
-skill. Elle ne reçoit ni les scripts, ni les références, ni les autres fichiers du package par ce
-tool. Ces capacités spécialisées ne sont accordées à aucun agent par défaut.
+Le Tool unique **Skills** distingue quatre portées serveur : `usage` pour utiliser les
+génériques autorisés et ses personnels actifs ; `personal` pour gérer ses propres packages ;
+`team` pour gérer aussi les packages des agents de l'une de ses équipes et leurs autorisations
+génériques ; `all` pour administrer tout le catalogue et toutes les autorisations. Les écritures
+exigent une connexion Skills active. L'agent ne peut pas augmenter lui-même sa portée.
+`skill_read` lit le `SKILL.md` central ; les références et fichiers passent par File Sharing.
+Un personnel utilise `galaris://skill/personnal/<agent_id>/<code>/` et reste privé : même un
+administrateur ne peut pas l'affecter à un autre agent. Le retrait explicite de propriété
+avec révision et identifiant d'opération le transforme en générique, sans activation automatique.
+Un rejeu conserve les droits configurés depuis la conversion. Les changements de chargement
+s'appliquent à la prochaine exécution ; les instructions déjà chargées restent dans le contexte courant.
+
+Dans **Skills → Skills personnels**, consultez les packages privés possédés par les agents
+de votre périmètre de gestion, même lorsque Dream est désactivé. La liste indique le
+propriétaire, l'activation, la validité, les fichiers et la dernière modification. Filtrez
+par agent ou recherchez un nom/code, puis utilisez **Voir** pour lire le `SKILL.md` et ses
+références. La portée se règle dans **Tools → Connexions → modifier la connexion Skills →
+Portée de gestion**, avec `usage`, `personal`, `team` ou `all`. Ce paramètre est propre à
+la connexion, sans héritage global ; sa modification demande édition des connexions et
+gestion globale des agents. Un agent dans trois équipes peut administrer les agents inclus
+dans au moins l'une des trois. Les fichiers sont en
+consultation dans cet onglet ; leur édition, activation et suppression agentiques passent
+par MCP. Les packages restent séparés de la bibliothèque générique et ne sont pas partageables.
 
 ### Passer par une messagerie
 

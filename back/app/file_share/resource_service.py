@@ -2035,6 +2035,8 @@ async def resource_copy(
 ) -> ResourceTransfer:
     source_ref = await resolve_native_alias(ctx, parse_resource_uri(source))
     destination_ref = await resolve_native_alias(ctx, parse_resource_uri(destination, allow_empty=True))
+    from .skill_provider import check_copy
+    await check_copy(ctx, source_ref, destination_ref)
     if _resource_provider(destination_ref):
         descriptor = await resource_info(ctx, source_ref)
         data = await _materialize_complete_bytes(ctx, source_ref)

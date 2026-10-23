@@ -82,7 +82,8 @@ SYSTEM_TOOL_CODES = frozenset(
         "messenger",
         "process_admin",
         "search",
-        "skill_management",
+        "skills",
+        "skill_management",  # Retired integrated identity; cannot become an external scheme.
         "voice",
     }
 )

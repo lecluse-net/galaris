@@ -183,6 +183,8 @@ async def test_voice_conversation_runtime_is_traced_as_audio(
         AsyncMock(return_value="Use tools for actions; answer directly otherwise."),
     )
     monkeypatch.setattr(conversation, "create_agent", fake_create_agent)
+    monkeypatch.setattr("app.conversation.facade.active_work_snapshot",
+                        AsyncMock(return_value=request.task_data["linked_work"]))
     from app.skill import learning_service, skill_service
 
     assigned_skills = AsyncMock(return_value=["galaris-lab"])
@@ -196,7 +198,7 @@ async def test_voice_conversation_runtime_is_traced_as_audio(
     ]
 
     assert captured["purpose"] == LLMCallPurpose.CONVERSATION_AUDIO
-    assigned_skills.assert_awaited_once_with(request.agent_id)
+    assigned_skills.assert_any_await(request.agent_id)  # Resource reads revalidate after construction.
     assert [capability.id for capability in captured["capabilities"]] == ["galaris-lab"]
     assert captured["capabilities"][0].defer_loading is True
     assert "task=galaris://task/voice-task" in str(captured["system_prompt"])
@@ -514,3 +516,11 @@ async def test_exact_explicit_task_message_suppresses_only_terminal_fallback(
     assert terminal is not None
     assert terminal.result == final_text
     assert terminal.tools_used == ["messenger_room_send_message"]
+
+
+@pytest.fixture(autouse=True)
+def generic_catalogue_only_in_stream_units(monkeypatch):
+    # These stream units already replace generic and learned catalogue persistence.
+    from unittest.mock import AsyncMock
+    from app.skill import interface
+    monkeypatch.setattr(interface, 'personal_packages', AsyncMock(return_value=[]))

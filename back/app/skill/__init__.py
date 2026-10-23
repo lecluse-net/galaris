@@ -6,6 +6,7 @@ from .models import (
     LearnedSkill,
     LearnedSkillEvidence,
     Skill,
+    SkillOwnershipRelease,
     SkillCategory,
 )
 from .learning_contracts import (
@@ -57,6 +58,7 @@ __all__ = [
     "LearnedSkillOperation",
     "LearnedSkillRuntimeRefresher",
     "Skill",
+    "SkillOwnershipRelease",
     "SkillCategory",
     "SkillCreate",
     "SkillPublic",

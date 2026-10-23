@@ -162,6 +162,7 @@ export default {
       paramOptionLabel: 'Libellé du choix',
       removeParamOption: 'Supprimer ce choix',
       connectionParamLabels: {
+        managementScope: 'Portée de gestion',
         fileindexing: 'Indexation des fichiers',
         host: 'Serveur', port: 'Port', username: 'Nom d’utilisateur', login: 'Identifiant',
         password: 'Mot de passe', access_token: 'Jeton d’accès', bot_token: 'Jeton du bot',
@@ -182,6 +183,12 @@ export default {
         allowed_phone_numbers: 'Numéros de téléphone autorisés', template_name: 'Nom du modèle de message', template_language: 'Langue du modèle de message',
       },
       connectionParamOptions: {
+        managementScope: {
+          usage: 'Usage sans droit de modification',
+          personal: "Gestion pour l'agent uniquement",
+          team: 'Gestion de niveau équipe',
+          all: 'Gestion globale sans restriction',
+        },
         fileindexing: { excluded: 'Désactivée', known_uris: 'Uniquement les fichiers déjà connus', recursive: 'Découverte & indexation de tous les contenus disponibles' },
         browser: {
           public_access_mode: { allow: 'Sites publics autorisés', ask: 'Autorisation par site' },
@@ -251,9 +258,9 @@ export default {
           label: "Gestion des objectifs",
           description: "## Rôle\n\nCréer, modifier, suspendre, reprendre, terminer et supprimer les objectifs durables de tous les agents. Ce Tool étend aussi les commandes Goal partagées au-delà des objectifs de l’appelant ; les révisions protègent les modifications concurrentes.\n\n## Possibilités\n\n- **Définir un objectif durable** : choisir l’agent responsable, le référent humain, la description, la cadence et les paramètres de planification.\n- **Piloter son cycle de vie** : modifier l’objectif, le mettre en pause, le reprendre, le clôturer ou le supprimer selon les contraintes d’exécution.\n- **Administrer plusieurs agents** : étendre les opérations Goal partagées aux objectifs d’autres agents, au-delà du périmètre personnel habituel.\n\n## Quand l’utiliser\n\nÀ utiliser pour organiser un travail récurrent ou suivi dans le temps. **Exemple :** confier une veille périodique à un agent, ajuster sa fréquence et la suspendre lorsque la mission est terminée.\n\n## Conditions et limites\n\nTool optionnel, inactif par défaut, aux droits étendus. Les modifications utilisent la révision courante pour éviter les écrasements concurrents. La suppression respecte les exécutions encore actives ; le changement de propriétaire est restreint après le début des cycles. Le suivi ordinaire de ses propres objectifs reste accessible avec Galaris.",
         },
-        skill_management: {
-          label: "Gestion des compétences",
-          description: "## Rôle\n\nInspecter les compétences disponibles et lire leurs instructions. Administrer les fichiers des packages autorisés avec Partage de fichiers via galaris://skill/ ; les compétences système restent en lecture seule.\n\n## Possibilités\n\n- **Découvrir les compétences** : lister celles d’un agent, avec la possibilité d’inclure les entrées indisponibles pour un audit.\n- **Lire les consignes** : ouvrir le fichier principal d’une compétence afin de comprendre sa méthode et ses règles d’utilisation.\n- **Administrer les packages autorisés** : accéder à leurs fichiers par Partage de fichiers, sous `galaris://skill/`, pour créer ou faire évoluer les instructions et ressources des compétences utilisateur.\n\n## Quand l’utiliser\n\nÀ utiliser pour maintenir des procédures réutilisables et comprendre les compétences proposées aux agents. **Exemple :** vérifier une procédure de rédaction, corriger ses instructions et conserver ses ressources dans le même package.\n\n## Conditions et limites\n\nTool optionnel, inactif par défaut. Les compétences système restent en lecture seule. Modifier une compétence utilisateur exige de préserver un fichier principal valide ; la lecture d’une compétence ne l’exécute pas et ne donne pas accès à tous ses outils externes.",
+        skills: {
+          label: "Skills",
+          description: "Un seul Tool Skills, avec les portées usage, personal, team et all déléguées par un humain habilité. Usage permet de consulter les génériques autorisés et ses personnels actifs. Personal permet de gérer ses propres packages. Team permet de gérer pour les agents de toutes ses équipes. All autorise l’administration explicite de tous les packages utilisateurs et la distribution des génériques. Les fichiers passent par Partage de fichiers sous galaris://skill/personnal/<agent>/<code>/. Un personnel ne se partage jamais ; seul le retrait explicite de propriété le rend générique, initialement inactif pour tous. Les fichiers système restent protégés.",
         },
         process_admin: {
           label: "Administration des processus",
@@ -341,6 +348,7 @@ export default {
         },
       },
       connectionParamDescriptions: {
+        managementScope: 'Portée propre à cette connexion : usage, gestion personnelle, agents de toutes ses équipes ou administration globale. Une connexion inactive ne donne aucun pouvoir de gestion.',
         fileindexing: 'Désactiver l’indexation, indexer uniquement les fichiers déjà connus, ou découvrir et indexer tous les contenus accessibles via cette connexion. La connexion peut hériter du réglage du Tool ou le personnaliser.',
         browser: {
           default_output: 'Réponse par défaut après une action : content ou screenshot',
@@ -587,6 +595,7 @@ export default {
       paramOptionLabel: 'Choice label',
       removeParamOption: 'Remove this choice',
       connectionParamLabels: {
+        managementScope: 'Management scope',
         fileindexing: 'File indexing',
         host: 'Server', port: 'Port', username: 'Username', login: 'Login',
         password: 'Password', access_token: 'Access token', bot_token: 'Bot token',
@@ -607,6 +616,12 @@ export default {
         allowed_phone_numbers: 'Allowed phone numbers', template_name: 'Message template name', template_language: 'Message template language',
       },
       connectionParamOptions: {
+        managementScope: {
+          usage: 'Usage without modification rights',
+          personal: 'Management for this agent only',
+          team: 'Team management',
+          all: 'Global management without restrictions',
+        },
         fileindexing: { excluded: 'Disabled', known_uris: 'Only files already known', recursive: 'Discover & index all available content' },
         browser: {
           public_access_mode: { allow: 'Public sites allowed', ask: 'Per-site approval' },
@@ -676,9 +691,9 @@ export default {
           label: "Goal management",
           description: "## Purpose\n\nCreate, modify, pause, resume, complete and delete long-running Goals for all agents. Enabling this Tool also extends shared Goal commands beyond the caller’s own objectives; concurrent edits remain protected by revisions.\n\n## Capabilities\n\n- **Define durable goals:** choose the responsible agent, human referrer, description, cadence and schedule settings.\n- **Manage lifecycle:** update, pause, resume, complete or delete a goal subject to execution constraints.\n- **Administer multiple agents:** extend shared Goal operations beyond the caller's own goals.\n\n## When to use it\n\nUse it to organize recurring or continuing work. **Example:** assign periodic monitoring to an agent, adjust its frequency and pause it when the mission ends.\n\n## Requirements and limits\n\nOptional Tool, inactive by default, with extended rights. Changes use the current revision to prevent concurrent overwrites. Deletion respects active executions; ownership changes are restricted once cycles have started. Ordinary tracking of owned goals remains available through Galaris.",
         },
-        skill_management: {
-          label: "Skill management",
-          description: "## Purpose\n\nInspect available skills and read their instructions. Manage authorized skill package files through File sharing at galaris://skill/; system skill packages remain read-only.\n\n## Capabilities\n\n- **Discover skills:** list an agent's skills, optionally including unavailable entries for an audit.\n- **Read instructions:** open a skill's main file to understand its method and usage rules.\n- **Manage authorized packages:** use File sharing under `galaris://skill/` to create or update instructions and supporting resources in user-managed skills.\n\n## When to use it\n\nUse it to maintain reusable procedures and understand the skills offered to agents. **Example:** inspect a writing procedure, correct its instructions and keep its resources in the same package.\n\n## Requirements and limits\n\nOptional Tool, inactive by default. System skills remain read-only. User skill changes must preserve a valid main file; reading a skill neither executes it nor grants access to all external tools it mentions.",
+        skills: {
+          label: "Skills",
+          description: "One Skills Tool with usage, personal, team and all scopes delegated by an authorized human. Usage reads authorized generic skills and active own personal packages. Personal manages only your own packages. Team manages agents in any of your teams. All allows explicit administration of all user packages and generic distribution. Files use File Sharing under galaris://skill/personnal/<agent>/<code>/. Personal packages cannot be shared; explicit ownership release makes them generic, initially disabled for everyone. System files remain protected.",
         },
         process_admin: {
           label: "Process administration",
@@ -766,6 +781,7 @@ export default {
         },
       },
       connectionParamDescriptions: {
+        managementScope: 'Scope for this connection: usage, personal management, agents in any of its teams, or global administration. An inactive connection grants no management power.',
         fileindexing: 'Disable indexing, index only files already known, or discover and index all content accessible through this connection. The connection can inherit or override the Tool setting.',
         browser: {
           default_output: 'Default response after an action: content or screenshot',
@@ -919,6 +935,7 @@ export default {
       invalidParamOptions: '“{name}”的选项无效：值必须非空、唯一且符合类型；默认值必须是一个选项。',
       paramOptionsHint: '选项替代自由文本输入。保存值，显示标签。', paramOptionValue: '值 *', paramOptionLabel: '选项标签', removeParamOption: '删除此选项',
       connectionParamLabels: {
+        managementScope: '管理范围',
         fileindexing: '文件索引',
         host: '服务器', port: '端口', username: '用户名', login: '登录名', password: '密码', access_token: '访问令牌', bot_token: '机器人令牌',
         private_key: 'SSH 私钥', private_key_passphrase: 'SSH 密钥密码', known_host_key: 'SSH 服务器公钥',
@@ -934,6 +951,12 @@ export default {
         allowed_phone_numbers: '允许的电话号码', template_name: '消息模板名称', template_language: '消息模板语言',
       },
       connectionParamOptions: {
+        managementScope: {
+          usage: '使用（无修改权限）',
+          personal: '仅管理当前智能体',
+          team: '团队级管理',
+          all: '全局管理（无限制）',
+        },
         fileindexing: { excluded: '禁用', known_uris: '仅已知文件', recursive: '发现并索引所有可用内容' },
         browser: {
           public_access_mode: { allow: '允许公共网站', ask: '按网站审批' },
@@ -993,9 +1016,9 @@ export default {
           label: "目标管理",
           description: "## 用途\n\n为所有智能体创建、修改、暂停、恢复、完成和删除长期目标。启用此工具还会将共用目标命令的范围扩展至调用者以外的目标；并发修改仍受版本检查保护。\n\n## 功能\n\n- **定义长期目标：**指定负责智能体、人类负责人、目标描述、执行频率及计划。\n- **管理生命周期：**根据执行约束修改、暂停、恢复、完成或删除目标。\n- **跨智能体管理：**将共用目标操作扩展至调用者以外的目标。\n\n## 使用场景\n\n适合组织重复执行或长期持续的工作。**示例：**安排定期信息监测，调整频率，并在任务结束时暂停目标。\n\n## 条件与限制\n\n这是默认关闭、具有扩展权限的可选工具。修改使用当前修订版本防止覆盖并发更改。删除受到活动运行限制，执行周期开始后变更所有者也受限。自己的普通目标跟踪仍可通过 Galaris 完成。",
         },
-        skill_management: {
-          label: "技能管理",
-          description: "## 用途\n\n查看可用技能并读取说明。通过文件共享工具在 galaris://skill/ 管理已授权的技能包文件；系统技能包保持只读。\n\n## 功能\n\n- **发现技能：**列出智能体的技能，也可包含不可用条目以便审计。\n- **阅读说明：**打开技能主文件，理解方法和使用规则。\n- **管理已授权包：**通过文件共享工具的 `galaris://skill/` 创建或更新用户技能的说明与配套资源。\n\n## 使用场景\n\n适合维护可复用的工作方法及了解智能体可用技能。**示例：**检查写作流程，修正说明，并将辅助资源保存在同一技能包中。\n\n## 条件与限制\n\n这是默认关闭的可选工具。系统技能只读；用户技能必须保留有效主文件。阅读技能不会执行它，也不会自动授予其引用的外部工具权限。",
+        skills: {
+          label: "技能",
+          description: "单一 Skills 工具，由授权的人类管理员授予 usage、personal、team 或 all 范围。usage 可读取已授权的通用技能及自己的已启用个人技能。personal 仅管理自己的技能包。team 管理所在任一团队的智能体技能包。all 可明确管理所有用户技能包并分配通用技能。文件通过文件共享访问 galaris://skill/personnal/<agent>/<code>/。个人技能不能共享；必须明确移除所有权后才能成为通用技能，且初始对所有智能体停用。系统文件始终受保护。",
         },
         process_admin: {
           label: "流程管理",
@@ -1083,6 +1106,7 @@ export default {
         },
       },
       connectionParamDescriptions: {
+        managementScope: '此连接的权限：使用、个人管理、所在任一团队的智能体管理或全局管理。未启用的连接不授予管理权限。',
         fileindexing: '禁用索引、仅索引已知文件，或发现并索引通过此连接可访问的所有内容。连接可以继承或覆盖工具设置。',
         browser: { default_output: '操作后的默认回复：内容或截图',
           public_access_mode: '允许公共网站而无需逐站询问，或按网站请求批准。过滤器、明确拒绝和本地网络限制仍然有效。',

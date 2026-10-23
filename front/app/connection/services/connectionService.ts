@@ -27,12 +27,14 @@ export interface ConnectionCreate {
     tool_id: number
     agent_id: number
     active?: boolean
+    params?: Record<string, string | null>
 }
 
 export interface ConnectionUpdate {
     tool_id?: number
     agent_id?: number
     active?: boolean
+    params?: Record<string, string | null>
 }
 
 // =============================================================================

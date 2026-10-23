@@ -10,6 +10,7 @@
       indicator-color="primary"
     >
       <q-tab name="skills" icon="psychology" :label="t('skills.tabSkills')" />
+      <q-tab name="personal" icon="person" :label="t('skills.personal.tab')" />
       <q-tab
         v-if="learningEnabled"
         name="learned"
@@ -311,6 +312,9 @@
     </div>
       </q-tab-panel>
 
+      <q-tab-panel name="personal" class="q-px-none">
+        <PersonalSkillManager :active="tab === 'personal'" />
+      </q-tab-panel>
       <q-tab-panel v-if="canAssign" name="authorizations" class="q-px-none">
         <SkillAuthorizationManager />
       </q-tab-panel>
@@ -617,6 +621,7 @@ import Markdown from '@/core/util/components/Markdown.vue'
 import SkillAuthorizationManager from '../components/SkillAuthorizationManager.vue'
 import SkillCategoryManager from '../components/SkillCategoryManager.vue'
 import LearnedSkillManager from '../components/LearnedSkillManager.vue'
+import PersonalSkillManager from '../components/PersonalSkillManager.vue'
 import { skillService, type Skill, type SkillFile } from '../services/skillService'
 import { useSkillStore } from '../stores/skillStore'
 
@@ -647,7 +652,7 @@ const canEdit = computed(() => (
 ))
 const canAssign = computed(() => privilegeStore.hasPrivilege(privileges.SKILL_ASSIGN))
 const learningEnabled = ref(false)
-const allowedTabs = ['skills', 'learned', 'authorizations']
+const allowedTabs = ['skills', 'personal', 'learned', 'authorizations']
 const tab = ref(
   typeof route.query.tab === 'string' && allowedTabs.includes(route.query.tab)
     ? route.query.tab

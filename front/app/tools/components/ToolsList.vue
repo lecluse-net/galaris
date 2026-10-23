@@ -904,7 +904,8 @@ async function openGlobalParams(tool: Tool): Promise<void> {
       approversLoading.value = false
     }
   }
-  globalParamRows.value = sortedConnectionParamEntries(tool.connection_schema.params).map(([name, definition]) => {
+  globalParamRows.value = sortedConnectionParamEntries(tool.connection_schema.params)
+    .filter(([name]) => name !== 'tools.management_scope').map(([name, definition]) => {
     const current = data.params[name]
     return {
       ...definition,

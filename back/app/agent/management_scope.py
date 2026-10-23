@@ -15,6 +15,17 @@ from core.user import UserModel as User
 from .models import Agent
 
 
+async def team_agent_ids(agent_id: int) -> frozenset[int]:
+    """Active agents sharing any active team with the caller, plus the caller."""
+    from core.team import TeamModel
+    from .models import AgentTeam
+    teams = select(AgentTeam.team_id).join(TeamModel, TeamModel.id == AgentTeam.team_id).where(
+        AgentTeam.agent_id == agent_id)
+    ids = await get_db().scalars(select(Agent.id).outerjoin(AgentTeam, AgentTeam.agent_id == Agent.id)
+        .where((Agent.id == agent_id) | AgentTeam.team_id.in_(teams)).distinct())
+    return frozenset(ids)
+
+
 MANAGE_ALL_AGENTS_PRIVILEGE = "AGENT_MANAGE_ALL"
 _managed_agents = RequestAuthorizationCache[tuple[int, int | None], frozenset[int]]()
 

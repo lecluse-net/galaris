@@ -68,6 +68,29 @@ class SkillPublic(SkillBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PersonalSkillPublic(SkillBase):
+    id: int
+    owner_agent_id: int
+    owner_label: str
+    revision: int
+    enabled: bool
+    available: bool
+    valid: bool
+    description: str | None
+    file_count: int
+    updated_at: datetime
+
+
+class PersonalSkillPage(BaseModel):
+    items: list[PersonalSkillPublic]
+    total: int
+
+
+class PersonalSkillDetail(BaseModel):
+    skill: PersonalSkillPublic
+    files: list[SkillFile]
+
+
 class SkillAuthorizationUpdate(BaseModel):
     state: SkillAuthorizationState
 

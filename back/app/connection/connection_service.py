@@ -162,6 +162,31 @@ async def has_active_tool_connection(
     return result.scalar_one_or_none() is not None
 
 
+async def get_management_scope(
+    agent_id: int, tool_code: str | None = None, *,
+    connection_id: int | None = None, default: str = "usage",
+) -> str:
+    """Read local scope from a live connection; never inherit global parameters."""
+    from app.tools import ToolModel
+    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+    if tool_code is None and connection_id is None:
+        raise ValueError("An exact connection or Tool code is required")
+    query = select(Connection.id, ConnectionParam.param_value).select_from(Connection)
+    query = (query
+        .join(ToolModel, ToolModel.id == Connection.tool_id)
+        .outerjoin(ConnectionParam, (ConnectionParam.connection_id == Connection.id)
+                   & (ConnectionParam.param_name == MANAGEMENT_SCOPE_PARAM))
+        .where(Connection.agent_id == agent_id, Connection.active.is_(True)))
+    if tool_code is not None:
+        query = query.where(ToolModel.code == tool_code)
+    if connection_id is not None:
+        query = query.where(Connection.id == connection_id)
+    row = (await get_db().execute(query)).one_or_none()
+    if row is None:
+        return "usage"
+    return default if row.param_value is None else row.param_value
+
+
 async def has_active_tool_function(agent_id: int, tool_code: str, function_name: str) -> bool:
     """Check the live connection and its effective function authorization."""
     from app.tools import ToolModel
@@ -433,8 +458,9 @@ async def set_param(
     connection_id: int,
     param_name: str,
     param_value: Optional[str],
-    *, commit: bool = True,
+    *, commit: bool = True, scope_edit_authorized: bool = False,
 ) -> ConnectionParam:
+    _require_scope_write({param_name: param_value}, scope_edit_authorized)
     await require_editable_connection(connection_id)
     db = get_db()
     connection = await get_connection(connection_id)
@@ -495,8 +521,9 @@ async def set_param(
 async def set_params_bulk(
     connection_id: int,
     params: Dict[str, Optional[str]],
-    *, commit: bool = True,
+    *, commit: bool = True, scope_edit_authorized: bool = False,
 ) -> List[ConnectionParam]:
+    _require_scope_write(params, scope_edit_authorized)
     await require_editable_connection(connection_id)
     connection = await get_connection(connection_id)
     if connection is None:
@@ -579,7 +606,15 @@ def validate_param_value(type_name: str, value: str) -> None:
         raise ValueError("A boolean connection parameter is required")
 
 
-async def delete_param(connection_id: int, param_name: str, *, commit: bool = True) -> bool:
+def _require_scope_write(params: Mapping[str, object], authorized: bool) -> None:
+    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+    if MANAGEMENT_SCOPE_PARAM in params and not authorized:
+        raise PermissionError("Management scope requires explicit human global delegation")
+
+
+async def delete_param(connection_id: int, param_name: str, *, commit: bool = True,
+                       scope_edit_authorized: bool = False) -> bool:
+    _require_scope_write({param_name: None}, scope_edit_authorized)
     await require_editable_connection(connection_id)
     db = get_db()
     result = await db.execute(
@@ -596,7 +631,8 @@ async def delete_all_params(connection_id: int) -> int:
     await require_editable_connection(connection_id)
     db = get_db()
     result = await db.execute(
-        delete(ConnectionParam).where(ConnectionParam.connection_id == connection_id)
+        delete(ConnectionParam).where(ConnectionParam.connection_id == connection_id,
+                                      ConnectionParam.param_name != "tools.management_scope")
     )
     await db.commit()
     return cast(CursorResult[Any], result).rowcount

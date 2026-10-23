@@ -99,6 +99,7 @@
               :tool-code="selectedTool?.code"
               :user-options="approverOptions"
               :loading-users="approversLoading"
+              :disable="param.name === 'tools.management_scope' && !canDelegateScope"
               @update:model-value="paramValues[param.name] = $event ?? ''"
             />
           </div>
@@ -397,6 +398,7 @@ const { t, te } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
+const canDelegateScope = computed(() => canEdit.value && privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL))
 const canTest = computed(() => (
   canEdit.value || privilegeStore.hasPrivilege(privileges.CONNECTION_ACCESS)
 ))
@@ -758,6 +760,7 @@ function initForm(connection?: Connection, params?: Record<string, unknown> | nu
     )
     if (params) {
       for (const [key, val] of Object.entries(params)) {
+        if (key === 'tools.management_scope' && (val === null || val === '')) continue
         values[key] = val !== null && val !== undefined ? String(val) : ''
       }
     }
@@ -787,6 +790,7 @@ function buildSubmitPayload(active: boolean = form.value.active): ConnectionSubm
   ])
   for (const definition of schemaParameters.value) {
     const key = definition.name
+    if (key === 'tools.management_scope' && !canDelegateScope.value) continue
     if (consoleTarget.value === 'embedded' && isConsoleManagedParam(key)) continue
     const value = paramValues.value[key] ?? ''
     if (isGloballyForced(key)) {

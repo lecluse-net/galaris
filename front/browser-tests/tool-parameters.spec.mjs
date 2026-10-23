@@ -212,3 +212,86 @@ for (const mobile of [false, true]) {
     await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'configured').length)).toBe(1)
   })
 }
+
+for (const mobile of [false, true]) {
+  test(`Native management scope belongs to the connection and retains its value (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
+    await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
+    const name = 'tools.management_scope'
+    const scopeTool = { ...tool, id: 82, code: 'skills', label: 'Skills', can_edit: false,
+      connection_schema: { params: { [name]: { type: 'string', required: false, default: 'usage', builtin: true,
+        label: 'tools.connectionParamLabels.managementScope', description: 'tools.connectionParamDescriptions.managementScope',
+        options: ['usage', 'personal', 'team', 'all'].map(value => ({ value, label: `tools.connectionParamOptions.managementScope.${value}` })),
+      } } }, global_params: {} }
+    const props = { connection: { id: 43, agent_id: 7, tool_id: 82, active: true },
+      connectionParams: { [name]: 'personal' },
+      agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }],
+      toolOptions: [{ id: 82, label: 'Skills' }], tools: [scopeTool] }
+    await mount(page, 'app/connection/components/ConnectionForm.vue', { privileges, props })
+    const select = page.getByRole('combobox', { name: 'Management scope', exact: true })
+    await expect(select).toHaveValue('Management for this agent only')
+    await select.click()
+    await expect(page.getByRole('option')).toHaveText(['Usage without modification rights', 'Management for this agent only', 'Team management', 'Global management without restrictions'])
+    await page.getByRole('option', { name: 'Team management', exact: true }).click()
+    await page.getByRole('button', { name: 'Edit', exact: true }).click()
+    await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'submit').at(-1)?.value.params)).toEqual({ [name]: 'team' })
+    await page.evaluate(() => window.testApp.setProps({ connectionParams: { 'tools.management_scope': 'team' } }))
+    await expect(select).toHaveValue('Team management')
+    await page.screenshot({ path: testInfo.outputPath('connection-management-scope.png'), animations: 'disabled', fullPage: true })
+    await mount(page, 'app/connection/components/ConnectionForm.vue', {
+      privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'], props,
+    })
+    await expect(page.getByText('Management for this agent only', { exact: true })).toBeVisible()
+    await expect(page.getByRole('combobox', { name: 'Management scope', exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Edit', exact: true }).click()
+    await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'submit').at(-1)?.value.params)).toEqual({})
+  })
+}
+
+
+test('Saving a scoped connection uses one request, preserves failures and reopens with its saved scope', async ({ page }) => {
+  const name = 'tools.management_scope'
+  const scopedTool = { ...tool, id: 82, code: 'skills', label: 'Skills', can_edit: false,
+    connection_schema: { params: { [name]: { type: 'string', required: false, default: 'usage', builtin: true,
+      label: 'tools.connectionParamLabels.managementScope',
+      options: ['usage', 'personal', 'team', 'all'].map(value => ({ value, label: `tools.connectionParamOptions.managementScope.${value}` })),
+    } } }, global_params: {} }
+  let connection = { id: 43, agent_id: 7, tool_id: 82, active: true }
+  let params = { [name]: 'personal' }
+  const writes = []
+  await jsonRoute(page, '**/api/tools', [scopedTool])
+  await jsonRoute(page, '**/api/file-share/bridges', [])
+  await jsonRoute(page, '**/api/messenger/bridges', [])
+  await jsonRoute(page, '**/api/mail/approvers', [])
+  await jsonRoute(page, '**/api/mail/status', { enabled: false })
+  await jsonRoute(page, '**/api/agents?*', [{ id: 7, code: 'synthetic-agent', first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
+  await page.route('**/api/connections?*', route => route.fulfill({ json: [connection] }))
+  await page.route('**/api/connections/43/params?*', route => route.fulfill({ json: {
+    connection_id: 43, tool_id: 82, agent_id: 7, params, configured_params: [],
+  } }))
+  await page.route('**/api/connections/43', route => {
+    const body = route.request().postDataJSON()
+    writes.push(body)
+    if (writes.length === 1) return route.fulfill({ status: 503, json: { detail: 'Synthetic configuration failure' } })
+    params = body.params
+    connection = { ...connection, active: body.active }
+    return route.fulfill({ json: connection })
+  })
+  await mount(page, 'app/connection/components/ConnectionList.vue', { privileges })
+  const row = page.locator('tbody tr').filter({ hasText: 'Skills' })
+  await row.getByRole('button', { name: 'Edit', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  const scope = dialog.getByRole('combobox', { name: 'Management scope', exact: true })
+  await scope.click()
+  await page.getByRole('option', { name: 'Team management', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toContainText('Synthetic configuration failure')
+  await expect(scope).toHaveValue('Team management')
+  expect(params[name]).toBe('personal')
+  await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(writes).toHaveLength(2)
+  expect(writes[1]).toMatchObject({ active: true, params: { [name]: 'team' } })
+  await row.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(scope).toHaveValue('Team management')
+})

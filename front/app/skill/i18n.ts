@@ -8,6 +8,12 @@ export default {
             skills_desc: 'Bibliothèque de compétences pour les agents',
         },
         skills: {
+            personal: {
+                tab: 'Skills personnels', owner: 'Agent propriétaire', modified: 'Dernière modification',
+                hint: 'Packages privés possédés par les agents de votre périmètre de gestion. Ils ne sont pas partageables.',
+                empty: 'Aucun skill personnel dans ce périmètre.', retry: 'Réessayer',
+                enabled: 'Actif pour son propriétaire', disabled: 'Inactif pour son propriétaire',
+            },
             title: 'Compétences',
             subtitle: 'Bibliothèque centralisée · Les modifications s’appliquent à la prochaine exécution, sans interrompre les tâches en cours.',
             tabSkills: 'Compétences',
@@ -157,6 +163,12 @@ export default {
             skills_desc: 'Knowledge library for agents',
         },
         skills: {
+            personal: {
+                tab: 'Personal skills', owner: 'Owner agent', modified: 'Last modified',
+                hint: 'Private packages owned by agents within your management scope. They cannot be shared.',
+                empty: 'No personal skills within this scope.', retry: 'Retry',
+                enabled: 'Enabled for owner', disabled: 'Disabled for owner',
+            },
             title: 'Skills',
             subtitle: 'Central library · Changes apply at the next execution without interrupting running tasks.',
             tabSkills: 'Skills',
@@ -303,6 +315,12 @@ export default {
       },
         nav: { skills: '技能', skills_desc: '智能体知识库' },
         skills: {
+            personal: {
+                tab: '个人技能', owner: '所属智能体', modified: '上次修改',
+                hint: '由您管理范围内的智能体拥有的私有技能包，不能共享。',
+                empty: '此范围内没有个人技能。', retry: '重试',
+                enabled: '已为所有者启用', disabled: '已为所有者停用',
+            },
             title: '技能', subtitle: '中央技能库 · 更改将在下次执行时生效，不会中断正在运行的任务。', tabSkills: '技能', tabLearned: '自主学习', tabAuthorizations: '授权',
             create: '新建技能', import: '导入', rescan: '重新扫描目录', search: '搜索技能', code: '代码', label: '名称', description: '描述',
             files: '文件', size: '大小', agents: '智能体', status: '状态', actions: '操作', valid: '有效', invalid: '无效', missing: '目录缺失', system: '系统',

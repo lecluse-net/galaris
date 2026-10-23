@@ -90,7 +90,7 @@
               :key="param.name"
               class="config-row"
             >
-              <div class="config-col-name">{{ param.name }}</div>
+              <div class="config-col-name">{{ configParamLabel(param.name, props.row.tool_id) }}</div>
               <div class="config-col-value">
                 {{ formatConfigValue(param.name, param.value, props.row.tool_id) }}
               </div>
@@ -148,7 +148,7 @@
                   :key="param.name"
                   class="config-row"
                 >
-                  <div class="config-col-name">{{ param.name }}</div>
+                  <div class="config-col-name">{{ configParamLabel(param.name, props.row.tool_id) }}</div>
                   <div class="config-col-value">
                     {{ formatConfigValue(param.name, param.value, props.row.tool_id) }}
                   </div>
@@ -256,7 +256,7 @@ import type { Tool } from '@/app/tools/services/toolService'
 import ConnectionForm from './ConnectionForm.vue'
 import { SystemToolIcon, ToolFilterSelect, ToolOriginBadge } from '@/app/tools'
 import { useI18n } from 'vue-i18n'
-import { toolMessageKey } from '@/app/tools/presentation'
+import { connectionParamLabel, connectionParamOptions, toolMessageKey } from '@/app/tools/presentation'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { mailService, type MailApproverOption } from '../services/mailService'
 import { refreshMailAvailability } from '../availability'
@@ -286,7 +286,7 @@ interface VisibleConnectionParam {
 const connectionStore = useConnectionStore()
 const agentStore = useAgentStore()
 const toolStore = useToolStore()
-const { t } = useI18n()
+const { t, te } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
@@ -371,11 +371,11 @@ const filteredConnections = computed(() => {
 })
 
 const columns = computed<QTableProps['columns']>(() => [
-  { name: 'agent_id', label: t('connection.colAgent'), field: 'agent_id', sortable: true, align: 'left' },
-  { name: 'tool_id', label: t('connection.colTool'), field: 'tool_id', sortable: true, align: 'left' },
-  { name: 'active', label: t('connection.colState'), field: 'active', sortable: true, align: 'center' },
+  { name: 'agent_id', label: t('connection.colAgent'), field: 'agent_id', sortable: true, align: 'left', headerStyle: 'width: 18%', classes: 'connection-identity-cell' },
+  { name: 'tool_id', label: t('connection.colTool'), field: 'tool_id', sortable: true, align: 'left', headerStyle: 'width: 22%', classes: 'connection-identity-cell' },
+  { name: 'active', label: t('connection.colState'), field: 'active', sortable: true, align: 'center', headerStyle: 'width: 64px' },
   { name: 'params', label: t('connection.colParams'), field: 'params', align: 'left' },
-  { name: 'actions', label: t('common.actions'), field: 'actions', align: 'right' }
+  { name: 'actions', label: t('common.actions'), field: 'actions', align: 'right', headerStyle: 'width: 88px' }
 ])
 
 const agentOptions = computed(() =>
@@ -435,8 +435,24 @@ function hasDisplayValue(value: unknown): boolean {
     && (typeof value !== 'string' || value.trim().length > 0)
 }
 
+function configParamLabel(fieldName: string, toolId: number): string {
+  const tool = toolStore.tools.find(item => item.id === toolId)
+  return connectionParamLabel(tool?.code, fieldName, getToolSchema(toolId)?.[fieldName] ?? {}, t, te)
+}
+
 function formatConfigValue(fieldName: string, value: unknown, toolId: number): string {
   if (value === null || value === undefined) return '-'
+  if (typeof value === 'string' || typeof value === 'number') {
+    const tool = toolStore.tools.find(item => item.id === toolId)
+    const options = connectionParamOptions(tool?.code, fieldName, getToolSchema(toolId)?.[fieldName] ?? {}, t, te)
+    const option = options.find(option => option.value === String(value))
+    if (option) return option.label
+    if (getToolSchema(toolId)?.[fieldName]?.type === 'boolean') {
+      const booleanValue = String(value).toLowerCase()
+      if (['true', '1'].includes(booleanValue)) return t('common.yes')
+      if (['false', '0'].includes(booleanValue)) return t('common.no')
+    }
+  }
   if (isUserField(fieldName, toolId)) {
     const userId = Number(value)
     return Number.isInteger(userId) && userId > 0
@@ -579,13 +595,15 @@ async function persistForAction(payload: ConnectionPersistencePayload): Promise<
   }
 
   try {
+    const atomicScope = Object.hasOwn(payload.params, 'tools.management_scope')
+    const data = { ...payload.data, ...(atomicScope ? { params: payload.params } : {}) }
     const connection = id
-      ? await connectionStore.updateConnection(id, payload.data)
-      : await connectionStore.createConnection(payload.data)
+      ? await connectionStore.updateConnection(id, data)
+      : await connectionStore.createConnection(data)
     // Retain an identity even when saving parameters fails after creation.
     if (current === dialogGeneration) actionConnection = connection
 
-    if (Object.keys(payload.params).length > 0) {
+    if (!atomicScope && Object.keys(payload.params).length > 0) {
       await connectionStore.createOrUpdateParamsBulk(connection.id, payload.params)
     }
     return connection
@@ -616,16 +634,18 @@ async function onSubmit(payload: ConnectionPersistencePayload) {
 
   try {
     let connection: Connection
+    const atomicScope = Object.hasOwn(payload.params, 'tools.management_scope')
+    const data = { ...payload.data, ...(atomicScope ? { params: payload.params } : {}) }
 
     if (payload.id) {
-      const updateData: ConnectionUpdate = { ...payload.data }
+      const updateData: ConnectionUpdate = data
       connection = await connectionStore.updateConnection(payload.id, updateData)
     } else {
-      const createData: ConnectionCreate = { ...payload.data }
+      const createData: ConnectionCreate = data
       connection = await connectionStore.createConnection(createData)
     }
 
-    if (connection && Object.keys(payload.params).length > 0) {
+    if (!atomicScope && connection && Object.keys(payload.params).length > 0) {
       await connectionStore.createOrUpdateParamsBulk(connection.id, payload.params)
     }
 
@@ -765,12 +785,28 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.connection-table :deep(table) {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.connection-table :deep(.q-table th),
+.connection-table :deep(.q-table td) {
+  padding: 8px;
+}
+
+.connection-table :deep(.connection-identity-cell) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .config-table {
   border: 1px solid #e0e0e0;
   border-radius: 4px;
   overflow: hidden;
   font-size: 0.85rem;
-  max-width: 400px;
+  width: 100%;
+  container-type: inline-size;
 }
 
 .connection-table :deep(.q-table__grid-content) {
@@ -798,6 +834,13 @@ onMounted(async () => {
   border-bottom: none;
 }
 
+.config-col-name,
+.config-col-value {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .config-col-name {
   width: 40%;
   padding: 4px 8px;
@@ -805,14 +848,28 @@ onMounted(async () => {
   font-weight: 600;
   color: #424242;
   background-color: #fafafa;
-  word-break: break-word;
+  overflow-wrap: normal;
 }
 
 .config-col-value {
   width: 60%;
   padding: 4px 8px;
-  word-break: break-word;
   background-color: #ffffff;
+}
+
+@container (max-width: 320px) {
+  .config-row {
+    flex-direction: column;
+  }
+
+  .config-col-name,
+  .config-col-value {
+    width: 100%;
+  }
+
+  .config-col-name {
+    border-right: none;
+  }
 }
 
 body.body--dark .config-table {

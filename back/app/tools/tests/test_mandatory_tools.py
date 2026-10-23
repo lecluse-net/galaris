@@ -137,9 +137,8 @@ def test_management_tool_packages_are_connected_inactive_by_default() -> None:
         "goal_resume",
         "goal_complete",
     }
-    assert specs["skill_management"].auto_connect_agents is True
-    assert specs["skill_management"].default_active is False
-    assert specs["skill_management"].label == "Gestion des compétences"
+    assert specs["skills"].auto_connect_agents is True
+    assert specs["skills"].default_active is False
     assert specs["process_admin"].auto_connect_agents is True
     assert specs["process_admin"].default_active is False
     assert specs["galaris_admin"].auto_connect_agents is True
@@ -154,7 +153,7 @@ def test_management_tool_packages_are_connected_inactive_by_default() -> None:
     }
     assert {
         "goal_management",
-        "skill_management",
+        "skills",
         "process_admin",
         "galaris_admin",
     } <= (

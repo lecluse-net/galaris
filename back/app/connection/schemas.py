@@ -19,13 +19,14 @@ class ConnectionBase(BaseModel):
 
 
 class ConnectionCreate(ConnectionBase):
-    pass
+    params: Dict[str, Optional[str]] | None = None
 
 
 class ConnectionUpdate(BaseModel):
     tool_id: Optional[int] = None
     agent_id: Optional[int] = None
     active: Optional[bool] = None
+    params: Dict[str, Optional[str]] | None = None
 
 
 class Connection(ConnectionBase):

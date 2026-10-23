@@ -3,7 +3,7 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from sqlalchemy import select
 
 from app.agent import AgentManagementScope
@@ -84,14 +84,15 @@ async def test_system_definitions_are_immutable_and_function_modes_are_editable(
         "current_management_scope",
         AsyncMock(return_value=AgentManagementScope(1, None)),
     )
+    request = Request({'type': 'http', 'method': 'PATCH', 'path': '/synthetic'})
     for operation in (
-        lambda: connection_router.update_connection(connection.id, ConnectionUpdate(active=False)),
-        lambda: connection_router.update_connection(connection.id, ConnectionUpdate(agent_id=999)),
+        lambda: connection_router.update_connection(connection.id, ConnectionUpdate(active=False), request),
+        lambda: connection_router.update_connection(connection.id, ConnectionUpdate(agent_id=999), request),
         lambda: connection_router.delete_connection(connection.id),
         lambda: connection_router.create_connection(
-            ConnectionCreate(tool_id=tool.id, agent_id=agent.id)
+            ConnectionCreate(tool_id=tool.id, agent_id=agent.id), request
         ),
-        lambda: connection_router.delete_param(connection.id, "anything"),
+        lambda: connection_router.delete_param(connection.id, "anything", request),
     ):
         with pytest.raises(HTTPException) as error:
             await operation()

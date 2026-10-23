@@ -117,9 +117,36 @@ def project_learned_markdown(agent_id: int, code: str, content: str) -> Path:
     return destination
 
 
+def project_runtime_markdown(agent_id: int, name: str, content: str) -> Path:
+    """Adapt only projection frontmatter; canonical package bytes stay unchanged."""
+    lines = content.splitlines()
+    end = next(index for index in range(1, len(lines)) if lines[index].strip() == "---")
+    metadata = _parse_frontmatter(content)
+    metadata["name"] = validate_code(name)
+    projected = "---\n" + yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False) + "---\n" + "\n".join(lines[end + 1:]) + "\n"
+    base = ensure_root() / ".runtime" / str(agent_id) / name
+    base.mkdir(parents=True, exist_ok=True)
+    path = base / "SKILL.md"
+    temporary = base / f".{uuid4().hex}.tmp"
+    try:
+        temporary.write_text(projected, encoding="utf-8")
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return path
+
+
+def prune_runtime_markdown(agent_id: int, names: set[str]) -> None:
+    base = ensure_root() / ".runtime" / str(agent_id)
+    if base.is_dir():
+        for child in base.iterdir():
+            if child.is_dir() and child.name not in names:
+                shutil.rmtree(child)
+
+
 def validate_code(code: str) -> str:
     normalized = str(code or "").strip()
-    if not CODE_RE.fullmatch(normalized):
+    if len(normalized) > 100 or not CODE_RE.fullmatch(normalized):
         raise ValueError("Le code doit être un slug en minuscules composé de lettres, chiffres et tirets")
     return normalized
 
@@ -129,8 +156,19 @@ def slugify(value: str) -> str:
     return validate_code(slug)
 
 
-def skill_dir(code: str) -> Path:
-    return ensure_root() / validate_code(code)
+def skill_dir(code: str, *, owner_agent_id: int | None = None) -> Path:
+    base = ensure_root()
+    if owner_agent_id is not None:
+        if owner_agent_id <= 0:
+            raise ValueError("Invalid skill owner")
+        for part in (".personal", str(owner_agent_id)):
+            base /= part
+            if base.is_symlink():
+                raise ValueError("Les liens symboliques ne sont pas autorisés")
+    destination = base / validate_code(code)
+    if destination.is_symlink():
+        raise ValueError("Les liens symboliques ne sont pas autorisés")
+    return destination
 
 
 def is_system_code(code: str) -> bool:
@@ -138,11 +176,11 @@ def is_system_code(code: str) -> bool:
     return any(skill.code == normalized for skill in SYSTEM_SKILLS)
 
 
-def source_skill_dir(code: str) -> Path:
+def source_skill_dir(code: str, *, owner_agent_id: int | None = None) -> Path:
     normalized = validate_code(code)
-    if is_system_code(normalized):
+    if owner_agent_id is None and is_system_code(normalized):
         return SYSTEM_SKILLS_ROOT / normalized
-    return skill_dir(normalized)
+    return skill_dir(normalized, owner_agent_id=owner_agent_id)
 
 
 def _parse_frontmatter(content: str) -> dict[str, Any]:
@@ -206,8 +244,8 @@ def _safe_relative(path: str) -> PurePosixPath:
     return relative
 
 
-def resolve_file(code: str, relative_path: str) -> Path:
-    base = source_skill_dir(code).resolve()
+def resolve_file(code: str, relative_path: str, *, owner_agent_id: int | None = None) -> Path:
+    base = source_skill_dir(code, owner_agent_id=owner_agent_id).resolve()
     relative = _safe_relative(relative_path)
     candidate = base.joinpath(*relative.parts)
     resolved = candidate.resolve()
@@ -236,8 +274,8 @@ def _is_text(path: Path) -> bool:
         return False
 
 
-def iter_skill_files(code: str) -> Iterator[tuple[str, Path]]:
-    base = source_skill_dir(code)
+def iter_skill_files(code: str, *, owner_agent_id: int | None = None) -> Iterator[tuple[str, Path]]:
+    base = source_skill_dir(code, owner_agent_id=owner_agent_id)
     if not base.is_dir() or base.is_symlink():
         return
     for path in sorted(base.rglob("*")):
@@ -247,12 +285,12 @@ def iter_skill_files(code: str) -> Iterator[tuple[str, Path]]:
             yield path.relative_to(base).as_posix(), path
 
 
-def inspect(code: str) -> SkillInspection:
-    base = source_skill_dir(code)
+def inspect(code: str, *, owner_agent_id: int | None = None) -> SkillInspection:
+    base = source_skill_dir(code, owner_agent_id=owner_agent_id)
     if not base.is_dir() or base.is_symlink():
         return SkillInspection(False, False, "Répertoire absent", None, 0, 0)
     try:
-        files = list(iter_skill_files(code))
+        files = list(iter_skill_files(code, owner_agent_id=owner_agent_id))
         total_size = sum(path.stat().st_size for _, path in files)
         skill_md = base / "SKILL.md"
         if not skill_md.is_file() or skill_md.is_symlink():
@@ -264,7 +302,7 @@ def inspect(code: str) -> SkillInspection:
         file_count = 0
         total_size = 0
         try:
-            files = list(iter_skill_files(code))
+            files = list(iter_skill_files(code, owner_agent_id=owner_agent_id))
             file_count = len(files)
             total_size = sum(path.stat().st_size for _, path in files)
         except (OSError, ValueError):
@@ -272,7 +310,7 @@ def inspect(code: str) -> SkillInspection:
         return SkillInspection(True, False, str(exc), None, file_count, total_size)
 
 
-def list_files(code: str) -> list[StoredSkillFile]:
+def list_files(code: str, *, owner_agent_id: int | None = None) -> list[StoredSkillFile]:
     return [
         {
             "path": relative,
@@ -280,12 +318,12 @@ def list_files(code: str) -> list[StoredSkillFile]:
             "size": path.stat().st_size,
             "text": _is_text(path),
         }
-        for relative, path in iter_skill_files(code)
+        for relative, path in iter_skill_files(code, owner_agent_id=owner_agent_id)
     ]
 
 
-def read_text(code: str, relative_path: str) -> str:
-    path = resolve_file(code, relative_path)
+def read_text(code: str, relative_path: str, *, owner_agent_id: int | None = None) -> str:
+    path = resolve_file(code, relative_path, owner_agent_id=owner_agent_id)
     if not path.is_file():
         raise FileNotFoundError(relative_path)
     if path.stat().st_size > MAX_TEXT_PREVIEW_SIZE:
@@ -295,10 +333,10 @@ def read_text(code: str, relative_path: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def runtime_loading(code: str) -> Literal["eager", "deferred"]:
+def runtime_loading(code: str, *, owner_agent_id: int | None = None) -> Literal["eager", "deferred"]:
     """Read an optional harness loading policy; it never changes authorizations."""
     try:
-        path = resolve_file(code, "runtime.yaml")
+        path = resolve_file(code, "runtime.yaml", owner_agent_id=owner_agent_id)
         if not path.exists():
             return "deferred"
         if path.stat().st_size > 4_096:
@@ -322,10 +360,10 @@ def runtime_loading(code: str) -> Literal["eager", "deferred"]:
         return "deferred"
 
 
-def read_file(code: str, relative_path: str) -> SkillFileData:
+def read_file(code: str, relative_path: str, *, owner_agent_id: int | None = None) -> SkillFileData:
     """Read one bounded skill file after resolving it inside the skill directory."""
 
-    path = resolve_file(code, relative_path)
+    path = resolve_file(code, relative_path, owner_agent_id=owner_agent_id)
     if not path.is_file():
         raise FileNotFoundError(relative_path)
     size = path.stat().st_size
@@ -348,9 +386,9 @@ def _content_revision(content: bytes) -> int:
     return max(1, int.from_bytes(hashlib.sha256(content).digest()[:6], "big"))
 
 
-def _require_mutable_code(code: str) -> str:
+def _require_mutable_code(code: str, *, owner_agent_id: int | None = None) -> str:
     normalized = validate_code(code)
-    if is_system_code(normalized):
+    if owner_agent_id is None and is_system_code(normalized):
         raise PermissionError(f"La compétence système {normalized} ne peut pas être modifiée")
     return normalized
 
@@ -366,8 +404,10 @@ def _validate_file_content(code: str, relative_path: PurePosixPath, content: byt
         metadata_from_markdown(markdown, expected_code=code)
 
 
-def _validate_library_limits(code: str, destination: Path, content_size: int) -> None:
-    files = list(iter_skill_files(code))
+def _validate_library_limits(
+    code: str, destination: Path, content_size: int, *, owner_agent_id: int | None = None,
+) -> None:
+    files = list(iter_skill_files(code, owner_agent_id=owner_agent_id))
     existing_size = destination.stat().st_size if destination.is_file() else 0
     file_count = len(files) + (0 if destination.is_file() else 1)
     total_size = sum(path.stat().st_size for _, path in files) - existing_size + content_size
@@ -384,17 +424,18 @@ async def write_file(
     *,
     overwrite: bool,
     expected_revision: int | None = None,
+    owner_agent_id: int | None = None,
 ) -> SkillFileData:
     """Create or atomically replace one file in a user-managed skill."""
 
-    normalized = _require_mutable_code(code)
+    normalized = _require_mutable_code(code, owner_agent_id=owner_agent_id)
     relative = _safe_relative(relative_path)
     _validate_file_content(normalized, relative, content)
     async with _storage_lock:
-        base = skill_dir(normalized)
+        base = skill_dir(normalized, owner_agent_id=owner_agent_id)
         if not base.is_dir() or base.is_symlink():
             raise FileNotFoundError(normalized)
-        destination = resolve_file(normalized, relative.as_posix())
+        destination = resolve_file(normalized, relative.as_posix(), owner_agent_id=owner_agent_id)
         exists = destination.is_file()
         if destination.exists() and not exists:
             raise IsADirectoryError(relative.as_posix())
@@ -409,7 +450,7 @@ async def write_file(
                     f"Skill file revision conflict: expected {expected_revision}, "
                     f"current revision is {current_revision}."
                 )
-        _validate_library_limits(normalized, destination, len(content))
+        _validate_library_limits(normalized, destination, len(content), owner_agent_id=owner_agent_id)
         destination.parent.mkdir(parents=True, exist_ok=True)
         temporary = destination.with_name(f".{destination.name}.{uuid4().hex}.tmp")
         try:
@@ -417,13 +458,15 @@ async def write_file(
             temporary.replace(destination)
         finally:
             temporary.unlink(missing_ok=True)
-    return read_file(normalized, relative.as_posix())
+    return read_file(normalized, relative.as_posix(), owner_agent_id=owner_agent_id)
 
 
-async def append_file(code: str, relative_path: str, content: str) -> SkillFileData:
+async def append_file(
+    code: str, relative_path: str, content: str, *, owner_agent_id: int | None = None,
+) -> SkillFileData:
     """Append UTF-8 text while preserving SKILL.md validation and storage limits."""
 
-    current = read_file(code, relative_path)
+    current = read_file(code, relative_path, owner_agent_id=owner_agent_id)
     if not current.text:
         raise ValueError("Ce fichier binaire ne peut pas recevoir de texte")
     try:
@@ -436,21 +479,24 @@ async def append_file(code: str, relative_path: str, content: str) -> SkillFileD
         updated.encode("utf-8"),
         overwrite=True,
         expected_revision=current.revision,
+        owner_agent_id=owner_agent_id,
     )
 
 
-async def delete_file(code: str, relative_path: str) -> SkillFileData:
+async def delete_file(
+    code: str, relative_path: str, *, owner_agent_id: int | None = None,
+) -> SkillFileData:
     """Delete an auxiliary file without allowing the skill definition itself to disappear."""
 
-    normalized = _require_mutable_code(code)
+    normalized = _require_mutable_code(code, owner_agent_id=owner_agent_id)
     relative = _safe_relative(relative_path)
     if relative == PurePosixPath("SKILL.md"):
         raise PermissionError("SKILL.md ne peut pas être supprimé ; supprimez la compétence")
     async with _storage_lock:
-        current = read_file(normalized, relative.as_posix())
-        path = resolve_file(normalized, relative.as_posix())
+        current = read_file(normalized, relative.as_posix(), owner_agent_id=owner_agent_id)
+        path = resolve_file(normalized, relative.as_posix(), owner_agent_id=owner_agent_id)
         path.unlink()
-        base = skill_dir(normalized)
+        base = skill_dir(normalized, owner_agent_id=owner_agent_id)
         parent = path.parent
         while parent != base and parent.is_relative_to(base):
             try:
@@ -467,26 +513,27 @@ async def move_file(
     destination_path: str,
     *,
     overwrite: bool,
+    owner_agent_id: int | None = None,
 ) -> SkillFileData:
     """Rename one auxiliary file within the same user-managed skill."""
 
-    normalized = _require_mutable_code(code)
+    normalized = _require_mutable_code(code, owner_agent_id=owner_agent_id)
     source_relative = _safe_relative(source_path)
     destination_relative = _safe_relative(destination_path)
     if PurePosixPath("SKILL.md") in {source_relative, destination_relative}:
         raise PermissionError("SKILL.md ne peut pas être déplacé ou renommé")
     async with _storage_lock:
-        source = resolve_file(normalized, source_relative.as_posix())
+        source = resolve_file(normalized, source_relative.as_posix(), owner_agent_id=owner_agent_id)
         if not source.is_file():
             raise FileNotFoundError(source_relative.as_posix())
-        destination = resolve_file(normalized, destination_relative.as_posix())
+        destination = resolve_file(normalized, destination_relative.as_posix(), owner_agent_id=owner_agent_id)
         if destination.exists() and not overwrite:
             raise FileExistsError(destination_relative.as_posix())
         if destination.exists() and not destination.is_file():
             raise IsADirectoryError(destination_relative.as_posix())
         destination.parent.mkdir(parents=True, exist_ok=True)
         source.replace(destination)
-    return read_file(normalized, destination_relative.as_posix())
+    return read_file(normalized, destination_relative.as_posix(), owner_agent_id=owner_agent_id)
 
 
 def write_markdown(code: str, content: str) -> None:
@@ -562,10 +609,13 @@ def _extract_zip(data: bytes, destination: Path) -> None:
                 shutil.copyfileobj(source, output)
 
 
-def _replace_directory(staged: Path, code: str, overwrite: bool) -> None:
-    if is_system_code(code):
+def _replace_directory(
+    staged: Path, code: str, overwrite: bool, *, owner_agent_id: int | None = None,
+) -> None:
+    if owner_agent_id is None and (code == "personnal" or is_system_code(code)):
         raise ValueError(f"Le code {code} est réservé à une compétence système")
-    destination = skill_dir(code)
+    destination = skill_dir(code, owner_agent_id=owner_agent_id)
+    destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists() and not overwrite:
         raise FileExistsError(f"La compétence {code} existe déjà")
     backup: Path | None = None
@@ -583,17 +633,19 @@ def _replace_directory(staged: Path, code: str, overwrite: bool) -> None:
 
 
 async def install_markdown(
-    code: str, label: str, content: str, overwrite: bool = False
+    code: str, label: str, content: str, overwrite: bool = False,
+    *, owner_agent_id: int | None = None,
 ) -> InstalledSkill:
     code = validate_code(code)
     metadata_from_markdown(content, expected_code=code)
+    _validate_file_content(code, PurePosixPath("SKILL.md"), content.encode("utf-8"))
     async with _storage_lock:
         stage_parent = ensure_root() / ".staging" / uuid4().hex
         staged = stage_parent / "skill"
         staged.mkdir(parents=True)
         try:
             (staged / "SKILL.md").write_text(content, encoding="utf-8")
-            _replace_directory(staged, code, overwrite)
+            _replace_directory(staged, code, overwrite, owner_agent_id=owner_agent_id)
         finally:
             shutil.rmtree(stage_parent, ignore_errors=True)
     return InstalledSkill(code, label.strip() or code)
@@ -637,10 +689,10 @@ async def install_upload(
             shutil.rmtree(stage_parent, ignore_errors=True)
 
 
-def quarantine(code: str) -> Path | None:
-    if is_system_code(code):
+def quarantine(code: str, *, owner_agent_id: int | None = None) -> Path | None:
+    if owner_agent_id is None and is_system_code(code):
         raise ValueError(f"La compétence système {code} ne peut pas être supprimée")
-    source = skill_dir(code)
+    source = skill_dir(code, owner_agent_id=owner_agent_id)
     if not source.exists():
         return None
     destination = ensure_root() / ".trash" / (
@@ -650,14 +702,33 @@ def quarantine(code: str) -> Path | None:
     return destination
 
 
-def restore_quarantine(code: str, quarantined: Path | None) -> None:
-    if quarantined is not None and quarantined.exists() and not skill_dir(code).exists():
-        quarantined.replace(skill_dir(code))
+def restore_quarantine(
+    code: str, quarantined: Path | None, *, owner_agent_id: int | None = None,
+) -> None:
+    destination = skill_dir(code, owner_agent_id=owner_agent_id)
+    if quarantined is not None and quarantined.exists() and not destination.exists():
+        quarantined.replace(destination)
 
 
 def purge_quarantine(quarantined: Path | None) -> None:
     if quarantined is not None:
         shutil.rmtree(quarantined, ignore_errors=True)
+
+
+def restore_files(code: str, previous: dict[str, bytes | None], *, owner_agent_id: int | None) -> None:
+    """Restore a failed package mutation while its database lock is still owned."""
+    for relative, content in previous.items():
+        destination = resolve_file(code, relative, owner_agent_id=owner_agent_id)
+        if content is None:
+            destination.unlink(missing_ok=True)
+        else:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            temporary = destination.with_name(f".{destination.name}.{uuid4().hex}.restore")
+            try:
+                temporary.write_bytes(content)
+                temporary.replace(destination)
+            finally:
+                temporary.unlink(missing_ok=True)
 
 
 def create_zip(code: str) -> Path:
@@ -682,3 +753,112 @@ def file_hash(path: Path) -> str:
         for chunk in iter(lambda: stream.read(256 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def pending_ownership_releases() -> list[dict[str, object]]:
+    import json
+    base = ensure_root() / '.staging' / 'releases'
+    if not base.exists():
+        return []
+    return [cast(dict[str, object], json.loads(path.read_text(encoding='utf-8')))
+            for path in sorted(base.glob('*/state.json'))]
+
+
+def prune_incomplete_ownership_staging() -> None:
+    """Called under the catalogue lock; no original moves before its atomic marker."""
+    base = ensure_root() / '.staging' / 'releases'
+    if base.is_dir():
+        for directory in base.iterdir():
+            if directory.is_dir() and not (directory / 'state.json').exists():
+                if (directory / 'original').exists():
+                    raise RuntimeError('Ownership release originals retained without their state marker')
+                shutil.rmtree(directory)
+
+
+def _release_tree_digest(base: Path) -> str:
+    digest = hashlib.sha256()
+    for path in sorted(base.rglob('*')):
+        if path.is_symlink():
+            raise ValueError('Symlink in an ownership-release package')
+        if path.is_file():
+            digest.update(path.relative_to(base).as_posix().encode())
+            digest.update(file_hash(path).encode())
+    return digest.hexdigest()
+
+
+def _prepare_ownership_release(operation: str, skill_id: int, owner: int, code: str, target_code: str) -> None:
+    import json
+    from uuid import UUID
+    operation = str(UUID(operation))
+    if target_code == 'personnal' or is_system_code(target_code):
+        raise ValueError('Reserved generic skill code')
+    target = skill_dir(target_code)
+    if target.exists():
+        raise FileExistsError('Generic skill code already exists on disk')
+    base = ensure_root() / '.staging' / 'releases' / operation
+    base.mkdir(parents=True, exist_ok=False)
+    prepared = base / 'prepared'
+    prepared.mkdir()
+    for relative, source in iter_skill_files(code, owner_agent_id=owner):
+        destination = prepared / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, destination)
+    if target_code != code:
+        markdown = (prepared / 'SKILL.md').read_text(encoding='utf-8')
+        lines = markdown.splitlines()
+        end = next(index for index in range(1, len(lines)) if lines[index].strip() == '---')
+        metadata = _parse_frontmatter(markdown)
+        metadata['name'] = validate_code(target_code)
+        (prepared / 'SKILL.md').write_text('---\n' + yaml.safe_dump(metadata, sort_keys=False, allow_unicode=True)
+            + '---\n' + '\n'.join(lines[end + 1:]) + '\n', encoding='utf-8')
+    metadata_from_markdown((prepared / 'SKILL.md').read_text(encoding='utf-8'), expected_code=target_code)
+    state: dict[str, object] = {'operation': operation, 'skill_id': skill_id, 'owner': owner,
+        'code': code, 'target_code': target_code, 'digest': _release_tree_digest(prepared)}
+    marker = base / 'state.pending'
+    marker.write_text(json.dumps(state), encoding='utf-8')
+    marker.replace(base / 'state.json')
+    skill_dir(code, owner_agent_id=owner).replace(base / 'original')
+    if target.exists():
+        raise FileExistsError('Generic skill code appeared concurrently')
+    prepared.replace(target)
+
+
+def prepare_ownership_release(operation: str, skill_id: int, owner: int, code: str, target_code: str) -> None:
+    from uuid import UUID
+    base = ensure_root() / '.staging' / 'releases' / str(UUID(operation))
+    try:
+        _prepare_ownership_release(operation, skill_id, owner, code, target_code)
+    except BaseException as primary:
+        if base.exists() and not (base / 'state.json').exists():
+            try:
+                shutil.rmtree(base)
+            except Exception as cleanup:
+                primary.add_note(f'Ownership staging cleanup failed: {type(cleanup).__name__}')
+        raise
+
+
+def recover_ownership_release(operation: str, *, committed: bool, deleted: bool = False) -> None:
+    import json
+    from uuid import UUID
+    base = ensure_root() / '.staging' / 'releases' / str(UUID(operation))
+    marker = base / 'state.json'
+    if not marker.exists():
+        return
+    state = cast(dict[str, object], json.loads(marker.read_text(encoding='utf-8')))
+    code, target_code, owner = str(state['code']), str(state['target_code']), int(str(state['owner']))
+    target = skill_dir(target_code)
+    original = base / 'original'
+    if not committed:
+        if target.exists():
+            if _release_tree_digest(target) != state['digest']:
+                raise RuntimeError('Ownership release recovery found changed generic files; originals retained')
+            shutil.rmtree(target)
+        destination = skill_dir(code, owner_agent_id=owner)
+        if original.exists():
+            if destination.exists():
+                raise RuntimeError('Ownership release recovery found a conflicting personal directory')
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            original.replace(destination)
+    elif not target.exists() and not deleted:
+        raise RuntimeError('Committed ownership release is missing its generic files; originals retained')
+    shutil.rmtree(base)

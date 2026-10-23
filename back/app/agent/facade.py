@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .management_scope import team_agent_ids as team_agent_ids
+
 import asyncio
 import hashlib
 import traceback

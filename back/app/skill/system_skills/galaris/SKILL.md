@@ -708,21 +708,50 @@ Administrative functions never infer ownership from the caller. Always read the 
 current `revision`. Use `goal_complete` to stop future cycles while keeping history; reserve
 `goal_delete` for an actual removal request.
 
-### Restricted skill inspection
+### Skills: usage, personal, team and global administration
 
-These tools belong to the separately authorized `skill_management` package, also inactive by
-default.
+The single optional Tool `skills` has a server-owned delegation: `usage` discovers and reads
+authorized generic skills and your own active personal packages; `personal` also manages your
+own packages; `team` also administers packages and generic assignments for agents sharing at
+least one of your teams; `all` permits global administration. Team membership is rechecked on
+every call. Function approval never increases this delegation. Only a globally authorized human
+can change `tools.management_scope` in Tools → Connections → the Skills connection. This local
+parameter cannot be inherited globally or modified through agent connection tools. Deactivation
+or revocation blocks subsequent management calls.
 
-- `skills_list(agent_id: int, include_unavailable: bool = False) -> list[dict]` lists the valid,
-  present, effectively enabled Galaris skills for an agent. Set `include_unavailable=true` to
-  audit disabled, invalid, or missing entries and their authorization states.
-- `skill_read(skill_code: str) -> str` returns the complete central `SKILL.md` for one indexed
-  skill. It never returns the skill's scripts, references, assets, or other package files.
-- The same authorization reveals `galaris://skill/` through the generic file tools. List
-  `galaris://skill/<skill-code>/`, then read or update an exact file such as
-  `galaris://skill/<skill-code>/SKILL.md`. `file_create`, `file_write`, `file_append`, `file_edit`,
-  `file_copy`, `file_move`, and `file_delete` apply to user-managed package files. `SKILL.md` is
-  always validated and cannot be deleted or renamed; bundled system skills remain read-only.
+- `skills_list()` discovers your usable packages with stable IDs, revision and canonical URI.
+  A foreign target or `administration=true` requires `team` within that team union, or `all`.
+  `include_unavailable=true`
+  is a management view, not a way to gain access to another owner's skills.
+- `skill_read(skill_id=...)` reads exactly `SKILL.md`; generic `skill_code` remains supported.
+  A personal code also requires its `owner_agent_id`. An administrative read does not grant use.
+- With `personal`, create your first file using
+  `file_create(path="galaris://skill/personnal/<YOUR_AGENT_ID>/<code>/SKILL.md", content=...)`.
+  The UTF-8 Markdown must start with YAML `name: <code>` and `description`. The server fixes
+  ownership to the authenticated creator and enables the package for that owner only.
+- Use the returned URI with `file_list`, `file_info`, `file_read`, `file_create`, `file_write`,
+  `file_edit`, `file_append`, `file_move` and `file_delete` to maintain references and assets.
+  Pass the package `revision` from a current read for replacements. `SKILL.md` cannot be moved
+  or deleted. Personal resources cannot be copied or moved outside their package, even by `all`.
+  Personal budgets are 100 packages and 200 MiB per owner, in addition to per-package limits.
+- `skill_update(skill_id, label, expected_revision)` changes metadata.
+  `skill_set_enabled(skill_id, enabled, expected_revision)` controls use by the owner.
+  `skill_delete(skill_id, expected_revision)` deletes the entire user package.
+- `skill_set_authorization(skill_id, agent_id, state)` and
+  `skill_set_category_authorization(category_id, agent_id, state)` distribute generic skills
+  with `default`, `enabled` or `disabled`. `team` can target agents in its team union; `all`
+  can target any agent. A personal package cannot be assigned. Only `all` changes generic files.
+- `skill_release_ownership(skill_id, expected_revision, operation_id, new_code=...)` requires
+  `all` and explicitly converts a personal package to generic. Reuse the same operation UUID
+  and arguments after an interruption. A code collision requires another code. The package ID
+  and creator stay stable, the former personal URI closes, and no agent is automatically enabled.
+  Configure generic authorizations afterward; retrying the release does not reset them.
+
+Generic files remain under `galaris://skill/<code>/`. Bundled system packages are read-only.
+Your generic, personal and eligible learned skills are combined without overwriting homonyms.
+Content and authorization changes apply at the next context/execution construction, without
+restarting a running Task; a remote checkpoint keeps its existing context. Resource tools still
+recheck live rights even after a capability was loaded.
 
 ## Short conversation control plane
 

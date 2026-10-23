@@ -13,6 +13,7 @@ TOOL_ARGUMENTS_META_KEY = "galaris.tool-arguments/v1"
 
 FileIndexingMode = Literal["excluded", "known_uris", "recursive"]
 FILE_INDEXING_PARAM = "tools.fileindexing"
+MANAGEMENT_SCOPE_PARAM = "tools.management_scope"
 
 
 @dataclass

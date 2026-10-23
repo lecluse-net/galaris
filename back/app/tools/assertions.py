@@ -11,7 +11,7 @@ from .models import Tool as ToolModel
 from .mandatory_tools import INTEGRATED_TOOL_CODES
 
 
-READ_ONLY_TOOL_CODES = frozenset({"app", *INTEGRATED_TOOL_CODES})
+READ_ONLY_TOOL_CODES = frozenset({"app", "skill_management", *INTEGRATED_TOOL_CODES})
 
 
 def tool_can_edit(record_or_code: ToolModel | str | None) -> bool:

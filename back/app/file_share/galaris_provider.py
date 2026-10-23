@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import base64
 import json
-import mimetypes
 from dataclasses import dataclass
 from collections.abc import Awaitable, Callable
 from typing import Any, Literal, cast
@@ -67,13 +65,9 @@ class _Route:
     kind: GalarisResourceKind | None
     identifier: UUID | str | None = None
     goal_cycles_for: UUID | None = None
-    skill_code: str | None = None
-    skill_path: str | None = None
 
     @property
     def is_collection(self) -> bool:
-        if self.kind == "skill":
-            return self.skill_path is None
         return self.identifier is None
 
 
@@ -93,20 +87,6 @@ def _route(reference: ResourceUri) -> _Route:
     kind = raw_kind
     if len(segments) == 1 and reference.is_collection:
         return _Route(kind=kind)
-    if kind == "skill":
-        from app.skill import storage
-
-        if len(segments) == 2 and reference.is_collection:
-            return _Route(kind=kind, skill_code=storage.validate_code(segments[1]))
-        if len(segments) >= 3 and not reference.is_collection:
-            return _Route(
-                kind=kind,
-                skill_code=storage.validate_code(segments[1]),
-                skill_path="/".join(segments[2:]),
-            )
-        raise ResourceUriError(
-            "galaris://skill/ requires a skill collection or one exact file path."
-        )
     if (
         kind == "goal"
         and len(segments) == 3
@@ -284,71 +264,8 @@ def _collection_descriptor(kind: GalarisResourceKind) -> ResourceDescriptor:
     )
 
 
-def _skill_directory_descriptor(payload: dict[str, Any]) -> ResourceDescriptor:
-    code = str(payload["code"])
-    return ResourceDescriptor(
-        uri=f"galaris://skill/{quote(code, safe='-')}/",
-        name=str(payload.get("label") or code),
-        is_collection=True,
-        media_type="application/vnd.galaris.skill+directory",
-        modified_at=cast(str | None, payload.get("modified_at")),
-        capabilities=["info", "list", "search", "create"],
-        metadata={
-            key: payload[key]
-            for key in (
-                "code",
-                "label",
-                "system",
-                "available",
-                "valid",
-                "description",
-                "file_count",
-                "total_size",
-            )
-        },
-    )
-
-
-def _skill_file_descriptor(
-    code: str,
-    payload: dict[str, Any],
-    *,
-    system: bool,
-    modified_at: str | None = None,
-    revision: int | None = None,
-) -> ResourceDescriptor:
-    path = str(payload["path"])
-    encoded_path = "/".join(quote(part, safe="!$&'()*+,-.;=@_~:") for part in path.split("/"))
-    capabilities: list[ResourceCapability] = ["copy", "info", "read"]
-    if not system:
-        capabilities.append("write")
-        if bool(payload.get("text")):
-            capabilities.extend(("append", "edit"))
-        if path != "SKILL.md":
-            capabilities.extend(("delete", "move"))
-    return ResourceDescriptor(
-        uri=f"galaris://skill/{quote(code, safe='-')}/{encoded_path}",
-        name=str(payload.get("name") or path.rsplit("/", 1)[-1]),
-        media_type=mimetypes.guess_type(path)[0] or "application/octet-stream",
-        size=int(payload["size"]),
-        modified_at=modified_at,
-        revision=revision,
-        capabilities=capabilities,
-        metadata={"skill_code": code, "path": path, "system": system},
-    )
-
-
-async def _skill_summary(ctx: ResourceContext, code: str) -> dict[str, Any]:
-    from app.skill import get_skill_resource
-
-    payload = await get_skill_resource(code, actor_agent_id=ctx.agent_id)
-    if payload is None:
-        raise FileNotFoundError(code)
-    return dict(payload)
-
-
 async def _can_access_skills(ctx: ResourceContext) -> bool:
-    return ctx.skill_management
+    return True  # Usage reads are independent of management delegation.
 
 
 async def _read_payload(
@@ -468,13 +385,17 @@ async def galaris_resource_info(
     ctx: ResourceContext,
     reference: ResourceUri,
 ) -> ResourceDescriptor:
+    if reference.segments[:1] == ("skill",):
+        from . import skill_provider
+        return await skill_provider.info(ctx, reference)
     if reference.segments[:1] == ("documentation",):
         from . import documentation_provider
         return await documentation_provider.info(ctx, reference)
     route = _route(reference)
     if route.kind is None:
         capabilities = list(_COLLECTION_CAPABILITIES)
-        if await _can_access_skills(ctx):
+        from app.skill import can_manage_skill_resources
+        if await can_manage_skill_resources(ctx.agent_id):
             capabilities.append("create")
         return ResourceDescriptor(
             uri="galaris://",
@@ -482,37 +403,6 @@ async def galaris_resource_info(
             is_collection=True,
             media_type="application/vnd.galaris.collection+json",
             capabilities=capabilities,
-        )
-    if route.kind == "skill":
-        if route.skill_code is None:
-            if not await _can_access_skills(ctx):
-                from app.skill import require_skill_management_access
-
-                await require_skill_management_access(ctx.agent_id)
-            descriptor = _collection_descriptor("skill")
-            descriptor.capabilities.append("create")
-            return descriptor
-        summary = await _skill_summary(ctx, route.skill_code)
-        if route.skill_path is None:
-            return _skill_directory_descriptor(summary)
-        from app.skill import read_skill_file
-
-        file_data = await read_skill_file(
-            route.skill_code,
-            route.skill_path,
-            actor_agent_id=ctx.agent_id,
-        )
-        return _skill_file_descriptor(
-            route.skill_code,
-            {
-                "path": file_data.path,
-                "name": file_data.name,
-                "size": len(file_data.content),
-                "text": file_data.text,
-            },
-            system=bool(summary["system"]),
-            modified_at=file_data.modified_at.isoformat(),
-            revision=file_data.revision,
         )
     if route.is_collection:
         descriptor = _collection_descriptor(route.kind)
@@ -534,6 +424,9 @@ async def galaris_resource_list(
     max_entries: int,
     cursor: str | None = None,
 ) -> ResourceListing:
+    if reference.segments[:1] == ("skill",):
+        from . import skill_provider
+        return await skill_provider.listing(ctx, reference, max_entries=max_entries, cursor=cursor)
     if reference.segments[:1] == ("documentation",):
         from . import documentation_provider
         return await documentation_provider.list_pages(ctx, reference, max_entries=max_entries, cursor=cursor)
@@ -559,42 +452,6 @@ async def galaris_resource_list(
             entries=selected,
             truncated=truncated,
             next_cursor=str(next_offset) if truncated else None,
-        )
-    if route.kind == "skill":
-        limit = max(1, min(max_entries, 500))
-        if route.skill_code is None:
-            from app.skill import list_skill_resources
-
-            payloads = await list_skill_resources(
-                actor_agent_id=ctx.agent_id,
-                offset=offset,
-                limit=limit + 1,
-            )
-            return ResourceListing(
-                uri="galaris://skill/",
-                entries=[_skill_directory_descriptor(dict(item)) for item in payloads[:limit]],
-                truncated=len(payloads) > limit,
-                next_cursor=str(offset + limit) if len(payloads) > limit else None,
-            )
-        if route.skill_path is not None:
-            raise ResourceUriError("file_list requires a galaris://skill/ collection URI.")
-        from app.skill import list_skill_files
-
-        summary = await _skill_summary(ctx, route.skill_code)
-        files = await list_skill_files(route.skill_code, actor_agent_id=ctx.agent_id)
-        selected = files[offset : offset + limit]
-        return ResourceListing(
-            uri=str(reference),
-            entries=[
-                _skill_file_descriptor(
-                    route.skill_code,
-                    dict(item),
-                    system=bool(summary["system"]),
-                )
-                for item in selected
-            ],
-            truncated=offset + limit < len(files),
-            next_cursor=str(offset + limit) if offset + limit < len(files) else None,
         )
     if not route.is_collection:
         raise ResourceUriError("file_list requires a galaris:// collection URI.")
@@ -631,54 +488,13 @@ async def galaris_resource_read(
     offset: int,
     max_chars: int,
 ) -> ResourceRead:
+    if reference.segments[:1] == ("skill",):
+        from . import skill_provider
+        return await skill_provider.read(ctx, reference, offset=offset, max_chars=max_chars)
     if reference.segments[:1] == ("documentation",):
         from . import documentation_provider
         return await documentation_provider.read(ctx, reference, offset=offset, max_chars=max_chars)
     route = _route(reference)
-    if route.kind == "skill":
-        if route.skill_code is None or route.skill_path is None:
-            raise ResourceUriError("file_read requires one exact skill file URI.")
-        from app.skill import read_skill_file
-
-        file_data = await read_skill_file(
-            route.skill_code,
-            route.skill_path,
-            actor_agent_id=ctx.agent_id,
-        )
-        media_type = mimetypes.guess_type(file_data.name)[0] or "application/octet-stream"
-        if not file_data.text:
-            if offset:
-                raise ValueError("Binary skill files do not support paginated offsets.")
-            if len(file_data.content) > 1_048_576:
-                raise ValueError(
-                    "Binary skill files larger than 1 MiB must be copied to another provider."
-                )
-            return ResourceRead(
-                uri=str(reference),
-                content=base64.b64encode(file_data.content).decode("ascii"),
-                encoding="base64",
-                media_type=media_type,
-                start=0,
-                end=len(file_data.content),
-                total=len(file_data.content),
-                revision=file_data.revision,
-            )
-        try:
-            content = file_data.content.decode("utf-8")
-        except UnicodeDecodeError as exc:
-            raise ValueError("The skill file is not valid UTF-8 text.") from exc
-        start = max(0, min(offset, len(content)))
-        end = min(len(content), start + max_chars)
-        return ResourceRead(
-            uri=str(reference),
-            content=content[start:end],
-            media_type=media_type,
-            start=start,
-            end=end,
-            total=len(content),
-            next_offset=end if end < len(content) else None,
-            revision=file_data.revision,
-        )
     if route.kind is None or route.is_collection or route.identifier is None:
         raise ResourceUriError("file_read requires one exact galaris:// resource.")
     payload = await _read_payload(ctx, route.kind, route.identifier, native_process=reference.segments[:1] == ("processes",))
@@ -709,19 +525,8 @@ async def galaris_skill_file_bytes(
 ) -> bytes:
     """Return authorized skill-file bytes for bounded server-side transfers."""
 
-    route = _route(reference)
-    if route.kind != "skill" or route.skill_code is None or route.skill_path is None:
-        raise ResourceUriError("Expected one exact galaris://skill/ file URI.")
-    from app.skill import read_skill_file
-
-    data = await read_skill_file(
-        route.skill_code,
-        route.skill_path,
-        actor_agent_id=ctx.agent_id,
-    )
-    return data.content
-
-
+    from . import skill_provider
+    return await skill_provider.file_bytes(ctx, reference)
 def _excerpt(payload: dict[str, Any], query: str) -> str:
     text = _json(payload)
     position = text.casefold().find(query.casefold())
@@ -740,6 +545,9 @@ async def galaris_resource_search(
     max_results: int,
     cursor: str | None,
 ) -> ResourceSearchResult:
+    if reference.segments[:1] == ("skill",):
+        from . import skill_provider
+        return await skill_provider.search(ctx, reference, query, mode=mode, max_results=max_results, cursor=cursor)
     if reference.segments[:1] == ("documentation",):
         from app.tools import require_documentation_access
         await require_documentation_access(ctx.agent_id)
@@ -751,68 +559,6 @@ async def galaris_resource_search(
         raise ResourceUriError("file_search requires a galaris:// collection URI.")
     offset = max(0, int(cursor or "0"))
     limit = max(1, min(max_results, 500))
-    if route.kind == "skill":
-        from app.skill import list_skill_files, list_skill_resources, read_skill_file
-
-        hits: list[ResourceSearchHit] = []
-        if route.skill_code is None:
-            summaries = await list_skill_resources(
-                actor_agent_id=ctx.agent_id,
-                query=query,
-                offset=offset,
-                limit=limit + 1,
-            )
-            selected_summaries = summaries[:limit]
-            return ResourceSearchResult(
-                uri=str(reference),
-                query=query,
-                mode=mode,
-                hits=[
-                    ResourceSearchHit(resource=_skill_directory_descriptor(dict(item)))
-                    for item in selected_summaries
-                ],
-                truncated=len(summaries) > limit,
-                next_cursor=str(offset + limit) if len(summaries) > limit else None,
-            )
-        summary = await _skill_summary(ctx, route.skill_code)
-        files = await list_skill_files(route.skill_code, actor_agent_id=ctx.agent_id)
-        folded = query.casefold()
-        for item in files:
-            matched = folded in item["path"].casefold()
-            excerpt = ""
-            if mode == "text" and item["text"]:
-                data = await read_skill_file(
-                    route.skill_code,
-                    item["path"],
-                    actor_agent_id=ctx.agent_id,
-                )
-                text = data.content.decode("utf-8")
-                position = text.casefold().find(folded)
-                matched = position >= 0
-                if matched:
-                    start = max(0, position - 120)
-                    excerpt = text[start : position + len(query) + 240]
-            if matched:
-                hits.append(
-                    ResourceSearchHit(
-                        resource=_skill_file_descriptor(
-                            route.skill_code,
-                            dict(item),
-                            system=bool(summary["system"]),
-                        ),
-                        excerpt=excerpt,
-                    )
-                )
-        selected_hits = hits[offset : offset + limit]
-        truncated = offset + limit < len(hits)
-        return ResourceSearchResult(
-            uri=str(reference),
-            query=query,
-            mode=mode,
-            hits=selected_hits,
-            truncated=truncated,
-            next_cursor=str(offset + limit) if truncated else None,
-        )
     if route.kind is None:
         kinds: tuple[GalarisResourceKind, ...] = tuple(
             kind for kind in _KINDS if kind != "skill"
@@ -856,28 +602,8 @@ async def galaris_resource_create(
     reference: ResourceUri,
     content: bytes,
 ) -> ResourceMutation:
-    route = _route(reference)
-    if route.kind != "skill" or route.skill_code is None or route.skill_path is None:
-        raise PermissionError(
-            "Only galaris://skill/<skill-code>/<path> supports generic file creation."
-        )
-    from app.skill import create_skill_file
-
-    data = await create_skill_file(
-        route.skill_code,
-        route.skill_path,
-        content,
-        actor_agent_id=ctx.agent_id,
-    )
-    return ResourceMutation(
-        uri=str(reference),
-        operation="create",
-        state="created",
-        size=len(data.content),
-        revision=data.revision,
-    )
-
-
+    from . import skill_provider
+    return await skill_provider.mutate(ctx, reference, content, operation="create")
 async def galaris_resource_write(
     ctx: ResourceContext,
     reference: ResourceUri,
@@ -885,82 +611,21 @@ async def galaris_resource_write(
     *,
     expected_revision: int | None = None,
 ) -> ResourceMutation:
-    route = _route(reference)
-    if route.kind != "skill" or route.skill_code is None or route.skill_path is None:
-        raise PermissionError(
-            "galaris:// business snapshots are read-only; only "
-            "galaris://skill/<skill-code>/<path> supports generic file writes."
-        )
-    from app.skill import write_skill_file
-
-    data = await write_skill_file(
-        route.skill_code,
-        route.skill_path,
-        content,
-        actor_agent_id=ctx.agent_id,
-        expected_revision=expected_revision,
-    )
-    return ResourceMutation(
-        uri=str(reference),
-        operation="write",
-        state="written",
-        size=len(data.content),
-        revision=data.revision,
-    )
-
-
+    from . import skill_provider
+    return await skill_provider.mutate(ctx, reference, content, operation="write", expected_revision=expected_revision)
 async def galaris_resource_append(
     ctx: ResourceContext,
     reference: ResourceUri,
     content: str,
 ) -> ResourceMutation:
-    route = _route(reference)
-    if route.kind != "skill" or route.skill_code is None or route.skill_path is None:
-        raise PermissionError(
-            "Only galaris://skill/<skill-code>/<path> supports generic text append."
-        )
-    from app.skill import append_skill_file
-
-    data = await append_skill_file(
-        route.skill_code,
-        route.skill_path,
-        content,
-        actor_agent_id=ctx.agent_id,
-    )
-    return ResourceMutation(
-        uri=str(reference),
-        operation="append",
-        state="appended",
-        size=len(data.content),
-        revision=data.revision,
-    )
-
-
+    from . import skill_provider
+    return await skill_provider.mutate(ctx, reference, content.encode("utf-8"), operation="append")
 async def galaris_resource_delete(
     ctx: ResourceContext,
     reference: ResourceUri,
 ) -> ResourceMutation:
-    route = _route(reference)
-    if route.kind != "skill" or route.skill_code is None or route.skill_path is None:
-        raise PermissionError(
-            "Only auxiliary galaris://skill/<skill-code>/<path> files can be deleted."
-        )
-    from app.skill import delete_skill_file
-
-    data = await delete_skill_file(
-        route.skill_code,
-        route.skill_path,
-        actor_agent_id=ctx.agent_id,
-    )
-    return ResourceMutation(
-        uri=str(reference),
-        operation="delete",
-        state="deleted",
-        size=len(data.content),
-        revision=data.revision,
-    )
-
-
+    from . import skill_provider
+    return await skill_provider.mutate(ctx, reference, operation="delete")
 async def galaris_resource_move(
     ctx: ResourceContext,
     source: ResourceUri,
@@ -968,45 +633,8 @@ async def galaris_resource_move(
     *,
     overwrite: bool,
 ) -> ResourceMutation:
-    source_route = _route(source)
-    destination_route = _route(destination)
-    if (
-        source_route.kind != "skill"
-        or destination_route.kind != "skill"
-        or source_route.skill_code is None
-        or destination_route.skill_code != source_route.skill_code
-        or source_route.skill_path is None
-    ):
-        raise PermissionError(
-            "Skill files can only be moved within the same galaris://skill/<skill-code>/ directory."
-        )
-    destination_path = destination_route.skill_path
-    if destination_path is None and destination_route.skill_code is not None:
-        destination_path = source_route.skill_path.rsplit("/", 1)[-1]
-    if destination_path is None:
-        raise ResourceUriError("A skill file move requires an exact destination path.")
-    from app.skill import move_skill_file
-
-    data = await move_skill_file(
-        source_route.skill_code,
-        source_route.skill_path,
-        destination_path,
-        actor_agent_id=ctx.agent_id,
-        overwrite=overwrite,
-    )
-    encoded_path = "/".join(
-        quote(part, safe="!$&'()*+,-.;=@_~:") for part in data.path.split("/")
-    )
-    return ResourceMutation(
-        uri=f"galaris://skill/{quote(source_route.skill_code, safe='-')}/{encoded_path}",
-        operation="move",
-        state="moved",
-        source_uri=str(source),
-        size=len(data.content),
-        revision=data.revision,
-    )
-
-
+    from . import skill_provider
+    return await skill_provider.move(ctx, source, destination, overwrite=overwrite)
 __all__ = [
     "galaris_resource_append",
     "galaris_resource_create",

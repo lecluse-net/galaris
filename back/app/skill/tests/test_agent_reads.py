@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import event, inspect, select
 
 from app.agent.models import Agent, Title
-from app.skill import skill_service
+from app.skill import skill_service, storage
 from app.skill.models import AgentSkill, Skill
 from core.authorize.models import Assignment, Privilege, Role
 from core.database import get_db_session
@@ -72,9 +72,12 @@ async def test_skill_agent_consumers_use_only_identity_fields_and_keep_scopes(db
 
 
 @pytest.mark.asyncio
-async def test_skill_agent_http_preserves_manager_scope_and_assignment_privileges(client):
+async def test_skill_agent_http_preserves_manager_scope_and_assignment_privileges(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(type(storage.settings), "GALARIS_SKILLS_ROOT", str(tmp_path / "skills"))
     password = "synthetic-skill-reader-password"
     async with get_db_session() as db:
+        from app.connection import Connection
+        from app.tools import ToolModel
         privilege = await db.scalar(select(Privilege).where(Privilege.code == "SKILL_ACCESS"))
         role = Role(code="synthetic-skill-reader", privileges=[privilege])
         password_hash = encrypt_password(password)
@@ -90,10 +93,29 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
         db.add_all(agents)
         await db.flush()
         owner_id = agents[0].id
+        other_id = agents[1].id
+        tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == 'skills'))
+        connection = Connection(agent_id=owner_id, tool_id=tool_id, active=True)
+        db.add(connection)
+        await db.flush()
+        connection_id = connection.id
+        packages = [Skill(code="private-guide", label="Synthetic private guide", owner_agent_id=agent.id,
+                          creator_agent_id=agent.id, assignments=[]) for agent in agents]
+        db.add_all(packages)
+        await db.flush()
+        package_ids = [package.id for package in packages]
+        for agent, package in zip(agents, packages, strict=True):
+            package.assignments.append(AgentSkill(agent_id=agent.id, active=True))
+            await storage.install_markdown(package.code, package.label,
+                f"---\nname: private-guide\ndescription: Synthetic guide.\n---\nOwner {agent.id}\n",
+                owner_agent_id=agent.id)
     path = "/api/skills/agents"
     assert (await client.get(path)).status_code == 401
     headers = []
     for index in range(2):
+        # Independent browser sessions: logging in with an existing refresh cookie
+        # revokes that session and would invalidate the first user's bearer token.
+        client.cookies.clear()
         login = await client.post("/api/auth/login-json", json={
             "email": f"skill-reader-{index}@example.com", "password": password,
         })
@@ -105,3 +127,85 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
     assert response.json() == [{"id": owner_id, "code": "synthetic-http-skill-0", "label": "Synthetic 0", "driver": "internal"}]
     assert (await client.get(path, headers=headers[0])).json() == response.json()
     assert (await client.get("/api/skills/authorizations", headers=headers[0])).status_code == 403
+    personal_path = "/api/skills/personal"
+    assert (await client.get(personal_path)).status_code == 401
+    assert (await client.get(personal_path, headers=headers[1])).status_code == 403
+    personal = await client.get(personal_path, headers=headers[0], params={"page_size": 500})
+    assert personal.status_code == 200, personal.text
+    assert personal.json()["total"] == 1
+    item = personal.json()["items"][0]
+    assert item["id"] == package_ids[0] and item["owner_agent_id"] == owner_id
+    assert item["enabled"] and item["valid"] and item["file_count"] == 1
+    assert (await client.get(personal_path, headers=headers[0], params={"search": "absent"})).json()["total"] == 0
+    assert (await client.get(personal_path, headers=headers[0], params={"owner_agent_id": other_id})).status_code == 404
+    detail = await client.get(f"{personal_path}/{package_ids[0]}", headers=headers[0])
+    assert detail.status_code == 200 and detail.json()["files"][0]["path"] == "SKILL.md"
+    content = await client.get(f"{personal_path}/{package_ids[0]}/content", headers=headers[0])
+    assert content.status_code == 200 and f"Owner {owner_id}" in content.json()["content"]
+    for suffix in ("", "/content"):
+        assert (await client.get(f"{personal_path}/{package_ids[1]}{suffix}", headers=headers[0])).status_code == 404
+        assert (await client.get(f"{personal_path}/{package_ids[0]}{suffix}", headers=headers[1])).status_code == 403
+    assert (await client.get(f"{personal_path}/{package_ids[0]}/content", headers=headers[0], params={"path": "../secret"})).status_code == 422
+    generic = await client.get("/api/skills", headers=headers[0])
+    assert {row["id"] for row in generic.json()}.isdisjoint(package_ids)
+    scope_path = f"/api/connections/{connection_id}/params/bulk"
+    def scope_data(value):
+        return {'connection_id': connection_id, 'params': {'tools.management_scope': value}}
+    assert (await client.post(scope_path, headers=headers[0], json=scope_data('all'))).status_code == 403
+    assert (await client.patch(f'/api/connections/{connection_id}', headers=headers[0], json={
+        'active': False, 'params': {'tools.management_scope': 'all'},
+    })).status_code == 403
+    from sqlalchemy.orm import selectinload
+    async with get_db_session() as db:
+        reader_role = await db.scalar(select(Role).where(Role.code == "synthetic-skill-reader").options(selectinload(Role.privileges)))
+        reader_role.privileges.append(await db.scalar(select(Privilege).where(Privilege.code == "SKILL_EDIT")))
+        reader_role.privileges.append(await db.scalar(select(Privilege).where(Privilege.code == "CONNECTION_EDIT")))
+        from app.connection import ConnectionParam
+        same_manager = Agent(user_id=users[0].id, title_id=title.id, code='synthetic-scope-same-manager',
+            first_name='Synthetic', last_name='Same manager', agent_driver='internal')
+        db.add(same_manager)
+        db.add(ConnectionParam(connection_id=connection_id, param_name='tools.management_scope', param_value='all'))
+        await db.flush()
+        same_manager_id = same_manager.id
+    assert (await client.post(scope_path, headers=headers[0], json=scope_data('all'))).status_code == 403
+    assert (await client.patch(f'/api/connections/{connection_id}', headers=headers[0], json={
+        'agent_id': same_manager_id,
+    })).status_code == 403
+    assert (await client.patch(f'/api/connections/{connection_id}', headers=headers[0], json={
+        'active': False, 'params': {'tools.management_scope': 'personal'},
+    })).status_code == 403
+    unchanged = (await client.get(f'/api/connections/{connection_id}', headers=headers[0])).json()
+    assert unchanged['active'] and unchanged['agent_id'] == owner_id
+    async with get_db_session() as db:
+        reader_role = await db.scalar(select(Role).where(Role.code == "synthetic-skill-reader").options(selectinload(Role.privileges)))
+        reader_role.privileges.append(await db.scalar(select(Privilege).where(Privilege.code == "AGENT_MANAGE_ALL")))
+    assert (await client.post(scope_path, headers=headers[0], json=scope_data('personal'))).status_code == 201
+    assert (await client.get(f'/api/connections/{connection_id}/params', headers=headers[0])).json()['params']['tools.management_scope'] == 'personal'
+    assert (await client.post(scope_path, headers=headers[0], json=scope_data('team'))).status_code == 201
+    assert (await client.post(scope_path, headers=headers[0], json=scope_data('unknown'))).status_code == 422
+    configured = await client.patch(f'/api/connections/{connection_id}', headers=headers[0], json={
+        'active': False, 'params': {'tools.management_scope': 'all'},
+    })
+    assert configured.status_code == 200 and not configured.json()['active']
+    failed = await client.patch(f'/api/connections/{connection_id}', headers=headers[0], json={
+        'active': True, 'params': {'tools.management_scope': 'unknown'},
+    })
+    assert failed.status_code == 422
+    assert not (await client.get(f'/api/connections/{connection_id}', headers=headers[0])).json()['active']
+    assert (await client.get(f'/api/connections/{connection_id}/params', headers=headers[0])).json()['params']['tools.management_scope'] == 'all'
+    assert (await client.patch(f'/api/connections/{connection_id}', headers=headers[0], json={
+        'active': True, 'params': {'tools.management_scope': 'team'},
+    })).status_code == 200
+    failed_creation = await client.post('/api/connections', headers=headers[0], json={
+        'agent_id': other_id, 'tool_id': tool_id, 'active': True,
+        'params': {'tools.management_scope': 'unknown'},
+    })
+    assert failed_creation.status_code == 422
+    assert (await client.get('/api/connections', headers=headers[0], params={'agent_id': other_id})).json() == []
+    from uuid import uuid4
+    release = await client.post(f"/api/skills/{package_ids[0]}/release-ownership", headers=headers[0], json={
+        "expected_revision": 1, "operation_id": str(uuid4()), "new_code": "http-released-guide",
+    })
+    assert release.status_code == 200, release.text
+    assert release.json()["uri"] == "galaris://skill/http-released-guide/"
+    assert (await client.get(f"{personal_path}/{package_ids[0]}", headers=headers[0])).status_code == 404

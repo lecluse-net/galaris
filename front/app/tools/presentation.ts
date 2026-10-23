@@ -9,7 +9,7 @@ const BUILT_IN_TOOL_CODES = new Set([
   "tool_admin",
   "agent_admin",
   "goal_management",
-  "skill_management",
+  "skills",
   "process_admin",
   "topic",
   "search",

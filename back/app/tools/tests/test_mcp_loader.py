@@ -338,7 +338,9 @@ def test_mcp_loader_discovers_decorated_tools_by_tool_code() -> None:
         "goal_complete",
         "goal_delete",
     } == set(names["goal_management"])
-    assert {"skills_list", "skill_read"} == set(names["skill_management"])
+    assert {"skills_list", "skill_read", "skill_update", "skill_set_enabled", "skill_delete",
+            "skill_set_authorization", "skill_set_category_authorization", "skill_release_ownership"} == set(names["skills"])
+    assert "skill_management" not in names
     assert {
         "process_admin_engines",
         "process_admin_sync",
@@ -837,7 +839,7 @@ async def test_mcp_loader_filters_by_tool_and_runtime() -> None:
         runtime="internal",
         enabled_tool_codes={
             "goal_management",
-            "skill_management",
+            "skills",
             "process_admin",
             "galaris_admin",
         },

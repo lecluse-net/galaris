@@ -1,42 +1,23 @@
-from unittest.mock import AsyncMock
-
+"""Live management delegation, independent of editable connection parameters."""
+from sqlalchemy import select
 import pytest
-
-from app.connection import connection_service
-from app.skill.resource_facade import (
-    can_manage_skill_resources,
-    require_skill_management_access,
-)
-
-
-@pytest.mark.asyncio
-async def test_skill_file_access_requires_the_live_management_connection(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    witness = AsyncMock(return_value=False)
-    monkeypatch.setattr(connection_service, "has_active_tool_connection", witness)
-
-    assert await can_manage_skill_resources(42) is False
-    with pytest.raises(PermissionError, match="skill_management"):
-        await require_skill_management_access(42)
-
-    assert witness.await_count == 2
-    witness.assert_awaited_with(
-        agent_id=42,
-        tool_code="skill_management",
-    )
+from app.connection import Connection
+from app.skill import interface
+from app.skill.contracts import SkillScope
+from app.skill.resource_facade import can_manage_skill_resources, require_skill_management_access
+from .test_personal_packages import agents, set_scope
 
 
 @pytest.mark.asyncio
-async def test_skill_file_access_accepts_the_live_management_connection(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    witness = AsyncMock(return_value=True)
-    monkeypatch.setattr(connection_service, "has_active_tool_connection", witness)
-
-    await require_skill_management_access(42)
-
-    witness.assert_awaited_once_with(
-        agent_id=42,
-        tool_code="skill_management",
-    )
+async def test_management_requires_both_live_scope_and_active_connection(db, agents):
+    a, b, _ = agents
+    assert await can_manage_skill_resources(a.id)
+    await require_skill_management_access(a.id)
+    connection = await db.scalar(select(Connection).where(Connection.agent_id == a.id))
+    connection.active = False
+    await db.commit()
+    assert not await can_manage_skill_resources(a.id)
+    with pytest.raises(PermissionError):
+        await require_skill_management_access(a.id)
+    await set_scope(b.id, SkillScope.USAGE)
+    assert not await can_manage_skill_resources(b.id)

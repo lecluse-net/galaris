@@ -12,6 +12,7 @@ from . import admin_service as administration
 from .parameter_resolution import effective_param_value_expression as effective_param_value_expression
 
 from .connection_service import (
+    get_management_scope as get_management_scope,
     function_state_label,
     get_connection,
     get_connections_by_agent,

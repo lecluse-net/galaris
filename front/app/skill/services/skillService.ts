@@ -25,6 +25,27 @@ export interface SkillCreate {
     category_id?: number | null
 }
 
+export interface PersonalSkill {
+    id: number
+    code: string
+    label: string
+    owner_agent_id: number
+    owner_label: string
+    revision: number
+    enabled: boolean
+    available: boolean
+    valid: boolean
+    description: string | null
+    file_count: number
+    updated_at: string
+}
+
+
+export interface PersonalSkillDetail {
+    skill: PersonalSkill
+    files: SkillFile[]
+}
+
 export interface SkillUpdate {
     label?: string
     markdown?: string
@@ -179,6 +200,20 @@ export interface LearnedSkillLearningStatus {
 }
 
 export const skillService = {
+    getPersonalSkills(params: {
+        owner_agent_id: number | null
+        search: string
+        page: number
+        page_size: number
+    }): Promise<AxiosResponse<{ items: PersonalSkill[]; total: number }>> {
+        return api.get('/skills/personal', { params })
+    },
+    getPersonalSkill(id: number): Promise<AxiosResponse<PersonalSkillDetail>> {
+        return api.get(`/skills/personal/${id}`)
+    },
+    getPersonalSkillContent(id: number, path: string): Promise<AxiosResponse<SkillFileContent>> {
+        return api.get(`/skills/personal/${id}/content`, { params: { path } })
+    },
     getSkills(): Promise<AxiosResponse<Skill[]>> {
         return api.get('/skills')
     },

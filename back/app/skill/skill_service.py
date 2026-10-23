@@ -58,7 +58,7 @@ async def get(skill_id: int) -> Skill | None:
             selectinload(Skill.assignments),
             selectinload(Skill.category).selectinload(SkillCategory.authorizations),
         )
-        .where(Skill.id == skill_id)
+        .where(Skill.id == skill_id, Skill.owner_agent_id.is_(None))
     )
     return result.scalar_one_or_none()
 
@@ -67,7 +67,7 @@ async def get_by_code(code: str, include_historized: bool = False, *, load_autho
     db = get_db()
     query = (
         select(Skill)
-        .where(Skill.code == code)
+        .where(Skill.code == code, Skill.owner_agent_id.is_(None))
     )
     if load_authorizations:
         query = query.options(selectinload(Skill.category).selectinload(SkillCategory.authorizations))
@@ -83,6 +83,7 @@ async def get_all() -> Sequence[Skill]:
     db = get_db()
     result = await db.execute(
         select(Skill)
+        .where(Skill.owner_agent_id.is_(None))
         .options(
             selectinload(Skill.assignments),
             selectinload(Skill.category).selectinload(SkillCategory.authorizations),
@@ -96,6 +97,7 @@ async def get_catalogue() -> Sequence[Skill]:
     """Read public metadata without the agent/category authorization matrix."""
     return (await get_db().scalars(
         select(Skill)
+        .where(Skill.owner_agent_id.is_(None))
         .options(joinedload(Skill.category), raiseload(Skill.assignments))
         .order_by(Skill.label, Skill.code)
     )).all()
@@ -103,7 +105,7 @@ async def get_catalogue() -> Sequence[Skill]:
 
 async def has_configured_skills() -> bool:
     """Return whether the library contains at least one active skill."""
-    query = Skill.histo_filter(select(Skill.id)).limit(1)
+    query = Skill.histo_filter(select(Skill.id).where(Skill.owner_agent_id.is_(None))).limit(1)
     result = await get_db().execute(query)
     return result.scalar_one_or_none() is not None
 
@@ -120,7 +122,7 @@ async def ensure_assignment_matrix(
         agent_query = agent_query.where(Agent.id == agent_id)
     agent_ids = list((await db.execute(agent_query)).scalars().all())
 
-    skill_query = select(Skill.id)
+    skill_query = select(Skill.id).where(Skill.owner_agent_id.is_(None))
     if skill_id is not None:
         skill_query = skill_query.where(Skill.id == skill_id)
     skill_ids = list((await db.execute(skill_query)).scalars().all())
@@ -154,6 +156,7 @@ async def initialize_galaris_agent_skills(agent_id: int) -> None:
         sql_update(AgentSkill).where(
             AgentSkill.agent_id == agent_id,
             AgentSkill.skill_id.in_(select(Skill.id).where(
+                Skill.owner_agent_id.is_(None),
                 Skill.code.in_(("galaris-lab", "galaris-knowledge"))
             )),
         ).values(active=True)
@@ -191,6 +194,7 @@ async def _upsert_record(code: str, label: str) -> tuple[Skill, bool]:
         if record.is_historized:
             record.restore()
         record.label = label
+        record.revision += 1
     await db.flush()
     await ensure_assignment_matrix(skill_id=record.id)
     await db.commit()
@@ -199,6 +203,8 @@ async def _upsert_record(code: str, label: str) -> tuple[Skill, bool]:
 
 
 async def create(data: SkillCreate) -> Skill:
+    from .interface import lock_catalogue
+    await lock_catalogue()
     code = storage.validate_code(data.code)
     category = (
         await _require_category(data.category_id)
@@ -227,6 +233,8 @@ async def import_upload(
     label: str | None,
     overwrite: bool,
 ) -> tuple[Skill, bool]:
+    from .interface import lock_catalogue
+    await lock_catalogue()
     installed = await storage.install_upload(filename, content, code, label, overwrite)
     record, created = await _upsert_record(installed.code, installed.label)
     return record, created
@@ -242,6 +250,7 @@ async def update(skill_id: int, data: SkillUpdate) -> Skill | None:
         storage.write_markdown(record.code, data.markdown)
     if data.label is not None:
         record.label = data.label
+    record.revision += 1
     db = get_db()
     await db.commit()
     await db.refresh(record, attribute_names=["assignments"])
@@ -277,6 +286,8 @@ async def sync_from_disk() -> SkillRescanData:
     from core.dbadmin import reconcile_dataset
     from .dbadmin import compile_skill_rows, datasets
 
+    from .interface import lock_catalogue
+    await lock_catalogue()
     db = get_db()
     results = [await reconcile_dataset(db, dataset) for dataset in datasets()]
     await db.commit()
@@ -494,6 +505,7 @@ async def get_assigned_codes(agent_id: int) -> list[str]:
             and_(AgentSkill.skill_id == Skill.id, AgentSkill.agent_id == agent_id),
         )
         .where(
+            Skill.owner_agent_id.is_(None),
             or_(
                 AgentSkill.active.is_(True),
                 and_(

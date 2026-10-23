@@ -99,13 +99,15 @@ def test_system_skill_does_not_expose_private_workspace_scheme() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("owner_agent_id", [None, 37])
 async def test_skill_files_support_atomic_create_write_append_move_and_delete(
-    skill_root: Path,
+    skill_root: Path, owner_agent_id: int | None,
 ) -> None:
     await storage.install_markdown(
         "editable",
         "Editable",
         "---\nname: editable\ndescription: Editable skill.\n---\n# Editable\n",
+        owner_agent_id=owner_agent_id,
     )
 
     created = await storage.write_file(
@@ -113,11 +115,13 @@ async def test_skill_files_support_atomic_create_write_append_move_and_delete(
         "references/notes.md",
         b"first\n",
         overwrite=False,
+        owner_agent_id=owner_agent_id,
     )
     appended = await storage.append_file(
         "editable",
         "references/notes.md",
         "second\n",
+        owner_agent_id=owner_agent_id,
     )
     written = await storage.write_file(
         "editable",
@@ -125,6 +129,7 @@ async def test_skill_files_support_atomic_create_write_append_move_and_delete(
         b"replacement\n",
         overwrite=True,
         expected_revision=appended.revision,
+        owner_agent_id=owner_agent_id,
     )
     with pytest.raises(RuntimeError, match="revision conflict"):
         await storage.write_file(
@@ -133,16 +138,19 @@ async def test_skill_files_support_atomic_create_write_append_move_and_delete(
             b"stale update\n",
             overwrite=True,
             expected_revision=created.revision,
+            owner_agent_id=owner_agent_id,
         )
     moved = await storage.move_file(
         "editable",
         "references/notes.md",
         "references/archive.md",
         overwrite=False,
+        owner_agent_id=owner_agent_id,
     )
     deleted = await storage.delete_file(
         "editable",
         "references/archive.md",
+        owner_agent_id=owner_agent_id,
     )
 
     assert created.content == b"first\n"
@@ -150,7 +158,7 @@ async def test_skill_files_support_atomic_create_write_append_move_and_delete(
     assert written.content == b"replacement\n"
     assert moved.path == "references/archive.md"
     assert deleted.content == b"replacement\n"
-    assert not (skill_root / "editable/references").exists()
+    assert not (storage.skill_dir("editable", owner_agent_id=owner_agent_id) / "references").exists()
 
 
 @pytest.mark.asyncio
@@ -181,3 +189,24 @@ async def test_skill_definition_mutations_preserve_frontmatter_and_system_files(
         await storage.delete_file("editable", "SKILL.md")
 
     assert storage.inspect("editable").valid is True
+
+
+@pytest.mark.asyncio
+async def test_personal_paths_reject_symlinks_at_every_directory_level(skill_root: Path, tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    root = storage.ensure_root()
+    (root / ".personal").symlink_to(outside)
+    with pytest.raises(ValueError, match="symboliques"):
+        await storage.install_markdown("safe", "Safe", storage.default_markdown("safe", "Safe"), owner_agent_id=37)
+    (root / ".personal").unlink()
+    (root / ".personal").mkdir()
+    (root / ".personal/37").symlink_to(outside)
+    with pytest.raises(ValueError, match="symboliques"):
+        storage.read_file("safe", "SKILL.md", owner_agent_id=37)
+    (root / ".personal/37").unlink()
+    (root / ".personal/37").mkdir()
+    (root / ".personal/37/safe").symlink_to(outside)
+    with pytest.raises(ValueError, match="symboliques"):
+        storage.read_file("safe", "SKILL.md", owner_agent_id=37)
+    assert list(outside.iterdir()) == []

@@ -28,6 +28,7 @@ async def test_galaris_root_lists_the_supported_business_collections(db) -> None
         "galaris://agent/",
         "galaris://processes/",
         "galaris://code/",
+        "galaris://skill/",
     }
 
 
@@ -54,7 +55,7 @@ async def test_galaris_root_listing_is_paginated(db) -> None:
 
 
 @pytest.mark.asyncio
-async def test_galaris_root_exposes_skills_only_with_management_access(
+async def test_galaris_root_exposes_the_skills_usage_collection(
     db,
 ) -> None:
     result = await resource_service.resource_list(
@@ -64,23 +65,6 @@ async def test_galaris_root_exposes_skills_only_with_management_access(
 
     assert result.entries[-1].uri == "galaris://skill/"
 
-
-@pytest.mark.asyncio
-async def test_skill_collection_rechecks_management_access(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import app.skill as skill
-
-    denied = AsyncMock(side_effect=PermissionError("skill_management required"))
-    monkeypatch.setattr(skill, "require_skill_management_access", denied)
-
-    with pytest.raises(PermissionError, match="skill_management"):
-        await resource_service.resource_info(
-            ResourceContext(agent_id=7, runtime="internal"),
-            "galaris://skill/",
-        )
-
-    denied.assert_awaited_once_with(7)
 
 
 @pytest.mark.asyncio
@@ -332,66 +316,34 @@ async def test_galaris_resources_reject_generic_mutations() -> None:
         await resource_service.resource_move(ctx, uri, "console://task.json")
 
 
+
+# The old mocked facade-call assertions are replaced by real package persistence;
+# the private MCP/FS workflow is covered by app.skill.tests.test_mcp.
+from app.skill.tests.test_personal_packages import agents, personal
+
+
 @pytest.mark.asyncio
-async def test_skill_file_resource_routes_read_and_mutations_through_skill_facade(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import app.skill as skill
-
-    markdown = b"---\nname: research\ndescription: Research.\n---\n# Research\n"
-    file_data = SimpleNamespace(
-        path="SKILL.md",
-        name="SKILL.md",
-        content=markdown,
-        text=True,
-        modified_at=datetime.now(timezone.utc),
-        revision=11,
-    )
-    summary = {
-        "code": "research",
-        "label": "Research",
-        "system": False,
-        "available": True,
-        "valid": True,
-        "description": "Research.",
-        "file_count": 1,
-        "total_size": len(markdown),
-        "modified_at": None,
-    }
-    monkeypatch.setattr(skill, "get_skill_resource", AsyncMock(return_value=summary))
-    monkeypatch.setattr(skill, "read_skill_file", AsyncMock(return_value=file_data))
-    write = AsyncMock(return_value=file_data)
-    append = AsyncMock(return_value=file_data)
-    monkeypatch.setattr(skill, "write_skill_file", write)
-    monkeypatch.setattr(skill, "append_skill_file", append)
-    ctx = ResourceContext(agent_id=7, runtime="internal")
-    uri = "galaris://skill/research/SKILL.md"
-
+async def test_generic_skill_reads_and_writes_use_live_domain_policy(db, agents):
+    from app.skill import interface
+    _, _, admin = agents
+    package = await interface.create_package(personal('research'), actor_agent_id=admin.id, generic=True)
+    ctx = ResourceContext(agent_id=admin.id, runtime='internal')
+    uri = package.uri + 'SKILL.md'
     descriptor = await resource_service.resource_info(ctx, uri)
     content = await resource_service.resource_read(ctx, uri)
-    written = await resource_service.resource_write(
-        ctx,
-        uri,
-        markdown + b"\nMore.\n",
-        expected_revision=11,
-    )
-    appended = await resource_service.resource_append(ctx, uri, "\nMore.\n")
+    assert {'copy', 'info', 'read', 'write', 'append', 'edit'} <= set(descriptor.capabilities)
+    written = await resource_service.resource_write(ctx, uri, (content.content + '\nUpdated.\n').encode(),
+                                                      expected_revision=content.revision)
+    await resource_service.resource_append(ctx, uri, '\nAppended.\n')
+    assert written.operation == 'write'
+    assert 'Updated.\n\nAppended.' in (await resource_service.resource_read(ctx, uri)).content
 
-    assert descriptor.capabilities == ["copy", "info", "read", "write", "append", "edit"]
-    assert content.content == markdown.decode("utf-8")
-    assert content.revision == 11
-    assert written.operation == "write"
-    assert appended.operation == "append"
-    write.assert_awaited_once_with(
-        "research",
-        "SKILL.md",
-        markdown + b"\nMore.\n",
-        actor_agent_id=7,
-        expected_revision=11,
-    )
-    append.assert_awaited_once_with(
-        "research",
-        "SKILL.md",
-        "\nMore.\n",
-        actor_agent_id=7,
-    )
+
+@pytest.mark.asyncio
+async def test_skill_collection_discovery_does_not_grant_management(monkeypatch):
+    from app.skill import interface
+    from app.skill.contracts import SkillScope
+    monkeypatch.setattr(interface, 'get_agent_scope', AsyncMock(return_value=SkillScope.USAGE))
+    descriptor = await resource_service.resource_info(
+        ResourceContext(agent_id=7, runtime='internal', skill_management=True), 'galaris://skill/')
+    assert descriptor.is_collection and 'create' not in descriptor.capabilities

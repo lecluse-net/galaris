@@ -21,6 +21,7 @@ default = {
             "inactive": "Activez et enregistrez la connexion avant de l’autoriser.",
         },
         "errors": {
+            "scope_delegation": "La délégation de portée d’un Tool exige la gestion globale des agents.",
             "not_found": "Connexion introuvable",
             "not_found_by_id": "Connexion ${connection_id} introuvable",
             "duplicate": "Une connexion existe déjà pour l’agent ${agent_id} et l’outil ${tool_id}",

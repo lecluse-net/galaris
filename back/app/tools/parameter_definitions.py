@@ -5,6 +5,15 @@ from typing import Any
 from .contracts import FILE_INDEXING_PARAM, FileIndexingMode
 
 
+def management_scope_parameter(scopes: tuple[str, ...]) -> dict[str, Any]:
+    """Opt a native Tool into an explicitly delegated, connection-only scope."""
+    return {"type": "string", "required": False, "default": "usage",
+            "label": "tools.connectionParamLabels.managementScope",
+            "description": "tools.connectionParamDescriptions.managementScope",
+            "options": [{"value": scope, "label": f"tools.connectionParamOptions.managementScope.{scope}"}
+                        for scope in scopes]}
+
+
 def file_indexing_modes(code: str, config: dict[str, Any] | None) -> list[FileIndexingMode]:
     from app.file_share import available_bridges
 

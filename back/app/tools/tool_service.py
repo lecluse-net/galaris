@@ -80,6 +80,8 @@ def default_global_params(connection_schema: Dict[str, Any]) -> Dict[str, Dict[s
     definitions = cast(Dict[str, Dict[str, Any]], connection_schema.get("params") or {})
     result: Dict[str, Dict[str, Any]] = {}
     for name, definition in definitions.items():
+        if name == "tools.management_scope":
+            continue
         default = definition.get("default")
         value = str(default) if default not in (None, "") else None
         result[name] = {"value": value, "forced": False}
@@ -108,6 +110,8 @@ def public_global_params(record: ToolModel) -> Dict[str, ToolGlobalParamPublic]:
     entries = _global_param_entries(record)
     result: Dict[str, ToolGlobalParamPublic] = {}
     for name, definition in _connection_param_definitions(record).items():
+        if name == "tools.management_scope":
+            continue
         entry = entries.get(name) or {}
         stored = entry.get("value")
         configured = isinstance(stored, str) and stored != ""
@@ -135,6 +139,8 @@ async def get_runtime_global_params(
     values: Dict[str, Any] = {}
     forced: set[str] = set()
     for name, entry in _global_param_entries(record).items():
+        if name == "tools.management_scope":
+            continue
         definition = definitions.get(name)
         if definition is None:
             continue
@@ -166,6 +172,8 @@ async def update_global_params(
         raise ValueError(await tr("tools.errors.system_read_only"))
     definitions = _connection_param_definitions(record)
     unknown = sorted(set(data.params) - set(definitions))
+    if "tools.management_scope" in data.params:
+        raise ValueError("Management scope is configured per connection only")
     if unknown:
         raise ValueError(f"Unknown connection parameter(s): {', '.join(unknown)}")
 

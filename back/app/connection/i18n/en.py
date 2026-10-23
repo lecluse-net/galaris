@@ -21,6 +21,7 @@ default = {
             "inactive": "Activate and save the connection before authorizing it.",
         },
         "errors": {
+            "scope_delegation": "Delegating a Tool scope requires global agent management.",
             "not_found": "Connection not found",
             "not_found_by_id": "Connection ${connection_id} not found",
             "duplicate": "A connection already exists for agent ${agent_id} and tool ${tool_id}",

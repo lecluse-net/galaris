@@ -372,3 +372,10 @@ async def test_runtime_registers_skill_capabilities_with_pydantic_ai(
     capabilities = cast(list[Any], captured["capabilities"])
     # The supplied skill must survive registration of additional runtime capabilities.
     assert capability in capabilities
+
+
+@pytest.fixture(autouse=True)
+def no_personal_packages_in_generic_capability_unit_tests(monkeypatch):
+    from unittest.mock import AsyncMock
+    from app.skill import interface
+    monkeypatch.setattr(interface, 'personal_packages', AsyncMock(return_value=[]))

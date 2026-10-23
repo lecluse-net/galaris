@@ -40,6 +40,7 @@ class IntegratedToolSpec:
     default_active: bool = False
     file_share_service: str | None = None
     messenger_service: str | None = None
+    management_scopes: tuple[str, ...] = ()
 
 
 INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
@@ -285,10 +286,12 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         default_active=False,
     ),
     IntegratedToolSpec(
-        code="skill_management",
-        label="Gestion des compétences",
-        description=DESCRIPTIONS["skill_management"],
-        mcp_tools=("skills_list", "skill_read"),
+        code="skills",
+        management_scopes=("usage", "personal", "team", "all"),
+        label="Skills",
+        description=DESCRIPTIONS["skills"],
+        mcp_tools=("skills_list", "skill_read", "skill_update", "skill_set_enabled", "skill_delete",
+                   "skill_set_authorization", "skill_set_category_authorization", "skill_release_ownership"),
         default_active=False,
     ),
     IntegratedToolSpec(
@@ -680,14 +683,17 @@ def mandatory_tool_rows() -> list[dict[str, Any]]:
             }
         )
         params = cast(dict[str, dict[str, Any]], connection_schema.get("params") or {})
+        if spec.management_scopes:
+            from .parameter_definitions import management_scope_parameter
+            params["tools.management_scope"] = management_scope_parameter(spec.management_scopes)
+            connection_schema["params"] = params
         for order, (name, definition) in enumerate(params.items()):
             definition["order"] = order
-            definition["label"] = f"tools.connectionParamLabels.{name}"
+            definition.setdefault("label", f"tools.connectionParamLabels.{name}")
             definition["builtin"] = True
             for option in definition["options"]:
-                option["label"] = (
-                    f"tools.connectionParamOptions.{spec.code}.{name}.{option['value']}"
-                )
+                if name != "tools.management_scope":
+                    option["label"] = f"tools.connectionParamOptions.{spec.code}.{name}.{option['value']}"
         connection_schema = with_standard_params(connection_schema, code=spec.code,
             file_share_config={"service": spec.file_share_service} if spec.file_share_service else None)
         global_params = default_global_params(connection_schema)

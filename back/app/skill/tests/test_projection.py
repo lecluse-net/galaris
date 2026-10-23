@@ -110,3 +110,10 @@ async def test_learned_skills_are_projected_in_addition_to_assigned_skills(
     refreshed = await build_skill_projection(7)
     assert refreshed.revision != snapshot.revision
     assert "Changed synthetic procedure." in await build_skill_prompt(7)
+
+
+@pytest.fixture(autouse=True)
+def no_personal_packages_in_filesystem_unit_tests(monkeypatch):
+    from unittest.mock import AsyncMock
+    from app.skill import interface
+    monkeypatch.setattr(interface, 'personal_packages', AsyncMock(return_value=[]))

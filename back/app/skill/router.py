@@ -14,7 +14,8 @@ from starlette.background import BackgroundTask
 from core.authorize import Privileges, authorize
 from app.agent import current_management_scope
 
-from . import learning_service, skill_service, storage
+from . import interface, learning_service, personal_catalogue, skill_service, storage
+from pydantic import BaseModel
 from .models import LearnedSkill, LearnedSkillEvidence, Skill
 from .schemas import (
     LearnedSkillDetail,
@@ -44,12 +45,39 @@ from .schemas import (
     SkillGlobalAuthorizationUpdate,
     SkillImportResult,
     SkillPublic,
+    PersonalSkillPage,
+    PersonalSkillDetail,
     SkillRescanResult,
     SkillUpdate,
 )
 
 
 router = APIRouter(prefix="/skills", tags=["skills"])
+
+
+class SkillOwnershipReleaseRequest(BaseModel):
+    expected_revision: int
+    operation_id: UUID
+    new_code: str | None = None
+
+
+@router.post("/{skill_id}/release-ownership")
+@authorize(privileges=Privileges.SKILL_EDIT)
+async def release_skill_ownership(skill_id: int, data: SkillOwnershipReleaseRequest) -> dict[str, object]:
+    await _require_global_scope()
+    from core.user import user_service
+    user_id = user_service.get_current_user_id()
+    if user_id is None:
+        raise HTTPException(status_code=403, detail="Authenticated human required")
+    try:
+        return await interface.release_ownership(skill_id, actor_user_id=user_id,
+            expected_revision=data.expected_revision, operation_id=data.operation_id, new_code=data.new_code)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Compétence introuvable") from exc
+    except (FileExistsError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise _http_error(exc) from exc
 
 
 async def _require_global_scope() -> None:
@@ -79,6 +107,50 @@ async def _record(skill_id: int) -> Skill:
 @authorize(privileges=[Privileges.SKILL_ACCESS, Privileges.SKILL_EDIT, Privileges.SKILL_ASSIGN])
 async def list_skills() -> list[SkillPublic]:
     return [skill_service.to_public(record) for record in await skill_service.get_catalogue()]
+
+
+@router.get("/personal", response_model=PersonalSkillPage)
+@authorize(privileges=[Privileges.SKILL_ACCESS, Privileges.SKILL_EDIT, Privileges.SKILL_ASSIGN])
+async def list_personal_skills(
+    owner_agent_id: int | None = Query(default=None, gt=0),
+    search: str = Query(default="", max_length=255),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=500),
+) -> PersonalSkillPage:
+    scope = await current_management_scope()
+    if owner_agent_id is not None and not scope.allows(owner_agent_id):
+        raise HTTPException(status_code=404, detail="Agent introuvable")
+    items, total = await personal_catalogue.list_page(
+        agent_ids=scope.agent_ids, owner_agent_id=owner_agent_id,
+        search=search, page=page, page_size=page_size,
+    )
+    return PersonalSkillPage(items=items, total=total)
+
+
+@router.get("/personal/{skill_id}", response_model=PersonalSkillDetail)
+@authorize(privileges=[Privileges.SKILL_ACCESS, Privileges.SKILL_EDIT, Privileges.SKILL_ASSIGN])
+async def get_personal_skill(skill_id: int) -> PersonalSkillDetail:
+    scope = await current_management_scope()
+    try:
+        record, public = await personal_catalogue.get_record(skill_id, agent_ids=scope.agent_ids)
+        files = storage.list_files(record.code, owner_agent_id=record.owner_agent_id)
+    except (FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=404, detail="Compétence introuvable") from exc
+    return PersonalSkillDetail(skill=public, files=[SkillFile(**item) for item in files])
+
+
+@router.get("/personal/{skill_id}/content", response_model=SkillFileContent)
+@authorize(privileges=[Privileges.SKILL_ACCESS, Privileges.SKILL_EDIT, Privileges.SKILL_ASSIGN])
+async def get_personal_skill_content(skill_id: int, path: str = "SKILL.md") -> SkillFileContent:
+    scope = await current_management_scope()
+    try:
+        record, _public = await personal_catalogue.get_record(skill_id, agent_ids=scope.agent_ids)
+        content = storage.read_text(record.code, path, owner_agent_id=record.owner_agent_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Compétence introuvable") from exc
+    except ValueError as exc:
+        raise _http_error(exc) from exc
+    return SkillFileContent(path=path, content=content, size=len(content.encode("utf-8")))
 
 
 @router.post("/rescan", response_model=SkillRescanResult)

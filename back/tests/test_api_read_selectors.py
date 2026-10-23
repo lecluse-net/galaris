@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import select
 
 from app.agent import Agent
-from app.connection import Connection
+from app.connection import Connection, ConnectionParam
 from app.conversation import ConversationRound, ConversationRoundMessage
 from app.lab import dispatcher_evaluation_service as dispatcher
 from app.lab import mechanism_evaluation_service as mechanisms
@@ -227,15 +227,16 @@ async def test_skill_file_catalogues_keep_live_access_without_loading_assignment
     monkeypatch.setattr(type(storage.settings), "GALARIS_SKILLS_ROOT", str(tmp_path / "skills"))
     monkeypatch.setattr(storage, "SYSTEM_SKILLS", ())
     category = SkillCategory(label="Synthetic resource category")
-    tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == "skill_management"))
+    tool_id = await db.scalar(select(ToolModel.id).where(ToolModel.code == "skills"))
     if tool_id is None:
-        tool = ToolModel(code="skill_management", label="Synthetic Skill Management")
+        tool = ToolModel(code="skills", label="Synthetic Skills")
         db.add(tool)
         await db.flush()
         tool_id = tool.id
     connection = Connection(agent_id=owner.id, tool_id=tool_id, active=True)
     db.add_all([category, connection])
     await db.flush()
+    db.add(ConnectionParam(connection_id=connection.id, param_name='tools.management_scope', param_value='all'))
     skills = [Skill(code=f"synthetic-resource-{index:02d}", label=f"Synthetic resource {index:02d}", category_id=category.id) for index in range(41)]
     db.add_all(skills)
     await db.flush()
@@ -254,14 +255,17 @@ async def test_skill_file_catalogues_keep_live_access_without_loading_assignment
     assert len(await resource_facade.list_skill_resources(actor_agent_id=owner_id, query="  SYNTHETIC CATALOGUE  ")) == 1
     assert await resource_facade.list_skill_resources(actor_agent_id=owner_id, offset=500, limit=500) == []
     assert (await resource_facade.read_skill_file(code, "SKILL.md", actor_agent_id=owner_id)).content.endswith(b"Complete synthetic instructions\n")
-    with pytest.raises(PermissionError):
-        await resource_facade.list_skill_resources(actor_agent_id=peer_id)
+    # Ordinary authorized usage is independent of management delegation.
+    assert [item['code'] for item in await resource_facade.list_skill_resources(actor_agent_id=peer_id)] == [code]
     db.expunge_all()
     full = await skill_service.get_by_code(code)
     assert full.category and len(full.category.authorizations) == 2
     connection = await db.get(Connection, connection_id)
     connection.active = False
     await db.commit()
+    assert await resource_facade.get_skill_resource(code, actor_agent_id=owner_id)
     with pytest.raises(PermissionError):
-        await resource_facade.get_skill_resource(code, actor_agent_id=owner_id)
-    assert report["queries"] <= 2 and report["rows"] == 0, report
+        await resource_facade.write_skill_file(code, 'SKILL.md', b'Forbidden', actor_agent_id=owner_id)
+    # Four extra bounded queries verify the caller and the live server policy;
+    # the count remains independent of package/agent count and no matrix loads.
+    assert report["queries"] <= 6 and report["rows"] == 0, report
