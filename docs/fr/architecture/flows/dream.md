@@ -104,11 +104,11 @@ l'appliquer sans second appel LLM.
 
 Le score lissé `(positif + 1) / (positif + négatif + 2)` rend visibles renforcement et
 affaiblissement. Une première occurrence crée seulement une candidate. Une procédure non suspendue
-est ajoutée aux skills ordinaires de l'agent seulement si `DREAM_SKILL_MIN_EVIDENCE` Tasks
+est ajoutée aux compétences ordinaires de l'agent seulement si `DREAM_SKILL_MIN_EVIDENCE` Tasks
 distinctes ont confirmé la même action répétée et si elle atteint `DREAM_SKILL_ACTIVATION_SCORE`,
 dans la limite de `DREAM_SKILL_MAX_ACTIVE`. Le seuil de répétition vaut 3 par défaut. Sa projection
 de fichiers sous `.learned/` est reconstruite depuis la base et ne rejoint jamais l'index des
-skills administrées.
+compétences administrées.
 
 ## Effets déterministes
 

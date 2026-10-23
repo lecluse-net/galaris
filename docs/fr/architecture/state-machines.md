@@ -246,7 +246,7 @@ détenu jusqu’à la sauvegarde du checkpoint. Les pauses humaines terminent le
 `USER_PAUSED`, les arrêts en `USER_STOPPED`, sans consommer le budget d’erreurs. Relancer
 réutilise seulement un checkpoint sûr, dans un nouveau round ; les outils et résultats déjà
 acquis restent enregistrés. Répondre maintenant contourne le dispatcher et retire outils,
-recherche d’outils et capacités de skills du run. Ces commandes HTTP exigent `CHAT_SEND`
+recherche d’outils et capacités de compétences du run. Ces commandes HTTP exigent `CHAT_SEND`
 et l’accès à la room native ; elles ne contrôlent ni la voix ni les travaux de fond.
 
 Un arrêt de worker termine sa tentative en `INTERRUPTED` et ne consomme pas le budget de
@@ -462,7 +462,7 @@ sans consommer son budget de tentatives.
 Une préemption Voice rend le reçu immédiatement disponible sans consommer son budget d'échec. La
 sortie préparée peut exister dès `running` et reste réutilisée lors d'une reprise.
 Pour `skill.learn_task_outcome`, le premier checkpoint contient les preuves et leur empreinte,
-puis le checkpoint préparé contient les opérations structurées sur les skills. Un succès `observe`
+puis le checkpoint préparé contient les opérations structurées sur les compétences. Un succès `observe`
 peut être réclamé une fois lors du passage à `learn`, sans relancer le modèle. L'application ajoute
 une preuve idempotente et recalcule le score ; elle ne touche pas Memory. Une nouvelle preuve
 tardive ne rouvre pas le reçu terminal : elle crée un autre sujet

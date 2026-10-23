@@ -142,7 +142,7 @@ API peut revenir en HTTP et être bloquée par le navigateur. Le frontend doit �
 depuis ce proxy de confiance. Pour un accès HTTP direct, l’absence de cet en-tête conserve HTTP.
 
 Le Nginx fourni accepte jusqu'à 1 Gio uniquement sur
-`/api/chat/rooms/<uuid>/attachments`, 52 Mio sur l'import d'un package de skill et 16 Mio sur
+`/api/chat/rooms/<uuid>/attachments`, 52 Mio sur l'import d'un package de compétence et 16 Mio sur
 le reste de l'API. La limite métier par pièce jointe, administrable avec
 `MESSENGER_CONTENT_MAX_MB`, vaut 1 000 Mo décimaux. Un proxy externe doit appliquer une exception
 équivalente sur la route des pièces jointes : sa propre limite, si elle est inférieure, reste
@@ -453,14 +453,14 @@ Pour borner durablement le volume, seuls les 100 derniers cycles de chaque Goal 
 projection mémoire ; les cycles métier plus anciens restent inchangés dans leur table canonique.
 
 `DREAM_SKILL_LEARNING_MODE` vaut `off`, `observe` ou `learn` et reste `off` par défaut. `observe`
-conserve les preuves et propositions dans les reçus Dream sans modifier les skills ; `learn`
+conserve les preuves et propositions dans les reçus Dream sans modifier les compétences ; `learn`
 crée, renforce, révise ou affaiblit des candidates propres à l'agent. Dream parcourt aussi toutes
 les Tasks terminales historiques, de manière progressive et idempotente, une opération par
-passage. Une candidate devient une skill injectable en plus des skills affectées lorsque le nombre
+passage. Une candidate devient une compétence injectable en plus des compétences affectées lorsque le nombre
 de Tasks distinctes confirmant la même procédure atteint `DREAM_SKILL_MIN_EVIDENCE` (3 par défaut)
 et que sa note atteint `DREAM_SKILL_ACTIVATION_SCORE`, dans la limite de
 `DREAM_SKILL_MAX_ACTIVE`. Ces seuils sont paramétrables dans **Préférences → Dream**. La page
-**Skills → Auto-apprises**, masquée lorsque le mode vaut `off`, expose score, preuves et état
+**Compétences → Auto-apprises**, masquée lorsque le mode vaut `off`, expose score, preuves et état
 d'injection, et permet de suspendre immédiatement une procédure. Dream ne crée plus de nœud Memory
 `experience` et les anciens nœuds ne sont plus injectés.
 
@@ -731,7 +731,7 @@ Aucune clé supplémentaire n'est donc demandée lors de l’ajout ou de la mise
 `chatgptAuthTokens` restant une surface instable de l'App Server, le SDK et le binaire Codex sont
 épinglés ensemble et leur compatibilité est vérifiée à la construction.
 Le conteneur est non-root, limité en ressources, relié au réseau du Harness Manager et reçoit le
-MCP, les skills et le répertoire de travail persistant propre au runtime de cet agent. Ce
+MCP, les compétences et le répertoire de travail persistant propre au runtime de cet agent. Ce
 répertoire n’est pas un provider `file_share` et n’est jamais annoncé comme stockage de fichiers.
 
 La section **Configuration Hermès** de l’onglet **Harnais managés** regroupe les fichiers par
@@ -938,13 +938,13 @@ Trois packages intégrés spécialisés sont créés pour chaque agent avec une 
 | Code technique | Libellé | Fonctions |
 |---|---|---|
 | `goal_management` | Gestion des objectifs | `goal_create`, `goal_list`, `goal_get`, `goal_update`, `goal_pause`, `goal_resume`, `goal_complete`, `goal_run_now`, `goal_delete` |
-| `skill_management` | Gestion des skills | `skills_list`, `skill_read` |
+| `skill_management` | Gestion des compétences | `skills_list`, `skill_read` |
 | `process_admin` | Administration des processus | CRUD des définitions et gestion des runs de tous les agents |
 
 Après `make update` :
 
 1. ouvrez les connexions de l’agent DRH ;
-2. activez **Gestion des objectifs**, **Gestion des skills** et, si nécessaire,
+2. activez **Gestion des objectifs**, **Gestion des compétences** et, si nécessaire,
    **Administration des processus** uniquement sur cet agent ;
 3. laissez ces connexions inactives sur les autres agents ;
 4. désactivez éventuellement certaines fonctions au niveau de la connexion, par exemple
@@ -961,9 +961,9 @@ les verdicts, preuves, erreurs, coûts et derniers cycles. `goal_complete` conse
 arrête les cycles futurs ; `goal_delete` effectue une suppression logique et refuse un objectif
 ayant encore un cycle inachevé.
 
-`skills_list` ne retourne par défaut que les skills présents, valides et effectivement autorisés
+`skills_list` ne retourne par défaut que les compétences présentes, valides et effectivement autorisées
 pour l’agent demandé. Son option `include_unavailable` permet un audit complet des états global et
-individuel. `skill_read` lit uniquement le `SKILL.md` d’un skill indexé dans la bibliothèque
+individuel. `skill_read` lit uniquement le `SKILL.md` d’une compétence indexée dans la bibliothèque
 centrale ; il n’expose aucun autre fichier du package.
 
 ### Transcription de fichiers audio, vidéo et liens YouTube

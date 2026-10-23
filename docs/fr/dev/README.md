@@ -248,7 +248,7 @@ dossiers suivent la limite des fichiers `MEMORY_RESOURCE_MAX_BYTES` (100 Mo par 
 
 Le manager Hermès utilise exclusivement le harness manager et pilote un Compose par agent. Le
 répertoire `BASE_DIR/<agent.code>/data` est monté dans `/opt/data` du conteneur
-`<agent.code>-agent` ; workspaces, skills, sessions, mémoire et secrets ne sont jamais partagés
+`<agent.code>-agent` ; workspaces, compétences, sessions, mémoire et secrets ne sont jamais partagés
 avec un autre agent. Les médias passent par le canal de fichiers en flux du manager et non par
 `/api/files`, dont la limite de 100 Mio ne fait pas partie du contrat Galaris.
 
@@ -553,7 +553,7 @@ préparatoire. Une destination collection conserve le nom renvoyé par les méta
 compris lorsque son locator est opaque. `galaris://` projette en lecture seule les Tasks,
 rounds de conversation, Goals, cycles de Goal et Processes affectés, avec les ACL de leur domaine.
 Sous `galaris://skill/`, une connexion `skill_management` active permet en plus de lire et
-modifier les fichiers des skills utilisateurs ; les définitions système restent en lecture seule.
+modifier les fichiers des compétences utilisateurs ; les définitions système restent en lecture seule.
 Le Tool intégré `console` déclare son flag `file_share_config` avec le service natif `console` ;
 `console://` désigne directement le home SSH et n'est pas dupliqué comme provider externe. Ainsi,
 `console://mon_fichier` désigne exactement `~/mon_fichier` et aucune couche ne préfixe son URI par
@@ -665,9 +665,9 @@ Tasks terminales historiques, de la plus ancienne à la plus récente et une seu
 reçus empêchent de compter deux fois le même matériel. Ce mécanisme ne crée aucun `MemoryItem`.
 
 `DREAM_SKILL_LEARNING_MODE` vaut `off`, `observe` ou `learn` et reste `off` par défaut. `observe`
-conserve uniquement les diagnostics Dream et `learn` applique la décision checkpointée. Une skill
+conserve uniquement les diagnostics Dream et `learn` applique la décision checkpointée. Une compétence
 est d’abord conservée comme candidate non injectable. Elle est promue et injectée en plus des
-skills affectées lorsqu'au moins `DREAM_SKILL_MIN_EVIDENCE` Tasks distinctes ont confirmé la même
+compétences affectées lorsqu'au moins `DREAM_SKILL_MIN_EVIDENCE` Tasks distinctes ont confirmé la même
 procédure et qu'elle atteint `DREAM_SKILL_ACTIVATION_SCORE`; le seuil de répétition vaut 3 par
 défaut et `DREAM_SKILL_MAX_ACTIVE` borne le nombre de procédures actives. Ces réglages sont
 administrés dans `params`, pas dans `.env`.
@@ -1101,7 +1101,7 @@ Les `column_mergers` couvrent les rares politiques par colonne, par exemple ajou
 paramètres globaux d’un tool sans écraser les valeurs administrateur.
 
 Les privilèges, rôle et grants administrateur, paramètres, profils LLM, tools imposés, connexions
-intégrées, skills et matrices d’affectation sont de vrais datasets tabulaires. Les projections
+intégrées, compétences et matrices d’affectation sont de vrais datasets tabulaires. Les projections
 mémoire, contacts Messenger et traitements de compatibilité Hermès sont nommés
 `DbAdminReconciler`, car ils reconstruisent un état dérivé et ne constituent pas des datasets. Le
 lifespan FastAPI ne resynchronise aucune de ces données.
@@ -1262,7 +1262,7 @@ les colonnes texte et imposer les clés étrangères UUID. Le hook temporaire a 
 validation de cette contraction en production ; la sauvegarde reste disponible pour audit.
 
 `app.skill.mcp` expose exactement deux lectures : la matrice d’autorisation effective d’un agent et
-le seul fichier `SKILL.md` d’un skill central. `skill_read` ne doit jamais devenir un explorateur de
+le seul fichier `SKILL.md` d’une compétence centrale. `skill_read` ne doit jamais devenir un explorateur de
 fichiers générique : les scripts, références et assets restent hors de ce contrat de management.
 
 Le wrapper MCP central ouvre exactement une session courte avec `get_db_session` pour chaque appel.
@@ -1359,7 +1359,7 @@ l’eau et n’est jamais fourni à cette réduction.
 Le message de progression passe directement par Messenger sans appeler `note_reply`, afin que la
 livraison finale automatique ne soit pas supprimée par le garde anti-doublon.
 
-Les skills différés volumineux ne doivent pas annuler cette économie de contexte. Au-delà de
+Les compétences différées volumineuses ne doivent pas annuler cette économie de contexte. Au-delà de
 12 000 caractères, `app.harness.skills` n'injecte qu'un index de titres dans la capability
 Pydantic AI. Le tool `skill_<code>_read_file` accepte alors `section` pour lire un seul chapitre
 Markdown. En parallèle, le processeur d'historique vide le contenu déjà réinjecté du résultat
@@ -1424,7 +1424,7 @@ compatible reste prioritaire sur toute création ou modification de Task.
 Le package séparé `process_admin` est auto-connecté **inactif**. Une activation explicite donne à
 l’agent administrateur les fonctions de découverte des moteurs, de CRUD des définitions avec un
 `agent_id` cible et de gestion des runs de tous les agents. Ces fonctions portent toutes le préfixe
-`process_admin_` afin qu’un modèle ne les confonde jamais avec son accès personnel. Le skill système
+`process_admin_` afin qu’un modèle ne les confonde jamais avec son accès personnel. La compétence système
 `galaris` documente les deux surfaces, mais le prompt et la liste réelle des tools restent
 l’autorité d’accès.
 

@@ -22,7 +22,7 @@ import { QBtn } from 'quasar'
 import { FolderIcon, ResourceThumbnail, browserResourceKind, formatFileSize, queuePreview } from '@/core/util'
 import { agentResourceId } from '@/app/agent'
 import { fileBrowserService, type FileEntry } from '../services/fileBrowserService'
-import { resourceTarget } from '../presentation'
+import { resourceTarget, skillCollectionLabel } from '../presentation'
 
 const { entry, agentId, compact = false, selectable = false, selected = false } = defineProps<{ entry: FileEntry; agentId: number; compact?: boolean; selectable?: boolean; selected?: boolean }>()
 const emit = defineEmits<{ open: [entry: FileEntry, event: Event]; activate: [entry: FileEntry] }>()
@@ -31,7 +31,7 @@ const tile = useTemplateRef<QBtn>('tile')
 const thumbnail = ref('')
 const process = computed(() => ['process', 'process_run'].includes(resourceTarget(entry, agentId)?.kind ?? ''))
 const resourceAgent = computed(() => agentResourceId(entry.uri))
-const displayName = computed(() => (process.value || resourceAgent.value !== null) && typeof entry.metadata?.label === 'string' ? entry.metadata.label : entry.name)
+const displayName = computed(() => skillCollectionLabel(entry.uri, t) ?? ((process.value || resourceAgent.value !== null) && typeof entry.metadata?.label === 'string' ? entry.metadata.label : entry.name))
 let request: AbortController | undefined
 let observer: IntersectionObserver | undefined
 const icon = computed(() => {

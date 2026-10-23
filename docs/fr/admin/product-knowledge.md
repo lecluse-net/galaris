@@ -4,7 +4,7 @@
 
 Tout agent peut expliquer Galaris et guider ses utilisateurs sans changer de mission ni de
 personnalité. La capacité repose sur la documentation officielle de la version installée,
-une recherche hybride et le skill système **Connaissance de Galaris** (`galaris-knowledge`).
+une recherche hybride et la compétence système **Connaissance de Galaris** (`galaris-knowledge`).
 
 ## Activation
 
@@ -24,8 +24,8 @@ La connexion Galaris Admin reste inactive par défaut. L'activation seule conser
 habituelle d'autorisations des fonctions : désactiver explicitement les inspections pour un
 agent chargé uniquement d'aider les utilisateurs.
 
-Le skill apporte les concepts fondamentaux, la méthode de recherche et les limites de
-l'assistance. Il est disponible aux exécutions suivantes selon le mécanisme normal des skills,
+La compétence apporte les concepts fondamentaux, la méthode de recherche et les limites de
+l'assistance. Elle est disponible aux exécutions suivantes selon le mécanisme normal des compétences,
 pour le harnais interne et les harnais externes compatibles. Une conversation ou exécution déjà
 engagée peut conserver les instructions déjà chargées ; les appels restent contrôlés côté serveur.
 
@@ -66,7 +66,7 @@ les sources citées et les outils employés dans l'activité de la conversation.
 Le [guide de navigation](../user/navigation.md) décrit les parcours et onglets ; la
 [carte des menus](../architecture/generated/navigation.md), générée depuis le frontend,
 fournit routes, libellés traduits et conditions de visibilité. Ces sources font partie
-du corpus recherché et des points d’entrée du catalogue. Le skill les utilise pour
+du corpus recherché et des points d’entrée du catalogue. La compétence les utilise pour
 indiquer **section → écran → onglet → action**, sans présumer des droits du compte humain.
 
 `documentation_catalog` indique la version, les langues, les domaines et les points d'entrée.
@@ -102,7 +102,7 @@ présence des guides FR/EN et les liens documentaires, puis compare les sources 
 avec celles réellement visibles dans le backend actif. Elle synchronise l’index textuel
 commun et vérifie la recherche et la lecture des guides de navigation dans les deux langues.
 Les mises à jour concernent tous les agents déjà autorisés ; aucun droit ni affectation
-de skill n’est modifié. Aucun redémarrage n’est nécessaire pour une édition documentaire.
+de compétence n’est modifié. Aucun redémarrage n’est nécessaire pour une édition documentaire.
 
 Si les montages ou l’image du backend sont anciens, la commande échoue explicitement :
 appliquer alors `make update` en développement. Une différence de corpus ne doit pas être

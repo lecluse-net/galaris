@@ -73,6 +73,6 @@ dans le guide utilisateur après lecture des composants réels.
 
 Le corpus documentaire embarque ces fichiers avec la version du produit. Galaris Admin
 les expose à la recherche et à la lecture générique, et `documentation_catalog` annonce
-le guide et la carte comme points d’entrée. Le skill `galaris-knowledge` les consulte
+le guide et la carte comme points d’entrée. La compétence `galaris-knowledge` les consulte
 pour guider l’utilisateur avec **section → écran → onglet → action**. Aucun compte rendu
 de session, contenu utilisateur ni secret n’entre dans cette cartographie.

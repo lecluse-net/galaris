@@ -403,7 +403,7 @@ HTML dans les prompts des agents. L’inspection propose la source exacte et un 
 
 Après cette mise à jour, rechargez l’application ou la PWA. Un ancien client est refusé lors
 d’une écriture éditoriale ; conservez d’abord tout brouillon encore présent dans cet ancien écran.
-Les skills et leur édition Markdown restent inchangés.
+Les compétences et leur édition Markdown restent inchangées.
 
 Les contenus riches suivent automatiquement le thème clair ou sombre de l’application, en
 lecture comme en édition et en plein écran. Texte, fond, liens, tableaux et code changent

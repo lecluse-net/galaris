@@ -1,6 +1,12 @@
 import type { ResourceDetailTarget } from '@/core/util'
 import type { FileEntry } from './services/fileBrowserService'
 
+export function skillCollectionLabel(uri: string, translate: (key: string) => string): string | null {
+  if (uri === 'galaris://skill/') return translate('files.skillLibrary')
+  if (uri === 'galaris://skill/personnal/') return translate('files.personalSkills')
+  return null
+}
+
 export function parentDirectory(uri: string): string | null {
   const separator = uri.indexOf('://')
   if (separator < 0) return null

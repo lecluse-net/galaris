@@ -21,7 +21,7 @@ Pour les contenus éditoriaux et les documents de type `html`, le corps autorita
 `rich-text` couvre les six catégories Memory, les objectifs et profils ; `document` ajoute
 les images jointes, les formulaires, le CSS et le JavaScript des documents de travail ordinaires.
 Un document Goal utilise `rich-text`, même
-ouvert depuis la bibliothèque ou le Chat. Les ressources binaires/JSON/code et les skills
+ouvert depuis la bibliothèque ou le Chat. Les ressources binaires/JSON/code et les compétences
 ne passent pas dans cette conversion.
 
 ## Documents comme pivot de l'information
@@ -137,7 +137,7 @@ Les iframes et images distantes restent refusées. Les API valident avant toute 
 Tiptap est l’arbre d’édition temporaire. Son HTML traverse le filtre frontend avant émission,
 puis la validation backend reste autoritaire. Aucun aller-retour vers Markdown. Les lecteurs
 historiques utilisent le MIME de la révision ; les artefacts HTML actifs restent séparés du
-lecteur éditorial. Les fichiers Markdown et leur lecteur existant sont conservés pour les skills.
+lecteur éditorial. Les fichiers Markdown et leur lecteur existant sont conservés pour les compétences.
 
 Les lecteurs partagent les styles de tableaux `galaris-table-{blue,iris,green,orange,salmon,gray}` et
 `galaris-table-{contrast,striped,minimal}` avec l’éditeur et les exports PDF/HTML. Ces classes
@@ -196,7 +196,7 @@ Le partage MCP passe par `document_sharing` pour découvrir les destinataires et
 `user_id` ou `team_id`. L’accès vaut `read`, `edit` ou `none` pour retirer ce grant précis.
 Les équipes comprennent leurs membres humains et IA actuels. Cette mutation ne change ni
 le HTML ni sa révision : `expected_lock_version` protège les ACL, `expected_revision`
-protège les écritures de contenu. Le skill système Galaris fournit les exemples complets.
+protège les écritures de contenu. La compétence système Galaris fournit les exemples complets.
 
 `file_read` retourne le HTML, le profil, la révision, `offset_unit: block`, les blocs numérotés
 et `next_offset`. Les offsets sont des positions de blocs, les numéros commencent à 1 et sont

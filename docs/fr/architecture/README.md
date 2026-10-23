@@ -43,7 +43,7 @@ make architecture-check
 ```
 
 Le premier reconstruit les sorties JSON et Markdown. Le deuxième détecte une dérive. Le
-troisième vérifie également les frontières de dépendances, les skills, les documents requis
+troisième vérifie également les frontières de dépendances, les compétences, les documents requis
 et l’index des plans.
 
 Les capacités de module sont déduites des fichiers source. Les répertoires vides et caches

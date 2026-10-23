@@ -1169,7 +1169,7 @@ comptes réels ni plusieurs objets concurrents dans une même réponse fournisse
 
 `back/app/agent/tests/test_prompt_tree.py` vérifie que la politique de révision documentaire
 atteint les exécuteurs Task, texte et voix, même avec une personnalité personnalisée et sans
-skill chargé. Cette preuve porte sur la transmission des consignes ; elle ne mesure pas la
+compétence chargée. Cette preuve porte sur la transmission des consignes ; elle ne mesure pas la
 qualité éditoriale d'un modèle après plusieurs mises à jour du même document.
 
 Les fichiers `test_*.py` ci-dessous se trouvent sous `back/app/<module>/tests/`, sauf chemin
@@ -1252,7 +1252,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | Campagne Lab délai/coût/qualité | Importer les quatre parcours synthétiques FR/EN sans appel de modèle ni écrasement ; exécuter leurs outils simulés ; mesurer la première sortie texte/outil en poursuivant le flux jusqu'au résultat ; préserver coût, durée et mesure après rejugement | `app/lab/tests/test_reference_corpus.py`, `app/llm/tests/test_structured_service.py`, `app/lab/tests/test_contracts_and_passes.py` |
 | Première sortie utile | Ignorer raisonnement, décisions internes et texte vide ; conserver les mesures initiales après reprise ; ne compter qu'une fois les appels simultanés ; preuve absente inconnue et portée agent conservée | `app/llm/tests/test_timing.py`, `app/task/tests/test_activity_snapshot.py`, `app/conversation/tests/test_monitoring_service.py`, `execution.spec.mjs` |
 | Continuité documentaire ancienne | Retrouver l'URI après cinquante échanges sans document, avec titre/révision actuels et provenance ; exclure autre contact, document interdit, absent ou supprimé | `app/conversation/tests/test_context.py` |
-| MCP Lab | Piloter les dix contrats avec le catalogue réel ; conserver les effets et reçus atomiques, les révisions, les autorisations courantes et la pagination ; publier une génération une seule fois, comparer les traitements et distinguer les avis d'agents ; attribuer et retirer le skill dédié | `app/lab/tests/test_mcp.py`, `app/skill/tests/test_storage.py`, `lab-insights.spec.mjs` |
+| MCP Lab | Piloter les dix contrats avec le catalogue réel ; conserver les effets et reçus atomiques, les révisions, les autorisations courantes et la pagination ; publier une génération une seule fois, comparer les traitements et distinguer les avis d'agents ; attribuer et retirer la compétence dédiée | `app/lab/tests/test_mcp.py`, `app/skill/tests/test_storage.py`, `lab-insights.spec.mjs` |
 | `incident` | Regrouper les échecs, diagnostiquer/résoudre selon les droits, conserver la preuve du correctif | `test_incident_service.py`, `test_router.py`, `test_retention.py`, `lab-access.spec.mjs`, `e2e/specs/incident.spec.mjs` |
 | `dashboard` / frontend `index` | Montrer les indicateurs du périmètre autorisé avec des agrégations bornées ; réutiliser les mois consultés, actualiser et invalider le cache au changement de droits | `test_dashboard_service.py`, `dashboardStore.test.mjs`, `dashboard.spec.mjs`, `shell.spec.mjs`, `preferences.spec.mjs` |
 | `onboarding` | Initialiser l’application sans écraser une configuration existante | `test_services.py` |

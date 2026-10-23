@@ -18,7 +18,7 @@ Galaris restent donc disponibles, et chaque appel LLM est corrélé à la Task e
 token donne accès au seul endpoint MCP de l'agent. Aucun credential Anthropic direct n'entre dans
 le conteneur.
 
-Les skills autorisés sont projetés sous `data/skills/.claude/skills`, le workspace sous
+Les compétences autorisées sont projetées sous `data/skills/.claude/skills`, le workspace sous
 `data/workspace` et l'état Claude sous `data/claude`. Le conteneur est non privilégié, en lecture
 seule hors du volume `data`, sans capabilities Linux et avec des limites de processus, CPU et
 mémoire.
@@ -50,5 +50,5 @@ Le nombre de tours et d'outils suit les limites figées dans
 `AgentRunEnvelopeV1`.
 
 `start`, `restart` et `update` construisent ou recréent l'image épinglée par
-`requirements.txt`. `refresh` reprojette configuration, token MCP et skills avant de redémarrer.
+`requirements.txt`. `refresh` reprojette configuration, token MCP et compétences avant de redémarrer.
 La suppression du Harness détruit l'instance et révoque ses tokens système.

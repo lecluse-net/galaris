@@ -78,7 +78,7 @@ identifiants, libellés et descriptions des seules définitions affectées à l�
 définitions, elles sont toutes injectées sans classement sémantique. Au-delà, la demande courante
 classe l’ensemble avec le modèle vectoriel multilingue configuré et le prompt reçoit exactement les
 dix premières, sans seuil d’exclusion ; une panne ou une absence de modèle utilise un classement
-lexical déterministe. Le skill système `galaris` explique ensuite le workflow détaillé. La présence
+lexical déterministe. La compétence système `galaris` explique ensuite le workflow détaillé. La présence
 du package ne vaut jamais autorisation sur une définition : `list_for_agent`, `get_for_agent` et
 `start_process` filtrent ou revalident l’affectation durable.
 

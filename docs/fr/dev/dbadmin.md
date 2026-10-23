@@ -361,8 +361,8 @@ lieu de dépendre artificiellement du tri lexical.
 Le dataset `app.agent.initial_galaris` propose une seule fois l'agent **Galaris**,
 rattaché au premier administrateur actif, avec son avatar dédié fourni dans le backend,
 le harnais interne, le profil courant par défaut, les connexions `galaris_admin`
-(documentation comprise), `tool_admin` et `agent_admin` actives et les skills
-`galaris-lab` et `galaris-knowledge` autorisés individuellement. Leur défaut global reste désactivé.
+(documentation comprise), `tool_admin` et `agent_admin` actives et les compétences
+`galaris-lab` et `galaris-knowledge` autorisées individuellement. Leur défaut global reste désactivé.
 S'il n'y a pas encore d'administrateur, la première inscription rejoue ce même dataset.
 Le marqueur interne `agents.initialization_key` est conservé après renommage et
 suppression logique : les synchronisations suivantes ne recréent pas cet agent et
@@ -370,7 +370,7 @@ ne rétablissent ni ses réglages ni les droits révoqués. Ce comportement s'ap
 aussi aux installations existantes. Voir la [décision 0135](../../../project/decisions/0135-default-galaris-agent.md).
 
 Les datasets `app.skill.galaris_category` et `app.skill.galaris_category_assignments`
-créent la catégorie **Galaris** et y classent les skills système Galaris sans catégorie.
+créent la catégorie **Galaris** et y classent les compétences système Galaris sans catégorie.
 L’affectation utilise `update_only_null=True` : un classement personnalisé est conservé.
 Les autorisations globales et individuelles sont conservées ; les règles d’une catégorie
 Galaris déjà configurée s’appliquent aux compétences qui la rejoignent.

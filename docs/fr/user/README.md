@@ -191,7 +191,7 @@ enregistrées. Une pause que vous avez posée reste active après confirmation. 
 persiste avec une ancienne instance Hermès, demandez à l'administrateur de vérifier sa mise à jour.
 
 Avec le harnais interne, trois erreurs identiques ou trois appels répétés sans progrès
-déclenchent une consigne à l’agent : changer de méthode, relire les skills pertinents ou
+déclenchent une consigne à l’agent : changer de méthode, relire les compétences pertinentes ou
 vérifier les arguments. L’agent garde ses outils pour poursuivre ; s’il ne peut pas avancer,
 il explique les erreurs répétées et ce qui reste bloqué. Les limites globales d’exécution
 restent applicables.
@@ -261,11 +261,11 @@ mettre en pause, les reprendre, déclencher un cycle immédiatement, les clôtur
 lorsqu’aucun cycle n’est en cours. Les modifications sensibles utilisent la révision courante de
 l’objectif afin de ne pas écraser une évolution concurrente.
 
-Le Tool unique **Skills** distingue quatre portées serveur : `usage` pour utiliser les
+Le Tool unique **Compétences** distingue quatre portées serveur : `usage` pour utiliser les
 génériques autorisés et ses personnels actifs ; `personal` pour gérer ses propres packages ;
 `team` pour gérer aussi les packages des agents de l'une de ses équipes et leurs autorisations
 génériques ; `all` pour administrer tout le catalogue et toutes les autorisations. Les écritures
-exigent une connexion Skills active. L'agent ne peut pas augmenter lui-même sa portée.
+exigent une connexion Compétences active. L'agent ne peut pas augmenter lui-même sa portée.
 `skill_read` lit le `SKILL.md` central ; les références et fichiers passent par File Sharing.
 Un personnel utilise `galaris://skill/personnal/<agent_id>/<code>/` et reste privé : même un
 administrateur ne peut pas l'affecter à un autre agent. Le retrait explicite de propriété
@@ -273,11 +273,11 @@ avec révision et identifiant d'opération le transforme en générique, sans ac
 Un rejeu conserve les droits configurés depuis la conversion. Les changements de chargement
 s'appliquent à la prochaine exécution ; les instructions déjà chargées restent dans le contexte courant.
 
-Dans **Skills → Skills personnels**, consultez les packages privés possédés par les agents
+Dans **Compétences → Compétences personnelles**, consultez les packages privés possédés par les agents
 de votre périmètre de gestion, même lorsque Dream est désactivé. La liste indique le
 propriétaire, l'activation, la validité, les fichiers et la dernière modification. Filtrez
 par agent ou recherchez un nom/code, puis utilisez **Voir** pour lire le `SKILL.md` et ses
-références. La portée se règle dans **Tools → Connexions → modifier la connexion Skills →
+références. La portée se règle dans **Tools → Connexions → modifier la connexion Compétences →
 Portée de gestion**, avec `usage`, `personal`, `team` ou `all`. Ce paramètre est propre à
 la connexion, sans héritage global ; sa modification demande édition des connexions et
 gestion globale des agents. Un agent dans trois équipes peut administrer les agents inclus
@@ -329,8 +329,8 @@ suivie et attend son résultat, sans nécessiter de conversation avec un humain.
 la demande par son lien Task. Son acceptation ne confirme ni une réponse du collègue ni
 l'accomplissement de l'action demandée ; les droits de contact et de partage restent nécessaires.
 
-Dans l’installation par défaut, les skills `galaris-lab` et `galaris-knowledge` sont
-bloqués globalement et autorisés individuellement pour le seul agent **Galaris** créé
+Dans l’installation par défaut, les compétences `galaris-lab` et `galaris-knowledge` sont
+bloquées globalement et autorisées individuellement pour le seul agent **Galaris** créé
 à l’installation. Les autorisations restent modifiables et les mises à jour conservent
 les choix déjà enregistrés.
 
@@ -815,9 +815,9 @@ Le bouton de référence du document conserve la copie de son adresse complète.
 La création automatique de sujets suit le réglage Dream existant ; en mode proposition,
 ces ressources sont uniquement rattachées aux sujets existants.
 Les comptes autorisés peuvent aussi corriger l’affectation d’un élément. Dream peut consolider des
-souvenirs et analyser séparément les résultats de Tasks afin de renforcer des skills propres à
-l'agent. Une skill auto-apprise n'est ajoutée aux futures exécutions qu'après avoir atteint les
-seuils de preuves et de score configurés ; la page **Skills → Auto-apprises** permet d'en consulter
+souvenirs et analyser séparément les résultats de Tasks afin de renforcer des compétences propres à
+l'agent. Une compétence auto-apprise n'est ajoutée aux futures exécutions qu'après avoir atteint les
+seuils de preuves et de score configurés ; la page **Compétences → Auto-apprises** permet d'en consulter
 les preuves et de la suspendre.
 
 ## Organiser et suivre le travail
@@ -856,7 +856,7 @@ Les URL restent communes à tous les profils ; le champ `model` porte le sélect
 
 Claude Agent peut aussi être choisi directement comme **Moteur des Tasks** dans la fiche d'un
 agent. Galaris provisionne alors un conteneur Claude Agent SDK isolé, lui fournit le modèle interne
-résolu, les skills et le MCP de cet agent, puis affiche en direct le texte, les appels d'outils,
+résolu, les compétences et le MCP de cet agent, puis affiche en direct le texte, les appels d'outils,
 les appels LLM et le résultat terminal. Aucun compte ni token Anthropic direct n'est nécessaire.
 
 - [Écrire et relier des contenus riches](rich-content.md) : éditeur, liens, images documentaires et historique.

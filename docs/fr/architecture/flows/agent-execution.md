@@ -47,13 +47,13 @@ Les outils gardent leurs propres droits et restrictions.
 configuration et conserve son contrôle documentaire. L'exécution ne dépend ni du nom ni du
 marqueur d'installation de l'agent. Voir le [parcours de connaissance produit](../../admin/product-knowledge.md).
 
-Avant chaque nouvelle exécution, la façade vérifie la révision des skills du
+Avant chaque nouvelle exécution, la façade vérifie la révision des compétences du
 provider sélectionné. Un changement de contenu ou d'autorisation est projeté avant
 le démarrage du driver, sans interrompre une Task en cours. Le reçu est invalidé
 avant copie et une erreur empêche l'exécution avec une projection périmée. Les
 demandes de rafraîchissement sont persistées, indépendamment de l'interface ; le
-statut du runtime expose l'état des skills. Une reprise avec checkpoint conserve
-les skills et credentials de l'opération distante qu'elle réconcilie. Voir
+statut du runtime expose l'état des compétences. Une reprise avec checkpoint conserve
+les compétences et credentials de l'opération distante qu'elle réconcilie. Voir
 [0131](../../../../project/decisions/0131-harness-skill-reconciliation.md).
 
 La validation commune des harnais retient le résultat candidat jusqu’à la fermeture
@@ -566,7 +566,7 @@ leur fin.
    Chaque couple App Server `itemId` + `summaryIndex` forme un bloc distinct ;
    une complétion tardive ne remplace jamais un fragment déjà observé et toute divergence est
    ajoutée comme un nouveau bloc. Il interrompt le tour si le client ferme le stream, monte le
-   répertoire de travail persistant propre au runtime et projette les skills dans `CODEX_HOME`. Son
+   répertoire de travail persistant propre au runtime et projette les compétences dans `CODEX_HOME`. Son
    serveur MCP Galaris est obligatoire et authentifié par un token système propre à l'agent ; les
    ressources canoniques et la mémoire restent donc gouvernées par Galaris. Ce token authentifie
    aussi le provider Responses privé de l'App Server sur `/api/llm/openai`. Codex reçoit le nom
@@ -772,7 +772,7 @@ est, elle, strictement sans outils et limitée à une requête : elle rapporte l
 effectuer de nouveau travail.
 
 Après trois résultats d’outil identiques consécutifs, le runtime interne demande au modèle de
-changer d’approche, de relire les skills pertinents ou de vérifier les arguments. Il distingue
+changer d’approche, de relire les compétences pertinentes ou de vérifier les arguments. Il distingue
 les erreurs répétées des appels réussis sans progrès. Tous les résultats du lot courant sont
 conservés avant cette consigne ; les outils restent disponibles dans le même run et le même
 budget. Si aucune alternative ne permet de continuer, l’agent explique les trois erreurs et
@@ -1123,7 +1123,7 @@ depuis l’ADR 0058 et la reprise échoue explicitement.
   avant la première requête modèle ; aucune branche parallèle ne l'utilise.
 - Trois résultats d’échec identiques et consécutifs pour le même outil et les mêmes arguments
   interrompent le run interne : le modèle ne peut pas transformer une erreur déterministe en boucle
-  de milliers d’appels. Une lecture de ressource de skill invalide utilise en plus le protocole de
+  de milliers d’appels. Une lecture de ressource de compétence invalide utilise en plus le protocole de
   retry Pydantic AI avec deux reprises maximum et fournit la liste des chemins réellement présents.
 - Trois succès identiques et consécutifs sans progression pour le même outil et les mêmes arguments
   interrompent également l'exploration. Pour `file_create`, la signature ignore le contenu

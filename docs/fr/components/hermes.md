@@ -72,7 +72,7 @@ est donc commune à tous les runtimes managés et n’est pas un paramètre Herm
 Le client `back/bridge/harness` envoie un nonce Fernet court dans `X-Harness-Token`. Les routes consommées vivent sous
 `/instances/{agent.code}`. La création produit volontairement un répertoire vide : `_sync_config`
 projette ensuite `Makefile`, Compose, `.env`, `data/config.yaml`, `data/SOUL.md`, les scripts,
-plugins et skills Hermès. Les surcharges Compose restent propres à l’agent concerné.
+plugins et compétences Hermès. Les surcharges Compose restent propres à l’agent concerné.
 
 ## Outils natifs
 
@@ -82,7 +82,7 @@ pour l'agent Hermès, les toolsets natifs `image_gen` ou `vision` correspondants
 `agent.disabled_toolsets`. Leur retrait est réversible si la fonction Galaris est désactivée, et
 une surcharge explicite dans la configuration globale ou celle de l'agent reste respectée.
 
-Les skills natives Hermès restent disponibles à la demande, en complément des skills assignées
+Les compétences natives Hermès restent disponibles à la demande, en complément des compétences assignées
 et projetées par Galaris sous `skills/galaris/`. Galaris ne les désactive pas globalement et
 préserve les désactivations explicites de l'opérateur dans `skills.disabled`.
 

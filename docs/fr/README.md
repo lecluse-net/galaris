@@ -63,7 +63,7 @@ Ce parcours couvre l’installation et l’exploitation :
 - Docker, `.env`, secrets, base PostgreSQL et mises à jour Atlas ;
 - fournisseurs LLM et modèles utilisés par chaque fonction ;
 - sélection et configuration des harnais d’exécution ;
-- messageries, outils, objectifs durables, skills, transcription multimédia et YouTube, n8n, voix,
+- messageries, outils, objectifs durables, compétences, transcription multimédia et YouTube, n8n, voix,
   permissions et comptes ;
 - mémoire hybride, Dream, apprentissage, navigateur isolé et supervision temps réel ;
 - réglage de l’ordonnanceur, sauvegardes, journaux et dépannage.

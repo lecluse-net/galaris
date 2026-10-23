@@ -1,7 +1,7 @@
 export default {
     fr: {
       contextHelpPages: {
-        "skills": "Les compétences de Galaris sont des skills au format standard Agent Skills : des ensembles d’instructions réutilisables, décrits dans un fichier SKILL.md et éventuellement accompagnés de ressources ou de scripts. Ils apprennent à un agent comment aborder une activité, par exemple rédiger un rapport selon une méthode précise ou exploiter un outil spécialisé. Un skill apporte un savoir-faire ; les outils et leurs connexions fournissent les moyens d’agir. Cette bibliothèque permet de consulter, créer ou importer des skills, puis de les attribuer aux agents concernés. Lorsque l’apprentissage est activé, des compétences issues de leurs expériences peuvent aussi apparaître dans l’onglet des compétences apprises."
+        "skills": "Les compétences de Galaris sont des ensembles d’instructions réutilisables, décrits dans un fichier SKILL.md et éventuellement accompagnés de ressources ou de scripts. Elles apprennent à un agent comment aborder une activité, par exemple rédiger un rapport selon une méthode précise ou exploiter un outil spécialisé. Une compétence apporte un savoir-faire ; les outils et leurs connexions fournissent les moyens d’agir. Cette bibliothèque permet de consulter, créer ou importer des compétences, puis de les attribuer aux agents concernés. Lorsque l’apprentissage est activé, des compétences issues de leurs expériences peuvent aussi apparaître dans l’onglet des compétences apprises."
       },
         nav: {
             skills: 'Compétences',
@@ -9,9 +9,9 @@ export default {
         },
         skills: {
             personal: {
-                tab: 'Skills personnels', owner: 'Agent propriétaire', modified: 'Dernière modification',
+                tab: 'Compétences personnelles', owner: 'Agent propriétaire', modified: 'Dernière modification',
                 hint: 'Packages privés possédés par les agents de votre périmètre de gestion. Ils ne sont pas partageables.',
-                empty: 'Aucun skill personnel dans ce périmètre.', retry: 'Réessayer',
+                empty: 'Aucune compétence personnelle dans ce périmètre.', retry: 'Réessayer',
                 enabled: 'Actif pour son propriétaire', disabled: 'Inactif pour son propriétaire',
             },
             title: 'Compétences',

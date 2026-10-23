@@ -2,7 +2,7 @@
   <span class="file-entry-actions" @click.stop @dblclick.stop @keydown.enter.stop @keydown.space.stop>
     <RenameFileButton v-if="canRename" ref="renameButton" class="hidden" :name="entry.name" :rename="rename"
       :title="entry.is_collection ? t('files.renameDirectory') : ''" :name-label="entry.is_collection ? t('files.directoryName') : ''" />
-    <q-btn v-if="!contextOnly" flat round dense size="sm" icon="more_vert" :aria-label="t('files.actions', { name: entry.name })"
+    <q-btn v-if="!contextOnly" flat round dense size="sm" icon="more_vert" :aria-label="t('files.actions', { name: displayName })"
       aria-haspopup="menu" :aria-expanded="menuOpen" :disable="busy">
       <q-menu v-model="menuOpen" :transition-duration="0">
         <q-list dense role="menu" :aria-label="t('common.actions')">
@@ -42,12 +42,14 @@ import { apiErrorDetail } from '@/core/api'
 import { usePrivilegeStore } from '@/core/authorize'
 import { ActionContextMenu, RenameFileButton, type ContextAction } from '@/core/util'
 import { fileBrowserService, type FileEntry } from '../services/fileBrowserService'
+import { skillCollectionLabel } from '../presentation'
 
 const { entry, agentId, target, open, download, contextOnly = false } = defineProps<{
   entry: FileEntry; agentId: number; target: string; open: () => unknown; download?: () => Promise<void>; contextOnly?: boolean
 }>()
 const emit = defineEmits<{ changed: [entry: FileEntry, replacement: string | null] }>()
 const { t } = useI18n(), $q = useQuasar(), privileges = usePrivilegeStore()
+const displayName = computed(() => skillCollectionLabel(entry.uri, t) ?? entry.name)
 const renameButton = useTemplateRef<InstanceType<typeof RenameFileButton>>('renameButton')
 const canEdit = computed(() => privileges.hasPrivilege('MEMORY_EDIT'))
 const canRename = computed(() => (fileBrowserService.canMove(entry) ? canEdit.value

@@ -150,7 +150,7 @@ const policyI18n = {
       execute: 'Exécution', streaming: 'Streaming natif', cancellation: 'Commande d’annulation', local_interrupt: 'Interruption locale', remote_cancel_acknowledged: 'Arrêt distant confirmé',
       checkpoints: 'Checkpoints', checkpoint_rebase: 'Amendement des checkpoints', resume: 'Reprise', effect_reconciliation: 'Réconciliation des effets',
       semantic_events: 'Événements sémantiques', structured_tool_events: 'Événements structurés des outils', normalized_usage: 'Comptage normalisé', taskless_runs: 'Runs sans tâche', approvals: 'Approbations',
-      voice_calling: 'Appels vocaux', file_tools: 'Outils de fichiers', console_execution: 'Exécution Console', status: 'État', start: 'Démarrer', stop: 'Arrêter', restart: 'Redémarrer', update: 'Mettre à jour', logs: 'Journaux', refresh: 'Actualiser', skills: 'Projection des skills', runtime_files: 'Fichiers du runtime', mcp: 'Outils MCP', memory: 'Mémoire',
+      voice_calling: 'Appels vocaux', file_tools: 'Outils de fichiers', console_execution: 'Exécution Console', status: 'État', start: 'Démarrer', stop: 'Arrêter', restart: 'Redémarrer', update: 'Mettre à jour', logs: 'Journaux', refresh: 'Actualiser', skills: 'Projection des compétences', runtime_files: 'Fichiers du runtime', mcp: 'Outils MCP', memory: 'Mémoire',
     },
   },
   en: {

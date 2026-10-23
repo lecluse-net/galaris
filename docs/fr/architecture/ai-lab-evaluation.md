@@ -9,8 +9,8 @@ décrit la séparation des deux passes. Les contrats et tests du dépôt font fo
 
 ## 1. Contrats des traitements
 
-Le transport agentique est le Tool natif `lab`, avec cinquante fonctions `lab_*` et le
-skill système facultatif `galaris-lab`. Il réutilise les services et objets du Workbench.
+Le transport agentique est le Tool natif `lab`, avec cinquante fonctions `lab_*` et la
+compétence système facultative `galaris-lab`. Elle réutilise les services et objets du Workbench.
 Les commandes courtes ont un reçu idempotent et une transaction unique ; les traitements
 longs hors benchmarks sont suivis par `LabOperation` et le worker du Lab. Les avis d'agents
 sont attribués et stockés séparément des revues humaines. L'accès aux sources réelles

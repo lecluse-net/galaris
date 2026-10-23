@@ -66,8 +66,8 @@ La route est exclue des constructions des autres environnements.
 | **Administrer** | Préférences, Laboratoire, Console, Utilisateurs, Équipes, Rôles & autorisations |
 | **Développeurs** (mode dev uniquement) | Référence graphique |
 
-Dans la documentation technique, « Chat » correspond au menu **Discussion**, « Skills »
-à **Compétences**, « Tasks » à l’onglet **Tâches** d’**Activité**, « Topics » à **Sujets**
+Dans la documentation technique, « Chat » correspond au menu **Discussion**,
+« Tasks » à l’onglet **Tâches** d’**Activité**, « Topics » à **Sujets**
 et « Lab IA » au **Laboratoire**. Ces termes désignent les mêmes domaines ; ils ne sont
 pas autant de menus supplémentaires.
 
@@ -157,7 +157,7 @@ dépendent du catalogue serveur : utilisez le lien affiché, sans inventer leur 
 Si un harnais géré refuse son identité technique (`Invalid runtime principal`), utiliser
 **Redémarrer** dans sa supervision pour recréer le runtime avec ses credentials, attendre
 sa disponibilité, puis réessayer la Task. **Actualiser** ne demande que la projection des
-skills. La recréation du runtime ne relance aucune action métier.
+compétences. La recréation du runtime ne relance aucune action métier.
 
 Dans **Modèles**, choisissez le **Profil principal** et, si nécessaire, un
 **Profil secondaire (secours)**, puis enregistrez la fiche. Un principal vide suit le
@@ -314,7 +314,7 @@ des Tools et connexions autorisés.
 **Configurer → Compétences** (`/skill`) contient **Compétences** (`?tab=skills`),
 **Auto-apprentissage** (`?tab=learned`) si l’apprentissage est activé, et
 **Autorisations** (`?tab=authorizations`) avec le privilège `SKILL_ASSIGN`.
-Cette dernière page gère l’affectation des skills ; elle ne remplace pas les autorisations
+Cette dernière page gère l’affectation des compétences ; elle ne remplace pas les autorisations
 des Tools ni les rôles du compte humain.
 
 Ses colonnes **Global (tous)**, **Catégorie** et **Cet agent** proposent Actif/Bloqué et mettent

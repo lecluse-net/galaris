@@ -67,7 +67,7 @@ lorsque le SDK DeepSeek ne permet pas d'ajouter des en-têtes HTTP arbitraires. 
 client commun agrège ces traces persistantes et leur coût qualifié ; les compteurs partiels du SDK
 ne servent que de repli en l'absence d'appel corrélé.
 
-Les skills effectivement autorisés sont copiés sous `data/skills`; le provider filesystem DSH
+Les compétences effectivement autorisées sont copiées sous `data/skills`; le provider filesystem DSH
 est isolé avec `includeDefaultRoots: false`. La mémoire durable, les fichiers canoniques et les
 effets externes passent par le MCP Galaris. Le workspace DSH local reste un espace de calcul : un
 fichier n'est durable que lorsqu'un Tool Galaris enregistre son URI et son effet.
@@ -75,7 +75,7 @@ fichier n'est durable que lorsqu'un Tool Galaris enregistre son URI et son effet
 La première construction de l'image télécharge et compile la révision DSH épinglée ; elle peut
 donc être longue. Depuis la supervision Galaris, **Redémarrer** ou **Mettre à jour** recrée
 le runtime sélectionné avec ses credentials ; **Actualiser** ne demande que la projection
-des skills. Pour réparer un ancien conteneur dont le token est périmé, utiliser
+des compétences. Pour réparer un ancien conteneur dont le token est périmé, utiliser
 **Redémarrer**, attendre sa disponibilité, puis réessayer la Task. Aucun envoi n'est relancé
 par cette opération de gestion. Un seul run est admis simultanément par instance, conformément à la
 sérialisation actuelle des Tasks par agent.

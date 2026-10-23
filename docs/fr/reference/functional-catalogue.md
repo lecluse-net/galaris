@@ -83,7 +83,7 @@ qualité figurent dans [l’exploitation](#exploitation).
 | **Tool / outil** | Une intégration ou un ensemble de capacités | Déclare ses fonctions, ses paramètres et éventuellement ses services de messagerie, de fichiers ou de réception d’événements. |
 | **Connexion** | L’accès d’un agent à un Tool | Porte l’activation, la configuration, les credentials et les fonctions autorisées pour cet agent ; les connexions des quatre services système sont obligatoires et protégées. |
 | **Inférence durable** | Une requête modèle conservée avant son exécution | Fige demande et autorité, conserve tentatives et résultats, permet lecture, abonnement, pause, arrêt, reprise et rejeu explicites. |
-| **Skill / compétence** | Un paquet de consignes et de ressources | Explique une méthode réutilisable ; ses fichiers peuvent accompagner les instructions. Une skill ne confère pas de droit sur un Tool. |
+| **Compétence** | Un paquet de consignes et de ressources | Explique une méthode réutilisable ; ses fichiers peuvent accompagner les instructions. Une compétence ne confère pas de droit sur un Tool. |
 | **Conversation / salon** | Un échange sur un canal déterminé | Conserve les messages, leurs auteurs, les fichiers, les sujets et les travaux qui en découlent. |
 | **Round** | Le traitement d’un ou plusieurs messages reçus | Agrège l’entrée, exécute une réponse courte et enregistre ses actions, tentatives et livraisons. |
 | **Task / tâche** | Un travail avec un résultat identifiable | Conserve une consigne autonome, un agent, des étapes éventuelles, des tentatives et un résultat durable. |
@@ -152,7 +152,7 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
   dont la langue par défaut. La timeline s’adapte à la largeur, avec précédent/suivant et accès
   aux écrans de configuration selon les droits ; le choix de langue s’enregistre automatiquement.
 - **Accueil guidé.** Les blocs de découverte contrôlent la présence d’un modèle de chat réellement
-  utilisable, d’agents, d’outils, d’une connexion de messagerie active, de skills et de processus.
+  utilisable, d’agents, d’outils, d’une connexion de messagerie active, de compétences et de processus.
   Ils tiennent compte des droits et de la configuration déjà présente.
 - **Aides contextuelles.** Les écrans métier expliquent les notions et parcours propres à Galaris.
   La croix et « J’ai compris » masquent durablement l’aide pour le compte courant, y compris
@@ -373,9 +373,9 @@ Ses connexions et compétences ordinaires sont initialisées. Ses connexions **G
 **AgentAdmin** et **ToolAdmin** sont activées lors de cette création. Galaris Admin permet
 notamment de consulter la documentation ; cette connexion peut aussi
 autoriser les inspections d’exécution selon les fonctions accordées. Ce cas diffère du défaut
-inactif de cette connexion pour les autres agents. Les skills `galaris-knowledge` et `galaris-lab`
-sont autorisés individuellement pour cet assistant à sa création, tout en restant désactivés
-globalement. La connexion Lab reste inactive : disposer du skill ne suffit pas à exécuter ses outils.
+inactif de cette connexion pour les autres agents. Les compétences `galaris-knowledge` et `galaris-lab`
+sont autorisées individuellement pour cet assistant à sa création, tout en restant désactivées
+globalement. La connexion Lab reste inactive : disposer de la compétence ne suffit pas à exécuter ses outils.
 
 L’agent reste entièrement personnalisable : identité, mission, profil, harnais et autorisations.
 Les synchronisations suivantes préservent ces choix, les révocations et sa suppression ; elles ne
@@ -789,7 +789,7 @@ droits, tâches, mémoire et résultat durable restent sous le contrôle de la p
 | Harnais | Fonctionnement et possibilités |
 |---|---|
 | **Interne Pydantic AI** | Boucle d’exécution native, outils chargés à la demande, modèles résolus par Galaris, streaming, annulation, historique et checkpoints d’effets. Aucun conteneur de harnais à provisionner. |
-| **Hermès** | Runtime autonome isolé par agent, modèles servis par la passerelle Galaris dans le mode géré actuel, configuration et fichiers dédiés, skills projetées, mémoire commune et console. |
+| **Hermès** | Runtime autonome isolé par agent, modèles servis par la passerelle Galaris dans le mode géré actuel, configuration et fichiers dédiés, compétences projetées, mémoire commune et console. |
 | **Claude Agent** | Instance du SDK Claude Agent par agent, reliée à la passerelle Anthropic et au MCP Galaris ; progression des outils, réponse finale et usage corrélés. |
 | **Codex** | Runtime Codex géré par son bridge, relié aux contrats de modèles et d’outils Galaris ; exécution et télémétrie normalisées. |
 | **DeepSeek Harness** | Instance DSH par agent avec adaptation de son protocole vers l’exécution commune ; streaming des messages/outils et résultat terminal. |
@@ -806,7 +806,7 @@ droits, tâches, mémoire et résultat durable restent sous le contrôle de la p
   provider et son état. Les opérations longues se poursuivent en arrière-plan.
 - Voir les tâches qui bloquent un changement de harnais ; les tâches suspendues peuvent faire
   l’objet d’une terminaison explicite avant changement.
-- Projeter les paramètres, les skills, l’endpoint MCP et les tokens système nécessaires ; la
+- Projeter les paramètres, les compétences, l’endpoint MCP et les tokens système nécessaires ; la
   configuration distingue les défauts du provider et les personnalisations d’agent.
 - Administrer les fichiers de configuration et de runtime lorsque le provider les expose.
 
@@ -2743,8 +2743,8 @@ Sources : [flux Dream](../architecture/flows/dream.md), [registre actif](../../.
 <a id="skills"></a>
 ## 16. Bibliothèque de compétences
 
-Une skill est un paquet avec un `SKILL.md` et, si nécessaire, des fichiers d’aide, scripts, modèles
-ou références. Les skills conservent leur format Markdown, distinct du HTML éditorial des documents.
+Une compétence est un paquet avec un `SKILL.md` et, si nécessaire, des fichiers d’aide, scripts, modèles
+ou références. Les compétences conservent leur format Markdown, distinct du HTML éditorial des documents.
 
 - Créer une compétence, éditer son libellé et son Markdown, la consulter ou la supprimer.
 - Importer un paquet, télécharger l’archive d’une compétence et télécharger ses fichiers.
@@ -2791,20 +2791,20 @@ en attente pour la prochaine exécution nouvelle. Le harnais interne recharge se
 son mécanisme habituel ; un harnais réseau sans projection garde son injection bornée de `SKILL.md`.
 La présence d’une compétence ne garantit pas que le modèle décide de la consulter.
 
-Les skills système **Connaissance de Galaris** (`galaris-knowledge`) et **Galaris Lab**
+Les compétences système **Connaissance de Galaris** (`galaris-knowledge`) et **Galaris Lab**
 (`galaris-lab`) accompagnent respectivement la documentation produit et le pilotage des expériences.
-Ils sont tous deux désactivés globalement par défaut et autorisés individuellement lors de la
+Elles sont toutes deux désactivées globalement par défaut et autorisées individuellement lors de la
 création de l’assistant Galaris. Les autres agents ne les reçoivent pas par le seul accès à la
 documentation. Les affectations et révocations déjà enregistrées sont conservées lors des mises
 à jour ; l’administrateur peut régler ces autorisations. Leur attribution ne remplace pas les
 droits sur leurs Tools, notamment la connexion Lab qui reste inactive par défaut.
 
-Une catégorie **Galaris** regroupe initialement les skills système `galaris` et `galaris-*`
+Une catégorie **Galaris** regroupe initialement les compétences système `galaris` et `galaris-*`
 lorsqu’elles n’ont pas encore de catégorie ; les classements personnalisés sont préservés.
 Les descriptions et les commandes de classement ou d’autorisation restent utilisables dans
 les panneaux desktop étroits.
 
-Sources : [API Skill](../../../back/app/skill/router.py), [schémas](../../../back/app/skill/schemas.py),
+Sources : [API des compétences](../../../back/app/skill/router.py), [schémas](../../../back/app/skill/schemas.py),
 [bibliothèque et tests](../../../back/app/skill/),
 [réconciliation avant exécution](../../../back/app/harnesses/skill_sync.py),
 [garanties des harnais](../../../back/app/harnesses/tests/test_skill_sync.py).
@@ -3028,7 +3028,7 @@ d’architecture, ainsi que les décisions et les plans du projet.
   l’absence de modèle, une panne ou un index incomplet sont signalés, sans supprimer la voie texte.
 
 L’activation requiert la connexion **Galaris Admin**, les fonctions documentaires autorisées et,
-pour le Chat, le mode conversation du Tool. Le skill `galaris-knowledge` apporte les concepts et
+pour le Chat, le mode conversation du Tool. La compétence `galaris-knowledge` apporte les concepts et
 la méthode de recherche ; sa projection exige aussi `documentation_catalog` et les autorisations
 de compétence/catégorie. Il peut guider par **section → écran → onglet → action**, à partir des
 parcours et menus documentés, sans présumer des droits de l’utilisateur accompagné.
@@ -3078,7 +3078,7 @@ contrôle l’accès** ; le nom affiché ne remplace pas son identité.
 | `data://` | Datasets JSON indépendants, avec leurs droits et révisions propres. |
 | `memory://` | Recherche et lecture des connaissances autorisées. |
 | `galaris://` | Projections d’objets métier : Tasks, rounds texte, tours vocaux, Goals, cycles et processus selon les collections exposées. |
-| `galaris://skill/` | Fichiers des skills administrées, uniquement avec la connexion spécialisée active. |
+| `galaris://skill/` | Fichiers des compétences administrées, uniquement avec la connexion spécialisée active. |
 | `galaris://agent/<id>` | Profil courant d’un agent accessible, dont les champs éditoriaux d’identité et de mission ; l’identifiant entier est fourni par l’annuaire. |
 | `galaris://code/<uuid>` | Référence d’un dépôt Git dans la Console ; ouverture de son checkout courant avec droits propres. |
 | `galaris://processes/runs/<uuid>` | Snapshot autorisé d’un run natif ; sous-ressources `data` et `attachments/` sous les règles du profil et du processus. |
@@ -3997,9 +3997,9 @@ complémentaires.
 
 La connexion **Lab Galaris** donne accès à **55 fonctions MCP** pour découvrir les dix mécanismes,
 lire leurs contrats et rubriques, préparer les jeux et cas, régler leurs prompts expérimentaux,
-lancer les benchmarks et examiner leurs preuves. La connexion et le skill système **Galaris Lab**
-(`galaris-lab`) sont **désactivés globalement par défaut** et s’activent séparément. Le skill est
-accordé individuellement à l’assistant Galaris lors de sa création, sans activer la connexion Lab.
+lancer les benchmarks et examiner leurs preuves. La connexion et la compétence système **Galaris Lab**
+(`galaris-lab`) sont **désactivées globalement par défaut** et s’activent séparément. La compétence est
+accordée individuellement à l’assistant Galaris lors de sa création, sans activer la connexion Lab.
 Les opérations portent sur
 les mêmes objets que l’interface du Lab ; modifier une expérience ne change pas les prompts ou
 les modèles de production.
@@ -4214,7 +4214,7 @@ sur mobile. Les rubriques couvrent :
 | Langue et localisation | Langue de repli et localisation facultatives ; priorité à la langue du profil utilisateur. |
 | Messagerie | Canaux actifs, configuration de bridges, limites des fichiers entrants, durée des notes vocales, contact et délai des notifications du Chat. |
 | Mémoire | Fenêtre de session, activation et taille du contexte mémoire, anticipation temporelle, candidats et pondérations du rappel, acquisition, doublons, contradictions et vieillissement. |
-| Dream | Activation, création des sujets, consignes des mécanismes, quatre analyses indépendantes de pièces jointes, apprentissage, seuils de preuves/score, nombre de skills actives, délais et réconciliation des liens. |
+| Dream | Activation, création des sujets, consignes des mécanismes, quatre analyses indépendantes de pièces jointes, apprentissage, seuils de preuves/score, nombre de compétences actives, délais et réconciliation des liens. |
 | Voix | Activation, auto-réponse, paramètres audio et découverte des appels. |
 | Audio | Consignes de synthèse de réunion/vidéo, pour segments, réduction et résultat final. |
 | Tâches et exécution | Ordonnancement, concurrence, leases, reprises, budgets, création des objectifs, collaboration, durée maximale par appel LLM, limites d’appels modèle/outils, profondeur et feuilles du Planner selon les capacités des harnais. |
@@ -4528,7 +4528,7 @@ mission ; un agent métier existant peut aussi recevoir cette capacité sans cha
 
 ### Organiser une comparaison autonome dans le Lab
 
-Un agent équipé de Lab Galaris et du skill associé lit le contrat du mécanisme, prépare ou clone
+Un agent équipé de Lab Galaris et de la compétence associée lit le contrat du mécanisme, prépare ou clone
 un jeu, puis fait générer des cas synthétiques adaptés à son contexte. Les brouillons sont revus
 avant benchmark. Il fait varier un axe, lance les essais avec des modèles et budgets explicites,
 suit les références durables, compare les résultats et dépose son appréciation attribuée.
@@ -4564,11 +4564,11 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Décisions spécialisées | Facultatives, via l’adaptateur OpenRouter disponible ; repli gouverné dans le même profil, sans probabilités inventées ni gain systématique promis. |
 | Quotas ChatGPT | Fenêtres fournies pour l’ensemble du compte, consultées à un instant donné ; ni quota par agent ni budget de facture API. |
 | Harnais gérés | Standard/high via la passerelle Galaris ; un run simultané par instance externe ; le transport générique reste standard. |
-| Synchronisation des skills | Appliquée avant une nouvelle exécution, sans interrompre une Task ; une continuation distante conserve son contexte antérieur et un échec de projection bloque le démarrage. |
+| Synchronisation des compétences | Appliquée avant une nouvelle exécution, sans interrompre une Task ; une continuation distante conserve son contexte antérieur et un échec de projection bloque le démarrage. |
 | Routage | Seuls les couples EXEC/PLAN et effort déclarés par le harnais sont disponibles. |
 | Inférence durable | Préparation sans appel fournisseur, démarrage, commandes avec révision et échéance globale optionnelle ; reconnexion au flux sans génération, reprise explicite potentiellement facturée. |
 | Chat natif | Humain–agent ; les salons de groupe de transports externes ne constituent pas une messagerie native universelle entre humains. |
-| Apprentissage de skills | Off par défaut ; observation et apprentissage explicites avec preuves et seuils. |
+| Apprentissage de compétences | Off par défaut ; observation et apprentissage explicites avec preuves et seuils. |
 | Collaboration documentaire | Sauvegarde, révisions, conflits et partage ; pas une promesse de coédition simultanée caractère par caractère. |
 | Documents et Datasets | Documents HTML `document://` dans Memory et ressources JSON `data://` dans Dataset ; droits et historiques indépendants. |
 | Applications documentaires | Affichage automatique de HTML/CSS/JavaScript isolés et texte éditable, sans vue Source ; les ressources externes ordinaires sont bloquées. Le CPU et la mémoire du navigateur ne sont pas plafonnés par ce mécanisme. |
@@ -4597,7 +4597,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Permissions navigateur | Réseau local interdit par défaut ; un accord mémorisé ne contourne pas les filtres de la connexion. |
 | Sujet précoce | Classement parallèle si Décision et texte Dream sont configurés ; aucune attente d’admission, aucun droit supplémentaire et aucun rejeu automatique d’une recherche déjà faite. |
 | Documentation produit | Accès Galaris Admin et fonctions documentaires nécessaires ; lecture seule, recherche lexicale disponible immédiatement, enrichissement vectoriel et recherche hybride si configurés ; plans prospectifs et configuration réelle à vérifier séparément. |
-| Lab agentique | Connexion et skill optionnels, inactifs globalement par défaut ; seul le skill est attribué individuellement à l’assistant Galaris initial. 55 fonctions ; les benchmarks IA n’appliquent pas automatiquement leurs réglages à la production. Les campagnes Process exécutent de vrais runs et leurs effets. Captures et diagnostics exigent l’inspection Admin. |
+| Lab agentique | Connexion et compétence optionnelles, inactives globalement par défaut ; seule la compétence est attribuée individuellement à l’assistant Galaris initial. 55 fonctions ; les benchmarks IA n’appliquent pas automatiquement leurs réglages à la production. Les campagnes Process exécutent de vrais runs et leurs effets. Captures et diagnostics exigent l’inspection Admin. |
 | Génération synthétique | De 1 à 20 cas adaptés au mécanisme et éventuellement au contexte d’un jeu ; tous restent brouillons et le jeu est enregistré intégralement ou pas du tout. |
 | Notes et revues du Lab | Une note absente ne vaut pas zéro ; avis agents, revues humaines et juge restent distincts. Les comparaisons descriptives ne prouvent pas une supériorité statistique. |
 | Webhook générique | Aucun endpoint actif ; les callbacks et entrées des intégrations dédiées gardent leurs contrats propres. |

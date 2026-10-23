@@ -57,7 +57,7 @@ Les lectures comme les mutations vérifient la connexion active et la permission
 chaque appel. Les définitions intégrées restent non modifiables. Les services obligatoires
 Galaris, Conversation, Memory et File Sharing sont consultables, mais leurs réglages et
 connexions restent gérés par le logiciel. Seul un humain peut attribuer ou modifier ToolAdmin,
-AgentAdmin, Galaris Admin, Process Admin, Lab, Goal management, Skill management et Console.
+AgentAdmin, Galaris Admin, Process Admin, Lab, Goal management, Gestion des compétences et Console.
 Une chaîne de commandes agentiques ne permet pas de s’attribuer une capacité administrative.
 
 ## Connecter un serveur MCP avec OAuth
