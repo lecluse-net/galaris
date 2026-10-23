@@ -13,7 +13,8 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   const session = await (await authentication).json()
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
-  const corpus = '<h2>Été</h2><p><u>Texte souligné</u></p><table><tbody><tr><th colspan="2" colwidth="150,200"><p>En-tête</p></th></tr><tr><td><p>A</p></td><td><p>B</p></td></tr></tbody></table><pre><code>  &lt;p&gt;\n    a  b\n</code></pre>'
+  const corpus = '<h2>Été</h2>' + '<p>Synthetic document paragraph</p>'.repeat(40)
+    + '<p><u>Texte souligné</u></p><table><tbody><tr><th colspan="2" colwidth="150,200"><p>En-tête</p></th></tr><tr><td><p>A</p></td><td><p>B</p></td></tr></tbody></table><pre><code>  &lt;p&gt;\n    a  b\n</code></pre>'
   {
     const response = await request.post('/api/memory/items', { headers, data: { owner_agent_id: fixture.agent_id, title: 'HTML memory', media_type: 'text/html', payload: { text: corpus } } })
     expect(response.ok(), await response.text()).toBeTruthy()
@@ -41,6 +42,23 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   const editor = page.locator('.document-editor [data-editor-surface]')
   await expect(editor.locator('u')).toHaveText('Texte souligné')
   await expect(editor.locator('th')).toHaveAttribute('colspan', '2')
+  const find = page.getByRole('button', { name: /^(Find|Rechercher)$/, exact: true }).first()
+  await find.click()
+  const search = page.getByRole('search', { name: /^(Find|Rechercher)$/, exact: true })
+  await search.getByRole('textbox', { name: /^(Find|Rechercher)$/, exact: true }).fill('Texte souligné')
+  await expect(editor.locator('mark[data-search-match]')).toHaveText('Texte souligné')
+  await search.getByRole('button', { name: /^(Next|Suivant)$/, exact: true }).click()
+  await expect(editor.locator('[data-search-current]')).toHaveText('Texte souligné')
+  await expect(editor.locator('[data-search-current]')).toBeInViewport({ ratio: 1 })
+  await expect(search.getByRole('button', { name: /^(Next|Suivant)$/, exact: true })).toBeInViewport({ ratio: 1 })
+  await find.click()
+  await expect(search).toBeHidden()
+  await expect(editor.locator('[data-search-match]')).toHaveCount(0)
+  await find.click()
+  await expect(search.getByRole('textbox', { name: /^(Find|Rechercher)$/, exact: true })).toHaveValue('Texte souligné')
+  await find.click()
+  const searched = (await (await request.get(`/api/documents/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
+  expect(searched.revision).toBe(item.revision)
   await editor.locator('h2').click()
   await page.keyboard.press('End')
   const saved = page.waitForResponse(response => response.request().method() === 'PATCH'

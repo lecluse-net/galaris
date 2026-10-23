@@ -1,6 +1,6 @@
 <template>
-  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown.esc="fullscreen = false" @keydown="editorKeydown" @click.capture="editorClick" @contextmenu.capture="openContextMenu">
-    <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :document="profile === 'document'" :source="sourceMode" :single-row="singleRowToolbar" :hidden-groups="hiddenToolbarGroups" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
+  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @click.capture="editorClick" @contextmenu.capture="openContextMenu">
+    <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :single-row="singleRowToolbar" :hidden-groups="hiddenToolbarGroups" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
       <template v-if="personalVoice" #voice>
         <EditorialToolButton v-if="!readonly" flat dense :color="voice?.dictating || voice?.dictationPending ? 'negative' : 'primary'" :icon="voice?.dictating || voice?.dictationPending ? 'stop' : 'mic'" :label="voice?.dictating ? voice.labels.finishDictation : voice?.dictationPending ? voice.labels.processing : voice?.labels.dictate ?? ''" :disable="sourceMode || voice?.reading" @click="voice?.toggleDictation()" />
         <EditorialToolButton flat dense color="primary" :icon="voice?.reading && !voice.paused ? 'pause' : 'play_arrow'" :label="voice?.reading ? voice.paused ? voice.labels.paused : voice.labels.reading : voice?.labels.read ?? ''" :disable="voice?.dictating || voice?.dictationPending" @click="action('read')" />
@@ -16,6 +16,17 @@
         </EditorialToolButton>
       </template>
     </EditorialToolbar>
+    <div v-if="findOpen" class="editorial-search-bar" role="search" :aria-label="t('richEditor.find')">
+      <q-input ref="searchInput" v-model="fields.search" class="editorial-search-input" dense outlined :label="t('richEditor.find')" @keydown.enter.prevent="findNext" />
+      <q-input v-model="fields.replace" class="editorial-search-input" dense outlined :label="t('richEditor.replace')" :disable="readonly" @keydown.enter.prevent="replaceMatch" />
+      <q-checkbox v-model="fields.matchCase" dense :label="t('richEditor.matchCase')" />
+      <q-checkbox v-model="fields.wholeWords" dense :label="t('richEditor.wholeWords')" />
+      <span role="status" aria-live="polite">{{ matches.length }}</span>
+      <q-btn dense outline :label="t('richEditor.next')" :disable="!matches.length" @click="findNext" />
+      <q-btn dense outline :label="t('richEditor.replaceAll')" :disable="readonly || !matches.length" @click="replaceAll" />
+      <q-btn dense color="primary" :label="t('richEditor.replace')" :disable="readonly || !matches.length" @click="replaceMatch" />
+      <q-btn flat round dense icon="close" :aria-label="t('common.close')" @click="closeFind" />
+    </div>
     <div class="editorial-body" :data-document-layout="profile === 'document' ? effectiveLayout : undefined">
       <EditorialSource v-if="sourceMode" :model-value="sourceDraft" :readonly="readonly" :label="t('richEditor.source')" @update:model-value="editSource" />
       <div v-show="!sourceMode" ref="editorHost" />
@@ -41,7 +52,7 @@
               <q-item-section>{{ t('richEditor.clipboard.' + key) }}</q-item-section>
             </q-item>
             <q-separator />
-            <EditorialToolbar menu :editor="editor" :revision="revision" :document="profile === 'document'" :hidden-groups="hiddenToolbarGroups" :disabled-actions="disabledActions" @action="runPointerTextAction" />
+            <EditorialToolbar menu :editor="editor" :revision="revision" :document="profile === 'document'" :find-open="findOpen" :hidden-groups="hiddenToolbarGroups" :disabled-actions="disabledActions" @action="runPointerTextAction" />
           </template>
         </q-list>
       </q-menu>
@@ -79,10 +90,12 @@
 </template>
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useSlots, useTemplateRef, watch } from 'vue'
-import { useQuasar, copyToClipboard, type QMenu } from 'quasar'
+import { useQuasar, copyToClipboard, type QInput, type QMenu } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { Editor } from '@tiptap/vue-3'
 import { NodeSelection, TextSelection, type Selection } from '@tiptap/pm/state'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { closeHistory } from '@tiptap/pm/history'
 import { marked } from 'marked'
 import EditorialToolButton from './EditorialToolButton.vue'
@@ -147,6 +160,7 @@ const keyboardShortcuts = computed(() => [
 const root = useTemplateRef('root'), fileInput = useTemplateRef('fileInput'), playbackElement = useTemplateRef('playbackElement')
 const editorHost = useTemplateRef('editorHost'), selectedCardImage = ref('')
 const editor = shallowRef<Editor>(), revision = ref(0), sourceMode = ref(false), sourceDraft = ref(''), fullscreen = ref(false), layout = ref<'fixed' | 'full'>('fixed'), fits = ref(true)
+const findOpen = ref(false), searchInput = useTemplateRef<QInput>('searchInput')
 const codeCopies = shallowRef<Array<{ key: number; element: HTMLElement; source: () => string }>>([])
 const pointerMenu = useTemplateRef<QMenu>('pointerMenu')
 const pointerMenuOpen = ref(false)
@@ -176,7 +190,7 @@ function anchor(from = editor.value?.state.selection.from ?? 1, to = editor.valu
 function valid(value: Anchor): boolean { return value.valid && value.generation === generation && Boolean(editor.value?.isEditable) && !sourceMode.value }
 function release(value?: Anchor): void { if (value) { value.valid = false; anchors.delete(value) } }
 function request(): AbortController { const value = new AbortController(); requests.add(value); return value }
-function stop(): void { pointerRequest++; pointerMenu.value?.hide(); pointerTextContext.value = false; pointerSelection = undefined; generation++; requests.forEach(value => value.abort()); requests.clear(); exportJobs.clear(); exportBusy.value = []; anchors.forEach(value => { value.valid = false }); anchors.clear(); personalVoice?.stop(); uploadProgress.value = null; importRequest.value = null; shareOpen.value = false; dialogOpen.value = false; linkOpen.value = false; objectPreview.value = null }
+function stop(): void { pointerRequest++; pointerMenu.value?.hide(); pointerTextContext.value = false; pointerSelection = undefined; generation++; requests.forEach(value => value.abort()); requests.clear(); exportJobs.clear(); exportBusy.value = []; anchors.forEach(value => { value.valid = false }); anchors.clear(); personalVoice?.stop(); uploadProgress.value = null; importRequest.value = null; shareOpen.value = false; dialogOpen.value = false; findOpen.value = false; linkOpen.value = false; objectPreview.value = null }
 function inputHtml(value: string): string {
   if (mediaType === 'text/markdown') value = marked.parse(value, { async: false })
   if (mediaType === 'text/plain') { const paragraph = document.createElement('p'); paragraph.textContent = value; value = paragraph.outerHTML }
@@ -253,6 +267,13 @@ function createEditor(): void {
     extensions: contentExtensions({ profile, object: (target, mounted) => { embeddedTargets.value = mounted ? [...embeddedTargets.value, target] : embeddedTargets.value.filter(value => value.key !== target.key); if (!mounted) captures.delete(target.key) },
       card: mountCard, image: resolveAttachment, openImage: navigate, readonly: () => readonly, codeCopy: mountCodeCopy, linkIcon: mountDocumentLinkIcon }),
     editorProps: { attributes: { class: 'rich-content', 'aria-label': ariaLabel || t('richEditor.content'), 'data-editor-surface': '', tabindex: '0' },
+      decorations: state => {
+        if (!findOpen.value && !(dialogOpen.value && dialog.value === 'find')) return null
+        return DecorationSet.create(state.doc, findMatches(state.doc).map(({ from, to }) => Decoration.inline(from, to, {
+          nodeName: 'mark', class: 'editorial-search-match', 'data-search-match': '',
+          ...(state.selection.from === from && state.selection.to === to ? { 'data-search-current': '' } : {}),
+        })))
+      },
       handleDOMEvents: { keydown: (view, event) => {
         if (!readonly) return false
         const handled = editor.value?.options.editorProps?.handleKeyDown?.call(view, view, event)
@@ -601,6 +622,14 @@ function clearDirectFormat(): void {
   current.view.dispatch(tr)
 }
 function editorKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    if (findOpen.value) { event.preventDefault(); event.stopPropagation(); closeFind() }
+    else fullscreen.value = false
+    return
+  }
+  if (!event.defaultPrevented && !readonly && profile === 'document' && documentShortcut(event, altGraphPressed)?.[2] === 'find') {
+    event.preventDefault(); showDialog('find'); return
+  }
   if (!event.defaultPrevented && event.altKey && event.key === 'Enter') {
     const link = event.target instanceof Element ? event.target.closest('a') : null
     const uri = link?.getAttribute('data-rich-reference') ?? link?.getAttribute('href') ?? selectionUri()
@@ -623,6 +652,11 @@ const listStyles = computed(() => (editor.value?.isActive('orderedList') ? ['dec
 const fields = ref({ url: '', text: '', search: '', replace: '', matchCase: false, wholeWords: false, alt: '', caption: '', width: '', height: '', background: '', border: '', color: '#087FF5', imageStyle: 'breakText', imageLink: '', start: '1', reversed: false, listStyle: 'decimal' })
 function showDialog(kind: string): void {
   const current = editor.value; if (!current) return
+  if (kind === 'find' && profile === 'document') {
+    findOpen.value = true
+    nextTick(() => { searchInput.value?.focus(); searchInput.value?.select() })
+    return
+  }
   if (kind === 'link' && current.isActive('link')) current.commands.extendMarkRange('link')
   release(dialogAnchor); dialogAnchor = anchor(); dialog.value = kind
   fields.value.url = selectionUri(); fields.value.text = current.state.doc.textBetween(dialogAnchor.from, dialogAnchor.to)
@@ -713,12 +747,11 @@ function applyTableProperties(current: Editor): void {
     break
   }
 }
-const matches = computed(() => {
-  void revision.value
+function findMatches(doc: ProseMirrorNode): Array<{ from: number; to: number }> {
   const values: Array<{ from: number; to: number }> = [], search = fields.value.search
   if (!search) return values
   const expression = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), fields.value.matchCase ? 'gu' : 'giu')
-  editor.value?.state.doc.descendants((node, position) => {
+  doc.descendants((node, position) => {
     if (!node.isTextblock) return
     const text = node.textBetween(0, node.content.size, '', '\ufffc')
     for (const match of text.matchAll(expression)) {
@@ -729,8 +762,27 @@ const matches = computed(() => {
     return false
   })
   return values
+}
+const matches = computed(() => {
+  void revision.value
+  return editor.value ? findMatches(editor.value.state.doc) : []
 })
-function findNext(): void { const values = matches.value, from = editor.value?.state.selection.to ?? 0; const value = values.find(value => value.from >= from) ?? values[0]; if (value) editor.value?.commands.setTextSelection(value) }
+// Query changes redraw temporary highlights without changing the document or undo history.
+watch([findOpen, dialogOpen, dialog, () => fields.value.search, () => fields.value.matchCase, () => fields.value.wholeWords], () => {
+  const current = editor.value
+  if (current && !current.isDestroyed) current.view.updateState(current.state)
+})
+function closeFind(): void { findOpen.value = false; editor.value?.commands.focus() }
+function findNext(): void {
+  const current = editor.value
+  if (!current) return
+  const values = matches.value, from = current.state.selection.to
+  const value = values.find(value => value.from >= from) ?? values[0]
+  if (!value) return
+  current.commands.setTextSelection(value)
+  // ProseMirror skips scrolling when focus stays in the search field.
+  if (findOpen.value) current.view.dom.querySelector<HTMLElement>('[data-search-current]')?.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' })
+}
 function replaceMatch(): void { if (readonly) return; const value = matches.value.find(value => value.from === editor.value?.state.selection.from) ?? matches.value[0]; if (value) editor.value?.commands.insertContentAt(value, fields.value.replace ? { type: 'text', text: fields.value.replace } : '') }
 function replaceAll(): void { const current = editor.value; if (!current || readonly) return; const tr = closeHistory(current.state.tr); for (const match of [...matches.value].reverse()) tr.insertText(fields.value.replace, match.from, match.to); current.view.dispatch(tr) }
 const tableCommands = [
@@ -843,6 +895,7 @@ function action(key: string, value?: string): void {
   if (key === 'read') { if (personalVoice?.controls.value.reading) personalVoice.controls.value.togglePause(); else personalVoice?.controls.value.read(window.getSelection()?.isCollapsed ? undefined : selectedHtml()); return }
   if (key === 'stopReading') { personalVoice?.stop(); return }
   if (readonly || sourceMode.value) return
+  if (key === 'find' && profile === 'document') { if (findOpen.value) closeFind(); else showDialog('find'); return }
   current.view.dispatch(closeHistory(current.state.tr))
   const chain = current.chain()
   if (!current.view.hasFocus()) chain.focus()
@@ -942,7 +995,10 @@ onMounted(() => {
       layoutFrame = undefined; fits.value = (root.value?.clientWidth ?? 0) >= 210 * 96 / 25.4
       scrollPadding?.update()
       const toolbar = root.value?.querySelector('.editorial-toolbar')
-      if (toolbar) observer?.observe(toolbar)
+      if (toolbar) {
+        root.value?.style.setProperty('--editorial-toolbar-height', toolbar.getBoundingClientRect().height + 'px')
+        observer?.observe(toolbar)
+      }
     })
   })
   if (root.value) observer.observe(root.value)

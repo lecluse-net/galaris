@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
 
 const corpus = '<h2>Été</h2><p><u>Underlined</u> <mark data-color="#fff59d" style="background-color: #fff59d">highlight</mark></p><ol start="3"><li><p>First</p><ul><li><p>Nested</p></li></ul></li></ol><table><tbody><tr><th colspan="2" colwidth="120,180"><p>Header</p></th></tr><tr><td><p>Left</p></td><td><p>Right</p></td></tr></tbody></table><pre><code class="language-html">  &lt;p&gt;\n    a  b\n</code></pre>'
 const lastValue = page => page.evaluate(() => window.testApp.events.filter(value => value.name === 'update:modelValue').at(-1)?.value)
@@ -36,8 +36,10 @@ const uri = 'document://00000000-0000-0000-0000-000000000001/attachments/0000000
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII='
 async function command(page, name) {
   const button = page.getByRole('button', { name, exact: typeof name === 'string' }).first()
-  if (page.viewportSize().width < 1024 && !await button.isVisible()) await page.getByRole('button', { name: 'More tools', exact: true }).click()
+  const overflow = page.viewportSize().width < 1024 && !await button.isVisible()
+  if (overflow) await page.getByRole('button', { name: 'More tools', exact: true }).click()
   await button.click()
+  if (overflow) await expect(page.locator('.editorial-toolbar-overflow')).toBeHidden()
 }
 async function imageEditor(page) {
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: { modelValue: '', profile: 'document', ariaLabel: 'Editorial content' } })
@@ -528,12 +530,73 @@ for (const mode of ['reader', 'editor', 'document editor']) {
 }
 
 
-test('native find and replace remains usable on desktop', async ({page}, testInfo)=>{
-  await page.setViewportSize({width:1024,height:844})
-  await mount(page,'core/util/components/RichTextEditor.vue',{props:{modelValue:'<p>Find <strong>me</strong></p>',ariaLabel:'Editorial content'},dark:true})
-  await command(page,'Find')
+for (const width of [1440, 390]) for (const autoGrow of [false, true]) test(`document search highlights results and cycles without editing at ${width}px (autoGrow=${autoGrow})`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 844 })
+  const middle = Array.from({ length: 40 }, (_, index) => `<p>Filler paragraph ${index}</p>`).join('')
+  await mount(page, 'core/util/components/RichTextEditor.vue', { props: {
+    profile: 'document', autoGrow, modelValue: '<p>First <strong>needle</strong></p>' + middle + '<p>Second needle</p>', ariaLabel: 'Document',
+  }, containerStyle: { height: '700px', overflow: 'auto' } })
+  const editor = page.getByRole('textbox', { name: 'Document', exact: true })
+  const original = await editorHtml(page)
+  await editor.locator('p').first().click()
+  await page.keyboard.press('Control+Home')
+  await command(page, 'Find')
+  const search = page.getByRole('search', { name: 'Find', exact: true })
+  const input = search.getByRole('textbox', { name: 'Find', exact: true })
+  await input.fill('needle')
+  await expect(editor.locator('mark[data-search-match]')).toHaveText(['needle', 'needle'])
+  await input.press('Enter')
+  await expect(input).toBeFocused()
+  await expect(editor.locator('p').first().locator('[data-search-current]')).toHaveText('needle')
+  expect(await editorHtml(page)).toBe(original)
+  await page.screenshot({ path: testInfo.outputPath('search-results.png') })
+  await input.press('Enter')
+  await expect(input).toBeFocused()
+  await expect(editor.locator('p').last().locator('[data-search-current]')).toHaveText('needle')
+  await expect(editor.locator('p').last().locator('[data-search-current]')).toBeInViewport({ ratio: 1 })
+  await expect(input).toBeInViewport({ ratio: 1 })
+  await search.getByRole('button', { name: 'Next', exact: true }).click()
+  await expect(editor.locator('p').first().locator('[data-search-current]')).toHaveText('needle')
+  await expect(editor.locator('p').first().locator('[data-search-current]')).toBeInViewport({ ratio: 1 })
+  await search.getByRole('button', { name: 'Next', exact: true }).click()
+  const current = editor.locator('p').last().locator('[data-search-current]')
+  await expect(current).toBeInViewport({ ratio: 1 })
+  await expect.poll(() => current.evaluate(mark => {
+    const root = mark.closest('.tiptap-galaris-editor')
+    const toolbar = root.querySelector('.editorial-toolbar').getBoundingClientRect()
+    const search = root.querySelector('.editorial-search-bar').getBoundingClientRect()
+    return mark.getBoundingClientRect().top - Math.max(toolbar.bottom, search.bottom)
+  })).toBeGreaterThanOrEqual(0)
+  await page.screenshot({ path: testInfo.outputPath('search-scrolled.png') })
+  await input.fill('missing')
+  await expect(search.getByRole('status')).toHaveText('0')
+  await expect(editor.locator('[data-search-match]')).toHaveCount(0)
+  await expect(search.getByRole('button', { name: 'Next', exact: true })).toBeDisabled()
+  await command(page, 'Find')
+  await expect(search).toBeHidden()
+  await expect(editor).toBeFocused()
+  await command(page, 'Find')
+  await expect(input).toHaveValue('missing')
+  await input.fill('needle')
+  await expect(editor.locator('[data-search-match]')).toHaveCount(2)
+  await command(page, 'Find')
+  await expect(search).toBeHidden()
+  await expect(editor.locator('[data-search-match]')).toHaveCount(0)
+  expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
+})
+
+for (const [profile, width] of [['rich-text', 1024], ['document', 1024], ['document', 390]]) {
+test(`native find and replace remains usable for ${profile} at ${width}px`, async ({page}, testInfo)=>{
+  await page.setViewportSize({width,height:844})
+  await mount(page,'core/util/components/RichTextEditor.vue',{props:{profile,modelValue:'<p>Find <strong>me</strong></p>',ariaLabel:'Editorial content'},dark:true})
+  if (profile === 'document') {
+    await page.locator('[data-editor-surface]').click()
+    await page.keyboard.press('Control+f')
+    await expect(page.getByRole('textbox', {name:'Find',exact:true})).toBeFocused()
+  } else await command(page,'Find')
   await page.getByRole('textbox', {name:'Find',exact:true}).fill('Find')
-  await page.getByRole('button', {name:'Next',exact:true}).click()
+  if (profile === 'document') await page.getByRole('textbox', {name:'Find',exact:true}).press('Enter')
+  else await page.getByRole('button', {name:'Next',exact:true}).click()
   await page.getByRole('textbox', {name:'Replace',exact:true}).fill('Found')
   await page.getByRole('button', {name:'Replace',exact:true}).click()
   await expect(page.locator('[data-editor-surface]')).toContainText('Found me')
@@ -543,7 +606,12 @@ test('native find and replace remains usable on desktop', async ({page}, testInf
   await page.getByRole('textbox', {name:'Replace',exact:true}).fill('Whole match')
   await page.getByRole('button', {name:'Replace',exact:true}).click()
   expect(await lastValue(page)).toBe('<p>Whole match</p>')
-  await page.getByRole('button', {name:'Cancel',exact:true}).click()
+  if (profile === 'document') {
+    await page.getByRole('textbox', {name:'Find',exact:true}).press('Control+f')
+    await expect(page.getByRole('textbox', {name:'Find',exact:true})).toBeFocused()
+    await page.getByRole('textbox', {name:'Find',exact:true}).press('Escape')
+    await expect(page.locator('[data-editor-surface]')).toBeFocused()
+  } else await page.getByRole('button', {name:'Cancel',exact:true}).click()
   await page.evaluate(() => window.testApp.setProps({ modelValue: '<p>Blue blue blueberry <strong>BLUE</strong></p>' }))
   await command(page,'Find')
   await page.getByRole('textbox', {name:'Find',exact:true}).fill('blue')
@@ -555,8 +623,15 @@ test('native find and replace remains usable on desktop', async ({page}, testInf
   await page.getByRole('checkbox', {name:'Match case',exact:true}).uncheck()
   await page.getByRole('button', {name:'Replace all',exact:true}).click()
   await expect(page.locator('[data-editor-surface]')).toHaveText('green green blueberry green')
-  await page.screenshot({path:testInfo.outputPath('native-desktop-search.png')})
+  await page.screenshot({path:testInfo.outputPath('native-search.png')})
+  if (profile === 'document') {
+    await page.getByRole('button', {name:'Close',exact:true}).click()
+    await expect(page.locator('[data-editor-surface]')).toBeFocused()
+    await command(page,'Find')
+    await expect(page.getByRole('textbox', {name:'Find',exact:true})).toHaveValue('blue')
+  }
 })
+}
 
 test('native link form accepts focus inside a Quasar dialog and the backdrop stays dismissible', async ({page}) => {
   await jsonRoute(page, '**/api/agents**', [])

@@ -88,6 +88,14 @@ conservant les documents affichés ; une révocation d’accès les retire immé
 
 ## Écrire et partager
 
+Dans l’éditeur de document, **Ctrl+F** (ou **Cmd+F**) et l’outil **Rechercher** ouvrent
+une barre sous les icônes, avec les champs de recherche et de remplacement. Un nouveau clic
+sur **Rechercher** masque la barre ; le texte recherché est conservé à sa réouverture.
+Les occurrences sont surlignées pendant la saisie, sans modifier le document. Le contenu
+reste accessible. **Entrée** dans la recherche ou **Suivant** sélectionne l’occurrence suivante ; les
+options permettent de respecter la casse ou de chercher des mots entiers. **Échap** ou
+le bouton de fermeture masque la barre et rend le focus au document.
+
 Pour faire évoluer un document avec un agent, demandez une mise à jour des passages concernés.
 L'agent conserve les informations utiles et peut ajouter des éléments distincts ; les anciennes
 versions restent dans les révisions. Précisez si le résultat attendu est un journal chronologique

@@ -25,6 +25,11 @@
 .editorial-toolbar-overflow { max-width: min(360px, 95vw); padding: 8px; }
 .editorial-toolbar-overflow > [role="group"] { margin-bottom: 8px; }
 .editorial-body { min-width: 0; background: var(--editorial-canvas); }
+.editorial-search-bar { position: sticky; top: var(--editorial-toolbar-height, 0px); z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--rich-editor-border); border-top: 0; background: var(--rich-editor-toolbar); }
+.editorial-search-input { flex: 1 1 180px; min-width: 0; }
+.rich-content mark.editorial-search-match { background: var(--solaire-yellow-light); color: var(--rich-foreground); }
+.body--dark .rich-content mark.editorial-search-match { background: var(--solaire-yellow-dark); }
+.rich-content mark.editorial-search-match[data-search-current] { outline: 2px solid var(--solaire-orange-accent); }
 .editorial-body[data-document-layout="fixed"] { padding-top: 5px; }
 .tiptap-galaris-editor [data-editor-surface] { min-height: var(--editor-min-height); max-height: var(--editor-max-height); overflow: auto; outline: none; padding: 16px; border: 1px solid var(--rich-editor-border); font-size: 16px; }
 .editorial-body[data-document-layout] [data-editor-surface], .editorial-body[data-document-layout] .galaris-source-editing-area { box-sizing: border-box; width: 100%; max-width: 210mm; margin-inline: auto; padding: 10mm; }

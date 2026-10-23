@@ -80,6 +80,13 @@ can be retried while displayed documents remain available; access revocation rem
 
 ## Write and share
 
+In the document editor, **Ctrl+F** (or **Cmd+F**) and the **Find** tool open a bar below
+the icons, with search and replacement fields. Clicking **Find** again hides the bar and
+keeps the query for reopening. Matches are highlighted as you type without changing the
+document. The content remains accessible. **Enter** in the search field or **Next**
+selects the next match; options support case-sensitive and whole-word
+search. **Escape** or the close button hides the bar and returns focus to the document.
+
 To develop a document with an agent, ask for updates to the relevant passages. The agent
 preserves useful information and can add distinct material; prior versions remain in the
 revisions. Specify when you need a chronological journal or meeting minutes: that chronology
