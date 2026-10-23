@@ -48,6 +48,13 @@ ni retrait de propriété. Ces deux dernières opérations exigent `all`.
 Skills expose découverte, lecture du `SKILL.md`, métadonnées, activation, suppression,
 autorisations génériques et retrait de propriété. Les fichiers et références restent
 sur les fonctions `file_*` du Tool File Sharing. La vue MCP administrative est explicite.
+La création via `file_create` dans l'espace personnel du seul agent authentifié fait partie
+de la production privée ordinaire d'une Task : l'URI du nouveau package n'a pas à figurer
+dans sa demande source. Le descripteur d'effet déclare ce préfixe avec l'identité serveur ;
+il n'ouvre ni tout `galaris://`, ni les génériques, ni les espaces étrangers. Les validations,
+quotas et autorisations vivantes de Skills restent obligatoires. Le parcours MCP réel avec
+Task est couvert dans `app/task/tests/test_execution_scope.py`, en complément des parcours
+Skills sans Task qui ne traversaient pas le contrôle de périmètre.
 L'administration d'un personnel étranger exige `team` dans son périmètre, ou `all`, et ne le rend jamais utilisable
 par l'administrateur.
 

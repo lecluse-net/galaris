@@ -162,6 +162,10 @@ Chaque run possède son JSON métier dans `process_runs.data` et ses liens de fi
 `process_run_files`, sans Dataset ni Document. Les données et pièces jointes héritent des
 droits du processus. Les tâches v1 peuvent écrire `galaris://processes/runs/<uuid>/data` avec
 `expected_revision` et utiliser `galaris://processes/runs/<uuid>/attachments/` pour les fichiers.
+Dans une Task, `file_create` sur cette collection accepte le grant sourcé du run exact,
+sans exiger que l'utilisateur nomme à l'avance l'URI de sa sous-collection. Les droits
+Process restent vérifiés et un run terminé ne reçoit plus de fichiers. Pour les runs
+typés v2, les activités rendent leurs `output_files` au moteur au lieu de publier directement.
 Le moteur ne réécrit pas les modifications v1. États et reçus restent séparés des variables.
 Les URI canoniques ne contiennent jamais de token ou d'URL de transport.
 La première erreur d'exécution interdit toute nouvelle admission et demande l'arrêt

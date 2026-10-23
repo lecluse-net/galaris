@@ -52,7 +52,8 @@ def amend_scope(scope: ExecutionScopeV1, instruction: str, source_reference: str
 
 
 def preflight(scope: ExecutionScopeV1 | None, descriptor: EffectDescriptorV1 | None,
-              tool_name: str, arguments: Mapping[str, object], *, produced_targets: frozenset[str] = frozenset()) -> ScopePreflightV1:
+              tool_name: str, arguments: Mapping[str, object], *, produced_targets: frozenset[str] = frozenset(),
+              actor_agent_id: int | None = None) -> ScopePreflightV1:
     revision = scope.revision if scope else None
     if descriptor is None or scope is None:
         return ScopePreflightV1(tool_name=tool_name, scope_revision=revision, decision="allow_and_record",
@@ -65,6 +66,13 @@ def preflight(scope: ExecutionScopeV1 | None, descriptor: EffectDescriptorV1 | N
                 return ScopePreflightV1(tool_name=tool_name, scope_revision=revision, decision="deny", reason="Invalid effect target.")
             targets.append(f"{descriptor.target_prefix}{value}")
     permitted = {grant.target for grant in scope.grants if grant.capability in {"*", descriptor.capability}}
+    if descriptor.kind == "create":
+        sourced_parents = frozenset(permitted)
+        for target in targets:
+            for pattern in descriptor.creation_parent_patterns:
+                match = re.fullmatch(pattern, target)
+                if match is not None and match.group("parent") in sourced_parents:
+                    permitted.add(target)
     if (descriptor.domain_assigned_selection and descriptor.target_prefix and targets
             and not any(target.startswith(descriptor.target_prefix) for target in permitted)):
         return ScopePreflightV1(tool_name=tool_name, scope_revision=revision, decision="allow_and_record",
@@ -72,9 +80,15 @@ def preflight(scope: ExecutionScopeV1 | None, descriptor: EffectDescriptorV1 | N
             targets=tuple(targets))
     # Reading/discovery does not confer publication rights. New ordinary artifacts
     # remain autonomous; disclosure to a remote collection requires an exact grant.
+    private_prefixes = tuple(
+        prefix.replace("{agent_id}", str(actor_agent_id))
+        for prefix in descriptor.ordinary_creation_prefixes
+        if prefix.endswith("/") and actor_agent_id is not None and actor_agent_id > 0
+    )
     ordinary = descriptor.kind == "read" or (
         descriptor.kind == "create" and bool(targets)
-        and all(target.partition("://")[0] in descriptor.ordinary_creation_schemes for target in targets)
+        and all(target.partition("://")[0] in descriptor.ordinary_creation_schemes
+                or target.startswith(private_prefixes) for target in targets)
     )
     if descriptor.kind == "mutate":
         permitted.update(produced_targets)

@@ -140,7 +140,8 @@ class SqlAlchemyAgentTaskAdapter:
                             if scope and producer_scope and producer_scope.source_task_id == scope.source_task_id and producer_scope.revision == scope.revision:
                                 permitted_resources.add(resource.reference)
                         produced = frozenset(permitted_resources)
-                    decision = preflight(scope, descriptor, tool_name, arguments, produced_targets=produced)
+                    decision = preflight(scope, descriptor, tool_name, arguments,
+                        produced_targets=produced, actor_agent_id=agent_id)
             except ValidationError:
                 decision = ScopePreflightV1(tool_name=tool_name, decision="deny", reason="Execution scope is invalid or its version is unsupported.")
             if operation_id is not None:

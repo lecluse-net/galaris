@@ -49,6 +49,15 @@ s'intègrent dans l'activité existante, sans seconde timeline ni contenu sensib
 Les tests couvrent héritage, version inconnue, cible divergente, outils historiques,
 révisions et absence d'effet avant une décision refusée.
 
+Les créations dans une sous-collection métier peuvent déclarer leur parent sourcé dans
+le descripteur, par un motif complet avec un groupe `parent`. Pour `file_create`, seule
+la collection `galaris://processes/runs/<uuid>/attachments/` hérite ainsi du grant de son
+run exact. Une découverte, un autre run ou une cible externe n'accordent aucun droit.
+L'opération ne crée pas de grant durable supplémentaire ; Process conserve ses contrôles
+d'édition, de fin de run et de publication réservée au moteur pour les sorties typées.
+Goals, Tasks et définitions Process gardent leurs outils de création métier ; leurs
+snapshots ne deviennent pas des fichiers génériques modifiables.
+
 Le suivi périodique expose seulement le résumé de portée, tandis que le contrat complet
 reste dans `Task.data` et l'enveloppe du runtime. Le contrôle des ressources produites
 charge les provenances en lot et n'importe pas les historiques des tâches productrices.

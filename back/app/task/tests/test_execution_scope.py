@@ -35,6 +35,194 @@ async def scoped_task(committed_database):
         return task.id, agent.id
 
 
+async def _native_creation_server(task_id, agent_id, functions, management_scopes=None):
+    from sqlalchemy import select
+    from app.connection import Connection, ConnectionFunctionState, ConnectionParam
+    from app.tools import ToolModel, build_agent_galaris_fastmcp
+    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+
+    async with get_db_session() as db:
+        for code, names in functions.items():
+            tool = await db.scalar(select(ToolModel).where(ToolModel.code == code))
+            connection = Connection(agent_id=agent_id, tool_id=tool.id, active=True)
+            db.add(connection)
+            await db.flush()
+            db.add_all([ConnectionFunctionState(connection_id=connection.id, function_name=name,
+                state="enabled", enabled=True) for name in names])
+            if code in (management_scopes or {}):
+                db.add(ConnectionParam(connection_id=connection.id, param_name=MANAGEMENT_SCOPE_PARAM,
+                    param_value=management_scopes[code]))
+    async with get_db_session():
+        return await build_agent_galaris_fastmcp(agent_id, runtime="internal", task_id=task_id,
+            allowed_tool_names={name for names in functions.values() for name in names})
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scheme,content", [
+    ("document", "<h2>Synthetic report</h2><p>Preserved content.</p>"),
+    ("data", '{"synthetic": [1, false, "value"]}'),
+    ("file", "Synthetic standalone content"),
+])
+async def test_native_artifact_creation_with_task_preserves_content_and_domain(
+    scoped_task, monkeypatch, scheme, content,
+):
+    import base64
+    import json
+    from fastmcp import Client
+    from sqlalchemy import func, select
+    from app.agent.task_port import task_port
+    from app.dataset.models import Dataset
+    from app.document import Document
+
+    task_id, agent_id = scoped_task
+    monkeypatch.setattr(task_port, "record_scope_preflight", SqlAlchemyAgentTaskAdapter().record_scope_preflight)
+    async with get_db_session() as db:
+        before = [await db.scalar(select(func.count()).select_from(model)) for model in (Document, Dataset)]
+    server = await _native_creation_server(task_id, agent_id, {"file_sharing": ["file_create", "file_read"]})
+    async with Client(server) as client:
+        result = await client.call_tool("file_create", {"path": scheme + "://", "name": "Synthetic artifact",
+            "content": content}, raise_on_error=False)
+        assert not result.is_error, result
+        uri = json.loads(result.content[0].text)["uri"]
+        assert uri.startswith(scheme + "://")
+        read = await client.call_tool("file_read", {"uri": uri}, raise_on_error=False)
+        assert not read.is_error
+        payload = json.loads(read.content[0].text)
+        recovered = base64.b64decode(payload["content"]) if payload["encoding"] == "base64" else payload["content"].encode()
+        assert recovered == content.encode()
+    async with get_db_session() as db:
+        after = [await db.scalar(select(func.count()).select_from(model)) for model in (Document, Dataset)]
+        assert [after[i] - before[i] for i in range(2)] == [int(scheme == "document"), int(scheme == "data")]
+        assert not parse_scope((await db.get(Task, task_id)).data).grants
+
+
+@pytest.mark.asyncio
+async def test_goal_creation_with_task_needs_no_future_uri_and_rechecks_management(scoped_task, monkeypatch):
+    from fastmcp import Client
+    from sqlalchemy import func, select
+    from app.agent.task_port import task_port
+    from app.connection import Connection
+    from app.goal.models import Goal, GoalStatus
+    from app.tools import ToolModel
+
+    task_id, agent_id = scoped_task
+    monkeypatch.setattr(task_port, "record_scope_preflight", SqlAlchemyAgentTaskAdapter().record_scope_preflight)
+    server = await _native_creation_server(task_id, agent_id,
+        {"goal_management": ["goal_create"], "chat": []}, {"goal_management": "personal"})
+    async with get_db_session() as db:
+        chat_connection = await db.scalar(select(Connection).join(ToolModel).where(
+            Connection.agent_id == agent_id, ToolModel.code == "chat"))
+        user_id = (await db.get(Agent, agent_id)).user_id
+        before = await db.scalar(select(func.count()).select_from(Goal))
+    arguments = {"agent_id": agent_id, "referrer_connection_id": chat_connection.id,
+        "referrer_user_id": f"user:{user_id}", "referrer_display_name": "Synthetic supervisor",
+        "title": "Synthetic durable objective", "description": "<p>Synthetic ongoing work.</p>", "active": False}
+    async with Client(server) as client:
+        created = await client.call_tool("goal_create", arguments, raise_on_error=False)
+        assert not created.is_error, created
+        async with get_db_session() as db:
+            goal = await db.scalar(select(Goal).where(Goal.title == arguments["title"]))
+            assert goal.agent_id == agent_id and goal.status == GoalStatus.PAUSED
+            assert await db.scalar(select(func.count()).select_from(Goal)) == before + 1
+            assert not parse_scope((await db.get(Task, task_id)).data).grants
+            management = await db.scalar(select(Connection).join(ToolModel).where(
+                Connection.agent_id == agent_id, ToolModel.code == "goal_management"))
+            management.active = False
+        denied = await client.call_tool("goal_create", {**arguments, "title": "Denied synthetic Goal"}, raise_on_error=False)
+        assert denied.is_error
+    async with get_db_session() as db:
+        assert await db.scalar(select(func.count()).select_from(Goal)) == before + 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("collection", [False, True])
+async def test_native_file_creation_reaches_personal_skills_without_an_exact_uri_grant(
+    scoped_task, monkeypatch, tmp_path, collection,
+):
+    from fastmcp import Client
+    from sqlalchemy import select
+    from app.agent.task_port import task_port
+    from app.connection import Connection, ConnectionFunctionState, ConnectionParam
+    from app.skill import interface, storage
+    from app.skill.models import AgentSkill, Skill
+    from app.tools import ToolModel, build_agent_galaris_fastmcp
+    from app.tools.contracts import MANAGEMENT_SCOPE_PARAM
+
+    task_id, agent_id = scoped_task
+    monkeypatch.setattr(type(storage.settings), "GALARIS_SKILLS_ROOT", str(tmp_path / "skills"))
+    monkeypatch.setattr(task_port, "record_scope_preflight", SqlAlchemyAgentTaskAdapter().record_scope_preflight)
+    functions = {"skills": ["skills_list", "skill_read"], "file_sharing": ["file_create", "file_read"]}
+    async with get_db_session() as db:
+        task = await db.get(Task, task_id)
+        task.objective = "<p>Create a reusable personal procedure without accessing external services.</p>"
+        task.data = {"execution_scope": admitted_scope(task_id, task.objective).model_dump(mode="json")}
+        for code, names in functions.items():
+            tool = await db.scalar(select(ToolModel).where(ToolModel.code == code))
+            connection = Connection(agent_id=agent_id, tool_id=tool.id, active=True)
+            db.add(connection)
+            await db.flush()
+            db.add_all([ConnectionFunctionState(connection_id=connection.id, function_name=name,
+                state="enabled", enabled=True) for name in names])
+            if code == "skills":
+                skills_connection_id = connection.id
+                db.add(ConnectionParam(connection_id=connection.id, param_name=MANAGEMENT_SCOPE_PARAM,
+                    param_value="personal"))
+
+    root = f"galaris://skill/personnal/{agent_id}/synthetic-procedure/"
+    uri = root + "SKILL.md"
+    markdown = "---\nname: synthetic-procedure\ndescription: Synthetic reusable procedure.\n---\n# Procedure\nUse synthetic inputs.\n"
+    async with get_db_session():
+        server = await build_agent_galaris_fastmcp(agent_id, runtime="internal", task_id=task_id,
+            allowed_tool_names=set(sum(functions.values(), [])))
+    async with Client(server) as client:
+        assert {"file_create", "skill_read"} <= {tool.name for tool in await client.list_tools()}
+        arguments = {"path": root if collection else uri, "content": markdown}
+        if collection:
+            arguments["name"] = "SKILL.md"
+        created = await client.call_tool("file_create", arguments, raise_on_error=False)
+        assert not created.is_error, created
+        async with get_db_session() as db:
+            package = await interface.resolve_package("synthetic-procedure", actor_agent_id=agent_id,
+                owner_agent_id=agent_id)
+            assert package.uri == root
+            assert await db.scalar(select(AgentSkill.active).where(
+                AgentSkill.skill_id == package.id, AgentSkill.agent_id == agent_id)) is True
+            assert not parse_scope((await db.get(Task, task_id)).data).grants
+        read = await client.call_tool("skill_read", {"skill_id": package.id}, raise_on_error=False)
+        assert not read.is_error and read.data == markdown
+        duplicate = await client.call_tool("file_create", arguments, raise_on_error=False)
+        assert duplicate.is_error
+        invalid = await client.call_tool("file_create", {
+            "path": root.replace("synthetic-procedure", "invalid-procedure") + "SKILL.md",
+            "content": "Invalid skill without metadata",
+        }, raise_on_error=False)
+        assert invalid.is_error
+        # Even full Skills administration cannot turn a generic or foreign
+        # destination into ordinary private production for this Task.
+        async with get_db_session() as db:
+            parameter = await db.scalar(select(ConnectionParam).where(
+                ConnectionParam.connection_id == skills_connection_id,
+                ConnectionParam.param_name == MANAGEMENT_SCOPE_PARAM))
+            parameter.param_value = "all"
+        for target in ("galaris://skill/synthetic-procedure/SKILL.md",
+                       f"galaris://skill/personnal/{agent_id + 1}/synthetic-procedure/SKILL.md"):
+            refused = await client.call_tool("file_create", {"path": target, "content": markdown}, raise_on_error=False)
+            assert refused.is_error and "ScopePreflightRejected" in str(refused)
+        # Revocation after discovery must still block the domain mutation.
+        async with get_db_session() as db:
+            (await db.get(Connection, skills_connection_id)).active = False
+        revoked = await client.call_tool("file_create", {
+            "path": root + "references/notes.md", "content": "Synthetic reference",
+        }, raise_on_error=False)
+        assert revoked.is_error
+    async with get_db_session() as db:
+        assert await db.scalar(select(Skill.id).where(Skill.code == "invalid-procedure")) is None
+        task = await db.get(Task, task_id)
+        assert task.data["scope_preflights"][-1]["decision"] == "allow"
+    assert storage.read_file("synthetic-procedure", "SKILL.md", owner_agent_id=agent_id).content == markdown.encode()
+    assert not (tmp_path / "skills" / ".personal" / str(agent_id) / "synthetic-procedure" / "references" / "notes.md").exists()
+
+
 @pytest.mark.asyncio
 async def test_creation_inherits_source_scope_and_ignores_child_supplied_grants(scoped_task):
     root_id, agent_id = scoped_task

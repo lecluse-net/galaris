@@ -25,6 +25,63 @@ async def start_run(session, owner):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("state", ["sourced", "unsourced", "read_only", "terminal"])
+async def test_task_mcp_attachment_creation_checks_parent_scope_and_live_process_rights(
+    inference_db, committed_native, monkeypatch, state,
+):
+    import json
+    from fastmcp import Client
+    from sqlalchemy import select
+    from app.agent import admitted_scope
+    from app.agent.task_port import task_port
+    from app.connection import Connection, ConnectionFunctionState
+    from app.task import TaskCreate, task_service
+    from app.task.agent_adapter import SqlAlchemyAgentTaskAdapter
+    from app.tools import ToolModel, build_agent_galaris_fastmcp
+    from .test_native_bpmn import graph
+
+    db = inference_db
+    owner, reader = committed_native
+    definition = await create(actor_agent_id=owner.id, title="Synthetic attachment workflow", graph=graph())
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
+    await process_service.process_start_jobs(engine_code="galaris")
+    parent = f"galaris://processes/runs/{launched.run_id}"
+    actor = reader if state == "read_only" else owner
+    if state == "read_only":
+        await set_grant(definition.share_id, "agent", reader.id, False)
+    if state == "terminal":
+        (await db.get(ProcessRun, launched.run_id)).status = "success"
+    task = task_service.build(TaskCreate(agent_id=actor.id, label="Synthetic attachment",
+        objective=f"<p>Attach a synthetic report to <code>{parent if state != 'unsourced' else 'the selected run'}</code>.</p>"))
+    db.add(task)
+    await db.flush()
+    task.data = {"execution_scope": admitted_scope(task.id, task.objective).model_dump(mode="json")}
+    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "file_sharing"))
+    connection = Connection(agent_id=actor.id, tool_id=tool.id, active=True)
+    db.add(connection)
+    await db.flush()
+    functions = {"file_create", "file_read"}
+    db.add_all([ConnectionFunctionState(connection_id=connection.id, function_name=name,
+        state="enabled", enabled=True) for name in functions])
+    await db.commit()
+    monkeypatch.setattr(task_port, "record_scope_preflight", SqlAlchemyAgentTaskAdapter().record_scope_preflight)
+    server = await build_agent_galaris_fastmcp(actor.id, runtime="internal", task_id=task.id,
+        allowed_tool_names=functions)
+    await db.commit()
+    async with Client(server) as client:
+        result = await client.call_tool("file_create", {"path": parent + "/attachments/",
+            "name": "synthetic.txt", "content": "Synthetic report"}, raise_on_error=False)
+        assert result.is_error == (state != "sourced"), result
+        if not result.is_error:
+            uri = json.loads(result.content[0].text)["uri"]
+            assert uri.startswith(parent + "/attachments/")
+            read = await client.call_tool("file_read", {"uri": uri}, raise_on_error=False)
+            assert not read.is_error and json.loads(read.content[0].text)["content"] == "Synthetic report"
+    from app.process.run_data import run_files
+    assert len(await run_files(launched.run_id)) == int(state == "sourced")
+
+
+@pytest.mark.asyncio
 async def test_failed_integration_commit_rolls_back_business_data_and_run_receipt(
         inference_db, committed_native):
     session = inference_db

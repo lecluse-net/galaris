@@ -44,6 +44,14 @@ class EffectDescriptorV1(BaseModel):
     idempotence: Literal["read_only", "idempotent", "non_idempotent"] = "non_idempotent"
     receipt: Literal["resource", "message", "process", "unknown"] = "unknown"
     ordinary_creation_schemes: tuple[str, ...] = ()
+    ordinary_creation_prefixes: tuple[str, ...] = Field(default=(), description=(
+        "Private creation namespaces; {agent_id} is resolved only from the authenticated actor. "
+        "Prefixes must end with / to preserve namespace boundaries."
+    ))
+    creation_parent_patterns: tuple[str, ...] = Field(default=(), description=(
+        "Full-match creation destination patterns with a named parent group. "
+        "The exact captured parent must have a sourced grant for this capability."
+    ))
     domain_assigned_selection: bool = False
 
 

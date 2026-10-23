@@ -31,6 +31,56 @@ def test_ordinary_reads_and_creation_preserve_autonomy_without_publication_grant
     assert preflight(None, mutate, "file_write", {}).decision == "allow_and_record"
 
 
+@pytest.mark.parametrize("actor", [None, 0, 31])
+@pytest.mark.parametrize("target,private", [
+    ("galaris://skill/personnal/31/procedure/SKILL.md", True),
+    ("galaris://skill/personnal/31/procedure/", True),
+    ("galaris://skill/personnal/310/procedure/SKILL.md", False),
+    ("galaris://skill/personnal/32/procedure/SKILL.md", False),
+    ("galaris://skill/personnal/", False),
+    ("galaris://skill/procedure/SKILL.md", False),
+    ("galaris://task/new", False),
+    ("synthetic://external/procedure/SKILL.md", False),
+])
+def test_personal_creation_uses_server_identity_and_preserves_other_namespaces(actor, target, private):
+    from app.file_share.mcp import create_file
+
+    descriptor = create_file.__galaris_mcp_tool__.effect_descriptor
+    scope = admitted_scope(uuid4(), "<p>Create a reusable personal procedure.</p>")
+    decision = preflight(scope, descriptor, "file_create", {"path": target}, actor_agent_id=actor)
+    assert decision.decision == ("allow" if private and actor == 31 else "clarify")
+    assert decision.targets == (target,)
+    # Private creation must not silently authorize replacing an existing file.
+    mutation = descriptor.model_copy(update={"kind": "mutate", "capability": "file.write"})
+    assert preflight(scope, mutation, "file_write", {"path": target}, actor_agent_id=actor).decision == "clarify"
+
+
+@pytest.mark.parametrize("grant", ["run", "collection", "other_run", "none"])
+def test_run_attachment_creation_requires_its_exact_sourced_parent(grant):
+    from app.file_share.mcp import create_file
+
+    parent = f"galaris://processes/runs/{uuid4()}"
+    target = parent + "/attachments/"
+    source = {"run": parent, "collection": target,
+              "other_run": f"galaris://processes/runs/{uuid4()}", "none": ""}[grant]
+    scope = admitted_scope(uuid4(), f"<p>Prepare a report for <code>{source}</code>.</p>")
+    descriptor = create_file.__galaris_mcp_tool__.effect_descriptor
+    assert preflight(scope, descriptor, "file_create", {"path": target}).decision == (
+        "allow" if grant in {"run", "collection"} else "clarify")
+    # Naming a run permits no arbitrary child creation or change of its data.
+    assert preflight(scope, descriptor, "file_create", {"path": parent + "/data"}).decision == "clarify"
+    assert preflight(scope, descriptor, "file_create", {"path": target + "nested/"}).decision == "clarify"
+    if grant == "run":
+        write_only = scope.model_copy(update={"grants": tuple(
+            item.model_copy(update={"capability": "file.write"}) for item in scope.grants)})
+        assert preflight(write_only, descriptor, "file_create", {"path": target}).decision == "clarify"
+        mutation = descriptor.model_copy(update={"kind": "mutate", "capability": "file.write"})
+        assert preflight(scope, mutation, "file_write", {"path": target}).decision == "clarify"
+    external = "synthetic://external"
+    scope = admitted_scope(uuid4(), f"<p>Prepare a report for <code>{external}</code>.</p>")
+    assert preflight(scope, descriptor, "file_create", {"path": external + "/attachments/"}).decision == "clarify"
+
+
 def test_scope_amendment_keeps_requirements_and_only_adds_sourced_grants():
     scope = admitted_scope(uuid4(), "<p>Prepare the report.</p>")
     amended = amend_scope(scope, "<p>Send to synthetic://requested</p>", "galaris://task/amendment/verified")

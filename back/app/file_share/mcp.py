@@ -261,7 +261,10 @@ async def read_file(
 @mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="file_create",
-    effect_descriptor=EffectDescriptorV1(capability="file.create", kind="create", target_arguments=("path",), reversible=True, receipt="resource", ordinary_creation_schemes=("file", "document", "data", "console")),
+    effect_descriptor=EffectDescriptorV1(capability="file.create", kind="create", target_arguments=("path",),
+        reversible=True, receipt="resource", ordinary_creation_schemes=("file", "document", "data", "console"),
+        ordinary_creation_prefixes=("galaris://skill/personnal/{agent_id}/",),
+        creation_parent_patterns=(r"(?P<parent>galaris://processes/runs/[0-9a-fA-F-]{36})/attachments/",)),
     description=(
         "Create a new complete text or binary file and return its canonical URI. "
         "Use path='file://' plus name for an independent private managed file; its returned file://UUID "
@@ -281,9 +284,16 @@ async def read_file(
         "share both the page and Dataset explicitly. Source editing preserves this ordinary HTML. "
         "Use document://<uuid>/attachments/ plus name to attach a file to "
         "an editable document. Choose a destination scheme returned by file_schemes; console:// "
-        "is the local filesystem whenever it is advertised. With Gestion des compétences access, "
-        "create package files below "
-        "galaris://skill/<code>/. Creating a new skill starts with its valid SKILL.md. "
+        "is the local filesystem whenever it is advertised. With personal Skills management, create "
+        "your own skill at galaris://skill/personnal/<YOUR_AGENT_ID>/<code>/SKILL.md with valid UTF-8 "
+        "Markdown starting with YAML frontmatter name: <code> and description. File Sharing delegates "
+        "to Skills validation and live permissions; a new personal package is enabled for its owner only. "
+        "This private creation needs no pre-existing exact URI grant. Generic creation below "
+        "galaris://skill/<code>/ requires global Skills management and a sourced Task target. "
+        "For galaris://processes/runs/<uuid>/attachments/ plus name, a sourced grant for that exact "
+        "run or its attachments collection is required, along with live Process write access. "
+        "Goal, Task and Process definition snapshots remain read-only: use goal_create, task_run "
+        "or process_create for those business operations. "
         "Existing resources are never overwritten."
     ),
 )

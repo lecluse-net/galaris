@@ -267,6 +267,12 @@ génériques autorisés et ses personnels actifs ; `personal` pour gérer ses pr
 génériques ; `all` pour administrer tout le catalogue et toutes les autorisations. Les écritures
 exigent une connexion Compétences active. L'agent ne peut pas augmenter lui-même sa portée.
 `skill_read` lit le `SKILL.md` central ; les références et fichiers passent par File Sharing.
+Pour demander à un agent de créer sa propre compétence, décrivez la procédure souhaitée :
+il crée un `SKILL.md` valide avec `file_create` dans son espace personnel, sans devoir
+faire autoriser à l'avance l'URI d'un package qui n'existe pas encore. File Sharing délègue
+à Skills, qui vérifie la portée de gestion et active le package pour son seul propriétaire.
+Cette création privée n'autorise ni une publication générique ni l'accès aux services décrits
+dans la procédure.
 Un personnel utilise `galaris://skill/personnal/<agent_id>/<code>/` et reste privé : même un
 administrateur ne peut pas l'affecter à un autre agent. Le retrait explicite de propriété
 avec révision et identifiant d'opération le transforme en générique, sans activation automatique.
@@ -590,6 +596,10 @@ Demandez à l'agent de lancer le processus avec les informations et fichiers né
 Pour un processus interne, les pages servent à l'édition et au suivi ; le lancement passe
 par le Chat, sans formulaire de lancement manuel. Les activités humaines vous sollicitent
 dans la messagerie et leur réponse poursuit le run existant.
+
+Pour demander l'ajout d'un fichier à une exécution compatible, indiquez l'URI du run
+et le fichier souhaité. L'agent retrouve sa collection de pièces jointes à partir du run
+autorisé ; les droits du processus et l'état de l'exécution restent applicables.
 
 Le [guide des processus internes](internal-processes.md) détaille acteurs, variables,
 branches, données du run et contrôles. Pour préparer un logiciel externe, l'administrateur

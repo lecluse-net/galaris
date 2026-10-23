@@ -152,6 +152,10 @@ Each run owns business JSON in `process_runs.data` and file links in `process_ru
 No Dataset or Document is created. Data and attachments inherit the parent Process's
 existing read/edit policy. Historical v1 tasks can edit `galaris://processes/runs/<uuid>/data`
 with `expected_revision` and use `galaris://processes/runs/<uuid>/attachments/` for files.
+Within a Task, `file_create` on this collection accepts the exact run's sourced grant
+without requiring the user to name its subcollection URI in advance. Process permissions
+remain checked and terminal runs cannot receive files. For typed v2 runs, activities return
+their `output_files` to the engine instead of publishing directly.
 The engine preserves v1 task edits. Scheduler state and receipts remain separate from
 business variables. Prompts contain canonical URIs without transport tokens or URLs.
 The first execution failure prevents new

@@ -216,7 +216,13 @@ packages and active personal packages; `personal` to manage the agent's own pack
 `team` to also manage packages and generic permissions for agents in any of its teams;
 `all` to administer the entire catalogue and all permissions. Writes require an active Skills
 connection. Agents cannot increase their own scope. `skill_read` reads the central `SKILL.md`;
-references and other files use File Sharing. A personal package uses
+references and other files use File Sharing.
+To ask an agent to create its own skill, describe the desired procedure: it creates a valid
+`SKILL.md` with `file_create` in its personal namespace without requiring advance approval
+of a package URI that does not exist yet. File Sharing delegates to Skills, which checks the
+management scope and enables the package for its owner only. This private creation grants
+neither generic publication nor access to the services described in the procedure.
+A personal package uses
 `galaris://skill/personnal/<agent_id>/<code>/` and stays private: even an administrator cannot
 assign it to another agent. Explicit ownership release requires a revision and operation ID,
 turns it into a generic package and enables it for nobody. Replaying the operation preserves
@@ -474,6 +480,10 @@ The **Processes** page combines internal BPMN workflows and external workflows, 
 Ask the agent to launch a Process with the required information and files. Internal Process
 pages are for editing and monitoring; launch takes place through Chat without a manual launch
 form. Human activities ask through messaging, and an answer continues the existing run.
+
+To ask for a file to be added to a compatible execution, provide the run URI and the desired
+file. The agent resolves its attachments collection from the authorized run; Process
+permissions and the execution's current state still apply.
 
 The [internal Process guide](internal-processes.md) explains actors, variables, branches,
 run data and controls. Administrators integrating external software use the
