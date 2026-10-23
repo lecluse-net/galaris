@@ -15,7 +15,7 @@ from app.tools.authorization_models import ActionAuthorization
 from app.tools.models import Tool
 from core.database import get_db_session
 from bridge.mail import inbound, service
-from bridge.mail.contracts import MailMessageDetail
+from bridge.mail.contracts import MailMessageDetail, MailMessageRef, MailSearchPage, MailSearchQuery
 from bridge.mail.models import MailInboundReceipt
 from .test_chat_approvals import _setup_mail_chat
 from .test_messenger import _summary
@@ -40,6 +40,85 @@ async def inbox(committed_database, monkeypatch):
     monkeypatch.setattr(inbound.ImapClient, "get_message", read)
     monkeypatch.setattr(inbound.ImapClient, "get_summary", lambda _self, ref: _summary(ref.uid))
     return config, manager_id, outsider_id, read
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mailbox", ["INBOX", "inbox", "Sent", "Corbeille", "Archive", "INBOX/Archive"])
+async def test_only_inbox_search_results_enter_the_reception_journal(inbox, monkeypatch, mailbox):
+    config, _manager, _outsider, read = inbox
+    summary = _summary(121).model_copy(update={
+        "ref": MailMessageRef(mailbox=mailbox, uid_validity=9, uid=121).encode(),
+    })
+    monkeypatch.setattr(service.ImapClient, "search", lambda *_args: MailSearchPage(
+        mailbox=mailbox, uid_validity=9, messages=[summary],
+    ))
+    async with get_db_session() as db:
+        page = await service.search(config.agent_id, MailSearchQuery(mailbox=mailbox))
+        assert page.messages == [summary]
+        assert await db.scalar(select(func.count()).select_from(MailInboundReceipt)) == (
+            1 if mailbox.upper() == "INBOX" else 0
+        )
+        assert await db.scalar(select(func.count()).select_from(Task)) == 0
+        assert await db.scalar(select(func.count()).select_from(ActionAuthorization)) == 0
+    read.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mailbox", ["Sent", "Corbeille", "INBOX/Archive"])
+@pytest.mark.parametrize("operation", ["receive", "get", "attachment"])
+async def test_non_inbox_mail_cannot_be_processed_or_downloaded(inbox, monkeypatch, mailbox, operation):
+    config, _manager, _outsider, read = inbox
+    summary = _summary(122).model_copy(update={
+        "ref": MailMessageRef(mailbox=mailbox, uid_validity=9, uid=122).encode(),
+    })
+    headers, attachment = Mock(), Mock()
+    monkeypatch.setattr(inbound.ImapClient, "get_summary", headers)
+    monkeypatch.setattr(inbound.ImapClient, "get_attachment", attachment)
+    async with get_db_session() as db:
+        with pytest.raises(PermissionError, match="INBOX"):
+            if operation == "receive":
+                await inbound.receive(config, summary)
+            elif operation == "get":
+                await service.get_message(config.agent_id, summary.ref)
+            else:
+                await service.get_attachment(config.agent_id, summary.ref, "1")
+        assert await db.scalar(select(func.count()).select_from(MailInboundReceipt)) == 0
+        assert await db.scalar(select(func.count()).select_from(ActionAuthorization)) == 0
+        assert await db.scalar(select(func.count()).select_from(Task)) == 0
+    headers.assert_not_called()
+    read.assert_not_called()
+    attachment.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mailbox", ["Sent", "Corbeille"])
+@pytest.mark.parametrize("cached_body", [False, True])
+async def test_legacy_non_inbox_receipts_cannot_resume_processing(inbox, mailbox, cached_body):
+    config, _manager, _outsider, read = inbox
+    summary = _summary(123).model_copy(update={
+        "ref": MailMessageRef(mailbox=mailbox, uid_validity=9, uid=123).encode(),
+    })
+    async with get_db_session() as db:
+        await create_mail_contact(owner_agent_id=config.agent_id,
+            display_name="Synthetic Sender", email="sender@example.org")
+        row = await inbound.record_receipt(config, _summary(123), dispatch=True)
+        await inbound.authorize_receipt(row)
+        assert row.authorized_at is not None
+        # Keep a valid grant while reproducing an old receipt from another folder.
+        row.message_ref = summary.ref
+        row.summary = summary.model_dump(mode="json")
+        if cached_body:
+            row.content = {"body": "Synthetic previously read body"}
+        await db.commit()
+        await inbound.resume_receipts(config.connection_id)
+        await db.refresh(row)
+        assert row.status == "blocked"
+        assert row.read_at is None and row.admitted_at is None
+        with pytest.raises(PermissionError, match="INBOX"):
+            await service.get_message(config.agent_id, summary.ref)
+        assert await db.scalar(select(func.count()).select_from(ActionAuthorization)) == 0
+        assert await db.scalar(select(func.count()).select_from(Task)) == 0
+    read.assert_not_called()
 
 
 @pytest.mark.asyncio

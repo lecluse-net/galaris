@@ -26,6 +26,12 @@ Active Mail connection
 
 ## Reception and polling
 
+Inbound processing is restricted to the exact `INBOX` folder (case insensitive), excluding
+subfolders. Searches in other folders return their results without recording reception entries.
+Receipt creation, authorization, body reads and attachment downloads enforce this boundary
+before accessing content. It also applies to historical receipts and consent recovery: a receipt
+outside INBOX cannot trigger a Task, even if previously authorized.
+
 `poll_interval_s` is a parameter of the Mail Tool, configurable globally and overridable per
 connection unless a global value is imposed. It defaults to 60 seconds and is bounded between
 5 seconds and 24 hours. The first activation establishes a baseline on `UIDNEXT` without turning

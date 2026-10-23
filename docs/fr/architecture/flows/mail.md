@@ -26,6 +26,13 @@ Connexion Mail active
 
 ## Réception et polling
 
+Le traitement entrant est limité au dossier exact `INBOX` (sans distinction de casse), sans
+ses sous-dossiers. Les recherches dans les autres dossiers retournent uniquement leurs résultats
+sans les enregistrer comme réceptions. La création d'un reçu, l'autorisation, la lecture du corps
+et des pièces jointes vérifient cette limite avant tout accès au contenu. Elle s'applique aussi
+aux reçus historiques et à leur reprise après accord ; un ancien reçu hors INBOX ne peut pas
+déclencher de Task, même s'il avait déjà été autorisé.
+
 `poll_interval_s` est un paramètre du Tool Mail, configurable globalement et surchargeable par
 connexion sauf lorsqu’une valeur globale est imposée. Il vaut 60 secondes par défaut et est borné
 entre 5 secondes et 24 heures. La première activation établit une baseline sur `UIDNEXT` sans

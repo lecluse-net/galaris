@@ -16,6 +16,11 @@ persisted before cursor advancement. Message bodies and attachments remain on IM
 processing is authorized. The agent's canonical Contacts, reached through `app.contact`,
 provide exact email identity matching; display names and other agents' contacts do not grant trust.
 
+Only the exact INBOX folder, case insensitive and excluding subfolders, is eligible for
+reception and processing. Searches in other folders return headers without creating inbound
+receipts. Body reads, attachment downloads and authorization reject non-INBOX references,
+including historical receipts recovered after consent. Search discovery does not imply reception.
+
 `mail_process` is a native prepared capability governed by existing Tool/connection function
 policies. Its software default asks for unknown senders and accepts existing contacts.
 Explicit Ask applies to every sender; Enabled accepts all and Disabled blocks processing.
@@ -56,3 +61,5 @@ journeys exercise approval and retry on mobile and desktop, with inert content a
 viewers. Assembled application scenarios cover reception and existing outbound approval.
 The managed MCP regression includes consent tracking, fast decisions, suspension, domain
 completion before Task resumption, exact attempt renewal and denied/absent waiter access.
+Folder regressions distinguish INBOX from Sent, Trash, Archive and subfolders, and reject
+historical authorized non-INBOX receipts before content access or Task creation.

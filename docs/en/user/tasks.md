@@ -228,7 +228,10 @@ The **mail_process** function uses the same global and local policies as other f
 **Blocked** prevents processing. Without an explicit policy, contacts are accepted and unknown
 senders require consent. **Always process emails** enables the function only on this agent’s
 connection; revoke it in Permissions. Sending permissions remain independent of reading and
-processing permission. The journal covers newly observed incoming mail and mail discovered by
+processing permission. Only inbox (`INBOX`) messages and their attachments can be processed,
+read or admitted as Tasks. Searches in Sent, Trash, Archive or subfolders may return headers,
+but create no reception entry or processing request. Historical entries outside INBOX cannot
+resume processing. The journal covers newly observed incoming mail and INBOX mail discovered by
 tools; startup preserves the existing cursor and does not replay old mailbox contents.
 
 Essential information may be missing: recipient, file, period, authorization, or an irreversible choice. The Agent must then ask a short question and wait rather than guess. A question is a valid result of the current turn; reply in the same conversation to continue.

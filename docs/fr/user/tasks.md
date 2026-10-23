@@ -257,8 +257,12 @@ y compris ceux des contacts ; **Bloqué** interdit le traitement. Sans règle ex
 sont admis et les inconnus demandent un accord. **Toujours traiter les mails** active cette fonction
 uniquement pour la connexion de cet agent ; révoquez cet accord dans Permissions.
 Les autorisations d’envoi restent indépendantes du droit de lire et traiter le mail.
-Le journal couvre les nouveaux mails observés par l’écoute et les mails retrouvés par les outils ;
-le démarrage conserve le curseur existant et ne relance pas les anciens mails de la boîte.
+Seuls les mails de la boîte de réception (`INBOX`) peuvent être traités, lus ou admis en tâche,
+y compris leurs pièces jointes. Une recherche dans Envoyés, Corbeille, Archives ou un sous-dossier
+peut retourner des en-têtes, mais ne crée aucune réception ni demande de traitement.
+Les anciennes entrées hors INBOX ne peuvent plus reprendre leur traitement. Le journal couvre
+les nouveaux mails observés par l’écoute et les mails INBOX retrouvés par les outils ; le démarrage
+conserve le curseur existant et ne relance pas les anciens mails de la boîte.
 
 Une information essentielle peut manquer : destinataire, fichier, période, autorisation ou
 choix irréversible. L’agent doit alors poser une question courte et attendre au lieu de

@@ -136,7 +136,8 @@ async def search(agent_id: int, query: MailSearchQuery) -> MailSearchPage:
     from .inbound import record_receipt
 
     for summary in page.messages:
-        await record_receipt(config, summary)
+        if MailMessageRef.decode(summary.ref).mailbox.upper() == "INBOX":
+            await record_receipt(config, summary)
     return page
 
 

@@ -35,11 +35,16 @@ PROCESS_REASON = "Email processing requires consent unless its sender is already
 _CONTEXT_PREFIX = "mail-inbound"
 
 
+def _require_inbox(message_ref: str) -> None:
+    if MailMessageRef.decode(message_ref).mailbox.upper() != "INBOX":
+        raise PermissionError("Only messages in INBOX can be processed")
+
+
 async def record_receipt(
     config: MailConnectionConfig, summary: MailMessageSummary, *, dispatch: bool = False,
 ) -> MailInboundReceipt:
     """Deduplicate before the poll cursor advances; receipt does not read the message."""
-    MailMessageRef.decode(summary.ref)
+    _require_inbox(summary.ref)
     db = get_db()
     await db.execute(insert(MailInboundReceipt).values(
         id=uuid4(), connection_id=config.connection_id, agent_id=config.agent_id,
@@ -88,6 +93,7 @@ async def _runtime_waiter(agent_id: int, key: str, authorization_id: UUID, paren
 
 async def authorize_receipt(row: MailInboundReceipt) -> None:
     """Grant this message only; explicit Ask/Blocked policies take precedence over contacts."""
+    _require_inbox(row.message_ref)
     db = get_db()
     if row.connection_id is None or row.agent_id is None:
         raise PermissionError("Mail connection is no longer available")
@@ -153,6 +159,7 @@ async def authorize_receipt(row: MailInboundReceipt) -> None:
 async def ensure_readable(
     config: MailConnectionConfig, message_ref: str, *, parent_context: str | None = None,
 ) -> MailInboundReceipt:
+    _require_inbox(message_ref)
     if parent_context is None and (execution := current_tool_execution()) is not None:
         # Covers generic file_* tools that materialize a Mail attachment.
         parent_context = execution.authorization_context
