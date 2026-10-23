@@ -617,9 +617,10 @@ function clearDirectFormat(): void {
     tr.removeMark(selection.from, selection.to, mark); tr.removeStoredMark(mark)
   }
   tr.doc.nodesBetween(selection.from, selection.to, (node, pos) => {
-    if (['paragraph', 'heading'].includes(node.type.name)) tr.setNodeMarkup(pos, undefined, { ...node.attrs, editorialStyle: null, textAlign: null })
+    if (node.attrs.editorialStyle || node.attrs.textAlign) tr.setNodeMarkup(pos, undefined, { ...node.attrs, editorialStyle: null, textAlign: null })
   })
   current.view.dispatch(tr)
+  current.view.focus()
 }
 function editorKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
@@ -901,8 +902,8 @@ function action(key: string, value?: string): void {
   if (!current.view.hasFocus()) chain.focus()
   switch (key) {
     case 'bold': chain.toggleBold().run(); break; case 'italic': chain.toggleItalic().run(); break; case 'underline': chain.toggleUnderline().run(); break; case 'strike': chain.toggleStrike().run(); break; case 'subscript': chain.toggleSubscript().run(); break; case 'superscript': chain.toggleSuperscript().run(); break; case 'shortcuts.inlineCode': chain.toggleCode().run(); break
-    case 'undo': chain.undo().run(); break; case 'redo': chain.redo().run(); break; case 'removeFormat': chain.unsetAllMarks().clearNodes().run(); break
-    case 'shortcuts.clearDirectFormat': clearDirectFormat(); break
+    case 'undo': chain.undo().run(); break; case 'redo': chain.redo().run(); break
+    case 'removeFormat': case 'shortcuts.clearDirectFormat': clearDirectFormat(); break
     case 'shortcuts.insertText': if (value) chain.insertContent({ type: 'text', text: value }).run(); break
     case 'shortcuts.clearList': if (current.isActive('orderedList')) chain.toggleOrderedList().run(); else if (current.isActive('bulletList')) chain.toggleBulletList().run(); break
     case 'shortcuts.table': if (current.isActive('table')) showDialog('tableProperties'); else action('insertTable'); break

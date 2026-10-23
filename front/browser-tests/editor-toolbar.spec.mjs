@@ -297,26 +297,39 @@ for (const profile of ['document', 'rich-text']) test(`${profile} toolbar stays 
 
 test('formatting can be removed and restored by keyboard across editor resizing', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
+  const content = '<h2 style="color: #ff0000; text-align: center"><strong>Formatted heading</strong></h2>'
+    + '<blockquote class="galaris-callout galaris-callout-info" style="color: #ff0000"><p><em>Callout</em></p></blockquote>'
+    + '<ol start="3" style="color: #ff0000"><li><p><span style="font-family: Georgia; font-size: 24px; color: #ff0000; background-color: #ffff00">List item</span></p></li></ol>'
+    + '<p><a href="https://example.org"><u>Linked text</u></a></p>'
+    + '<table><tbody><tr><td colspan="2" style="background-color: #ffff00"><p><mark style="background-color: #ffff00">Cell</mark></p></td></tr></tbody></table>'
   await mount(page, 'core/util/components/RichTextEditor.vue', {
-    props: { profile: 'document', modelValue: '<p><strong>Formatted text</strong></p>', ariaLabel: 'Document' },
+    props: { profile: 'document', modelValue: content, ariaLabel: 'Document' },
   })
   const toolbar = page.getByRole('toolbar', { name: 'Content', exact: true }).and(page.locator('.editorial-toolbar'))
   const editor = page.getByRole('textbox', { name: 'Document', exact: true })
   await editor.locator('strong').click()
+  const original = await editorHtml(page)
   const removeFormat = toolbar.getByRole('button', { name: 'Remove format', exact: true })
   await page.keyboard.press('Control+a')
   await expect(removeFormat).toBeEnabled()
   await removeFormat.focus()
   await page.keyboard.press('Enter')
-  await expect(editor.locator('strong')).toHaveCount(0)
-  await expect(editor).toHaveText('Formatted text')
+  await expect(editor.locator('strong, em, u, mark')).toHaveCount(0)
+  await expect(editor.locator('h2')).toHaveText('Formatted heading')
+  await expect(editor.locator('blockquote.galaris-callout-info')).toHaveText('Callout')
+  await expect(editor.locator('ol[start="3"] li')).toHaveText('List item')
+  await expect(editor.locator('a')).toHaveAttribute('href', 'https://example.org')
+  await expect(editor.locator('td[colspan="2"]')).toHaveText('Cell')
+  const cleaned = await editorHtml(page)
+  expect(cleaned).not.toContain('style=')
   await page.setViewportSize({ width: 1920, height: 1000 })
   await toolbar.getByRole('button', { name: 'Fullscreen', exact: true }).click()
   await toolbar.getByRole('button', { name: 'Undo', exact: true }).focus()
   await page.keyboard.press('Enter')
-  await expect(editor.locator('strong')).toHaveText('Formatted text')
+  await expect.poll(() => editorHtml(page)).toBe(original)
   await toolbar.getByRole('button', { name: 'Fullscreen', exact: true }).click()
   await page.setViewportSize({ width: 390, height: 844 })
-  await expect(editor.locator('strong')).toHaveText('Formatted text')
-  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)).toBe('<p><strong>Formatted text</strong></p>')
+  await expect.poll(() => editorHtml(page)).toBe(original)
+  await page.evaluate(value => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: { profile: 'document', modelValue: value } }), cleaned)
+  await expect.poll(() => editorHtml(page)).toBe(cleaned)
 })
