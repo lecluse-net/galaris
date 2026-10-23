@@ -8,8 +8,15 @@ from pydantic import ValidationError
 
 from app.file_share import resource_service as files
 from app.file_share.resource_contracts import ResourceContext
-from app.memory import document_service, service
-from app.memory.schemas import DocumentLibraryRequest, MemoryGrantUpdate, MemoryItemUpdate, MemoryPayload, MemorySearchRequest, MemoryGraphRootsRequest
+from app.memory import service
+from app.document import document_service
+from app.document import resource_service as documents, DocumentConflictError
+from app.document.schemas import DocumentUpdate, DocumentPayload
+from app.document.tests.legacy_fixtures import legacy_dataset
+from app.memory.tests.document_fixtures import project_document
+from app.memory.schemas import MemoryItemUpdate, MemoryPayload, MemorySearchRequest, MemoryGraphRootsRequest
+from app.document.schemas import DocumentGrantUpdate
+from app.document.schemas import DocumentLibraryRequest
 from app.dataset import service as datasets
 
 
@@ -95,16 +102,17 @@ async def test_invalid_dataset_never_creates_or_replaces_a_revision(agents, memo
 async def test_legacy_dataset_type_is_fixed_and_stays_out_of_the_document_library(agents, memory_storage):
     owner, _ = agents
     html = await document_service.create_document(owner_agent_id=owner.id, title="A report", content="<p>Report</p>", task_id=None)
-    dataset = await document_service.create_document(owner_agent_id=owner.id, title="Z scenarios", content='{"amount":1200}', task_id=None, document_type="dataset")
+    dataset = await legacy_dataset(owner_agent_id=owner.id, title="Z scenarios", content='{"amount":1200}')
+    await project_document(html.id)
     assert html.document_type == "html"
     for item, media, content in [(html, "application/json", "{}"), (dataset, "text/html", "<p>Invalid</p>")]:
-        with pytest.raises(service.MemoryConflictError):
-            await service.update_item(item.id, MemoryItemUpdate(expected_revision=1, media_type=media, payload=MemoryPayload(text=content)), actor_agent_id=owner.id)
+        with pytest.raises(DocumentConflictError):
+            await documents.update_item(item.id, DocumentUpdate(expected_revision=1, media_type=media, payload=DocumentPayload(text=content)), actor_agent_id=owner.id)
         with pytest.raises(ValidationError):
             MemoryItemUpdate.model_validate({"document_type": "html" if item == dataset else "dataset"})
-    page = await service.browse_document_library(DocumentLibraryRequest(sort_by="document_type"), managed_agent_ids=frozenset({owner.id}))
+    page = await documents.browse_document_library(DocumentLibraryRequest(sort_by="document_type"), managed_agent_ids=frozenset({owner.id}))
     assert [entry.item.id for entry in page.entries] == [html.id]
-    filtered = await service.browse_document_library(DocumentLibraryRequest(document_type="dataset"), managed_agent_ids=frozenset({owner.id}))
+    filtered = await documents.browse_document_library(DocumentLibraryRequest(document_type="dataset"), managed_agent_ids=frozenset({owner.id}))
     assert filtered.total == 0
     assert filtered.entries == []
     searched = await service.search_items(MemorySearchRequest(agent_id=owner.id, query="", node_kinds=["document"]))
@@ -112,7 +120,7 @@ async def test_legacy_dataset_type_is_fixed_and_stays_out_of_the_document_librar
     graph = await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=owner.id))
     assert html.id in {entry.id for entry in graph.nodes}
     assert dataset.id not in {entry.id for entry in graph.nodes}
-    updated = await service.update_item(dataset.id, MemoryItemUpdate(title="Renamed scenarios", keywords=["finance"]), actor_agent_id=owner.id)
+    updated = await documents.update_item(dataset.id, DocumentUpdate(title="Renamed scenarios", keywords=["finance"]), actor_agent_id=owner.id)
     assert updated.revision == 1
     assert updated.document_type == "dataset"
 
@@ -127,13 +135,13 @@ async def test_document_type_option_is_rejected_outside_document_creation(agents
 
 @pytest.mark.parametrize("source", [b"null", b"true", b"42", b'"value"', b"[1,2]", b"{}"])
 def test_datasets_accept_every_json_root_type(source):
-    from app.memory.document_types import validate_dataset
+    from app.document.document_types import validate_dataset
 
     validate_dataset(source)
 
 
 def test_dataset_limit_rejects_oversized_json():
-    from app.memory.document_types import validate_dataset
+    from app.document.document_types import validate_dataset
 
     with pytest.raises(ValueError, match="exceeds"):
         validate_dataset(b'"' + b"x" * 2_000_000 + b'"')

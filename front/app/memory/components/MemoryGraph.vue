@@ -340,7 +340,7 @@ import MemoryGraphNodeDetail from './MemoryGraphNodeDetail.vue'
 import { memoryService } from '../services/memoryService'
 import { graphBranches, GraphBranchLayout, BRANCH_OPEN_ZOOM, BRANCH_CLOSE_ZOOM } from '../graphBranches'
 import { GraphThumbnails, type GraphThumbnailCandidate } from '../graphThumbnails'
-import { onThumbnailReady } from '../thumbnailEvents'
+import { onThumbnailReady } from '@/core/util'
 import { GraphStatePersistence, type GraphPreferences, type GraphContext } from '../graphState'
 import type { MemoryGraphScene, Graph3dCamera, Graph3dPreview } from '../graph3dScene'
 import type { Graph3dLayoutResult, GraphPoint3d } from '../graph3dLayout'
@@ -1519,6 +1519,7 @@ watch(
 onMounted(() => {
   websocket.createWebsocket()
   websocket.onEvent('memory', 'invalidate', invalidateAccess)
+  for (const action of ['update', 'delete', 'invalidate']) websocket.onEvent('document', action, invalidateAccess)
   websocket.onConnect(onGraphReconnect)
   void initializeRenderer()
   resizeObserver = new ResizeObserver(resizeChart)
@@ -1549,6 +1550,7 @@ onUnmounted(() => {
   if (thumbnailPaintTimer !== null) clearTimeout(thumbnailPaintTimer)
   if (thumbnailFrame !== null) cancelAnimationFrame(thumbnailFrame)
   websocket.offEvent('memory', 'invalidate', invalidateAccess)
+  for (const action of ['update', 'delete', 'invalidate']) websocket.offEvent('document', action, invalidateAccess)
   websocket.offConnect(onGraphReconnect)
   loadGeneration += 1
   rootController?.abort()

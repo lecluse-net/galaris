@@ -8,7 +8,6 @@ from uuid import UUID
 from urllib.parse import unquote, urlsplit
 
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from core.database import get_db
 from core.util import attachment_reference, convert_to_html, visible_text
@@ -16,11 +15,12 @@ from core.util import attachment_reference, convert_to_html, visible_text
 from . import service
 from .contracts import SourceMemoryDocument
 from .document_structure import sync_document_structure
-from .models import DocumentAttachment, MemoryItem, MemoryRevision
+from .models import MemoryItem, MemoryRevision
+from app.document import Document, DocumentAttachment, DocumentPermissionError, resource_service as documents
 from .safety import assert_safe_text
 from .semantic_index import stage_embedding_refresh
-from .storage import get_storage
-from .inline_content import prepare_content
+from core.storage import get_storage
+from core.storage import prepare_content
 from .urls import associate_memory_url
 
 
@@ -57,12 +57,15 @@ async def record_attachment_description(
     document_id, attachment_id = reference
     db = get_db()
     # Serialize against removal, ownership changes and the document's ACL edits.
-    document = await db.scalar(select(MemoryItem).options(selectinload(MemoryItem.grants)).where(
-        MemoryItem.id == document_id, MemoryItem.node_kind == "document",
+    document = await db.scalar(select(Document).where(
+        Document.id == document_id,
     ).with_for_update().execution_options(populate_existing=True))
     if document is None:
         raise service.MemoryNotFoundError("Document not found")
-    await service.assert_item_access(document, agent_id)
+    try:
+        await documents.assert_item_access(document, agent_id)
+    except DocumentPermissionError as exc:
+        raise service.MemoryPermissionError(str(exc)) from exc
     await sync_document_structure(document)
     record = await db.scalar(select(DocumentAttachment).where(
         DocumentAttachment.id == attachment_id,

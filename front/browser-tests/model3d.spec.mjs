@@ -9,7 +9,7 @@ for (const surface of ['document', 'message', 'resource']) {
   test(`${surface} 3D preview renders geometry, supports camera navigation and cleans up`, async ({ page }) => {
     // Software WebGL captures share CPU with the parallel validation suites.
     test.setTimeout(60_000)
-    if (surface === 'document') await page.route('**/api/memory/documents/document-1/attachments/model-1/thumbnail?*', async route => {
+    if (surface === 'document') await page.route('**/api/documents/document-1/attachments/model-1/thumbnail?*', async route => {
       const data = await page.evaluate(async cube => {
         const { createModelThumbnail } = await import('/core/util/model3dRuntime.ts')
         const image = await createModelThumbnail({ key: 'server-fixture', name: 'cube.obj', mediaType: 'model/obj', load: async () => new Blob([cube]) }, new AbortController().signal)
@@ -18,12 +18,12 @@ for (const surface of ['document', 'message', 'resource']) {
       }, cube)
       await route.fulfill({ contentType: 'image/png', body: Buffer.from(data, 'base64') })
     })
-    await page.route('**/api/memory/documents/document-1/attachments/model-1?*', route => route.fulfill({ contentType: 'model/obj', body: cube }))
+    await page.route('**/api/documents/document-1/attachments/model-1?*', route => route.fulfill({ contentType: 'model/obj', body: cube }))
     await page.route('**/api/chat/rooms/room-1/files/model-1*', route => route.fulfill({ contentType: 'model/obj', body: cube }))
     await page.route('**/api/chat/rooms/room-1/messages/message-1/previews/content?*', route => route.fulfill({ contentType: 'model/obj', body: cube }))
     await jsonRoute(page, /\/previews(?:\?.*)?$/, [{ uri: file.uri, kind: 'file', title: file.name, subtitle: '', description: '', media_type: file.mime_type, content: null, content_format: 'text', truncated: false, image_available: false, download_available: true, open_mode: 'inline', external_url: null, embed_url: null, metadata: {} }])
     await jsonRoute(page, '**/api/chat/rooms/room-1/speech/status*', { available_agent_ids: [] })
-    const component = surface === 'document' ? 'app/memory/components/DocumentAttachments.vue' : `app/chat/components/${surface === 'message' ? 'MessageTimeline' : 'MessageResourcePreviews'}.vue`
+    const component = surface === 'document' ? 'app/document/components/DocumentAttachments.vue' : `app/chat/components/${surface === 'message' ? 'MessageTimeline' : 'MessageResourcePreviews'}.vue`
     const props = surface === 'document'
       ? { documentId: 'document-1', agentId: 1, attachments: [file] }
       : surface === 'resource' ? { roomId: 'room-1', messageId: 'message-1' }
@@ -96,11 +96,11 @@ for (const surface of ['document', 'message', 'resource']) {
 test('Memory 3D thumbnails reopen from the server without downloading or rendering the model', async ({ page }) => {
   let reads = 0
   const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX9sAAAAASUVORK5CYII=', 'base64')
-  await page.route('**/api/memory/documents/document-1/attachments/model-1/thumbnail?*', async route => {
+  await page.route('**/api/documents/document-1/attachments/model-1/thumbnail?*', async route => {
     reads++
     await route.fulfill({ contentType: 'image/png', body: image })
   })
-  const component = 'app/memory/components/DocumentAttachments.vue'
+  const component = 'app/document/components/DocumentAttachments.vue'
   const props = { documentId: 'document-1', agentId: 1, attachments: [file] }
   await mount(page, component, { props })
   await expect(page.locator('.model3d-thumbnail img')).toBeVisible()

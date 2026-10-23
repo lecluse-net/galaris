@@ -13,9 +13,9 @@ test('Memory 3D attachment thumbnail persists across document reopening in the a
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   let downloads = 0
   page.on('request', request => {
-    if (new URL(request.url()).pathname === `/api/memory/documents/${fixture.model_document_id}/attachments/${fixture.model_attachment_id}`) downloads++
+    if (new URL(request.url()).pathname === `/api/documents/${fixture.model_document_id}/attachments/${fixture.model_attachment_id}`) downloads++
   })
-  const path = `/memory/documents?document_id=${fixture.model_document_id}`
+  const path = `/documents?document_id=${fixture.model_document_id}`
   await errors.settle()
   await page.goto(path)
   const image = page.locator('.model3d-thumbnail img')

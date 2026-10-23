@@ -1,3 +1,9 @@
+from __future__ import annotations
+from app.document import resource_service as documents
+from app.memory.tests.document_fixtures import create_indexed_attachment
+from app.document.schemas import DocumentPayload
+from app.document.schemas import DocumentItemCreate
+from app.memory.tests.document_fixtures import create_document_reference
 """Dream and Memory reuse durable derivatives without re-rendering or weakening ACLs."""
 
 from unittest.mock import AsyncMock
@@ -9,7 +15,8 @@ from sqlalchemy import select
 from app.dream.mechanisms.file_thumbnails import file_thumbnails_mechanism as mechanism
 from app.dream import service as receipts
 from app.dream.models import DreamReceipt
-from app.memory import service, document_attachment_service, document_thumbnail_service
+from app.memory import service
+from app.document import document_attachment_service, document_thumbnail_service
 from app.memory.schemas import MemoryItemCreate, MemoryPayload
 from core.preview import thumbnails
 
@@ -18,11 +25,11 @@ from core.preview import thumbnails
 async def test_dream_attachment_thumbnail_survives_reopening_and_checks_access(agents, memory_storage, tmp_path, monkeypatch, db):
     owner, peer = agents
     monkeypatch.setattr(type(thumbnails.settings), 'GALARIS_THUMBNAIL_ROOT', str(tmp_path / 'cache'))
-    item, _ = await service.create_item(MemoryItemCreate(
+    item, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, title='Synthetic model',  node_kind='document',
-        media_type='text/html', payload=MemoryPayload(text='<p>Model</p>'),
+        media_type='text/html', payload=DocumentPayload(text='<p>Model</p>'),
     ))
-    attachment = await document_attachment_service.add_document_attachment_bytes(
+    attachment = await create_indexed_attachment(
         item.id, name='triangle.obj', media_type='model/obj',
         content=b'v -1 -1 0\nv 1 -1 0\nv 0 1 0\nf 1 2 3\n', actor_agent_id=owner.id,
     )
@@ -44,7 +51,7 @@ async def test_dream_attachment_thumbnail_survives_reopening_and_checks_access(a
     assert await read(item.id, attachment.id, actor_agent_id=owner.id) == png
     assert await read(item.id, attachment.id, actor_agent_id=owner.id) == png
     renderer.assert_awaited_once()
-    with pytest.raises(service.MemoryPermissionError):
+    with pytest.raises(documents.DocumentPermissionError):
         await read(item.id, attachment.id, actor_agent_id=peer.id)
     record = await db.scalar(select(DreamReceipt).where(DreamReceipt.id == claim.receipt_id))
     assert record.status == 'success' and record.cost == 0
@@ -53,11 +60,11 @@ async def test_dream_attachment_thumbnail_survives_reopening_and_checks_access(a
 @pytest.mark.asyncio
 async def test_thumbnail_source_removed_after_claim_is_skipped(agents, memory_storage, db):
     owner, _ = agents
-    item, _ = await service.create_item(MemoryItemCreate(
+    item, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, title='Synthetic source',  node_kind='document',
-        media_type='text/html', payload=MemoryPayload(text='<p>Attachment</p>'),
+        media_type='text/html', payload=DocumentPayload(text='<p>Attachment</p>'),
     ))
-    attachment = await document_attachment_service.add_document_attachment_bytes(
+    attachment = await create_indexed_attachment(
         item.id, name='notes.txt', media_type='text/plain', content=b'Synthetic notes', actor_agent_id=owner.id,
     )
     claim = await mechanism.claim_one()

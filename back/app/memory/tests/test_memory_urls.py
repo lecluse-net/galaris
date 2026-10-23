@@ -1,3 +1,6 @@
+from __future__ import annotations
+from app.memory.tests.document_fixtures import finish_document_deletion
+from app.document import resource_service as documents
 """Memory locations have one durable relation, independent of file format."""
 
 import hashlib
@@ -211,7 +214,7 @@ async def test_native_resource_deletion_removes_linked_memory_and_preserves_othe
     await db.commit()
     if kind == "document":
         from uuid import UUID
-        await service.delete_document(UUID(uri.removeprefix("document://")), actor_agent_id=owner.id)
+        await finish_document_deletion(UUID(uri.removeprefix("document://")), actor_agent_id=owner.id)
     else:
         await resource_service.resource_delete(ctx, uri)
     assert await service.item_record(linked.id) is None

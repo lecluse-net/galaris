@@ -1,3 +1,9 @@
+from __future__ import annotations
+from app.document import resource_service as documents
+from app.document import Document
+from app.document.schemas import DocumentPayload
+from app.document.schemas import DocumentItemCreate
+from app.memory.tests.document_fixtures import create_document_reference
 from app.share import ShareGrant
 from app.memory.models import MemoryItem
 """Foreground Dream actions preserve ACLs and concurrent user edits."""
@@ -29,8 +35,9 @@ async def test_manual_thumbnail_replaces_existing_cache_and_preserves_it_on_fail
 ):
     from PIL import Image
     from core.preview import thumbnails
-    from app.memory import document_thumbnail_service as capture
-    from app.memory.schemas import DocumentThumbnailRender, MemoryItemCreate, MemoryPayload
+    from app.document import document_thumbnail_service as capture
+    from app.memory.schemas import MemoryItemCreate, MemoryPayload
+    from app.document.schemas import DocumentThumbnailRender
 
     owner = agents[0]
     owner_id, peer_id = owner.id, agents[1].id
@@ -49,18 +56,19 @@ async def test_manual_thumbnail_replaces_existing_cache_and_preserves_it_on_fail
             await db.flush()
             human_id = human.id
             scope = AgentManagementScope(human_id, frozenset({owner_id}))
-        item, _ = await service.create_item(MemoryItemCreate(
+        item, _ = await create_document_reference(DocumentItemCreate(
             owner_agent_id=owner.id, node_kind="document", title="Synthetic illustrated document",
-             media_type="text/html", payload=MemoryPayload(text="<h1>Synthetic report</h1>"),
+             media_type="text/html", payload=DocumentPayload(text="<h1>Synthetic report</h1>"),
         ), owner_user_id=human_id)
         actor = owner_id
         if human_id is not None:
-            from app.memory.schemas import MemoryGrantUpdate
+            from app.document.schemas import DocumentGrantUpdate
             actor = HumanActor(human_id)
-            await service.set_item_grant(item.id, owner_id, MemoryGrantUpdate(can_write=False), actor_agent_id=actor)
+            await documents.set_item_grant(item.id, owner_id, DocumentGrantUpdate(can_write=False), actor_agent_id=actor)
         await db.commit()
         identity = item.id
-        snapshot = DocumentThumbnailRender(html="<h1>Synthetic report</h1>", revision=item.revision, lock_version=item.lock_version)
+        canonical = await db.get(Document, identity)
+        snapshot = DocumentThumbnailRender(html="<h1>Synthetic report</h1>", revision=canonical.revision, lock_version=canonical.lock_version)
         renderer = AsyncMock(return_value=b"synthetic pdf")
         monkeypatch.setattr(capture, "render_html_pdf", renderer)
         monkeypatch.setattr(capture, "_printed_document_thumbnail", lambda _: renderer.image)
@@ -95,7 +103,7 @@ async def test_manual_thumbnail_replaces_existing_cache_and_preserves_it_on_fail
     assert sorted(receipt.status for receipt in receipts) == ["error", "success"]
     if snapshot is not None:
         snapshot.revision += 1
-        with pytest.raises(MemoryConflictError):
+        with pytest.raises(documents.DocumentConflictError):
             await manual.run_action(identity, owner_id, "thumbnail", scope, snapshot=snapshot)
     with pytest.raises((MemoryPermissionError, MemoryNotFoundError)):
         await manual.run_action(identity, peer_id, "thumbnail", scope, snapshot=snapshot)
@@ -202,7 +210,7 @@ async def test_manual_description_denies_scope_and_read_only_sharing(
         )
 
 
-    db.add(ShareGrant(share_id=MemoryItem.share_for(source.document_id), agent_id=peer.id, can_write=False))
+    db.add(ShareGrant(share_id=Document.share_for(source.document_id), agent_id=peer.id, can_write=False))
     await db.commit()
     with pytest.raises(MemoryPermissionError):
         await manual.run_action(

@@ -1,4 +1,10 @@
 from __future__ import annotations
+from app.memory.tests.document_fixtures import finish_document_deletion
+from app.document import resource_service as documents
+from app.document import Document
+from app.document.schemas import DocumentPayload, DocumentSourceCreate
+from app.document.schemas import DocumentItemCreate
+from app.memory.tests.document_fixtures import create_document_reference, edit_document_reference, project_document
 
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
@@ -16,27 +22,14 @@ from app.agent.models import Agent
 from app.conversation import ConversationDocumentMetadata
 from app.file_share import resource_service
 from app.file_share.resource_contracts import ResourceContext
-from app.memory import document_attachment_service, service
-from app.memory.conversation_document_adapter import (
-    resolve_conversation_document_metadata,
-)
+from app.memory import service
+from app.document import document_attachment_service
+from app.document.conversation_document_adapter import resolve_conversation_document_metadata
 from app.memory.contracts import ResourceNotFoundError, SourceMemoryDocument
 from app.memory.models import MemoryAssociation, MemoryItem, MemoryRevision, MemoryUsage
-from app.memory.schemas import (
-    MemoryGrantUpdate,
-    MemoryGraphExpandRequest,
-    MemoryGraphCursor,
-    MemoryGraphRootsRequest,
-    MemoryItemCreate,
-    MemoryItemUpdate,
-    ManualMemoryLinkCreate,
-    MemoryLinkCreate,
-    MemoryPayload,
-    MemorySearchRequest,
-    MemorySortField,
-    MemorySourceCreate,
-)
-from app.memory.storage import get_storage
+from app.memory.schemas import MemoryGraphExpandRequest, MemoryGraphCursor, MemoryGraphRootsRequest, MemoryItemCreate, MemoryItemUpdate, ManualMemoryLinkCreate, MemoryLinkCreate, MemoryPayload, MemorySearchRequest, MemorySortField, MemorySourceCreate
+from app.document.schemas import DocumentGrantUpdate
+from core.storage import get_storage
 from .conftest import create_memory_task
 from app.topic import TopicClassification, service as topic_service
 
@@ -69,11 +62,11 @@ async def test_conversation_document_metadata_uses_canonical_memory_title(
 ) -> None:
     del memory_storage
     owner, _peer = agents
-    document, _created = await service.create_item(
-        MemoryItemCreate(
+    document, _created = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Canonical document title",
-            payload=MemoryPayload(text="Document content"),
+            payload=DocumentPayload(text="Document content"),
             node_kind="document",
         )
     )
@@ -174,16 +167,16 @@ async def test_document_writes_emit_content_free_realtime_events(
         events.append((subject, action, data, room))
 
     monkeypatch.setattr(service.websocket, "emit", emit)
-    document, created = await service.create_item(
-        MemoryItemCreate(
+    document, created = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Live document",
-            payload=MemoryPayload(text="Initial content"),
+            payload=DocumentPayload(text="Initial content"),
             node_kind="document",
         )
     )
     assert created
-    await service.update_item(
+    await edit_document_reference(
         document.id,
         MemoryItemUpdate(
             expected_revision=document.revision,
@@ -191,21 +184,17 @@ async def test_document_writes_emit_content_free_realtime_events(
         ),
         actor_agent_id=owner.id,
     )
-    await service.set_item_grant(
+    await documents.set_item_grant(
         document.id,
         peer.id,
-        MemoryGrantUpdate(can_write=False),
+        DocumentGrantUpdate(can_write=False),
         actor_agent_id=owner.id,
     )
-    await service.delete_document(document.id, actor_agent_id=owner.id)
+    await finish_document_deletion(document.id, actor_agent_id=owner.id)
 
-    assert [event[:2] for event in events] == [
-        ("memory", "create"),
-        ("memory", "update"),
-        ("memory", "update"),
-        ("memory", "delete"),
-        ("memory", "invalidate"),
-    ]
+    events = [event for event in events if event[0] == "document"]
+    assert [event[1] for event in events if event[1] != "invalidate"] == ["create", "update", "update", "delete"]
+    assert any(event[1] == "invalidate" for event in events)
     assert all(event[3] is None for event in events)
     assert all(
         set(event[2])
@@ -239,11 +228,11 @@ async def test_retention_preview_counts_without_mutating_memories(
             valid_until=datetime.now(timezone.utc) - timedelta(days=1),
         )
     )
-    document, _created = await service.create_item(
-        MemoryItemCreate(
+    document, _created = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Document de travail",
-            payload=MemoryPayload(text="Notes de travail à conserver."),
+            payload=DocumentPayload(text="Notes de travail à conserver."),
             node_kind="document",
         )
     )
@@ -289,14 +278,14 @@ async def test_acl_search_revisions_links_and_physical_forget(
     memory_storage: Path,
 ) -> None:
     owner, peer = agents
-    item, created = await service.create_item(
-        MemoryItemCreate(
+    item, created = await create_document_reference(
+        DocumentItemCreate(
             node_kind="document",
             owner_agent_id=owner.id,
             title="PostgreSQL deployment rule",
-            payload=MemoryPayload(text="Always apply Atlas before deploying PostgreSQL."),
+            payload=DocumentPayload(text="Always apply Atlas before deploying PostgreSQL."),
             keywords=["postgresql", "atlas", "atlas"],
-            source=MemorySourceCreate(
+            source=DocumentSourceCreate(
                 source_kind="test",
                 source_ref="test:procedure:1",
                 excerpt="Atlas before deployment",
@@ -321,26 +310,22 @@ async def test_acl_search_revisions_links_and_physical_forget(
     assert peer_page.hits == []
     assert peer_page.total == 0
 
-    await service.set_item_grant(item.id, peer.id, MemoryGrantUpdate(can_write=False))
+    await documents.set_item_grant(item.id, peer.id, DocumentGrantUpdate(can_write=False))
     peer_item, content, access, _content_type, _media_type = await service.get_item(
         item.id, agent_id=peer.id
     )
     assert peer_item.id == item.id
     assert content.startswith(b"<p>Always apply Atlas")
     assert access.can_read and not access.can_write
-    public_item = service.item_to_public(peer_item, access)
-    assert [(grant.agent_id, grant.can_write) for grant in public_item.grants] == [
-        (peer.id, False)
-    ]
-    with pytest.raises(service.MemoryPermissionError):
-        await service.update_item(
+    with pytest.raises(documents.DocumentPermissionError):
+        await edit_document_reference(
             item.id,
             MemoryItemUpdate(title="Unauthorized"),
             actor_agent_id=peer.id,
         )
 
-    await service.set_item_grant(item.id, peer.id, MemoryGrantUpdate(can_write=True))
-    updated = await service.update_item(
+    await documents.set_item_grant(item.id, peer.id, DocumentGrantUpdate(can_write=True))
+    updated = await edit_document_reference(
         item.id,
         MemoryItemUpdate(
             payload=MemoryPayload(text="Apply Atlas, then verify the generated schema."),
@@ -349,7 +334,7 @@ async def test_acl_search_revisions_links_and_physical_forget(
     )
     updated_resource_id = updated.resource_id
     assert updated.revision == 2  # Sharing has its own lock version.
-    revisions = (await service.list_document_content_revisions(
+    revisions = (await documents.list_document_content_revisions(
         item.id, actor_agent_id=owner.id
     )).items
     assert [revision.revision for revision in revisions] == [2, 1]
@@ -361,12 +346,12 @@ async def test_acl_search_revisions_links_and_physical_forget(
     )
     assert old_content == b"<p>Always apply Atlas before deploying PostgreSQL.</p>"
 
-    related, _ = await service.create_item(
-        MemoryItemCreate(
+    related, _ = await create_document_reference(
+        DocumentItemCreate(
             node_kind="document",
             owner_agent_id=owner.id,
             title="Schema verification",
-            payload=MemoryPayload(text="Run the architecture and schema checks."),
+            payload=DocumentPayload(text="Run the architecture and schema checks."),
         )
     )
     link = await service.create_link(
@@ -379,8 +364,8 @@ async def test_acl_search_revisions_links_and_physical_forget(
     )
     assert (await service.list_links(item.id, actor_agent_id=owner.id))[0].id == link.id
 
-    result = await service.delete_document(item.id, actor_agent_id=owner.id)
-    assert result.resources_deleted == 2
+    result = await finish_document_deletion(item.id, actor_agent_id=owner.id)
+    assert result.document_id == item.id
     with pytest.raises(service.MemoryNotFoundError):
         await service.get_item(item.id, agent_id=owner.id)
     provider = get_storage()
@@ -409,25 +394,25 @@ async def test_direct_grants_and_public_visibility_apply_before_ranking(
 ) -> None:
     del memory_storage
     owner, peer = agents
-    item, _ = await service.create_item(
-        MemoryItemCreate(
+    item, _ = await create_document_reference(
+        DocumentItemCreate(
             node_kind="document",
             owner_agent_id=owner.id,
             title="Shared incident record",
-            payload=MemoryPayload(text="The service recovered after queue drainage."),
+            payload=DocumentPayload(text="The service recovered after queue drainage."),
         )
     )
     private_page = await service.search_items(
         MemorySearchRequest(agent_id=peer.id, query="queue drainage")
     )
     assert private_page.hits == []
-    with pytest.raises(service.MemoryConflictError, match="owner already"):
-        await service.set_item_grant(
-            item.id, owner.id, MemoryGrantUpdate(can_write=False)
+    with pytest.raises(documents.DocumentConflictError, match="owner already"):
+        await documents.set_item_grant(
+            item.id, owner.id, DocumentGrantUpdate(can_write=False)
         )
 
-    await service.set_item_grant(
-        item.id, peer.id, MemoryGrantUpdate(can_write=False)
+    await documents.set_item_grant(
+        item.id, peer.id, DocumentGrantUpdate(can_write=False)
     )
     page = await service.search_items(
         MemorySearchRequest(agent_id=peer.id, query="queue drainage")
@@ -435,23 +420,24 @@ async def test_direct_grants_and_public_visibility_apply_before_ranking(
     assert [hit.item.id for hit in page.hits] == [item.id]
     assert not page.hits[0].item.access.can_write
 
-    private_again = await service.remove_item_grant(item.id, peer.id)
+    private_again = await documents.remove_item_grant(item.id, peer.id)
     assert private_again.visibility == "private"
     removed_page = await service.search_items(
         MemorySearchRequest(agent_id=peer.id, query="queue drainage")
     )
     assert removed_page.hits == []
 
-    public_item, _ = await service.create_item(
-        MemoryItemCreate(
+    public_item, _ = await create_document_reference(
+        DocumentItemCreate(
             node_kind="document",
             owner_agent_id=owner.id,
             title="Public convention",
-            payload=MemoryPayload(text="Use ISO timestamps everywhere."),
+            payload=DocumentPayload(text="Use ISO timestamps everywhere."),
         )
     )
-    public_item.visibility = "shared"
-    public_item.global_access = 1
+    public_source = await db.get(Document, public_item.id)
+    public_source.visibility = "shared"
+    public_source.global_access = 1
     await db.commit()
     public_page = await service.search_items(
         MemorySearchRequest(agent_id=peer.id, query="ISO timestamps")
@@ -518,16 +504,16 @@ async def test_deletion_protection_is_distinct_from_read_only(
 ) -> None:
     del memory_storage
     owner, _peer = agents
-    item, _ = await service.create_item(
-        MemoryItemCreate(
+    item, _ = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Protected working document",
-            payload=MemoryPayload(text="Editable content"),
+            payload=DocumentPayload(text="Editable content"),
             node_kind="document",
         ),
         deletion_protected=True,
     )
-    updated = await service.update_item(
+    updated = await edit_document_reference(
         item.id,
         MemoryItemUpdate(payload=MemoryPayload(text="Still editable")),
         actor_agent_id=owner.id,
@@ -540,8 +526,8 @@ async def test_deletion_protection_is_distinct_from_read_only(
             item.id, actor_agent_id=None, administrative=True
         )
     for actor, administrative in [(owner.id, False), (None, True)]:
-        with pytest.raises(service.MemoryPermissionError, match="cannot be forgotten"):
-            await service.delete_document(item.id, actor_agent_id=actor, administrative=administrative)
+        with pytest.raises(documents.DocumentPermissionError):
+            await finish_document_deletion(item.id, actor_agent_id=actor, administrative=administrative)
 
 
 @pytest.mark.asyncio
@@ -579,29 +565,29 @@ async def test_full_text_ranking_prefers_title_then_keywords_then_content(
 ) -> None:
     del memory_storage
     owner, _peer = agents
-    title_item, _ = await service.create_item(
-        MemoryItemCreate(
+    title_item, _ = await create_document_reference(
+        DocumentItemCreate(
             node_kind="document",
             owner_agent_id=owner.id,
             title="Déploiement contrôlé",
-            payload=MemoryPayload(text="Une note de référence sans répétition."),
+            payload=DocumentPayload(text="Une note de référence sans répétition."),
         )
     )
-    keyword_item, _ = await service.create_item(
-        MemoryItemCreate(
+    keyword_item, _ = await create_document_reference(
+        DocumentItemCreate(
             node_kind="document",
             owner_agent_id=owner.id,
             title="Liste opérationnelle",
-            payload=MemoryPayload(text="Une autre note de référence."),
+            payload=DocumentPayload(text="Une autre note de référence."),
             keywords=["déploiement"],
         )
     )
-    content_item, _ = await service.create_item(
-        MemoryItemCreate(
+    content_item, _ = await create_document_reference(
+        DocumentItemCreate(
             node_kind="document",
             owner_agent_id=owner.id,
             title="Compte rendu",
-            payload=MemoryPayload(text="Le déploiement a été vérifié."),
+            payload=DocumentPayload(text="Le déploiement a été vérifié."),
         )
     )
 
@@ -672,11 +658,11 @@ async def test_search_filters_documents_before_counting_and_pagination(
 ) -> None:
     del memory_storage
     owner, _peer = agents
-    document, _ = await service.create_item(
-        MemoryItemCreate(
+    document, _ = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Release document",
-            payload=MemoryPayload(text="# Release\n\nCurrent draft."),
+            payload=DocumentPayload(text="# Release\n\nCurrent draft."),
             node_kind="document",
             keywords=["release", "draft"],
         )
@@ -689,11 +675,11 @@ async def test_search_filters_documents_before_counting_and_pagination(
             keywords=["release"],
         )
     )
-    await service.create_item(
-        MemoryItemCreate(
+    await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Archived document",
-            payload=MemoryPayload(text="An older working document."),
+            payload=DocumentPayload(text="An older working document."),
             node_kind="document",
             keywords=["archive"],
         )
@@ -722,12 +708,12 @@ async def test_search_filters_documents_before_counting_and_pagination(
     )
     assert keyword_page.total == 1
     assert [hit.item.id for hit in keyword_page.hits] == [document.id]
-    assert await service.list_document_keywords(owner.id) == [
+    assert await documents.list_document_keywords(owner.id) == [
         "archive",
         "draft",
         "release",
     ]
-    assert await service.list_document_keywords(_peer.id) == []
+    assert await documents.list_document_keywords(_peer.id) == []
 
 
 @pytest.mark.asyncio
@@ -737,18 +723,18 @@ async def test_document_folders_only_include_readable_documents(
 ) -> None:
     del memory_storage
     owner, peer = agents
-    await service.create_item(
-        MemoryItemCreate(
+    await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Nested document",
-            payload=MemoryPayload(text="content"),
+            payload=DocumentPayload(text="content"),
             node_kind="document",
             metadata={"document_path": "Projects/Launch"},
         )
     )
 
-    assert await service.list_document_folders(owner.id) == ["Projects/Launch"]
-    assert await service.list_document_folders(peer.id) == []
+    assert await documents.list_document_folders(owner.id) == ["Projects/Launch"]
+    assert await documents.list_document_folders(peer.id) == []
 
 
 @pytest.mark.asyncio
@@ -758,19 +744,19 @@ async def test_document_attachments_follow_document_acl_without_content_revision
 ) -> None:
     del memory_storage
     owner, peer = agents
-    document, _created = await service.create_item(
-        MemoryItemCreate(
+    document, _created = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Document with attachment",
-            payload=MemoryPayload(text="content"),
+            payload=DocumentPayload(text="content"),
             node_kind="document",
         )
     )
     initial_revision = document.revision
-    await service.set_item_grant(
+    await documents.set_item_grant(
         document.id,
         peer.id,
-        MemoryGrantUpdate(can_write=False),
+        DocumentGrantUpdate(can_write=False),
         actor_agent_id=owner.id,
     )
     attachment = await document_attachment_service.add_document_attachment(
@@ -797,7 +783,7 @@ async def test_document_attachments_follow_document_acl_without_content_revision
     assert metadata.media_type == "image/png"
     assert content == _png_bytes()
 
-    with pytest.raises(service.MemoryPermissionError):
+    with pytest.raises(documents.DocumentPermissionError):
         await document_attachment_service.rename_document_attachment(
             document.id, attachment.id, actor_agent_id=peer.id, name="denied.png")
     attachment = await document_attachment_service.rename_document_attachment(
@@ -817,7 +803,7 @@ async def test_document_attachments_follow_document_acl_without_content_revision
         agent_id=owner.id,
     )
     assert current.revision == initial_revision
-    await service.update_item(
+    await edit_document_reference(
         document.id,
         MemoryItemUpdate(
             expected_revision=current.revision,
@@ -829,12 +815,13 @@ async def test_document_attachments_follow_document_acl_without_content_revision
         await service.get_item(document.id, agent_id=owner.id)
     )
     assert current_after_metadata.revision == initial_revision
-    assert await document_attachment_service.list_document_attachments(
+    retained_list = await document_attachment_service.list_document_attachments(
         document.id,
         actor_agent_id=owner.id,
-    ) == [attachment]
+    )
+    assert [entry.model_dump(exclude={"memory_item_id"}) for entry in retained_list] == [attachment.model_dump(exclude={"memory_item_id"})]
 
-    with pytest.raises(service.MemoryPermissionError):
+    with pytest.raises(documents.DocumentPermissionError):
         await document_attachment_service.delete_document_attachment(
             document.id,
             attachment.id,
@@ -860,7 +847,7 @@ async def test_document_attachments_follow_document_acl_without_content_revision
             headers={"content-type": "text/plain"},
         ),
     )
-    await service.delete_document(document.id, actor_agent_id=owner.id)
+    await finish_document_deletion(document.id, actor_agent_id=owner.id)
     with pytest.raises(ResourceNotFoundError):
         await get_storage("native").read(str(retained.id))
 
@@ -873,18 +860,18 @@ async def test_document_attachments_are_file_resources_guarded_by_document_acl(
 ) -> None:
     del memory_storage
     owner, reader = agents
-    document, _created = await service.create_item(
-        MemoryItemCreate(
+    document, _created = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Document attachments",
-            payload=MemoryPayload(text="Body"),
+            payload=DocumentPayload(text="Body"),
             node_kind="document",
         )
     )
-    await service.set_item_grant(
+    await documents.set_item_grant(
         document.id,
         reader.id,
-        MemoryGrantUpdate(can_write=False),
+        DocumentGrantUpdate(can_write=False),
         actor_agent_id=owner.id,
     )
     collection_uri = f"document://{document.id}/attachments/"
@@ -923,14 +910,14 @@ async def test_document_attachments_are_file_resources_guarded_by_document_acl(
     assert materialized.media_type == "image/png"
     assert materialized_path.read_bytes() == image_content
 
-    with pytest.raises(service.MemoryPermissionError):
+    with pytest.raises(documents.DocumentPermissionError):
         await resource_service.resource_create(
             reader_ctx,
             collection_uri,
             b"forbidden",
             name="forbidden.txt",
         )
-    with pytest.raises(service.MemoryPermissionError):
+    with pytest.raises(documents.DocumentPermissionError):
         await resource_service.resource_delete(reader_ctx, created.uri)
 
     deleted = await resource_service.resource_delete(owner_ctx, created.uri)
@@ -947,35 +934,37 @@ async def test_search_sorts_every_list_column_in_both_directions(
 ) -> None:
     del memory_storage
     owner, peer = agents
-    unused, _ = await service.create_item(
-        MemoryItemCreate(
+    unused, _ = await create_document_reference(
+        DocumentItemCreate(
             node_kind="document",
             owner_agent_id=peer.id,
             title="Charlie memory",
-            payload=MemoryPayload(text="This memory has not been read directly."),
+            payload=DocumentPayload(text="This memory has not been read directly."),
         )
     )
-    once, _ = await service.create_item(
-        MemoryItemCreate(
+    once, _ = await create_document_reference(
+        DocumentItemCreate(
             node_kind="document",
             owner_agent_id=owner.id,
             title="Alpha memory",
-            payload=MemoryPayload(text="This memory has one direct read."),
+            payload=DocumentPayload(text="This memory has one direct read."),
             visibility="private",
         )
     )
-    twice, _ = await service.create_item(
-        MemoryItemCreate(
+    twice, _ = await create_document_reference(
+        DocumentItemCreate(
             node_kind="document",
             owner_agent_id=owner.id,
             title="Bravo memory",
-            payload=MemoryPayload(text="This memory has two direct reads."),
+            payload=DocumentPayload(text="This memory has two direct reads."),
         )
     )
 
-    unused.visibility = "shared"
-    unused.global_access = 1
-    twice.visibility = "shared"
+    unused_source = await db.get(Document, unused.id)
+    twice_source = await db.get(Document, twice.id)
+    unused_source.visibility = "shared"
+    unused_source.global_access = 1
+    twice_source.visibility = "shared"
     await db.commit()
 
     await service.get_item(
@@ -1259,7 +1248,6 @@ async def test_memory_updated_at_tracks_only_payload_or_keyword_changes(
     owner, peer = agents
     item, _ = await service.create_item(
         MemoryItemCreate(
-            node_kind="document",
             owner_agent_id=owner.id,
             title="Content timestamp",
             payload=MemoryPayload(text="Initial content."),
@@ -1267,27 +1255,10 @@ async def test_memory_updated_at_tracks_only_payload_or_keyword_changes(
     )
     assert item.updated_at is None
 
-    title_updated = await service.update_item(
-        item.id,
-        MemoryItemUpdate(
-            expected_revision=item.revision,
-            title="Renamed memory",
-        ),
-        actor_agent_id=owner.id,
-    )
-    assert title_updated.updated_at is None
-
-    grant_updated = await service.set_item_grant(
-        item.id,
-        peer.id,
-        MemoryGrantUpdate(can_write=False),
-    )
-    assert grant_updated.updated_at is None
-
     content_updated = await service.update_item(
         item.id,
         MemoryItemUpdate(
-            expected_revision=grant_updated.revision,
+            expected_revision=item.revision,
             payload=MemoryPayload(text="Meaningfully changed content."),
         ),
         actor_agent_id=owner.id,
@@ -1462,11 +1433,11 @@ async def test_graph_exposes_structural_roles_but_not_agent_projection(
         TopicClassification(action="create", title="Topic structurel")
     )
     assert topic.memory_item_id is not None
-    document, _created = await service.create_item(
-        MemoryItemCreate(
+    document, _created = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Document structurel",
-            payload=MemoryPayload(text="Document visible dans le graphe."),
+            payload=DocumentPayload(text="Document visible dans le graphe."),
             node_kind="document",
         )
     )

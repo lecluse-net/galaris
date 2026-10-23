@@ -255,12 +255,12 @@
       },
       "privilege_groups": [
         [
-          "MEMORY_ACCESS"
+          "DOCUMENT_ACCESS"
         ]
       ],
       "conditions": [],
       "sources": [
-        "front/app/memory/navigation.ts"
+        "front/app/document/navigation.ts"
       ]
     },
     {

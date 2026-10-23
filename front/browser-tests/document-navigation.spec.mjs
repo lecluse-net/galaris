@@ -9,16 +9,16 @@ async function library(page) {
   }))
   const state = { items, refuseSave: false, writes: [] }
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [] })
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await page.route('**/api/memory/documents/library', route => route.fulfill({ json: {
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [] })
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await page.route('**/api/documents/library', route => route.fulfill({ json: {
     entries: state.items.map(item => ({ item, tags: [], agent_ids: [], writable_agent_ids: [], user_access: item.access })),
     total: state.items.length, has_more: false, keywords: [],
   } }))
   for (const item of items) {
-    await jsonRoute(page, `**/api/memory/documents/${item.id}/attachments*`, [])
-    await page.route(new RegExp(`/api/memory/documents/${item.id}(?:\\?|$)`), route => {
+    await jsonRoute(page, `**/api/documents/${item.id}/attachments*`, [])
+    await page.route(new RegExp(`/api/documents/${item.id}(?:\\?|$)`), route => {
       const index = state.items.findIndex(value => value.id === item.id)
       if (route.request().method() === 'PATCH') {
         if (state.refuseSave) return route.fulfill({ status: 503, json: { detail: 'Save unavailable' } })
@@ -37,8 +37,8 @@ for (const mobile of [false, true]) {
   test(`document history follows visits, branches and skips deleted documents (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
     const { items } = await library(page)
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
-    await mount(page, 'app/memory/components/DocumentLibraryPage.vue', {
-      route: `/documents?document_id=${items[0].id}`, browserHistory: true, privileges: ['MEMORY_EDIT'],
+    await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
+      route: `/documents?document_id=${items[0].id}`, browserHistory: true, privileges: ['DOCUMENT_EDIT'],
     })
     const title = page.getByLabel('Title', { exact: true })
     const buttons = () => mobile ? page.getByRole('dialog') : page.locator('.page-header')
@@ -82,8 +82,8 @@ for (const mobile of [false, true]) {
     const state = await library(page)
     state.items[0].payload.text += `<p><a href="document://${state.items[1].id}">Open Beta</a></p>`
     if (mobile) await page.setViewportSize({ width: 390, height: 844 })
-    await mount(page, 'app/memory/components/DocumentLibraryPage.vue', {
-      route: `/documents?document_id=${state.items[0].id}`, browserHistory: true, privileges: ['MEMORY_EDIT'],
+    await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
+      route: `/documents?document_id=${state.items[0].id}`, browserHistory: true, privileges: ['DOCUMENT_EDIT'],
     })
     const title = page.getByLabel('Title', { exact: true })
     await expect(title).toHaveValue('Alpha')
@@ -115,8 +115,8 @@ for (const mobile of [false, true]) {
 test('the Documents contextual dialog action leaves the library selection and history unchanged', async ({ page }) => {
   const state = await library(page)
   state.items[0].payload.text += `<p><a href="document://${state.items[1].id}">Open Beta</a></p>`
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', {
-    route: `/documents?document_id=${state.items[0].id}`, privileges: ['MEMORY_EDIT'],
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
+    route: `/documents?document_id=${state.items[0].id}`, privileges: ['DOCUMENT_EDIT'],
   })
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Alpha')
   await page.getByRole('link', { name: 'Open Beta', exact: true }).click({ button: 'right' })
@@ -133,8 +133,8 @@ test('a dialog branch preserves the library forward action without reloading or 
   const state = await library(page)
   state.items[0].payload.text += `<p><a href="document://${state.items[1].id}">Open Beta</a></p>`
   state.items[1].payload.text += `<p><a href="document://${state.items[2].id}">Open Gamma</a></p>`
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', {
-    route: `/documents?document_id=${state.items[0].id}`, browserHistory: true, privileges: ['MEMORY_EDIT'],
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
+    route: `/documents?document_id=${state.items[0].id}`, browserHistory: true, privileges: ['DOCUMENT_EDIT'],
   })
   const title = page.getByLabel('Title', { exact: true })
   const header = page.locator('.page-header')

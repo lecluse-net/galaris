@@ -15,11 +15,11 @@ from core import settings
 from core.dbadmin import DbAdminAction, DbAdminPhase, DbAdminRegistry, SchemaTransitionSet
 from core.util import complete_io
 
-from .storage import NativeFileStorage
+from core.storage import NativeFileStorage
 from .contracts import ResourceNotFoundError
 
 
-TABLES = ("memory_items", "documents", "memory_revisions", "memory_summary_revisions")
+TABLES = ("memory_items", "documents", "memory_revisions", "document_revisions", "document_summary_revisions", "memory_summary_revisions")
 ARCHIVE = "galaris_migration.memory_text_contents"
 
 
@@ -28,7 +28,7 @@ def needs_inline_content(delta: SchemaTransitionSet) -> bool:
 
 
 def _native_text(table: str) -> str:
-    text_type = "" if table == "memory_summary_revisions" else " AND content_type IN ('text', 'json')"
+    text_type = "" if table.endswith("_summary_revisions") else " AND content_type IN ('text', 'json')"
     return "provider_code = 'native' AND resource_id NOT IN ('forgotten', 'merged')" + text_type
 
 
@@ -48,6 +48,8 @@ async def inline_content_complete(session: AsyncSession, _delta: SchemaTransitio
     if not await session.scalar(text("SELECT to_regclass(:table) IS NOT NULL"), {"table": ARCHIVE}):
         return False
     for table in TABLES:
+        if table == "memory_summary_revisions" and not await session.scalar(text("SELECT to_regclass('public.memory_summary_revisions') IS NOT NULL")):
+            continue
         if await session.scalar(text(f"SELECT EXISTS (SELECT 1 FROM {table} WHERE {_native_text(table)} AND content IS NULL)")):
             return False
         damaged = await session.scalar(text(f"""
@@ -80,6 +82,8 @@ async def migrate_inline_content(session: AsyncSession, _delta: SchemaTransition
     """))
     root = Path(settings.GALARIS_MEMORY_ROOT)
     for table in TABLES:
+        if table == "memory_summary_revisions" and not await session.scalar(text("SELECT to_regclass('public.memory_summary_revisions') IS NOT NULL")):
+            continue
         # A fixed order and row locks prevent a metadata write from racing the
         # transfer. Upgrade orchestration must also stop old application writers.
         while True:

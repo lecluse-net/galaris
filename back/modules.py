@@ -60,6 +60,7 @@ MODULES = [
     "app.webhook",
     "app.llm",
     "app.topic",
+    "app.document",
     "app.memory",
     "app.contact",
     "app.dream",

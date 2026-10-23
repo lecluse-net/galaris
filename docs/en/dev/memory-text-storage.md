@@ -7,10 +7,12 @@ metadata and history share one PostgreSQL transaction; new text writes create no
 
 | Table and column | Content |
 |---|---|
-| `memory_items.content` | Current memory or independent document synthesis |
+| `memory_items.content` | Current private memory |
 | `documents.content` | Current document content |
-| `memory_revisions.content` | Memory and document history |
-| `memory_summary_revisions.content` | Document synthesis history |
+| `memory_revisions.content` | Private memory history |
+| `document_revisions.content` | Document history |
+| `documents.summary_content` | Current shared summary |
+| `document_summary_revisions.content` | Shared summary history |
 
 Columns use `TEXT` without normalizing line endings. `NULL` remains possible for
 binary resources or external providers. Metadata lists and history pages exclude full payloads.

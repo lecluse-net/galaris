@@ -13,10 +13,11 @@ from app.dream.mechanisms import resource_topic_classification as classification
 from app.dream.models import DreamReceipt
 from app.dream.service import mark_success, store_prepared
 from app.dream import monitoring_service
-from app.memory import service as memory
-from app.memory.models import Document, MemoryItem
-from app.memory.schemas import MemoryItemCreate, MemoryPayload
-from app.memory.storage import NativeFileStorage
+from app.document import resource_service as memory
+from app.memory.models import MemoryItem
+from app.document import Document
+from app.document.schemas import DocumentItemCreate as MemoryItemCreate, DocumentPayload as MemoryPayload
+from core.storage import NativeFileStorage
 from app.memory.tests.conftest import agents as agents, memory_storage as memory_storage
 from app.topic import Topic, TopicClassification, service as topics
 from app.topic.schemas import TopicCreate
@@ -128,7 +129,8 @@ async def test_classification_checkpoint_preserves_content_and_lists_readable_re
     monkeypatch.setattr(topic_router, "current_management_scope", current_scope)
     monkeypatch.setattr(topic_router, "check_privilege", allowed_privilege)
     monkeypatch.setattr(dream_router, "current_management_scope", current_scope)
-    metadata_record = await db.get(MemoryItem, identity) if kind == "document" else item
+    metadata_record = await db.get(Document, identity) if kind == "document" else item
+    await db.refresh(metadata_record)
     edit = TopicResourceAssignmentWrite(
         topic_id=alternate.id,
         expected_topic_id=topic.id,

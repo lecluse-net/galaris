@@ -6,7 +6,8 @@ from uuid import UUID
 
 from sqlalchemy import exists, func, select
 
-from app.memory import MemoryItem, DocumentTag
+from app.memory import MemoryItem
+from app.document import DocumentTag
 from app.memory.facade import reconcile_structure_subject
 from core.database import get_db, get_db_session
 

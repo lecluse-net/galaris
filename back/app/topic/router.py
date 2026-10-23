@@ -8,6 +8,7 @@ from core.authorize import Privileges, authorize, check_privilege
 from core.user import get_user_record
 from core.database import get_db
 from app.memory import MemoryNotFoundError, MemoryConflictError, MemoryPermissionError
+from app.document import DocumentNotFoundError, DocumentConflictError, DocumentPermissionError
 from app.dataset.facade import DatasetNotFoundError, DatasetConflictError, DatasetPermissionError
 from app.agent import current_management_scope
 from app.connection.facade import get_connection
@@ -105,16 +106,16 @@ async def create_topic(data: TopicCreate) -> TopicRead:
 async def change_resource_topic(kind: TopicResourceKind, identity: UUID, data: TopicResourceAssignmentWrite) -> TopicResourceAssignmentRead:
     scope = await current_management_scope()
     user = await get_user_record(scope.user_id)
-    required = (Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN) if kind == "document" else (Privileges.DATASET_EDIT, Privileges.DATASET_ADMIN)
+    required = (Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN) if kind == "document" else (Privileges.DATASET_EDIT, Privileges.DATASET_ADMIN)
     if not any([await check_privilege(user, privilege, get_db()) for privilege in required]):
         raise HTTPException(status_code=403, detail="Resource editing is required")
     try:
         return await service.change_resource_topic(kind, identity, data, scope)
-    except (MemoryNotFoundError, DatasetNotFoundError, service.TopicNotFoundError) as exc:
+    except (MemoryNotFoundError, DocumentNotFoundError, DatasetNotFoundError, service.TopicNotFoundError) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except (MemoryPermissionError, DatasetPermissionError) as exc:
+    except (MemoryPermissionError, DocumentPermissionError, DatasetPermissionError) as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except (MemoryConflictError, DatasetConflictError) as exc:
+    except (MemoryConflictError, DocumentConflictError, DatasetConflictError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 

@@ -1,3 +1,4 @@
+import { documentService } from '@/app/document'
 import { defineStore } from 'pinia'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { websocket } from '@/core/websocket'
@@ -171,12 +172,28 @@ export const useMemoryStore = defineStore('memory', () => {
     invalidateAccess()
     void search().catch(() => { /* The store exposes the refresh error. */ })
   }
+  function refreshDocumentReferences(): void {
+    // Keep an open summary draft while its source is updated. The detail view
+    // separately reconciles the source permissions and its saved baseline.
+    void search().catch(() => { /* The store exposes the refresh error. */ })
+  }
+  function retireDocumentReference(event: { data?: { id?: string } }): void {
+    if (currentItem.value?.node_kind === 'document' && currentItem.value.id === event.data?.id) {
+      currentItem.value = null
+      detailRequest++
+    }
+    refreshDocumentReferences()
+  }
   watch(selectedAgentId, invalidateAccess, { flush: 'sync' })
   websocket.createWebsocket()
   websocket.onEvent('memory', 'invalidate', refreshAccess)
+  websocket.onEvent('document', 'update', refreshDocumentReferences)
+  websocket.onEvent('document', 'delete', retireDocumentReference)
   websocket.onConnect(refreshAccess)
   onScopeDispose(() => {
     websocket.offEvent('memory', 'invalidate', refreshAccess)
+    websocket.offEvent('document', 'update', refreshDocumentReferences)
+    websocket.offEvent('document', 'delete', retireDocumentReference)
     websocket.offConnect(refreshAccess)
   })
 
@@ -267,7 +284,9 @@ export const useMemoryStore = defineStore('memory', () => {
     if (selectedAgentId.value === null) throw new Error('An agent is required')
     saving.value = true
     try {
-      const item = await memoryService.updateItem(id, selectedAgentId.value, data)
+      const item = currentItem.value?.id === id && currentItem.value.node_kind === 'document'
+        ? await documentService.updateSummary(id, selectedAgentId.value, data)
+        : await memoryService.updateItem(id, selectedAgentId.value, data)
       await search()
       await openItem(id)
       return item
@@ -290,29 +309,9 @@ export const useMemoryStore = defineStore('memory', () => {
     }
   }
 
-  async function setItemGrant(agentId: number, canWrite: boolean): Promise<void> {
-    if (currentItem.value === null || selectedAgentId.value === null) return
-    saving.value = true
-    try {
-      await memoryService.setItemGrant(currentItem.value.id, agentId, canWrite)
-      await openItem(currentItem.value.id)
-      await search()
-    } finally {
-      saving.value = false
-    }
-  }
 
-  async function removeItemGrant(agentId: number): Promise<void> {
-    if (currentItem.value === null || selectedAgentId.value === null) return
-    saving.value = true
-    try {
-      await memoryService.removeItemGrant(currentItem.value.id, agentId)
-      await openItem(currentItem.value.id)
-      await search()
-    } finally {
-      saving.value = false
-    }
-  }
+
+
 
   async function createLink(targetItemId: string, relationType: MemoryRelationType): Promise<void> {
     if (selectedAgentId.value === null || currentItem.value === null) return
@@ -367,8 +366,8 @@ export const useMemoryStore = defineStore('memory', () => {
     createItem,
     updateItem,
     forgetItem,
-    setItemGrant,
-    removeItemGrant,
+
+
     createLink,
   }
 })

@@ -37,15 +37,15 @@ async function expectUnclassified(page, checked = true) {
 test('document icon choices persist in the list and tree, open documents, reset and recover from errors', async ({ page }, testInfo) => {
   const icons = {}, writes = []
   let fail = false
-  await page.route('**/api/memory/documents/icons/resolve', route => route.fulfill({ json: icons }))
-  await page.route('**/api/memory/documents/doc-a/icon', route => {
+  await page.route('**/api/documents/icons/resolve', route => route.fulfill({ json: icons }))
+  await page.route('**/api/documents/doc-a/icon', route => {
     const data = route.request().postDataJSON(); writes.push(data)
     if (fail) return route.fulfill({ status: 500, json: { detail: 'Unavailable' } })
     icons['doc-a'] = data.icon
     return route.fulfill({ json: data })
   })
   await fixture(page)
-  await mount(page, 'app/memory/components/DocumentIcon.vue', { props: { documentId: 'doc-a', title: 'Test document' } })
+  await mount(page, 'app/document/components/DocumentIcon.vue', { props: { documentId: 'doc-a', title: 'Test document' } })
   const button = page.getByRole('button', { name: 'Icon for document Test document', exact: true })
   await expect(button).toBeVisible()
   await button.click()
@@ -74,7 +74,7 @@ test('document icon choices persist in the list and tree, open documents, reset 
   await treeIcon.click()
   await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
   expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'select').map(event => event.args[0].item.id))).toEqual(['doc-a', 'doc-a'])
-  await mount(page, 'app/memory/components/DocumentIcon.vue', { props: { documentId: 'doc-a', title: 'Test document' } })
+  await mount(page, 'app/document/components/DocumentIcon.vue', { props: { documentId: 'doc-a', title: 'Test document' } })
   fail = true
   await button.first().click()
   await page.getByRole('button', { name: 'Default icon', exact: true }).click()
@@ -88,7 +88,7 @@ test('document icon choices persist in the list and tree, open documents, reset 
   await expect(listIcon).not.toContainText('🚀')
   reopened.assignments.add('work')
   icons['doc-a'] = 'emoji:1F680'
-  await mount(page, 'app/memory/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
+  await mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
   await page.getByText('Work', { exact: true }).click()
   await expect(treeIcon).toContainText('🚀')
   expect(writes).toEqual([{ icon: 'emoji:1F680' }, { icon: null }, { icon: null }])
@@ -98,17 +98,17 @@ test('document icon choices persist in the list and tree, open documents, reset 
 test('late icon reads cannot undo a saved choice and session changes discard personal icons and pending writes', async ({ page }) => {
   let releaseRead, releaseWrite
   let firstRead = true
-  await page.route('**/api/memory/documents/icons/resolve', async route => {
+  await page.route('**/api/documents/icons/resolve', async route => {
     if (firstRead) { firstRead = false; await new Promise(resolve => { releaseRead = resolve }); return route.fulfill({ json: { 'doc-a': 'emoji:1F600' } }) }
     return route.fulfill({ json: { 'doc-a': 'emoji:1F600' } })
   })
-  await jsonRoute(page, '**/api/memory/documents/tag-icons', [])
-  await page.route('**/api/memory/documents/doc-a/icon', async route => {
+  await jsonRoute(page, '**/api/documents/tag-icons', [])
+  await page.route('**/api/documents/doc-a/icon', async route => {
     const data = route.request().postDataJSON()
     if (data.icon === null) await new Promise(resolve => { releaseWrite = resolve })
     return route.fulfill({ json: data })
   })
-  await mount(page, 'app/memory/components/DocumentIcon.vue', { props: { documentId: 'doc-a', title: 'Report' } })
+  await mount(page, 'app/document/components/DocumentIcon.vue', { props: { documentId: 'doc-a', title: 'Report' } })
   const button = page.getByRole('button', { name: 'Icon for document Report', exact: true })
   await expect.poll(() => Boolean(releaseRead)).toBe(true)
   await button.click()
@@ -142,7 +142,7 @@ test(`sub-documents expand recursively, recover loading and move between parents
   const docs = [document, { ...document, id: 'doc-b', title: 'Child notes' },
     { ...document, id: 'doc-c', title: 'Grandchild notes' }, { ...document, id: 'doc-d', title: 'Other notes' }]
   if (location === 'tree') docs.push({ ...document, id: 'doc-f', title: 'Delivery review — A synthetic standalone briefing with a long title' })
-  await jsonRoute(page, '**/api/memory/documents/doc-d', { item: docs[3], agent_id: 7 })
+  await jsonRoute(page, '**/api/documents/doc-d', { item: docs[3], agent_id: 7 })
   const parents = new Map([['doc-b', 'doc-a'], ['doc-c', 'doc-b']])
   const reads = [], moves = []
   let fail = true
@@ -150,7 +150,7 @@ test(`sub-documents expand recursively, recover loading and move between parents
   const entry = item => ({ item, parent_document_id: parents.get(item.id) ?? null,
     children_count: [...parents.values()].filter(id => id === item.id).length,
     tags: inFolder(item) ? [{ id: 'work', name: 'Work', parent_id: null }] : [], agent_ids: [7], writable_agent_ids: [] })
-  await page.route('**/api/memory/documents/library', route => {
+  await page.route('**/api/documents/library', route => {
     const body = route.request().postDataJSON(); reads.push(body)
     if (body.parent_document_id && fail) return route.fulfill({ status: 503, json: { detail: 'Unavailable' } })
     const entries = docs.filter(item => body.parent_document_id ? parents.get(item.id) === body.parent_document_id
@@ -158,12 +158,12 @@ test(`sub-documents expand recursively, recover loading and move between parents
       : body.classification !== 'unclassified' || (!parents.has(item.id) && !inFolder(item))).map(entry)
     return route.fulfill({ json: { entries, total: entries.length, has_more: false, keywords: [] } })
   })
-  await page.route('**/api/memory/documents/order', route => {
+  await page.route('**/api/documents/order', route => {
     const body = route.request().postDataJSON(); moves.push(body)
     parents.set(body.node.id, body.parent_document_id)
     return route.fulfill({ status: 204 })
   })
-  await page.route('**/api/memory/documents/doc-d/tags', route => {
+  await page.route('**/api/documents/doc-d/tags', route => {
     expect(route.request().postDataJSON()).toEqual({ tag_id: null })
     parents.delete('doc-d')
     return route.fulfill({ status: 204 })
@@ -214,15 +214,15 @@ test(`sub-documents expand recursively, recover loading and move between parents
   let release
   const gate = new Promise(resolve => { release = resolve })
   let pending = false
-  await page.route('**/api/memory/documents/library', async route => {
+  await page.route('**/api/documents/library', async route => {
     if (route.request().postDataJSON().parent_document_id !== 'doc-b') return route.fallback()
     pending = true; await gate
     return route.fulfill({ json: { entries: [entry(docs[2])], total: 1, has_more: false, keywords: [] } })
   })
   await page.evaluate(() => window.testApp.emitSocket('memory.classification', { data: { user_id: 1, document_ids: ['doc-b'] } }))
   await expect.poll(() => pending).toBe(true)
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 2, tags: [] })
-  await jsonRoute(page, '**/api/memory/documents/library', { entries: [], total: 0, has_more: false, keywords: [] })
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 2, tags: [] })
+  await jsonRoute(page, '**/api/documents/library', { entries: [], total: 0, has_more: false, keywords: [] })
   await page.evaluate(async () => {
     window.testApp.auth.$patch({ user: { id: 2, email: 'other@example.test' } })
     const { saveAccessToken } = await import('/core/api.ts')
@@ -236,12 +236,12 @@ test(`sub-documents expand recursively, recover loading and move between parents
 
 async function fixture(page, locale = 'en') {
   const readOnlyDocument = { ...document, access: { can_read: true, can_write: false } }
-  await jsonRoute(page, '**/api/memory/documents/doc-a', { item: readOnlyDocument, agent_id: 7 })
+  await jsonRoute(page, '**/api/documents/doc-a', { item: readOnlyDocument, agent_id: 7 })
   let tags = [{ id: 'work', name: 'Work', parent_id: null, position: 1 }, { id: 'project', name: 'Project', parent_id: 'work', position: 1 }]
   const assignments = new Set()
   const requests = [], mutations = [], deletions = [], orders = []
   const icons = []
-  await page.route('**/api/memory/documents/tag-icons', route => {
+  await page.route('**/api/documents/tag-icons', route => {
     if (route.request().method() === 'POST') {
       const icon = { id: 'custom-icon', ...route.request().postDataJSON() }
       icons.push(icon)
@@ -249,7 +249,7 @@ async function fixture(page, locale = 'en') {
     }
     return route.fulfill({ json: icons })
   })
-  await page.route('**/api/memory/documents/tags', route => {
+  await page.route('**/api/documents/tags', route => {
     if (route.request().method() === 'POST') {
       const data = route.request().postDataJSON()
       const tag = { ...data, id: 'new-tag', position: Math.max(0, ...tags.filter(tag => tag.parent_id === data.parent_id).map(tag => tag.position)) + 1 }
@@ -258,7 +258,7 @@ async function fixture(page, locale = 'en') {
     }
     return route.fulfill({ json: { user_id: 1, tags } })
   })
-  await page.route('**/api/memory/documents/tags/*', route => {
+  await page.route('**/api/documents/tags/*', route => {
     const url = new URL(route.request().url())
     const id = url.pathname.split('/').at(-1)
     if (route.request().method() === 'DELETE') {
@@ -276,13 +276,13 @@ async function fixture(page, locale = 'en') {
     mutations.push({ id, ...data }); tags = tags.map(tag => tag.id === id ? { ...tag, ...data } : tag)
     return route.fulfill({ json: tags.find(tag => tag.id === id) })
   })
-  await page.route('**/api/memory/documents/doc-a/tags/*', route => {
+  await page.route('**/api/documents/doc-a/tags/*', route => {
     const id = route.request().url().split('/').at(-1)
     if (route.request().method() === 'DELETE') assignments.delete(id)
     else assignments.add(id)
     return route.fulfill({ status: 204 })
   })
-  await page.route('**/api/memory/documents/order', route => {
+  await page.route('**/api/documents/order', route => {
     const data = route.request().postDataJSON(); orders.push(data)
     const moving = tags.find(tag => tag.id === data.node.id)
     const siblings = tags.filter(tag => tag.parent_id === data.parent_id && tag !== moving).sort((a, b) => a.position - b.position)
@@ -290,13 +290,13 @@ async function fixture(page, locale = 'en') {
     siblings.forEach((tag, index) => { tag.position = index + 1 })
     return route.fulfill({ status: 204 })
   })
-  await page.route('**/api/memory/documents/doc-a/tags', route => {
+  await page.route('**/api/documents/doc-a/tags', route => {
     assignments.clear()
     const { tag_id } = route.request().postDataJSON()
     if (tag_id) assignments.add(tag_id)
     return route.fulfill({ status: 204 })
   })
-  await page.route('**/api/memory/documents/library', route => {
+  await page.route('**/api/documents/library', route => {
     const body = route.request().postDataJSON(); requests.push(body)
     const entry = { item: readOnlyDocument, agent_ids: [7, 8], writable_agent_ids: [], owner_label: 'Alice', tags: tags.filter(tag => assignments.has(tag.id)) }
     const match = (body.classification !== 'unclassified' || !assignments.size)
@@ -305,7 +305,7 @@ async function fixture(page, locale = 'en') {
     return route.fulfill({ json: { entries: match ? [entry] : [], total: match ? 1 : 0, keywords: [], has_more: false,
       owners: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '' }] } })
   })
-  await mount(page, 'app/memory/components/DocumentLibraryNavigation.vue', { locale, props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px', maxWidth: '100vw' } })
+  await mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { locale, props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px', maxWidth: '100vw' } })
   await expect(page.getByText('Test document', { exact: true })).toHaveCount(1)
   return { requests, assignments, mutations, deletions, orders }
 }
@@ -358,8 +358,8 @@ test('folder shortcuts target hover or focus, create children, and confirm delet
 
 test('document shortcuts target one row and respect read-only, protected and busy documents', async ({ page }) => {
   const entry = { item: document, agent_ids: [7], writable_agent_ids: [7] }
-  await jsonRoute(page, url => url.pathname === '/api/memory/documents/doc-a', { item: document, agent_id: 7 })
-  await mount(page, 'app/memory/components/DocumentLibraryDocument.vue', { props: {
+  await jsonRoute(page, url => url.pathname === '/api/documents/doc-a', { item: document, agent_id: 7 })
+  await mount(page, 'app/document/components/DocumentLibraryDocument.vue', { props: {
     entry, selectedDocumentId: null, busy: false, children: {}, loading: {}, errors: {}, expanded: [], dropTarget: null, dropPlacement: 'inside',
   } })
   await page.getByText('Test document', { exact: true }).hover()
@@ -426,12 +426,12 @@ test('classification refreshes only affected folders and keeps other documents u
   const tags = [{ id: 'work', name: 'Work', parent_id: null }, { id: 'project', name: 'Project', parent_id: 'work' }, { id: 'other', name: 'Other', parent_id: null }]
   const requests = []
   let tagReads = 0, release, delayProject = false
-  await jsonRoute(page, '**/api/memory/documents/root-doc', { item: { ...document, id: 'root-doc', title: 'Root report' }, agent_id: 7 })
-  await page.route('**/api/memory/documents/tags', route => {
+  await jsonRoute(page, '**/api/documents/root-doc', { item: { ...document, id: 'root-doc', title: 'Root report' }, agent_id: 7 })
+  await page.route('**/api/documents/tags', route => {
     tagReads++
     return route.fulfill({ json: { user_id: 1, tags } })
   })
-  await page.route('**/api/memory/documents/library', async route => {
+  await page.route('**/api/documents/library', async route => {
     const body = route.request().postDataJSON(); requests.push(body.tag_id)
     if (body.tag_id === 'project' && delayProject) await new Promise(resolve => { release = resolve })
     const entry = (id, title, tagIds = []) => ({ item: { ...document, id, title }, tags: tags.filter(tag => tagIds.includes(tag.id)), agent_ids: [7], writable_agent_ids: [] })
@@ -441,7 +441,7 @@ test('classification refreshes only affected folders and keeps other documents u
     if (body.tag_id === 'project') entries.push(entry('project-notes', 'Project notes', ['project']))
     return route.fulfill({ json: { entries, total: entries.length, keywords: [], has_more: false } })
   })
-  await page.route('**/api/memory/documents/doc-a/tags', async route => {
+  await page.route('**/api/documents/doc-a/tags', async route => {
     state.assignments.clear(); state.assignments.add(route.request().postDataJSON().tag_id)
     // The server notifies other tabs before the mutation's HTTP response arrives.
     await page.evaluate(() => window.testApp.emitSocket('memory.classification', { data: {
@@ -449,7 +449,7 @@ test('classification refreshes only affected folders and keeps other documents u
     } }))
     return route.fulfill({ status: 204 })
   })
-  await mount(page, 'app/memory/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
+  await mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
   await page.getByText('Work', { exact: true }).click()
   await page.getByText('Project', { exact: true }).click()
   await expect(page.getByText('Project notes', { exact: true })).toBeVisible()
@@ -481,7 +481,7 @@ test('classification refreshes only affected folders and keeps other documents u
   await expect.poll(() => requests).toEqual([null])
   expect(await other.evaluate(element => element.isConnected)).toBe(true)
   requests.length = 0; tagReads = 0
-  await page.route('**/api/memory/documents/tags/work', route => {
+  await page.route('**/api/documents/tags/work', route => {
     Object.assign(tags[0], route.request().postDataJSON())
     return route.fulfill({ json: tags[0] })
   })
@@ -495,7 +495,7 @@ test('classification refreshes only affected folders and keeps other documents u
   // Rights changes remove only rows absent from the completed authoritative response.
   let releaseAccess
   const gate = new Promise(resolve => { releaseAccess = resolve })
-  await page.route('**/api/memory/documents/library', async route => {
+  await page.route('**/api/documents/library', async route => {
     await gate
     await route.fulfill({ json: { entries: [], total: 0, keywords: [], has_more: false } })
   })
@@ -512,7 +512,7 @@ test('successive committed moves stay usable during a stale folder read and a re
   state.assignments.add('work')
   let release, holdProject = false, rejectMove = false, staleReplied = false
   const gate = new Promise(resolve => { release = resolve })
-  await page.route('**/api/memory/documents/library', async route => {
+  await page.route('**/api/documents/library', async route => {
     const body = route.request().postDataJSON()
     const tags = [...state.assignments].map(id => ({ id, name: id === 'work' ? 'Work' : 'Project', parent_id: id === 'work' ? null : 'work' }))
     const present = body.tag_id ? state.assignments.has(body.tag_id) : !state.assignments.size
@@ -527,7 +527,7 @@ test('successive committed moves stay usable during a stale folder read and a re
     }
     return route.fulfill({ json: { entries, total: entries.length, has_more: false, keywords: [] } })
   })
-  await page.route('**/api/memory/documents/doc-a/tags', route => {
+  await page.route('**/api/documents/doc-a/tags', route => {
     if (rejectMove) return route.fulfill({ status: 409, json: { detail: 'Placement changed' } })
     state.assignments.clear()
     const { tag_id } = route.request().postDataJSON()
@@ -575,7 +575,7 @@ test(`${event} reconciles documents without removing rows and failed refreshes p
   let release, fail = false
   const gate = new Promise(resolve => { release = resolve })
   const requests = []
-  await page.route('**/api/memory/documents/library', async route => {
+  await page.route('**/api/documents/library', async route => {
     const body = route.request().postDataJSON(); requests.push(body.tag_id)
     await gate
     if (fail) return route.fulfill({ status: 503, json: { detail: 'Unavailable' } })
@@ -611,7 +611,7 @@ test(`${event} reconciles documents without removing rows and failed refreshes p
   const obsoleteGate = new Promise(resolve => { releaseOld = resolve })
   let oldReads = 0, oldReplies = 0
   const response = title => ({ entries: [{ item: { ...document, title }, agent_ids: [7], writable_agent_ids: [], tags: [] }], total: 1, keywords: [], has_more: false })
-  await page.route('**/api/memory/documents/library', async route => {
+  await page.route('**/api/documents/library', async route => {
     oldReads++
     await obsoleteGate
     await route.fulfill({ json: response('Obsolete report') })
@@ -619,7 +619,7 @@ test(`${event} reconciles documents without removing rows and failed refreshes p
   })
   await page.evaluate(event => window.testApp.emitSocket(event, {}), event)
   await expect.poll(() => oldReads).toBe(2)
-  await page.route('**/api/memory/documents/library', route => route.fulfill({ json: response('Latest report') }))
+  await page.route('**/api/documents/library', route => route.fulfill({ json: response('Latest report') }))
   await page.evaluate(event => window.testApp.emitSocket(event, {}), event)
   await expect(list.getByText('Latest report', { exact: true })).toBeVisible()
   await expect(tree.getByText('Latest report', { exact: true })).toBeVisible()
@@ -701,7 +701,7 @@ test('tag creation, inline rename, reparenting and confirmed recursive deletion 
   await expect.poll(() => mutations.at(-1)).toMatchObject({ id: 'new-tag', parent_id: 'work' })
   await page.getByText('Books', { exact: true }).dragTo(page.getByRole('button', { name: 'Create a folder', exact: true }).locator('..'))
   await expect.poll(() => mutations.at(-1)).toMatchObject({ id: 'new-tag', parent_id: null })
-  await mount(page, 'app/memory/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
+  await mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
   // The moved folder remains accessible while its former parent is collapsed.
   await expect(page.getByText('Project', { exact: true })).not.toBeVisible()
   await expect(page.getByText('Books', { exact: true })).toBeVisible()
@@ -718,12 +718,12 @@ test('tag creation, inline rename, reparenting and confirmed recursive deletion 
   await expect(page.getByText('Work', { exact: true })).toBeVisible()
   await expect.poll(() => [...assignments]).toEqual(['work'])
   await folderAction(page, 'Work', 'Delete folder')
-  await page.route('**/api/memory/documents/tags/work?confirmed=true', route => route.fulfill({ status: 500, json: { detail: 'Unavailable' } }))
+  await page.route('**/api/documents/tags/work?confirmed=true', route => route.fulfill({ status: 500, json: { detail: 'Unavailable' } }))
   await page.getByRole('dialog').getByRole('button', { name: 'Delete folder', exact: true }).click()
   await expect(page.getByText('Unable to update your classification.', { exact: true })).toBeVisible()
   await expect(page.getByRole('dialog')).toBeVisible()
   expect([...assignments]).toEqual(['work'])
-  await page.unroute('**/api/memory/documents/tags/work?confirmed=true')
+  await page.unroute('**/api/documents/tags/work?confirmed=true')
   await page.getByRole('dialog').last().getByRole('button', { name: 'Delete folder', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByText('Project', { exact: true })).toHaveCount(0)
@@ -746,7 +746,7 @@ test('tree loads all documents, retries, ignores list search and discards closed
   let release
   let delayed = false
   let fresh = false
-  await page.route('**/api/memory/documents/library', async route => {
+  await page.route('**/api/documents/library', async route => {
     const body = route.request().postDataJSON()
     if (!body.tag_id) return route.fallback()
     branchRequests.push(body)
@@ -884,7 +884,7 @@ for (const [folder, parent] of [['Work', null], ['Project', 'work']]) {
     await expect.poll(() => mutations.at(-1)).toMatchObject({ name: 'Sibling', parent_id: parent })
     const names = parent ? ['Work', 'Project', 'Sibling'] : ['Work', 'Sibling']
     await expect(page.locator('.document-tree .tag-name')).toHaveText(names)
-    await mount(page, 'app/memory/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
+    await mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
     if (parent) await page.getByText('Work', { exact: true }).click()
     await expect(page.locator('.document-tree .tag-name')).toHaveText(names)
     const sibling = page.getByText('Sibling', { exact: true })
@@ -916,7 +916,7 @@ for (const [folder, parent] of [['Work', null], ['Project', 'work']]) {
 
 test('a folder created through its actions remains editable when positioning fails', async ({ page }) => {
   await fixture(page)
-  await page.route('**/api/memory/documents/order', route => route.fulfill({ status: 409, json: { detail: 'Stale anchor' } }))
+  await page.route('**/api/documents/order', route => route.fulfill({ status: 409, json: { detail: 'Stale anchor' } }))
   await folderAction(page, 'Work', 'Create a folder below')
   await expect(page.getByText('The folder was created, but could not be positioned. You can move it.', { exact: true })).toBeVisible()
   await expect(page.getByLabel('Name', { exact: true })).toBeFocused()
@@ -988,7 +988,7 @@ test('icon palette recovers a loading error and preserves the tag after a server
   const { mutations } = await fixture(page)
   let fail = true
   let rejectedUploads = 0
-  await page.route('**/api/memory/documents/tag-icons', route => {
+  await page.route('**/api/documents/tag-icons', route => {
     if (route.request().method() === 'POST') {
       rejectedUploads++
       return route.fulfill({ status: 400, json: { detail: 'Synthetic configured file size limit exceeded' } })
@@ -1082,11 +1082,11 @@ test('French icon search reaches Unicode, colored folders and both icon fonts an
 test('failed moves keep existing classification and inline rename failures retain the edit', async ({ page }) => {
   const { assignments } = await fixture(page)
   assignments.add('work')
-  await page.route('**/api/memory/documents/doc-a/tags', route => route.fulfill({ status: 500, json: { detail: 'Unavailable' } }))
+  await page.route('**/api/documents/doc-a/tags', route => route.fulfill({ status: 500, json: { detail: 'Unavailable' } }))
   await page.getByText('Test document', { exact: true }).dragTo(page.getByText('Work', { exact: true }))
   await expect(page.getByText('Unable to update your classification.', { exact: true })).toBeVisible()
   expect([...assignments]).toEqual(['work'])
-  await page.route('**/api/memory/documents/tags/work', route => route.fulfill({ status: 500, json: { detail: 'Unavailable' } }))
+  await page.route('**/api/documents/tags/work', route => route.fulfill({ status: 500, json: { detail: 'Unavailable' } }))
   await editFolder(page, 'Work')
   await page.getByLabel('Name', { exact: true }).fill('Changed')
   await page.getByLabel('Name', { exact: true }).press('Enter')
@@ -1095,7 +1095,7 @@ test('failed moves keep existing classification and inline rename failures retai
   await page.getByLabel('Name', { exact: true }).press('Escape')
   await expect(page.getByText('Work', { exact: true })).toBeVisible()
   let attempts = 0
-  await page.route('**/api/memory/documents/tags', route => {
+  await page.route('**/api/documents/tags', route => {
     if (route.request().method() !== 'POST') return route.fallback()
     attempts++
     return route.fulfill({ status: 500, json: { detail: 'Unavailable' } })
@@ -1109,17 +1109,17 @@ test('failed moves keep existing classification and inline rename failures retai
 })
 
 test('late search responses cannot replace current results and request errors can be retried', async ({ page }) => {
-  await jsonRoute(page, '**/api/memory/documents/doc-a', { item: document, agent_id: 7 })
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [] })
+  await jsonRoute(page, '**/api/documents/doc-a', { item: document, agent_id: 7 })
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [] })
   let release, slowRequested = false, fail = true
   const gate = new Promise(resolve => { release = resolve })
-  await page.route('**/api/memory/documents/library', async route => {
+  await page.route('**/api/documents/library', async route => {
     const body = route.request().postDataJSON()
     if (body.query === 'slow') { slowRequested = true; await gate }
     if (body.query === 'error' && fail) return route.fulfill({ status: 500, json: { detail: 'Unavailable' } })
     await route.fulfill({ json: { entries: [{ item: { ...document, title: body.query || 'Initial' }, agent_ids: [], writable_agent_ids: [], tags: [] }], total: 1, keywords: [], has_more: false } })
   })
-  await mount(page, 'app/memory/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
+  await mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px' } })
   const search = page.getByRole('textbox', { name: /search/i })
   await search.fill('slow')
   await expect.poll(() => slowRequested).toBe(true)
@@ -1139,8 +1139,8 @@ test('switching user clears private tags and restores that user’s panel prefer
   await fixture(page)
   await toggleUnclassified(page)
   await expectUnclassified(page, false)
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 2, tags: [{ id: 'other', name: 'Other user tag', parent_id: null }] })
-  await jsonRoute(page, '**/api/memory/documents/library', { entries: [], total: 0, keywords: [], has_more: false })
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 2, tags: [{ id: 'other', name: 'Other user tag', parent_id: null }] })
+  await jsonRoute(page, '**/api/documents/library', { entries: [], total: 0, keywords: [], has_more: false })
   await page.evaluate(async () => {
     localStorage.setItem('galaris:document-library-split:2', '45')
     window.testApp.auth.$patch({ user: { id: 2, email: 'other@example.invalid' } })
@@ -1172,12 +1172,12 @@ test('folder-first ordering, alphabetical sorting and recursive expansion preser
   let sortFailure = false
   let fail = false
   for (const doc of docs) {
-    await jsonRoute(page, `**/api/memory/documents/${doc.id}`, {
+    await jsonRoute(page, `**/api/documents/${doc.id}`, {
       item: { ...document, id: doc.id, title: doc.title }, agent_id: 7,
     })
   }
-  await page.route('**/api/memory/documents/tags', route => route.fulfill({ json: { user_id: 1, tags } }))
-  await page.route('**/api/memory/documents/library', route => {
+  await page.route('**/api/documents/tags', route => route.fulfill({ json: { user_id: 1, tags } }))
+  await page.route('**/api/documents/library', route => {
     const body = route.request().postDataJSON()
     branchReads.push(body.tag_id)
     const selected = docs.filter(doc => body.tag_id ? doc.parent === body.tag_id : body.classification !== 'unclassified' || !doc.parent)
@@ -1185,7 +1185,7 @@ test('folder-first ordering, alphabetical sorting and recursive expansion preser
     return route.fulfill({ json: { entries: selected.map(doc => ({ item: { ...document, id: doc.id, title: doc.title },
       position: body.tag_id ? doc.position : doc.listPosition, tags: tags.filter(tag => tag.id === doc.parent), agent_ids: [7], writable_agent_ids: [] })), total: selected.length, keywords: [], has_more: false } })
   })
-  await page.route('**/api/memory/documents/order', route => {
+  await page.route('**/api/documents/order', route => {
     const data = route.request().postDataJSON(); moves.push(data)
     if (fail) return route.fulfill({ status: 500, json: { detail: 'Unavailable' } })
     const field = data.list_only ? 'listPosition' : 'position'
@@ -1199,7 +1199,7 @@ test('folder-first ordering, alphabetical sorting and recursive expansion preser
     siblings.forEach((row, position) => { row[field] = position + 1 })
     return route.fulfill({ status: 204 })
   })
-  await page.route('**/api/memory/documents/order/sort', route => {
+  await page.route('**/api/documents/order/sort', route => {
     if (sortFailure) return route.fulfill({ status: 500, json: { detail: 'Unavailable' } })
     const { parent_id, descending } = route.request().postDataJSON()
     const compare = (a, b) => (a.name ?? a.title).localeCompare(b.name ?? b.title) * (descending ? -1 : 1)
@@ -1207,7 +1207,7 @@ test('folder-first ordering, alphabetical sorting and recursive expansion preser
     sorted.forEach((row, index) => { row.position = index + 1 })
     return route.fulfill({ status: 204 })
   })
-  const open = () => mount(page, 'app/memory/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px', maxWidth: '100vw' } })
+  const open = () => mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null }, containerStyle: { height: '760px', width: '400px', maxWidth: '100vw' } })
   await open()
   const work = page.getByText('Work', { exact: true })
   await page.getByText('Reading', { exact: true }).dragTo(work.locator('xpath=ancestor::div[contains(@class,"tag-row")][1]'), { targetPosition: { x: 60, y: 2 } })

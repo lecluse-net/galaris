@@ -1,7 +1,6 @@
 """DbAdmin contributions for rebuildable memory projections."""
 
 from loguru import logger
-import asyncio
 from sqlalchemy import String, cast, delete, exists, select, text, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -10,31 +9,16 @@ from core.dbadmin import (
     DbAdminAction, DbAdminPhase, DbAdminReconciler, DbAdminRegistry, SchemaTransitionSet,
 )
 
-from .goal_document_adapter import (
-    reconcile_goal_document_paths,
-    register_goal_document_adapter,
-)
 from .semantic_index import reconcile_embedding_index
 from .source_projection import rebuild_source_memories
 from .models import MemoryContactIdentity, MemoryItem
 from .catalogue_projection import reconcile_catalogue_descriptions
-from . import document_thumbnail_cache
 
 
-def needs_document_thumbnail_cleanup(transitions: SchemaTransitionSet) -> bool:
-    return transitions.table_added("documents") or transitions.column_added("documents", "thumbnail_id")
 
 
-async def document_thumbnail_cleanup_complete(
-    _session: AsyncSession, _transitions: SchemaTransitionSet,
-) -> bool:
-    return await asyncio.to_thread(lambda: next(document_thumbnail_cache.legacy_files(), None) is None)
 
 
-async def discard_legacy_document_thumbnails(
-    _session: AsyncSession, _transitions: SchemaTransitionSet,
-) -> None:
-    await asyncio.to_thread(document_thumbnail_cache.discard_all_legacy)
 
 
 async def _reconcile_temporal_timezone(session: AsyncSession) -> None:
@@ -117,7 +101,6 @@ async def backfill_document_appends(
 
 
 async def _reconcile_source_projections(_session: AsyncSession) -> None:
-    register_goal_document_adapter()
     result = await rebuild_source_memories(missing_only=True)
     logger.info("Source-memory reconciliation: {}", result.model_dump())
     if result.failures:
@@ -136,24 +119,11 @@ async def _reconcile_document_structure(_session: AsyncSession) -> None:
     await reconcile_document_structure()
 
 
-async def _reconcile_goal_document_paths(session: AsyncSession) -> None:
-    changed = await reconcile_goal_document_paths(session)
-    logger.info("Goal-document path reconciliation: changed={}", changed)
 
 
-async def _enqueue_goal_folders(_session: AsyncSession) -> None:
-    from app.goal import Goal
-    from .goal_folders import enqueue_goal_folder_reconciliation
-
-    if await _session.scalar(select(Goal.id).limit(1)) is not None:
-        await enqueue_goal_folder_reconciliation()
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
-    registry.register_reconciler(DbAdminReconciler(
-        key="app.memory.sharing_inheritance", handler=_reconcile_sharing,
-        depends_on=("app.memory.document_structure",),
-    ))
     registry.register_reconciler(DbAdminReconciler(
         key="app.memory.internal_user_identities",
         handler=_reconcile_internal_user_identities,
@@ -161,16 +131,6 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
     ))
     from .content_migration import register_inline_content
     register_inline_content(registry)
-    registry.register_action(DbAdminAction(
-        key="app.memory.document_thumbnail_pointer",
-        phase=DbAdminPhase.AFTER_EXPAND,
-        checksum="single-document-thumbnail-without-revision-sidecars-v1",
-        predicate=needs_document_thumbnail_cleanup,
-        handler=discard_legacy_document_thumbnails,
-        postcondition=document_thumbnail_cleanup_complete,
-    ))
-    from .document_migration import register_document_split
-    register_document_split(registry)
     from .file_attributes_migration import register_file_attributes
     register_file_attributes(registry)
     registry.register_reconciler(DbAdminReconciler(
@@ -184,10 +144,6 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
     ))
     registry.register_reconciler(DbAdminReconciler(
         key="app.memory.catalogue_editability", handler=_reconcile_catalogue_editability,
-    ))
-    registry.register_reconciler(DbAdminReconciler(
-        key="app.memory.goal_folders", handler=_enqueue_goal_folders,
-        depends_on=("app.memory.goal_document_paths", "app.memory.document_structure"),
     ))
     registry.register_reconciler(DbAdminReconciler(
         key="app.memory.document_structure", handler=_reconcile_document_structure,
@@ -208,15 +164,9 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_reconciler(DbAdminReconciler(key="app.memory.editorial_text", handler=rebuild_html_text, depends_on=("app.memory.source_projections",)))
     registry.register_reconciler(
         DbAdminReconciler(
-            key="app.memory.goal_document_paths",
-            handler=_reconcile_goal_document_paths,
-        )
-    )
-    registry.register_reconciler(
-        DbAdminReconciler(
             key="app.memory.source_projections",
             handler=_reconcile_source_projections,
-            depends_on=("app.llm.current_profile", "app.memory.temporal_timezone"),
+            depends_on=("app.llm.current_profile", "app.memory.temporal_timezone", "app.memory.goal_document_paths"),
         )
     )
     registry.register_reconciler(
@@ -227,9 +177,3 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
             required=False,
         )
     )
-
-
-async def _reconcile_sharing(_session: AsyncSession) -> None:
-    from .sharing_inheritance import reconcile_sharing
-    changed = await reconcile_sharing()
-    logger.info("Document sharing reconciliation: changed={}", changed)

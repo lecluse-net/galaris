@@ -27,7 +27,7 @@ PASSWORD = "Restore-drill-password-42!"
 
 async def seed_application_document() -> None:
     from app.agent.models import Agent, Title
-    from app.memory import document_service, document_attachment_service
+    from app.document import document_service, document_attachment_service
     from core.authorize.models import Assignment, Role
     from core.user.models import User
     from core.user.user_service import encrypt_password

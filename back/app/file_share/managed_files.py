@@ -28,6 +28,7 @@ _LIST_SCAN_LIMIT = 500
 async def _can_read_file(ctx: ResourceContext, owner: int | None, aliases: Iterable[str]) -> bool:
     from .resource_service import resource_info
     from app.memory import MemoryNotFoundError, MemoryPermissionError
+    from app.document import DocumentNotFoundError, DocumentPermissionError
 
     if owner == ctx.agent_id:
         return True
@@ -37,7 +38,7 @@ async def _can_read_file(ctx: ResourceContext, owner: int | None, aliases: Itera
             continue
         try:
             await resource_info(ctx, alias)
-        except (PermissionError, FileNotFoundError, ValueError, MemoryNotFoundError, MemoryPermissionError):
+        except (PermissionError, FileNotFoundError, ValueError, MemoryNotFoundError, MemoryPermissionError, DocumentNotFoundError, DocumentPermissionError):
             continue
         return True
     return False
@@ -46,6 +47,7 @@ async def _can_read_file(ctx: ResourceContext, owner: int | None, aliases: Itera
 async def _can_rename_file(ctx: ResourceContext, owner: int | None, aliases: Iterable[str]) -> bool:
     from .resource_service import resource_info
     from app.memory import MemoryNotFoundError, MemoryPermissionError
+    from app.document import DocumentNotFoundError, DocumentPermissionError
 
     if owner == ctx.agent_id:
         return True
@@ -55,7 +57,7 @@ async def _can_rename_file(ctx: ResourceContext, owner: int | None, aliases: Ite
         try:
             if "delete" in (await resource_info(ctx, alias)).capabilities:
                 return True
-        except (PermissionError, FileNotFoundError, ValueError, MemoryNotFoundError, MemoryPermissionError):
+        except (PermissionError, FileNotFoundError, ValueError, MemoryNotFoundError, MemoryPermissionError, DocumentNotFoundError, DocumentPermissionError):
             continue
     return False
 
@@ -187,7 +189,9 @@ async def rename_managed_file(ctx: ResourceContext, file_id: UUID, name: str) ->
     db = get_db()
     owner = await db.scalar(select(ManagedFileOwner.agent_id).where(ManagedFileOwner.file_id == file_id))
     if owner != ctx.agent_id:
-        from app.memory import MemoryNotFoundError, MemoryPermissionError, rename_document_attachment
+        from app.memory import MemoryNotFoundError, MemoryPermissionError
+        from app.document import DocumentNotFoundError, DocumentPermissionError
+        from app.document import rename_document_attachment
 
         aliases = list(await db.scalars(select(FileAlias.uri).where(FileAlias.file_id == file_id)))
         for alias in aliases:
@@ -197,7 +201,7 @@ async def rename_managed_file(ctx: ResourceContext, file_id: UUID, name: str) ->
             try:
                 await rename_document_attachment(UUID(parts[0]), file_id, actor_agent_id=ctx.agent_id, name=name)
                 return await managed_file_info(ctx, file_id)
-            except (MemoryNotFoundError, MemoryPermissionError):
+            except (MemoryNotFoundError, MemoryPermissionError, DocumentNotFoundError, DocumentPermissionError):
                 continue
         raise PermissionError("Managed file rename denied")
     record = await db.get(StoredFile, file_id)
@@ -212,7 +216,7 @@ async def managed_file_thumbnail(ctx: ResourceContext, file_id: UUID) -> bytes |
     from core.preview import thumbnails
     from core.storage import file_path
     from core.util import complete_io
-    from app.memory import render_file_thumbnail
+    from app.document import render_file_thumbnail
 
     descriptor = await managed_file_info(ctx, file_id)
     async with thumbnails.generation(descriptor.uri):

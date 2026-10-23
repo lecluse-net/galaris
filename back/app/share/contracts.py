@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 PrincipalKind = Literal["agent", "user", "team"]
-ShareKind = Literal["memory", "document", "dataset", "process"]
+ShareKind = Literal["document", "dataset", "process"]
 
 
 class Collaborator(BaseModel):

@@ -98,7 +98,7 @@ from .file_contracts import (
 )
 from .web_transport import PublicHttpsContent, read_public_https_bytes
 
-from app.memory import register_internal_attachment_reader
+from app.document import register_internal_attachment_reader
 async def read_internal_attachment(uri: str, agent_id: int, scope: "AgentManagementScope | None") -> dict[str, object]:
     from .browser import read_internal_attachment as read
     return await read(uri, agent_id, scope)

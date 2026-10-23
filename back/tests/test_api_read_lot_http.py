@@ -8,7 +8,7 @@ from app.incident.models import FailureIncident, FailurePattern
 from app.lab.models import LabTask
 from app.lab.process_evaluation_models import LabProcessCampaign, LabProcessCase
 from app.llm.provider_models import LLM, LLMProvider
-from app.memory import document_service
+from app.document import document_service
 from app.memory.tests.conftest import memory_storage as memory_storage
 from app.process.bpmn import to_bpmn
 from app.process.models import ProcessDefinition, ProcessDefinitionRevision

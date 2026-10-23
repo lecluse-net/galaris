@@ -1,3 +1,10 @@
+from __future__ import annotations
+from app.memory.tests.document_fixtures import finish_document_deletion
+from app.document import resource_service as documents
+from app.document.schemas import DocumentPayload
+from app.document.schemas import DocumentItemCreate, DocumentUpdate
+from app.memory.tests.document_fixtures import create_document_reference, edit_document_reference
+from app.memory.tests.document_fixtures import project_document
 """A concurrent committed change must not resurrect a cached search result."""
 
 import asyncio
@@ -5,9 +12,29 @@ import builtins
 from dataclasses import replace
 from uuid import uuid4
 from weakref import WeakValueDictionary
+from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy.sql import selectable
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("change", ["body", "summary", "title"])
+async def test_delayed_document_projection_cannot_recall_its_obsolete_snapshot(agents, memory_storage, monkeypatch, change):
+    owner = agents[0]
+    item, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
+        title="Synthetic snapshot", media_type="text/html", payload=DocumentPayload(text="<p>Synthetic old evidence.</p>")))
+    monkeypatch.setattr(retrieval, "resolve_embedding_model", AsyncMock(side_effect=MemoryEmbeddingNotConfiguredError("unset")))
+    if change == "body":
+        await documents.update_item(item.id, DocumentUpdate(payload=DocumentPayload(text="<p>Synthetic revised evidence.</p>")), actor_agent_id=owner.id)
+    elif change == "summary":
+        await documents.update_summary(item.id, DocumentUpdate(payload=DocumentPayload(text="<p>Synthetic shared abstract.</p>")), actor_agent_id=owner.id)
+    else:
+        await documents.update_item(item.id, DocumentUpdate(title="Synthetic renamed snapshot"), actor_agent_id=owner.id)
+    request = MemoryRecallRequest(agent_id=owner.id, query="Synthetic")
+    assert not (await retrieval.recall_items(request)).hits
+    await project_document(item.id)
+    assert [hit.item.id for hit in (await retrieval.recall_items(request)).hits] == [item.id]
 
 from app.agent.models import Agent, Title
 from app.memory import bootstrap, context, retrieval, semantic_index, service
@@ -15,10 +42,8 @@ from app.memory.access import effective_access
 from app.agent.context import build_agent_run_context, register_context_provider, unregister_context_provider
 from app.agent.contracts import AgentContextRequest, AgentSnapshot
 from app.memory.embedding import EmbeddingModel, MemoryEmbeddingNotConfiguredError
-from app.memory.schemas import (
-    MemoryGrantUpdate, MemoryItemCreate, MemoryItemUpdate, MemoryPayload,
-    MemoryRecallRequest, MemorySearchRequest, MemorySearchHit, MemoryTraversalStep, MemoryLinkCreate,
-)
+from app.memory.schemas import MemoryItemCreate, MemoryItemUpdate, MemoryPayload, MemoryRecallRequest, MemorySearchRequest, MemorySearchHit, MemoryTraversalStep, MemoryLinkCreate
+from app.document.schemas import DocumentGrantUpdate
 from core.database import get_db, get_db_session
 from core.user import UserModel
 
@@ -105,22 +130,22 @@ async def test_recall_preserves_access_when_sqlalchemy_reuses_anonymous_names(
     agents, memory_storage, monkeypatch,
 ):
     owner, reader = agents
-    own, _ = await service.create_item(MemoryItemCreate(
+    own, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=reader.id, node_kind="document", title="Synthetic evidence — owned",
-        payload=MemoryPayload(text="<p>Synthetic evidence about the workshop.</p>"),
+        payload=DocumentPayload(text="<p>Synthetic evidence about the workshop.</p>"),
         media_type="text/html",
     ))
-    shared, _ = await service.create_item(MemoryItemCreate(
+    shared, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, node_kind="document", title="Synthetic evidence — shared",
-        payload=MemoryPayload(text="<p>Synthetic evidence about the meeting.</p>"),
+        payload=DocumentPayload(text="<p>Synthetic evidence about the meeting.</p>"),
         media_type="text/html",
     ))
-    private, _ = await service.create_item(MemoryItemCreate(
+    private, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, node_kind="document", title="Synthetic evidence — private",
-        payload=MemoryPayload(text="<p>Synthetic evidence reserved for its owner.</p>"),
+        payload=DocumentPayload(text="<p>Synthetic evidence reserved for its owner.</p>"),
         media_type="text/html",
     ))
-    await service.set_item_grant(shared.id, reader.id, MemoryGrantUpdate(), actor_agent_id=owner.id)
+    await documents.set_item_grant(shared.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
 
     async def no_embedding():
         raise MemoryEmbeddingNotConfiguredError("unset")
@@ -165,23 +190,23 @@ async def test_lexical_fallback_admits_only_current_readable_content(
         db.add_all(agents)
         await db.flush()
         owner_id, reader_id = (agent.id for agent in agents)
-        item, _ = await service.create_item(MemoryItemCreate(
+        item, _ = await create_document_reference(DocumentItemCreate(
             owner_agent_id=owner_id, node_kind="document", title="Deployment secret",
-            payload=MemoryPayload(text="<p>Deployment uses obsolete credentials.</p>"), media_type="text/html",
+            payload=DocumentPayload(text="<p>Deployment uses obsolete credentials.</p>"), media_type="text/html",
         ))
         item_id = item.id
-        await service.set_item_grant(item_id, reader_id, MemoryGrantUpdate(), actor_agent_id=owner_id)
+        await documents.set_item_grant(item_id, reader_id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner_id)
 
     async def mutate():
         async with get_db_session():
             if change == "revoke":
-                await service.remove_item_grant(item_id, reader_id, actor_agent_id=owner_id)
+                await documents.remove_item_grant(item_id, reader_id, actor_agent_id=owner_id)
             elif change == "correct":
-                await service.update_item(item_id, MemoryItemUpdate(
+                await edit_document_reference(item_id, MemoryItemUpdate(
                     payload=MemoryPayload(text="<p>Deployment uses rotated credentials.</p>"),
                 ), actor_agent_id=owner_id)
             else:
-                await service.delete_document(item_id, actor_agent_id=owner_id)
+                await finish_document_deletion(item_id, actor_agent_id=owner_id)
 
     calls = 0
     async def unavailable_model():

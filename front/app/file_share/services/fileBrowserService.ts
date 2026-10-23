@@ -52,7 +52,7 @@ export const fileBrowserService = {
     } else {
       const [, document, attachment] = /^document:\/\/([^/]+)\/attachments\/([^/]+)$/.exec(entry.uri) ?? []
       if (!document || !attachment) throw new Error('Unsupported file rename')
-      await api.patch(`/memory/documents/${document}/attachments/${attachment}`, { name }, { params: { actor_agent_id: agent } })
+      await api.patch(`/documents/${document}/attachments/${attachment}`, { name }, { params: { actor_agent_id: agent } })
     }
     return entry.uri
   },

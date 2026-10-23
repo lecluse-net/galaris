@@ -21,11 +21,11 @@ from .descriptions import DESCRIPTIONS
 
 DEFAULT_CONVERSATION_TOOL_CODES = frozenset(
     {
-        "galaris", "conversation", "memory", "file_sharing",
+        "galaris", "conversation", "memory", "document", "file_sharing",
         "browser", "search",
     }
 )
-SYSTEM_TOOL_CODES = frozenset({"galaris", "conversation", "memory", "file_sharing"})
+SYSTEM_TOOL_CODES = frozenset({"galaris", "conversation", "memory", "document", "file_sharing"})
 
 
 @dataclass(frozen=True)
@@ -196,11 +196,12 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
             "memory_upcoming",
             "memory_forget",
             "memory_summarize",
-            "document_share",
-            "memory_sharing",
-            "memory_share",
-        ),
+                    ),
         default_active=True,
+    ),
+    IntegratedToolSpec(
+        code="document", label="Documents", description=DESCRIPTIONS["document"],
+        mcp_tools=("document_sharing", "document_share"), default_active=True,
     ),
     IntegratedToolSpec(
         code="file_sharing",

@@ -27,7 +27,10 @@ def _bounded_error(exc: Exception) -> str:
     message = str(exc).replace("\x00", "")
     if settings.POSTGRES_PASSWORD:
         message = message.replace(settings.POSTGRES_PASSWORD, "***")
-    return message[-4_000:]
+    if len(message) <= 4_000:
+        return message
+    separator = "\n... diagnostic truncated ...\n"
+    return message[:2_000] + separator + message[-(2_000 - len(separator)):]
 
 
 async def validate_open_actions(registry: DbAdminRegistry) -> tuple[DbAdminIssue, ...]:

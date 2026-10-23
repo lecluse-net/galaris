@@ -372,11 +372,11 @@ async def test_native_compatibility_toolsets_keep_short_mcp_names(
 @pytest.mark.parametrize(
     ("names", "expects_documents", "expects_sharing"),
     [
-        (("file_create", "file_search", "memory_sharing", "document_share"), True, True),
+        (("file_create", "file_search", "document_sharing", "document_share"), True, True),
         (("file_create", "memory_remember"), True, False),
         (("file_create", "document_share"), True, False),
         (("file_create", "file_search"), False, False),
-        (("memory_sharing", "document_share"), False, False),
+        (("document_sharing", "document_share"), False, False),
         ((), False, False),
     ],
 )

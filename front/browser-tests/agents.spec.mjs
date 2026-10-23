@@ -71,7 +71,7 @@ for (const source of ['file', 'citation']) for (const width of [1440, 390]) test
   await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'galaris', label: 'Galaris', capabilities: ['list', 'read', 'info'], native: true }])
   const file = { uri: 'galaris://agent/7', name: '7.json', metadata: { label: 'Alice Example' }, is_collection: false, media_type: 'application/json', size: null, capabilities: ['read', 'info'] }
   let deleted = false, denied = true, reads = 0
-  await page.route('**/api/memory/documents/doc-a/internal-attachments?*', route => route.fulfill({ json: { items: deleted ? [] : [{ ...file, available: true }], lock_version: 1 } }))
+  await page.route('**/api/documents/doc-a/internal-attachments?*', route => route.fulfill({ json: { items: deleted ? [] : [{ ...file, available: true }], lock_version: 1 } }))
   await page.route('**/api/agents/7', route => {
     if (route.request().method() === 'DELETE') { deleted = true; return route.fulfill({ status: 204 }) }
     reads++

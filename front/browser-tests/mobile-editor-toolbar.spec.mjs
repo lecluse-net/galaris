@@ -1,7 +1,7 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
 const component = 'core/util/components/RichTextEditor.vue'
-const documentUrl = 'https://galaris.example/memory/documents?document_id=00000000-0000-0000-0000-000000000001'
+const documentUrl = 'https://galaris.example/documents?document_id=00000000-0000-0000-0000-000000000001'
 
 async function command(page, name) {
   const button = page.getByRole('button', { name, exact: typeof name === 'string' }).first()

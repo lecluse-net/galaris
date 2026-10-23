@@ -17,7 +17,7 @@ from app.memory import service
 from app.memory.models import MemoryItem, MemoryURL
 from app.memory.schemas import MemorySearchRequest
 from app.memory.query_policy import prepare_memory_read
-from app.memory.storage import get_storage
+from core.storage import get_storage
 from tests.sharing_fixtures import bind_private_shares
 from .test_file_catalogue import console_catalogue as console_catalogue
 

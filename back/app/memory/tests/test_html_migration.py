@@ -12,7 +12,7 @@ from app.memory.html_migration import (
 )
 from app.memory.models import MemoryRevision
 from app.memory.schemas import MemoryItemCreate, MemoryPayload
-from app.memory.storage import get_storage
+from core.storage import get_storage
 
 
 def test_html_action_is_triggered_only_by_its_owned_schema_delta():

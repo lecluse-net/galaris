@@ -42,7 +42,7 @@ from app.memory.schemas import (
     MemoryPayload,
     MemorySearchHit,
 )
-from app.memory.storage import NativeFileStorage, register_storage, reset_storage_registry
+from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 
 
 @pytest.fixture

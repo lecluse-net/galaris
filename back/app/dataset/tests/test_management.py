@@ -7,7 +7,8 @@ from sqlalchemy import select
 from app.agent import AgentManagementScope
 from app.dataset import service, sharing, usage
 from app.dataset.models import DatasetRevision
-from app.memory import DocumentSharingLevelUpdate, document_service, find_dataset_document_usages
+from app.document import document_service
+from app.document import DocumentSharingLevelUpdate, find_dataset_document_usages
 from app.llm.facade import find_dataset_agent_usages
 from app.llm.models import LLMCall
 from app.process.facade import find_dataset_run_usages

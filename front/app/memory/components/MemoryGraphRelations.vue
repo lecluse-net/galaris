@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import DocumentIcon from './DocumentIcon.vue'
+import { DocumentIcon } from '@/app/document'
 import type { MemoryGraphRelation } from '../types'
 
 defineProps<{ relations: MemoryGraphRelation[] }>()

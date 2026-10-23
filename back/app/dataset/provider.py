@@ -47,7 +47,7 @@ async def resolve_alias(ctx: ResourceContext, reference: ResourceUri) -> Resourc
         return reference
     alias = await db.scalar(select(DatasetAlias).where(DatasetAlias.legacy_document_id == UUID(reference.segments[0])))
     if alias is None:
-        from app.memory import legacy_dataset_exists, legacy_dataset_access
+        from app.document import legacy_dataset_exists, legacy_dataset_access
         identity = UUID(reference.segments[0])
         if not await legacy_dataset_exists(identity) or not await legacy_dataset_access(identity, ctx.agent_id):
             return reference
@@ -131,7 +131,7 @@ class DatasetProvider:
             from app.file_share import resource_read
             attachment = await self._attachment(uri, ctx)
             if attachment.uri.startswith(f"document://{attachment.dataset_id}/attachments/"):
-                from app.memory import read_document_attachment_file_resource
+                from app.document import read_document_attachment_file_resource
                 _, raw = await read_document_attachment_file_resource(attachment.dataset_id, attachment.id, agent_id=ctx.agent_id)
                 text = raw.decode("utf-8")
                 start = max(0, int(options.get("offset", 0)))
@@ -244,7 +244,7 @@ class DatasetProvider:
             if attachment.uri.startswith(f"document://{attachment.dataset_id}/attachments/"):
                 if attachment.size_bytes is None or attachment.size_bytes > int(options["max_bytes"]):
                     raise ValueError("Legacy attachment exceeds the materialization limit")
-                from app.memory import read_document_attachment_file_resource
+                from app.document import read_document_attachment_file_resource
                 metadata, content = await read_document_attachment_file_resource(attachment.dataset_id, attachment.id, agent_id=ctx.agent_id)
                 if len(content) > int(options["max_bytes"]):
                     raise ValueError("Legacy attachment exceeds the materialization limit")

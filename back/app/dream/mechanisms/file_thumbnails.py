@@ -6,7 +6,8 @@ from uuid import UUID
 from sqlalchemy import Select, exists, func, or_, select
 from sqlalchemy.orm import aliased
 
-from app.memory import DocumentAttachment, MemoryItem, generate_document_attachment_thumbnail
+from app.memory import MemoryItem
+from app.document import DocumentAttachment, generate_document_attachment_thumbnail
 from core.database import get_db, get_db_session
 from core.document import OFFICE_EXTENSIONS
 from core.preview import MODEL_EXTENSIONS, MODEL_TYPES

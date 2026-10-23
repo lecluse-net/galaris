@@ -1,3 +1,6 @@
+from app.document.schemas import DocumentPayload
+from app.document.schemas import DocumentItemCreate
+from app.memory.tests.document_fixtures import create_document_reference
 """Resource encounters become private lexical Memory without model calls."""
 
 from dataclasses import replace
@@ -221,8 +224,8 @@ async def test_graph_hierarchy_defers_known_directory_descendants_and_pages_read
     root, child, grandchild = (items[uri.rstrip('/')] for uri in
         ['console://', 'console://branch', 'console://branch/nested'])
     file = items['console://root-file.txt']
-    document, _ = await service.create_item(MemoryItemCreate(owner_agent_id=ctx.agent_id,
-        title='Synthetic document', node_kind='document', payload=MemoryPayload(text='Synthetic document body')))
+    document, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=ctx.agent_id,
+        title='Synthetic document', node_kind='document', payload=DocumentPayload(text='Synthetic document body')))
     memory, _ = await service.create_item(MemoryItemCreate(owner_agent_id=ctx.agent_id,
         title='Synthetic memory', payload=MemoryPayload(text='Synthetic memory body')))
     root.updated_at = datetime(2020, 1, 1, tzinfo=timezone.utc)
@@ -683,7 +686,8 @@ async def test_catalogue_content_is_editable_and_manual_changes_survive_observat
     assert b"Personally curated content" in content
     assert item.keywords == ["curated"] and item.metadata_["custom"] == "kept"
     assert await memory_urls(item.id) == ["console://renamed.txt"]
-    with pytest.raises(service.MemoryPermissionError):
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
         await service.update_item(item.id, MemoryItemUpdate(visibility="public"), actor_agent_id=ctx.agent_id)
 
 
@@ -722,7 +726,7 @@ async def test_catalogue_descriptor_cleanup_preserves_useful_content_and_history
 ):
     from app.memory.catalogue_projection import project_catalogue_entry
     from app.memory.models import MemoryRevision
-    from app.memory.storage import get_storage
+    from core.storage import get_storage
     from core.dbadmin import DbAdminRegistry
     from core.util import visible_text
     from modules import load_dbadmin_contributions

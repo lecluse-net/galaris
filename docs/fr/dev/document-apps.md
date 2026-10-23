@@ -73,7 +73,7 @@ différents, au maximum dix. Les déclarations contradictoires sont refusées.
 
 Les outils `file_create`, `file_write`, `file_edit` et `file_append` acceptent ce HTML.
 Lire avant de modifier et fournir la révision attendue. Partager séparément le document et
-chaque Dataset avec `memory_sharing` puis `document_share` ; un lien n'accorde aucun droit.
+chaque Dataset avec `document_sharing` puis `document_share` ; un lien n'accorde aucun droit.
 Les types de document restent immuables. Les autres champs éditoriaux (Memory, Goal, Agent)
 conservent leur profil statique et refusent les scripts.
 
@@ -152,7 +152,7 @@ Les droits actuels de la page et du Dataset restent vérifiés à chaque appel. 
 bloque les prochains appels ; les écritures déjà committées restent durables et des données
 précédemment lues ne peuvent pas être retirées au code.
 
-Les routes humaines `GET /memory/documents/{id}/app-permissions` et
+Les routes humaines `GET /documents/{id}/app-permissions` et
 `PUT /memory/documents/{id}/app-permissions/{app}/{alias}` consultent et modifient l'accord
 avec `{document_revision, access: null | "read" | "write"}`. Elles ne sont exposées ni au SDK
 ni aux outils MCP. L'écriture exige le privilège humain d'édition. Le document s'affiche

@@ -11,10 +11,10 @@ import pytest_asyncio
 from sqlalchemy import select, func
 
 from app.agent import Agent, Title
-from app.memory import read_workflow_document, write_workflow_document
-from app.memory.storage import NativeFileStorage, register_storage, reset_storage_registry
+from app.document import read_workflow_document, write_workflow_document
+from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 from app.memory import service as memory
-from app.memory.schemas import MemoryGrantUpdate
+from app.document.schemas import DocumentGrantUpdate
 from app.process import process_service, registry
 from app.process.bpmn import Flow, Node, Workflow, compile_bpmn, to_bpmn
 from app.process.bpmn import Actor, validate_graph
@@ -837,7 +837,7 @@ async def test_typed_invalid_output_is_not_integrated_and_does_not_launch_succes
 
 @pytest.mark.asyncio
 async def test_typed_file_manifests_keep_source_uris_without_transferring_bytes(db, native, monkeypatch):
-    from app.memory import document_service
+    from app.document import document_service
     from app.process import ProcessFileInput
     import app.file_share as file_share
     owner, _ = native
@@ -1401,7 +1401,7 @@ async def test_if_admits_only_the_selected_branch(db, native, amount, branch, ty
 
 @pytest.mark.asyncio
 async def test_shared_files_are_copied_once_and_forwarded_to_child_run_workspaces(db, native):
-    from app.memory import document_service
+    from app.document import document_service
     from app.process import ProcessFileInput
     owner, _ = native
     source = await document_service.create_document(owner_agent_id=owner.id, title="Invented input file",
@@ -1452,7 +1452,7 @@ async def test_shared_files_are_copied_once_and_forwarded_to_child_run_workspace
 
 @pytest.mark.asyncio
 async def test_revoked_source_file_access_prevents_any_node_admission(db, native):
-    from app.memory import document_service
+    from app.document import document_service
     from app.process import ProcessFileInput
     from app.file_share import ResourceContext, resource_list
 
@@ -1461,7 +1461,7 @@ async def test_revoked_source_file_access_prevents_any_node_admission(db, native
         content='{"value": 7}', task_id=None, document_type="dataset")
     value = graph()
     definition = await create(actor_agent_id=owner.id, title="Synthetic revocable file process", graph=value)
-    await memory.set_item_grant(source.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    await memory.set_item_grant(source.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
     from app.process.native_sharing import grant_agent
     await grant_agent(definition.code, owner.id, reader.id)
     launched = await process_service.start_process(agent_id=reader.id, workflow_id=definition.code, input_data={},
@@ -1479,7 +1479,7 @@ async def test_revoked_source_file_access_prevents_any_node_admission(db, native
 
 @pytest.mark.asyncio
 async def test_cancellation_during_file_materialization_prevents_copy_and_node_admission(db, native, monkeypatch):
-    from app.memory import document_service
+    from app.document import document_service
     from app.process import ProcessFileInput
     from app.file_share import ResourceContext, resource_list
     import app.file_share as file_share
@@ -1970,7 +1970,7 @@ async def test_native_start_timeout_stops_without_an_automatic_retry(db, native,
     import app.file_share as file_share
     from app.process import ProcessFileInput
     from app.process.models import ProcessStartJob
-    from app.memory import document_service
+    from app.document import document_service
     owner, _ = native
     source = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic timeout file", content='{}', task_id=None, document_type="dataset")
     definition = await create(actor_agent_id=owner.id, title="Synthetic timed-out launch", graph=graph())
@@ -2074,10 +2074,10 @@ async def test_pause_step_breakpoint_resume_and_child_current_definition(db, nat
 async def test_human_ownership_readonly_sharing_run_dataset_and_orphans(db, native, monkeypatch):
     from datetime import datetime, timezone
     from app.agent import AgentManagementScope
-    from app.memory import update_workflow_sharing
+    from app.document import update_workflow_sharing
     from app.process.native_sharing import read as process_sharing, preview as process_sharing_preview, update as update_process_sharing
     from app.process.native_access import accessible_clause
-    from app.memory.schemas import DocumentSharingLevelUpdate
+    from app.document.schemas import DocumentSharingLevelUpdate
     from app.memory import service as document_service
     from core.user import UserModel
     from core.authorize import Role, Assignment, RolePrivilege, Privilege

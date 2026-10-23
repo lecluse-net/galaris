@@ -9,9 +9,9 @@ from uuid import UUID
 import main  # noqa: F401 - load the same model registry as the application
 from core.database import get_db_session
 from core.settings import settings
-from app.memory import document_service
+from app.document import document_service
 from app.memory.models import MemoryItem
-from app.memory.storage import get_storage
+from core.storage import get_storage
 
 ROOT = Path('/restore')
 

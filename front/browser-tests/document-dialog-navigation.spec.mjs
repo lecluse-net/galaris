@@ -12,11 +12,11 @@ async function documents(page) {
   items[1].payload.text += `<blockquote class="galaris-link-card"><p><a href="document://${ids[2]}">Open Gamma</a></p><p>Gamma card summary</p></blockquote><p><a href="document://${ids[0]}">Open Alpha</a></p>`
   const state = { items, refuseSave: false, writes: [], reads: [] }
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
   for (const item of items) {
-    await jsonRoute(page, `**/api/memory/documents/${item.id}/attachments*`, [])
-    await page.route(new RegExp(`/api/memory/documents/${item.id}(?:\\?|$)`), route => {
+    await jsonRoute(page, `**/api/documents/${item.id}/attachments*`, [])
+    await page.route(new RegExp(`/api/documents/${item.id}(?:\\?|$)`), route => {
       const index = state.items.findIndex(value => value.id === item.id)
       const actor = new URL(route.request().url()).searchParams.get('agent_id')
       if (index !== 0 && actor) return route.fulfill({ status: 403, json: { detail: 'Private User document' } })
@@ -40,7 +40,7 @@ for (const width of [1440, 390]) {
     const editable = width === 1440
     await page.setViewportSize({ width, height: 900 })
     await mount(page, 'app/chat/components/ConversationDocumentDialog.vue', {
-      route: '/chat', browserHistory: true, props: { modelValue: true, documentId: state.items[0].id, agentId: 7, title: 'Alpha', editable }, privileges: ['MEMORY_EDIT'],
+      route: '/chat', browserHistory: true, props: { modelValue: true, documentId: state.items[0].id, agentId: 7, title: 'Alpha', editable }, privileges: ['DOCUMENT_EDIT'],
     })
     const dialog = page.getByRole('dialog')
     const title = dialog.getByLabel('Title', { exact: true })
@@ -88,7 +88,7 @@ for (const width of [1440, 390]) {
 test('modal navigation preserves unsaved changes after refusal and edits made while a destination loads', async ({ page }) => {
   const state = await documents(page)
   await mount(page, 'core/util/components/WorkingDocumentDialog.vue', {
-    route: '/chat', browserHistory: true, props: { modelValue: true, documentId: state.items[0].id, agentId: 7, editable: true }, privileges: ['MEMORY_EDIT'],
+    route: '/chat', browserHistory: true, props: { modelValue: true, documentId: state.items[0].id, agentId: 7, editable: true }, privileges: ['DOCUMENT_EDIT'],
   })
   const dialog = page.getByRole('dialog')
   const title = dialog.getByLabel('Title', { exact: true })
@@ -103,7 +103,7 @@ test('modal navigation preserves unsaved changes after refusal and edits made wh
   state.refuseSave = false
   let release, started = false
   const gate = new Promise(resolve => { release = resolve })
-  await page.route(new RegExp(`/api/memory/documents/${state.items[1].id}(?:\\?|$)`), async route => {
+  await page.route(new RegExp(`/api/documents/${state.items[1].id}(?:\\?|$)`), async route => {
     started = true; await gate; return route.fallback()
   })
   await link.click({ modifiers: ['Control'] })
@@ -128,7 +128,7 @@ test('a denied destination keeps the current document and closing discards a lat
   const state = await documents(page)
   let release, started = false, mode = 'denied'
   const gate = new Promise(resolve => { release = resolve })
-  await page.route(new RegExp(`/api/memory/documents/${state.items[1].id}(?:\\?|$)`), async route => {
+  await page.route(new RegExp(`/api/documents/${state.items[1].id}(?:\\?|$)`), async route => {
     if (mode === 'denied') return route.fulfill({ status: 403, json: { detail: 'Access denied' } })
     started = true; await gate; return route.fallback()
   })
@@ -154,7 +154,7 @@ test('a denied destination keeps the current document and closing discards a lat
 test('opening a separate dialog from a document dialog preserves each navigation context', async ({ page }) => {
   const state = await documents(page)
   await mount(page, 'core/util/components/WorkingDocumentDialog.vue', {
-    route: '/chat', browserHistory: true, props: { modelValue: true, documentId: state.items[0].id, agentId: 7, editable: true }, privileges: ['MEMORY_EDIT'],
+    route: '/chat', browserHistory: true, props: { modelValue: true, documentId: state.items[0].id, agentId: 7, editable: true }, privileges: ['DOCUMENT_EDIT'],
   })
   const parent = page.getByRole('dialog').first()
   await expect(parent.getByLabel('Title', { exact: true })).toHaveValue('Alpha')
@@ -192,7 +192,7 @@ test('rapid browser traversal ignores a late document without rolling back the l
   await expect(title).toHaveValue('Gamma')
   let release, started = false, finished = false
   const gate = new Promise(resolve => { release = resolve })
-  await page.route(new RegExp(`/api/memory/documents/${state.items[1].id}(?:\\?|$)`), async route => {
+  await page.route(new RegExp(`/api/documents/${state.items[1].id}(?:\\?|$)`), async route => {
     started = true
     await gate
     await route.fallback()

@@ -5,11 +5,11 @@
 Durable memory is a governed Galaris domain. A driver or bridge never reads its storage
 directly and never decides the scope of a session on its own.
 
-The document retains its authoritative content; its Memory item has independent
-content that can serve as a synthesis, without an additional `summary` field. Search
-and embeddings cover both contents and keywords, plus the document title or the
-memory's derived label. Previews remain computed excerpts. The v5 semantic index
-is rebuilt in the background after DbAdmin synchronization.
+Personal memories belong to one agent and cannot be shared. `app.document` owns
+documents and their shared summaries, without requiring a Memory item. The native
+graph may reference them and rechecks their source permissions on every read.
+Its optional index covers a document and its summary as one result, without owning
+their contents or permissions. Document retains direct discovery without this index.
 
 Updates and acquisitions carry no free-text `reason` comment.
 History retains content, versions, authors, tasks and dates. Document append retries
@@ -122,8 +122,7 @@ merging or deletion, preserving numbers and negations. Translations and paraphra
 are not automatically treated as equivalent. No search channel or model call is added.
 
 There is no memory space. Each standalone memory belongs directly to an agent and remains
-private to that agent. Sharing applies to documents; their Memory synthesis inherits current
-document permissions. Structural projections retain their domain's visibility rules.
+private to that agent. Sharing applies to documents and their document-owned summaries, never to private memories. Structural projections retain their domain's visibility rules.
 Automatic acquisitions remain private and create no sharing grants.
 
 ### Scope of Conversational Memories
@@ -152,67 +151,39 @@ A conversational source without a proven contact remains ineligible. The absence
 the three automatic Task, text-round, and Voice-turn extractors, without changing explicit tool
 writes or the separate learning contract.
 
-A `Document` owns its title, authoritative content and collaboration rights. It has
-exactly one `MemoryItem` of nature `document`, whose HTML synthesis is optional.
-Standalone memories are private to their agent, have a content-derived display label,
-and have no editable title or independent sharing. Documents are private when created,
-mutable and not deduplicated. The document and its graph node retain the same UUID and
-existing URIs. Document and synthesis revisions are independent. Lexical and vector
-search use both the full document and its synthesis, including an empty synthesis,
-and return one result per pair. Synthesis access inherits the document's live rights,
-including revocation. Documents are excluded from Dream acquisitions and automatic
-inactivity forgetting. A document memory cannot be forgotten or merged independently.
-Deletion uses `DELETE /memory/documents/{id}` and also erases the synthesis, its history
-and associated resources under the document's deletion protections and permissions.
-Revoking sharing removes the node from affected agents' lists, searches and graphs while
-preserving the shared synthesis for its owner and remaining authorized readers.
+## Independent documents and graph references
 
-The document and its synthesis share one current keyword list in `memory_items.keywords`.
-Both editing routes normalize and write that list with document permissions and the common
-optimistic lock. Keyword-only changes refresh search without creating a document or synthesis
-content revision. Historical snapshots remain immutable. Migration from documents previously
-stored in `memory_items` retains keywords in place and never resets them on replay.
+`app.document` owns titles, content, shared summaries, keywords, optimistic locks,
+permissions and versions. `front/app/document` owns the library and editor. API
+operations use `/documents`, and summaries use `/documents/{id}/summary`. Existing
+documents retain UUIDs, `document://` URIs, bytes, authors, dates, attachments and URLs.
 
-## Collaborative Working Documents
+Creating a document does not require a `MemoryItem`. The native projector can create
+a reference node and references to folders and attachments. Revocation applies at
+read time without waiting for projection; forgetting a reference does not delete its
+source. A personal memory about a document is a separate object private to its agent.
+Existing shared summaries are not silently assigned to an arbitrary agent.
 
 ```text
-file_create(path="document://") ──► Document(private) + MemoryItem(empty synthesis)
-       │
-       ├─► file_read(document://uuid, offset) ──► bounded passage
-       ├─► file_edit(start_line, end_line, content) ──► atomic revision
-       ├─► file_append(document://uuid, content) ──► atomic revision
-       └─► document_share(agent_id, read|edit|none) ──► direct grant
-                                                        │
-                                                        └─► another agent
-                                                             ├─ file_search(document://)
-                                                             ├─ file_read(document://uuid)
-                                                             └─ edit/append if authorized
+file_create(document://) -> private Document and Document history
+    |-> file_read / file_edit / file_append -> Document permissions and revisions
+    |-> document_sharing / document_share -> Document recipients and grants
+    `-> optional notification -> native Memory graph and index
 ```
 
-The MCP surface remains deliberately small. `file_search` provides discovery of `memory://` and
-`document://` URIs; `memory_forget` provides explicit owner-based deletion.
-`file_read` never returns an entire document by default: it accepts an offset for continuation.
-`file_edit` replaces an inclusive range of lines, numbered starting at 1.
-A missing range or concurrent revision fails without modification and requests a reread.
-Revisions retain the authoring agent and Task.
+Bounded document reads and edits use HTML blocks. `expected_revision` protects
+content; `expected_lock_version` protects ACLs. `file_delete` deletes the document
+according to its owner's permissions and protections; `memory_forget` does not
+delete document sources.
 
-The arrival of the `documents` table first triggers a DbAdmin `BEFORE_EXPAND` archive
-of legacy items, revisions and grants in `galaris_migration`. Counts and digests verify
-its integrity; the archive remains immutable and retained after migration.
-`app.memory.document_split` runs at `AFTER_EXPAND`, creates documents from this archive
-and rejects source changes between phases. Its transaction preserves resource pointers and associates immutable
-revisions before initializing the empty synthesis. Previously shared standalone
-memories become documents without losing access rights. Private memories retain
-their authored titles in their content before switching to derived display labels;
-earlier revisions remain readable. Failure rolls back the transfer, and replay
-preserves an already authored synthesis. After transfer verification, contraction in
-the same update removes `document_type`, `filename`, `visibility`, `global_access`
-and `group_access` from `memory_items`. Structural export names remain in metadata
-and historical contracts delegate to the document. Failure retains the columns and
-supports automatic retry. Already expanded databases also use this archive before
-removing the columns. Archived pointers protect resources against explicit forget
-and orphan cleanup; this SQL archive does not replace file backups. Archive removal
-requires a separate, explicitly validated administrative operation.
+DbAdmin actions `app.document.independence_preserve`, `independence_transfer` and
+`independence_retire_policies` archive, transfer and retire the previous Memory
+policies. Required historical action identities remain resumable. A damaged archive,
+a source edited after preservation or an incomplete postcondition blocks contraction.
+Previously shared memories become documents with the same access rights; private
+memories retain their agent. Archived resource pointers remain protected from orphan
+cleanup. Purging archives is a separate operation. See
+[decision 0223](../../../../project/decisions/0223-memory-document-independence.md).
 
 Before delegation, the owner explicitly shares the document and then places its UUID in the child
 Task's objective. Agents keep provisional notes in the document and separately promote genuinely

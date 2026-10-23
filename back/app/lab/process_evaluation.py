@@ -11,7 +11,7 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.orm import load_only
 
 from app.agent import AgentManagementScope, management_scope_for
-from app.memory import create_workflow_document, read_workflow_document, workflow_document_actor
+from app.document import create_workflow_document, read_workflow_document, workflow_document_actor
 from app.process.facade import current_definition, launch_current, run_evidence, stop_run
 from app.process import ProcessFileInput
 from core.database import get_db

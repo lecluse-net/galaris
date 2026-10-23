@@ -7,9 +7,15 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy import func, select
 
-from app.memory import document_service, service as memory
-from app.memory.models import Document, MemoryItem, MemoryRevision
-from app.memory.schemas import DocumentLibraryRequest, MemoryGrantUpdate, MemoryItemCreate, MemoryItemUpdate, MemoryPayload
+from app.memory import service as memory
+from app.document import document_service
+from app.document import resource_service as documents, DocumentRevision
+from app.document.schemas import DocumentUpdate, DocumentPayload
+from app.memory.models import MemoryItem, MemoryRevision
+from app.document import Document
+from app.memory.schemas import MemoryItemCreate, MemoryItemUpdate, MemoryPayload
+from app.document.schemas import DocumentGrantUpdate
+from app.document.schemas import DocumentLibraryRequest
 from app.process.definition_migration import needs_transfer, transfer_complete, transfer_definitions
 from app.process.models import ProcessDefinition, ProcessDefinitionRevision
 from app.process.native_definitions import create, read, update, history
@@ -38,7 +44,7 @@ async def test_native_bpmn_is_owned_by_process_rows_and_never_by_documents(db, n
     assert await db.scalar(select(func.count()).select_from(ProcessDefinitionRevision).where(
         ProcessDefinitionRevision.process_id == record.id)) == 2
     assert await db.scalar(select(func.count()).select_from(Document).execution_options(include_historized=True)) == before
-    assert (await memory.browse_document_library(DocumentLibraryRequest(), managed_agent_ids={owner.id})).total == 0
+    assert (await documents.browse_document_library(DocumentLibraryRequest(), managed_agent_ids={owner.id})).total == 0
     with pytest.raises(PermissionError):
         await read(record.code, reader.id)
 
@@ -47,15 +53,15 @@ async def legacy_definition(db, owner, reader, *, valid=True):
     """Synthetic pre-upgrade rows written through the old physical representation."""
     source = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic legacy workflow",
         content="<p>Synthetic fixture</p>", task_id=None)
-    await memory.set_item_grant(source.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
-    await memory.update_item(source.id, MemoryItemUpdate(expected_revision=1,
-        payload=MemoryPayload(text="<p>Synthetic second revision</p>")), actor_agent_id=owner.id)
+    await documents.set_item_grant(source.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    await documents.update_item(source.id, DocumentUpdate(expected_revision=1,
+        payload=DocumentPayload(text="<p>Synthetic second revision</p>")), actor_agent_id=owner.id)
     code = "synthetic_" + uuid4().hex
     content = to_bpmn(graph("Synthetic saved instructions"), code) if valid else "<invalid/>"
     source.document_type, source.media_type, source.content_profile_version = "process", "application/bpmn+xml", None
     source.content, source.content_hash, source.size_bytes = content, sha256(content.encode()).hexdigest(), len(content.encode())
     source.metadata_ = {"process_code": code}
-    for entry in await db.scalars(select(MemoryRevision).where(MemoryRevision.item_id == source.id)):
+    for entry in await db.scalars(select(DocumentRevision).where(DocumentRevision.document_id == source.id)):
         entry.content = to_bpmn(graph(), code) if entry.revision == 1 else content
         entry.content_hash = sha256(entry.content.encode()).hexdigest()
         entry.media_type, entry.content_profile_version = source.media_type, None

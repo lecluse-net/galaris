@@ -485,9 +485,9 @@ global path. Public Topic projections remain indexable for dossier preselection 
 from factual recall. Dream also produces `suggested=true` attachment, anomaly, merge, or split
 links from these vectors; none of these signals alone modifies a canonical `topic_contains`.
 
-Working HTML documents are `MemoryItem`s with `node_kind=document`.
+Working HTML documents belong to `app.document` and persist in `documents`, independently of the private memories owned by `app.memory`.
 They are the canonical home for content authored and shared by agents, even within
-a single Task. Memory and File Sharing are mandatory system services; resource ACLs and
+a single Task. Document, Memory and File Sharing are mandatory system services; resource ACLs and
 context restrictions still apply. See the [document contract](editorial-html.md).
 They remain private at creation, are neither deduplicated with ordinary memories, targeted
 by Dream, nor automatically forgotten due to inactivity. `file_create`, `file_edit`,
@@ -690,7 +690,7 @@ reset to `null`, without deleting the canonical cycle. Messenger observes contac
 interactions with a fail-open fallback; its journal enables idempotent replay.
 
 The canonical Markdown description and tracking of a Goal no longer live in these projections:
-each Goal references two private working Memory documents. Their content can be modified from
+each Goal references two private working documents owned by Document. Their content can be modified from
 the Goal and Documents UIs, but their owner, title, and path remain exclusively controlled by
 the Goal. The folder bears the scrubbed Goal title and the documents are titled
 `<Goal title> — Description` and `<Goal title> — Suivi`, updated when the Goal is renamed.

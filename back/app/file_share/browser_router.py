@@ -12,6 +12,7 @@ import asyncssh
 
 from app.agent import current_management_scope, get_agent_record
 from app.memory import MemoryNotFoundError, MemoryPermissionError
+from app.document import DocumentNotFoundError, DocumentPermissionError, DocumentConflictError
 from core.storage import FileRename
 from core.authorize import Privileges, authorize
 from core.util import source_code_response_headers
@@ -30,9 +31,10 @@ async def browser_access(agent_id: int) -> AsyncGenerator[None]:
     try:
         async with asyncio.timeout(120):
             yield
-    except (FileExistsError, ResourceRevisionConflict, asyncssh.SFTPFileAlreadyExists) as exc:
+    except (FileExistsError, ResourceRevisionConflict, DocumentConflictError, asyncssh.SFTPFileAlreadyExists) as exc:
         raise HTTPException(409, "Resource changed or destination already exists") from exc
     except (PermissionError, FileNotFoundError, MemoryNotFoundError, MemoryPermissionError,
+            DocumentNotFoundError, DocumentPermissionError,
             asyncssh.SFTPPermissionDenied, asyncssh.SFTPNoSuchFile) as exc:
         raise HTTPException(404, "Resource unavailable") from exc
     except (ValueError, NotImplementedError) as exc:

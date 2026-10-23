@@ -137,6 +137,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         stop_inference_worker,
         inference_worker_running,
     )
+    from app.document.automation import start_document_automation, stop_document_automation, document_automation_running
     from app.memory.automation import (
         memory_automation_running,
         start_memory_automation,
@@ -211,6 +212,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 is_running=listeners_running,
                 critical=False,
             ),
+            RuntimeComponent(name="document_classification",start=start_document_automation,stop=stop_document_automation,is_running=document_automation_running,critical=False),
             RuntimeComponent(
                 name="memory_automation",
                 start=start_memory_automation,
@@ -259,7 +261,7 @@ setup_public_docs(app)
 setup_api_routers(app)
 from app.dataset import register_dataset, register_dataset_usage_source
 register_dataset()
-from app.memory import find_dataset_document_usages
+from app.document import find_dataset_document_usages
 from app.process.facade import find_dataset_run_usages
 from app.llm.facade import find_dataset_agent_usages
 register_dataset_usage_source("documents", "documents", find_dataset_document_usages)
@@ -329,12 +331,14 @@ register_process_human_messenger(ProcessHumanMessenger())
 
 # Context composition is driver-neutral: both internal and Hermes runs receive
 # the same governed long-term and Messenger-session snapshots.
+from app.document import register_document
+register_document()
 from app.memory import register_memory
 register_memory()
 from app.agent import register_default_agent
 register_default_agent()
 from app.browser import capture_html_page_thumbnail, capture_public_page_thumbnail
-from app.memory.document_thumbnail_service import register_web_thumbnail_capture
+from app.document import register_web_thumbnail_capture
 
 
 from core.user import HumanActor

@@ -1,3 +1,7 @@
+from __future__ import annotations
+from app.memory.tests.document_fixtures import finish_document_deletion
+from app.document import resource_service as documents
+from app.memory.tests.document_fixtures import create_indexed_attachment
 """File byte identity, Dream policies and durable references use real PostgreSQL."""
 
 from uuid import uuid4
@@ -11,7 +15,8 @@ from app.file_share.models import FileCatalogEntry
 from app.memory import maintenance, service, memory_urls
 from app.memory.deduplication import preview_duplicate_pairs
 from app.memory.embedding import MemoryEmbeddingNotConfiguredError
-from app.memory.models import MemoryFinding, MemoryItem, MemoryURL, MemoryUsage, DocumentAttachment
+from app.memory.models import MemoryFinding, MemoryItem, MemoryURL, MemoryUsage
+from app.document import DocumentAttachment
 from app.memory.schemas import MemoryItemUpdate, MemoryPayload
 from core.params import runtime_settings
 from .conftest import create_memory_task
@@ -102,14 +107,14 @@ async def test_url_uniqueness_primary_membership_and_task_history(console_catalo
 
 @pytest.mark.asyncio
 async def test_equal_attachments_merge_within_parent_and_preserve_live_access(db, agents, memory_storage, monkeypatch):
-    from app.memory import document_attachment_service as attachments
+    from app.document import document_attachment_service as attachments
     from .test_document_structure import document, png
 
     owner, peer = agents
     parent = await document(owner, "Synthetic attachment album")
     children = []
     for name in ("first.png", "second.png"):
-        attachment = await attachments.add_document_attachment_bytes(
+        attachment = await create_indexed_attachment(
             parent.id, actor_agent_id=owner.id, name=name, media_type="image/png", content=png(),
         )
         children.append(await db.get(DocumentAttachment, attachment.id))
@@ -142,7 +147,7 @@ async def test_equal_attachments_merge_within_parent_and_preserve_live_access(db
     payloads = [file_path(row.id) for row in children]
     assert all(path.is_file() for path in payloads)
     assert any(await db.scalars(select(MemoryRevision.content).where(MemoryRevision.item_id == canonical_id)))
-    await service.delete_document(parent.id, actor_agent_id=owner.id)
+    await finish_document_deletion(parent.id, actor_agent_id=owner.id)
     assert all(not path.exists() for path in payloads)
     assert await db.scalar(select(func.count()).select_from(MemoryRevision).where(MemoryRevision.item_id.in_(node_ids))) == 0
     assert not any(await db.scalars(select(MemoryItem.memory_content).where(MemoryItem.id.in_(node_ids)).execution_options(include_historized=True)))

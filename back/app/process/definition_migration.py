@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import undefer
 
-from app.memory import legacy_process_snapshot, retire_legacy_process_document
+from app.document import legacy_process_snapshot, retire_legacy_process_document
 from core.dbadmin import SchemaTransitionSet
 
 from .bpmn import compile_bpmn

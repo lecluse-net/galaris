@@ -55,7 +55,7 @@ async def test_address_book_entries_are_independent_private_and_unique(db, agent
 @pytest.mark.asyncio
 async def test_split_preserves_identity_history_and_rolls_back_all_projections_on_failure(db, agents, memory_storage, monkeypatch):
     from app.memory.models import MemoryContactItem
-    from app.memory.storage import get_storage, ResourceStorageError
+    from core.storage import get_storage, ResourceStorageError
 
     owner, _peer = agents
     source_id = await observe_messenger_contact(_observation(owner.id))

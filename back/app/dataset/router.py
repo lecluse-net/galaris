@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.agent import current_management_scope
 from app.memory import MemoryNotFoundError, MemoryPermissionError, MemoryConflictError
+from app.document import DocumentNotFoundError, DocumentPermissionError, DocumentConflictError
 from app.share import SharingUpdate as DocumentSharingLevelUpdate
 from core.authorize import authorize
 from core.database import get_db
@@ -28,11 +29,11 @@ EDIT = ["DATASET_EDIT", "DATASET_ADMIN"]
 def errors() -> Generator[None]:
     try:
         yield
-    except (FileNotFoundError, MemoryNotFoundError) as exc:
+    except (FileNotFoundError, MemoryNotFoundError, DocumentNotFoundError) as exc:
         raise HTTPException(404, str(exc)) from exc
-    except (PermissionError, MemoryPermissionError) as exc:
+    except (PermissionError, MemoryPermissionError, DocumentPermissionError) as exc:
         raise HTTPException(403, str(exc)) from exc
-    except (service.DatasetConflictError, MemoryConflictError) as exc:
+    except (service.DatasetConflictError, MemoryConflictError, DocumentConflictError) as exc:
         raise HTTPException(409, str(exc)) from exc
     except service.DatasetWriteLimitError as exc:
         raise HTTPException(429, str(exc)) from exc

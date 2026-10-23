@@ -6,20 +6,20 @@ async function library(page, agentId = null) {
     media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Working copy</p>' } }
   const state = { item, deleted: false, reads: [] }
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [] })
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', {
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [] })
+  await jsonRoute(page, '**/api/documents/owner-options?*', {
     agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '' }],
     users: [{ id: 1, kind: 'user', label: 'Me', subtitle: '', is_current_user: true }],
   })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments*', [])
-  await page.route('**/api/memory/documents/library', route => {
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/doc-a/attachments*', [])
+  await page.route('**/api/documents/library', route => {
     state.reads.push(route.request().postDataJSON())
     return route.fulfill({ json: { entries: state.deleted ? [] : [{ item: state.item, tags: [],
       agent_ids: [], writable_agent_ids: [], user_access: item.access }], total: state.deleted ? 0 : 1,
       has_more: false, keywords: ['reference'], owners: [{ id: 1, kind: 'user', label: 'Me', subtitle: '' }] } })
   })
-  await page.route(/\/api\/memory\/documents\/doc-a(?:\?|$)/, route => route.fulfill({ json: { item: state.item, agent_id: agentId } }))
+  await page.route(/\/api\/documents\/doc-a(?:\?|$)/, route => route.fulfill({ json: { item: state.item, agent_id: agentId } }))
   return state
 }
 
@@ -29,25 +29,25 @@ for (const location of ['list', 'tree']) test(`dragging a document from the ${lo
   const source = { ...state.item, id, owner_agent_id: null, owner_user_id: 1, title: 'Reference <notes> & plan', payload: { text: '<p>Referenced content</p>' } }
   const folder = { id: 'references', name: 'References', parent_id: null, position: 1 }
   const writes = [], moves = []
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: location === 'tree' ? [folder] : [] })
-  await page.route(new RegExp(`/api/memory/documents/${id}(?:\\?|$)`), route => route.fulfill(
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: location === 'tree' ? [folder] : [] })
+  await page.route(new RegExp(`/api/documents/${id}(?:\\?|$)`), route => route.fulfill(
     new URL(route.request().url()).searchParams.has('agent_id')
       ? { status: 403, json: { detail: 'The containing document Agent cannot read this private User document' } }
       : { json: { item: source, agent_id: null } }))
-  await jsonRoute(page, `**/api/memory/documents/${id}/attachments*`, [])
-  await page.route('**/api/memory/documents/library', route => {
+  await jsonRoute(page, `**/api/documents/${id}/attachments*`, [])
+  await page.route('**/api/documents/library', route => {
     const query = route.request().postDataJSON()
     const items = query.tag_id ? [source] : location === 'list' ? [state.item, source] : [state.item]
     return route.fulfill({ json: { entries: items.map(item => ({ item, tags: item.id === id && location === 'tree' ? [folder] : [], agent_ids: item.owner_agent_id ? [item.owner_agent_id] : [], writable_agent_ids: item.owner_agent_id ? [item.owner_agent_id] : [], user_access: item.owner_user_id ? item.access : { can_read: false, can_write: false } })), total: items.length, has_more: false, keywords: [] } })
   })
-  await page.route('**/api/memory/documents/order', route => { moves.push(route.request().postDataJSON()); return route.fulfill({ status: 204 }) })
-  await page.route(/\/api\/memory\/documents\/doc-a(?:\?|$)/, route => {
+  await page.route('**/api/documents/order', route => { moves.push(route.request().postDataJSON()); return route.fulfill({ status: 204 }) })
+  await page.route(/\/api\/documents\/doc-a(?:\?|$)/, route => {
     if (route.request().method() !== 'PATCH') return route.fallback()
     const change = route.request().postDataJSON(); writes.push(change)
     state.item = { ...state.item, ...change, revision: state.item.revision + 1, lock_version: state.item.lock_version + 1 }
     return route.fulfill({ json: state.item })
   })
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   const editor = page.locator('[data-editor-surface]')
   await expect(editor).toContainText('Working copy')
   if (location === 'tree') await page.getByText('References', { exact: true }).click()
@@ -64,7 +64,7 @@ for (const location of ['list', 'tree']) test(`dragging a document from the ${lo
   await expect.poll(() => writes.at(-1)?.payload?.text).toContain('galaris-link-card')
   expect(writes.at(-1).payload.text).toContain(`document://${id}`)
   await page.screenshot({ path: testInfo.outputPath(`document-reference-${location}.png`), animations: 'disabled' })
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   await expect(editor.locator('.galaris-link-card > p').first()).toHaveText(source.title)
   await editor.locator('.galaris-link-card > p').first().click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Show URL', exact: true }).click()
@@ -81,12 +81,12 @@ test('document content is usable while optional owner and keyword catalogues are
   await library(page)
   let release
   const gate = new Promise(resolve => { release = resolve })
-  await page.route('**/api/memory/documents/owner-options?*', async route => {
+  await page.route('**/api/documents/owner-options?*', async route => {
     await gate
     return route.fallback()
   })
-  await page.route('**/api/memory/documents/keywords?*', async route => { await gate; return route.fallback() })
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await page.route('**/api/documents/keywords?*', async route => { await gate; return route.fallback() })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   try {
     await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Test document', { timeout: 2000 })
     await expect(page.locator('[data-editor-surface]')).toContainText('Working copy')
@@ -97,13 +97,13 @@ test('pending deletion hides every library row immediately, survives refresh, an
   const state = await library(page)
   let releaseDelete, deleteStarted = false
   const gate = new Promise(resolve => { releaseDelete = resolve })
-  await page.route('**/api/memory/documents/doc-a', async route => {
+  await page.route('**/api/documents/doc-a', async route => {
     if (route.request().method() !== 'DELETE') return route.fallback()
     deleteStarted = true
     await gate
     return route.fulfill({ status: 403, json: { detail: 'Access denied' } })
   })
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Test document')
   const list = page.getByRole('list', { name: 'Unclassified documents', exact: true })
   await page.getByRole('button', { name: 'Delete document', exact: true }).click()
@@ -114,7 +114,7 @@ test('pending deletion hides every library row immediately, survives refresh, an
     await expect(list.getByText('Test document', { exact: true })).toHaveCount(0, { timeout: 1500 })
     const removalMs = Date.now() - started
     state.item = { ...state.item, title: 'Latest title', lock_version: state.item.lock_version + 1 }
-    await page.evaluate(() => window.testApp.emitSocket('memory.classification', { data: { user_id: 1, list_changed: true } }))
+    await page.evaluate(() => window.testApp.emitSocket('document.classification', { data: { user_id: 1, list_changed: true } }))
     await expect.poll(() => state.reads.length).toBe(2)
     await expect(list.getByText('Latest title', { exact: true })).toHaveCount(0)
     await testInfo.attach('pending-delete.json', { body: JSON.stringify({ removalMs, serverResponseReleased: false }), contentType: 'application/json' })
@@ -126,20 +126,20 @@ test('pending deletion hides every library row immediately, survives refresh, an
 
 test('slow refreshes coalesce notifications and retain fresh filter catalogues across searches', async ({ page }, testInfo) => {
   const state = await library(page)
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Test document')
   let release, slowReads = 0
   const gate = new Promise(resolve => { release = resolve })
-  await page.route('**/api/memory/documents/library', async route => {
+  await page.route('**/api/documents/library', async route => {
     slowReads++
     await gate
     return route.fallback()
   })
-  await page.evaluate(() => window.testApp.emitSocket('memory.classification', { data: { user_id: 1, list_changed: true } }))
+  await page.evaluate(() => window.testApp.emitSocket('document.classification', { data: { user_id: 1, list_changed: true } }))
   await expect.poll(() => slowReads).toBe(1)
   await page.evaluate(async () => {
     for (let i = 0; i < 8; i++) {
-      window.testApp.emitSocket('memory.classification', { data: { user_id: 1, list_changed: true } })
+      window.testApp.emitSocket('document.classification', { data: { user_id: 1, list_changed: true } })
       await new Promise(resolve => setTimeout(resolve, 140))
     }
   })
@@ -156,14 +156,14 @@ test('slow refreshes coalesce notifications and retain fresh filter catalogues a
 
 test('a saved title updates every occurrence before the authoritative list and folder reads return', async ({ page }) => {
   const state = await library(page)
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [{ id: 'reports', name: 'Reports', parent_id: null }] })
-  await page.route('**/api/memory/documents/doc-a', async route => {
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [{ id: 'reports', name: 'Reports', parent_id: null }] })
+  await page.route('**/api/documents/doc-a', async route => {
     if (route.request().method() !== 'PATCH') return route.fallback()
     const update = route.request().postDataJSON()
     state.item = { ...state.item, title: update.title, revision: state.item.revision + 1, lock_version: state.item.lock_version + 1 }
     return route.fulfill({ json: state.item })
   })
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Test document')
   await page.getByText('Reports', { exact: true }).click()
   const list = page.getByRole('list', { name: 'Unclassified documents', exact: true })
@@ -172,7 +172,7 @@ test('a saved title updates every occurrence before the authoritative list and f
   await expect(tree.getByText('Test document', { exact: true })).toBeVisible()
   let release
   const gate = new Promise(resolve => { release = resolve })
-  await page.route('**/api/memory/documents/library', async route => { await gate; return route.fallback() })
+  await page.route('**/api/documents/library', async route => { await gate; return route.fallback() })
   await page.getByLabel('Title', { exact: true }).fill('Saved title')
   try {
     await expect.poll(() => state.item.title).toBe('Saved title')
@@ -188,14 +188,14 @@ test(`a historical Dataset link resolves once to its own editor (${mobile ? 'mob
   const id = '00000000-0000-4000-8000-000000000001'
   let reads = 0, release
   const gate = new Promise(resolve => { release = resolve })
-  await page.route('**/api/memory/documents/library', async route => { await gate; return route.fallback() })
-  await jsonRoute(page, `**/api/memory/documents/${id}/attachments*`, [])
-  await page.route(`**/api/memory/documents/${id}`, route => {
+  await page.route('**/api/documents/library', async route => { await gate; return route.fallback() })
+  await jsonRoute(page, `**/api/documents/${id}/attachments*`, [])
+  await page.route(`**/api/documents/${id}`, route => {
     reads++
     return route.fulfill({ json: { resource_type: 'dataset', resource_uri: `data://${id}` } })
   })
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', {
-    route: `/documents?document_id=${id}`, privileges: ['MEMORY_EDIT'],
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
+    route: `/documents?document_id=${id}`, privileges: ['DOCUMENT_EDIT'],
   })
   try {
     await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe(`/dataset/${id}`)
@@ -213,14 +213,14 @@ test('a draft from an earlier client keeps its edits and clears after saving wit
     revision: state.item.revision, base, draft: { ...base, title: 'Recovered draft' },
   })
   const updates = []
-  await page.route('**/api/memory/documents/doc-a', route => {
+  await page.route('**/api/documents/doc-a', route => {
     if (route.request().method() !== 'PATCH') return route.fallback()
     const update = route.request().postDataJSON()
     updates.push(update)
     state.item = { ...state.item, title: update.title, lock_version: state.item.lock_version + 1 }
     return route.fulfill({ json: state.item })
   })
-  await mount(page, 'app/memory/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: null }, privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: null }, privileges: ['DOCUMENT_EDIT'] })
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Recovered draft')
   await page.getByLabel('Title', { exact: true }).fill('Recovered and saved')
   await expect.poll(() => updates.length).toBe(1)

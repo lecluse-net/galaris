@@ -102,7 +102,7 @@ async def rename_run_file(identity: UUID, file_id: UUID, actor: int | AgentManag
 
 async def add_run_file(identity: UUID, actor: int, content: bytes, *, name: str) -> dict[str, Any]:
     from .native_runs import require_run
-    from app.memory import validate_attachment_content
+    from app.document import validate_attachment_content
     run = await lock_run(identity)
     await require_run(identity, actor, control=True)
     require_active(run)

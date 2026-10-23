@@ -18,9 +18,10 @@ from core.storage import registered_file_names
 from core.util import visible_text
 
 from .attachment_description import write_attachment_description
-from .document_attachment_service import attachments_from_item
-from .models import DocumentAttachment, MemoryItem
-from .storage import NativeFileStorage, get_storage
+from app.document.interface import attachments_from_item
+from .models import MemoryItem
+from app.document import Document, DocumentAttachment
+from core.storage import NativeFileStorage, get_storage
 
 
 @dataclass(frozen=True)
@@ -38,7 +39,7 @@ class AttachmentAnalysisSource:
 
 def empty_attachment_items() -> Select[tuple[MemoryItem]]:
     """Live, empty companions only; the manifest is rechecked before every effect."""
-    document = aliased(MemoryItem)
+    document = aliased(Document)
     live_source = exists(select(DocumentAttachment.id).join(
         document, document.id == DocumentAttachment.document_id,
     ).where(DocumentAttachment.memory_item_id == MemoryItem.id,
@@ -59,7 +60,7 @@ async def attachment_analysis_source(item_id: UUID, *, allow_existing: bool = Fa
     ))
     if record is None:
         return None
-    document = await db.get(MemoryItem, record.document_id, populate_existing=True)
+    document = await db.get(Document, record.document_id, populate_existing=True)
     if document is None or document.deleted_at is not None:
         return None
     attachment = next((value for value in attachments_from_item(document) if value.id == record.id), None)

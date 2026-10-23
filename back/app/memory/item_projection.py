@@ -15,10 +15,10 @@ def item_to_public(
         "document_id": item.document.id if item.document is not None else None,
         "thumbnail_id": item.document.thumbnail_id if item.document is not None else None,
         "document_revision": item.document.revision if item.document is not None else None,
-        "summary_document_revision": item.summary_document_revision,
+        "summary_document_revision": (item.document.summary_document_revision if item.document is not None else None),
         "summary_outdated": item.document is not None
-        and item.summary_document_revision is not None
-        and item.summary_document_revision != item.document.revision,
+        and item.document.summary_document_revision is not None
+        and item.document.summary_document_revision != item.document.revision,
         "id": item.id,
         "revision": item.revision,
         "lock_version": item.lock_version,
@@ -37,7 +37,6 @@ def item_to_public(
         "keywords": list(item.keywords),
         "metadata": deepcopy(item.metadata_),
         "visibility": item.visibility,
-        "global_access": item.global_access,
         "read_only": item.read_only,
         "deletion_protected": item.deletion_protected,
         "source_managed": item.source_managed,
@@ -60,22 +59,23 @@ def item_to_public(
         "created_at": item.created_at,
         "updated_at": item.updated_at,
         "access": MemoryAccessPublic(can_read=access.can_read, can_write=access.can_write),
-        "grants": [
-            {"agent_id": grant.agent_id, "can_write": grant.can_write}
-            for grant in sorted(item.grants, key=lambda value: value.agent_id or 0) if grant.agent_id is not None
-        ],
     }
     if memory_content and item.document is not None:
         values.update(
-            revision=item.memory_revision,
-            provider_code=item.memory_provider_code,
+            revision=item.document.summary_revision,
+            lock_version=item.document.lock_version,
+            keywords=list(item.document.keywords),
+            temporal=item.document.temporal,
+            valid_from=item.document.valid_from,
+            valid_until=item.document.valid_until,
+            provider_code=item.document.summary_provider_code,
             document_type="html",
             content_type="text",
             media_type="text/html",
             content_profile="rich-text",
             content_profile_version=1,
             filename=None,
-            content_hash=item.memory_content_hash,
-            size_bytes=item.memory_size_bytes,
+            content_hash=item.document.summary_content_hash,
+            size_bytes=item.document.summary_size_bytes,
         )
     return MemoryItemPublic.model_validate(values)

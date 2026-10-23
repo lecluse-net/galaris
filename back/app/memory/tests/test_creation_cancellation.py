@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.memory import service
 from app.memory.models import MemoryItem
 from app.memory.schemas import MemoryItemCreate, MemoryPayload
-from app.memory.storage import get_storage
+from core.storage import get_storage
 
 
 @pytest.mark.asyncio

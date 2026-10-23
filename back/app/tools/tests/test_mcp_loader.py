@@ -571,16 +571,17 @@ async def test_conversation_projection_intersects_checkbox_and_function_policy(
     from app.tools import mcp_loader
 
     async def enabled(_agent_id: int) -> set[str]:
-        return {"galaris", "conversation", "memory", "file_sharing"}
+        return {"galaris", "conversation", "memory", "document", "file_sharing"}
 
     async def disabled(_agent_id: int) -> set[str]:
-        return {"memory_sharing"} if revoked else set()
+        return {"document_sharing"} if revoked else set()
 
     checked_tools = SimpleNamespace(all=lambda: [
         SimpleNamespace(code="galaris", messenger_config=None),
         SimpleNamespace(code="conversation", messenger_config=None),
         SimpleNamespace(code="file_sharing", messenger_config=None),
         SimpleNamespace(code="memory", messenger_config=None),
+        SimpleNamespace(code="document", messenger_config=None),
     ])
     db = SimpleNamespace(scalars=AsyncMock(return_value=checked_tools))
     monkeypatch.setattr(mcp_loader, "get_enabled_integrated_tool_codes", enabled)
@@ -598,7 +599,7 @@ async def test_conversation_projection_intersects_checkbox_and_function_policy(
             "conversation_task_resume",
             "conversation_task_retry",
             "file_search",
-            "memory_sharing",
+            "document_sharing",
             "process_start",
             "task_run",
         },
@@ -613,8 +614,8 @@ async def test_conversation_projection_intersects_checkbox_and_function_policy(
         "conversation_task_resume",
         "conversation_task_retry",
         "file_search",
-        "memory_sharing",
-    } - ({"memory_sharing"} if revoked else set())
+        "document_sharing",
+    } - ({"document_sharing"} if revoked else set())
 
 
 @pytest.mark.asyncio
@@ -968,6 +969,9 @@ async def test_file_create_reports_missing_remote_parent_and_recovery(
         (OSError(28, "No space left"), "capacity"),
         (type("GoalRevisionConflict", (RuntimeError,), {})("reload goal"), "actionable"),
         (type("MemoryConflictError", (RuntimeError,), {})("reload document"), "actionable"),
+        (type("DocumentConflictError", (RuntimeError,), {})("reload document"), "actionable"),
+        (type("DocumentPermissionError", (RuntimeError,), {})(), "permission_denied"),
+        (type("DocumentNotFoundError", (RuntimeError,), {})(), "not_found"),
         (RuntimeError(), "unexpected"),
     ],
 )

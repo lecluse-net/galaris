@@ -13,7 +13,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
-import DocumentAttachments from './DocumentAttachments.vue'
+import { DocumentAttachments } from '@/app/document'
 import { memoryService } from '../services/memoryService'
 import type { CatalogueResource } from '../types'
 

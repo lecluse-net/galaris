@@ -8,7 +8,7 @@ from sqlalchemy import Select, select
 
 from app.dataset import facade as datasets
 from app.llm import model_usages, profile_service
-from app.memory import facade as documents
+from app.document import facade as documents
 from app.topic import TopicClassification, classify_topic as classify, service as topics
 from core.database import get_db, get_db_session
 

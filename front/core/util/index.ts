@@ -101,6 +101,8 @@ export { default as ConversationBubble } from './components/ConversationBubble.v
 export { default as WaitingResponseIndicator } from './components/WaitingResponseIndicator.vue'
 export { preparePortableDocumentSnapshot } from './facade'
 export { queuePreview } from './previewQueue'
+export { thumbnailReady, onThumbnailReady } from './resourceThumbnailEvents'
+export type { ResourceThumbnailReady } from './resourceThumbnailEvents'
 export type { RegisterDocumentCapture, RenderedDocumentCapture } from './renderedDocument'
 export { captureElementRendering } from './captureElementRendering'
 export { default as CopyResourceReference } from './components/CopyResourceReference.vue'

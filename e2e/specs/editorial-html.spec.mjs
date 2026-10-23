@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 
 test('editorial HTML survives real API storage, browser editing and reload', async ({ page, request }) => {
@@ -29,28 +30,28 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   } })
   expect(rejected.status()).toBe(422)
   const callout = '<blockquote class="galaris-callout galaris-callout-info"><p>Document éditorial</p></blockquote>'
-  const created = await request.post('/api/memory/items', { headers, data: { ...documentData, payload: { text: corpus + callout } } })
+  const created = await createDocument(request, { headers, data: { ...documentData, payload: { text: corpus + callout } } })
   expect(created.ok(), await created.text()).toBeTruthy()
   const item = await created.json()
-  const oldClient = await request.patch(`/api/memory/documents/${item.id}?actor_agent_id=${fixture.agent_id}`, { headers: { Authorization: headers.Authorization }, data: { expected_revision: item.revision, payload: { text: 'Old client' } } })
+  const oldClient = await request.patch(`/api/documents/${item.id}?actor_agent_id=${fixture.agent_id}`, { headers: { Authorization: headers.Authorization }, data: { expected_revision: item.revision, payload: { text: 'Old client' } } })
   expect(oldClient.status()).toBe(409)
   const forbidden = await request.put(`/api/agents/${fixture.agent_id}`, { headers, data: { personality: '<img src="https://example.invalid/image.png">' } })
   expect(forbidden.status()).toBe(422)
-  await page.goto(`/memory/documents?document_id=${item.id}`)
+  await page.goto(`/documents?document_id=${item.id}`)
   const editor = page.locator('.document-editor [data-editor-surface]')
   await expect(editor.locator('u')).toHaveText('Texte souligné')
   await expect(editor.locator('th')).toHaveAttribute('colspan', '2')
   await editor.locator('h2').click()
   await page.keyboard.press('End')
   const saved = page.waitForResponse(response => response.request().method() === 'PATCH'
-    && response.url().includes(`/memory/documents/${item.id}`)
+    && response.url().includes(`/documents/${item.id}`)
     && response.request().postDataJSON()?.payload?.text?.includes('<h3>Été!</h3>'))
   const modifier = await page.evaluate(() => /Macintosh|iPhone|iPad/.test(navigator.userAgent) ? 'Meta' : 'Control')
   await page.keyboard.press(`${modifier}+Alt+Digit3`)
   await expect(editor.locator('h3')).toHaveText('Été')
   await page.keyboard.type('!')
   expect((await saved).ok()).toBeTruthy()
-  const persisted = (await (await request.get(`/api/memory/documents/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
+  const persisted = (await (await request.get(`/api/documents/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
   expect(persisted.media_type).toBe('text/html')
   expect(persisted.payload.text).toContain('<u>Texte souligné</u>')
   expect(persisted.payload.text).toContain('colspan="2"')
@@ -65,7 +66,7 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   await editor.locator('h3').click({ button: 'right' })
   await page.getByRole('menu', { name: /^(Content|Contenu)$/ }).getByRole('menuitem', { name: 'Style', exact: true }).hover()
   const headingSaved = page.waitForResponse(response => response.request().method() === 'PATCH'
-    && response.url().includes(`/memory/documents/${item.id}`)
+    && response.url().includes(`/documents/${item.id}`)
     && response.request().postDataJSON()?.payload?.text?.includes('<h4>Été!</h4>'))
   await page.getByRole('menuitemradio', { name: /^(Heading 4|Titre 4)$/ }).click()
   expect((await headingSaved).ok()).toBeTruthy()
@@ -83,22 +84,22 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   await page.getByRole('menu', { name: /^(Table|Tableau)$/ }).getByRole('menuitem', { name: /^(Table properties|Propriétés du tableau)$/ }).click()
   await page.getByRole('dialog').getByRole('textbox', { name: /^(Caption|Légende)$/ }).fill('Context menu table')
   const tableSaved = page.waitForResponse(response => response.request().method() === 'PATCH'
-    && response.url().includes(`/memory/documents/${item.id}`)
+    && response.url().includes(`/documents/${item.id}`)
     && response.request().postDataJSON()?.payload?.text?.includes('Context menu table'))
   await page.getByRole('dialog').getByRole('button', { name: /^(Apply|Valider)$/ }).click()
   expect((await tableSaved).ok()).toBeTruthy()
   await page.reload()
   await expect(editor.locator('figcaption')).toHaveText('Context menu table')
   await expect(editor.locator('th')).toHaveAttribute('colspan', '2')
-  const upload = await request.post(`/api/memory/documents/${item.id}/attachments?actor_agent_id=${fixture.agent_id}`, {
+  const upload = await request.post(`/api/documents/${item.id}/attachments?actor_agent_id=${fixture.agent_id}`, {
     headers, multipart: { file: { name: 'synthetic-resize.png', mimeType: 'image/png',
       buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNkYPjPwMDAxMDAwMDAAAALHwEDmIWXfgAAAABJRU5ErkJggg==', 'base64') } },
   })
   expect(upload.ok(), await upload.text()).toBeTruthy()
   const attachment = await upload.json()
   const imageUri = `document://${item.id}/attachments/${attachment.id}`
-  const latest = (await (await request.get(`/api/memory/documents/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
-  const imageSaved = await request.patch(`/api/memory/documents/${item.id}?actor_agent_id=${fixture.agent_id}`, { headers, data: {
+  const latest = (await (await request.get(`/api/documents/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
+  const imageSaved = await request.patch(`/api/documents/${item.id}?actor_agent_id=${fixture.agent_id}`, { headers, data: {
     expected_revision: latest.revision, payload: { text: latest.payload.text
       + `<figure class="image"><img width="200" alt="Synthetic resize image" src="${imageUri}"></figure><p>After image</p>` },
   } })
@@ -113,11 +114,11 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   await page.mouse.move(handle.x + handle.width / 2 + 80, handle.y + handle.height / 2, { steps: 8 })
   const resizedWidth = (await picture.boundingBox()).width
   const resizedSave = page.waitForResponse(response => response.request().method() === 'PATCH'
-    && response.url().includes(`/memory/documents/${item.id}`)
+    && response.url().includes(`/documents/${item.id}`)
     && response.request().postDataJSON()?.payload?.text?.includes('image_resized'))
   await page.mouse.up()
   expect((await resizedSave).ok()).toBeTruthy()
-  const resizedDocument = (await (await request.get(`/api/memory/documents/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
+  const resizedDocument = (await (await request.get(`/api/documents/${item.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
   expect(resizedDocument.payload.text).toContain(imageUri)
   expect(resizedDocument.payload.text).toMatch(/width: [0-9.]+%/)
   expect(resizedDocument.payload.text).not.toMatch(/blob:|galaris-image-resize/)
@@ -129,7 +130,7 @@ test('editorial HTML survives real API storage, browser editing and reload', asy
   ]) {
     await picture.click()
     const alignmentSaved = page.waitForResponse(response => response.request().method() === 'PATCH'
-      && response.url().includes(`/memory/documents/${item.id}`))
+      && response.url().includes(`/documents/${item.id}`))
     await page.getByRole('button', { name: label, exact: true }).first().click()
     expect((await alignmentSaved).ok()).toBeTruthy()
     await page.reload()

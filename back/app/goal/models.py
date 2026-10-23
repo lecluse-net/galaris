@@ -146,7 +146,7 @@ class Goal(HistoryMixin, Base):
     description_document_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey(
-            "memory_items.id",
+            "documents.id",
             ondelete="RESTRICT",
             use_alter=True,
             name="fk_goals_description_document_id",
@@ -158,7 +158,7 @@ class Goal(HistoryMixin, Base):
     tracking_document_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey(
-            "memory_items.id",
+            "documents.id",
             ondelete="RESTRICT",
             use_alter=True,
             name="fk_goals_tracking_document_id",

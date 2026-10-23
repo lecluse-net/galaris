@@ -24,21 +24,19 @@ from sqlalchemy import (
     func,
     case,
     select,
-    inspect,
     text as sql_text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import Base, HistoryMixin
-from app.share import Shareable, ShareReference, ShareGrant
+from app.document import Document
 from core.util import ContentProfile
 
 from .vector import Vector
-from .document_types import DocumentType
+from app.document.interface import DocumentType
 from .lexical_normalization import folded_vector_sql
 
 
@@ -69,156 +67,30 @@ class MemoryGraphPosition(Base):
     __table_args__ = (UniqueConstraint("view_id", "node_key"),)
 
 
-class DocumentSharingIntent(Base):
-    """Authoritative own ACL; common sharing tables are the effective projection."""
-
-    __tablename__ = "document_sharing_intents"
-    share_id: Mapped[UUID] = mapped_column(ForeignKey("share_configs.id", ondelete="CASCADE"), primary_key=True)
-    global_access: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    group_access: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    grants: Mapped[list[dict[str, int | bool | str]]] = mapped_column(JSONB, default=list, server_default="[]")
-    __table_args__ = (CheckConstraint("global_access IN (0,1,2) AND group_access IN (0,1,2)", name="ck_document_sharing_intents_access"),)
 
 
-class DocumentTag(HistoryMixin, Base):
-    """A human's private document classification, independent of document ownership."""
-
-    __tablename__ = "document_tags"
-
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    parent_id: Mapped[UUID | None] = mapped_column(ForeignKey("document_tags.id"), index=True)
-    name: Mapped[str] = mapped_column(String(100))
-    icon: Mapped[str | None] = mapped_column(Text)
-    position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    memory_item_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("memory_items.id"), nullable=True, unique=True,
-    )
-    # Automatic personal classification identity; names and placement stay editable.
-    goal_id: Mapped[UUID | None] = mapped_column(ForeignKey("goals.id"), index=True)
-    system_role: Mapped[str | None] = mapped_column(String(30))
-    generated_name: Mapped[str | None] = mapped_column(String(100))
-
-    __table_args__ = (
-        Index("uq_document_tags_user_goal", "user_id", "goal_id", unique=True,
-              postgresql_where=sql_text("deleted_at IS NULL AND goal_id IS NOT NULL")),
-        Index("uq_document_tags_user_goals_root", "user_id", unique=True,
-              postgresql_where=sql_text("deleted_at IS NULL AND system_role = 'goals_root'")),
-    )
 
 
-class DocumentTagIcon(HistoryMixin, Base):
-    """Uploaded icons in one human's private, reusable palette."""
-
-    __tablename__ = "document_tag_icons"
-
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    name: Mapped[str] = mapped_column(String(100))
-    data: Mapped[str] = mapped_column(Text)
 
 
-class DocumentTagAssignment(Base):
-    __tablename__ = "document_tag_assignments"
-
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    tag_id: Mapped[UUID] = mapped_column(ForeignKey("document_tags.id"), index=True)
-    document_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id"), index=True)
-    position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    __table_args__ = (UniqueConstraint("tag_id", "document_id"),)
 
 
-class DocumentNesting(Base):
-    """One user's document hierarchy; ownership and grants remain independent."""
-
-    __tablename__ = "document_nesting"
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    document_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
-    parent_document_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
-    position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    __table_args__ = (
-        UniqueConstraint("user_id", "document_id"),
-        CheckConstraint("document_id <> parent_document_id", name="ck_document_nesting_not_self"),
-        Index("ix_document_nesting_user_parent", "user_id", "parent_document_id"),
-    )
 
 
-class DocumentIcon(Base):
-    """Personal document appearance shared by all UI projections for one user."""
-
-    __tablename__ = "document_icons"
-
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    document_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id"), index=True)
-    icon: Mapped[str | None] = mapped_column(Text)
-    __table_args__ = (UniqueConstraint("user_id", "document_id"),)
 
 
-class DocumentAppGrant(HistoryMixin, Base):
-    """Human consent, outside generated content and scoped to an exact document revision."""
-
-    __tablename__ = "document_app_grants"
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    document_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id"), index=True)
-    dataset_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id"), index=True)
-    app_key: Mapped[str] = mapped_column(String(40))
-    alias: Mapped[str] = mapped_column(String(40))
-    document_revision: Mapped[int] = mapped_column(Integer)
-    access: Mapped[str | None] = mapped_column(String(5))
-    __table_args__ = (
-        UniqueConstraint("user_id", "document_id", "app_key", "alias"),
-        CheckConstraint("access IS NULL OR access IN ('read', 'write')"),
-    )
 
 
-class DocumentAppWriteBudget(Base):
-    """Transactional write budget shared by all apps for a reader and Dataset."""
-
-    __tablename__ = "document_app_write_budgets"
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    dataset_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id"), index=True)
-    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    writes: Mapped[int] = mapped_column(Integer, default=0)
-    bytes_written: Mapped[int] = mapped_column(Integer, default=0)
-    __table_args__ = (UniqueConstraint("user_id", "dataset_id"),)
 
 
-class DocumentListPosition(Base):
-    """Personal list order, independent of folder placement and document content."""
-
-    __tablename__ = "document_list_positions"
-
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    document_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id"), index=True)
-    position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    __table_args__ = (UniqueConstraint("user_id", "document_id"),)
 
 
-class DocumentAttachment(Base):
-    """One durable attachment identity and its textual Memory companion.
-
-    The document attachment manifest remains authoritative for membership. Retained
-    attachments keep their identity and description but are absent from live recall.
-    """
-
-    __tablename__ = "document_attachments"
-
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
-    document_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id"), index=True)
-    memory_item_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id"), index=True)
-    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
 
 def _document_attribute[T](name: str, memory_name: str, default: T) -> hybrid_property[T]:
-    """Resolve the document facade without redundant documentary Memory columns.
+    """Read a source Document from its optional native reference.
 
-    The mapped Memory columns hold the summary. Document writers target the
-    separate record; SQL readers resolve the same authoritative document value.
+    Personal-memory columns never store the Document's body or shared summary.
     """
     @hybrid_property
     def attribute(item: MemoryItem) -> T:
@@ -236,15 +108,7 @@ def _document_attribute[T](name: str, memory_name: str, default: T) -> hybrid_pr
         if document is None:
             setattr(item, memory_name, value)
         else:
-            if getattr(document, name) != value:
-                setattr(document, name, value)
-                document.thumbnail_id = None
-                # Every document mutation participates in the existing shared
-                # optimistic lock, including changes confined to its payload.
-                if inspect(item).persistent:
-                    flag_modified(item, "updated_by")
-            if name == "title":
-                item.search_title = cast(str, value)
+            raise ValueError("Document references are read-only; write through app.document")
 
     @attribute.inplace.expression
     @classmethod
@@ -256,16 +120,16 @@ def _document_attribute[T](name: str, memory_name: str, default: T) -> hybrid_pr
             ), else_="private")
         elif memory_name == "memory_filename":
             memory_value = cls.metadata_["memory_filename"].astext
-        elif memory_name in {"legacy_global_access", "legacy_group_access", "memory_document_type"}:
+        elif memory_name == "memory_document_type":
             memory_value = literal(default)
         else:
             memory_value = getattr(cls, memory_name)
         document_value = select(getattr(Document, name)).where(
-            Document.memory_item_id == cls.id,
+            Document.id == cls.id,
         ).correlate(cls).scalar_subquery()
         if default is None:
             document_exists = select(Document.id).where(
-                Document.memory_item_id == cls.id,
+                Document.id == cls.id,
             ).correlate(cls).exists()
             resolved = case((document_exists, document_value), else_=memory_value)
         else:
@@ -280,8 +144,7 @@ def _document_attribute[T](name: str, memory_name: str, default: T) -> hybrid_pr
     return attribute
 
 
-class MemoryItem(Shareable, HistoryMixin, Base):
-    __share_kind__ = "memory"
+class MemoryItem(HistoryMixin, Base):
     """Stable logical memory whose payload lives in a resource provider."""
 
     __tablename__ = "memory_items"
@@ -417,16 +280,13 @@ class MemoryItem(Shareable, HistoryMixin, Base):
 
 
     document: Mapped[Document | None] = relationship(
-        back_populates="memory_item", uselist=False, lazy="selectin",
-        foreign_keys="Document.memory_item_id",
-        cascade="all, delete-orphan", single_parent=True,
+        primaryjoin="foreign(MemoryItem.id) == Document.id",
+        uselist=False, lazy="selectin", viewonly=True,
     )
 
     # Transient construction inputs. Once persisted, ACLs belong exclusively to
     # Document; structural visibility follows ownership and source provenance.
     memory_document_type = "html"
-    legacy_global_access = 0
-    legacy_group_access = 0
     _initial_visibility = ""
 
     @property
@@ -456,36 +316,7 @@ class MemoryItem(Shareable, HistoryMixin, Base):
         # SQLAlchemy's constructor is a dynamic boundary. Set provenance first
         # and metadata before filename so canonical construction is order neutral.
         metadata = kwargs.pop("metadata_", {})
-        kwargs.setdefault("share_kind", "document" if kwargs.get("node_kind") == "document" else "memory")
         super().__init__(metadata_=metadata, **kwargs)
-        if self.node_kind == "document" and self.__dict__.get("document") is None:
-            self.attach_document()
-
-    def attach_document(self) -> None:
-        if self.__dict__.get("document") is not None:
-            return
-        from hashlib import sha256
-        self.id = self.id or uuid4()
-        self.document = Document(
-            share=self.share, share_id=self.share_id, share_kind="document",
-            id=self.id, memory_item_id=self.id, title=self.search_title or "",
-            provider_code=self.memory_provider_code or "native", resource_id=self.memory_resource_id or "",
-            content=self.memory_content,
-            revision=self.memory_revision or 1, document_type=self.memory_document_type,
-            content_type=self.memory_content_type or "text", media_type=self.memory_media_type or "text/html",
-            content_profile_version=self.memory_content_profile_version, filename=self.memory_filename,
-            content_hash=self.memory_content_hash or sha256(b"").hexdigest(), size_bytes=self.memory_size_bytes or 0,
-            visibility=self.legacy_visibility, global_access=self.legacy_global_access,
-            group_access=self.legacy_group_access, read_only=self.memory_read_only or False,
-            summary_initialized=True,
-        )
-        self.memory_provider_code, self.memory_resource_id, self.memory_revision = "native", "", 1
-        self.memory_content = ""
-        self.memory_content_type, self.memory_media_type, self.memory_content_profile_version = "text", "text/html", 1
-        self.memory_content_hash, self.memory_size_bytes = sha256(b"").hexdigest(), 0
-        self.memory_read_only = bool(self.source_managed)
-        self.memory_filename = None
-        self._initial_visibility = ""
     revision = _document_attribute("revision", "memory_revision", 1)
     provider_code = _document_attribute("provider_code", "memory_provider_code", "native")
     resource_id = _document_attribute("resource_id", "memory_resource_id", "")
@@ -497,8 +328,6 @@ class MemoryItem(Shareable, HistoryMixin, Base):
     content_profile_version = _document_attribute("content_profile_version", "memory_content_profile_version", cast(int | None, None))
     filename = _document_attribute("filename", "memory_filename", cast(str | None, None))
     visibility = _document_attribute("visibility", "legacy_visibility", "private")
-    global_access = _document_attribute("global_access", "legacy_global_access", 0)
-    group_access = _document_attribute("group_access", "legacy_group_access", 0)
     read_only = _document_attribute("read_only", "memory_read_only", False)
     content_hash = _document_attribute("content_hash", "memory_content_hash", "")
     size_bytes = _document_attribute("size_bytes", "memory_size_bytes", 0)
@@ -514,17 +343,8 @@ class MemoryItem(Shareable, HistoryMixin, Base):
         passive_deletes=True,
         order_by="MemoryRevision.revision",
     )
-    grants: Mapped[list[ShareGrant]] = relationship(
-        ShareGrant, primaryjoin="and_(MemoryItem.share_id == foreign(ShareGrant.share_id), ShareGrant.agent_id.is_not(None))",
-        viewonly=True,
-    )
 
     __table_args__ = (
-        UniqueConstraint("id", "share_id"),
-        ForeignKeyConstraint(["share_id", "share_kind"], ["share_configs.id", "share_configs.resource_kind"], name="fk_memory_items_share_kind", deferrable=True, initially="DEFERRED"),
-        # Memory holds the stable identity of Documents as well as their former
-        # representation during the atomic document split.
-        CheckConstraint("share_kind IN ('memory', 'document')", name="ck_memory_items_share_kind"),
         Index("ix_memory_items_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
         ForeignKeyConstraint(
             ["id", "primary_url"], ["memory_urls.memory_node_id", "memory_urls.url"],
@@ -545,7 +365,7 @@ class MemoryItem(Shareable, HistoryMixin, Base):
         CheckConstraint(
             "node_kind != 'document' OR "
             "(content_type = 'text' "
-            "AND source_managed = false AND read_only = false)",
+            "AND source_managed = false)",
             name="ck_memory_items_document",
         ),
         CheckConstraint(
@@ -608,135 +428,16 @@ class MemoryItem(Shareable, HistoryMixin, Base):
     __mapper_args__ = {"version_id_col": lock_version}
 
 
-class Document(ShareReference, HistoryMixin, Base):
-    __share_kind__ = "document"
-    """Authoritative working content, linked one-to-one to its Memory summary.
-
-    The same UUID preserves existing document URIs; the explicit FK preserves
-    the distinction between document identity and graph identity.
-    """
-
-    __tablename__ = "documents"
-
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    topic_id: Mapped[UUID | None] = mapped_column(ForeignKey("topics.id", ondelete="SET NULL"), nullable=True, index=True)
-    memory_item_id: Mapped[UUID] = mapped_column(
-        ForeignKey("memory_items.id", ondelete="CASCADE"), nullable=False, unique=True,
-    )
-    title: Mapped[str] = mapped_column(String(500), nullable=False)
-    provider_code: Mapped[str] = mapped_column(String(80), nullable=False)
-    resource_id: Mapped[str] = mapped_column(String(1_024), nullable=False)
-    content: Mapped[str | None] = mapped_column(Text, nullable=True)
-    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
-    document_type: Mapped[DocumentType] = mapped_column(String(30), nullable=False, default="html", server_default="html")
-    content_type: Mapped[str] = mapped_column(String(50), nullable=False, default="text", server_default="text")
-    media_type: Mapped[str] = mapped_column(String(255), nullable=False, default="text/html", server_default="text/html")
-    content_profile_version: Mapped[int | None] = mapped_column(Integer)
-    filename: Mapped[str | None] = mapped_column(String(500))
-    # UUID of a disposable WebP file in the document thumbnail cache.
-    thumbnail_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
-    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, server_default="0")
-    visibility: Mapped[str] = mapped_column(String(20), nullable=False, default="private", server_default="private")
-    legacy_global_access: Mapped[int] = mapped_column("global_access", Integer, nullable=False, default=0, server_default="0")
-    legacy_group_access: Mapped[int] = mapped_column("group_access", Integer, nullable=False, default=0, server_default="0")
-    read_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
-    summary_initialized: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
-    memory_item: Mapped[MemoryItem] = relationship(back_populates="document", foreign_keys=[memory_item_id])
-
-    __table_args__ = (
-        *ShareReference.share_constraints("documents", "document"),
-        ForeignKeyConstraint(["memory_item_id", "share_id"], ["memory_items.id", "memory_items.share_id"], name="fk_documents_share_identity"),
-        Index("ix_documents_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
-        CheckConstraint("id = memory_item_id", name="ck_documents_stable_identity"),
-        CheckConstraint("document_type IN ('html', 'dataset', 'process', 'form')", name="ck_documents_type"),
-        # Legacy shared memories may contain non-editorial text or binary bytes.
-        # Preserve their format and retired form archives; APIs enforce current types.
-        CheckConstraint("content_type IN ('text', 'binary')", name="ck_documents_text"),
-        CheckConstraint("(document_type = 'dataset' AND content_type = 'text' AND media_type = 'application/json' AND content_profile_version IS NULL) OR (document_type = 'process' AND content_type = 'text' AND media_type = 'application/bpmn+xml' AND content_profile_version IS NULL) OR document_type IN ('html', 'form')", name="ck_documents_content_type"),
-        CheckConstraint("visibility IN ('private', 'shared')", name="ck_documents_visibility"),
-        CheckConstraint("global_access IN (0, 1, 2) AND group_access IN (0, 1, 2)", name="ck_documents_access"),
-    )
 
 
-class DocumentRevision(Base):
-    """Ownership of a preserved immutable resource revision by its document."""
-
-    __tablename__ = "document_revisions"
-    id: Mapped[UUID] = mapped_column(ForeignKey("memory_revisions.id", ondelete="CASCADE"), primary_key=True)
-    document_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
-    revision: Mapped[int] = mapped_column(Integer, nullable=False)
-    resource_revision: Mapped[MemoryRevision] = relationship()
-    __table_args__ = (UniqueConstraint("document_id", "revision"),)
 
 
-class MemorySummaryRevision(Base):
-    """Independent history of a document's optional Memory synthesis."""
-
-    __tablename__ = "memory_summary_revisions"
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    item_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id", ondelete="CASCADE"), index=True)
-    revision: Mapped[int] = mapped_column(Integer, nullable=False)
-    provider_code: Mapped[str] = mapped_column(String(80), nullable=False)
-    resource_id: Mapped[str] = mapped_column(String(1_024), nullable=False)
-    content: Mapped[str | None] = mapped_column(Text, nullable=True)
-    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    source_document_revision: Mapped[int] = mapped_column(Integer, nullable=False)
-    keywords: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list, server_default="[]")
-    temporal: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
-    author_agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="SET NULL"))
-    task_id: Mapped[UUID | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    __table_args__ = (
-        UniqueConstraint("item_id", "revision"),
-        Index("ix_memory_summary_revisions_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
-    )
 
 
-class MemoryItemGrant(Base):
-    """Item-level read/write permission for one agent."""
-
-    __tablename__ = "memory_item_grants"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    item_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
-        ForeignKey("memory_items.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    agent_id: Mapped[int] = mapped_column(
-        ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    can_write: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="false"
-    )
-
-    __table_args__ = (
-        UniqueConstraint("item_id", "agent_id", name="uq_memory_item_agent"),
-    )
 
 
-class DocumentUserGrant(Base):
-    """Direct human access to a memory resource, independent of managed Agents."""
-
-    __tablename__ = "document_user_grants"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    item_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id", ondelete="CASCADE"), index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    can_write: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    __table_args__ = (UniqueConstraint("item_id", "user_id"),)
 
 
-class DocumentTeamGrant(Base):
-    """Live access for a team's current human and Agent members."""
-
-    __tablename__ = "document_team_grants"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    item_id: Mapped[UUID] = mapped_column(ForeignKey("memory_items.id", ondelete="CASCADE"), index=True)
-    team_id: Mapped[int] = mapped_column(ForeignKey("agent_groups.id", ondelete="CASCADE"), index=True)
-    can_write: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    __table_args__ = (UniqueConstraint("item_id", "team_id"),)
 
 
 class MemoryRevision(Base):

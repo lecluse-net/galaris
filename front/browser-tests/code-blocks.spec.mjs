@@ -80,11 +80,11 @@ test('the actual document screen shows code colors and autosaves only authored c
   let current = { ...document, media_type: 'text/html', content_profile: 'document', content_profile_version: 1, payload: { text: html } }
   const updates = []
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/folders?*', [{ path: 'Reports', kind: 'custom', shared: false }])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
-  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/folders?*', [{ path: 'Reports', kind: 'custom', shared: false }])
+  await jsonRoute(page, '**/api/documents/doc-a/attachments?*', [])
+  await page.route(/\/api\/documents\/doc-a(?:\?.*)?$/, route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { item: current, agent_id: 7 } })
     const body = route.request().postDataJSON()
     updates.push(body)

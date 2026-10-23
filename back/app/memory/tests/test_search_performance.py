@@ -11,7 +11,7 @@ from sqlalchemy import event, text
 from app.memory.models import MemoryItem, MemorySource
 from app.memory.schemas import MemorySearchRequest
 from app.memory.service import search_items
-from app.memory.storage import get_storage
+from core.storage import get_storage
 from tests.sharing_fixtures import bind_private_shares
 
 
@@ -100,8 +100,8 @@ async def test_multilingual_search_has_bounded_queries_and_preserves_private_sco
 @pytest.mark.parametrize("operation", ["search", "library"])
 async def test_memory_reads_keep_connection_planner_defaults_after_commit_and_rollback(committed_database, operation):
     from core.database import get_db_session
-    from app.memory.library_queries import browse_document_library
-    from app.memory.schemas import DocumentLibraryRequest
+    from app.document.library_queries import browse_document_library
+    from app.document.schemas import DocumentLibraryRequest
 
     async with get_db_session() as session:
         original = await session.scalar(text("SHOW jit"))

@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -26,7 +27,7 @@ test('native Processes and runs remain live references in authored Documents', a
   }))
   const processUri = `galaris://processes/${definition.code}`, runUri = `galaris://processes/runs/${run.id ?? run.run_id}`
   const html = `<p>Synthetic guide.</p><blockquote class="galaris-link-card galaris-process-diagram"><p><a href="${processUri}">Synthetic cited process</a></p></blockquote><p><a href="${runUri}">Synthetic cited execution</a></p>`
-  const document = await checked(await request.post('/api/memory/items', { headers, data: {
+  const document = await checked(await createDocument(request, { headers, data: {
     owner_agent_id: fixture.agent_id, title: 'Synthetic process citations', node_kind: 'document',
     media_type: 'text/html', payload: { text: html },
   } }))
@@ -48,7 +49,7 @@ test('native Processes and runs remain live references in authored Documents', a
   await files.getByRole('button', { name: new RegExp(`^(Select|Sélectionner) ${definition.title}$`), exact: true }).click()
   await files.getByRole('button', { name: /^(Select|Sélectionner) Runs$/, exact: true }).dblclick()
   await files.getByRole('button', { name: new RegExp(`^(Select|Sélectionner) ${definition.title} ·`), exact: false }).click()
-  const saving = page.waitForResponse(response => response.url().includes(`/memory/documents/${document.id}`) && response.request().method() === 'PATCH')
+  const saving = page.waitForResponse(response => response.url().includes(`/documents/${document.id}`) && response.request().method() === 'PATCH')
   await page.getByRole('dialog').getByRole('button', { name: /^(Select|Sélectionner)$/, exact: true }).click()
   expect((await saving).ok()).toBeTruthy()
   await page.locator('.document-editor-attachments').scrollIntoViewIfNeeded()
@@ -61,11 +62,11 @@ test('native Processes and runs remain live references in authored Documents', a
   await page.keyboard.press('Alt+Enter')
   await expect(page.getByRole('dialog').getByRole('link', { name: new RegExp(`^(Copy run URL|Copier l’URL du run): ${run.id ?? run.run_id}$`) })).toHaveAttribute('href', runUri)
   await page.getByRole('dialog').getByRole('button', { name: /^(Close|Fermer)$/, exact: true }).click()
-  const saved = await checked(await request.get(`/api/memory/documents/${document.id}`, { headers }))
+  const saved = await checked(await request.get(`/api/documents/${document.id}`, { headers }))
   expect(saved.item.payload.text).toContain(processUri)
   expect(saved.item.payload.text).toContain('galaris-process-diagram')
   expect(saved.item.metadata.process_attachments ?? []).toEqual([])
-  expect(await checked(await request.get(`/api/memory/documents/${document.id}/attachments?agent_id=${fixture.agent_id}`, { headers }))).toEqual([])
+  expect(await checked(await request.get(`/api/documents/${document.id}/attachments?agent_id=${fixture.agent_id}`, { headers }))).toEqual([])
   expect(saved.item.payload.text).not.toContain('<svg')
   await page.screenshot({ path: test.info().outputPath('process-document-citation.png'), fullPage: true })
   expect(errors()).toEqual([])

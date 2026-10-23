@@ -5,13 +5,13 @@ const markdown = '# Project notes\n\nA **formatted** attachment.\n\n- First item
 async function setup(page, surface, { name = 'NOTES.MD', mime = 'application/octet-stream', respond } = {}) {
   const file = { id: 'file-1', uri: 'chat://room-1/file-1', name, mime_type: mime, media_type: mime, kind: 'file', size_bytes: markdown.length }
   const contentRoute = surface === 'document'
-    ? '**/api/memory/documents/*/attachments/file-1?*'
+    ? '**/api/documents/*/attachments/file-1?*'
     : surface === 'resource' ? '**/api/chat/rooms/*/messages/message-1/previews/content?*' : '**/api/chat/rooms/*/files/file-1*'
   await page.route(contentRoute, respond ?? (route => route.fulfill({ contentType: mime, body: markdown })))
-  await page.route('**/api/memory/documents/*/attachments/*/thumbnail?*', route => route.fulfill({ status: 204 }))
+  await page.route('**/api/documents/*/attachments/*/thumbnail?*', route => route.fulfill({ status: 204 }))
   await jsonRoute(page, /\/previews(?:\?.*)?$/, [{ uri: file.uri, kind: 'file', title: name, subtitle: '', description: '', media_type: mime, content: 'Truncated preview', content_format: 'text', truncated: true, image_available: false, download_available: true, open_mode: 'inline', external_url: null, embed_url: null, metadata: {} }])
   await jsonRoute(page, '**/api/chat/rooms/*/speech/status*', { available_agent_ids: [] })
-  const component = surface === 'document' ? 'app/memory/components/DocumentAttachments.vue' : `app/chat/components/${surface === 'message' ? 'MessageTimeline' : 'MessageResourcePreviews'}.vue`
+  const component = surface === 'document' ? 'app/document/components/DocumentAttachments.vue' : `app/chat/components/${surface === 'message' ? 'MessageTimeline' : 'MessageResourcePreviews'}.vue`
   const props = surface === 'document'
     ? { documentId: 'document-1', agentId: 7, attachments: [file] }
     : surface === 'resource' ? { roomId: 'room-1', messageId: 'message-1' }
@@ -132,13 +132,13 @@ for (const showThumbnail of [false, true]) test(`a linked Office attachment down
   const name = 'Notes.odt'
   const original = Buffer.from('Synthetic original ODT')
   await jsonRoute(page, '**/api/memory/items/memory-1?*', { primary_url: `document://${documentId}/attachments/${attachmentId}`, metadata: {} })
-  await jsonRoute(page, `**/api/memory/documents/${documentId}/attachments/${attachmentId}/info?*`, {
+  await jsonRoute(page, `**/api/documents/${documentId}/attachments/${attachmentId}/info?*`, {
     id: attachmentId, name, media_type: 'application/vnd.oasis.opendocument.text', size_bytes: original.length,
   })
-  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({
+  await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({
     contentType: 'image/webp', body: Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=', 'base64'),
   }))
-  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'application/octet-stream', body: original }))
+  await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'application/octet-stream', body: original }))
   await mount(page, 'app/memory/components/MemoryAttachmentButton.vue', { props: {
     itemId: 'memory-1', agentId: 7, showThumbnail,
   } })
@@ -218,8 +218,8 @@ test('an audio attachment opened from Memory uses a dismissible player and reope
   const documentId = '00000000-0000-0000-0000-000000000001'
   const attachmentId = '00000000-0000-0000-0000-000000000002'
   await jsonRoute(page, '**/api/memory/items/memory-1?*', { primary_url: `document://${documentId}/attachments/${attachmentId}`, metadata: {} })
-  await jsonRoute(page, `**/api/memory/documents/${documentId}/attachments/${attachmentId}/info?*`, { id: attachmentId, name: 'recording.wav', media_type: 'audio/wav', size_bytes: silentAudio().length })
-  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'audio/wav', body: silentAudio() }))
+  await jsonRoute(page, `**/api/documents/${documentId}/attachments/${attachmentId}/info?*`, { id: attachmentId, name: 'recording.wav', media_type: 'audio/wav', size_bytes: silentAudio().length })
+  await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'audio/wav', body: silentAudio() }))
   await mount(page, 'app/memory/components/MemoryAttachmentButton.vue', { props: { itemId: 'memory-1', agentId: 7 } })
   for (const dismiss of ['backdrop', 'escape']) {
     await page.getByRole('button', { name: 'Preview', exact: true }).click()

@@ -28,14 +28,14 @@ async function workspace(page, editable = true, extraDocuments = [], content = '
   await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
   await jsonRoute(page, '**/api/chat/agents/7/avatar', {})
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords*', [])
-  await jsonRoute(page, '**/api/memory/documents/folders*', [])
-  await jsonRoute(page, '**/api/memory/documents/*/attachments*', [])
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords*', [])
+  await jsonRoute(page, '**/api/documents/folders*', [])
+  await jsonRoute(page, '**/api/documents/*/attachments*', [])
   const readDocument = route => denied ? route.fulfill({ status: 403, json: { detail: 'Forbidden' } }) : route.fulfill({ json: route.request().url().includes('/items/') ? document : { item: document, agent_id: 7 } })
   await page.route('**/api/memory/items/doc-a?*', readDocument)
-  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, readDocument)
-  await page.route(/\/api\/memory\/documents\/doc-b(?:\?.*)?$/, route => {
+  await page.route(/\/api\/documents\/doc-a(?:\?.*)?$/, readDocument)
+  await page.route(/\/api\/documents\/doc-b(?:\?.*)?$/, route => {
     openedDocumentId = 'doc-b'
     if (route.request().method() === 'PATCH') {
       if (refuseSave) return route.fulfill({ status: 503, json: { detail: 'Save unavailable' } })
@@ -47,7 +47,7 @@ async function workspace(page, editable = true, extraDocuments = [], content = '
     }
     return denied ? route.fulfill({ status: 403, json: { detail: 'Forbidden' } }) : route.fulfill({ json: { item: { ...document, id: 'doc-b', title: 'Off-list document' }, agent_id: null } })
   })
-  await page.route('**/api/memory/documents/library', route => route.fulfill({ json: { entries: [{ item: { ...document, id: 'doc-b', title: 'Off-list document' }, agent_ids: [] }], total: 1, has_more: false } }))
+  await page.route('**/api/documents/library', route => route.fulfill({ json: { entries: [{ item: { ...document, id: 'doc-b', title: 'Off-list document' }, agent_ids: [] }], total: 1, has_more: false } }))
   await jsonRoute(page, '**/api/chat/rooms/room-a/documents?*', { items: [{ id: document.id, label: document.title, uri: 'document://doc-a', revision: 3 }, ...extraDocuments], total: 1 + extraDocuments.length })
   await page.route('**/api/chat/rooms/room-a/documents', route => route.fulfill({ json: { id: document.id, label: route.request().postDataJSON().title, uri: 'document://doc-a' } }))
   await mount(page, 'app/chat/pages/index.vue', { route: '/chat?room=room-a', browserHistory: true, privileges: ['CHAT_SEND', 'MEMORY_ACCESS', ...(editable ? ['MEMORY_EDIT'] : [])] })
@@ -82,7 +82,7 @@ async function linkedWorkspace(page, editable = true) {
     payload: { text: `<p>${title} content</p>${index === 0 ? `<blockquote class="galaris-link-card"><p><a href="document://${ids[1]}"><strong>Open Gamma</strong></a></p><p>Card summary</p></blockquote>` : ''}` },
   }))
   const reads = []
-  for (const item of items) await page.route(new RegExp(`/api/memory/documents/${item.id}(?:\\?|$)`), route => {
+  for (const item of items) await page.route(new RegExp(`/api/documents/${item.id}(?:\\?|$)`), route => {
     const actor = new URL(route.request().url()).searchParams.get('agent_id')
     reads.push({ id: item.id, actor })
     if (actor) return route.fulfill({ status: 403, json: { detail: 'Private document' } })
@@ -136,7 +136,7 @@ test('chat document navigation preserves drafts on failure and discards destinat
   const title = pane.getByLabel('Title', { exact: true })
   let mode = 'denied', release, started = false
   const gate = new Promise(resolve => { release = resolve })
-  await page.route(new RegExp(`/api/memory/documents/${state.items[0].id}(?:\\?|$)`), async route => {
+  await page.route(new RegExp(`/api/documents/${state.items[0].id}(?:\\?|$)`), async route => {
     if (mode === 'denied') return route.fulfill({ status: 403, json: { detail: 'Access denied' } })
     started = true; await gate; return route.fallback()
   })
@@ -189,7 +189,7 @@ test('chat navigation saves edits made during loading and ignores an older desti
   const title = pane.getByLabel('Title', { exact: true })
   let release, started = false
   const gate = new Promise(resolve => { release = resolve })
-  await page.route(new RegExp(`/api/memory/documents/${state.items[0].id}(?:\\?|$)`), async route => {
+  await page.route(new RegExp(`/api/documents/${state.items[0].id}(?:\\?|$)`), async route => {
     started = true; await gate; return route.fallback()
   })
   await pane.getByRole('link', { name: 'Open Beta', exact: true }).click({ modifiers: ['Control'] })
@@ -227,7 +227,7 @@ for (const editable of [true, false]) {
   test(`document selection, last cursor and visible passage survive composer focus (editable=${editable})`, async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 1000 })
     const state = await workspace(page, editable)
-    await jsonRoute(page, '**/api/memory/documents/doc-b', { item: {
+    await jsonRoute(page, '**/api/documents/doc-b', { item: {
       ...documentFixture, id: 'doc-b', title: 'Off-list document', media_type: 'text/html', content_profile: 'document',
       payload: { text: Array.from({ length: 100 }, (_, i) => `<p>Section ${i}: Initial document body with a distinct passage.</p>`).join('') },
     }, agent_id: null })
@@ -314,10 +314,10 @@ test('document attention bounds long selections and clears positions after a rem
 test('document dialogs cover the split editor toolbar and keep their own formatting usable', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await workspace(page)
-  await page.route('**/api/memory/documents/doc-a', route => route.request().method() === 'PATCH'
+  await page.route('**/api/documents/doc-a', route => route.request().method() === 'PATCH'
     ? route.fulfill({ json: { ...documentFixture, ...route.request().postDataJSON(), revision: 4, lock_version: 4 } })
     : route.fallback())
-  await jsonRoute(page, '**/api/memory/documents/doc-b', { item: {
+  await jsonRoute(page, '**/api/documents/doc-b', { item: {
     ...documentFixture, id: 'doc-b', title: 'Off-list document', media_type: 'text/html', content_profile: 'document',
     payload: { text: '<p>Initial document body</p>'.repeat(60) },
   }, agent_id: null })
@@ -396,7 +396,7 @@ test('document_show cannot switch rooms while waiting for a document save', asyn
   await workspace(page)
   await openFromSearch(page)
   let release
-  await page.route('**/api/memory/documents/doc-b', async route => {
+  await page.route('**/api/documents/doc-b', async route => {
     if (route.request().method() !== 'PATCH') return route.fallback()
     await new Promise(resolve => { release = resolve })
     return route.fulfill({ json: { ...documentFixture, id: 'doc-b', title: 'Off-list document',
@@ -462,8 +462,8 @@ for (const [width, editable, mode] of [[1440, true, undefined], [1440, true, 'sp
     const state = await workspace(page, editable)
     await page.evaluate(mode => window.testApp.auth.$patch({ user: { document_open_mode: mode } }), mode)
     const id = '00000000-0000-0000-0000-000000000001'
-    await jsonRoute(page, '**/api/memory/documents/icons/resolve', { [id]: 'emoji:1F680' })
-    await jsonRoute(page, '**/api/memory/documents/tag-icons', [])
+    await jsonRoute(page, '**/api/documents/icons/resolve', { [id]: 'emoji:1F680' })
+    await jsonRoute(page, '**/api/documents/tag-icons', [])
     const uri = `document://${id}`
     state.message.text = uri
     let document = { ...documentFixture, id, title: 'Preview document', media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Document from the message</p>' } }
@@ -479,7 +479,7 @@ for (const [width, editable, mode] of [[1440, true, undefined], [1440, true, 'sp
       }
       return route.fulfill({ json: route.request().url().includes('/items/') ? document : { item: document, agent_id: 7 } })
     }
-    await page.route(new RegExp(`/api/memory/documents/${id}(?:\\?.*)?$`), documentRoute)
+    await page.route(new RegExp(`/api/documents/${id}(?:\\?.*)?$`), documentRoute)
     await page.route(`**/api/memory/items/${id}*`, documentRoute)
     await page.evaluate(({ uri, message }) => window.testApp.patchStore(
       'app/chat/stores/chat.ts', 'useChatStore', { messages: [{ ...message, text: uri }] },
@@ -601,7 +601,7 @@ test('a failed document save preserves the chat draft until saving succeeds', as
   const state = await workspace(page)
   await openFromSearch(page)
   let failSave = true
-  await page.route('**/api/memory/documents/doc-b', route => {
+  await page.route('**/api/documents/doc-b', route => {
     if (failSave && route.request().method() === 'PATCH') {
       return route.fulfill({ status: 500, json: { detail: 'Save unavailable' } })
     }
@@ -626,7 +626,7 @@ test('a late response from the previous document cannot overwrite the selected d
   await workspace(page)
   await openFromSearch(page)
   let release
-  await page.route('**/api/memory/documents/doc-b', async route => {
+  await page.route('**/api/documents/doc-b', async route => {
     await new Promise(resolve => { release = resolve })
     await route.fulfill({ json: { item: { ...documentFixture, id: 'doc-b', payload: { text: 'Late private body' } }, agent_id: null } })
   })
@@ -792,7 +792,7 @@ for (const surface of ['desktop', 'mobile', 'dialog']) {
       await listRequest
       if (deletion === 'editor') {
         let refused = surface === 'desktop'
-        await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+        await page.route(/\/api\/documents\/doc-a(?:\?.*)?$/, route => {
           if (route.request().method() !== 'DELETE') return route.fallback()
           return route.fulfill(refused ? { status: 403, json: { detail: 'Deletion refused' } } : { json: {} })
         })
@@ -827,7 +827,7 @@ for (const surface of ['desktop', 'mobile', 'dialog']) {
 }
 
 test('an off-list deletion cannot reappear through a pending document list response', async ({ page }) => {
-  await jsonRoute(page, '**/api/memory/documents/doc-c?*', { item: { ...documentFixture, id: 'doc-c', title: 'Surviving new document' }, agent_id: 7 })
+  await jsonRoute(page, '**/api/documents/doc-c?*', { item: { ...documentFixture, id: 'doc-c', title: 'Surviving new document' }, agent_id: 7 })
   await workspace(page)
   await expect(page.getByLabel('Open document Test document', { exact: true })).toBeVisible()
   let releaseList
@@ -874,7 +874,7 @@ test('creation cancellation and rejection preserve chat without opening a fictit
 test('search errors and empty results stay explicit and late results cannot replace a new search', async ({ page }) => {
   await workspace(page)
   let release
-  await page.route('**/api/memory/documents/library', async route => {
+  await page.route('**/api/documents/library', async route => {
     const { query } = route.request().postDataJSON()
     if (query === 'old') {
       await new Promise(resolve => { release = resolve })

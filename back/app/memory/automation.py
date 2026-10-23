@@ -28,7 +28,7 @@ from .schemas import (
     MemoryLinkReconciliationStatus,
 )
 from .safety import redact_secrets
-from .storage import get_storage
+from core.storage import get_storage
 
 _WORD_RE = re.compile(r"[^\W\d_][\w'-]{2,}", re.UNICODE)
 _STOPWORDS = {
@@ -556,7 +556,7 @@ async def _process_resource_cleanup(payload: Mapping[str, Any]) -> None:
     resource_id = str(payload.get("resource_id") or "").strip()
     if not provider_code or not resource_id:
         raise ValueError("Resource cleanup payload is incomplete.")
-    from .document_backup import archived_resources
+    from app.document.interface import archived_resources
     async with get_db_session() as session:
         if await archived_resources(session, provider_code, [resource_id]):
             return
@@ -683,18 +683,12 @@ async def _enqueue_scheduled_link_reconciliation() -> None:
 
 
 async def _process(job: _ClaimedJob) -> None:
-    if job.kind == "goal_folder_reconcile":
-        from .goal_folders import GoalFolderRequest, process_goal_folder_job
-
+    if job.kind == "document_projection":
+        from .document_projection import refresh
         async with get_db_session():
-            change = await process_goal_folder_job(job.id, GoalFolderRequest.model_validate(job.payload))
-        if change is not None:
-            from .events import emit_classification
-            await emit_classification(
-                change.user_id, tag_ids=[change.tag_id] if change.document_ids else [],
-                document_ids=change.document_ids, tags_changed=change.tags_changed,
-                list_changed=bool(change.document_ids),
-            )
+            await refresh(UUID(str(job.payload["identity"])), folder=bool(job.payload.get("folder")))
+        from .service import invalidate_memory_views
+        await invalidate_memory_views()
     elif job.kind == "task_capture":
         await _process_task_capture(job.payload)
     elif job.kind == "resource_cleanup":

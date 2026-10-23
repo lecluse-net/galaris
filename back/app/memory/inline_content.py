@@ -17,7 +17,7 @@ async def prepare_content(
     The caller assigns the returned text to the owning row in its transaction.
     The opaque reference remains stable for old consumers and archived snapshots.
     """
-    from .storage import NativeFileStorage, get_storage
+    from core.storage import NativeFileStorage, get_storage
 
     provider = get_storage(provider_code)
     if provider_code == "native" and content_type in {"text", "json"} and type(provider) is NativeFileStorage:
@@ -42,26 +42,15 @@ async def read_inline_content(resource_ref: str) -> bytes | None:
         db = get_db()
     except RuntimeError:
         return None
-    from .models import Document, MemoryItem, MemoryRevision, MemorySummaryRevision
-
-    for record in (*db.new, *db.dirty):
-        if isinstance(record, MemoryItem):
-            values = record.__dict__
-            if values.get("memory_provider_code") == "native" and values.get("memory_resource_id") == resource_ref:
-                if isinstance((value := values.get("memory_content")), str):
-                    return value.encode("utf-8")
-        elif isinstance(record, (Document, MemoryRevision, MemorySummaryRevision)):
-            values = record.__dict__
-            if values.get("provider_code") == "native" and values.get("resource_id") == resource_ref:
-                if isinstance((value := values.get("content")), str):
-                    return value.encode("utf-8")
+    from .models import MemoryItem, MemoryRevision
+    for record in (*db.new,*db.dirty):
+        values=record.__dict__
+        if isinstance(record,MemoryItem):
+            if values.get("memory_provider_code")=="native" and values.get("memory_resource_id")==resource_ref and isinstance(values.get("memory_content"),str):
+                return str(values["memory_content"]).encode()
+        elif isinstance(record,MemoryRevision):
+            if values.get("provider_code")=="native" and values.get("resource_id")==resource_ref and isinstance(values.get("content"),str):
+                return str(values["content"]).encode()
     with db.no_autoflush:
-        value = await db.scalar(text("""
-            SELECT content FROM (
-                SELECT content FROM documents WHERE provider_code = 'native' AND resource_id = :ref
-                UNION ALL SELECT content FROM memory_items WHERE provider_code = 'native' AND resource_id = :ref
-                UNION ALL SELECT content FROM memory_revisions WHERE provider_code = 'native' AND resource_id = :ref
-                UNION ALL SELECT content FROM memory_summary_revisions WHERE provider_code = 'native' AND resource_id = :ref
-            ) payloads WHERE content IS NOT NULL LIMIT 1
-        """), {"ref": resource_ref})
-    return str(value).encode("utf-8") if value is not None else None
+        value=await db.scalar(text("SELECT content FROM memory_items WHERE provider_code='native' AND resource_id=:ref UNION ALL SELECT content FROM memory_revisions WHERE provider_code='native' AND resource_id=:ref LIMIT 1"),{"ref":resource_ref})
+        return str(value).encode() if value is not None else None

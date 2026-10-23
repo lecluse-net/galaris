@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -16,21 +17,21 @@ test('documents dropped from the list and tree persist as titled links and rever
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
   async function checked(response) { expect(response.ok(), await response.text()).toBeTruthy(); return response.json() }
-  const target = await checked(await request.post('/api/memory/items', { headers, data: {
+  const target = await checked(await createDocument(request, { headers, data: {
     owner_agent_id: fixture.agent_id, title: `Synthetic report ${fixture.agent_id}`, node_kind: 'document',
     media_type: 'text/html', payload: { text: '<p>Preserve the report body</p><p>Another paragraph</p>' },
   } }))
   const user = await checked(await request.get('/api/auth/me', { headers }))
-  const createdSource = await checked(await request.post('/api/memory/documents', { headers, data: {
+  const createdSource = await checked(await request.post('/api/documents', { headers, data: {
     owner_kind: 'user', owner_id: user.id, actor_agent_id: fixture.agent_id, title: `Synthetic reference ${fixture.agent_id}`,
   } }))
-  const source = await checked(await request.patch(`/api/memory/documents/${createdSource.id}`, { headers, data: {
+  const source = await checked(await request.patch(`/api/documents/${createdSource.id}`, { headers, data: {
     expected_revision: createdSource.revision, expected_lock_version: createdSource.lock_version,
     payload: { text: '<p>Independent referenced document</p>' },
   } }))
-  const deniedToContainingAgent = await request.get(`/api/memory/documents/${source.id}?agent_id=${fixture.agent_id}`, { headers })
+  const deniedToContainingAgent = await request.get(`/api/documents/${source.id}?agent_id=${fixture.agent_id}`, { headers })
   expect(deniedToContainingAgent.status()).toBe(403)
-  expect((await request.get(`/api/memory/documents/${source.id}`, { headers })).ok()).toBeTruthy()
+  expect((await request.get(`/api/documents/${source.id}`, { headers })).ok()).toBeTruthy()
   await errors.settle()
   await page.goto(`/documents?document_id=${target.id}`)
   const editor = page.locator('[data-editor-surface]')
@@ -41,7 +42,7 @@ test('documents dropped from the list and tree persist as titled links and rever
     expect(bounds).not.toBeNull()
     await row.dragTo(paragraph, { targetPosition: { x: bounds.width - 5, y: bounds.height / 2 } })
   }
-  const saved = () => page.waitForResponse(response => new URL(response.url()).pathname === `/api/memory/documents/${target.id}` && response.request().method() === 'PATCH')
+  const saved = () => page.waitForResponse(response => new URL(response.url()).pathname === `/api/documents/${target.id}` && response.request().method() === 'PATCH')
   const firstSave = saved()
   await dropAtEnd(list.getByText(source.title, { exact: true }), editor.locator('p').first())
   await expect(editor.locator('a')).toHaveText(source.title)
@@ -65,8 +66,8 @@ test('documents dropped from the list and tree persist as titled links and rever
   await expect(editor.locator('a')).toHaveText(source.title)
   expect((await linkSave).ok()).toBeTruthy()
 
-  const folder = await checked(await request.post('/api/memory/documents/tags', { headers, data: { name: `Synthetic references ${fixture.agent_id}`, parent_id: null } }))
-  const filed = await request.put(`/api/memory/documents/${source.id}/tags`, { headers, data: { tag_id: folder.id } })
+  const folder = await checked(await request.post('/api/documents/tags', { headers, data: { name: `Synthetic references ${fixture.agent_id}`, parent_id: null } }))
+  const filed = await request.put(`/api/documents/${source.id}/tags`, { headers, data: { tag_id: folder.id } })
   expect(filed.ok(), await filed.text()).toBeTruthy()
   await page.getByText(folder.name, { exact: true }).click()
   const tree = page.locator('.document-tree')
@@ -78,10 +79,10 @@ test('documents dropped from the list and tree persist as titled links and rever
   await page.reload()
   await expect(editor.locator('a')).toHaveCount(2)
   for (const link of await editor.locator('a').all()) await expect(link).toHaveText(source.title)
-  const persisted = await checked(await request.get(`/api/memory/documents/${target.id}`, { headers }))
+  const persisted = await checked(await request.get(`/api/documents/${target.id}`, { headers }))
   expect(persisted.item.payload.text.match(new RegExp(`document://${source.id}`, 'g'))).toHaveLength(2)
   expect(persisted.item.payload.text).toContain('Preserve the report body')
-  const classified = await checked(await request.post('/api/memory/documents/library', { headers, data: { tag_id: folder.id, limit: 50 } }))
+  const classified = await checked(await request.post('/api/documents/library', { headers, data: { tag_id: folder.id, limit: 50 } }))
   expect(classified.entries.map(entry => entry.item.id)).toContain(source.id)
   await editor.locator('a').first().click({ modifiers: ['Control'] })
   await expect(page).toHaveURL(new RegExp(`/documents\\?document_id=${source.id}$`))

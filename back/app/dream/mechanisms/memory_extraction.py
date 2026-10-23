@@ -16,14 +16,8 @@ from pydantic import ValidationError
 from app.llm.provider_models import LLM
 from app.llm import LLMCallPurpose, model_usages
 from app.llm.structured_service import run_text
-from app.memory import (
-    MemoryAcquisitionCreate,
-    MemorySearchHit,
-    acquire_memory,
-    ensure_contact_memory_scope,
-    ensure_topic_contact_memory_scope,
-    redact_secrets,
-)
+from app.memory import MemoryAcquisitionCreate, MemorySearchHit, acquire_memory, ensure_contact_memory_scope, ensure_topic_contact_memory_scope
+from app.document import redact_secrets
 from core.params import Params, params_service
 
 from ..contracts import (

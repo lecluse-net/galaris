@@ -10,7 +10,8 @@ from app.agent import Agent, AgentManagementScope
 from app.agent.models import Title
 from app.dataset import service as datasets, sharing as dataset_sharing
 from app.dataset.models import Dataset
-from app.memory import document_service, item_sharing, service as memories
+from app.memory import service as memories
+from app.document import document_service, item_sharing
 from app.memory.models import MemoryItem
 from app.process import native_sharing
 from app.process.models import ProcessDefinition

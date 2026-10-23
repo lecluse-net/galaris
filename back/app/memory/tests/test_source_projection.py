@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.document import resource_service as documents
 
 from pathlib import Path
 
@@ -19,7 +20,8 @@ from app.goal.tests.factories import make_goal
 from app.memory import service, source_projection
 from app.memory.dbadmin import _reconcile_source_projections
 from app.memory.models import MemoryItem, MemoryLink
-from app.memory.schemas import MemoryGrantUpdate, MemoryItemUpdate, MemorySearchRequest
+from app.memory.schemas import MemoryItemUpdate, MemorySearchRequest
+from app.document.schemas import DocumentGrantUpdate
 from app.memory.source_projection import (
     agent_to_markdown,
     rebuild_source_memories,
@@ -195,12 +197,6 @@ async def test_source_projection_links_rebuilds_updates_and_deletes_with_source(
         await service.forget_item(
             cycle_item.id,
             actor_agent_id=owner.id,
-        )
-    with pytest.raises(service.MemoryPermissionError, match="source data"):
-        await service.set_item_grant(
-            cycle_item.id,
-            peer.id,
-            MemoryGrantUpdate(can_write=False),
         )
 
     # Losing source pointers does not duplicate memory: the deterministic source

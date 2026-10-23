@@ -43,6 +43,7 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
 | Plan | Statut | Portée |
 |---|---|---|
+| [separation-memory-document.md](separation-memory-document.md) | `in-progress` | Séparation implémentée : documents et résumés autonomes, souvenirs privés, API et Tool documentaires distincts. Migration PostgreSQL/Atlas, interruption/rejeu et parcours assemblés qualifiés ; reprise de développement appliquée. Revue des baselines d'architecture en attente avant clôture et vérifications finales. |
 | [programmes-documentaires-json.md](programmes-documentaires-json.md) | `design` | Programmes dans les Documents, `document_exec` avec nom personnel et entrée/sortie JSON, dernier contenu sauvegardé au démarrage, moteur isolé, suivi Process et amélioration autonome. |
 | [supervision-execution-llm.md](supervision-execution-llm.md) | `design` | Conversation conservée, petits exécuteurs et supervision par gros modèle à comparer ; corpus synthétiques, benchmarks de tâches complètes, escalade, coût par réussite et décision par famille. |
 | [navigation-file-share-harnais.md](navigation-file-share-harnais.md) | `design` | Hypothèse à confirmer : premier essai non concluant, aucun chantier FUSE engagé avant un gain utile démontré par une comparaison MCP/répertoire fiable. |

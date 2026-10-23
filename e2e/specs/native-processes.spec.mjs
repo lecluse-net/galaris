@@ -266,7 +266,7 @@ test('a visually edited native process runs its saved Task and retains its own g
   const definitionPath = `/api/processes/internal/definitions/${definition.code}`
   expect(definition).not.toHaveProperty('document_id')
   for (const kind of ['process', 'dataset']) {
-    const invalidDocument = await request.post('/api/memory/documents', { headers, data: {
+    const invalidDocument = await request.post('/api/documents', { headers, data: {
       title: 'Synthetic invalid resource', owner_kind: 'agent', owner_id: fixture.agent_id,
       actor_agent_id: fixture.agent_id, document_type: kind,
     } })
@@ -277,7 +277,7 @@ test('a visually edited native process runs its saved Task and retains its own g
     document_type: 'dataset', media_type: 'application/json', payload: { text: '{}' },
   } })
   expect(invalidMemory.status()).toBe(422)
-  const documents = await request.post('/api/memory/documents/library', { headers, data: { query: definition.title, limit: 50 } })
+  const documents = await request.post('/api/documents/library', { headers, data: { query: definition.title, limit: 50 } })
   expect(documents.ok(), await documents.text()).toBeTruthy()
   expect((await documents.json()).entries).toEqual([])
   await page.goto(`/process/internal/${definition.code}`)

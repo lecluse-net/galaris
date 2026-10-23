@@ -313,9 +313,8 @@ function removeDocument(documentId: string): void {
   emit('deleted', documentId)
 }
 
-function onMemoryDelete(response: { data: { id: string; node_kind: string } }): void {
+function onDocumentDelete(response: { data: { id: string } }): void {
   const event = response.data
-  if (event.node_kind !== 'document') return
   removeDocument(event.id)
   scheduleRefresh()
 }
@@ -329,18 +328,18 @@ function scheduleRefresh(): void {
 function subscribe(): void {
   if (subscribed) return
   websocket.createWebsocket()
-  websocket.onEvent('memory', 'create', scheduleRefresh)
-  websocket.onEvent('memory', 'update', scheduleRefresh)
-  websocket.onEvent('memory', 'delete', onMemoryDelete)
+  websocket.onEvent('document', 'create', scheduleRefresh)
+  websocket.onEvent('document', 'update', scheduleRefresh)
+  websocket.onEvent('document', 'delete', onDocumentDelete)
   websocket.onConnect(scheduleRefresh)
   subscribed = true
 }
 
 function unsubscribe(): void {
   if (!subscribed) return
-  websocket.offEvent('memory', 'create', scheduleRefresh)
-  websocket.offEvent('memory', 'update', scheduleRefresh)
-  websocket.offEvent('memory', 'delete', onMemoryDelete)
+  websocket.offEvent('document', 'create', scheduleRefresh)
+  websocket.offEvent('document', 'update', scheduleRefresh)
+  websocket.offEvent('document', 'delete', onDocumentDelete)
   websocket.offConnect(scheduleRefresh)
   subscribed = false
 }

@@ -68,9 +68,9 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/documents`
 - Purpose : Find and organize your accessible documents
-- Menu visibility (privileges) : (MEMORY_ACCESS)
+- Menu visibility (privileges) : (DOCUMENT_ACCESS)
 - Additional conditions : —
-- Sources : `front/app/memory/navigation.ts`
+- Sources : `front/app/document/navigation.ts`
 
 ## Knowledge → Datasets
 

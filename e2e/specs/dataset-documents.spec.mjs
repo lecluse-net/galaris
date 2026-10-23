@@ -25,7 +25,7 @@ test('Documents and Datasets use separate libraries and creation paths', async (
   const dataset = await checked(await request.post('/api/datasets', { headers, data: {
     title: 'Synthetic separate Dataset', content: '{"amount":125000}',
   } }))
-  const rejected = await request.post('/api/memory/documents', { headers, data: {
+  const rejected = await request.post('/api/documents', { headers, data: {
     owner_kind: 'agent', owner_id: fixture.agent_id, actor_agent_id: fixture.agent_id,
     document_type: 'dataset', title: 'Synthetic rejected Dataset',
   } })
@@ -36,14 +36,14 @@ test('Documents and Datasets use separate libraries and creation paths', async (
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('combobox', { name: /^(Type de document|Document type)$/, exact: true })).toHaveCount(0)
   await dialog.getByRole('textbox', { name: /^(Titre|Title)$/, exact: true }).fill('Synthetic separate document')
-  const created = page.waitForResponse(response => response.url().endsWith('/memory/documents') && response.request().method() === 'POST')
+  const created = page.waitForResponse(response => response.url().endsWith('/documents') && response.request().method() === 'POST')
   await dialog.getByRole('button', { name: /^(Créer|Create)$/, exact: true }).click()
   const document = await checked(await created)
   expect(document.document_type).toBe('html')
   await expect(dialog).toHaveCount(0)
   await expect(page.getByRole('textbox', { name: /^(Titre|Title)$/, exact: true })).toHaveValue(document.title)
   await expect(page.locator('[data-editor-surface]')).toBeVisible()
-  const library = await checked(await request.post('/api/memory/documents/library', { headers, data: {} }))
+  const library = await checked(await request.post('/api/documents/library', { headers, data: {} }))
   expect(library.entries.map(entry => entry.item.id)).toContain(document.id)
   expect(library.entries.map(entry => entry.item.id)).not.toContain(dataset.id)
   expect(library.entries.every(entry => entry.item.document_type !== 'dataset')).toBe(true)
@@ -52,7 +52,7 @@ test('Documents and Datasets use separate libraries and creation paths', async (
   await page.getByRole('button', { name: /^(Lien Galaris|Galaris link)$/, exact: true }).first().click()
   await page.getByRole('dialog').getByText('Galaris Datasets', { exact: true }).click()
   await page.getByRole('dialog').locator('.file-main').getByRole('button', { name: new RegExp(`^(Select|Sélectionner) ${dataset.title}$`) }).click()
-  const saved = page.waitForResponse(response => response.url().includes(`/memory/documents/${document.id}`) && response.request().method() === 'PATCH')
+  const saved = page.waitForResponse(response => response.url().includes(`/documents/${document.id}`) && response.request().method() === 'PATCH')
   await page.getByRole('dialog').getByRole('button', { name: /^(Sélectionner|Select)$/, exact: true }).click()
   expect((await saved).ok()).toBeTruthy()
   await expect(editor.getByRole('link', { name: dataset.title, exact: true })).toHaveAttribute('data-rich-reference', `data://${dataset.id}`)

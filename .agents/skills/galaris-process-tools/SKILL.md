@@ -71,7 +71,9 @@ le résultat. Une Task ne nécessite pas à elle seule un document ; privilégie
 pertinent existant et ne pas remplacer une ressource métier par un document.
 Créer avec `file_create(path="document://", name=..., content=...)` où
 `content` est un fragment HTML éditorial UTF-8. Réutiliser l'URI et les révisions plutôt que créer
-des copies Markdown ou HTML ; lier les sources et pièces jointes. Partager avec `memory_sharing`
+des copies Markdown ou HTML ; lier les sources et pièces jointes. Les documents, résumés,
+versions et droits appartiennent à `app.document`, indépendamment des souvenirs privés
+de l'agent. Partager avec `document_sharing`
 puis `document_share` avant de transmettre l'URI aux destinataires. Un lien ne donne pas accès.
 La synchronisation réactive leurs connexions. Leurs fonctions gardent les modes
 Actif/Bloqué/Sur demande et l'héritage global/local des autres Tools ; les définitions

@@ -13,14 +13,8 @@ from sqlalchemy import func, select
 from app.agent import AgentManagementScope
 from app.llm import llm_correlation_scope, llm_execution_scope
 from app.llm.facade import llm_call_accounting
-from app.memory import (
-    MemoryItem,
-    MemoryConflictError,
-    detect_memory_findings,
-    generate_document_attachment_thumbnail,
-    read_document_thumbnail,
-    DocumentThumbnailRender,
-)
+from app.memory import MemoryItem, MemoryConflictError, detect_memory_findings
+from app.document import generate_document_attachment_thumbnail, read_document_thumbnail, DocumentThumbnailRender
 from app.memory.facade import (
     attachment_analysis_source,
     attachment_analysis_path,

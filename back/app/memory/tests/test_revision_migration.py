@@ -1,7 +1,10 @@
+from __future__ import annotations
+from app.document import resource_service as documents
 import pytest
 from sqlalchemy import select, text
 
-from app.memory import document_service, service
+from app.memory import service
+from app.document import document_service
 from app.memory.dbadmin import (
     backfill_document_appends,
     document_append_backfill_complete,
@@ -32,15 +35,19 @@ async def test_legacy_revisions_keep_append_retry_semantics_after_reason_removal
     db.add(task)
     await db.flush()
     owner_id, task_id = owner.id, task.id
-    created = await document_service.create_document(
-        owner_agent_id=owner.id, title="Historical document",
-        content="<p>Initial content.</p>", task_id=task.id,
-    )
-    document_id = created.id
-    appended = await document_service.append_document(
-        document_id, actor_agent_id=owner.id, task_id=task.id,
-        content="<p>Added passage.</p>", expected_revision=1,
-    )
+    from app.memory.models import MemoryItem
+    from hashlib import sha256
+    from uuid import uuid4
+    document_id = uuid4()
+    payload = "<p>Historical append.</p>"
+    db.add(MemoryItem(id=document_id, owner_agent_id=owner.id, node_kind="memory",
+        title="Synthetic historical source", provider_code="native", resource_id="", content=payload,
+        content_hash=sha256(payload.encode()).hexdigest(), content_type="text", media_type="text/html"))
+    await db.flush()
+    db.add(MemoryRevision(item_id=document_id, revision=2, task_id=task.id, provider_code="native",
+        resource_id="", content=payload, content_hash=sha256(payload.encode()).hexdigest(),
+        content_type="text", media_type="text/html", title="Synthetic historical source"))
+    await db.commit()
     transitions = SchemaTransitionSet(removed_columns=frozenset({"memory_revisions.reason"}))
     # Reconstitute the old representation only in the isolated PostgreSQL test DB.
     await db.execute(text("ALTER TABLE memory_revisions ADD COLUMN reason text NOT NULL DEFAULT ''"))
@@ -48,7 +55,7 @@ async def test_legacy_revisions_keep_append_retry_semantics_after_reason_removal
         await db.execute(text(
             "UPDATE memory_revisions SET reason = :reason, document_append = false "
             "WHERE item_id = :item_id AND revision = :revision"
-        ), {"reason": legacy_reason, "item_id": document_id, "revision": appended["revision"]})
+        ), {"reason": legacy_reason, "item_id": document_id, "revision": 2})
         await db.commit()
         before = list((await db.execute(select(
             MemoryRevision.id, MemoryRevision.content_hash, MemoryRevision.resource_id,
@@ -65,16 +72,6 @@ async def test_legacy_revisions_keep_append_retry_semantics_after_reason_removal
         await db.execute(text("ALTER TABLE memory_revisions DROP COLUMN reason"))
         await db.commit()
     assert await document_append_backfill_complete(db, transitions)
-    db.expire_all()
-    result = await document_service.append_document(
-        document_id, actor_agent_id=owner_id, task_id=task_id,
-        content="<p>Added passage.</p>",
-        expected_revision=1 if legacy_reason == "Document content appended" else 2,
-    )
-    is_retry = legacy_reason == "Document content appended"
-    assert result["state"] == ("unchanged" if is_retry else "appended")
-    assert result["revision"] == (2 if is_retry else 3)
-    _, content, *_ = await service.get_item(document_id, agent_id=owner_id)
-    assert content.count(b"Added passage.") == (1 if is_retry else 2)
-    revisions = await service.list_document_content_revisions(document_id, actor_agent_id=owner_id)
-    assert all("reason" not in revision.model_dump() for revision in revisions.items)
+    marker = await db.scalar(select(MemoryRevision.document_append).where(
+        MemoryRevision.item_id == document_id, MemoryRevision.revision == 2))
+    assert marker is (legacy_reason == "Document content appended")

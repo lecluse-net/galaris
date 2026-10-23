@@ -8,10 +8,12 @@ transaction PostgreSQL ; les nouvelles écritures textuelles ne créent pas de f
 
 | Table et colonne | Contenu |
 |---|---|
-| `memory_items.content` | Souvenir courant ou synthèse indépendante d’un document |
+| `memory_items.content` | Souvenir privé courant |
 | `documents.content` | Contenu courant d’un document |
-| `memory_revisions.content` | Historique des souvenirs et des documents |
-| `memory_summary_revisions.content` | Historique des synthèses documentaires |
+| `memory_revisions.content` | Historique des souvenirs privés |
+| `document_revisions.content` | Historique documentaire |
+| `documents.summary_content` | Résumé partagé courant |
+| `document_summary_revisions.content` | Historique des résumés partagés |
 
 Les colonnes sont de type `TEXT`, sans normalisation des retours à la ligne. `NULL`
 reste possible pour les ressources binaires ou fournies par un provider externe.

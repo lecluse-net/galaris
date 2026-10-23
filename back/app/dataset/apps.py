@@ -4,7 +4,7 @@ from typing import Any, cast
 from uuid import UUID
 from sqlalchemy import select
 from app.agent import AgentManagementScope
-from app.memory import AppConsentRequired, AppWriteLimitError
+from app.document import AppConsentRequired, AppWriteLimitError
 from core.database import get_db
 from .models import Dataset, DatasetAppConsent, DatasetAlias
 from . import service

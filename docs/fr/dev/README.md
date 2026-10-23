@@ -499,9 +499,9 @@ dossiers mais sont exclues du rappel factuel. Dream
 produit aussi des liens `suggested=true` de rattachement, anomalie, fusion ou scission depuis ces
 vecteurs ; aucun de ces signaux ne modifie seul un `topic_contains` canonique.
 
-Les documents de travail HTML sont des `MemoryItem` de `node_kind=document`.
+Les documents de travail HTML appartiennent à `app.document` et sont persistés dans `documents`, indépendamment des souvenirs privés de `app.memory`.
 Ils sont le support canonique des contenus rédigés et partagés par les agents, même
-pour une seule Task. Memory et File Sharing sont des services système obligatoires ; les ACL
+pour une seule Task. Document, Memory et File Sharing sont des services système obligatoires ; les ACL
 des ressources et les restrictions de contexte restent applicables. Voir le [contrat documentaire](editorial-html.md).
 Ils restent privés à la création, ne sont ni dédupliqués avec les souvenirs ordinaires, ni ciblés
 par Dream, ni oubliés automatiquement pour inactivité. `file_create`, `file_edit`,
@@ -710,7 +710,7 @@ cycle canonique. Messenger observe les contacts avant les interactions avec un r
 son journal permet un rejeu idempotent.
 
 La description et le suivi Markdown canoniques d'un Goal ne vivent plus dans ces projections :
-chaque Goal référence deux documents Memory privés de travail. Leur contenu est modifiable depuis
+chaque Goal référence deux documents privés de travail appartenant à Document. Leur contenu est modifiable depuis
 les IHM Goal et Documents, mais leur propriétaire, leur titre et leur chemin restent exclusivement
 pilotés par le Goal. Le dossier porte le titre expurgé du Goal et les documents portent les
 titres `<titre du Goal> — Description` et `<titre du Goal> — Suivi`, actualisés lors du renommage

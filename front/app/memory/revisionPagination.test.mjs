@@ -17,6 +17,7 @@ test('revision pages are bounded and a late page cannot replace another item', a
   }
   const { useMemoryStore } = loadTypescript(new URL('./stores/memoryStore.ts', import.meta.url), {
     pinia, vue, '../services/memoryService': { memoryService: service },
+    '@/app/document': { documentService: {} },
     '@/core/websocket': { websocket: { createWebsocket() {}, onEvent() {}, offEvent() {}, onConnect() {}, offConnect() {} } },
   })
   const store = useMemoryStore(pinia.createPinia())

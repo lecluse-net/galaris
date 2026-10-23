@@ -8,6 +8,11 @@ ont leurs bibliothèques propres. Le classement est personnel et ne change pas
 l'organisation des autres lecteurs. Un répertoire peut accorder automatiquement des droits
 supplémentaires sur vos documents, sans partager votre arborescence.
 
+Les documents et leurs résumés partagés sont indépendants des souvenirs personnels
+des agents. Partager un document ne partage aucun souvenir ; supprimer une référence
+dans le graphe mémoire ne supprime pas le document. Les souvenirs concernant un
+document restent privés à l'agent qui les a acquis.
+
 
 ## Créer et retrouver
 

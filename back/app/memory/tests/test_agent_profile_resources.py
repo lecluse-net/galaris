@@ -10,7 +10,8 @@ from app.agent import agent_service, tools
 from app.agent.schemas import Agent as AgentPublic
 from app.file_share import resource_service as files
 from app.file_share.resource_contracts import ResourceContext
-from app.memory.models import DocumentTag, MemoryItem
+from app.memory.models import MemoryItem
+from app.document import DocumentTag
 
 
 @pytest.mark.asyncio

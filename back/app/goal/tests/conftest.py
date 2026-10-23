@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from app.memory.storage import (
+from core.storage import (
     NativeFileStorage,
     register_storage,
     reset_storage_registry,

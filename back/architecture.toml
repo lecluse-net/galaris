@@ -69,11 +69,16 @@ allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.
 max_domain_fan_out = 9
 
 [module."app.topic"]
-allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dataset", "app.llm", "app.memory", "app.messenger", "app.process", "app.task", "app.tools"]
-max_domain_fan_out = 10
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dataset", "app.document", "app.llm", "app.memory", "app.messenger", "app.process", "app.task", "app.tools"]
+max_domain_fan_out = 11
+
+# Documentary responsibilities extracted from Memory; reviewed in ADR 0223.
+[module."app.document"]
+allowed_dependencies = ["app.agent", "app.conversation", "app.goal", "app.process", "app.share", "app.task", "app.tools"]
+max_domain_fan_out = 7
 
 [module."app.memory"]
-allowed_dependencies = ["app.agent", "app.conversation", "app.goal", "app.llm", "app.process", "app.share", "app.task", "app.tools", "app.topic", "app.voice"]
+allowed_dependencies = ["app.agent", "app.conversation", "app.document", "app.goal", "app.llm", "app.process", "app.task", "app.tools", "app.topic", "app.voice"]
 max_domain_fan_out = 10
 
 [module."app.contact"]
@@ -81,8 +86,8 @@ allowed_dependencies = ["app.agent", "app.conversation", "app.memory", "app.mess
 max_domain_fan_out = 5
 
 [module."app.dream"]
-allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dataset", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.topic", "app.voice"]
-max_domain_fan_out = 13
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dataset", "app.document", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.topic", "app.voice"]
+max_domain_fan_out = 14
 
 [module."app.task"]
 allowed_dependencies = ["app.agent", "app.goal", "app.llm", "app.messenger", "app.tools"]
@@ -97,8 +102,8 @@ allowed_dependencies = ["app.agent", "app.llm", "app.task"]
 max_domain_fan_out = 3
 
 [module."app.lab"]
-allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.dream", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "app.topic", "app.voice"]
-max_domain_fan_out = 14
+allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.document", "app.dream", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "app.topic", "app.voice"]
+max_domain_fan_out = 15
 
 [module."app.messenger"]
 allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.file_share", "app.llm", "app.memory", "app.task", "app.tools"]
@@ -133,8 +138,8 @@ allowed_dependencies = ["app.agent", "app.connection", "app.conversation", "app.
 max_domain_fan_out = 9
 
 [module."app.file_share"]
-allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.conversation", "app.documentation", "app.goal", "app.image", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "bridge.affine"]
-max_domain_fan_out = 14
+allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.conversation", "app.documentation", "app.document", "app.goal", "app.image", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.tools", "bridge.affine"]
+max_domain_fan_out = 15
 
 [module."app.console"]
 allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.tools"]
@@ -149,12 +154,12 @@ allowed_dependencies = ["app.agent", "app.code", "app.console", "app.file_share"
 max_domain_fan_out = 4
 
 [module."app.process"]
-allowed_dependencies = ["app.agent", "app.console", "app.dataset", "app.file_share", "app.llm", "app.memory", "app.share", "app.task", "app.tools"]
-max_domain_fan_out = 9
+allowed_dependencies = ["app.agent", "app.console", "app.dataset", "app.document", "app.file_share", "app.llm", "app.memory", "app.share", "app.task", "app.tools"]
+max_domain_fan_out = 10
 
 [module."app.dataset"]
-allowed_dependencies = ["app.agent", "app.file_share", "app.memory", "app.share"]
-max_domain_fan_out = 4
+allowed_dependencies = ["app.agent", "app.document", "app.file_share", "app.memory", "app.share"]
+max_domain_fan_out = 5
 
 [module."app.multimedia"]
 allowed_dependencies = ["app.agent", "app.file_share", "app.llm", "app.tools"]

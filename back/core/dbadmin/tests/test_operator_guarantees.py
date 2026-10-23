@@ -123,3 +123,15 @@ def test_large_plan_preserves_beginning_and_end_without_exposing_password(monkey
     assert rendered.startswith("START") and rendered.endswith("END")
     assert "truncated" in rendered and len(rendered) < 12100
     assert "plan-secret" not in rendered
+
+
+def test_large_action_failure_preserves_its_cause_and_trailer_without_secrets(monkeypatch):
+    from core.dbadmin import actions
+    monkeypatch.setattr(actions.settings, "POSTGRES_PASSWORD", "synthetic-diagnostic-secret")
+    rendered = actions._bounded_error(RuntimeError(
+        "NotNullViolation: required legacy column synthetic-diagnostic-secret\n" + "x" * 10_000
+        + "\nSQL state: 23502 synthetic-diagnostic-secret"))
+    assert rendered.startswith("NotNullViolation: required legacy column")
+    assert rendered.endswith("SQL state: 23502 ***")
+    assert "synthetic-diagnostic-secret" not in rendered
+    assert len(rendered) <= 4000

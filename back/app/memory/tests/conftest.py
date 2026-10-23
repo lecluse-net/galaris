@@ -8,7 +8,7 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent, Title
-from app.memory.storage import NativeFileStorage, register_storage, reset_storage_registry
+from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 
 
 async def create_memory_task(db: AsyncSession, agent_id: int):
@@ -47,9 +47,13 @@ async def agents(db: AsyncSession) -> tuple[Agent, Agent]:
 
 @pytest_asyncio.fixture
 async def memory_storage(tmp_path: Path) -> AsyncIterator[Path]:
+    from app.document import register_document_search
+    from app.memory.file_facade import search_file_resources
+    previous_index = register_document_search(search_file_resources)
     reset_storage_registry()
     register_storage(NativeFileStorage(tmp_path, max_bytes=1_000_000))
     try:
         yield tmp_path
     finally:
+        register_document_search(previous_index)
         reset_storage_registry()

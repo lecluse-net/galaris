@@ -18,26 +18,26 @@ test('creating documents in folders and under documents persists the personal hi
   const session = await (await authenticated).json()
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const headers = { Authorization: `Bearer ${session.access_token}` }
-  const parentResponse = await request.post('/api/memory/documents/tags', { headers, data: { name: 'Synthetic reports', parent_id: null, icon: 'folder:green' } })
+  const parentResponse = await request.post('/api/documents/tags', { headers, data: { name: 'Synthetic reports', parent_id: null, icon: 'folder:green' } })
   expect(parentResponse.ok()).toBeTruthy()
   const parent = await parentResponse.json()
-  const childResponse = await request.post('/api/memory/documents/tags', { headers, data: { name: 'Synthetic drafts', parent_id: parent.id } })
+  const childResponse = await request.post('/api/documents/tags', { headers, data: { name: 'Synthetic drafts', parent_id: parent.id } })
   expect(childResponse.ok()).toBeTruthy()
   const child = await childResponse.json()
   expect(child.icon).toBe(parent.icon)
 
   await pageErrors.settle()
-  await page.goto('/memory/documents')
+  await page.goto('/documents')
   await page.getByText(parent.name, { exact: true }).click()
   await page.getByText(child.name, { exact: true }).click({ button: 'right' })
   const folderMenu = page.getByRole('menu', { name: `Actions du dossier ${child.name}`, exact: true })
   await page.keyboard.press('Escape')
   await page.getByText(child.name, { exact: true }).click({ button: 'right' })
   await folderMenu.screenshot({ path: testInfo.outputPath('folder-context-menu.png'), animations: 'disabled' })
-  await folderMenu.getByRole('menuitem', { name: `Nouveau document dans ${child.name}`, exact: true }).click()
+  await folderMenu.getByRole('menuitem', { name: 'Nouveau document', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Titre', { exact: true }).fill('Synthetic folder notes')
-  const createdResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/memory/documents'
+  const createdResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/documents'
     && response.request().method() === 'POST')
   await dialog.getByRole('button', { name: 'Créer', exact: true }).click()
   const created = await createdResponse
@@ -53,9 +53,9 @@ test('creating documents in folders and under documents persists the personal hi
   await folder.getByText(document.title, { exact: true }).click({ button: 'right' })
   const documentMenu = page.getByRole('menu', { name: 'Actions', exact: true })
   await expect(documentMenu.getByRole('menuitem', { name: 'Renommer', exact: true })).toBeVisible()
-  await documentMenu.getByRole('menuitem', { name: `Nouveau sous-document de ${document.title}`, exact: true }).click()
+  await documentMenu.getByRole('menuitem', { name: 'Nouveau sous-document', exact: true }).click()
   await dialog.getByLabel('Titre', { exact: true }).fill('Synthetic child notes')
-  const childCreatedResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/memory/documents'
+  const childCreatedResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/documents'
     && response.request().method() === 'POST')
   await dialog.getByRole('button', { name: 'Créer', exact: true }).click()
   const childCreated = await childCreatedResponse
@@ -64,7 +64,7 @@ test('creating documents in folders and under documents persists the personal hi
   await expect(dialog).toHaveCount(0)
   const subdocuments = page.getByLabel(`Sous-documents de ${document.title}`, { exact: true })
   await expect(subdocuments.getByText(subdocument.title, { exact: true })).toBeVisible()
-  const nested = await request.post('/api/memory/documents/library', { headers, data: {
+  const nested = await request.post('/api/documents/library', { headers, data: {
     parent_document_id: document.id, include_descendants: false, limit: 50,
   } })
   expect(nested.ok()).toBeTruthy()
@@ -72,7 +72,7 @@ test('creating documents in folders and under documents persists the personal hi
   await page.screenshot({ path: testInfo.outputPath('sub-document-created.png'), animations: 'disabled' })
 
   // Read persisted membership through the real API, then reopen the assembled library.
-  const membership = await request.post('/api/memory/documents/library', {
+  const membership = await request.post('/api/documents/library', {
     headers, data: { tag_id: child.id, classification: 'all', limit: 50, offset: 0 },
   })
   expect(membership.ok()).toBeTruthy()

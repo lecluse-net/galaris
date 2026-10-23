@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from app.share import ShareGrant
 
 from core.user import HumanActor
 
@@ -16,7 +15,6 @@ from typing import Any, Literal, Sequence, cast
 from uuid import UUID, uuid4
 
 from loguru import logger
-from core.i18n import tr
 from sqlalchemy import and_, case, delete, exists, func, or_, select, union_all, update
 from sqlalchemy import literal as sql_literal
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -25,20 +23,16 @@ from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.agent import Agent, AgentManagementScope, get_agent_record
+from app.agent import Agent, AgentManagementScope
 from core import websocket
-from core.util import convert_to_html, visible_text, image_references, attachment_reference, archived_document_html
-from .document_types import validate_document_content
-from .document_policy import document_policy_clause
-from .document_apps import document_apps
+from core.util import convert_to_html, visible_text, image_references
+from app.document.interface import document_policy_clause
 from core.database import get_db
-from core.user import get_user_record
 from core.util import complete_await
 
 from .access import (
     effective_access,
     effective_access_many,
-    managed_item_agent_ids,
     readable_item_clause,
 )
 from .admission import admit_search_hits
@@ -53,72 +47,16 @@ from .contracts import (
     TopicLinkedMemory,
     TopicLinkedDocument,
 )
-from .content_diff import content_diff_hunks as _content_diff_hunks
 from .item_projection import item_to_public as item_to_public
-from .library_queries import (
-    list_recent_memories as list_recent_memories,
-    list_document_keywords as list_document_keywords,
-    list_document_owner_options as list_document_owner_options,
-    browse_document_library as browse_document_library,
-)
+from .library_queries import list_recent_memories as list_recent_memories
 from .lifecycle import notify_memory_item
-from .models import (
-    MemoryAssociation,
-    MemoryAutomationJob,
-    MemoryAcquisition,
-    MemoryContextEdge,
-    MemoryContextNode,
-    MemoryContactItem,
-    MemoryFinding,
-    MemoryItem,
-    Document,
-    DocumentRevision,
-    MemorySummaryRevision,
-    MemoryLink,
-    MemoryRevision,
-    MemorySource,
-    MemoryURL,
-    MemoryTopicContactItem,
-    MemoryTopicContactScope,
-    MemoryUsage,
-)
+from .models import MemoryAssociation, MemoryAutomationJob, MemoryAcquisition, MemoryContextEdge, MemoryContextNode, MemoryContactItem, MemoryFinding, MemoryItem, MemoryLink, MemoryRevision, MemorySource, MemoryURL, MemoryTopicContactItem, MemoryTopicContactScope, MemoryUsage
+from app.document import Document, DocumentSummaryRevision
 from .provenance import MemorySourceTargets, source_targets
-from .schemas import (
-    MemoryTemporalAnchor,
-    DocumentContentDiff,
-    DocumentContentRevisionDetail,
-    DocumentContentRevisionPage,
-    DocumentContentRevisionPublic,
-    DocumentGlobalAccessUpdate,
-    DocumentFolderOption,
-    DocumentOwnerUpdate,
-    MemoryForgetResult,
-    MemoryFilterOption,
-    MemoryFilterOptions,
-    MemoryGraphCursor,
-    MemoryGraphEdge,
-    MemoryGraphExpandRequest,
-    MemoryGraphNode,
-    MemoryGraphPage,
-    MemoryGraphRootsRequest,
-    MemoryGrantUpdate,
-    MemoryItemCreate,
-    MemoryItemDetail,
-    MemoryItemUpdate,
-    MemoryLinkCreate,
-    MemoryLinkPublic,
-    MemoryPayload,
-    MemoryRevisionPublic,
-    MemoryRetentionPreview,
-    MemorySearchHit,
-    MemorySearchPage,
-    MemorySearchRequest,
-    MemorySortField,
-    MemorySourceCreate,
-)
+from .schemas import MemoryTemporalAnchor, MemoryForgetResult, MemoryFilterOption, MemoryFilterOptions, MemoryGraphCursor, MemoryGraphEdge, MemoryGraphExpandRequest, MemoryGraphNode, MemoryGraphPage, MemoryGraphRootsRequest, MemoryItemCreate, MemoryItemDetail, MemoryItemUpdate, MemoryLinkCreate, MemoryLinkPublic, MemoryPayload, MemoryRevisionPublic, MemoryRetentionPreview, MemorySearchHit, MemorySearchPage, MemorySearchRequest, MemorySortField, MemorySourceCreate
 from .safety import assert_safe_text, assert_safe_value
-from .storage import get_storage
-from .inline_content import prepare_content
+from core.storage import get_storage
+from core.storage import prepare_content
 
 
 class MemoryError(RuntimeError):
@@ -135,17 +73,6 @@ class MemoryPermissionError(MemoryError):
 
 class MemoryConflictError(MemoryError):
     """The requested state conflicts with an existing governed object."""
-
-
-async def _commit_with_conflict(message: str) -> None:
-    """Commit an optimistic write and expose stale ORM state as a domain conflict."""
-
-    db = get_db()
-    try:
-        await db.commit()
-    except StaleDataError as exc:
-        await db.rollback()
-        raise MemoryConflictError(message) from exc
 
 
 def _assert_not_source_managed(item: MemoryItem, *, allow_catalogue: bool = False) -> None:
@@ -263,14 +190,6 @@ async def _emit_memory_event(
 ) -> None:
     """Publish a content-free memory change notification after persistence."""
 
-    if item.node_kind == "document" and action in {"update", "delete"}:
-        from .document_thumbnail_service import cleanup_current_document_thumbnail
-
-        try:
-            await cleanup_current_document_thumbnail(item.id)
-        except OSError:
-            logger.exception("Document thumbnail invalidation failed: document_id={}", item.id)
-
     try:
         await websocket.emit(
             "memory",
@@ -298,7 +217,7 @@ async def _emit_memory_event(
 
 def _item_options(*, revisions: bool = True, contents: bool = True) -> tuple[Any, ...]:
     options = (
-        selectinload(MemoryItem.grants),
+
         selectinload(MemoryItem.revisions) if revisions else raiseload(MemoryItem.revisions),
     )
     if not contents:
@@ -374,12 +293,8 @@ def _topic_related_to_agent_clause(agent_id: int) -> ColumnElement[bool]:
     """Require a Topic to contain memory owned by or directly granted to an agent."""
 
     related_item = aliased(MemoryItem)
-    direct_grant = exists(
-        select(ShareGrant.id).where(
-            ShareGrant.share_id == related_item.share_id,
-            ShareGrant.agent_id == agent_id,
-        )
-    )
+    from app.document.interface import readable_ids
+    document_access = related_item.id.in_(readable_ids(agent_id))
     return exists(
         select(MemoryLink.id)
         .join(related_item, related_item.id == MemoryLink.target_item_id)
@@ -387,7 +302,7 @@ def _topic_related_to_agent_clause(agent_id: int) -> ColumnElement[bool]:
             MemoryLink.source_item_id == MemoryItem.id,
             MemoryLink.relation_type == "topic_contains",
             MemoryLink.suggested.is_(False),
-            or_(related_item.owner_agent_id == agent_id, direct_grant),
+            or_(related_item.owner_agent_id == agent_id, document_access),
         )
     )
 
@@ -646,35 +561,6 @@ async def item_record(item_id: UUID, *, revisions: bool = True, contents: bool =
     return await _get_item_record(item_id, revisions=revisions, contents=contents)
 
 
-async def document_record(document_id: UUID, *, revisions: bool = True) -> MemoryItem | None:
-    """Load the current document, including its grants, for document services."""
-    item = await _get_item_record(document_id, revisions=revisions)
-    return item if item is not None and item.node_kind == "document" else None
-
-
-async def commit_item_sharing(item: MemoryItem) -> None:
-    """Commit sharing without changing content revisions and notify open views."""
-    from .dataset_port import dataset_compatibility
-    adapter = dataset_compatibility()
-    if item.document_type == "dataset" and adapter is not None and await adapter.contains(item.id):
-        # Bulk replacement of legacy grant rows does not refresh a loaded ORM
-        # collection. Copy the actual grants, never revive a revoked Agent.
-        await get_db().flush()
-        await get_db().refresh(item, attribute_names=["grants"])
-        user_grants = await get_db().scalars(select(ShareGrant).where(ShareGrant.share_id == item.share_id, ShareGrant.user_id.is_not(None)))
-
-        team_grants = await get_db().scalars(select(ShareGrant).where(ShareGrant.share_id == item.share_id, ShareGrant.team_id.is_not(None)))
-        await adapter.sharing(item.id, {"owner_agent_id": item.owner_agent_id, "owner_user_id": item.owner_user_id,
-            "global_access": item.global_access, "group_access": item.group_access, "lock_version": item.lock_version,
-            "grants": [*[{"agent_id": grant.agent_id, "can_write": grant.can_write} for grant in item.grants],
-                *[{"user_id": grant.user_id, "can_write": grant.can_write} for grant in user_grants],
-                *[{"team_id": grant.team_id, "can_write": grant.can_write} for grant in team_grants]]})
-    await _commit_with_conflict("Document sharing changed; reload and retry")
-    await _emit_memory_event("update", item)
-    await invalidate_memory_views()
-    await notify_memory_item(item.id, "sharing")
-
-
 async def invalidate_memory_views() -> None:
     """Ask authenticated readers to discard snapshots after access changes."""
     await websocket.emit("memory", "invalidate", {}, None)
@@ -810,205 +696,76 @@ def _revision_for(
         temporal=item.temporal,
         author_agent_id=author_agent_id,
     )
-    document = cast(Document | None, item.__dict__.get("document"))
-    if item.node_kind == "document" and document is not None:
-        get_db().add(DocumentRevision(id=entry.id, document_id=document.id, revision=item.revision, resource_revision=entry))
     return entry
 
 
-def _attach_document(item: MemoryItem) -> None:
-    """Move authoritative editorial fields out of a newly created Memory node."""
-    item.attach_document()
-
-
-async def create_item(
-    data: MemoryItemCreate,
-    *,
-    actor_task_id: UUID | None = None,
-    deletion_protected: bool = False,
-    deduplicate: bool = True,
-    owner_user_id: int | None = None,
-    initial_editor_agent_id: int | None = None,
-    workflow_metadata: bool = False,
-) -> tuple[MemoryItem, bool]:
+async def create_item(data: MemoryItemCreate, *, actor_task_id: UUID | None=None, deletion_protected: bool=False, deduplicate: bool=True, owner_user_id: int | None=None, initial_editor_agent_id: int | None=None, workflow_metadata: bool=False) -> tuple[MemoryItem, bool]:
     """Create a logical memory and immutable first resource revision."""
-    if not workflow_metadata and any(key in data.metadata for key in (
-        "creation_command", "process_code")):
-        raise MemoryPermissionError("Workflow metadata is server-owned")
-
-    if owner_user_id is not None and data.node_kind != "document":
-        raise ValueError("Only a document can be owned by a User.")
+    if str(data.node_kind) != 'memory':
+        raise MemoryPermissionError('Documents are created through app.document')
+    if not workflow_metadata and any((key in data.metadata for key in ('creation_command', 'process_code'))):
+        raise MemoryPermissionError('Workflow metadata is server-owned')
+    if owner_user_id is not None:
+        raise ValueError('Only a document can be owned by a User.')
     if owner_user_id is None and initial_editor_agent_id is not None:
-        raise ValueError("An initial editor grant is only valid for a User-owned document.")
-    if any(
-        key in data.metadata
-        for key in ("document_attachments", "retained_document_attachments", "content_images")
-    ):
-        raise MemoryPermissionError("Attachment metadata is server-owned.")
+        raise ValueError('An initial editor grant is only valid for a User-owned document.')
+    if any((key in data.metadata for key in ('document_attachments', 'retained_document_attachments', 'content_images'))):
+        raise MemoryPermissionError('Attachment metadata is server-owned.')
     content = decode_payload(data.payload)
-    if data.node_kind == "memory" and data.visibility != "private":
-        raise MemoryPermissionError("Memories are private; create a document to share content.")
-    if data.node_kind == "document" and data.document_type != "html":
-        if deletion_protected:
-            raise ValueError("Managed editorial documents cannot be datasets.")
-        validate_document_content(data.document_type, content)
-    if data.content_type == "text" and data.media_type in {
-        "text/html",
-        "text/markdown",
-        "text/plain",
-    }:
-        content = convert_to_html(
-            content.decode("utf-8"),
-            data.media_type,
-            profile="document"
-            if data.node_kind == "document" and not deletion_protected
-            else "rich-text",
-        ).encode("utf-8")
-        # A new document has no attachments yet. References can be inserted only
-        # after upload, through update_item's ownership validation.
-        if image_references(content.decode("utf-8")):
-            raise MemoryPermissionError(
-                "The image must belong to this document's attachments."
-            )
-        data = data.model_copy(update={"media_type": "text/html"})
-    if data.content_type == "text" or data.media_type.startswith("text/"):
-        assert_safe_text(content.decode("utf-8", errors="replace"))
-    assert_safe_value(data.model_dump(exclude={"payload", "source"}, mode="python"))
+    if str(data.visibility) != 'private':
+        raise MemoryPermissionError('Memories are private; create a document to share content.')
+    if data.content_type == 'text' and data.media_type in {'text/html', 'text/markdown', 'text/plain'}:
+        content = convert_to_html(content.decode('utf-8'), data.media_type, profile='rich-text').encode('utf-8')
+        if image_references(content.decode('utf-8')):
+            raise MemoryPermissionError("The image must belong to this document's attachments.")
+        data = data.model_copy(update={'media_type': 'text/html'})
+    if data.content_type == 'text' or data.media_type.startswith('text/'):
+        assert_safe_text(content.decode('utf-8', errors='replace'))
+    assert_safe_value(data.model_dump(exclude={'payload', 'source'}, mode='python'))
     if data.source is not None:
-        assert_safe_value(data.source.model_dump(mode="python"))
-    if data.node_kind == "document" and data.document_type == "html":
-        apps = document_apps(content.decode("utf-8"))
-        if apps and deletion_protected:
-            raise ValueError("Managed editorial documents cannot contain applications.")
+        assert_safe_value(data.source.model_dump(mode='python'))
     digest = _content_hash(content)
     db = get_db()
-    if deduplicate and data.node_kind == "memory":
-        existing_result = await db.execute(
-            select(MemoryItem)
-            .options(*_item_options())
-            .where(
-                MemoryItem.owner_agent_id == data.owner_agent_id,
-                MemoryItem.content_hash == digest,
-                MemoryItem.valid_from.is_not_distinct_from(data.valid_from),
-                MemoryItem.temporal.is_not_distinct_from(
-                    data.temporal.model_dump(mode="json") if data.temporal else None
-                ),
-                MemoryItem.valid_until.is_not_distinct_from(data.valid_until),
-                MemoryItem.source_managed.is_(False),
-                MemoryItem.node_kind == "memory",
-            )
-            .order_by(MemoryItem.created_at)
-            .limit(1)
-        )
+    if deduplicate:
+        existing_result = await db.execute(select(MemoryItem).options(*_item_options()).where(MemoryItem.owner_agent_id == data.owner_agent_id, MemoryItem.content_hash == digest, MemoryItem.valid_from.is_not_distinct_from(data.valid_from), MemoryItem.temporal.is_not_distinct_from(data.temporal.model_dump(mode='json') if data.temporal else None), MemoryItem.valid_until.is_not_distinct_from(data.valid_until), MemoryItem.source_managed.is_(False), MemoryItem.node_kind == 'memory').order_by(MemoryItem.created_at).limit(1))
         existing = existing_result.scalar_one_or_none()
         if existing is not None:
             if data.source is not None:
                 await _add_source(existing, data.source, content_hash=digest)
                 await db.commit()
             await _enqueue_semantic_projection(existing)
-            return existing, False
-
+            return (existing, False)
     provider = get_storage(data.provider_code)
     resource_id, inline = await prepare_content(content, provider.code, content_type=data.content_type)
-    item = MemoryItem(
-        owner_agent_id=None if owner_user_id is not None else data.owner_agent_id,
-        owner_user_id=owner_user_id,
-        provider_code=provider.code,
-        resource_id=resource_id,
-        content=inline,
-        title=data.title.strip(),
-        node_kind=data.node_kind,
-        document_type=data.document_type,
-        content_type=data.content_type,
-        media_type=data.media_type,
-        content_profile_version=1
-        if data.content_type == "text" and data.media_type == "text/html"
-        else None,
-        filename=data.filename,
-        keywords=_keywords(data.keywords),
-        metadata_=dict(data.metadata),
-        visibility=data.visibility,
-        read_only=data.read_only,
-        deletion_protected=deletion_protected,
-        content_hash=digest,
-        size_bytes=len(content),
-        search_text=_search_text(
-            content, content_type=data.content_type, media_type=data.media_type
-        ),
-        valid_from=data.valid_from,
-        temporal=data.temporal.model_dump(mode="json") if data.temporal else None,
-        valid_until=data.valid_until,
-    )
-    if data.node_kind == "document":
-        _attach_document(item)
-    else:
-        item.document = None
-        item.search_title = item.search_text[:120]
+    item = MemoryItem(owner_agent_id=None if owner_user_id is not None else data.owner_agent_id, owner_user_id=owner_user_id, provider_code=provider.code, resource_id=resource_id, content=inline, title=data.title.strip(), node_kind=data.node_kind, document_type=data.document_type, content_type=data.content_type, media_type=data.media_type, content_profile_version=1 if data.content_type == 'text' and data.media_type == 'text/html' else None, filename=data.filename, keywords=_keywords(data.keywords), metadata_=dict(data.metadata), visibility=data.visibility, read_only=data.read_only, deletion_protected=deletion_protected, content_hash=digest, size_bytes=len(content), search_text=_search_text(content, content_type=data.content_type, media_type=data.media_type), valid_from=data.valid_from, temporal=data.temporal.model_dump(mode='json') if data.temporal else None, valid_until=data.valid_until)
+    item.document = None
+    item.search_title = item.search_text[:120]
     _set_semantic_fingerprint(item)
     try:
         db.add(item)
         await db.flush()
-        if item.document is not None:
-            db.add(MemorySummaryRevision(
-                item_id=item.id, revision=1, provider_code="native", resource_id="", content="",
-                content_hash=_content_hash(b""), source_document_revision=item.document.revision,
-                keywords=list(item.keywords), temporal=item.temporal,
-            ))
-        if initial_editor_agent_id is not None:
-            db.add(
-                ShareGrant(share_id=MemoryItem.share_for(item.id),
-                    agent_id=initial_editor_agent_id,
-                    can_write=True,
-                )
-            )
-        db.add(
-            _revision_for(
-                item,
-                author_agent_id=None if owner_user_id is not None else data.owner_agent_id,
-                task_id=actor_task_id,
-                document_content_version=(True if data.node_kind == "document" else None),
-            )
-        )
+        db.add(_revision_for(item, author_agent_id=None if owner_user_id is not None else data.owner_agent_id, task_id=actor_task_id, document_content_version=None))
         if data.source is not None:
             await _add_source(item, data.source, content_hash=digest)
-        if item.node_kind == "document":
-            from .document_structure import sync_document_structure
-            await sync_document_structure(item, content)
-        if item.document_type == "dataset":
-            from .dataset_port import dataset_compatibility
-            if adapter := dataset_compatibility():
-                await db.flush()
-                await adapter.adopt(item.id)
         await db.commit()
     except BaseException:
 
         async def discard_unpublished() -> None:
             await db.rollback()
-            # A cancelled COMMIT may have reached PostgreSQL. Never delete its
-            # file until a fresh transaction confirms that no item was published.
-            referenced = await db.scalar(
-                select(MemoryItem.id)
-                .where(
-                    MemoryItem.provider_code == provider.code,
-                    MemoryItem.resource_id == resource_id,
-                )
-                .execution_options(include_historized=True)
-                .limit(1)
-            )
+            referenced = await db.scalar(select(MemoryItem.id).where(MemoryItem.provider_code == provider.code, MemoryItem.resource_id == resource_id).execution_options(include_historized=True).limit(1))
             if referenced is None:
                 await provider.delete(resource_id)
-
         try:
             await complete_await(discard_unpublished())
         except Exception:
-            logger.exception("Unable to reconcile an interrupted Memory creation")
+            logger.exception('Unable to reconcile an interrupted Memory creation')
         raise
     loaded = await _get_item_record(item.id)
     assert loaded is not None
     await _enqueue_semantic_projection(loaded)
-    await _emit_memory_event("create", loaded)
-    await notify_memory_item(loaded.id, "create")
-    return loaded, True
+    await _emit_memory_event('create', loaded)
+    await notify_memory_item(loaded.id, 'create')
+    return (loaded, True)
 
 
 async def _upsert_managed_source(
@@ -1127,7 +884,7 @@ async def upsert_source_managed_item(
     if defer_commit:
         # Contact creation/splitting stages several row-owned projections in one
         # transaction. External providers need their own compensation protocol.
-        from .storage import NativeFileStorage
+        from core.storage import NativeFileStorage
 
         actual_provider = item.provider_code if item is not None else selected_provider_code
         if actual_provider != "native" or type(get_storage(actual_provider)) is not NativeFileStorage:
@@ -1235,7 +992,6 @@ async def upsert_source_managed_item(
     item.source_managed = True
     item.managed_source_kind = source_kind
     item.managed_source_ref = source_ref
-    await db.execute(delete(ShareGrant).where(ShareGrant.share_id == item.share_id))
     await _upsert_managed_source(item, document, content_hash=digest)
     if item.document is not None:
         await refresh_document_search(item)
@@ -1306,7 +1062,7 @@ async def get_item(
         raise MemoryNotFoundError("Memory not found.")
     access = await assert_item_access(item, agent_id, administrative=administrative)
     if item.document_type == "dataset" and not memory_content:
-        from .dataset_port import dataset_compatibility
+        from app.document.interface import dataset_compatibility
         if adapter := dataset_compatibility():
             await adapter.adopt(item.id)
             actor = agent_id if agent_id is not None else (item.owner_agent_id if item.owner_agent_id is not None else HumanActor(item.owner_user_id or 0))
@@ -1316,20 +1072,29 @@ async def get_item(
     resource_id = item.resource_id
     content_type = item.content_type
     media_type = item.media_type
+    content = b""
     if memory_content and item.document is not None:
-        provider_code = item.memory_provider_code
-        resource_id = item.memory_resource_id
+        provider_code = item.document.summary_provider_code
+        resource_id = item.document.summary_resource_id
         content_type, media_type = "text", "text/html"
-        if revision is not None and revision != item.memory_revision:
+        if revision is not None and revision != item.document.summary_revision:
             if revision == 1:
                 resource_id = ""
             else:
-                summary = await get_db().scalar(select(MemorySummaryRevision).where(
-                    MemorySummaryRevision.item_id == item.id, MemorySummaryRevision.revision == revision,
+                summary = await get_db().scalar(select(DocumentSummaryRevision).where(
+                    DocumentSummaryRevision.document_id == item.id, DocumentSummaryRevision.revision == revision,
                 ))
                 if summary is None:
                     raise MemoryNotFoundError("Memory synthesis revision not found.")
                 provider_code, resource_id = summary.provider_code, summary.resource_id
+    elif item.node_kind == "document":
+        from app.document import get_item as get_document
+        _source, content, _source_access, content_type, media_type = await get_document(
+            item.id, agent_id=agent_id if agent_id is not None else HumanActor(0), administrative=administrative, revision=revision,
+            include_revisions=False,
+        )
+        # Source history belongs to Document; never look for it in MemoryRevision.
+        provider_code, resource_id = "", ""
     elif revision is not None and revision != item.revision:
         snapshot = await _read_revision(item.id, revision)
         if snapshot is None:
@@ -1338,7 +1103,8 @@ async def get_item(
         resource_id = snapshot.resource_id
         content_type = snapshot.content_type
         media_type = snapshot.media_type
-    content = await get_storage(provider_code).read(resource_id) if resource_id else b""
+    if provider_code:
+        content = await get_storage(provider_code).read(resource_id) if resource_id else b""
     if record_llm_access and isinstance(agent_id, int):
         db = get_db()
         accessed_at = datetime.now(timezone.utc)
@@ -1399,10 +1165,14 @@ async def get_item_metadata(
 
 
 async def source_refs(item_id: UUID, *, urls: Sequence[str] | None = None) -> list[str]:
+    from app.document import DocumentSource
+    from sqlalchemy import union_all
     result = await get_db().execute(
-        select(MemorySource.source_ref)
-        .where(MemorySource.item_id == item_id)
-        .order_by(MemorySource.created_at)
+        union_all(
+            select(MemorySource.source_ref).where(MemorySource.item_id == item_id),
+            select(DocumentSource.source_ref).join(MemoryItem, MemoryItem.id == DocumentSource.document_id)
+            .where(MemoryItem.id == item_id, MemoryItem.node_kind == "document"),
+        )
     )
     references = list(result.scalars().all())
     references.extend(urls if urls is not None else await get_db().scalars(select(MemoryURL.url).where(
@@ -1423,6 +1193,8 @@ async def add_item_source(
     item = await _get_item_record(item_id)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
+    if item.node_kind == "document":
+        raise MemoryPermissionError("Personal provenance cannot be attached to a Document reference")
     await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
     await _add_source(item, source, content_hash=item.content_hash)
     await get_db().commit()
@@ -1435,11 +1207,13 @@ async def link_item_source(
     *,
     actor_agent_id: int,
 ) -> None:
-    """Link provenance to any readable node without modifying that node."""
+    """Link personal provenance to a readable native memory node."""
 
     item = await _get_item_record(item_id)
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
+    if item.node_kind == "document":
+        raise MemoryPermissionError("Personal provenance cannot be attached to a Document reference")
     await assert_item_access(item, actor_agent_id)
     await _add_source(item, source, content_hash=item.content_hash)
     await get_db().commit()
@@ -1476,8 +1250,8 @@ async def item_to_detail(
             values["revision"] = revision
             values["content_hash"] = _content_hash(content)
             values["size_bytes"] = len(content)
-            summary = await get_db().scalar(select(MemorySummaryRevision).where(
-                MemorySummaryRevision.item_id == item.id, MemorySummaryRevision.revision == revision,
+            summary = await get_db().scalar(select(DocumentSummaryRevision).where(
+                DocumentSummaryRevision.document_id == item.id, DocumentSummaryRevision.revision == revision,
             ))
             if summary is not None:
                 values["keywords"] = list(summary.keywords)
@@ -1523,9 +1297,9 @@ async def list_revisions(
         raise MemoryNotFoundError("Memory not found.")
     await assert_item_access(item, agent_id, administrative=administrative)
     if item.document is not None:
-        summaries = await get_db().scalars(select(MemorySummaryRevision).where(
-            MemorySummaryRevision.item_id == item_id,
-        ).order_by(MemorySummaryRevision.revision).offset(offset).limit(limit))
+        summaries = await get_db().scalars(select(DocumentSummaryRevision).where(
+            DocumentSummaryRevision.document_id == item_id,
+        ).order_by(DocumentSummaryRevision.revision).offset(offset).limit(limit))
         return [MemoryRevisionPublic(
             revision=entry.revision, task_id=entry.task_id, content_hash=entry.content_hash,
             title=item.title, keywords=list(entry.keywords), temporal=MemoryTemporalAnchor.model_validate(entry.temporal) if entry.temporal else None,
@@ -1542,184 +1316,13 @@ async def list_revisions(
     return [MemoryRevisionPublic.model_validate(entry) for entry in rows]
 
 
-async def list_document_content_revisions(
-    item_id: UUID,
-    *,
-    actor_agent_id: int | HumanActor,
-    limit: int = 50,
-    offset: int = 0,
-    before_revision: int | None = None,
-) -> DocumentContentRevisionPage:
-    """List only restorable document-content versions, newest first."""
-
-    item = await _get_item_record(item_id, revisions=False)
-    if item is None or item.node_kind != "document":
-        raise MemoryNotFoundError("Document not found.")
-    await assert_item_access(item, actor_agent_id)
-    from .dataset_port import dataset_compatibility
-    adapter = dataset_compatibility()
-    if adapter is not None and await adapter.contains(item_id):
-        if before_revision is not None:
-            raise ValueError("Bounded history is only available for native documents.")
-        return DocumentContentRevisionPage.model_validate(await adapter.history(item_id, actor_agent_id, limit, offset))
-    from .revision_queries import content_revision_page
-
-    rows, total = await content_revision_page(item_id, limit=limit, offset=offset, before_revision=before_revision)
-    return DocumentContentRevisionPage(
-        items=[DocumentContentRevisionPublic.model_validate(entry) for entry in rows],
-        total=total,
-        limit=limit,
-        offset=offset,
-        has_more=offset + limit < total,
-    )
-
-
-async def _document_content_revision(
-    item_id: UUID,
-    revision: int,
-    *,
-    actor_agent_id: int | HumanActor,
-) -> tuple[MemoryItem, MemoryRevision, bytes]:
-    item = await _get_item_record(item_id, revisions=False)
-    if item is None or item.node_kind != "document":
-        raise MemoryNotFoundError("Document not found.")
-    await assert_item_access(item, actor_agent_id)
-    from .revision_queries import content_revision
-
-    entry = await content_revision(item_id, revision)
-    if entry is None:
-        raise MemoryNotFoundError("Document content revision not found.")
-    content = await get_storage(entry.provider_code).read(entry.resource_id)
-    return item, entry, content
-
-
-async def get_document_content_revision(
-    item_id: UUID,
-    revision: int,
-    *,
-    actor_agent_id: int | HumanActor,
-) -> DocumentContentRevisionDetail:
-    """Read one immutable UTF-8 document-content version."""
-    from .dataset_port import dataset_compatibility
-    adapter = dataset_compatibility()
-    if adapter is not None and await adapter.contains(item_id):
-        state = await adapter.read(item_id, actor_agent_id, revision)
-        return DocumentContentRevisionDetail(**state["revision_detail"], content=state["content"])
-
-    _item, entry, content = await _document_content_revision(
-        item_id,
-        revision,
-        actor_agent_id=actor_agent_id,
-    )
-    return DocumentContentRevisionDetail(
-        **DocumentContentRevisionPublic.model_validate(entry).model_dump(),
-        content=content.decode("utf-8"),
-    )
-
-
-async def diff_document_content_revision(
-    item_id: UUID,
-    revision: int,
-    *,
-    actor_agent_id: int | HumanActor,
-) -> DocumentContentDiff:
-    """Compare one stored content version with the current document text."""
-    from .dataset_port import dataset_compatibility
-    adapter = dataset_compatibility()
-    if adapter is not None and await adapter.contains(item_id):
-        previous = await adapter.read(item_id, actor_agent_id, revision)
-        current = await adapter.read(item_id, actor_agent_id)
-        hunks, additions, deletions = _content_diff_hunks(previous["content"], current["content"])
-        return DocumentContentDiff(revision=revision, current_revision=current["revision"],
-            additions=additions, deletions=deletions, hunks=hunks, structure_changed=False)
-
-    item, entry, previous_content = await _document_content_revision(
-        item_id,
-        revision,
-        actor_agent_id=actor_agent_id,
-    )
-    current_content = await get_storage(item.provider_code).read(item.resource_id)
-    hunks, additions, deletions = _content_diff_hunks(
-        visible_text(previous_content.decode("utf-8"))
-        if entry.media_type == "text/html"
-        else previous_content.decode("utf-8"),
-        visible_text(current_content.decode("utf-8"))
-        if item.media_type == "text/html"
-        else current_content.decode("utf-8"),
-    )
-    return DocumentContentDiff(
-        revision=revision,
-        current_revision=item.revision,
-        additions=additions,
-        deletions=deletions,
-        hunks=hunks,
-        structure_changed=entry.content_hash != item.content_hash
-        and (entry.media_type == "text/html" or item.media_type == "text/html"),
-        previous_html=previous_content.decode("utf-8") if entry.media_type == "text/html" else None,
-        current_html=current_content.decode("utf-8") if item.media_type == "text/html" else None,
-    )
-
-
-async def delete_process_content_revision(
-    item_id: UUID, revision: int, *, actor_agent_id: int | HumanActor,
-) -> None:
-    """Erase an old process snapshot without changing its current content or ACLs."""
-    item = await document_record(item_id, revisions=False)
-    if item is None or item.document_type != "process":
-        raise MemoryNotFoundError("Process not found.")
-    await assert_item_access(item, actor_agent_id, write=True)
-    if revision >= item.revision:
-        raise MemoryConflictError(await tr("memory.errors.current_revision_delete"))
-    from .revision_queries import content_revision
-    entry = await content_revision(item_id, revision)
-    if entry is None:
-        raise MemoryNotFoundError("Process revision not found.")
-    provider_code, resource_id = entry.provider_code, entry.resource_id
-    await get_db().delete(entry)
-    await get_db().commit()
-    await _delete_resource_if_unreferenced(provider_code, resource_id)
-
-
-async def _delete_resource_if_unreferenced(
-    provider_code: str,
-    resource_id: str,
-) -> None:
-    db = get_db()
-    current_reference = await db.scalar(
-        select(MemoryItem.id)
-        .where(
-            MemoryItem.provider_code == provider_code,
-            MemoryItem.resource_id == resource_id,
-        )
-        .limit(1)
-    )
-    revision_reference = await db.scalar(
-        select(MemoryRevision.id)
-        .where(
-            MemoryRevision.provider_code == provider_code,
-            MemoryRevision.resource_id == resource_id,
-        )
-        .limit(1)
-    )
-    memory_reference = await db.scalar(select(MemoryItem.id).where(
-        MemoryItem.memory_provider_code == provider_code, MemoryItem.memory_resource_id == resource_id,
-    ).limit(1))
-    summary_reference = await db.scalar(select(MemorySummaryRevision.id).where(
-        MemorySummaryRevision.provider_code == provider_code, MemorySummaryRevision.resource_id == resource_id,
-    ).limit(1))
-    from .document_backup import archived_resources
-    if (current_reference is not None or revision_reference is not None or memory_reference is not None
-        or summary_reference is not None or await archived_resources(db, provider_code, [resource_id])):
-        return
-    try:
-        await get_storage(provider_code).delete(resource_id)
-    except Exception as exc:
-        logger.warning(
-            "Unreferenced memory resource cleanup failed: provider={} resource={} error={}",
-            provider_code,
-            resource_id,
-            exc,
-        )
+async def _delete_resource_if_unreferenced(provider_code: str, resource_id: str) -> None:
+    from core.storage import resource_is_referenced
+    if resource_id and not await resource_is_referenced(provider_code, resource_id):
+        try:
+            await get_storage(provider_code).delete(resource_id)
+        except ResourceStorageError:
+            await _schedule_resource_cleanup(provider_code, resource_id)
 
 
 async def refresh_document_search(item: MemoryItem, *, content: bytes | None = None) -> None:
@@ -1730,8 +1333,8 @@ async def refresh_document_search(item: MemoryItem, *, content: bytes | None = N
     if content is None:
         content = await get_storage(document.provider_code).read(document.resource_id)
     text = _search_text(content, content_type=document.content_type, media_type=document.media_type)
-    if item.memory_resource_id:
-        summary = await get_storage(item.memory_provider_code).read(item.memory_resource_id)
+    if document.summary_resource_id:
+        summary = await get_storage(document.summary_provider_code).read(document.summary_resource_id)
         text += "\n" + _search_text(summary, content_type="text", media_type="text/html")
     item.search_text = text
 
@@ -1740,212 +1343,57 @@ async def update_memory_content(
     item_id: UUID, data: MemoryItemUpdate, *, actor_agent_id: int | HumanActor | None,
     administrative: bool = False,
 ) -> MemoryItem:
-    """Edit an independent synthesis using the current document's live rights."""
-    item = await _get_item_record(item_id)
-    if item is None:
-        raise MemoryNotFoundError("Memory not found.")
-    if item.document is None:
-        return await update_item(item_id, data, actor_agent_id=actor_agent_id, administrative=administrative)
-    await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
-    fields = data.model_fields_set - {"expected_revision", "expected_lock_version"}
-    if fields - {"payload", "keywords", "temporal", "valid_from", "valid_until", "media_type", "content_type"}:
-        raise MemoryPermissionError("Edit document metadata and sharing through its document.")
-    if data.media_type not in (None, "text/html") or data.content_type not in (None, "text"):
-        raise MemoryConflictError("A document synthesis must use rich text.")
-    if data.expected_revision is not None and data.expected_revision != item.memory_revision:
-        raise MemoryConflictError("Memory synthesis changed; reload and retry")
-    if data.expected_lock_version is not None and data.expected_lock_version != item.lock_version:
-        raise MemoryConflictError("Document or synthesis changed; reload and retry")
-    previous_resource = item.memory_resource_id
-    provider = get_storage(item.memory_provider_code)
-    new_resource: str | None = None
-    changed = False
-    if data.payload is not None:
-        content = convert_to_html(decode_payload(data.payload).decode("utf-8"), "text/html", profile="rich-text").encode("utf-8")
-        assert_safe_text(content.decode("utf-8"))
-        digest = _content_hash(content)
-        if digest != item.memory_content_hash:
-            new_resource, inline = await prepare_content(content, provider.code) if content else ("", "")
-            item.memory_resource_id = new_resource
-            item.memory_content = inline
-            item.memory_content_hash = digest
-            item.memory_size_bytes = len(content)
-            item.summary_document_revision = item.document.revision
-            changed = True
-    keywords_changed = data.keywords is not None and _set_keywords(item, data.keywords)
-    if "temporal" in fields:
-        temporal = data.temporal.model_dump(mode="json") if data.temporal else None
-        changed = changed or temporal != item.temporal
-        item.temporal = temporal
-    for name in ("valid_from", "valid_until"):
-        if name in fields:
-            changed = changed or getattr(item, name) != getattr(data, name)
-            setattr(item, name, getattr(data, name))
-    if not changed and not keywords_changed:
-        return item
-    if changed:
-        item.memory_revision += 1
-    item.lock_version += 1
-    item.updated_at = datetime.now(timezone.utc)
-    if changed:
-        get_db().add(MemorySummaryRevision(
-            item_id=item.id, revision=item.memory_revision, provider_code=item.memory_provider_code,
-            resource_id=item.memory_resource_id, content=item.memory_content, content_hash=item.memory_content_hash,
-            source_document_revision=item.summary_document_revision or item.document.revision,
-            author_agent_id=actor_agent_id if isinstance(actor_agent_id, int) else None,
-            keywords=list(item.keywords), temporal=item.temporal,
-        ))
-    try:
-        await refresh_document_search(item)
-        _set_semantic_fingerprint(item)
-        await _commit_with_conflict("Document or synthesis changed; reload and retry")
-    except BaseException:
-        async def discard_unpublished() -> None:
-            await get_db().rollback()
-            if new_resource:
-                await _delete_resource_if_unreferenced(provider.code, new_resource)
-
-        try:
-            await complete_await(discard_unpublished())
-        except Exception:
-            logger.exception("Unable to reconcile an interrupted Memory synthesis update")
-        raise
-    if new_resource is not None and previous_resource and previous_resource != new_resource:
-        await _delete_resource_if_unreferenced(item.memory_provider_code, previous_resource)
-    loaded = await _get_item_record(item_id)
-    assert loaded is not None
-    await _enqueue_semantic_projection(loaded)
-    await _emit_memory_event("update", loaded)
-    await notify_memory_item(item_id, "content")
-    return loaded
+    """Write a private memory; source-owned summaries use Document's API."""
+    item = await _get_item_record(item_id, revisions=False)
+    if item is not None and item.node_kind == "document":
+        raise MemoryPermissionError("Edit a documentary summary through app.document")
+    return await update_item(item_id, data, actor_agent_id=actor_agent_id, administrative=administrative)
 
 
-async def update_item(
-    item_id: UUID,
-    data: MemoryItemUpdate,
-    *,
-    actor_agent_id: int | HumanActor | None,
-    administrative: bool = False,
-    actor_task_id: UUID | None = None,
-    notify_observers: bool = True,
-    preserve_document_attachments: bool = True,
-    document_revision_author_agent_id: int | None = None,
-    document_append: bool = False,
-    allow_goal_document_metadata_sync: bool = False,
-    include_revisions: bool = True,
-) -> MemoryItem:
+async def update_item(item_id: UUID, data: MemoryItemUpdate, *, actor_agent_id: int | HumanActor | None, administrative: bool=False, actor_task_id: UUID | None=None, notify_observers: bool=True, preserve_document_attachments: bool=True, document_revision_author_agent_id: int | None=None, document_append: bool=False, allow_goal_document_metadata_sync: bool=False, include_revisions: bool=True) -> MemoryItem:
     item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
-        raise MemoryNotFoundError("Memory not found.")
+        raise MemoryNotFoundError('Memory not found.')
+    if item.node_kind == 'document':
+        raise MemoryPermissionError('Document references are read-only; use app.document')
     await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
-    if item.document_type == "dataset" and actor_agent_id is not None:
-        from .dataset_port import dataset_compatibility
-        if adapter := dataset_compatibility():
-            await adapter.adopt(item.id)
-            await adapter.update(item.id, actor_agent_id, data.model_dump(exclude_unset=True))
-            await get_db().refresh(item)
-            return item
     if data.expected_revision is not None and data.expected_revision != item.revision:
-        raise MemoryConflictError(
-            f"Memory revision conflict: expected {data.expected_revision}, "
-            f"current revision is {item.revision}."
-        )
+        raise MemoryConflictError(f'Memory revision conflict: expected {data.expected_revision}, current revision is {item.revision}.')
     if data.expected_lock_version is not None and data.expected_lock_version != item.lock_version:
-        raise MemoryConflictError(
-            "The document changed while it was being edited; reload and retry."
-        )
-    fields = data.model_fields_set - {
-        "expected_revision",
-        "expected_lock_version",
-    }
+        raise MemoryConflictError('The document changed while it was being edited; reload and retry.')
+    fields = data.model_fields_set - {'expected_revision', 'expected_lock_version'}
     if not fields:
         return item
-    if "metadata" in fields and data.metadata is not None:
-        protected_workflow = ("creation_command", "process_code", "topic_assignment")
-        if any(data.metadata.get(key) != item.metadata_.get(key) for key in protected_workflow):
-            raise MemoryPermissionError("Workflow metadata is server-owned")
-    if item.document_type == "process" and "metadata" in fields and data.metadata is not None and data.metadata.get("process_code") != item.metadata_.get("process_code"):
-        raise MemoryPermissionError("The process code is immutable")
-    if item.node_kind == "memory" and not item.source_managed:
-        if "title" in fields:
-            raise MemoryPermissionError("A memory has no editable title.")
-        if "visibility" in fields and data.visibility != "private":
-            raise MemoryPermissionError("Memories are private; share a document instead.")
-    if item.managed_source_kind == "file_catalogue" and "visibility" in fields and data.visibility != "private":
-        raise MemoryPermissionError("A file catalogue entry must remain private to its agent.")
-    if "visibility" in fields and data.visibility != item.visibility:
-        owns_item = (
-            item.owner_agent_id == actor_agent_id if isinstance(actor_agent_id, int)
-            else isinstance(actor_agent_id, HumanActor) and item.owner_user_id == actor_agent_id.user_id
-        )
-        if not administrative and not owns_item:
-            raise MemoryPermissionError("Only the owner can manage sharing.")
-        if item.global_access > 0 and data.visibility != "shared":
-            raise MemoryConflictError("Update public access through the sharing form.")
+    if 'metadata' in fields and data.metadata is not None:
+        protected_workflow = ('creation_command', 'process_code', 'topic_assignment')
+        if any((data.metadata.get(key) != item.metadata_.get(key) for key in protected_workflow)):
+            raise MemoryPermissionError('Workflow metadata is server-owned')
+    if item.document_type == 'process' and 'metadata' in fields and (data.metadata is not None) and (data.metadata.get('process_code') != item.metadata_.get('process_code')):
+        raise MemoryPermissionError('The process code is immutable')
+    if item.node_kind == 'memory' and (not item.source_managed):
+        if 'title' in fields:
+            raise MemoryPermissionError('A memory has no editable title.')
+        if 'visibility' in fields and data.visibility != 'private':
+            raise MemoryPermissionError('Memories are private; share a document instead.')
+    if item.managed_source_kind == 'file_catalogue' and 'visibility' in fields and (data.visibility != 'private'):
+        raise MemoryPermissionError('A file catalogue entry must remain private to its agent.')
+    if 'visibility' in fields and data.visibility != item.visibility:
+        owns_item = item.owner_agent_id == actor_agent_id if isinstance(actor_agent_id, int) else isinstance(actor_agent_id, HumanActor) and item.owner_user_id == actor_agent_id.user_id
+        if not administrative and (not owns_item):
+            raise MemoryPermissionError('Only the owner can manage sharing.')
     is_goal_document = _is_goal_document(item)
-    if (
-        is_goal_document
-        and "title" in fields
-        and data.title != item.title
-        and not allow_goal_document_metadata_sync
-    ):
-        raise MemoryPermissionError(
-            "The title, owner, and path of a Goal document are controlled by its Goal "
-            "and cannot be changed directly."
-        )
-    if "metadata" in fields and data.metadata is not None:
-        goal_metadata_changed = any(
-            data.metadata.get(key) != item.metadata_.get(key)
-            for key in ("goal_id", "goal_document_kind", "document_path")
-        )
-        if is_goal_document and goal_metadata_changed and not allow_goal_document_metadata_sync:
-            raise MemoryPermissionError(
-                "The title, owner, and path of a Goal document are controlled by its Goal "
-                "and cannot be changed directly."
-            )
-    if item.node_kind == "document":
-        if data.content_type not in (None, "text"):
-            raise MemoryConflictError("A document must contain text.")
-        if item.document_type == "dataset" and data.media_type not in (None, "application/json"):
-            raise MemoryConflictError("A Dataset document must retain its application/json format.")
-        if item.document_type == "process" and data.media_type not in (None, "application/bpmn+xml"):
-            raise MemoryConflictError("A Process document must retain its BPMN format.")
-        if item.document_type == "html" and data.media_type is not None and not data.media_type.startswith("text/"):
-            raise MemoryConflictError("A document must contain text.")
-        if data.visibility == "public":
-            raise MemoryConflictError("A document must be shared through explicit agent grants.")
-        if data.visibility == "private" and (item.global_access > 0 or item.group_access > 0):
-            raise MemoryConflictError("A globally shared document must keep shared visibility.")
-        if data.read_only:
-            raise MemoryConflictError("A working document must remain editable.")
-    assert_safe_value(
-        data.model_dump(
-            exclude={"payload", "expected_revision", "expected_lock_version"},
-            exclude_unset=True,
-            mode="python",
-        )
-    )
-
-    if item.content_profile_version == 1 and (
-        data.content_type not in (None, "text") or data.media_type not in (None, "text/html")
-    ):
-        raise MemoryConflictError("Editorial content must retain its text/html profile.")
-    if data.media_type is not None and data.media_type != item.media_type and data.payload is None:
-        raise MemoryConflictError("A format change requires an explicit converted payload.")
-    previous_values = {
-        name: getattr(item, name)
-        for name in (
-            "title",
-            "content_type",
-            "media_type",
-            "filename",
-            "visibility",
-            "read_only",
-            "valid_from",
-            "valid_until",
-            "temporal",
-        )
-    }
+    if is_goal_document and 'title' in fields and (data.title != item.title) and (not allow_goal_document_metadata_sync):
+        raise MemoryPermissionError('The title, owner, and path of a Goal document are controlled by its Goal and cannot be changed directly.')
+    if 'metadata' in fields and data.metadata is not None:
+        goal_metadata_changed = any((data.metadata.get(key) != item.metadata_.get(key) for key in ('goal_id', 'goal_document_kind', 'document_path')))
+        if is_goal_document and goal_metadata_changed and (not allow_goal_document_metadata_sync):
+            raise MemoryPermissionError('The title, owner, and path of a Goal document are controlled by its Goal and cannot be changed directly.')
+    assert_safe_value(data.model_dump(exclude={'payload', 'expected_revision', 'expected_lock_version'}, exclude_unset=True, mode='python'))
+    if item.content_profile_version == 1 and (data.content_type not in (None, 'text') or data.media_type not in (None, 'text/html')):
+        raise MemoryConflictError('Editorial content must retain its text/html profile.')
+    if data.media_type is not None and data.media_type != item.media_type and (data.payload is None):
+        raise MemoryConflictError('A format change requires an explicit converted payload.')
+    previous_values = {name: getattr(item, name) for name in ('title', 'content_type', 'media_type', 'filename', 'visibility', 'read_only', 'valid_from', 'valid_until', 'temporal')}
     previous_metadata = dict(item.metadata_)
     previous_provider_code = item.provider_code
     previous_resource_id = item.resource_id
@@ -1953,65 +1401,23 @@ async def update_item(
     document_content: bytes | None = None
     content_changed = False
     provider = get_storage(item.provider_code)
-    if "payload" in fields and data.payload is not None:
+    if 'payload' in fields and data.payload is not None:
         content = decode_payload(data.payload)
-        if item.node_kind == "document" and item.document_type != "html":
-            validate_document_content(item.document_type, content)
         future_content_type = data.content_type or item.content_type
         future_media_type = data.media_type or item.media_type
-        if future_content_type == "text" and future_media_type in {
-            "text/html",
-            "text/markdown",
-            "text/plain",
-        }:
-            content = convert_to_html(
-                content.decode("utf-8"), future_media_type, profile=item.content_profile
-            ).encode("utf-8")
-            if item.node_kind == "document":
-                apps = document_apps(content.decode("utf-8"))
-                if apps and item.deletion_protected:
-                    raise ValueError("Managed editorial documents cannot contain applications.")
-            if item.media_type == "text/html" and data.media_type not in (None, "text/html"):
-                raise MemoryConflictError(
-                    "This content now requires explicit text/html writes. Refresh the client."
-                )
-            if item.node_kind == "document":
-                from .document_attachment_service import attachments_from_item
-
-                allowed = {
-                    str(value.id)
-                    for value in attachments_from_item(item, include_retained=True)
-                    if value.media_type in {"image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"}
-                }
-                for uri in image_references(content.decode("utf-8")):
-                    reference = attachment_reference(uri)
-                    if (
-                        reference is None
-                        or reference[0] != item.id
-                        or str(reference[1]) not in allowed
-                    ):
-                        raise MemoryPermissionError(
-                            "The image must belong to this document's attachments."
-                        )
-            if _is_goal_document(item) and item.metadata_.get("goal_document_kind") == "tracking":
-                if (
-                    len(content.decode("utf-8")) > 120_000
-                    or len(visible_text(content.decode("utf-8"))) > 30_000
-                ):
-                    raise MemoryConflictError(
-                        "Goal tracking exceeds its serialized or visible text limit."
-                    )
-            future_media_type = "text/html"
-            data = data.model_copy(update={"media_type": "text/html"})
-            fields.add("media_type")
+        if future_content_type == 'text' and future_media_type in {'text/html', 'text/markdown', 'text/plain'}:
+            content = convert_to_html(content.decode('utf-8'), future_media_type, profile=item.content_profile).encode('utf-8')
+            if item.media_type == 'text/html' and data.media_type not in (None, 'text/html'):
+                raise MemoryConflictError('This content now requires explicit text/html writes. Refresh the client.')
+            if _is_goal_document(item) and item.metadata_.get('goal_document_kind') == 'tracking':
+                if len(content.decode('utf-8')) > 120000 or len(visible_text(content.decode('utf-8'))) > 30000:
+                    raise MemoryConflictError('Goal tracking exceeds its serialized or visible text limit.')
+            future_media_type = 'text/html'
+            data = data.model_copy(update={'media_type': 'text/html'})
+            fields.add('media_type')
             item.content_profile_version = 1
-            if item.node_kind == "document":
-                item.metadata_ = {
-                    **item.metadata_,
-                    "content_images": sorted(image_references(content.decode("utf-8"))),
-                }
-        if future_content_type == "text" or future_media_type.startswith("text/"):
-            assert_safe_text(content.decode("utf-8", errors="replace"))
+        if future_content_type == 'text' or future_media_type.startswith('text/'):
+            assert_safe_text(content.decode('utf-8', errors='replace'))
         digest = _content_hash(content)
         document_content = content
         content_changed = item.content_hash != digest
@@ -2021,131 +1427,59 @@ async def update_item(
             item.content = inline
             item.content_hash = digest
             item.size_bytes = len(content)
-            item.search_text = _search_text(
-                content,
-                content_type=future_content_type,
-                media_type=future_media_type,
-            )
-
-    scalar_fields = (
-        "title",
-        "content_type",
-        "media_type",
-        "filename",
-        "visibility",
-        "read_only",
-        "valid_from",
-        "valid_until",
-    )
+            item.search_text = _search_text(content, content_type=future_content_type, media_type=future_media_type)
+    scalar_fields = ('title', 'content_type', 'media_type', 'filename', 'visibility', 'read_only', 'valid_from', 'valid_until')
     for field_name in scalar_fields:
         if field_name in fields:
             setattr(item, field_name, getattr(data, field_name))
     keywords_changed = False
-    if "temporal" in fields:
-        item.temporal = data.temporal.model_dump(mode="json") if data.temporal else None
-    if "keywords" in fields and data.keywords is not None:
+    if 'temporal' in fields:
+        item.temporal = data.temporal.model_dump(mode='json') if data.temporal else None
+    if 'keywords' in fields and data.keywords is not None:
         keywords_changed = _set_keywords(item, data.keywords)
-    if "metadata" in fields and data.metadata is not None:
+    if 'metadata' in fields and data.metadata is not None:
         filename = item.filename
         metadata = dict(data.metadata)
-        if item.node_kind == "document" and preserve_document_attachments:
-            for attachment_key in (
-                "document_attachments",
-                "retained_document_attachments",
-                "content_images",
-            ):
-                if attachment_key in item.metadata_:
-                    metadata[attachment_key] = item.metadata_[attachment_key]
-                else:
-                    metadata.pop(attachment_key, None)
         item.metadata_ = metadata
-        if item.node_kind != "document":
-            item.filename = filename
-    if item.managed_source_kind == "file_catalogue":
-        # Source identity and manual ownership survive generic metadata writes.
+        item.filename = filename
+    if item.managed_source_kind == 'file_catalogue':
         metadata = dict(item.metadata_)
-        for key in ("catalogue_ref", "catalogue_editable", "catalogue_manual_content", "catalogue_manual_title"):
+        for key in ('catalogue_ref', 'catalogue_editable', 'catalogue_manual_content', 'catalogue_manual_title'):
             if key in previous_metadata:
                 metadata[key] = previous_metadata[key]
             else:
                 metadata.pop(key, None)
         if content_changed:
-            metadata["catalogue_manual_content"] = True
-        if item.title != previous_values["title"]:
-            metadata["catalogue_manual_title"] = True
+            metadata['catalogue_manual_content'] = True
+        if item.title != previous_values['title']:
+            metadata['catalogue_manual_title'] = True
         item.metadata_ = metadata
-    if item.node_kind == "memory" and not item.source_managed:
+    if item.node_kind == 'memory' and (not item.source_managed):
         item.search_title = item.search_text[:120]
-    document_format_changed = any(previous_values[field] != getattr(item, field) for field in ("content_type", "media_type"))
+    document_format_changed = any((previous_values[field] != getattr(item, field) for field in ('content_type', 'media_type')))
     if item.document is not None and (content_changed or document_format_changed):
         await refresh_document_search(item, content=document_content)
     _set_semantic_fingerprint(item)
-    meaningful_change = bool(
-        fields
-        & {
-            "payload",
-            "title",
-            "keywords",
-            "metadata",
-            "valid_from",
-            "valid_until",
-            "temporal",
-        }
-    )
-    if content_changed or keywords_changed or previous_values["temporal"] != item.temporal:
+    meaningful_change = bool(fields & {'payload', 'title', 'keywords', 'metadata', 'valid_from', 'valid_until', 'temporal'})
+    if content_changed or keywords_changed or previous_values['temporal'] != item.temporal:
         item.updated_at = datetime.now(timezone.utc)
     if meaningful_change:
         item.old_at = None
         item.old_reason = None
-        await get_db().execute(
-            update(MemoryFinding)
-            .where(
-                MemoryFinding.primary_item_id == item.id,
-                MemoryFinding.kind == "aging",
-                MemoryFinding.status == "pending",
-            )
-            .values(status="obsolete", resolved_at=datetime.now(timezone.utc))
-        )
-    changed = (
-        content_changed
-        or keywords_changed
-        or previous_metadata != item.metadata_
-        or any(getattr(item, name) != value for name, value in previous_values.items())
-    )
-    # A document revision describes its payload, not its metadata or ACLs.
-    if content_changed or (item.node_kind != "document" and changed):
+        await get_db().execute(update(MemoryFinding).where(MemoryFinding.primary_item_id == item.id, MemoryFinding.kind == 'aging', MemoryFinding.status == 'pending').values(status='obsolete', resolved_at=datetime.now(timezone.utc)))
+    changed = content_changed or keywords_changed or previous_metadata != item.metadata_ or any((getattr(item, name) != value for name, value in previous_values.items()))
+    if content_changed or changed:
         item.revision += 1
     db = get_db()
-    if content_changed or (item.node_kind != "document" and changed):
-        db.add(
-            _revision_for(
-                item,
-                author_agent_id=(
-                    document_revision_author_agent_id
-                    if item.node_kind == "document"
-                    else (actor_agent_id if isinstance(actor_agent_id, int) else None)
-                ),
-                task_id=actor_task_id,
-                document_content_version=(True if item.node_kind == "document" else None),
-                document_append=document_append if item.node_kind == "document" else False,
-            )
-        )
+    if content_changed or changed:
+        db.add(_revision_for(item, author_agent_id=actor_agent_id if isinstance(actor_agent_id, int) else None, task_id=actor_task_id, document_content_version=None, document_append=False))
     try:
-        if item.node_kind == "document" and (content_changed or document_format_changed or any(
-            previous_metadata.get(key) != item.metadata_.get(key)
-            for key in ("document_attachments", "retained_document_attachments")
-        )):
-            from .document_structure import sync_document_structure
-            await db.flush()
-            await sync_document_structure(item, document_content)
         await db.commit()
     except StaleDataError as exc:
         await db.rollback()
         if new_resource_id is not None:
             await provider.delete(new_resource_id)
-        raise MemoryConflictError(
-            "The document changed while it was being edited; reload and retry."
-        ) from exc
+        raise MemoryConflictError('The document changed while it was being edited; reload and retry.') from exc
     except Exception:
         await db.rollback()
         if new_resource_id is not None:
@@ -2154,63 +1488,12 @@ async def update_item(
     loaded = await _get_item_record(item.id, revisions=include_revisions)
     assert loaded is not None
     if content_changed and previous_resource_id != loaded.resource_id:
-        await _delete_resource_if_unreferenced(
-            previous_provider_code,
-            previous_resource_id,
-        )
+        await _delete_resource_if_unreferenced(previous_provider_code, previous_resource_id)
     await _enqueue_semantic_projection(loaded)
-    await _emit_memory_event("update", loaded)
+    await _emit_memory_event('update', loaded)
     if notify_observers:
-        await notify_memory_item(loaded.id, "update")
+        await notify_memory_item(loaded.id, 'update')
     return loaded
-
-
-async def restore_document_content_revision(
-    item_id: UUID,
-    revision: int,
-    *,
-    expected_revision: int,
-    actor_agent_id: int | HumanActor,
-) -> MemoryItem:
-    """Restore only editorial content while keeping current metadata and ACLs."""
-    from .dataset_port import dataset_compatibility
-    adapter = dataset_compatibility()
-    if adapter is not None and await adapter.contains(item_id):
-        await adapter.restore(item_id, actor_agent_id, revision, expected_revision)
-        loaded = await _get_item_record(item_id)
-        assert loaded is not None
-        return loaded
-
-    item, entry, content = await _document_content_revision(
-        item_id,
-        revision,
-        actor_agent_id=actor_agent_id,
-    )
-    await assert_item_access(item, actor_agent_id, write=True)
-    if expected_revision != item.revision:
-        raise MemoryConflictError(
-            f"Memory revision conflict: expected {expected_revision}, "
-            f"current revision is {item.revision}."
-        )
-    if entry.content_hash == item.content_hash:
-        return item
-    return await update_item(
-        item_id,
-        MemoryItemUpdate(
-            expected_revision=expected_revision,
-            payload=MemoryPayload(
-                text=content.decode("utf-8") if item.document_type != "html" else convert_to_html(
-                    archived_document_html(content.decode("utf-8"))
-                    if entry.media_type == "text/html" and item.content_profile == "document"
-                    else content.decode("utf-8"),
-                    entry.media_type, profile=item.content_profile
-                )
-            ),
-            media_type=item.media_type if item.document_type != "html" else "text/html",
-        ),
-        actor_agent_id=actor_agent_id,
-        document_revision_author_agent_id=None,
-    )
 
 
 async def _forget_item_record(
@@ -2221,8 +1504,7 @@ async def _forget_item_record(
 ) -> MemoryForgetResult:
     """Erase one already-authorized memory, including every resource revision."""
     if item.node_kind == "document":
-        from .sharing_inheritance import lock_sharing
-        await lock_sharing()
+        return await forget_document_reference(item, commit=commit)
     item_id = item.id
     original_content_hash = item.content_hash
     source_rows = list(
@@ -2238,9 +1520,7 @@ async def _forget_item_record(
         (item.provider_code, item.resource_id),
         *((entry.provider_code, entry.resource_id) for entry in item.revisions),
     }
-    summaries = list(await get_db().scalars(
-        select(MemorySummaryRevision).where(MemorySummaryRevision.item_id == item.id),
-    ))
+    summaries: list[MemoryRevision] = []
     resources.update((entry.provider_code, entry.resource_id) for entry in summaries)
     inline_resources = {(entry.provider_code, entry.resource_id)
                         for entry in (*item.revisions, *summaries) if entry.content is not None and entry.resource_id}
@@ -2250,53 +1530,6 @@ async def _forget_item_record(
         inline_resources.add((item.memory_provider_code, item.memory_resource_id))
     if item.memory_resource_id:
         resources.add((item.memory_provider_code, item.memory_resource_id))
-    if item.node_kind == "document":
-        from .models import DocumentAttachment
-        from .semantic_index import delete_item_embeddings
-
-        attachments = list(await get_db().scalars(select(DocumentAttachment).where(
-            DocumentAttachment.document_id == item.id,
-        )))
-        for attachment in attachments:
-            attachment.active = False
-            companion = await _get_item_record(attachment.memory_item_id)
-            if companion is None:
-                continue
-            resources.add((companion.provider_code, companion.resource_id))
-            resources.update((revision.provider_code, revision.resource_id) for revision in companion.revisions)
-            inline_resources.update((entry.provider_code, entry.resource_id) for entry in companion.revisions
-                                    if entry.content is not None and entry.resource_id)
-            if companion.content is not None and companion.resource_id:
-                inline_resources.add((companion.provider_code, companion.resource_id))
-            await delete_item_embeddings(companion.id)
-            for model in (MemoryRevision, MemorySource, MemoryUsage):
-                await get_db().execute(delete(model).where(model.item_id == companion.id))
-            await get_db().execute(delete(MemoryURL).where(MemoryURL.memory_node_id == companion.id))
-            await get_db().execute(delete(MemoryLink).where(or_(
-                MemoryLink.source_item_id == companion.id, MemoryLink.target_item_id == companion.id,
-            )))
-            await get_db().execute(delete(MemoryAssociation).where(or_(
-                MemoryAssociation.item_a_id == companion.id, MemoryAssociation.item_b_id == companion.id,
-            )))
-            set_committed_value(companion, "revisions", [])
-            await get_db().execute(delete(ShareGrant).where(ShareGrant.share_id == companion.share_id))
-            set_committed_value(companion, "grants", [])
-            set_committed_value(companion, "url_relations", [])
-            companion.primary_url = None
-            companion.file_sha256 = None
-            companion.file_media_type = None
-            companion.file_size_bytes = None
-            companion.search_text = ""
-            companion.title = "Forgotten attachment"
-            companion.keywords = []
-            companion.metadata_ = {}
-            companion.content_hash = _content_hash(b"")
-            companion.semantic_fingerprint = ""
-            companion.size_bytes = 0
-            companion.content = ""
-            companion.memory_content = ""
-            companion.resource_id = "forgotten"
-            companion.soft_delete()
     raw_attachments_value = [
         *item.metadata_.get("document_attachments", []),
         *item.metadata_.get("retained_document_attachments", []),
@@ -2326,8 +1559,6 @@ async def _forget_item_record(
     item.memory_resource_id = "forgotten"
     item.memory_content_hash = _content_hash(b"")
     item.memory_size_bytes = 0
-    if item.document is not None:
-        item.document.soft_delete()
     # Private projections can become ordinary owner-bound tombstones and release
     # their durable source identity. Public ownerless projections must retain it:
     # an ownerless, non-source-managed item would violate the governed-memory
@@ -2343,15 +1574,12 @@ async def _forget_item_record(
     from .semantic_index import delete_item_embeddings
 
     await delete_item_embeddings(item_id)
-    await db.execute(delete(MemorySummaryRevision).where(MemorySummaryRevision.item_id == item_id))
     for model in (MemoryRevision, MemorySource, MemoryUsage):
         await db.execute(delete(model).where(model.item_id == item_id))
     await db.execute(delete(MemoryURL).where(MemoryURL.memory_node_id == item_id))
     # Bulk DELETE bypasses relationship collections. Forgetting and then physically
     # deleting the same item must not cascade a second DELETE from stale loaded rows.
     set_committed_value(item, "revisions", [])
-    await db.execute(delete(ShareGrant).where(ShareGrant.share_id == item.share_id))
-    set_committed_value(item, "grants", [])
     set_committed_value(item, "url_relations", [])
     await db.execute(
         delete(MemoryLink).where(
@@ -2422,15 +1650,6 @@ async def _forget_item_record(
                     resolved_at=datetime.now(timezone.utc),
                 )
             )
-    if item.node_kind == "document":
-        from core.storage import retire_file_references
-
-        retired_files = await retire_file_references(f"document://{item_id}/attachments/")
-        resources.update(("native", str(identifier)) for identifier in retired_files)
-        await forget_resource_memories([f"document://{item_id}", *(f"file://{identifier}" for identifier in retired_files)], descendants=True)
-    if item.node_kind == "document":
-        from .sharing_inheritance import reconcile_sharing
-        await reconcile_sharing()
     if not commit:
         # The source owner must be able to roll back its deletion together with
         # Memory. External payload cleanup runs only after this transaction commits.
@@ -2441,7 +1660,7 @@ async def _forget_item_record(
         return MemoryForgetResult(memory_id=item_id, resources_deleted=len(inline_resources))
     await db.commit()
 
-    from .document_backup import archived_resources
+    from app.document.interface import archived_resources
     protected: set[tuple[str, str]] = set()
     for provider_code in {provider for provider, _resource in resources}:
         protected.update((provider_code, resource) for resource in await archived_resources(
@@ -2467,8 +1686,6 @@ async def _forget_item_record(
             await _schedule_resource_cleanup(provider_code, resource_id)
     await db.commit()
     await _emit_memory_event("delete", item)
-    if item.node_kind == "document":
-        await invalidate_memory_views()
     return MemoryForgetResult(memory_id=item_id, resources_deleted=deleted)
 
 
@@ -2477,6 +1694,34 @@ async def _schedule_resource_cleanup(provider_code: str, resource_id: str) -> No
     if await get_db().scalar(select(MemoryAutomationJob.id).where(MemoryAutomationJob.idempotency_key == key)) is None:
         get_db().add(MemoryAutomationJob(kind="resource_cleanup", idempotency_key=key,
             payload={"provider_code": provider_code, "resource_id": resource_id}))
+
+
+async def forget_document_reference(item: MemoryItem, *, commit: bool) -> MemoryForgetResult:
+    """Retire the rebuildable graph node without changing its source Document."""
+    from .semantic_index import delete_item_embeddings
+    db = get_db()
+    await delete_item_embeddings(item.id)
+    for model in (MemoryRevision, MemorySource, MemoryUsage):
+        await db.execute(delete(model).where(model.item_id == item.id))
+    await db.execute(delete(MemoryLink).where(or_(
+        MemoryLink.source_item_id == item.id, MemoryLink.target_item_id == item.id)))
+    await db.execute(delete(MemoryAssociation).where(or_(
+        MemoryAssociation.item_a_id == item.id, MemoryAssociation.item_b_id == item.id)))
+    await db.execute(delete(MemoryURL).where(MemoryURL.memory_node_id == item.id))
+    item.memory_content = ""
+    item.memory_resource_id = ""
+    item.memory_content_hash = _content_hash(b"")
+    item.memory_size_bytes = 0
+    item.search_text = ""
+    item.semantic_fingerprint = ""
+    item.soft_delete()
+    set_committed_value(item, "revisions", [])
+    set_committed_value(item, "url_relations", [])
+    await db.flush()
+    if commit:
+        await db.commit()
+        await invalidate_memory_views()
+    return MemoryForgetResult(memory_id=item.id, resources_deleted=0)
 
 
 async def forget_resource_memories(
@@ -2549,38 +1794,6 @@ async def forget_item(
         await assert_item_access(item, actor_agent_id)
     else:
         await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
-    return await _forget_item_record(item, forget_kind="explicit")
-
-
-async def delete_document(
-    document_id: UUID,
-    *,
-    actor_agent_id: int | HumanActor | None,
-    administrative: bool = False,
-) -> MemoryForgetResult:
-    """Delete a document together with its synthesis and dependent resources."""
-    item = await document_record(document_id)
-    if item is None:
-        raise MemoryNotFoundError("Document not found.")
-    _assert_not_deletion_protected(item)
-    _assert_not_source_managed(item)
-    owns_item = (
-        item.owner_agent_id == actor_agent_id if isinstance(actor_agent_id, int)
-        else isinstance(actor_agent_id, HumanActor) and item.owner_user_id == actor_agent_id.user_id
-    )
-    if not administrative and not owns_item:
-        raise MemoryPermissionError("Only the document owner can permanently forget it.")
-    if not administrative and owns_item:
-        await assert_item_access(item, actor_agent_id)
-    else:
-        await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
-    from .dataset_port import dataset_compatibility
-    adapter = dataset_compatibility()
-    if item.document_type == "dataset" and adapter is not None and await adapter.contains(document_id):
-        actor = item.owner_agent_id if item.owner_agent_id is not None else HumanActor(item.owner_user_id or 0)
-        await adapter.remove(document_id, actor)
-        await get_db().commit()
-        return MemoryForgetResult(memory_id=document_id, resources_deleted=0)
     return await _forget_item_record(item, forget_kind="explicit")
 
 
@@ -2751,196 +1964,10 @@ async def preview_retention(days: int) -> MemoryRetentionPreview:
     )
 
 
-async def set_item_grant(
-    item_id: UUID,
-    agent_id: int,
-    data: MemoryGrantUpdate,
-    *,
-    actor_agent_id: int | None = None,
-    actor_task_id: UUID | None = None,
-    include_revisions: bool = True,
-) -> MemoryItem:
-    from .sharing_inheritance import lock_sharing, prepare_own_sharing, finish_own_sharing
-    await lock_sharing()
-    item = await _get_item_record(item_id, revisions=include_revisions)
-    if item is None:
-        raise MemoryNotFoundError("Memory not found.")
-    if item.document_type == "dataset":
-        from .dataset_port import dataset_compatibility
-        if adapter := dataset_compatibility():
-            await adapter.adopt(item.id)
-            # The omitted actor is reserved for trusted engine/bootstrap callers.
-            principal = actor_agent_id if actor_agent_id is not None else (item.owner_agent_id if item.owner_agent_id is not None else HumanActor(item.owner_user_id or 0))
-            await adapter.grant(item.id, principal, "agent", agent_id, data.can_write)
-            await get_db().refresh(item)
-            return item
-    _assert_not_source_managed(item)
-    if item.node_kind != "document":
-        raise MemoryPermissionError("Sharing belongs to documents; memories are private.")
-    if data.expected_lock_version is not None and data.expected_lock_version != item.lock_version:
-        raise MemoryConflictError(
-            "The document changed while sharing was being edited; reload and retry."
-        )
-    if agent_id == item.owner_agent_id:
-        raise MemoryConflictError("The owner already has direct access to this memory.")
-    await prepare_own_sharing(item)
-    db = get_db()
-    grant = await db.scalar(
-        select(ShareGrant).where(
-            ShareGrant.share_id == MemoryItem.share_for(item_id),
-            ShareGrant.agent_id == agent_id,
-        )
-    )
-    if grant is None:
-        db.add(ShareGrant(share_id=MemoryItem.share_for(item_id), agent_id=agent_id, can_write=data.can_write))
-    else:
-        grant.can_write = data.can_write
-    if item.visibility != "public":
-        item.visibility = "shared"
-    if item.node_kind == "document":
-        # Grant rows are versioned independently; explicitly dirty the parent so
-        # two concurrent sharing edits still contend on the document lock.
-        item.lock_version += 1
-    if item.node_kind != "document":
-        item.revision += 1
-        db.add(
-            _revision_for(
-                item,
-                author_agent_id=actor_agent_id,
-                task_id=actor_task_id,
-            )
-        )
-    await finish_own_sharing(item)
-    await _commit_with_conflict(
-        "The document changed while sharing was being edited; reload and retry."
-    )
-    loaded = await _get_item_record(item_id, revisions=include_revisions)
-    assert loaded is not None
-    await _emit_memory_event("update", loaded)
-    await notify_memory_item(loaded.id, "sharing")
-    return loaded
-
-
-async def has_document_grants(item_id: UUID) -> bool:
-    return bool(await get_db().scalar(select(
-        exists(select(ShareGrant.id).where(ShareGrant.share_id == MemoryItem.share_for(item_id))),
-    )))
-
-
-async def set_document_global_access(
-    item_id: UUID,
-    data: DocumentGlobalAccessUpdate,
-    *,
-    actor_agent_id: int | None = None,
-    actor_task_id: UUID | None = None,
-    include_revisions: bool = True,
-) -> MemoryItem:
-    """Set the durable public permission for authenticated humans and Agents."""
-    from .sharing_inheritance import lock_sharing, prepare_own_sharing, finish_own_sharing
-    await lock_sharing()
-    item = await _get_item_record(item_id, revisions=include_revisions)
-    if item is None:
-        raise MemoryNotFoundError("Memory not found.")
-    _assert_not_source_managed(item)
-    if item.node_kind != "document":
-        raise MemoryConflictError("Global access is only available for documents.")
-    if data.expected_revision != item.revision:
-        raise MemoryConflictError(
-            f"Memory revision conflict: expected {data.expected_revision}, "
-            f"current revision is {item.revision}."
-        )
-    if data.expected_lock_version is not None and data.expected_lock_version != item.lock_version:
-        raise MemoryConflictError(
-            "The document changed while sharing was being edited; reload and retry."
-        )
-    await prepare_own_sharing(item)
-    has_grants = await has_document_grants(item_id)
-    item.global_access = data.global_access
-    item.group_access = 0
-    item.visibility = "shared" if data.global_access > 0 or has_grants else "private"
-    await finish_own_sharing(item)
-    await commit_item_sharing(item)
-    loaded = await _get_item_record(item_id, revisions=include_revisions)
-    assert loaded is not None
-    await _emit_memory_event("update", loaded)
-    await invalidate_memory_views()
-    await notify_memory_item(loaded.id, "sharing")
-    return loaded
-
-
 async def get_item_owner_agent_id(item_id: UUID) -> int | None:
     """Resolve an active Memory owner's Agent id for human API scoping."""
 
     return await get_db().scalar(select(MemoryItem.owner_agent_id).where(MemoryItem.id == item_id))
-
-
-async def remove_item_grant(
-    item_id: UUID,
-    agent_id: int,
-    *,
-    actor_agent_id: int | None = None,
-    actor_task_id: UUID | None = None,
-    expected_lock_version: int | None = None,
-    include_revisions: bool = True,
-) -> MemoryItem:
-    from .sharing_inheritance import lock_sharing, prepare_own_sharing, finish_own_sharing
-    await lock_sharing()
-    item = await _get_item_record(item_id, revisions=include_revisions)
-    if item is None:
-        raise MemoryNotFoundError("Memory not found.")
-    if item.document_type == "dataset":
-        from .dataset_port import dataset_compatibility
-        if adapter := dataset_compatibility():
-            await adapter.adopt(item.id)
-            principal = actor_agent_id if actor_agent_id is not None else (item.owner_agent_id if item.owner_agent_id is not None else HumanActor(item.owner_user_id or 0))
-            await adapter.grant(item.id, principal, "agent", agent_id, None)
-            await get_db().refresh(item)
-            return item
-    _assert_not_source_managed(item)
-    if item.node_kind != "document":
-        raise MemoryPermissionError("Sharing belongs to documents; memories are private.")
-    if expected_lock_version is not None and expected_lock_version != item.lock_version:
-        raise MemoryConflictError(
-            "The document changed while sharing was being edited; reload and retry."
-        )
-    await prepare_own_sharing(item)
-    db = get_db()
-    grant = await db.scalar(
-        select(ShareGrant).where(
-            ShareGrant.share_id == MemoryItem.share_for(item_id),
-            ShareGrant.agent_id == agent_id,
-        )
-    )
-    if grant is not None:
-        await db.delete(grant)
-        await db.flush()
-        remaining = await has_document_grants(item_id)
-        if not remaining and item.global_access == 0 and item.group_access == 0 and item.visibility == "shared":
-            item.visibility = "private"
-        if item.node_kind != "document":
-            item.revision += 1
-            db.add(
-                _revision_for(
-                    item,
-                    author_agent_id=actor_agent_id,
-                    task_id=actor_task_id,
-                )
-            )
-        else:
-            # Deleting a grant may leave visibility unchanged, so make the
-            # document row participate in optimistic concurrency explicitly.
-            item.lock_version += 1
-    await finish_own_sharing(item)
-    await _commit_with_conflict(
-        "The document changed while sharing was being edited; reload and retry."
-    )
-    loaded = await _get_item_record(item_id, revisions=include_revisions)
-    assert loaded is not None
-    if grant is not None:
-        await _emit_memory_event("update", loaded)
-        await invalidate_memory_views()
-        await notify_memory_item(loaded.id, "sharing")
-    return loaded
 
 
 async def record_llm_retrieval(
@@ -3334,184 +2361,6 @@ async def projected_topic_item_id(topic_id: UUID | None) -> UUID | None:
             MemoryItem.owner_agent_id.is_(None),
         )
     )
-
-
-async def managed_document_agent_ids(
-    document_id: UUID,
-    *,
-    managed_agent_ids: Collection[int] | None,
-) -> tuple[MemoryItem, tuple[int, ...], tuple[int, ...]]:
-    """Load one document and resolve its effective managed-Agent access."""
-
-    item = await _get_item_record(document_id, revisions=False, contents=False)
-    if item is None or item.node_kind != "document":
-        raise MemoryNotFoundError("Document not found.")
-    readable_agent_ids, writable_agent_ids = await managed_item_agent_ids(
-        item,
-        managed_agent_ids,
-    )
-    if not readable_agent_ids:
-        raise MemoryNotFoundError("Document not found.")
-    return item, readable_agent_ids, writable_agent_ids
-
-
-async def transfer_document_owner(
-    document_id: UUID,
-    data: DocumentOwnerUpdate,
-    *,
-    actor_agent_id: int | HumanActor,
-    include_revisions: bool = True,
-) -> MemoryItem:
-    """Transfer a document while preserving the current editor's write access."""
-    from .sharing_inheritance import lock_sharing, prepare_own_sharing, finish_own_sharing
-    await lock_sharing()
-    item = await _get_item_record(document_id, revisions=include_revisions)
-    if item is None or item.node_kind != "document":
-        raise MemoryNotFoundError("Document not found.")
-    _assert_not_source_managed(item)
-    await assert_item_access(item, actor_agent_id, write=True)
-    if data.expected_revision != item.revision:
-        raise MemoryConflictError(
-            f"Memory revision conflict: expected {data.expected_revision}, "
-            f"current revision is {item.revision}."
-        )
-
-    if data.expected_lock_version is not None and data.expected_lock_version != item.lock_version:
-        raise MemoryConflictError(
-            "The document changed while ownership was being edited; reload and retry."
-        )
-
-    unchanged = (
-        data.kind == "agent" and item.owner_agent_id == data.id and item.owner_user_id is None
-    ) or (data.kind == "user" and item.owner_user_id == data.id and item.owner_agent_id is None)
-    if unchanged:
-        return item
-    if _is_goal_document(item):
-        raise MemoryPermissionError(
-            "The title, owner, and path of a Goal document are controlled by its Goal "
-            "and cannot be changed directly."
-        )
-
-    if data.kind == "agent":
-        if await get_agent_record(data.id) is None:
-            raise ValueError("Agent owner not found.")
-    else:
-        owner_user = await get_user_record(data.id)
-        if owner_user is None or not owner_user.is_active:
-            raise ValueError("User owner not found.")
-
-    await prepare_own_sharing(item)
-    db = get_db()
-    if data.kind == "agent":
-        item.owner_agent_id = data.id
-        item.owner_user_id = None
-        await db.execute(
-            delete(ShareGrant).where(
-                ShareGrant.share_id == MemoryItem.share_for(document_id),
-                ShareGrant.agent_id == data.id,
-            )
-        )
-    else:
-        item.owner_agent_id = None
-        item.owner_user_id = data.id
-        await db.execute(
-            delete(ShareGrant).where(
-                ShareGrant.share_id == item.share_id,
-                ShareGrant.user_id == data.id,
-            )
-        )
-
-    if isinstance(actor_agent_id, HumanActor):
-        if data.kind != "user" or data.id != actor_agent_id.user_id:
-            human_grant = await db.scalar(select(ShareGrant).where(ShareGrant.share_id == MemoryItem.share_for(document_id), ShareGrant.user_id == actor_agent_id.user_id))
-            if human_grant is None:
-                db.add(ShareGrant(share_id=MemoryItem.share_for(document_id), user_id=actor_agent_id.user_id, can_write=True))
-            else:
-                human_grant.can_write = True
-    elif data.kind != "agent" or data.id != actor_agent_id:
-        actor_grant = await db.scalar(
-            select(ShareGrant).where(
-                ShareGrant.share_id == MemoryItem.share_for(document_id),
-                ShareGrant.agent_id == actor_agent_id,
-            )
-        )
-        if actor_grant is None:
-            db.add(
-                ShareGrant(share_id=MemoryItem.share_for(document_id),
-                    agent_id=actor_agent_id,
-                    can_write=True,
-                )
-            )
-        else:
-            actor_grant.can_write = True
-
-    await db.flush()
-    has_grants = await has_document_grants(document_id)
-    item.visibility = "shared" if has_grants or item.global_access > 0 or item.group_access > 0 else "private"
-    await finish_own_sharing(item)
-    await commit_item_sharing(item)
-    loaded = await _get_item_record(document_id, revisions=include_revisions)
-    assert loaded is not None
-    await _emit_memory_event("update", loaded)
-    await notify_memory_item(loaded.id, "update")
-    return loaded
-
-
-async def list_document_folders(agent_id: int) -> list[str]:
-    """List distinct logical folders from documents readable by one agent."""
-
-    now = datetime.now(timezone.utc)
-    result = await get_db().scalars(
-        select(MemoryItem.metadata_).where(
-            readable_item_clause(agent_id),
-            MemoryItem.node_kind == "document",
-            or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
-            or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
-        )
-    )
-    folders = {
-        value.strip().strip("/")
-        for metadata in result.all()
-        if isinstance((value := metadata.get("document_path")), str)
-        and value.strip().strip("/")
-    }
-    return sorted(folders, key=str.casefold)
-
-
-async def list_document_folder_options(agent_id: int) -> list[DocumentFolderOption]:
-    """Describe readable folders, including ancestors, from their documents' actual roles and grants."""
-
-    now = datetime.now(timezone.utc)
-    items = await get_db().scalars(
-        select(MemoryItem)
-        .options(selectinload(MemoryItem.grants), raiseload(MemoryItem.revisions),
-                 defer(MemoryItem.memory_content), selectinload(MemoryItem.document).defer(Document.content))
-        .where(
-            readable_item_clause(agent_id),
-            MemoryItem.node_kind == "document",
-            or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
-            or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
-        )
-    )
-    folders: dict[str, DocumentFolderOption] = {}
-    for item in items:
-        raw_path = item.metadata_.get("document_path")
-        if not isinstance(raw_path, str):
-            continue
-        parts = [part.strip() for part in raw_path.replace("\\", "/").split("/") if part.strip()]
-        if any(part in {".", ".."} for part in parts):
-            continue
-        readers = {grant.agent_id for grant in item.grants}
-        if item.owner_agent_id is not None:
-            readers.add(item.owner_agent_id)
-        shared = item.visibility == "public" or item.global_access >= 1 or len(readers) > 1
-        for depth in range(1, len(parts) + 1):
-            path = "/".join(parts[:depth])
-            folder = folders.setdefault(path, DocumentFolderOption(path=path, kind="custom", shared=False))
-            if _is_goal_document(item):
-                folder.kind = "goal"
-            folder.shared = folder.shared or shared
-    return sorted(folders.values(), key=lambda folder: folder.path.casefold())
 
 
 async def list_filter_options(agent_id: int) -> MemoryFilterOptions:
@@ -4624,10 +3473,7 @@ __all__ = [
     "list_revisions",
     "move_topic_memory_links",
     "preview_retention",
-    "remove_item_grant",
     "search_items",
-    "set_item_grant",
-    "set_document_global_access",
     "update_item",
     "upsert_source_managed_item",
 ]

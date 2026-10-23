@@ -19,8 +19,8 @@ from core.util import RichTextError, convert_legacy_to_html, visible_text
 from .models import MemoryItem
 from .service import _revision_for, refresh_document_search  # pyright: ignore[reportPrivateUsage]
 from .semantic_index import semantic_fingerprint
-from .storage import get_storage
-from .inline_content import prepare_content
+from core.storage import get_storage
+from core.storage import prepare_content
 
 
 def needs_html_conversion(transitions: SchemaTransitionSet) -> bool:

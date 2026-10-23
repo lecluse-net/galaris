@@ -1193,10 +1193,9 @@ the durable identity.
   `file_delete` when removal is requested. Viewing the parent document grants attachment reads;
   create, copy, and delete require edit access. Attachment changes never create document-content
   revisions.
-- `memory_sharing(memory_id: str, search: str = "", kind: str | None = None,
+- `document_sharing(document_id: str, search: str = "", kind: str | None = None,
   offset: int = 0, limit: int = 50) -> str` inspects sharing of a document you own.
-  Standalone memories cannot be shared. Pass its exact `document://<uuid>` URI
-  (a UUID or a legacy `memory://<uuid>` alias for the document is also accepted).
+  Personal memories cannot be shared. Pass its exact `document://<uuid>` URI or UUID.
   `options` contains exact recipient IDs and names with `kind="agent"`, `"user"` or `"team"`;
   teams are the groups shown in the interface. `owner_groups` identifies your own groups.
   Read `grants`, `can_manage` and the current `lock_version` before changing access.
@@ -1205,12 +1204,8 @@ the durable identity.
 - `document_share(document_id: str, agent_id: int | None = None, access: str = "edit",
   team_id: int | None = None, user_id: int | None = None,
   expected_lock_version: int | None = None) -> str` shares an owned working document.
-- `memory_share(memory_id: str, agent_id: int | None = None, access: str = "read",
-  team_id: int | None = None, user_id: int | None = None,
-  expected_lock_version: int | None = None) -> str` is a compatibility alias for
-  sharing an owned document. Standalone memories cannot be shared.
-  For either mutation, supply **exactly one** of `agent_id`, `user_id`, `team_id` from
-  `memory_sharing`, and pass its `lock_version` as `expected_lock_version`. `read` allows
+  Supply **exactly one** of `agent_id`, `user_id`, `team_id` from
+  `document_sharing`, and pass its `lock_version` as `expected_lock_version`. `read` allows
   reading, `edit` allows reading and editing, and `none` removes that recipient's direct grant.
   Other recipients, public access and grants through another team remain unchanged. Sharing
   increments the ACL `lock_version`, not the content `revision`; on a conflict, inspect again.
@@ -1223,7 +1218,7 @@ between the owner and recipient: document ACLs are finer than dialogue permissio
 
 Example — share with a group:
 
-1. `memory_sharing("document://<uuid>")`; select the requested group from `options` where
+1. `document_sharing("document://<uuid>")`; select the requested group from `options` where
    `kind="team"`, using its returned `id` rather than guessing from its name.
 2. `document_share("document://<uuid>", team_id=THE_RETURNED_ID, access="edit",
    expected_lock_version=THE_RETURNED_LOCK_VERSION)`.
@@ -1268,14 +1263,14 @@ Neither a shorter document nor a full rewrite is a goal in itself; leave useful 
 content in place. This editorial guidance does not call for compacting Dataset entries or code.
 
 New documents are private. Before handing a document to an intended human, agent or team, inspect
-`memory_sharing` and grant that recipient `read` access, or `edit` for collaboration, using
+`document_sharing` and grant that recipient `read` access, or `edit` for collaboration, using
 `document_share` and the returned recipient ID and `lock_version`. Only claim sharing after the
 tool succeeds. Citing its URI or calling `document_show` does not grant access.
 
 For collaboration on a document:
 
 1. Create or find the HTML document and retain its exact URI.
-2. Inspect `memory_sharing`, then call `document_share(..., access="edit")` for the selected
+2. Inspect `document_sharing`, then call `document_share(..., access="edit")` for the selected
    agent or team before `task_run`.
 3. Put the document URI and the requested section in the delegated Task's HTML objective.
 4. Each agent reads the relevant passages, then integrates corrections with `file_edit` or adds

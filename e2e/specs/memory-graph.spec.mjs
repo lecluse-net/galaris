@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -162,7 +163,7 @@ for (const width of [1440, 390]) test(`exclusive memory branches remain accessib
   await page.getByRole('tab', { name: 'Graphe', exact: true }).click()
   await expect(grouped).toBeVisible()
 
-  const documentResponse = await request.post('/api/memory/items', { headers, data: {
+  const documentResponse = await createDocument(request, { headers, data: {
     owner_agent_id: fixture.agent_id, title: 'Synthetic thumbnail report', node_kind: 'document',
     media_type: 'text/html', payload: { text: '<h1>Synthetic report</h1><p>Preserved document content.</p>' },
   } })

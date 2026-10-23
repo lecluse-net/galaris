@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { collectPageErrors } from '../page-errors.mjs'
@@ -27,14 +28,14 @@ for (const width of [1440, 390]) test(`Files browses real agent resources and re
   // Decode a real MP4 rather than inferring codec support from a browser-created WebM.
   const video = await checked(await request.post(`/api/file-share/files?agent_id=${fixture.agent_id}`, { headers,
     multipart: { upload: { name: 'Synthetic video.mp4', mimeType: 'video/mp4', buffer: await readFile(new URL('../fixtures/synthetic-video.mp4', import.meta.url)) } } }))
-  const document = await checked(await request.post('/api/memory/items', {
+  const document = await checked(await createDocument(request, {
     headers: { ...headers, 'X-Editorial-Profile-Version': '1' }, data: {
       owner_agent_id: fixture.agent_id, title: 'Synthetic browser document', node_kind: 'document',
       media_type: 'text/html', payload: { text: '<p>Synthetic assembled document content</p>' },
     },
   }))
   expect(document.id).toBeTruthy()
-  await checked(await request.post(`/api/memory/documents/${document.id}/attachments?actor_agent_id=${fixture.agent_id}`, {
+  await checked(await request.post(`/api/documents/${document.id}/attachments?actor_agent_id=${fixture.agent_id}`, {
     headers, multipart: { file: { name: 'Synthetic appendix.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic assembled attachment content') } },
   }))
   await errors.settle()

@@ -190,12 +190,12 @@ for (const directUpload of [false, true]) test(`the document ${directUpload ? 'u
   const current = { ...documentFixture, id: documentId, media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Report</p><p>Closing note</p>' } }
   const attachment = { id: attachmentId, name: 'scene.html', media_type: 'text/html', size_bytes: 850305 }
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/folders?*', [])
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/folders?*', [])
   let uploaded = !directUpload
   let uploads = 0
-  await page.route(`**/api/memory/documents/${documentId}/attachments?*`, route => {
+  await page.route(`**/api/documents/${documentId}/attachments?*`, route => {
     if (route.request().method() === 'POST') {
       uploads++
       uploaded = true
@@ -203,13 +203,13 @@ for (const directUpload of [false, true]) test(`the document ${directUpload ? 'u
     }
     return route.fulfill({ json: uploaded ? [attachment] : [] })
   })
-  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
-  await page.route(`**/api/memory/documents/${documentId}?*`, route => {
+  await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+  await page.route(`**/api/documents/${documentId}?*`, route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { item: current } })
     Object.assign(current, route.request().postDataJSON(), { revision: current.revision + 1, lock_version: current.lock_version + 1 })
     return route.fulfill({ json: current })
   })
-  await mount(page, 'core/util/components/WorkingDocumentEditor.vue', { props: { documentId, agentId: 7 }, privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'core/util/components/WorkingDocumentEditor.vue', { props: { documentId, agentId: 7 }, privileges: ['DOCUMENT_EDIT'] })
   await expect(page.getByRole('textbox', { name: 'Content', exact: true })).toContainText('Report')
   if (!directUpload) {
     await expect(page.locator('.document-attachments')).toContainText('scene.html')
@@ -379,26 +379,26 @@ test('document link thumbnails survive saving, reopening and repeated conversion
   const attachment = { id: attachmentId, name: 'link-preview.jpg', media_type: 'image/jpeg', size_bytes: 100 }
   let cardCalls = 0, imageCalls = 0
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/folders?*', [])
-  await jsonRoute(page, `**/api/memory/documents/${documentId}/attachments?*`, [attachment])
-  await page.route(`**/api/memory/documents/${documentId}/link-card?*`, route => {
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/folders?*', [])
+  await jsonRoute(page, `**/api/documents/${documentId}/attachments?*`, [attachment])
+  await page.route(`**/api/documents/${documentId}/link-card?*`, route => {
     cardCalls++
     expect(route.request().postDataJSON()).toEqual({ url })
     return route.fulfill({ json: { attachment, html: `<blockquote class="galaris-link-card"><figure class="image"><a href="${url}"><img src="${uri}" alt="News" width="320"></a></figure><p><a href="${url}"><strong>News</strong></a></p><p>Daily news</p><p><a href="${url}">Publisher</a></p></blockquote>` } })
   })
-  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}?*`, route => {
+  await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}?*`, route => {
     imageCalls++
     return route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') })
   })
-  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
-  await page.route(`**/api/memory/documents/${documentId}?*`, route => {
+  await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+  await page.route(`**/api/documents/${documentId}?*`, route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { item: current } })
     Object.assign(current, route.request().postDataJSON(), { revision: current.revision + 1, lock_version: current.lock_version + 1 })
     return route.fulfill({ json: current })
   })
-  const options = { props: { documentId, agentId: 7 }, privileges: ['MEMORY_EDIT'] }
+  const options = { props: { documentId, agentId: 7 }, privileges: ['DOCUMENT_EDIT'] }
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
   await page.locator('[data-editor-surface] a').click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
@@ -433,7 +433,7 @@ test('document link thumbnails survive saving, reopening and repeated conversion
   expect(current.payload.text).toBe(savedContent)
   expect(current.revision).toBe(savedRevision)
   // An unavailable preview stays reversible without repetitive notifications.
-  await jsonRoute(page, `**/api/memory/documents/${documentId}/link-card?*`, {
+  await jsonRoute(page, `**/api/documents/${documentId}/link-card?*`, {
     attachment: null,
     html: `<blockquote class="galaris-link-card"><p><a href="${url}">example.org</a></p></blockquote>`,
   })
@@ -463,18 +463,18 @@ test('document attachments upload below the content, retry after failure and rem
   const files = []
   let failUpload = true
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice' }], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/folders?*', [])
-  await page.route(`**/api/memory/documents/${documentId}/attachments?*`, route => {
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice' }], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/folders?*', [])
+  await page.route(`**/api/documents/${documentId}/attachments?*`, route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: files })
     if (failUpload) { failUpload = false; return route.fulfill({ status: 503, json: { detail: 'Synthetic upload failure' } }) }
     const attachment = { id: attachmentId, name: 'report.bin', media_type: 'application/octet-stream', size_bytes: 6 }
     files.push(attachment)
     return route.fulfill({ json: attachment })
   })
-  await page.route(`**/api/memory/documents/${documentId}?*`, route => route.fulfill({ json: { item: current } }))
-  const options = { props: { documentId, agentId: 7 }, privileges: ['MEMORY_EDIT'] }
+  await page.route(`**/api/documents/${documentId}?*`, route => route.fulfill({ json: { item: current } }))
+  const options = { props: { documentId, agentId: 7 }, privileges: ['DOCUMENT_EDIT'] }
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
   const editor = page.locator('[data-editor-surface]')
   const zone = page.getByRole('region', { name: 'Attachments', exact: true })
@@ -513,10 +513,10 @@ for (const editable of [true, false]) for (const reference of ['link', 'image'])
     { id: attachmentId, name: 'embedded.png', media_type: 'image/png', size_bytes: 10 },
     { id: secondId, name: 'remaining.bin', media_type: 'application/octet-stream', size_bytes: 20 },
   ]
-  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
-  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
-  await page.route(`**/api/memory/documents/${documentId}/attachments/${secondId}?*`, route => route.fulfill({ status: 204 }))
-  await mount(page, 'app/memory/components/DocumentAttachments.vue', { props: {
+  await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+  await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+  await page.route(`**/api/documents/${documentId}/attachments/${secondId}?*`, route => route.fulfill({ status: 204 }))
+  await mount(page, 'app/document/components/DocumentAttachments.vue', { props: {
     documentId, agentId: 7, editable, allowInsertion: true, attachments: files,
     content: (reference === 'image' ? `<p><img src="${uri}"></p>` : `<p><a href="${uri}">Embedded</a></p>`)
       + `<pre><code>${secondUri}</code></pre>`,
@@ -706,23 +706,23 @@ for (const format of ['HTML', 'Markdown']) test(`pasted ${format} document image
   const attachment = { id: attachmentId, name: 'pasted-image.png', media_type: 'image/png', size_bytes: 68 }
   let imported = false
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice' }], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/folders?*', [])
-  await page.route(`**/api/memory/documents/${documentId}/attachments?*`, route => route.fulfill({ json: imported ? [attachment] : [] }))
-  await page.route(`**/api/memory/documents/${documentId}/import-image?*`, route => {
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice' }], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/folders?*', [])
+  await page.route(`**/api/documents/${documentId}/attachments?*`, route => route.fulfill({ json: imported ? [attachment] : [] }))
+  await page.route(`**/api/documents/${documentId}/import-image?*`, route => {
     expect(route.request().postDataJSON()).toEqual({ url: 'https://example.org/picture.png' })
     expect(new URL(route.request().url()).searchParams.get('actor_agent_id')).toBe('7')
     imported = true
     return route.fulfill({ json: attachment })
   })
-  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
-  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
-  await page.route(`**/api/memory/documents/${documentId}?*`, route => {
+  await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+  await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+  await page.route(`**/api/documents/${documentId}?*`, route => {
     if (route.request().method() !== 'GET') Object.assign(current, route.request().postDataJSON(), { revision: current.revision + 1, lock_version: current.lock_version + 1 })
     return route.fulfill({ json: route.request().method() === 'GET' ? { item: current } : current })
   })
-  const options = { props: { documentId, agentId: 7 }, privileges: ['MEMORY_EDIT'] }
+  const options = { props: { documentId, agentId: 7 }, privileges: ['DOCUMENT_EDIT'] }
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
   await page.locator('[data-editor-surface]').click()
   await paste(page, format === 'HTML' ? '<p>Illustration</p><p><img src="https://example.org/picture.png" alt="Diagram"></p>' : 'Illustration\n\n![Diagram](https://example.org/picture.png)')
@@ -774,12 +774,12 @@ test('HTML paste preserves typing during image download and remains one undo ste
 
 test('HTML attachments show loading then run in their isolated viewer', async ({ page }) => {
   let finish
-  await page.route('**/api/memory/documents/*/attachments/*/thumbnail?*', route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
-  await page.route(`**/api/memory/documents/${documentId}/attachments/${attachmentId}?*`, async route => {
+  await page.route('**/api/documents/*/attachments/*/thumbnail?*', route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+  await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}?*`, async route => {
     await new Promise(resolve => { finish = resolve })
     await route.fulfill({ contentType: 'text/html', body: '<html><body><button onclick="this.textContent=\'Clicked\'">Interact</button></body></html>' })
   })
-  await mount(page, 'app/memory/components/DocumentAttachments.vue', { props: { documentId, agentId: 7, attachments: [{ id: attachmentId, name: 'scene.html', media_type: 'text/html', size_bytes: 200 }], editable: true, content: `<a href="${uri}">Scene</a>` } })
+  await mount(page, 'app/document/components/DocumentAttachments.vue', { props: { documentId, agentId: 7, attachments: [{ id: attachmentId, name: 'scene.html', media_type: 'text/html', size_bytes: 200 }], editable: true, content: `<a href="${uri}">Scene</a>` } })
   await page.locator('.document-attachments .resource-preview-main').click()
   await expect(page.getByText('Loading content…')).toBeVisible()
   finish()
@@ -797,12 +797,12 @@ test('HTML attachments show loading then run in their isolated viewer', async ({
 
 test('dropping multiple files permits cancellation and explains removal of a used file', async ({ page }) => {
   let uploads = 0, finish
-  await page.route(`**/api/memory/documents/${documentId}/attachments?*`, async route => {
+  await page.route(`**/api/documents/${documentId}/attachments?*`, async route => {
     uploads++
     await new Promise(resolve => { finish = resolve })
     await route.fulfill({ json: { id: attachmentId, name: 'scene.html', media_type: 'text/html', size_bytes: 20 } }).catch(() => {})
   })
-  await mount(page, 'app/memory/components/DocumentAttachments.vue', { props: { documentId, agentId: 7, editable: true, allowInsertion: true, attachments: [] } })
+  await mount(page, 'app/document/components/DocumentAttachments.vue', { props: { documentId, agentId: 7, editable: true, allowInsertion: true, attachments: [] } })
   await page.locator('.document-attachments').evaluate(root => {
     const data = new DataTransfer()
     data.items.add(new File(['<html>Scene</html>'], 'scene.html', { type: 'text/html' }))

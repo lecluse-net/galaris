@@ -31,7 +31,7 @@ async def legacy_inventory(session: AsyncSession) -> list[LegacyFile]:
     # SHARE locks exclude legacy writers for the transaction. Upgrade orchestration
     # also stops old application workers before launching DbAdmin.
     await session.execute(text("SET LOCAL lock_timeout = '10s'"))
-    for table in ("memory_items", "memory_revisions", "document_attachments", "messenger_files", "messenger_messages", "messenger_message_files"):
+    for table in ("documents", "document_revisions", "memory_items", "memory_revisions", "document_attachments", "messenger_files", "messenger_messages", "messenger_message_files"):
         await session.execute(text(f"LOCK TABLE {table} IN SHARE MODE"))
     entries: dict[tuple[str, str], _Candidate] = {}
 
@@ -43,7 +43,9 @@ async def legacy_inventory(session: AsyncSession) -> list[LegacyFile]:
         entry.aliases.add(alias)
 
     rows = await session.execute(text("""
-        SELECT id AS document_uuid, metadata FROM memory_items
+        SELECT id AS document_uuid, metadata FROM documents
+        UNION ALL SELECT document_id, metadata FROM document_revisions
+        UNION ALL SELECT id, metadata FROM memory_items
         UNION ALL SELECT item_id, metadata FROM memory_revisions
     """))
     snapshots = [(row.document_uuid, row.metadata, False) for row in rows]
@@ -53,6 +55,14 @@ async def legacy_inventory(session: AsyncSession) -> list[LegacyFile]:
                    snapshot->'metadata' AS metadata
             FROM galaris_migration.memory_document_split_rows
             WHERE table_name IN ('memory_items', 'memory_revisions')
+        """))
+        snapshots.extend((row.document_uuid, row.metadata, True) for row in archived)
+    if await session.scalar(text("SELECT to_regclass('galaris_migration.document_independence_rows') IS NOT NULL")):
+        archived = await session.execute(text("""
+            SELECT COALESCE(snapshot->>'document_id', snapshot->>'item_id', snapshot->>'id') AS document_uuid,
+                   snapshot->'metadata' AS metadata
+            FROM galaris_migration.document_independence_rows
+            WHERE source IN ('documents', 'document_revisions', 'memory_items', 'memory_revisions')
         """))
         snapshots.extend((row.document_uuid, row.metadata, True) for row in archived)
     for document_uuid, metadata, is_archived in snapshots:
@@ -81,7 +91,7 @@ async def legacy_inventory(session: AsyncSession) -> list[LegacyFile]:
     # Historical manifests and immutable archives above remain authoritative.
     for row in await session.execute(text("""
         SELECT a.id, a.document_id FROM document_attachments a
-        JOIN memory_items m ON m.id = a.document_id AND m.deleted_at IS NULL
+        JOIN documents d ON d.id = a.document_id AND d.deleted_at IS NULL
     """)):
         if ("document", str(row.id)) not in entries:
             add("document", row.id, str(row.id), None, f"document://{row.document_id}/attachments/{row.id}")

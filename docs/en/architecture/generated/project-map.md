@@ -9,17 +9,17 @@ tests remain authoritative for behavior.
 
 ## Summary
 
-- 77 declared backend modules;
-- 39 declared frontend modules;
-- 604 backend dependency edges;
-- 210 frontend dependency edges;
-- 287 edges between `app`/`bridge` domains;
-- 27 directly bidirectional domain pairs;
+- 78 declared backend modules;
+- 40 declared frontend modules;
+- 627 backend dependency edges;
+- 218 frontend dependency edges;
+- 300 edges between `app`/`bridge` domains;
+- 28 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 737 detected HTTP/WebSocket handlers;
+- 735 detected HTTP/WebSocket handlers;
 - 176 detected SQLAlchemy tables;
-- 273 detected native MCP tools;
+- 272 detected native MCP tools;
 - 51 detected Vue pages.
 
 ## Backend Modules
@@ -44,6 +44,7 @@ tests remain authoritative for behavior.
 | `app.webhook` | app | no | yes | `i18n/`, `router.py`, `schemas.py`, `tests/` |
 | `app.llm` | app | no | yes | `contracts.py`, `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.topic` | app | no | yes | `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
+| `app.document` | app | no | yes | `contracts.py`, `facade.py`, `i18n/`, `interface.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.memory` | app | no | yes | `contracts.py`, `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.contact` | app | no | yes | `contracts.py`, `facade.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.dream` | app | no | yes | `contracts.py`, `i18n/`, `interface.py`, `models.py`, `router.py`, `schemas.py`, `tests/` |
@@ -128,7 +129,8 @@ tests remain authoritative for behavior.
 | `app/topic` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 2 |
 | `app/goal` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/share` | yes | `components` | 0 |
-| `app/memory` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 4 |
+| `app/document` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 2 |
+| `app/memory` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 2 |
 | `app/file_share` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services` | 1 |
 | `app/dataset` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
 | `app/lab` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 4 |
@@ -257,8 +259,9 @@ tests remain authoritative for behavior.
 | `app.dashboard` | `core.database` | `back/app/dashboard/dashboard_service.py` |
 | `app.dashboard` | `core.util` | `back/app/dashboard/dashboard_service.py` |
 | `app.dataset` | `app.agent` | `back/app/dataset/access.py`, `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/contracts.py`, `back/app/dataset/ownership.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py`, `back/app/dataset/topic_assignment.py`, `back/app/dataset/usage.py` |
+| `app.dataset` | `app.document` | `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/migration.py`, `back/app/dataset/projection.py`, `back/app/dataset/provider.py`, `back/app/dataset/router.py` |
 | `app.dataset` | `app.file_share` | `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/provider.py`, `back/app/dataset/values.py` |
-| `app.dataset` | `app.memory` | `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/migration.py`, `back/app/dataset/projection.py`, `back/app/dataset/provider.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py` |
+| `app.dataset` | `app.memory` | `back/app/dataset/provider.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py` |
 | `app.dataset` | `app.share` | `back/app/dataset/access.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/dbadmin.py`, `back/app/dataset/library.py`, `back/app/dataset/migration.py`, `back/app/dataset/models.py`, `back/app/dataset/ownership.py`, `back/app/dataset/projection.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py`, `back/app/dataset/sharing.py` |
 | `app.dataset` | `core.authorize` | `back/app/dataset/access.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/router.py` |
 | `app.dataset` | `core.database` | `back/app/dataset/access.py`, `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/library.py`, `back/app/dataset/migration.py`, `back/app/dataset/models.py`, `back/app/dataset/organization.py`, `back/app/dataset/ownership.py`, `back/app/dataset/projection.py`, `back/app/dataset/provider.py`, `back/app/dataset/router.py`, `back/app/dataset/service.py`, `back/app/dataset/sharing.py`, `back/app/dataset/topic_assignment.py`, `back/app/dataset/usage.py` |
@@ -268,14 +271,34 @@ tests remain authoritative for behavior.
 | `app.dataset` | `core.team` | `back/app/dataset/service.py` |
 | `app.dataset` | `core.user` | `back/app/dataset/access.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/contracts.py`, `back/app/dataset/service.py` |
 | `app.dataset` | `core.util` | `back/app/dataset/attachments.py`, `back/app/dataset/provider.py` |
+| `app.document` | `app.agent` | `back/app/document/access.py`, `back/app/document/assertions.py`, `back/app/document/bootstrap.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_app_service.py`, `back/app/document/document_icons.py`, `back/app/document/document_nesting.py`, `back/app/document/document_order.py`, `back/app/document/document_policy.py`, `back/app/document/document_service.py`, `back/app/document/document_sharing.py`, `back/app/document/document_tags.py`, `back/app/document/events.py`, `back/app/document/folder_sharing.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py`, `back/app/document/internal_attachments.py`, `back/app/document/item_sharing.py`, `back/app/document/library_queries.py`, `back/app/document/process_references.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/topic_assignment.py`, `back/app/document/workflow_documents.py` |
+| `app.document` | `app.conversation` | `back/app/document/bootstrap.py`, `back/app/document/conversation_document_adapter.py`, `back/app/document/resource_service.py` |
+| `app.document` | `app.goal` | `back/app/document/bootstrap.py`, `back/app/document/dbadmin.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py` |
+| `app.document` | `app.process` | `back/app/document/internal_attachments.py`, `back/app/document/process_references.py` |
+| `app.document` | `app.share` | `back/app/document/access.py`, `back/app/document/dataset_migration.py`, `back/app/document/dataset_port.py`, `back/app/document/folder_sharing.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/item_sharing.py`, `back/app/document/models.py`, `back/app/document/process_migration.py`, `back/app/document/resource_service.py`, `back/app/document/schemas.py`, `back/app/document/sharing_inheritance.py` |
+| `app.document` | `app.task` | `back/app/document/goal_folders.py`, `back/app/document/resource_service.py` |
+| `app.document` | `app.tools` | `back/app/document/item_sharing.py`, `back/app/document/mcp.py` |
+| `app.document` | `core.authorize` | `back/app/document/access.py`, `back/app/document/assertions.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_policy.py`, `back/app/document/goal_folders.py`, `back/app/document/item_sharing.py`, `back/app/document/router.py` |
+| `app.document` | `core.database` | `back/app/document/access.py`, `back/app/document/automation.py`, `back/app/document/conversation_document_adapter.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_migration.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_app_security.py`, `back/app/document/document_app_service.py`, `back/app/document/document_attachment_service.py`, `back/app/document/document_icons.py`, `back/app/document/document_library_filters.py`, `back/app/document/document_nesting.py`, `back/app/document/document_order.py`, `back/app/document/document_service.py`, `back/app/document/document_structure.py`, `back/app/document/document_tags.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/events.py`, `back/app/document/file_facade.py`, `back/app/document/folder_sharing.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py`, `back/app/document/inline_content.py`, `back/app/document/interface.py`, `back/app/document/item_sharing.py`, `back/app/document/library_queries.py`, `back/app/document/lifecycle.py`, `back/app/document/models.py`, `back/app/document/process_migration.py`, `back/app/document/query_policy.py`, `back/app/document/resource_service.py`, `back/app/document/revision_queries.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/summary_service.py`, `back/app/document/topic_assignment.py`, `back/app/document/workflow_documents.py` |
+| `app.document` | `core.dbadmin` | `back/app/document/dbadmin.py`, `back/app/document/document_backup.py`, `back/app/document/independence.py`, `back/app/document/privilege_migration.py`, `back/app/document/tool_migration.py` |
+| `app.document` | `core.document` | `back/app/document/document_thumbnail_service.py` |
+| `app.document` | `core.i18n` | `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py`, `back/app/document/resource_service.py` |
+| `app.document` | `core.params` | `back/app/document/document_attachment_service.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/tag_icons.py` |
+| `app.document` | `core.preview` | `back/app/document/document_export.py`, `back/app/document/document_image_import.py`, `back/app/document/document_links.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/router.py` |
+| `app.document` | `core.settings` | `back/app/document/document_thumbnail_cache.py` |
+| `app.document` | `core.storage` | `back/app/document/automation.py`, `back/app/document/dataset_migration.py`, `back/app/document/document_attachment_service.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/inline_content.py`, `back/app/document/process_migration.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/summary_service.py`, `back/app/document/topic_assignment.py` |
+| `app.document` | `core.team` | `back/app/document/access.py`, `back/app/document/bootstrap.py`, `back/app/document/sharing_inheritance.py` |
+| `app.document` | `core.user` | `back/app/document/access.py`, `back/app/document/bootstrap.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_attachment_service.py`, `back/app/document/document_export.py`, `back/app/document/document_image_import.py`, `back/app/document/document_links.py`, `back/app/document/document_policy.py`, `back/app/document/document_sharing.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/events.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/goal_folders.py`, `back/app/document/interface.py`, `back/app/document/internal_attachments.py`, `back/app/document/item_sharing.py`, `back/app/document/library_queries.py`, `back/app/document/process_references.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/summary_service.py`, `back/app/document/workflow_documents.py` |
+| `app.document` | `core.util` | `back/app/document/document_attachment_service.py`, `back/app/document/document_links.py`, `back/app/document/document_service.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/file_facade.py`, `back/app/document/models.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/schemas.py`, `back/app/document/topic_assignment.py` |
 | `app.documentation` | `core.database` | `back/app/documentation/__main__.py`, `back/app/documentation/models.py`, `back/app/documentation/search.py` |
 | `app.dream` | `app.agent` | `back/app/dream/events.py`, `back/app/dream/manual.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/router.py` |
 | `app.dream` | `app.connection` | `back/app/dream/dbadmin.py`, `back/app/dream/evidence_access.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py` |
 | `app.dream` | `app.conversation` | `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py` |
 | `app.dream` | `app.dataset` | `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/monitoring_service.py` |
+| `app.dream` | `app.document` | `back/app/dream/manual.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/outcome_evidence.py`, `back/app/dream/router.py` |
 | `app.dream` | `app.goal` | `back/app/dream/outcome_evidence.py` |
 | `app.dream` | `app.llm` | `back/app/dream/attachment_processing.py`, `back/app/dream/evaluation.py`, `back/app/dream/evidence_access.py`, `back/app/dream/live_topics.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/memory_decisions.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/skill_learning.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/scheduler.py`, `back/app/dream/schemas.py` |
-| `app.dream` | `app.memory` | `back/app/dream/__init__.py`, `back/app/dream/contracts.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/process_memory.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/outcome_evidence.py`, `back/app/dream/router.py`, `back/app/dream/scheduler.py` |
+| `app.dream` | `app.memory` | `back/app/dream/__init__.py`, `back/app/dream/contracts.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/process_memory.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/outcome_evidence.py`, `back/app/dream/router.py`, `back/app/dream/scheduler.py` |
 | `app.dream` | `app.messenger` | `back/app/dream/dbadmin.py`, `back/app/dream/evidence_access.py`, `back/app/dream/live_topics.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py` |
 | `app.dream` | `app.process` | `back/app/dream/mechanisms/process_memory.py` |
 | `app.dream` | `app.skill` | `back/app/dream/mechanisms/skill_learning.py` |
@@ -295,10 +318,11 @@ tests remain authoritative for behavior.
 | `app.file_share` | `app.connection` | `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/indexing.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/thumbnail_service.py` |
 | `app.file_share` | `app.console` | `back/app/file_share/browser.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `app.conversation` | `back/app/file_share/galaris_provider.py` |
+| `app.file_share` | `app.document` | `back/app/file_share/__init__.py`, `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `app.documentation` | `back/app/file_share/documentation_provider.py` |
 | `app.file_share` | `app.goal` | `back/app/file_share/galaris_provider.py` |
 | `app.file_share` | `app.image` | `back/app/file_share/file_share_service.py` |
-| `app.file_share` | `app.memory` | `back/app/file_share/__init__.py`, `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py` |
+| `app.file_share` | `app.memory` | `back/app/file_share/__init__.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/models.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `app.messenger` | `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py` |
 | `app.file_share` | `app.process` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/process_provider.py` |
 | `app.file_share` | `app.skill` | `back/app/file_share/browser.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/mcp.py` |
@@ -363,10 +387,11 @@ tests remain authoritative for behavior.
 | `app.lab` | `app.agent` | `back/app/lab/contracts.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/executor_prompt_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/objective_checks.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operations.py`, `back/app/lab/process_evaluation.py`, `back/app/lab/process_evaluation_router.py`, `back/app/lab/router.py`, `back/app/lab/schemas.py` |
 | `app.lab` | `app.connection` | `back/app/lab/mcp_access.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py`, `back/app/lab/process_evaluation.py` |
 | `app.lab` | `app.conversation` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
+| `app.lab` | `app.document` | `back/app/lab/process_evaluation.py`, `back/app/lab/process_evaluation_router.py` |
 | `app.lab` | `app.dream` | `back/app/lab/contracts.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/run_inference.py`, `back/app/lab/schemas.py`, `back/app/lab/synthetic_service.py` |
 | `app.lab` | `app.goal` | `back/app/lab/mechanism_registry.py` |
 | `app.lab` | `app.llm` | `back/app/lab/analysis_service.py`, `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/inference_profile.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/process_evaluation.py`, `back/app/lab/run_inference.py`, `back/app/lab/synthetic_service.py` |
-| `app.lab` | `app.memory` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/process_evaluation.py`, `back/app/lab/process_evaluation_router.py` |
+| `app.lab` | `app.memory` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/process_evaluation_router.py` |
 | `app.lab` | `app.messenger` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
 | `app.lab` | `app.process` | `back/app/lab/evidence_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/process_evaluation.py` |
 | `app.lab` | `app.skill` | `back/app/lab/evidence_service.py` |
@@ -406,28 +431,25 @@ tests remain authoritative for behavior.
 | `app.mcp` | `core.i18n` | `back/app/mcp/router.py` |
 | `app.mcp` | `core.user` | `back/app/mcp/router.py` |
 | `app.mcp` | `core.util` | `back/app/mcp/models.py`, `back/app/mcp/service.py` |
-| `app.memory` | `app.agent` | `back/app/memory/access.py`, `back/app/memory/assertions.py`, `back/app/memory/automation.py`, `back/app/memory/bootstrap.py`, `back/app/memory/conversation_summary.py`, `back/app/memory/dataset_attachments.py`, `back/app/memory/dataset_port.py`, `back/app/memory/dataset_references.py`, `back/app/memory/dataset_usage.py`, `back/app/memory/document_app_service.py`, `back/app/memory/document_icons.py`, `back/app/memory/document_nesting.py`, `back/app/memory/document_order.py`, `back/app/memory/document_policy.py`, `back/app/memory/document_service.py`, `back/app/memory/document_sharing.py`, `back/app/memory/document_tags.py`, `back/app/memory/dream_actions.py`, `back/app/memory/events.py`, `back/app/memory/folder_sharing.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/graph_state.py`, `back/app/memory/internal_attachments.py`, `back/app/memory/item_sharing.py`, `back/app/memory/library_queries.py`, `back/app/memory/process_references.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/sharing_inheritance.py`, `back/app/memory/source_projection.py`, `back/app/memory/topic_assignment.py`, `back/app/memory/workflow_documents.py` |
-| `app.memory` | `app.conversation` | `back/app/memory/bootstrap.py`, `back/app/memory/conversation_document_adapter.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/recall_scope.py`, `back/app/memory/service.py` |
-| `app.memory` | `app.goal` | `back/app/memory/bootstrap.py`, `back/app/memory/dbadmin.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/source_projection.py` |
+| `app.memory` | `app.agent` | `back/app/memory/access.py`, `back/app/memory/assertions.py`, `back/app/memory/automation.py`, `back/app/memory/bootstrap.py`, `back/app/memory/conversation_summary.py`, `back/app/memory/dream_actions.py`, `back/app/memory/events.py`, `back/app/memory/graph_state.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py` |
+| `app.memory` | `app.conversation` | `back/app/memory/link_reconciliation.py`, `back/app/memory/recall_scope.py`, `back/app/memory/service.py` |
+| `app.memory` | `app.document` | `back/app/memory/access.py`, `back/app/memory/admission.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/automation.py`, `back/app/memory/bootstrap.py`, `back/app/memory/document_projection.py`, `back/app/memory/document_structure.py`, `back/app/memory/dream_actions.py`, `back/app/memory/facade.py`, `back/app/memory/maintenance.py`, `back/app/memory/models.py`, `back/app/memory/router.py`, `back/app/memory/semantic_index.py`, `back/app/memory/service.py`, `back/app/memory/source_access.py` |
+| `app.memory` | `app.goal` | `back/app/memory/bootstrap.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/source_projection.py` |
 | `app.memory` | `app.llm` | `back/app/memory/__init__.py`, `back/app/memory/acquisition_service.py`, `back/app/memory/conversation_summary.py`, `back/app/memory/embedding.py` |
-| `app.memory` | `app.process` | `back/app/memory/internal_attachments.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/process_projection.py`, `back/app/memory/process_references.py` |
-| `app.memory` | `app.share` | `back/app/memory/access.py`, `back/app/memory/dataset_migration.py`, `back/app/memory/dataset_port.py`, `back/app/memory/deduplication.py`, `back/app/memory/document_migration.py`, `back/app/memory/folder_sharing.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/item_sharing.py`, `back/app/memory/maintenance.py`, `back/app/memory/models.py`, `back/app/memory/process_migration.py`, `back/app/memory/schemas.py`, `back/app/memory/service.py`, `back/app/memory/sharing_inheritance.py`, `back/app/memory/topic_ranking.py` |
-| `app.memory` | `app.task` | `back/app/memory/automation.py`, `back/app/memory/goal_folders.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/mcp.py`, `back/app/memory/recall_scope.py`, `back/app/memory/service.py` |
-| `app.memory` | `app.tools` | `back/app/memory/item_sharing.py`, `back/app/memory/mcp.py` |
+| `app.memory` | `app.process` | `back/app/memory/link_reconciliation.py`, `back/app/memory/process_projection.py` |
+| `app.memory` | `app.task` | `back/app/memory/automation.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/mcp.py`, `back/app/memory/recall_scope.py`, `back/app/memory/service.py` |
+| `app.memory` | `app.tools` | `back/app/memory/mcp.py` |
 | `app.memory` | `app.topic` | `back/app/memory/link_reconciliation.py` |
 | `app.memory` | `app.voice` | `back/app/memory/automation.py` |
-| `app.memory` | `core.authorize` | `back/app/memory/access.py`, `back/app/memory/assertions.py`, `back/app/memory/dataset_usage.py`, `back/app/memory/document_policy.py`, `back/app/memory/goal_folders.py`, `back/app/memory/item_sharing.py`, `back/app/memory/router.py` |
-| `app.memory` | `core.database` | `back/app/memory/access.py`, `back/app/memory/acquisition_service.py`, `back/app/memory/admission.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/automation.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/contact_directory.py`, `back/app/memory/conversation_document_adapter.py`, `back/app/memory/dataset_attachments.py`, `back/app/memory/dataset_migration.py`, `back/app/memory/dataset_port.py`, `back/app/memory/dataset_references.py`, `back/app/memory/dataset_usage.py`, `back/app/memory/deduplication.py`, `back/app/memory/document_app_security.py`, `back/app/memory/document_app_service.py`, `back/app/memory/document_attachment_service.py`, `back/app/memory/document_icons.py`, `back/app/memory/document_library_filters.py`, `back/app/memory/document_nesting.py`, `back/app/memory/document_order.py`, `back/app/memory/document_service.py`, `back/app/memory/document_structure.py`, `back/app/memory/document_tags.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/dream_actions.py`, `back/app/memory/events.py`, `back/app/memory/facade.py`, `back/app/memory/folder_sharing.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/graph_state.py`, `back/app/memory/html_migration.py`, `back/app/memory/inline_content.py`, `back/app/memory/item_sharing.py`, `back/app/memory/library_queries.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/maintenance.py`, `back/app/memory/messenger_contact.py`, `back/app/memory/models.py`, `back/app/memory/process_migration.py`, `back/app/memory/process_projection.py`, `back/app/memory/query_policy.py`, `back/app/memory/retrieval.py`, `back/app/memory/revision_queries.py`, `back/app/memory/router.py`, `back/app/memory/semantic_index.py`, `back/app/memory/service.py`, `back/app/memory/sharing_inheritance.py`, `back/app/memory/source_access.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage_reconciliation.py`, `back/app/memory/topic_assignment.py`, `back/app/memory/topic_maintenance.py`, `back/app/memory/topic_ranking.py`, `back/app/memory/urls.py`, `back/app/memory/usage.py`, `back/app/memory/vector.py`, `back/app/memory/workflow_documents.py` |
-| `app.memory` | `core.dbadmin` | `back/app/memory/content_migration.py`, `back/app/memory/dbadmin.py`, `back/app/memory/document_backup.py`, `back/app/memory/document_migration.py`, `back/app/memory/file_attributes_migration.py`, `back/app/memory/html_migration.py`, `back/app/memory/url_migration.py` |
-| `app.memory` | `core.document` | `back/app/memory/document_thumbnail_service.py` |
-| `app.memory` | `core.i18n` | `back/app/memory/automation.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/mcp.py`, `back/app/memory/service.py` |
-| `app.memory` | `core.params` | `back/app/memory/acquisition_service.py`, `back/app/memory/automation.py`, `back/app/memory/bootstrap.py`, `back/app/memory/context.py`, `back/app/memory/deduplication.py`, `back/app/memory/document_attachment_service.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/maintenance.py`, `back/app/memory/retrieval.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/storage.py`, `back/app/memory/tag_icons.py` |
-| `app.memory` | `core.preview` | `back/app/memory/document_export.py`, `back/app/memory/document_image_import.py`, `back/app/memory/document_links.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/router.py` |
-| `app.memory` | `core.settings` | `back/app/memory/document_thumbnail_cache.py` |
-| `app.memory` | `core.storage` | `back/app/memory/attachment_analysis.py`, `back/app/memory/document_attachment_service.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/storage.py` |
-| `app.memory` | `core.team` | `back/app/memory/access.py`, `back/app/memory/bootstrap.py`, `back/app/memory/sharing_inheritance.py` |
-| `app.memory` | `core.user` | `back/app/memory/access.py`, `back/app/memory/bootstrap.py`, `back/app/memory/contact_directory.py`, `back/app/memory/dataset_attachments.py`, `back/app/memory/dataset_port.py`, `back/app/memory/dataset_references.py`, `back/app/memory/dataset_usage.py`, `back/app/memory/document_attachment_service.py`, `back/app/memory/document_export.py`, `back/app/memory/document_image_import.py`, `back/app/memory/document_links.py`, `back/app/memory/document_policy.py`, `back/app/memory/document_sharing.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/events.py`, `back/app/memory/goal_document_adapter.py`, `back/app/memory/goal_folders.py`, `back/app/memory/internal_attachments.py`, `back/app/memory/item_sharing.py`, `back/app/memory/library_queries.py`, `back/app/memory/maintenance.py`, `back/app/memory/process_references.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/sharing_inheritance.py`, `back/app/memory/workflow_documents.py` |
-| `app.memory` | `core.util` | `back/app/memory/acquisition_service.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/content_migration.py`, `back/app/memory/context.py`, `back/app/memory/document_attachment_service.py`, `back/app/memory/document_links.py`, `back/app/memory/document_migration.py`, `back/app/memory/document_service.py`, `back/app/memory/document_structure.py`, `back/app/memory/document_thumbnail_service.py`, `back/app/memory/file_facade.py`, `back/app/memory/html_migration.py`, `back/app/memory/models.py`, `back/app/memory/passages.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage.py`, `back/app/memory/storage_reconciliation.py`, `back/app/memory/temporal.py`, `back/app/memory/topic_assignment.py` |
+| `app.memory` | `core.authorize` | `back/app/memory/assertions.py`, `back/app/memory/router.py` |
+| `app.memory` | `core.database` | `back/app/memory/access.py`, `back/app/memory/acquisition_service.py`, `back/app/memory/admission.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/automation.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/contact_directory.py`, `back/app/memory/deduplication.py`, `back/app/memory/document_projection.py`, `back/app/memory/document_structure.py`, `back/app/memory/dream_actions.py`, `back/app/memory/events.py`, `back/app/memory/facade.py`, `back/app/memory/graph_state.py`, `back/app/memory/html_migration.py`, `back/app/memory/inline_content.py`, `back/app/memory/library_queries.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/maintenance.py`, `back/app/memory/messenger_contact.py`, `back/app/memory/models.py`, `back/app/memory/native_content.py`, `back/app/memory/process_projection.py`, `back/app/memory/query_policy.py`, `back/app/memory/retrieval.py`, `back/app/memory/semantic_index.py`, `back/app/memory/service.py`, `back/app/memory/source_access.py`, `back/app/memory/source_projection.py`, `back/app/memory/topic_maintenance.py`, `back/app/memory/topic_ranking.py`, `back/app/memory/urls.py`, `back/app/memory/usage.py`, `back/app/memory/vector.py` |
+| `app.memory` | `core.dbadmin` | `back/app/memory/content_migration.py`, `back/app/memory/dbadmin.py`, `back/app/memory/file_attributes_migration.py`, `back/app/memory/html_migration.py`, `back/app/memory/url_migration.py` |
+| `app.memory` | `core.i18n` | `back/app/memory/automation.py`, `back/app/memory/mcp.py` |
+| `app.memory` | `core.params` | `back/app/memory/acquisition_service.py`, `back/app/memory/automation.py`, `back/app/memory/bootstrap.py`, `back/app/memory/context.py`, `back/app/memory/deduplication.py`, `back/app/memory/maintenance.py`, `back/app/memory/retrieval.py`, `back/app/memory/router.py`, `back/app/memory/service.py` |
+| `app.memory` | `core.storage` | `back/app/memory/__init__.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/automation.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/content_migration.py`, `back/app/memory/contracts.py`, `back/app/memory/document_structure.py`, `back/app/memory/html_migration.py`, `back/app/memory/inline_content.py`, `back/app/memory/native_content.py`, `back/app/memory/semantic_index.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage_reconciliation.py` |
+| `app.memory` | `core.team` | `back/app/memory/bootstrap.py` |
+| `app.memory` | `core.user` | `back/app/memory/access.py`, `back/app/memory/contact_directory.py`, `back/app/memory/events.py`, `back/app/memory/maintenance.py`, `back/app/memory/router.py`, `back/app/memory/service.py` |
+| `app.memory` | `core.util` | `back/app/memory/acquisition_service.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/content_migration.py`, `back/app/memory/context.py`, `back/app/memory/document_structure.py`, `back/app/memory/file_facade.py`, `back/app/memory/html_migration.py`, `back/app/memory/models.py`, `back/app/memory/passages.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage_reconciliation.py`, `back/app/memory/temporal.py` |
 | `app.messenger` | `app.agent` | `back/app/messenger/contact_access.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/permission_router.py`, `back/app/messenger/permissions.py`, `back/app/messenger/router.py`, `back/app/messenger/schemas.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.connection` | `back/app/messenger/configuration.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/ingest.py`, `back/app/messenger/journal.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.conversation` | `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
@@ -467,9 +489,10 @@ tests remain authoritative for behavior.
 | `app.process` | `app.agent` | `back/app/process/catalogue.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/facade.py`, `back/app/process/mcp.py`, `back/app/process/native_access.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/native_sharing.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/resource_previews.py`, `back/app/process/router.py`, `back/app/process/run_resources.py` |
 | `app.process` | `app.console` | `back/app/process/native_engine.py`, `back/app/process/process_service.py`, `back/app/process/router.py` |
 | `app.process` | `app.dataset` | `back/app/process/values.py` |
+| `app.process` | `app.document` | `back/app/process/definition_migration.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
 | `app.process` | `app.file_share` | `back/app/process/native_engine.py`, `back/app/process/process_service.py`, `back/app/process/router.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
 | `app.process` | `app.llm` | `back/app/process/__init__.py`, `back/app/process/agent_capabilities.py`, `back/app/process/dbadmin.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py` |
-| `app.process` | `app.memory` | `back/app/process/definition_migration.py`, `back/app/process/events.py`, `back/app/process/native_actors.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/router.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
+| `app.process` | `app.memory` | `back/app/process/events.py`, `back/app/process/native_actors.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/router.py` |
 | `app.process` | `app.share` | `back/app/process/definition_migration.py`, `back/app/process/models.py`, `back/app/process/native_access.py`, `back/app/process/native_router.py`, `back/app/process/native_sharing.py` |
 | `app.process` | `app.task` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/native_engine.py`, `back/app/process/process_service.py`, `back/app/process/retention.py`, `back/app/process/run_observation.py`, `back/app/process/run_resources.py` |
 | `app.process` | `app.tools` | `back/app/process/__init__.py`, `back/app/process/activity_jobs.py`, `back/app/process/catalogue.py`, `back/app/process/dbadmin.py`, `back/app/process/mcp.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/run_resources.py` |
@@ -525,6 +548,7 @@ tests remain authoritative for behavior.
 | `app.topic` | `app.connection` | `back/app/topic/mcp.py`, `back/app/topic/router.py`, `back/app/topic/service.py` |
 | `app.topic` | `app.conversation` | `back/app/topic/service.py` |
 | `app.topic` | `app.dataset` | `back/app/topic/router.py`, `back/app/topic/service.py` |
+| `app.topic` | `app.document` | `back/app/topic/router.py`, `back/app/topic/service.py` |
 | `app.topic` | `app.llm` | `back/app/topic/classifier.py`, `back/app/topic/evaluation.py`, `back/app/topic/runtime_detection.py`, `back/app/topic/sequential_detection.py`, `back/app/topic/service.py` |
 | `app.topic` | `app.memory` | `back/app/topic/router.py`, `back/app/topic/service.py` |
 | `app.topic` | `app.messenger` | `back/app/topic/service.py` |
@@ -743,9 +767,10 @@ tests remain authoritative for behavior.
 | `core.rate_limit` | `core.params` | `back/core/rate_limit.py` |
 | `core.storage` | `core.database` | `back/core/storage/lifecycle.py`, `back/core/storage/models.py`, `back/core/storage/names.py`, `back/core/storage/registry.py` |
 | `core.storage` | `core.dbadmin` | `back/core/storage/dbadmin.py` |
+| `core.storage` | `core.params` | `back/core/storage/resources.py` |
 | `core.storage` | `core.settings` | `back/core/storage/disk.py`, `back/core/storage/identity.py`, `back/core/storage/migration.py` |
 | `core.storage` | `core.user` | `back/core/storage/registry.py` |
-| `core.storage` | `core.util` | `back/core/storage/identity.py`, `back/core/storage/lifecycle.py`, `back/core/storage/migration.py`, `back/core/storage/registry.py` |
+| `core.storage` | `core.util` | `back/core/storage/identity.py`, `back/core/storage/lifecycle.py`, `back/core/storage/migration.py`, `back/core/storage/registry.py`, `back/core/storage/resources.py` |
 | `core.team` | `core.authorize` | `back/core/team/router.py` |
 | `core.team` | `core.database` | `back/core/team/models.py`, `back/core/team/router.py`, `back/core/team/service.py` |
 | `core.team` | `core.user` | `back/core/team/service.py` |
@@ -811,6 +836,13 @@ tests remain authoritative for behavior.
 | `app/dataset` | `core/authorize` | `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/components/DatasetLibraryRow.vue` |
 | `app/dataset` | `core/navigation` | `front/app/dataset/navigation.ts` |
 | `app/dataset` | `core/util` | `front/app/dataset/components/DatasetDialog.vue`, `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetFolderRow.vue`, `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/components/DatasetLibraryRow.vue`, `front/app/dataset/pages/[[id]].vue`, `front/app/dataset/richContent.ts` |
+| `app/document` | `app/agent` | `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentSharingPanel.vue` |
+| `app/document` | `app/share` | `front/app/document/components/DocumentBulkDialog.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryFilters.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/services/documentService.ts`, `front/app/document/types.ts` |
+| `app/document` | `core/api` | `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/services/documentService.ts`, `front/app/document/stores/documentIcons.ts`, `front/app/document/stores/documentMutations.ts` |
+| `app/document` | `core/authorize` | `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/navigation.ts` |
+| `app/document` | `core/navigation` | `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/navigation.ts` |
+| `app/document` | `core/util` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentApplicationBlock.vue`, `front/app/document/components/DocumentAttachments.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentDialog.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentFolderSelect.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentRowMenu.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/components/DocumentSplitterHandle.vue`, `front/app/document/components/DocumentTagIcon.vue`, `front/app/document/components/DocumentTagIconPicker.vue`, `front/app/document/components/DocumentTagRow.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/documentAppResources.ts`, `front/app/document/documentAppSandbox.ts`, `front/app/document/documentEditor.ts`, `front/app/document/documentFolders.ts`, `front/app/document/libraryShortcuts.ts`, `front/app/document/richContent.ts`, `front/app/document/services/documentService.ts`, `front/app/document/tagEmojiCatalog.ts`, `front/app/document/tagIcon.ts` |
+| `app/document` | `core/websocket` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentThumbnail.vue` |
 | `app/dream` | `app/agent` | `front/app/dream/components/FileIndexTab.vue` |
 | `app/dream` | `app/llm` | `front/app/dream/pages/index.vue`, `front/app/dream/types.ts` |
 | `app/dream` | `core/api` | `front/app/dream/services/dreamService.ts`, `front/app/dream/services/fileIndexService.ts` |
@@ -862,13 +894,14 @@ tests remain authoritative for behavior.
 | `app/llm` | `core/user` | `front/app/llm/tokenAction.ts`, `front/app/llm/userTab.ts` |
 | `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/pages/index.vue`, `front/app/llm/useEditorVoice.ts` |
 | `app/llm` | `core/websocket` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/useLlmCallProgress.ts` |
-| `app/memory` | `app/agent` | `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
-| `app/memory` | `app/share` | `front/app/memory/components/DocumentBulkDialog.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentLibraryFilters.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/services/memoryService.ts`, `front/app/memory/types.ts` |
-| `app/memory` | `core/api` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/DocumentBulkList.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/documentIcons.ts`, `front/app/memory/stores/documentMutations.ts` |
-| `app/memory` | `core/authorize` | `front/app/memory/components/DocumentBulkList.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/MemoryDreamActions.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
-| `app/memory` | `core/navigation` | `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
-| `app/memory` | `core/util` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentApplicationBlock.vue`, `front/app/memory/components/DocumentAttachments.vue`, `front/app/memory/components/DocumentBulkList.vue`, `front/app/memory/components/DocumentDialog.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentFolderSelect.vue`, `front/app/memory/components/DocumentHistoryDialog.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentRowMenu.vue`, `front/app/memory/components/DocumentSplitterHandle.vue`, `front/app/memory/components/DocumentTagIcon.vue`, `front/app/memory/components/DocumentTagIconPicker.vue`, `front/app/memory/components/DocumentTagRow.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/components/MemorySharingPanel.vue`, `front/app/memory/documentAppResources.ts`, `front/app/memory/documentAppSandbox.ts`, `front/app/memory/documentEditor.ts`, `front/app/memory/documentFolders.ts`, `front/app/memory/libraryShortcuts.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/tagEmojiCatalog.ts`, `front/app/memory/tagIcon.ts` |
-| `app/memory` | `core/websocket` | `front/app/memory/components/DocumentApplication.vue`, `front/app/memory/components/DocumentBulkList.vue`, `front/app/memory/components/DocumentEditor.vue`, `front/app/memory/components/DocumentLibraryNavigation.vue`, `front/app/memory/components/DocumentLibraryPage.vue`, `front/app/memory/components/DocumentThumbnail.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/stores/memoryStore.ts` |
+| `app/memory` | `app/agent` | `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
+| `app/memory` | `app/document` | `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraphNodeDetail.vue`, `front/app/memory/components/MemoryGraphRelations.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/components/MemoryLinkDialog.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/memoryStore.ts`, `front/app/memory/types.ts` |
+| `app/memory` | `app/share` | `front/app/memory/types.ts` |
+| `app/memory` | `core/api` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts` |
+| `app/memory` | `core/authorize` | `front/app/memory/components/MemoryDreamActions.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
+| `app/memory` | `core/navigation` | `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
+| `app/memory` | `core/util` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
+| `app/memory` | `core/websocket` | `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/stores/memoryStore.ts` |
 | `app/onboarding` | `core/api` | `front/app/onboarding/services/onboardingService.ts` |
 | `app/onboarding` | `core/authorize` | `front/app/onboarding/components/WelcomePage.vue` |
 | `app/onboarding` | `core/params` | `front/app/onboarding/components/WelcomePage.vue` |
@@ -981,21 +1014,22 @@ tests remain authoritative for behavior.
 
 | Module | Count | Dependencies |
 |---|---:|---|
-| `app.file_share` | 14 | `app.agent`, `app.connection`, `app.console`, `app.conversation`, `app.documentation`, `app.goal`, `app.image`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.tools`, `bridge.affine` |
-| `app.lab` | 14 | `app.agent`, `app.connection`, `app.conversation`, `app.dream`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice` |
-| `app.dream` | 13 | `app.agent`, `app.connection`, `app.conversation`, `app.dataset`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice` |
+| `app.file_share` | 15 | `app.agent`, `app.connection`, `app.console`, `app.conversation`, `app.document`, `app.documentation`, `app.goal`, `app.image`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.tools`, `bridge.affine` |
+| `app.lab` | 15 | `app.agent`, `app.connection`, `app.conversation`, `app.document`, `app.dream`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice` |
+| `app.dream` | 14 | `app.agent`, `app.connection`, `app.conversation`, `app.dataset`, `app.document`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice` |
 | `bridge.hermes` | 12 | `app.agent`, `app.connection`, `app.file_share`, `app.harnesses`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.tools`, `bridge.harness` |
-| `app.memory` | 10 | `app.agent`, `app.conversation`, `app.goal`, `app.llm`, `app.process`, `app.share`, `app.task`, `app.tools`, `app.topic`, `app.voice` |
-| `app.topic` | 10 | `app.agent`, `app.connection`, `app.conversation`, `app.dataset`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.task`, `app.tools` |
+| `app.topic` | 11 | `app.agent`, `app.connection`, `app.conversation`, `app.dataset`, `app.document`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.task`, `app.tools` |
+| `app.memory` | 10 | `app.agent`, `app.conversation`, `app.document`, `app.goal`, `app.llm`, `app.process`, `app.task`, `app.tools`, `app.topic`, `app.voice` |
+| `app.process` | 10 | `app.agent`, `app.console`, `app.dataset`, `app.document`, `app.file_share`, `app.llm`, `app.memory`, `app.share`, `app.task`, `app.tools` |
 | `app.conversation` | 9 | `app.agent`, `app.code`, `app.connection`, `app.file_share`, `app.llm`, `app.messenger`, `app.process`, `app.task`, `app.tools` |
 | `app.harness` | 9 | `app.agent`, `app.console`, `app.conversation`, `app.file_share`, `app.llm`, `app.messenger`, `app.process`, `app.skill`, `app.tools` |
 | `app.llm` | 9 | `app.agent`, `app.connection`, `app.conversation`, `app.file_share`, `app.mcp`, `app.messenger`, `app.process`, `app.task`, `app.tools` |
-| `app.process` | 9 | `app.agent`, `app.console`, `app.dataset`, `app.file_share`, `app.llm`, `app.memory`, `app.share`, `app.task`, `app.tools` |
 | `app.tools` | 9 | `app.agent`, `app.connection`, `app.console`, `app.documentation`, `app.file_share`, `app.llm`, `app.messenger`, `app.task`, `app.util` |
 | `app.voice` | 9 | `app.agent`, `app.connection`, `app.conversation`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.task`, `app.tools` |
 | `app.agent` | 8 | `app.file_share`, `app.image`, `app.llm`, `app.messenger`, `app.process`, `app.share`, `app.skill`, `app.tools` |
 | `app.messenger` | 8 | `app.agent`, `app.connection`, `app.conversation`, `app.file_share`, `app.llm`, `app.memory`, `app.task`, `app.tools` |
 | `app.chat` | 7 | `app.agent`, `app.browser`, `app.code`, `app.conversation`, `app.messenger`, `app.topic`, `app.voice` |
+| `app.document` | 7 | `app.agent`, `app.conversation`, `app.goal`, `app.process`, `app.share`, `app.task`, `app.tools` |
 | `app.onboarding` | 7 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.process`, `app.skill`, `app.tools` |
 | `app.audio` | 6 | `app.file_share`, `app.llm`, `app.messenger`, `app.task`, `app.tools`, `bridge.youtube` |
 | `app.goal` | 6 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.task`, `app.tools` |
@@ -1004,13 +1038,13 @@ tests remain authoritative for behavior.
 | `bridge.mail` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.messenger`, `app.tools` |
 | `bridge.nextcloud` | 6 | `app.agent`, `app.connection`, `app.file_share`, `app.messenger`, `app.tools`, `app.voice` |
 | `app.contact` | 5 | `app.agent`, `app.conversation`, `app.memory`, `app.messenger`, `app.task` |
+| `app.dataset` | 5 | `app.agent`, `app.document`, `app.file_share`, `app.memory`, `app.share` |
 | `app.task` | 5 | `app.agent`, `app.goal`, `app.llm`, `app.messenger`, `app.tools` |
 | `bridge.calendar` | 5 | `app.agent`, `app.connection`, `app.file_share`, `app.process`, `app.tools` |
 | `bridge.claude_agent` | 5 | `app.agent`, `app.harnesses`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.matrix` | 5 | `app.agent`, `app.connection`, `app.messenger`, `app.tools`, `app.voice` |
 | `app.browser` | 4 | `app.connection`, `app.file_share`, `app.messenger`, `app.tools` |
 | `app.console` | 4 | `app.agent`, `app.connection`, `app.file_share`, `app.tools` |
-| `app.dataset` | 4 | `app.agent`, `app.file_share`, `app.memory`, `app.share` |
 | `app.multimedia` | 4 | `app.agent`, `app.file_share`, `app.llm`, `app.tools` |
 | `app.webhook` | 4 | `app.agent`, `app.connection`, `app.task`, `app.tools` |
 | `bridge.code_server` | 4 | `app.agent`, `app.code`, `app.console`, `app.file_share` |
@@ -1053,22 +1087,23 @@ tests remain authoritative for behavior.
 | Module | Count | Dependents |
 |---|---:|---|
 | `app.llm` | 43 | `app.agent`, `app.audio`, `app.conversation`, `app.dashboard`, `app.dream`, `app.goal`, `app.harness`, `app.image`, `app.lab`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.anthropic`, `bridge.azure_speech`, `bridge.byteplus`, `bridge.cerebras`, `bridge.codex`, `bridge.cohere`, `bridge.deepseek`, `bridge.deepseek_harness`, `bridge.elevenlabs`, `bridge.fireworks`, `bridge.google`, `bridge.groq`, `bridge.hermes`, `bridge.huggingface`, `bridge.mammouth`, `bridge.mistral`, `bridge.models_dev`, `bridge.nvidia`, `bridge.ollama`, `bridge.openai`, `bridge.openrouter`, `bridge.perplexity`, `bridge.sunoapi`, `bridge.together`, `bridge.xai` |
-| `app.agent` | 35 | `app.chat`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.dashboard`, `app.dataset`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.claude_agent`, `bridge.code_server`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud` |
-| `app.tools` | 30 | `app.agent`, `app.audio`, `app.browser`, `app.connection`, `app.console`, `app.conversation`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
+| `app.agent` | 36 | `app.chat`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.dashboard`, `app.dataset`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.claude_agent`, `bridge.code_server`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud` |
+| `app.tools` | 31 | `app.agent`, `app.audio`, `app.browser`, `app.connection`, `app.console`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
 | `app.messenger` | 24 | `app.agent`, `app.audio`, `app.browser`, `app.chat`, `app.contact`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.onboarding`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.telegram`, `bridge.whatsapp` |
 | `app.connection` | 22 | `app.browser`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.skill`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.calendar`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
 | `app.file_share` | 19 | `app.agent`, `app.audio`, `app.browser`, `app.console`, `app.conversation`, `app.dataset`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.tools`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
-| `app.task` | 16 | `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.tools`, `app.topic`, `app.voice`, `app.webhook` |
-| `app.process` | 14 | `app.agent`, `app.conversation`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.calendar`, `bridge.hermes`, `bridge.n8n` |
-| `app.conversation` | 11 | `app.chat`, `app.contact`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |
+| `app.task` | 17 | `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.tools`, `app.topic`, `app.voice`, `app.webhook` |
+| `app.process` | 15 | `app.agent`, `app.conversation`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.calendar`, `bridge.hermes`, `bridge.n8n` |
+| `app.conversation` | 12 | `app.chat`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.memory` | 10 | `app.contact`, `app.dataset`, `app.dream`, `app.file_share`, `app.lab`, `app.messenger`, `app.process`, `app.topic`, `app.voice`, `bridge.hermes` |
 | `app.skill` | 10 | `app.agent`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.onboarding`, `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
+| `app.document` | 7 | `app.dataset`, `app.dream`, `app.file_share`, `app.lab`, `app.memory`, `app.process`, `app.topic` |
+| `app.goal` | 6 | `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.memory`, `app.task` |
 | `app.voice` | 6 | `app.chat`, `app.dream`, `app.lab`, `app.memory`, `bridge.matrix`, `bridge.nextcloud` |
 | `app.console` | 5 | `app.file_share`, `app.harness`, `app.process`, `app.tools`, `bridge.code_server` |
-| `app.goal` | 5 | `app.dream`, `app.file_share`, `app.lab`, `app.memory`, `app.task` |
 | `app.mcp` | 5 | `app.llm`, `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
 | `app.harnesses` | 4 | `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
-| `app.share` | 4 | `app.agent`, `app.dataset`, `app.memory`, `app.process` |
+| `app.share` | 4 | `app.agent`, `app.dataset`, `app.document`, `app.process` |
 | `app.topic` | 4 | `app.chat`, `app.dream`, `app.lab`, `app.memory` |
 | `bridge.harness` | 4 | `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
 | `app.code` | 3 | `app.chat`, `app.conversation`, `bridge.code_server` |
@@ -1096,6 +1131,7 @@ tests remain authoritative for behavior.
 - `app.conversation` ↔ `app.file_share`
 - `app.conversation` ↔ `app.llm`
 - `app.conversation` ↔ `app.messenger`
+- `app.document` ↔ `app.process`
 - `app.file_share` ↔ `app.image`
 - `app.file_share` ↔ `app.messenger`
 - `app.file_share` ↔ `app.process`
@@ -1114,7 +1150,7 @@ tests remain authoritative for behavior.
 
 ### Strongly Connected Components
 
-- `app.agent`, `app.connection`, `app.console`, `app.conversation`, `app.dataset`, `app.file_share`, `app.goal`, `app.image`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice`
+- `app.agent`, `app.connection`, `app.console`, `app.conversation`, `app.dataset`, `app.document`, `app.file_share`, `app.goal`, `app.image`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.tools`, `app.topic`, `app.voice`
 
 ## Frontend Domain Coupling Metrics
 
@@ -1131,10 +1167,11 @@ tests remain authoritative for behavior.
 | `app/index` | 4 | `app/agent`, `app/llm`, `app/onboarding`, `app/task` |
 | `app/process` | 4 | `app/agent`, `app/dataset`, `app/share`, `app/task` |
 | `app/connection` | 3 | `app/agent`, `app/console`, `app/tools` |
+| `app/memory` | 3 | `app/agent`, `app/document`, `app/share` |
 | `app/agent` | 2 | `app/harnesses`, `app/llm` |
+| `app/document` | 2 | `app/agent`, `app/share` |
 | `app/dream` | 2 | `app/agent`, `app/llm` |
 | `app/llm` | 2 | `app/agent`, `app/task` |
-| `app/memory` | 2 | `app/agent`, `app/share` |
 | `app/browser` | 1 | `app/connection` |
 | `app/dataset` | 1 | `app/share` |
 | `app/file_share` | 1 | `app/agent` |
@@ -1149,16 +1186,17 @@ tests remain authoritative for behavior.
 
 | Module | Count | Dependents |
 |---|---:|---|
-| `app/agent` | 14 | `app/chat`, `app/connection`, `app/conversation`, `app/dream`, `app/file_share`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
+| `app/agent` | 15 | `app/chat`, `app/connection`, `app/conversation`, `app/document`, `app/dream`, `app/file_share`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
 | `app/llm` | 7 | `app/agent`, `app/conversation`, `app/dream`, `app/index`, `app/task`, `app/voice`, `bridge/ollama` |
 | `app/task` | 7 | `app/chat`, `app/conversation`, `app/index`, `app/lab`, `app/llm`, `app/process`, `app/voice` |
+| `app/share` | 4 | `app/dataset`, `app/document`, `app/memory`, `app/process` |
 | `app/topic` | 4 | `app/chat`, `app/conversation`, `app/task`, `app/voice` |
 | `app/lab` | 3 | `app/conversation`, `app/task`, `app/voice` |
-| `app/share` | 3 | `app/dataset`, `app/memory`, `app/process` |
 | `app/connection` | 2 | `app/browser`, `app/tools` |
 | `app/conversation` | 2 | `app/chat`, `app/task` |
 | `app/console` | 1 | `app/connection` |
 | `app/dataset` | 1 | `app/process` |
+| `app/document` | 1 | `app/memory` |
 | `app/harnesses` | 1 | `app/agent` |
 | `app/memory` | 1 | `app/task` |
 | `app/onboarding` | 1 | `app/index` |
@@ -1178,7 +1216,7 @@ tests remain authoritative for behavior.
 
 ### Strongly Connected Frontend Components
 
-- `app/agent`, `app/conversation`, `app/lab`, `app/llm`, `app/memory`, `app/process`, `app/task`, `app/voice`
+- `app/agent`, `app/conversation`, `app/document`, `app/lab`, `app/llm`, `app/memory`, `app/process`, `app/task`, `app/voice`
 - `app/connection`, `app/tools`
 
 ## Declared Backend Routes
@@ -1282,16 +1320,16 @@ tests remain authoritative for behavior.
 | POST | `/authorize/roles/{role_id}/privileges` | `core.authorize` | `add_privileges_to_role` | yes | `back/core/authorize/router.py:211` |
 | POST | `/authorize/switch-role` | `core.authorize` | `switch_role` | yes | `back/core/authorize/router.py:366` |
 | GET | `/authorize/users/{user_id}/assignments` | `core.authorize` | `get_user_assignments` | yes | `back/core/authorize/router.py:307` |
-| GET | `/browser/content` | `app.file_share` | `content` | yes | `back/app/file_share/browser_router.py:104` |
-| GET | `/browser/entries` | `app.file_share` | `entries` | yes | `back/app/file_share/browser_router.py:69` |
-| DELETE | `/browser/entry` | `app.file_share` | `delete_entry` | yes | `back/app/file_share/browser_router.py:55` |
-| PATCH | `/browser/entry` | `app.file_share` | `rename_entry` | yes | `back/app/file_share/browser_router.py:48` |
-| GET | `/browser/info` | `app.file_share` | `info` | yes | `back/app/file_share/browser_router.py:87` |
+| GET | `/browser/content` | `app.file_share` | `content` | yes | `back/app/file_share/browser_router.py:106` |
+| GET | `/browser/entries` | `app.file_share` | `entries` | yes | `back/app/file_share/browser_router.py:71` |
+| DELETE | `/browser/entry` | `app.file_share` | `delete_entry` | yes | `back/app/file_share/browser_router.py:57` |
+| PATCH | `/browser/entry` | `app.file_share` | `rename_entry` | yes | `back/app/file_share/browser_router.py:50` |
+| GET | `/browser/info` | `app.file_share` | `info` | yes | `back/app/file_share/browser_router.py:89` |
 | POST | `/browser/network/authorize` | `app.browser` | `network_authorization` | no | `back/app/browser/router.py:17` |
-| GET | `/browser/schemes` | `app.file_share` | `schemes` | yes | `back/app/file_share/browser_router.py:62` |
-| GET | `/browser/search` | `app.file_share` | `search` | yes | `back/app/file_share/browser_router.py:78` |
+| GET | `/browser/schemes` | `app.file_share` | `schemes` | yes | `back/app/file_share/browser_router.py:64` |
+| GET | `/browser/search` | `app.file_share` | `search` | yes | `back/app/file_share/browser_router.py:80` |
 | GET | `/browser/status` | `app.browser` | `status` | yes | `back/app/browser/router.py:34` |
-| GET | `/browser/thumbnail` | `app.file_share` | `thumbnail` | yes | `back/app/file_share/browser_router.py:94` |
+| GET | `/browser/thumbnail` | `app.file_share` | `thumbnail` | yes | `back/app/file_share/browser_router.py:96` |
 | GET | `/calendars` | `bridge.calendar` | `read_calendars` | yes | `back/bridge/calendar/router.py:54` |
 | POST | `/calendars` | `bridge.calendar` | `create_calendar` | yes | `back/bridge/calendar/router.py:61` |
 | DELETE | `/calendars/{calendar_id}` | `bridge.calendar` | `delete_calendar` | yes | `back/bridge/calendar/router.py:89` |
@@ -1405,45 +1443,108 @@ tests remain authoritative for behavior.
 | POST | `/conversations/rounds/{round_id}/delivery-resolution` | `app.conversation` | `resolve_conversation_delivery` | yes | `back/app/conversation/router.py:136` |
 | PUT | `/conversations/rounds/{round_id}/topic` | `app.conversation` | `update_conversation_round_topic` | yes | `back/app/conversation/router.py:101` |
 | GET | `/dashboard` | `app.dashboard` | `read_dashboard` | yes | `back/app/dashboard/router.py:17` |
-| GET | `/datasets` | `app.dataset` | `list_datasets` | yes | `back/app/dataset/router.py:118` |
-| POST | `/datasets` | `app.dataset` | `create_dataset` | yes | `back/app/dataset/router.py:133` |
-| GET | `/datasets/library/facets` | `app.dataset` | `library_facets` | yes | `back/app/dataset/router.py:159` |
-| POST | `/datasets/library/move` | `app.dataset` | `move_placement` | yes | `back/app/dataset/router.py:191` |
-| GET | `/datasets/tags` | `app.dataset` | `list_tags` | yes | `back/app/dataset/router.py:143` |
-| POST | `/datasets/tags` | `app.dataset` | `create_tag` | yes | `back/app/dataset/router.py:150` |
-| DELETE | `/datasets/tags/{identity}` | `app.dataset` | `delete_tag` | yes | `back/app/dataset/router.py:174` |
-| PUT | `/datasets/tags/{identity}` | `app.dataset` | `update_tag` | yes | `back/app/dataset/router.py:166` |
-| POST | `/datasets/tags/{identity}/sort` | `app.dataset` | `sort_tag` | yes | `back/app/dataset/router.py:183` |
-| DELETE | `/datasets/{identity}` | `app.dataset` | `delete_dataset` | yes | `back/app/dataset/router.py:233` |
-| GET | `/datasets/{identity}` | `app.dataset` | `read_dataset` | yes | `back/app/dataset/router.py:199` |
-| PATCH | `/datasets/{identity}` | `app.dataset` | `update_dataset` | yes | `back/app/dataset/router.py:222` |
-| GET | `/datasets/{identity}/attachments` | `app.dataset` | `attachments` | yes | `back/app/dataset/router.py:318` |
-| POST | `/datasets/{identity}/attachments` | `app.dataset` | `attach` | yes | `back/app/dataset/router.py:326` |
-| PATCH | `/datasets/{identity}/attachments/{attachment_id}` | `app.dataset` | `rename_dataset_attachment` | yes | `back/app/dataset/router.py:336` |
-| PUT | `/datasets/{identity}/classification` | `app.dataset` | `classify` | yes | `back/app/dataset/router.py:344` |
-| PUT | `/datasets/{identity}/content` | `app.dataset` | `write_dataset` | yes | `back/app/dataset/router.py:207` |
-| GET | `/datasets/{identity}/owner` | `app.dataset` | `owner_options` | yes | `back/app/dataset/router.py:273` |
-| PATCH | `/datasets/{identity}/owner` | `app.dataset` | `transfer_owner` | yes | `back/app/dataset/router.py:280` |
-| GET | `/datasets/{identity}/revisions` | `app.dataset` | `read_history` | yes | `back/app/dataset/router.py:241` |
-| GET | `/datasets/{identity}/revisions/{number}` | `app.dataset` | `read_revision` | yes | `back/app/dataset/router.py:248` |
-| POST | `/datasets/{identity}/revisions/{number}/restore` | `app.dataset` | `restore_revision` | yes | `back/app/dataset/router.py:256` |
-| GET | `/datasets/{identity}/sharing` | `app.dataset` | `sharing` | yes | `back/app/dataset/router.py:266` |
-| PUT | `/datasets/{identity}/sharing` | `app.dataset` | `set_grant` | yes | `back/app/dataset/router.py:308` |
-| PUT | `/datasets/{identity}/sharing-level` | `app.dataset` | `sharing_level` | yes | `back/app/dataset/router.py:290` |
-| GET | `/datasets/{identity}/usages` | `app.dataset` | `usages` | yes | `back/app/dataset/router.py:299` |
+| GET | `/datasets` | `app.dataset` | `list_datasets` | yes | `back/app/dataset/router.py:119` |
+| POST | `/datasets` | `app.dataset` | `create_dataset` | yes | `back/app/dataset/router.py:134` |
+| GET | `/datasets/library/facets` | `app.dataset` | `library_facets` | yes | `back/app/dataset/router.py:160` |
+| POST | `/datasets/library/move` | `app.dataset` | `move_placement` | yes | `back/app/dataset/router.py:192` |
+| GET | `/datasets/tags` | `app.dataset` | `list_tags` | yes | `back/app/dataset/router.py:144` |
+| POST | `/datasets/tags` | `app.dataset` | `create_tag` | yes | `back/app/dataset/router.py:151` |
+| DELETE | `/datasets/tags/{identity}` | `app.dataset` | `delete_tag` | yes | `back/app/dataset/router.py:175` |
+| PUT | `/datasets/tags/{identity}` | `app.dataset` | `update_tag` | yes | `back/app/dataset/router.py:167` |
+| POST | `/datasets/tags/{identity}/sort` | `app.dataset` | `sort_tag` | yes | `back/app/dataset/router.py:184` |
+| DELETE | `/datasets/{identity}` | `app.dataset` | `delete_dataset` | yes | `back/app/dataset/router.py:234` |
+| GET | `/datasets/{identity}` | `app.dataset` | `read_dataset` | yes | `back/app/dataset/router.py:200` |
+| PATCH | `/datasets/{identity}` | `app.dataset` | `update_dataset` | yes | `back/app/dataset/router.py:223` |
+| GET | `/datasets/{identity}/attachments` | `app.dataset` | `attachments` | yes | `back/app/dataset/router.py:319` |
+| POST | `/datasets/{identity}/attachments` | `app.dataset` | `attach` | yes | `back/app/dataset/router.py:327` |
+| PATCH | `/datasets/{identity}/attachments/{attachment_id}` | `app.dataset` | `rename_dataset_attachment` | yes | `back/app/dataset/router.py:337` |
+| PUT | `/datasets/{identity}/classification` | `app.dataset` | `classify` | yes | `back/app/dataset/router.py:345` |
+| PUT | `/datasets/{identity}/content` | `app.dataset` | `write_dataset` | yes | `back/app/dataset/router.py:208` |
+| GET | `/datasets/{identity}/owner` | `app.dataset` | `owner_options` | yes | `back/app/dataset/router.py:274` |
+| PATCH | `/datasets/{identity}/owner` | `app.dataset` | `transfer_owner` | yes | `back/app/dataset/router.py:281` |
+| GET | `/datasets/{identity}/revisions` | `app.dataset` | `read_history` | yes | `back/app/dataset/router.py:242` |
+| GET | `/datasets/{identity}/revisions/{number}` | `app.dataset` | `read_revision` | yes | `back/app/dataset/router.py:249` |
+| POST | `/datasets/{identity}/revisions/{number}/restore` | `app.dataset` | `restore_revision` | yes | `back/app/dataset/router.py:257` |
+| GET | `/datasets/{identity}/sharing` | `app.dataset` | `sharing` | yes | `back/app/dataset/router.py:267` |
+| PUT | `/datasets/{identity}/sharing` | `app.dataset` | `set_grant` | yes | `back/app/dataset/router.py:309` |
+| PUT | `/datasets/{identity}/sharing-level` | `app.dataset` | `sharing_level` | yes | `back/app/dataset/router.py:291` |
+| GET | `/datasets/{identity}/usages` | `app.dataset` | `usages` | yes | `back/app/dataset/router.py:300` |
 | GET | `/definitions` | `app.process` | `read_definitions` | yes | `back/app/process/router.py:156` |
 | POST | `/definitions` | `app.process` | `create_definition` | yes | `back/app/process/router.py:170` |
 | POST | `/definitions/sync` | `app.process` | `sync_definitions` | yes | `back/app/process/router.py:181` |
 | DELETE | `/definitions/{process_id}` | `app.process` | `delete_definition` | yes | `back/app/process/router.py:215` |
 | GET | `/definitions/{process_id}` | `app.process` | `read_definition` | yes | `back/app/process/router.py:193` |
 | PUT | `/definitions/{process_id}` | `app.process` | `update_definition` | yes | `back/app/process/router.py:199` |
-| GET | `/dream/memory/{item_id}/actions` | `app.dream` | `read_memory_dream_actions` | yes | `back/app/dream/router.py:48` |
-| POST | `/dream/memory/{item_id}/actions/{action}` | `app.dream` | `run_memory_dream_action` | yes | `back/app/dream/router.py:57` |
-| GET | `/dream/overview` | `app.dream` | `read_dream_overview` | yes | `back/app/dream/router.py:81` |
-| GET | `/dream/receipts` | `app.dream` | `read_dream_receipts` | yes | `back/app/dream/router.py:88` |
-| GET | `/dream/receipts/{receipt_id}` | `app.dream` | `read_dream_receipt` | yes | `back/app/dream/router.py:156` |
-| GET | `/dream/runtime` | `app.dream` | `read_dream_runtime` | yes | `back/app/dream/router.py:74` |
-| GET | `/dream/topic-assignment` | `app.dream` | `read_topic_assignment` | yes | `back/app/dream/router.py:126` |
+| POST | `/documents` | `app.document` | `create_managed_document` | yes | `back/app/document/router.py:204` |
+| GET | `/documents/folders` | `app.document` | `read_document_folders` | yes | `back/app/document/router.py:423` |
+| POST | `/documents/goal-folders/reconcile` | `app.document` | `launch_goal_folder_reconciliation` | yes | `back/app/document/router.py:90` |
+| POST | `/documents/icons/resolve` | `app.document` | `resolve_document_icons` | yes | `back/app/document/router.py:291` |
+| GET | `/documents/keywords` | `app.document` | `read_document_keywords` | yes | `back/app/document/router.py:257` |
+| POST | `/documents/library` | `app.document` | `browse_managed_documents` | yes | `back/app/document/router.py:275` |
+| PUT | `/documents/order` | `app.document` | `reorder_personal_documents` | yes | `back/app/document/router.py:308` |
+| PUT | `/documents/order/sort` | `app.document` | `sort_personal_documents` | yes | `back/app/document/router.py:318` |
+| GET | `/documents/owner-options` | `app.document` | `read_document_owner_options` | yes | `back/app/document/router.py:438` |
+| GET | `/documents/tag-icons` | `app.document` | `read_personal_tag_icons` | yes | `back/app/document/router.py:328` |
+| POST | `/documents/tag-icons` | `app.document` | `upload_personal_tag_icon` | yes | `back/app/document/router.py:333` |
+| GET | `/documents/tags` | `app.document` | `read_personal_document_tags` | yes | `back/app/document/router.py:359` |
+| POST | `/documents/tags` | `app.document` | `create_personal_document_tag` | yes | `back/app/document/router.py:365` |
+| DELETE | `/documents/tags/{tag_id}` | `app.document` | `delete_personal_document_tag` | yes | `back/app/document/router.py:399` |
+| PUT | `/documents/tags/{tag_id}` | `app.document` | `update_personal_document_tag` | yes | `back/app/document/router.py:391` |
+| GET | `/documents/tags/{tag_id}/sharing` | `app.document` | `read_folder_sharing` | yes | `back/app/document/router.py:373` |
+| PUT | `/documents/tags/{tag_id}/sharing` | `app.document` | `update_folder_sharing` | yes | `back/app/document/router.py:382` |
+| DELETE | `/documents/{document_id}` | `app.document` | `delete_managed_document` | yes | `back/app/document/router.py:766` |
+| GET | `/documents/{document_id}` | `app.document` | `read_managed_document` | yes | `back/app/document/router.py:742` |
+| PATCH | `/documents/{document_id}` | `app.document` | `update_human_document` | yes | `back/app/document/router.py:780` |
+| GET | `/documents/{document_id}/app-permissions` | `app.document` | `read_app_permissions` | yes | `back/app/document/router.py:130` |
+| PUT | `/documents/{document_id}/app-permissions/{app_key}/{alias}` | `app.document` | `update_app_permission` | yes | `back/app/document/router.py:138` |
+| POST | `/documents/{document_id}/apps/{app_id}/datasets/{alias}` | `app.document` | `access_app_dataset` | yes | `back/app/document/router.py:149` |
+| GET | `/documents/{document_id}/attachments` | `app.document` | `list_document_attachments` | yes | `back/app/document/router.py:1015` |
+| POST | `/documents/{document_id}/attachments` | `app.document` | `add_document_attachment` | yes | `back/app/document/router.py:1034` |
+| DELETE | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `delete_document_attachment` | yes | `back/app/document/router.py:1147` |
+| GET | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `read_document_attachment` | yes | `back/app/document/router.py:1116` |
+| PATCH | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `rename_document_attachment` | yes | `back/app/document/router.py:1085` |
+| GET | `/documents/{document_id}/attachments/{attachment_id}/info` | `app.document` | `read_document_attachment_info` | yes | `back/app/document/router.py:1099` |
+| GET | `/documents/{document_id}/attachments/{attachment_id}/thumbnail` | `app.document` | `read_document_attachment_thumbnail` | yes | `back/app/document/router.py:1054` |
+| DELETE | `/documents/{document_id}/collaborators/{agent_id}` | `app.document` | `remove_managed_document_grant` | yes | `back/app/document/router.py:984` |
+| PUT | `/documents/{document_id}/collaborators/{agent_id}` | `app.document` | `set_managed_document_grant` | yes | `back/app/document/router.py:950` |
+| GET | `/documents/{document_id}/content-revisions` | `app.document` | `list_managed_document_content_revisions` | yes | `back/app/document/router.py:484` |
+| GET | `/documents/{document_id}/content-revisions/{revision}` | `app.document` | `read_managed_document_content_revision` | yes | `back/app/document/router.py:510` |
+| GET | `/documents/{document_id}/content-revisions/{revision}/diff` | `app.document` | `diff_managed_document_content_revision` | yes | `back/app/document/router.py:534` |
+| POST | `/documents/{document_id}/content-revisions/{revision}/restore` | `app.document` | `restore_managed_document_content_revision` | yes | `back/app/document/router.py:558` |
+| GET | `/documents/{document_id}/dataset-attachments` | `app.document` | `read_document_datasets` | yes | `back/app/document/router.py:656` |
+| PUT | `/documents/{document_id}/dataset-attachments` | `app.document` | `attach_document_dataset` | yes | `back/app/document/router.py:711` |
+| DELETE | `/documents/{document_id}/dataset-attachments/{dataset_id}` | `app.document` | `detach_document_dataset` | yes | `back/app/document/router.py:723` |
+| POST | `/documents/{document_id}/export-bundle` | `app.document` | `export_document_bundle` | yes | `back/app/document/router.py:605` |
+| POST | `/documents/{document_id}/export-pdf` | `app.document` | `export_managed_document_pdf` | yes | `back/app/document/router.py:618` |
+| PATCH | `/documents/{document_id}/folder` | `app.document` | `move_managed_document` | yes | `back/app/document/router.py:822` |
+| PATCH | `/documents/{document_id}/global-access` | `app.document` | `set_managed_document_global_access` | yes | `back/app/document/router.py:921` |
+| DELETE | `/documents/{document_id}/grants/{agent_id}` | `app.document` | `remove_document_grant` | yes | `back/app/document/router.py:1204` |
+| PUT | `/documents/{document_id}/grants/{agent_id}` | `app.document` | `set_document_grant` | yes | `back/app/document/router.py:1172` |
+| PUT | `/documents/{document_id}/icon` | `app.document` | `save_document_icon` | yes | `back/app/document/router.py:298` |
+| POST | `/documents/{document_id}/import-image` | `app.document` | `import_document_image` | yes | `back/app/document/router.py:585` |
+| GET | `/documents/{document_id}/internal-attachments` | `app.document` | `read_internal_attachments` | yes | `back/app/document/router.py:666` |
+| PUT | `/documents/{document_id}/internal-attachments` | `app.document` | `change_internal_attachments` | yes | `back/app/document/router.py:677` |
+| POST | `/documents/{document_id}/link-card` | `app.document` | `create_document_link_card` | yes | `back/app/document/router.py:595` |
+| PATCH | `/documents/{document_id}/owner` | `app.document` | `change_document_owner` | yes | `back/app/document/router.py:859` |
+| PUT | `/documents/{document_id}/parent` | `app.document` | `move_personal_subdocument` | yes | `back/app/document/router.py:349` |
+| GET | `/documents/{document_id}/process-attachments` | `app.document` | `read_document_processes` | yes | `back/app/document/router.py:689` |
+| PUT | `/documents/{document_id}/process-attachments` | `app.document` | `attach_document_process` | yes | `back/app/document/router.py:699` |
+| GET | `/documents/{document_id}/sharing` | `app.document` | `read_document_sharing` | yes | `back/app/document/router.py:795` |
+| PUT | `/documents/{document_id}/sharing` | `app.document` | `update_document_sharing` | yes | `back/app/document/router.py:803` |
+| PUT | `/documents/{document_id}/sharing-level` | `app.document` | `update_document_sharing_level` | yes | `back/app/document/router.py:811` |
+| GET | `/documents/{document_id}/summary` | `app.document` | `read_document_summary` | yes | `back/app/document/router.py:99` |
+| PUT | `/documents/{document_id}/summary` | `app.document` | `edit_document_summary` | yes | `back/app/document/router.py:111` |
+| PUT | `/documents/{document_id}/tags` | `app.document` | `move_personal_document` | yes | `back/app/document/router.py:341` |
+| DELETE | `/documents/{document_id}/tags/{tag_id}` | `app.document` | `remove_personal_document_tag` | yes | `back/app/document/router.py:415` |
+| PUT | `/documents/{document_id}/tags/{tag_id}` | `app.document` | `add_personal_document_tag` | yes | `back/app/document/router.py:407` |
+| POST | `/documents/{document_id}/thumbnail` | `app.document` | `read_document_thumbnail` | yes | `back/app/document/router.py:635` |
+| GET | `/dream/memory/{item_id}/actions` | `app.dream` | `read_memory_dream_actions` | yes | `back/app/dream/router.py:50` |
+| POST | `/dream/memory/{item_id}/actions/{action}` | `app.dream` | `run_memory_dream_action` | yes | `back/app/dream/router.py:59` |
+| GET | `/dream/overview` | `app.dream` | `read_dream_overview` | yes | `back/app/dream/router.py:83` |
+| GET | `/dream/receipts` | `app.dream` | `read_dream_receipts` | yes | `back/app/dream/router.py:90` |
+| GET | `/dream/receipts/{receipt_id}` | `app.dream` | `read_dream_receipt` | yes | `back/app/dream/router.py:158` |
+| GET | `/dream/runtime` | `app.dream` | `read_dream_runtime` | yes | `back/app/dream/router.py:76` |
+| GET | `/dream/topic-assignment` | `app.dream` | `read_topic_assignment` | yes | `back/app/dream/router.py:128` |
 | GET | `/evaluation/candidates` | `app.lab` | `read_candidates` | yes | `back/app/lab/router.py:216` |
 | GET | `/evaluation/config` | `app.lab` | `read_config` | yes | `back/app/lab/router.py:210` |
 | GET | `/evaluation/dispatcher/candidates` | `app.lab` | `read_dispatcher_candidates` | yes | `back/app/lab/router.py:378` |
@@ -1682,98 +1783,33 @@ tests remain authoritative for behavior.
 | POST | `/mcp/{identifier}` | `app.harnesses` | `mcp` | no | `back/app/harnesses/runtime_web.py:60` |
 | POST | `/media` | `app.file_share` | `prepare_media` | yes | `back/app/file_share/media_router.py:38` |
 | DELETE | `/media/{identifier}` | `app.file_share` | `release_media` | yes | `back/app/file_share/media_router.py:116` |
-| POST | `/memory/browse` | `app.memory` | `browse_memory` | yes | `back/app/memory/router.py:457` |
-| POST | `/memory/documents` | `app.memory` | `create_managed_document` | yes | `back/app/memory/router.py:259` |
-| GET | `/memory/documents/folders` | `app.memory` | `read_document_folders` | yes | `back/app/memory/router.py:882` |
-| POST | `/memory/documents/icons/resolve` | `app.memory` | `resolve_document_icons` | yes | `back/app/memory/router.py:734` |
-| GET | `/memory/documents/keywords` | `app.memory` | `read_document_keywords` | yes | `back/app/memory/router.py:698` |
-| POST | `/memory/documents/library` | `app.memory` | `browse_managed_documents` | yes | `back/app/memory/router.py:717` |
-| PUT | `/memory/documents/order` | `app.memory` | `reorder_personal_documents` | yes | `back/app/memory/router.py:753` |
-| PUT | `/memory/documents/order/sort` | `app.memory` | `sort_personal_documents` | yes | `back/app/memory/router.py:764` |
-| GET | `/memory/documents/owner-options` | `app.memory` | `read_document_owner_options` | yes | `back/app/memory/router.py:898` |
-| GET | `/memory/documents/tag-icons` | `app.memory` | `read_personal_tag_icons` | yes | `back/app/memory/router.py:775` |
-| POST | `/memory/documents/tag-icons` | `app.memory` | `upload_personal_tag_icon` | yes | `back/app/memory/router.py:781` |
-| GET | `/memory/documents/tags` | `app.memory` | `read_personal_document_tags` | yes | `back/app/memory/router.py:810` |
-| POST | `/memory/documents/tags` | `app.memory` | `create_personal_document_tag` | yes | `back/app/memory/router.py:817` |
-| DELETE | `/memory/documents/tags/{tag_id}` | `app.memory` | `delete_personal_document_tag` | yes | `back/app/memory/router.py:855` |
-| PUT | `/memory/documents/tags/{tag_id}` | `app.memory` | `update_personal_document_tag` | yes | `back/app/memory/router.py:846` |
-| GET | `/memory/documents/tags/{tag_id}/sharing` | `app.memory` | `read_folder_sharing` | yes | `back/app/memory/router.py:826` |
-| PUT | `/memory/documents/tags/{tag_id}/sharing` | `app.memory` | `update_folder_sharing` | yes | `back/app/memory/router.py:836` |
-| DELETE | `/memory/documents/{document_id}` | `app.memory` | `delete_managed_document` | yes | `back/app/memory/router.py:1246` |
-| GET | `/memory/documents/{document_id}` | `app.memory` | `read_managed_document` | yes | `back/app/memory/router.py:1221` |
-| PATCH | `/memory/documents/{document_id}` | `app.memory` | `update_human_document` | yes | `back/app/memory/router.py:1261` |
-| GET | `/memory/documents/{document_id}/app-permissions` | `app.memory` | `read_app_permissions` | yes | `back/app/memory/router.py:137` |
-| PUT | `/memory/documents/{document_id}/app-permissions/{app_key}/{alias}` | `app.memory` | `update_app_permission` | yes | `back/app/memory/router.py:146` |
-| POST | `/memory/documents/{document_id}/apps/{app_id}/datasets/{alias}` | `app.memory` | `access_app_dataset` | yes | `back/app/memory/router.py:158` |
-| GET | `/memory/documents/{document_id}/attachments` | `app.memory` | `list_document_attachments` | yes | `back/app/memory/router.py:1506` |
-| POST | `/memory/documents/{document_id}/attachments` | `app.memory` | `add_document_attachment` | yes | `back/app/memory/router.py:1526` |
-| DELETE | `/memory/documents/{document_id}/attachments/{attachment_id}` | `app.memory` | `delete_document_attachment` | yes | `back/app/memory/router.py:1644` |
-| GET | `/memory/documents/{document_id}/attachments/{attachment_id}` | `app.memory` | `read_document_attachment` | yes | `back/app/memory/router.py:1612` |
-| PATCH | `/memory/documents/{document_id}/attachments/{attachment_id}` | `app.memory` | `rename_document_attachment` | yes | `back/app/memory/router.py:1579` |
-| GET | `/memory/documents/{document_id}/attachments/{attachment_id}/info` | `app.memory` | `read_document_attachment_info` | yes | `back/app/memory/router.py:1594` |
-| GET | `/memory/documents/{document_id}/attachments/{attachment_id}/thumbnail` | `app.memory` | `read_document_attachment_thumbnail` | yes | `back/app/memory/router.py:1547` |
-| DELETE | `/memory/documents/{document_id}/collaborators/{agent_id}` | `app.memory` | `remove_managed_document_grant` | yes | `back/app/memory/router.py:1474` |
-| PUT | `/memory/documents/{document_id}/collaborators/{agent_id}` | `app.memory` | `set_managed_document_grant` | yes | `back/app/memory/router.py:1439` |
-| GET | `/memory/documents/{document_id}/content-revisions` | `app.memory` | `list_managed_document_content_revisions` | yes | `back/app/memory/router.py:947` |
-| GET | `/memory/documents/{document_id}/content-revisions/{revision}` | `app.memory` | `read_managed_document_content_revision` | yes | `back/app/memory/router.py:974` |
-| GET | `/memory/documents/{document_id}/content-revisions/{revision}/diff` | `app.memory` | `diff_managed_document_content_revision` | yes | `back/app/memory/router.py:999` |
-| POST | `/memory/documents/{document_id}/content-revisions/{revision}/restore` | `app.memory` | `restore_managed_document_content_revision` | yes | `back/app/memory/router.py:1024` |
-| GET | `/memory/documents/{document_id}/dataset-attachments` | `app.memory` | `read_document_datasets` | yes | `back/app/memory/router.py:1128` |
-| PUT | `/memory/documents/{document_id}/dataset-attachments` | `app.memory` | `attach_document_dataset` | yes | `back/app/memory/router.py:1188` |
-| DELETE | `/memory/documents/{document_id}/dataset-attachments/{dataset_id}` | `app.memory` | `detach_document_dataset` | yes | `back/app/memory/router.py:1201` |
-| POST | `/memory/documents/{document_id}/export-bundle` | `app.memory` | `export_document_bundle` | yes | `back/app/memory/router.py:1074` |
-| POST | `/memory/documents/{document_id}/export-pdf` | `app.memory` | `export_managed_document_pdf` | yes | `back/app/memory/router.py:1088` |
-| PATCH | `/memory/documents/{document_id}/folder` | `app.memory` | `move_managed_document` | yes | `back/app/memory/router.py:1307` |
-| PATCH | `/memory/documents/{document_id}/global-access` | `app.memory` | `set_managed_document_global_access` | yes | `back/app/memory/router.py:1409` |
-| DELETE | `/memory/documents/{document_id}/grants/{agent_id}` | `app.memory` | `remove_document_grant` | yes | `back/app/memory/router.py:1703` |
-| PUT | `/memory/documents/{document_id}/grants/{agent_id}` | `app.memory` | `set_document_grant` | yes | `back/app/memory/router.py:1670` |
-| PUT | `/memory/documents/{document_id}/icon` | `app.memory` | `save_document_icon` | yes | `back/app/memory/router.py:742` |
-| POST | `/memory/documents/{document_id}/import-image` | `app.memory` | `import_document_image` | yes | `back/app/memory/router.py:1052` |
-| GET | `/memory/documents/{document_id}/internal-attachments` | `app.memory` | `read_internal_attachments` | yes | `back/app/memory/router.py:1139` |
-| PUT | `/memory/documents/{document_id}/internal-attachments` | `app.memory` | `change_internal_attachments` | yes | `back/app/memory/router.py:1151` |
-| POST | `/memory/documents/{document_id}/link-card` | `app.memory` | `create_document_link_card` | yes | `back/app/memory/router.py:1063` |
-| PATCH | `/memory/documents/{document_id}/owner` | `app.memory` | `change_document_owner` | yes | `back/app/memory/router.py:1345` |
-| PUT | `/memory/documents/{document_id}/parent` | `app.memory` | `move_personal_subdocument` | yes | `back/app/memory/router.py:799` |
-| GET | `/memory/documents/{document_id}/process-attachments` | `app.memory` | `read_document_processes` | yes | `back/app/memory/router.py:1164` |
-| PUT | `/memory/documents/{document_id}/process-attachments` | `app.memory` | `attach_document_process` | yes | `back/app/memory/router.py:1175` |
-| GET | `/memory/documents/{document_id}/sharing` | `app.memory` | `read_document_sharing` | yes | `back/app/memory/router.py:1277` |
-| PUT | `/memory/documents/{document_id}/sharing` | `app.memory` | `update_document_sharing` | yes | `back/app/memory/router.py:1286` |
-| PUT | `/memory/documents/{document_id}/sharing-level` | `app.memory` | `update_document_sharing_level` | yes | `back/app/memory/router.py:1295` |
-| PUT | `/memory/documents/{document_id}/tags` | `app.memory` | `move_personal_document` | yes | `back/app/memory/router.py:790` |
-| DELETE | `/memory/documents/{document_id}/tags/{tag_id}` | `app.memory` | `remove_personal_document_tag` | yes | `back/app/memory/router.py:873` |
-| PUT | `/memory/documents/{document_id}/tags/{tag_id}` | `app.memory` | `add_personal_document_tag` | yes | `back/app/memory/router.py:864` |
-| POST | `/memory/documents/{document_id}/thumbnail` | `app.memory` | `read_document_thumbnail` | yes | `back/app/memory/router.py:1106` |
-| GET | `/memory/duplicates/preview` | `app.memory` | `estimate_memory_duplicates` | yes | `back/app/memory/router.py:385` |
-| GET | `/memory/filter-options` | `app.memory` | `read_memory_filter_options` | yes | `back/app/memory/router.py:500` |
-| GET | `/memory/findings` | `app.memory` | `list_memory_findings` | yes | `back/app/memory/router.py:407` |
-| POST | `/memory/findings/{finding_id}/apply` | `app.memory` | `apply_memory_finding` | yes | `back/app/memory/router.py:426` |
-| POST | `/memory/findings/{finding_id}/dismiss` | `app.memory` | `dismiss_memory_finding` | yes | `back/app/memory/router.py:444` |
-| POST | `/memory/goal-folders/reconcile` | `app.memory` | `launch_goal_folder_reconciliation` | yes | `back/app/memory/router.py:351` |
-| POST | `/memory/graph/expand` | `app.memory` | `expand_memory_graph_node` | yes | `back/app/memory/router.py:565` |
-| POST | `/memory/graph/roots` | `app.memory` | `list_memory_graph_roots` | yes | `back/app/memory/router.py:528` |
-| POST | `/memory/graph/state` | `app.memory` | `write_memory_graph_state` | yes | `back/app/memory/router.py:556` |
-| POST | `/memory/graph/state/read` | `app.memory` | `read_memory_graph_state` | yes | `back/app/memory/router.py:547` |
-| POST | `/memory/items` | `app.memory` | `create_memory_item` | yes | `back/app/memory/router.py:239` |
-| DELETE | `/memory/items/{item_id}` | `app.memory` | `forget_memory_item` | yes | `back/app/memory/router.py:681` |
-| GET | `/memory/items/{item_id}` | `app.memory` | `get_memory_item` | yes | `back/app/memory/router.py:610` |
-| PUT | `/memory/items/{item_id}` | `app.memory` | `update_memory_item` | yes | `back/app/memory/router.py:658` |
-| DELETE | `/memory/items/{item_id}/grants/{agent_id}` | `app.memory` | `remove_memory_item_grant` | yes | `back/app/memory/router.py:1747` |
-| PUT | `/memory/items/{item_id}/grants/{agent_id}` | `app.memory` | `set_memory_item_grant` | yes | `back/app/memory/router.py:1732` |
-| GET | `/memory/items/{item_id}/links` | `app.memory` | `list_memory_links` | yes | `back/app/memory/router.py:1782` |
-| GET | `/memory/items/{item_id}/revisions` | `app.memory` | `list_memory_revisions` | yes | `back/app/memory/router.py:643` |
-| GET | `/memory/items/{item_id}/sharing` | `app.memory` | `read_item_sharing` | yes | `back/app/memory/router.py:584` |
-| PUT | `/memory/items/{item_id}/sharing` | `app.memory` | `update_item_sharing` | yes | `back/app/memory/router.py:593` |
-| GET | `/memory/link-reconciliation` | `app.memory` | `read_link_reconciliation_status` | yes | `back/app/memory/router.py:329` |
-| POST | `/memory/link-reconciliation` | `app.memory` | `launch_link_reconciliation` | yes | `back/app/memory/router.py:341` |
-| POST | `/memory/links` | `app.memory` | `create_memory_link` | yes | `back/app/memory/router.py:1764` |
-| GET | `/memory/metrics` | `app.memory` | `read_memory_metrics` | yes | `back/app/memory/router.py:311` |
+| POST | `/memory/browse` | `app.memory` | `browse_memory` | yes | `back/app/memory/router.py:291` |
+| GET | `/memory/duplicates/preview` | `app.memory` | `estimate_memory_duplicates` | yes | `back/app/memory/router.py:219` |
+| GET | `/memory/filter-options` | `app.memory` | `read_memory_filter_options` | yes | `back/app/memory/router.py:334` |
+| GET | `/memory/findings` | `app.memory` | `list_memory_findings` | yes | `back/app/memory/router.py:241` |
+| POST | `/memory/findings/{finding_id}/apply` | `app.memory` | `apply_memory_finding` | yes | `back/app/memory/router.py:260` |
+| POST | `/memory/findings/{finding_id}/dismiss` | `app.memory` | `dismiss_memory_finding` | yes | `back/app/memory/router.py:278` |
+| POST | `/memory/graph/expand` | `app.memory` | `expand_memory_graph_node` | yes | `back/app/memory/router.py:399` |
+| POST | `/memory/graph/roots` | `app.memory` | `list_memory_graph_roots` | yes | `back/app/memory/router.py:362` |
+| POST | `/memory/graph/state` | `app.memory` | `write_memory_graph_state` | yes | `back/app/memory/router.py:390` |
+| POST | `/memory/graph/state/read` | `app.memory` | `read_memory_graph_state` | yes | `back/app/memory/router.py:381` |
+| POST | `/memory/items` | `app.memory` | `create_memory_item` | yes | `back/app/memory/router.py:133` |
+| DELETE | `/memory/items/{item_id}` | `app.memory` | `forget_memory_item` | yes | `back/app/memory/router.py:501` |
+| GET | `/memory/items/{item_id}` | `app.memory` | `get_memory_item` | yes | `back/app/memory/router.py:430` |
+| PUT | `/memory/items/{item_id}` | `app.memory` | `update_memory_item` | yes | `back/app/memory/router.py:478` |
+| GET | `/memory/items/{item_id}/links` | `app.memory` | `list_memory_links` | yes | `back/app/memory/router.py:657` |
+| GET | `/memory/items/{item_id}/revisions` | `app.memory` | `list_memory_revisions` | yes | `back/app/memory/router.py:463` |
+| GET | `/memory/link-reconciliation` | `app.memory` | `read_link_reconciliation_status` | yes | `back/app/memory/router.py:172` |
+| POST | `/memory/link-reconciliation` | `app.memory` | `launch_link_reconciliation` | yes | `back/app/memory/router.py:184` |
+| POST | `/memory/links` | `app.memory` | `create_memory_link` | yes | `back/app/memory/router.py:639` |
+| GET | `/memory/metrics` | `app.memory` | `read_memory_metrics` | yes | `back/app/memory/router.py:154` |
 | POST | `/memory/provider/remember` | `bridge.hermes` | `hermes_provider_remember` | no | `back/bridge/hermes/router.py:192` |
 | POST | `/memory/provider/search` | `bridge.hermes` | `hermes_provider_search` | no | `back/bridge/hermes/router.py:168` |
-| POST | `/memory/recall` | `app.memory` | `recall_memory` | yes | `back/app/memory/router.py:516` |
-| GET | `/memory/recent` | `app.memory` | `read_recent_memories` | yes | `back/app/memory/router.py:198` |
-| GET | `/memory/retention/preview` | `app.memory` | `estimate_memory_retention` | yes | `back/app/memory/router.py:368` |
-| POST | `/memory/search` | `app.memory` | `search_memory` | yes | `back/app/memory/router.py:488` |
-| GET | `/memory/temporal/defaults` | `app.memory` | `temporal_defaults` | yes | `back/app/memory/router.py:121` |
+| POST | `/memory/recall` | `app.memory` | `recall_memory` | yes | `back/app/memory/router.py:350` |
+| GET | `/memory/recent` | `app.memory` | `read_recent_memories` | yes | `back/app/memory/router.py:92` |
+| GET | `/memory/retention/preview` | `app.memory` | `estimate_memory_retention` | yes | `back/app/memory/router.py:202` |
+| POST | `/memory/search` | `app.memory` | `search_memory` | yes | `back/app/memory/router.py:322` |
+| GET | `/memory/temporal/defaults` | `app.memory` | `temporal_defaults` | yes | `back/app/memory/router.py:55` |
 | GET | `/messenger/bridges` | `app.messenger` | `list_messenger_bridges` | yes | `back/app/messenger/router.py:23` |
 | GET | `/messenger/channels` | `app.messenger` | `list_enabled_messenger_channels` | yes | `back/app/messenger/router.py:71` |
 | POST | `/messenger/configuration/test` | `app.messenger` | `test_messenger_configuration` | yes | `back/app/messenger/router.py:34` |
@@ -1791,11 +1827,11 @@ tests remain authoritative for behavior.
 | GET | `/permissions` | `app.messenger` | `list_permissions` | yes | `back/app/messenger/permission_router.py:18` |
 | DELETE | `/permissions/{permission_id}` | `app.messenger` | `delete_permission` | yes | `back/app/messenger/permission_router.py:49` |
 | POST | `/permissions/{permission_id}/answer` | `app.messenger` | `answer_request` | yes | `back/app/messenger/permission_router.py:36` |
-| POST | `/process-campaigns` | `app.lab` | `lab_process_campaign_start` | yes | `back/app/lab/process_evaluation_router.py:85` |
-| POST | `/process-campaigns/datasets` | `app.lab` | `lab_process_dataset_create` | yes | `back/app/lab/process_evaluation_router.py:65` |
-| POST | `/process-campaigns/datasets/generate` | `app.lab` | `lab_process_dataset_generate` | yes | `back/app/lab/process_evaluation_router.py:74` |
-| GET | `/process-campaigns/{identity}` | `app.lab` | `lab_process_campaign_get` | yes | `back/app/lab/process_evaluation_router.py:95` |
-| POST | `/process-campaigns/{identity}/cancel` | `app.lab` | `lab_process_campaign_cancel` | yes | `back/app/lab/process_evaluation_router.py:104` |
+| POST | `/process-campaigns` | `app.lab` | `lab_process_campaign_start` | yes | `back/app/lab/process_evaluation_router.py:86` |
+| POST | `/process-campaigns/datasets` | `app.lab` | `lab_process_dataset_create` | yes | `back/app/lab/process_evaluation_router.py:66` |
+| POST | `/process-campaigns/datasets/generate` | `app.lab` | `lab_process_dataset_generate` | yes | `back/app/lab/process_evaluation_router.py:75` |
+| GET | `/process-campaigns/{identity}` | `app.lab` | `lab_process_campaign_get` | yes | `back/app/lab/process_evaluation_router.py:96` |
+| POST | `/process-campaigns/{identity}/cancel` | `app.lab` | `lab_process_campaign_cancel` | yes | `back/app/lab/process_evaluation_router.py:105` |
 | POST | `/profile/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | no | `back/app/llm/anthropic_router.py:252` |
 | POST | `/profile/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | no | `back/app/llm/anthropic_router.py:218` |
 | GET | `/profile/anthropic/v1/models` | `app.llm` | `anthropic_models` | no | `back/app/llm/anthropic_router.py:184` |
@@ -1892,19 +1928,19 @@ tests remain authoritative for behavior.
 | GET | `/tools/{tool_id}/export` | `app.tools` | `export_tool` | yes | `back/app/tools/router.py:240` |
 | GET | `/tools/{tool_id}/global-params` | `app.tools` | `get_global_params` | yes | `back/app/tools/router.py:119` |
 | PUT | `/tools/{tool_id}/global-params` | `app.tools` | `update_global_params` | yes | `back/app/tools/router.py:136` |
-| GET | `/topics` | `app.topic` | `read_topics` | yes | `back/app/topic/router.py:46` |
-| POST | `/topics` | `app.topic` | `create_topic` | yes | `back/app/topic/router.py:98` |
-| GET | `/topics/conversation` | `app.topic` | `read_conversation_topics` | yes | `back/app/topic/router.py:65` |
-| GET | `/topics/keywords` | `app.topic` | `read_topic_keywords` | yes | `back/app/topic/router.py:80` |
-| GET | `/topics/refs` | `app.topic` | `read_topic_refs` | yes | `back/app/topic/router.py:88` |
-| PUT | `/topics/resources/{kind}/{identity}` | `app.topic` | `change_resource_topic` | yes | `back/app/topic/router.py:105` |
-| DELETE | `/topics/{topic_id}` | `app.topic` | `delete_topic` | yes | `back/app/topic/router.py:204` |
-| GET | `/topics/{topic_id}` | `app.topic` | `read_topic` | yes | `back/app/topic/router.py:212` |
-| PUT | `/topics/{topic_id}` | `app.topic` | `update_topic` | yes | `back/app/topic/router.py:160` |
-| GET | `/topics/{topic_id}/content` | `app.topic` | `read_topic_content` | yes | `back/app/topic/router.py:142` |
-| GET | `/topics/{topic_id}/memories` | `app.topic` | `read_topic_memories` | yes | `back/app/topic/router.py:129` |
-| POST | `/topics/{topic_id}/merge` | `app.topic` | `merge_topic` | yes | `back/app/topic/router.py:172` |
-| POST | `/topics/{topic_id}/split` | `app.topic` | `split_topic` | yes | `back/app/topic/router.py:190` |
+| GET | `/topics` | `app.topic` | `read_topics` | yes | `back/app/topic/router.py:47` |
+| POST | `/topics` | `app.topic` | `create_topic` | yes | `back/app/topic/router.py:99` |
+| GET | `/topics/conversation` | `app.topic` | `read_conversation_topics` | yes | `back/app/topic/router.py:66` |
+| GET | `/topics/keywords` | `app.topic` | `read_topic_keywords` | yes | `back/app/topic/router.py:81` |
+| GET | `/topics/refs` | `app.topic` | `read_topic_refs` | yes | `back/app/topic/router.py:89` |
+| PUT | `/topics/resources/{kind}/{identity}` | `app.topic` | `change_resource_topic` | yes | `back/app/topic/router.py:106` |
+| DELETE | `/topics/{topic_id}` | `app.topic` | `delete_topic` | yes | `back/app/topic/router.py:205` |
+| GET | `/topics/{topic_id}` | `app.topic` | `read_topic` | yes | `back/app/topic/router.py:213` |
+| PUT | `/topics/{topic_id}` | `app.topic` | `update_topic` | yes | `back/app/topic/router.py:161` |
+| GET | `/topics/{topic_id}/content` | `app.topic` | `read_topic_content` | yes | `back/app/topic/router.py:143` |
+| GET | `/topics/{topic_id}/memories` | `app.topic` | `read_topic_memories` | yes | `back/app/topic/router.py:130` |
+| POST | `/topics/{topic_id}/merge` | `app.topic` | `merge_topic` | yes | `back/app/topic/router.py:173` |
+| POST | `/topics/{topic_id}/split` | `app.topic` | `split_topic` | yes | `back/app/topic/router.py:191` |
 | POST | `/v1/chat/completions` | `bridge.codex` | `chat_completions` | no | `back/bridge/codex/default-agent/server.py:264` |
 | GET | `/v1/galaris/capabilities` | `app.harnesses` | `capabilities` | no | `back/app/harnesses/runtime_web.py:22` |
 | POST | `/v1/galaris/runs` | `app.harnesses` | `start` | no | `back/app/harnesses/runtime_web.py:27` |
@@ -1964,7 +2000,7 @@ tests remain authoritative for behavior.
 | `dataset_appearances` | `DatasetAppearance` | `app.dataset` | no | `datasets.id`, `users.id` | `back/app/dataset/models.py:106` |
 | `dataset_attachments` | `DatasetAttachment` | `app.dataset` | yes | `datasets.id`, `document_attachments.id`, `files.id` | `back/app/dataset/models.py:81` |
 | `dataset_grants` | `DatasetGrant` | `app.dataset` | no | `agent_groups.id`, `agents.id`, `datasets.id`, `users.id` | `back/app/dataset/models.py:56` |
-| `dataset_revisions` | `DatasetRevision` | `app.dataset` | no | `agents.id`, `datasets.id`, `memory_revisions.id`, `users.id` | `back/app/dataset/models.py:43` |
+| `dataset_revisions` | `DatasetRevision` | `app.dataset` | no | `agents.id`, `datasets.id`, `document_revisions.id`, `users.id` | `back/app/dataset/models.py:43` |
 | `dataset_tag_assignments` | `DatasetTagAssignment` | `app.dataset` | no | `dataset_tags.id`, `datasets.id` | `back/app/dataset/models.py:126` |
 | `dataset_tags` | `DatasetTag` | `app.dataset` | yes | `dataset_tags.id`, `users.id` | `back/app/dataset/models.py:116` |
 | `dataset_write_budgets` | `DatasetWriteBudget` | `app.dataset` | no | `datasets.id`, `users.id` | `back/app/dataset/models.py:95` |
@@ -1973,21 +2009,23 @@ tests remain authoritative for behavior.
 | `dbadmin_actions` | `DbAdminActionRecord` | `core.dbadmin` | no | — | `back/core/dbadmin/models.py:59` |
 | `dbadmin_issues` | `DbAdminIssueRecord` | `core.dbadmin` | no | `dbadmin_runs.id` | `back/core/dbadmin/models.py:36` |
 | `dbadmin_runs` | `DbAdminRun` | `core.dbadmin` | no | — | `back/core/dbadmin/models.py:16` |
-| `document_app_grants` | `DocumentAppGrant` | `app.memory` | yes | `memory_items.id`, `users.id` | `back/app/memory/models.py:159` |
-| `document_app_write_budgets` | `DocumentAppWriteBudget` | `app.memory` | no | `memory_items.id`, `users.id` | `back/app/memory/models.py:177` |
-| `document_attachments` | `DocumentAttachment` | `app.memory` | no | `memory_items.id` | `back/app/memory/models.py:202` |
-| `document_icons` | `DocumentIcon` | `app.memory` | no | `memory_items.id`, `users.id` | `back/app/memory/models.py:147` |
-| `document_list_positions` | `DocumentListPosition` | `app.memory` | no | `memory_items.id`, `users.id` | `back/app/memory/models.py:190` |
-| `document_nesting` | `DocumentNesting` | `app.memory` | no | `documents.id`, `users.id` | `back/app/memory/models.py:131` |
-| `document_revisions` | `DocumentRevision` | `app.memory` | no | `documents.id`, `memory_revisions.id` | `back/app/memory/models.py:662` |
-| `document_sharing_intents` | `DocumentSharingIntent` | `app.memory` | no | `share_configs.id` | `back/app/memory/models.py:72` |
-| `document_tag_assignments` | `DocumentTagAssignment` | `app.memory` | no | `document_tags.id`, `memory_items.id` | `back/app/memory/models.py:121` |
-| `document_tag_icons` | `DocumentTagIcon` | `app.memory` | yes | `users.id` | `back/app/memory/models.py:110` |
-| `document_tags` | `DocumentTag` | `app.memory` | yes | `document_tags.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/memory/models.py:83` |
-| `document_team_grants` | `DocumentTeamGrant` | `app.memory` | no | `agent_groups.id`, `memory_items.id` | `back/app/memory/models.py:731` |
-| `document_user_grants` | `DocumentUserGrant` | `app.memory` | no | `memory_items.id`, `users.id` | `back/app/memory/models.py:720` |
+| `document_app_grants` | `DocumentAppGrant` | `app.document` | yes | `datasets.id`, `documents.id`, `users.id` | `back/app/document/models.py:127` |
+| `document_app_write_budgets` | `DocumentAppWriteBudget` | `app.document` | no | `datasets.id`, `users.id` | `back/app/document/models.py:144` |
+| `document_attachments` | `DocumentAttachment` | `app.document` | no | `documents.id`, `memory_items.id` | `back/app/document/models.py:167` |
+| `document_automation_jobs` | `DocumentAutomationJob` | `app.document` | no | — | `back/app/document/models.py:413` |
+| `document_icons` | `DocumentIcon` | `app.document` | no | `documents.id`, `users.id` | `back/app/document/models.py:116` |
+| `document_list_positions` | `DocumentListPosition` | `app.document` | no | `documents.id`, `users.id` | `back/app/document/models.py:156` |
+| `document_nesting` | `DocumentNesting` | `app.document` | no | `documents.id`, `users.id` | `back/app/document/models.py:101` |
+| `document_revisions` | `DocumentRevision` | `app.document` | no | `agents.id`, `documents.id`, `tasks.id` | `back/app/document/models.py:282` |
+| `document_sharing_intents` | `DocumentSharingIntent` | `app.document` | no | `share_configs.id` | `back/app/document/models.py:38` |
+| `document_sources` | `DocumentSource` | `app.document` | no | `conversation_rounds.id`, `documents.id`, `tasks.id` | `back/app/document/models.py:363` |
+| `document_summary_revisions` | `DocumentSummaryRevision` | `app.document` | no | `agents.id`, `documents.id`, `tasks.id` | `back/app/document/models.py:341` |
+| `document_tag_assignments` | `DocumentTagAssignment` | `app.document` | no | `document_tags.id`, `documents.id` | `back/app/document/models.py:92` |
+| `document_tag_icons` | `DocumentTagIcon` | `app.document` | yes | `users.id` | `back/app/document/models.py:82` |
+| `document_tags` | `DocumentTag` | `app.document` | yes | `document_tags.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/document/models.py:48` |
+| `document_urls` | `DocumentURL` | `app.document` | no | `documents.id` | `back/app/document/models.py:271` |
 | `documentation_passages` | `DocumentationPassage` | `app.documentation` | no | — | `back/app/documentation/models.py:12` |
-| `documents` | `Document` | `app.memory` | yes | `memory_items.id`, `topics.id` | `back/app/memory/models.py:611` |
+| `documents` | `Document` | `app.document` | yes | `agents.id`, `topics.id`, `users.id` | `back/app/document/models.py:181` |
 | `dream_receipts` | `DreamReceipt` | `app.dream` | no | — | `back/app/dream/models.py:26` |
 | `failure_incident_traces` | `FailureIncidentTrace` | `app.incident` | no | `failure_incidents.id` | `back/app/incident/models.py:172` |
 | `failure_incidents` | `FailureIncident` | `app.incident` | no | `agents.id`, `conversation_rounds.id`, `failure_incidents.id`, `failure_patterns.id`, `llm_calls.id`, `process_runs.id`, `task_attempts.id`, `tasks.id` | `back/app/incident/models.py:81` |
@@ -2001,7 +2039,7 @@ tests remain authoritative for behavior.
 | `files` | `StoredFile` | `core.storage` | yes | — | `back/core/storage/models.py:12` |
 | `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | no | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:358` |
 | `goal_cycles` | `GoalCycle` | `app.goal` | no | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:234` |
-| `goals` | `Goal` | `app.goal` | yes | `agents.id`, `connections.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/goal/models.py:75` |
+| `goals` | `Goal` | `app.goal` | yes | `agents.id`, `connections.id`, `documents.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/goal/models.py:75` |
 | `harness_execution_configurations` | `HarnessExecutionConfiguration` | `app.harnesses` | yes | — | `back/app/harnesses/models.py:18` |
 | `harnesses` | `Harness` | `app.harnesses` | yes | — | `back/app/harnesses/models.py:29` |
 | `hermes_agent_configs` | `HermesAgentConfig` | `bridge.hermes` | no | `agents.id` | `back/bridge/hermes/models.py:14` |
@@ -2034,28 +2072,26 @@ tests remain authoritative for behavior.
 | `llms` | `LLM` | `app.llm` | yes | `llm_providers.id` | `back/app/llm/provider_models.py:123` |
 | `mail_inbound_receipts` | `MailInboundReceipt` | `bridge.mail` | no | `agents.id`, `connections.id`, `tool_action_authorizations.id` | `back/bridge/mail/models.py:137` |
 | `mail_outbound_deliveries` | `MailOutboundDelivery` | `bridge.mail` | no | `agents.id`, `connections.id`, `tool_action_authorizations.id`, `users.id` | `back/bridge/mail/models.py:28` |
-| `memory_associations` | `MemoryAssociation` | `app.memory` | no | `memory_items.id` | `back/app/memory/models.py:1284` |
-| `memory_automation_jobs` | `MemoryAutomationJob` | `app.memory` | no | — | `back/app/memory/models.py:1466` |
-| `memory_candidates` | `MemoryAcquisition` | `app.memory` | yes | `agents.id`, `memory_items.id`, `users.id` | `back/app/memory/models.py:1196` |
-| `memory_contact_identities` | `MemoryContactIdentity` | `app.memory` | no | `agents.id`, `memory_items.id`, `users.id` | `back/app/memory/models.py:1002` |
-| `memory_contact_items` | `MemoryContactItem` | `app.memory` | no | `agents.id`, `memory_items.id` | `back/app/memory/models.py:964` |
-| `memory_context_edges` | `MemoryContextEdge` | `app.memory` | no | `memory_context_nodes.id`, `memory_items.id` | `back/app/memory/models.py:927` |
-| `memory_context_nodes` | `MemoryContextNode` | `app.memory` | no | `agents.id` | `back/app/memory/models.py:872` |
-| `memory_embedding_chunks` | `MemoryEmbeddingChunk` | `app.memory` | no | `memory_items.id` | `back/app/memory/models.py:1341` |
-| `memory_embedding_manifests` | `MemoryEmbeddingManifest` | `app.memory` | no | `memory_items.id` | `back/app/memory/models.py:1318` |
-| `memory_findings` | `MemoryFinding` | `app.memory` | no | `memory_items.id`, `users.id` | `back/app/memory/models.py:1395` |
-| `memory_graph_positions` | `MemoryGraphPosition` | `app.memory` | no | `memory_graph_views.id` | `back/app/memory/models.py:59` |
-| `memory_graph_views` | `MemoryGraphView` | `app.memory` | no | `agents.id`, `users.id` | `back/app/memory/models.py:45` |
-| `memory_item_grants` | `MemoryItemGrant` | `app.memory` | no | `agents.id`, `memory_items.id` | `back/app/memory/models.py:696` |
-| `memory_items` | `MemoryItem` | `app.memory` | yes | `agents.id`, `topics.id`, `users.id` | `back/app/memory/models.py:283` |
-| `memory_links` | `MemoryLink` | `app.memory` | yes | `agents.id`, `memory_items.id` | `back/app/memory/models.py:820` |
-| `memory_revisions` | `MemoryRevision` | `app.memory` | no | `agents.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:742` |
-| `memory_sources` | `MemorySource` | `app.memory` | no | `conversation_rounds.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:1146` |
-| `memory_summary_revisions` | `MemorySummaryRevision` | `app.memory` | no | `agents.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:673` |
-| `memory_topic_contact_items` | `MemoryTopicContactItem` | `app.memory` | no | `memory_items.id`, `memory_topic_contact_scopes.id` | `back/app/memory/models.py:1107` |
-| `memory_topic_contact_scopes` | `MemoryTopicContactScope` | `app.memory` | no | `agents.id`, `memory_items.id` | `back/app/memory/models.py:1066` |
-| `memory_urls` | `MemoryURL` | `app.memory` | no | `memory_items.id` | `back/app/memory/models.py:802` |
-| `memory_usages` | `MemoryUsage` | `app.memory` | no | `agents.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:1249` |
+| `memory_associations` | `MemoryAssociation` | `app.memory` | no | `memory_items.id` | `back/app/memory/models.py:985` |
+| `memory_automation_jobs` | `MemoryAutomationJob` | `app.memory` | no | — | `back/app/memory/models.py:1167` |
+| `memory_candidates` | `MemoryAcquisition` | `app.memory` | yes | `agents.id`, `memory_items.id`, `users.id` | `back/app/memory/models.py:897` |
+| `memory_contact_identities` | `MemoryContactIdentity` | `app.memory` | no | `agents.id`, `memory_items.id`, `users.id` | `back/app/memory/models.py:703` |
+| `memory_contact_items` | `MemoryContactItem` | `app.memory` | no | `agents.id`, `memory_items.id` | `back/app/memory/models.py:665` |
+| `memory_context_edges` | `MemoryContextEdge` | `app.memory` | no | `memory_context_nodes.id`, `memory_items.id` | `back/app/memory/models.py:628` |
+| `memory_context_nodes` | `MemoryContextNode` | `app.memory` | no | `agents.id` | `back/app/memory/models.py:573` |
+| `memory_embedding_chunks` | `MemoryEmbeddingChunk` | `app.memory` | no | `memory_items.id` | `back/app/memory/models.py:1042` |
+| `memory_embedding_manifests` | `MemoryEmbeddingManifest` | `app.memory` | no | `memory_items.id` | `back/app/memory/models.py:1019` |
+| `memory_findings` | `MemoryFinding` | `app.memory` | no | `memory_items.id`, `users.id` | `back/app/memory/models.py:1096` |
+| `memory_graph_positions` | `MemoryGraphPosition` | `app.memory` | no | `memory_graph_views.id` | `back/app/memory/models.py:57` |
+| `memory_graph_views` | `MemoryGraphView` | `app.memory` | no | `agents.id`, `users.id` | `back/app/memory/models.py:43` |
+| `memory_items` | `MemoryItem` | `app.memory` | yes | `agents.id`, `topics.id`, `users.id` | `back/app/memory/models.py:147` |
+| `memory_links` | `MemoryLink` | `app.memory` | yes | `agents.id`, `memory_items.id` | `back/app/memory/models.py:521` |
+| `memory_revisions` | `MemoryRevision` | `app.memory` | no | `agents.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:443` |
+| `memory_sources` | `MemorySource` | `app.memory` | no | `conversation_rounds.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:847` |
+| `memory_topic_contact_items` | `MemoryTopicContactItem` | `app.memory` | no | `memory_items.id`, `memory_topic_contact_scopes.id` | `back/app/memory/models.py:808` |
+| `memory_topic_contact_scopes` | `MemoryTopicContactScope` | `app.memory` | no | `agents.id`, `memory_items.id` | `back/app/memory/models.py:767` |
+| `memory_urls` | `MemoryURL` | `app.memory` | no | `memory_items.id` | `back/app/memory/models.py:503` |
+| `memory_usages` | `MemoryUsage` | `app.memory` | no | `agents.id`, `memory_items.id`, `tasks.id` | `back/app/memory/models.py:950` |
 | `messenger_files` | `File` | `app.messenger` | yes | `connections.id` | `back/app/messenger/models.py:429` |
 | `messenger_interactions` | `Interaction` | `app.messenger` | no | `connections.id` | `back/app/messenger/models.py:192` |
 | `messenger_listener_state` | `ListenerState` | `app.messenger` | no | `connections.id` | `back/app/messenger/models.py:485` |
@@ -2190,6 +2226,8 @@ tests remain authoritative for behavior.
 | `conversation_task_submit` | `conversation` | `app.conversation` | `conversation_task_submit` | `back/app/conversation/mcp.py:565` |
 | `document_show` | `conversation` | `app.conversation` | `document_show` | `back/app/conversation/mcp.py:110` |
 | `repository_show` | `conversation` | `app.conversation` | `repository_show` | `back/app/conversation/mcp.py:122` |
+| `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:35` |
+| `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:20` |
 | `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:372` |
 | `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:436` |
 | `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:290` |
@@ -2319,13 +2357,10 @@ tests remain authoritative for behavior.
 | `mail_send` | `mail` | `bridge.mail` | `mail_send` | `back/bridge/mail/mcp.py:125` |
 | `mail_set_flags` | `mail` | `bridge.mail` | `mail_set_flags` | `back/bridge/mail/mcp.py:234` |
 | `mail_trash` | `mail` | `bridge.mail` | `mail_trash` | `back/bridge/mail/mcp.py:266` |
-| `document_share` | `memory` | `app.memory` | `document_share` | `back/app/memory/mcp.py:187` |
-| `memory_forget` | `memory` | `app.memory` | `memory_forget` | `back/app/memory/mcp.py:382` |
-| `memory_remember` | `memory` | `app.memory` | `memory_remember` | `back/app/memory/mcp.py:310` |
-| `memory_share` | `memory` | `app.memory` | `memory_share` | `back/app/memory/mcp.py:282` |
-| `memory_sharing` | `memory` | `app.memory` | `memory_sharing` | `back/app/memory/mcp.py:254` |
-| `memory_summarize` | `memory` | `app.memory` | `memory_summarize` | `back/app/memory/mcp.py:403` |
-| `memory_upcoming` | `memory` | `app.memory` | `memory_upcoming` | `back/app/memory/mcp.py:360` |
+| `memory_forget` | `memory` | `app.memory` | `memory_forget` | `back/app/memory/mcp.py:264` |
+| `memory_remember` | `memory` | `app.memory` | `memory_remember` | `back/app/memory/mcp.py:192` |
+| `memory_summarize` | `memory` | `app.memory` | `memory_summarize` | `back/app/memory/mcp.py:285` |
+| `memory_upcoming` | `memory` | `app.memory` | `memory_upcoming` | `back/app/memory/mcp.py:242` |
 | `messenger_list_rooms` | `messenger` | `app.messenger` | `mcp_list_rooms` | `back/app/messenger/mcp.py:747` |
 | `messenger_room_history` | `messenger` | `app.messenger` | `mcp_room_history` | `back/app/messenger/mcp.py:785` |
 | `messenger_room_send_file` | `messenger` | `app.messenger` | `mcp_room_send_file` | `back/app/messenger/mcp.py:999` |
@@ -2406,6 +2441,10 @@ tests remain authoritative for behavior.
 | `DATASET_ADMIN` | `app.dataset` | privilege.DATASET_ADMIN | `back/app/dataset/privileges.py:3` |
 | `DATASET_EDIT` | `app.dataset` | privilege.DATASET_EDIT | `back/app/dataset/privileges.py:2` |
 | `DATASET_READ` | `app.dataset` | privilege.DATASET_READ | `back/app/dataset/privileges.py:1` |
+| `DOCUMENT_ACCESS` | `app.document` | privilege.DOCUMENT_ACCESS | `back/app/document/privileges.py:3` |
+| `DOCUMENT_ADMIN` | `app.document` | privilege.DOCUMENT_ADMIN | `back/app/document/privileges.py:5` |
+| `DOCUMENT_ASSIGN_ALL_USERS` | `app.document` | privilege.DOCUMENT_ASSIGN_ALL_USERS | `back/app/document/privileges.py:6` |
+| `DOCUMENT_EDIT` | `app.document` | privilege.DOCUMENT_EDIT | `back/app/document/privileges.py:4` |
 | `GOAL_ACCESS` | `app.goal` | privilege.GOAL_ACCESS | `back/app/goal/privileges.py:3` |
 | `GOAL_EDIT` | `app.goal` | privilege.GOAL_EDIT | `back/app/goal/privileges.py:4` |
 | `INCIDENT_ACCESS` | `app.incident` | privilege.INCIDENT_ACCESS | `back/app/incident/privileges.py:3` |
@@ -2440,7 +2479,6 @@ tests remain authoritative for behavior.
 | `MCP_API_ACCESS` | `app.mcp` | privilege.MCP_API_ACCESS | `back/app/mcp/privileges.py:3` |
 | `MEMORY_ACCESS` | `app.memory` | privilege.MEMORY_ACCESS | `back/app/memory/privileges.py:3` |
 | `MEMORY_ADMIN` | `app.memory` | privilege.MEMORY_ADMIN | `back/app/memory/privileges.py:5` |
-| `MEMORY_ASSIGN_ALL_USERS` | `app.memory` | privilege.MEMORY_ASSIGN_ALL_USERS | `back/app/memory/privileges.py:6` |
 | `MEMORY_EDIT` | `app.memory` | privilege.MEMORY_EDIT | `back/app/memory/privileges.py:4` |
 | `PROCESS_ADMIN` | `app.process` | privilege.PROCESS_ADMIN | `back/app/process/privileges.py:6` |
 | `PROCESS_EDIT` | `app.process` | privilege.PROCESS_EDIT | `back/app/process/privileges.py:4` |
@@ -2488,7 +2526,7 @@ tests remain authoritative for behavior.
 | `/connection/permissions` | `app/connection` | `front/app/connection/pages/permissions.vue` |
 | `/console/executor` | `app/console` | `front/app/console/pages/executor.vue` |
 | `/dataset/:id?` | `app/dataset` | `front/app/dataset/pages/[[id]].vue` |
-| `/documents` | `app/memory` | `front/app/memory/pages/documents.vue` |
+| `/documents` | `app/document` | `front/app/document/pages/documents.vue` |
 | `/dream` | `app/dream` | `front/app/dream/pages/index.vue` |
 | `/files` | `app/file_share` | `front/app/file_share/pages/index.vue` |
 | `/goal` | `app/goal` | `front/app/goal/pages/index.vue` |
@@ -2509,7 +2547,7 @@ tests remain authoritative for behavior.
 | `/llm/calls` | `app/llm` | `front/app/llm/pages/calls.vue` |
 | `/memory` | `app/memory` | `front/app/memory/pages/index.vue` |
 | `/memory/contacts` | `app/memory` | `front/app/memory/pages/contacts.vue` |
-| `/memory/documents` | `app/memory` | `front/app/memory/pages/legacy-documents.vue` |
+| `/memory/documents` | `app/document` | `front/app/document/pages/legacy-documents.vue` |
 | `/params` | `core/params` | `front/core/params/pages/index.vue` |
 | `/params/:section` | `core/params` | `front/core/params/pages/[section].vue` |
 | `/params/harnesses/:provider` | `core/params` | `front/core/params/pages/harnesses/[provider].vue` |

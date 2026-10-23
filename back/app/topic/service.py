@@ -28,7 +28,7 @@ from app.memory import (
     upsert_source_managed_item,
 )
 from app.agent import AgentManagementScope
-from app.memory.facade import list_documents_by_topics, reassign_topic_documents, change_document_topic
+from app.document import list_documents_by_topics, reassign_topic_documents, change_document_topic
 from app.dataset.facade import list_datasets_by_topics, reassign_topic_datasets, change_dataset_topic
 from core.database import get_db
 from core.i18n import current_language, normalize_language, t

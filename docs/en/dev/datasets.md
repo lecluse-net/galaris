@@ -26,9 +26,9 @@ owns their declarations and validation. Document applications use the Dataset br
 the viewer's permissions and personal consent. Free writes and restores check JSON,
 permissions and revisions without imposing a business structure.
 The Documents library excludes Datasets, including historical projections, before
-counting, pagination and filter catalogues. `POST /memory/documents` rejects the
+counting, pagination and filter catalogues. `POST /documents` rejects the
 `dataset` type; creation uses `POST /datasets` or `file_create(path="data://", ...)`.
-Reading an old Dataset through `GET /memory/documents/{id}` returns only
+Reading an old Dataset through `GET /documents/{id}` returns only
 `{resource_type: "dataset", resource_uri: "data://…"}` after authorization, without
 a Document payload. Old links open the Dataset editor. Memory search and graph exclude
 these historical projections from current Documents. HTML `data://` links remain Dataset
@@ -107,13 +107,13 @@ and the expected version; history and Process runs remain intact.
 ## Historical projection and retirement criteria
 
 Dataset is the sole authority for content, history and permissions. Native `data://`
-creation does not create a Memory Document. Only a verified migration alias receives a
-`DatasetDocumentProjection`, defined in `app.memory.contracts`: metadata, version, hash
+creation does not create a Document. Only a verified migration alias receives a
+`DatasetDocumentProjection`, defined in `app.document.contracts`: metadata, version, hash
 and grants, without content or history. Deletion removes the projection from current
 readers while preserving sources and the alias as migration evidence. This state is
 read through an explicit asynchronous query.
 
-Historical Memory calls remain adapters to Dataset for editors, HTML applications,
+Historical Document calls remain adapters to Dataset for editors, HTML applications,
 attachments and Process consumers that still use them. New consumers use
 `app.dataset.facade` or File Sharing with `data://`.
 

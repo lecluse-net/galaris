@@ -19,7 +19,7 @@ export function documentUriFromLink(value: string, origin: string): string | nul
   if (id) return `document://${id}`
   try {
     const url = new URL(value, origin)
-    if (url.origin !== origin || !['/documents', '/memory/documents'].includes(url.pathname) || url.searchParams.has('attachment_id')) return null
+    if (url.origin !== origin || !['/documents', '/documents'].includes(url.pathname) || url.searchParams.has('attachment_id')) return null
     const documentId = documentIdFromRouteQuery(url.searchParams.get('document_id'))
     return documentId ? `document://${documentId}` : null
   } catch { return null }

@@ -22,7 +22,7 @@ from app.messenger import Interaction, Message, Room
 from app.task import Task, TaskStatus
 from app.voice import VoiceConversationSession
 from app.agent import AgentManagementScope
-from app.memory.facade import document_topic_assignment
+from app.document import document_topic_assignment
 from app.dataset.facade import dataset_topic_assignment
 from core.database import get_db
 

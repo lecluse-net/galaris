@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 
 async function signIn(page, fixture) {
@@ -47,7 +48,7 @@ test('page subscriptions stop on navigation while global message notifications r
   await expect.poll(subscriptions).toEqual(['chat.message'])
   const consumers = [
     { path: '/goal', event: 'goal.update' },
-    { path: '/memory/documents', event: 'memory.update' },
+    { path: '/documents', event: 'memory.update' },
     { path: '/task', tab: 'Tâches', event: 'task.update' },
     { path: '/task', tab: 'Activité LLM', event: 'llm_call.update' },
     { path: '/task', tab: 'Processus', event: 'process_run.update' },
@@ -100,7 +101,7 @@ test('leaving a loading document editor does not restore its subscription after 
   const fixture = await (await request.post('/api/__test/seed')).json()
   await signIn(page, fixture)
   const token = await page.evaluate(() => localStorage.getItem('access_token'))
-  const created = await request.post('/api/memory/items', {
+  const created = await createDocument(request, {
     headers: { Authorization: `Bearer ${token}`, 'X-Editorial-Profile-Version': '1' },
     data: { owner_agent_id: fixture.agent_id, title: `Pending editor ${fixture.agent_id}`,
       node_kind: 'document', media_type: 'text/html', payload: { text: '<p>Existing content</p>' } },
@@ -111,7 +112,7 @@ test('leaving a loading document editor does not restore its subscription after 
   const gate = new Promise(resolve => { release = resolve })
   let intercepted
   const ready = new Promise(resolve => { intercepted = resolve })
-  const isDocument = url => url.pathname === `/api/memory/documents/${document.id}`
+  const isDocument = url => url.pathname === `/api/documents/${document.id}`
   await page.route(isDocument, async route => {
     const response = await route.fetch()
     intercepted()
@@ -119,7 +120,7 @@ test('leaving a loading document editor does not restore its subscription after 
     await route.fulfill({ response })
   }, { times: 1 })
   try {
-    await page.goto(`/memory/documents?document_id=${document.id}`)
+    await page.goto(`/documents?document_id=${document.id}`)
     await ready
     await page.locator('a[href="/params"]').first().click()
     const response = page.waitForResponse(response => isDocument(new URL(response.url())))
@@ -218,7 +219,7 @@ test('goals, processes, documents and settings load their authorized production 
   const failures = []
   page.on('pageerror', error => failures.push(error.message))
   await signIn(page, fixture)
-  for (const path of ['/goal', '/process', '/memory/documents', '/memory', '/params']) {
+  for (const path of ['/goal', '/process', '/documents', '/memory', '/params']) {
     // Exercise the application's navigation, preserving the document and its
     // active requests as a real menu click does.
     await page.locator(`a[href="${path}"]`).first().click()
@@ -260,7 +261,7 @@ for (const width of [390, 1440]) {
         await route.continue()
       }, { times: 1 })
       try {
-        await page.goto(nodeKind === 'memory' ? `/memory?agent=${fixture.agent_id}` : '/memory/documents', { waitUntil: 'domcontentloaded' })
+        await page.goto(nodeKind === 'memory' ? `/memory?agent=${fixture.agent_id}` : '/documents', { waitUntil: 'domcontentloaded' })
         release()
         await expect(page.getByText(item.title, { exact: true }).first()).toBeVisible()
       } finally { release() }

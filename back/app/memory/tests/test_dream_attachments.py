@@ -1,3 +1,7 @@
+from app.memory.tests.document_fixtures import create_indexed_attachment
+from app.document.schemas import DocumentPayload
+from app.document.schemas import DocumentItemCreate
+from app.memory.tests.document_fixtures import create_document_reference
 """Dream fills empty attachment items during rest without overwriting acquired text."""
 
 from datetime import datetime, timedelta, timezone
@@ -15,18 +19,20 @@ from app.dream.mechanisms.attachment_memory import AttachmentMemoryMechanism
 from app.dream.models import DreamReceipt
 from app.dream.registry import register_mechanism, reset_registry
 from app.dream.service import store_prepared
-from app.memory import document_attachment_service as attachments, service
+from app.memory import service
+from app.document import document_attachment_service as attachments
 from app.memory.facade import attachment_analysis_source, fill_attachment_description
-from app.memory.models import DocumentAttachment, MemoryAutomationJob, MemoryRevision
+from app.memory.models import MemoryAutomationJob, MemoryRevision
+from app.document import DocumentAttachment
 from app.memory.schemas import MemoryItemCreate, MemoryPayload
 from core.params import runtime_settings
 from core.params.runtime_settings import RuntimeSettings
 
 
 async def add_attachment(db, owner, kind):
-    document, _ = await service.create_item(MemoryItemCreate(
+    document, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, title="Dream source", node_kind="document",
-         media_type="text/html", payload=MemoryPayload(text="<p>Source</p>"),
+         media_type="text/html", payload=DocumentPayload(text="<p>Source</p>"),
     ))
     if kind == "image":
         output = BytesIO()
@@ -41,7 +47,7 @@ async def add_attachment(db, owner, kind):
         data, name, mime = b"video fixture", "video.mp4", "video/mp4"
     else:
         data, name, mime = b"The project launches on October 1.", "notes.txt", "text/plain"
-    attachment = await attachments.add_document_attachment_bytes(
+    attachment = await create_indexed_attachment(
         document.id, actor_agent_id=owner.id, name=name, media_type=mime, content=data,
     )
     record = await db.get(DocumentAttachment, attachment.id)
@@ -119,8 +125,8 @@ async def test_analysis_never_overwrites_late_edits_or_removed_sources(db, agent
     elif change == "removed":
         await attachments.delete_document_attachment(source.document_id, source.attachment_id, actor_agent_id=agents[0].id)
     else:
-        from app.memory.models import MemoryItem
-        document = await db.get(MemoryItem, source.document_id)
+        from app.document import Document
+        document = await db.get(Document, source.document_id)
         document.owner_agent_id = agents[1].id
         await db.commit()
     assert await mechanism.apply(claim, prepared.payload) == 0

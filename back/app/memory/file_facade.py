@@ -6,116 +6,21 @@ from typing import Literal
 from core.util import read_html_page
 from uuid import UUID
 
-from . import document_attachment_service, document_service, facade, service
-from .document_types import DocumentType
-from .schemas import MemoryItemUpdate, MemoryPayload, MemorySearchRequest
+from . import facade, service
+from .schemas import MemorySearchRequest
 from .recall_scope import resolve_recall_scope
 
 
-async def create_document_file_resource(
-    *,
-    agent_id: int,
-    task_id: UUID | None,
-    title: str,
-    content: str,
-    document_type: DocumentType = "html",
-) -> dict[str, object]:
-    """Create a private working document from an explicit text-file copy."""
-
-    item = await document_service.create_document(
-        owner_agent_id=agent_id,
-        title=title,
-        content=content,
-        document_type=document_type,
-        task_id=task_id,
-    )
-    return {"id": str(item.id), "size": item.size_bytes, "revision": item.revision}
 
 
-async def list_document_attachment_file_resources(
-    document_id: UUID,
-    *,
-    agent_id: int,
-) -> dict[str, object]:
-    """List attachment metadata under one authorized document."""
-
-    item, _content, access, _content_type, _media_type = await service.get_item(
-        document_id,
-        agent_id=agent_id,
-    )
-    if item.node_kind != "document":
-        raise service.MemoryConflictError("The selected memory is not a document.")
-    attachments = await document_attachment_service.attachment_companions(document_attachment_service.attachments_from_item(item))
-    return {
-        "attachments": [value.model_dump(mode="json") for value in attachments],
-        "can_write": access.can_write,
-    }
 
 
-async def describe_document_attachment_file_resource(
-    document_id: UUID,
-    attachment_id: UUID,
-    *,
-    agent_id: int,
-) -> dict[str, object]:
-    """Describe one attachment after applying its parent document ACL."""
-
-    item, _, access, _, _ = await service.get_item(document_id, agent_id=agent_id)
-    attachment = next((entry for entry in document_attachment_service.attachments_from_item(item, include_retained=True) if entry.id == attachment_id), None)
-    if attachment is None:
-        raise service.MemoryNotFoundError("Document attachment not found.")
-    attachment = (await document_attachment_service.attachment_companions([attachment]))[0]
-    return {**attachment.model_dump(mode="json"), "can_write": access.can_write}
 
 
-async def create_document_attachment_file_resource(
-    document_id: UUID,
-    *,
-    agent_id: int,
-    name: str,
-    content: bytes,
-) -> dict[str, object]:
-    """Create one immutable attachment under an editable document."""
-
-    attachment = await document_attachment_service.add_document_attachment_bytes(
-        document_id,
-        actor_agent_id=agent_id,
-        name=name,
-        media_type=None,
-        content=content,
-    )
-    return attachment.model_dump(mode="json")
 
 
-async def read_document_attachment_file_resource(
-    document_id: UUID,
-    attachment_id: UUID,
-    *,
-    agent_id: int,
-) -> tuple[dict[str, object], bytes]:
-    """Read one attachment after applying its parent document ACL."""
-
-    attachment, content = await document_attachment_service.read_document_attachment(
-        document_id,
-        attachment_id,
-        actor_agent_id=agent_id,
-    )
-    return attachment.model_dump(mode="json"), content
 
 
-async def delete_document_attachment_file_resource(
-    document_id: UUID,
-    attachment_id: UUID,
-    *,
-    agent_id: int,
-) -> None:
-    """Delete one attachment from an editable document."""
-
-    await document_attachment_service.delete_document_attachment(
-        document_id,
-        attachment_id,
-        actor_agent_id=agent_id,
-    )
 
 
 async def describe_file_resource(
@@ -167,14 +72,6 @@ async def read_file_resource_text(
 ) -> dict[str, object]:
     """Read one bounded UTF-8 slice through Memory ACLs."""
 
-    if expected_kind == "document":
-        return await document_service.read_document(
-            item_id,
-            actor_agent_id=agent_id,
-            task_id=task_id,
-            offset=offset,
-            max_chars=max_chars,
-        )
     item, content, _access, content_type, media_type = await service.get_item(
         item_id,
         agent_id=agent_id,
@@ -201,60 +98,8 @@ async def read_file_resource_text(
     }
 
 
-async def write_document_resource_text(
-    item_id: UUID,
-    *,
-    agent_id: int,
-    task_id: UUID | None,
-    content: str,
-    expected_revision: int | None,
-) -> dict[str, object]:
-    """Replace an authorized document with optimistic concurrency."""
-
-    if expected_revision is None:
-        raise service.MemoryConflictError(
-            "expected_revision is required to replace a document; call file_read first."
-        )
-    item, _content, _access, _content_type, _media_type = await service.get_item(
-        item_id,
-        agent_id=agent_id,
-    )
-    if item.node_kind != "document":
-        raise service.MemoryConflictError("The selected memory is not a document.")
-    updated = await service.update_item(
-        item_id,
-        MemoryItemUpdate(
-            expected_revision=expected_revision,
-            payload=MemoryPayload(text=content),
-        ),
-        actor_agent_id=agent_id,
-        actor_task_id=task_id,
-        document_revision_author_agent_id=agent_id,
-    )
-    return {
-        "state": "written",
-        "size": updated.size_bytes,
-        "revision": updated.revision,
-    }
 
 
-async def append_document_resource_text(
-    item_id: UUID,
-    *,
-    agent_id: int,
-    task_id: UUID | None,
-    content: str,
-    expected_revision: int | None = None,
-) -> dict[str, object]:
-    """Append text through the existing document concurrency contract."""
-
-    return await document_service.append_document(
-        item_id,
-        actor_agent_id=agent_id,
-        task_id=task_id,
-        content=content,
-        expected_revision=expected_revision,
-    )
 
 
 async def search_file_resources(
@@ -357,16 +202,4 @@ async def search_file_resources(
     }
 
 
-__all__ = [
-    "append_document_resource_text",
-    "create_document_attachment_file_resource",
-    "create_document_file_resource",
-    "delete_document_attachment_file_resource",
-    "describe_document_attachment_file_resource",
-    "describe_file_resource",
-    "list_document_attachment_file_resources",
-    "read_document_attachment_file_resource",
-    "read_file_resource_text",
-    "search_file_resources",
-    "write_document_resource_text",
-]
+__all__=["describe_file_resource","read_file_resource_text","search_file_resources"]

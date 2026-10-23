@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -22,23 +23,23 @@ test('remote changes and sharing updates reconcile documents without removing ac
   const updatedTitle = `${prefix} Updated folder report`
   const folderName = `Reports ${fixture.agent_id}`
   for (const title of [folderTitle, rootTitle]) {
-    const response = await request.post('/api/memory/items', { headers, data: {
+    const response = await createDocument(request, { headers, data: {
       owner_agent_id: fixture.agent_id, title, node_kind: 'document',
       media_type: 'text/html', payload: { text: '<p>Synthetic report</p>' },
     } })
     expect(response.ok(), await response.text()).toBeTruthy()
     documents.push(await response.json())
   }
-  const created = await request.post('/api/memory/documents/tags', { headers, data: { name: folderName, parent_id: null } })
+  const created = await request.post('/api/documents/tags', { headers, data: { name: folderName, parent_id: null } })
   expect(created.ok(), await created.text()).toBeTruthy()
   const folder = await created.json()
-  const filed = await request.put(`/api/memory/documents/${documents[0].id}/tags`, { headers, data: { tag_id: folder.id } })
+  const filed = await request.put(`/api/documents/${documents[0].id}/tags`, { headers, data: { tag_id: folder.id } })
   expect(filed.ok(), await filed.text()).toBeTruthy()
   await pageErrors.settle()
   await page.goto(`/memory/documents?document_id=${documents[1].id}`)
   await expect(page).toHaveURL(url => url.pathname === '/documents' && url.searchParams.get('document_id') === documents[1].id)
   await page.getByText(folderName, { exact: true }).click()
-  const searched = page.waitForResponse(response => new URL(response.url()).pathname === '/api/memory/documents/library'
+  const searched = page.waitForResponse(response => new URL(response.url()).pathname === '/api/documents/library'
     && response.request().postDataJSON()?.query === prefix)
   await page.getByRole('textbox', { name: 'Rechercher dans les titres et le contenu des documents', exact: true }).fill(prefix)
   expect((await searched).ok()).toBe(true)
@@ -58,12 +59,12 @@ test('remote changes and sharing updates reconcile documents without removing ac
   const gate = new Promise(resolve => { release = resolve })
   let readGate = gate
   const requests = []
-  await page.route('**/api/memory/documents/library', async route => {
+  await page.route('**/api/documents/library', async route => {
     requests.push(route.request().postDataJSON().tag_id)
     await readGate
     await route.continue()
   })
-  const updated = await request.patch(`/api/memory/documents/${documents[0].id}?actor_agent_id=${fixture.agent_id}`, {
+  const updated = await request.patch(`/api/documents/${documents[0].id}?actor_agent_id=${fixture.agent_id}`, {
     headers, data: { title: updatedTitle, expected_revision: documents[0].revision },
   })
   expect(updated.ok(), await updated.text()).toBeTruthy()
@@ -82,7 +83,7 @@ test('remote changes and sharing updates reconcile documents without removing ac
   readGate = new Promise(resolve => { release = resolve })
   requests.length = 0
   let documentReads = 0
-  await page.route(new RegExp(`/api/memory/documents/${documents[1].id}(?:\\?|$)`), async route => {
+  await page.route(new RegExp(`/api/documents/${documents[1].id}(?:\\?|$)`), async route => {
     documentReads++
     await readGate
     await route.continue()
@@ -94,7 +95,7 @@ test('remote changes and sharing updates reconcile documents without removing ac
   await expect.poll(() => documentReads).toBeGreaterThanOrEqual(1)
   for (const row of [listRow, treeRow, rootRow, editorNode]) expect(await row.evaluate(element => element.isConnected)).toBe(true)
   await expect(editor).toContainText('Synthetic report')
-  const refreshed = page.waitForResponse(response => new URL(response.url()).pathname === `/api/memory/documents/${documents[1].id}`)
+  const refreshed = page.waitForResponse(response => new URL(response.url()).pathname === `/api/documents/${documents[1].id}`)
   release()
   expect((await refreshed).ok()).toBe(true)
   await expect(page.getByRole('button', { name: 'Basculer lecture / écriture pour Public', exact: true })).toHaveAttribute('aria-pressed', 'false')

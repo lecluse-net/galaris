@@ -1,30 +1,35 @@
+from __future__ import annotations
+from app.document import resource_service as documents
+from app.document.schemas import DocumentPayload
+from app.document.schemas import DocumentItemCreate
+from app.memory.tests.document_fixtures import create_document_reference
 import pytest
 from sqlalchemy import func, insert, literal, select
 
 from app.memory import service
-from app.memory.models import MemoryRevision
+from app.document import DocumentRevision
 from app.memory.schemas import MemoryItemCreate, MemoryPayload
 from app.task.models import Task, TaskStatus
 
 
 @pytest.mark.asyncio
 async def test_large_history_only_materializes_the_requested_revision_page(db, agents, memory_storage):
-    item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=agents[0].id, title="History",  node_kind="document", payload=MemoryPayload(text="content")))
-    table = MemoryRevision.__table__
+    item, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=agents[0].id, title="History",  node_kind="document", payload=DocumentPayload(text="content")))
+    table = DocumentRevision.__table__
     series = func.generate_series(2, 1001).table_valued("number").render_derived()
     expressions = [func.gen_random_uuid() if column.name == "id" else series.c.number if column.name == "revision" else column
                    for column in table.columns]
     await db.execute(table.insert().from_select([column.name for column in table.columns],
-        select(*expressions).select_from(table.join(series, literal(True))).where(table.c.item_id == item.id, table.c.revision == 1)))
+        select(*expressions).select_from(table.join(series, literal(True))).where(table.c.document_id == item.id, table.c.revision == 1)))
     await db.commit()
-    page = await service.list_document_content_revisions(item.id, actor_agent_id=agents[0].id, limit=50, offset=50)
+    page = await documents.list_document_content_revisions(item.id, actor_agent_id=agents[0].id, limit=50, offset=50)
     assert page.total == 1001 and len(page.items) == 50 and page.has_more
     assert [entry.revision for entry in page.items] == list(range(951, 901, -1))
-    assert sum(isinstance(value, MemoryRevision) for value in db.identity_map.values()) <= 51
+    assert sum(isinstance(value, DocumentRevision) for value in db.identity_map.values()) <= 51
     generic = await service.list_revisions(item.id, agent_id=agents[0].id, limit=20, offset=50)
     assert generic == []
     synthesis_history = await service.list_revisions(item.id, agent_id=agents[0].id)
-    assert [entry.revision for entry in synthesis_history] == [1]
+    assert synthesis_history == []
 
 
 @pytest.mark.asyncio
@@ -33,13 +38,13 @@ async def test_legacy_version_reads_agree_with_history_and_preserve_content(db, 
     task = Task(label="Legacy content versions", status=TaskStatus.EXEC, agent_id=owner.id)
     db.add(task)
     await db.flush()
-    item, _ = await service.create_item(MemoryItemCreate(
+    item, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, title="Legacy history",
-        node_kind="document", media_type="text/html", payload=MemoryPayload(text="<p>Original content</p>")))
-    template = dict(item_id=item.id, provider_code=item.provider_code, resource_id=item.resource_id,
+        node_kind="document", media_type="text/html", payload=DocumentPayload(text="<p>Original content</p>")))
+    template = dict(document_id=item.id, provider_code=item.provider_code, resource_id=item.resource_id,
                     title=item.title, content_type=item.content_type, media_type=item.media_type,
                     document_content_version=None, task_id=task.id)
-    await db.execute(insert(MemoryRevision), [
+    await db.execute(insert(DocumentRevision), [
         dict(template, revision=2, content_hash=item.content_hash),  # No content change.
         dict(template, revision=4, content_hash="changed"),  # Noncontiguous legacy versions.
         dict(template, revision=5, content_hash="other", document_content_version=False),
@@ -47,11 +52,11 @@ async def test_legacy_version_reads_agree_with_history_and_preserve_content(db, 
         dict(template, revision=7, content_hash="human", task_id=None),
     ])
     await db.commit()
-    page = await service.list_document_content_revisions(item.id, actor_agent_id=owner.id)
+    page = await documents.list_document_content_revisions(item.id, actor_agent_id=owner.id)
     assert [row.revision for row in page.items] == [4, 1]
     for revision in (1, 4):
-        version = await service.get_document_content_revision(item.id, revision, actor_agent_id=owner.id)
+        version = await documents.get_document_content_revision(item.id, revision, actor_agent_id=owner.id)
         assert version.content == "<p>Original content</p>"
     for revision in (2, 3, 5, 6, 7):
-        with pytest.raises(service.MemoryNotFoundError):
-            await service.get_document_content_revision(item.id, revision, actor_agent_id=owner.id)
+        with pytest.raises(documents.DocumentNotFoundError):
+            await documents.get_document_content_revision(item.id, revision, actor_agent_id=owner.id)

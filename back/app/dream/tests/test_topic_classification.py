@@ -29,7 +29,7 @@ from app.dream.mechanisms.topic_classification import (
 )
 from app.dream.models import DreamReceipt
 from app.memory.models import MemoryItem
-from app.memory.storage import NativeFileStorage, register_storage, reset_storage_registry
+from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 from app.messenger import journal, resolve_from_message
 from app.messenger._observations import (
     ObservedMessengerMessage,

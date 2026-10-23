@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from app.share import ShareGrant
 
 import math
 from collections.abc import Sequence
@@ -74,12 +73,6 @@ async def rank_topic_projection_embeddings(
     )
     if agent_id is not None:
         related_item = aliased(MemoryItem)
-        direct_grant = exists(
-            select(ShareGrant.id).where(
-                ShareGrant.share_id == related_item.share_id,
-                ShareGrant.agent_id == agent_id,
-            )
-        )
         query = query.where(
             exists(
                 select(MemoryLink.id)
@@ -94,7 +87,6 @@ async def rank_topic_projection_embeddings(
                     or_(
                         related_item.owner_agent_id == agent_id,
                         related_item.visibility == "public",
-                        direct_grant,
                     ),
                 )
             )

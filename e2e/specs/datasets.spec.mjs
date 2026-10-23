@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 
 test('a Dataset preserves free JSON, revisions and restoration through its editor', async ({ page, request }) => {
@@ -22,7 +23,7 @@ test('a Dataset preserves free JSON, revisions and restoration through its edito
   const agentOptions = await checked(await request.get('/api/agents/selection?scope=management', { headers }))
   const ownerAgent = agentOptions.find(agent => agent.id === fixture.agent_id)
   expect(ownerAgent).toBeTruthy()
-  const document = await checked(await request.post('/api/memory/items', { headers: { ...headers, 'X-Editorial-Profile-Version': '1' }, data: {
+  const document = await checked(await createDocument(request, { headers: { ...headers, 'X-Editorial-Profile-Version': '1' }, data: {
     owner_agent_id: fixture.agent_id, title: 'Synthetic Dataset consumer', node_kind: 'document', media_type: 'text/html',
     payload: { text: `<form data-dataset="${dataset.uri}"><p>Synthetic application</p></form>` },
   } }))

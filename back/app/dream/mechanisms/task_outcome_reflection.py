@@ -15,13 +15,8 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.llm import llm_service
 from app.llm.structured_service import run_prompted
-from app.memory import (
-    MemoryAcquisitionCreate,
-    acquire_memory,
-    ensure_contact_memory_scope,
-    ensure_topic_contact_memory_scope,
-    redact_secrets,
-)
+from app.memory import MemoryAcquisitionCreate, acquire_memory, ensure_contact_memory_scope, ensure_topic_contact_memory_scope
+from app.document import redact_secrets
 from app.task import Task, TaskStatus
 from app.topic import Topic, service as topic_service
 from core.database import get_db, get_db_session

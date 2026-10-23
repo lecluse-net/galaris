@@ -87,12 +87,16 @@ courante, distinct des ACL et du HTML généré. L'icône et la modale de permis
 ne pas orienter le lecteur vers cette interface. Le SDK et MCP ne peuvent pas accorder cet accès.
 Les quotas d'écriture serveur sont partagés entre applications.
 
+Les documents et leurs résumés partagés appartiennent à `app.document`. Ils existent sans
+souvenir Memory. Les souvenirs personnels sont privés par agent, sans grants ; le graphe
+natif ne conserve que des références facultatives soumises aux droits de leur source.
+
 Lorsqu'un résultat appelle un contenu rédigé durable à conserver, réviser ou partager,
 les documents Galaris en sont le support canonique. Une Task ne nécessite pas à elle seule
 un document ; les échanges restent dans la conversation et l'état dans la ressource métier.
 Privilégier le document pertinent existant :
 une URI `document://` stable, enrichie au fil du travail, plutôt que des fichiers Markdown
-ou HTML concurrents. Galaris, Conversation, Memory et File Sharing sont des services système
+ou HTML concurrents. Galaris, Conversation, Document, Memory et File Sharing sont des services système
 obligatoires dont les connexions restent actives. Leurs fonctions ont les mêmes modes
 Actif/Bloqué/Sur demande et héritage global/local que les autres Tools ; seules leurs
 définitions sont protégées. Les ACL des ressources et les restrictions de contexte restent

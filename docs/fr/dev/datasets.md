@@ -29,9 +29,9 @@ Les applications documentaires utilisent le pont Dataset avec les droits du lect
 son consentement personnel. Les écritures libres et les restaurations vérifient le JSON,
 les droits et la révision, sans imposer de structure métier.
 La bibliothèque Documents exclut les Datasets, y compris les projections historiques,
-avant comptage, pagination et calcul des filtres. `POST /memory/documents` refuse le type
+avant comptage, pagination et calcul des filtres. `POST /documents` refuse le type
 `dataset` ; la création passe par `POST /datasets` ou `file_create(path="data://", ...)`.
-La lecture d'un ancien Dataset par `GET /memory/documents/{id}` renvoie uniquement
+La lecture d'un ancien Dataset par `GET /documents/{id}` renvoie uniquement
 `{resource_type: "dataset", resource_uri: "data://…"}` après contrôle des droits,
 sans contenu documentaire. Les anciens liens ouvrent l'éditeur Dataset. La recherche
 Memory et son graphe excluent ces anciennes projections des Documents courants.
@@ -113,13 +113,13 @@ logique exige toujours la gestion et la version attendue, sans supprimer l'histo
 ## Projection historique et conditions de retrait
 
 Dataset est l'unique autorité de contenu, historique et droits. Une création native
-`data://` ne crée pas de Document Memory. Seul un alias de migration vérifié reçoit
-une projection `DatasetDocumentProjection`, définie dans `app.memory.contracts` :
+`data://` ne crée pas de Document. Seul un alias de migration vérifié reçoit
+une projection `DatasetDocumentProjection`, définie dans `app.document.contracts` :
 métadonnées, version, empreinte et grants, sans contenu ni historique. La suppression
 retire la projection des lecteurs courants, en conservant les sources et l'alias comme
 preuves de migration. La lecture de cet état passe par une requête async explicite.
 
-Les anciens appels métier Memory restent des adaptateurs vers Dataset pour les consommateurs historiques,
+Les anciens appels métier Document restent des adaptateurs vers Dataset pour les consommateurs historiques,
 applications HTML, pièces jointes et Process encore raccordés. Les nouveaux consommateurs
 utilisent `app.dataset.facade` ou File Sharing avec `data://`.
 

@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 
 test('Document and Dataset topic badges persist manual assignments through the real application', async ({ page, request }) => {
@@ -17,7 +18,7 @@ test('Document and Dataset topic badges persist manual assignments through the r
   for (const label of ['Gardening', 'Plants']) topics.push(await checked(await request.post('/api/topics', {
     headers, data: { title: `Synthetic ${label} ${fixture.agent_id}` },
   })))
-  const document = await checked(await request.post('/api/memory/items', { headers, data: {
+  const document = await checked(await createDocument(request, { headers, data: {
     owner_agent_id: fixture.agent_id, title: 'Synthetic topic document', node_kind: 'document',
     media_type: 'text/html', payload: { text: '<p>Synthetic topic content</p>' },
   } }))
@@ -37,7 +38,7 @@ test('Document and Dataset topic badges persist manual assignments through the r
     await audit.getByRole('button', { name: /^(Enregistrer le sujet|Save dossier)$/, exact: true }).click()
     expect((await saved).ok()).toBeTruthy()
     await expect(page.getByRole('button', { name: new RegExp(topics[1].title) })).toBeVisible()
-    const read = await checked(await request.get(kind === 'document' ? `/api/memory/documents/${resource.id}` : `/api/datasets/${resource.id}`, { headers }))
+    const read = await checked(await request.get(kind === 'document' ? `/api/documents/${resource.id}` : `/api/datasets/${resource.id}`, { headers }))
     const current = kind === 'document' ? read.item : read
     expect(current.topic_id).toBe(topics[1].id)
     expect(current.revision).toBe(resource.revision)

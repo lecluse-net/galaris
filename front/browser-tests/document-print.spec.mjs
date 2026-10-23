@@ -7,8 +7,8 @@ const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwM
 
 test('PDF preserves process diagrams and agent portraits without clickable objects', async ({ page, context }, testInfo) => {
   const documentId = '00000000-0000-0000-0000-000000000245'
-  await jsonRoute(page, `**/api/memory/documents/${documentId}`, { item: { ...documentFixture, id: documentId, media_type: 'text/html', payload: { text: '<h1>Synthetic preview</h1>' } }, agent_id: null })
-  await page.route(`**/api/memory/documents/${documentId}/thumbnail*`, route => route.fulfill({ contentType: 'image/webp', body: Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=', 'base64') }))
+  await jsonRoute(page, `**/api/documents/${documentId}`, { item: { ...documentFixture, id: documentId, media_type: 'text/html', payload: { text: '<h1>Synthetic preview</h1>' } }, agent_id: null })
+  await page.route(`**/api/documents/${documentId}/thumbnail*`, route => route.fulfill({ contentType: 'image/webp', body: Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=', 'base64') }))
   const processUri = 'galaris://processes/synthetic_pdf_review'
   const graph = { schema_version: 'galaris.bpmn/v1', input_schema: {}, output_schema: {}, files: {}, actors: [{ id: 'reviewers', name: 'Document review team', kind: 'agent', agent_id: 7, user_id: null }], nodes: [
     { id: 'start', kind: 'start', title: 'Start', config: {}, x: 0, y: 0, body: null },
@@ -60,22 +60,22 @@ test('a document downloads its current content as a named PDF and remains editab
   let current = { ...documentFixture, title: 'Rapport été', media_type: 'text/html', content_profile: 'document',
     payload: { text: '<h1>Rapport été</h1><p>Current content</p><table><tbody><tr><th>Élément</th><th>Valeur</th></tr><tr><td>Mesure</td><td>42</td></tr></tbody></table>' } }
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/folders?*', [{ path: 'Reports', kind: 'custom', shared: false }])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
-  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/folders?*', [{ path: 'Reports', kind: 'custom', shared: false }])
+  await jsonRoute(page, '**/api/documents/doc-a/attachments?*', [])
+  await page.route(/\/api\/documents\/doc-a(?:\?.*)?$/, route => {
     if (route.request().method() !== 'GET') current = { ...current, ...route.request().postDataJSON(), revision: current.revision + 1 }
     return route.fulfill({ json: route.request().method() === 'GET' ? { item: current, agent_id: 7 } : current })
   })
   let snapshot
   let fail = true
-  await page.route('**/api/memory/documents/doc-a/export-pdf', route => {
+  await page.route('**/api/documents/doc-a/export-pdf', route => {
     snapshot = route.request().postDataJSON().html
     return fail ? route.fulfill({ status: 503, json: { detail: 'Unavailable' } })
       : route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.7\nfixture' })
   })
-  await mount(page, 'core/util/components/WorkingDocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7, editable: true }, privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'core/util/components/WorkingDocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7, editable: true }, privileges: ['DOCUMENT_EDIT'] })
   const editor = page.getByRole('textbox', { name: 'Content', exact: true })
   await editor.locator('p').first().click()
   await page.keyboard.press('End')

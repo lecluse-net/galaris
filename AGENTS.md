@@ -186,7 +186,10 @@ for business logic.
 
 ### Resource domain boundaries
 
-Documents are editorial HTML owned by Memory. Datasets are JSON owned by `app.dataset`.
+Documents are editorial HTML owned by `app.document`, with independent content, shared
+summaries, versions and rights. Personal memories belong to one agent in `app.memory`
+and cannot be shared. A native graph reference may point to an authorized Document,
+but is optional and never owns its content or permissions. Datasets are JSON owned by `app.dataset`.
 Native Process definitions are BPMN stored directly in `process_definitions.bpmn_xml`,
 with Process-owned history and grants. Never create a Document to persist a Dataset or
 Process definition, and never add their editors or resource types to the Documents library.

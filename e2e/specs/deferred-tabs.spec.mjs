@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -15,7 +16,7 @@ test('a late document library response cannot cancel navigation to another lazy 
   const session = await (await login).json()
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const title = `Navigation race ${fixture.agent_id}`
-  const created = await request.post('/api/memory/items', {
+  const created = await createDocument(request, {
     headers: { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' },
     data: { owner_agent_id: fixture.agent_id, title, node_kind: 'document',
       media_type: 'text/html', payload: { text: '<p>Preserved document</p>' } },
@@ -26,11 +27,11 @@ test('a late document library response cannot cancel navigation to another lazy 
   const navigation = new Promise(resolve => { releaseNavigation = resolve })
   // Delay the real list response: the library now loads classification tags,
   // so the old folder-options endpoint no longer exercises this race.
-  await page.route('**/api/memory/documents/library', async route => { await library; await route.continue() })
-  const libraryRequest = page.waitForRequest('**/api/memory/documents/library')
+  await page.route('**/api/documents/library', async route => { await library; await route.continue() })
+  const libraryRequest = page.waitForRequest('**/api/documents/library')
   try {
     await pageErrors.settle()
-    await page.goto('/memory/documents')
+    await page.goto('/documents')
     await libraryRequest
     await expect(page.getByRole('heading', { name: 'Documents', exact: true })).toBeVisible()
     await expect(page.getByText(title, { exact: true })).toHaveCount(0)

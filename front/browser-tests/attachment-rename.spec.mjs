@@ -5,14 +5,14 @@ const attachment = { id: 'attachment-1', name: 'Original.txt', media_type: 'text
 test('attachment rename validates names, preserves the failed draft and retries without changing its identity', async ({ page }) => {
   let denied = true
   const writes = []
-  await page.route('**/api/memory/documents/document-1/attachments/attachment-1?*', async route => {
+  await page.route('**/api/documents/document-1/attachments/attachment-1?*', async route => {
     expect(route.request().method()).toBe('PATCH')
     writes.push(route.request().postDataJSON())
     await route.fulfill(denied ? { status: 403, json: { detail: 'Synthetic permission denial' } }
       : { json: { ...attachment, name: writes.at(-1).name } })
   })
-  await page.route('**/api/memory/documents/*/attachments/*/thumbnail?*', route => route.fulfill({ status: 204 }))
-  await mount(page, 'app/memory/components/DocumentAttachments.vue', { props: {
+  await page.route('**/api/documents/*/attachments/*/thumbnail?*', route => route.fulfill({ status: 204 }))
+  await mount(page, 'app/document/components/DocumentAttachments.vue', { props: {
     documentId: 'document-1', agentId: 7, attachments: [attachment], editable: true,
   } })
   await page.locator('.resource-preview-block').click({ button: 'right' })
@@ -35,8 +35,8 @@ test('attachment rename validates names, preserves the failed draft and retries 
 })
 
 test('readonly attachments have no rename and closing a rename discards its draft', async ({ page }) => {
-  await page.route('**/api/memory/documents/*/attachments/*/thumbnail?*', route => route.fulfill({ status: 204 }))
-  await mount(page, 'app/memory/components/DocumentAttachments.vue', { props: {
+  await page.route('**/api/documents/*/attachments/*/thumbnail?*', route => route.fulfill({ status: 204 }))
+  await mount(page, 'app/document/components/DocumentAttachments.vue', { props: {
     documentId: 'document-1', agentId: 7, attachments: [attachment], editable: false,
   } })
   await page.locator('.resource-preview-block').click({ button: 'right' })

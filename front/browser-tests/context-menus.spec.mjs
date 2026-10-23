@@ -146,8 +146,8 @@ test('selected message text keeps its native context menu', async ({ page }) => 
 
 test('document menus reuse row actions and respect read-only and deletion protection', async ({ page }) => {
   const entry = { item: { ...document, read_only: false, source_managed: false, deletion_protected: true, access: { can_read: true, can_write: true } }, owner_label: 'Synthetic owner', children_count: 0 }
-  await jsonRoute(page, '**/api/memory/documents/doc-a', { ...document, media_type: 'text/html', payload: { text: '<p>Synthetic document</p>' } })
-  await mount(page, 'app/memory/components/DocumentLibraryDocument.vue', { props: {
+  await jsonRoute(page, '**/api/documents/doc-a', { ...document, media_type: 'text/html', payload: { text: '<p>Synthetic document</p>' } })
+  await mount(page, 'app/document/components/DocumentLibraryDocument.vue', { props: {
     entry, selectedDocumentId: null, busy: false, children: {}, loading: {}, errors: {}, expanded: [], dropTarget: null, dropPlacement: '',
   } })
   const row = page.locator('.document-branch-row')

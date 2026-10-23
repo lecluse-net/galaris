@@ -69,7 +69,7 @@ test('shared style and script regions retain their common document and source or
 test('Three.js runs offline inside the real isolated document runtime with custom CSS and controls', async ({ page }) => {
   const external = []; page.on('request', req => { if (/^https?:/.test(req.url()) && !req.url().startsWith('http://localhost:8000')) external.push(req.url()) })
   await mount(page, 'core/util/components/RichText.vue', { props: { content: '' } })
-  await page.evaluate(source => window.testApp.mount({ component: 'app/memory/components/DocumentApplicationBlock.vue', props: { source, language: 'galaris-raw-html', documentId: 'synthetic-document', revision: 1, ready: true, registerSnapshot: capture => { window.threeCapture = capture } } }), interactive)
+  await page.evaluate(source => window.testApp.mount({ component: 'app/document/components/DocumentApplicationBlock.vue', props: { source, language: 'galaris-raw-html', documentId: 'synthetic-document', revision: 1, ready: true, registerSnapshot: capture => { window.threeCapture = capture } } }), interactive)
   const inner = page.frameLocator('iframe').frameLocator('iframe')
   await expect(inner.getByText('Ready', { exact: true })).toBeVisible()
   await expect(inner.locator('canvas')).toBeVisible()

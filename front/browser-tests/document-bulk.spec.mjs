@@ -16,18 +16,18 @@ async function fixture(page, { count = 2, folder: initialFolder = folder } = {})
     grants: index ? [{ ...recipient, can_write: true }] : [other], options: [recipient, other],
   }))
   let failId = null
-  await jsonRoute(page, '**/api/memory/documents/tags/*/sharing', {
+  await jsonRoute(page, '**/api/documents/tags/*/sharing', {
     lock_version: 1, can_manage: true, owner: null, owner_groups: [],
     level: 'private', can_write: false, grants: [], options: [recipient, other],
   })
-  await page.route('**/api/memory/documents/library', route => {
+  await page.route('**/api/documents/library', route => {
     const body = route.request().postDataJSON(); reads.push(body)
     const matches = docs.filter(item => !body.query || item.title.includes(body.query))
     return route.fulfill({ json: { entries: matches.slice(body.offset, body.offset + body.limit).map(item => ({
       item, owner_label: 'Owner Example', tags: [folder], agent_ids: [7], writable_agent_ids: [7],
     })), total: matches.length, has_more: body.offset + body.limit < matches.length, keywords: [] } })
   })
-  await page.route(/\/api\/memory\/documents\/doc-\d+(?:\?|$)/, route => {
+  await page.route(/\/api\/documents\/doc-\d+(?:\?|$)/, route => {
     const id = new URL(route.request().url()).pathname.split('/').at(-1)
     const item = docs.find(item => item.id === id)
     const method = route.request().method()
@@ -39,7 +39,7 @@ async function fixture(page, { count = 2, folder: initialFolder = folder } = {})
     Object.assign(item, { keywords: data.keywords, lock_version: item.lock_version + 1 })
     return route.fulfill({ json: item })
   })
-  await page.route(/\/api\/memory\/documents\/doc-\d+\/sharing(?:-level)?$/, async route => {
+  await page.route(/\/api\/documents\/doc-\d+\/sharing(?:-level)?$/, async route => {
     const id = new URL(route.request().url()).pathname.split('/')[4]
     const state = states[Number(id.split('-')[1])]
     if (route.request().method() === 'GET') return route.fulfill({ json: state })
@@ -54,15 +54,15 @@ async function fixture(page, { count = 2, folder: initialFolder = folder } = {})
     await page.evaluate(() => window.testApp.emitSocket('memory.invalidate', { data: {} }))
     return route.fulfill({ json: state })
   })
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', {
+  await jsonRoute(page, '**/api/documents/owner-options?*', {
     agents: [], users: [{ kind: 'user', id: 1, label: 'New Owner', subtitle: '', is_current_user: true }],
   })
-  await page.route('**/api/memory/documents/*/owner', route => {
+  await page.route('**/api/documents/*/owner', route => {
     const id = new URL(route.request().url()).pathname.split('/')[4]
     const data = route.request().postDataJSON(); writes.push({ documentId: id, ...data })
     return route.fulfill({ json: docs.find(item => item.id === id) })
   })
-  await mount(page, 'app/memory/components/DocumentBulkList.vue', { props: { folder: initialFolder }, privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentBulkList.vue', { props: { folder: initialFolder }, privileges: ['DOCUMENT_EDIT'] })
   await expect(page.getByRole('link', { name: 'Report 00', exact: true })).toBeVisible()
   return { docs, reads, writes, states, fail: id => { failId = id } }
 }
@@ -197,7 +197,7 @@ test('late folder reads cannot replace the current scope; failed reads can be re
   let release
   const gate = new Promise(resolve => { release = resolve })
   let fail = true
-  await page.route('**/api/memory/documents/library', async route => {
+  await page.route('**/api/documents/library', async route => {
     const body = route.request().postDataJSON()
     if (body.query === 'older') {
       await gate
@@ -224,7 +224,7 @@ test('a session change stops unsent operations and discards the former selection
   const { writes } = await fixture(page)
   let release
   const gate = new Promise(resolve => { release = resolve })
-  await page.route(/\/api\/memory\/documents\/doc-0(?:\?|$)/, async route => {
+  await page.route(/\/api\/documents\/doc-0(?:\?|$)/, async route => {
     if (route.request().method() !== 'PATCH') return route.fallback()
     await gate
     return route.fulfill({ json: { ...document, id: 'doc-0', keywords: ['added'] } })

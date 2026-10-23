@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.agent.models import Agent, Title
 from app.contact import router, service
 from app.memory import MessengerContactObservation, observe_messenger_contact
-from app.memory.storage import NativeFileStorage, register_storage, reset_storage_registry
+from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 from core.authorize.models import Assignment, Privilege, Role
 from core.database import get_db_session
 from core.user import UserModel

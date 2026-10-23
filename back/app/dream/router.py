@@ -13,7 +13,9 @@ from app.agent import current_management_scope
 
 from . import monitoring_service
 from . import manual
-from app.memory import MemoryNotFoundError, MemoryPermissionError, MemoryConflictError, DocumentThumbnailRender
+from app.memory import MemoryNotFoundError, MemoryPermissionError, MemoryConflictError
+from app.document import DocumentNotFoundError, DocumentPermissionError, DocumentConflictError
+from app.document import DocumentThumbnailRender
 from loguru import logger
 from .schemas import (
     DreamOverview,
@@ -31,11 +33,11 @@ ReceiptStatus = Literal["running", "retry", "success", "error"]
 
 
 def _action_error(exc: Exception) -> HTTPException:
-    if isinstance(exc, MemoryNotFoundError):
+    if isinstance(exc, (MemoryNotFoundError, DocumentNotFoundError)):
         return HTTPException(status_code=404, detail=str(exc))
-    if isinstance(exc, MemoryPermissionError):
+    if isinstance(exc, (MemoryPermissionError, DocumentPermissionError)):
         return HTTPException(status_code=403, detail=str(exc))
-    if isinstance(exc, MemoryConflictError):
+    if isinstance(exc, (MemoryConflictError, DocumentConflictError)):
         return HTTPException(status_code=409, detail=str(exc))
     if isinstance(exc, ValueError):
         return HTTPException(status_code=422, detail=str(exc))
@@ -135,7 +137,7 @@ async def read_topic_assignment(
         try:
             return await monitoring_service.get_topic_assignment_audit(topic_id=topic_id,
                 subject_kind=subject_kind, subject_id=subject_id, resource_scope=scope)
-        except (LookupError, FileNotFoundError, MemoryNotFoundError, MemoryPermissionError) as exc:
+        except (LookupError, FileNotFoundError, MemoryNotFoundError, MemoryPermissionError, DocumentNotFoundError, DocumentPermissionError) as exc:
             raise HTTPException(status_code=404, detail="Topic assignment not found") from exc
     agent_id = await monitoring_service.get_topic_assignment_agent_id(
         subject_kind=subject_kind,

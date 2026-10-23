@@ -23,10 +23,11 @@ from tests.sharing_fixtures import bind_private_shares
 from app.agent import context as agent_context
 from app.agent.contracts import AgentContextRequest, AgentSnapshot
 from app.agent.models import Agent, Title
-from app.memory import access, admission, bootstrap, context as memory_context, goal_folders, library_queries, retrieval, service, source_access, storage
+from app.memory import access, admission, bootstrap, context as memory_context, library_queries, retrieval, service, source_access, storage
+from app.document import goal_folders
 from app.memory.embedding import MemoryEmbeddingNotConfiguredError
 from app.memory.models import MemoryContactItem, MemoryItem, MemoryRevision, MemorySource
-from app.memory.storage import NativeFileStorage, register_storage
+from core.storage import NativeFileStorage, register_storage
 from core.database import engine, get_db_session
 from core.settings import settings
 from core.user import UserModel

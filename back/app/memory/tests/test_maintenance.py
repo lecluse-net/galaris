@@ -178,20 +178,9 @@ async def test_manual_duplicate_finding_compares_revisions_and_merges_sources(
         )
     )
     primary, related = sorted((first, second), key=lambda item: str(item.id))
-    human = UserModel(email="synthetic-merge-recipient@example.test", hashed_password="unused", is_active=True)
-    team = TeamModel(name="Synthetic merge recipients")
-    db.add_all([human, team])
-    await db.flush()
-    # Trusted historical policies can contain every principal kind. Merging
-    # them must not confuse user/team rows whose agent_id is NULL.
-    db.add_all([
-        ShareGrant(share_id=primary.share_id, user_id=human.id, can_write=False),
-        ShareGrant(share_id=primary.share_id, team_id=team.id, can_write=False),
-        ShareGrant(share_id=related.share_id, user_id=human.id, can_write=True),
-        ShareGrant(share_id=related.share_id, agent_id=_peer.id, can_write=True),
-    ])
-    await db.flush()
-    user_id, team_id, peer_id, share_id = human.id, team.id, _peer.id, primary.share_id
+    # The former generic policy merge is retired: personal memories have no
+    # grants. Source deduplication must preserve their single-agent ownership.
+    peer_id = _peer.id
 
     async def candidates(
         item: MemoryItem, *, minimum_similarity: float, limit: int = 10
@@ -234,11 +223,8 @@ async def test_manual_duplicate_finding_compares_revisions_and_merges_sources(
         ).all()
     )
     assert source_refs == {"test:first", "test:second"}
-    assert set((await db.execute(select(
-        ShareGrant.agent_id, ShareGrant.user_id, ShareGrant.team_id, ShareGrant.can_write,
-    ).where(ShareGrant.share_id == share_id))).all()) == {
-        (None, user_id, None, True), (None, None, team_id, False), (peer_id, None, None, True),
-    }
+    with pytest.raises(service.MemoryPermissionError):
+        await service.get_item(primary_id, agent_id=peer_id)
 
 
 @pytest.mark.asyncio

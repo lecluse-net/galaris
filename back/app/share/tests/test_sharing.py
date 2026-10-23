@@ -9,8 +9,9 @@ from sqlalchemy.exc import IntegrityError
 from app.dataset import service as datasets
 from app.dataset.models import Dataset
 from app.dataset import sharing as dataset_sharing
-from app.memory import document_service
-from app.memory.models import MemoryItem, Document
+from app.document import document_service
+from app.memory.models import MemoryItem
+from app.document import Document
 from app.process.models import ProcessDefinition
 from app.tools import ToolModel
 from app.share import ShareConfig, ShareGrant, SharingUpdate

@@ -1702,7 +1702,7 @@ souvenirs partagés deviennent des documents ; les anciens titres privés rejoig
 Une sauvegarde SQL vérifiée précède le transfert et reste conservée avec les ressources référencées ;
 elle ne remplace pas la sauvegarde des fichiers. Voir la
 [décision de séparation](../../../project/decisions/0162-document-and-memory-synthesis.md) et les
-[garanties de conservation](../../../back/app/memory/tests/test_document_split.py).
+[garanties de conservation](../../../back/app/document/tests/test_independence_upgrade.py).
 
 La recherche utilise le contenu courant complet des documents et leur synthèse, ainsi que les
 souvenirs autonomes. Elle renvoie un seul résultat par couple document/synthèse et applique les
@@ -2003,7 +2003,7 @@ est une estimation sans suppression. L’oubli explicite permet de supprimer une
 Sources : [API Memory](../../../back/app/memory/router.py), [schémas](../../../back/app/memory/schemas.py),
 [parcours de consultation et d’aperçu](../../../front/browser-tests/memory.spec.mjs),
 [navigation 3D et actualisation](../../../front/browser-tests/memory-3d.spec.mjs),
-[partage](../../../back/app/memory/item_sharing.py), [rappel et maintenance](../architecture/flows/memory.md),
+[partage](../../../back/app/document/item_sharing.py), [rappel et maintenance](../architecture/flows/memory.md),
 [garanties de recherche documentaire](../../../back/app/memory/tests/test_document_retrieval.py).
 
 <a id="documents"></a>
@@ -2039,7 +2039,7 @@ Les versions antérieures restent dans l’historique ; l’état opérationnel 
 
 La création agentique utilise par exemple
 `file_create(path="document://", name="Rapport", content="<p>Contenu HTML.</p>")`.
-Le document est privé au départ : l’agent identifie le destinataire avec `memory_sharing`, puis
+Le document est privé au départ : l’agent identifie le destinataire avec `document_sharing`, puis
 accorde lecture ou édition avec `document_share` avant le passage de relais. Envoyer l’URI ou
 demander l’ouverture avec `document_show` n’accorde aucun droit.
 
@@ -2434,7 +2434,7 @@ Sources : [conversion HTML](../../../front/core/util/pasteDocumentHtml.ts),
 [conversion Markdown](../../../front/core/util/pasteMarkdown.ts),
 [parcours de collage](../../../front/browser-tests/markdown-paste.spec.mjs),
 [images et persistance](../../../front/browser-tests/document-resources.spec.mjs),
-[droits d’import](../../../back/app/memory/tests/test_document_resources.py).
+[droits d’import](../../../back/app/document/tests/test_document_resources.py).
 
 ### Une miniature courante par document
 
@@ -2478,7 +2478,7 @@ Les ressources nouvelles sont privées. Le propriétaire ou le gestionnaire auto
 seul le droit de repartager. Retirer un accès direct n’annule pas les autres accès dont bénéficie
 la même personne, par exemple via une équipe.
 
-Les agents disposent de `document_share`, `memory_sharing` et `memory_share` pour découvrir les
+Les agents disposent de `document_share` et `document_sharing` pour découvrir les
 identifiants des destinataires et modifier un partage propriétaire sans deviner ces identifiants.
 
 ### Partage commun des ressources
@@ -2526,10 +2526,10 @@ jointe et ouverte séparément conserve son propre périmètre ; son rendu ne s�
 
 Sources : [guide complet d’édition](../user/rich-content.md),
 [API documentaire](../../../back/app/memory/router.py), [contrats HTML](../dev/editorial-html.md),
-[composants documentaires](../../../front/app/memory/),
+[composants documentaires](../../../front/app/document/),
 [contrat des applications et Datasets](../dev/document-apps.md),
 [tests des Datasets](../../../back/app/memory/tests/test_dataset_documents.py),
-[tests des accès et quotas applicatifs](../../../back/app/memory/tests/test_document_apps.py),
+[tests des accès et quotas applicatifs](../../../back/app/document/tests/test_document_apps.py),
 [tests de l’éditeur, de l’isolation et des exports](../../../front/browser-tests/document-apps.spec.mjs),
 [classement](../../../front/browser-tests/document-classification.spec.mjs),
 [suppression et aperçus historiques](../../../front/browser-tests/document-deletion.spec.mjs).
@@ -4776,9 +4776,8 @@ ordinaires restent dans le périmètre de l’agent.
 | `memory_upcoming` | `memory` | Paginer les souvenirs autorisés correspondant à maintenant ou à la fenêtre d’anticipation, indépendamment de la similarité textuelle ; ne programme aucune notification. |
 | `memory_forget` | `memory` | Oublier définitivement un souvenir autonome et ses versions admissibles ; les mémoires documentaires ne peuvent pas être oubliées indépendamment du document. |
 | `memory_summarize` | `memory` | Synthétiser avec le modèle de l’agent faits attribués, décisions, engagements et questions ouvertes, au maximum 200 messages et 32 000 caractères, sans remplacement des souvenirs existants ni stockage après erreur modèle. |
-| `memory_sharing` | `memory` | Lire partages, destinataires possibles et version de verrouillage ; recherche/filtre/pagination des destinataires. |
-| `memory_share` | `memory` | Alias de compatibilité du partage d’un document propriétaire ; les souvenirs autonomes restent privés. |
-| `document_share` | `memory` | Même partage ciblé pour un document de travail propriétaire. |
+| `document_sharing` | `document` | Lire partages, destinataires possibles et version de verrouillage ; recherche/filtre/pagination des destinataires. |
+| `document_share` | `document` | Partage ciblé pour un document de travail propriétaire. |
 | `skills_list` | `skill_management` | Découvrir les compétences dans le périmètre administrable/autorisé. |
 | `skill_read` | `skill_management` | Lire une compétence et ses informations ; fichiers auxiliaires accessibles via la façade de ressources. |
 

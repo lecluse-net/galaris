@@ -25,6 +25,7 @@ from .encryption import (
 from .router_loader import include_routers
 from .openapi import generate_filtered_openapi, is_not_internal_path, is_not_internal_tag
 from .jsonutil import as_dict, as_list
+from .temporal import TemporalAnchor
 from .calendar import local_timezone_name, month_bounds
 from .transfers import DEFAULT_DOWNLOAD_BYTES, copy_download, read_buffered_file
 from .thread_io import complete_await, complete_io
@@ -51,6 +52,7 @@ from .editorial_client import require_editorial_client
 from .source_files import source_code_media_type, source_code_response_headers
 
 __all__ = [
+    "TemporalAnchor",
     "ContentProfile",
     "RichTextError",
     "attachment_reference",

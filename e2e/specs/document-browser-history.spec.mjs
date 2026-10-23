@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -14,7 +15,7 @@ test('browser and document arrows share visits in Documents, dialogs and Chat', 
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
   async function create(title, html) {
-    const response = await request.post('/api/memory/items', { headers, data: {
+    const response = await createDocument(request, { headers, data: {
       owner_agent_id: fixture.agent_id, title, node_kind: 'document',
       media_type: 'text/html', payload: { text: html },
     } })

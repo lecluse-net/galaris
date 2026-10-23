@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -15,18 +16,18 @@ for (const width of [1440, 390]) test(`attachment names survive document and fil
   const session = await (await authentication).json()
   await expect(page.locator('input[type=password]')).toHaveCount(0)
   const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
-  const created = await request.post('/api/memory/items', { headers, data: {
+  const created = await createDocument(request, { headers, data: {
     owner_agent_id: fixture.agent_id, title: 'Synthetic attachment rename', node_kind: 'document',
     media_type: 'text/html', payload: { text: '<p>Preserved document body</p>' },
   } })
   expect(created.ok(), await created.text()).toBeTruthy()
   const document = await created.json()
-  const uploaded = await request.post(`/api/memory/documents/${document.id}/attachments?actor_agent_id=${fixture.agent_id}`, {
+  const uploaded = await request.post(`/api/documents/${document.id}/attachments?actor_agent_id=${fixture.agent_id}`, {
     headers, multipart: { file: { name: 'Original.txt', mimeType: 'text/plain', buffer: Buffer.from('Entirely synthetic attachment') } },
   })
   expect(uploaded.ok(), await uploaded.text()).toBeTruthy()
   const attachment = await uploaded.json()
-  const before = (await (await request.get(`/api/memory/documents/${document.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
+  const before = (await (await request.get(`/api/documents/${document.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
   await errors.settle()
   await page.goto(`/documents?document_id=${document.id}`)
   await page.locator('.document-attachments .resource-preview-block').hover()
@@ -44,10 +45,10 @@ for (const width of [1440, 390]) test(`attachment names survive document and fil
   await page.reload()
   await page.locator('.document-attachments .resource-preview-block').hover()
   await expect(page.getByRole('button', { name: 'Renommer Final résumé.txt', exact: true })).toBeVisible()
-  const current = (await (await request.get(`/api/memory/documents/${document.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
+  const current = (await (await request.get(`/api/documents/${document.id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
   expect(current.revision).toBe(before.revision)
   expect(current.payload.text).toBe(before.payload.text)
-  const downloaded = await request.get(`/api/memory/documents/${document.id}/attachments/${attachment.id}?agent_id=${fixture.agent_id}`, { headers })
+  const downloaded = await request.get(`/api/documents/${document.id}/attachments/${attachment.id}?agent_id=${fixture.agent_id}`, { headers })
   expect(await downloaded.text()).toBe('Entirely synthetic attachment')
   await errors.settle()
   await page.goto(`/files?agent_id=${fixture.agent_id}`)
@@ -64,7 +65,7 @@ for (const width of [1440, 390]) test(`attachment names survive document and fil
   expect((await browserSaved).ok()).toBeTruthy()
   await expect(page.getByRole('button', { name: 'Renommer Browser report.txt', exact: true })).toBeVisible()
   // Keep the loaded directory in the SPA, then rename through another authorized surface.
-  const elsewhere = await request.patch(`/api/memory/documents/${document.id}/attachments/${attachment.id}?actor_agent_id=${fixture.agent_id}`,
+  const elsewhere = await request.patch(`/api/documents/${document.id}/attachments/${attachment.id}?actor_agent_id=${fixture.agent_id}`,
     { headers, data: { name: 'Canonical viewer name.txt' } })
   expect(elsewhere.ok(), await elsewhere.text()).toBeTruthy()
   await page.getByRole('button', { name: 'Ouvrir Browser report.txt', exact: true }).click()

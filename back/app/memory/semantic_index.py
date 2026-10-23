@@ -19,7 +19,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID, insert
 
 from core.database import get_db, get_db_session
 from .passages import Passage, document_passages
-from .storage import get_storage
+from core.storage import get_storage
 
 from .embedding import (
     EmbeddingModel,
@@ -28,6 +28,7 @@ from .embedding import (
     resolve_embedding_model,
 )
 from .models import MemoryAutomationJob, MemoryEmbeddingChunk, MemoryEmbeddingManifest, MemoryItem
+from app.document import Document
 
 
 SEMANTIC_INDEX_VERSION = 5
@@ -99,7 +100,7 @@ def semantic_fingerprint(item: MemoryItem) -> str:
         keywords=item.keywords,
         content_type=item.content_type,
         media_type=item.media_type,
-        summary_hash=item.memory_content_hash if item.document is not None else "",
+        summary_hash=item.document.summary_content_hash if item.node_kind == "document" and item.document is not None else "",
     )
 
 
@@ -280,7 +281,7 @@ async def reconcile_embedding_index(
             MemoryItem.id, MemoryItem.content_hash, MemoryItem.title,
             MemoryItem.keywords, MemoryItem.content_type, MemoryItem.media_type,
             MemoryItem.semantic_fingerprint, MemoryItem.search_text, MemoryItem.node_kind,
-            MemoryItem.memory_content_hash,
+            select(Document.summary_content_hash).where(Document.id==MemoryItem.id).scalar_subquery().label("document_summary_hash"),
         ).where(or_(MemoryItem.node_kind.not_in(("attachment", "folder")), MemoryItem.search_text != "")).order_by(MemoryItem.id).limit(250)
         if after is not None:
             statement = statement.where(MemoryItem.id > after)
@@ -298,7 +299,7 @@ async def reconcile_embedding_index(
             fingerprint = semantic_fingerprint_values(content_hash=row.content_hash,
                 title=row.title, keywords=row.keywords,
                 content_type=row.content_type, media_type=row.media_type,
-                summary_hash=row.memory_content_hash if row.node_kind == "document" else "")
+                summary_hash=row.document_summary_hash or "" if row.node_kind == "document" else "")
             if row.semantic_fingerprint != fingerprint:
                 changes.append((row.id, row.semantic_fingerprint, fingerprint))
             is_current = (row.id, fingerprint) in projections
@@ -366,18 +367,18 @@ async def _load_snapshot(
             if hashlib.sha256(content).hexdigest() != item.content_hash:
                 raise ValueError("Memory resource checksum differs from its revision")
             passages = tuple(document_passages(content.decode("utf-8"), max_words=CHUNK_WORDS))
-        if item.document is not None and item.memory_resource_id:
+        if item.document is not None and item.document.summary_resource_id:
             if not passages and item.content_type == "text":
                 document_content = await get_storage(item.provider_code).read(item.resource_id)
                 passages = tuple(Passage(text=passage.text) for passage in document_passages(
                     f"<pre>{escape(document_content.decode('utf-8'))}</pre>", max_words=CHUNK_WORDS,
                 ))
-            summary = await get_storage(item.memory_provider_code).read(item.memory_resource_id)
-            if hashlib.sha256(summary).hexdigest() != item.memory_content_hash:
+            summary = await get_storage(item.document.summary_provider_code).read(item.document.summary_resource_id)
+            if hashlib.sha256(summary).hexdigest() != item.document.summary_content_hash:
                 raise ValueError("Memory synthesis checksum differs from its revision")
             synthesis_passages = tuple(document_passages(summary.decode("utf-8"), max_words=CHUNK_WORDS))
             passages += tuple(Passage(
-                text=passage.text, content_source="memory", source_revision=item.memory_revision,
+                text=passage.text, content_source="memory", source_revision=item.document.summary_revision,
             ) for passage in synthesis_passages)
         return (
             _MemorySnapshot(

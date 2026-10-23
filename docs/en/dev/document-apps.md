@@ -70,7 +70,7 @@ declarations are rejected.
 
 `file_create`, `file_write`, `file_edit` and `file_append` accept this HTML. Read before
 editing and provide the expected revision. Share the document and each Dataset separately
-using `memory_sharing` and `document_share`; a link grants no access. Document types remain
+using `document_sharing` and `document_share`; a link grants no access. Document types remain
 immutable. Other editorial fields (Memory, Goal, Agent) keep their static profile and reject
 scripts.
 
@@ -141,7 +141,7 @@ edit or restore requires new consent; title-only changes do not change the conte
 Current page and Dataset ACLs are still checked on every call. Revocation blocks future calls;
 committed writes remain durable and data already read cannot be taken back from the code.
 
-Human routes `GET /memory/documents/{id}/app-permissions` and
+Human routes `GET /documents/{id}/app-permissions` and
 `PUT /memory/documents/{id}/app-permissions/{app}/{alias}` manage consent using
 `{document_revision, access: null | "read" | "write"}`. Neither the SDK nor MCP exposes these
 routes. Write consent also requires the human edit privilege. Code still displays automatically;

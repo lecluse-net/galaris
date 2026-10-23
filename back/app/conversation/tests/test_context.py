@@ -104,8 +104,8 @@ async def test_direct_conversation_documents_are_scoped_to_agent_and_contact(
         )
     )
     from app.conversation import document_display, document_metadata
-    from app.memory import conversation_document_adapter as adapter
-    from app.memory.document_service import create_document
+    from app.document import conversation_document_adapter as adapter
+    from app.document.document_service import create_document
 
     monkeypatch.setattr(document_display, "_authorize_read", adapter.authorize_conversation_document_read)
     monkeypatch.setattr(document_metadata, "_resolver", adapter.resolve_conversation_document_metadata)

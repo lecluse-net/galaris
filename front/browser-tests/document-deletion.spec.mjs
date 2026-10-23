@@ -15,7 +15,7 @@ for (const [locale, label] of [['fr', 'Document supprimé'], ['en', 'Document de
     const card = page.getByRole('article').filter({ hasText: 'Rapport annuel' })
     await expect(card.getByRole('button').first()).toBeVisible()
     deleted = true
-    await page.evaluate(id => window.testApp.emitSocket('memory.delete', { data: { id, node_kind: 'document' } }), id)
+    await page.evaluate(id => window.testApp.emitSocket('document.delete', { data: { id, node_kind: 'document' } }), id)
     await expect(card).toContainText(label)
     await expect(card.getByRole('button')).toHaveCount(0)
     await card.click()
@@ -28,20 +28,20 @@ for (const [locale, label] of [['fr', 'Document supprimé'], ['en', 'Document de
   })
 }
 
-async function setup(page, { human = false, item = {}, privileges = ['MEMORY_EDIT'], editable = true } = {}) {
+async function setup(page, { human = false, item = {}, privileges = ['DOCUMENT_EDIT'], editable = true } = {}) {
   let document = { ...documentFixture, media_type: 'text/html', content_profile: 'document',
     payload: { text: '<p>Keep my content</p>' },
     ...(human ? { owner_agent_id: null, owner_user_id: 1 } : {}), ...item }
   const requests = []
   const state = { fail: false, failureResponse: { status: 403, json: { detail: 'Access denied' } } }
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', {
+  await jsonRoute(page, '**/api/documents/owner-options?*', {
     agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '' }],
     users: [{ id: 1, kind: 'user', label: 'Me', subtitle: '', is_current_user: true }],
   })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await page.route(/\/api\/memory\/documents\/doc-a\/attachments(?:\?|$)/, route => route.fulfill({ json: [] }))
-  await page.route(/\/api\/memory\/(?:items|documents)\/doc-a(?:\?|$)/, route => {
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await page.route(/\/api\/documents\/doc-a\/attachments(?:\?|$)/, route => route.fulfill({ json: [] }))
+  await page.route(/\/api\/documents\/doc-a(?:\?|$)/, route => {
     const request = route.request()
     if (request.method() === 'DELETE') {
       requests.push(request)
@@ -50,7 +50,7 @@ async function setup(page, { human = false, item = {}, privileges = ['MEMORY_EDI
     if (request.method() !== 'GET') document = { ...document, ...request.postDataJSON(), revision: document.revision + 1 }
     return route.fulfill({ json: request.method() === 'GET' ? { item: document, agent_id: human ? null : 7 } : document })
   })
-  await mount(page, 'app/memory/components/DocumentEditor.vue', {
+  await mount(page, 'app/document/components/DocumentEditor.vue', {
     props: { documentId: 'doc-a', agentId: human ? null : 7, editable }, privileges,
   })
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue(document.title)
@@ -61,17 +61,17 @@ test('row rename and delete shortcuts survive a slow document opening on a small
   const { requests } = await setup(page, { human: true })
   await page.setViewportSize({ width: 390, height: 844 })
   const item = { ...documentFixture, owner_agent_id: null, owner_user_id: 1 }
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [] })
-  await jsonRoute(page, '**/api/memory/documents/library', {
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [] })
+  await jsonRoute(page, '**/api/documents/library', {
     entries: [{ item, tags: [], agent_ids: [], writable_agent_ids: [], user_access: item.access }], total: 1, has_more: false, keywords: [],
   })
   let release
   const gate = new Promise(resolve => { release = resolve })
-  await page.route(/\/api\/memory\/documents\/doc-a(?:\?|$)/, async route => {
+  await page.route(/\/api\/documents\/doc-a(?:\?|$)/, async route => {
     if (route.request().method() === 'GET') await gate
     return route.fallback()
   })
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   const row = page.getByText('Test document', { exact: true })
   await row.hover()
   await page.keyboard.press('F2')
@@ -120,13 +120,13 @@ for (const human of [false, true]) {
     await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'unavailable').map(event => event.value))).toEqual(['doc-a'])
     await expect(dialog).toHaveCount(0)
     expect(requests).toHaveLength(2)
-    expect(new URL(requests[1].url()).pathname).toBe('/api/memory/documents/doc-a')
+    expect(new URL(requests[1].url()).pathname).toBe('/api/documents/doc-a')
     expect(new URL(requests[1].url()).searchParams.get('actor_agent_id')).toBe(human ? null : '7')
   })
 }
 
 for (const [name, options] of [
-  ['shared with an agent, even for an administrator', { item: { owner_agent_id: 99 }, privileges: ['MEMORY_EDIT', 'MEMORY_ADMIN'] }],
+  ['shared with an agent, even for an administrator', { item: { owner_agent_id: 99 }, privileges: ['DOCUMENT_EDIT', 'DOCUMENT_ADMIN'] }],
   ['shared with a human', { human: true, item: { owner_user_id: 99 } }],
   ['without the delete privilege', { privileges: [] }],
   ['protected', { item: { deletion_protected: true } }],
@@ -149,8 +149,8 @@ for (const realtime of [false, true]) {
     const refreshGate = new Promise(resolve => { releaseRefresh = resolve })
     const reads = []
     const item = { ...documentFixture, owner_agent_id: null, owner_user_id: 1 }
-    await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [] })
-    await page.route('**/api/memory/documents/library', async route => {
+    await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [] })
+    await page.route('**/api/documents/library', async route => {
       reads.push(route.request().postDataJSON())
       const snapshot = {
         entries: deleted ? [] : [{ item, tags: [], agent_ids: [], writable_agent_ids: [], user_access: item.access }],
@@ -159,19 +159,19 @@ for (const realtime of [false, true]) {
       if (holdRefresh) await refreshGate
       return route.fulfill({ json: snapshot })
     })
-    await page.route('**/api/memory/documents/doc-a', async route => {
+    await page.route('**/api/documents/doc-a', async route => {
       if (route.request().method() !== 'DELETE') return route.fallback()
       expect(route.request().method()).toBe('DELETE')
       deleted = true
       // The real server can notify readers before the HTTP response reaches the caller.
-      if (realtime) await page.evaluate(() => window.testApp.emitSocket('memory.delete', { data: { id: 'doc-a', node_kind: 'document' } }))
+      if (realtime) await page.evaluate(() => window.testApp.emitSocket('document.delete', { data: { id: 'doc-a', node_kind: 'document' } }))
       await route.fulfill({ json: {} })
     })
-    await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+    await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
     if (mobile) await page.getByText('Test document', { exact: true }).click()
     // A list read started before the deletion must never resurrect its captured row.
     holdRefresh = true
-    await page.evaluate(() => window.testApp.emitSocket('memory.classification', { data: { user_id: 1, list_changed: true } }))
+    await page.evaluate(() => window.testApp.emitSocket('document.classification', { data: { user_id: 1, list_changed: true } }))
     await expect.poll(() => reads.length).toBe(2)
     await page.getByRole('button', { name: 'Delete document', exact: true }).click()
     const confirmation = page.getByRole('dialog').filter({ hasText: 'Permanently delete' })

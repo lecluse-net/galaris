@@ -176,7 +176,7 @@ async def workflow_attachment_receipt(run_id: UUID, key: str) -> dict[str, Any] 
 
 async def stage_run_file(run: ProcessRun, path: Path, *, name: str, media_type: str,
                          file_id: UUID | None = None, source_uri: str | None = None) -> dict[str, Any]:
-    from app.memory import validate_attachment_content
+    from app.document import validate_attachment_content
     count = await get_db().scalar(select(func.count()).select_from(ProcessRunFile).where(ProcessRunFile.run_id == run.id)) or 0
     if count >= 500:
         raise ValueError("A run accepts at most 500 file references")

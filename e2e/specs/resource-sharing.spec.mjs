@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -44,11 +45,11 @@ for (const kind of ['document', 'process']) test(`${kind} sharing survives reope
     data: { user_id: recipient.id, role_id: role.id, is_default: true } }))
   let resource, api, sharingApi, path
   if (kind === 'document') {
-    resource = await checked(await request.post('/api/memory/items', { headers, data: {
+    resource = await checked(await createDocument(request, { headers, data: {
       owner_agent_id: owner.agent_id, title: `Synthetic shared ${suffix}`, node_kind: 'document',
       media_type: 'text/html', payload: { text: '<p>Synthetic content retained through sharing.</p>' },
     } }))
-    api = `/api/memory/documents/${resource.id}`
+    api = `/api/documents/${resource.id}`
     sharingApi = `${api}/sharing-level`
     path = `/documents?document_id=${resource.id}`
   } else {

@@ -434,10 +434,6 @@
     },
     {
       "source": "back/app/memory/bootstrap.py",
-      "target": "app.goal.goal_service"
-    },
-    {
-      "source": "back/app/memory/bootstrap.py",
       "target": "core.params.consts"
     },
     {

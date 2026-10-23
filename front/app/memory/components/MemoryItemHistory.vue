@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import DocumentIcon from './DocumentIcon.vue'
+import { DocumentIcon } from '@/app/document'
 import MemoryTemporalFields from './MemoryTemporalFields.vue'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'

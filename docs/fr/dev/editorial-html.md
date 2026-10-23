@@ -72,7 +72,7 @@ métier concernée. Ne pas ajouter un document uniquement pour consigner une act
 achèvement. Respecter le type de ressource demandé ; une opération indisponible appelle une
 explication de la limite, pas la création d'un document de substitution.
 
-Pour ces contenus durables, les documents Galaris sont le support canonique. Memory et File Sharing
+Pour ces contenus durables, les documents Galaris sont le support canonique. Document, Memory et File Sharing
 sont des services système obligatoires, comme Galaris et Conversation. Leurs définitions et
 connexions restent protégées et actives. Leurs fonctions gardent les modes Actif, Bloqué,
 Sur demande et l’héritage global/local, configurables par un humain. Le catalogue effectif
@@ -98,7 +98,7 @@ avec `file_write` suppose d'avoir lu tout le contenu nécessaire à sa conservat
 s'adapte à l'usage, sans réduction de longueur ni réécriture globale systématique. Cette règle
 éditoriale ne demande pas de condenser les entrées Dataset ou le code.
 
-Un nouveau document est privé. `memory_sharing` résout le destinataire humain, agent ou équipe
+Un nouveau document est privé. `document_sharing` résout le destinataire humain, agent ou équipe
 et sa version de droits ; `document_share` accorde `read` ou `edit` avant transmission. Un lien
 ou `document_show` ne donne aucun droit. Une livraison externe est une opération distincte dont
 le succès doit être confirmé par le transport.
@@ -191,8 +191,8 @@ Ils suivent les lignes logiques, y compris lorsqu’une ligne longue revient à 
 
 ## Révisions et lecture agentique
 
-Le partage MCP passe par `memory_sharing` pour découvrir les destinataires et leur
-`lock_version`, puis `document_share` ou `memory_share` avec exactement un `agent_id`,
+Le partage MCP passe par `document_sharing` pour découvrir les destinataires et leur
+`lock_version`, puis `document_share` avec exactement un `agent_id`,
 `user_id` ou `team_id`. L’accès vaut `read`, `edit` ou `none` pour retirer ce grant précis.
 Les équipes comprennent leurs membres humains et IA actuels. Cette mutation ne change ni
 le HTML ni sa révision : `expected_lock_version` protège les ACL, `expected_revision`
@@ -223,7 +223,7 @@ pour réessayer. Ne jamais purger un fichier à partir de sa seule absence dans 
 
 ## Export PDF
 
-`POST /memory/documents/{document_id}/export-pdf` vérifie les droits de lecture et le profil
+`POST /documents/{document_id}/export-pdf` vérifie les droits de lecture et le profil
 `document`, puis transmet à `core.preview.render_html_pdf` une copie statique du contenu en
 cours. Le frontend partage les styles d’impression et intègre les images autorisées en data
 URI ; cet export ne sauvegarde pas le document. Chromium, dans `browser-executor`, imprime
@@ -249,7 +249,7 @@ les enveloppes de texte brut copiées depuis un éditeur de source ne bloquent p
 conversion. Le texte ordinaire, le code en ligne, les blocs de code et la saisie dans Source
 gardent leur comportement littéral. Les images Markdown suivent le même import en PJ.
 Les images raster intégrées en base64 passent par l’upload des pièces jointes. Les images
-HTTPS publiques passent par `POST /memory/documents/{document_id}/import-image` : vérification
+HTTPS publiques passent par `POST /documents/{document_id}/import-image` : vérification
 du périmètre utilisateur et du droit d’écriture avant téléchargement, port
 `core.preview.read_web_image`, transport File Share protégé contre les adresses privées et
 redirections internes, limite de 10 Mo et 15 secondes, puis validation et stockage comme PJ.
@@ -261,10 +261,10 @@ de document empêche une réponse tardive de modifier le corps ; une PJ déjà c
 Les fichiers HTML sont autorisés comme pièces jointes et ouverts par la visionneuse HTML
 existante, isolée de l'origine applicative. Les liens canoniques de pièces jointes sont
 acceptés dans `<a href>` ; leur navigation résout le document et la pièce jointe concernés.
-`GET /memory/documents/{document_id}/attachments/{attachment_id}/info` permet aussi d'ouvrir
+`GET /documents/{document_id}/attachments/{attachment_id}/info` permet aussi d'ouvrir
 un fichier retiré de la liste mais retenu pour le texte ou l'historique, sous les ACL actuelles.
 
-`POST /memory/documents/{document_id}/link-card` exige un agent dans le périmètre utilisateur
+`POST /documents/{document_id}/link-card` exige un agent dans le périmètre utilisateur
 et le droit d'écriture avant tout accès réseau. `app.file_share.web_metadata` partage avec
 Messenger l'extraction Open Graph et YouTube oEmbed via le transport HTTPS public protégé
 contre les adresses privées et redirections internes. Memory passe par le port
@@ -276,7 +276,7 @@ L'insertion dans le corps est une édition normale ; seule elle crée une révis
 Une miniature déjà publiée reste réutilisable si l'insertion est annulée.
 
 L'impression et le PDF reproduisent uniquement le corps du document.
-`POST /memory/documents/{document_id}/export-bundle` exige la lecture du document, retourne
+`POST /documents/{document_id}/export-bundle` exige la lecture du document, retourne
 un ZIP borné à 64 Mio de données d'entrée (dont 12 Mio pour l'instantané), et n'écrit aucune
 révision. Les noms de fichiers sont préfixés par leur UUID ; les liens du HTML deviennent
 relatifs et encodés. Les fichiers retirés mais encore référencés sont inclus. Les dépendances

@@ -6,7 +6,7 @@ from uuid import UUID
 if TYPE_CHECKING:
     from .usage import UsageSource
     from .contracts import DataActor
-    from app.memory import DatasetAttachmentReference
+    from app.document import DatasetAttachmentReference
 
 
 def register_dataset_usage_source(kind: str, name: str, source: UsageSource) -> None:
@@ -15,7 +15,7 @@ def register_dataset_usage_source(kind: str, name: str, source: UsageSource) -> 
 
 def register_dataset() -> None:
     from app.file_share import register_native_provider, register_resource_aliases
-    from app.memory import register_dataset_compatibility, refresh_dataset_projection, register_dataset_attachment_reader
+    from app.document import register_dataset_compatibility, refresh_dataset_projection, register_dataset_attachment_reader
     from .compatibility import LegacyDatasetAdapter
     from .projection import register_projection_writer
     from .provider import DatasetProvider, resolve_alias
@@ -28,7 +28,7 @@ def register_dataset() -> None:
 
 
 async def read_attachment_reference(identity: UUID, actor: DataActor) -> DatasetAttachmentReference:
-    from app.memory import DatasetAttachmentReference
+    from app.document import DatasetAttachmentReference
     from core.authorize import check_privilege
     from core.database import get_db
     from core.user import get_user_record

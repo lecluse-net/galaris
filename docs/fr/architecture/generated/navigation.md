@@ -68,9 +68,9 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/documents`
 - Usage : Retrouver et classer vos documents accessibles
-- Visibilité du menu (privilèges) : (MEMORY_ACCESS)
+- Visibilité du menu (privilèges) : (DOCUMENT_ACCESS)
 - Conditions supplémentaires : —
-- Sources : `front/app/memory/navigation.ts`
+- Sources : `front/app/document/navigation.ts`
 
 ## Connaissances → Jeux de données
 

@@ -92,7 +92,7 @@ async def browser_content(ctx: ResourceContext, uri: str, *, preview: bool) -> A
 
 
 async def browser_thumbnail(ctx: ResourceContext, uri: str) -> bytes | None:
-    from app.memory import render_file_thumbnail
+    from app.document import render_file_thumbnail
 
     info = await resource_info(ctx, uri)
     if info.is_collection or (info.size is not None and info.size > 50 * 1024**2):

@@ -7,6 +7,11 @@ content. [JSON Datasets](datasets.md) and [Processes](internal-processes.md) hav
 libraries. Classification is personal and does not change other readers' organization.
 A folder can automatically grant additional access to your documents without sharing your tree.
 
+Documents and their shared summaries are independent of agents' personal memories.
+Sharing a document does not share any memory; deleting a reference in the memory
+graph does not delete the document. Memories about a document remain private to
+the agent that acquired them.
+
 
 ## Create and find Documents
 

@@ -53,12 +53,12 @@ for (const width of [1440, 390]) test(`topic rows open their target dialogs with
   await jsonRoute(page, '**/api/memory/items/topic-memory', {
     ...document, id: 'topic-memory', node_kind: 'memory', payload: { text: 'Synthetic memory body' },
   })
-  await jsonRoute(page, '**/api/memory/documents/doc-a', { item: { ...document, title: 'Synthetic document' } })
+  await jsonRoute(page, '**/api/documents/doc-a', { item: { ...document, title: 'Synthetic document' } })
   await jsonRoute(page, '**/api/agents?*', [])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments', [])
-  await jsonRoute(page, '**/api/memory/documents/keywords', [])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/content/revisions?*', { items: [], total: 0 })
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [], users: [] })
+  await jsonRoute(page, '**/api/documents/doc-a/attachments', [])
+  await jsonRoute(page, '**/api/documents/keywords', [])
+  await jsonRoute(page, '**/api/documents/doc-a/content/revisions?*', { items: [], total: 0 })
   await jsonRoute(page, '**/api/datasets/topic-dataset', { id: 'topic-dataset', uri: 'data://topic-dataset',
     title: 'Synthetic linked Dataset', content: '{"quantity":3}', revision: 1, lock_version: 1,
     can_write: false, can_manage: false, can_delete: false, keywords: [], read_only: false,

@@ -12,7 +12,8 @@ from app.file_share.models import FileCatalogEntry
 from app.file_share.resource_contracts import ResourceContext
 from app.file_share.tests.local_file_transport import TemporaryFileTransport
 from app.tools import ToolModel
-from app.memory import service, document_attachment_service, detect_memory_findings, maintenance
+from app.memory import service, detect_memory_findings, maintenance
+from app.document import document_attachment_service
 from app.memory.schemas import MemoryItemCreate, MemoryPayload
 from core.database import get_db
 

@@ -1,5 +1,6 @@
 # Décisions d'architecture
 
+- [0223 — Souvenirs personnels et documents indépendants](0223-memory-document-independence.md)
 - [0221 — Réception Mail, consentement et journal](0221-mail-inbound-consent-and-journal.md)
 - [0220 — Origine des Tools et bridges dédiés](0220-tool-origin-and-dedicated-bridges.md)
 - [0219 — Suppression en cascade d’un Tool confirmée par un humain](0219-human-confirmed-tool-deletion.md)

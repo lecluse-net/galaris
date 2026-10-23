@@ -8,16 +8,13 @@ export function invalidateMessagePreviewReaders(): void {
   chatService.invalidateMessagePreviews()
   for (const refresh of readers) refresh()
 }
-function onMemoryChange(event: { data?: { node_kind?: string } }): void {
-  if (event.data?.node_kind === 'document') invalidateMessagePreviewReaders()
-}
 
 export function useMessagePreviewFreshness(refresh: () => void = () => undefined): void {
   onMounted(() => {
     if (!readers.size) {
       websocket.createWebsocket()
-      websocket.onEvent('memory', 'update', onMemoryChange)
-      websocket.onEvent('memory', 'delete', onMemoryChange)
+      websocket.onEvent('document', 'update', invalidateMessagePreviewReaders)
+      websocket.onEvent('document', 'delete', invalidateMessagePreviewReaders)
       websocket.onConnect(invalidateMessagePreviewReaders)
     }
     readers.add(refresh)
@@ -25,8 +22,8 @@ export function useMessagePreviewFreshness(refresh: () => void = () => undefined
   onBeforeUnmount(() => {
     readers.delete(refresh)
     if (!readers.size) {
-      websocket.offEvent('memory', 'update', onMemoryChange)
-      websocket.offEvent('memory', 'delete', onMemoryChange)
+      websocket.offEvent('document', 'update', invalidateMessagePreviewReaders)
+      websocket.offEvent('document', 'delete', invalidateMessagePreviewReaders)
       websocket.offConnect(invalidateMessagePreviewReaders)
       chatService.invalidateMessagePreviews()
     }

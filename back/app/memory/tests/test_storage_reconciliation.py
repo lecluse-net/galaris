@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from app.memory.storage import NativeFileStorage
+from core.storage import NativeFileStorage
 from app.memory.storage_reconciliation import preview_native_orphans, remove_reviewed_orphans
 
 
@@ -38,3 +38,31 @@ async def test_reconciliation_keeps_current_and_historical_document_files(db, ag
             os.utime(path, (time.time() - 172800, time.time() - 172800))
     review, _ = await preview_native_orphans(root=memory_storage)
     assert review == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reference", ["current", "revision", "summary"])
+async def test_orphan_review_keeps_document_resources_without_any_memory(db, agents, memory_storage, reference):
+    from sqlalchemy import select
+    from app.document import DocumentRevision, document_service
+    from app.memory.models import MemoryItem
+    from core.storage import get_storage
+
+    document = await document_service.create_document(owner_agent_id=agents[0].id,
+        title="Synthetic independent resource", content="<p>Source.</p>", task_id=None)
+    pointer = await get_storage().create(b"synthetic retained file")
+    if reference == "current":
+        document.content, document.resource_id = None, pointer
+    elif reference == "summary":
+        document.summary_content, document.summary_resource_id = None, pointer
+    else:
+        revision = await db.scalar(select(DocumentRevision).where(DocumentRevision.document_id == document.id))
+        revision.content, revision.resource_id = None, pointer
+    await db.commit()
+    assert await db.scalar(select(MemoryItem.id).where(MemoryItem.id == document.id)) is None
+    path = await get_storage().path_for_read(pointer)
+    os.utime(path, (time.time() - 172800, time.time() - 172800))
+    reviewed, _ = await preview_native_orphans(root=memory_storage)
+    assert pointer not in {item.resource_id for item in reviewed}
+    assert await remove_reviewed_orphans(reviewed, root=memory_storage, quiescent=True) == 0
+    assert path.read_bytes() == b"synthetic retained file"

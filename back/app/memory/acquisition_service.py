@@ -10,7 +10,6 @@ from uuid import UUID, uuid4
 
 from loguru import logger
 from sqlalchemy import exists, or_, select
-from sqlalchemy.orm import selectinload
 
 from core.database import get_db
 from core.params import runtime_settings
@@ -354,7 +353,7 @@ async def _validate_conversation_scope(record: MemoryAcquisition) -> bool:
         target = await get_db().scalar(
             select(MemoryItem)
             .where(MemoryItem.id == record.target_item_id)
-            .options(selectinload(MemoryItem.grants))
+
         )
         if target is None:
             raise MemoryConflictError(
@@ -525,15 +524,25 @@ async def _apply_acquisition_record(
                 record.target_item_id,
                 agent_id=record.agent_id,
             )
-            if target.node_kind == "memory" and not target.source_managed:
-                target = await _reinforce_experience(target, record)
-            await link_item_source(
-                target.id,
-                _item_source(record),
-                actor_agent_id=record.agent_id,
-            )
-            memory_id = target.id
-            merged = True
+            if target.node_kind == "document":
+                # A readable shared source can justify private knowledge, but
+                # must never collect the agent's personal provenance.
+                item, item_created = await create_item(
+                    _item_create_data(record), deduplicate=not conversation_scoped,
+                )
+                memory_id = item.id
+                record.target_item_id = item.id
+                merged = not item_created
+            else:
+                if target.node_kind == "memory" and not target.source_managed:
+                    target = await _reinforce_experience(target, record)
+                await link_item_source(
+                    target.id,
+                    _item_source(record),
+                    actor_agent_id=record.agent_id,
+                )
+                memory_id = target.id
+                merged = True
         else:
             item, item_created = await create_item(
                 _item_create_data(record),
@@ -735,10 +744,10 @@ async def create_manual_item(data: MemoryItemCreate) -> MemoryItem:
         data.content_type == "text" or data.media_type.startswith("text/")
     ):
         content = decode_payload(data.payload).decode("utf-8")
-    if data.node_kind == "document" or data.content_type != "text" or content is None:
+    if data.content_type != "text" or content is None:
         item, _created = await create_item(
             data,
-            deduplicate=data.node_kind == "memory",
+            deduplicate=True,
         )
         return item
 

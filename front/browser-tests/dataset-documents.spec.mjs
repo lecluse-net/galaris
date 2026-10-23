@@ -7,10 +7,10 @@ async function fixture(page, { writable = true } = {}) {
     access: { can_read: true, can_write: writable } }
   const writes = []
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments*', [])
-  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/doc-a/attachments*', [])
+  await page.route(/\/api\/documents\/doc-a(?:\?.*)?$/, route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { item: current, agent_id: 7 } })
     const body = route.request().postDataJSON()
     writes.push(body)
@@ -28,22 +28,22 @@ test('Documents creates editorial content and keeps Dataset creation out of its 
   let releaseAgents
   const agentsReady = new Promise(resolve => { releaseAgents = resolve })
   await page.route('**/api/agents?*', async route => { await agentsReady; return route.fallback() })
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', {
+  await jsonRoute(page, '**/api/documents/owner-options?*', {
     agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }],
     users: [{ id: 1, kind: 'user', label: 'Synthetic owner', subtitle: '', avatar_url: null, is_current_user: true }],
   })
   const requests = [], creations = []
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [] })
-  await jsonRoute(page, '**/api/memory/documents/doc-a', { item: state.current(), agent_id: 7 })
-  await page.route('**/api/memory/documents/library', route => {
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [] })
+  await jsonRoute(page, '**/api/documents/doc-a', { item: state.current(), agent_id: 7 })
+  await page.route('**/api/documents/library', route => {
     requests.push(route.request().postDataJSON())
     return route.fulfill({ json: { entries: creations.length ? [{ item: state.current(), agent_ids: [7], writable_agent_ids: [7] }] : [], total: creations.length, keywords: [], has_more: false } })
   })
-  await page.route('**/api/memory/documents', route => {
+  await page.route('**/api/documents', route => {
     creations.push(route.request().postDataJSON())
     return route.fulfill({ status: 201, json: state.current() })
   })
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   await page.getByRole('button', { name: 'Create document', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Scenarios')
@@ -68,12 +68,12 @@ for (const component of ['DocumentEditor', 'DocumentLibraryPage', 'DocumentDialo
   test(`a historical Dataset opens its canonical editor from ${component}`, async ({ page }) => {
     const id = '00000000-0000-4000-8000-000000000001'
     await jsonRoute(page, '**/api/agents?*', [agent])
-    await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [] })
-    await jsonRoute(page, '**/api/memory/documents/library', { entries: [], total: 0, has_more: false, keywords: [] })
-    await jsonRoute(page, `**/api/memory/documents/${id}*`, { resource_type: 'dataset', resource_uri: `data://${id}` })
+    await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [] })
+    await jsonRoute(page, '**/api/documents/library', { entries: [], total: 0, has_more: false, keywords: [] })
+    await jsonRoute(page, `**/api/documents/${id}*`, { resource_type: 'dataset', resource_uri: `data://${id}` })
     await mount(page, `app/memory/components/${component}.vue`, {
       props: component === 'DocumentLibraryPage' ? {} : { documentId: id, agentId: null, ...(component === 'DocumentDialog' ? { modelValue: true } : {}) },
-      route: `/documents?document_id=${id}`, privileges: ['MEMORY_EDIT', 'DATASET_READ'],
+      route: `/documents?document_id=${id}`, privileges: ['DOCUMENT_EDIT', 'DATASET_READ'],
     })
     await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(`/dataset/${id}`)
     await expect(page.locator('.document-editor-fields')).toHaveCount(0)
@@ -83,7 +83,7 @@ for (const component of ['DocumentEditor', 'DocumentLibraryPage', 'DocumentDialo
 test('a cached Dataset seed cannot render inside the Document editor', async ({ page }) => {
   const id = '00000000-0000-4000-8000-000000000002'
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await mount(page, 'app/memory/components/DocumentEditor.vue', {
+  await mount(page, 'app/document/components/DocumentEditor.vue', {
     props: { documentId: id, agentId: null, initialDocument: { ...document, id, document_type: 'dataset' } },
   })
   await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(`/dataset/${id}`)
@@ -92,8 +92,8 @@ test('a cached Dataset seed cannot render inside the Document editor', async ({ 
 
 test('an unauthorized legacy reference stays denied without exposing a Dataset target', async ({ page }) => {
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await page.route('**/api/memory/documents/doc-a*', route => route.fulfill({ status: 403, json: { detail: 'Denied' } }))
-  await mount(page, 'app/memory/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: null } })
+  await page.route('**/api/documents/doc-a*', route => route.fulfill({ status: 403, json: { detail: 'Denied' } }))
+  await mount(page, 'app/document/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: null } })
   await expect(page.getByRole('alert')).toBeVisible()
   expect(await page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/')
 })
@@ -117,7 +117,7 @@ test('internal insertion preserves citations and existing files without creating
   await page.route('**/api/file-share/browser/thumbnail?*', route => route.fulfill({ status: 404 }))
   const attachmentRequests = []
   page.on('request', request => { if (/\/(internal|dataset|process)-attachments/.test(request.url()) || request.url().includes('/attachments') && request.method() === 'POST') attachmentRequests.push(request.url()) })
-  await mount(page, 'app/memory/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7, editable: true }, privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7, editable: true }, privileges: ['DOCUMENT_EDIT'] })
   const attachments = page.locator('.document-editor-attachments')
   await expect(attachments.getByRole('button', { name: 'Upload', exact: true })).toBeVisible()
   await expect(attachments.getByRole('button', { name: 'Add an internal attachment', exact: true })).toHaveCount(0)

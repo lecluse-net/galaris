@@ -14,13 +14,13 @@ export const test = base.extend({
     await page.route('**/api/auth/me/help-dismissals', route => route.fulfill({ json: [] }))
     // Ordinary component fixtures use Alice (7) as the managed agent. Scope tests override this catalogue.
     await page.route('**/api/agents/selection?scope=management', route => route.fulfill({ json: [{ id: 7, label: 'Alice Example', has_avatar: false }] }))
-    await page.route('**/api/memory/documents/*/sharing', route => route.fulfill({ json: { lock_version: 1, can_manage: true, grants: [], options: [], level: 'private', can_write: false, owner: { kind: 'agent', id: 7, label: 'Alice', can_write: true }, owner_groups: [] } }))
-    await page.route('**/api/memory/documents/*/dataset-attachments*', route => route.fulfill({ json: { items: [], lock_version: 1 } }))
-    await page.route('**/api/memory/documents/*/process-attachments*', route => route.fulfill({ json: { items: [], lock_version: 1 } }))
-    await page.route('**/api/memory/documents/*/internal-attachments*', route => route.fulfill({ json: { items: [], lock_version: 1 } }))
+    await page.route('**/api/documents/*/sharing', route => route.fulfill({ json: { lock_version: 1, can_manage: true, grants: [], options: [], level: 'private', can_write: false, owner: { kind: 'agent', id: 7, label: 'Alice', can_write: true }, owner_groups: [] } }))
+    await page.route('**/api/documents/*/dataset-attachments*', route => route.fulfill({ json: { items: [], lock_version: 1 } }))
+    await page.route('**/api/documents/*/process-attachments*', route => route.fulfill({ json: { items: [], lock_version: 1 } }))
+    await page.route('**/api/documents/*/internal-attachments*', route => route.fulfill({ json: { items: [], lock_version: 1 } }))
     await page.route('**/api/datasets?*', route => route.fulfill({ json: { items: [], total: 0 } }))
     // Most documents use the standard icon. Icon scenarios override this explicit default.
-    await page.route('**/api/memory/documents/icons/resolve', route => route.fulfill({ json: {} }))
+    await page.route('**/api/documents/icons/resolve', route => route.fulfill({ json: {} }))
     // Foreground Dream actions require explicit eligible-source fixtures.
     await page.route('**/api/dream/memory/*/actions?*', route => route.fulfill({ json: { actions: [] } }))
     // Graph persistence is empty unless a dedicated scenario supplies saved state.
@@ -33,7 +33,7 @@ export const test = base.extend({
         preferences: { hidden_entity_kinds: [], expanded_branches: [], camera: null, ...body.preferences }, positions: body.positions } })
     })
     // Optional document captures are unavailable unless the scenario supplies a rendered image.
-    await page.route('**/api/memory/documents/*/thumbnail*', route => route.fulfill({ status: 204 }))
+    await page.route('**/api/documents/*/thumbnail*', route => route.fulfill({ status: 204 }))
     await use(page)
     if (!page.isClosed()) {
       failures.push(...await page.evaluate(() => window.testApp?.errors ?? []))

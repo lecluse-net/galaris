@@ -123,10 +123,10 @@ async def build_agent_tool_advertisement(
                 "When a document is needed, search document:// first and update a relevant "
                 "existing document. Create a new one only when the content needs a separate home."
             )
-        if {"memory_sharing", "document_share"} <= tool_names:
+        if {"document_sharing", "document_share"} <= tool_names:
             lines.append(
                 "New documents are private. For intended recipients, inspect "
-                "memory_sharing(memory_id='<document URI>'), then call "
+                "document_sharing(document_id='<document URI>'), then call "
                 "document_share(document_id='<document URI>', user_id=..., access='read', "
                 "expected_lock_version=...) using the returned recipient ID and lock_version. "
                 "Supply exactly one user_id, agent_id or team_id; use edit for collaborators. "

@@ -49,7 +49,7 @@ class DatasetRevision(Base):
     author_agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="SET NULL"))
     author_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    source_revision_id: Mapped[UUID | None] = mapped_column(ForeignKey("memory_revisions.id", ondelete="RESTRICT"), unique=True)
+    document_source_revision_id: Mapped[UUID | None] = mapped_column(ForeignKey("document_revisions.id", ondelete="RESTRICT"), unique=True)
     __table_args__ = (UniqueConstraint("dataset_id", "revision"),)
 
 

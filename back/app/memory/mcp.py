@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Any, cast
 from uuid import UUID
 
 from loguru import logger
@@ -12,7 +12,7 @@ from app.task.facade import memory_scope_for_task
 from app.tools.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.i18n import t
 
-from . import acquisition_service, item_sharing, service
+from . import acquisition_service, service
 from .recall_scope import resolve_recall_scope
 from .schemas import (
     MemoryTemporalAnchor,
@@ -172,124 +172,6 @@ def _task_association_payload(
         "links_created": 0,
         "topic_projection_pending": association.topic_projection_pending,
     }
-
-
-@mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
-
-    name="document_share",
-    description=(
-        "Share your HTML or JSON Dataset document with one agent, human user or team (group). "
-        "Supply exactly one of agent_id, user_id, team_id. Access is read, edit, or none to revoke "
-        "that direct grant. Use memory_sharing to discover recipients and the lock_version. "
-        "Only the owner can share; team membership remains live and other grants are preserved."
-    ),
-)
-async def document_share(
-    ctx: McpToolContext,
-    document_id: str,
-    agent_id: int | None = None,
-    access: Literal["read", "edit", "none"] = "edit",
-    team_id: int | None = None,
-    user_id: int | None = None,
-    expected_lock_version: int | None = None,
-) -> str:
-    try:
-        identifier = _sharing_item_id(document_id, document_only=True)
-        kind, target = _sharing_target(agent_id, user_id, team_id)
-        state = await item_sharing.update_agent_sharing(
-            identifier, agent_id=ctx.agent_id, kind=kind, target_id=target,
-            access=access, expected_lock_version=expected_lock_version, document_only=True,
-        )
-        item = await service.item_record(identifier)
-        assert item is not None
-        return _json({
-            "document_id": str(identifier), "uri": f"document://{identifier}",
-            "revision": item.revision,
-            "shared_with": [{"agent_id": grant.id, "access": "edit" if grant.can_write else "read"}
-                            for grant in state.grants if grant.kind == "agent"],
-            **state.model_dump(mode="json", exclude={"options"}),
-        })
-    except Exception:
-        logger.exception("document_share failed")
-        raise
-
-
-def _sharing_item_id(value: str, *, document_only: bool = False) -> UUID:
-    normalized = value.strip()
-    schemes = ("document://",) if document_only else ("document://", "memory://")
-    for scheme in schemes:
-        if normalized.startswith(scheme):
-            normalized = normalized.removeprefix(scheme)
-            break
-    return UUID(normalized)
-
-
-def _sharing_target(
-    agent_id: int | None, user_id: int | None, team_id: int | None,
-) -> tuple[Literal["agent", "user", "team"], int]:
-    targets: list[tuple[Literal["agent", "user", "team"], int]] = []
-    candidates: tuple[tuple[Literal["agent", "user", "team"], int | None], ...] = (
-        ("agent", agent_id), ("user", user_id), ("team", team_id),
-    )
-    for kind, identifier in candidates:
-        if identifier is not None:
-            if identifier <= 0:
-                raise ValueError("Recipient identifiers must be positive")
-            targets.append((kind, identifier))
-    if len(targets) != 1:
-        raise ValueError("Supply exactly one of agent_id, user_id, team_id")
-    return targets[0]
-
-
-@mcp_tool("memory", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
-     name="memory_sharing",
-    description=(
-        "Inspect sharing of a document you own. Standalone memories are private. Pass its exact document:// "
-        "URI, or UUID. Returns grants, recipient options (agents, human users, teams/groups), "
-        "owner_groups and lock_version. Use the returned IDs for document_share or memory_share. "
-        "Filter recipient options by search/kind and paginate with offset/limit (50 by default, "
-        "500 maximum). Sharing grants are separate from the HTML content revision; do not guess recipient IDs."
-    ), effect_policy="read", concurrency_policy="safe",
-)
-async def memory_sharing(
-    ctx: McpToolContext, memory_id: str, search: str = "",
-    kind: Literal["agent", "user", "team"] | None = None, offset: int = 0, limit: int = 50,
-) -> str:
-    if offset < 0 or not 1 <= limit <= 500:
-        raise ValueError("offset must be nonnegative and limit must be between 1 and 500")
-    state = await item_sharing.agent_sharing(_sharing_item_id(memory_id), agent_id=ctx.agent_id)
-    query = search.strip().casefold()
-    options = [option for option in state.options
-               if (kind is None or option.kind == kind) and query in option.label.casefold()]
-    payload = state.model_dump(mode="json", exclude={"options"})
-    payload.update(
-        options=[option.model_dump(mode="json") for option in options[offset:offset + limit]],
-        total=len(options), has_more=offset + limit < len(options),
-    )
-    return _json(payload)
-
-
-@mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
-     name="memory_share",
-    description=(
-        "Share your document with one agent, human user or team (group). Standalone memories are private. "
-        "Pass its exact memory:// or document:// URI, or UUID, and exactly one of agent_id, user_id, "
-        "team_id. Use memory_sharing first for IDs and lock_version. Access read/edit grants "
-        "reading/writing; none removes only that direct grant. Teams include their current human "
-        "and agent members. Only the owner can share; immutable or source-managed items cannot be shared."
-    ),
-)
-async def memory_share(
-    ctx: McpToolContext, memory_id: str, agent_id: int | None = None,
-    access: Literal["read", "edit", "none"] = "read", team_id: int | None = None,
-    user_id: int | None = None, expected_lock_version: int | None = None,
-) -> str:
-    kind, target = _sharing_target(agent_id, user_id, team_id)
-    state = await item_sharing.update_agent_sharing(
-        _sharing_item_id(memory_id), agent_id=ctx.agent_id, kind=kind, target_id=target,
-        access=access, expected_lock_version=expected_lock_version,
-    )
-    return _json(state.model_dump(mode="json", exclude={"options"}))
 
 
 @mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",

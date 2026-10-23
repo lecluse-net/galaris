@@ -19,19 +19,19 @@ async function controls(page, props = {}, html = '<p>Document</p>', simple = fal
     })
   } else {
     await jsonRoute(page, '**/api/agents?*', [agent])
-    await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice' }], users: [] })
-    await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-    await jsonRoute(page, '**/api/memory/documents/folders?*', [{ path: 'Reports', kind: 'custom', shared: false }])
-    await jsonRoute(page, '**/api/memory/documents/*/attachments?*', [])
+    await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice' }], users: [] })
+    await jsonRoute(page, '**/api/documents/keywords?*', [])
+    await jsonRoute(page, '**/api/documents/folders?*', [{ path: 'Reports', kind: 'custom', shared: false }])
+    await jsonRoute(page, '**/api/documents/*/attachments?*', [])
     let current = { ...testDocument, payload: { text: html } }
-    await page.route(/\/api\/memory\/documents\/doc-[ab](?:\?.*)?$/, route => {
+    await page.route(/\/api\/documents\/doc-[ab](?:\?.*)?$/, route => {
       current.id = new URL(route.request().url()).pathname.split('/').at(-1)
       if (route.request().method() !== 'GET') current = { ...current, ...route.request().postDataJSON(), revision: current.revision + 1 }
       return route.fulfill({ json: route.request().method() === 'GET' ? { item: current, agent_id: 7 } : current })
     })
-    await mount(page, 'app/memory/components/DocumentEditor.vue', {
+    await mount(page, 'app/document/components/DocumentEditor.vue', {
       props: { documentId: 'doc-a', agentId: 7, editable: true, ...props },
-      privileges: props.editable === false ? ['MEMORY_ACCESS'] : ['MEMORY_EDIT', 'MEMORY_ACCESS'],
+      privileges: props.editable === false ? ['DOCUMENT_ACCESS'] : ['DOCUMENT_EDIT', 'DOCUMENT_ACCESS'],
     })
   }
   await expect(page.locator('[data-editor-surface]')).toBeVisible()
@@ -211,21 +211,21 @@ test('the user form saves native model and voice choices for the selected user',
 
 test('dictation enters the real editor as escaped text and autosaves without losing existing content', async ({ page }) => {
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice' }], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/folders?*', [{ path: 'Reports', kind: 'custom', shared: false }])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice' }], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/folders?*', [{ path: 'Reports', kind: 'custom', shared: false }])
+  await jsonRoute(page, '**/api/documents/doc-a/attachments?*', [])
   await jsonRoute(page, '**/api/llm/me/transcription', { text: 'Hello <script>alert(1)</script> & goodbye.' })
   const updates = []
   const initial = { ...testDocument, payload: { text: '<p>Existing content.</p>' } }
-  await page.route(/\/api\/memory\/documents\/doc-a(?:\?.*)?$/, route => {
+  await page.route(/\/api\/documents\/doc-a(?:\?.*)?$/, route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { item: initial, agent_id: 7 } })
     const update = route.request().postDataJSON()
     updates.push(update)
     return route.fulfill({ json: { ...initial, ...update, revision: 4, lock_version: 4 } })
   })
-  await mount(page, 'app/memory/components/DocumentEditor.vue', {
-    props: { documentId: 'doc-a', agentId: 7, editable: true }, privileges: ['MEMORY_EDIT', 'MEMORY_ACCESS'],
+  await mount(page, 'app/document/components/DocumentEditor.vue', {
+    props: { documentId: 'doc-a', agentId: 7, editable: true }, privileges: ['DOCUMENT_EDIT', 'DOCUMENT_ACCESS'],
   })
   const editor = page.locator('[data-editor-surface][contenteditable="true"]')
   await expect(editor).toContainText('Existing content.')

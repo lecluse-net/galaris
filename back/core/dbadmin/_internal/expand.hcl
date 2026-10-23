@@ -5,6 +5,9 @@ env "expand" {
     skip {
       drop_table  = true
       drop_column = true
+      // A retained source column may still carry a foreign key to a retired
+      // unique index. Defer standalone index drops with the source contraction.
+      drop_index  = true
     }
   }
 }

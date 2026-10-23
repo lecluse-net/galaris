@@ -264,7 +264,7 @@ async def test_collection_journey_survives_restart_and_retries_only_failed_items
         inventory_uri = created.uri
     else:
         # Persisted pre-migration discovery results retain verified Document aliases.
-        from app.memory import document_service
+        from app.document import document_service
         legacy = await document_service.create_document(owner_agent_id=worker.id,
             title="Synthetic legacy inventory", content=json.dumps(manifest),
             task_id=discovery.id, document_type="dataset")

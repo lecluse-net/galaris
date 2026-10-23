@@ -1,4 +1,9 @@
 from __future__ import annotations
+from app.memory.tests.document_fixtures import finish_document_deletion
+from app.document import resource_service as documents
+from app.document.schemas import DocumentPayload
+from app.document.schemas import DocumentItemCreate
+from app.memory.tests.document_fixtures import create_document_reference
 
 from pathlib import Path
 from types import SimpleNamespace
@@ -31,13 +36,8 @@ from app.memory.models import (
     MemoryItem,
     MemoryLink,
 )
-from app.memory.schemas import (
-    MemoryGrantUpdate,
-    MemoryItemCreate,
-    MemoryLinkCreate,
-    MemoryPayload,
-    MemoryRecallRequest,
-)
+from app.memory.schemas import MemoryItemCreate, MemoryLinkCreate, MemoryPayload, MemoryRecallRequest
+from app.document.schemas import DocumentGrantUpdate
 from core.authorize import Privileges
 from core.params import runtime_settings
 from app.topic import TopicClassification, service as topic_service
@@ -177,56 +177,6 @@ async def test_deduplication_embedding_outage_does_not_expire_outer_session(
     rollback.assert_not_awaited()
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["create", "update"])
-@pytest.mark.parametrize("failure", ["provider", "database"])
-async def test_document_write_survives_projection_scheduling_failure(
-    db, agents, memory_storage, monkeypatch, operation, failure,
-):
-    """An optional projection outage must not invalidate a committed document or its caller."""
-    from app.memory.schemas import MemoryItemCreate, MemoryItemUpdate, MemoryPayload
-
-    owner, _ = agents
-    owner_id = owner.id
-    initial = MemoryItemCreate(
-        owner_agent_id=owner_id, title="Synthetic projection outage",
-        node_kind="document", media_type="text/html",
-        payload=MemoryPayload(text="<p>Initial content</p>"),
-    )
-    item = None
-    if operation == "update":
-        item, _ = await service.create_item(initial)
-    calls = []
-
-    async def unavailable_projection(candidate):
-        calls.append(candidate.id)
-        if failure == "database":
-            await db.execute(text("SELECT 1 / 0"))
-        raise MemoryEmbeddingError("Synthetic projection scheduling outage")
-
-    # The index queue is an optional downstream projection, outside the document write.
-    monkeypatch.setattr(semantic_index, "enqueue_embedding_refresh", unavailable_projection)
-    if operation == "create":
-        saved, _ = await service.create_item(initial)
-        expected_content = b"<p>Initial content</p>"
-        expected_revision = 1
-    else:
-        saved = await service.update_item(
-            item.id, MemoryItemUpdate(
-                expected_revision=item.revision,
-                payload=MemoryPayload(text="<p>Updated content</p>"),
-            ), actor_agent_id=owner_id,
-        )
-        expected_content = b"<p>Updated content</p>"
-        expected_revision = 2
-    assert calls == [saved.id]
-    assert owner.id == owner_id
-    assert saved.title == "Synthetic projection outage"
-    assert saved.revision == expected_revision
-    loaded, content, access, *_ = await service.get_item(saved.id, agent_id=owner_id)
-    assert content == expected_content
-    assert loaded.revision == expected_revision
-    assert access.can_write
 
 
 @pytest.mark.parametrize(
@@ -856,11 +806,11 @@ async def test_hybrid_recall_applies_node_kind_and_source_managed_filters(
             payload=MemoryPayload(text="Validate the release before deployment."),
         )
     )
-    wrong_kind, _created = await service.create_item(
-        MemoryItemCreate(
+    wrong_kind, _created = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Release validation document",
-            payload=MemoryPayload(text="A source document about release validation."),
+            payload=DocumentPayload(text="A source document about release validation."),
             node_kind="document",
         )
     )
@@ -1265,12 +1215,12 @@ async def test_index_job_hybrid_recall_acl_and_forget(
 
     monkeypatch.setattr(semantic_index, "resolve_embedding_model", fake_model)
     monkeypatch.setattr(semantic_index, "embed_many", fake_embed_many)
-    item, _created = await service.create_item(
-        MemoryItemCreate(
+    item, _created = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Release safety",
             node_kind="document",
-            payload=MemoryPayload(
+            payload=DocumentPayload(
                 text="Verify the generated schema before releasing."
             ),
         )
@@ -1339,10 +1289,10 @@ async def test_index_job_hybrid_recall_acl_and_forget(
     assert peer_private.mode == "lexical"
     assert peer_private.degradation_reason == "embedding_index_empty"
 
-    await service.set_item_grant(
+    await documents.set_item_grant(
         item.id,
         peer.id,
-        MemoryGrantUpdate(can_write=False),
+        DocumentGrantUpdate(can_write=False),
     )
     peer_shared = await retrieval.recall_items(
         MemoryRecallRequest(
@@ -1353,7 +1303,7 @@ async def test_index_job_hybrid_recall_acl_and_forget(
     assert peer_shared.mode == "hybrid"
     assert [hit.item.id for hit in peer_shared.hits] == [item.id]
 
-    await service.delete_document(item.id, actor_agent_id=owner.id)
+    await finish_document_deletion(item.id, actor_agent_id=owner.id)
     # A durable job claimed before the forget must never recreate the projection.
     await semantic_index.process_embedding_job({"item_id": str(item.id)})
     assert await db.scalar(

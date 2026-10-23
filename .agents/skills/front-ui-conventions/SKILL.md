@@ -35,7 +35,7 @@ routeur central.
 
 ## Services et état
 
-Les Documents éditoriaux `document://` appartiennent à Memory ; les Datasets JSON `data://`
+Les Documents éditoriaux `document://` appartiennent à `app.document` et `front/app/document` ; les souvenirs privés restent dans Memory. Les Datasets JSON `data://`
 appartiennent à `app.dataset`. Utiliser ses services publics pour tout nouveau consommateur.
 Les anciens Datasets de la bibliothèque documentaire restent lisibles par alias vérifié.
 Utiliser RichTextEditor (Tiptap) pour HTML et CodeEditor JSON pour Dataset, y compris dans l'historique.

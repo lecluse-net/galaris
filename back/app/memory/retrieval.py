@@ -14,7 +14,6 @@ from .query_policy import prepare_memory_read
 
 from loguru import logger
 from sqlalchemy import Float, cast as sql_cast, exists, func, or_, select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import get_db
@@ -553,7 +552,7 @@ async def _semantic_candidates(
     item_ids = [cast(UUID, row[0]) for row in rows]
     item_result = await get_db().scalars(
         select(MemoryItem)
-        .options(selectinload(MemoryItem.grants))
+
         .execution_options(populate_existing=True)
         .where(
             MemoryItem.id.in_(item_ids),
@@ -670,7 +669,7 @@ async def _graph_candidates(
         return []
     item_rows = await get_db().scalars(
         select(MemoryItem)
-        .options(selectinload(MemoryItem.grants))
+
         .execution_options(populate_existing=True)
         .where(MemoryItem.id.in_(evidence), *_item_filters(request))
     )
@@ -1096,7 +1095,7 @@ async def _structural_candidates(
             break
         strengths.update({identity: 1 / depth for identity in frontier})
         visited.update(frontier)
-    items = list(await get_db().scalars(select(MemoryItem).options(selectinload(MemoryItem.grants)).execution_options(populate_existing=True).where(
+    items = list(await get_db().scalars(select(MemoryItem).execution_options(populate_existing=True).where(
         MemoryItem.id.in_(strengths), *_item_filters(request),
     )))
     evidence_ids = await readable_evidence_ids({item.id for item in items}, request.agent_id)
@@ -1711,7 +1710,7 @@ async def temporal_hits(
         return [], has_more
     items = (await get_db().scalars(select(MemoryItem).where(
         *filters, MemoryItem.id.in_(matches),
-    ).options(selectinload(MemoryItem.grants)).execution_options(populate_existing=True))).all()
+    ).execution_options(populate_existing=True))).all()
     evidence_ids = await readable_evidence_ids({item.id for item in items}, request.agent_id)
     accesses = await effective_access_many(items, request.agent_id, evidence_ids=evidence_ids)
     hits: list[MemorySearchHit] = []

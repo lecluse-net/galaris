@@ -400,7 +400,7 @@ for (const canWrite of [true, false]) {
     const updates = []
     await jsonRoute(page, '**/api/agents?*', [agent])
     await jsonRoute(page, `**/api/memory/items/${id}?*`, { ...current, document_id: id, payload: { text: '' } })
-    await page.route(`**/api/memory/documents/${id}?*`, route => {
+    await page.route(`**/api/documents/${id}?*`, route => {
       if (route.request().method() === 'GET') return route.fulfill({ json: { item: current } })
       expect(route.request().method()).toBe('PATCH')
       const update = route.request().postDataJSON()
@@ -410,10 +410,10 @@ for (const canWrite of [true, false]) {
     })
     await jsonRoute(page, '**/api/memory/items/memory-a?*', { ...document, id: 'memory-a', node_kind: 'memory',
       media_type: 'text/html', payload: { text: '<p>Ordinary memory content</p>' } })
-    await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
-    await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-    await jsonRoute(page, '**/api/memory/documents/folders?*', [])
-    await jsonRoute(page, `**/api/memory/documents/${id}/attachments?*`, [])
+    await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
+    await jsonRoute(page, '**/api/documents/keywords?*', [])
+    await jsonRoute(page, '**/api/documents/folders?*', [])
+    await jsonRoute(page, `**/api/documents/${id}/attachments?*`, [])
     await mount(page, 'app/task/components/ExecutionMemoryPanel.vue', { privileges: ['MEMORY_EDIT'], props: {
       agentId: 7, calls: [], context: { enabled: true, query: 'Question', count: 2, retrievedCount: 2,
         truncated: false, memoryIds: [id, 'memory-a'], error: '' },

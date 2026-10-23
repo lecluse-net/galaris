@@ -8,7 +8,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from app.memory import legacy_dataset_ids, legacy_dataset_snapshot
+from app.document import legacy_dataset_ids, legacy_dataset_snapshot
 from core.database import get_db
 from core.storage import FileAlias, StoredFile
 
@@ -41,7 +41,7 @@ async def adopt_legacy(identity: UUID) -> Dataset:
     hashes: dict[str, str] = {}
     for revision in source["revisions"]:
         db.add(DatasetRevision(dataset_id=identity, revision=revision["revision"], content=revision["content"],
-            source_revision_id=revision["id"], author_agent_id=revision["author_agent_id"], created_at=revision["created_at"]))
+            document_source_revision_id=revision["id"], author_agent_id=revision["author_agent_id"], created_at=revision["created_at"]))
         numbers.add(revision["revision"])
         hashes[str(revision["revision"])] = hashlib.sha256(revision["content"].encode()).hexdigest()
     if record.revision not in numbers:

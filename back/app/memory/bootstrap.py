@@ -191,60 +191,30 @@ async def memory_context_provider(
 def register_memory() -> None:
     """Register governed-memory context at the composition root."""
     from . import service
+    from .document_projection import enqueue
+    from app.document.facade import register_document_observer
+    from app.document import register_document_search
+    from .file_facade import search_file_resources
+    register_document_observer("native_memory_graph", enqueue)
+    register_document_search(search_file_resources)
 
     register_context_provider("long_term_memory", memory_context_provider, priority=20,
                               refreshes_frozen_kinds=frozenset({"memory"}))
     params_service.register_change_listener(on_memory_parameter_change)
-    from app.conversation import (
-        register_document_read_authorizer,
-        register_conversation_document_metadata_resolver,
-        register_conversation_room_document_creator,
-        register_conversation_room_document_resolver,
-    )
-
-    from .conversation_document_adapter import (
-        authorize_conversation_document_read,
-        create_conversation_room_document,
-        resolve_conversation_document_metadata,
-        resolve_conversation_room_documents,
-    )
-    from .goal_document_adapter import register_goal_document_adapter
-    from .lifecycle import register_memory_item_observer
-    from app.goal.goal_service import handle_goal_document_change
-
-    register_document_read_authorizer(authorize_conversation_document_read)
-    register_conversation_document_metadata_resolver(
-        resolve_conversation_document_metadata
-    )
-    register_conversation_room_document_resolver(resolve_conversation_room_documents)
-    register_conversation_room_document_creator(create_conversation_room_document)
-    register_goal_document_adapter()
-    register_memory_item_observer("goal_documents", handle_goal_document_change)
     from .automation import enqueue_source_projection
     from app.goal import register_goal_observer
+    from core.team import register_team_access_observer
 
     async def project_agent(agent_id: int, action: str) -> None:
-        await enqueue_source_projection("agent", str(agent_id), action)
+        await enqueue_source_projection("agent",str(agent_id),action)
         await service.invalidate_memory_views()
 
     async def project_goal(goal_id: UUID, action: str) -> None:
-        await enqueue_source_projection("goal", str(goal_id), action)
+        await enqueue_source_projection("goal",str(goal_id),action)
 
-    register_agent_profile_observer("memory_projection", project_agent)
-    register_goal_observer("memory_projection", project_goal)
-    from core.team import register_team_access_observer
-    register_team_access_observer("memory_views", service.invalidate_memory_views)
-    from core.user import register_user_access_observer
-    from .goal_folders import on_access_change, on_document_change, on_goal_change, on_user_change
-
-    async def reclassify_agent_documents(_agent_id: int, _action: str) -> None:
-        await on_access_change()
-
-    register_goal_observer("memory_goal_folders", on_goal_change)
-    register_memory_item_observer("memory_goal_folders", on_document_change)
-    register_user_access_observer("memory_goal_folders", on_user_change)
-    register_team_access_observer("memory_goal_folders", on_access_change)
-    register_agent_profile_observer("memory_goal_folders", reclassify_agent_documents)
+    register_agent_profile_observer("memory_projection",project_agent)
+    register_goal_observer("memory_projection",project_goal)
+    register_team_access_observer("memory_views",service.invalidate_memory_views)
 
 
-__all__ = ["memory_context_provider", "register_memory"]
+__all__=["memory_context_provider","register_memory"]

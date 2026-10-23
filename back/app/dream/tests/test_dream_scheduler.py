@@ -40,7 +40,7 @@ from app.dream.service import receipt_correlation_ref
 from app.llm import LLMCall, profile_service
 from app.llm.correlation import current_llm_correlation_ref
 from app.memory.models import MemoryItem
-from app.memory.storage import (
+from core.storage import (
     NativeFileStorage,
     register_storage,
     reset_storage_registry,

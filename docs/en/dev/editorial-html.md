@@ -69,7 +69,7 @@ completion confirmations stay in the conversation, operational state in the rele
 record. Do not add a document solely to record an action or demonstrate completion. Preserve the
 requested resource type; explain an unavailable operation instead of substituting a document.
 
-Galaris documents are the canonical home for this durable content. Memory and File Sharing are
+Galaris documents are the canonical home for this durable content. Document, Memory and File Sharing are
 mandatory system services, alongside Galaris and Conversation. Their definitions and connections
 remain protected and active. Humans can configure Enabled, Disabled, Ask and global/local
 inheritance for their functions. The effective catalog still applies context restrictions and
@@ -94,7 +94,7 @@ replacement with `file_write` requires reading all content needed to preserve it
 concision to the purpose without systematic shortening or full rewrites. This editorial
 guidance does not call for compacting Dataset entries or code.
 
-A new document is private. `memory_sharing` resolves the human, agent or team recipient and
+A new document is private. `document_sharing` resolves the human, agent or team recipient and
 the sharing version; `document_share` grants `read` or `edit` before handoff. A link or
 `document_show` grants no rights. External delivery is a separate operation whose success
 must be confirmed by the transport.
@@ -183,8 +183,8 @@ line wraps on screen.
 
 ## Revisions and agentic reads
 
-MCP sharing uses `memory_sharing` to discover recipients and the current `lock_version`,
-then `document_share` or `memory_share` with exactly one `agent_id`, `user_id` or `team_id`.
+MCP sharing uses `document_sharing` to discover recipients and the current `lock_version`,
+then `document_share` with exactly one `agent_id`, `user_id` or `team_id`.
 Access is `read`, `edit`, or `none` to remove that specific grant. Teams include their current
 human and AI members. Sharing changes neither the HTML nor its content revision:
 `expected_lock_version` protects ACL changes, while `expected_revision` protects content
@@ -214,7 +214,7 @@ retry. Never purge a file merely because the current body no longer references i
 
 ## PDF export
 
-`POST /memory/documents/{document_id}/export-pdf` checks read access and the `document`
+`POST /documents/{document_id}/export-pdf` checks read access and the `document`
 profile, then passes a static copy of the current content to `core.preview.render_html_pdf`.
 The frontend shares print styles and embeds authorized images as data URIs; exporting does
 not save the document. Chromium in `browser-executor` prints a temporary page with JavaScript
@@ -238,7 +238,7 @@ plain source wrappers copied from a source editor do not prevent Markdown conver
 Ordinary prose, inline code, code blocks and input in Source mode retain their literal
 behavior. Markdown images follow the same attachment import path.
 Embedded base64 raster images use attachment uploads. Public HTTPS
-images use `POST /memory/documents/{document_id}/import-image`: user scope and write access
+images use `POST /documents/{document_id}/import-image`: user scope and write access
 are checked before downloading through `core.preview.read_web_image` and File Share's
 transport, which rejects private addresses and internal redirects. Downloads are bounded to
 10 MB and 15 seconds, then validated and stored as attachments. Each source is imported once
@@ -251,7 +251,7 @@ HTML files are accepted as attachments and opened by the existing isolated resou
 Canonical attachment links are supported in `<a href>`. The attachment `/info` endpoint also
 resolves retained files under current document permissions.
 
-`POST /memory/documents/{document_id}/link-card` checks managed-agent scope and write access
+`POST /documents/{document_id}/link-card` checks managed-agent scope and write access
 before fetching. `app.file_share.web_metadata` shares Open Graph and YouTube oEmbed extraction
 with Messenger through the public HTTPS transport, including its private-address and redirect
 checks. Memory uses the `core.preview.preview_web_link` port registered by File Share at

@@ -9,7 +9,8 @@ from collections import Counter
 from uuid import UUID
 
 from app.goal import get_goal_outcome_for_task
-from app.memory import list_task_memory_usages, redact_secrets
+from app.memory import list_task_memory_usages
+from app.document import redact_secrets
 from app.task import TaskOutcomeObservation, get_task_outcome_observation
 
 from .contracts import (

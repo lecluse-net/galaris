@@ -7,8 +7,8 @@ for (const mode of ['read', 'edit', 'readonly']) for (const format of ['uri', 'u
     const uri = format === 'uri' ? `document://${id}` : new URL(`/documents?document_id=${id}`, baseURL).href
     const link = `<p><a href="${uri}">${card ? '<strong>Referenced document</strong>' : 'Referenced document'}</a></p>`
     const html = card ? `<blockquote class="galaris-link-card">${link}<p>Reference summary</p></blockquote>` : link
-    await jsonRoute(page, `**/api/memory/documents/${id}`, { item: { ...documentFixture, id, title: 'Referenced document' }, agent_id: null })
-    await jsonRoute(page, '**/api/memory/documents/icons/resolve', { [id]: 'emoji:1F680' })
+    await jsonRoute(page, `**/api/documents/${id}`, { item: { ...documentFixture, id, title: 'Referenced document' }, agent_id: null })
+    await jsonRoute(page, '**/api/documents/icons/resolve', { [id]: 'emoji:1F680' })
     const iconResponse = page.waitForResponse(response => response.url().endsWith('/documents/icons/resolve'))
     const popups = []
     page.on('popup', popup => popups.push(popup))
@@ -38,8 +38,8 @@ for (const mode of ['read', 'edit']) for (const width of [1440, 390]) test(`docu
   const html = `<blockquote class="galaris-link-card"><p><a href="document://${id}"><strong>${title}</strong></a></p>${mode === 'edit' ? `<p>${id}</p>` : ''}</blockquote>`
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.setViewportSize({ width, height: 900 })
-  await jsonRoute(page, `**/api/memory/documents/${id}`, { item: { ...documentFixture, id, title, media_type: 'text/html', document_type: 'html', payload: { text: '<h1>Illustrated source</h1>' } }, agent_id: null })
-  await page.route(`**/api/memory/documents/${id}/thumbnail*`, route => route.fulfill({ contentType: 'image/webp', body: Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=', 'base64') }))
+  await jsonRoute(page, `**/api/documents/${id}`, { item: { ...documentFixture, id, title, media_type: 'text/html', document_type: 'html', payload: { text: '<h1>Illustrated source</h1>' } }, agent_id: null })
+  await page.route(`**/api/documents/${id}/thumbnail*`, route => route.fulfill({ contentType: 'image/webp', body: Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=', 'base64') }))
   await mount(page, `core/util/components/${mode === 'edit' ? 'RichTextEditor' : 'RichText'}.vue`, { props: { profile: 'document', ...(mode === 'edit' ? { modelValue: html } : { content: html }) } })
   const card = page.locator('.galaris-link-card')
   await expect(card.locator('.document-thumbnail img')).toHaveJSProperty('naturalWidth', 1)
@@ -67,7 +67,7 @@ async function pasteLink(page, value) {
 
 for (const format of ['uri', 'url', 'dialog']) test(`inserting a document ${format} uses its title and preserves the surrounding text`, async ({ page }) => {
   const id = '00000000-0000-0000-0000-000000000245'
-  await jsonRoute(page, `**/api/memory/documents/${id}`, { item: { ...documentFixture, id, owner_agent_id: null, owner_user_id: 1, title: 'Synthetic reference' }, agent_id: null })
+  await jsonRoute(page, `**/api/documents/${id}`, { item: { ...documentFixture, id, owner_agent_id: null, owner_user_id: 1, title: 'Synthetic reference' }, agent_id: null })
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<p>Keep this</p>', resourceAgentId: 7 } })
   await page.locator('[data-editor-surface]').click(); await page.keyboard.press('End')
   const url = format === 'uri' ? `document://${id}` : new URL(`/documents?document_id=${id}`, page.url()).href
@@ -86,7 +86,7 @@ for (const action of ['switch', 'readonly', 'denied']) test(`document title look
   const id = '00000000-0000-0000-0000-000000000245'
   let release, started = false
   const gate = new Promise(resolve => { release = resolve })
-  await page.route(`**/api/memory/documents/${id}`, async route => {
+  await page.route(`**/api/documents/${id}`, async route => {
     started = true; await gate
     return route.fulfill(action === 'denied' ? { status: 403, json: { detail: 'Access denied' } } : { json: { item: { ...documentFixture, id, title: 'Late title' }, agent_id: null } })
   })

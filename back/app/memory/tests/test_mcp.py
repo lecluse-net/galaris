@@ -21,6 +21,8 @@ from app.memory.models import (
     MemorySource,
 )
 from app.memory.schemas import MemoryItemUpdate, MemoryPayload
+from app.document import mcp as document_mcp, DocumentRevision, resource_service as documents
+from app.memory.tests.document_fixtures import project_document, edit_document_summary
 from app.messenger.models import Message, Room, MessengerUser
 from app.task.models import Task, TaskStatus
 from app.tools.mcp_loader import (
@@ -30,6 +32,12 @@ from app.tools.mcp_loader import (
 )
 
 
+async def share_document(ctx, *, document_id, **kwargs):
+    state = json.loads(await document_mcp.document_sharing(ctx, document_id))
+    return await document_mcp.document_share(ctx, document_id,
+        expected_lock_version=state["lock_version"], **kwargs)
+
+
 def test_memory_mcp_family_is_discovered_once() -> None:
     names = mcp_tool_names_by_tool_code()
     expected = {
@@ -37,11 +45,9 @@ def test_memory_mcp_family_is_discovered_once() -> None:
         "memory_upcoming",
         "memory_forget",
         "memory_summarize",
-        "document_share",
-        "memory_sharing",
-        "memory_share",
     }
     assert set(names["memory"]) == expected
+    assert set(names["document"]) == {"document_share", "document_sharing"}
     assert "document_show" in names["conversation"]
     assert {
         "memory_search",
@@ -68,13 +74,13 @@ def test_memory_remember_description_preserves_storage_contract() -> None:
 async def test_sharing_tools_expose_team_and_human_targets_without_breaking_agent_calls(runtime):
     from app.tools.mcp_loader import build_galaris_fastmcp
 
-    server = build_galaris_fastmcp(1, runtime=runtime, enabled_tool_codes={"memory"})
+    server = build_galaris_fastmcp(1, runtime=runtime, enabled_tool_codes={"document"})
     tools = {tool.name: tool for tool in await server.list_tools()}
-    for name in ("document_share", "memory_share"):
+    for name in ("document_share",):
         parameters = tools[name].parameters
         assert {"agent_id", "team_id", "user_id", "access", "expected_lock_version"} <= parameters["properties"].keys()
         assert "agent_id" not in parameters.get("required", [])
-    assert {"memory_id", "kind", "search", "offset", "limit"} <= tools["memory_sharing"].parameters["properties"].keys()
+    assert {"document_id", "kind", "search", "offset", "limit"} <= tools["document_sharing"].parameters["properties"].keys()
 
 
 @pytest.mark.asyncio
@@ -419,6 +425,7 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
         name="Release investigation",
     )
     document_id = created.uri.removeprefix("document://")
+    await project_document(UUID(document_id))
     assert created.state == "created"
 
     owner_search = json.loads(
@@ -427,14 +434,14 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
     assert owner_search["hits"][0]["resource"]["uri"] == f"document://{document_id}"
     with pytest.raises(service.MemoryConflictError, match="Use document://"):
         await file_mcp.read_file(owner_ctx, f"memory://{document_id}")
-    await service.update_memory_content(
+    await edit_document_summary(
         UUID(document_id), MemoryItemUpdate(expected_revision=1,
             payload=MemoryPayload(text="<p>Independent findings synthesis.</p>")),
         actor_agent_id=owner.id,
     )
     item, content, *_ = await service.get_item(UUID(document_id), agent_id=owner.id, memory_content=True)
     assert content.decode() == "<p>Independent findings synthesis.</p>"
-    assert item.memory_revision == 2
+    assert item.document.summary_revision == 2
 
     repeated_suffix = await resource_service.resource_append(
         ResourceContext(
@@ -454,23 +461,21 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
     assert invisible["hits"] == []
 
     shared_read = json.loads(
-        await mcp.document_share(
+        await share_document(
             owner_ctx,
             document_id=document_id,
             agent_id=peer.id,
             access="read",
         )
     )
-    assert shared_read["shared_with"] == [
-        {"agent_id": peer.id, "access": "read"}
-    ]
+    assert [(grant["kind"], grant["id"], grant["can_write"]) for grant in shared_read["grants"]] == [("agent", peer.id, False)]
     peer_passage = json.loads(
         await file_mcp.read_file(peer_ctx, f"document://{document_id}", offset=2, max_chars=30)
     )
     assert peer_passage["content"].startswith("<h2>Evidence</h2>")
     peer_info = json.loads(await file_mcp.file_info(peer_ctx, f"document://{document_id}"))
     assert "write" not in peer_info["capabilities"]
-    with pytest.raises(service.MemoryPermissionError, match="access denied"):
+    with pytest.raises(documents.DocumentPermissionError, match="access denied"):
         await resource_service.resource_edit(
             ResourceContext(
                 agent_id=peer.id,
@@ -485,16 +490,14 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
         )
 
     shared_edit = json.loads(
-        await mcp.document_share(
+        await share_document(
             owner_ctx,
             document_id=document_id,
             agent_id=peer.id,
             access="edit",
         )
     )
-    assert shared_edit["shared_with"] == [
-        {"agent_id": peer.id, "access": "edit"}
-    ]
+    assert [(grant["kind"], grant["id"], grant["can_write"]) for grant in shared_edit["grants"]] == [("agent", peer.id, True)]
     edited = await resource_service.resource_edit(
         ResourceContext(
             agent_id=peer.id,
@@ -548,9 +551,9 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
     revisions = list(
         (
             await db.scalars(
-                select(MemoryRevision)
-                .where(MemoryRevision.item_id == UUID(document_id))
-                .order_by(MemoryRevision.revision)
+                select(DocumentRevision)
+                .where(DocumentRevision.document_id == UUID(document_id))
+                .order_by(DocumentRevision.revision)
             )
         ).all()
     )
@@ -563,13 +566,13 @@ async def test_working_documents_are_bounded_mutable_and_shared_between_agents(
     }
 
     removed = json.loads(
-        await mcp.document_share(
+        await share_document(
             owner_ctx,
             document_id=document_id,
             agent_id=peer.id,
             access="none",
         )
     )
-    assert removed["shared_with"] == []
-    with pytest.raises(service.MemoryPermissionError, match="access denied"):
+    assert removed["grants"] == []
+    with pytest.raises(documents.DocumentPermissionError, match="access denied"):
         await file_mcp.read_file(peer_ctx, f"document://{document_id}")

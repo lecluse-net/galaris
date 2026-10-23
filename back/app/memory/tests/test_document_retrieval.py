@@ -1,3 +1,6 @@
+from app.document.schemas import DocumentPayload
+from app.document.schemas import DocumentItemCreate
+from app.memory.tests.document_fixtures import create_document_reference, edit_document_reference, edit_document_summary
 """Documents stay findable, addressable and covered through canonical search."""
 
 import math
@@ -47,9 +50,9 @@ async def test_document_name_search_excludes_body_matches_and_paginates(agents, 
     for title, body in (("Quartz index A", "Unrelated content. " * 2000),
                         ("Quartz index B", "Other content."),
                         ("Unrelated title", "Quartz index appears only in the body.")):
-        item, _ = await service.create_item(MemoryItemCreate(
+        item, _ = await create_document_reference(DocumentItemCreate(
             owner_agent_id=owner.id, node_kind="document", title=title,
-            media_type="text/html", payload=MemoryPayload(text=f"<p>{body}</p>"),
+            media_type="text/html", payload=DocumentPayload(text=f"<p>{body}</p>"),
         ))
         documents.append(item)
     ctx = ResourceContext(agent_id=owner.id, runtime="internal")
@@ -74,9 +77,9 @@ async def test_document_search_returns_readable_passages_and_rejects_partial_ind
     owner, peer = agents
     filler = "<p>" + "Historique sans rapport. " * 100 + "</p>"
     html = "<h1>Compte rendu</h1>" + filler * 5 + "<h2>Restauration</h2><p>QUARTZ exige une sauvegarde vérifiée.</p>"
-    document, _ = await service.create_item(MemoryItemCreate(
+    document, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, node_kind="document",  title="Procédure technique",
-        media_type="text/html", payload=MemoryPayload(text=html),
+        media_type="text/html", payload=DocumentPayload(text=html),
     ))
     await semantic_index.process_embedding_job({"item_id": str(document.id)})
     manifest = await db.get(MemoryEmbeddingManifest, document.id)
@@ -92,7 +95,7 @@ async def test_document_search_returns_readable_passages_and_rejects_partial_ind
         assert hit.passages[0]["section_path"] == ["Compte rendu", "Restauration"]
         page = await resource_read(ctx, hit.resource.uri, offset=hit.passages[0]["block_start"])
         assert "QUARTZ" in page.content
-    await service.update_memory_content(document.id, MemoryItemUpdate(
+    await edit_document_summary(document.id, MemoryItemUpdate(
         payload=MemoryPayload(text="<p>ORCHID synthesis independent.</p>"), expected_revision=1,
     ), actor_agent_id=owner.id)
     await semantic_index.process_embedding_job({"item_id": str(document.id)})
@@ -134,9 +137,9 @@ async def test_lexical_search_finds_late_document_passage_without_embeddings(age
     async def missing():
         raise MemoryEmbeddingNotConfiguredError("unset")
     monkeypatch.setattr(retrieval, "resolve_embedding_model", missing)
-    document, _ = await service.create_item(MemoryItemCreate(
+    document, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, node_kind="document",  title="Documentation",
-        media_type="text/html", payload=MemoryPayload(text="<p>" + "Contexte général. " * 1000 +
+        media_type="text/html", payload=DocumentPayload(text="<p>" + "Contexte général. " * 1000 +
                                                      f"</p><p>{passage}</p>"),
     ))
     result = await resource_search(ResourceContext(agent_id=owner.id, runtime="internal"), "memory://", query)
@@ -155,9 +158,9 @@ async def test_hybrid_search_preserves_stronger_lexical_passage(db, agents, memo
 
     monkeypatch.setattr(semantic_index, "embed_many", embed)
     owner, _ = agents
-    document, _ = await service.create_item(MemoryItemCreate(
+    document, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, node_kind="document",  title="Atelier 3D",
-        media_type="text/html", payload=MemoryPayload(text=
+        media_type="text/html", payload=DocumentPayload(text=
             "<h1>Présentation</h1><p>Une scène de démonstration en trois dimensions.</p>"
             "<h2>Réglages</h2><p>UnrealBloomPass : strength 0,3 ; radius 0,5 ; threshold 0,1.</p>"),
     ))
@@ -192,9 +195,9 @@ async def test_semantic_recall_returns_best_candidates_without_a_threshold(agent
     expected = None
     for index in range(20):
         title = "Facturation du fournisseur" if index == 0 else f"Modèles disponibles {index}" if index < 9 else f"Jardinage {index}"
-        item, _ = await service.create_item(MemoryItemCreate(
+        item, _ = await create_document_reference(DocumentItemCreate(
             owner_agent_id=owner.id, node_kind="document", title=title,
-            payload=MemoryPayload(text="<p>Crédit annuel et tarif avantageux.</p>" if index == 0 else f"<p>Fiche de référence {index}.</p>"),
+            payload=DocumentPayload(text="<p>Crédit annuel et tarif avantageux.</p>" if index == 0 else f"<p>Fiche de référence {index}.</p>"),
         ), deduplicate=False)
         await semantic_index.process_embedding_job({"item_id": str(item.id)})
         if index == 0:
@@ -262,16 +265,16 @@ async def test_similar_documents_keep_complementary_facts(agents, memory_storage
     owner, _ = agents
     identities = set()
     for fact in facts:
-        item, _ = await service.create_item(MemoryItemCreate(
+        item, _ = await create_document_reference(DocumentItemCreate(
             owner_agent_id=owner.id, node_kind="document",  title="Réglages du moteur",
-            payload=MemoryPayload(text="<p>Présentation commune du moteur, fonctionnement, maintenance et contrôles.</p>"
+            payload=DocumentPayload(text="<p>Présentation commune du moteur, fonctionnement, maintenance et contrôles.</p>"
                                  f"<p>{fact}</p>"), media_type="text/html",
         ), deduplicate=False)
         identities.add(item.id)
         await semantic_index.process_embedding_job({"item_id": str(item.id)})
-    await service.create_item(MemoryItemCreate(
+    await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, node_kind="document",  title="Notes du moteur",
-        payload=MemoryPayload(text="<p>Le moteur nécessite une maintenance régulière.</p>"), media_type="text/html",
+        payload=DocumentPayload(text="<p>Le moteur nécessite une maintenance régulière.</p>"), media_type="text/html",
     ))
     result = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query=query, limit=2))
     assert {hit.item.id for hit in result.hits} == identities
@@ -577,9 +580,9 @@ def test_document_passages_preserve_sections_tables_and_code():
 @pytest.mark.asyncio
 async def test_long_document_tail_is_indexed_and_configuration_change_rebuilds(db, agents, memory_storage, vectors, monkeypatch):
     owner, _ = agents
-    document, _ = await service.create_item(MemoryItemCreate(
+    document, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, node_kind="document",  title="Archive",
-        media_type="text/html", payload=MemoryPayload(text="<p>" + "x " * 100_000 + "QUARTZ final</p>"),
+        media_type="text/html", payload=DocumentPayload(text="<p>" + "x " * 100_000 + "QUARTZ final</p>"),
     ))
     await semantic_index.process_embedding_job({"item_id": str(document.id)})
     manifest = await db.get(MemoryEmbeddingManifest, document.id)

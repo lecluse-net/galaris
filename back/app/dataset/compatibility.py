@@ -13,7 +13,7 @@ from sqlalchemy import delete, select
 from core.database import get_db
 from core.user import HumanActor
 from core.storage import StoredFile, FileAlias, registered_file_names
-from app.memory import MemoryConflictError, MemoryNotFoundError, MemoryPermissionError
+from app.document import DocumentConflictError, DocumentNotFoundError, DocumentPermissionError
 from app.agent import AgentManagementScope
 
 from . import service
@@ -27,11 +27,11 @@ def legacy_errors() -> Generator[None]:
     try:
         yield
     except service.DatasetConflictError as exc:
-        raise MemoryConflictError(str(exc)) from exc
+        raise DocumentConflictError(str(exc)) from exc
     except service.DatasetNotFoundError as exc:
-        raise MemoryNotFoundError(str(exc)) from exc
+        raise DocumentNotFoundError(str(exc)) from exc
     except service.DatasetPermissionError as exc:
-        raise MemoryPermissionError(str(exc)) from exc
+        raise DocumentPermissionError(str(exc)) from exc
 
 
 class LegacyDatasetAdapter:
@@ -68,7 +68,7 @@ class LegacyDatasetAdapter:
             values.pop("media_type", None)
             payload = values.pop("payload", None)
             if payload is not None:
-                from app.memory import dataset_budget_reserved
+                from app.document import dataset_budget_reserved
                 if payload.get("text") is None or payload.get("base64") is not None:
                     raise ValueError("A Dataset requires UTF-8 JSON text")
                 await service.replace(identity, actor, content=payload["text"], expected_revision=expected,

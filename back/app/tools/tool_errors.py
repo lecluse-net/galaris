@@ -182,6 +182,7 @@ def classify_tool_failure(exc: Exception) -> ToolFailure:
     safe_domain_errors = {
         "GoalRevisionConflict",
         "MemoryConflictError",
+        "DocumentConflictError",
         "MemorySafetyError",
         "ResourceValidationError",
         "ResourceRevisionConflict",
@@ -193,7 +194,11 @@ def classify_tool_failure(exc: Exception) -> ToolFailure:
             return ToolFailure("actionable", error_type, _public_error_detail(cause))
     if _has_exception_name(chain, "MemoryPermissionError"):
         return ToolFailure("permission_denied", error_type)
+    if _has_exception_name(chain, "DocumentPermissionError"):
+        return ToolFailure("permission_denied", error_type)
     if _has_exception_name(chain, "MemoryNotFoundError"):
+        return ToolFailure("not_found", error_type)
+    if _has_exception_name(chain, "DocumentNotFoundError"):
         return ToolFailure("not_found", error_type)
     status_code = _http_status(chain)
     if _has_exception_name(chain, "ModelHTTPError") and status_code in {400, 412, 422}:

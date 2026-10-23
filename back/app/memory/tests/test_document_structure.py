@@ -1,3 +1,8 @@
+from app.memory.tests.document_fixtures import create_indexed_attachment
+from app.document.schemas import DocumentPayload
+from app.document.schemas import DocumentItemCreate
+from app.document import resource_service as documents
+from app.memory.tests.document_fixtures import create_document_reference, edit_document_reference
 """Observable coverage, relation recall and attachment enrichment contracts (#168)."""
 
 from io import BytesIO
@@ -7,17 +12,20 @@ import pytest
 from PIL import Image
 from sqlalchemy import select
 
-from app.memory import document_attachment_service as attachments, service, retrieval
+from app.memory import service, retrieval, document_structure
+from app.document import document_attachment_service as attachments
 from app.memory.attachment_description import record_attachment_description
 from app.memory.document_structure import reconcile_document_structure, document_references
-from app.memory.models import DocumentAttachment, MemoryAutomationJob, MemoryItem, MemoryLink
-from app.memory.schemas import MemoryGraphRootsRequest, MemoryGrantUpdate, MemoryItemCreate, MemoryItemUpdate, MemoryPayload, MemoryRecallRequest
+from app.memory.models import MemoryAutomationJob, MemoryItem, MemoryLink
+from app.document import DocumentAttachment
+from app.memory.schemas import MemoryGraphRootsRequest, MemoryItemCreate, MemoryItemUpdate, MemoryPayload, MemoryRecallRequest
+from app.document.schemas import DocumentGrantUpdate
 
 
 async def document(agent, title, content="<p>Content</p>"):
-    item, _ = await service.create_item(MemoryItemCreate(
+    item, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=agent.id, title=title, node_kind="document",
-        media_type="text/html", payload=MemoryPayload(text=content),
+        media_type="text/html", payload=DocumentPayload(text=content),
     ))
     return item
 
@@ -33,7 +41,7 @@ async def test_attachment_companion_preserves_description_across_reconciliation_
     from core import websocket
     owner, reader = agents
     source = await document(owner, "Album")
-    attachment = await attachments.add_document_attachment_bytes(
+    attachment = await create_indexed_attachment(
         source.id, actor_agent_id=owner.id, name="landscape.png", media_type="image/png", content=png(),
     )
     row = await db.get(DocumentAttachment, attachment.id)
@@ -41,7 +49,7 @@ async def test_attachment_companion_preserves_description_across_reconciliation_
     companion_id = row.memory_item_id
     before = (await service.get_item(companion_id, agent_id=owner.id))[1]
     assert before == b""
-    await service.set_item_grant(source.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    await documents.set_item_grant(source.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
     notifications = []
 
     async def emit(subject, action, data, *_args, **_kwargs):
@@ -68,7 +76,7 @@ async def test_attachment_companion_preserves_description_across_reconciliation_
     assert after[1] == described[1]
     assert after[0].revision == revision
     assert list(await db.scalars(select(DocumentAttachment.memory_item_id).where(DocumentAttachment.id == attachment.id))) == [companion_id]
-    await service.remove_item_grant(source.id, reader.id, actor_agent_id=owner.id)
+    await documents.remove_item_grant(source.id, reader.id, actor_agent_id=owner.id)
     with pytest.raises(service.MemoryPermissionError):
         await service.get_item(companion_id, agent_id=reader.id)
     with pytest.raises(service.MemoryPermissionError):
@@ -103,10 +111,10 @@ async def test_structural_links_are_idempotent_without_admitting_unrelated_searc
     # A durable explicit link remains navigable, but is not evidence for Kestrel.
     assert target.id not in {hit.item.id for hit in result.hits}
     assert isolated.id not in {hit.item.id for hit in result.hits}
-    await service.set_item_grant(anchor.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    await documents.set_item_grant(anchor.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
     result = await retrieval.recall_items(MemoryRecallRequest(agent_id=reader.id, query="Kestrel"))
     assert {hit.item.id for hit in result.hits} == {anchor.id}
-    await service.update_item(anchor.id, MemoryItemUpdate(expected_revision=anchor.revision, payload=MemoryPayload(text="<p>No reference</p>")), actor_agent_id=owner.id)
+    await edit_document_reference(anchor.id, MemoryItemUpdate(expected_revision=anchor.revision, payload=MemoryPayload(text="<p>No reference</p>")), actor_agent_id=owner.id)
     result = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query="Kestrel"))
     assert target.id not in {hit.item.id for hit in result.hits}
 
@@ -127,9 +135,9 @@ async def test_personal_moves_preserve_content_links_without_reading_payload(db,
     from unittest.mock import AsyncMock
 
     from app.agent import AgentManagementScope
-    from app.memory import document_nesting, document_order, document_tags
-    from app.memory.schemas import DocumentOrderMove, DocumentOrderNode, DocumentTagWrite
-    from app.memory.storage import get_storage
+    from app.document import document_nesting, document_order, document_tags
+    from app.document.schemas import DocumentOrderMove, DocumentOrderNode, DocumentTagWrite
+    from core.storage import get_storage
     from core.user import UserModel
 
     owner, _ = agents
@@ -140,7 +148,7 @@ async def test_personal_moves_preserve_content_links_without_reading_payload(db,
     folder = await document_tags.write_tag(human.id, DocumentTagWrite(name="Synthetic folder"))
     target = await document(owner, "Referenced appendix")
     source = await document(owner, "Movable report", f'<a href="document://{target.id}">Appendix</a>')
-    await attachments.add_document_attachment_bytes(
+    await create_indexed_attachment(
         source.id, actor_agent_id=owner.id, name="synthetic.png", media_type="image/png", content=png(),
     )
     before = (source.revision, source.lock_version, source.content_hash)
@@ -153,6 +161,11 @@ async def test_personal_moves_preserve_content_links_without_reading_payload(db,
     monkeypatch.setattr(storage, "read", read)
 
     async def check(*, in_folder):
+        nonlocal folder
+        await document_structure.sync_folder_structure(human.id)
+        await document_structure.sync_document_classification(source.id)
+        await db.commit()
+        folder = await document_tags.require_tag(human.id, folder.id)
         read.assert_not_awaited()
         assert set(await db.scalars(select(MemoryLink.id).where(
             MemoryLink.source_item_id == source.id, MemoryLink.relation_type.in_(("references", "has_attachment")),
@@ -186,7 +199,7 @@ async def test_image_read_saves_real_attachment_description_and_never_reports_su
 
     owner, _ = agents
     source = await document(owner, "Gallery")
-    attachment = await attachments.add_document_attachment_bytes(source.id, actor_agent_id=owner.id,
+    attachment = await create_indexed_attachment(source.id, actor_agent_id=owner.id,
         name="sample.png", media_type="image/png", content=png())
     uri = f"document://{source.id}/attachments/{attachment.id}"
     monkeypatch.setattr(image_mcp, "_context_language", AsyncMock(return_value="fr"))
@@ -223,8 +236,8 @@ async def test_external_image_description_is_private_stable_and_mandatory(db, ag
 async def test_folder_visibility_derives_recursively_from_documents_without_sharing(db, agents, memory_storage):
     from uuid import uuid4
     from app.agent import AgentManagementScope
-    from app.memory import document_tags, item_sharing
-    from app.memory.schemas import DocumentTagWrite
+    from app.document import document_tags
+    from app.document.schemas import DocumentTagWrite
     from core.user import UserModel
 
     owner, reader = agents
@@ -239,8 +252,10 @@ async def test_folder_visibility_derives_recursively_from_documents_without_shar
     secret = await document(owner, "Secret member")
     await document_tags.assign_tag(scope, source.id, child.id)
     await document_tags.assign_tag(scope, secret.id, child.id)
-    await service.set_item_grant(source.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
-    assert not (await item_sharing.sharing(root.memory_item_id, scope)).can_manage
+    await documents.set_item_grant(source.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    await document_structure.sync_folder_structure(human.id)
+    await db.commit()
+    root, child, other = [await document_tags.require_tag(human.id, tag.id) for tag in (root, child, other)]
     hits = await retrieval.recall_items(MemoryRecallRequest(agent_id=reader.id, query="ZephyrRoot", limit=20))
     # Folder ACL inheritance is preserved; an exact folder search no longer
     # promotes all descendants as relevant answers.
@@ -249,11 +264,15 @@ async def test_folder_visibility_derives_recursively_from_documents_without_shar
     # Multi-membership preserves identity; only ancestors of readable documents remain.
     await document_tags.assign_tag(scope, source.id, other.id)
     await document_tags.write_tag(human.id, DocumentTagWrite(name="Renamed", parent_id=other.id), child.id)
+    await document_structure.sync_folder_structure(human.id)
+    await db.commit()
     assert (await document_tags.require_tag(human.id, child.id)).memory_item_id == child.memory_item_id
     hits = await retrieval.recall_items(MemoryRecallRequest(agent_id=reader.id, query="ZephyrRoot", limit=20))
     assert not hits.hits
     await document_tags.remove_tag(human.id, child.id, confirmed=True)
-    assert await service.document_record(source.id) is not None
+    await document_structure.sync_folder_structure(human.id)
+    await db.commit()
+    assert await documents.document_record(source.id) is not None
     assert not list(await db.scalars(select(MemoryLink).where(MemoryLink.target_item_id == child.memory_item_id)))
 
 
@@ -261,15 +280,15 @@ async def test_folder_visibility_derives_recursively_from_documents_without_shar
 async def test_agent_sees_each_personal_tree_but_users_keep_their_own_classification(db, agents, memory_storage):
     from uuid import uuid4
     from app.agent import AgentManagementScope
-    from app.memory import document_tags
+    from app.document import document_tags
     from app.memory.access import effective_access, human_item_access
-    from app.memory.schemas import DocumentTagWrite
+    from app.document.schemas import DocumentTagWrite
     from core.user import UserModel
 
     owner, reader = agents
     source = await document(owner, "Shared across trees")
     private = await document(owner, "Hidden sibling")
-    await service.set_item_grant(source.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    await documents.set_item_grant(source.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
     trees = []
     for _ in range(3):
         human = UserModel(email=f"tree-{uuid4()}@example.test", hashed_password="unused", is_active=True)
@@ -281,6 +300,9 @@ async def test_agent_sees_each_personal_tree_but_users_keep_their_own_classifica
         hidden = await document_tags.write_tag(human.id, DocumentTagWrite(name="Private sibling", parent_id=root.id))
         await document_tags.assign_tag(scope, source.id, child.id)
         await document_tags.assign_tag(scope, private.id, hidden.id)
+        await document_structure.sync_folder_structure(human.id)
+        await db.commit()
+        root, child, hidden = [await document_tags.require_tag(human.id, tag.id) for tag in (root, child, hidden)]
         trees.append((human, root, child, hidden))
     for human, root, child, hidden in trees:
         assert {folder.id for folder in await document_tags.list_tags(human.id)} == {root.id, child.id, hidden.id}
@@ -290,7 +312,7 @@ async def test_agent_sees_each_personal_tree_but_users_keep_their_own_classifica
         assert not (await human_item_access(await service.item_record(root.memory_item_id), other.id)).can_read
     graph = await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=reader.id))
     assert {node.id for node in graph.nodes} == {source.id, *(folder.memory_item_id for _, root, child, _ in trees for folder in (root, child))}
-    await service.remove_item_grant(source.id, reader.id, actor_agent_id=owner.id)
+    await documents.remove_item_grant(source.id, reader.id, actor_agent_id=owner.id)
     assert not (await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=reader.id))).nodes
 
 
@@ -300,11 +322,11 @@ async def test_hidden_intermediate_never_changes_visible_recall_or_graph_counts(
     anchor = await document(owner, "ObsidianAnchor")
     destination = await document(owner, "Faraway")
     for item in (anchor, destination):
-        await service.set_item_grant(item.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+        await documents.set_item_grant(item.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
     request = MemoryRecallRequest(agent_id=reader.id, query="ObsidianAnchor")
     before = await retrieval.recall_items(request)
     hidden = await document(owner, "Hidden bridge", f'<a href="document://{destination.id}">Continue</a>')
-    await service.update_item(anchor.id, MemoryItemUpdate(expected_revision=anchor.revision,
+    await edit_document_reference(anchor.id, MemoryItemUpdate(expected_revision=anchor.revision,
         payload=MemoryPayload(text=f'<a href="document://{hidden.id}">Continue</a>')), actor_agent_id=owner.id)
     after = await retrieval.recall_items(request)
     assert [hit.item.id for hit in before.hits] == [hit.item.id for hit in after.hits] == [anchor.id]
@@ -321,7 +343,7 @@ async def test_all_attachment_types_and_document_forget_remove_acquired_payloads
     files = []
     expected_hashes = {}
     for name, mime, payload in (("image.png", "image/png", png()), ("audio.ogg", "audio/ogg", b"audio"), ("report.pdf", "application/pdf", b"pdf")):
-        files.append(await attachments.add_document_attachment_bytes(source.id, actor_agent_id=owner.id,
+        files.append(await create_indexed_attachment(source.id, actor_agent_id=owner.id,
             name=name, media_type=mime, content=payload))
         expected_hashes[files[-1].id] = hashlib.sha256(payload).hexdigest()
     rows = list(await db.scalars(select(DocumentAttachment).where(DocumentAttachment.document_id == source.id)))
@@ -336,7 +358,9 @@ async def test_all_attachment_types_and_document_forget_remove_acquired_payloads
     companion_id = await record_attachment_description(f"document://{source.id}/attachments/{files[0].id}",
         "Forget this description too", agent_id=owner.id)
     resource = (await service.item_record(companion_id)).resource_id
-    await service.delete_document(source.id, actor_agent_id=owner.id)
+    await documents.delete_document(source.id, actor_agent_id=owner.id)
+    from app.memory.tests.document_fixtures import project_document
+    await project_document(source.id)
     from app.memory.models import MemoryURL
     assert not await db.scalar(select(MemoryURL.id).where(
         MemoryURL.memory_node_id.in_([row.memory_item_id for row in rows]),
@@ -371,8 +395,8 @@ async def test_structure_inventory_and_replay_do_not_call_models_or_overwrite_ma
     edge.confidence = 0.82
     await db.commit()
     for item in (target, anchor, isolated):
-        await service.set_item_grant(item.id, reader.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
-    await service.update_item(anchor.id, MemoryItemUpdate(expected_revision=anchor.revision,
+        await documents.set_item_grant(item.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    await edit_document_reference(anchor.id, MemoryItemUpdate(expected_revision=anchor.revision,
         payload=MemoryPayload(text="<p>Link removed</p>")), actor_agent_id=owner.id)
     for _ in range(3):
         await reconcile_document_structure()
@@ -411,7 +435,7 @@ async def test_concurrent_repair_and_stale_dream_replay_use_current_source(infer
     await db.flush()
     target = await document(owner, "Destination")
     source = await document(owner, "Source", f'<a href="document://{target.id}">Target</a>')
-    attachment = await attachments.add_document_attachment_bytes(source.id, actor_agent_id=owner.id,
+    attachment = await create_indexed_attachment(source.id, actor_agent_id=owner.id,
         name="photo.png", media_type="image/png", content=png())
     uri = f"document://{source.id}/attachments/{attachment.id}"
     source_id, owner_id = source.id, owner.id
@@ -426,7 +450,7 @@ async def test_concurrent_repair_and_stale_dream_replay_use_current_source(infer
     claim = DreamClaim(receipt_id=uuid4(), lease_token=uuid4(), subject_kind="document",
         subject_id=f"document:{source_id}:old", attempts=1, prepared_payload=None)
     prepared = await document_structure_mechanism.prepare(claim)
-    await service.update_item(source_id, MemoryItemUpdate(expected_revision=source.revision,
+    await edit_document_reference(source_id, MemoryItemUpdate(expected_revision=source.revision,
         payload=MemoryPayload(text="<p>No target any more</p>")), actor_agent_id=owner_id)
     await document_structure_mechanism.apply(claim, prepared.payload)
 

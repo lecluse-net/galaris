@@ -1,4 +1,7 @@
 from __future__ import annotations
+from app.document.schemas import DocumentPayload
+from app.document.schemas import DocumentItemCreate
+from app.memory.tests.document_fixtures import create_document_reference
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -414,17 +417,17 @@ async def test_semantic_merge_can_link_a_source_managed_node_without_rewriting_i
 
 
 @pytest.mark.asyncio
-async def test_semantic_merge_can_link_a_document_without_rewriting_it(
+async def test_document_observation_creates_independent_private_knowledge(
     agents: tuple[Agent, Agent],
     memory_storage: Path,
 ) -> None:
     del memory_storage
     owner, _peer = agents
-    document, _created = await service.create_item(
-        MemoryItemCreate(
+    document, _created = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Release guide",
-            payload=MemoryPayload(text="Production releases happen every Tuesday."),
+            payload=DocumentPayload(text="Production releases happen every Tuesday."),
             node_kind="document",
         )
     )
@@ -446,11 +449,14 @@ async def test_semantic_merge_can_link_a_document_without_rewriting_it(
         document.id,
         agent_id=owner.id,
     )
-    assert result.status == "merged"
-    assert result.memory_id == document.id
     assert item.revision == 1
     assert visible_text(content.decode()) == "Production releases happen every Tuesday."
-    assert await service.source_refs(document.id) == ["task:document-link"]
+    assert await service.source_refs(document.id) == []
+    assert result.status == "stored" and result.memory_id != document.id
+    private = await service.item_record(result.memory_id)
+    assert private.owner_agent_id == owner.id and private.node_kind == "memory"
+    assert await service.source_refs(private.id) == ["task:document-link"]
+    assert await service.source_refs(document.id) == []
 
 
 @pytest.mark.asyncio

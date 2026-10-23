@@ -26,7 +26,7 @@ from app.memory import service as memory_service
 from app.memory.models import MemoryItem, MemoryLink
 from app.memory.schemas import MemoryItemCreate, MemoryPayload
 from app.process import ProcessDefinition, ProcessRun
-from app.memory.storage import (
+from core.storage import (
     NativeFileStorage,
     register_storage,
     reset_storage_registry,

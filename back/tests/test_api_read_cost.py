@@ -15,8 +15,9 @@ from core.user.models import User
 from core.user.user_service import encrypt_password
 from core.authorize.models import Assignment, Role, Privilege
 from app.agent.models import Agent, Title
-from app.memory.models import Document, DocumentRevision, MemoryItem, MemoryRevision, MemoryURL
-from app.memory.storage import NativeFileStorage, register_storage, reset_storage_registry
+from app.memory.models import MemoryItem, MemoryRevision, MemoryURL
+from app.document import Document, DocumentRevision
+from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 from app.goal.models import Goal, GoalStatus
 
 DESTINATION = Path(__file__).resolve().parents[2] / 'artifacts/api-sql-optimization'

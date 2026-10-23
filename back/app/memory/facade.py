@@ -7,17 +7,6 @@ from datetime import datetime
 from uuid import UUID
 
 from .contracts import MemorySearchItem
-from .topic_assignment import (
-    assignment as document_topic_assignment,
-    change_assignment as change_document_topic,
-    count_pending as count_pending_topic_documents,
-    claim_one as claim_topic_document,
-    source as topic_document_source,
-    is_current as topic_document_is_current,
-    assign as assign_document_topic,
-    list_related as list_documents_by_topics,
-    reassign as reassign_topic_documents,
-)
 from .source_access import register_source_evidence_access
 from .retrieval import recall_items
 from .schemas import (
@@ -194,9 +183,9 @@ async def reconcile_structure_subject(kind: str, identity: UUID) -> int:
     """Re-read a source under its domain lock; never replay a Dream snapshot."""
     from sqlalchemy import select
     from core.database import get_db
-    from .models import DocumentTag, MemoryItem
+    from app.document import DocumentTag, Document
     from .document_structure import sync_document_structure, sync_folder_structure
-    from .document_tags import lock_tree
+    from app.document.interface import lock_tree
 
     if kind == "folder":
         tag = await get_db().get(DocumentTag, identity)
@@ -205,25 +194,18 @@ async def reconcile_structure_subject(kind: str, identity: UUID) -> int:
         await lock_tree(tag.user_id)
         await sync_folder_structure(tag.user_id)
     else:
-        document = await get_db().scalar(select(MemoryItem).where(
-            MemoryItem.id == identity, MemoryItem.node_kind == "document",
+        document = await get_db().scalar(select(Document).where(
+            Document.id == identity,
         ).with_for_update().execution_options(populate_existing=True))
         if document is None:
             return 0
         await sync_document_structure(document)
     return 1
 
-async def enqueue_goal_folder_reconciliation(
-    *, user_id: int | None = None, goal_id: UUID | None = None,
-) -> UUID:
-    """Queue personal Goal filing; caller commits, omitted filters select all."""
-    from .goal_folders import enqueue_goal_folder_reconciliation as enqueue
-
-    return await enqueue(user_id=user_id, goal_id=goal_id)
 
 
-__all__ = ["count_pending_topic_documents", "claim_topic_document", "topic_document_source", "topic_document_is_current", "assign_document_topic", "list_documents_by_topics", "reassign_topic_documents",
-           "document_topic_assignment", "change_document_topic",
-           "register_source_evidence_access", "dream_action_item", "dream_structure_identity", "search_memory", "search_memory_detailed", "record_attachment_description", "reconcile_structure_subject", "enqueue_goal_folder_reconciliation",
+__all__ = [
+
+           "register_source_evidence_access", "dream_action_item", "dream_structure_identity", "search_memory", "search_memory_detailed", "record_attachment_description", "reconcile_structure_subject",
            "AttachmentAnalysisSource", "attachment_analysis_path", "attachment_analysis_source",
            "empty_attachment_items", "fill_attachment_description"]

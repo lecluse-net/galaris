@@ -11,7 +11,8 @@ from pydantic import BaseModel
 from sqlalchemy import select, case
 from app.connection import Connection
 from app.tools import ToolModel
-from app.memory import render_file_thumbnail, MemoryItem
+from app.memory import MemoryItem
+from app.document import render_file_thumbnail
 from core.database import get_db
 from core.preview import PreviewFile, prepare_preview, thumbnails
 from .catalogue import live_catalogue_binding, descriptor_version

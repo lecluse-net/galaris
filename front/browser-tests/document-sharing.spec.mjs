@@ -15,7 +15,7 @@ const privateState = () => ({
 async function sharingFixture(page, resourceKind, state = privateState()) {
   const writes = []
   const base = resourceKind === 'dataset' ? '/api/datasets/doc-a'
-    : resourceKind === 'document' ? '/api/memory/documents/doc-a' : '/api/memory/items/doc-a'
+    : resourceKind === 'document' ? '/api/documents/doc-a' : '/api/memory/items/doc-a'
   await page.route('**' + base + '/sharing', route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: state })
     return save(route)
@@ -31,7 +31,7 @@ async function sharingFixture(page, resourceKind, state = privateState()) {
     return route.fulfill({ json: state })
   }
   if (resourceKind !== 'memory') await page.route('**' + base + '/sharing-level', save)
-  await mount(page, resourceKind === 'dataset' ? 'app/dataset/components/DatasetSharing.vue' : 'app/memory/components/MemorySharingPanel.vue', {
+  await mount(page, resourceKind === 'dataset' ? 'app/dataset/components/DatasetSharing.vue' : 'app/document/components/DocumentSharingPanel.vue', {
     props: resourceKind === 'dataset' ? { id: 'doc-a', lockVersion: 1, editable: true } : { itemId: 'doc-a', resourceKind, editable: true },
   })
   return { state, writes }
@@ -51,20 +51,20 @@ test(`taking ownership keeps the document usable after revoking the original age
   let revoked = false
   const writes = []
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', {
+  await jsonRoute(page, '**/api/documents/owner-options?*', {
     agents: [{ ...originalAgent, subtitle: '' }],
     users: [{ ...human, subtitle: '', is_current_user: true }],
   })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments*', [])
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [] })
-  await page.route('**/api/memory/documents/library', route => route.fulfill({ json: {
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/doc-a/attachments*', [])
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [] })
+  await page.route('**/api/documents/library', route => route.fulfill({ json: {
     entries: [{ item: document, tags: [], agent_ids: revoked ? [] : [7],
       writable_agent_ids: revoked ? [] : [7],
       user_access: { can_read: true, can_write: document.owner_user_id === 1 } }],
     total: 1, has_more: false, keywords: [],
   } }))
-  await page.route(/\/api\/memory\/documents\/doc-a(?:\?|$)/, route => {
+  await page.route(/\/api\/documents\/doc-a(?:\?|$)/, route => {
     const url = new URL(route.request().url())
     if (revoked && (url.searchParams.has('agent_id') || url.searchParams.has('actor_agent_id'))) {
       return route.fulfill({ status: 403, json: { detail: 'Original agent access revoked' } })
@@ -76,22 +76,22 @@ test(`taking ownership keeps the document usable after revoking the original age
     }
     return route.fulfill({ json: { item: document, agent_id: url.searchParams.has('agent_id') ? 7 : null } })
   })
-  await page.route('**/api/memory/documents/doc-a/owner', route => {
+  await page.route('**/api/documents/doc-a/owner', route => {
     expect(route.request().postDataJSON()).toMatchObject({ kind: 'user', id: 1 })
     Object.assign(document, { owner_agent_id: null, owner_user_id: 1, lock_version: document.lock_version + 1 })
     Object.assign(state, { owner: human, grants: [originalAgent], options: [originalAgent], lock_version: document.lock_version })
     return route.fulfill({ json: document })
   })
-  await page.route('**/api/memory/documents/doc-a/sharing', route => route.fulfill({ json: state }))
-  await page.route('**/api/memory/documents/doc-a/sharing-level', async route => {
+  await page.route('**/api/documents/doc-a/sharing', route => route.fulfill({ json: state }))
+  await page.route('**/api/documents/doc-a/sharing-level', async route => {
     expect(route.request().postDataJSON().grants).toEqual([])
     revoked = true
     document.lock_version++
     Object.assign(state, { grants: [], lock_version: document.lock_version })
-    await page.evaluate(() => window.testApp.emitSocket('memory.invalidate', { data: {} }))
+    await page.evaluate(() => window.testApp.emitSocket('document.invalidate', { data: {} }))
     return route.fulfill({ json: state })
   })
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   if (width < 1024) await page.getByText(document.title, { exact: true }).click()
   const editor = page.locator('[data-editor-surface]')
   await expect(editor).toContainText('Transferred content')
@@ -105,7 +105,7 @@ test(`taking ownership keeps the document usable after revoking the original age
   await expect(page.getByLabel('Unclassified documents', { exact: true }).getByText(document.title, { exact: true })).toBeVisible()
   await editor.fill('Content edited as owner')
   await expect.poll(() => writes.at(-1)?.payload?.text).toContain('Content edited as owner')
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   if (width < 1024) await page.getByText(document.title, { exact: true }).click()
   await expect(editor).toContainText('Content edited as owner')
   await expect(picker(page)).toContainText('Private')
@@ -124,16 +124,16 @@ test(`changing rights reconciles the library and open document without remountin
   let reads = 0, writes = 0
   const contentWrites = []
   await jsonRoute(page, '**/api/agents?*', [])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
   const attachment = { id: 'file-a', name: 'Appendix.docx', media_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size_bytes: 100, uri: 'document://doc-a/attachments/file-a' }
-  await page.route('**/api/memory/documents/doc-a/attachments/file-a/thumbnail?*', route => route.fulfill({ status: 204 }))
-  await page.route('**/api/memory/documents/doc-a/attachments', async route => {
+  await page.route('**/api/documents/doc-a/attachments/file-a/thumbnail?*', route => route.fulfill({ status: 204 }))
+  await page.route('**/api/documents/doc-a/attachments', async route => {
     await readGate
     return route.fulfill(fail ? { status: 503, json: { detail: 'Unavailable' } } : { json: [attachment] })
   })
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags: [folder] })
-  await page.route('**/api/memory/documents/library', async route => {
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [folder] })
+  await page.route('**/api/documents/library', async route => {
     const request = route.request().postDataJSON()
     reads++
     await readGate
@@ -142,7 +142,7 @@ test(`changing rights reconciles the library and open document without remountin
       : denied ? [] : [entry('doc-a', document.title)]
     await route.fulfill({ json: { entries, total: entries.length, keywords: [], has_more: false } })
   })
-  await page.route('**/api/memory/documents/doc-a', async route => {
+  await page.route('**/api/documents/doc-a', async route => {
     if (route.request().method() === 'PATCH') {
       const update = route.request().postDataJSON()
       contentWrites.push(update)
@@ -155,18 +155,18 @@ test(`changing rights reconciles the library and open document without remountin
     if (fail || denied) return route.fulfill({ status: denied ? 403 : 503, json: { detail: 'Unavailable' } })
     await route.fulfill({ json: { item: snapshot, agent_id: null } })
   })
-  await jsonRoute(page, '**/api/memory/documents/doc-a/sharing', state)
+  await jsonRoute(page, '**/api/documents/doc-a/sharing', state)
   let release
-  await page.route('**/api/memory/documents/doc-a/sharing-level', async route => {
+  await page.route('**/api/documents/doc-a/sharing-level', async route => {
     writes++
     const update = route.request().postDataJSON()
     Object.assign(state, update, { lock_version: state.lock_version + 1 })
     document.lock_version = state.lock_version
     readGate = new Promise(resolve => { release = resolve })
-    await page.evaluate(() => window.testApp.emitSocket('memory.invalidate', { data: {} }))
+    await page.evaluate(() => window.testApp.emitSocket('document.invalidate', { data: {} }))
     return route.fulfill({ json: state })
   })
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   await page.getByText('Work', { exact: true }).click()
   const listRow = await page.getByLabel('Unclassified documents', { exact: true }).getByText(document.title, { exact: true }).elementHandle()
   const folderRow = await page.getByText('Folder report', { exact: true }).elementHandle()
@@ -185,7 +185,7 @@ test(`changing rights reconciles the library and open document without remountin
   await expect(editor).toContainText('Keep editing here')
   // Typing while the remote snapshot is pending must be included in the eventual merge.
   await editor.fill('Keep this new draft')
-  const refreshed = page.waitForResponse(response => response.url().endsWith('/api/memory/documents/doc-a') && response.request().method() === 'GET')
+  const refreshed = page.waitForResponse(response => response.url().endsWith('/api/documents/doc-a') && response.request().method() === 'GET')
   release()
   await refreshed
   await expect(toggle(page, 'Public')).toHaveAttribute('aria-pressed', 'true')
@@ -195,7 +195,7 @@ test(`changing rights reconciles the library and open document without remountin
 
   // A temporary read failure preserves usable content; retry updates the same editor.
   fail = true
-  await page.evaluate(() => window.testApp.emitSocket('memory.invalidate', { data: {} }))
+  await page.evaluate(() => window.testApp.emitSocket('document.invalidate', { data: {} }))
   await expect(page.locator('.document-editor').getByRole('alert')).toBeVisible()
   await expect(editor).toContainText('Keep this new draft')
   expect(await editorNode.evaluate(element => element.isConnected)).toBe(true)
@@ -206,13 +206,13 @@ test(`changing rights reconciles the library and open document without remountin
 
   // A confirmed denial removes the content, including inside the mobile dialog.
   denied = true
-  await page.evaluate(() => window.testApp.emitSocket('memory.invalidate', { data: {} }))
+  await page.evaluate(() => window.testApp.emitSocket('document.invalidate', { data: {} }))
   await expect(editor).toHaveCount(0)
   await expect(page.getByLabel('Unclassified documents', { exact: true }).getByText(document.title, { exact: true })).toHaveCount(0)
 })
 }
 
-for (const resourceKind of ['document', 'memory', 'dataset']) {
+for (const resourceKind of ['document', 'dataset']) {
   test(resourceKind + ' sharing adds recipients directly, toggles rights and removes access', async ({ page }) => {
     const { state, writes } = await sharingFixture(page, resourceKind)
     await expect(picker(page)).toContainText('Private')
@@ -304,8 +304,8 @@ test('search and category filtering reach recipients beyond the first page of 20
 })
 
 test('failed saves preserve confirmed rights, reload recovers, and read-only access cannot mutate', async ({ page }) => {
-  const { state } = await sharingFixture(page, 'memory')
-  await page.route('**/api/memory/items/doc-a/sharing', route => {
+  const { state } = await sharingFixture(page, 'document')
+  await page.route('**/api/documents/doc-a/sharing-level', route => {
     if (route.request().method() === 'PUT') return route.fulfill({ status: 409, json: { detail: 'Changed elsewhere' } })
     return route.fulfill({ json: state })
   })
@@ -327,7 +327,7 @@ test('failed saves preserve confirmed rights, reload recovers, and read-only acc
 test('private memory saves its content draft without independent sharing', async ({ page }) => {
   const initial = privateState()
   initial.lock_version = 3
-  const { state } = await sharingFixture(page, 'memory', initial)
+  const state = initial
   let item = { ...documentFixture, title: 'Integration memory', node_kind: 'memory',
     media_type: 'text/html', content_profile: 'rich-text', content_profile_version: 1, payload: { text: '<p>Preserved memory</p>' } }
   const contentWrites = []
@@ -363,17 +363,17 @@ test('switching resource during a pending load ignores the obsolete response', a
   let release
   const gate = new Promise(resolve => { release = resolve })
   let requested = false
-  await page.route('**/api/memory/items/slow/sharing', async route => {
+  await page.route('**/api/documents/slow/sharing', async route => {
     requested = true
     await gate
     await route.fulfill({ json: { ...privateState(), grants: [recipients[0]] } })
   })
-  await jsonRoute(page, '**/api/memory/items/current/sharing', { ...privateState(), grants: [recipients[1]] })
-  await mount(page, 'app/memory/components/MemorySharingPanel.vue', { props: { itemId: 'slow', editable: true } })
+  await jsonRoute(page, '**/api/documents/current/sharing', { ...privateState(), grants: [recipients[1]] })
+  await mount(page, 'app/document/components/DocumentSharingPanel.vue', { props: { itemId: 'slow', editable: true } })
   await expect.poll(() => requested).toBe(true)
   await page.evaluate(() => window.testApp.setProps({ itemId: 'current' }))
   await expect(toggle(page, 'Bob human')).toBeVisible()
-  const obsolete = page.waitForResponse('**/api/memory/items/slow/sharing')
+  const obsolete = page.waitForResponse('**/api/documents/slow/sharing')
   release()
   await obsolete
   await expect(toggle(page, 'Bob human')).toBeVisible()
@@ -382,13 +382,13 @@ test('switching resource during a pending load ignores the obsolete response', a
 
 for (const tagged of [false, true]) {
 test(`a human without managed agents opens a shared document from the ${tagged ? 'tag tree' : 'orphan list'} and autosaves as themselves`, async ({ page }) => {
-  await jsonRoute(page, '**/api/memory/documents/icons/resolve', { 'doc-a': 'emoji:1F680' })
+  await jsonRoute(page, '**/api/documents/icons/resolve', { 'doc-a': 'emoji:1F680' })
   const document = { ...documentFixture, id: 'doc-a', owner_agent_id: 7, media_type: 'text/html', content_profile: 'document', payload: { text: '<p>Human document</p>' }, access: { can_read: true, can_write: true } }
   await jsonRoute(page, '**/api/agents?*', [])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [], users: [{ id: 1, kind: 'user', label: 'Human', subtitle: '', is_current_user: true, avatar_url: null }] })
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments', [])
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [], users: [{ id: 1, kind: 'user', label: 'Human', subtitle: '', is_current_user: true, avatar_url: null }] })
+  await jsonRoute(page, '**/api/documents/doc-a/attachments', [])
   const writes = []
-  await page.route('**/api/memory/documents/doc-a', route => {
+  await page.route('**/api/documents/doc-a', route => {
     if (route.request().method() === 'PATCH') {
       expect(new URL(route.request().url()).searchParams.has('actor_agent_id')).toBe(false)
       writes.push(route.request().postDataJSON())
@@ -398,13 +398,13 @@ test(`a human without managed agents opens a shared document from the ${tagged ?
     return route.fulfill({ json: { item: document, agent_id: null } })
   })
   const tags = tagged ? [{ id: 'reading', name: 'Reading', parent_id: null }] : []
-  await page.route('**/api/memory/documents/library', route => {
+  await page.route('**/api/documents/library', route => {
     const request = route.request().postDataJSON()
     const visible = tagged ? request.tag_id === 'reading' : request.classification === 'unclassified'
     return route.fulfill({ json: { entries: visible ? [{ item: document, tags, agent_ids: [], writable_agent_ids: [], user_access: document.access }] : [], total: visible ? 1 : 0, keywords: [], has_more: false } })
   })
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags })
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   if (tagged) await page.getByText('Reading', { exact: true }).click()
   const list = page.getByLabel(tagged ? 'Documents in folder Reading' : 'Unclassified documents', { exact: true })
   await expect(list.getByText(document.title, { exact: true })).toBeVisible()
@@ -431,36 +431,36 @@ for (const scenario of [
 test(`a private human-owned document opens using the human identity: ${scenario.name}`, async ({ page }) => {
   await page.setViewportSize({ width: scenario.width, height: 1000 })
   const tags = [{ id: 'work', name: 'Work', parent_id: null }, { id: 'project', name: 'Project', parent_id: 'work' }]
-  await jsonRoute(page, '**/api/memory/documents/tags', { user_id: 1, tags })
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags })
   let created = false
   let classified = null
   const creations = [], moves = []
   const document = { ...documentFixture, id: 'doc-a', title: 'Personal notes', owner_agent_id: null, owner_user_id: 1, global_access: 0, grants: [], access: { can_read: true, can_write: true }, payload: { text: '<p>Private notes</p>' } }
   await jsonRoute(page, '**/api/agents?*', [agent])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [{ id: 1, kind: 'user', label: 'Human owner', subtitle: '', avatar_url: null, is_current_user: true }] })
-  await jsonRoute(page, '**/api/memory/documents/folders?*', [])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments', [])
-  await jsonRoute(page, '**/api/memory/documents/doc-a', { item: document, agent_id: null })
-  await page.route('**/api/memory/documents/library', route => {
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [{ id: 1, kind: 'user', label: 'Human owner', subtitle: '', avatar_url: null, is_current_user: true }] })
+  await jsonRoute(page, '**/api/documents/folders?*', [])
+  await jsonRoute(page, '**/api/documents/doc-a/attachments', [])
+  await jsonRoute(page, '**/api/documents/doc-a', { item: document, agent_id: null })
+  await page.route('**/api/documents/library', route => {
     const body = route.request().postDataJSON()
     const visible = created && (body.tag_id ? body.tag_id === classified : body.classification !== 'unclassified' || !classified)
     const entries = visible ? [{ item: document, agent_ids: [], writable_agent_ids: [], user_access: document.access, tags: tags.filter(tag => tag.id === classified) }] : []
     return route.fulfill({ json: { entries, total: entries.length, keywords: [], has_more: false } })
   })
-  await page.route('**/api/memory/documents/doc-a/tags', route => {
+  await page.route('**/api/documents/doc-a/tags', route => {
     moves.push(route.request().postDataJSON())
     if (scenario.failClassification) return route.fulfill({ status: 503, json: { detail: 'Unavailable' } })
     classified = route.request().postDataJSON().tag_id
     return route.fulfill({ status: 204 })
   })
-  await page.route('**/api/memory/documents', route => {
+  await page.route('**/api/documents', route => {
     expect(route.request().method()).toBe('POST')
     creations.push(route.request().postDataJSON())
     expect(creations.at(-1)).toMatchObject({ owner_kind: 'user', owner_id: 1, title: 'Personal notes' })
     created = true
     return route.fulfill({ json: document })
   })
-  await mount(page, 'app/memory/components/DocumentLibraryPage.vue', { privileges: ['MEMORY_EDIT'] })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   if (!scenario.folder) {
     await page.getByRole('button', { name: 'New document in Work', exact: true }).press('Enter')
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click()

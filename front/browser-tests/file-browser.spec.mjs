@@ -424,15 +424,15 @@ test('a Galaris document opens its existing modal with the selected agent scope'
     { ...entry('document://doc-a', 'Synthetic document'), media_type: 'text/html' },
   ]))
   const actors = []
-  await page.route('**/api/memory/documents/doc-a?*', route => {
+  await page.route('**/api/documents/doc-a?*', route => {
     actors.push(new URL(route.request().url()).searchParams.get('agent_id'))
     return route.fulfill({ json: { item: { ...document, title: 'Synthetic document' } } })
   })
   await jsonRoute(page, '**/api/agents?*', [])
-  await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [], users: [] })
-  await jsonRoute(page, '**/api/memory/documents/keywords?*', [])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/attachments?*', [])
-  await jsonRoute(page, '**/api/memory/documents/doc-a/content/revisions?*', { items: [], total: 0 })
+  await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [], users: [] })
+  await jsonRoute(page, '**/api/documents/keywords?*', [])
+  await jsonRoute(page, '**/api/documents/doc-a/attachments?*', [])
+  await jsonRoute(page, '**/api/documents/doc-a/content/revisions?*', { items: [], total: 0 })
   await mount(page, component, { privileges: ['MEMORY_ACCESS'] })
   await selectAgent(page, 'Alice Example')
   await page.getByText('Galaris', { exact: true }).click()

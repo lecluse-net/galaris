@@ -29,7 +29,7 @@ from app.memory.models import (
     MemoryTopicContactItem,
     MemoryTopicContactScope,
 )
-from app.memory.storage import NativeFileStorage, register_storage, reset_storage_registry
+from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 from app.messenger import ConversationType, Message, Room
 from app.topic import TopicClassification, service as topic_service
 from app.tools import ToolModel

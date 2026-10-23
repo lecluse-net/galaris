@@ -52,11 +52,11 @@
 </template>
 
 <script setup lang="ts">
-import DocumentIcon from './DocumentIcon.vue'
+import { DocumentIcon } from '@/app/document'
 import MemoryDreamActions from './MemoryDreamActions.vue'
 import MemoryAttachmentButton from './MemoryAttachmentButton.vue'
 import MemoryFileResources from './MemoryFileResources.vue'
-import DocumentThumbnail from './DocumentThumbnail.vue'
+import { DocumentThumbnail } from '@/app/document'
 import MemoryNodeMetadata from './MemoryNodeMetadata.vue'
 import MemoryGraphRelations from './MemoryGraphRelations.vue'
 import { useI18n } from 'vue-i18n'

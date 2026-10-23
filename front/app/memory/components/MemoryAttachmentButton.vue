@@ -15,13 +15,15 @@
 </template>
 
 <script setup lang="ts">
+import { documentService } from '@/app/document'
+
 import { nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { attachmentReference } from '@/core/util'
 import { memoryService } from '../services/memoryService'
-import type { DocumentAttachment } from '../types'
-import DocumentAttachments from './DocumentAttachments.vue'
+import type { DocumentAttachment } from '@/app/document'
+import { DocumentAttachments } from '@/app/document'
 
 const { itemId, agentId, iconOnly = false, showThumbnail = false, resourceUri } = defineProps<{
   itemId: string
@@ -66,7 +68,7 @@ async function load(openViewer: boolean): Promise<void> {
     }
     const reference = typeof uri === 'string' ? attachmentReference(uri) : null
     if (!reference) throw new Error('Missing document attachment reference')
-    const info = await memoryService.documentAttachmentInfo(reference[0], reference[1], agentId)
+    const info = await documentService.documentAttachmentInfo(reference[0], reference[1], agentId)
     if (request !== generation) return
     attachment.value = info
     documentId.value = reference[0]

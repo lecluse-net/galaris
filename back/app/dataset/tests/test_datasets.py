@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.dataset import service
 from app.dataset.models import Dataset, DatasetAlias
 from app.file_share import ResourceContext, resource_create, resource_delete, resource_info, resource_read, resource_write
-from app.memory import document_service
+from app.document import document_service
 
 
 @pytest.mark.asyncio
@@ -84,7 +84,7 @@ async def test_obsolete_process_markers_do_not_override_dataset_deletion_rights(
         await service.remove(dataset.id, owner.id, expected_lock_version=dataset.lock_version + 1)
     context = ResourceContext(agent_id=owner.id, runtime="internal")
     if legacy:
-        from app.memory import write_workflow_document
+        from app.document import write_workflow_document
         await write_workflow_document(dataset.id, owner.id, '{"updated":true}', expected_revision=1)
     else:
         await resource_write(context, uri, b'{"updated":true}', expected_revision=1)
@@ -209,7 +209,7 @@ async def test_dataset_json_roots_remain_free_and_exact_on_write_and_restore(db,
 @pytest.mark.parametrize("delete_via_file", [False, True])
 async def test_legacy_public_sharing_and_revocation_apply_to_the_canonical_uri(db, agents, memory_storage, delete_via_file):
     from app.memory import service as memory
-    from app.memory.schemas import DocumentGlobalAccessUpdate
+    from app.document.schemas import DocumentGlobalAccessUpdate
     owner, other = agents
     legacy = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic public data",
         content='{"synthetic":true}', task_id=None, document_type="dataset")
@@ -268,4 +268,4 @@ async def test_cancelled_dataset_deletion_preserves_memory_and_canonical_history
     assert await service.record(identity, owner.id)
     assert await memory.document_record(identity) is not None
     assert await db.scalar(select(MemoryRevision.id).where(MemoryRevision.item_id == identity)) is not None
-    assert await db.scalar(select(DatasetRevision.source_revision_id).where(DatasetRevision.dataset_id == identity)) is not None
+    assert await db.scalar(select(DatasetRevision.document_source_revision_id).where(DatasetRevision.dataset_id == identity)) is not None

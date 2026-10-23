@@ -764,3 +764,55 @@ async def test_crash_after_expansion_keeps_transfer_and_cleanup_obligations(monk
             await connection.execute(text("DROP TABLE IF EXISTS dbadmin_crash_probe"))
             await connection.execute(text("DELETE FROM dbadmin_actions WHERE key LIKE 'test.crash_before_handler.%'"))
         await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_expansion_preserves_referenced_unique_keys_until_source_columns_contract():
+    from sqlalchemy import ForeignKeyConstraint, UniqueConstraint
+    canonical=load_target_metadata()
+    initial=_copy_metadata(canonical)
+    Table("dbadmin_source_parent",initial,Column("id",Integer,primary_key=True),Column("legacy",Integer),UniqueConstraint("id","legacy",name="uq_dbadmin_source_identity"))
+    Table("dbadmin_source_child",initial,Column("id",Integer,primary_key=True),Column("parent_id",Integer),Column("legacy",Integer),ForeignKeyConstraint(["parent_id","legacy"],["dbadmin_source_parent.id","dbadmin_source_parent.legacy"],name="fk_dbadmin_source_identity"))
+    evolved=_copy_metadata(canonical)
+    Table("dbadmin_source_parent",evolved,Column("id",Integer,primary_key=True))
+    Table("dbadmin_source_child",evolved,Column("id",Integer,primary_key=True),Column("parent_id",Integer))
+    scope=DbAdminDdlFilters()
+    try:
+        await apply_target(render_target_sql(initial),scope=scope)
+        async with engine.begin() as connection:
+            await connection.execute(text("INSERT INTO dbadmin_source_parent VALUES(1,17)"))
+            await connection.execute(text("INSERT INTO dbadmin_source_child VALUES(2,1,17)"))
+        await apply_target(render_target_sql(evolved),scope=scope,preserve_data=True)
+        async with engine.connect() as connection:
+            assert await connection.scalar(text("SELECT legacy FROM dbadmin_source_child WHERE id=2"))==17
+            assert await connection.scalar(text("SELECT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='uq_dbadmin_source_identity')"))
+        await apply_target(render_target_sql(evolved),scope=scope)
+        async with engine.connect() as connection:
+            assert not await connection.scalar(text("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='dbadmin_source_child' AND column_name='legacy')"))
+            assert await connection.scalar(text("SELECT parent_id FROM dbadmin_source_child WHERE id=2"))==1
+    finally:
+        await apply_target(render_target_sql(canonical),scope=scope)
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_expansion_can_still_replace_an_index_with_the_same_name():
+    from sqlalchemy import Index
+    canonical=load_target_metadata()
+    initial=_copy_metadata(canonical)
+    parent=Table("dbadmin_index_replacement",initial,Column("id",Integer,primary_key=True),Column("code",String),Column("label",String))
+    Index("ix_dbadmin_replacement",parent.c.code,unique=True)
+    evolved=_copy_metadata(canonical)
+    parent=Table("dbadmin_index_replacement",evolved,Column("id",Integer,primary_key=True),Column("code",String),Column("label",String))
+    Index("ix_dbadmin_replacement",parent.c.label,unique=True)
+    scope=DbAdminDdlFilters()
+    try:
+        await apply_target(render_target_sql(initial),scope=scope)
+        await apply_target(render_target_sql(evolved),scope=scope,preserve_data=True)
+        async with engine.connect() as connection:
+            definition=await connection.scalar(text("SELECT indexdef FROM pg_indexes WHERE indexname='ix_dbadmin_replacement'"))
+            assert "(label)" in definition
+            assert "UNIQUE" in definition
+    finally:
+        await apply_target(render_target_sql(canonical),scope=scope)
+        await engine.dispose()

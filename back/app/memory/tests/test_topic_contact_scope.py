@@ -1,4 +1,8 @@
 from __future__ import annotations
+from app.document import resource_service as documents, Document
+from app.document.schemas import DocumentPayload
+from app.document.schemas import DocumentItemCreate
+from app.memory.tests.document_fixtures import create_document_reference
 
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -20,21 +24,14 @@ from app.memory.models import (
     MemoryTopicContactItem,
     MemoryTopicContactScope,
 )
-from app.memory.schemas import (
-    MemoryAcquisitionCreate,
-    MemoryAcquisitionResult,
-    MemoryGrantUpdate,
-    MemoryItemCreate,
-    MemoryLinkCreate,
-    MemoryPayload,
-    MemoryRecallRequest,
-)
+from app.memory.schemas import MemoryAcquisitionCreate, MemoryAcquisitionResult, MemoryItemCreate, MemoryLinkCreate, MemoryPayload, MemoryRecallRequest
+from app.document.schemas import DocumentGrantUpdate
 from app.topic import TopicClassification, service as topic_service
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("access_mode", ["public", "grant", "denied"])
-async def test_contact_acquisition_checks_unloaded_target_grants(
+async def test_contact_acquisition_never_merges_private_provenance_into_a_document(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
@@ -50,26 +47,28 @@ async def test_contact_acquisition_checks_unloaded_target_grants(
             display_name="Recovery contact",
         )
     )
-    target, _ = await service.create_item(
-        MemoryItemCreate(
+    target, _ = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=peer.id,
             title="Shared operational fact",
             node_kind="document",
-            payload=MemoryPayload(text="A fact confirmed by another contact."),
+            payload=DocumentPayload(text="A fact confirmed by another contact."),
         )
     )
     if access_mode == "public":
-        target.visibility = "shared"
-        target.global_access = 1
+        canonical = await db.get(Document, target.id)
+        canonical.visibility = "shared"
+        canonical.global_access = 1
         await db.commit()
     if access_mode == "grant":
-        await service.set_item_grant(target.id, owner.id, MemoryGrantUpdate(can_write=False))
+        await documents.set_item_grant(target.id, owner.id, DocumentGrantUpdate(can_write=False))
     target_id = target.id
     original_revision = target.revision
+    owner_id = owner.id
     # Recovery starts without relationships previously loaded by the creation path.
-    db.expire(target, ["grants"])
+    db.expire_all()
     data = MemoryAcquisitionCreate(
-        agent_id=owner.id,
+        agent_id=owner_id,
         target_item_id=target_id,
         title="Confirming source",
         content="The contact confirms this fact.",
@@ -85,15 +84,14 @@ async def test_contact_acquisition_checks_unloaded_target_grants(
         with pytest.raises(service.MemoryPermissionError):
             await acquire_memory(data)
         return
-
     result = await acquire_memory(data)
-    assert result.status == "merged"
-    assert result.memory_id == target_id
-    assert await service.source_refs(target_id) == ["task:unloaded-target"]
-    assert target.revision == original_revision
-    assert await db.scalar(
-        select(MemoryContactItem).where(MemoryContactItem.item_id == target_id)
-    ) is None
+    assert result.status == "stored" and result.memory_id != target_id
+    private = await service.item_record(result.memory_id)
+    assert private.owner_agent_id == owner_id and private.node_kind == "memory"
+    assert await service.source_refs(target_id) == []
+    canonical = await documents.item_record(target_id)
+    assert canonical.revision == original_revision
+    assert await db.scalar(select(MemoryContactItem).where(MemoryContactItem.item_id == target_id)) is None
 
 
 @pytest.mark.asyncio

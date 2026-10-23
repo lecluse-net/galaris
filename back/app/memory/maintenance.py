@@ -6,7 +6,6 @@ index, while contradiction classification and aging are deterministic.
 
 from __future__ import annotations
 
-from app.share import ShareGrant
 
 import hashlib
 import re
@@ -25,17 +24,8 @@ from core.user import user_service
 
 from . import service
 from .embedding import MemoryEmbeddingNotConfiguredError, resolve_embedding_model
-from .models import (
-    MemoryContactItem,
-    MemoryEmbeddingChunk,
-    MemoryFinding,
-    MemoryItem,
-    MemoryLink,
-    MemorySource,
-    MemoryTopicContactItem,
-    DocumentAttachment,
-    MemoryUsage,
-)
+from .models import MemoryContactItem, MemoryEmbeddingChunk, MemoryFinding, MemoryItem, MemoryLink, MemorySource, MemoryTopicContactItem, MemoryUsage
+from app.document import DocumentAttachment
 from .schemas import MemoryFindingPublic
 
 
@@ -112,9 +102,9 @@ def _meaningful_at(item: MemoryItem) -> datetime:
 async def file_pair_compatible(first: MemoryItem, second: MemoryItem) -> bool:
     """Byte identity cannot widen ownership or a document's live ACL boundary."""
     if (first.owner_agent_id, first.owner_user_id, first.node_kind, first.visibility,
-        first.global_access, first.group_access, first.valid_from, first.valid_until) != (
+        first.valid_from, first.valid_until) != (
         second.owner_agent_id, second.owner_user_id, second.node_kind, second.visibility,
-        second.global_access, second.group_access, second.valid_from, second.valid_until):
+        second.valid_from, second.valid_until):
         return False
     db = get_db()
     if first.node_kind == "attachment":
@@ -123,10 +113,9 @@ async def file_pair_compatible(first: MemoryItem, second: MemoryItem) -> bool:
         ))) for item in (first, second)]
         if not parents[0] or parents[0] != parents[1]:
             return False
-    grants = [set((await db.execute(select(ShareGrant.agent_id, ShareGrant.user_id, ShareGrant.team_id, ShareGrant.can_write).where(
-        ShareGrant.share_id == item.share_id,
-    ))).all()) for item in (first, second)]
-    return grants[0] == grants[1]
+    # Documentary references have independent lifetimes and are never merged by
+    # the personal-memory maintenance engine.
+    return first.node_kind != "document"
 
 
 async def _file_candidates(item: MemoryItem) -> list[tuple[MemoryItem, float]]:
@@ -594,26 +583,6 @@ async def _merge_items(canonical: MemoryItem, duplicate: MemoryItem, finding_id:
         else:
             row.item_id = canonical.id
             existing_sources.add((row.source_kind, row.source_ref))
-
-    existing_grants = {
-        (row.agent_id, row.user_id, row.team_id): row
-        for row in (
-            await db.scalars(
-                select(ShareGrant).where(ShareGrant.share_id == canonical.share_id)
-            )
-        ).all()
-    }
-    for row in (
-        await db.scalars(
-            select(ShareGrant).where(ShareGrant.share_id == duplicate.share_id)
-        )
-    ).all():
-        existing = existing_grants.get((row.agent_id, row.user_id, row.team_id))
-        if existing is not None:
-            existing.can_write = existing.can_write or row.can_write
-            await db.delete(row)
-        else:
-            row.share_id = canonical.share_id
 
     await db.execute(delete(MemoryContactItem).where(MemoryContactItem.item_id == duplicate.id))
     await db.execute(

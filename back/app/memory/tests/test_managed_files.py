@@ -1,4 +1,10 @@
 from __future__ import annotations
+from app.memory.tests.document_fixtures import finish_document_deletion
+from app.document import resource_service as documents
+from app.memory.tests.document_fixtures import create_indexed_attachment
+from app.document.schemas import DocumentPayload
+from app.document.schemas import DocumentItemCreate
+from app.memory.tests.document_fixtures import create_document_reference, edit_document_reference
 
 from copy import deepcopy
 from uuid import UUID, uuid4
@@ -8,8 +14,10 @@ from sqlalchemy import delete, select
 
 from app.file_share.resource_contracts import ResourceContext
 from app.file_share.resource_service import resource_info, resource_list, resource_search, resource_read, materialize_resource
-from app.memory import document_attachment_service as attachments, service
-from app.memory.schemas import MemoryGrantUpdate, MemoryItemCreate, MemoryPayload
+from app.memory import service
+from app.document import document_attachment_service as attachments
+from app.memory.schemas import MemoryItemCreate, MemoryPayload
+from app.document.schemas import DocumentGrantUpdate
 from core.settings import settings
 from core.storage import FileAlias, StoredFile, file_path
 from core.storage.migration import cleanup_legacy_files, transfer_legacy_files
@@ -24,13 +32,13 @@ async def test_native_attachment_views_read_the_single_registered_name(agents, m
     from zipfile import ZipFile
     from app.dataset import service as datasets
     from app.dataset.attachments import attach_existing, list_attachments
-    from app.memory.document_export import export_document_bundle
+    from app.document.document_export import export_document_bundle
 
     owner, _ = agents
-    document, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+    document, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
         title="Synthetic shared filename", node_kind="document", media_type="text/html",
-        payload=MemoryPayload(text="<p>Preserved body</p>")))
-    attachment = await attachments.add_document_attachment_bytes(document.id, actor_agent_id=owner.id,
+        payload=DocumentPayload(text="<p>Preserved body</p>")))
+    attachment = await create_indexed_attachment(document.id, actor_agent_id=owner.id,
         name="Original.txt", media_type="text/plain", content=b"Synthetic shared bytes")
     dataset = await datasets.create(owner.id, title="Synthetic file references", content="{}")
     reference_uri = f"file://{attachment.id}" if reference_scheme == "file" else f"document://{document.id}/attachments/{attachment.id}"
@@ -102,11 +110,11 @@ async def test_standalone_upload_is_private_renameable_and_reuses_thumbnail_engi
 @pytest.mark.asyncio
 async def test_document_attachment_registry_keeps_acl_retained_bytes_and_old_links(agents, memory_storage, db, tmp_path):
     owner, stranger = agents
-    item, _ = await service.create_item(MemoryItemCreate(
+    item, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, title="Synthetic report", node_kind="document", media_type="text/html",
-        payload=MemoryPayload(text="<p>Synthetic body</p>"),
+        payload=DocumentPayload(text="<p>Synthetic body</p>"),
     ))
-    attachment = await attachments.add_document_attachment_bytes(item.id, actor_agent_id=owner.id,
+    attachment = await create_indexed_attachment(item.id, actor_agent_id=owner.id,
         name="Synthetic appendix.txt", media_type="text/plain", content=b"synthetic appendix")
     record = await db.get(StoredFile, attachment.id)
     assert record is not None and record.name == attachment.name
@@ -119,9 +127,9 @@ async def test_document_attachment_registry_keeps_acl_retained_bytes_and_old_lin
     denied = ResourceContext(agent_id=stranger.id, runtime="internal")
     assert uri not in {entry.uri for entry in (await resource_list(denied, "file://")).entries}
     assert not (await resource_search(denied, "file://", "Synthetic appendix", mode="name")).hits
-    await service.set_item_grant(item.id, stranger.id, MemoryGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    await documents.set_item_grant(item.id, stranger.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
     assert uri in {entry.uri for entry in (await resource_list(denied, "file://")).entries}
-    await service.remove_item_grant(item.id, stranger.id, actor_agent_id=owner.id)
+    await documents.remove_item_grant(item.id, stranger.id, actor_agent_id=owner.id)
     assert uri not in {entry.uri for entry in (await resource_list(denied, "file://")).entries}
     assert not (await resource_search(denied, "file://", "Synthetic appendix", mode="name")).hits
     with pytest.raises(PermissionError):
@@ -135,13 +143,13 @@ async def test_document_attachment_registry_keeps_acl_retained_bytes_and_old_lin
     assert result.size == len(b"synthetic appendix")
     assert destination.read_bytes() == b"synthetic appendix"
     assert file_path(attachment.id).is_file()
-    await service.delete_document(item.id, actor_agent_id=owner.id)
+    await finish_document_deletion(item.id, actor_agent_id=owner.id)
     assert not file_path(attachment.id).exists()
     assert uri not in {entry.uri for entry in (await resource_list(ctx, "file://")).entries}
     assert not (await resource_search(ctx, "file://", "Synthetic appendix", mode="name")).hits
     with pytest.raises((PermissionError, FileNotFoundError)):
         await resource_read(ctx, uri)
-    with pytest.raises(service.MemoryNotFoundError):
+    with pytest.raises(documents.DocumentNotFoundError):
         await resource_read(ctx, f"document://{item.id}/attachments/{attachment.id}")
     assert str(attachment.id) not in {source.uuid for source in await legacy_inventory(db)}, (
         "Forgotten document pointers must not become missing legacy migration sources"
@@ -163,12 +171,12 @@ async def test_file_root_paginates_accessible_attachments_without_duplicates_or_
     decoy = await resource_create(ctx, "file://", b"Synthetic different name", name="SameXX.txt")
     expected = {standalone.uri}
     for agent in (owner, stranger):
-        document, _ = await service.create_item(MemoryItemCreate(
+        document, _ = await create_document_reference(DocumentItemCreate(
             owner_agent_id=agent.id, title="Synthetic paginated files", node_kind="document", media_type="text/html",
-            payload=MemoryPayload(text="<p>Synthetic body</p>"),
+            payload=DocumentPayload(text="<p>Synthetic body</p>"),
         ))
         for index in range(3):
-            attachment = await attachments.add_document_attachment_bytes(document.id, actor_agent_id=agent.id,
+            attachment = await create_indexed_attachment(document.id, actor_agent_id=agent.id,
                 name="Same_%.txt", media_type="text/plain", content=f"Synthetic appendix {index}".encode())
             # A stale reference must neither hide the valid alias nor duplicate the file.
             db.add(FileAlias(file_id=attachment.id, uri=f"document://{UUID(int=1)}/attachments/{attachment.id}"))
@@ -210,9 +218,9 @@ async def test_migration_preserves_document_body_history_and_never_fetches_exter
 
     monkeypatch.setattr(type(settings), "GALARIS_MEMORY_ROOT", str(memory_storage))
     owner, _ = agents
-    item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
-        title="Synthetic migration", node_kind="document", media_type="text/html", payload=MemoryPayload(text="<p>Body to preserve</p>")))
-    attachment = await attachments.add_document_attachment_bytes(item.id, actor_agent_id=owner.id,
+    item, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
+        title="Synthetic migration", node_kind="document", media_type="text/html", payload=DocumentPayload(text="<p>Body to preserve</p>")))
+    attachment = await create_indexed_attachment(item.id, actor_agent_id=owner.id,
         name="Historical.txt", media_type="text/plain", content=b"historical attachment")
     await attachments.delete_document_attachment(item.id, attachment.id, actor_agent_id=owner.id)
     snapshot = deepcopy(item.metadata_)
@@ -363,12 +371,12 @@ async def test_shared_document_bytes_do_not_consume_the_chat_quota(agents, memor
     await storage.store_upload(UploadFile(filename="Chat.txt", file=BytesIO(b"small chat payload")), identifier)
     assert await storage.read_bytes(identifier) == b"small chat payload"
     # Deleted document bytes must not leave a quota credit after their physical purge.
-    document, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+    document, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
         title="Synthetic quota document", node_kind="document", media_type="text/html",
-        payload=MemoryPayload(text="<p>Temporary appendix</p>")))
-    await attachments.add_document_attachment_bytes(document.id, actor_agent_id=owner.id,
+        payload=DocumentPayload(text="<p>Temporary appendix</p>")))
+    await create_indexed_attachment(document.id, actor_agent_id=owner.id,
         name="Temporary.txt", media_type="text/plain", content=content)
-    await service.delete_document(document.id, actor_agent_id=owner.id)
+    await finish_document_deletion(document.id, actor_agent_id=owner.id)
     await storage.store_upload(UploadFile(filename="Within.txt", file=BytesIO(b"x" * 750_000)), uuid4())
     with pytest.raises(storage.AttachmentStorageFullError):
         await storage.store_upload(UploadFile(filename="Beyond.txt", file=BytesIO(b"x" * 300_000)), uuid4())
@@ -405,22 +413,22 @@ async def test_populated_upgrade_through_dbadmin_preserves_content_and_resumes_a
     owner = Agent(title=title, code=f"upgrade-{uuid4().hex}", first_name="Synthetic", last_name="Owner", agent_driver="internal")
     db.add(owner)
     await db.flush()
-    document, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+    document, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
         title="Synthetic upgrade document", node_kind="document", media_type="text/html",
-        payload=MemoryPayload(text="<p>Original document revision</p>")))
-    attachment = await attachments.add_document_attachment_bytes(document.id, actor_agent_id=owner.id,
+        payload=DocumentPayload(text="<p>Original document revision</p>")))
+    attachment = await create_indexed_attachment(document.id, actor_agent_id=owner.id,
         name="Preserved appendix.txt", media_type="text/plain", content=b"preserved appendix")
     await attachments.delete_document_attachment(document.id, attachment.id, actor_agent_id=owner.id)
-    await service.update_item(document.id, MemoryItemUpdate(payload=MemoryPayload(text="<p>Current document revision</p>")), actor_agent_id=owner.id)
+    await edit_document_reference(document.id, MemoryItemUpdate(payload=MemoryPayload(text="<p>Current document revision</p>")), actor_agent_id=owner.id)
     memory, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
         title="Synthetic independent memory", payload=MemoryPayload(text="<p>Original memory</p>")))
     await service.update_item(memory.id, MemoryItemUpdate(payload=MemoryPayload(text="<p>Current memory</p>")), actor_agent_id=owner.id)
-    forgotten, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+    forgotten, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
         title="Synthetic previously deleted document", node_kind="document", media_type="text/html",
-        payload=MemoryPayload(text="<p>Already forgotten before upgrade</p>")))
-    forgotten_attachment = await attachments.add_document_attachment_bytes(forgotten.id, actor_agent_id=owner.id,
+        payload=DocumentPayload(text="<p>Already forgotten before upgrade</p>")))
+    forgotten_attachment = await create_indexed_attachment(forgotten.id, actor_agent_id=owner.id,
         name="Already removed.txt", media_type="text/plain", content=b"already removed before upgrade")
-    await service.delete_document(forgotten.id, actor_agent_id=owner.id)
+    await finish_document_deletion(forgotten.id, actor_agent_id=owner.id)
     assert not file_path(forgotten_attachment.id).exists()
 
     tool = await db.scalar(select(ToolModel).where(ToolModel.code == "chat"))
@@ -451,7 +459,7 @@ async def test_populated_upgrade_through_dbadmin_preserves_content_and_resumes_a
 
     async def business_snapshot():
         snapshot = {}
-        for table in ("memory_items", "memory_revisions", "memory_summary_revisions", "documents",
+        for table in ("memory_items", "memory_revisions", "document_summary_revisions", "documents",
                       "document_revisions", "document_attachments", "messenger_files",
                       "messenger_messages", "messenger_message_files"):
             rows = await db.scalars(text(f"SELECT to_jsonb(t)::text FROM {table} t ORDER BY to_jsonb(t)::text"))

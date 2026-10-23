@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # These are storage bindings for the one cross-domain schema transfer, not
 # runtime resource dispatch. No domain ORM or business service is imported.
 _SOURCES = {
+    "documents": ("document", ()),
+    "document_tags": ("document", ()),
     "memory_items": (
         "memory",
         (
@@ -145,19 +147,41 @@ async def transfer_resource_acl(session: AsyncSession, table: str) -> None:
 
 
 async def transfer(session: AsyncSession) -> None:
-    for table in _SOURCES:
-        await transfer_resource_acl(session, table)
+    for table in ("memory_items", *(table for table in _SOURCES if table != "memory_items")):
+        if await _has_column(session, table, "share_id"):
+            await transfer_resource_acl(session, table)
+
+
+async def _has_column(session: AsyncSession, table: str, column: str) -> bool:
+    return bool(await session.scalar(text(
+        "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+        "WHERE table_schema='public' AND table_name=:table AND column_name=:column)"
+    ), {"table": table, "column": column}))
 
 
 async def complete(session: AsyncSession) -> bool:
-    for table in (*_SOURCES, "documents"):
+    for table in _SOURCES:
+        # Memory is only an old-schema migration source, never a policy owner in
+        # the canonical target. Its source columns survive expansion until verified.
+        if not await _has_column(session, table, "share_id"):
+            continue
         if await session.scalar(
             text(
                 f"SELECT EXISTS (SELECT 1 FROM public.{table} r LEFT JOIN public.share_configs s ON s.id = r.share_id WHERE r.share_id IS NULL OR s.id IS NULL OR s.resource_kind IS DISTINCT FROM r.share_kind)"
             )
         ):
             return False
-    return not await session.scalar(
-        text("""SELECT EXISTS (SELECT 1 FROM public.documents d
-        JOIN public.memory_items m ON m.id = d.memory_item_id WHERE d.share_id IS DISTINCT FROM m.share_id)""")
-    )
+    if await _has_column(session, "documents", "memory_item_id") and await _has_column(session, "memory_items", "share_id"):
+        if await session.scalar(text("""SELECT EXISTS (SELECT 1 FROM public.documents d
+            JOIN public.memory_items m ON m.id = d.memory_item_id
+            WHERE d.share_id IS DISTINCT FROM m.share_id)""")):
+            return False
+    # Canonical policies are exclusive to one document, folder, dataset or process.
+    # Checking live owners catches an incorrectly reused policy even when every FK
+    # happens to point to a valid configuration.
+    return not bool(await session.scalar(text("""SELECT EXISTS (
+        SELECT share_id FROM (
+            SELECT share_id FROM documents UNION ALL SELECT share_id FROM document_tags
+            UNION ALL SELECT share_id FROM datasets UNION ALL SELECT share_id FROM process_definitions
+        ) owners WHERE share_id IS NOT NULL GROUP BY share_id HAVING count(*) > 1
+    )""")))

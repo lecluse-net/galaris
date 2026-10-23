@@ -1038,6 +1038,20 @@
           "back/app/dataset/apps.py",
           "back/app/dataset/attachments.py",
           "back/app/dataset/bootstrap.py",
+          "back/app/dataset/compatibility.py",
+          "back/app/dataset/migration.py",
+          "back/app/dataset/projection.py",
+          "back/app/dataset/provider.py",
+          "back/app/dataset/router.py"
+        ],
+        "source": "app.dataset",
+        "target": "app.document"
+      },
+      {
+        "files": [
+          "back/app/dataset/apps.py",
+          "back/app/dataset/attachments.py",
+          "back/app/dataset/bootstrap.py",
           "back/app/dataset/provider.py",
           "back/app/dataset/values.py"
         ],
@@ -1046,12 +1060,6 @@
       },
       {
         "files": [
-          "back/app/dataset/apps.py",
-          "back/app/dataset/attachments.py",
-          "back/app/dataset/bootstrap.py",
-          "back/app/dataset/compatibility.py",
-          "back/app/dataset/migration.py",
-          "back/app/dataset/projection.py",
           "back/app/dataset/provider.py",
           "back/app/dataset/router.py",
           "back/app/dataset/service.py"
@@ -1161,6 +1169,285 @@
       },
       {
         "files": [
+          "back/app/document/access.py",
+          "back/app/document/assertions.py",
+          "back/app/document/bootstrap.py",
+          "back/app/document/dataset_attachments.py",
+          "back/app/document/dataset_port.py",
+          "back/app/document/dataset_references.py",
+          "back/app/document/dataset_usage.py",
+          "back/app/document/document_app_service.py",
+          "back/app/document/document_icons.py",
+          "back/app/document/document_nesting.py",
+          "back/app/document/document_order.py",
+          "back/app/document/document_policy.py",
+          "back/app/document/document_service.py",
+          "back/app/document/document_sharing.py",
+          "back/app/document/document_tags.py",
+          "back/app/document/events.py",
+          "back/app/document/folder_sharing.py",
+          "back/app/document/goal_document_adapter.py",
+          "back/app/document/goal_folders.py",
+          "back/app/document/internal_attachments.py",
+          "back/app/document/item_sharing.py",
+          "back/app/document/library_queries.py",
+          "back/app/document/process_references.py",
+          "back/app/document/resource_service.py",
+          "back/app/document/router.py",
+          "back/app/document/sharing_inheritance.py",
+          "back/app/document/topic_assignment.py",
+          "back/app/document/workflow_documents.py"
+        ],
+        "source": "app.document",
+        "target": "app.agent"
+      },
+      {
+        "files": [
+          "back/app/document/bootstrap.py",
+          "back/app/document/conversation_document_adapter.py",
+          "back/app/document/resource_service.py"
+        ],
+        "source": "app.document",
+        "target": "app.conversation"
+      },
+      {
+        "files": [
+          "back/app/document/bootstrap.py",
+          "back/app/document/dbadmin.py",
+          "back/app/document/goal_document_adapter.py",
+          "back/app/document/goal_folders.py"
+        ],
+        "source": "app.document",
+        "target": "app.goal"
+      },
+      {
+        "files": [
+          "back/app/document/internal_attachments.py",
+          "back/app/document/process_references.py"
+        ],
+        "source": "app.document",
+        "target": "app.process"
+      },
+      {
+        "files": [
+          "back/app/document/access.py",
+          "back/app/document/dataset_migration.py",
+          "back/app/document/dataset_port.py",
+          "back/app/document/folder_sharing.py",
+          "back/app/document/goal_document_adapter.py",
+          "back/app/document/item_sharing.py",
+          "back/app/document/models.py",
+          "back/app/document/process_migration.py",
+          "back/app/document/resource_service.py",
+          "back/app/document/schemas.py",
+          "back/app/document/sharing_inheritance.py"
+        ],
+        "source": "app.document",
+        "target": "app.share"
+      },
+      {
+        "files": [
+          "back/app/document/goal_folders.py",
+          "back/app/document/resource_service.py"
+        ],
+        "source": "app.document",
+        "target": "app.task"
+      },
+      {
+        "files": [
+          "back/app/document/item_sharing.py",
+          "back/app/document/mcp.py"
+        ],
+        "source": "app.document",
+        "target": "app.tools"
+      },
+      {
+        "files": [
+          "back/app/document/access.py",
+          "back/app/document/assertions.py",
+          "back/app/document/dataset_usage.py",
+          "back/app/document/document_policy.py",
+          "back/app/document/goal_folders.py",
+          "back/app/document/item_sharing.py",
+          "back/app/document/router.py"
+        ],
+        "source": "app.document",
+        "target": "core.authorize"
+      },
+      {
+        "files": [
+          "back/app/document/access.py",
+          "back/app/document/automation.py",
+          "back/app/document/conversation_document_adapter.py",
+          "back/app/document/dataset_attachments.py",
+          "back/app/document/dataset_migration.py",
+          "back/app/document/dataset_port.py",
+          "back/app/document/dataset_references.py",
+          "back/app/document/dataset_usage.py",
+          "back/app/document/document_app_security.py",
+          "back/app/document/document_app_service.py",
+          "back/app/document/document_attachment_service.py",
+          "back/app/document/document_icons.py",
+          "back/app/document/document_library_filters.py",
+          "back/app/document/document_nesting.py",
+          "back/app/document/document_order.py",
+          "back/app/document/document_service.py",
+          "back/app/document/document_structure.py",
+          "back/app/document/document_tags.py",
+          "back/app/document/document_thumbnail_service.py",
+          "back/app/document/events.py",
+          "back/app/document/file_facade.py",
+          "back/app/document/folder_sharing.py",
+          "back/app/document/goal_document_adapter.py",
+          "back/app/document/goal_folders.py",
+          "back/app/document/inline_content.py",
+          "back/app/document/interface.py",
+          "back/app/document/item_sharing.py",
+          "back/app/document/library_queries.py",
+          "back/app/document/lifecycle.py",
+          "back/app/document/models.py",
+          "back/app/document/process_migration.py",
+          "back/app/document/query_policy.py",
+          "back/app/document/resource_service.py",
+          "back/app/document/revision_queries.py",
+          "back/app/document/router.py",
+          "back/app/document/sharing_inheritance.py",
+          "back/app/document/summary_service.py",
+          "back/app/document/topic_assignment.py",
+          "back/app/document/workflow_documents.py"
+        ],
+        "source": "app.document",
+        "target": "core.database"
+      },
+      {
+        "files": [
+          "back/app/document/dbadmin.py",
+          "back/app/document/document_backup.py",
+          "back/app/document/independence.py",
+          "back/app/document/privilege_migration.py",
+          "back/app/document/tool_migration.py"
+        ],
+        "source": "app.document",
+        "target": "core.dbadmin"
+      },
+      {
+        "files": [
+          "back/app/document/document_thumbnail_service.py"
+        ],
+        "source": "app.document",
+        "target": "core.document"
+      },
+      {
+        "files": [
+          "back/app/document/goal_document_adapter.py",
+          "back/app/document/goal_folders.py",
+          "back/app/document/resource_service.py"
+        ],
+        "source": "app.document",
+        "target": "core.i18n"
+      },
+      {
+        "files": [
+          "back/app/document/document_attachment_service.py",
+          "back/app/document/document_thumbnail_service.py",
+          "back/app/document/tag_icons.py"
+        ],
+        "source": "app.document",
+        "target": "core.params"
+      },
+      {
+        "files": [
+          "back/app/document/document_export.py",
+          "back/app/document/document_image_import.py",
+          "back/app/document/document_links.py",
+          "back/app/document/document_thumbnail_service.py",
+          "back/app/document/router.py"
+        ],
+        "source": "app.document",
+        "target": "core.preview"
+      },
+      {
+        "files": [
+          "back/app/document/document_thumbnail_cache.py"
+        ],
+        "source": "app.document",
+        "target": "core.settings"
+      },
+      {
+        "files": [
+          "back/app/document/automation.py",
+          "back/app/document/dataset_migration.py",
+          "back/app/document/document_attachment_service.py",
+          "back/app/document/goal_document_adapter.py",
+          "back/app/document/inline_content.py",
+          "back/app/document/process_migration.py",
+          "back/app/document/resource_service.py",
+          "back/app/document/router.py",
+          "back/app/document/summary_service.py",
+          "back/app/document/topic_assignment.py"
+        ],
+        "source": "app.document",
+        "target": "core.storage"
+      },
+      {
+        "files": [
+          "back/app/document/access.py",
+          "back/app/document/bootstrap.py",
+          "back/app/document/sharing_inheritance.py"
+        ],
+        "source": "app.document",
+        "target": "core.team"
+      },
+      {
+        "files": [
+          "back/app/document/access.py",
+          "back/app/document/bootstrap.py",
+          "back/app/document/dataset_attachments.py",
+          "back/app/document/dataset_port.py",
+          "back/app/document/dataset_references.py",
+          "back/app/document/dataset_usage.py",
+          "back/app/document/document_attachment_service.py",
+          "back/app/document/document_export.py",
+          "back/app/document/document_image_import.py",
+          "back/app/document/document_links.py",
+          "back/app/document/document_policy.py",
+          "back/app/document/document_sharing.py",
+          "back/app/document/document_thumbnail_service.py",
+          "back/app/document/events.py",
+          "back/app/document/goal_document_adapter.py",
+          "back/app/document/goal_folders.py",
+          "back/app/document/interface.py",
+          "back/app/document/internal_attachments.py",
+          "back/app/document/item_sharing.py",
+          "back/app/document/library_queries.py",
+          "back/app/document/process_references.py",
+          "back/app/document/resource_service.py",
+          "back/app/document/router.py",
+          "back/app/document/sharing_inheritance.py",
+          "back/app/document/summary_service.py",
+          "back/app/document/workflow_documents.py"
+        ],
+        "source": "app.document",
+        "target": "core.user"
+      },
+      {
+        "files": [
+          "back/app/document/document_attachment_service.py",
+          "back/app/document/document_links.py",
+          "back/app/document/document_service.py",
+          "back/app/document/document_thumbnail_service.py",
+          "back/app/document/file_facade.py",
+          "back/app/document/models.py",
+          "back/app/document/resource_service.py",
+          "back/app/document/router.py",
+          "back/app/document/schemas.py",
+          "back/app/document/topic_assignment.py"
+        ],
+        "source": "app.document",
+        "target": "core.util"
+      },
+      {
+        "files": [
           "back/app/documentation/__main__.py",
           "back/app/documentation/models.py",
           "back/app/documentation/search.py"
@@ -1210,6 +1497,21 @@
       },
       {
         "files": [
+          "back/app/dream/manual.py",
+          "back/app/dream/mechanisms/document_structure.py",
+          "back/app/dream/mechanisms/file_thumbnails.py",
+          "back/app/dream/mechanisms/memory_extraction.py",
+          "back/app/dream/mechanisms/resource_topic_classification.py",
+          "back/app/dream/mechanisms/task_outcome_reflection.py",
+          "back/app/dream/monitoring_service.py",
+          "back/app/dream/outcome_evidence.py",
+          "back/app/dream/router.py"
+        ],
+        "source": "app.dream",
+        "target": "app.document"
+      },
+      {
+        "files": [
           "back/app/dream/outcome_evidence.py"
         ],
         "source": "app.dream",
@@ -1251,11 +1553,9 @@
           "back/app/dream/mechanisms/memory_extraction.py",
           "back/app/dream/mechanisms/memory_maintenance.py",
           "back/app/dream/mechanisms/process_memory.py",
-          "back/app/dream/mechanisms/resource_topic_classification.py",
           "back/app/dream/mechanisms/stale_memory.py",
           "back/app/dream/mechanisms/task_memory.py",
           "back/app/dream/mechanisms/task_outcome_reflection.py",
-          "back/app/dream/monitoring_service.py",
           "back/app/dream/outcome_evidence.py",
           "back/app/dream/router.py",
           "back/app/dream/scheduler.py"
@@ -1477,6 +1777,18 @@
       },
       {
         "files": [
+          "back/app/file_share/__init__.py",
+          "back/app/file_share/browser.py",
+          "back/app/file_share/browser_router.py",
+          "back/app/file_share/catalogue_resources.py",
+          "back/app/file_share/managed_files.py",
+          "back/app/file_share/resource_service.py"
+        ],
+        "source": "app.file_share",
+        "target": "app.document"
+      },
+      {
+        "files": [
           "back/app/file_share/documentation_provider.py"
         ],
         "source": "app.file_share",
@@ -1499,7 +1811,6 @@
       {
         "files": [
           "back/app/file_share/__init__.py",
-          "back/app/file_share/browser.py",
           "back/app/file_share/browser_router.py",
           "back/app/file_share/catalogue.py",
           "back/app/file_share/catalogue_resources.py",
@@ -2120,6 +2431,14 @@
       },
       {
         "files": [
+          "back/app/lab/process_evaluation.py",
+          "back/app/lab/process_evaluation_router.py"
+        ],
+        "source": "app.lab",
+        "target": "app.document"
+      },
+      {
+        "files": [
           "back/app/lab/contracts.py",
           "back/app/lab/mechanism_evaluation_service.py",
           "back/app/lab/mechanism_registry.py",
@@ -2160,7 +2479,6 @@
       {
         "files": [
           "back/app/lab/mechanism_evaluation_service.py",
-          "back/app/lab/process_evaluation.py",
           "back/app/lab/process_evaluation_router.py"
         ],
         "source": "app.lab",
@@ -2635,42 +2953,18 @@
           "back/app/memory/automation.py",
           "back/app/memory/bootstrap.py",
           "back/app/memory/conversation_summary.py",
-          "back/app/memory/dataset_attachments.py",
-          "back/app/memory/dataset_port.py",
-          "back/app/memory/dataset_references.py",
-          "back/app/memory/dataset_usage.py",
-          "back/app/memory/document_app_service.py",
-          "back/app/memory/document_icons.py",
-          "back/app/memory/document_nesting.py",
-          "back/app/memory/document_order.py",
-          "back/app/memory/document_policy.py",
-          "back/app/memory/document_service.py",
-          "back/app/memory/document_sharing.py",
-          "back/app/memory/document_tags.py",
           "back/app/memory/dream_actions.py",
           "back/app/memory/events.py",
-          "back/app/memory/folder_sharing.py",
-          "back/app/memory/goal_document_adapter.py",
-          "back/app/memory/goal_folders.py",
           "back/app/memory/graph_state.py",
-          "back/app/memory/internal_attachments.py",
-          "back/app/memory/item_sharing.py",
-          "back/app/memory/library_queries.py",
-          "back/app/memory/process_references.py",
           "back/app/memory/router.py",
           "back/app/memory/service.py",
-          "back/app/memory/sharing_inheritance.py",
-          "back/app/memory/source_projection.py",
-          "back/app/memory/topic_assignment.py",
-          "back/app/memory/workflow_documents.py"
+          "back/app/memory/source_projection.py"
         ],
         "source": "app.memory",
         "target": "app.agent"
       },
       {
         "files": [
-          "back/app/memory/bootstrap.py",
-          "back/app/memory/conversation_document_adapter.py",
           "back/app/memory/link_reconciliation.py",
           "back/app/memory/recall_scope.py",
           "back/app/memory/service.py"
@@ -2680,10 +2974,29 @@
       },
       {
         "files": [
+          "back/app/memory/access.py",
+          "back/app/memory/admission.py",
+          "back/app/memory/attachment_analysis.py",
+          "back/app/memory/attachment_description.py",
+          "back/app/memory/automation.py",
           "back/app/memory/bootstrap.py",
-          "back/app/memory/dbadmin.py",
-          "back/app/memory/goal_document_adapter.py",
-          "back/app/memory/goal_folders.py",
+          "back/app/memory/document_projection.py",
+          "back/app/memory/document_structure.py",
+          "back/app/memory/dream_actions.py",
+          "back/app/memory/facade.py",
+          "back/app/memory/maintenance.py",
+          "back/app/memory/models.py",
+          "back/app/memory/router.py",
+          "back/app/memory/semantic_index.py",
+          "back/app/memory/service.py",
+          "back/app/memory/source_access.py"
+        ],
+        "source": "app.memory",
+        "target": "app.document"
+      },
+      {
+        "files": [
+          "back/app/memory/bootstrap.py",
           "back/app/memory/link_reconciliation.py",
           "back/app/memory/source_projection.py"
         ],
@@ -2702,39 +3015,15 @@
       },
       {
         "files": [
-          "back/app/memory/internal_attachments.py",
           "back/app/memory/link_reconciliation.py",
-          "back/app/memory/process_projection.py",
-          "back/app/memory/process_references.py"
+          "back/app/memory/process_projection.py"
         ],
         "source": "app.memory",
         "target": "app.process"
       },
       {
         "files": [
-          "back/app/memory/access.py",
-          "back/app/memory/dataset_migration.py",
-          "back/app/memory/dataset_port.py",
-          "back/app/memory/deduplication.py",
-          "back/app/memory/document_migration.py",
-          "back/app/memory/folder_sharing.py",
-          "back/app/memory/goal_document_adapter.py",
-          "back/app/memory/item_sharing.py",
-          "back/app/memory/maintenance.py",
-          "back/app/memory/models.py",
-          "back/app/memory/process_migration.py",
-          "back/app/memory/schemas.py",
-          "back/app/memory/service.py",
-          "back/app/memory/sharing_inheritance.py",
-          "back/app/memory/topic_ranking.py"
-        ],
-        "source": "app.memory",
-        "target": "app.share"
-      },
-      {
-        "files": [
           "back/app/memory/automation.py",
-          "back/app/memory/goal_folders.py",
           "back/app/memory/link_reconciliation.py",
           "back/app/memory/mcp.py",
           "back/app/memory/recall_scope.py",
@@ -2745,7 +3034,6 @@
       },
       {
         "files": [
-          "back/app/memory/item_sharing.py",
           "back/app/memory/mcp.py"
         ],
         "source": "app.memory",
@@ -2767,12 +3055,7 @@
       },
       {
         "files": [
-          "back/app/memory/access.py",
           "back/app/memory/assertions.py",
-          "back/app/memory/dataset_usage.py",
-          "back/app/memory/document_policy.py",
-          "back/app/memory/goal_folders.py",
-          "back/app/memory/item_sharing.py",
           "back/app/memory/router.py"
         ],
         "source": "app.memory",
@@ -2788,58 +3071,33 @@
           "back/app/memory/automation.py",
           "back/app/memory/catalogue_projection.py",
           "back/app/memory/contact_directory.py",
-          "back/app/memory/conversation_document_adapter.py",
-          "back/app/memory/dataset_attachments.py",
-          "back/app/memory/dataset_migration.py",
-          "back/app/memory/dataset_port.py",
-          "back/app/memory/dataset_references.py",
-          "back/app/memory/dataset_usage.py",
           "back/app/memory/deduplication.py",
-          "back/app/memory/document_app_security.py",
-          "back/app/memory/document_app_service.py",
-          "back/app/memory/document_attachment_service.py",
-          "back/app/memory/document_icons.py",
-          "back/app/memory/document_library_filters.py",
-          "back/app/memory/document_nesting.py",
-          "back/app/memory/document_order.py",
-          "back/app/memory/document_service.py",
+          "back/app/memory/document_projection.py",
           "back/app/memory/document_structure.py",
-          "back/app/memory/document_tags.py",
-          "back/app/memory/document_thumbnail_service.py",
           "back/app/memory/dream_actions.py",
           "back/app/memory/events.py",
           "back/app/memory/facade.py",
-          "back/app/memory/folder_sharing.py",
-          "back/app/memory/goal_document_adapter.py",
-          "back/app/memory/goal_folders.py",
           "back/app/memory/graph_state.py",
           "back/app/memory/html_migration.py",
           "back/app/memory/inline_content.py",
-          "back/app/memory/item_sharing.py",
           "back/app/memory/library_queries.py",
           "back/app/memory/link_reconciliation.py",
           "back/app/memory/maintenance.py",
           "back/app/memory/messenger_contact.py",
           "back/app/memory/models.py",
-          "back/app/memory/process_migration.py",
+          "back/app/memory/native_content.py",
           "back/app/memory/process_projection.py",
           "back/app/memory/query_policy.py",
           "back/app/memory/retrieval.py",
-          "back/app/memory/revision_queries.py",
-          "back/app/memory/router.py",
           "back/app/memory/semantic_index.py",
           "back/app/memory/service.py",
-          "back/app/memory/sharing_inheritance.py",
           "back/app/memory/source_access.py",
           "back/app/memory/source_projection.py",
-          "back/app/memory/storage_reconciliation.py",
-          "back/app/memory/topic_assignment.py",
           "back/app/memory/topic_maintenance.py",
           "back/app/memory/topic_ranking.py",
           "back/app/memory/urls.py",
           "back/app/memory/usage.py",
-          "back/app/memory/vector.py",
-          "back/app/memory/workflow_documents.py"
+          "back/app/memory/vector.py"
         ],
         "source": "app.memory",
         "target": "core.database"
@@ -2848,8 +3106,6 @@
         "files": [
           "back/app/memory/content_migration.py",
           "back/app/memory/dbadmin.py",
-          "back/app/memory/document_backup.py",
-          "back/app/memory/document_migration.py",
           "back/app/memory/file_attributes_migration.py",
           "back/app/memory/html_migration.py",
           "back/app/memory/url_migration.py"
@@ -2859,18 +3115,8 @@
       },
       {
         "files": [
-          "back/app/memory/document_thumbnail_service.py"
-        ],
-        "source": "app.memory",
-        "target": "core.document"
-      },
-      {
-        "files": [
           "back/app/memory/automation.py",
-          "back/app/memory/goal_document_adapter.py",
-          "back/app/memory/goal_folders.py",
-          "back/app/memory/mcp.py",
-          "back/app/memory/service.py"
+          "back/app/memory/mcp.py"
         ],
         "source": "app.memory",
         "target": "core.i18n"
@@ -2882,52 +3128,38 @@
           "back/app/memory/bootstrap.py",
           "back/app/memory/context.py",
           "back/app/memory/deduplication.py",
-          "back/app/memory/document_attachment_service.py",
-          "back/app/memory/document_thumbnail_service.py",
           "back/app/memory/maintenance.py",
           "back/app/memory/retrieval.py",
           "back/app/memory/router.py",
-          "back/app/memory/service.py",
-          "back/app/memory/storage.py",
-          "back/app/memory/tag_icons.py"
+          "back/app/memory/service.py"
         ],
         "source": "app.memory",
         "target": "core.params"
       },
       {
         "files": [
-          "back/app/memory/document_export.py",
-          "back/app/memory/document_image_import.py",
-          "back/app/memory/document_links.py",
-          "back/app/memory/document_thumbnail_service.py",
-          "back/app/memory/router.py"
-        ],
-        "source": "app.memory",
-        "target": "core.preview"
-      },
-      {
-        "files": [
-          "back/app/memory/document_thumbnail_cache.py"
-        ],
-        "source": "app.memory",
-        "target": "core.settings"
-      },
-      {
-        "files": [
+          "back/app/memory/__init__.py",
           "back/app/memory/attachment_analysis.py",
-          "back/app/memory/document_attachment_service.py",
-          "back/app/memory/router.py",
+          "back/app/memory/attachment_description.py",
+          "back/app/memory/automation.py",
+          "back/app/memory/catalogue_projection.py",
+          "back/app/memory/content_migration.py",
+          "back/app/memory/contracts.py",
+          "back/app/memory/document_structure.py",
+          "back/app/memory/html_migration.py",
+          "back/app/memory/inline_content.py",
+          "back/app/memory/native_content.py",
+          "back/app/memory/semantic_index.py",
           "back/app/memory/service.py",
-          "back/app/memory/storage.py"
+          "back/app/memory/source_projection.py",
+          "back/app/memory/storage_reconciliation.py"
         ],
         "source": "app.memory",
         "target": "core.storage"
       },
       {
         "files": [
-          "back/app/memory/access.py",
-          "back/app/memory/bootstrap.py",
-          "back/app/memory/sharing_inheritance.py"
+          "back/app/memory/bootstrap.py"
         ],
         "source": "app.memory",
         "target": "core.team"
@@ -2935,31 +3167,11 @@
       {
         "files": [
           "back/app/memory/access.py",
-          "back/app/memory/bootstrap.py",
           "back/app/memory/contact_directory.py",
-          "back/app/memory/dataset_attachments.py",
-          "back/app/memory/dataset_port.py",
-          "back/app/memory/dataset_references.py",
-          "back/app/memory/dataset_usage.py",
-          "back/app/memory/document_attachment_service.py",
-          "back/app/memory/document_export.py",
-          "back/app/memory/document_image_import.py",
-          "back/app/memory/document_links.py",
-          "back/app/memory/document_policy.py",
-          "back/app/memory/document_sharing.py",
-          "back/app/memory/document_thumbnail_service.py",
           "back/app/memory/events.py",
-          "back/app/memory/goal_document_adapter.py",
-          "back/app/memory/goal_folders.py",
-          "back/app/memory/internal_attachments.py",
-          "back/app/memory/item_sharing.py",
-          "back/app/memory/library_queries.py",
           "back/app/memory/maintenance.py",
-          "back/app/memory/process_references.py",
           "back/app/memory/router.py",
-          "back/app/memory/service.py",
-          "back/app/memory/sharing_inheritance.py",
-          "back/app/memory/workflow_documents.py"
+          "back/app/memory/service.py"
         ],
         "source": "app.memory",
         "target": "core.user"
@@ -2972,12 +3184,7 @@
           "back/app/memory/catalogue_projection.py",
           "back/app/memory/content_migration.py",
           "back/app/memory/context.py",
-          "back/app/memory/document_attachment_service.py",
-          "back/app/memory/document_links.py",
-          "back/app/memory/document_migration.py",
-          "back/app/memory/document_service.py",
           "back/app/memory/document_structure.py",
-          "back/app/memory/document_thumbnail_service.py",
           "back/app/memory/file_facade.py",
           "back/app/memory/html_migration.py",
           "back/app/memory/models.py",
@@ -2985,10 +3192,8 @@
           "back/app/memory/router.py",
           "back/app/memory/service.py",
           "back/app/memory/source_projection.py",
-          "back/app/memory/storage.py",
           "back/app/memory/storage_reconciliation.py",
-          "back/app/memory/temporal.py",
-          "back/app/memory/topic_assignment.py"
+          "back/app/memory/temporal.py"
         ],
         "source": "app.memory",
         "target": "core.util"
@@ -3374,6 +3579,15 @@
       },
       {
         "files": [
+          "back/app/process/definition_migration.py",
+          "back/app/process/run_data.py",
+          "back/app/process/run_resources.py"
+        ],
+        "source": "app.process",
+        "target": "app.document"
+      },
+      {
+        "files": [
           "back/app/process/native_engine.py",
           "back/app/process/process_service.py",
           "back/app/process/router.py",
@@ -3396,14 +3610,11 @@
       },
       {
         "files": [
-          "back/app/process/definition_migration.py",
           "back/app/process/events.py",
           "back/app/process/native_actors.py",
           "back/app/process/native_router.py",
           "back/app/process/native_runs.py",
-          "back/app/process/router.py",
-          "back/app/process/run_data.py",
-          "back/app/process/run_resources.py"
+          "back/app/process/router.py"
         ],
         "source": "app.process",
         "target": "app.memory"
@@ -4042,6 +4253,14 @@
         ],
         "source": "app.topic",
         "target": "app.dataset"
+      },
+      {
+        "files": [
+          "back/app/topic/router.py",
+          "back/app/topic/service.py"
+        ],
+        "source": "app.topic",
+        "target": "app.document"
       },
       {
         "files": [
@@ -5884,6 +6103,13 @@
       },
       {
         "files": [
+          "back/core/storage/resources.py"
+        ],
+        "source": "core.storage",
+        "target": "core.params"
+      },
+      {
+        "files": [
           "back/core/storage/disk.py",
           "back/core/storage/identity.py",
           "back/core/storage/migration.py"
@@ -5903,7 +6129,8 @@
           "back/core/storage/identity.py",
           "back/core/storage/lifecycle.py",
           "back/core/storage/migration.py",
-          "back/core/storage/registry.py"
+          "back/core/storage/registry.py",
+          "back/core/storage/resources.py"
         ],
         "source": "core.storage",
         "target": "core.util"
@@ -6051,6 +6278,10 @@
           "app.messenger"
         ],
         [
+          "app.document",
+          "app.process"
+        ],
+        [
           "app.file_share",
           "app.image"
         ],
@@ -6111,7 +6342,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 287,
+      "domain_edges": 300,
       "fan_in": [
         {
           "count": 43,
@@ -6163,7 +6394,7 @@
           ]
         },
         {
-          "count": 35,
+          "count": 36,
           "module": "app.agent",
           "modules": [
             "app.chat",
@@ -6173,6 +6404,7 @@
             "app.conversation",
             "app.dashboard",
             "app.dataset",
+            "app.document",
             "app.dream",
             "app.file_share",
             "app.goal",
@@ -6204,7 +6436,7 @@
           ]
         },
         {
-          "count": 30,
+          "count": 31,
           "module": "app.tools",
           "modules": [
             "app.agent",
@@ -6213,6 +6445,7 @@
             "app.connection",
             "app.console",
             "app.conversation",
+            "app.document",
             "app.file_share",
             "app.goal",
             "app.harness",
@@ -6323,13 +6556,14 @@
           ]
         },
         {
-          "count": 16,
+          "count": 17,
           "module": "app.task",
           "modules": [
             "app.audio",
             "app.contact",
             "app.conversation",
             "app.dashboard",
+            "app.document",
             "app.dream",
             "app.file_share",
             "app.goal",
@@ -6345,11 +6579,12 @@
           ]
         },
         {
-          "count": 14,
+          "count": 15,
           "module": "app.process",
           "modules": [
             "app.agent",
             "app.conversation",
+            "app.document",
             "app.dream",
             "app.file_share",
             "app.harness",
@@ -6365,11 +6600,12 @@
           ]
         },
         {
-          "count": 11,
+          "count": 12,
           "module": "app.conversation",
           "modules": [
             "app.chat",
             "app.contact",
+            "app.document",
             "app.dream",
             "app.file_share",
             "app.harness",
@@ -6414,6 +6650,31 @@
           ]
         },
         {
+          "count": 7,
+          "module": "app.document",
+          "modules": [
+            "app.dataset",
+            "app.dream",
+            "app.file_share",
+            "app.lab",
+            "app.memory",
+            "app.process",
+            "app.topic"
+          ]
+        },
+        {
+          "count": 6,
+          "module": "app.goal",
+          "modules": [
+            "app.document",
+            "app.dream",
+            "app.file_share",
+            "app.lab",
+            "app.memory",
+            "app.task"
+          ]
+        },
+        {
           "count": 6,
           "module": "app.voice",
           "modules": [
@@ -6434,17 +6695,6 @@
             "app.process",
             "app.tools",
             "bridge.code_server"
-          ]
-        },
-        {
-          "count": 5,
-          "module": "app.goal",
-          "modules": [
-            "app.dream",
-            "app.file_share",
-            "app.lab",
-            "app.memory",
-            "app.task"
           ]
         },
         {
@@ -6474,7 +6724,7 @@
           "modules": [
             "app.agent",
             "app.dataset",
-            "app.memory",
+            "app.document",
             "app.process"
           ]
         },
@@ -6577,13 +6827,14 @@
       ],
       "fan_out": [
         {
-          "count": 14,
+          "count": 15,
           "module": "app.file_share",
           "modules": [
             "app.agent",
             "app.connection",
             "app.console",
             "app.conversation",
+            "app.document",
             "app.documentation",
             "app.goal",
             "app.image",
@@ -6597,12 +6848,13 @@
           ]
         },
         {
-          "count": 14,
+          "count": 15,
           "module": "app.lab",
           "modules": [
             "app.agent",
             "app.connection",
             "app.conversation",
+            "app.document",
             "app.dream",
             "app.goal",
             "app.llm",
@@ -6617,13 +6869,14 @@
           ]
         },
         {
-          "count": 13,
+          "count": 14,
           "module": "app.dream",
           "modules": [
             "app.agent",
             "app.connection",
             "app.conversation",
             "app.dataset",
+            "app.document",
             "app.goal",
             "app.llm",
             "app.memory",
@@ -6654,15 +6907,32 @@
           ]
         },
         {
+          "count": 11,
+          "module": "app.topic",
+          "modules": [
+            "app.agent",
+            "app.connection",
+            "app.conversation",
+            "app.dataset",
+            "app.document",
+            "app.llm",
+            "app.memory",
+            "app.messenger",
+            "app.process",
+            "app.task",
+            "app.tools"
+          ]
+        },
+        {
           "count": 10,
           "module": "app.memory",
           "modules": [
             "app.agent",
             "app.conversation",
+            "app.document",
             "app.goal",
             "app.llm",
             "app.process",
-            "app.share",
             "app.task",
             "app.tools",
             "app.topic",
@@ -6671,16 +6941,16 @@
         },
         {
           "count": 10,
-          "module": "app.topic",
+          "module": "app.process",
           "modules": [
             "app.agent",
-            "app.connection",
-            "app.conversation",
+            "app.console",
             "app.dataset",
+            "app.document",
+            "app.file_share",
             "app.llm",
             "app.memory",
-            "app.messenger",
-            "app.process",
+            "app.share",
             "app.task",
             "app.tools"
           ]
@@ -6726,21 +6996,6 @@
             "app.mcp",
             "app.messenger",
             "app.process",
-            "app.task",
-            "app.tools"
-          ]
-        },
-        {
-          "count": 9,
-          "module": "app.process",
-          "modules": [
-            "app.agent",
-            "app.console",
-            "app.dataset",
-            "app.file_share",
-            "app.llm",
-            "app.memory",
-            "app.share",
             "app.task",
             "app.tools"
           ]
@@ -6814,6 +7069,19 @@
             "app.messenger",
             "app.topic",
             "app.voice"
+          ]
+        },
+        {
+          "count": 7,
+          "module": "app.document",
+          "modules": [
+            "app.agent",
+            "app.conversation",
+            "app.goal",
+            "app.process",
+            "app.share",
+            "app.task",
+            "app.tools"
           ]
         },
         {
@@ -6914,6 +7182,17 @@
         },
         {
           "count": 5,
+          "module": "app.dataset",
+          "modules": [
+            "app.agent",
+            "app.document",
+            "app.file_share",
+            "app.memory",
+            "app.share"
+          ]
+        },
+        {
+          "count": 5,
           "module": "app.task",
           "modules": [
             "app.agent",
@@ -6974,16 +7253,6 @@
             "app.connection",
             "app.file_share",
             "app.tools"
-          ]
-        },
-        {
-          "count": 4,
-          "module": "app.dataset",
-          "modules": [
-            "app.agent",
-            "app.file_share",
-            "app.memory",
-            "app.share"
           ]
         },
         {
@@ -7267,6 +7536,7 @@
           "app.console",
           "app.conversation",
           "app.dataset",
+          "app.document",
           "app.file_share",
           "app.goal",
           "app.image",
@@ -7915,6 +8185,22 @@
         "module": "app.conversation",
         "name": "repository_show",
         "namespace": "conversation"
+      },
+      {
+        "file": "back/app/document/mcp.py",
+        "handler": "document_share",
+        "line": 35,
+        "module": "app.document",
+        "name": "document_share",
+        "namespace": "document"
+      },
+      {
+        "file": "back/app/document/mcp.py",
+        "handler": "document_sharing",
+        "line": 20,
+        "module": "app.document",
+        "name": "document_sharing",
+        "namespace": "document"
       },
       {
         "file": "back/app/file_share/mcp.py",
@@ -8950,16 +9236,8 @@
       },
       {
         "file": "back/app/memory/mcp.py",
-        "handler": "document_share",
-        "line": 187,
-        "module": "app.memory",
-        "name": "document_share",
-        "namespace": "memory"
-      },
-      {
-        "file": "back/app/memory/mcp.py",
         "handler": "memory_forget",
-        "line": 382,
+        "line": 264,
         "module": "app.memory",
         "name": "memory_forget",
         "namespace": "memory"
@@ -8967,31 +9245,15 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_remember",
-        "line": 310,
+        "line": 192,
         "module": "app.memory",
         "name": "memory_remember",
         "namespace": "memory"
       },
       {
         "file": "back/app/memory/mcp.py",
-        "handler": "memory_share",
-        "line": 282,
-        "module": "app.memory",
-        "name": "memory_share",
-        "namespace": "memory"
-      },
-      {
-        "file": "back/app/memory/mcp.py",
-        "handler": "memory_sharing",
-        "line": 254,
-        "module": "app.memory",
-        "name": "memory_sharing",
-        "namespace": "memory"
-      },
-      {
-        "file": "back/app/memory/mcp.py",
         "handler": "memory_summarize",
-        "line": 403,
+        "line": 285,
         "module": "app.memory",
         "name": "memory_summarize",
         "namespace": "memory"
@@ -8999,7 +9261,7 @@
       {
         "file": "back/app/memory/mcp.py",
         "handler": "memory_upcoming",
-        "line": 360,
+        "line": 242,
         "module": "app.memory",
         "name": "memory_upcoming",
         "namespace": "memory"
@@ -9896,7 +10158,7 @@
         "foreign_keys": [
           "agents.id",
           "datasets.id",
-          "memory_revisions.id",
+          "document_revisions.id",
           "users.id"
         ],
         "history_mixin": false,
@@ -9995,124 +10257,162 @@
       },
       {
         "class_name": "DocumentAppGrant",
-        "file": "back/app/memory/models.py",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
-          "memory_items.id",
+          "datasets.id",
+          "documents.id",
           "users.id"
         ],
         "history_mixin": true,
-        "line": 159,
-        "module": "app.memory",
+        "line": 127,
+        "module": "app.document",
         "table": "document_app_grants"
       },
       {
         "class_name": "DocumentAppWriteBudget",
-        "file": "back/app/memory/models.py",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
-          "memory_items.id",
+          "datasets.id",
           "users.id"
         ],
         "history_mixin": false,
-        "line": 177,
-        "module": "app.memory",
+        "line": 144,
+        "module": "app.document",
         "table": "document_app_write_budgets"
       },
       {
         "class_name": "DocumentAttachment",
-        "file": "back/app/memory/models.py",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
+          "documents.id",
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 202,
-        "module": "app.memory",
+        "line": 167,
+        "module": "app.document",
         "table": "document_attachments"
       },
       {
+        "class_name": "DocumentAutomationJob",
+        "file": "back/app/document/models.py",
+        "foreign_keys": [],
+        "history_mixin": false,
+        "line": 413,
+        "module": "app.document",
+        "table": "document_automation_jobs"
+      },
+      {
         "class_name": "DocumentIcon",
-        "file": "back/app/memory/models.py",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
-          "memory_items.id",
+          "documents.id",
           "users.id"
         ],
         "history_mixin": false,
-        "line": 147,
-        "module": "app.memory",
+        "line": 116,
+        "module": "app.document",
         "table": "document_icons"
       },
       {
         "class_name": "DocumentListPosition",
-        "file": "back/app/memory/models.py",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
-          "memory_items.id",
+          "documents.id",
           "users.id"
         ],
         "history_mixin": false,
-        "line": 190,
-        "module": "app.memory",
+        "line": 156,
+        "module": "app.document",
         "table": "document_list_positions"
       },
       {
         "class_name": "DocumentNesting",
-        "file": "back/app/memory/models.py",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
           "documents.id",
           "users.id"
         ],
         "history_mixin": false,
-        "line": 131,
-        "module": "app.memory",
+        "line": 101,
+        "module": "app.document",
         "table": "document_nesting"
       },
       {
         "class_name": "DocumentRevision",
-        "file": "back/app/memory/models.py",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
+          "agents.id",
           "documents.id",
-          "memory_revisions.id"
+          "tasks.id"
         ],
         "history_mixin": false,
-        "line": 662,
-        "module": "app.memory",
+        "line": 282,
+        "module": "app.document",
         "table": "document_revisions"
       },
       {
         "class_name": "DocumentSharingIntent",
-        "file": "back/app/memory/models.py",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
           "share_configs.id"
         ],
         "history_mixin": false,
-        "line": 72,
-        "module": "app.memory",
+        "line": 38,
+        "module": "app.document",
         "table": "document_sharing_intents"
       },
       {
-        "class_name": "DocumentTagAssignment",
-        "file": "back/app/memory/models.py",
+        "class_name": "DocumentSource",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
-          "document_tags.id",
-          "memory_items.id"
+          "conversation_rounds.id",
+          "documents.id",
+          "tasks.id"
         ],
         "history_mixin": false,
-        "line": 121,
-        "module": "app.memory",
+        "line": 363,
+        "module": "app.document",
+        "table": "document_sources"
+      },
+      {
+        "class_name": "DocumentSummaryRevision",
+        "file": "back/app/document/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "documents.id",
+          "tasks.id"
+        ],
+        "history_mixin": false,
+        "line": 341,
+        "module": "app.document",
+        "table": "document_summary_revisions"
+      },
+      {
+        "class_name": "DocumentTagAssignment",
+        "file": "back/app/document/models.py",
+        "foreign_keys": [
+          "document_tags.id",
+          "documents.id"
+        ],
+        "history_mixin": false,
+        "line": 92,
+        "module": "app.document",
         "table": "document_tag_assignments"
       },
       {
         "class_name": "DocumentTagIcon",
-        "file": "back/app/memory/models.py",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
           "users.id"
         ],
         "history_mixin": true,
-        "line": 110,
-        "module": "app.memory",
+        "line": 82,
+        "module": "app.document",
         "table": "document_tag_icons"
       },
       {
         "class_name": "DocumentTag",
-        "file": "back/app/memory/models.py",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
           "document_tags.id",
           "goals.id",
@@ -10120,33 +10420,20 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 83,
-        "module": "app.memory",
+        "line": 48,
+        "module": "app.document",
         "table": "document_tags"
       },
       {
-        "class_name": "DocumentTeamGrant",
-        "file": "back/app/memory/models.py",
+        "class_name": "DocumentURL",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
-          "agent_groups.id",
-          "memory_items.id"
+          "documents.id"
         ],
         "history_mixin": false,
-        "line": 731,
-        "module": "app.memory",
-        "table": "document_team_grants"
-      },
-      {
-        "class_name": "DocumentUserGrant",
-        "file": "back/app/memory/models.py",
-        "foreign_keys": [
-          "memory_items.id",
-          "users.id"
-        ],
-        "history_mixin": false,
-        "line": 720,
-        "module": "app.memory",
-        "table": "document_user_grants"
+        "line": 271,
+        "module": "app.document",
+        "table": "document_urls"
       },
       {
         "class_name": "DocumentationPassage",
@@ -10159,14 +10446,15 @@
       },
       {
         "class_name": "Document",
-        "file": "back/app/memory/models.py",
+        "file": "back/app/document/models.py",
         "foreign_keys": [
-          "memory_items.id",
-          "topics.id"
+          "agents.id",
+          "topics.id",
+          "users.id"
         ],
         "history_mixin": true,
-        "line": 611,
-        "module": "app.memory",
+        "line": 181,
+        "module": "app.document",
         "table": "documents"
       },
       {
@@ -10327,6 +10615,7 @@
         "foreign_keys": [
           "agents.id",
           "connections.id",
+          "documents.id",
           "goals.id",
           "memory_items.id",
           "users.id"
@@ -10724,7 +11013,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1284,
+        "line": 985,
         "module": "app.memory",
         "table": "memory_associations"
       },
@@ -10733,7 +11022,7 @@
         "file": "back/app/memory/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 1466,
+        "line": 1167,
         "module": "app.memory",
         "table": "memory_automation_jobs"
       },
@@ -10746,7 +11035,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 1196,
+        "line": 897,
         "module": "app.memory",
         "table": "memory_candidates"
       },
@@ -10759,7 +11048,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 1002,
+        "line": 703,
         "module": "app.memory",
         "table": "memory_contact_identities"
       },
@@ -10771,7 +11060,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 964,
+        "line": 665,
         "module": "app.memory",
         "table": "memory_contact_items"
       },
@@ -10783,7 +11072,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 927,
+        "line": 628,
         "module": "app.memory",
         "table": "memory_context_edges"
       },
@@ -10794,7 +11083,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 872,
+        "line": 573,
         "module": "app.memory",
         "table": "memory_context_nodes"
       },
@@ -10805,7 +11094,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1341,
+        "line": 1042,
         "module": "app.memory",
         "table": "memory_embedding_chunks"
       },
@@ -10816,7 +11105,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1318,
+        "line": 1019,
         "module": "app.memory",
         "table": "memory_embedding_manifests"
       },
@@ -10828,7 +11117,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 1395,
+        "line": 1096,
         "module": "app.memory",
         "table": "memory_findings"
       },
@@ -10839,7 +11128,7 @@
           "memory_graph_views.id"
         ],
         "history_mixin": false,
-        "line": 59,
+        "line": 57,
         "module": "app.memory",
         "table": "memory_graph_positions"
       },
@@ -10851,21 +11140,9 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 45,
+        "line": 43,
         "module": "app.memory",
         "table": "memory_graph_views"
-      },
-      {
-        "class_name": "MemoryItemGrant",
-        "file": "back/app/memory/models.py",
-        "foreign_keys": [
-          "agents.id",
-          "memory_items.id"
-        ],
-        "history_mixin": false,
-        "line": 696,
-        "module": "app.memory",
-        "table": "memory_item_grants"
       },
       {
         "class_name": "MemoryItem",
@@ -10876,7 +11153,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 283,
+        "line": 147,
         "module": "app.memory",
         "table": "memory_items"
       },
@@ -10888,7 +11165,7 @@
           "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 820,
+        "line": 521,
         "module": "app.memory",
         "table": "memory_links"
       },
@@ -10901,7 +11178,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 742,
+        "line": 443,
         "module": "app.memory",
         "table": "memory_revisions"
       },
@@ -10914,22 +11191,9 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 1146,
+        "line": 847,
         "module": "app.memory",
         "table": "memory_sources"
-      },
-      {
-        "class_name": "MemorySummaryRevision",
-        "file": "back/app/memory/models.py",
-        "foreign_keys": [
-          "agents.id",
-          "memory_items.id",
-          "tasks.id"
-        ],
-        "history_mixin": false,
-        "line": 673,
-        "module": "app.memory",
-        "table": "memory_summary_revisions"
       },
       {
         "class_name": "MemoryTopicContactItem",
@@ -10939,7 +11203,7 @@
           "memory_topic_contact_scopes.id"
         ],
         "history_mixin": false,
-        "line": 1107,
+        "line": 808,
         "module": "app.memory",
         "table": "memory_topic_contact_items"
       },
@@ -10951,7 +11215,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 1066,
+        "line": 767,
         "module": "app.memory",
         "table": "memory_topic_contact_scopes"
       },
@@ -10962,7 +11226,7 @@
           "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 802,
+        "line": 503,
         "module": "app.memory",
         "table": "memory_urls"
       },
@@ -10975,7 +11239,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 1249,
+        "line": 950,
         "module": "app.memory",
         "table": "memory_usages"
       },
@@ -11838,6 +12102,25 @@
           "contracts.py",
           "facade.py",
           "i18n/",
+          "interface.py",
+          "mcp.py",
+          "models.py",
+          "privileges.py",
+          "router.py",
+          "schemas.py",
+          "tests/"
+        ],
+        "conditional": false,
+        "exists": true,
+        "layer": "app",
+        "name": "app.document",
+        "path": "back/app/document"
+      },
+      {
+        "capabilities": [
+          "contracts.py",
+          "facade.py",
+          "i18n/",
           "mcp.py",
           "models.py",
           "privileges.py",
@@ -12647,6 +12930,34 @@
         "value": "privilege.DATASET_READ"
       },
       {
+        "constant": "DOCUMENT_ACCESS",
+        "file": "back/app/document/privileges.py",
+        "line": 3,
+        "module": "app.document",
+        "value": "privilege.DOCUMENT_ACCESS"
+      },
+      {
+        "constant": "DOCUMENT_ADMIN",
+        "file": "back/app/document/privileges.py",
+        "line": 5,
+        "module": "app.document",
+        "value": "privilege.DOCUMENT_ADMIN"
+      },
+      {
+        "constant": "DOCUMENT_ASSIGN_ALL_USERS",
+        "file": "back/app/document/privileges.py",
+        "line": 6,
+        "module": "app.document",
+        "value": "privilege.DOCUMENT_ASSIGN_ALL_USERS"
+      },
+      {
+        "constant": "DOCUMENT_EDIT",
+        "file": "back/app/document/privileges.py",
+        "line": 4,
+        "module": "app.document",
+        "value": "privilege.DOCUMENT_EDIT"
+      },
+      {
         "constant": "GOAL_ACCESS",
         "file": "back/app/goal/privileges.py",
         "line": 3,
@@ -12883,13 +13194,6 @@
         "line": 5,
         "module": "app.memory",
         "value": "privilege.MEMORY_ADMIN"
-      },
-      {
-        "constant": "MEMORY_ASSIGN_ALL_USERS",
-        "file": "back/app/memory/privileges.py",
-        "line": 6,
-        "module": "app.memory",
-        "value": "privilege.MEMORY_ASSIGN_ALL_USERS"
       },
       {
         "constant": "MEMORY_EDIT",
@@ -13968,7 +14272,7 @@
         "declared_path": "/browser/content",
         "file": "back/app/file_share/browser_router.py",
         "handler": "content",
-        "line": 104,
+        "line": 106,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -13977,7 +14281,7 @@
         "declared_path": "/browser/entries",
         "file": "back/app/file_share/browser_router.py",
         "handler": "entries",
-        "line": 69,
+        "line": 71,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -13986,7 +14290,7 @@
         "declared_path": "/browser/entry",
         "file": "back/app/file_share/browser_router.py",
         "handler": "delete_entry",
-        "line": 55,
+        "line": 57,
         "method": "DELETE",
         "module": "app.file_share"
       },
@@ -13995,7 +14299,7 @@
         "declared_path": "/browser/entry",
         "file": "back/app/file_share/browser_router.py",
         "handler": "rename_entry",
-        "line": 48,
+        "line": 50,
         "method": "PATCH",
         "module": "app.file_share"
       },
@@ -14004,7 +14308,7 @@
         "declared_path": "/browser/info",
         "file": "back/app/file_share/browser_router.py",
         "handler": "info",
-        "line": 87,
+        "line": 89,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -14022,7 +14326,7 @@
         "declared_path": "/browser/schemes",
         "file": "back/app/file_share/browser_router.py",
         "handler": "schemes",
-        "line": 62,
+        "line": 64,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -14031,7 +14335,7 @@
         "declared_path": "/browser/search",
         "file": "back/app/file_share/browser_router.py",
         "handler": "search",
-        "line": 78,
+        "line": 80,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -14049,7 +14353,7 @@
         "declared_path": "/browser/thumbnail",
         "file": "back/app/file_share/browser_router.py",
         "handler": "thumbnail",
-        "line": 94,
+        "line": 96,
         "method": "GET",
         "module": "app.file_share"
       },
@@ -15075,7 +15379,7 @@
         "declared_path": "/datasets",
         "file": "back/app/dataset/router.py",
         "handler": "list_datasets",
-        "line": 118,
+        "line": 119,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15084,7 +15388,7 @@
         "declared_path": "/datasets",
         "file": "back/app/dataset/router.py",
         "handler": "create_dataset",
-        "line": 133,
+        "line": 134,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -15093,7 +15397,7 @@
         "declared_path": "/datasets/library/facets",
         "file": "back/app/dataset/router.py",
         "handler": "library_facets",
-        "line": 159,
+        "line": 160,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15102,7 +15406,7 @@
         "declared_path": "/datasets/library/move",
         "file": "back/app/dataset/router.py",
         "handler": "move_placement",
-        "line": 191,
+        "line": 192,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -15111,7 +15415,7 @@
         "declared_path": "/datasets/tags",
         "file": "back/app/dataset/router.py",
         "handler": "list_tags",
-        "line": 143,
+        "line": 144,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15120,7 +15424,7 @@
         "declared_path": "/datasets/tags",
         "file": "back/app/dataset/router.py",
         "handler": "create_tag",
-        "line": 150,
+        "line": 151,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -15129,7 +15433,7 @@
         "declared_path": "/datasets/tags/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "delete_tag",
-        "line": 174,
+        "line": 175,
         "method": "DELETE",
         "module": "app.dataset"
       },
@@ -15138,7 +15442,7 @@
         "declared_path": "/datasets/tags/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "update_tag",
-        "line": 166,
+        "line": 167,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15147,7 +15451,7 @@
         "declared_path": "/datasets/tags/{identity}/sort",
         "file": "back/app/dataset/router.py",
         "handler": "sort_tag",
-        "line": 183,
+        "line": 184,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -15156,7 +15460,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "delete_dataset",
-        "line": 233,
+        "line": 234,
         "method": "DELETE",
         "module": "app.dataset"
       },
@@ -15165,7 +15469,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "read_dataset",
-        "line": 199,
+        "line": 200,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15174,7 +15478,7 @@
         "declared_path": "/datasets/{identity}",
         "file": "back/app/dataset/router.py",
         "handler": "update_dataset",
-        "line": 222,
+        "line": 223,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -15183,7 +15487,7 @@
         "declared_path": "/datasets/{identity}/attachments",
         "file": "back/app/dataset/router.py",
         "handler": "attachments",
-        "line": 318,
+        "line": 319,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15192,7 +15496,7 @@
         "declared_path": "/datasets/{identity}/attachments",
         "file": "back/app/dataset/router.py",
         "handler": "attach",
-        "line": 326,
+        "line": 327,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -15201,7 +15505,7 @@
         "declared_path": "/datasets/{identity}/attachments/{attachment_id}",
         "file": "back/app/dataset/router.py",
         "handler": "rename_dataset_attachment",
-        "line": 336,
+        "line": 337,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -15210,7 +15514,7 @@
         "declared_path": "/datasets/{identity}/classification",
         "file": "back/app/dataset/router.py",
         "handler": "classify",
-        "line": 344,
+        "line": 345,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15219,7 +15523,7 @@
         "declared_path": "/datasets/{identity}/content",
         "file": "back/app/dataset/router.py",
         "handler": "write_dataset",
-        "line": 207,
+        "line": 208,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15228,7 +15532,7 @@
         "declared_path": "/datasets/{identity}/owner",
         "file": "back/app/dataset/router.py",
         "handler": "owner_options",
-        "line": 273,
+        "line": 274,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15237,7 +15541,7 @@
         "declared_path": "/datasets/{identity}/owner",
         "file": "back/app/dataset/router.py",
         "handler": "transfer_owner",
-        "line": 280,
+        "line": 281,
         "method": "PATCH",
         "module": "app.dataset"
       },
@@ -15246,7 +15550,7 @@
         "declared_path": "/datasets/{identity}/revisions",
         "file": "back/app/dataset/router.py",
         "handler": "read_history",
-        "line": 241,
+        "line": 242,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15255,7 +15559,7 @@
         "declared_path": "/datasets/{identity}/revisions/{number}",
         "file": "back/app/dataset/router.py",
         "handler": "read_revision",
-        "line": 248,
+        "line": 249,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15264,7 +15568,7 @@
         "declared_path": "/datasets/{identity}/revisions/{number}/restore",
         "file": "back/app/dataset/router.py",
         "handler": "restore_revision",
-        "line": 256,
+        "line": 257,
         "method": "POST",
         "module": "app.dataset"
       },
@@ -15273,7 +15577,7 @@
         "declared_path": "/datasets/{identity}/sharing",
         "file": "back/app/dataset/router.py",
         "handler": "sharing",
-        "line": 266,
+        "line": 267,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15282,7 +15586,7 @@
         "declared_path": "/datasets/{identity}/sharing",
         "file": "back/app/dataset/router.py",
         "handler": "set_grant",
-        "line": 308,
+        "line": 309,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15291,7 +15595,7 @@
         "declared_path": "/datasets/{identity}/sharing-level",
         "file": "back/app/dataset/router.py",
         "handler": "sharing_level",
-        "line": 290,
+        "line": 291,
         "method": "PUT",
         "module": "app.dataset"
       },
@@ -15300,7 +15604,7 @@
         "declared_path": "/datasets/{identity}/usages",
         "file": "back/app/dataset/router.py",
         "handler": "usages",
-        "line": 299,
+        "line": 300,
         "method": "GET",
         "module": "app.dataset"
       },
@@ -15360,10 +15664,577 @@
       },
       {
         "authorized": true,
+        "declared_path": "/documents",
+        "file": "back/app/document/router.py",
+        "handler": "create_managed_document",
+        "line": 204,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/folders",
+        "file": "back/app/document/router.py",
+        "handler": "read_document_folders",
+        "line": 423,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/goal-folders/reconcile",
+        "file": "back/app/document/router.py",
+        "handler": "launch_goal_folder_reconciliation",
+        "line": 90,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/icons/resolve",
+        "file": "back/app/document/router.py",
+        "handler": "resolve_document_icons",
+        "line": 291,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/keywords",
+        "file": "back/app/document/router.py",
+        "handler": "read_document_keywords",
+        "line": 257,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/library",
+        "file": "back/app/document/router.py",
+        "handler": "browse_managed_documents",
+        "line": 275,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/order",
+        "file": "back/app/document/router.py",
+        "handler": "reorder_personal_documents",
+        "line": 308,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/order/sort",
+        "file": "back/app/document/router.py",
+        "handler": "sort_personal_documents",
+        "line": 318,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/owner-options",
+        "file": "back/app/document/router.py",
+        "handler": "read_document_owner_options",
+        "line": 438,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/tag-icons",
+        "file": "back/app/document/router.py",
+        "handler": "read_personal_tag_icons",
+        "line": 328,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/tag-icons",
+        "file": "back/app/document/router.py",
+        "handler": "upload_personal_tag_icon",
+        "line": 333,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/tags",
+        "file": "back/app/document/router.py",
+        "handler": "read_personal_document_tags",
+        "line": 359,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/tags",
+        "file": "back/app/document/router.py",
+        "handler": "create_personal_document_tag",
+        "line": 365,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/tags/{tag_id}",
+        "file": "back/app/document/router.py",
+        "handler": "delete_personal_document_tag",
+        "line": 399,
+        "method": "DELETE",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/tags/{tag_id}",
+        "file": "back/app/document/router.py",
+        "handler": "update_personal_document_tag",
+        "line": 391,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/tags/{tag_id}/sharing",
+        "file": "back/app/document/router.py",
+        "handler": "read_folder_sharing",
+        "line": 373,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/tags/{tag_id}/sharing",
+        "file": "back/app/document/router.py",
+        "handler": "update_folder_sharing",
+        "line": 382,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}",
+        "file": "back/app/document/router.py",
+        "handler": "delete_managed_document",
+        "line": 766,
+        "method": "DELETE",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}",
+        "file": "back/app/document/router.py",
+        "handler": "read_managed_document",
+        "line": 742,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}",
+        "file": "back/app/document/router.py",
+        "handler": "update_human_document",
+        "line": 780,
+        "method": "PATCH",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/app-permissions",
+        "file": "back/app/document/router.py",
+        "handler": "read_app_permissions",
+        "line": 130,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/app-permissions/{app_key}/{alias}",
+        "file": "back/app/document/router.py",
+        "handler": "update_app_permission",
+        "line": 138,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/apps/{app_id}/datasets/{alias}",
+        "file": "back/app/document/router.py",
+        "handler": "access_app_dataset",
+        "line": 149,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/attachments",
+        "file": "back/app/document/router.py",
+        "handler": "list_document_attachments",
+        "line": 1015,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/attachments",
+        "file": "back/app/document/router.py",
+        "handler": "add_document_attachment",
+        "line": 1034,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/attachments/{attachment_id}",
+        "file": "back/app/document/router.py",
+        "handler": "delete_document_attachment",
+        "line": 1147,
+        "method": "DELETE",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/attachments/{attachment_id}",
+        "file": "back/app/document/router.py",
+        "handler": "read_document_attachment",
+        "line": 1116,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/attachments/{attachment_id}",
+        "file": "back/app/document/router.py",
+        "handler": "rename_document_attachment",
+        "line": 1085,
+        "method": "PATCH",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/attachments/{attachment_id}/info",
+        "file": "back/app/document/router.py",
+        "handler": "read_document_attachment_info",
+        "line": 1099,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/attachments/{attachment_id}/thumbnail",
+        "file": "back/app/document/router.py",
+        "handler": "read_document_attachment_thumbnail",
+        "line": 1054,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/collaborators/{agent_id}",
+        "file": "back/app/document/router.py",
+        "handler": "remove_managed_document_grant",
+        "line": 984,
+        "method": "DELETE",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/collaborators/{agent_id}",
+        "file": "back/app/document/router.py",
+        "handler": "set_managed_document_grant",
+        "line": 950,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/content-revisions",
+        "file": "back/app/document/router.py",
+        "handler": "list_managed_document_content_revisions",
+        "line": 484,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/content-revisions/{revision}",
+        "file": "back/app/document/router.py",
+        "handler": "read_managed_document_content_revision",
+        "line": 510,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/content-revisions/{revision}/diff",
+        "file": "back/app/document/router.py",
+        "handler": "diff_managed_document_content_revision",
+        "line": 534,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/content-revisions/{revision}/restore",
+        "file": "back/app/document/router.py",
+        "handler": "restore_managed_document_content_revision",
+        "line": 558,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/dataset-attachments",
+        "file": "back/app/document/router.py",
+        "handler": "read_document_datasets",
+        "line": 656,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/dataset-attachments",
+        "file": "back/app/document/router.py",
+        "handler": "attach_document_dataset",
+        "line": 711,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/dataset-attachments/{dataset_id}",
+        "file": "back/app/document/router.py",
+        "handler": "detach_document_dataset",
+        "line": 723,
+        "method": "DELETE",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/export-bundle",
+        "file": "back/app/document/router.py",
+        "handler": "export_document_bundle",
+        "line": 605,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/export-pdf",
+        "file": "back/app/document/router.py",
+        "handler": "export_managed_document_pdf",
+        "line": 618,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/folder",
+        "file": "back/app/document/router.py",
+        "handler": "move_managed_document",
+        "line": 822,
+        "method": "PATCH",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/global-access",
+        "file": "back/app/document/router.py",
+        "handler": "set_managed_document_global_access",
+        "line": 921,
+        "method": "PATCH",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/grants/{agent_id}",
+        "file": "back/app/document/router.py",
+        "handler": "remove_document_grant",
+        "line": 1204,
+        "method": "DELETE",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/grants/{agent_id}",
+        "file": "back/app/document/router.py",
+        "handler": "set_document_grant",
+        "line": 1172,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/icon",
+        "file": "back/app/document/router.py",
+        "handler": "save_document_icon",
+        "line": 298,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/import-image",
+        "file": "back/app/document/router.py",
+        "handler": "import_document_image",
+        "line": 585,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/internal-attachments",
+        "file": "back/app/document/router.py",
+        "handler": "read_internal_attachments",
+        "line": 666,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/internal-attachments",
+        "file": "back/app/document/router.py",
+        "handler": "change_internal_attachments",
+        "line": 677,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/link-card",
+        "file": "back/app/document/router.py",
+        "handler": "create_document_link_card",
+        "line": 595,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/owner",
+        "file": "back/app/document/router.py",
+        "handler": "change_document_owner",
+        "line": 859,
+        "method": "PATCH",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/parent",
+        "file": "back/app/document/router.py",
+        "handler": "move_personal_subdocument",
+        "line": 349,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/process-attachments",
+        "file": "back/app/document/router.py",
+        "handler": "read_document_processes",
+        "line": 689,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/process-attachments",
+        "file": "back/app/document/router.py",
+        "handler": "attach_document_process",
+        "line": 699,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/sharing",
+        "file": "back/app/document/router.py",
+        "handler": "read_document_sharing",
+        "line": 795,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/sharing",
+        "file": "back/app/document/router.py",
+        "handler": "update_document_sharing",
+        "line": 803,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/sharing-level",
+        "file": "back/app/document/router.py",
+        "handler": "update_document_sharing_level",
+        "line": 811,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/summary",
+        "file": "back/app/document/router.py",
+        "handler": "read_document_summary",
+        "line": 99,
+        "method": "GET",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/summary",
+        "file": "back/app/document/router.py",
+        "handler": "edit_document_summary",
+        "line": 111,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/tags",
+        "file": "back/app/document/router.py",
+        "handler": "move_personal_document",
+        "line": 341,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/tags/{tag_id}",
+        "file": "back/app/document/router.py",
+        "handler": "remove_personal_document_tag",
+        "line": 415,
+        "method": "DELETE",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/tags/{tag_id}",
+        "file": "back/app/document/router.py",
+        "handler": "add_personal_document_tag",
+        "line": 407,
+        "method": "PUT",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/documents/{document_id}/thumbnail",
+        "file": "back/app/document/router.py",
+        "handler": "read_document_thumbnail",
+        "line": 635,
+        "method": "POST",
+        "module": "app.document"
+      },
+      {
+        "authorized": true,
         "declared_path": "/dream/memory/{item_id}/actions",
         "file": "back/app/dream/router.py",
         "handler": "read_memory_dream_actions",
-        "line": 48,
+        "line": 50,
         "method": "GET",
         "module": "app.dream"
       },
@@ -15372,7 +16243,7 @@
         "declared_path": "/dream/memory/{item_id}/actions/{action}",
         "file": "back/app/dream/router.py",
         "handler": "run_memory_dream_action",
-        "line": 57,
+        "line": 59,
         "method": "POST",
         "module": "app.dream"
       },
@@ -15381,7 +16252,7 @@
         "declared_path": "/dream/overview",
         "file": "back/app/dream/router.py",
         "handler": "read_dream_overview",
-        "line": 81,
+        "line": 83,
         "method": "GET",
         "module": "app.dream"
       },
@@ -15390,7 +16261,7 @@
         "declared_path": "/dream/receipts",
         "file": "back/app/dream/router.py",
         "handler": "read_dream_receipts",
-        "line": 88,
+        "line": 90,
         "method": "GET",
         "module": "app.dream"
       },
@@ -15399,7 +16270,7 @@
         "declared_path": "/dream/receipts/{receipt_id}",
         "file": "back/app/dream/router.py",
         "handler": "read_dream_receipt",
-        "line": 156,
+        "line": 158,
         "method": "GET",
         "module": "app.dream"
       },
@@ -15408,7 +16279,7 @@
         "declared_path": "/dream/runtime",
         "file": "back/app/dream/router.py",
         "handler": "read_dream_runtime",
-        "line": 74,
+        "line": 76,
         "method": "GET",
         "module": "app.dream"
       },
@@ -15417,7 +16288,7 @@
         "declared_path": "/dream/topic-assignment",
         "file": "back/app/dream/router.py",
         "handler": "read_topic_assignment",
-        "line": 126,
+        "line": 128,
         "method": "GET",
         "module": "app.dream"
       },
@@ -17568,547 +18439,7 @@
         "declared_path": "/memory/browse",
         "file": "back/app/memory/router.py",
         "handler": "browse_memory",
-        "line": 457,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents",
-        "file": "back/app/memory/router.py",
-        "handler": "create_managed_document",
-        "line": 259,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/folders",
-        "file": "back/app/memory/router.py",
-        "handler": "read_document_folders",
-        "line": 882,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/icons/resolve",
-        "file": "back/app/memory/router.py",
-        "handler": "resolve_document_icons",
-        "line": 734,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/keywords",
-        "file": "back/app/memory/router.py",
-        "handler": "read_document_keywords",
-        "line": 698,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/library",
-        "file": "back/app/memory/router.py",
-        "handler": "browse_managed_documents",
-        "line": 717,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/order",
-        "file": "back/app/memory/router.py",
-        "handler": "reorder_personal_documents",
-        "line": 753,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/order/sort",
-        "file": "back/app/memory/router.py",
-        "handler": "sort_personal_documents",
-        "line": 764,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/owner-options",
-        "file": "back/app/memory/router.py",
-        "handler": "read_document_owner_options",
-        "line": 898,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/tag-icons",
-        "file": "back/app/memory/router.py",
-        "handler": "read_personal_tag_icons",
-        "line": 775,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/tag-icons",
-        "file": "back/app/memory/router.py",
-        "handler": "upload_personal_tag_icon",
-        "line": 781,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/tags",
-        "file": "back/app/memory/router.py",
-        "handler": "read_personal_document_tags",
-        "line": 810,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/tags",
-        "file": "back/app/memory/router.py",
-        "handler": "create_personal_document_tag",
-        "line": 817,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/tags/{tag_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "delete_personal_document_tag",
-        "line": 855,
-        "method": "DELETE",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/tags/{tag_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "update_personal_document_tag",
-        "line": 846,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/tags/{tag_id}/sharing",
-        "file": "back/app/memory/router.py",
-        "handler": "read_folder_sharing",
-        "line": 826,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/tags/{tag_id}/sharing",
-        "file": "back/app/memory/router.py",
-        "handler": "update_folder_sharing",
-        "line": 836,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "delete_managed_document",
-        "line": 1246,
-        "method": "DELETE",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "read_managed_document",
-        "line": 1221,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "update_human_document",
-        "line": 1261,
-        "method": "PATCH",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/app-permissions",
-        "file": "back/app/memory/router.py",
-        "handler": "read_app_permissions",
-        "line": 137,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/app-permissions/{app_key}/{alias}",
-        "file": "back/app/memory/router.py",
-        "handler": "update_app_permission",
-        "line": 146,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/apps/{app_id}/datasets/{alias}",
-        "file": "back/app/memory/router.py",
-        "handler": "access_app_dataset",
-        "line": 158,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/attachments",
-        "file": "back/app/memory/router.py",
-        "handler": "list_document_attachments",
-        "line": 1506,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/attachments",
-        "file": "back/app/memory/router.py",
-        "handler": "add_document_attachment",
-        "line": 1526,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "delete_document_attachment",
-        "line": 1644,
-        "method": "DELETE",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "read_document_attachment",
-        "line": 1612,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "rename_document_attachment",
-        "line": 1579,
-        "method": "PATCH",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}/info",
-        "file": "back/app/memory/router.py",
-        "handler": "read_document_attachment_info",
-        "line": 1594,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/attachments/{attachment_id}/thumbnail",
-        "file": "back/app/memory/router.py",
-        "handler": "read_document_attachment_thumbnail",
-        "line": 1547,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/collaborators/{agent_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "remove_managed_document_grant",
-        "line": 1474,
-        "method": "DELETE",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/collaborators/{agent_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "set_managed_document_grant",
-        "line": 1439,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/content-revisions",
-        "file": "back/app/memory/router.py",
-        "handler": "list_managed_document_content_revisions",
-        "line": 947,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/content-revisions/{revision}",
-        "file": "back/app/memory/router.py",
-        "handler": "read_managed_document_content_revision",
-        "line": 974,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/content-revisions/{revision}/diff",
-        "file": "back/app/memory/router.py",
-        "handler": "diff_managed_document_content_revision",
-        "line": 999,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/content-revisions/{revision}/restore",
-        "file": "back/app/memory/router.py",
-        "handler": "restore_managed_document_content_revision",
-        "line": 1024,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/dataset-attachments",
-        "file": "back/app/memory/router.py",
-        "handler": "read_document_datasets",
-        "line": 1128,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/dataset-attachments",
-        "file": "back/app/memory/router.py",
-        "handler": "attach_document_dataset",
-        "line": 1188,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/dataset-attachments/{dataset_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "detach_document_dataset",
-        "line": 1201,
-        "method": "DELETE",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/export-bundle",
-        "file": "back/app/memory/router.py",
-        "handler": "export_document_bundle",
-        "line": 1074,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/export-pdf",
-        "file": "back/app/memory/router.py",
-        "handler": "export_managed_document_pdf",
-        "line": 1088,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/folder",
-        "file": "back/app/memory/router.py",
-        "handler": "move_managed_document",
-        "line": 1307,
-        "method": "PATCH",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/global-access",
-        "file": "back/app/memory/router.py",
-        "handler": "set_managed_document_global_access",
-        "line": 1409,
-        "method": "PATCH",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/grants/{agent_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "remove_document_grant",
-        "line": 1703,
-        "method": "DELETE",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/grants/{agent_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "set_document_grant",
-        "line": 1670,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/icon",
-        "file": "back/app/memory/router.py",
-        "handler": "save_document_icon",
-        "line": 742,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/import-image",
-        "file": "back/app/memory/router.py",
-        "handler": "import_document_image",
-        "line": 1052,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/internal-attachments",
-        "file": "back/app/memory/router.py",
-        "handler": "read_internal_attachments",
-        "line": 1139,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/internal-attachments",
-        "file": "back/app/memory/router.py",
-        "handler": "change_internal_attachments",
-        "line": 1151,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/link-card",
-        "file": "back/app/memory/router.py",
-        "handler": "create_document_link_card",
-        "line": 1063,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/owner",
-        "file": "back/app/memory/router.py",
-        "handler": "change_document_owner",
-        "line": 1345,
-        "method": "PATCH",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/parent",
-        "file": "back/app/memory/router.py",
-        "handler": "move_personal_subdocument",
-        "line": 799,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/process-attachments",
-        "file": "back/app/memory/router.py",
-        "handler": "read_document_processes",
-        "line": 1164,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/process-attachments",
-        "file": "back/app/memory/router.py",
-        "handler": "attach_document_process",
-        "line": 1175,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/sharing",
-        "file": "back/app/memory/router.py",
-        "handler": "read_document_sharing",
-        "line": 1277,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/sharing",
-        "file": "back/app/memory/router.py",
-        "handler": "update_document_sharing",
-        "line": 1286,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/sharing-level",
-        "file": "back/app/memory/router.py",
-        "handler": "update_document_sharing_level",
-        "line": 1295,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/tags",
-        "file": "back/app/memory/router.py",
-        "handler": "move_personal_document",
-        "line": 790,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/tags/{tag_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "remove_personal_document_tag",
-        "line": 873,
-        "method": "DELETE",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/tags/{tag_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "add_personal_document_tag",
-        "line": 864,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/documents/{document_id}/thumbnail",
-        "file": "back/app/memory/router.py",
-        "handler": "read_document_thumbnail",
-        "line": 1106,
+        "line": 291,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18117,7 +18448,7 @@
         "declared_path": "/memory/duplicates/preview",
         "file": "back/app/memory/router.py",
         "handler": "estimate_memory_duplicates",
-        "line": 385,
+        "line": 219,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18126,7 +18457,7 @@
         "declared_path": "/memory/filter-options",
         "file": "back/app/memory/router.py",
         "handler": "read_memory_filter_options",
-        "line": 500,
+        "line": 334,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18135,7 +18466,7 @@
         "declared_path": "/memory/findings",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_findings",
-        "line": 407,
+        "line": 241,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18144,7 +18475,7 @@
         "declared_path": "/memory/findings/{finding_id}/apply",
         "file": "back/app/memory/router.py",
         "handler": "apply_memory_finding",
-        "line": 426,
+        "line": 260,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18153,16 +18484,7 @@
         "declared_path": "/memory/findings/{finding_id}/dismiss",
         "file": "back/app/memory/router.py",
         "handler": "dismiss_memory_finding",
-        "line": 444,
-        "method": "POST",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/goal-folders/reconcile",
-        "file": "back/app/memory/router.py",
-        "handler": "launch_goal_folder_reconciliation",
-        "line": 351,
+        "line": 278,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18171,7 +18493,7 @@
         "declared_path": "/memory/graph/expand",
         "file": "back/app/memory/router.py",
         "handler": "expand_memory_graph_node",
-        "line": 565,
+        "line": 399,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18180,7 +18502,7 @@
         "declared_path": "/memory/graph/roots",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_graph_roots",
-        "line": 528,
+        "line": 362,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18189,7 +18511,7 @@
         "declared_path": "/memory/graph/state",
         "file": "back/app/memory/router.py",
         "handler": "write_memory_graph_state",
-        "line": 556,
+        "line": 390,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18198,7 +18520,7 @@
         "declared_path": "/memory/graph/state/read",
         "file": "back/app/memory/router.py",
         "handler": "read_memory_graph_state",
-        "line": 547,
+        "line": 381,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18207,7 +18529,7 @@
         "declared_path": "/memory/items",
         "file": "back/app/memory/router.py",
         "handler": "create_memory_item",
-        "line": 239,
+        "line": 133,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18216,7 +18538,7 @@
         "declared_path": "/memory/items/{item_id}",
         "file": "back/app/memory/router.py",
         "handler": "forget_memory_item",
-        "line": 681,
+        "line": 501,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -18225,7 +18547,7 @@
         "declared_path": "/memory/items/{item_id}",
         "file": "back/app/memory/router.py",
         "handler": "get_memory_item",
-        "line": 610,
+        "line": 430,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18234,25 +18556,7 @@
         "declared_path": "/memory/items/{item_id}",
         "file": "back/app/memory/router.py",
         "handler": "update_memory_item",
-        "line": 658,
-        "method": "PUT",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/items/{item_id}/grants/{agent_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "remove_memory_item_grant",
-        "line": 1747,
-        "method": "DELETE",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/items/{item_id}/grants/{agent_id}",
-        "file": "back/app/memory/router.py",
-        "handler": "set_memory_item_grant",
-        "line": 1732,
+        "line": 478,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -18261,7 +18565,7 @@
         "declared_path": "/memory/items/{item_id}/links",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_links",
-        "line": 1782,
+        "line": 657,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18270,26 +18574,8 @@
         "declared_path": "/memory/items/{item_id}/revisions",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_revisions",
-        "line": 643,
+        "line": 463,
         "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/items/{item_id}/sharing",
-        "file": "back/app/memory/router.py",
-        "handler": "read_item_sharing",
-        "line": 584,
-        "method": "GET",
-        "module": "app.memory"
-      },
-      {
-        "authorized": true,
-        "declared_path": "/memory/items/{item_id}/sharing",
-        "file": "back/app/memory/router.py",
-        "handler": "update_item_sharing",
-        "line": 593,
-        "method": "PUT",
         "module": "app.memory"
       },
       {
@@ -18297,7 +18583,7 @@
         "declared_path": "/memory/link-reconciliation",
         "file": "back/app/memory/router.py",
         "handler": "read_link_reconciliation_status",
-        "line": 329,
+        "line": 172,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18306,7 +18592,7 @@
         "declared_path": "/memory/link-reconciliation",
         "file": "back/app/memory/router.py",
         "handler": "launch_link_reconciliation",
-        "line": 341,
+        "line": 184,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18315,7 +18601,7 @@
         "declared_path": "/memory/links",
         "file": "back/app/memory/router.py",
         "handler": "create_memory_link",
-        "line": 1764,
+        "line": 639,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18324,7 +18610,7 @@
         "declared_path": "/memory/metrics",
         "file": "back/app/memory/router.py",
         "handler": "read_memory_metrics",
-        "line": 311,
+        "line": 154,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18351,7 +18637,7 @@
         "declared_path": "/memory/recall",
         "file": "back/app/memory/router.py",
         "handler": "recall_memory",
-        "line": 516,
+        "line": 350,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18360,7 +18646,7 @@
         "declared_path": "/memory/recent",
         "file": "back/app/memory/router.py",
         "handler": "read_recent_memories",
-        "line": 198,
+        "line": 92,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18369,7 +18655,7 @@
         "declared_path": "/memory/retention/preview",
         "file": "back/app/memory/router.py",
         "handler": "estimate_memory_retention",
-        "line": 368,
+        "line": 202,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18378,7 +18664,7 @@
         "declared_path": "/memory/search",
         "file": "back/app/memory/router.py",
         "handler": "search_memory",
-        "line": 488,
+        "line": 322,
         "method": "POST",
         "module": "app.memory"
       },
@@ -18387,7 +18673,7 @@
         "declared_path": "/memory/temporal/defaults",
         "file": "back/app/memory/router.py",
         "handler": "temporal_defaults",
-        "line": 121,
+        "line": 55,
         "method": "GET",
         "module": "app.memory"
       },
@@ -18549,7 +18835,7 @@
         "declared_path": "/process-campaigns",
         "file": "back/app/lab/process_evaluation_router.py",
         "handler": "lab_process_campaign_start",
-        "line": 85,
+        "line": 86,
         "method": "POST",
         "module": "app.lab"
       },
@@ -18558,7 +18844,7 @@
         "declared_path": "/process-campaigns/datasets",
         "file": "back/app/lab/process_evaluation_router.py",
         "handler": "lab_process_dataset_create",
-        "line": 65,
+        "line": 66,
         "method": "POST",
         "module": "app.lab"
       },
@@ -18567,7 +18853,7 @@
         "declared_path": "/process-campaigns/datasets/generate",
         "file": "back/app/lab/process_evaluation_router.py",
         "handler": "lab_process_dataset_generate",
-        "line": 74,
+        "line": 75,
         "method": "POST",
         "module": "app.lab"
       },
@@ -18576,7 +18862,7 @@
         "declared_path": "/process-campaigns/{identity}",
         "file": "back/app/lab/process_evaluation_router.py",
         "handler": "lab_process_campaign_get",
-        "line": 95,
+        "line": 96,
         "method": "GET",
         "module": "app.lab"
       },
@@ -18585,7 +18871,7 @@
         "declared_path": "/process-campaigns/{identity}/cancel",
         "file": "back/app/lab/process_evaluation_router.py",
         "handler": "lab_process_campaign_cancel",
-        "line": 104,
+        "line": 105,
         "method": "POST",
         "module": "app.lab"
       },
@@ -19458,7 +19744,7 @@
         "declared_path": "/topics",
         "file": "back/app/topic/router.py",
         "handler": "read_topics",
-        "line": 46,
+        "line": 47,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19467,7 +19753,7 @@
         "declared_path": "/topics",
         "file": "back/app/topic/router.py",
         "handler": "create_topic",
-        "line": 98,
+        "line": 99,
         "method": "POST",
         "module": "app.topic"
       },
@@ -19476,7 +19762,7 @@
         "declared_path": "/topics/conversation",
         "file": "back/app/topic/router.py",
         "handler": "read_conversation_topics",
-        "line": 65,
+        "line": 66,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19485,7 +19771,7 @@
         "declared_path": "/topics/keywords",
         "file": "back/app/topic/router.py",
         "handler": "read_topic_keywords",
-        "line": 80,
+        "line": 81,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19494,7 +19780,7 @@
         "declared_path": "/topics/refs",
         "file": "back/app/topic/router.py",
         "handler": "read_topic_refs",
-        "line": 88,
+        "line": 89,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19503,7 +19789,7 @@
         "declared_path": "/topics/resources/{kind}/{identity}",
         "file": "back/app/topic/router.py",
         "handler": "change_resource_topic",
-        "line": 105,
+        "line": 106,
         "method": "PUT",
         "module": "app.topic"
       },
@@ -19512,7 +19798,7 @@
         "declared_path": "/topics/{topic_id}",
         "file": "back/app/topic/router.py",
         "handler": "delete_topic",
-        "line": 204,
+        "line": 205,
         "method": "DELETE",
         "module": "app.topic"
       },
@@ -19521,7 +19807,7 @@
         "declared_path": "/topics/{topic_id}",
         "file": "back/app/topic/router.py",
         "handler": "read_topic",
-        "line": 212,
+        "line": 213,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19530,7 +19816,7 @@
         "declared_path": "/topics/{topic_id}",
         "file": "back/app/topic/router.py",
         "handler": "update_topic",
-        "line": 160,
+        "line": 161,
         "method": "PUT",
         "module": "app.topic"
       },
@@ -19539,7 +19825,7 @@
         "declared_path": "/topics/{topic_id}/content",
         "file": "back/app/topic/router.py",
         "handler": "read_topic_content",
-        "line": 142,
+        "line": 143,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19548,7 +19834,7 @@
         "declared_path": "/topics/{topic_id}/memories",
         "file": "back/app/topic/router.py",
         "handler": "read_topic_memories",
-        "line": 129,
+        "line": 130,
         "method": "GET",
         "module": "app.topic"
       },
@@ -19557,7 +19843,7 @@
         "declared_path": "/topics/{topic_id}/merge",
         "file": "back/app/topic/router.py",
         "handler": "merge_topic",
-        "line": 172,
+        "line": 173,
         "method": "POST",
         "module": "app.topic"
       },
@@ -19566,7 +19852,7 @@
         "declared_path": "/topics/{topic_id}/split",
         "file": "back/app/topic/router.py",
         "handler": "split_topic",
-        "line": 190,
+        "line": 191,
         "method": "POST",
         "module": "app.topic"
       },
@@ -20245,6 +20531,102 @@
       },
       {
         "files": [
+          "front/app/document/components/DocumentEditor.vue",
+          "front/app/document/components/DocumentHistoryDialog.vue",
+          "front/app/document/components/DocumentLibraryPage.vue",
+          "front/app/document/components/DocumentSharingPanel.vue"
+        ],
+        "source": "app/document",
+        "target": "app/agent"
+      },
+      {
+        "files": [
+          "front/app/document/components/DocumentBulkDialog.vue",
+          "front/app/document/components/DocumentEditor.vue",
+          "front/app/document/components/DocumentLibraryFilters.vue",
+          "front/app/document/components/DocumentLibraryPage.vue",
+          "front/app/document/components/DocumentSharingPanel.vue",
+          "front/app/document/services/documentService.ts",
+          "front/app/document/types.ts"
+        ],
+        "source": "app/document",
+        "target": "app/share"
+      },
+      {
+        "files": [
+          "front/app/document/components/DocumentBulkList.vue",
+          "front/app/document/components/DocumentEditor.vue",
+          "front/app/document/components/DocumentLibraryNavigation.vue",
+          "front/app/document/components/DocumentThumbnail.vue",
+          "front/app/document/services/documentService.ts",
+          "front/app/document/stores/documentIcons.ts",
+          "front/app/document/stores/documentMutations.ts"
+        ],
+        "source": "app/document",
+        "target": "core/api"
+      },
+      {
+        "files": [
+          "front/app/document/components/DocumentBulkList.vue",
+          "front/app/document/components/DocumentEditor.vue",
+          "front/app/document/navigation.ts"
+        ],
+        "source": "app/document",
+        "target": "core/authorize"
+      },
+      {
+        "files": [
+          "front/app/document/components/DocumentLibraryPage.vue",
+          "front/app/document/navigation.ts"
+        ],
+        "source": "app/document",
+        "target": "core/navigation"
+      },
+      {
+        "files": [
+          "front/app/document/components/DocumentApplication.vue",
+          "front/app/document/components/DocumentApplicationBlock.vue",
+          "front/app/document/components/DocumentAttachments.vue",
+          "front/app/document/components/DocumentBulkList.vue",
+          "front/app/document/components/DocumentDialog.vue",
+          "front/app/document/components/DocumentEditor.vue",
+          "front/app/document/components/DocumentFolderSelect.vue",
+          "front/app/document/components/DocumentHistoryDialog.vue",
+          "front/app/document/components/DocumentLibraryPage.vue",
+          "front/app/document/components/DocumentRowMenu.vue",
+          "front/app/document/components/DocumentSharingPanel.vue",
+          "front/app/document/components/DocumentSplitterHandle.vue",
+          "front/app/document/components/DocumentTagIcon.vue",
+          "front/app/document/components/DocumentTagIconPicker.vue",
+          "front/app/document/components/DocumentTagRow.vue",
+          "front/app/document/components/DocumentThumbnail.vue",
+          "front/app/document/documentAppResources.ts",
+          "front/app/document/documentAppSandbox.ts",
+          "front/app/document/documentEditor.ts",
+          "front/app/document/documentFolders.ts",
+          "front/app/document/libraryShortcuts.ts",
+          "front/app/document/richContent.ts",
+          "front/app/document/services/documentService.ts",
+          "front/app/document/tagEmojiCatalog.ts",
+          "front/app/document/tagIcon.ts"
+        ],
+        "source": "app/document",
+        "target": "core/util"
+      },
+      {
+        "files": [
+          "front/app/document/components/DocumentApplication.vue",
+          "front/app/document/components/DocumentBulkList.vue",
+          "front/app/document/components/DocumentEditor.vue",
+          "front/app/document/components/DocumentLibraryNavigation.vue",
+          "front/app/document/components/DocumentLibraryPage.vue",
+          "front/app/document/components/DocumentThumbnail.vue"
+        ],
+        "source": "app/document",
+        "target": "core/websocket"
+      },
+      {
+        "files": [
           "front/app/dream/components/FileIndexTab.vue"
         ],
         "source": "app/dream",
@@ -20730,10 +21112,6 @@
       },
       {
         "files": [
-          "front/app/memory/components/DocumentEditor.vue",
-          "front/app/memory/components/DocumentHistoryDialog.vue",
-          "front/app/memory/components/DocumentLibraryPage.vue",
-          "front/app/memory/components/MemorySharingPanel.vue",
           "front/app/memory/pages/contacts.vue",
           "front/app/memory/pages/index.vue"
         ],
@@ -20742,12 +21120,24 @@
       },
       {
         "files": [
-          "front/app/memory/components/DocumentBulkDialog.vue",
-          "front/app/memory/components/DocumentEditor.vue",
-          "front/app/memory/components/DocumentLibraryFilters.vue",
-          "front/app/memory/components/DocumentLibraryPage.vue",
-          "front/app/memory/components/MemorySharingPanel.vue",
+          "front/app/memory/components/MemoryAttachmentButton.vue",
+          "front/app/memory/components/MemoryContentPreviews.vue",
+          "front/app/memory/components/MemoryFileResources.vue",
+          "front/app/memory/components/MemoryGraphNodeDetail.vue",
+          "front/app/memory/components/MemoryGraphRelations.vue",
+          "front/app/memory/components/MemoryItemHistory.vue",
+          "front/app/memory/components/MemoryItemThumbnail.vue",
+          "front/app/memory/components/MemoryLinkDialog.vue",
+          "front/app/memory/pages/index.vue",
           "front/app/memory/services/memoryService.ts",
+          "front/app/memory/stores/memoryStore.ts",
+          "front/app/memory/types.ts"
+        ],
+        "source": "app/memory",
+        "target": "app/document"
+      },
+      {
+        "files": [
           "front/app/memory/types.ts"
         ],
         "source": "app/memory",
@@ -20757,10 +21147,6 @@
         "files": [
           "front/app/memory/components/ContactCreateDialog.vue",
           "front/app/memory/components/ContactEditDialog.vue",
-          "front/app/memory/components/DocumentBulkList.vue",
-          "front/app/memory/components/DocumentEditor.vue",
-          "front/app/memory/components/DocumentLibraryNavigation.vue",
-          "front/app/memory/components/DocumentThumbnail.vue",
           "front/app/memory/components/MemoryFileResources.vue",
           "front/app/memory/components/MemoryGraph.vue",
           "front/app/memory/components/MemoryItemThumbnail.vue",
@@ -20768,17 +21154,13 @@
           "front/app/memory/pages/index.vue",
           "front/app/memory/richContent.ts",
           "front/app/memory/services/contactService.ts",
-          "front/app/memory/services/memoryService.ts",
-          "front/app/memory/stores/documentIcons.ts",
-          "front/app/memory/stores/documentMutations.ts"
+          "front/app/memory/services/memoryService.ts"
         ],
         "source": "app/memory",
         "target": "core/api"
       },
       {
         "files": [
-          "front/app/memory/components/DocumentBulkList.vue",
-          "front/app/memory/components/DocumentEditor.vue",
           "front/app/memory/components/MemoryDreamActions.vue",
           "front/app/memory/navigation.ts",
           "front/app/memory/pages/contacts.vue",
@@ -20789,7 +21171,6 @@
       },
       {
         "files": [
-          "front/app/memory/components/DocumentLibraryPage.vue",
           "front/app/memory/navigation.ts",
           "front/app/memory/pages/contacts.vue",
           "front/app/memory/pages/index.vue"
@@ -20801,51 +21182,22 @@
         "files": [
           "front/app/memory/components/ContactCreateDialog.vue",
           "front/app/memory/components/ContactEditDialog.vue",
-          "front/app/memory/components/DocumentApplication.vue",
-          "front/app/memory/components/DocumentApplicationBlock.vue",
-          "front/app/memory/components/DocumentAttachments.vue",
-          "front/app/memory/components/DocumentBulkList.vue",
-          "front/app/memory/components/DocumentDialog.vue",
-          "front/app/memory/components/DocumentEditor.vue",
-          "front/app/memory/components/DocumentFolderSelect.vue",
-          "front/app/memory/components/DocumentHistoryDialog.vue",
-          "front/app/memory/components/DocumentLibraryPage.vue",
-          "front/app/memory/components/DocumentRowMenu.vue",
-          "front/app/memory/components/DocumentSplitterHandle.vue",
-          "front/app/memory/components/DocumentTagIcon.vue",
-          "front/app/memory/components/DocumentTagIconPicker.vue",
-          "front/app/memory/components/DocumentTagRow.vue",
-          "front/app/memory/components/DocumentThumbnail.vue",
           "front/app/memory/components/MemoryAttachmentButton.vue",
           "front/app/memory/components/MemoryContentPreviews.vue",
           "front/app/memory/components/MemoryGraph.vue",
           "front/app/memory/components/MemoryItemForm.vue",
           "front/app/memory/components/MemoryItemHistory.vue",
           "front/app/memory/components/MemoryItemThumbnail.vue",
-          "front/app/memory/components/MemorySharingPanel.vue",
-          "front/app/memory/documentAppResources.ts",
-          "front/app/memory/documentAppSandbox.ts",
-          "front/app/memory/documentEditor.ts",
-          "front/app/memory/documentFolders.ts",
-          "front/app/memory/libraryShortcuts.ts",
           "front/app/memory/pages/contacts.vue",
           "front/app/memory/pages/index.vue",
           "front/app/memory/richContent.ts",
-          "front/app/memory/services/memoryService.ts",
-          "front/app/memory/tagEmojiCatalog.ts",
-          "front/app/memory/tagIcon.ts"
+          "front/app/memory/services/memoryService.ts"
         ],
         "source": "app/memory",
         "target": "core/util"
       },
       {
         "files": [
-          "front/app/memory/components/DocumentApplication.vue",
-          "front/app/memory/components/DocumentBulkList.vue",
-          "front/app/memory/components/DocumentEditor.vue",
-          "front/app/memory/components/DocumentLibraryNavigation.vue",
-          "front/app/memory/components/DocumentLibraryPage.vue",
-          "front/app/memory/components/DocumentThumbnail.vue",
           "front/app/memory/components/MemoryGraph.vue",
           "front/app/memory/pages/index.vue",
           "front/app/memory/stores/memoryStore.ts"
@@ -21776,15 +22128,16 @@
           "app/voice"
         ]
       ],
-      "domain_edges": 50,
+      "domain_edges": 53,
       "fan_in": [
         {
-          "count": 14,
+          "count": 15,
           "module": "app/agent",
           "modules": [
             "app/chat",
             "app/connection",
             "app/conversation",
+            "app/document",
             "app/dream",
             "app/file_share",
             "app/goal",
@@ -21826,6 +22179,16 @@
         },
         {
           "count": 4,
+          "module": "app/share",
+          "modules": [
+            "app/dataset",
+            "app/document",
+            "app/memory",
+            "app/process"
+          ]
+        },
+        {
+          "count": 4,
           "module": "app/topic",
           "modules": [
             "app/chat",
@@ -21841,15 +22204,6 @@
             "app/conversation",
             "app/task",
             "app/voice"
-          ]
-        },
-        {
-          "count": 3,
-          "module": "app/share",
-          "modules": [
-            "app/dataset",
-            "app/memory",
-            "app/process"
           ]
         },
         {
@@ -21880,6 +22234,13 @@
           "module": "app/dataset",
           "modules": [
             "app/process"
+          ]
+        },
+        {
+          "count": 1,
+          "module": "app/document",
+          "modules": [
+            "app/memory"
           ]
         },
         {
@@ -22002,11 +22363,28 @@
           ]
         },
         {
+          "count": 3,
+          "module": "app/memory",
+          "modules": [
+            "app/agent",
+            "app/document",
+            "app/share"
+          ]
+        },
+        {
           "count": 2,
           "module": "app/agent",
           "modules": [
             "app/harnesses",
             "app/llm"
+          ]
+        },
+        {
+          "count": 2,
+          "module": "app/document",
+          "modules": [
+            "app/agent",
+            "app/share"
           ]
         },
         {
@@ -22023,14 +22401,6 @@
           "modules": [
             "app/agent",
             "app/task"
-          ]
-        },
-        {
-          "count": 2,
-          "module": "app/memory",
-          "modules": [
-            "app/agent",
-            "app/share"
           ]
         },
         {
@@ -22101,6 +22471,7 @@
         [
           "app/agent",
           "app/conversation",
+          "app/document",
           "app/lab",
           "app/llm",
           "app/memory",
@@ -22596,6 +22967,32 @@
         ],
         "exists": true,
         "layer": "app",
+        "name": "app/document",
+        "pages": [
+          {
+            "file": "front/app/document/pages/documents.vue",
+            "module": "app/document",
+            "route_hint": "/documents"
+          },
+          {
+            "file": "front/app/document/pages/legacy-documents.vue",
+            "module": "app/document",
+            "route_hint": "/memory/documents"
+          }
+        ],
+        "path": "front/app/document"
+      },
+      {
+        "capabilities": [
+          "components",
+          "i18n.ts",
+          "navigation.ts",
+          "pages",
+          "services",
+          "stores"
+        ],
+        "exists": true,
+        "layer": "app",
         "name": "app/memory",
         "pages": [
           {
@@ -22604,19 +23001,9 @@
             "route_hint": "/memory/contacts"
           },
           {
-            "file": "front/app/memory/pages/documents.vue",
-            "module": "app/memory",
-            "route_hint": "/documents"
-          },
-          {
             "file": "front/app/memory/pages/index.vue",
             "module": "app/memory",
             "route_hint": "/memory"
-          },
-          {
-            "file": "front/app/memory/pages/legacy-documents.vue",
-            "module": "app/memory",
-            "route_hint": "/memory/documents"
           }
         ],
         "path": "front/app/memory"
@@ -22955,8 +23342,8 @@
         "route_hint": "/dataset/:id?"
       },
       {
-        "file": "front/app/memory/pages/documents.vue",
-        "module": "app/memory",
+        "file": "front/app/document/pages/documents.vue",
+        "module": "app/document",
         "route_hint": "/documents"
       },
       {
@@ -23060,8 +23447,8 @@
         "route_hint": "/memory/contacts"
       },
       {
-        "file": "front/app/memory/pages/legacy-documents.vue",
-        "module": "app/memory",
+        "file": "front/app/document/pages/legacy-documents.vue",
+        "module": "app/document",
         "route_hint": "/memory/documents"
       },
       {

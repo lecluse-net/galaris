@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
@@ -18,7 +19,7 @@ test('activity and topic references persist as compact cards and open modals aft
     label: 'Synthetic reference work', objective: '<p>Full objective kept outside the card</p>', agent_id: fixture.agent_id,
     status: 'SUCCESS', topic_id: topic.id,
   } }))
-  const document = await checked(await request.post('/api/memory/items', { headers, data: {
+  const document = await checked(await createDocument(request, { headers, data: {
     owner_agent_id: fixture.agent_id, title: 'Synthetic reference report', node_kind: 'document', media_type: 'text/html',
     payload: { text: '<p>Preserve authored content</p>' },
   } }))
@@ -35,7 +36,7 @@ test('activity and topic references persist as compact cards and open modals aft
   await editor.click(); await page.keyboard.press('Control+End'); await page.keyboard.press('Enter'); await page.keyboard.press('Control+v')
   await expect(editor.locator('a')).toHaveText(task.label)
   await editor.locator('a').click()
-  const save = () => page.waitForResponse(response => new URL(response.url()).pathname === `/api/memory/documents/${document.id}` && response.request().method() === 'PATCH')
+  const save = () => page.waitForResponse(response => new URL(response.url()).pathname === `/api/documents/${document.id}` && response.request().method() === 'PATCH')
   const cardSaved = save()
   await page.getByRole('button', { name: /^(Show card|Afficher une carte)$/ }).click()
   const card = editor.locator('.galaris-link-card')
@@ -61,7 +62,7 @@ test('activity and topic references persist as compact cards and open modals aft
   const topicLink = editor.getByRole('link', { name: topic.title, exact: true })
   await expect(topicLink).toBeVisible()
   expect((await topicSaved).ok()).toBeTruthy()
-  const persisted = await checked(await request.get(`/api/memory/documents/${document.id}`, { headers }))
+  const persisted = await checked(await request.get(`/api/documents/${document.id}`, { headers }))
   expect(persisted.item.payload.text).toContain(`galaris://task/${task.id}`)
   expect(persisted.item.payload.text).toContain(`galaris://topic/${topic.id}`)
   await page.reload()

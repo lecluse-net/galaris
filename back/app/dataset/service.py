@@ -354,7 +354,7 @@ async def remove(identity: UUID, actor: DataActor, *, expected_lock_version: int
     # Dataset owns its copied history; release migration pointers before Memory
     # erases the obsolete legacy revisions, without changing canonical content.
     await get_db().execute(update(DatasetRevision).where(DatasetRevision.dataset_id == identity)
-        .values(source_revision_id=None))
+        .values(document_source_revision_id=None))
     from app.memory import forget_resource_memories
     await forget_resource_memories([f"data://{identity}"], descendants=True)
     await get_db().flush()

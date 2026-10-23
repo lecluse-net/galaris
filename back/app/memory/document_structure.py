@@ -19,12 +19,13 @@ from sqlalchemy import func, select
 from core.database import get_db
 from core.util import complete_io
 
-from .document_attachment_service import attachments_from_item
-from .models import DocumentAttachment, DocumentTag, DocumentTagAssignment, MemoryItem, MemoryLink
+from app.document.interface import attachments_from_item
+from .models import MemoryItem, MemoryLink
+from app.document import Document, DocumentAttachment, DocumentTag, DocumentTagAssignment
 from .urls import associate_memory_url
 from .semantic_index import stage_embedding_refresh
-from .storage import get_storage, NativeFileStorage
-from .inline_content import prepare_content
+from core.storage import get_storage, NativeFileStorage
+from core.storage import prepare_content
 
 
 PROJECTION = "memory.document_structure"
@@ -165,7 +166,7 @@ async def sync_document_classification(document_id: UUID) -> None:
     await _edges(document_id, desired, relations=frozenset({"in_folder"}))
 
 
-async def sync_document_structure(document: MemoryItem, content: bytes | None = None) -> None:
+async def sync_document_structure(document: Document, content: bytes | None = None) -> None:
     """Reconcile a locked/current document manifest before its transaction commits."""
     if document.node_kind != "document":
         return
@@ -180,9 +181,11 @@ async def sync_document_structure(document: MemoryItem, content: bytes | None = 
     for attachment in attachments_from_item(document, include_retained=True):
         if attachment.id in records:
             record = records[attachment.id]
-            node = await db.get(MemoryItem, record.memory_item_id)
+            node = await db.get(MemoryItem, record.memory_item_id) if record.memory_item_id is not None else None
             if node is None:
-                raise ValueError("Attachment companion is missing")
+                node = await _node(kind="attachment", source_id=attachment.id, title=attachment.name,
+                    owner_agent_id=document.owner_agent_id, owner_user_id=document.owner_user_id, metadata={})
+                record.memory_item_id = node.id
             if node.managed_source_ref == str(attachment.id):
                 node.title = attachment.name
             node.owner_agent_id = document.owner_agent_id
@@ -214,17 +217,19 @@ async def sync_document_structure(document: MemoryItem, content: bytes | None = 
                     return hashlib.file_digest(source, "sha256").hexdigest()
             node.file_sha256 = await complete_io(digest, path)
         record.active = attachment.id in active_ids
-        if record.active:
+        if record.active and record.memory_item_id is not None:
             desired.add((node.id, "has_attachment"))
     for identity, record in records.items():
         record.active = identity in active_ids
     active_urls: dict[UUID, list[str]] = {}
     for record in records.values():
-        if record.active:
+        if record.active and record.memory_item_id is not None:
             active_urls.setdefault(record.memory_item_id, []).append(
                 f"document://{document.id}/attachments/{record.id}"
             )
     for node_id in {record.memory_item_id for record in records.values()}:
+        if node_id is None:
+            continue
         companion = await db.get(MemoryItem, node_id)
         if companion is not None:
             locations = active_urls.get(node_id, [])
@@ -245,7 +250,7 @@ async def sync_document_structure(document: MemoryItem, content: bytes | None = 
                     DocumentAttachment.id == attachment_id, DocumentAttachment.document_id == target.id,
                     DocumentAttachment.active.is_(True),
                 ))
-                if attachment is not None:
+                if attachment is not None and attachment.memory_item_id is not None:
                     desired.add((attachment.memory_item_id, "uses_attachment"))
         folders = await db.scalars(select(DocumentTag.memory_item_id).join(
             DocumentTagAssignment, DocumentTagAssignment.tag_id == DocumentTag.id,
@@ -291,7 +296,7 @@ async def sync_folder_structure(user_id: int) -> None:
     for tag in tags:
         if tag.memory_item_id is not None:
             await _edges(tag.memory_item_id, children[tag.id])
-    from .sharing_inheritance import reconcile_sharing
+    from app.document.interface import reconcile_sharing
     await reconcile_sharing()
 
 
@@ -300,7 +305,7 @@ async def reconcile_document_structure() -> int:
     db = get_db()
     users = await db.scalars(select(DocumentTag.user_id).distinct())
     for user_id in users:
-        from .document_tags import lock_tree
+        from app.document.interface import lock_tree
         await lock_tree(user_id)
         await sync_folder_structure(user_id)
     count = 0
@@ -309,14 +314,15 @@ async def reconcile_document_structure() -> int:
     for _pass in range(2):
         cursor: UUID | None = None
         while True:
-            query = select(MemoryItem).where(MemoryItem.node_kind == "document")
+            query = select(Document)
             if cursor is not None:
-                query = query.where(MemoryItem.id > cursor)
-            documents = list(await db.scalars(query.order_by(MemoryItem.id).limit(100).with_for_update()))
+                query = query.where(Document.id > cursor)
+            documents = list(await db.scalars(query.order_by(Document.id).limit(100).with_for_update()))
             if not documents:
                 break
             for document in documents:
-                await sync_document_structure(document)
+                from .document_projection import refresh
+                await refresh(document.id)
                 if _pass == 0:
                     count += 1
             cursor = documents[-1].id

@@ -766,7 +766,7 @@ async def test_resource_read_rejects_large_binary_with_console_guidance(
 async def test_resource_create_assigns_a_document_uri_without_a_name(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.memory as memory
+    import app.document as memory
 
     identifier = uuid4()
     captured: dict[str, object] = {}
@@ -856,7 +856,7 @@ async def test_canonical_percent_encoding_maps_to_decoded_console_name(
 async def test_document_collection_lists_canonical_resource_uris(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.memory as memory
+    import app.document.facade as memory
 
     identifiers = [uuid4(), uuid4()]
 
@@ -937,7 +937,7 @@ async def test_copying_console_text_to_document_collection_creates_document(
     resource_console: TemporaryFileTransport,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import app.memory as memory
+    import app.document as memory
 
     identifier = uuid4()
     captured: dict[str, object] = {}

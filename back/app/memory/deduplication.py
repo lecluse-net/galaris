@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from app.share import ShareGrant
-
 import math
 from collections.abc import Sequence
 from datetime import datetime, timezone
@@ -27,6 +25,7 @@ from .embedding import (
     resolve_embedding_model,
 )
 from .models import MemoryContactItem, MemoryEmbeddingChunk, MemoryItem, MemoryTopicContactItem, MemoryTopicContactScope
+from .access import readable_item_clause
 from .schemas import (
     MemoryDuplicatePreview,
     MemoryDuplicatePreviewPair,
@@ -67,16 +66,7 @@ async def _candidates_for_embedding(
     )
     filters: list[ColumnElement[bool]] = [
         *_valid_item_filters(),
-        or_(
-            MemoryItem.owner_agent_id == agent_id,
-            MemoryItem.visibility == "public",
-            exists(
-                select(ShareGrant.id).where(
-                    ShareGrant.share_id == MemoryItem.share_id,
-                    ShareGrant.agent_id == agent_id,
-                )
-            ),
-        ),
+        readable_item_clause(agent_id),
         MemoryEmbeddingChunk.model_key == model.key,
         MemoryEmbeddingChunk.dimensions == dimensions,
         MemoryEmbeddingChunk.source_fingerprint

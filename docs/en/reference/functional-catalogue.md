@@ -1310,7 +1310,7 @@ Migration preserves existing document URIs, versions and recipients. Previously 
 become documents; private memories retain former titles within their content. A verified SQL
 backup precedes transfer and retains referenced resources; it does not replace file-storage backups.
 See the [separation decision](../../../project/decisions/0162-document-and-memory-synthesis.md) and
-[preservation guarantees](../../../back/app/memory/tests/test_document_split.py).
+[preservation guarantees](../../../back/app/document/tests/test_independence_upgrade.py).
 Search uses full current document content and the synthesis alongside standalone memories, returns
 one result per document/synthesis pair and applies current document permissions to both contents.
 Revisions retain dates, authors and Task sources, without an arbitrary “reason for change” field.
@@ -1529,7 +1529,7 @@ Additional references: [Memory acquisition](../../../back/app/memory/acquisition
 [Memory API](../../../back/app/memory/router.py),
 [Memory schemas](../../../back/app/memory/schemas.py),
 [Memory browsing tests](../../../front/browser-tests/memory.spec.mjs),
-[Sharing](../../../back/app/memory/item_sharing.py),
+[Sharing](../../../back/app/document/item_sharing.py),
 [Recall and maintenance](../architecture/flows/memory.md),
 [Document retrieval tests](../../../back/app/memory/tests/test_document_retrieval.py).
 
@@ -1562,7 +1562,7 @@ writing, review, delegation and conversation. Sources and cross-references stay 
 content; messages discuss it and transmit its reference.
 
 For example, `file_create(path="document://", name="Report", content="<p>HTML content.</p>")`
-creates a private document. Agents identify recipients with `memory_sharing` and grant access with
+creates a private document. Agents identify recipients with `document_sharing` and grant access with
 `document_share` before handing work over. Sending a URI or calling `document_show` grants no rights.
 
 Short replies belong in chat and concise durable facts can become memories. A Task does not itself
@@ -1863,7 +1863,7 @@ Sources: [HTML conversion](../../../front/core/util/pasteDocumentHtml.ts),
 [Markdown conversion](../../../front/core/util/pasteMarkdown.ts),
 [paste workflows](../../../front/browser-tests/markdown-paste.spec.mjs),
 [images and persistence](../../../front/browser-tests/document-resources.spec.mjs),
-[import permissions](../../../back/app/memory/tests/test_document_resources.py).
+[import permissions](../../../back/app/document/tests/test_document_resources.py).
 
 ### One current thumbnail per document
 
@@ -1893,8 +1893,8 @@ New resources are private. Authorised owners/managers can grant application-publ
 team access based on current membership, or individual human/agent access; combine recipients,
 change rights, remove direct grants and inspect current sharing. “Public” does not mean anonymous
 Internet publishing. Editing alone does not permit resharing; removing a direct grant does not
-remove access through a team or another route. Agents use `document_share`, `memory_sharing` and
-`memory_share` to discover recipient identifiers and update owner-authorised sharing.
+remove access through a team or another route. Agents use `document_share` and
+`document_sharing` to discover recipient identifiers and update owner-authorised sharing.
 
 ### Shared resource permissions
 
@@ -1932,14 +1932,14 @@ implicitly included in its parent document's printout.
 Sources: [rich editing](../user/rich-content.md), [document API](../../../back/app/memory/router.py),
 [editorial contracts](../dev/editorial-html.md), [document applications](../dev/document-apps.md),
 [Dataset tests](../../../back/app/memory/tests/test_dataset_documents.py),
-[application permissions and quotas](../../../back/app/memory/tests/test_document_apps.py),
+[application permissions and quotas](../../../back/app/document/tests/test_document_apps.py),
 [editor/isolation/export tests](../../../front/browser-tests/document-apps.spec.mjs),
 [classification](../../../front/browser-tests/document-classification.spec.mjs),
 [deletion](../../../front/browser-tests/document-deletion.spec.mjs).
 
 
 Additional references: [Personal filing contract](../../../project/decisions/0099-personal-document-classification.md),
-[Document components](../../../front/app/memory/).
+[Document components](../../../front/app/document/).
 
 <a id="sujets"></a>
 ## 14. Topics
@@ -3723,9 +3723,8 @@ management needs the specialised connection; ordinary actions stay within the ag
 | `memory_upcoming` | `memory` | Paginate authorised memories matching now or the lookahead window independently of textual similarity; schedules no notification. |
 | `memory_forget` | `memory` | Permanently forget a standalone memory and eligible versions; document memories cannot be forgotten independently of the document. |
 | `memory_summarize` | `memory` | Use the agent model for attributed facts, decisions, commitments and open questions from ≤200 messages/32,000 characters, without replacing memory or saving after model failure. |
-| `memory_sharing` | `memory` | Read sharing, possible recipients and lock version, with recipient search/filter/pagination. |
-| `memory_share` | `memory` | Compatibility alias for sharing an owned document; standalone memories remain private. |
-| `document_share` | `memory` | Equivalent targeted sharing for owned working documents. |
+| `document_sharing` | `document` | Read sharing, possible recipients and lock version, with recipient search/filter/pagination. |
+| `document_share` | `document` | Targeted sharing for owned working documents. |
 | `skills_list` | `skill_management` | Discover skills within permitted/administrable scope. |
 | `skill_read` | `skill_management` | Read skill/details; support files use the resource facade. |
 

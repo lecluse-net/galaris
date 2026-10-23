@@ -1,0 +1,797 @@
+from __future__ import annotations
+
+import asyncio
+import base64
+from datetime import datetime, timezone
+from io import BytesIO
+from pathlib import Path
+from uuid import uuid4
+from unittest.mock import AsyncMock
+from zipfile import ZipFile
+
+import av
+import pytest
+from PIL import Image
+from sqlalchemy import event
+
+from app.document.document_thumbnail_service import _text_thumbnail, _video_thumbnail, _web_url
+from app.document.schemas import DocumentAttachmentPublic, DocumentThumbnailRender
+from app.document import document_thumbnail_service
+from app.document import resource_service as service
+from app.document.schemas import DocumentItemCreate, DocumentUpdate, DocumentPayload, DocumentGrantUpdate
+from core.preview import thumbnails
+from app.document import document_thumbnail_cache
+from core.document import prepare_document
+from app.browser import service as browser_service
+from app.browser.schemas import BrowserScreenshot, BrowserScreenshotPart
+
+
+@pytest.mark.asyncio
+async def test_document_capture_tracks_saved_revisions_and_rechecks_access(
+    agents, memory_storage, tmp_path, monkeypatch, db,
+):
+    owner, peer = agents
+    cache_root = tmp_path / "thumbnails"
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(cache_root))
+    captured = []
+
+    async def capture(html, *, first_page_only):
+        assert first_page_only
+        captured.append(html)
+        return html.encode()
+
+    monkeypatch.setattr(document_thumbnail_service, "render_html_pdf", capture)
+    monkeypatch.setattr(document_thumbnail_service, "_printed_document_thumbnail", lambda html:
+        thumbnails.encode(Image.new("RGB", (80, 60), "blue" if b"First" in html else "red")))
+    item, _ = await service.create_item(DocumentItemCreate(
+        owner_agent_id=owner.id, title="Report",  node_kind="document", media_type="text/html",
+        payload=DocumentPayload(text="<h1>First revision</h1><table><tr><td>Result</td></tr></table>"),
+    ))
+    await service.set_item_grant(item.id, peer.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    snapshot = DocumentThumbnailRender(html="<h1>First revision</h1><table><tr><td>Result</td></tr></table>", revision=item.revision, lock_version=item.lock_version)
+    original_revision, original_lock = item.revision, item.lock_version
+    original_document_updated_at = item.updated_at
+    statements = []
+
+    def record_sql(connection, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    storage = service.get_storage(item.provider_code)
+    source_reads = AsyncMock(wraps=storage.read)
+    event.listen(db.sync_session.bind, "before_cursor_execute", record_sql)
+    try:
+        with monkeypatch.context() as capture_patch:
+            capture_patch.setattr(storage, "read", source_reads)
+            first = await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=peer.id)
+            assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == first
+    finally:
+        event.remove(db.sync_session.bind, "before_cursor_execute", record_sql)
+    source_reads.assert_not_awaited()
+    assert not any("memory_revision" in statement.lower() for statement in statements)
+    assert first is not None
+    assert "<h1>First revision</h1>" in captured[0]
+    assert "<table>" in captured[0]
+    assert len(captured) == 1
+    first_id = item.thumbnail_id
+    assert first_id is not None
+    assert document_thumbnail_cache.cache_path(item.id, first_id).read_bytes() == first
+    assert not list(cache_root.rglob("*.json"))
+    assert (item.revision, item.lock_version) == (original_revision, original_lock)
+    assert item.updated_at == original_document_updated_at
+    assert service.item_to_public(item, await service.effective_access(item, owner.id)).thumbnail_id == first_id
+
+    await service.update_item(item.id, DocumentUpdate(
+        expected_revision=item.revision, payload=DocumentPayload(text="<h1>Second revision</h1>"),
+    ), actor_agent_id=owner.id)
+    assert not list(cache_root.rglob("*.webp"))
+    assert item.thumbnail_id is None
+    assert not list(cache_root.rglob("*.revision.json"))
+    with pytest.raises(service.DocumentConflictError):
+        await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id)
+    snapshot = DocumentThumbnailRender(html="<h1>Second revision</h1>", revision=item.revision, lock_version=item.lock_version)
+    second = await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=peer.id)
+    assert second is not None and second != first
+    assert len(captured) == 2
+
+    assert not list(cache_root.rglob("*.json"))
+    second_id = item.thumbnail_id
+    assert second_id is not None and second_id != first_id
+    assert list(cache_root.rglob("*.webp")) == [document_thumbnail_cache.cache_path(item.id, second_id)]
+    assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == second
+    assert len(captured) == 2
+
+    # A lost disposable file is recaptured without creating thumbnail history.
+    document_thumbnail_cache.cache_path(item.id, second_id).unlink()
+    assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == second
+    assert item.thumbnail_id == second_id
+    assert not list(cache_root.rglob("*.json"))
+    assert len(captured) == 3
+
+    await service.remove_item_grant(item.id, peer.id, actor_agent_id=owner.id)
+    snapshot.lock_version = item.lock_version
+    await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id)
+    with pytest.raises(service.DocumentPermissionError):
+        await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=peer.id)
+
+
+@pytest.mark.asyncio
+async def test_document_thumbnail_isolates_snapshots_and_recovers_from_renderer_failure(
+    agents, memory_storage, tmp_path, monkeypatch,
+):
+    owner, _ = agents
+    cache_root = tmp_path / "thumbnails"
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(cache_root))
+    item, _ = await service.create_item(DocumentItemCreate(
+        owner_agent_id=owner.id, title="Illustrated report",  node_kind="document", media_type="text/html",
+        payload=DocumentPayload(text="<p>Illustration</p>"),
+    ))
+    png = thumbnails.encode(Image.new("RGB", (64, 48), "green"))
+    snapshot = DocumentThumbnailRender(html='<p>Illustration</p>', revision=item.revision, lock_version=item.lock_version)
+    legacy = cache_root / "documents" / str(item.id) / "synthetic-old.png"
+    legacy.parent.mkdir(parents=True)
+    Image.new("RGB", (520, 320), "blue").save(legacy)
+    capture = AsyncMock(side_effect=RuntimeError("renderer unavailable"))
+    monkeypatch.setattr(document_thumbnail_service, "render_html_pdf", capture)
+    monkeypatch.setattr(document_thumbnail_service, "_printed_document_thumbnail", lambda _: png)
+    assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) is None
+    assert legacy.exists()
+    assert not list((tmp_path / "thumbnails").rglob("*.revision.json"))
+    capture.side_effect = None
+    capture.return_value = b"pdf"
+    assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == png
+    assert not legacy.parent.exists()
+    path = next(cache_root.rglob("*.webp"))
+    assert len(path.relative_to(cache_root / "documents").parts) == 4
+    assert capture.await_count == 2
+    snapshot.html = '<p>Another client snapshot</p>'
+    assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == png
+    assert capture.await_count == 3
+    assert not list(cache_root.rglob("*.json"))
+    assert len(list(cache_root.rglob("*.webp"))) == 1
+    assert not path.exists()
+    retained_id = item.thumbnail_id
+    capture.side_effect = RuntimeError("renderer unavailable again")
+    assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id, force=True) is None
+    assert item.thumbnail_id == retained_id
+    assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) == png
+
+    async def edit_during_capture(html, *, first_page_only):
+        await service.update_item(item.id, DocumentUpdate(
+            payload=DocumentPayload(text='<p>Edited during capture</p>'),
+        ), actor_agent_id=owner.id)
+        return b"late pdf"
+
+    monkeypatch.setattr(document_thumbnail_service, "render_html_pdf", edit_during_capture)
+    snapshot.html = '<p>Capture in flight</p>'
+    assert await document_thumbnail_service.read_document_thumbnail(item.id, snapshot, actor_agent_id=owner.id) is None
+    assert not list((tmp_path / "thumbnails").rglob("*.webp"))
+    assert item.thumbnail_id is None
+
+
+@pytest.mark.asyncio
+async def test_document_thumbnail_upgrade_removes_sidecars_and_preserves_shared_previews(db, tmp_path, monkeypatch):
+    from core.dbadmin import SchemaTransitionSet
+    from app.document.dbadmin import (
+        needs_thumbnails, thumbnails_clean,
+        clean_thumbnails,
+    )
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path))
+    transitions = SchemaTransitionSet(added_columns=frozenset({"documents.thumbnail_id"}))
+    assert needs_thumbnails(transitions)
+    assert needs_thumbnails(SchemaTransitionSet(added_tables=frozenset({"documents"})))
+    assert not needs_thumbnails(SchemaTransitionSet())
+    assert not needs_thumbnails(SchemaTransitionSet(added_columns=frozenset({"documents.filename"})))
+    document_id, thumbnail_id = uuid4(), uuid4()
+    current = document_thumbnail_cache.cache_path(document_id, thumbnail_id)
+    current.parent.mkdir(parents=True)
+    current.write_bytes(b"synthetic current WebP")
+    for directory in (current.parent, tmp_path / "documents" / str(document_id)):
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / ("a" * 64 + ".webp")).write_bytes(b"synthetic old image")
+        (directory / "old.revision.json").write_text('{"revision": 1}')
+        (directory / "old.png").write_bytes(b"synthetic old PNG")
+    shared = thumbnails.cache_path("https://example.org/synthetic").with_suffix(".json")
+    shared.parent.mkdir(parents=True)
+    shared.write_text('{"title":"Synthetic shared preview"}')
+    assert not await thumbnails_clean(db, transitions)
+    await clean_thumbnails(db, transitions)
+    await clean_thumbnails(db, transitions)
+    assert await thumbnails_clean(db, transitions)
+    assert list((tmp_path / "documents").rglob("*.webp")) == [current]
+    assert not list((tmp_path / "documents").rglob("*.json"))
+    assert current.read_bytes() == b"synthetic current WebP" and shared.exists()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_document_capture_discards_old_content_and_reuses_the_current_file(
+    committed_database, memory_storage, tmp_path, monkeypatch,
+):
+    from app.agent.models import Agent, Title
+    from core.user import UserModel
+    from core.database import get_db_session
+
+    cache_root = tmp_path / "thumbnails"
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(cache_root))
+    async with get_db_session() as db:
+        user = UserModel(email="thumbnail@example.test", hashed_password="unused", is_active=True)
+        title = Title(label="Thumbnail", gender="X")
+        db.add_all([user, title])
+        await db.flush()
+        owner = Agent(title_id=title.id, user_id=user.id, first_name="Thumbnail", last_name="Test",
+            code="thumbnail-test", agent_driver="internal")
+        db.add(owner)
+        await db.flush()
+        item, _ = await service.create_item(DocumentItemCreate(owner_agent_id=owner.id, title="Concurrent report",
+            node_kind="document", media_type="text/html", payload=DocumentPayload(text="<p>Before</p>")))
+        document_id, owner_id = item.id, owner.id
+        old = DocumentThumbnailRender(html="<p>Before</p>", revision=item.revision, lock_version=item.lock_version)
+
+    started, release = asyncio.Event(), asyncio.Event()
+    captures = []
+
+    async def render(html, *, first_page_only):
+        captures.append(html)
+        if len(captures) == 1:
+            started.set()
+            await release.wait()
+        return html.encode()
+
+    monkeypatch.setattr(document_thumbnail_service, "render_html_pdf", render)
+    image = thumbnails.encode(Image.new("RGB", (64, 48), "green"))
+    monkeypatch.setattr(document_thumbnail_service, "_printed_document_thumbnail", lambda _: image)
+
+    async def capture(snapshot):
+        async with get_db_session():
+            return await document_thumbnail_service.read_document_thumbnail(document_id, snapshot, actor_agent_id=owner_id)
+
+    old_capture = asyncio.create_task(capture(old))
+    try:
+        await asyncio.wait_for(started.wait(), 10)
+        async with get_db_session():
+            item = await service.update_item(document_id, DocumentUpdate(payload=DocumentPayload(text="<p>After</p>")), actor_agent_id=owner_id)
+            current = DocumentThumbnailRender(html="<p>After</p>", revision=item.revision, lock_version=item.lock_version)
+        release.set()
+        assert await asyncio.wait_for(old_capture, 10) is None
+    finally:
+        release.set()
+        if not old_capture.done():
+            old_capture.cancel()
+            await asyncio.gather(old_capture, return_exceptions=True)
+    assert not list(cache_root.rglob("*.webp"))
+    assert await asyncio.wait_for(asyncio.gather(capture(current), capture(current)), 10) == [image, image]
+    assert len(captures) == 2
+    async with get_db_session():
+        item = await service.item_record(document_id, revisions=False)
+        assert item.thumbnail_id is not None
+        path = document_thumbnail_cache.cache_path(document_id, item.thumbnail_id)
+        assert list(cache_root.rglob("*.webp")) == [path]
+        assert path.read_bytes() == image
+        assert not list(cache_root.rglob("*.json"))
+        await service.delete_document(document_id, actor_agent_id=owner_id)
+    assert not list(cache_root.rglob("*.webp"))
+
+
+@pytest.mark.asyncio
+async def test_document_thumbnail_endpoint_enforces_management_scope(agents, memory_storage, monkeypatch):
+    from app.agent import AgentManagementScope
+    from app.document import router
+    from fastapi import HTTPException
+
+    owner, peer = agents
+    item, _ = await service.create_item(DocumentItemCreate(
+        owner_agent_id=owner.id, title="Private",  node_kind="document", media_type="text/html",
+        payload=DocumentPayload(text="<p>Private</p>"),
+    ))
+    monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(
+        user_id=owner.user_id, agent_ids=frozenset({owner.id}),
+    )))
+    capture = AsyncMock(side_effect=RuntimeError("renderer unavailable"))
+    monkeypatch.setattr(document_thumbnail_service, "render_html_pdf", capture)
+    snapshot = DocumentThumbnailRender(html='<p>Private</p>', revision=item.revision, lock_version=item.lock_version)
+    response = await router.read_document_thumbnail(item.id, snapshot, agent_id=owner.id)
+    assert response.status_code == 204
+    with pytest.raises(HTTPException) as denied:
+        await router.read_document_thumbnail(item.id, snapshot, agent_id=peer.id)
+    assert denied.value.status_code == 404
+    capture.assert_awaited_once()
+
+
+def _attachment(name: str, media_type: str) -> DocumentAttachmentPublic:
+    return DocumentAttachmentPublic(
+        id=uuid4(),
+        name=name,
+        media_type=media_type,
+        size_bytes=1,
+        created_at=datetime.now(timezone.utc),
+    )
+
+
+def _office_source(path: Path) -> None:
+    """Entirely synthetic Office sources, with text on the first page or sheet."""
+    suffix = path.suffix.lower()
+    if suffix in {".odt", ".ods"}:
+        kind = "text" if suffix == ".odt" else "spreadsheet"
+        namespace = 'urn:oasis:names:tc:opendocument:xmlns:'
+        body = '<text:p>Synthetic report: quarterly total 1200.</text:p>' if kind == "text" else (
+            '<table:table table:name="Quarterly report"><table:table-row>'
+            '<table:table-cell office:value-type="string"><text:p>Quarterly total</text:p></table:table-cell>'
+            '<table:table-cell office:value-type="float" office:value="1200"><text:p>1200</text:p></table:table-cell>'
+            '</table:table-row></table:table>'
+            '<table:table table:name="Second sheet"><table:table-row>'
+            '<table:table-cell office:value-type="string"><text:p>Second sheet is outside the thumbnail.</text:p></table:table-cell>'
+            '</table:table-row></table:table>'
+        )
+        entries = {
+            "mimetype": f"application/vnd.oasis.opendocument.{kind}",
+            "META-INF/manifest.xml": f'<manifest:manifest xmlns:manifest="{namespace}manifest:1.0"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.{kind}"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/></manifest:manifest>',
+            "content.xml": f'<office:document-content xmlns:office="{namespace}office:1.0" xmlns:text="{namespace}text:1.0" xmlns:table="{namespace}table:1.0" office:version="1.2"><office:body><office:{kind}>{body}</office:{kind}></office:body></office:document-content>',
+        }
+    else:
+        base = "http://schemas.openxmlformats.org"
+        is_sheet = suffix == ".xlsx"
+        part = "xl/workbook.xml" if is_sheet else "word/document.xml"
+        kind = "spreadsheetml.sheet" if is_sheet else "wordprocessingml.document"
+        entries = {
+            "[Content_Types].xml": f'<Types xmlns="{base}/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/{part}" ContentType="application/vnd.openxmlformats-officedocument.{kind}.main+xml"/>' + ('<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' if is_sheet else '') + '</Types>',
+            "_rels/.rels": f'<Relationships xmlns="{base}/package/2006/relationships"><Relationship Id="rId1" Type="{base}/officeDocument/2006/relationships/officeDocument" Target="{part}"/></Relationships>',
+        }
+        if is_sheet:
+            rows = ''.join(f'<row r="{index}"><c r="A{index}" t="inlineStr"><is><t>Synthetic line {index}</t></is></c></row>' for index in range(2, 141))
+            entries.update({
+                part: f'<workbook xmlns="{base}/spreadsheetml/2006/main" xmlns:r="{base}/officeDocument/2006/relationships"><sheets><sheet name="Quarterly report" sheetId="1" r:id="rId1"/></sheets></workbook>',
+                "xl/_rels/workbook.xml.rels": f'<Relationships xmlns="{base}/package/2006/relationships"><Relationship Id="rId1" Type="{base}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>',
+                "xl/worksheets/sheet1.xml": f'<worksheet xmlns="{base}/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Quarterly total</t></is></c><c r="B1"><v>1200</v></c></row>{rows}</sheetData></worksheet>',
+            })
+        else:
+            entries[part] = f'<w:document xmlns:w="{base}/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Synthetic report: quarterly total 1200.</w:t></w:r></w:p><w:p><w:r><w:br w:type="page"/></w:r></w:p><w:p><w:r><w:t>Second page must not be rendered in a thumbnail.</w:t></w:r></w:p></w:body></w:document>'
+    with ZipFile(path, "w") as archive:
+        for name, content in entries.items():
+            archive.writestr(name, content)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("suffix", [".docx", ".ods", ".xlsx"])
+async def test_office_preview_exports_one_page_without_document_analysis(tmp_path: Path, suffix: str) -> None:
+    import pypdfium2 as pdfium
+
+    source = tmp_path / f"report{suffix}"
+    _office_source(source)
+    original = source.read_bytes()
+    directory = tmp_path / "preview"
+    prepared = await prepare_document(source, source.name, "application/octet-stream", directory, preview_only=True)
+    assert prepared.converted
+    assert len(prepared.pages) == 1
+    assert prepared.pages[0].text == ""
+    assert not prepared.pages[0].ocr
+    assert prepared.structured_text == ""
+    with pdfium.PdfDocument(str(directory / "source.pdf")) as pdf:
+        assert len(pdf) == 1
+    with Image.open(prepared.image_path(prepared.pages[0], directory)) as raster:
+        assert max(raster.size) <= 641
+    assert source.read_bytes() == original
+    # A cached preview cannot be mistaken for a complete analysis of the source.
+    with pytest.raises(ValueError):
+        await prepare_document(source, source.name, "application/octet-stream", directory)
+    complete = await prepare_document(source, source.name, "application/octet-stream", tmp_path / "analysis")
+    assert len(complete.pages) >= 2
+    if suffix == ".docx":
+        assert "Second page" in complete.pages[1].text
+    else:
+        assert "1200" in complete.structured_text
+
+
+def test_transparent_image_thumbnail_keeps_alpha_and_its_dimensions(tmp_path: Path) -> None:
+    source = tmp_path / "transparent.png"
+    Image.new("RGBA", (40, 20), (255, 0, 0, 0)).save(source)
+
+    content = thumbnails.from_image(source)
+
+    assert content is not None
+    with Image.open(BytesIO(content)) as thumbnail:
+        assert thumbnail.format == "WEBP"
+        assert thumbnail.size == (40, 20)
+        assert thumbnail.mode == "RGBA"
+        assert thumbnail.getpixel((0, 0)) == (255, 0, 0, 0)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name, media_type", [
+    ("drawing.svg", "image/svg+xml; charset=utf-8"),
+    ("drawing.SVG", "application/octet-stream"),
+    ("source", "image/svg+xml"),
+])
+async def test_svg_thumbnail_uses_vector_rendering_and_preserves_source(tmp_path, monkeypatch, name, media_type):
+    source = tmp_path / "source"
+    original = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40"><rect width="40" height="40" fill="red"/></svg>'
+    source.write_bytes(original)
+    png = thumbnails.encode(Image.new("RGBA", (80, 40), (255, 0, 0, 0)))
+    renderer = AsyncMock(return_value=png)
+    monkeypatch.setattr(document_thumbnail_service, "render_svg_thumbnail", renderer)
+    result = await document_thumbnail_service.render_file_thumbnail(source, name, media_type)
+    assert result == png
+    renderer.assert_awaited_once_with(source)
+    assert source.read_bytes() == original
+
+
+@pytest.mark.parametrize("size, expected", [((600, 900), (213, 320)), ((1200, 600), (320, 160)), ((900, 900), (320, 320)), ((24, 16), (24, 16))])
+def test_thumbnail_fits_bounds_without_white_padding_or_cropping(tmp_path: Path, size: tuple[int, int], expected: tuple[int, int]) -> None:
+    source = tmp_path / "image.png"
+    image = Image.new("RGB", size, "#1976d2")
+    image.save(source)
+    content = thumbnails.from_image(source)
+    assert content is not None
+    with Image.open(BytesIO(content)) as thumbnail:
+        assert thumbnail.size == expected
+        assert thumbnail.getpixel((0, 0)) == (25, 118, 210)
+        assert thumbnail.getpixel((thumbnail.width - 1, thumbnail.height - 1)) == (25, 118, 210)
+
+
+@pytest.mark.parametrize("size, expected", [((600, 900), (213, 320)), ((1200, 600), (320, 160))])
+def test_printed_document_preserves_first_page_proportions(size, expected):
+    import pypdfium2 as pdfium
+
+    output = BytesIO()
+    with pdfium.PdfDocument.new() as document:
+        document.new_page(*size).close()
+        document.save(output)
+    content = document_thumbnail_service._printed_document_thumbnail(output.getvalue())
+    with Image.open(BytesIO(content)) as image:
+        assert image.format == "WEBP" and image.size == expected
+
+
+def test_concurrent_pdf_previews_do_not_crash_the_backend_process():
+    """Native crashes must fail the test rather than kill the entire pytest worker."""
+    import subprocess
+    import sys
+    from textwrap import dedent
+
+    result = subprocess.run([sys.executable, "-X", "faulthandler", "-c", dedent('''
+        from concurrent.futures import ThreadPoolExecutor
+        from io import BytesIO
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from threading import Barrier
+        from PIL import Image
+        from pypdf import PdfWriter
+        from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
+        from app.document.document_thumbnail_service import _printed_document_thumbnail, _pdf_thumbnail
+
+        writer = PdfWriter()
+        page = writer.add_blank_page(width=300, height=400)
+        font = DictionaryObject({NameObject('/Type'): NameObject('/Font'),
+            NameObject('/Subtype'): NameObject('/Type1'), NameObject('/BaseFont'): NameObject('/Helvetica')})
+        page[NameObject('/Resources')] = DictionaryObject({NameObject('/Font'):
+            DictionaryObject({NameObject('/F1'): writer._add_object(font)})})
+        stream = DecodedStreamObject()
+        stream.set_data(b'BT /F1 18 Tf 40 60 Td (Synthetic concurrent thumbnail) Tj ET')
+        page[NameObject('/Contents')] = writer._add_object(stream)
+        output = BytesIO()
+        writer.write(output)
+        pdf = output.getvalue()
+        barrier = Barrier(4)
+        with TemporaryDirectory() as temporary:
+            source = Path(temporary) / 'synthetic.pdf'
+            source.write_bytes(pdf)
+            def render(index):
+                barrier.wait(timeout=10)
+                content = _printed_document_thumbnail(pdf) if index % 2 else _pdf_thumbnail(source)
+                assert content is not None
+                with Image.open(BytesIO(content)) as image:
+                    assert image.format == 'WEBP' and image.width > 0 and image.height <= 320
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                list(pool.map(render, range(80)))
+    ''')], capture_output=True, text=True, timeout=45)
+    assert result.returncode == 0, result.stderr
+
+
+def test_thumbnail_applies_exif_orientation_before_fitting(tmp_path: Path) -> None:
+    source = tmp_path / "rotated.jpg"
+    image = Image.new("RGB", (900, 600), "blue")
+    exif = Image.Exif()
+    exif[274] = 6
+    image.save(source, exif=exif)
+    content = thumbnails.from_image(source)
+    assert content is not None
+    with Image.open(BytesIO(content)) as thumbnail:
+        assert thumbnail.size == (213, 320)
+        assert not thumbnail.getexif()
+
+
+def test_palette_transparency_is_preserved(tmp_path: Path) -> None:
+    source = tmp_path / "palette.png"
+    image = Image.new("P", (40, 20), 0)
+    image.putpalette([255, 0, 0, 0, 0, 255] + [0] * 762)
+    image.putpixel((20, 10), 1)
+    image.save(source, transparency=0)
+    content = thumbnails.from_image(source)
+    assert content is not None
+    with Image.open(BytesIO(content)) as thumbnail:
+        assert thumbnail.getpixel((0, 0))[3] == 0
+        assert thumbnail.getpixel((20, 10)) == (0, 0, 255, 255)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("suffix", [".png", ".svg", ".odt", ".docx", ".ods", ".xlsx"])
+async def test_document_thumbnail_is_shared_with_browser_after_authorization(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, suffix: str) -> None:
+    document_id = uuid4()
+    attachment = _attachment(f"source{suffix}", "image/png" if suffix == ".png" else "application/octet-stream")
+    source = tmp_path / attachment.name
+    if suffix == ".png":
+        Image.new("RGB", (600, 900), "blue").save(source)
+    elif suffix == ".svg":
+        from core.preview import svg
+        source.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="40" height="40" fill="red"/></svg>')
+        monkeypatch.setattr(svg, "post_buffered", AsyncMock(return_value=thumbnails.encode(Image.new("RGBA", (80, 40), (255, 0, 0, 0)))))
+    else:
+        _office_source(source)
+    original = source.read_bytes()
+    reference = f"document://{document_id}/attachments/{attachment.id}"
+    cache_root = tmp_path / "cache"
+    from core import settings
+    monkeypatch.setattr(type(settings), "GALARIS_THUMBNAIL_ROOT", str(cache_root))
+    authorized_path = AsyncMock(return_value=(attachment, source))
+    monkeypatch.setattr(document_thumbnail_service.document_attachment_service, "document_attachment_path", authorized_path)
+
+    assert await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(
+        document_id, attachment.id, actor_agent_id=7, cached_only=True,
+    ) is None
+    assert reference not in document_thumbnail_service._tasks
+    assert await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7) is None
+    await document_thumbnail_service._tasks[reference]
+    content = await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7, cached_only=True)
+    assert content is not None
+    with Image.open(BytesIO(content)) as thumbnail:
+        assert thumbnail.format == "WEBP"
+        assert 0 < thumbnail.width <= thumbnails.MAX_SIZE[0]
+        assert 0 < thumbnail.height <= thumbnails.MAX_SIZE[1]
+        if suffix == ".png":
+            assert thumbnail.size == (213, 320)
+            assert thumbnail.getpixel((0, 0)) == (0, 0, 255)
+        else:
+            assert any(low < 200 for low, _high in thumbnail.convert("RGB").getextrema())
+    assert source.read_bytes() == original
+    # Each read and the final publication recheck the source authorization.
+    assert authorized_path.await_count >= 2
+    from app.browser import read_cached_thumbnail
+    assert await read_cached_thumbnail(reference=reference) == (content, "image/webp")
+    assert list(cache_root.rglob("*.webp")) == [thumbnails.cache_path(reference)]
+    authorized_path.side_effect = PermissionError("denied")
+    with pytest.raises(PermissionError):
+        await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(
+            document_id, attachment.id, actor_agent_id=8, cached_only=True,
+        )
+
+
+@pytest.mark.asyncio
+async def test_office_thumbnail_retries_conversion_failure_and_deduplicates_requests(tmp_path, monkeypatch):
+    document_id = uuid4()
+    attachment = _attachment("report.odt", "application/octet-stream")
+    source = tmp_path / attachment.name
+    _office_source(source)
+    reference = document_thumbnail_service._reference(document_id, attachment.id)
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path / "cache"))
+    monkeypatch.setattr(document_thumbnail_service.document_attachment_service, "document_attachment_path", AsyncMock(return_value=(attachment, source)))
+    attempts = []
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def convert(path, name, media_type, directory, *, preview_only):
+        attempts.append(directory)
+        started.set()
+        await release.wait()
+        if len(attempts) == 1:
+            raise ValueError("Synthetic converter failure")
+        return await prepare_document(path, name, media_type, directory, preview_only=preview_only)
+
+    monkeypatch.setattr(document_thumbnail_service, "prepare_document", convert)
+    read = document_thumbnail_service.read_or_schedule_document_attachment_thumbnail
+    assert await read(document_id, attachment.id, actor_agent_id=7) is None
+    task = document_thumbnail_service._tasks[reference]
+    await started.wait()
+    assert await read(document_id, attachment.id, actor_agent_id=7) is None
+    assert document_thumbnail_service._tasks[reference] is task
+    release.set()
+    await task
+    assert not thumbnails.cache_path(reference).exists()
+    assert not attempts[0].exists()
+    assert await read(document_id, attachment.id, actor_agent_id=7) is None
+    await document_thumbnail_service._tasks[reference]
+    assert await read(document_id, attachment.id, actor_agent_id=7) is not None
+    assert len(attempts) == 2
+    assert all(not directory.exists() for directory in attempts)
+
+
+@pytest.mark.asyncio
+async def test_deleting_office_attachment_cancels_thumbnail_and_removes_temporaries(tmp_path, monkeypatch):
+    document_id = uuid4()
+    attachment = _attachment("budget.ods", "application/octet-stream")
+    source = tmp_path / attachment.name
+    _office_source(source)
+    reference = document_thumbnail_service._reference(document_id, attachment.id)
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path / "cache"))
+    monkeypatch.setattr(document_thumbnail_service.document_attachment_service, "document_attachment_path", AsyncMock(return_value=(attachment, source)))
+    directories = []
+    started = asyncio.Event()
+
+    async def convert(path, name, media_type, directory, *, preview_only):
+        directories.append(directory)
+        started.set()
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(document_thumbnail_service, "prepare_document", convert)
+    assert await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7) is None
+    task = document_thumbnail_service._tasks[reference]
+    await started.wait()
+    await document_thumbnail_service.delete_document_attachment_thumbnail(document_id, attachment.id)
+    assert task.cancelled()
+    assert reference not in document_thumbnail_service._tasks
+    assert not thumbnails.cache_path(reference).exists()
+    assert all(not directory.exists() for directory in directories)
+
+
+@pytest.mark.asyncio
+async def test_background_and_dream_generation_share_one_derivative_when_a_waiter_is_cancelled(tmp_path, monkeypatch):
+    document_id = uuid4()
+    attachment = _attachment('synthetic.png', 'image/png')
+    source = tmp_path / attachment.name
+    Image.new('RGB', (80, 60), 'blue').save(source)
+    monkeypatch.setattr(type(thumbnails.settings), 'GALARIS_THUMBNAIL_ROOT', str(tmp_path / 'cache'))
+    monkeypatch.setattr(document_thumbnail_service.document_attachment_service, 'document_attachment_path', AsyncMock(return_value=(attachment, source)))
+    render = document_thumbnail_service.render_file_thumbnail
+    started, release = asyncio.Event(), asyncio.Event()
+    async def delayed_render(path, name, media_type):
+        started.set()
+        await release.wait()
+        return await render(path, name, media_type)
+    renderer = AsyncMock(side_effect=delayed_render)
+    monkeypatch.setattr(document_thumbnail_service, 'render_file_thumbnail', renderer)
+    generate = document_thumbnail_service.generate_document_attachment_thumbnail
+    producer = asyncio.create_task(generate(document_id, attachment.id, actor_agent_id=7))
+    await started.wait()
+    waiter = asyncio.create_task(generate(document_id, attachment.id, actor_agent_id=7))
+    await asyncio.sleep(0)
+    waiter.cancel()
+    await asyncio.gather(waiter, return_exceptions=True)
+    release.set()
+    result = await producer
+    assert result
+    assert await generate(document_id, attachment.id, actor_agent_id=7) == result
+    renderer.assert_awaited_once()
+
+
+def test_text_thumbnail_is_bounded_webp(tmp_path: Path) -> None:
+    source = tmp_path / "notes.txt"
+    source.write_text("First line\nSecond line", encoding="utf-8")
+
+    content = _text_thumbnail(source)
+
+    assert content is not None
+    with Image.open(BytesIO(content)) as thumbnail:
+        assert thumbnail.format == "WEBP"
+        assert thumbnail.size == (320, 320)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name,mime", [("module.js", "application/javascript"), ("component.vue", "text/html"), ("module.ts", "video/mp2t")])
+async def test_source_thumbnail_never_uses_a_browser_renderer(tmp_path, monkeypatch, name, mime):
+    source = tmp_path / name
+    original = b'<script>window.sourceExecuted = true</script>'
+    source.write_bytes(original)
+    attachment = _attachment(name, mime)
+    document_id = uuid4()
+    capture = AsyncMock()
+    monkeypatch.setattr(document_thumbnail_service, "render_html_pdf", capture)
+    monkeypatch.setattr(document_thumbnail_service, "_html_thumbnail_capture", capture)
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path / "thumbnails"))
+    monkeypatch.setattr(document_thumbnail_service.document_attachment_service, "document_attachment_path",
+        AsyncMock(return_value=(attachment, source)))
+    result = await document_thumbnail_service.generate_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7)
+    assert result is not None
+    with Image.open(BytesIO(result)) as image:
+        assert image.format == "WEBP"
+    assert source.read_bytes() == original
+    capture.assert_not_awaited()
+
+
+def test_video_thumbnail_extracts_an_early_frame(tmp_path: Path) -> None:
+    source = tmp_path / "preview.mkv"
+    with av.open(str(source), mode="w", format="matroska") as container:
+        stream = container.add_stream("mpeg4", rate=1)
+        stream.width = 64
+        stream.height = 32
+        stream.pix_fmt = "yuv420p"
+        frame = av.VideoFrame.from_image(Image.new("RGB", (64, 32), "#e53935"))
+        for packet in stream.encode(frame):
+            container.mux(packet)
+        for packet in stream.encode(None):
+            container.mux(packet)
+
+    content = _video_thumbnail(source)
+
+    assert content is not None
+    with Image.open(BytesIO(content)) as thumbnail:
+        assert thumbnail.format == "WEBP"
+        assert thumbnail.size == (64, 32)
+        red, green, blue = thumbnail.getpixel((32, 16))
+        assert red > 180
+        assert green < 100
+        assert blue < 100
+
+
+def test_web_thumbnail_only_accepts_https_url_attachments(tmp_path: Path) -> None:
+    source = tmp_path / "site.url"
+    source.write_text("[InternetShortcut]\nURL=https://example.com/page\n", encoding="utf-8")
+    attachment = _attachment("site.url", "application/octet-stream")
+
+    assert _web_url(source, attachment) == "https://example.com/page"
+
+    source.write_text("URL=http://internal.test/\n", encoding="utf-8")
+    assert _web_url(source, attachment) is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("html", [False, True])
+async def test_document_and_chat_share_one_capture_and_deletion_scope(tmp_path, monkeypatch, html):
+    document_id = uuid4()
+    attachment = _attachment("page.html" if html else "site.url", "text/html" if html else "text/uri-list")
+    reference = f"document://{document_id}/attachments/{attachment.id}"
+    url = "https://example.org/"
+    cache_reference = reference if html else url
+    source = tmp_path / attachment.name
+    source.write_text("<h1>Example</h1>" if html else f"URL={url}", encoding="utf-8")
+    cache_root = tmp_path / "cache"
+    monkeypatch.setattr(type(thumbnails.settings), "GALARIS_THUMBNAIL_ROOT", str(cache_root))
+    authorized_path = AsyncMock(return_value=(attachment, source))
+    monkeypatch.setattr(document_thumbnail_service.document_attachment_service, "document_attachment_path", authorized_path)
+    image = thumbnails.encode(Image.new("RGB", (520, 320), "blue"))
+    screenshot = BrowserScreenshot(
+        session_id="thumbnail", url=url, title="Example", description="Shared description",
+        site_name="Example", revision=1, page_width=1440, page_height=900,
+        captured_height=900, truncated=False,
+        parts=[BrowserScreenshotPart(index=0, y=0, width=520, height=320,
+            mime_type="image/png", data=base64.b64encode(image).decode())],
+    )
+    capture = AsyncMock(return_value=screenshot)
+    monkeypatch.setattr(browser_service.browser_executor, "open", capture)
+    monkeypatch.setattr(browser_service.browser_executor, "render_html", capture)
+    monkeypatch.setattr(browser_service.browser_executor, "close", AsyncMock())
+
+    async def capture_web(agent_id, url, *, refresh=False):
+        return await browser_service.capture_public_page_thumbnail(agent_id=agent_id, url=url, refresh=refresh)
+
+    async def capture_html(agent_id, reference, content, *, refresh=False):
+        return await browser_service.capture_html_page_thumbnail(agent_id=agent_id, reference=reference, content=content, refresh=refresh)
+
+    monkeypatch.setattr(document_thumbnail_service, "_web_thumbnail_capture", capture_web)
+    monkeypatch.setattr(document_thumbnail_service, "_html_thumbnail_capture", capture_html)
+    assert await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7) is None
+    document_task = document_thumbnail_service._tasks[reference]
+    # A discussion requests the same resource while the document is generating it.
+    chat_capture = capture_html(7, reference, source.read_bytes()) if html else capture_web(7, url)
+    await asyncio.gather(document_task, chat_capture)
+    content = await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7)
+    assert content == image
+    assert await browser_service.read_cached_thumbnail(reference=cache_reference) == (content, "image/webp")
+    assert (await browser_service.read_cached_page_metadata(reference=cache_reference)).description == "Shared description"
+    capture.assert_awaited_once()
+    assert list(cache_root.rglob("*.webp")) == [thumbnails.cache_path(cache_reference)]
+    assert not (cache_root / "documents").exists()
+
+    if not html:
+        # Another shortcut to the same URL neither copies nor regenerates it.
+        await document_thumbnail_service.read_or_schedule_document_attachment_thumbnail(uuid4(), attachment.id, actor_agent_id=7)
+        capture.assert_awaited_once()
+    refreshed = thumbnails.encode(Image.new("RGB", (520, 320), "red"))
+    screenshot.parts[0].data = base64.b64encode(refreshed).decode()
+    content = await document_thumbnail_service.generate_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7, force=True)
+    assert content == refreshed
+    assert capture.await_count == 2
+    assert await browser_service.read_cached_thumbnail(reference=cache_reference) == (refreshed, "image/webp")
+    capture.side_effect = RuntimeError("Synthetic browser capture failure")
+    with pytest.raises(RuntimeError):
+        await document_thumbnail_service.generate_document_attachment_thumbnail(document_id, attachment.id, actor_agent_id=7, force=True)
+    assert await browser_service.read_cached_thumbnail(reference=cache_reference) == (refreshed, "image/webp")
+    await document_thumbnail_service.delete_document_attachment_thumbnail(document_id, attachment.id)
+    remaining = await browser_service.read_cached_thumbnail(reference=cache_reference)
+    assert remaining is None if html else remaining == (content, "image/webp")
+    assert thumbnails.cache_path(cache_reference).with_suffix(".json").exists() is not html

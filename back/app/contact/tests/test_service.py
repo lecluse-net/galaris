@@ -25,7 +25,7 @@ from app.memory.models import (
     MemoryLink,
 )
 from app.memory.schemas import MemoryItemCreate, MemoryPayload
-from app.memory.storage import NativeFileStorage, register_storage, reset_storage_registry
+from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 from app.messenger import Message, Room
 from app.task import Task, TaskStatus
 from app.tools import ToolModel

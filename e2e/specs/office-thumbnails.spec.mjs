@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { collectPageErrors } from '../page-errors.mjs'
@@ -19,7 +20,7 @@ for (const width of [1440, 390]) {
     const session = await (await authentication).json()
     await expect(page.locator('input[type=password]')).toHaveCount(0)
     const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
-    const created = await request.post('/api/memory/items', { headers, data: {
+    const created = await createDocument(request, { headers, data: {
       owner_agent_id: fixture.agent_id, title: 'Synthetic Office previews', node_kind: 'document',
       media_type: 'text/html', payload: { text: '<p>Office attachments with their original downloads.</p>' },
     } })
@@ -28,18 +29,18 @@ for (const width of [1440, 390]) {
     const attachments = []
     for (const name of ['synthetic-report.docx', 'synthetic-budget.ods']) {
       const original = await readFile(new URL(`../fixtures/${name}`, import.meta.url))
-      const uploaded = await request.post(`/api/memory/documents/${document.id}/attachments?actor_agent_id=${fixture.agent_id}`, {
+      const uploaded = await request.post(`/api/documents/${document.id}/attachments?actor_agent_id=${fixture.agent_id}`, {
         headers, multipart: { file: { name, mimeType: 'application/octet-stream', buffer: original } },
       })
       expect(uploaded.ok(), await uploaded.text()).toBeTruthy()
       attachments.push({ ...await uploaded.json(), original })
     }
     // A link in the body must not hide its file from the attachment list.
-    const latest = await request.get(`/api/memory/documents/${document.id}`, { headers })
+    const latest = await request.get(`/api/documents/${document.id}`, { headers })
     expect(latest.ok(), await latest.text()).toBeTruthy()
     const { item } = await latest.json()
     const reference = `document://${document.id}/attachments/${attachments[0].id}`
-    const linked = await request.patch(`/api/memory/documents/${document.id}?actor_agent_id=${fixture.agent_id}`, {
+    const linked = await request.patch(`/api/documents/${document.id}?actor_agent_id=${fixture.agent_id}`, {
       headers, data: {
         expected_revision: item.revision,
         payload: { text: `<p>Office attachments with their original downloads.</p><p><a href="${reference}">Original report</a></p>` },
@@ -47,7 +48,7 @@ for (const width of [1440, 390]) {
     })
     expect(linked.ok(), await linked.text()).toBeTruthy()
     await errors.settle()
-    await page.goto(`/memory/documents?document_id=${document.id}`)
+    await page.goto(`/documents?document_id=${document.id}`)
     if (width < 1024) await expect(page.getByRole('dialog')).toBeVisible()
     for (const attachment of attachments) {
       const card = page.locator('.document-attachments .resource-preview-card').filter({ has: page.getByText(attachment.name, { exact: true }) })

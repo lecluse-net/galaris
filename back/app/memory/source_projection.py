@@ -21,7 +21,7 @@ from core.util import convert_legacy_to_html, normalize_html
 from .contracts import SourceMemoryDocument
 from .models import MemoryItem
 from .safety import redact_secrets
-from .storage import get_storage
+from core.storage import get_storage
 
 
 AGENT_SOURCE_KIND = "agent"

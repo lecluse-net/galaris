@@ -150,6 +150,20 @@ declare module 'vue-router/auto-routes' {
       { id?: ParamValueZeroOrOne<false> },
       | never
     >,
+    '//document/documents': RouteRecordInfo<
+      '//document/documents',
+      '/documents',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '//document/legacy-documents': RouteRecordInfo<
+      '//document/legacy-documents',
+      '/memory/documents',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//dream/': RouteRecordInfo<
       '//dream/',
       '/dream',
@@ -230,20 +244,6 @@ declare module 'vue-router/auto-routes' {
     '//memory/': RouteRecordInfo<
       '//memory/',
       '/memory',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
-    '//memory/documents': RouteRecordInfo<
-      '//memory/documents',
-      '/documents',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
-    '//memory/legacy-documents': RouteRecordInfo<
-      '//memory/legacy-documents',
-      '/memory/documents',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -537,6 +537,22 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | 'id'
     }
+    'app/document/pages/documents.vue': {
+      routes:
+        | '//document/documents'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/document/pages/legacy-documents.vue': {
+      routes:
+        | '//document/legacy-documents'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
     'app/dream/pages/index.vue': {
       routes:
         | '//dream/'
@@ -628,22 +644,6 @@ declare module 'vue-router/auto-routes' {
     'app/memory/pages/index.vue': {
       routes:
         | '//memory/'
-      views:
-        | never
-      pathParamNames:
-        | never
-    }
-    'app/memory/pages/documents.vue': {
-      routes:
-        | '//memory/documents'
-      views:
-        | never
-      pathParamNames:
-        | never
-    }
-    'app/memory/pages/legacy-documents.vue': {
-      routes:
-        | '//memory/legacy-documents'
       views:
         | never
       pathParamNames:

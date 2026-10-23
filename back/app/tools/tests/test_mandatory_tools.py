@@ -38,7 +38,7 @@ async def test_sync_integrated_connections_delegates_to_dbadmin_merge(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("tool_code", [
     "browser", "search", "image", "multimedia",
-    "galaris", "conversation", "memory", "file_sharing",
+    "galaris", "conversation", "memory", "document", "file_sharing",
 ])
 async def test_connection_dataset_is_idempotent_and_preserves_admin_activation(
     db: AsyncSession,

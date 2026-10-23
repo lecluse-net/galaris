@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.agent import current_management_scope
 from app.memory import MemoryPermissionError, MemoryNotFoundError, MemoryConflictError
+from app.document import DocumentPermissionError, DocumentNotFoundError, DocumentConflictError
 from core.authorize import authorize, BaseAssertion, AssertionContext, check_privilege
 
 from . import process_evaluation as service
@@ -55,9 +56,9 @@ class CampaignStart(BaseModel):
 
 
 def domain_error(error: Exception) -> HTTPException:
-    return HTTPException(status_code=403 if isinstance(error, (PermissionError, MemoryPermissionError)) else
-        404 if isinstance(error, (LookupError, MemoryNotFoundError)) else
-        409 if isinstance(error, MemoryConflictError) else 422, detail=str(error))
+    return HTTPException(status_code=403 if isinstance(error, (PermissionError, MemoryPermissionError, DocumentPermissionError)) else
+        404 if isinstance(error, (LookupError, MemoryNotFoundError, DocumentNotFoundError)) else
+        409 if isinstance(error, (MemoryConflictError, DocumentConflictError)) else 422, detail=str(error))
 
 
 @routes.post("/datasets", status_code=201)
@@ -65,7 +66,7 @@ def domain_error(error: Exception) -> HTTPException:
 async def lab_process_dataset_create(data: SyntheticInputs) -> dict[str, Any]:
     try:
         return await service.create_synthetic_dataset(await current_management_scope(), **data.model_dump(exclude={"cases"}), cases=data.cases)
-    except (ValueError, PermissionError, LookupError, MemoryPermissionError, MemoryNotFoundError, MemoryConflictError) as error:
+    except (ValueError, PermissionError, LookupError, MemoryPermissionError, MemoryNotFoundError, MemoryConflictError, DocumentConflictError, DocumentNotFoundError, DocumentPermissionError) as error:
         raise domain_error(error) from error
 
 
@@ -76,7 +77,7 @@ async def lab_process_dataset_generate(data: SyntheticGenerate) -> dict[str, Any
         scope = await current_management_scope()
         scope.require(data.agent_id)
         return await service.generate_synthetic_dataset(scope, **data.model_dump())
-    except (ValueError, PermissionError, LookupError, MemoryPermissionError, MemoryNotFoundError, MemoryConflictError) as error:
+    except (ValueError, PermissionError, LookupError, MemoryPermissionError, MemoryNotFoundError, MemoryConflictError, DocumentConflictError, DocumentNotFoundError, DocumentPermissionError) as error:
         raise domain_error(error) from error
 
 
@@ -86,7 +87,7 @@ async def lab_process_campaign_start(data: CampaignStart) -> dict[str, Any]:
     try:
         campaign = await service.start_campaign(await current_management_scope(), **data.model_dump())
         return await service.inspect_campaign(campaign.id, await current_management_scope())
-    except (ValueError, PermissionError, LookupError, MemoryPermissionError, MemoryNotFoundError, MemoryConflictError) as error:
+    except (ValueError, PermissionError, LookupError, MemoryPermissionError, MemoryNotFoundError, MemoryConflictError, DocumentConflictError, DocumentNotFoundError, DocumentPermissionError) as error:
         raise domain_error(error) from error
 
 

@@ -39,10 +39,11 @@ from app.llm.models import LLMCall
 from app.llm.structured_service import StructuredInferenceResult
 from app.llm.trace import infer_call_type
 from app.memory import service as memory_service
-from app.memory.goal_document_adapter import reconcile_goal_document_paths
+from app.document.goal_document_adapter import reconcile_goal_document_paths
 from app.memory.models import MemoryItem
 from app.messenger.models import MessengerUser
-from app.memory.schemas import DocumentOwnerUpdate, MemoryItemUpdate, MemoryPayload
+from app.memory.schemas import MemoryItemUpdate, MemoryPayload
+from app.document.schemas import DocumentOwnerUpdate
 from app.task.models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
 from app.task import task_service
 from app.tools.models import Tool

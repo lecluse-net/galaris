@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 
 from app.file_share import ResourceContext, parse_resource_uri, resource_info
-from app.memory import validate_attachment_content
+from app.document import validate_attachment_content
 from core.database import get_db
 from core.params import runtime_settings
 from core.storage import DiskFileDriver, FileAlias, StoredFile, file_key, fingerprint, register_file, ensure_disk_identity, registered_file_names, rename_stored_file

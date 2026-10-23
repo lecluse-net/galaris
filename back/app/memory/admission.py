@@ -3,7 +3,8 @@
 from datetime import datetime, timezone
 from typing import Sequence
 
-from sqlalchemy import Integer, Text, Uuid, bindparam, column, exists, func, or_, select
+from sqlalchemy import Integer, Text, Uuid, bindparam, case, column, exists, func, or_, select
+from app.document import Document, DocumentSource
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -41,6 +42,13 @@ async def admit_search_hits(
     now = datetime.now(timezone.utc)
     visible = select(MemoryItem.id).where(
         readable_item_clause(agent_id),
+        or_(MemoryItem.node_kind != "document", exists(select(Document.id).where(
+            Document.id == MemoryItem.id,
+            Document.revision == MemoryItem.metadata_["document_source_revision"].as_integer(),
+            Document.summary_revision == MemoryItem.metadata_["document_summary_revision"].as_integer(),
+            Document.title == MemoryItem.search_title,
+            Document.keywords == MemoryItem.keywords,
+        ).correlate(MemoryItem))),
         or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
         or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
     ).correlate(None)
@@ -78,9 +86,13 @@ async def admit_search_hits(
         path_filters.append(~exists(select(steps.c.ordinal).where(
             steps.c.ordinal == candidates.c.ordinal, ~readable_edge,
         ).correlate(candidates)))
-    refs = select(func.array_agg(MemorySource.source_ref)).where(
+    memory_refs = select(func.array_agg(MemorySource.source_ref)).where(
         MemorySource.item_id == MemoryItem.id,
     ).correlate(MemoryItem).scalar_subquery()
+    document_refs = select(func.array_agg(DocumentSource.source_ref)).where(
+        DocumentSource.document_id == MemoryItem.id,
+    ).correlate(MemoryItem).scalar_subquery()
+    refs = case((MemoryItem.node_kind == "document", document_refs), else_=memory_refs)
     rows = (await db.execute(select(candidates.c.ordinal, refs).select_from(MemoryItem).join(
         candidates, MemoryItem.id == candidates.c.item_id,
     ).where(

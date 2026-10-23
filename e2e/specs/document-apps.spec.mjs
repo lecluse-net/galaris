@@ -1,3 +1,4 @@
+import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 
 test('two document applications collect into the same Dataset with isolated JavaScript', async ({ page, request }, testInfo) => {
@@ -35,14 +36,14 @@ test('two document applications collect into the same Dataset with isolated Java
   const html = '<h2>Data collection</h2><pre><code class="language-galaris-app">' + JSON.stringify(definition).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') + '</code></pre>'
   const documents = []
   for (const title of ['First form', 'Second form']) {
-    const response = await request.post('/api/memory/items', { headers, data: {
+    const response = await createDocument(request, { headers, data: {
       owner_agent_id: fixture.agent_id, title, node_kind: 'document',
       media_type: 'text/html', payload: { text: documents.length ? html : '<p>Data collection</p>' },
     } })
     expect(response.ok(), await response.text()).toBeTruthy()
     documents.push(await response.json())
   }
-  const upload = await request.post(`/api/memory/documents/${documents[0].id}/attachments?actor_agent_id=${fixture.agent_id}`, {
+  const upload = await request.post(`/api/documents/${documents[0].id}/attachments?actor_agent_id=${fixture.agent_id}`, {
     headers, multipart: { file: { name: 'synthetic-photo.png', mimeType: 'image/png',
       buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNkYPjPwMDAxMDAwMDAAAALHwEDmIWXfgAAAABJRU5ErkJggg==', 'base64') } },
   })
@@ -51,13 +52,13 @@ test('two document applications collect into the same Dataset with isolated Java
   const photo = `<p class="note">Synthetic photo before the form</p><img alt="Synthetic photo" src="document://${documents[0].id}/attachments/${attachment.id}">`
   for (let index = 0; index < documents.length; index++) {
     if (index === 0) {
-      const latest = (await (await request.get(`/api/memory/documents/${documents[index].id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
-      const updated = await request.patch(`/api/memory/documents/${documents[index].id}?actor_agent_id=${fixture.agent_id}`, { headers, data: {
+      const latest = (await (await request.get(`/api/documents/${documents[index].id}?agent_id=${fixture.agent_id}`, { headers })).json()).item
+      const updated = await request.patch(`/api/documents/${documents[index].id}?actor_agent_id=${fixture.agent_id}`, { headers, data: {
         expected_revision: latest.revision, payload: { text: '<p>Data collection</p>' + photo + definition.html.replace('<form>', `<form data-dataset="data://${dataset.id}">`) + '<script>' + definition.javascript + '</script>' },
       } })
       expect(updated.ok(), await updated.text()).toBeTruthy()
     }
-    await page.goto(`/memory/documents?document_id=${documents[index].id}`)
+    await page.goto(`/documents?document_id=${documents[index].id}`)
     await expect(page.getByRole('button', { name: 'Source', exact: true })).toHaveCount(0)
     await expect(page.locator('[data-editor-surface]')).not.toContainText('galaris.datasets.append')
     await page.locator('.tiptap-galaris-editor').evaluate((element, width) => { element.style.width = width + 'px' }, index === 0 ? 320 : 980)
@@ -70,9 +71,9 @@ test('two document applications collect into the same Dataset with isolated Java
     const unchanged = await (await request.get(`/api/datasets/${dataset.id}`, { headers })).json()
     expect(unchanged.revision).toBe(index + 1)
     // Seed existing server consent: the document no longer exposes a permission dialog.
-    const permissions = await (await request.get(`/api/memory/documents/${documents[index].id}/app-permissions`, { headers })).json()
+    const permissions = await (await request.get(`/api/documents/${documents[index].id}/app-permissions`, { headers })).json()
     const grant = permissions.grants[0]
-    const consent = await request.put(`/api/memory/documents/${documents[index].id}/app-permissions/${grant.app_key}/${grant.alias}`, {
+    const consent = await request.put(`/api/documents/${documents[index].id}/app-permissions/${grant.app_key}/${grant.alias}`, {
       headers, data: { document_revision: permissions.document_revision, access: 'write' },
     })
     expect(consent.ok(), await consent.text()).toBeTruthy()
@@ -100,7 +101,7 @@ test('two document applications collect into the same Dataset with isolated Java
     await page.reload()
     await expect(app.getByRole('textbox')).toBeVisible()
     if (index === 0) await expect.poll(() => app.getByRole('img', { name: 'Synthetic photo' }).evaluate(image => image.naturalWidth)).toBeGreaterThan(0)
-    const grants = await (await request.get(`/api/memory/documents/${documents[index].id}/app-permissions`, { headers })).json()
+    const grants = await (await request.get(`/api/documents/${documents[index].id}/app-permissions`, { headers })).json()
     expect(grants.grants[0].access).toBe('write')
   }
   const stored = await (await request.get(`/api/datasets/${dataset.id}`, { headers })).json()

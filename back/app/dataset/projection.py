@@ -5,7 +5,7 @@ from app.share import ShareGrant
 import hashlib
 
 from sqlalchemy import select
-from app.memory.contracts import DatasetDocumentGrant, DatasetDocumentProjection, DatasetProjectionWriter
+from app.document import DatasetDocumentGrant, DatasetDocumentProjection, DatasetProjectionWriter
 from core.database import get_db
 from .models import Dataset, DatasetAlias
 

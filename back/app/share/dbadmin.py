@@ -8,7 +8,7 @@ from .migration import transfer, complete
 def needs_transfer(delta: SchemaTransitionSet) -> bool:
     return delta.table_added("share_configs") or any(
         delta.column_added(table, "share_id")
-        for table in ("memory_items", "documents", "datasets", "process_definitions")
+        for table in ("documents", "document_tags", "datasets", "process_definitions")
     )
 
 

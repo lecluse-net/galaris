@@ -25,20 +25,20 @@ for (const kind of ['document', 'dataset']) for (const width of [1440, 390]) {
       return route.fulfill({ json: { topic_id: currentTopic, lock_version: version } })
     })
     if (kind === 'document') {
-      await jsonRoute(page, '**/api/memory/documents/owner-options?*', { agents: [{ id: 7, label: 'Alice', kind: 'agent' }], users: [] })
-      await jsonRoute(page, `**/api/memory/documents/${id}/attachments?*`, [])
-      await jsonRoute(page, '**/api/memory/documents/keywords*', [])
+      await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, label: 'Alice', kind: 'agent' }], users: [] })
+      await jsonRoute(page, `**/api/documents/${id}/attachments?*`, [])
+      await jsonRoute(page, '**/api/documents/keywords*', [])
       await jsonRoute(page, '**/api/agents?*', [])
-      await page.route(`**/api/memory/documents/${id}?*`, route => {
+      await page.route(`**/api/documents/${id}?*`, route => {
         if (route.request().method() !== 'PATCH') return route.fulfill({ json: { item: { ...document, id, topic_id: currentTopic } } })
         const body = route.request().postDataJSON(); version++
         return route.fulfill({ json: { ...document, id, topic_id: currentTopic,
           payload: body.payload || { text: '<p>Synthetic document draft</p>' }, revision: 4, lock_version: version } })
       })
-      await mount(page, 'app/memory/components/DocumentEditor.vue', {
+      await mount(page, 'app/document/components/DocumentEditor.vue', {
         props: { documentId: id, agentId: 7, initialDocument: { ...document, id, topic_id: currentTopic,
           media_type: 'text/html', payload: { text: '<p>Synthetic document body</p>' } } },
-        privileges: ['MEMORY_EDIT', 'TOPIC_EDIT', 'TOPIC_ACCESS'],
+        privileges: ['DOCUMENT_EDIT', 'TOPIC_EDIT', 'TOPIC_ACCESS'],
       })
       await page.locator('[data-editor-surface]').fill('Synthetic document draft')
     } else {
@@ -75,7 +75,7 @@ for (const kind of ['document', 'dataset']) for (const width of [1440, 390]) {
     })
     await page.screenshot({ path: testInfo.outputPath(`${kind}-topic-audit.png`), animations: 'disabled' })
     await page.keyboard.press('Escape')
-    await setPrivileges(page, [kind === 'document' ? 'MEMORY_EDIT' : 'DATASET_EDIT', 'TOPIC_ACCESS'])
+    await setPrivileges(page, [kind === 'document' ? 'DOCUMENT_EDIT' : 'DATASET_EDIT', 'TOPIC_ACCESS'])
     await page.getByRole('button', { name: 'View the origin of the assignment to dossier “Synthetic plants”', exact: true }).click()
     await expect(page.getByRole('dialog').getByRole('button', { name: 'Save dossier', exact: true })).toHaveCount(0)
   })

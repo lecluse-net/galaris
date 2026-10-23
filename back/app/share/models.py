@@ -33,7 +33,7 @@ class ShareConfig(HistoryMixin, Base):
     __table_args__ = (
         UniqueConstraint("id", "resource_kind"),
         CheckConstraint(
-            "resource_kind IN ('memory','document','dataset','process')",
+            "resource_kind IN ('document','dataset','process')",
             name="ck_share_configs_kind",
         ),
         CheckConstraint(

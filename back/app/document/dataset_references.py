@@ -1,0 +1,24 @@
+"""Public bounded Document selection for typed reference fields."""
+
+from typing import Any
+from app.agent import AgentManagementScope
+from core.user import HumanActor
+from core.database import get_db
+from sqlalchemy import or_, select
+
+from .models import Document
+from .access import human_document_clause, readable_item_clause, readable_item_for_agents_clause
+
+
+async def list_selectable_documents(actor: int | HumanActor | AgentManagementScope, *, query: str = "", limit: int = 50) -> list[dict[str, Any]]:
+    if isinstance(actor, int):
+        allowed = readable_item_clause(actor)
+    elif isinstance(actor, AgentManagementScope):
+        allowed = or_(human_document_clause(actor.user_id), readable_item_for_agents_clause(actor.agent_ids))
+    else:
+        allowed = human_document_clause(actor.user_id)
+    statement = select(Document).where(Document.node_kind == "document", Document.document_type == "html", allowed)
+    if query:
+        statement = statement.where(Document.title.icontains(query, autoescape=True))
+    rows = await get_db().scalars(statement.order_by(Document.created_at.desc(), Document.id).limit(limit))
+    return [{"value": f"document://{entry.id}", "label": entry.title} for entry in rows]

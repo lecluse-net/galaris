@@ -545,7 +545,7 @@
 </template>
 
 <script setup lang="ts">
-import DocumentIcon from '../components/DocumentIcon.vue'
+import { DocumentIcon } from '@/app/document'
 import MemoryItemThumbnail from '../components/MemoryItemThumbnail.vue'
 import MemoryAttachmentButton from '../components/MemoryAttachmentButton.vue'
 import MemoryContentPreviews from '../components/MemoryContentPreviews.vue'
@@ -742,11 +742,11 @@ function mergeDocumentMemory(latest: MemoryItemDetail): void {
   editorBase.value = latest
 }
 
-async function onDocumentMemoryUpdate(response: { data: { id: string, node_kind: string } }): Promise<void> {
+async function onDocumentMemoryUpdate(response: { data: { id: string } }): Promise<void> {
   const current = store.currentItem
   const agentId = store.selectedAgentId
   if (!detailDialog.value || editorSaving.value || store.saving || agentId === null
-    || current?.node_kind !== 'document' || response.data.node_kind !== 'document'
+    || current?.node_kind !== 'document'
     || response.data.id !== current.id) return
   const request = ++documentRefreshRequest
   const stillCurrent = (): boolean => request === documentRefreshRequest && detailDialog.value
@@ -767,10 +767,10 @@ async function onDocumentMemoryUpdate(response: { data: { id: string, node_kind:
   }
 }
 
-websocket.onEvent('memory', 'update', onDocumentMemoryUpdate)
+websocket.onEvent('document', 'update', onDocumentMemoryUpdate)
 onBeforeUnmount(() => {
   documentRefreshRequest++
-  websocket.offEvent('memory', 'update', onDocumentMemoryUpdate)
+  websocket.offEvent('document', 'update', onDocumentMemoryUpdate)
 })
 watch([detailDialog, () => store.selectedAgentId, editingId], () => { documentRefreshRequest++ })
 

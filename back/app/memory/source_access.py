@@ -8,7 +8,8 @@ from functools import wraps
 from typing import TypeVar, cast
 from uuid import UUID
 
-from sqlalchemy import and_, or_, select, exists, false
+from sqlalchemy import and_, case, or_, select, exists, false
+from app.document import DocumentSource
 from core.database import get_db
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import InstrumentedAttribute
@@ -74,7 +75,11 @@ async def source_evidence_admission(identities: set[UUID], agent_id: int, *, inc
     # SQLAlchemy's mapped-column types do not express nulls from the outer join.
     rows = cast(list[tuple[UUID, str | None, UUID | None, dict[str, object] | None, str | None]],
         list((await get_db().execute(select(MemoryItem.id, MemoryItem.metadata_["evidence_validator"].astext,
-        MemorySource.id, MemorySource.metadata_, MemorySource.source_ref).outerjoin(MemorySource, MemorySource.item_id == MemoryItem.id)
+        case((MemoryItem.node_kind == "document", DocumentSource.id), else_=MemorySource.id),
+        case((MemoryItem.node_kind == "document", DocumentSource.metadata_), else_=MemorySource.metadata_),
+        case((MemoryItem.node_kind == "document", DocumentSource.source_ref), else_=MemorySource.source_ref))
+        .outerjoin(MemorySource, and_(MemorySource.item_id == MemoryItem.id, MemoryItem.node_kind != "document"))
+        .outerjoin(DocumentSource, and_(DocumentSource.document_id == MemoryItem.id, MemoryItem.node_kind == "document"))
         .where(MemoryItem.id.in_(identities)).order_by(MemorySource.created_at))).tuples()))
     refs: dict[UUID, list[str]] = {}
     for item_id, _marker, _source_id, _metadata, source_ref in rows:

@@ -9,13 +9,15 @@
 </template>
 
 <script setup lang="ts">
+import { documentService } from '@/app/document'
+
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
 import { attachmentReference, browserResourceKind, queuePreview } from '@/core/util'
 import { memoryService } from '../services/memoryService'
 import type { MemoryItem } from '../types'
-import DocumentThumbnail from './DocumentThumbnail.vue'
-import { onThumbnailReady } from '../thumbnailEvents'
+import { DocumentThumbnail } from '@/app/document'
+import { onThumbnailReady } from '@/core/util'
 
 const props = defineProps<{ item: MemoryItem & { primary_url?: string | null }; agentId: number | null }>()
 const container = useTemplateRef<HTMLElement>('container')
@@ -60,7 +62,7 @@ async function load(): Promise<void> {
       if (item.node_kind === 'attachment') {
         const uri = item.primary_url ?? item.metadata.resource_uri
         const reference = typeof uri === 'string' ? attachmentReference(uri) : null
-        return reference ? memoryService.documentAttachmentThumbnailBlob(reference[0], reference[1], agentId, request.signal) : null
+        return reference ? documentService.documentAttachmentThumbnailBlob(reference[0], reference[1], agentId, request.signal) : null
       }
       if (item.node_kind !== 'file') return null
       const resource = (await memoryService.fileResources(item.id, agentId, request.signal, 1))[0]

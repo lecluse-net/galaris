@@ -17,8 +17,8 @@ from sqlalchemy import select, func, or_
 from .models import MemoryItem, MemoryLink, MemoryRevision, MemoryContextEdge
 from .urls import memory_urls
 from .safety import assert_safe_text
-from .storage import get_storage
-from .inline_content import prepare_content
+from core.storage import get_storage
+from core.storage import prepare_content
 
 _created: ContextVar[list[str] | None] = ContextVar("catalogue_projection_resources", default=None)
 

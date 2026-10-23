@@ -626,9 +626,10 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
 async def resource_accessible(ctx: ResourceContext, uri: object, capability: ResourceCapability) -> bool:
     """Check a native resource capability without leaking provider-specific ACL errors."""
     from app.memory import MemoryNotFoundError, MemoryPermissionError
+    from app.document import DocumentNotFoundError, DocumentPermissionError
     try:
         return capability in (await resource_info(ctx, uri)).capabilities
-    except (PermissionError, FileNotFoundError, MemoryNotFoundError, MemoryPermissionError):
+    except (PermissionError, FileNotFoundError, MemoryNotFoundError, MemoryPermissionError, DocumentNotFoundError, DocumentPermissionError):
         return False
 
 
@@ -661,10 +662,7 @@ async def resource_info(
         return descriptor
     attachment_ids = _document_attachment_ids(reference)
     if attachment_ids is not None:
-        from app.memory import (
-            describe_document_attachment_file_resource,
-            list_document_attachment_file_resources,
-        )
+        from app.document import describe_document_attachment_file_resource, list_document_attachment_file_resources
 
         document_id, attachment_id = attachment_ids
         if attachment_id is None:
@@ -708,13 +706,12 @@ async def resource_info(
         reference.scheme in {"memory", "document"}
         and _document_attachment_ids(reference) is None
     ):
-        from app.memory import describe_file_resource
-
-        data = await describe_file_resource(
-            UUID(reference.locator),
-            agent_id=ctx.agent_id,
-            expected_kind=cast(Literal["memory", "document"], reference.scheme),
-        )
+        if reference.scheme == "document":
+            from app.document.facade import describe_file_resource as describe_document
+            data = await describe_document(UUID(reference.locator), agent_id=ctx.agent_id, expected_kind="document")
+        else:
+            from app.memory import describe_file_resource
+            data = await describe_file_resource(UUID(reference.locator), agent_id=ctx.agent_id, expected_kind="memory")
         capabilities = (
             list(_DOCUMENT_CAPABILITIES)
             if reference.scheme == "document" and bool(data["can_write"])
@@ -827,7 +824,7 @@ async def resource_list(
         )
     attachment_ids = _document_attachment_ids(reference)
     if attachment_ids is not None:
-        from app.memory import list_document_attachment_file_resources
+        from app.document import list_document_attachment_file_resources
 
         document_id, attachment_id = attachment_ids
         if attachment_id is not None:
@@ -866,7 +863,10 @@ async def resource_list(
         reference.scheme in {"memory", "document"}
         and _document_attachment_ids(reference) is None
     ):
-        from app.memory import search_file_resources
+        if reference.scheme == "document":
+            from app.document.facade import search_file_resources
+        else:
+            from app.memory import search_file_resources
 
         data = await search_file_resources(
             agent_id=ctx.agent_id,
@@ -1080,7 +1080,7 @@ async def _materialize_resource(
             document_id, attachment_id = attachment_ids
             if attachment_id is None:
                 raise IsADirectoryError(str(reference))
-            from app.memory import read_document_attachment_file_resource
+            from app.document import read_document_attachment_file_resource
 
             _metadata, content = await read_document_attachment_file_resource(
                 document_id,
@@ -1181,7 +1181,7 @@ async def resource_read(
         document_id, attachment_id = attachment_ids
         if attachment_id is None:
             raise IsADirectoryError(str(reference))
-        from app.memory import read_document_attachment_file_resource
+        from app.document import read_document_attachment_file_resource
 
         metadata, content = await read_document_attachment_file_resource(
             document_id,
@@ -1196,7 +1196,10 @@ async def resource_read(
             limit=limit,
         )
     if reference.scheme in {"memory", "document"}:
-        from app.memory import read_file_resource_text
+        if reference.scheme == "document":
+            from app.document.facade import read_file_resource_text
+        else:
+            from app.memory import read_file_resource_text
 
         data = await read_file_resource_text(
             UUID(reference.locator),
@@ -1328,7 +1331,11 @@ async def resource_write_text(
             raise PermissionError(
                 "Document attachments are immutable; create a new attachment instead."
             )
-        from app.memory import describe_file_resource, write_document_resource_text
+        if reference.scheme == "document":
+            from app.document.facade import describe_file_resource
+        else:
+            from app.memory import describe_file_resource
+        from app.document import write_document_resource_text
 
         if not overwrite:
             raise FileExistsError(
@@ -1461,7 +1468,7 @@ async def resource_create(
                 raise ResourceUriError(
                     "file_create requires name for a document attachment."
                 )
-            from app.memory import create_document_attachment_file_resource
+            from app.document import create_document_attachment_file_resource
 
             data = await create_document_attachment_file_resource(
                 document_id,
@@ -1486,7 +1493,7 @@ async def resource_create(
             text = content.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise ValueError("document:// resources contain UTF-8 text only.") from exc
-        from app.memory import create_document_file_resource
+        from app.document import create_document_file_resource
 
         data = await create_document_file_resource(
             agent_id=ctx.agent_id,
@@ -1632,7 +1639,7 @@ async def resource_write(
                 "document:// stores UTF-8 text only; write binary content to console:// "
                 "or a connected file provider."
             ) from exc
-        from app.memory import write_document_resource_text
+        from app.document import write_document_resource_text
 
         data = await write_document_resource_text(
             UUID(reference.locator),
@@ -1772,7 +1779,7 @@ async def resource_append(
             )
         if expected_revision is None:
             raise ResourceValidationError("expected_revision is required for document appends; call file_read first.")
-        from app.memory import append_document_resource_text
+        from app.document import append_document_resource_text
 
         data = await append_document_resource_text(
             UUID(reference.locator),
@@ -1875,7 +1882,7 @@ async def _read_complete_bytes(
         document_id, attachment_id = attachment_ids
         if attachment_id is None:
             raise IsADirectoryError(str(reference))
-        from app.memory import read_document_attachment_file_resource
+        from app.document import read_document_attachment_file_resource
 
         _metadata, content = await read_document_attachment_file_resource(
             document_id,
@@ -2113,7 +2120,7 @@ async def resource_copy(
         if not dataset:
             text = convert_to_html(text, source_descriptor.media_type, profile="document")
         if destination_ref.is_collection:
-            from app.memory import create_document_file_resource
+            from app.document import create_document_file_resource
 
             title = (await resource_info(ctx, source_ref)).name
             data = await create_document_file_resource(
@@ -2338,7 +2345,7 @@ async def resource_delete(ctx: ResourceContext, uri: object, *, expected_etag: s
         document_id, attachment_id = attachment_ids
         if attachment_id is None:
             raise PermissionError("A document attachment collection cannot be deleted.")
-        from app.memory import delete_document_attachment_file_resource
+        from app.document import delete_document_attachment_file_resource
 
         await delete_document_attachment_file_resource(
             document_id,
@@ -2630,7 +2637,10 @@ async def resource_search(
         reference.scheme in {"memory", "document"}
         and _document_attachment_ids(reference) is None
     ):
-        from app.memory import search_file_resources
+        if reference.scheme == "document":
+            from app.document.facade import search_file_resources
+        else:
+            from app.memory import search_file_resources
 
         data = await search_file_resources(
             agent_id=ctx.agent_id,

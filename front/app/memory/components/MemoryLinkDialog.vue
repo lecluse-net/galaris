@@ -117,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import DocumentIcon from './DocumentIcon.vue'
+import { DocumentIcon } from '@/app/document'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'

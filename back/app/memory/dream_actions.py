@@ -9,7 +9,8 @@ from core.database import get_db
 
 from . import service
 from .attachment_analysis import attachment_analysis_source
-from .models import MemoryItem, DocumentTag
+from .models import MemoryItem
+from app.document import DocumentTag
 
 
 async def dream_action_item(
