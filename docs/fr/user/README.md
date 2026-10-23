@@ -85,10 +85,19 @@ La barre latérale ne montre que les écrans autorisés par votre rôle :
 | Processus | construire et suivre un workflow BPMN interne, ou lancer un workflow externe comme n8n |
 | Outils | voir les capacités MCP et API REST et les connexions des agents ; principalement destiné aux responsables |
 
+La liste **Outils** s'ouvre sur **Outils personnalisés** ; **Outils internes à Galaris** suit.
+Le champ **Outil** d'une connexion regroupe aussi les choix sous **Galaris** et **Personnalisé**.
+Dans **Nouvel outil**, activer au moins une capacité pour rendre le bouton **Créer** disponible.
+
 Pour configurer une intégration REST, un responsable active **API** sur le Tool, puis
-renseigne l'adresse et les identifiants dans ses paramètres globaux ou dans la connexion
-de l'agent. Les droits de l'API sont ceux du token chez le service tiers. Voir
+saisit directement l'adresse dans l'onglet **API REST**. Cette adresse est commune à toutes
+les connexions de l'outil. Les identifiants se renseignent dans ses paramètres globaux ou
+dans la connexion de l'agent. Les droits de l'API sont ceux du token chez le service tiers. Voir
 [l'administration des Tools](../admin/tool-administration.md).
+
+Dans les listes de paramètres des drivers, **Nouveau paramètre…** crée un paramètre et
+l'associe automatiquement au champ courant. Enregistrer l'outil pour conserver cet ajout.
+La suppression d'un paramètre utilisé demande confirmation ; annuler conserve ses associations.
 
 Pour connecter un compte à un serveur MCP, ouvrir la connexion de l’agent et cliquer sur
 **Connecter le compte**. Le fournisseur demande l’accord directement ; Galaris récupère

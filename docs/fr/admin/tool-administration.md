@@ -13,15 +13,20 @@ du responsable humain de l’agent. AgentAdmin conserve son propre périmètre e
 
 ## Activer et limiter la délégation
 
-Dans **Outils**, les sous-onglets **Outils internes à Galaris** et **Outils personnalisés**
-séparent les outils fournis par la plateforme de ceux que vous ajoutez. Une création ou un
+Dans **Outils**, le sous-onglet **Outils personnalisés** s'ouvre par défaut, avant
+**Outils internes à Galaris**. Ils séparent les outils que vous ajoutez de ceux fournis par la plateforme. Une création ou un
 import affiche automatiquement le sous-onglet de l’outil enregistré. Dans **Connexions** et
 **Autorisations**, le filtre **Filtrer par outil** regroupe les choix sous **Galaris** et
-**Personnalisé**. Les badges des listes rappellent cette origine ; les Tools intégrés
+**Personnalisé**. Le champ **Outil** du formulaire de connexion reprend les mêmes sections,
+parmi les outils autorisés dans ce formulaire. Les badges des listes rappellent cette origine ; les Tools intégrés
 optionnels restent dans le groupe Galaris lorsqu’ils sont désactivables, mais leur définition
 reste protégée. Un bridge dédié ne crée pas de Tool standard : les Tools utilisant Nextcloud,
 AFFiNE ou un bridge de messagerie restent personnalisés. n8n n’est plus créé automatiquement ;
 une entrée existante reste personnalisée, avec ses références de processus et son historique.
+
+Dans le formulaire **Nouvel outil**, activer au moins une capacité (MCP, API, partage,
+messagerie ou listener) avant de créer l'outil. Sans capacité active, le bouton **Créer**
+est désactivé et un message explique ce qui manque.
 
 ### Supprimer un outil personnalisé
 
@@ -140,15 +145,16 @@ Un même Tool peut proposer MCP et REST. L'onglet **API REST** configure l'adres
 l'authentification (aucune, Bearer, en-tête, Basic ou paramètre de requête), le délai maximum
 et la taille maximale des réponses. Aucun catalogue d'opérations ou document OpenAPI n'est requis.
 
-L'activation propose les paramètres `api_url` (texte) et `api_token` (mot de passe).
-L'adresse peut être une valeur HTTP(S) ou `${connection:api_url}`. Choisir les noms des
+Saisir directement l'adresse HTTP(S) dans l'onglet **API REST**, comme pour MCP :
+elle appartient à l'outil et est commune à toutes ses connexions.
+L'activation propose le paramètre `api_token` (mot de passe). Choisir les noms des
 paramètres de connexion pour l'authentification et les en-têtes supplémentaires ; ne jamais
 placer un token dans l'adresse ou le code d'un appel. Pour Basic, déclarer aussi un paramètre
 de connexion pour l'identifiant et sélectionner le paramètre secret du mot de passe.
 
-Renseigner ensuite les valeurs dans **Paramètres globaux** ou **Connexions → Modifier**.
+Renseigner ensuite les valeurs des identifiants et des en-têtes dans **Paramètres globaux** ou **Connexions → Modifier**.
 L'héritage, les surcharges, les valeurs imposées, le chiffrement et le masquage existants
-s'appliquent. La définition et l'export YAML conservent uniquement les noms des paramètres.
+s'appliquent. Pour ces valeurs, la définition et l'export YAML conservent uniquement les noms des paramètres.
 Une connexion désactivée ou appartenant à un autre agent ne peut pas être utilisée.
 
 Les droits sur les endpoints REST sont exclusivement ceux du token dans le service tiers.
@@ -275,6 +281,16 @@ paramètres. Un rafraîchissement ToolAdmin ignore toutes les sources stdio des 
 et signale une découverte partielle sans supprimer leur index existant.
 
 ## Paramètres, droits et commandes
+
+Dans le formulaire d'un Tool personnalisé, chaque liste de paramètres des drivers propose
+**Nouveau paramètre…** en dernière position. Cette action ajoute un paramètre au bloc de droite,
+avec un nom unique et le type adapté, puis l'associe au champ courant. Le paramètre et son
+association sont enregistrés avec l'outil ; fermer sans enregistrer abandonne ces ajouts.
+
+Supprimer un paramètre utilisé par une configuration active ou doté d'une valeur globale
+demande confirmation et affiche les configurations concernées. **Annuler**, la fermeture
+et le clic sur l'arrière-plan conservent le paramètre et ses associations. Après confirmation,
+réaffecter les champs concernés avant d'enregistrer l'outil.
 
 La définition `connection_schema.params` accepte un `label` facultatif par paramètre.
 Le formulaire affiche ce libellé avec le code technique et la description. Pour les types

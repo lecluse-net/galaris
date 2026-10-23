@@ -12,15 +12,13 @@
         />
       </div>
       <div class="col">
-        <q-select
+        <ToolFilterSelect
           v-model="form.tool_id"
-          :options="toolOptions"
-          option-value="id"
-          option-label="label"
+          :tools="selectableTools"
           :label="t('connection.tool')"
+          :clearable="false"
+          :dense="false"
           filled
-          emit-value
-          map-options
           @update:model-value="onToolChange"
         />
       </div>
@@ -383,7 +381,7 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { connectionParamLabel, connectionParamMessageKey, connectionParamOptions, sortedConnectionParamEntries } from '@/app/tools/presentation'
-import { ConnectionParamInput, type ConnectionParamDef } from '@/app/tools'
+import { ConnectionParamInput, ToolFilterSelect, type ConnectionParamDef } from '@/app/tools'
 import { AgentSelect } from '@/app/agent'
 import { consoleService, type ConsoleConnectionStatus } from '@/app/console/services/consoleService'
 import { mailService, type MailApproverOption } from '@/app/connection/services/mailService'
@@ -418,6 +416,7 @@ interface Tool {
   id: number
   code: string
   label: string
+  can_edit?: boolean
   has_mcp?: boolean
   mcp_config?: { type?: string } | null
   connection_schema?: {
@@ -517,6 +516,11 @@ const approverOptions = computed(() => approvers.value.map(user => ({
 })))
 
 const isEdit = computed(() => !!form.value.id)
+
+const selectableTools = computed(() => props.toolOptions.map(option => {
+  const tool = props.tools.find(item => item.id === option.id)
+  return { id: option.id, label: option.label, code: tool?.code ?? '', can_edit: tool?.can_edit ?? false }
+}))
 
 const selectedTool = computed(() =>
   form.value.tool_id ? props.tools.find(t => t.id === form.value.tool_id) ?? null : null

@@ -12,14 +12,19 @@ AgentAdmin retains its own scope and delegation.
 
 ## Enable and restrict delegation
 
-Under **Tools**, the **Galaris built-in tools** and **Custom tools** subtabs separate tools
-provided by the platform from those you add. Creating or importing a tool automatically
+Under **Tools**, **Custom tools** opens by default, before **Galaris built-in tools**.
+These subtabs separate tools you add from those provided by the platform. Creating or importing a tool automatically
 shows the saved tool’s subtab. Under **Connections** and **Authorizations**, the **Filter by
-tool** selector groups choices under **Galaris** and **Custom**. List badges identify the
+tool** selector groups choices under **Galaris** and **Custom**. The connection form's **Tool**
+field uses the same sections for the tools allowed in that form. List badges identify the
 same origin; optional integrated Tools stay in the Galaris group when disableable, while
 their definitions remain protected. A dedicated bridge does not create a standard Tool:
 Tools using Nextcloud, AFFiNE or a messaging bridge remain custom. n8n is no longer created
 automatically; an existing entry remains custom, with its process references and history.
+
+In the **New tool** form, enable at least one capability (MCP, API, file sharing,
+messaging or listener) before creating the Tool. Without an enabled capability, **Create**
+is disabled and a message explains what is missing.
 
 ### Delete a custom tool
 
@@ -132,15 +137,16 @@ One Tool can provide both MCP and REST. The **REST API** tab configures the base
 authentication (none, Bearer, header, Basic or query parameter), timeout and maximum response
 size. No operation catalogue or OpenAPI document is required.
 
-Enabling the capability proposes `api_url` (text) and `api_token` (password) parameters.
-The base URL accepts an HTTP(S) address or `${connection:api_url}`. Select connection
+Enter the HTTP(S) address directly in the **REST API** tab, as with MCP:
+it belongs to the Tool and is shared by all its connections.
+Enabling the capability proposes the `api_token` (password) parameter. Select connection
 parameter names for authentication and additional headers; never put a token in the URL
 or calling code. For Basic authentication, also declare a username connection parameter
 and select the secret password parameter.
 
-Enter values in **Global parameters** or **Connections → Edit**. Existing inheritance,
+Enter credential and header values in **Global parameters** or **Connections → Edit**. Existing inheritance,
 overrides, imposed values, encryption and masking apply. Definitions and YAML exports
-contain parameter names only. Disabled connections and connections belonging to another
+contain only parameter names for these values. Disabled connections and connections belonging to another
 agent cannot be used.
 
 REST endpoint permissions belong exclusively to the token in the third-party service.
@@ -259,6 +265,16 @@ ToolAdmin refresh skips all stdio sources connected to the selected agents and r
 partial discovery without pruning their existing index.
 
 ## Parameters, permissions and commands
+
+In a custom Tool form, each driver parameter list ends with **New parameter…**.
+This action adds a parameter to the right-hand panel with a unique name and the appropriate
+type, then assigns it to the current field. The parameter and its assignment are saved with
+the Tool; closing without saving discards these additions.
+
+Deleting a parameter used by an active configuration or holding a global value requires
+confirmation and lists the affected configurations. **Cancel**, closing and clicking the
+backdrop preserve the parameter and its assignments. After confirming, reassign affected
+fields before saving the Tool.
 
 The `connection_schema.params` definition accepts an optional `label` for each parameter.
 Forms display it alongside the technical code and description. For `string` and `integer`

@@ -1,5 +1,6 @@
 <template>
-  <q-select v-model="model" :options="options" :label="label" clearable dense outlined emit-value map-options>
+  <q-select v-model="model" :options="options" :label="label"
+    :clearable="clearable ?? true" :dense="dense ?? true" :filled="filled" :outlined="!filled" emit-value map-options>
     <template #option="scope">
       <q-item-label v-if="scope.opt.header" header role="presentation" class="text-weight-medium">
         {{ scope.opt.label }}
@@ -18,7 +19,13 @@ import { toolMessageKey, toolOrigin, type ToolOrigin } from '../presentation'
 import type { Tool } from '../services/toolService'
 
 const model = defineModel<number | null>({ required: true })
-const props = defineProps<{ tools: Tool[]; label: string }>()
+const props = defineProps<{
+  tools: Pick<Tool, 'id' | 'code' | 'label' | 'can_edit'>[]
+  label: string
+  clearable?: boolean
+  dense?: boolean
+  filled?: boolean
+}>()
 const { t } = useI18n()
 
 const options = computed(() => (['galaris', 'custom'] as const).flatMap((origin: ToolOrigin) => {

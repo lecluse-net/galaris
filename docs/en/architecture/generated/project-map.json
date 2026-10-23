@@ -4097,6 +4097,7 @@
         "files": [
           "back/app/tools/parameter_definitions.py",
           "back/app/tools/resource_effects.py",
+          "back/app/tools/router.py",
           "back/app/tools/tool_service.py"
         ],
         "source": "app.tools",
@@ -19725,7 +19726,7 @@
         "declared_path": "/tools",
         "file": "back/app/tools/router.py",
         "handler": "list_tools",
-        "line": 68,
+        "line": 76,
         "method": "GET",
         "module": "app.tools"
       },
@@ -19734,7 +19735,7 @@
         "declared_path": "/tools",
         "file": "back/app/tools/router.py",
         "handler": "create_tool",
-        "line": 159,
+        "line": 167,
         "method": "POST",
         "module": "app.tools"
       },
@@ -19743,7 +19744,7 @@
         "declared_path": "/tools/agents/{agent_id}/mcp-tools",
         "file": "back/app/tools/router.py",
         "handler": "list_agent_mcp_tools",
-        "line": 78,
+        "line": 86,
         "method": "GET",
         "module": "app.tools"
       },
@@ -19752,7 +19753,7 @@
         "declared_path": "/tools/import",
         "file": "back/app/tools/router.py",
         "handler": "import_tool",
-        "line": 263,
+        "line": 271,
         "method": "POST",
         "module": "app.tools"
       },
@@ -19770,7 +19771,7 @@
         "declared_path": "/tools/test-mcp",
         "file": "back/app/tools/router.py",
         "handler": "test_mcp_connection",
-        "line": 87,
+        "line": 95,
         "method": "POST",
         "module": "app.tools"
       },
@@ -19788,7 +19789,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "delete_tool",
-        "line": 223,
+        "line": 231,
         "method": "DELETE",
         "module": "app.tools"
       },
@@ -19797,7 +19798,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "get_tool",
-        "line": 107,
+        "line": 115,
         "method": "GET",
         "module": "app.tools"
       },
@@ -19806,7 +19807,7 @@
         "declared_path": "/tools/{tool_id}",
         "file": "back/app/tools/router.py",
         "handler": "update_tool",
-        "line": 175,
+        "line": 183,
         "method": "PUT",
         "module": "app.tools"
       },
@@ -19815,7 +19816,7 @@
         "declared_path": "/tools/{tool_id}/conversation-access",
         "file": "back/app/tools/router.py",
         "handler": "update_conversation_access",
-        "line": 191,
+        "line": 199,
         "method": "PATCH",
         "module": "app.tools"
       },
@@ -19824,7 +19825,7 @@
         "declared_path": "/tools/{tool_id}/deletion-impact",
         "file": "back/app/tools/router.py",
         "handler": "tool_deletion_impact",
-        "line": 211,
+        "line": 219,
         "method": "GET",
         "module": "app.tools"
       },
@@ -19833,7 +19834,7 @@
         "declared_path": "/tools/{tool_id}/export",
         "file": "back/app/tools/router.py",
         "handler": "export_tool",
-        "line": 240,
+        "line": 248,
         "method": "GET",
         "module": "app.tools"
       },
@@ -19842,7 +19843,7 @@
         "declared_path": "/tools/{tool_id}/global-params",
         "file": "back/app/tools/router.py",
         "handler": "get_global_params",
-        "line": 119,
+        "line": 127,
         "method": "GET",
         "module": "app.tools"
       },
@@ -19851,7 +19852,7 @@
         "declared_path": "/tools/{tool_id}/global-params",
         "file": "back/app/tools/router.py",
         "handler": "update_global_params",
-        "line": 136,
+        "line": 144,
         "method": "PUT",
         "module": "app.tools"
       },

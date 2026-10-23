@@ -57,7 +57,7 @@ for (const mobile of [false, true]) {
     const code = `synthetic-params-${fixture.agent_id}`
     await editor.getByLabel('Nom technique *', { exact: true }).fill(code)
     await editor.getByLabel('Libellé *', { exact: true }).fill(`Synthetic parameter choices ${fixture.agent_id}`)
-    await editor.getByRole('button', { name: 'Ajouter un param', exact: true }).click()
+    await editor.getByRole('button', { name: 'Ajouter un paramètre', exact: true }).click()
     await editor.getByLabel('Nom *', { exact: true }).fill('region')
     await editor.getByLabel('Libellé du paramètre', { exact: true }).fill('Région du service')
     await editor.getByLabel('Valeur par défaut', { exact: true }).fill('eu')
@@ -66,6 +66,8 @@ for (const mobile of [false, true]) {
       await editor.getByLabel('Valeur *', { exact: true }).last().fill(value)
       await editor.getByLabel('Libellé du choix', { exact: true }).last().fill(label)
     }
+    await editor.getByRole('switch', { name: 'Activer MCP', exact: true }).check()
+    await editor.getByLabel('URL *', { exact: true }).fill('https://mcp.example.test')
     const create = page.waitForResponse(response => response.url().endsWith('/api/tools') && response.request().method() === 'POST')
     await editor.getByRole('button', { name: 'Créer', exact: true }).click()
     const response = await create
@@ -157,6 +159,7 @@ for (const mobile of [false, true]) {
       const browserConnection = await createdBrowser.json()
       try {
         await page.goto('/tools')
+        await page.getByRole('tab', { name: 'Outils internes à Galaris', exact: true }).click()
         const browserRow = page.locator('tbody tr').filter({ has: page.getByText('browser', { exact: true }) })
         await browserRow.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
         await expect(editor.getByRole('combobox', { name: 'Accès aux sites publics', exact: true })).toHaveValue('Sites publics autorisés')

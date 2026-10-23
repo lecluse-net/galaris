@@ -1,6 +1,14 @@
 """Chinese approval previews."""
 
 default: dict[str, object] = {
+    "tools": {
+        "errors": {
+            "invalid_resource_tool_code": (
+                "启用文件共享或消息功能的工具技术名称必须以小写字母开头，且只能包含小写字母、"
+                "数字及 +、.、-。请将下划线和空格替换为连字符（例如 team-share）。"
+            ),
+        },
+    },
     "approval_preview": {
         "send_mail": "发送电子邮件", "run_function": "使用功能 ${function}",
         "process_mail": "允许读取和处理此电子邮件", "sender": "发件人",

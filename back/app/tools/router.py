@@ -53,6 +53,14 @@ async def _detail(key: str, **values: Any) -> str:
     return render_prompt(await tr(f"tools.errors.{key}"), **values)
 
 
+async def _validation_detail(error: ValueError) -> str:
+    from app.file_share import InvalidResourceToolCodeError
+
+    if isinstance(error, InvalidResourceToolCodeError):
+        return await _detail("invalid_resource_tool_code")
+    return str(error)
+
+
 from .projections import to_public as _to_public
 
 
@@ -165,7 +173,7 @@ async def create_tool(data: ToolCreate):
     try:
         record = await tool_service.create_tool(data)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail=await _validation_detail(exc)) from exc
     logger.info(f"Tool created: {record.code}")
     return _to_public(record)
 
@@ -176,7 +184,7 @@ async def update_tool(tool_id: int, data: ToolUpdate):
     try:
         record = await tool_service.update_tool(tool_id, data)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail=await _validation_detail(exc)) from exc
     if not record:
         raise HTTPException(
             status_code=404,
@@ -279,7 +287,7 @@ async def import_tool(
             detail=await _detail("invalid_tool_definition"),
         ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail=await _validation_detail(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 

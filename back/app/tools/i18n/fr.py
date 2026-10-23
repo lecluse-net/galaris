@@ -198,6 +198,12 @@ default: dict[str, object] = {
             "tool_exists_code": "L’outil « ${code} » existe déjà",
             "invalid_yaml": "YAML invalide",
             "invalid_tool_definition": "La définition de l’outil est invalide",
+            "invalid_resource_tool_code": (
+                "Le nom technique d’un outil avec partage de fichiers ou messagerie doit commencer "
+                "par une lettre minuscule et ne contenir que des lettres minuscules, des chiffres "
+                "et les caractères +, . ou -. Remplacez les _ et les espaces par des tirets "
+                "(exemple : partage-fichiers)."
+            ),
             "password_default_forbidden": (
                 "Les paramètres de connexion de type mot de passe ne peuvent pas définir "
                 "de valeur partagée par défaut : ${fields}"

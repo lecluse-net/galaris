@@ -77,10 +77,19 @@ The sidebar shows only the screens authorized by your role:
 | Processes | build and track an internal BPMN workflow, or launch an external workflow such as n8n |
 | Tools | view MCP and REST API capabilities and agent connections; primarily intended for administrators |
 
+The **Tools** list opens on **Custom tools**, followed by **Galaris built-in tools**.
+A connection's **Tool** field also groups choices under **Galaris** and **Custom**.
+In **New tool**, enable at least one capability to make **Create** available.
+
 To configure a REST integration, an administrator enables **API** on the Tool, then
-enters its address and credentials in global parameters or the agent's connection.
+enters its address directly in the **REST API** tab. All Tool connections share this address.
+Credentials are entered in global parameters or the agent's connection.
 API permissions come from the token at the third-party service. See
 [Tool administration](../admin/tool-administration.md).
+
+In driver parameter lists, **New parameter…** creates a parameter and assigns it to the
+current field automatically. Save the Tool to keep this addition.
+Deleting a parameter in use requires confirmation; cancelling preserves its assignments.
 
 To connect an account to an MCP server, open the agent connection and click
 **Connect account**. The provider asks for consent directly; Galaris retrieves the token

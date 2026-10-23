@@ -532,7 +532,7 @@ tests remain authoritative for behavior.
 | `app.tools` | `app.connection` | `back/app/tools/admin_access.py`, `back/app/tools/admin_candidates.py`, `back/app/tools/admin_contracts.py`, `back/app/tools/admin_service.py`, `back/app/tools/agent_registry.py`, `back/app/tools/authorization.py`, `back/app/tools/connection_functions.py`, `back/app/tools/dbadmin.py`, `back/app/tools/documentation_service.py`, `back/app/tools/facade.py`, `back/app/tools/mandatory_tools.py`, `back/app/tools/mcp.py`, `back/app/tools/mcp_authorization.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/rest.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `app.console` | `back/app/tools/mcp_loader.py` |
 | `app.tools` | `app.documentation` | `back/app/tools/documentation_service.py` |
-| `app.tools` | `app.file_share` | `back/app/tools/parameter_definitions.py`, `back/app/tools/resource_effects.py`, `back/app/tools/tool_service.py` |
+| `app.tools` | `app.file_share` | `back/app/tools/parameter_definitions.py`, `back/app/tools/resource_effects.py`, `back/app/tools/router.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `app.llm` | `back/app/tools/documentation_service.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/tool_search_service.py` |
 | `app.tools` | `app.messenger` | `back/app/tools/authorization_notifications.py`, `back/app/tools/mcp_loader.py`, `back/app/tools/tool_service.py` |
 | `app.tools` | `app.task` | `back/app/tools/mcp_loader.py` |
@@ -1918,21 +1918,21 @@ tests remain authoritative for behavior.
 | PUT | `/teams/{team_id}/humans/{user_id}` | `core.team` | `set_human_membership` | yes | `back/core/team/router.py:79` |
 | PUT | `/teams/{team_id}/position` | `core.team` | `move_team` | yes | `back/core/team/router.py:60` |
 | GET | `/tools` | `app.process` | `read_process_tools` | yes | `back/app/process/router.py:130` |
-| GET | `/tools` | `app.tools` | `list_tools` | yes | `back/app/tools/router.py:68` |
-| POST | `/tools` | `app.tools` | `create_tool` | yes | `back/app/tools/router.py:159` |
-| GET | `/tools/agents/{agent_id}/mcp-tools` | `app.tools` | `list_agent_mcp_tools` | yes | `back/app/tools/router.py:78` |
-| POST | `/tools/import` | `app.tools` | `import_tool` | yes | `back/app/tools/router.py:263` |
+| GET | `/tools` | `app.tools` | `list_tools` | yes | `back/app/tools/router.py:76` |
+| POST | `/tools` | `app.tools` | `create_tool` | yes | `back/app/tools/router.py:167` |
+| GET | `/tools/agents/{agent_id}/mcp-tools` | `app.tools` | `list_agent_mcp_tools` | yes | `back/app/tools/router.py:86` |
+| POST | `/tools/import` | `app.tools` | `import_tool` | yes | `back/app/tools/router.py:271` |
 | POST | `/tools/mcp-candidates` | `app.tools` | `prepare_mcp_candidate` | yes | `back/app/tools/router.py:38` |
-| POST | `/tools/test-mcp` | `app.tools` | `test_mcp_connection` | yes | `back/app/tools/router.py:87` |
+| POST | `/tools/test-mcp` | `app.tools` | `test_mcp_connection` | yes | `back/app/tools/router.py:95` |
 | GET | `/tools/{tool_code}/health` | `app.process` | `read_process_tool_health` | yes | `back/app/process/router.py:136` |
-| DELETE | `/tools/{tool_id}` | `app.tools` | `delete_tool` | yes | `back/app/tools/router.py:223` |
-| GET | `/tools/{tool_id}` | `app.tools` | `get_tool` | yes | `back/app/tools/router.py:107` |
-| PUT | `/tools/{tool_id}` | `app.tools` | `update_tool` | yes | `back/app/tools/router.py:175` |
-| PATCH | `/tools/{tool_id}/conversation-access` | `app.tools` | `update_conversation_access` | yes | `back/app/tools/router.py:191` |
-| GET | `/tools/{tool_id}/deletion-impact` | `app.tools` | `tool_deletion_impact` | yes | `back/app/tools/router.py:211` |
-| GET | `/tools/{tool_id}/export` | `app.tools` | `export_tool` | yes | `back/app/tools/router.py:240` |
-| GET | `/tools/{tool_id}/global-params` | `app.tools` | `get_global_params` | yes | `back/app/tools/router.py:119` |
-| PUT | `/tools/{tool_id}/global-params` | `app.tools` | `update_global_params` | yes | `back/app/tools/router.py:136` |
+| DELETE | `/tools/{tool_id}` | `app.tools` | `delete_tool` | yes | `back/app/tools/router.py:231` |
+| GET | `/tools/{tool_id}` | `app.tools` | `get_tool` | yes | `back/app/tools/router.py:115` |
+| PUT | `/tools/{tool_id}` | `app.tools` | `update_tool` | yes | `back/app/tools/router.py:183` |
+| PATCH | `/tools/{tool_id}/conversation-access` | `app.tools` | `update_conversation_access` | yes | `back/app/tools/router.py:199` |
+| GET | `/tools/{tool_id}/deletion-impact` | `app.tools` | `tool_deletion_impact` | yes | `back/app/tools/router.py:219` |
+| GET | `/tools/{tool_id}/export` | `app.tools` | `export_tool` | yes | `back/app/tools/router.py:248` |
+| GET | `/tools/{tool_id}/global-params` | `app.tools` | `get_global_params` | yes | `back/app/tools/router.py:127` |
+| PUT | `/tools/{tool_id}/global-params` | `app.tools` | `update_global_params` | yes | `back/app/tools/router.py:144` |
 | GET | `/topics` | `app.topic` | `read_topics` | yes | `back/app/topic/router.py:47` |
 | POST | `/topics` | `app.topic` | `create_topic` | yes | `back/app/topic/router.py:99` |
 | GET | `/topics/conversation` | `app.topic` | `read_conversation_topics` | yes | `back/app/topic/router.py:66` |

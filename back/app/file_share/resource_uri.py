@@ -107,6 +107,10 @@ class ResourceValidationError(ValueError):
     """A model-safe explanation of a rejected resource operation."""
 
 
+class InvalidResourceToolCodeError(ValueError):
+    """A Tool code cannot serve as a resource URI scheme."""
+
+
 class ResourceRevisionConflict(RuntimeError):
     """The caller must reread a resource before attempting its mutation."""
 
@@ -297,7 +301,7 @@ def validate_external_tool_code(
         normalized != normalized.lower()
         or RESOURCE_SCHEME_PATTERN.fullmatch(normalized) is None
     ):
-        raise ValueError(
+        raise InvalidResourceToolCodeError(
             "A resource-capable Tool code must be a lowercase URI scheme matching "
             "[a-z][a-z0-9+.-]*."
         )
@@ -314,6 +318,7 @@ __all__ = [
     "ResourceUri",
     "ResourceUriError",
     "ResourceValidationError",
+    "InvalidResourceToolCodeError",
     "ResourceRevisionConflict",
     "parse_resource_uri",
     "validate_external_tool_code",

@@ -15,6 +15,35 @@ const connections = tools.slice(0, 5).map(tool => ({ id: tool.id, tool_id: tool.
 const privileges = ['TOOL_ACCESS', 'TOOL_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL']
 
 for (const width of [390, 1400]) {
+  test(`Connection Tool selection groups the allowed built-in and custom choices (${width})`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await routes(page)
+    const locale = width === 390 ? 'fr' : 'en'
+    const searchTool = { id: 7, code: 'search', label: 'Web search', can_edit: false, can_disable: true, connection_schema: { params: {} }, global_params: {} }
+    await mount(page, 'app/connection/components/ConnectionForm.vue', { locale, privileges, props: {
+      defaultAgentId: 7,
+      agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }],
+      toolOptions: [searchTool, tools[4], tools[5]].map(tool => ({ id: tool.id, label: tool.label })),
+      tools: [...tools, searchTool],
+    } })
+    const select = page.getByRole('combobox', { name: locale === 'fr' ? 'Outil' : 'Tool', exact: true })
+    await select.click()
+    const popup = page.getByRole('listbox')
+    await expect(popup.getByText('Galaris', { exact: true })).toBeVisible()
+    await expect(popup.getByText(locale === 'fr' ? 'Personnalisé' : 'Custom', { exact: true })).toBeVisible()
+    await expect(popup.getByRole('option', { name: 'Galaris', exact: true })).toHaveCount(0)
+    await expect(popup.getByRole('option', { name: locale === 'fr' ? 'Personnalisé' : 'Custom', exact: true })).toHaveCount(0)
+    await page.screenshot({ path: testInfo.outputPath('grouped-connection-tools.png'), animations: 'disabled' })
+    await popup.getByRole('option', { name: locale === 'fr' ? 'Recherche web' : 'Web search', exact: true }).click()
+    await expect(popup).toHaveCount(0)
+    await select.click()
+    await page.getByRole('option', { name: 'No description', exact: true }).click()
+    await page.getByRole('button', { name: locale === 'fr' ? 'Créer' : 'Create', exact: true }).click()
+    await expect.poll(() => page.evaluate(() => window.testApp.events.find(event => event.name === 'submit')?.value)).toMatchObject({
+      data: { agent_id: 7, tool_id: 6, active: true },
+    })
+  })
+
   test(`Tool deletion requires the current impact, retains failures and ignores closed previews (${width})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
     await routes(page)
@@ -93,20 +122,76 @@ for (const width of [390, 1400]) {
     const dialog = page.getByRole('dialog')
     await dialog.getByLabel('Technical name', { exact: false }).fill('synthetic_rest')
     await dialog.getByLabel('Label *', { exact: true }).fill('Synthetic REST service')
+    const createButton = dialog.getByRole('button', { name: 'Create', exact: true })
+    await expect(createButton).toBeDisabled()
+    await dialog.locator('form').evaluate(form => form.requestSubmit())
+    await expect(page.locator('.q-notification__message')).toContainText('Enable at least one capability to create the tool.')
+    expect(writes).toEqual([])
+    for (const name of ['Enable MCP', 'Enable API', 'Enable file sharing', 'Enable messaging', 'Enable listener']) {
+      const toggle = dialog.getByRole('switch', { name, exact: true })
+      await toggle.check()
+      await expect(createButton).toBeEnabled()
+      await toggle.uncheck()
+      await expect(createButton).toBeDisabled()
+    }
     await dialog.getByRole('switch', { name: 'Enable API', exact: true }).click()
     await expect(dialog.getByRole('tab', { name: 'REST API', exact: true })).toBeVisible()
+    await expect(dialog.getByLabel('API base URL', { exact: true })).toHaveValue('')
     await dialog.getByLabel('API base URL', { exact: true }).fill('https://api.example.test/v1')
+    for (const name of ['api_token_2', 'api_token_3']) {
+      await dialog.getByLabel('Secret API token parameter', { exact: true }).click()
+      await page.getByRole('option', { name: 'New parameter…', exact: true }).click()
+      await expect(page.getByRole('option', { name: 'New parameter…', exact: true })).toHaveCount(0)
+      await expect(dialog.getByText(name, { exact: true })).toBeVisible()
+    }
+    await dialog.getByRole('button', { name: 'Add a header', exact: true }).click()
+    await dialog.getByLabel('Header name *', { exact: true }).fill('X-Synthetic')
+    await dialog.getByLabel('Param containing the value', { exact: true }).click()
+    await page.getByRole('option', { name: 'New parameter…', exact: true }).click()
+    await expect(page.getByRole('option', { name: 'New parameter…', exact: true })).toHaveCount(0)
+    await expect(dialog.getByText('x_synthetic', { exact: true })).toBeVisible()
+    const confirmation = page.getByRole('dialog').filter({ hasText: 'Delete parameter' })
+    const parameter = name => dialog.getByRole('group', { name: `Parameter ${name}`, exact: true })
+    await parameter('api_token').getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(parameter('api_token')).toHaveCount(0)
+    await expect(confirmation).toHaveCount(0)
+    await parameter('api_token_3').getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(confirmation).toContainText('REST API')
+    await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(confirmation).toHaveCount(0)
+    await expect(dialog.getByText('api_token_3', { exact: true })).toBeVisible()
+    await parameter('x_synthetic').getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(confirmation).toContainText('REST API')
+    await page.locator('.q-dialog__backdrop').last().click({ position: { x: 2, y: 2 } })
+    await expect(confirmation).toHaveCount(0)
+    await expect(parameter('x_synthetic')).toBeVisible()
+    await parameter('api_token_3').getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(confirmation).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('used-parameter-confirmation.png'), animations: 'disabled' })
+    await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(confirmation).toHaveCount(0)
+    await expect(parameter('api_token_3')).toHaveCount(0)
+    await dialog.getByLabel('Secret API token parameter', { exact: true }).click()
+    await page.getByRole('option', { name: 'api_token_2', exact: true }).click()
     await expect(dialog.getByText('Galaris adds no per-operation authorization.', { exact: false })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('rest-configuration.png'), animations: 'disabled' })
     await dialog.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     await expect(page.getByRole('tab', { name: 'Custom tools', exact: true })).toHaveAttribute('aria-selected', 'true')
     await expect(page.getByText('Synthetic REST service', { exact: true })).toBeVisible()
-    expect(writes[0].rest_config.auth).toMatchObject({ type: 'bearer', param: 'api_token' })
-    expect(writes[0].connection_schema.params.api_token.type).toBe('password')
+    expect(writes[0].rest_config.auth).toMatchObject({ type: 'bearer', param: 'api_token_2' })
+    expect(writes[0].rest_config.header_params).toEqual({ 'X-Synthetic': 'x_synthetic' })
+    expect(writes[0].rest_config.base_url).toBe('https://api.example.test/v1')
+    expect(writes[0].connection_schema.params).not.toHaveProperty('api_url')
+    expect(writes[0].connection_schema.params).not.toHaveProperty('api_token')
+    expect(writes[0].connection_schema.params.api_token_2.type).toBe('password')
+    expect(writes[0].connection_schema.params).not.toHaveProperty('api_token_3')
+    expect(writes[0].connection_schema.params.x_synthetic.type).toBe('string')
     await page.getByRole('button', { name: 'Edit tool', exact: true }).click()
     await dialog.getByRole('tab', { name: 'REST API', exact: true }).click()
     await expect(dialog.getByLabel('API base URL', { exact: true })).toHaveValue('https://api.example.test/v1')
+    await expect(dialog.getByText('api_token_2', { exact: true })).toBeVisible()
+    await expect(dialog.getByText('x_synthetic', { exact: true })).toBeVisible()
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     expect(writes[1].rest_config).toEqual(writes[0].rest_config)
@@ -115,6 +200,68 @@ for (const width of [390, 1400]) {
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     expect(writes[2].rest_config).toBeNull()
+  })
+
+  test(`Driver parameter menus create and assign typed parameters, including an empty list (${width})`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await routes(page)
+    const bridgeParams = [{ key: 'password', label: 'Synthetic credential', type: 'password', required: true }]
+    await jsonRoute(page, '**/api/file-share/bridges', [
+      { service: 'synthetic_share', label: 'Synthetic share', supports_share: true, params: bridgeParams },
+    ])
+    await jsonRoute(page, '**/api/messenger/bridges', [
+      { service: 'synthetic_messenger', label: 'Synthetic messenger', settings: [], params: bridgeParams },
+    ])
+    let saved
+    await page.route('**/api/tools', async route => {
+      if (route.request().method() === 'GET') return route.fulfill({ json: [] })
+      saved = route.request().postDataJSON()
+      return route.fulfill({ status: 201, json: { ...saved, id: 92, can_edit: true, can_disable: true, global_params: {} } })
+    })
+    await mount(page, 'app/tools/components/ToolsList.vue', { privileges })
+    await page.getByRole('button', { name: 'New tool', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Technical name', { exact: false }).fill('synthetic_drivers')
+    await dialog.getByLabel('Label *', { exact: true }).fill('Synthetic drivers')
+    await dialog.getByRole('switch', { name: 'Enable MCP', exact: true }).click()
+    await dialog.getByLabel('URL *', { exact: true }).fill('https://mcp.example.test')
+    await dialog.getByLabel('Auth type', { exact: true }).click()
+    await page.getByRole('option', { name: 'basic — Authorization: Basic', exact: true }).click()
+    const login = dialog.getByLabel('Login param', { exact: true })
+    await login.press('ArrowDown')
+    await expect(page.getByRole('option', { name: 'New parameter…', exact: true })).toBeVisible()
+    await login.press('ArrowDown')
+    await login.press('Enter')
+    await expect(page.getByRole('option', { name: 'New parameter…', exact: true })).toHaveCount(0)
+    await expect(dialog.getByLabel('Name *', { exact: true }).nth(0)).toHaveValue('login')
+    await expect(dialog.getByText('login', { exact: true })).toBeVisible()
+    await dialog.getByLabel('Password param', { exact: true }).click()
+    await page.getByRole('option', { name: 'New parameter…', exact: true }).click()
+    await expect(page.getByRole('option', { name: 'New parameter…', exact: true })).toHaveCount(0)
+    await expect(dialog.getByLabel('Name *', { exact: true }).nth(1)).toHaveValue('password')
+    for (const capability of ['Enable file sharing', 'Enable messaging']) {
+      await dialog.getByRole('switch', { name: capability, exact: true }).click()
+      await expect(dialog.getByLabel('Connection parameter', { exact: true })).toHaveCount(1)
+      await dialog.getByLabel('Connection parameter', { exact: true }).click()
+      await page.getByRole('option', { name: 'New parameter…', exact: true }).click()
+      await expect(page.getByRole('option', { name: 'New parameter…', exact: true })).toHaveCount(0)
+    }
+    for (const [name, usage] of [['password', 'MCP'], ['password_2', 'File sharing'], ['password_3', 'Messaging']]) {
+      await dialog.getByRole('group', { name: `Parameter ${name}`, exact: true }).getByRole('button', { name: 'Delete', exact: true }).click()
+      const confirmation = page.getByRole('dialog').filter({ hasText: 'Delete parameter' })
+      await expect(confirmation.getByRole('listitem')).toHaveText(usage)
+      await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click()
+      await expect(confirmation).toHaveCount(0)
+    }
+    await page.screenshot({ path: testInfo.outputPath('created-driver-parameters.png'), animations: 'disabled' })
+    await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(saved.mcp_config.auth).toMatchObject({ login_param: 'login', password_param: 'password' })
+    expect(saved.file_share_config.param_map).toEqual({ password: 'password_2' })
+    expect(saved.messenger_config.param_map).toEqual({ password: 'password_3' })
+    expect(Object.fromEntries(Object.entries(saved.connection_schema.params).map(([name, param]) => [name, param.type]))).toEqual({
+      login: 'string', password: 'password', password_2: 'password', password_3: 'password',
+    })
   })
 }
 
@@ -494,6 +641,7 @@ for (const mobile of [false, true]) {
     await jsonRoute(page, '**/api/tools', catalogue)
     const locale = mobile ? 'fr' : 'en'
     await mount(page, 'app/tools/components/ToolsList.vue', { locale, privileges: ['TOOL_ACCESS'] })
+    await page.getByRole('tab', { name: mobile ? 'Outils internes à Galaris' : 'Galaris built-in tools', exact: true }).click()
     const rows = page.locator(mobile ? '.tool-mobile-card' : 'tbody tr')
     const search = page.getByRole('textbox', { name: mobile ? 'Rechercher un outil' : 'Search tools', exact: true })
     await expect(rows).toHaveCount(4)
@@ -536,6 +684,7 @@ for (const mobile of [false, true]) {
     await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
     await routes(page)
     await mount(page, 'app/tools/components/ToolsList.vue', { privileges })
+    await page.getByRole('tab', { name: 'Galaris built-in tools', exact: true }).click()
     const rows = page.locator(mobile ? '.tool-mobile-card' : 'tbody tr')
     for (const name of ['Galaris', 'Conversation', 'Memory', 'File sharing']) {
       const row = rows.filter({ has: page.getByRole('button', { name, exact: true }) })

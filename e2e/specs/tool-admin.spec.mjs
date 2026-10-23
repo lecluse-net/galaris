@@ -58,7 +58,7 @@ for (const mobile of [false, true]) {
     const editor = page.getByRole('dialog').first()
     await editor.getByLabel('Nom technique *', { exact: true }).fill(code)
     await editor.getByLabel('Libellé *', { exact: true }).fill('Synthetic ToolAdmin candidate')
-    await editor.getByRole('button', { name: 'Ajouter un param', exact: true }).click()
+    await editor.getByRole('button', { name: 'Ajouter un paramètre', exact: true }).click()
     await editor.getByLabel('Nom *', { exact: true }).fill('token')
     await editor.getByRole('combobox', { name: 'Type', exact: true }).press('ArrowDown')
     await page.getByRole('option', { name: 'password', exact: true }).click()

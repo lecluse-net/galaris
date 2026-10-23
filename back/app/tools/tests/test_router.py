@@ -2,8 +2,10 @@
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
 
 from app.tools import router
 from app.tools.schemas import (
@@ -11,6 +13,8 @@ from app.tools.schemas import (
     ToolGlobalParamsUpdate,
     ToolMcpTestRequest,
     ToolMcpTestResponse,
+    ToolCreate,
+    ToolUpdate,
 )
 
 
@@ -77,3 +81,34 @@ async def test_integrated_tool_global_params_can_be_updated(
     assert result.tool_id == 7
     assert result.params["host"].value == "ssh.example.test"
     update.assert_awaited_once_with(7, request)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("language,prefix", [
+    ("fr", "Le nom technique"),
+    ("en", "The technical name"),
+    ("zh", "启用文件共享"),
+])
+async def test_resource_tool_code_errors_use_the_request_language(db, monkeypatch, language, prefix):
+    from core.i18n import i18n_service
+
+    monkeypatch.setattr(i18n_service, "current_language", AsyncMock(return_value=language))
+    code = f"synthetic_share_{uuid4().hex}"
+    config = {"service": "samba", "base_url": "smb://files.example.test", "param_map": {}}
+    definition = ToolCreate(code=code, label="Synthetic share", file_share_config=config)
+    with pytest.raises(HTTPException) as creation:
+        await router.create_tool(definition)
+    record = await router.tool_service.create_tool(ToolCreate(code=code, label="Synthetic share"))
+    with pytest.raises(HTTPException) as update:
+        await router.update_tool(record.id, ToolUpdate(file_share_config=config))
+    with pytest.raises(HTTPException) as imported:
+        await router.import_tool(body=(
+            f"code: {code}-import\nlabel: Synthetic share\n"
+            "file_share_config:\n  service: samba\n  base_url: smb://files.example.test\n"
+        ))
+    for rejection in (creation, update, imported):
+        assert rejection.value.status_code == 422
+        assert rejection.value.detail.startswith(prefix)
+        assert "resource-capable Tool code" not in rejection.value.detail
+    await db.refresh(record)
+    assert record.file_share_config is None

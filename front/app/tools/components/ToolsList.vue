@@ -1,8 +1,8 @@
 <template>
   <div>
-    <q-tabs v-model="origin" dense align="left" active-color="primary" indicator-color="primary" class="q-mb-md" no-caps>
-      <q-tab name="galaris" :label="$t('tools.internalTools')" />
+    <q-tabs v-model="origin" dense align="left" class="q-mb-md tool-tabs" no-caps>
       <q-tab name="custom" :label="$t('tools.customTools')" />
+      <q-tab name="galaris" :label="$t('tools.internalTools')" />
     </q-tabs>
     <div class="row items-center q-gutter-sm q-mb-md tools-actions">
       <q-input
@@ -348,8 +348,8 @@
     <!-- ============================================================
          Create or edit dialog
     ============================================================ -->
-    <q-dialog v-model="dialogOpen" maximized>
-      <q-card class="galaris-dialog-card" style="max-width: 860px; width: 100%; margin: auto; height: fit-content; max-height: 95vh; overflow-y: auto;">
+    <q-dialog v-model="dialogOpen">
+      <q-card class="tool-editor-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ editingTool ? $t('tools.editTool') : $t('tools.newTool') }}</div>
           <q-space />
@@ -360,272 +360,305 @@
           <q-form @submit.prevent="saveTool" class="q-gutter-y-md">
 
             <section class="tool-section">
-              <div class="text-subtitle2 text-grey-7 q-mb-xs">{{ $t('tools.mainFields') }}</div>
-              <div class="row q-gutter-md tool-main-fields-row">
-                <q-input v-model="form.code" :label="$t('tools.technicalName')" :readonly="!!editingTool" :disable="!!editingTool"
-                  :hint="$t(hasFileShare || hasMessenger ? 'tools.resourceTechnicalNameHint' : 'tools.technicalNameHint')" dense outlined class="col tool-main-field" :rules="[v => !!v || $t('tools.required')]" />
-                <q-input v-model="form.label" :label="$t('tools.label')" dense outlined class="col tool-main-field" :rules="[v => !!v || $t('tools.required')]" />
-              </div>
-              <q-input v-model="form.description" :label="$t('tools.descriptionMarkdown')" type="textarea" dense outlined autogrow />
-
-              <!-- Section toggles grouped below the description -->
-              <div class="row q-gutter-md q-mt-sm tool-capability-toggles">
-                <q-toggle v-model="hasMcp" :label="$t('tools.enableMcp')" color="positive" dense />
-                <q-toggle v-model="hasApi" :label="$t('tools.enableApi')" color="primary" dense />
-                <q-toggle v-model="hasFileShare" :label="$t('tools.enableFileShare')" color="deep-purple" dense />
-                <q-toggle v-model="hasMessenger" :label="$t('tools.enableMessenger')" color="indigo" dense />
-                <q-toggle v-model="hasListener" :label="$t('tools.enableListener')" color="info" dense />
+              <div class="text-subtitle2 text-grey-7 q-mb-sm">{{ $t('tools.mainFields') }}</div>
+              <div class="tool-editor-columns">
+                <div class="tool-main-fields-row">
+                  <q-input v-model="form.code" :label="$t('tools.technicalName')" :readonly="!!editingTool" :disable="!!editingTool"
+                    :hint="$t(hasFileShare || hasMessenger ? 'tools.resourceTechnicalNameHint' : 'tools.technicalNameHint')" hide-bottom-space dense outlined class="tool-main-field" :rules="[v => !!v || $t('tools.required')]" />
+                  <q-input v-model="form.label" :label="$t('tools.label')" hide-bottom-space dense outlined class="tool-main-field" :rules="[v => !!v || $t('tools.required')]" />
+                </div>
+                <q-input v-model="form.description" :label="$t('tools.descriptionMarkdown')" type="textarea" :input-style="{ minHeight: '96px' }" dense outlined autogrow />
               </div>
             </section>
 
-            <section class="tool-section">
-              <div class="row items-center q-mb-sm">
-                <div class="text-subtitle2 text-grey-7">{{ $t('tools.connectionParams') }}</div>
-                <q-space />
-                <q-btn v-if="canEdit" flat icon="add" :label="$t('tools.addParam')" color="primary" @click="addConnParam" />
-              </div>
-              <div v-for="(param, key) in connParams" :key="key" class="connection-param-editor">
-                <div class="connection-param-row">
-                  <q-input v-model="param.name" :label="$t('tools.paramName')" dense outlined class="connection-param-name" />
-                  <q-input v-model="param.label" :label="$t('tools.paramLabel')" dense outlined class="connection-param-description" />
-                  <q-select v-model="param.type" :options="paramTypeOptions" :label="$t('tools.type')" emit-value map-options dense outlined class="connection-param-type" />
-                  <q-toggle v-model="param.required" :label="$t('tools.required')" dense class="connection-param-required" />
-                  <q-btn
-                    v-if="canEdit"
-                    flat
-                    round
-                    icon="delete"
-                    color="negative"
-                    class="connection-param-delete"
-                    :aria-label="$t('common.delete')"
-                    @click="removeConnParam(key)"
-                  />
+            <div class="tool-editor-columns">
+              <section class="tool-section tool-section--active">
+                <div class="row q-gutter-md q-mb-md tool-capability-toggles">
+                  <q-toggle v-model="hasMcp" :label="$t('tools.enableMcp')" color="positive" dense />
+                  <q-toggle v-model="hasApi" :label="$t('tools.enableApi')" color="primary" dense />
+                  <q-toggle v-model="hasFileShare" :label="$t('tools.enableFileShare')" color="deep-purple" dense />
+                  <q-toggle v-model="hasMessenger" :label="$t('tools.enableMessenger')" color="indigo" dense />
+                  <q-toggle v-model="hasListener" :label="$t('tools.enableListener')" color="info" dense />
                 </div>
-                <div class="row q-col-gutter-sm q-mt-xs">
-                  <q-input v-model="param.description" :label="$t('tools.descriptionMarkdown')" dense outlined class="col-12 col-md-8" />
-                  <q-input v-model="param.default" :label="$t('tools.paramDefault')" :disable="param.type === 'password'" dense outlined class="col-12 col-md-4" />
-                </div>
-                <div v-if="param.type === 'string' || param.type === 'integer'" class="q-mt-sm">
-                  <q-btn flat dense icon="add" color="primary" :label="$t('tools.addParamOption')" @click="param.options.push({ value: '', label: '' })" />
-                  <div v-if="param.options.length" class="text-caption q-mb-sm">{{ $t('tools.paramOptionsHint') }}</div>
-                  <div v-for="(option, index) in param.options" :key="index" class="row q-col-gutter-sm q-mb-sm items-start">
-                    <q-input v-model="option.value" :label="$t('tools.paramOptionValue')" dense outlined class="col" />
-                    <q-input v-model="option.label" :label="$t('tools.paramOptionLabel')" dense outlined class="col" />
-                    <q-btn flat round dense icon="delete" color="negative" :aria-label="$t('tools.removeParamOption')" @click="param.options.splice(index, 1)" />
-                  </div>
-                </div>
-              </div>
-            </section>
+                <q-banner v-if="missingCreationCapability" dense rounded class="q-mb-md" role="status">
+                  <template #avatar><q-icon name="info" /></template>
+                  {{ $t('tools.capabilityRequired') }}
+                </q-banner>
+                <template v-if="hasMcp || hasApi || hasFileShare || hasMessenger || hasListener">
+                  <q-tabs v-model="activeTab" dense align="left" class="tool-tabs" narrow-indicator>
+                    <q-tab v-if="hasMcp" name="mcp" label="MCP" />
+                    <q-tab v-if="hasApi" name="api" :label="$t('tools.restApi')" />
+                    <q-tab v-if="hasFileShare" name="file_share" :label="$t('tools.fileShare')" />
+                    <q-tab v-if="hasMessenger" name="messenger" :label="$t('tools.messenger')" />
+                    <q-tab v-if="hasListener" name="listener" :label="$t('tools.listener')" />
+                  </q-tabs>
+                  <q-separator class="q-mb-md" />
 
-            <section v-if="hasMcp || hasApi || hasFileShare || hasMessenger || hasListener" class="tool-section tool-section--active">
-              <q-tabs v-model="activeTab" dense align="left" class="text-grey-7"
-                active-color="primary" indicator-color="primary" narrow-indicator>
-                <q-tab v-if="hasMcp" name="mcp" label="MCP" />
-                <q-tab v-if="hasApi" name="api" :label="$t('tools.restApi')" />
-                <q-tab v-if="hasFileShare" name="file_share" :label="$t('tools.fileShare')" />
-                <q-tab v-if="hasMessenger" name="messenger" :label="$t('tools.messenger')" />
-                <q-tab v-if="hasListener" name="listener" :label="$t('tools.listener')" />
-              </q-tabs>
-              <q-separator class="q-mb-md" />
-
-              <q-tab-panels v-model="activeTab" animated>
-                <q-tab-panel name="api" class="q-pa-none">
-                  <RestConfigEditor v-model="form.rest_config" :params="connParams" class="tool-section__body" />
-                </q-tab-panel>
-                <!-- Rubrique MCP -->
-                <q-tab-panel name="mcp" class="q-pa-none">
-                  <div class="tool-section__body">
-                    <div class="row q-gutter-md">
-                      <q-select v-model="form.mcp_config.type" :options="['http', 'sse', 'stdio']" :label="$t('tools.transport')"
-                        dense outlined class="col-auto" style="min-width: 120px" />
-                      <q-input v-if="form.mcp_config.type !== 'stdio'" v-model="form.mcp_config.url" label="URL *"
-                        dense outlined class="col" placeholder="https://..." />
-                      <q-input v-else v-model="form.mcp_config.command" :label="$t('tools.command')" dense outlined class="col" placeholder="npx" />
-                    </div>
-                    <q-input v-if="form.mcp_config.type === 'stdio'" v-model="mcpArgsRaw" :label="$t('tools.argsPerLine')"
-                      type="textarea" dense outlined autogrow />
-                    <q-input v-if="form.mcp_config.type === 'stdio'" v-model="mcpEnvRaw" :label="$t('tools.envJson')"
-                      type="textarea" dense outlined autogrow :hint="$t('tools.writeOnlyMappingHint')"
-                      :placeholder="$t('tools.envPlaceholder')" />
-                    <q-input v-model="form.mcp_config.timeout" :label="$t('tools.timeoutSeconds')" type="number" dense outlined style="max-width: 160px" />
-
-                    <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">{{ $t('tools.auth') }}</div>
-                    <div class="row q-gutter-md items-start">
-                      <q-select v-model="form.mcp_config.auth.type" :options="authTypeOptions" :label="$t('tools.authType')"
-                        emit-value map-options dense outlined class="col-auto" style="min-width: 140px" />
-                      <template v-if="form.mcp_config.auth.type === 'bearer'">
-                        <q-select v-model="form.mcp_config.auth.param" :options="connParamNames" :label="$t('tools.tokenParam')"
-                          dense outlined class="col" clearable use-input input-debounce="0"
-                          :hint="$t('tools.tokenParamHint')" />
-                      </template>
-                      <template v-if="form.mcp_config.auth.type === 'header'">
-                        <q-input v-model="form.mcp_config.auth.header_name" :label="$t('tools.headerName')" dense outlined class="col"
-                          placeholder="X-Redmine-API-Key" />
-                        <q-select v-model="form.mcp_config.auth.param" :options="connParamNames" :label="$t('tools.valueParam')"
-                          dense outlined class="col" clearable use-input input-debounce="0" />
-                      </template>
-                      <template v-if="form.mcp_config.auth.type === 'basic'">
-                        <q-select v-model="form.mcp_config.auth.login_param" :options="connParamNames" :label="$t('tools.loginParam')"
-                          dense outlined class="col" clearable use-input input-debounce="0" />
-                        <q-select v-model="form.mcp_config.auth.password_param" :options="connParamNames" :label="$t('tools.passwordParam')"
-                          dense outlined class="col" clearable use-input input-debounce="0" />
-                      </template>
-                    </div>
-                    <q-banner
-                      v-if="form.mcp_config.auth.token_static_configured"
-                      dense rounded class="bg-orange-1 text-orange-10 q-mt-sm"
-                    >
-                      <template #avatar><q-icon name="key" color="orange-9" /></template>
-                      {{ $t('tools.legacyStaticTokenConfigured') }}
-                      <template #action>
-                        <q-btn
-                          v-if="canEdit"
-                          flat color="negative" :label="$t('tools.removeLegacySecret')"
-                          @click="clearLegacyStaticToken"
-                        />
-                      </template>
-                    </q-banner>
-                    <q-input v-if="!['none', 'basic'].includes(form.mcp_config.auth.type) && form.mcp_config.type !== 'stdio'"
-                      v-model="form.mcp_config.auth.url_param" :label="$t('tools.urlParam')"
-                      dense outlined style="max-width: 280px" :hint="$t('tools.urlParamHint')" />
-                    <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">{{ $t('tools.staticHeaders') }}</div>
-                    <q-input v-model="mcpHeadersRaw" :label="$t('tools.headersJson')" type="textarea" dense outlined autogrow
-                      :placeholder="$t('tools.headersPlaceholder')" :hint="$t('tools.writeOnlyMappingHint')" />
-                    <div class="row justify-end q-mt-md">
-                      <q-btn
-                        v-if="canEdit"
-                        outline
-                        color="secondary"
-                        icon="lan"
-                        :label="$t('tools.testMcpConnection')"
-                        :disable="!form.code.trim()"
-                        @click="openMcpTest"
-                      />
-                    </div>
-                  </div>
-                </q-tab-panel>
-
-                <!-- File-sharing section. -->
-                <q-tab-panel name="file_share" class="q-pa-none">
-                  <div class="tool-section__body">
-                    <div class="row q-gutter-md">
-                      <q-select v-model="form.file_share_config.service" :options="fileShareBridgeOptions"
-                        emit-value map-options :label="$t('tools.fileShareServiceLabel')"
-                        dense outlined class="col-auto" style="min-width: 200px"
-                        @update:model-value="onFileShareServiceChange" />
-                      <q-input v-model="form.file_share_config.base_url" :label="$t('tools.fileShareBaseUrlLabel')" dense outlined class="col"
-                        :hint="$t('tools.fileShareBaseUrlHint')"
-                        :placeholder="$t(form.file_share_config.service === 'samba' ? 'tools.fileShareSambaUrlPlaceholder' : 'tools.fileShareUrlPlaceholder')" />
-                    </div>
-
-                    <template v-if="currentFileShareBridge">
-                      <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">{{ $t('tools.fileShareParamMap') }}</div>
-                      <div v-for="p in currentFileShareBridge.params" :key="p.key" class="row q-gutter-md items-center">
-                        <div class="col-3 text-body2">
-                          {{ p.label }}<span v-if="p.required" class="text-negative"> *</span>
+                  <q-tab-panels v-model="activeTab" animated>
+                    <q-tab-panel name="api" class="q-pa-none">
+                      <RestConfigEditor v-model="form.rest_config" :params="connParams" :create-param="createConnParam" class="tool-section__body" />
+                    </q-tab-panel>
+                    <!-- Rubrique MCP -->
+                    <q-tab-panel name="mcp" class="q-pa-none">
+                      <div class="tool-section__body">
+                        <div class="row q-gutter-md">
+                          <q-select v-model="form.mcp_config.type" :options="['http', 'sse', 'stdio']" :label="$t('tools.transport')"
+                            dense outlined class="col-auto" style="min-width: 120px" />
+                          <q-input v-if="form.mcp_config.type !== 'stdio'" v-model="form.mcp_config.url" label="URL *"
+                            dense outlined class="col" placeholder="https://..." />
+                          <q-input v-else v-model="form.mcp_config.command" :label="$t('tools.command')" dense outlined class="col" placeholder="npx" />
                         </div>
-                        <q-select
-                          v-model="form.file_share_config.param_map[p.key]"
-                          :options="connParamNames" use-input input-debounce="0" clearable
-                          :label="$t('tools.mapToParam')"
-                          dense outlined class="col"
-                        />
+                        <q-input v-if="form.mcp_config.type === 'stdio'" v-model="mcpArgsRaw" :label="$t('tools.argsPerLine')"
+                          type="textarea" dense outlined autogrow />
+                        <q-input v-if="form.mcp_config.type === 'stdio'" v-model="mcpEnvRaw" :label="$t('tools.envJson')"
+                          type="textarea" dense outlined autogrow :hint="$t('tools.writeOnlyMappingHint')"
+                          :placeholder="$t('tools.envPlaceholder')" />
+                        <q-input v-model="form.mcp_config.timeout" :label="$t('tools.timeoutSeconds')" type="number" dense outlined style="max-width: 160px" />
+
+                        <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">{{ $t('tools.auth') }}</div>
+                        <div class="row q-gutter-md items-start">
+                          <q-select v-model="form.mcp_config.auth.type" :options="authTypeOptions" :label="$t('tools.authType')"
+                            emit-value map-options dense outlined class="col-auto" style="min-width: 140px" />
+                          <template v-if="form.mcp_config.auth.type === 'bearer'">
+                            <ConnectionParamSelect v-model="form.mcp_config.auth.param" :options="connParamNames" :label="$t('tools.tokenParam')"
+                              :create-parameter="() => createConnParam('token', 'password', $t('tools.tokenParam'))"
+                              dense outlined class="col" clearable use-input input-debounce="0"
+                              :hint="$t('tools.tokenParamHint')" />
+                          </template>
+                          <template v-if="form.mcp_config.auth.type === 'header'">
+                            <q-input v-model="form.mcp_config.auth.header_name" :label="$t('tools.headerName')" dense outlined class="col"
+                              placeholder="X-Redmine-API-Key" />
+                            <ConnectionParamSelect v-model="form.mcp_config.auth.param" :options="connParamNames" :label="$t('tools.valueParam')"
+                              :create-parameter="() => createConnParam('token', 'password', $t('tools.valueParam'))"
+                              dense outlined class="col" clearable use-input input-debounce="0" />
+                          </template>
+                          <template v-if="form.mcp_config.auth.type === 'basic'">
+                            <ConnectionParamSelect v-model="form.mcp_config.auth.login_param" :options="connParamNames" :label="$t('tools.loginParam')"
+                              :create-parameter="() => createConnParam('login', 'string', $t('tools.loginParam'))"
+                              dense outlined class="col" clearable use-input input-debounce="0" />
+                            <ConnectionParamSelect v-model="form.mcp_config.auth.password_param" :options="connParamNames" :label="$t('tools.passwordParam')"
+                              :create-parameter="() => createConnParam('password', 'password', $t('tools.passwordParam'))"
+                              dense outlined class="col" clearable use-input input-debounce="0" />
+                          </template>
+                        </div>
+                        <q-banner
+                          v-if="form.mcp_config.auth.token_static_configured"
+                          dense rounded class="bg-orange-1 text-orange-10 q-mt-sm"
+                        >
+                          <template #avatar><q-icon name="key" color="orange-9" /></template>
+                          {{ $t('tools.legacyStaticTokenConfigured') }}
+                          <template #action>
+                            <q-btn
+                              v-if="canEdit"
+                              flat color="negative" :label="$t('tools.removeLegacySecret')"
+                              @click="clearLegacyStaticToken"
+                            />
+                          </template>
+                        </q-banner>
+                        <q-input v-if="!['none', 'basic'].includes(form.mcp_config.auth.type) && form.mcp_config.type !== 'stdio'"
+                          v-model="form.mcp_config.auth.url_param" :label="$t('tools.urlParam')"
+                          dense outlined style="max-width: 280px" :hint="$t('tools.urlParamHint')" />
+                        <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">{{ $t('tools.staticHeaders') }}</div>
+                        <q-input v-model="mcpHeadersRaw" :label="$t('tools.headersJson')" type="textarea" dense outlined autogrow
+                          :placeholder="$t('tools.headersPlaceholder')" :hint="$t('tools.writeOnlyMappingHint')" />
+                        <div class="row justify-end q-mt-md">
+                          <q-btn
+                            v-if="canEdit"
+                            outline
+                            color="secondary"
+                            icon="lan"
+                            :label="$t('tools.testMcpConnection')"
+                            :disable="!form.code.trim()"
+                            @click="openMcpTest"
+                          />
+                        </div>
                       </div>
-                      <q-banner dense class="bg-grey-2 text-grey-8 q-mt-sm" rounded>
-                        <template v-slot:avatar><q-icon name="info" color="deep-purple" /></template>
-                        {{ $t('tools.fileShareCredsHint') }}
-                      </q-banner>
-                    </template>
-                  </div>
-                </q-tab-panel>
+                    </q-tab-panel>
 
-                <!-- Messaging section, independent from File sharing. -->
-                <q-tab-panel name="messenger" class="q-pa-none">
-                  <div class="tool-section__body">
-                    <q-select
-                      v-model="form.messenger_config.service"
-                      :options="messengerBridgeOptions"
-                      emit-value map-options
-                      :label="$t('tools.messengerServiceLabel')"
-                      dense outlined
-                      style="max-width: 320px"
-                      @update:model-value="onMessengerServiceChange(true)"
-                    />
+                    <!-- File-sharing section. -->
+                    <q-tab-panel name="file_share" class="q-pa-none">
+                      <div class="tool-section__body">
+                        <div class="row q-gutter-md">
+                          <q-select v-model="form.file_share_config.service" :options="fileShareBridgeOptions"
+                            emit-value map-options :label="$t('tools.fileShareServiceLabel')"
+                            dense outlined class="col-auto" style="min-width: 200px"
+                            @update:model-value="onFileShareServiceChange" />
+                          <q-input v-model="form.file_share_config.base_url" :label="$t('tools.fileShareBaseUrlLabel')" dense outlined class="col"
+                            :hint="$t('tools.fileShareBaseUrlHint')"
+                            :placeholder="$t(form.file_share_config.service === 'samba' ? 'tools.fileShareSambaUrlPlaceholder' : 'tools.fileShareUrlPlaceholder')" />
+                        </div>
 
-                    <template v-if="currentMessengerBridge">
-                      <NetworkAccessNotice :kind="currentMessengerBridge.service" />
-                      <div v-if="currentMessengerBridge.settings.length" class="q-gutter-y-sm">
-                        <div class="text-caption text-grey-6">{{ $t('tools.messengerServerSettings') }}</div>
-                        <q-input
-                          v-for="setting in currentMessengerBridge.settings"
-                          :key="setting.key"
-                          v-model="form.messenger_config.settings[setting.key]"
-                          :type="setting.type === 'password' ? 'password' : 'text'"
-                          :label="`${setting.label}${setting.required ? ' *' : ''}`"
-                          :hint="setting.description"
+                        <template v-if="currentFileShareBridge">
+                          <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">{{ $t('tools.fileShareParamMap') }}</div>
+                          <div v-for="p in currentFileShareBridge.params" :key="p.key" class="row q-gutter-md items-center">
+                            <div class="col-3 text-body2">
+                              {{ p.label }}<span v-if="p.required" class="text-negative"> *</span>
+                            </div>
+                            <ConnectionParamSelect
+                              v-model="form.file_share_config.param_map[p.key]"
+                              :options="connParamNames" use-input input-debounce="0" clearable
+                              :create-parameter="() => createConnParam(p.key, p.type, p.label, p.required)"
+                              :label="$t('tools.mapToParam')"
+                              dense outlined class="col"
+                            />
+                          </div>
+                          <q-banner dense class="bg-grey-2 text-grey-8 q-mt-sm" rounded>
+                            <template v-slot:avatar><q-icon name="info" color="deep-purple" /></template>
+                            {{ $t('tools.fileShareCredsHint') }}
+                          </q-banner>
+                        </template>
+                      </div>
+                    </q-tab-panel>
+
+                    <!-- Messaging section, independent from File sharing. -->
+                    <q-tab-panel name="messenger" class="q-pa-none">
+                      <div class="tool-section__body">
+                        <q-select
+                          v-model="form.messenger_config.service"
+                          :options="messengerBridgeOptions"
+                          emit-value map-options
+                          :label="$t('tools.messengerServiceLabel')"
                           dense outlined
+                          style="max-width: 320px"
+                          @update:model-value="onMessengerServiceChange(true)"
                         />
-                      </div>
 
-                      <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">{{ $t('tools.messengerParamMap') }}</div>
-                      <div v-for="p in currentMessengerBridge.params" :key="p.key" class="row q-gutter-md items-center">
-                        <div class="col-3 text-body2">
-                          {{ p.label }}<span v-if="p.required" class="text-negative"> *</span>
+                        <template v-if="currentMessengerBridge">
+                          <NetworkAccessNotice :kind="currentMessengerBridge.service" />
+                          <div v-if="currentMessengerBridge.settings.length" class="q-gutter-y-sm">
+                            <div class="text-caption text-grey-6">{{ $t('tools.messengerServerSettings') }}</div>
+                            <q-input
+                              v-for="setting in currentMessengerBridge.settings"
+                              :key="setting.key"
+                              v-model="form.messenger_config.settings[setting.key]"
+                              :type="setting.type === 'password' ? 'password' : 'text'"
+                              :label="`${setting.label}${setting.required ? ' *' : ''}`"
+                              :hint="setting.description"
+                              dense outlined
+                            />
+                          </div>
+
+                          <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">{{ $t('tools.messengerParamMap') }}</div>
+                          <div v-for="p in currentMessengerBridge.params" :key="p.key" class="row q-gutter-md items-center">
+                            <div class="col-3 text-body2">
+                              {{ p.label }}<span v-if="p.required" class="text-negative"> *</span>
+                            </div>
+                            <ConnectionParamSelect
+                              v-model="form.messenger_config.param_map[p.key]"
+                              :options="connParamNames"
+                              :create-parameter="() => createConnParam(p.key, p.type, p.label, p.required)"
+                              use-input input-debounce="0" clearable
+                              :label="$t('tools.mapToParam')"
+                              dense outlined class="col"
+                            />
+                          </div>
+                          <q-banner dense class="bg-grey-2 text-grey-8 q-mt-sm" rounded>
+                            <template #avatar><q-icon name="info" color="indigo" /></template>
+                            {{ $t('tools.messengerCredsHint') }}
+                          </q-banner>
+                        </template>
+                      </div>
+                    </q-tab-panel>
+
+                    <!-- Rubrique Listener webhook -->
+                    <q-tab-panel name="listener" class="q-pa-none">
+                      <div class="tool-section__body">
+                        <div class="row q-gutter-md">
+                          <q-input v-model="form.listener_config.connection_key" label="connection_key *" dense outlined class="col" />
+                          <q-input v-model="form.listener_config.url" :label="$t('tools.urlOptional')" dense outlined class="col" />
                         </div>
-                        <q-select
-                          v-model="form.messenger_config.param_map[p.key]"
-                          :options="connParamNames"
-                          use-input input-debounce="0" clearable
-                          :label="$t('tools.mapToParam')"
-                          dense outlined class="col"
-                        />
+                        <q-banner
+                          v-if="form.listener_config.token_configured"
+                          dense rounded class="bg-orange-1 text-orange-10 q-mt-sm"
+                        >
+                          <template #avatar><q-icon name="key" color="orange-9" /></template>
+                          {{ $t('tools.legacyListenerTokenConfigured') }}
+                          <template #action>
+                            <q-btn
+                              v-if="canEdit"
+                              flat color="negative" :label="$t('tools.removeLegacySecret')"
+                              @click="clearLegacyListenerToken"
+                            />
+                          </template>
+                        </q-banner>
+                        <q-separator class="q-my-sm" />
+                        <div class="text-subtitle2 text-grey-7 q-mb-xs">{{ $t('tools.taskTemplate') }}</div>
+                        <q-input v-model="form.task_config.label" :label="$t('tools.labelVariables')" dense outlined />
+                        <q-input v-model="form.task_config.objective" :label="$t('tools.objectiveVariables')" type="textarea" dense outlined autogrow />
                       </div>
-                      <q-banner dense class="bg-grey-2 text-grey-8 q-mt-sm" rounded>
-                        <template #avatar><q-icon name="info" color="indigo" /></template>
-                        {{ $t('tools.messengerCredsHint') }}
-                      </q-banner>
-                    </template>
-                  </div>
-                </q-tab-panel>
+                    </q-tab-panel>
+                  </q-tab-panels>
+                </template>
+              </section>
 
-                <!-- Rubrique Listener webhook -->
-                <q-tab-panel name="listener" class="q-pa-none">
-                  <div class="tool-section__body">
-                    <div class="row q-gutter-md">
-                      <q-input v-model="form.listener_config.connection_key" label="connection_key *" dense outlined class="col" />
-                      <q-input v-model="form.listener_config.url" :label="$t('tools.urlOptional')" dense outlined class="col" />
+              <section class="tool-section">
+                <div class="row items-center q-mb-sm">
+                  <div class="text-subtitle2 text-grey-7">{{ $t('tools.connectionParams') }}</div>
+                  <q-space />
+                  <q-btn v-if="canEdit" outline icon="add" :label="$t('tools.addParam')" color="primary" @click="addConnParam" />
+                </div>
+                <div v-for="(param, key) in connParams" :key="key" class="connection-param-editor"
+                  role="group" :aria-label="$t('tools.parameterEditor', { name: param.name || param.label })">
+                  <div class="connection-param-row">
+                    <q-input v-model="param.name" :label="$t('tools.paramName')" dense outlined class="connection-param-name" />
+                    <q-input v-model="param.label" :label="$t('tools.paramLabel')" dense outlined class="connection-param-description" />
+                    <q-select v-model="param.type" :options="paramTypeOptions" :label="$t('tools.type')" emit-value map-options dense outlined class="connection-param-type" />
+                    <q-toggle v-model="param.required" :label="$t('tools.required')" dense class="connection-param-required" />
+                    <q-input v-model="param.default" :label="$t('tools.paramDefault')" :disable="param.type === 'password'" dense outlined class="connection-param-default" />
+                  </div>
+                  <div class="row items-start q-gutter-sm q-mt-xs">
+                    <q-input v-model="param.description" :label="$t('tools.descriptionMarkdown')" dense outlined class="col" />
+                    <q-btn
+                      v-if="canEdit"
+                      flat
+                      round
+                      icon="delete"
+                      color="negative"
+                      class="connection-param-delete"
+                      :aria-label="$t('common.delete')"
+                      @click="removeConnParam(key)"
+                    />
+                  </div>
+                  <div v-if="param.type === 'string' || param.type === 'integer'" class="q-mt-sm">
+                    <q-btn outline dense icon="add" color="primary" :label="$t('tools.addParamOption')" @click="param.options.push({ value: '', label: '' })" />
+                    <div v-if="param.options.length" class="text-caption q-mb-sm">{{ $t('tools.paramOptionsHint') }}</div>
+                    <div v-for="(option, index) in param.options" :key="index" class="row q-col-gutter-sm q-mb-sm items-start">
+                      <q-input v-model="option.value" :label="$t('tools.paramOptionValue')" dense outlined class="col" />
+                      <q-input v-model="option.label" :label="$t('tools.paramOptionLabel')" dense outlined class="col" />
+                      <q-btn flat round dense icon="delete" color="negative" :aria-label="$t('tools.removeParamOption')" @click="param.options.splice(index, 1)" />
                     </div>
-                    <q-banner
-                      v-if="form.listener_config.token_configured"
-                      dense rounded class="bg-orange-1 text-orange-10 q-mt-sm"
-                    >
-                      <template #avatar><q-icon name="key" color="orange-9" /></template>
-                      {{ $t('tools.legacyListenerTokenConfigured') }}
-                      <template #action>
-                        <q-btn
-                          v-if="canEdit"
-                          flat color="negative" :label="$t('tools.removeLegacySecret')"
-                          @click="clearLegacyListenerToken"
-                        />
-                      </template>
-                    </q-banner>
-                    <q-separator class="q-my-sm" />
-                    <div class="text-subtitle2 text-grey-7 q-mb-xs">{{ $t('tools.taskTemplate') }}</div>
-                    <q-input v-model="form.task_config.label" :label="$t('tools.labelVariables')" dense outlined />
-                    <q-input v-model="form.task_config.objective" :label="$t('tools.objectiveVariables')" type="textarea" dense outlined autogrow />
                   </div>
-                </q-tab-panel>
-              </q-tab-panels>
-            </section>
-
-
+                </div>
+              </section>
+            </div>
 
           </q-form>
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn flat :label="$t('common.cancel')" v-close-popup />
-          <q-btn v-if="canEdit" color="primary" :label="editingTool ? $t('common.save') : $t('common.create')" :loading="saving" @click="saveTool" />
+          <q-btn outline :label="$t('common.cancel')" v-close-popup />
+          <q-btn v-if="canEdit" color="primary" :label="editingTool ? $t('common.save') : $t('common.create')" :loading="saving" :disable="missingCreationCapability" @click="saveTool" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="paramDeleteOpen" @hide="pendingParamDelete = null">
+      <q-card class="galaris-dialog-card" style="width: min(560px, 95vw); max-width: 95vw">
+        <q-card-section class="galaris-dialog-title row items-center">
+          <div class="text-h6">{{ $t('tools.deleteParamTitle') }}</div>
+          <q-space />
+          <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
+        </q-card-section>
+        <q-card-section class="galaris-dialog-body">
+          <p>{{ $t('tools.deleteUsedParam', { name: pendingParamDelete?.name || pendingParamDelete?.label || '' }) }}</p>
+          <ul>
+            <li v-for="usage in pendingParamUsages" :key="usage">{{ usage }}</li>
+          </ul>
+          <p class="q-mb-none">{{ $t('tools.deleteUsedParamHint') }}</p>
+        </q-card-section>
+        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+          <q-btn outline :label="$t('common.cancel')" v-close-popup />
+          <q-btn color="negative" :label="$t('common.delete')" @click="confirmRemoveConnParam" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -785,6 +818,7 @@ import SystemToolIcon from './SystemToolIcon.vue'
 import ToolOriginBadge from './ToolOriginBadge.vue'
 import ConnectionParamInput from './ConnectionParamInput.vue'
 import RestConfigEditor from './RestConfigEditor.vue'
+import ConnectionParamSelect from './ConnectionParamSelect.vue'
 import { McpCandidateAgent } from '@/app/connection'
 import { useQuasar } from 'quasar'
 import { useToolStore } from '../stores/toolStore'
@@ -821,7 +855,7 @@ const toolStore = useToolStore()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.TOOL_EDIT))
 const search = ref<string | null>('')
-const origin = ref<ToolOrigin>('galaris')
+const origin = ref<ToolOrigin>('custom')
 const visibleTools = computed(() => toolStore.tools.filter(tool => toolOrigin(tool) === origin.value))
 const conversationAccessLoading = ref<Set<number>>(new Set())
 const candidateAgentId = ref<number | null>(null)
@@ -1194,6 +1228,9 @@ const hasApi = ref(false)
 const hasFileShare = ref(false)
 const hasMessenger = ref(false)
 const hasListener = ref(false)
+const missingCreationCapability = computed(() => !editingTool.value && !(
+  hasMcp.value || hasApi.value || hasFileShare.value || hasMessenger.value || hasListener.value
+))
 const activeTab = ref<string>('')
 const mcpArgsRaw = ref('')
 const mcpEnvRaw = ref('')
@@ -1225,15 +1262,21 @@ watch([hasMcp, hasFileShare, hasMessenger, hasListener, hasApi], ([m, f, g, l, a
 })
 const mcpHeadersRaw = ref('')
 const connParams = ref<ConnParamRow[]>([])
+const pendingParamDelete = ref<ConnParamRow | null>(null)
+const paramDeleteOpen = ref(false)
+const pendingParamUsages = computed(() =>
+  pendingParamDelete.value ? connParamUsages(pendingParamDelete.value.name) : []
+)
+watch(dialogOpen, open => {
+  if (!open) {
+    paramDeleteOpen.value = false
+    pendingParamDelete.value = null
+  }
+})
 watch(hasApi, enabled => {
   if (!enabled || editingTool.value?.rest_config) return
-  for (const [name, type, label] of [
-    ['api_url', 'string', t('tools.restBaseUrl')],
-    ['api_token', 'password', t('tools.restTokenParam')],
-  ]) {
-    if (!connParams.value.some(param => param.name === name)) {
-      connParams.value.push({ name, type, label, options: [], required: false, description: '', default: '' })
-    }
+  if (!connParams.value.some(param => param.name === 'api_token')) {
+    connParams.value.push({ name: 'api_token', type: 'password', label: t('tools.restTokenParam'), options: [], required: false, description: '', default: '' })
   }
 })
 const mcpTestConnectionParams = computed(() =>
@@ -1319,7 +1362,7 @@ watch(hasMessenger, (on) => {
 
 const emptyListenerConfig = (): ListenerConfig => ({ connection_key: '' })
 const emptyRestConfig = (): RestConfig => ({
-  base_url: '${connection:api_url}',
+  base_url: '',
   auth: { type: 'bearer', param: 'api_token', header_name: 'X-API-Key', query_name: 'api_key', login_param: 'login', password_param: 'password' },
   header_params: {}, timeout: 60, max_response_bytes: 2097152,
 })
@@ -1346,6 +1389,8 @@ const form = ref<FormData>({
 })
 
 function resetForm() {
+  paramDeleteOpen.value = false
+  pendingParamDelete.value = null
   form.value = {
     code: '',
     label: '',
@@ -1420,7 +1465,63 @@ function openEdit(tool: Tool) {
 }
 
 function addConnParam() { connParams.value.push({ name: '', label: '', options: [], type: 'string', required: true, description: '', default: '' }) }
-function removeConnParam(index: number) { connParams.value.splice(index, 1) }
+function createConnParam(baseName: string, type: string, label: string, required = true): string {
+  const stem = baseName.toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'param'
+  const names = new Set(connParams.value.map(param => param.name.trim()))
+  let name = stem
+  for (let suffix = 2; names.has(name); suffix++) name = `${stem}_${suffix}`
+  connParams.value.push({ name, label, options: [], type, required, description: '', default: '' })
+  return name
+}
+function connParamUsages(rawName: string): string[] {
+  const name = rawName.trim()
+  if (!name) return []
+  const matches = (value: string | null | undefined) => value?.trim() === name
+  const reference = '${connection:' + name + '}'
+  const usages: string[] = []
+  const mcp = form.value.mcp_config
+  const mcpAuth = mcp.auth
+  const mcpAuthUsed = mcpAuth.type === 'basic'
+    ? matches(mcpAuth.login_param) || matches(mcpAuth.password_param)
+    : ['bearer', 'header'].includes(mcpAuth.type) && matches(mcpAuth.param)
+  if (hasMcp.value && (mcpAuthUsed || [mcp.url || '', mcpArgsRaw.value, mcpHeadersRaw.value, mcpEnvRaw.value].some(value => value.includes(reference)))) {
+    usages.push(t('tools.mcpCapability'))
+  }
+  const rest = form.value.rest_config
+  const restAuthUsed = rest.auth.type === 'basic'
+    ? matches(rest.auth.login_param) || matches(rest.auth.password_param)
+    : rest.auth.type !== 'none' && matches(rest.auth.param)
+  if (hasApi.value && (restAuthUsed || Object.values(rest.header_params).some(matches) || rest.base_url.includes(reference))) {
+    usages.push(t('tools.restApi'))
+  }
+  if (hasFileShare.value && Object.values(form.value.file_share_config.param_map).some(matches)) usages.push(t('tools.fileShare'))
+  if (hasMessenger.value && Object.values(form.value.messenger_config.param_map).some(matches)) usages.push(t('tools.messenger'))
+  if (hasListener.value && matches(form.value.listener_config.connection_key)) usages.push(t('tools.listener'))
+  if (editingTool.value?.global_params?.[name]?.configured) usages.push(t('tools.globalParams'))
+  return usages
+}
+
+function removeConnParam(index: number) {
+  if (!canEdit.value) return
+  const param = connParams.value[index]
+  if (!param) return
+  if (connParamUsages(param.name).length) {
+    pendingParamDelete.value = param
+    paramDeleteOpen.value = true
+  } else {
+    connParams.value.splice(index, 1)
+  }
+}
+
+function confirmRemoveConnParam() {
+  const param = pendingParamDelete.value
+  if (canEdit.value && dialogOpen.value && param) {
+    const index = connParams.value.indexOf(param)
+    if (index >= 0) connParams.value.splice(index, 1)
+  }
+  paramDeleteOpen.value = false
+  pendingParamDelete.value = null
+}
 
 function clearLegacyStaticToken() {
   const auth = form.value.mcp_config.auth
@@ -1595,6 +1696,9 @@ async function testMcpConnection() {
 
 async function saveTool() {
   if (!canEdit.value) return
+  if (missingCreationCapability.value) {
+    $q.notify({ type: 'warning', message: t('tools.capabilityRequired') }); return
+  }
   if (!form.value.code.trim() || !form.value.label.trim()) {
     $q.notify({ type: 'warning', message: t('tools.saveRequired') }); return
   }
@@ -1709,6 +1813,14 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.tool-tabs {
+  color: var(--solaire-blue-accent);
+}
+
+.tool-tabs :deep(.q-tab__indicator) {
+  background-color: var(--solaire-blue-accent);
+}
+
 .tool-description-link { border: 0; padding: 0; background: none; color: var(--q-primary); cursor: pointer; font: inherit; text-align: left; text-decoration: underline; }
 .tool-description-dialog { width: 700px; max-width: calc(100vw - 32px); max-height: 85vh; display: flex; flex-direction: column; }
 
@@ -1755,6 +1867,32 @@ onMounted(() => {
   overflow-y: auto;
 }
 
+.tool-editor-dialog {
+  width: min(1480px, 96vw);
+  max-width: 96vw;
+  max-height: 95vh;
+}
+
+.tool-editor-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.tool-editor-columns > * {
+  min-width: 0;
+}
+
+.tool-main-fields-row {
+  display: grid;
+  gap: 16px;
+}
+
+.tool-capability-toggles {
+  row-gap: 8px;
+}
+
 .tool-section {
   border: 1px solid #d8dde6;
   border-radius: 8px;
@@ -1773,9 +1911,10 @@ onMounted(() => {
 }
 
 .connection-param-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
   margin-bottom: 8px;
 }
 
@@ -1787,13 +1926,13 @@ onMounted(() => {
 }
 
 .connection-param-name,
-.connection-param-type {
-  flex: 0 0 calc(16.6667% - 8px);
+.connection-param-description {
+  grid-column: span 3;
   min-width: 0;
 }
 
-.connection-param-description {
-  flex: 1 1 auto;
+.connection-param-type,
+.connection-param-default {
   min-width: 0;
 }
 
@@ -1858,11 +1997,13 @@ body.body--dark .import-dropzone--active {
     padding: 12px;
   }
 
-  .tool-main-fields-row {
-    display: grid;
+  .tool-editor-columns {
     grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .tool-main-fields-row {
     gap: 12px;
-    margin: 0;
   }
 
   .tool-main-fields-row > .tool-main-field {
@@ -1875,7 +2016,7 @@ body.body--dark .import-dropzone--active {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px 8px;
-    margin: 8px 0 0;
+    margin: 0 0 16px;
   }
 
   .tool-capability-toggles > * {
@@ -1892,6 +2033,7 @@ body.body--dark .import-dropzone--active {
   .connection-param-name,
   .connection-param-type,
   .connection-param-description,
+  .connection-param-default,
   .connection-param-required,
   .connection-param-delete {
     width: 100%;
@@ -1899,7 +2041,9 @@ body.body--dark .import-dropzone--active {
     margin: 0;
   }
 
-  .connection-param-description {
+  .connection-param-name,
+  .connection-param-description,
+  .connection-param-default {
     grid-column: 1 / -1;
   }
 

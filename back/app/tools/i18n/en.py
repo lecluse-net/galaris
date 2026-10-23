@@ -184,6 +184,12 @@ default: dict[str, object] = {
             "tool_exists_code": "Tool '${code}' already exists",
             "invalid_yaml": "Invalid YAML",
             "invalid_tool_definition": "The tool definition is invalid",
+            "invalid_resource_tool_code": (
+                "The technical name of a Tool with file sharing or messaging must start with a "
+                "lowercase letter and contain only lowercase letters, digits and the characters "
+                "+, . or -. Replace underscores and spaces with hyphens "
+                "(example: team-share)."
+            ),
             "password_default_forbidden": (
                 "Password connection parameters cannot define a shared default: ${fields}"
             ),
