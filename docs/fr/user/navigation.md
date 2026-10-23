@@ -199,6 +199,12 @@ précédent ; une fiche ou un avatar modifiés pendant la génération empêchen
 | Connexions | Configurer les connexions associées aux agents | `/tools?tab=connections` |
 | Autorisations | Administrer les règles d’accès aux outils et fonctions | `/tools?tab=authorizations` |
 
+Dans **Outils**, **Outils internes à Galaris** regroupe les définitions intégrées protégées par le
+logiciel. Les Tools créés ou importés restent dans **Outils personnalisés**, y compris
+lorsqu’ils utilisent un bridge dédié comme Nextcloud ou AFFiNE. Le nom du bridge ne
+détermine pas l’origine du Tool. n8n n’est pas créé comme Tool standard ; une ancienne
+entrée n8n est conservée comme Tool personnalisé avec ses références de processus.
+
 Dans **Autorisations**, chaque fonction dispose des colonnes **Global (tous)** et **Cette connexion**,
 avec les choix Activé, Désactivé et Sur demande. La colonne sélectionnée indique la règle applicable.
 Choisir un mode global remet la connexion de cet agent en héritage, sans retirer les exceptions

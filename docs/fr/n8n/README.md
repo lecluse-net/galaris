@@ -45,6 +45,12 @@ PROCESS_N8N_CALLBACK_AUTH_HEADER=X-Galaris-Callback-Token
 webhooks diffère de l’URL de l’API. `PROCESS_GALARIS_BASE_URL` doit être visible depuis n8n
 si le workflow télécharge un fichier ou envoie un callback.
 
+Le bridge n8n ne crée pas de Tool standard. Pour rattacher des workflows au modèle
+actuel des processus, créez explicitement un Tool personnalisé de code `n8n` dans
+**Configurer → Outils & connexions → Outils** s’il n’existe pas déjà. Aucun serveur MCP
+n’est requis pour cette entrée. Les installations disposant déjà de cette entrée la
+conservent comme Tool personnalisé, avec leurs définitions et historiques de processus.
+
 Utilisez **Ouvrir les processus**, puis synchronisez les workflows dans l’administration
 des processus. Aucun redémarrage n’est nécessaire. Une définition Galaris associe ensuite un
 workflow, un outil et un agent. Ces valeurs sont modifiables depuis l'administration,

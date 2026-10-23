@@ -109,7 +109,7 @@ def test_memory_and_document_uris_accept_only_their_canonical_shapes() -> None:
 
 @pytest.mark.parametrize(
     "code",
-    ["http", "https", "ssh", "workspace", "messenger", "galaris", "image", "n8n", "task"],
+    ["http", "https", "ssh", "workspace", "messenger", "galaris", "image", "task"],
 )
 def test_reserved_tool_codes_are_rejected(code: str) -> None:
     with pytest.raises(ValueError, match="reserved"):
@@ -126,9 +126,8 @@ def test_process_runs_use_galaris_and_the_retired_scheme_stays_reserved() -> Non
 
 
 def test_file_share_tool_code_must_be_a_uri_scheme() -> None:
-    assert validate_external_tool_code("nextcloud-pro", file_share=True) == (
-        "nextcloud-pro"
-    )
+    for code in ("nextcloud-pro", "nextcloud", "affine", "n8n"):
+        assert validate_external_tool_code(code, file_share=True) == code
     with pytest.raises(ValueError, match="lowercase URI scheme"):
         validate_external_tool_code("nextcloud_personal", file_share=True)
 

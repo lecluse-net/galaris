@@ -310,8 +310,10 @@ def test_topic_tool_is_seeded_without_agent_connections() -> None:
     assert row["connection_schema"] == {"params": {}}
 
 
-def test_messaging_bridges_are_not_mandatory_tools() -> None:
+def test_external_bridges_are_not_mandatory_tools() -> None:
     assert {
+        "n8n",
+        "affine",
         "messenger",
         "nextcloud",
         "nextcloud_talk",
@@ -320,3 +322,44 @@ def test_messaging_bridges_are_not_mandatory_tools() -> None:
         "whatsapp",
         "one_bot",
     }.isdisjoint(mandatory_tools.INTEGRATED_TOOL_CODES)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("code", ["n8n", "nextcloud", "affine"])
+async def test_bridge_named_custom_tools_survive_sync_and_remain_editable(db, code):
+    from app.process.models import ProcessDefinition
+    from app.tools.assertions import tool_can_edit
+    from app.tools.schemas import ToolCreate, ToolUpdate
+
+    tool = await db.scalar(select(Tool).where(Tool.code == code))
+    if tool is None:
+        tool = await tool_service.create_tool(ToolCreate(code=code, label="Synthetic integration"))
+    tool.label = "Synthetic integration"
+    tool.description = "Administrator-owned description"
+    config = {"service": code, "base_url": "https://files.example.test", "param_map": {}}
+    if code != "n8n":
+        tool.file_share_config = config
+    definition = None
+    if code == "n8n":
+        definition = ProcessDefinition(tool_id=tool.id, engine_process_id="synthetic-workflow",
+                                       label="Synthetic workflow")
+        db.add(definition)
+    await db.commit()
+
+    for _ in range(2):
+        await mandatory_tools.sync_mandatory_tools()
+        await db.commit()
+    await db.refresh(tool)
+    assert tool.label == "Synthetic integration"
+    assert tool.description == "Administrator-owned description"
+    if code != "n8n":
+        assert tool.file_share_config == config
+    assert tool_can_edit(tool)
+    updated = await tool_service.update_tool(tool.id, ToolUpdate(label="Updated integration"))
+    assert updated.label == "Updated integration"
+    if definition is not None:
+        from app.process import process_service
+
+        await db.refresh(definition)
+        assert definition.tool_id == tool.id
+        assert (await process_service.get_process_tool_by_code("n8n")).id == tool.id

@@ -16,7 +16,10 @@ Under **Tools**, the **Galaris built-in tools** and **Custom tools** subtabs sep
 provided by the platform from those you add. Creating or importing a tool automatically
 shows the saved tool’s subtab. Under **Connections** and **Authorizations**, the **Filter by
 tool** selector groups choices under **Galaris** and **Custom**. List badges identify the
-same origin; optional Galaris tools stay in the Galaris group even when editable or disableable.
+same origin; optional integrated Tools stay in the Galaris group when disableable, while
+their definitions remain protected. A dedicated bridge does not create a standard Tool:
+Tools using Nextcloud, AFFiNE or a messaging bridge remain custom. n8n is no longer created
+automatically; an existing entry remains custom, with its process references and history.
 
 ### Delete a custom tool
 

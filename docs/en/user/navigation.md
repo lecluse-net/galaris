@@ -183,6 +183,12 @@ avatar; profile or avatar changes during generation prevent its replacement.
 | Connections | Configure connections associated with agents | `/tools?tab=connections` |
 | Authorizations | Administer access rules for tools and functions | `/tools?tab=authorizations` |
 
+Under **Tools**, **Galaris built-in tools** groups integrated definitions protected by the
+software. Created or imported Tools remain under **Custom tools**, including those
+using a dedicated bridge such as Nextcloud or AFFiNE. A bridge name does not determine
+Tool origin. n8n is not created as a standard Tool; an existing n8n entry is preserved
+as a custom Tool with its process references.
+
 In **Authorizations**, each function has **Global (all)** and **This connection** columns offering Enabled,
 Disabled and Ask. The selected column identifies the applicable rule. Choosing a global mode
 returns this agent's connection to inheritance without removing other agents' exceptions.

@@ -18,27 +18,17 @@ const BUILT_IN_TOOL_CODES = new Set([
   "console",
   "mail",
   "calendar",
-  "n8n",
   "image",
   "audio",
   "voice",
-  "multimedia",
-  "messenger",
-  "matrix",
-  "telegram",
-  "whatsapp",
-  "one_bot",
-  "nextcloud_talk",
-  "nextcloud",
-  "affine"
+  "multimedia"
 ])
 
 export type ToolOrigin = 'galaris' | 'custom'
 
-export function toolOrigin(tool: Pick<Tool, 'code' | 'can_edit'>): ToolOrigin {
-  // Built-in connectors may be editable; editability alone does not describe origin.
-  return !tool.can_edit || BUILT_IN_TOOL_CODES.has(tool.code) || tool.code === 'lab'
-    ? 'galaris' : 'custom'
+export function toolOrigin(tool: Pick<Tool, 'can_edit'>): ToolOrigin {
+  // The backend protects integrated definitions; bridge names do not imply ownership.
+  return tool.can_edit ? 'custom' : 'galaris'
 }
 
 const CONNECTION_PARAM_CODES: Record<string, ReadonlySet<string>> = {

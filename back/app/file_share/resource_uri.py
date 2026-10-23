@@ -80,7 +80,6 @@ SYSTEM_TOOL_CODES = frozenset(
         "image",
         "mail",
         "messenger",
-        "n8n",
         "process_admin",
         "search",
         "skill_management",

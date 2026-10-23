@@ -354,13 +354,6 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         default_active=False,
     ),
     IntegratedToolSpec(
-        code="n8n",
-        label="n8n",
-        description=DESCRIPTIONS["n8n"],
-        mcp_tools=(),
-        auto_connect_agents=False,
-    ),
-    IntegratedToolSpec(
         code="image",
         label="Image",
         description=DESCRIPTIONS["image"],

@@ -65,7 +65,8 @@ for (const width of [390, 1400]) {
       { cascade: 'true', expected_version: 'review-2' },
     ])
     await page.getByRole('tab', { name: 'Galaris built-in tools', exact: true }).click()
-    await expect(page.getByRole('button', { name: 'Optional Tool', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Optional Tool', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Galaris', exact: true })).toBeVisible()
   })
 
   test(`REST configuration survives save and reopening, and can be disabled (${width})`, async ({ page }, testInfo) => {
@@ -472,7 +473,7 @@ for (const mobile of [false, true]) {
         const rows = page.locator(mobile ? '.connection-mobile-card' : 'tbody tr')
         await expect(rows).toHaveCount(1)
         await expect(rows).toContainText('Optional Tool')
-        await expect(rows).toContainText('Galaris')
+        await expect(rows).toContainText('Custom')
       } else {
         await expect(page.getByRole('combobox', { name: 'Select a connection (agent + connector)', exact: true })).toHaveValue('Alice Example — Optional Tool')
         await expect(page.getByText('external_read', { exact: true })).toBeVisible()
@@ -495,13 +496,13 @@ for (const mobile of [false, true]) {
     await mount(page, 'app/tools/components/ToolsList.vue', { locale, privileges: ['TOOL_ACCESS'] })
     const rows = page.locator(mobile ? '.tool-mobile-card' : 'tbody tr')
     const search = page.getByRole('textbox', { name: mobile ? 'Rechercher un outil' : 'Search tools', exact: true })
-    await expect(rows).toHaveCount(5)
-    await expect(rows.filter({ hasText: 'Optional Tool' })).toBeVisible()
+    await expect(rows).toHaveCount(4)
+    await expect(rows.filter({ hasText: 'Optional Tool' })).toHaveCount(0)
     const customTab = page.getByRole('tab', { name: mobile ? 'Outils personnalisés' : 'Custom tools', exact: true })
     const galarisTab = page.getByRole('tab', { name: mobile ? 'Outils internes à Galaris' : 'Galaris built-in tools', exact: true })
     await customTab.click()
     await expect(rows).toHaveCount(50)
-    await expect(rows.filter({ hasText: 'Optional Tool' })).toHaveCount(0)
+    await expect(rows.filter({ hasText: 'Optional Tool' })).toBeVisible()
     await expect(rows.filter({ hasText: 'Équipe distante' })).toHaveCount(0)
     for (const query of [' REMOTE_ARCHIVE ', 'EQUIPE DISTANTE', 'archive connector']) {
       await search.fill(query)
@@ -514,6 +515,8 @@ for (const mobile of [false, true]) {
     await expect(rows.filter({ hasText: mobile ? 'Mémoire' : 'Memory' })).toBeVisible()
     await expect(rows.filter({ hasText: 'Équipe distante' })).toHaveCount(0)
     await search.fill('TEAM HANDBOOK')
+    await expect(rows).toHaveCount(0)
+    await customTab.click()
     await expect(rows).toHaveCount(1)
     await expect(rows).toContainText('Optional Tool')
     await search.fill('no-such-synthetic-tool')
@@ -547,6 +550,7 @@ for (const mobile of [false, true]) {
     await headings.last().scrollIntoViewIfNeeded()
     await expect(headings.last()).toBeVisible()
     await page.getByRole('button', { name: 'Close', exact: true }).click()
+    await page.getByRole('tab', { name: 'Custom tools', exact: true }).click()
     await page.getByRole('button', { name: 'Optional Tool', exact: true }).click()
     await expect(page.getByRole('dialog').locator('strong')).toHaveText('Team handbook')
     // The backdrop closes the description, and reopening retains its content.

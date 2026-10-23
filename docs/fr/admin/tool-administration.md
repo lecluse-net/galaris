@@ -17,8 +17,11 @@ Dans **Outils**, les sous-onglets **Outils internes à Galaris** et **Outils per
 séparent les outils fournis par la plateforme de ceux que vous ajoutez. Une création ou un
 import affiche automatiquement le sous-onglet de l’outil enregistré. Dans **Connexions** et
 **Autorisations**, le filtre **Filtrer par outil** regroupe les choix sous **Galaris** et
-**Personnalisé**. Les badges des listes rappellent cette origine ; les outils Galaris
-optionnels restent dans le groupe Galaris même lorsqu’ils sont modifiables ou désactivables.
+**Personnalisé**. Les badges des listes rappellent cette origine ; les Tools intégrés
+optionnels restent dans le groupe Galaris lorsqu’ils sont désactivables, mais leur définition
+reste protégée. Un bridge dédié ne crée pas de Tool standard : les Tools utilisant Nextcloud,
+AFFiNE ou un bridge de messagerie restent personnalisés. n8n n’est plus créé automatiquement ;
+une entrée existante reste personnalisée, avec ses références de processus et son historique.
 
 ### Supprimer un outil personnalisé
 
