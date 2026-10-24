@@ -23,6 +23,9 @@ propriétaire actif, révocation de tous les anciens droits, conservation des fi
 l'auteur, collisions, quotas, rejeu sans réactivation et reprise après panne ou interruption.
 Le parcours HTTP vérifie aussi le transfert entre deux propriétaires gérés, le refus des cibles
 hors périmètre, les homonymes du destinataire et la restauration après une panne de déplacement.
+`tests/test_legacy_spreadsheets.py` protège les caches XLS originaux, formules/tokens,
+feuilles et dimensions cachées, formats, fusions, diagnostics, limites et préparation
+complète d'un XLS produit par le vrai LibreOffice, sans modification de l'original.
 
 ## Accueil et première mission
 

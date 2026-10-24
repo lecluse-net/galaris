@@ -11,7 +11,7 @@ import shutil
 from tempfile import TemporaryDirectory
 import time
 
-from core.document import PreparedDocument, prepare_document
+from core.document import PreparedDocument, prepare_document, preparation_version
 from .resource_contracts import ResourceContext, ResourceDescriptor
 from .resource_service import materialize_resource, resource_info
 
@@ -36,7 +36,8 @@ async def prepared_resource(ctx: ResourceContext, uri: str) -> AsyncGenerator[tu
         if _revision(before) != _revision(after):
             raise ValueError("Document changed while downloading")
         digest = await asyncio.to_thread(_digest, source)
-        identity = json.dumps([ctx.agent_id, uri, digest, materialized.name, materialized.media_type, 3])
+        identity = json.dumps([ctx.agent_id, uri, digest, materialized.name, materialized.media_type,
+                               preparation_version(materialized.name)])
         key = hashlib.sha256(identity.encode()).hexdigest()
         root = Path(_cache.name) / str(ctx.agent_id)
         root.mkdir(parents=True, exist_ok=True, mode=0o700)

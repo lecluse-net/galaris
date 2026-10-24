@@ -10,6 +10,11 @@ OFFICE_EXTENSIONS = frozenset({
 })
 
 
+def preparation_version(name: str) -> int:
+    """Version of evidence used by both conversion checkpoints and caller caches."""
+    return 4 if Path(name).suffix.lower() == ".xls" else 3
+
+
 class DocumentPage(BaseModel):
     number: int = Field(ge=1)
     text: str = ""

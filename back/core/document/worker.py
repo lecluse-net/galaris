@@ -13,8 +13,9 @@ from zipfile import ZipFile
 from typing import Any
 
 from PIL import Image
-from .contracts import OFFICE_EXTENSIONS
+from .contracts import OFFICE_EXTENSIONS, preparation_version
 from .spreadsheets import spreadsheet_text
+from .legacy_spreadsheets import legacy_spreadsheet_text
 
 MAX_BYTES = 512 * 1024 * 1024
 MAX_PAGES = 2000
@@ -37,7 +38,8 @@ def prepare(
     with path.open("rb") as stream:
         digest = hashlib.file_digest(stream, "sha256").hexdigest()
     manifest = directory / "manifest.json"
-    identity = {"sha256": digest, "name": name, "media_type": media_type, "version": 3}
+    identity = {"sha256": digest, "name": name, "media_type": media_type,
+                "version": preparation_version(name)}
     if preview_only:
         # A thumbnail checkpoint must never be reused as complete document evidence.
         identity["preview_only"] = True
@@ -119,7 +121,8 @@ def prepare(
             result["structured_text"] = spreadsheet_text(path)
             result["warnings"].append("Spreadsheet source values, formulas and styles preserved separately from printed pages; cached values are not recalculated; display rendering may differ")
         elif not preview_only and Path(name).suffix.lower() == ".xls":
-            result["warnings"].append("Legacy spreadsheet rendered to PDF; source formulas and hidden sheets are not fully extracted")
+            result["structured_text"] = legacy_spreadsheet_text(path)
+            result["warnings"].append("Legacy spreadsheet values, formula tokens, formatting and hidden sheets extracted from the original source; caches are not recalculated; undecodable formula expressions have explicit diagnostics; PDF rendering may differ")
     if suffix == ".pdf":
         import pypdfium2 as pdfium  # type: ignore[import-untyped]
 

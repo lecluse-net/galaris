@@ -1,7 +1,7 @@
 # Analyse documentaire — extensions restantes
 
 - Statut : `partial`
-- Revue des sources : 2026-10-08.
+- Revue des sources : 2026-10-24.
 - Contrats : [0149](../decisions/0149-transient-document-preparation.md) et
   [0151](../decisions/0151-resumable-document-analysis.md).
 
@@ -15,7 +15,7 @@ limites et protocole ; les tests `test_document_pipeline.py` et
 
 | Périmètre | Travail et réception |
 |---|---|
-| XLS ancien | Lecture structurelle des feuilles/cellules/formules/métadonnées : le worker ne fournit encore que le rendu PDF et un avertissement. Distinguer caches et recalcul ; conserver l'original. |
+| XLS ancien | Lecteur source et tokens de formules réalisés ; qualification synthétique BIFF8 et XLS produit par LibreOffice. Restent les variantes historiques BIFF5 et les expressions indécodables, signalées sans recalcul ni perte des tokens. |
 | Office, dessins et diagrammes | Qualifier DOC/ODG et combinaisons non couvertes : polices, notes, objets, graphiques et pagination dérivée fidèles à la source. |
 | PDF, scans, manuscrit et images | Reproduire les pertes d'ordre, tableaux, figures, rotations ou OCR avant de compléter les lecteurs. |
 | EML/MIME et archives | Inventaire et analyse des enfants avec localisateurs et couverture propres ; expansion et récursion bornées. |

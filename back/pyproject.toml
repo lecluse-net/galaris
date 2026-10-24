@@ -57,6 +57,8 @@ dependencies = [
     # Media — PDF documents
     "pypdf~=6.16",
     "pypdfium2~=5.13",
+    # BIFF5/8 values and formatting; formula token decoding is qualified against this release.
+    "xlrd==2.0.2",
     # Media — images
     "pillow~=12.3",
     # Media — public YouTube captions

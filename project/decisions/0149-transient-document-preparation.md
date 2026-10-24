@@ -38,6 +38,14 @@ agentiques nécessitent encore leur propre admission/reprise documentaire.
 
 ## Limites et suite
 
+Le lecteur XLS source utilise xlrd 2.0.2, séparément de LibreOffice : valeurs originales
+en cache, formats, visibilité, fusions et commentaires. Un adaptateur borné conserve les
+tokens BIFF des formules, y compris partagées et matricielles, et décode les expressions
+prises en charge ; les autres restent accompagnées d'un diagnostic. Aucun recalcul
+n'est exécuté dans ce lecteur. Le rendu PDF peut donc différer du cache original.
+La version de préparation est partagée avec les clés du cache des appelants ; une
+ancienne préparation XLS ne masque pas la nouvelle extraction structurelle.
+
 Ce premier lot n'ajoute ni table ni nouveau module métier activé. Il ne promet ni
 lecture de tous les formats, ni OCR parfait, ni interprétation parfaite de 500 pages.
 Le worker limite la taille source, les pages, le texte, la mémoire et le temps ; la

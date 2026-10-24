@@ -232,6 +232,18 @@ async def test_temporary_cache_reuses_preparation_and_rechecks_source_access(db,
         assert document.coverage()['expected_units'] == 2
     async with prepared_resource(ResourceContext(agent.id, 'internal'), uri) as (_, reopened):
         assert reopened == directory and manifest.stat().st_mtime_ns == saved
+    # A reader upgrade uses a separate workspace, rather than reusing stale evidence
+    # or failing against a checkpoint from the previous preparation contract.
+    from app.file_share import document_facade
+    original_prepare = document_facade.prepare_document
+    async def upgraded_prepare(path, name, media_type, destination):
+        assert destination != directory
+        return await original_prepare(path, name, media_type, destination)
+    with monkeypatch.context() as patch:
+        patch.setattr(document_facade, 'preparation_version', lambda name: 4)
+        patch.setattr(document_facade, 'prepare_document', upgraded_prepare)
+        async with prepared_resource(ResourceContext(agent.id, 'internal'), uri) as (_, upgraded):
+            assert upgraded != directory
     stranger, _, _ = await _scope(db)
     with pytest.raises((PermissionError, ValueError)):
         async with prepared_resource(ResourceContext(stranger.id, 'internal'), uri):

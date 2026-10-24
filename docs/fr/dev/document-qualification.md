@@ -90,7 +90,16 @@ si nécessaire ; les résultats et lots d'inférence restent durables en base et
 Le worker reprend ses pages terminées encore disponibles via des checkpoints atomiques.
 XLSX/ODS conservent séparément cellules, formules, caches,
 styles, feuilles cachées, fusions et commentaires ; les formules ne sont pas recalculées.
-Le XLS ancien conserve une limite explicite sur ses données structurelles.
+Les XLS BIFF5/8 disposent d'un lecteur source distinct, avec valeurs mises en cache,
+formules décodables, tokens BIFF originaux, formats numériques, époque des dates,
+feuilles/lignes/colonnes cachées, fusions et commentaires. Un cache n'est jamais recalculé.
+Une formule indécodable reste signalée avec ses tokens, sans expression inventée.
+Le rendu PDF peut différer de ces valeurs source. Les limites structurelles sont de
+200 000 cellules et 10 millions de caractères ; les formats BIFF plus anciens sont refusés.
+La qualification automatisée porte sur BIFF8 synthétique et un XLS produit par le vrai
+LibreOffice, pas sur toutes les variantes historiques de BIFF5 ni toutes les formules.
+Le cache et les checkpoints utilisent la même version du lecteur pour éviter de réutiliser
+une ancienne préparation XLS dépourvue de ces données.
 
 Les tests couvrent une analyse de 500 pages avec fournisseur simulé, la reprise, les
 droits, les sources modifiées, l'annulation, les fichiers corrompus/chiffrés et le TIFF
