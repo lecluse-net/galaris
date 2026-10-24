@@ -8,7 +8,7 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **20 octobre 2026**, y compris
+Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **24 octobre 2026**, y compris
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
@@ -27,7 +27,7 @@ Les dix mécanismes IA du Lab, ses campagnes de processus et les mécanismes de 
 constituent des fonctions distinctes. Les sources et tests décrivent les garanties du logiciel ;
 ce catalogue ne constitue pas une qualification de chaque installation ou fournisseur.
 
-Les inventaires couvrent **272 fonctions MCP natives, 77 modules backend et 39 modules frontend**.
+Les inventaires couvrent **278 fonctions MCP natives, 78 modules backend et 40 modules frontend**.
 Les fonctionnalités réalisées restent distinctes des intentions du
 [registre des plans](../../../project/plans/README.md) ; les contrôles de
 qualité figurent dans [l’exploitation](#exploitation).
@@ -81,12 +81,12 @@ qualité figurent dans [l’exploitation](#exploitation).
 | **Modèle de décision** | Une ressource spécialisée dans les choix fermés | Choisit parmi des réponses autorisées pour le routage, les sujets ou la mémoire ; la rédaction reste confiée au modèle texte du même profil. |
 | **Harnais** | Le programme qui fait travailler l’agent | Exécute la boucle modèle–outils, restitue sa progression et rend son résultat à Galaris. |
 | **Tool / outil** | Une intégration ou un ensemble de capacités | Déclare ses fonctions, ses paramètres et éventuellement ses services de messagerie, de fichiers ou de réception d’événements. |
-| **Connexion** | L’accès d’un agent à un Tool | Porte l’activation, la configuration, les credentials et les fonctions autorisées pour cet agent ; les connexions des quatre services système sont obligatoires et protégées. |
+| **Connexion** | L’accès d’un agent à un Tool | Porte l’activation, la configuration, les credentials et les fonctions autorisées pour cet agent ; les connexions des cinq services système sont obligatoires et protégées. |
 | **Inférence durable** | Une requête modèle conservée avant son exécution | Fige demande et autorité, conserve tentatives et résultats, permet lecture, abonnement, pause, arrêt, reprise et rejeu explicites. |
 | **Compétence** | Un paquet de consignes et de ressources | Explique une méthode réutilisable ; ses fichiers peuvent accompagner les instructions. Une compétence ne confère pas de droit sur un Tool. |
 | **Conversation / salon** | Un échange sur un canal déterminé | Conserve les messages, leurs auteurs, les fichiers, les sujets et les travaux qui en découlent. |
 | **Round** | Le traitement d’un ou plusieurs messages reçus | Agrège l’entrée, exécute une réponse courte et enregistre ses actions, tentatives et livraisons. |
-| **tâche / tâche** | Un travail avec un résultat identifiable | Conserve une consigne autonome, un agent, des étapes éventuelles, des tentatives et un résultat durable. |
+| **Task / tâche** | Un travail avec un résultat identifiable | Conserve une consigne autonome, un agent, des étapes éventuelles, des tentatives et un résultat durable. |
 | **Plan / sous-tâche** | Une décomposition réelle du travail | Chaque étape devient un travail suivi avec ses dépendances, ses critères et ses livrables. |
 | **Goal / objectif** | Une finalité poursuivie sur plusieurs cycles | Relance du travail selon une fréquence ou un objectif parent ; juge l’avancement et conserve un suivi. |
 | **Cycle d’objectif** | Un passage de travail et d’évaluation | Relie une tâche à un verdict et prépare la suite du Goal. |
@@ -95,7 +95,7 @@ qualité figurent dans [l’exploitation](#exploitation).
 | **Dépôt de code** | Un checkout Git de la Console SSH | S’ouvre dans VS Code OSS depuis le chat, avec droits propres et référence `galaris://code/<uuid>`. |
 | **Fichier interne** | Des octets immuables sous `file://<uuid>` | Possède un nom modifiable, des métadonnées et des références métier ; son accès suit ses propriétaires ou les ressources qui le retiennent. |
 | **Run / tentative** | Une exécution concrète | Permet de distinguer un essai, une reprise et une nouvelle exécution, avec leurs coûts et erreurs. |
-| **Mémoire** | Une connaissance durable et gouvernée | Est recherchable, révisable, attribuée à une source et soumise à des droits. |
+| **Mémoire personnelle** | Une connaissance durable privée d’un agent | Est recherchable, révisable et attribuée à ses sources ; l’administration de l’agent ne la partage pas avec les autres agents. |
 | **Document** | Une ressource éditoriale HTML `document://` | Conserve un titre, un propriétaire, des versions et des partages ; sa page peut associer texte, médias et application interactive. |
 | **Dataset** | Une ressource JSON indépendante `data://` | Possède sa bibliothèque, ses droits et son historique ; plusieurs pages peuvent lire ou alimenter les mêmes données selon les autorisations accordées. |
 | **Application dans un document** | Du HTML, du CSS et du JavaScript exécutés dans la page | Permet formulaires, simulateurs et visualisations ; son accès aux Datasets exige les droits du lecteur et son accord personnel pour la version du document. |
@@ -154,6 +154,12 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
 - **Accueil guidé.** Les blocs de découverte contrôlent la présence d’un modèle de chat réellement
   utilisable, d’agents, d’outils, d’une connexion de messagerie active, de compétences et de processus.
   Ils tiennent compte des droits et de la configuration déjà présente.
+- **Première mission accompagnée.** Après la configuration indispensable, Welcome propose une
+  synthèse de notes, une présentation de projet ou un plan de travail, avec exemples fictifs
+  modifiables. Le parcours crée une conversation et soumet une tâche durable à l’agent choisi,
+  puis conserve son suivi dans l’onglet navigateur. Un réessai d’envoi garde la même identité.
+  Il distingue tâche terminée et document disponible à vérifier, sans accorder de droits ni
+  activer d’outil ; les inférences utilisent les modèles et coûts habituels.
 - **Aides contextuelles.** Les écrans métier expliquent les notions et parcours propres à Galaris.
   La croix et « J’ai compris » masquent durablement l’aide pour le compte courant, y compris
   sur ses autres appareils. Une erreur d’enregistrement laisse l’aide visible et permet de réessayer.
@@ -189,6 +195,9 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
 - **Ouverture des ressources.** Les liens internes, références de tâches et pièces jointes ouvrent
   le bon détail ou la visionneuse sous contrôle des droits ; les références et données JSON peuvent
   être copiées dans les vues d’inspection concernées.
+- **Historique du navigateur.** Précédent/Suivant retrouve les conversations, documents, Datasets
+  et emplacements de fichiers visités, sur ordinateur et mobile. Les brouillons sont protégés
+  et les réponses tardives d’un ancien emplacement ne remplacent pas la sélection courante.
 - **Pages d’information.** La page « À propos » présente Galaris, ses fonctionnalités, crédits et
   licence. Le bas du menu donne accès à cette page et affiche la référence Git de construction
   (tag exact, sinon branche ou commit court). Bienvenue et traitement des routes inconnues
@@ -230,6 +239,7 @@ Son fond natif de secours est sombre, indépendamment de la couleur momentanée 
 Sources : [guide utilisateur](../user/README.md), [PWA](../user/pwa.md),
 [onboarding](../../../back/app/onboarding/), [shell](../../../front/app/index/),
 [aides par compte](../../../back/core/user/help_service.py), [navigation](../user/navigation.md),
+[première mission](../../../front/browser-tests/work-experience.spec.mjs),
 [carte des menus](../architecture/generated/navigation.md),
 [attente HTTP](../../../front/core/apiWaiting.test.mjs).
 
@@ -274,6 +284,14 @@ spécifiques. Les menus utilisent ces droits, mais les API et les accès aux res
 aussi. Être manager d’un agent, membre d’une équipe ou lecteur d’un document sont des relations
 complémentaires : elles ne donnent pas automatiquement tous les droits d’administration.
 
+Les Contacts, Fichiers, indexations, historiques texte/voix, appels LLM, Permissions,
+modèles, profils et harnais possèdent leurs droits propres. Les rubriques de Préférences
+se délèguent également par fonction : les droits système ne donnent pas accès à tous les
+réglages. Les catégories de privilèges sont traduites à l'installation, puis administrables ;
+renommages, suppressions et déplacements survivent aux synchronisations. Elles ne confèrent
+aucun droit. Le [guide des privilèges](../admin/privileges.md) détaille les codes, les
+périmètres et la reprise ponctuelle des rôles existants.
+
 ### Équipes et autorisations de dialogue
 
 - Créer, renommer, supprimer et réordonner des équipes ; le réordonnancement fonctionne par glisser,
@@ -282,7 +300,8 @@ complémentaires : elles ne donnent pas automatiquement tous les droits d’admi
 - Consulter les effectifs et les membres ; rechercher les humains et sélectionner les agents.
 - Deux membres partageant une équipe peuvent utiliser les dialogues autorisés par les canaux.
   Le manager conserve l’accès à ses agents ; l’administrateur disposant du droit global peut les
-  contacter. Deux agents doivent partager une équipe pour dialoguer ou déléguer selon ces règles.
+  contacter. Entre agents, la portée de chaque connexion de messagerie précise si les échanges
+  sont interdits, limités aux équipes communes (défaut) ou autorisés plus largement.
 - Les autorisations ne se transmettent pas par un troisième membre et ne donnent pas accès aux
   conversations personnelles d’autres humains.
 - Retirer un droit bloque les nouveaux échanges et les nouveaux fragments de réponse concernés.
@@ -339,7 +358,8 @@ Le Tool optionnel **AgentAdmin** fournit 34 fonctions pour créer, modifier et s
 agents, administrer leurs équipes, connexions, permissions locales et harnais, ainsi que les
 civilités et groupes lorsque les droits le permettent. `agent_list` et `agent_get` restent
 dans le service système Galaris. La délégation vérifie à chaque appel les droits actuels du
-responsable humain actif ; son périmètre est étendu seulement par `AGENT_MANAGE_ALL`.
+responsable humain actif. La portée locale de la connexion s’intersecte avec ce périmètre
+humain, dont seul `AGENT_MANAGE_ALL` permet l’extension globale.
 Elle ne permet pas à l’agent de se supprimer, de changer son propre responsable ou d’attribuer
 des connexions administratives. Les services système restent protégés et une révocation vaut
 aussi pour un serveur MCP déjà ouvert.
@@ -376,6 +396,11 @@ autoriser les inspections d’exécution selon les fonctions accordées. Ce cas 
 inactif de cette connexion pour les autres agents. Les compétences `galaris-knowledge` et `galaris-lab`
 sont autorisées individuellement pour cet assistant à sa création, tout en restant désactivées
 globalement. La connexion Lab reste inactive : disposer de la compétence ne suffit pas à exécuter ses outils.
+
+Lors de cette création, toutes ses connexions intégrées proposant une portée reçoivent `all`
+et sont actives, dont Gestion des objectifs, Administration des processus, Compétences et Chat.
+Les assistants déjà initialisés ne reçoivent pas automatiquement cet élargissement ; leurs
+restrictions et désactivations restent conservées.
 
 L’agent reste entièrement personnalisable : identité, mission, profil, harnais et autorisations.
 Les synchronisations suivantes préservent ces choix, les révocations et sa suppression ; elles ne
@@ -871,6 +896,10 @@ explicites. Les tableurs conservent cellules, formules et informations de feuill
 ne sont pas recalculées. Les macros Office sont désactivées. Une source impossible à convertir
 produit une erreur explicite, sans faux contenu de remplacement.
 
+Les anciens classeurs **XLS** bénéficient aussi d’une extraction structurée : caches de valeurs
+originaux, formules et jetons disponibles, formats, fusions, feuilles, lignes et colonnes cachées.
+Les diagnostics signalent les limites de lecture ; l’original n’est ni modifié ni recalculé.
+
 Les passerelles proposent les modes automatique, direct ou préparé. Le repli vers la préparation
 concerne les refus documentaires et les réponses structurées signalant une lecture incomplète ;
 un flux commencé ou un appel d’outil ne se rejoue pas automatiquement. Les lots préparés restent
@@ -887,6 +916,7 @@ Le modèle vision du même profil peut compléter un modèle texte dépourvu d�
 Ces analyses ne créent pas de définition ni d’exécution de processus métier.
 
 Sources : [formats, budgets et qualification](../dev/document-qualification.md),
+[contrats XLS](../../../back/tests/test_legacy_spreadsheets.py),
 [contrats MCP](../../../back/app/llm/mcp.py),
 [reprise, couverture et annulation](../../../back/tests/test_document_analysis.py).
 
@@ -1013,6 +1043,12 @@ ouvre les détails autorisés et conserve un indicateur d’état sur une tâche
 Le document affiché est repéré dans la liste ; les aperçus restent visibles et les icônes de
 cette liste sont consultables sans modification depuis le Chat.
 
+Un échec d’envoi conserve texte et pièces jointes pour une nouvelle tentative explicite. Si
+le serveur a admis le message mais que sa réponse réseau est perdue, le reçu canonique permet
+de le retrouver sans seconde admission. Un reçu tardif n’efface ni un nouveau brouillon ni
+celui d’une autre conversation. Le compositeur redevient disponible après admission même si
+l’actualisation de l’historique échoue ; les erreurs de lecture restent signalées.
+
 Les marqueurs de lecture sont persistés côté serveur. Les **notifications Web Push**, lorsqu’elles
 sont configurées et autorisées par le navigateur, avertissent des nouveaux messages. La consultation
 d’un message ou du salon peut retirer une notification encore en attente. La mise en sourdine et
@@ -1021,6 +1057,13 @@ L’installation génère et conserve ses clés de notification ; le contact et 
 sont réglables dans les préférences du Chat.
 
 ### Travailler sur un document pendant la conversation
+
+La bibliothèque Documents propose aussi son propre panneau **Conversation**, redimensionnable
+au clavier et à la souris sur ordinateur, en dialogue sur mobile. L'utilisateur peut choisir
+un fil existant ou en créer un. La dernière conversation est mémorisée par document et par
+utilisateur ; le panneau reste fermé au chargement et ne relit le fil qu'à son ouverture.
+La pagination et la recherche conservent le fil et le brouillon. Sauvegarde avant envoi,
+sélection, curseur, notifications et droits suivent les mêmes règles que Discussion.
 
 La recherche documentaire, les documents liés et les aperçus de messages ouvrent le composant
 documentaire complet dans le chat. À partir de 1024 pixels CSS, il apparaît à côté ou au-dessous
@@ -1118,6 +1161,12 @@ Une demande indépendante laisse les travaux précédents en cours ou en attente
 refusé ne provoque pas leur remplacement silencieux. La possibilité de modifier une tâche tient
 compte de son état et de la reprise réellement prise en charge par son harnais ; un changement
 concurrent ne doit pas créer un second travail ou arrêter un travail sans rapport.
+
+Une consigne reçue pendant l’attente de collègues peut rester dans une file durable liée à
+la tâche. Elle est appliquée avant la reprise de la synthèse, avec son audit et les contributions
+déjà acquises. Plusieurs consignes conservent leur ordre et leur identité ; une reprise ou
+deux retours concurrents ne doivent pas les appliquer deux fois. Les pauses humaines et les
+limites de reprise du harnais restent prioritaires.
 
 Un **remplacement explicite** relie une nouvelle tâche à celle qu’elle remplace et demande l’arrêt
 de cette dernière. Le successeur reste suspendu jusqu’à la libération de l’exécution précédente
@@ -1255,6 +1304,17 @@ liens de mémoire, fusionner des identités appartenant à la même personne ou 
 La fusion réaffecte les références et la portée conversationnelle ; l’oubli supprime les souvenirs
 associés selon le contrat et nettoie les références de contact. Les contacts restent isolés entre
 les périmètres des agents ; deux noms identiques ne constituent pas une preuve d’identité.
+
+Le carnet d’adresses permet aussi de créer un contact avec une adresse mail sans message
+préalable, de modifier son nom et de rechercher ses adresses. Une identité peut être détachée
+d’un contact fusionné pour retrouver une fiche indépendante. L’oubli d’un contact exige les
+droits Contacts et Mémoire puisqu’il efface aussi les souvenirs associés.
+
+La **Communication inter-agents** se règle par connexion de messagerie : `none` interdit
+les échanges, `team` les limite aux équipes communes actives et `all` ouvre le dialogue aux
+autres agents autorisés. Ce contrôle vaut pour les envois et réceptions ; une délégation
+interne vérifie les deux connexions avant admission. Il ne change pas les droits de dialogue
+avec les humains et ne partage pas les ressources citées.
 
 Sources : [interface Messenger](../../../back/app/messenger/interface.py),
 [fonctions Messenger](../../../back/app/messenger/mcp.py), [bridges](../architecture/flows/messaging.md),
@@ -1621,6 +1681,14 @@ par passages successifs.
 
 ### Travail, jugement et suivi
 
+Les critères de fin portent sur le résultat attendu : un rapport créé, un message envoyé ou
+une tâche réussie ne prouvent pas à eux seuls que l'objectif est atteint. Un cycle peut
+utilement attendre une décision précise du référent ; il ne doit pas produire du contenu
+uniquement pour poursuivre l'activité. Une décision déjà enregistrée se relit à sa source.
+Un refus d'accès reste une limite, sans devenir une demande d'élargissement des droits.
+Le suivi est mis à jour automatiquement à partir du résultat du cycle ; les livraisons
+réellement demandées restent des actions distinctes à effectuer.
+
 Un cycle crée une tâche ordinaire, qui passe par l’orchestration commune. À sa fin, le mécanisme de
 suivi examine le résultat, les preuves et le suivi antérieur, puis décide de poursuivre ou de
 conclure. Les décisions, leur justification et les coûts restent consultables.
@@ -1689,8 +1757,10 @@ La mémoire durable se distingue de l’historique immédiat d’une conversatio
 un savoir, un événement, un contexte social, une information centrale ou un élément de travail.
 Un souvenir autonome possède un contenu HTML, des mots-clés, une nature, des métadonnées,
 un propriétaire et des dates. Il reste privé à son agent et son libellé est dérivé du contenu.
-Un document possède son titre, son contenu complet et ses droits de partage ; son nœud mémoire
-porte une synthèse HTML facultative et un historique indépendant. Modifier le document ne
+Un document possède son titre, son contenu complet, ses droits de partage et sa synthèse HTML
+facultative avec son historique indépendant, tous détenus par `app.document`. Il existe sans
+souvenir personnel ni nœud Memory ; le graphe peut en conserver une référence reconstructible
+dont chaque lecture revérifie les droits de la source. Modifier le document ne
 réécrit pas cette synthèse ; la fiche signale si sa révision de référence est ancienne.
 Le document et sa synthèse partagent une seule liste de mots-clés, modifiable depuis les deux
 fiches sous les droits du document. Cette seule modification ne crée pas de révision de contenu.
@@ -1701,12 +1771,15 @@ La migration conserve les URI, versions et destinataires des documents existants
 souvenirs partagés deviennent des documents ; les anciens titres privés rejoignent leur contenu.
 Une sauvegarde SQL vérifiée précède le transfert et reste conservée avec les ressources référencées ;
 elle ne remplace pas la sauvegarde des fichiers. Voir la
-[décision de séparation](../../../project/decisions/0162-document-and-memory-synthesis.md) et les
+[décision d’indépendance](../../../project/decisions/0223-memory-document-independence.md) et les
 [garanties de conservation](../../../back/app/document/tests/test_independence_upgrade.py).
 
 La recherche utilise le contenu courant complet des documents et leur synthèse, ainsi que les
 souvenirs autonomes. Elle renvoie un seul résultat par couple document/synthèse et applique les
 droits actuels du document aux deux contenus.
+La recherche documentaire directe reste disponible sans l’index Memory facultatif. Un agent
+peut acquérir séparément un souvenir personnel concernant un document autorisé ; ce souvenir
+ne devient ni son résumé partagé ni la source de ses droits.
 Les souvenirs proposent des extraits et les cartes documentaires peuvent afficher une miniature
 de la révision enregistrée. Les modifications ne demandent pas de motif libre ;
 la traçabilité conserve le contenu des versions, les dates, les auteurs, les tâches et les sources.
@@ -1796,6 +1869,20 @@ Sources : [contrat temporel](../../../back/app/memory/temporal.py),
 [outils Memory](../../../back/app/memory/mcp.py).
 
 ### Recherche hybride et rappel contextuel
+
+La similarité propose des souvenirs candidats ; elle ne prouve ni leur équivalence ni leur
+suffisance pour répondre. Sans décision affirmative de doublon, l'acquisition conserve le
+nouveau fait. Dream peut enrichir un souvenir personnel modifiable avec des informations
+complémentaires en conservant le texte complet, les mots-clés, les sources et sa temporalité.
+Une contradiction conserve les deux affirmations et leurs sources ; un conflit de révision
+ne provoque pas d'écrasement silencieux.
+
+Les instructions d'agents, délégations et cycles Goal restent attribués à l'IA. Ils ne peuvent
+pas créer à eux seuls une préférence ou un fait personnel humain. Les preuves d'outils restent
+distinctes du récit final, et plusieurs extractions d'une même origine ne deviennent pas des
+corroborations indépendantes. Les contre-affirmations accessibles sont signalées sans désigner
+automatiquement une vérité. Le rappel conserve une place pour les souvenirs ordinaires lorsque
+les échéances rempliraient le budget ; les autres correspondances restent dans `memory_upcoming`.
 
 La recherche combine :
 
@@ -2084,6 +2171,11 @@ les références historiques conservent une carte portant le dernier titre et «
 sans aperçu du contenu ni action d’ouverture ou de téléchargement. Cette carte ne rétablit aucun
 accès à la ressource ; les anciennes suppressions sans titre conservé utilisent un libellé générique.
 
+La bibliothèque partage l’espace de rédaction et la conversation contextuelle décrits dans
+[le Chat](#chat) : l’utilisateur ouvre le panneau à sa demande, choisit un fil existant ou
+en crée un, et peut envoyer un passage sélectionné après sauvegarde du document. La dernière
+conversation reste propre au document et au compte ; aucun fil n’est chargé avant son ouverture.
+
 ### Dossiers personnels, navigation et ordre
 
 Chaque utilisateur possède son arbre de dossiers et sous-dossiers, séparé des Topics globaux.
@@ -2238,6 +2330,13 @@ d’autorité et les droits de la conversation ou de la tâche continuent de s�
 
 ### Parcourir, transférer et supprimer un Dataset
 
+Chaque utilisateur dispose de ses propres dossiers et sous-dossiers Dataset, avec nom,
+icône, ordre manuel et tri alphabétique. Le classement accepte les ressources déjà lisibles
+sans modifier JSON, révisions, propriétaire, partage ou classement des autres comptes.
+Les filtres combinent recherche, mots-clés, propriétaire humain ou agent, dates et éléments
+non classés. La suppression confirmée d’une branche retire son classement et remet ses
+Datasets dans les non classés, sans supprimer leurs données ; les cycles de dossiers sont refusés.
+
 La bibliothèque Dataset filtre par agent propriétaire, recherche et pagine les ressources
 accessibles. Un clic ouvre une modale commune à la bibliothèque, au Chat et aux cartes de documents,
 avec JSON complet, historique, partage et propriétaire. Fermer retrouve recherche et page ; un
@@ -2261,6 +2360,7 @@ documentaires vérifiés ouvrent l’éditeur Dataset avec ses droits actuels.
 
 Sources : [parcours Dataset](../user/datasets.md), [contrats et alias](../dev/datasets.md),
 [propriété](../../../back/app/dataset/tests/test_ownership.py),
+[classement personnel](../../../back/app/dataset/tests/test_library.py),
 [utilisations et partage](../../../back/app/dataset/tests/test_management.py).
 
 Dataset fournit aussi le **codec de valeurs typées** commun : types primitifs, références Agent,
@@ -2525,10 +2625,10 @@ jointe et ouverte séparément conserve son propre périmètre ; son rendu ne s�
 à l’impression du document parent.
 
 Sources : [guide complet d’édition](../user/rich-content.md),
-[API documentaire](../../../back/app/memory/router.py), [contrats HTML](../dev/editorial-html.md),
+[API documentaire](../../../back/app/document/router.py), [contrats HTML](../dev/editorial-html.md),
 [composants documentaires](../../../front/app/document/),
 [contrat des applications et Datasets](../dev/document-apps.md),
-[tests des Datasets](../../../back/app/memory/tests/test_dataset_documents.py),
+[tests des Datasets natifs](../../../back/app/dataset/tests/test_datasets.py),
 [tests des accès et quotas applicatifs](../../../back/app/document/tests/test_document_apps.py),
 [tests de l’éditeur, de l’isolation et des exports](../../../front/browser-tests/document-apps.spec.mjs),
 [classement](../../../front/browser-tests/document-classification.spec.mjs),
@@ -2551,6 +2651,10 @@ périmètre de sécurité.
 - Supprimer un sujet selon les règles prévues sans confondre la suppression de sa projection avec
   l’effacement de tous les souvenirs qui lui étaient reliés.
 - Explorer les relations thématiques dans le graphe de mémoire.
+
+Le dossier thématique distingue les contenus liés des vues d’activité et de mémoire.
+Documents et Datasets peuvent être associés explicitement à un Topic, retrouvés et ouverts
+dans leur éditeur propre. Cette association ne modifie ni propriétaire, ni partage, ni contenu.
 
 La détection automatique examine la continuité des échanges et peut réutiliser un sujet existant
 ou proposer un nouveau sujet. Son mode de création est gouverné : selon le réglage, la création est
@@ -2757,7 +2861,7 @@ ou références. Les compétences conservent leur format Markdown, distinct du H
 - Consulter la matrice d’autorisations, son état effectif et les agents affectés par une modification.
 - Projeter les compétences autorisées dans les harnais qui les utilisent.
 
-Les agents équipés de **Gestion des compétences** peuvent découvrir/lire la bibliothèque avec
+Les agents équipés de **Compétences** peuvent découvrir/lire la bibliothèque avec
 `skills_list` et `skill_read`, puis gérer les fichiers autorisés via `galaris://skill/` et les outils
 `file_*`. La création d’un paquet commence par un `SKILL.md` valide. Les révisions, fichiers système
 et opérations sur le fichier principal restent protégés selon le contrat.
@@ -2769,6 +2873,24 @@ La matrice présente **Global (tous)**, **Catégorie** et **Cet agent** avec des
 Seule la règle applicable apparaît sélectionnée : la dérogation de compétence pour l’agent prévaut,
 puis sa règle de catégorie, puis le réglage global. L’absence de sélection dans une colonne signale l’héritage
 ou une règle masquée par une dérogation ; elle ne signifie pas une désactivation.
+
+### Compétences personnelles et propriété
+
+L'onglet **Compétences personnelles** sépare les packages privés par agent du catalogue générique
+et des procédures apprises par Dream. Il propose recherche, filtre propriétaire, édition des
+fichiers texte et du libellé, activation et suppression avec contrôle de révision. Un humain
+autorisé peut transférer un package à un autre agent géré. La gestion globale permet aussi
+de rendre un générique personnel ou de retirer la propriété d'un personnel : ces opérations
+conservent son identité et ses fichiers, refusent les collisions et disposent d'un reçu de reprise.
+Un personnel ne devient jamais utilisable par un autre agent du seul fait qu'il peut l'administrer.
+Voir le [guide des compétences](../user/skills.md).
+
+Le Tool unique **Compétences** (`skills`) remplace `skill_management` en conservant connexions
+et réglages. Sa portée locale `usage`, `personal`, `team` ou `all` est attribuée par un humain.
+`team` suit l'union des équipes actives de l'agent ; `all` permet la gestion du catalogue générique
+et les conversions. Les fichiers utilisent `galaris://skill/`, avec l'espace personnel
+`galaris://skill/personnal/<agent>/<code>/`. Les quotas personnels sont de 100 packages et
+200 Mio par propriétaire. Les packages système restent protégés.
 
 ### Application des changements à la prochaine exécution
 
@@ -2819,6 +2941,9 @@ listener. Il contient un schéma de paramètres et peut définir un modèle de t
 variables d’un événement entrant.
 
 - Consulter les outils intégrés et les outils ajoutés ; rechercher leurs fonctions et descriptions.
+- Distinguer **Outils personnalisés**, ouvert par défaut, et **Outils internes à Galaris**.
+  Les sélecteurs de connexions et d’autorisations reprennent cette origine. Un bridge dédié
+  ne rend pas automatiquement interne un Tool créé par l’utilisateur.
 - Filtrer aussi le catalogue par texte sur le nom traduit, le code et la description, sans tenir
   compte de la casse ni des accents ; effacer la recherche rétablit la liste et un message signale
   l’absence de correspondance.
@@ -2833,9 +2958,16 @@ variables d’un événement entrant.
 - Décider si un Tool est utilisable par le contrôleur conversationnel ; cette décision s’ajoute
   aux connexions et droits de l’agent, sauf pour les services système dont cet accès est obligatoire.
 
-### Quatre services système obligatoires
+La création d’un Tool personnalisé exige au moins une capacité active. Sa suppression depuis
+l’interface présente le bilan des données dépendantes : connexions, paramètres, permissions,
+accords et références métier concernées. La confirmation humaine autorise une suppression
+transactionnelle ; un bilan devenu périmé est refusé puis actualisé. Les ressources indépendantes
+et les données externes sont conservées. Cette cascade reste distincte de ToolAdmin MCP,
+qui refuse de supprimer un Tool portant encore des dépendances.
 
-**Galaris (`galaris`), Conversation (`conversation`), Memory (`memory`) et File Sharing
+### Cinq services système obligatoires
+
+**Galaris (`galaris`), Conversation (`conversation`), Documents (`document`), Memory (`memory`) et File Sharing
 (`file_sharing`)** sont des services obligatoires de chaque agent. Leur propriété logicielle
 `can_disable=false` n’est pas un réglage utilisateur. DbAdmin crée ou réactive leurs connexions
 et leur accès conversationnel. Les permissions des fonctions restent distinctes de cette
@@ -2918,10 +3050,20 @@ Sources : [parcours REST et OAuth](../admin/tool-administration.md),
 
 ### Déléguer la configuration des Tools
 
+La **portée de gestion** (`tools.management_scope`) est locale à chaque connexion administrative :
+`usage` n’accorde aucune administration, `personal` vise les ressources de l’agent, `team`
+l’union de ses équipes actives et `all` le périmètre global. Elle concerne notamment ToolAdmin,
+Galaris Admin, les objectifs, les processus et les compétences. Connexion, portée, fonctions et
+appartenances sont revérifiées à chaque appel. Seul un humain habilité peut changer cette
+délégation ; un paramètre global ne peut pas l’élargir. Une ancienne connexion sans portée
+explicite doit être configurée. AgentAdmin propose `usage`, `team`, `all` et conserve en plus
+l’intersection avec les droits du responsable humain et l’interdiction de s’administrer lui-même.
+
 **ToolAdmin** fournit 23 fonctions pour examiner, créer, modifier et supprimer des Tools
 personnalisés, configurer les valeurs partagées et les connexions, gérer les permissions et
-actualiser les catalogues. Sa délégation porte sur le catalogue global, affinée par les fonctions
-accordées ; elle ne reprend pas le périmètre humain d’AgentAdmin. Les Tools intégrés sont
+actualiser les catalogues. Les portées `personal` et `team` limitent la gestion aux connexions
+concernées ; les définitions, valeurs et permissions globales exigent `all`. ToolAdmin ne reprend
+pas le périmètre humain d’AgentAdmin. Les Tools intégrés sont
 protégés et seuls les humains attribuent les capacités administratives.
 
 Un humain prépare un candidat HTTP/SSE avec ses credentials dans **Tester la connexion**,
@@ -2937,6 +3079,7 @@ les résultats des agents déjà traités sont conservés et un résultat partie
 sans rejouer la mutation déjà enregistrée. Les catalogues incomplets ne déclenchent pas d’élagage.
 
 Sources : [parcours ToolAdmin](../admin/tool-administration.md),
+[portées locales](../../../back/app/tools/tests/test_management_scopes.py),
 [délégation, secrets et conflits](../../../back/app/tools/tests/test_tool_admin.py).
 
 ### Autoriser une action ou mémoriser un accord
@@ -2954,6 +3097,11 @@ une source modifiée après l’accord empêche l’opération initiale, même s
 La page **Permissions** permet aussi de traiter une demande sans canal privé disponible.
 Une réponse expirée, dupliquée ou relative à une configuration modifiée ne lance pas une seconde
 opération. Un résultat externe incertain exige une réconciliation.
+
+Elle sépare les demandes en attente des permissions réutilisables : fonctions MCP, types
+d’actions de harnais et accords réseau mémorisés. Un humain habilité peut les filtrer par
+agent, outil ou état et révoquer un accord sans effacer l’historique. La révocation d’une
+fonction la remet **Sur demande** ; elle ne constitue pas un droit de réactivation.
 
 Sources : [demandes et préconditions](../../../back/app/tools/tests/test_action_authorizations.py),
 [permissions](../admin/tool-administration.md).
@@ -3002,9 +3150,9 @@ nommé, activé/désactivé et révoqué. Le secret est présenté à la créati
 MCP externes accèdent au périmètre réellement autorisé, pas à une administration implicite de
 l’ensemble de Galaris.
 
-Les outils **AgentAdmin**, **ToolAdmin**, **Galaris Admin**, **Lab Galaris**, **Gestion des objectifs**, **Gestion des compétences**,
+Les outils **AgentAdmin**, **ToolAdmin**, **Galaris Admin**, **Lab Galaris**, **Gestion des objectifs**, **Compétences**,
 **Topics** et **Administration des processus** séparent les fonctions spécialisées des usages
-ordinaires. La connexion Lab reste inactive par défaut ; ses cinquante fonctions sont détaillées
+ordinaires. La connexion Lab reste inactive par défaut ; ses fonctions sont détaillées
 dans [le Lab](#lab) et [l’inventaire MCP](#mcp).
 
 ### Documentation produit consultable par les agents
@@ -3109,6 +3257,16 @@ externes n’offrent pas cette mutation du registre interne.
 
 Sources : [parcours Fichiers](../user/files.md), [registre interne](../dev/file-storage.md).
 
+Les menus au clic droit, **Maj+F10** et **⋮** proposent aussi renommage et suppression des
+fichiers et répertoires externes lorsque le fournisseur et les droits le permettent, notamment
+Console, Nextcloud et Samba. Les racines sont protégées ; un renommage n’écrase pas une cible
+existante. Une suppression de répertoire confirmée inclut son contenu et ramène au parent si
+nécessaire. Depuis `file://`, seuls les fichiers indépendants sont supprimables : les pièces
+jointes conservent les règles de leur domaine. Une erreur conserve la possibilité d’actualiser
+et de vérifier ce qui reste avant de réessayer.
+
+Source : [droits et mutations des fichiers](../../../back/app/file_share/tests/test_browser_mutations.py).
+
 ### Lire et modifier les ressources
 
 - Découvrir les schémas et leurs capacités avec `file_schemes`.
@@ -3190,10 +3348,13 @@ Les métadonnées techniques restent séparées du texte descriptif.
 Une connexion désactivée ou reconfigurée retire ses anciennes projections des recherches.
 Seules les listes complètes et les suppressions prouvées établissent une disparition ; une
 source inaccessible ou une page tronquée ne justifie pas un effacement. Les observations
-échouées sont réparées sans rejouer l’opération externe. Dans **Dream → Indexation**, un humain
+échouées sont réparées sans rejouer l’opération externe. Dans **Fichiers → Indexation**, un humain
 peut lancer un parcours admissible, voir sa couverture partielle, l’annuler et relancer les
 réparations. Les diagnostics terminaux sont conservés 30 jours. Les options médias Dream
 enrichissent les descriptions sans écraser les notes personnelles ; les répertoires ne sont pas résumés.
+
+L’indexation possède ses droits de lecture et de commande propres, sans exiger l’accès à Dream
+ni à l’explorateur. Dream conserve un accès à ce même panneau pour les utilisateurs habilités.
 
 Sources : [réglages et parcours](../admin/tool-administration.md),
 [catalogue, couverture et droits](../../../back/app/memory/tests/test_file_catalogue.py),
@@ -3569,8 +3730,18 @@ la boîte a changé d’identité, pour éviter qu’un ancien identifiant agiss
 
 Une connexion active relève l’INBOX selon son intervalle, 60 secondes par défaut. La première
 activation établit une référence de départ sans transformer tout l’historique en tâches. Les
-nouveaux messages sont journalisés et admis comme **tâches dédiées**, avec déduplication et curseur
+nouveaux messages sont journalisés puis, après autorisation de traitement, admis comme
+**tâches dédiées**, avec déduplication et curseur
 durable. Un changement de génération IMAP établit une nouvelle référence de départ.
+
+Le journal entrant conserve d'abord les en-têtes. `mail_process` contrôle le traitement avant
+lecture du corps, des pièces jointes et admission de la Task : par défaut, les adresses exactes
+des Contacts de cet agent sont reconnues, les expéditeurs inconnus demandent l'accord humain.
+Une règle explicite **Sur demande** s'applique à tous ; **Actif** accepte tous les expéditeurs,
+**Bloqué** refuse le traitement. Un refus ne lit rien et n'ajoute pas de contact. Seule l'INBOX
+exacte est admissible, sans ses sous-dossiers ; chercher ailleurs ne crée pas de réception.
+Le [Journal des mails](../user/tasks.md) sépare **Réception** et **Envoi**, avec décisions,
+erreurs et reprises. L'accord de traitement n'autorise jamais l'envoi d'une réponse.
 
 L’agent lit le mail par son outil. La fin de la tâche **n’envoie pas automatiquement sa réponse** à
 l’expéditeur : un envoi SMTP est une action explicite. Les expéditeurs et destinataires observés
@@ -3610,6 +3781,10 @@ Sources : [flux Mail](../architecture/flows/mail.md), [fonctions](../../../back/
 
 <a id="calendrier"></a>
 ## 23. Calendriers et déclenchements
+
+**Superviser → Calendriers** (`/connection/calendars`) propose les connexions du périmètre
+géré, avec `CALENDAR_ACCESS` ou `CALENDAR_EDIT`. Le second droit permet aussi d'ajouter,
+modifier, tester ou supprimer les flux ; créer la connexion conserve les droits Connexions.
 
 Le Tool Calendar connecte des ressources **iCalendar HTTPS** à un agent. Une connexion peut porter
 plusieurs calendriers et des préférences de disponibilité : fuseau horaire, début/fin de journée
@@ -3713,6 +3888,13 @@ pas repartager. Historique paginé, consultation, restauration confirmée et sup
 antérieur sont disponibles, sans modifier les runs existants ni proposer de lancer une ancienne version.
 
 ### Activités, variables et exécution native
+
+Un **IF IA** choisit entre **Tâche agentique** et **Inférence LLM**. Le premier garde agent,
+outils et questions humaines. Le second utilise explicitement un modèle texte ou décisionnel,
+avec uniquement les instructions et les données figées, sans Task ni outil. Sa sortie doit
+respecter le contrat booléen ; une erreur n'est jamais interprétée comme Faux. Une inférence
+déjà acquise est réutilisée après reprise ; un échec ne déclenche ni relecture payante ni
+substitution automatique de modèle. Les coûts et l'annulation restent suivis dans le run.
 
 | Capacité | Fonctionnement |
 |---|---|
@@ -3841,13 +4023,27 @@ le contexte propre à l’item, les paramètres communs au jeu, la sortie du can
 | Exécuteur vocal | Sollicitation transcrite | Réponse orale et actions |
 | Analyse de tâches | Dossier d’exécution | Diagnostic structuré |
 
+Les bancs d’exécuteurs peuvent limiter le catalogue aux capacités déclarées du cas, avec
+schémas natifs et réponses d’outils simulées propres à chaque observation. Les écritures
+simulées peuvent être relues ; un refus injecté reste prioritaire. La référence conserve ses
+`outcome_checks` hors du contexte candidat : actions requises ou interdites, bonne ressource,
+révision, ordre, faits à préserver, JSON exact et budget d’appels. Un récit convaincant ou
+une bonne note du juge ne compense pas une action requise manquante ou refusée.
+Les corpus synthétiques FR/EN couvrent aussi décision humaine manquante, décision déjà
+enregistrée et transfert vers d’autres formulations. Ces simulations ne prouvent ni un effet
+persistant réel ni la généralisation du modèle.
+
+Sources : [corpus et protocole](../dev/lab-reference-corpus.md),
+[contrôles de résultat](../../../back/app/lab/tests/test_executor_outcomes.py).
+
 ### Campagnes de processus natifs
 
 Le Lab propose aussi des **campagnes de processus réels** dans son espace Processus, distinctes
 des dix mécanismes d’évaluation IA. Un agent peut créer un Dataset privé d’entrées entièrement
 synthétiques avec sorties exactes attendues facultatives, ou générer **1 à 20 cas** depuis le
-contrat d’entrée du processus avec le modèle Lab. Le dataset de campagne est une ressource
-réutilisable ; les données de chaque exécution restent dans son run Process.
+contrat d’entrée du processus avec le modèle Lab. Le Dataset de campagne est une ressource
+JSON native `data://`, avec ses propres droits et révisions, jamais un Document de stockage.
+Il est réutilisable ; les données de chaque exécution restent dans son run Process.
 
 Lancer une campagne admet de vrais runs, avec la dernière définition enregistrée à chaque
 admission : appels externes et effets métier peuvent donc se produire, sans mocks automatiques.
@@ -3980,6 +4176,15 @@ Sources : [parcours avant/après](../user/lab-ai.md),
 
 ### Revue humaine et diagnostic
 
+L'étalonnage compare les jugements révélés avec les revues immuables de l'utilisateur courant
+dans la campagne. Les revues d'agents ne constituent pas une référence humaine. Couverture,
+faux passages/rejets et biais restent explicites ; les résultats sans jugement restent inconnus.
+Les répétitions d'une même entrée/référence forment un groupe de même poids que les autres cas.
+Les comparaisons compatibles proposent un intervalle bootstrap à 95 % (2 000 rééchantillonnages) ;
+le taux de faux passages utilise une borne de Hoeffding même sans faux passage observé.
+Moins de deux groupes ne produit pas d'intervalle ; moins de vingt appelle à la prudence.
+Ces mesures restent conditionnelles au corpus et au juge, sans certification du produit.
+
 La **revue humaine** peut montrer les sorties sans le modèle ni les notes automatiques. Le reviewer
 note les dimensions et justifie ses choix, puis enregistre avant révélation du jugement. Les écarts
 et désaccords deviennent visibles. Chaque personne conserve sa revue indépendante ; une revue
@@ -3995,7 +4200,7 @@ complémentaires.
 
 ### Confier une campagne à un agent
 
-La connexion **Lab Galaris** donne accès à **55 fonctions MCP** pour découvrir les dix mécanismes,
+La connexion **Lab Galaris** donne accès aux fonctions MCP pour découvrir les dix mécanismes,
 lire leurs contrats et rubriques, préparer les jeux et cas, régler leurs prompts expérimentaux,
 lancer les benchmarks et examiner leurs preuves. La connexion et la compétence système **Galaris Lab**
 (`galaris-lab`) sont **désactivées globalement par défaut** et s’activent séparément. La compétence est
@@ -4126,7 +4331,7 @@ statuts lisibles ; le contenu complet reste accessible dans l’étape dépliée
 ### Arrêter un appel et borner sa durée
 
 Dans l’activité LLM et le détail de tâche, **Arrêter cet appel LLM** demande l’arrêt d’une inférence
-en cours, après confirmation, avec `TASK_EDIT` et dans le périmètre des agents gérés. L’accusé de
+en cours, après confirmation, avec `LLM_CALL_CONTROL` et dans le périmètre des agents gérés. L’accusé de
 réception ne prouve pas encore l’arrêt fournisseur. Traces et coûts restent conservés ; ces
 inférences ne proposent pas de suppression par corbeille. La tâche ou conversation peut ensuite
 signaler l’interruption ; la pause de tâche reste l’action adaptée à un travail à reprendre.
@@ -4392,6 +4597,13 @@ existence n’équivaut pas à une certification de toutes les combinaisons de f
   les guides FR/EN, le corpus actif, les frontières et les liens documentaires. `make docs-check`
   effectue les contrôles sans régénération. Ces commandes détectent des traductions absentes,
   mais ne les rédigent pas et n’en valident pas automatiquement le sens.
+- **Qualification d’une équipe réelle.** `make agent-team-pilot` prépare une stack isolée
+  et des données fictives, puis peut soumettre une mission dans le Chat avec de vrais modèles.
+  Il conserve les contributions, livrables, coûts et preuves de reprise pour les scénarios
+  de manque d’information, conflit, amendement, panne d’un collègue ou redémarrage. Une
+  comparaison équipe/solo utilise la même mission. Les appels sont facturables et les preuves
+  restent à relire : un statut réussi ne démontre ni qualité métier ni avantage de l’équipe.
+  Voir le [protocole de qualification](../dev/agent-team-qualification.md).
 - **Recherche documentaire commune.** En développement, `make docs-update` prépare les sources,
   vérifie leur concordance avec celles du backend actif, synchronise l’index textuel partagé
   et contrôle recherche et lecture des parcours FR/EN. Aucun droit d’agent ni affectation de
@@ -4550,9 +4762,9 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Sujet | État à retenir pour présenter l’application fidèlement |
 |---|---|
 | Fonction intégrée | Peut nécessiter un privilège, une connexion active, des credentials et une ressource compatible. |
-| Services système | Galaris, Conversation, Memory et File Sharing sont obligatoires ; cette activation n’accorde pas de nouveaux droits sur les ressources. |
+| Services système | Galaris, Conversation, Document, Memory et File Sharing sont obligatoires ; cette activation n’accorde pas de nouveaux droits sur les ressources. |
 | Assistant initial | Galaris est proposé une seule fois, avec le harnais interne et Galaris Admin, AgentAdmin et ToolAdmin actifs à sa création ; modifications, révocations et suppression sont conservées. Un modèle utilisable reste requis. |
-| Administration déléguée | AgentAdmin suit les droits et le périmètre actuels du responsable ; ToolAdmin délègue le catalogue global. L’agent ne peut attribuer des capacités administratives. |
+| Administration déléguée | La portée locale de chaque connexion borne la délégation ; AgentAdmin vérifie aussi les droits du responsable. ToolAdmin exige `all` pour le catalogue global. L’agent ne peut s’attribuer de capacité administrative. |
 | Autorisation permanente | Active une seule fonction sur une connexion, sans lever les ACL, blocages ou préconditions de la ressource. |
 | Indexation des fichiers | Catalogue privé par agent, accès source actuel, regroupement des copies par SHA-256 ; découverte dépendante du provider, sans garantie de couverture exhaustive d’un parcours partiel. |
 | Graphe mémoire | 3D uniquement, chargement spatial client, représentants des éléments masqués et actualisation préservant la navigation ; WebGL requis. Carte serveur encore prévue. |
@@ -4597,7 +4809,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Permissions navigateur | Réseau local interdit par défaut ; un accord mémorisé ne contourne pas les filtres de la connexion. |
 | Sujet précoce | Classement parallèle si Décision et texte Dream sont configurés ; aucune attente d’admission, aucun droit supplémentaire et aucun rejeu automatique d’une recherche déjà faite. |
 | Documentation produit | Accès Galaris Admin et fonctions documentaires nécessaires ; lecture seule, recherche lexicale disponible immédiatement, enrichissement vectoriel et recherche hybride si configurés ; plans prospectifs et configuration réelle à vérifier séparément. |
-| Lab agentique | Connexion et compétence optionnelles, inactives globalement par défaut ; seule la compétence est attribuée individuellement à l’assistant Galaris initial. 55 fonctions ; les benchmarks IA n’appliquent pas automatiquement leurs réglages à la production. Les campagnes Process exécutent de vrais runs et leurs effets. Captures et diagnostics exigent l’inspection Admin. |
+| Lab agentique | Connexion et compétence optionnelles, inactives globalement par défaut ; seule la compétence est attribuée individuellement à l’assistant Galaris initial. Les benchmarks IA n’appliquent pas automatiquement leurs réglages à la production. Les campagnes Process exécutent de vrais runs et leurs effets. Captures et diagnostics exigent l’inspection Admin. |
 | Génération synthétique | De 1 à 20 cas adaptés au mécanisme et éventuellement au contexte d’un jeu ; tous restent brouillons et le jeu est enregistré intégralement ou pas du tout. |
 | Notes et revues du Lab | Une note absente ne vaut pas zéro ; avis agents, revues humaines et juge restent distincts. Les comparaisons descriptives ne prouvent pas une supériorité statistique. |
 | Webhook générique | Aucun endpoint actif ; les callbacks et entrées des intégrations dédiées gardent leurs contrats propres. |
@@ -4621,7 +4833,7 @@ d’aperçu, les bridges, les harnais, les mécanismes Dream et les contribution
 <a id="mcp"></a>
 ## 30. Inventaire des fonctions accessibles aux agents
 
-Cet inventaire reprend les **272 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
+Cet inventaire reprend les **278 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
 Il couvre aussi les fonctions réservées aux contrôleurs conversationnels ou à l’administration.
 Toutes ne sont donc pas visibles simultanément par chaque agent. Les schémas d’arguments complets
 sont exposés par MCP ; leurs sources sont reliées aux sections métier ci-dessus.
@@ -4778,8 +4990,14 @@ ordinaires restent dans le périmètre de l’agent.
 | `memory_summarize` | `memory` | Synthétiser avec le modèle de l’agent faits attribués, décisions, engagements et questions ouvertes, au maximum 200 messages et 32 000 caractères, sans remplacement des souvenirs existants ni stockage après erreur modèle. |
 | `document_sharing` | `document` | Lire partages, destinataires possibles et version de verrouillage ; recherche/filtre/pagination des destinataires. |
 | `document_share` | `document` | Partage ciblé pour un document de travail propriétaire. |
-| `skills_list` | `skill_management` | Découvrir les compétences dans le périmètre administrable/autorisé. |
-| `skill_read` | `skill_management` | Lire une compétence et ses informations ; fichiers auxiliaires accessibles via la façade de ressources. |
+| `skills_list` | `skills` | Découvrir les compétences dans le périmètre administrable/autorisé. |
+| `skill_read` | `skills` | Lire une compétence et ses informations ; fichiers auxiliaires accessibles via la façade de ressources. |
+| `skill_update` | `skills` | Modifier le libellé du package avec sa révision attendue. |
+| `skill_set_enabled` | `skills` | Activer ou désactiver un personnel pour son seul propriétaire. |
+| `skill_delete` | `skills` | Supprimer un package utilisateur et ses fichiers avec contrôle de portée et révision. |
+| `skill_set_authorization` | `skills` | Affecter une compétence générique à un agent du périmètre délégué. |
+| `skill_set_category_authorization` | `skills` | Régler l'autorisation d'une catégorie générique pour un agent. |
+| `skill_release_ownership` | `skills` | Convertir explicitement un personnel en générique, sans activation automatique, avec reçu rejouable. |
 
 ### Sujets
 
@@ -4874,6 +5092,7 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 | Fonction | Famille | Action et résultat |
 |---|---|---|
 | `mail_connection_status` | `mail` | Vérifier la disponibilité de la connexion courrier. |
+| `mail_process` | `mail` | Autoriser le traitement d'un message INBOX avant lecture et admission ; Contacts exacts ou accord humain selon la politique, sans accord d'envoi. |
 | `mail_list_mailboxes` | `mail` | Lister les dossiers IMAP. |
 | `mail_search` | `mail` | Rechercher des messages avec les critères admis. |
 | `mail_get` | `mail` | Lire un message et ses parties accessibles par une référence opaque. |
@@ -4970,7 +5189,7 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 ### Lab : mécanismes, jeux et cas
 
 Les jeux de tests du Lab sont des expériences propres à un mécanisme ; ils sont distincts des
-ressources JSON indépendantes du domaine Dataset. Les cinquante fonctions ci-dessous
+ressources JSON indépendantes du domaine Dataset. Les fonctions ci-dessous
 appartiennent toutes au Tool optionnel `lab`.
 
 | Fonction | Famille | Action et résultat |
@@ -5073,7 +5292,7 @@ les [garanties fonctionnelles testées](../dev/functional-tests.md) et les sourc
 
 ### Modules backend déclarés
 
-Les **77 modules déclarés** sont tous rattachés à une ou plusieurs sections. Les conditions
+Les **78 modules déclarés** sont tous rattachés à une ou plusieurs sections. Les conditions
 d’activation et de configuration restent celles du runtime.
 
 | Module | Fonction couverte / section |
@@ -5096,7 +5315,8 @@ d’activation et de configuration restent celles du runtime.
 | `app.webhook` | [Module sans endpoint générique actif ; entrées externes via les intégrations dédiées](#processus) |
 | `app.llm` | [Modèles, profils, passerelles, crédits et inférences durables](#modeles), [lecture et analyses documentaires](#harnais), [traces et coûts](#supervision) |
 | `app.topic` | [Dossiers thématiques et classement](#sujets) |
-| `app.memory` | [Connaissances, structure documentaire et pièces jointes](#memoire), [documents HTML, applications, autorisations, classement et partage](#documents), [classement des Goals](#objectifs) |
+| `app.document` | [Documents HTML, résumés partagés, versions, applications, droits et classement](#documents), [rédaction et conversation contextuelle](#chat) |
+| `app.memory` | [Souvenirs privés par agent, rappel, graphe et références documentaires facultatives](#memoire) |
 | `app.dataset` | [Datasets JSON indépendants, révisions et partage](#documents) |
 | `app.contact` | [Contacts et identités multicanaux](#messageries) |
 | `app.dream` | [Extraction, réutilisation des preuves acquises, classement et entretien de fond](#dream) |
@@ -5158,7 +5378,7 @@ d’activation et de configuration restent celles du runtime.
 
 ### Modules frontend déclarés
 
-Les **39 modules frontend** suivants sont couverts. Les contributions de bridge ajoutent généralement
+Les **40 modules frontend** suivants sont couverts. Les contributions de bridge ajoutent généralement
 des formulaires/guides aux écrans communs, plutôt qu’une application indépendante.
 
 | Module | Écrans ou contribution |
@@ -5178,14 +5398,15 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 | `app/task` | Activité, tâches, détails, arborescences, commandes et budgets |
 | `app/conversation` | Historique des rounds, détails d’exécution communs et résolution de livraison |
 | `app/share` | Formulaire de partage commun et sélection des propriétaires/destinataires |
-| `app/file_share` | Explorateur des fichiers par agent, URI, aperçus, téléchargements et renommage |
-| `app/dataset` | Bibliothèque JSON, éditeur en modale, versions, propriété, partage, utilisations et suppression |
+| `app/file_share` | Explorateur par agent, URI, aperçus, téléchargements, renommage, suppression et indexation |
+| `app/dataset` | Bibliothèque JSON, dossiers personnels, éditeur en modale, versions, propriété, partage, utilisations et suppression |
 | `app/chat` | Discussion, salons, éditeur de messages, aperçus, espace documentaire adaptatif, tâches/documents/processus liés |
 | `app/voice` | Historique des appels et détail des tours vocaux |
 | `app/dream` | Suivi, historique, indexation des fichiers et actions immédiates sur les nœuds Memory |
 | `app/topic` | Liste, détail et réorganisation des sujets |
 | `app/goal` | Objectifs, arbre, cycles, référents, horaires et suivi |
-| `app/memory` | Liste/recherche unifiée, temporalité et simulation, graphe à branches repliables, fichiers et emplacements, contacts, documents et synthèses distincts, bibliothèque HTML, applications, permissions, dossiers personnels, miniatures WebP et partage |
+| `app/document` | Bibliothèque HTML, résumés partagés, rédaction avec conversation, applications, droits, dossiers personnels, miniatures et partage |
+| `app/memory` | Souvenirs privés, liste/recherche, temporalité et simulation, graphe à branches repliables, fichiers, emplacements et contacts |
 | `app/lab` | Analyse de tâches, jeux synthétiques contextualisés, évaluation par mécanisme, cohérence et revues attribuées |
 | `app/incident` | Incidents, familles et revue |
 | `app/process` | Définitions, exécutions, diagnostic et administration |

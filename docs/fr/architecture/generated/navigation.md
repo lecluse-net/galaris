@@ -12,7 +12,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/llm`
 - Usage : Gestion des fournisseurs, modèles et services IA
-- Visibilité du menu (privilèges) : (LLM_PROVIDER_ACCESS)
+- Visibilité du menu (privilèges) : (LLM_PROVIDER_ACCESS OR LLM_PROVIDER_EDIT OR LLM_MODEL_ACCESS OR LLM_MODEL_EDIT OR LLM_PROFILE_ACCESS OR LLM_PROFILE_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/app/llm/navigation.ts`
 
@@ -20,7 +20,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/agent`
 - Usage : Gestion des agents
-- Visibilité du menu (privilèges) : (AGENT_ACCESS)
+- Visibilité du menu (privilèges) : (AGENT_ACCESS OR AGENT_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/app/agent/navigation.ts`
 
@@ -28,7 +28,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/tools`
 - Usage : Gestion des outils
-- Visibilité du menu (privilèges) : (TOOL_ACCESS)
+- Visibilité du menu (privilèges) : (TOOL_ACCESS OR TOOL_EDIT OR CONNECTION_ACCESS OR CONNECTION_EDIT OR PERMISSION_ACCESS OR PERMISSION_DECIDE OR PERMISSION_REVOKE)
 - Conditions supplémentaires : —
 - Sources : `front/app/tools/navigation.ts`
 
@@ -36,7 +36,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/skill`
 - Usage : Bibliothèque de compétences pour les agents
-- Visibilité du menu (privilèges) : (SKILL_ACCESS)
+- Visibilité du menu (privilèges) : (SKILL_ACCESS OR SKILL_EDIT OR SKILL_ASSIGN)
 - Conditions supplémentaires : —
 - Sources : `front/app/skill/navigation.ts`
 
@@ -52,7 +52,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/goal`
 - Usage : Piloter les objectifs long terme confiés aux agents
-- Visibilité du menu (privilèges) : (GOAL_ACCESS)
+- Visibilité du menu (privilèges) : (GOAL_ACCESS OR GOAL_EDIT OR GOAL_CONFIG_ACCESS OR GOAL_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/app/goal/navigation.ts`
 
@@ -60,7 +60,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/process`
 - Usage : Processus métier et exécutions externes
-- Visibilité du menu (privilèges) : (PROCESS_READ)
+- Visibilité du menu (privilèges) : (PROCESS_READ OR PROCESS_EDIT OR PROCESS_ADMIN)
 - Conditions supplémentaires : —
 - Sources : `front/app/process/navigation.ts`
 
@@ -68,7 +68,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/documents`
 - Usage : Retrouver et classer vos documents accessibles
-- Visibilité du menu (privilèges) : (DOCUMENT_ACCESS)
+- Visibilité du menu (privilèges) : (DOCUMENT_ACCESS OR DOCUMENT_EDIT OR DOCUMENT_ADMIN)
 - Conditions supplémentaires : —
 - Sources : `front/app/document/navigation.ts`
 
@@ -84,7 +84,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/files`
 - Usage : Explorer les fichiers et ressources accessibles à chaque agent
-- Visibilité du menu (privilèges) : (MEMORY_ACCESS)
+- Visibilité du menu (privilèges) : (FILE_ACCESS OR FILE_EDIT OR FILE_INDEX_ACCESS OR FILE_INDEX_RUN)
 - Conditions supplémentaires : —
 - Sources : `front/app/file_share/navigation.ts`
 
@@ -92,7 +92,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/memory`
 - Usage : Conserver, retrouver et gouverner la mémoire durable des agents
-- Visibilité du menu (privilèges) : (MEMORY_ACCESS)
+- Visibilité du menu (privilèges) : (MEMORY_ACCESS OR MEMORY_EDIT OR MEMORY_ADMIN)
 - Conditions supplémentaires : —
 - Sources : `front/app/memory/navigation.ts`
 
@@ -100,7 +100,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/memory/contacts`
 - Usage : Réunir les identités multicanales et leurs souvenirs
-- Visibilité du menu (privilèges) : (MEMORY_ACCESS)
+- Visibilité du menu (privilèges) : (CONTACT_ACCESS OR CONTACT_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/app/memory/navigation.ts`
 
@@ -116,7 +116,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/dashboard`
 - Usage : Vue d’ensemble de l’activité et des performances de Galaris
-- Visibilité du menu (privilèges) : (TASK_ACCESS OR TASK_EDIT)
+- Visibilité du menu (privilèges) : (DASHBOARD_ACCESS)
 - Conditions supplémentaires : —
 - Sources : `front/app/index/navigation.ts`
 
@@ -124,7 +124,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/task`
 - Usage : Suivi des conversation, tâches, appels LLM & processus
-- Visibilité du menu (privilèges) : (TASK_ACCESS)
+- Visibilité du menu (privilèges) : (TASK_ACCESS OR TASK_EDIT OR CONVERSATION_ACCESS OR CONVERSATION_CONTROL OR VOICE_HISTORY_ACCESS OR VOICE_HISTORY_CONTROL OR LLM_CALL_ACCESS OR LLM_CALL_CONTROL OR PROCESS_READ OR PROCESS_ADMIN)
 - Conditions supplémentaires : —
 - Sources : `front/app/task/navigation.ts`
 
@@ -132,15 +132,15 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/dream`
 - Usage : Suivi des travaux en arrière-plan
-- Visibilité du menu (privilèges) : (TASK_ACCESS OR AGENT_MANAGE_ALL)
-- Conditions supplémentaires : —
+- Visibilité du menu (privilèges) : (DREAM_ACCESS)
+- Conditions supplémentaires : monitor.dream: dynamic
 - Sources : `front/app/dream/navigation.ts`
 
 ## Superviser → Journal des mails
 
 - Route : `/connection/mail`
 - Usage : Autorisations et journal des courriels envoyés et reçus par les agents
-- Visibilité du menu (privilèges) : (CONNECTION_ACCESS)
+- Visibilité du menu (privilèges) : (MAIL_ACCESS OR MAIL_EDIT)
 - Conditions supplémentaires : monitor.mailJournal: dynamic
 - Sources : `front/app/connection/navigation.ts`
 
@@ -148,7 +148,15 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/connection/permissions`
 - Usage : Répondez aux demandes en attente et gérez les autorisations permanentes des agents
-- Visibilité du menu (privilèges) : (CONNECTION_ACCESS OR CONNECTION_EDIT)
+- Visibilité du menu (privilèges) : (PERMISSION_ACCESS OR PERMISSION_DECIDE OR PERMISSION_REVOKE)
+- Conditions supplémentaires : —
+- Sources : `front/app/connection/navigation.ts`
+
+## Superviser → Calendriers
+
+- Route : `/connection/calendars`
+- Usage : Consulter et gérer les flux calendaires des agents
+- Visibilité du menu (privilèges) : (CALENDAR_ACCESS OR CALENDAR_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/app/connection/navigation.ts`
 
@@ -164,7 +172,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params`
 - Usage : Configuration guidée de l’application
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`, `front/app/browser/navigation.ts`
 
@@ -172,7 +180,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/system`
 - Usage : Inscriptions, limites d’accès à l’API et diagnostics de l’instance.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (PARAMS_ACCESS OR PARAMS_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -180,7 +188,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/language`
 - Usage : Définissez la langue de repli du système et le lieu utilisé pour contextualiser les réponses des agents.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -188,7 +196,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/messaging`
 - Usage : Configurez tous les canaux que les agents peuvent écouter et utiliser simultanément.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -196,7 +204,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/memory`
 - Usage : Réglez la mémoire de session, le rappel durable et l’acquisition autonome pour tous les drivers.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -204,7 +212,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/dream`
 - Usage : Exécute séquentiellement des travaux d’entretien lorsque Galaris est inactif.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (DREAM_CONFIG_ACCESS OR DREAM_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -212,7 +220,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/voice`
 - Usage : Réglages généraux des appels en temps réel, indépendants du fournisseur.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -220,7 +228,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/audio`
 - Usage : Personnalisez les prompts utilisés pour résumer les transcriptions longues et les sous-titres YouTube.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -228,7 +236,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/processes`
 - Usage : Connectez n8n à Galaris pour exécuter vos processus métier.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -236,7 +244,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/tasks`
 - Usage : Ajustez l’ordonnanceur, la reprise, la planification et les garde-fous des exécutions agentiques.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -244,7 +252,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/harnesses`
 - Usage : Configurez le harnais interne, les harnais managés, les services externes et leurs limites d’exécution.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -252,7 +260,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/search`
 - Usage : Réglages du moteur SearXNG utilisé par les agents.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -260,7 +268,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/browser/settings`
 - Usage : Réglez les délais, l’extraction et les captures du Tool Navigateur. Les changements s’appliquent aux prochaines opérations ; les dimensions par défaut concernent les nouvelles fenêtres.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS OR PARAMS_EDIT)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT)
 - Conditions supplémentaires : admin.params.browser: dynamic
 - Sources : `front/app/browser/navigation.ts`
 
@@ -268,7 +276,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/janus`
 - Usage : Janus expose une API compatible OpenAI. Il propose les agents disponibles puis transmet directement la conversation à l’agent choisi avec son {'@'}code.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -276,7 +284,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/instructions`
 - Usage : Les trois premiers textes Markdown sont ajoutés comme dernier nœud du prompt de leur exécuteur. La politique conversationnelle remplace la règle par défaut commune au texte et à la voix.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -284,7 +292,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/params/logs`
 - Usage : Réglez la conservation des traces et le nettoyage des historiques techniques.
-- Visibilité du menu (privilèges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Visibilité du menu (privilèges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -388,7 +396,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/console/executor`
 - Usage : Exécuteur SSH persistant des agents
-- Visibilité du menu (privilèges) : (CONSOLE_ACCESS)
+- Visibilité du menu (privilèges) : (CONSOLE_ACCESS OR CONSOLE_ADMIN)
 - Conditions supplémentaires : admin.executor: dynamic
 - Sources : `front/app/console/navigation.ts`
 
@@ -396,7 +404,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/user/users`
 - Usage : Gestion des utilisateurs
-- Visibilité du menu (privilèges) : (READ_USER)
+- Visibilité du menu (privilèges) : (READ_USER OR CREATE_USER OR UPDATE_USER OR DELETE_USER)
 - Conditions supplémentaires : —
 - Sources : `front/core/user/navigation.ts`
 
@@ -412,7 +420,7 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 
 - Route : `/authorize`
 - Usage : Gestion des rôles et privilèges
-- Visibilité du menu (privilèges) : (READ_ROLE)
+- Visibilité du menu (privilèges) : (READ_ROLE OR MANAGE_ROLE OR READ_PRIVILEGE OR MANAGE_PRIVILEGE OR READ_ASSIGNMENT OR MANAGE_ASSIGNMENT)
 - Conditions supplémentaires : —
 - Sources : `front/core/authorize/navigation.ts`
 

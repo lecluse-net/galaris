@@ -15,6 +15,7 @@ The following sections detail administration options.
 | Operation | Guide |
 |---|---|
 | Install and update | [Installation](installation.md) |
+| Delegate access and settings by function | [Privileges and roles](privileges.md) |
 | Configure model concurrency | [Provider admission](provider-admission.md) |
 | Configure tools, REST, OAuth and authorizations | [Tool administration](tool-administration.md) |
 | Prepare the Git editor and its access | [Code editor](code-editor.md) |
@@ -402,7 +403,8 @@ soon as a Voice conversation begins.
 The **Dream** page displays its current state, the requested mechanism and subject, phase,
 memories created, retries, errors, and cost in real time.
 Each witness can be opened to view the source Task and the prepared structured output. The
-page is read-only, requires `TASK_ACCESS`, and refreshes its data only while open.
+page is read-only, requires `DREAM_ACCESS` and global Agent management scope, and refreshes
+its data only while open.
 
 The **Memory** page allows selecting an Agent identity and then searching its memories with its
 actual permissions. Its **Search** tab always uses hybrid deep recall, without a local selector.
@@ -717,6 +719,14 @@ It appears whenever the harness is enabled, even with no assigned agents. Its se
 retained when Hermes is disabled. Configure each agent in the **Hermes** tab of its own page;
 an information banner in preferences explains this path.
 
+Instance status, logs and actions use the shared harness management: `AGENT_ACCESS` or
+`AGENT_EDIT` for inspection, and `AGENT_EDIT` for actions, within the user's managed-agent
+scope. Harness Manager diagnostics require `HARNESS_CONFIG_ACCESS` or `HARNESS_CONFIG_EDIT`. The former
+`HERMES_ACCESS` and `HERMES_EDIT` privileges and the `/api/hermes/reachable` and
+`/api/hermes/agents` routes are removed. DbAdmin synchronization deletes these privileges
+and their role grants through `ON DELETE CASCADE`, preserving roles and privilege lists.
+No replacement privileges are granted automatically.
+
 Each Hermes Agent has its own instance, volume, and `<agent.code>-agent` container.
 The generic harness manager is only the control plane for these instances and does not execute
 any Hermes CLI. The historical Kanban transport is explicitly rejected and is no longer used
@@ -822,7 +832,7 @@ remain in their encrypted connections.
 For Nextcloud Talk, configure at least the base URL and incoming mode (`polling` or
 `signaling`). General voice settings are under **Preferences → Voice**.
 
-Built-in Tools are synchronized when the backend starts. Galaris, Conversation, Memory and File
+Built-in Tools are synchronized when the backend starts. Galaris, Conversation, Document, Memory and File
 Sharing retain protected active definitions and connections; humans can configure Enabled,
 Disabled and Ask for their functions. Optional connections can still be enabled or disabled
 per agent in the interface. A driver obtains a native function
@@ -894,10 +904,11 @@ An approval never overrides a connection denial. See the
 [browser network contract](../architecture/flows/browser.md) for domains, ports,
 CIDRs, HTTPS and WebSockets.
 
-**Monitor → Remembered permissions** (`/connection/permissions`) lists questions, decisions,
-agents, responsible users and dates. Filter by agent or answer, then delete a decision to ask
-again on the next attempt. `CONNECTION_ACCESS`/`CONNECTION_EDIT` and the managed-agent scope
-apply; deletion requires `CONNECTION_EDIT`. DbAdmin converges the `permission_decisions` table.
+**Monitor → Permissions** (`/connection/permissions`) groups pending requests and remembered
+grants: questions, decisions, agents, responsible users and dates. Reading uses
+`PERMISSION_ACCESS`, decisions use `PERMISSION_DECIDE`, and revocation uses `PERMISSION_REVOKE`,
+with managed-agent scope and approver checks. Revoking a grant asks again on the next attempt;
+see the [privilege guide](privileges.md). DbAdmin converges the `permission_decisions` table.
 An update also requires rebuilding the `browser-executor` image to activate the new proxy.
 
 The normal text result is an accessible paginated snapshot. Visual captures are split
@@ -913,14 +924,14 @@ connection:
 
 | Technical code | Label | Functions |
 |---|---|---|
-| `goal_management` | Goal management | `goal_create`, `goal_list`, `goal_get`, `goal_update`, `goal_pause`, `goal_resume`, `goal_complete`, `goal_run_now`, `goal_delete` |
-| `skill_management` | Skill management | `skills_list`, `skill_read` |
-| `process_admin` | Process administration | CRUD for definitions and run management for all Agents |
+| `goal_management` | Goal management | `goal_create`, `goal_update`, `goal_pause`, `goal_resume`, `goal_complete`, `goal_delete`; reads through File Sharing |
+| `skills` | Skills | `skills_list`, `skill_read` and administration within local scope |
+| `process_admin` | Process administration | Definition CRUD and run management within locally delegated scope |
 
 After `make update`:
 
 1. open the DRH Agent's connections;
-2. enable **Goal management**, **Skill management**, and, if necessary,
+2. enable **Goal management**, **Skills**, and, if necessary,
    **Process administration** only for this Agent;
 3. leave these connections inactive on the other Agents;
 4. optionally disable certain functions at the connection level, for example
@@ -930,9 +941,13 @@ Activating a connection controls what the model can call. HTTP RBAC controls whi
 users can modify this configuration in the interface: these are two distinct and cumulative
 levels.
 
+Also configure the connection's `tools.management_scope`: activation alone grants no global
+administration. See [delegated scopes](tool-administration.md).
+
 `goal_create` explicitly chooses the owning Agent and a different referring Agent. The
-modification and cycle commands use `expected_revision`, obtained with `goal_get`, to
-prevent concurrent overwrites. `goal_get` also exposes Markdown tracking, the current
+modification and cycle commands use `expected_revision`, obtained through `file_read` on
+`galaris://goal/<uuid>`, to prevent concurrent overwrites. This projection also exposes HTML
+tracking, the current
 Task, verdicts, evidence, errors, costs, and latest cycles. `goal_complete` preserves history and
 stops future cycles; `goal_delete` performs a soft deletion and rejects a Goal
 that still has an unfinished cycle.
@@ -1040,7 +1055,7 @@ update, always verify the administrator role and custom roles. Grant connection-
 privileges carefully: they provide access to modifying secrets, even though the values are not
 returned in clear text.
 
-In **Roles & permissions → Privileges**, twelve default categories are installed on the
+In **Roles & permissions → Privileges**, default categories are installed on the
 first synchronization. Their labels follow the interface language, including within
 roles. Custom categories and renamed categories preserve the entered text. With
 `MANAGE_PRIVILEGE`, you can move privileges and delete a category: its privileges become
@@ -1199,3 +1214,10 @@ The host procedure, security model, and systemd service for the harness manager 
 in [`docs/en/components/harness-manager.md`](../components/harness-manager.md). Hermes-specific
 details remain in
 [`docs/en/components/hermes.md`](../components/hermes.md).
+
+## Delegate functional domains
+
+Contacts, Files, text and voice history, LLM calls, Permissions, models, profiles, harnesses
+and Preferences sections can be delegated separately. The [privilege guide](privileges.md)
+lists current rights, scope checks and the one-time preservation of existing role grants.
+Review them after updating; former broad privileges are not a permanent delegation.

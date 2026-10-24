@@ -333,6 +333,23 @@ séparément des appels explicites `memory_*`.
 
 ## Acquisition, Dream et extraction automatique
 
+La similarité vectorielle présélectionne des candidats de doublon ; à l'acquisition elle ne
+prouve pas leur équivalence. Sans décision affirmative configurée, le nouveau fait est conservé.
+Dream peut proposer `ENRICH` sur un souvenir personnel modifiable : le service conserve son
+texte complet, ses mots-clés, sa temporalité et ses sources, puis ajoute l'information et sa
+provenance avec contrôle de révision. `CONTRADICT` conserve une affirmation distincte et son
+lien ; aucun contenu antérieur n'est déclaré faux ou effacé automatiquement. Les projections
+gérées et les souvenirs d'autres agents ne sont pas enrichissables par ce chemin.
+
+L'extraction couvre les sous-tâches et cycles Goal réussis en conservant chaque producteur.
+Les instructions préparées, délégations et consignes Goal restent attribuées à l'IA ; les
+sources uniquement IA ne créent pas de faits personnels, préférences ou corrections humaines.
+Le refus de capture se propage dans la lignée des tâches. Les preuves d'outils sont distinctes
+des affirmations finales ; les analyses documentaires déjà acquises peuvent être réutilisées
+sans nouvelle analyse, sous contrôle de l'agent, de l'URI, de la version et des droits.
+Voir [0228](../../../../project/decisions/0228-work-discovery-and-memory-continuity.md)
+et [0229](../../../../project/decisions/0229-memory-evidence-and-context-budgets.md).
+
 `memory_sources` est l'association de provenance entre un souvenir et son activité canonique.
 Chaque ligne conserve l'identité extensible `source_kind + source_ref` et porte, selon le cas, une
 clé étrangère typée vers `tasks` ou `conversation_rounds`. Ces deux

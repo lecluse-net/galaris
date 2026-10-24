@@ -12,7 +12,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/llm`
 - Purpose : AI provider, model and service management
-- Menu visibility (privileges) : (LLM_PROVIDER_ACCESS)
+- Menu visibility (privileges) : (LLM_PROVIDER_ACCESS OR LLM_PROVIDER_EDIT OR LLM_MODEL_ACCESS OR LLM_MODEL_EDIT OR LLM_PROFILE_ACCESS OR LLM_PROFILE_EDIT)
 - Additional conditions : —
 - Sources : `front/app/llm/navigation.ts`
 
@@ -20,7 +20,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/agent`
 - Purpose : Agent management
-- Menu visibility (privileges) : (AGENT_ACCESS)
+- Menu visibility (privileges) : (AGENT_ACCESS OR AGENT_EDIT)
 - Additional conditions : —
 - Sources : `front/app/agent/navigation.ts`
 
@@ -28,7 +28,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/tools`
 - Purpose : Tool management
-- Menu visibility (privileges) : (TOOL_ACCESS)
+- Menu visibility (privileges) : (TOOL_ACCESS OR TOOL_EDIT OR CONNECTION_ACCESS OR CONNECTION_EDIT OR PERMISSION_ACCESS OR PERMISSION_DECIDE OR PERMISSION_REVOKE)
 - Additional conditions : —
 - Sources : `front/app/tools/navigation.ts`
 
@@ -36,7 +36,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/skill`
 - Purpose : Knowledge library for agents
-- Menu visibility (privileges) : (SKILL_ACCESS)
+- Menu visibility (privileges) : (SKILL_ACCESS OR SKILL_EDIT OR SKILL_ASSIGN)
 - Additional conditions : —
 - Sources : `front/app/skill/navigation.ts`
 
@@ -52,7 +52,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/goal`
 - Purpose : Supervise long-running objectives assigned to agents
-- Menu visibility (privileges) : (GOAL_ACCESS)
+- Menu visibility (privileges) : (GOAL_ACCESS OR GOAL_EDIT OR GOAL_CONFIG_ACCESS OR GOAL_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/app/goal/navigation.ts`
 
@@ -60,7 +60,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/process`
 - Purpose : Business processes and external runs
-- Menu visibility (privileges) : (PROCESS_READ)
+- Menu visibility (privileges) : (PROCESS_READ OR PROCESS_EDIT OR PROCESS_ADMIN)
 - Additional conditions : —
 - Sources : `front/app/process/navigation.ts`
 
@@ -68,7 +68,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/documents`
 - Purpose : Find and organize your accessible documents
-- Menu visibility (privileges) : (DOCUMENT_ACCESS)
+- Menu visibility (privileges) : (DOCUMENT_ACCESS OR DOCUMENT_EDIT OR DOCUMENT_ADMIN)
 - Additional conditions : —
 - Sources : `front/app/document/navigation.ts`
 
@@ -84,7 +84,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/files`
 - Purpose : Browse files and resources available to each agent
-- Menu visibility (privileges) : (MEMORY_ACCESS)
+- Menu visibility (privileges) : (FILE_ACCESS OR FILE_EDIT OR FILE_INDEX_ACCESS OR FILE_INDEX_RUN)
 - Additional conditions : —
 - Sources : `front/app/file_share/navigation.ts`
 
@@ -92,7 +92,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/memory`
 - Purpose : Store, retrieve, and govern durable agent memory
-- Menu visibility (privileges) : (MEMORY_ACCESS)
+- Menu visibility (privileges) : (MEMORY_ACCESS OR MEMORY_EDIT OR MEMORY_ADMIN)
 - Additional conditions : —
 - Sources : `front/app/memory/navigation.ts`
 
@@ -100,7 +100,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/memory/contacts`
 - Purpose : Unify multichannel identities and their memories
-- Menu visibility (privileges) : (MEMORY_ACCESS)
+- Menu visibility (privileges) : (CONTACT_ACCESS OR CONTACT_EDIT)
 - Additional conditions : —
 - Sources : `front/app/memory/navigation.ts`
 
@@ -116,7 +116,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/dashboard`
 - Purpose : Overview of Galaris activity and performance
-- Menu visibility (privileges) : (TASK_ACCESS OR TASK_EDIT)
+- Menu visibility (privileges) : (DASHBOARD_ACCESS)
 - Additional conditions : —
 - Sources : `front/app/index/navigation.ts`
 
@@ -124,7 +124,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/task`
 - Purpose : Task, text-conversation, phone-call, LLM activity and process tracking
-- Menu visibility (privileges) : (TASK_ACCESS)
+- Menu visibility (privileges) : (TASK_ACCESS OR TASK_EDIT OR CONVERSATION_ACCESS OR CONVERSATION_CONTROL OR VOICE_HISTORY_ACCESS OR VOICE_HISTORY_CONTROL OR LLM_CALL_ACCESS OR LLM_CALL_CONTROL OR PROCESS_READ OR PROCESS_ADMIN)
 - Additional conditions : —
 - Sources : `front/app/task/navigation.ts`
 
@@ -132,15 +132,15 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/dream`
 - Purpose : Track background work
-- Menu visibility (privileges) : (TASK_ACCESS OR AGENT_MANAGE_ALL)
-- Additional conditions : —
+- Menu visibility (privileges) : (DREAM_ACCESS)
+- Additional conditions : monitor.dream: dynamic
 - Sources : `front/app/dream/navigation.ts`
 
 ## Monitor → Mail journal
 
 - Route : `/connection/mail`
 - Purpose : Permissions and journal of emails sent and received by agents
-- Menu visibility (privileges) : (CONNECTION_ACCESS)
+- Menu visibility (privileges) : (MAIL_ACCESS OR MAIL_EDIT)
 - Additional conditions : monitor.mailJournal: dynamic
 - Sources : `front/app/connection/navigation.ts`
 
@@ -148,7 +148,15 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/connection/permissions`
 - Purpose : Answer pending requests and manage permanent agent permissions
-- Menu visibility (privileges) : (CONNECTION_ACCESS OR CONNECTION_EDIT)
+- Menu visibility (privileges) : (PERMISSION_ACCESS OR PERMISSION_DECIDE OR PERMISSION_REVOKE)
+- Additional conditions : —
+- Sources : `front/app/connection/navigation.ts`
+
+## Monitor → Calendars
+
+- Route : `/connection/calendars`
+- Purpose : Read and manage agent calendar feeds
+- Menu visibility (privileges) : (CALENDAR_ACCESS OR CALENDAR_EDIT)
 - Additional conditions : —
 - Sources : `front/app/connection/navigation.ts`
 
@@ -164,7 +172,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params`
 - Purpose : Guided application configuration
-- Menu visibility (privileges) : (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`, `front/app/browser/navigation.ts`
 
@@ -172,7 +180,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/system`
 - Purpose : Registration, instance API access limits and diagnostics.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (PARAMS_ACCESS OR PARAMS_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -180,7 +188,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/language`
 - Purpose : Set the system fallback language and the place used to contextualize agent responses.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -188,7 +196,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/messaging`
 - Purpose : Configure every channel that agents can listen to and use simultaneously.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -196,7 +204,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/memory`
 - Purpose : Configure session memory, durable recall, and autonomous acquisition for every driver.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -204,7 +212,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/dream`
 - Purpose : Runs maintenance mechanisms sequentially while Galaris is idle.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (DREAM_CONFIG_ACCESS OR DREAM_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -212,7 +220,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/voice`
 - Purpose : General real-time call settings independent from a provider.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -220,7 +228,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/audio`
 - Purpose : Customize the prompts used to summarize long transcripts and YouTube captions.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -228,7 +236,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/processes`
 - Purpose : Connect n8n to Galaris to run your business processes.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -236,7 +244,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/tasks`
 - Purpose : Tune scheduling, recovery, planning, and safety limits for agent executions.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -244,7 +252,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/harnesses`
 - Purpose : Configure the internal engine, managed harnesses, external services and their execution limits.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -252,7 +260,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/search`
 - Purpose : Settings for the SearXNG engine used by agents.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -260,7 +268,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/browser/settings`
 - Purpose : Configure Browser Tool timeouts, extraction and screenshots. Changes apply to subsequent operations; default dimensions apply to new windows.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS OR PARAMS_EDIT)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT)
 - Additional conditions : admin.params.browser: dynamic
 - Sources : `front/app/browser/navigation.ts`
 
@@ -268,7 +276,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/janus`
 - Purpose : Janus exposes an OpenAI-compatible API. It lists the available agents, then directly forwards the conversation to the agent selected with its {'@'}code.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -276,7 +284,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/instructions`
 - Purpose : The first three Markdown texts are appended as the final node of their executor prompt. The conversation policy replaces the default rule shared by text and voice.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -284,7 +292,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/params/logs`
 - Purpose : Configure trace retention and technical history cleanup.
-- Menu visibility (privileges) : (PARAMS_ACCESS) AND (PARAMS_ACCESS)
+- Menu visibility (privileges) : (PARAMS_ACCESS OR PARAMS_EDIT OR LANGUAGE_CONFIG_ACCESS OR LANGUAGE_CONFIG_EDIT OR MESSAGING_CONFIG_ACCESS OR MESSAGING_CONFIG_EDIT OR MEMORY_CONFIG_ACCESS OR MEMORY_CONFIG_EDIT OR DREAM_CONFIG_ACCESS OR DREAM_EDIT OR VOICE_CONFIG_ACCESS OR VOICE_CONFIG_EDIT OR AUDIO_CONFIG_ACCESS OR AUDIO_CONFIG_EDIT OR PROCESS_CONFIG_ACCESS OR PROCESS_CONFIG_EDIT OR TASK_CONFIG_ACCESS OR TASK_CONFIG_EDIT OR HARNESS_CONFIG_ACCESS OR HARNESS_CONFIG_EDIT OR SEARCH_CONFIG_ACCESS OR SEARCH_CONFIG_EDIT OR JANUS_CONFIG_ACCESS OR JANUS_CONFIG_EDIT OR INSTRUCTION_CONFIG_ACCESS OR INSTRUCTION_CONFIG_EDIT OR LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT OR BROWSER_CONFIG_ACCESS OR BROWSER_CONFIG_EDIT) AND (LOG_CONFIG_ACCESS OR LOG_CONFIG_EDIT)
 - Additional conditions : —
 - Sources : `front/core/params/navigation.ts`
 
@@ -388,7 +396,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/console/executor`
 - Purpose : Persistent SSH executor for agents
-- Menu visibility (privileges) : (CONSOLE_ACCESS)
+- Menu visibility (privileges) : (CONSOLE_ACCESS OR CONSOLE_ADMIN)
 - Additional conditions : admin.executor: dynamic
 - Sources : `front/app/console/navigation.ts`
 
@@ -396,7 +404,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/user/users`
 - Purpose : User management
-- Menu visibility (privileges) : (READ_USER)
+- Menu visibility (privileges) : (READ_USER OR CREATE_USER OR UPDATE_USER OR DELETE_USER)
 - Additional conditions : —
 - Sources : `front/core/user/navigation.ts`
 
@@ -412,7 +420,7 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 
 - Route : `/authorize`
 - Purpose : Role and privilege management
-- Menu visibility (privileges) : (READ_ROLE)
+- Menu visibility (privileges) : (READ_ROLE OR MANAGE_ROLE OR READ_PRIVILEGE OR MANAGE_PRIVILEGE OR READ_ASSIGNMENT OR MANAGE_ASSIGNMENT)
 - Additional conditions : —
 - Sources : `front/core/authorize/navigation.ts`
 

@@ -159,7 +159,9 @@ revocation invalidates application.
 The read-only routes `/api/dream/overview` and `/api/dream/receipts` expose the scheduler state,
 coverage, and paginated receipt history. The HTTP contract, filters, and
 Dream page expose no mechanism version. Receipt details show its prepared output, its
-cost, its attempts, and its latest error. These routes require `TASK_ACCESS`.
+cost, its attempts, and its latest error. These routes require `DREAM_ACCESS` and global
+agent management. Dream settings separately use `DREAM_CONFIG_ACCESS` or `DREAM_EDIT`;
+file indexing uses `FILE_INDEX_ACCESS` or `FILE_INDEX_RUN`.
 
 The page loads these projections when opened, then listens for `dream.update`
 events from the authenticated websocket. Runtime transitions and terminal receipt changes

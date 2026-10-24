@@ -4,7 +4,8 @@
 
 Le bridge `bridge.mail` adapte une boîte externe aux contrats Tool et Messenger de Galaris.
 L’agent invoque des fonctions MCP bornées sur son unique connexion `mail` active ; le listener
-canonique interroge aussi l’INBOX et admet chaque nouveau courriel comme une tâche dédiée.
+canonique interroge aussi l’INBOX, journalise les en-têtes et admet les courriels autorisés
+comme tâches dédiées après contrôle de `mail_process`.
 
 ```text
 Agent / Tâche
@@ -20,8 +21,10 @@ Agent / Tâche
 Connexion Mail active
    → polling IMAP toutes les poll_interval_s
    → curseur durable UIDVALIDITY + UID dans app.messenger
-   → journal entrant et déduplication canoniques
-   → Tâche immédiate demandant mail_get sur la référence opaque
+   → reçu Mail durable contenant les en-têtes, avant avance du curseur
+   → mail_process : politique de fonction, Contacts exacts et consentement si nécessaire
+   → journal Messenger et déduplication canoniques
+   → Tâche dédiée demandant mail_get sur la référence opaque
 ```
 
 ## Réception et polling
@@ -47,6 +50,16 @@ terminal à l’expéditeur : toute réponse ou mutation exige un appel explicit
 `mail_send`, `mail_move`, `mail_set_flags` ou `mail_trash`.
 
 ## Identité et contenu entrant
+
+`mail_process` possède une frontière d'autorisation préparée. Son défaut accepte les
+expéditeurs déjà présents dans les Contacts de cet agent et demande un accord pour les
+inconnus. Une règle explicite Sur demande exige l'accord pour tous ; Actif accepte tous et
+Bloqué refuse le traitement. Un nom d'affichage ou un contact d'un autre agent ne donne
+aucune confiance. Avant accord, corps et pièces jointes restent sur IMAP ; un refus n'ajoute
+pas de contact et n'admet pas de tâche. La reprise après accord utilise le même reçu et
+revérifie connexion, configuration et identité. L'accord de traitement ne vaut pas accord SMTP.
+La notification privée, Permissions et l'onglet Réception du Journal des mails partagent
+les décisions communes. Voir [0221](../../../../project/decisions/0221-mail-inbound-consent-and-journal.md).
 
 Le schéma MCP de `mail_search` expose `has_attachments=true` pour exiger une pièce jointe,
 et l'omission ou `null` pour ne pas filtrer. `false` est refusé avant IMAP : le bridge
@@ -108,7 +121,7 @@ Chaque mail historique en attente produit aussi un choix `mail_approval` dans un
 Chat interne avec ce responsable. La demande présente les destinataires To/Cc/Bcc, l’objet,
 un aperçu de chaque corps limité à 6 000 caractères et les métadonnées des pièces jointes ;
 le Journal des mails conserve le contenu complet. **Autoriser l’envoi** et **Refuser** appellent
-les mêmes opérations métier que le journal. L’identité, l’utilisateur actif, `CONNECTION_ACCESS`
+les mêmes opérations métier que le journal. L’identité, l’utilisateur actif, `MAIL_EDIT`, `PERMISSION_DECIDE`
 et le périmètre des agents sont vérifiés avant notification et à la décision. Cette validation
 porte sur le MIME préparé, jamais sur une permission mémorisée pour les mails suivants.
 
@@ -167,7 +180,7 @@ Une politique active sans USER actif est refusée
 avant la création du mail. Le Tool n’est pas auto-connecté et reste absent du catalogue d’un agent
 tant qu’un administrateur n’a pas créé et activé sa connexion.
 
-La page `/connection/mail`, protégée par `CONNECTION_ACCESS`, affiche en premier les mails
+La page `/connection/mail`, protégée par `MAIL_ACCESS` ou `MAIL_EDIT`, affiche en premier les mails
 dont l'autorisation commune est en attente ainsi que les anciens `pending_approval`, puis
 tout l’historique. Les deux listes utilisent une pagination serveur bornée
 à 500, un filtre agent et une recherche sur l’agent, l’expéditeur, les destinataires, le sujet et le
@@ -175,4 +188,4 @@ corps. Le détail expose le contenu utile, le reviewer et l’issue SMTP, mais j
 brut. Son entrée de navigation n’est visible que si au moins une connexion Mail active existe ; le
 privilège de page continue d’être vérifié indépendamment. Les routes d’approbation et de rejet
 ajoutent une assertion contextuelle : le USER courant doit être le valideur officiel figé sur le
-mail, en plus de posséder `CONNECTION_ACCESS`.
+mail, en plus de posséder `MAIL_EDIT` et `PERMISSION_DECIDE` dans une session web.

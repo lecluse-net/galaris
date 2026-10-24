@@ -2,6 +2,15 @@
 
 # Assigning and following a Task
 
+**Activities** tabs are independent: Tasks use `TASK_ACCESS`/`TASK_EDIT`, text conversations
+use `CONVERSATION_ACCESS`/`CONVERSATION_CONTROL`, voice uses
+`VOICE_HISTORY_ACCESS`/`VOICE_HISTORY_CONTROL`, LLM calls use `LLM_CALL_ACCESS`/`LLM_CALL_CONTROL`,
+and Processes use `PROCESS_READ`/`PROCESS_ADMIN`. The page opens an authorized tab and adapts
+its actions to the active role. Reading one activity does not open the other histories.
+
+A link to the Tasks tab or a Task retains its target while your permissions are checked.
+Content opens once access is confirmed; unauthorized tabs remain absent.
+
 A Task keeps durable work, its state and its result. This guide explains methods,
 milestones, plans, questions and recovery. To create your first request, follow the
 [user guide](README.md); to find commands, see the [menus and workflows](navigation.md).

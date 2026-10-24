@@ -7,6 +7,116 @@ Il décrit les garanties couvertes par les suites ; leur présence ne signifie p
 ont été exécutées sur votre checkout. Pour choisir une commande et comprendre sa portée,
 consultez la [méthode de test](testing.md).
 
+## Catégories de privilèges par défaut
+
+`core/authorize/tests/test_default_lists.py` vérifie l’installation des rubriques par défaut,
+la reprise des regroupements existants, le rollback et la conservation des renommages,
+déplacements et suppressions après synchronisation, avec refus HTTP pour un lecteur.
+`front/browser-tests/privilege-lists.spec.mjs` couvre les libellés traduits, les textes
+personnalisés, l’édition sans perte de la clé et les groupes dans les rôles, sur mobile et ordinateur.
+`e2e/specs/privilege-categories.spec.mjs` vérifie dans l’application assemblée les
+rubriques installées, l’édition traduite et la création personnalisée après rechargement.
+`app/chat/tests/test_dbadmin.py` vérifie aussi que les contributions Chat et Authorize
+réunies ne recréent ni l’ancienne catégorie Chat ni les affectations retirées. L’ancien test
+imposant ce regroupement propre au Chat est remplacé par cette garantie administrable.
+
+## Domaines fonctionnels RBAC et projection des rôles
+
+`core/authorize/tests/test_domain_authorization.py` exerce les vraies routes avec lecteurs,
+opérateurs, anciens droits seuls et droits voisins : Contacts, indexation, tableau de bord,
+historiques texte/voix, appels/modèles/profils LLM, harnais et permissions. Il vérifie les
+paramètres génériques par clé, Dream et son périmètre global, la provenance des Topics,
+les catalogues minimaux, les URI de fichiers et le refus de réactiver avec le seul droit
+de révocation. `test_guard_policy_parameters.py` couvre les substitutions de politique par
+requête, JSON et formulaire, avec chemins et paramètres serveur autoritaires.
+
+`test_domain_projection.py` vérifie la correspondance explicite des anciens grants,
+l'initialisation unique, les nouveaux rôles, le rollback et les révocations conservées.
+`test_reference_labels.py` couvre aussi la suppression d'un privilège et la cascade de ses
+grants, sans suppression du rôle ni de la liste. Le scénario HTTP des fichiers gérés conserve
+la lecture d'une pièce jointe Document et d'un Dataset après retrait des droits Files.
+Le parcours Contacts utilise désormais `CONTACT_*` : l'ancienne assertion de source imposant
+le réemploi de Memory est retirée au profit des refus HTTP des anciens droits seuls.
+L'oubli d'un contact exige aussi `MEMORY_EDIT`, car il efface les souvenirs liés ; le
+parcours HTTP vérifie le refus avec Contacts seul puis l'effet avec les deux droits.
+
+`domain-access.spec.mjs` vérifie les onglets et requêtes permis, les changements de rôle,
+les permissions sans administration des connexions et l'indexation sans Dream/Files sur
+ordinateur et mobile. `agent-selection.spec.mjs` conserve sélection, réouverture et changement
+de session. `e2e/specs/rbac-domains.spec.mjs` connecte un rôle Contacts seul à l'application
+assemblée, crée un contact, le retrouve après rechargement et vérifie les refus Memory,
+catalogue Agent et agent étranger sur ordinateur/mobile. Les données sont entièrement fictives.
+Le même parcours refuse les requêtes API de domaines non autorisés dans l'interface globale.
+`front/scripts/navigation-context.test.mjs` vérifie aussi que les droits générés des paramètres
+figurent dans les deux cartes documentaires, tout en refusant les imports non examinés.
+`app/chat/availability.test.mjs` vérifie que les sondes Chat/Mail attendent les droits et
+ignorent les réponses tardives après révocation ; le scénario navigateur des notifications
+vérifie le démarrage après attribution de Chat et l'arrêt après retrait.
+
+## Lectures groupées des catalogues et retrait des fichiers
+
+`app/tools/tests/test_catalog_sql_budget.py` borne les lectures du catalogue délégué
+à 10, 50 et 500 Tools et conserve ordre, pagination, recherche Unicode, masquage des
+secrets et configuration courante après une écriture indépendante. Les tests AgentAdmin
+et `e2e/specs/agent-admin.spec.mjs` vérifient les cibles autorisées et le refus après révocation.
+Une page de dix Tools conserve un budget d'allocations Python avec 0 ou 500 configurations
+volumineuses non affichées ; les consommateurs sans projection retrouvent ensuite leur
+configuration complète dans la même session.
+La page de métadonnées ToolAdmin garde aussi ce budget à 10 et 500 éléments malgré
+des descriptions privées volumineuses ; ouvrir ensuite le détail restitue sa configuration
+complète avec les secrets masqués. Les filtres et révocations restent couverts par
+`app/tools/tests/test_tool_admin.py` et le parcours ToolAdmin ordinateur/mobile.
+
+`core/storage/tests/test_lifecycle.py` exerce le retrait de 10, 100 et 1 001 références,
+le partage, le rollback, les octets conservés avant commit et la reprise du purgeur.
+Deux sessions PostgreSQL vérifient qu'un enregistrement concurrent attend le verrou du
+retrait, réussit après rollback et refuse une identité retirée après commit.
+`app/file_share/tests/test_managed_http.py` utilise les routes et privilèges Documents
+actuels pour atteindre aussi les refus et la suppression des fichiers indépendants ;
+`e2e/specs/file-browser.spec.mjs` exerce cette suppression sur ordinateur et mobile.
+
+`app/contact/tests/test_service.py` borne la recherche sans route joignable à une
+lecture de connexions, avec 0 ou 501 contacts canoniques conservés. Le parcours réel
+active ensuite le Chat et retrouve son humain sans conserver le résultat vide.
+Les tests existants conservent filtrage des bots, fusion multicanal, ordre et route exacte.
+Les cas non vides à 0, 501 et 2 001 contacts sans rapport bornent aussi les lectures
+canoniques et le travail PostgreSQL, en conservant nom canonique, route et propriétaire.
+Les filtres d'identités sont exacts et sélectionnent leur union ; une collection vide
+explicite ne parcourt pas l'annuaire. Les cas de 501 et 1 001 routes conservent chaque
+destinataire après découpage, et une réouverture relit le nom modifié.
+
+## Lectures natives des Documents
+
+`app/document/tests/test_document_read_performance.py` borne la résolution d'un pointeur
+natif à une lecture SQL, après les contrôles de droits de son consommateur. Les scénarios
+préservent la priorité contenu/révision/révision de résumé/résumé, les valeurs nulles,
+les textes vides et Unicode, les providers externes et les archives. Une ligne en attente
+ne doit pas être publiée par autoflush. Les écritures locales non validées restent lisibles
+sans SQL ; un rollback retrouve les octets validés. Deux sessions indépendantes vérifient
+la fraîcheur après commit et l'absence de mélange entre pointeurs lors de lectures concurrentes.
+Les parcours Document/Memory et Storage existants conservent historique, restauration,
+repli sur fichier et refus après révocation ; l'E2E de partage Document exerce aussi la
+réouverture mobile et les droits de modification sans droit de repartage.
+
+## Démarrage frontend et lecteurs différés
+
+`scripts/report-build.mjs` borne le graphe initial gzip à 460 000 octets en anglais
+et 600 000 en français ou chinois, catalogue sélectionné inclus. Son test vérifie le
+comptage des assets partagés et le refus indépendant des trois dépassements.
+Le volume du précache PWA reste distinct du démarrage.
+
+`presentation.spec.mjs`, `context-help.spec.mjs` et `business-references.spec.mjs` couvrent
+les consommateurs de la façade utilitaire : langues et thèmes, aide persistée, formats
+et modales des références métier. `attachment-previews.spec.mjs` retarde le vrai module
+du lecteur Memory : ouverture froide, changement de contexte pendant l'attente,
+téléchargement Office, réouverture et libération du chargement après deux imports refusés.
+Les aperçus existants conservent aussi les retries de données, les réponses tardives et
+le renommage. `localization.spec.mjs` vérifie le vrai bootstrap de production : libellé
+de connexion et langue HTML restent cohérents après installation de Quasar en EN/FR/ZH.
+Le parcours E2E `business-references.spec.mjs` conserve l'onglet Tâches et le lien direct
+vers une tâche pendant le chargement des droits ; `domain-access.spec.mjs` conserve
+les refus et l'absence de requêtes des domaines non autorisés.
+
 ## Qualification d'une équipe avec de vrais modèles
 
 `tests/test_agent_team_recovery.py` vérifie le bootstrap sans réinitialisation, le refus d'une
@@ -37,20 +147,7 @@ de file. Les pauses humaines, annulations et checkpoints incompatibles conserven
 la contribution et la consigne, avant reprise de la synthèse. Les tests d'admission et de ressources
 conversationnelles couvrent le reçu et l'audit des instructions en attente ou appliquées.
 
-## Catégories de privilèges par défaut
-
-`core/authorize/tests/test_default_lists.py` vérifie l’installation des rubriques par défaut,
-la reprise des regroupements existants, le rollback et la conservation des renommages,
-déplacements et suppressions après synchronisation, avec refus HTTP pour un lecteur.
-`front/browser-tests/privilege-lists.spec.mjs` couvre les libellés traduits, les textes
-personnalisés, l’édition sans perte de la clé et les groupes dans les rôles, sur mobile et ordinateur.
-`e2e/specs/privilege-categories.spec.mjs` vérifie dans l’application assemblée les douze
-rubriques installées, l’édition traduite et la création personnalisée après rechargement.
-`app/chat/tests/test_dbadmin.py` vérifie aussi que les contributions Chat et Authorize
-réunies ne recréent ni l’ancienne catégorie Chat ni les affectations retirées. L’ancien test
-imposant ce regroupement propre au Chat est remplacé par cette garantie administrable.
-
-## Compétences personnelles
+## Compétences personnelles, étalonnage du Lab et sources XLS
 
 Les mutations humaines des compétences personnelles sont couvertes par
 `app/skill/tests/test_agent_reads.py` (droits, périmètre, révisions, contenu, activation
@@ -490,6 +587,22 @@ d'exécutions et de définitions ainsi que le rétablissement des paramètres de
 après commit et rollback. Les tests de permissions des processus conservent les refus,
 les partages et l'exclusion des définitions orphelines ; l'optimisation du filtre d'accès
 retire les branches de dossiers et de pièces jointes inutiles à ces listes.
+La même suite borne à trois les lectures SQL des pages de 10, 50 et 500 résumés liés
+aux Tasks/runs autorisés, sans charger les traces et l'état privé d'exécution. Elle
+préserve les JSON métier complets, l'ordre, les libellés archivés et les données stockées,
+compare les changements tardifs à la lecture détaillée et relit un résultat validé par
+une session indépendante. Le parcours E2E du catalogue vérifie aussi les cinq résumés
+de l'API générale avant et après réouverture. Les contrôles MCP et HTTP existants
+conservent les refus après révocation ; leurs vérifications de droits restent actives.
+Le même budget couvre le handler de liste générale : la sélection omet ses cinq JSON
+privés, tout en conservant les entrées/sorties publiques et en excluant un lanceur hors
+périmètre. Les neuf filtres sont exercés avec et sans projection. Une lecture détaillée
+puis un consommateur complet dans la même session retrouvent l'état privé conservé.
+`test_router_scope.py` vérifie aussi les refus HTTP de cette liste sans session ou sans droit.
+
+Le scénario HTTP de contenu dans `app/topic/tests/test_service.py` traverse réellement
+la résolution asynchrone des privilèges par domaine et la réouverture du même sujet.
+Il complète les tests de service qui ne passent pas par ce handler.
 `test_catalogue.py` protège la pagination commune au-delà de 500 définitions, les recherches
 littérales et les archives, les droits distincts des runs natifs et externes, les attentes
 humaines et le nombre borné de lectures SQL. La mesure de transfert compare l’ancienne liste
@@ -1320,6 +1433,37 @@ atteint les exécuteurs tâche, texte et voix, même avec une personnalité pers
 compétence chargée. Cette preuve porte sur la transmission des consignes ; elle ne mesure pas la
 qualité éditoriale d'un modèle après plusieurs mises à jour du même document.
 
+`back/app/lab/tests/test_executor_outcomes.py` protège les effets utiles : inventaire effectif,
+arguments natifs valides, reçus correspondant aux appels, refus d'écriture, ordre causal,
+révision et contributions conservées, valeurs JSON exactes et absence de création superflue.
+Un scénario avec base et SDK réels impose un verdict d'échec malgré un juge à 100 % lorsque
+l'effet demandé manque. `test_reference_corpus.py` importe et relit les 24 cas synthétiques
+FR/EN et six contrôles de décision par les contrats HTTP authentifiés. Ces contrôles
+distinguent choix humain indécidé, décision déjà enregistrée et fait à lire avant de poser
+la question ; `test_synthetic_datasets.py` préserve la génération.
+Huit scénarios de transfert ajoutent des formulations inédites et un préalable indisponible ;
+deux cas de reprise préservent une réponse humaine reçue après l'ancien suivi.
+L'import conserve `goal_referrer_type` ; les cas tâche explicitement liés à une Goal reçoivent
+son contrat de cycle, sans l'injecter dans les autres tâches, la conversation ou la voix.
+`app/goal/tests/test_goal_runner.py` protège aussi sa transmission aux tâches réelles avec
+référent humain ou agent ; `test_referrer_wait.py` exerce l'attente, le rappel et la reprise.
+`test_complete_referrer_journey.py` traverse sur PostgreSQL isolé la création de Goal,
+le scheduler, le dispatcher, le harness interne, les outils MCP natifs, le journal du Chat,
+la réponse humaine et le jugement final. Seul le HTTP fournisseur du modèle est simulé ;
+les inférences et leurs appels comptabilisés restent réels. Les cas FR/EN couvrent une
+réponse immédiate, une réponse après rappel et pause, et un droit de question révoqué
+après annonce de l'outil. Un quatrième parcours traite une confirmation soumise à
+autorisation : refus d'un tiers, consentement du responsable, worker de réconciliation,
+reprise du checkpoint et envoi unique. Un cinquième lit la révision du Goal par `file_read`,
+reprend après consentement pour modifier son suivi et vérifie l'écriture avant jugement.
+L'agent est créé par son service normal, avec ses connexions obligatoires.
+Ils contrôlent les effets persistés : rejet d'un tiers, réponse
+dupliquée admise une seule fois, pas de clôture pendant l'attente, un rappel maximum,
+aucun document hors description/suivi et aucun nouveau cycle après réalisation du Goal.
+Ce test ne mesure pas le choix spontané d'un modèle et n'exerce pas le navigateur.
+Le [protocole de comparaison](lab-reference-corpus.md) distingue ces garanties du comportement
+du modèle et de la qualité sémantique.
+
 Les fichiers `test_*.py` ci-dessous se trouvent sous `back/app/<module>/tests/`, sauf chemin
 explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 
@@ -1345,6 +1489,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | Caches client et avatars | Mutualiser cinquante bulles et les écrans consommateurs ; borner taille et durée ; séparer les endpoints autorisés ; invalider après mutation/session ; préserver les autres lecteurs après annulation ; mutualiser les sélecteurs sans conserver les listes | `front/browser-tests/chat-avatars.spec.mjs`, `front/browser-tests/avatar-cache.spec.mjs`, `front/core/util/sessionReadCache.test.mjs` |
 | Lectures et PJ du chat | Mutualiser les acquittements, avancer vers le dernier message visible sans parallélisme, permettre le réessai et isoler les sélections/sessions ; différer les PJ hors écran, partager deux transferts, conserver les aperçus chargés, annuler les anciens contextes et préserver ouverture, téléchargement et réessai | `front/app/chat/storeCatchUp.test.mjs`, `front/browser-tests/attachment-previews.spec.mjs` |
 | Récupération des envois du chat | Conserver texte et PJ après coupure, réessayer un envoi inchangé avec la même identité et les mêmes URI de PJ, accepter un reçu canonique malgré la perte de réponse HTTP ; libérer la saisie après le POST sans attendre le rafraîchissement et préserver un nouveau brouillon ou une autre conversation lors d’un reçu tardif | `front/browser-tests/chat-recovery.spec.mjs`, `front/browser-tests/chat.spec.mjs`, `back/app/messenger/tests/test_journal.py` |
+| Premier message en attente | Afficher immédiatement le premier message et ses liens ; conserver son identifiant temporaire côté client, puis charger Documents, Tasks, Process et aperçus avec l'identifiant persistant après réception du reçu, sans doublon | `front/browser-tests/chat-recovery.spec.mjs`, `e2e/specs/chat.spec.mjs` |
 | Coût du fil de chat | Une rafale d’activité ne recharge pas la liste des conversations, mais une invalidation de message concurrente et une reconnexion le font ; les dates partagent leur formateur par langue ; les longs textes préservent Unicode, liens et code sans créer un nœud par caractère | `front/app/chat/storeCatchUp.test.mjs`, `front/browser-tests/chat-recovery.spec.mjs`, `front/browser-tests/presentation.spec.mjs` |
 | Sélection des agents | Trier les réponses API par prénom puis nom avant pagination, conserver les droits ; reprendre le dernier choix non nul entre Mémoire et Contacts et dans le sélecteur partagé, sans remplacer un choix explicite ni restaurer un agent indisponible ; effacer la préférence au changement de session | `back/app/agent/tests/test_agents.py`, `test_selection.py`, `front/browser-tests/agent-selection.spec.mjs`, `select-lifecycle.spec.mjs` |
 | Catalogues partagés | Réutiliser agents, titres, groupes et paramètres entre ouvertures ; relire après F5, expiration, sauvegarde ou rafraîchissement forcé ; isoler les brouillons et ignorer les réponses supplantées | `front/browser-tests/agents.spec.mjs`, `front/app/agent/agentStore.test.mjs`, `front/app/agent/services/agentService.test.mjs`, `front/core/params/paramsStore.test.mjs` |
@@ -1368,7 +1513,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | Temporalité mémoire | Dates partielles dans le fuseau global Galaris et changements d'heure ; nettoyage des anciens fuseaux sans perte de dates, d'historique ni d'acquisition ; correction, droits et portée contact ; contexte sans requête, pagination et budget ; recherche à date cible combinée aux filtres, parcours HTTP et refus d'accès ; filtre obligatoire dès la première recherche, saisie et affichage indépendants du fuseau du navigateur, reprise après erreur sur mobile/bureau | `back/app/memory/tests/test_temporal.py`, `back/app/memory/tests/test_browse_filters.py`, `front/browser-tests/memory.spec.mjs`, `e2e/specs/memory-temporal.spec.mjs` |
 | Miniatures des documents | Réutiliser l’instantané d’impression et ses images pour la première page entière ; produire un WebP sans perte de 320 × 320 maximum, avec proportions conservées ; enregistrer `Document.thumbnail_id` et conserver un seul fichier courant, sans JSON ni historique de miniatures ; nettoyer les anciens caches ; invalider le pointeur après modification et refuser les captures tardives ; revérifier les droits sans relire le contenu ni l’historique ; différer les aperçus hors écran, borner les chargements et annuler les travaux obsolètes sans empêcher l’ouverture du document | `back/core/preview/tests/test_thumbnails.py`, `back/app/memory/tests/test_document_thumbnails.py`, `front/browser-tests/document-thumbnails.spec.mjs`, `front/core/util/previewQueue.test.mjs`, `browser-executor/pdf.test.mjs` |
 | Miniatures Office et tableurs | Convertir la première page des fichiers Office et la première page imprimée des tableurs ; éviter OCR et extraction analytique ; séparer les checkpoints de l’analyse complète ; préserver l’original, les droits et le cache partagé ; reprendre après échec et nettoyer les temporaires après annulation ; afficher et télécharger sur desktop et mobile, y compris après réouverture ; proposer uniquement le téléchargement de l’original sans plein écran pour les formats sans lecteur, dans les pièces jointes, fichiers indexés et discussions | `back/app/memory/tests/test_document_thumbnails.py`, `front/browser-tests/document-thumbnails.spec.mjs`, `attachment-previews.spec.mjs`, `e2e/specs/office-thumbnails.spec.mjs` |
-| `contact` | Périmètre agent et `MEMORY_EDIT` ; nom unique, regroupement par sélection/fusion et scission atomique sans suppression d’identité, avec conservation de l’historique ; création de contacts mail indépendants des utilisateurs/agents, validation et doublons concurrents ; rollback des projections lors d’une erreur de scission ; rejet du rattachement direct par API ; Chat interne représenté uniquement par l’utilisateur Galaris et nettoyage idempotent ; brouillon, annulation, reprise et réponses tardives sur mobile/bureau | `test_service.py`, `test_router.py`, `app/memory/tests/test_messenger_contact.py`, `app/memory/tests/test_source_projection.py`, `front/browser-tests/contacts.spec.mjs` |
+| `contact` | Périmètre agent et `CONTACT_EDIT` (oubli : aussi `MEMORY_EDIT`) ; nom unique, regroupement par sélection/fusion et scission atomique sans suppression d’identité, avec conservation de l’historique ; création de contacts mail indépendants des utilisateurs/agents, validation et doublons concurrents ; rollback des projections lors d’une erreur de scission ; rejet du rattachement direct par API ; Chat interne représenté uniquement par l’utilisateur Galaris et nettoyage idempotent ; brouillon, annulation, reprise et réponses tardives sur mobile/bureau | `test_service.py`, `test_router.py`, `app/memory/tests/test_messenger_contact.py`, `app/memory/tests/test_source_projection.py`, `front/browser-tests/contacts.spec.mjs` |
 | `topic` | Classer et retrouver les sujets, rechercher au-delà de la première page, ignorer les réponses obsolètes | `test_service.py`, `test_router.py`, `test_sequential_detection.py`, `topics.spec.mjs` |
 | `dream` | Extraire/relier des connaissances sans réécrire le contenu existant, reprendre les traitements | `test_memory_extraction.py`, `test_claim_timeout.py`, `test_skill_learning.py` |
 | `skill` | Créer/lire une procédure, préserver fichiers et permissions ; MCP réel, isolation/budgets et homonymes ; portée locale de connexion usage/personal/team/all, union des équipes et révocation, délégation humaine protégée et sauvegarde atomique ; migration, conversion rejouable et reprise après panne ; consultation humaine | `test_service.py`, `test_storage.py`, `test_learning.py`, `test_personal_packages.py`, `test_agent_reads.py`, `test_mcp.py`, `test_lifecycle.py`, `test_projection.py`, `skills.spec.mjs`, `tool-parameters.spec.mjs` |
@@ -1455,6 +1600,15 @@ erreur et conservation des brouillons, y compris du JSON invalide. Le test Postg
 un ancien reçu Dream, sans nouvelle révision de contenu.
 `e2e/specs/resource-topics.spec.mjs` vérifie l'affectation depuis les deux éditeurs dans
 l'application assemblée, la persistance après rechargement et les ressources listées dans le sujet.
+Il vérifie aussi les coûts et appels LLM de deux mois, leur infobulle et leur relecture
+après rechargement. `app/topic/tests/test_usage_attribution.py` protège les priorités
+distinctes de sujet et d'agent, les références archivées/supprimées, les connexions
+désactivées et les mois disponibles. Son budget porte sur les blocs PostgreSQL consultés
+par les métriques d'un historique synthétique de 1 201 appels ; il n'impose pas de délai fragile.
+`tests/test_resource_creation_contracts.py` détecte les constructeurs Memory qui demandent
+encore un ancien type Document dans les sources et fixtures, en conservant les alias
+Document et les tests de rejet explicites. Les parcours de relations utilisent le contrat
+Document actuel afin d'atteindre leurs assertions de droits et de contenu.
 `front/browser-tests/room-discussion.spec.mjs` couvre le calage initial et à la réouverture,
 le chargement automatique en haut avec conservation de la position, l’actualisation en bas,
 la flèche de retour aux derniers messages, les requêtes bornées, les erreurs et les changements
@@ -1501,7 +1655,7 @@ installation existante après actualisation du WebAPK.
 |---|---|---|
 | `core.user` | Connexion, MFA, renouvellement concurrent, révocation et dernier administrateur | `back/core/user/tests/test_user_flow.py`, `test_refresh_concurrency.py`, `test_admin_invariants.py`, `e2e/specs/session-races.spec.mjs` |
 | Inscription publique | Premier compte administrateur unique même en concurrence ; inscriptions suivantes fermées par défaut et réglables sans octroyer de droits ; page fermée, erreurs réseau et réponses tardives | `back/core/user/tests/test_registration_policy.py`, `back/core/params/tests/test_runtime_preferences.py`, `front/browser-tests/registration.spec.mjs` |
-| `core.authorize` | Les droits du router et des ressources refusent réellement les accès | `back/core/authorize/tests/test_route_security.py`, `test_resource_rules.py`, `test_assertions.py` |
+| `core.authorize` | Les droits du router et des ressources refusent réellement les accès ; JSON, query et formulaire ne peuvent remplacer les règles serveur ni les identités du chemin, y compris pour la création de credentials MCP | `back/core/authorize/tests/test_route_security.py`, `test_resource_rules.py`, `test_assertions.py`, `test_guard_policy_parameters.py` |
 | `core.params` | Conserver une personnalisation ou adopter explicitement un nouveau défaut ; retrouver tous les réglages après dépliage, préserver les brouillons et les droits dans les préférences sur ordinateur et mobile | `back/core/params/tests/test_services.py`, `test_dbadmin.py`, `front/browser-tests/preferences.spec.mjs`, `params-layout.spec.mjs` |
 | `core.dbadmin` | Converger sans perte de données ; reprendre, respecter dépendances et contributions indépendantes ; contrôler les enums avant nettoyage, préserver défauts/propriétaires/droits, annuler le lot et reprendre après interruption ou expiration d'un verrou | `back/core/dbadmin/tests/test_postgresql_transitions.py`, `test_enum_safety.py`, `test_actions.py`, `test_registry.py`, `make tests-upgrade` |
 | Civilités initiales | Peupler une base neuve une seule fois ; préserver ensuite renommages, genres, ajouts et suppressions, même de toutes les lignes | `back/app/agent/tests/test_dbadmin.py` |

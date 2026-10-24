@@ -2,6 +2,15 @@
 
 # Confier et suivre une tâche
 
+Les onglets d’**Activités** sont indépendants : les tâches utilisent `TASK_ACCESS`/`TASK_EDIT`,
+les conversations texte `CONVERSATION_ACCESS`/`CONVERSATION_CONTROL`, la voix
+`VOICE_HISTORY_ACCESS`/`VOICE_HISTORY_CONTROL`, les appels LLM `LLM_CALL_ACCESS`/`LLM_CALL_CONTROL`
+et les processus `PROCESS_READ`/`PROCESS_ADMIN`. L’écran ouvre un onglet autorisé et adapte
+ses commandes au rôle actif. Consulter une activité ne donne pas accès aux autres historiques.
+
+Un lien vers l'onglet Tâches ou une tâche conserve sa cible pendant la vérification de vos
+droits. Le contenu s'ouvre lorsque l'accès est confirmé ; les onglets non autorisés restent absents.
+
 Une tâche conserve un travail durable, son état et son résultat. Ce guide explique le choix
 de méthode, les jalons, les plans, les questions et la reprise. Pour créer votre première
 demande, suivre le [guide utilisateur](README.md) ; pour trouver les commandes, consulter

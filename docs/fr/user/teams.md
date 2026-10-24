@@ -3,8 +3,8 @@
 # Équipes et autorisations de dialogue
 
 Une **équipe** réunit des utilisateurs humains et des agents. Chacun peut appartenir à
-plusieurs équipes. Deux membres partageant une équipe peuvent dialoguer via les canaux
-disponibles, sans règle supplémentaire.
+plusieurs équipes. Une équipe commune ouvre le dialogue humain-agent selon les droits du
+canal. Les échanges entre agents suivent aussi la portée locale de leur connexion de messagerie.
 
 ## Composer une équipe
 
@@ -23,8 +23,8 @@ Partager une équipe ne permet pas d’administrer
 un agent, de se faire passer pour lui ni de lire les conversations d’autres humains.
 
 Les tâches sont administrées par leur agent, ses managers et les administrateurs globaux.
-Un agent équipé d’une connexion active **Galaris Admin** peut intervenir sur les tâches de
-tous les agents. Le demandeur d’une délégation peut en consulter le résultat sans obtenir
+Un agent équipé d’une connexion active **Galaris Admin** peut intervenir sur les tâches des
+agents de sa portée déléguée ; seule `all` ouvre la portée globale. Le demandeur d’une délégation peut en consulter le résultat sans obtenir
 la gestion des autres tâches du destinataire.
 
 Les sélecteurs proposent les agents autorisés pour l’action : agents administrables dans
@@ -33,10 +33,14 @@ la composition d’équipe. Leurs choix sont revérifiés à l’ouverture.
 
 ## Qui peut communiquer ?
 
-Le chat repose uniquement sur une équipe commune, le manager de l’agent ou l’accès
+Le dialogue humain-agent repose sur une équipe commune, le manager de l’agent ou l’accès
 administrateur (`AGENT_MANAGE_ALL`). Il n’y a aucun réglage « Hériter / Autoriser / Refuser »
 pour les échanges hors équipe. Un accès ne se propage jamais par un troisième membre.
-Deux agents doivent partager une équipe pour communiquer entre eux.
+Pour les échanges entre agents, **Outils & connexions → Connexions → Communication inter-agents**
+propose `none` (aucun), `team` (équipes communes, défaut) ou `all` (autres agents actifs).
+Ce paramètre local `tools.management_scope`, réservé au gestionnaire humain global, est
+revérifié à chaque échange. Les connexions de l'émetteur et du destinataire restent contrôlées.
+Il ne modifie pas les droits de contact humain ni les droits documentaires.
 
 Les documents conservent leur partage plus fin : accès individuels ou par équipe,
 avec distinction entre lecture et modification. Partager une équipe pour le chat ne
@@ -52,7 +56,9 @@ L’historique personnel reste disponible ; une tâche déjà admise n’est pas
 Les préférences personnelles et les documents conservent leurs règles d’accès propres.
 
 Un contact externe doit être rattaché à une identité Galaris vérifiée pour solliciter un agent,
-y compris par message asynchrone. Une permission n’active pas de nouveau canal : le Chat
+y compris par message asynchrone. Le Mail possède sa procédure distincte de Contacts et de
+consentement avant admission, décrite dans le [Journal des mails](tasks.md).
+Une permission n’active pas de nouveau canal : le Chat
 natif reste humain ↔ agent. Les délégations de tâches entre agents respectent aussi ces droits.
 
 ## Privilèges

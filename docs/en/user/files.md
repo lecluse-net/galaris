@@ -2,6 +2,13 @@
 
 # Browse an agent’s files
 
+**Files** requires `FILE_ACCESS` or `FILE_EDIT`; the latter also permits file mutations.
+Documents, Datasets and memories retain their own privileges: Files access does not open
+them, and reading an attachment through its domain does not require global Files access.
+Agent scopes and resource ACLs still apply. The **Indexing** tab separately requires
+`FILE_INDEX_ACCESS` or `FILE_INDEX_RUN`; the latter permits starting, cancelling and repairing
+indexing runs. Dream access is not required.
+
 When deletion is confirmed, or indexing detects that an external file has disappeared,
 its linked Memory item is deleted with its content and indexes if no other resource
 URI remains. An outage or access denial does not trigger erasure. An item shared

@@ -16,6 +16,7 @@ Les sections suivantes détaillent les options d’administration.
 | Opération | Guide |
 |---|---|
 | Installer et mettre à jour | [Installation](installation.md) |
+| Déléguer les accès et les réglages par fonction | [Privilèges et rôles](privileges.md) |
 | Régler la concurrence des modèles | [Admission des fournisseurs](provider-admission.md) |
 | Configurer les outils, REST, OAuth et autorisations | [Administration des outils](tool-administration.md) |
 | Préparer l'éditeur Git et ses accès | [Éditeur de code](code-editor.md) |
@@ -413,7 +414,8 @@ conversation Voice commence.
 La page **Dream** montre en temps réel son état courant, le mécanisme et le sujet réclamés, la phase,
 les souvenirs créés, les reprises, les erreurs et le coût.
 Chaque témoin peut être ouvert pour consulter la tâche source et la sortie structurée préparée. La
-page est en lecture seule, exige `TASK_ACCESS` et ne rafraîchit ses données que lorsqu'elle est
+page est en lecture seule, exige `DREAM_ACCESS` et un périmètre de gestion global des agents,
+et ne rafraîchit ses données que lorsqu'elle est
 ouverte.
 
 La page **Mémoire** permet de choisir l'identité d'un agent puis de rechercher ses souvenirs avec
@@ -739,6 +741,14 @@ défaut. Elle apparaît lorsque le harnais est activé, même si aucun agent ne 
 Ses réglages sont conservés lors d’une désactivation. Pour configurer un agent, ouvrez sa
 fiche puis son onglet **Hermès** ; un bandeau rappelle ce chemin dans les préférences.
 
+L’état, les journaux et les actions de l’instance utilisent la gestion commune des harnais :
+`AGENT_ACCESS` ou `AGENT_EDIT` pour consulter, `AGENT_EDIT` pour agir, dans le périmètre des
+agents gérés par l’utilisateur. Le diagnostic du Harness Manager demande `HARNESS_CONFIG_ACCESS` ou
+`HARNESS_CONFIG_EDIT`. Les anciens privilèges `HERMES_ACCESS` et `HERMES_EDIT`, ainsi que les routes
+`/api/hermes/reachable` et `/api/hermes/agents`, sont supprimés. La synchronisation DbAdmin
+retire ces privilèges et leurs associations aux rôles par `ON DELETE CASCADE`, sans supprimer
+les rôles ni les listes de privilèges. Aucun report automatique vers d’autres droits n’est effectué.
+
 Chaque agent Hermès possède une instance, un volume et un conteneur `<agent.code>-agent` propres.
 Le harness manager générique est seulement le plan de contrôle de ces instances et n’exécute
 aucune CLI Hermès. Le transport Kanban historique est explicitement refusé et n’est plus utilisé
@@ -845,7 +855,7 @@ restent dans leurs connexions chiffrées.
 Pour Nextcloud Talk, configurez au minimum l’URL de base et le mode entrant (`polling` ou
 `signaling`). Les réglages généraux de voix se trouvent dans **Préférences → Voix**.
 
-Les outils intégrés sont synchronisés au démarrage du backend. Galaris, Conversation, Memory
+Les outils intégrés sont synchronisés au démarrage du backend. Galaris, Conversation, Document, Memory
 et File Sharing gardent leurs définitions et connexions actives protégées ; un humain peut
 configurer les modes Actif, Bloqué et Sur demande de leurs fonctions. Les connexions optionnelles
 restent activables et désactivables par agent dans l’interface. Un driver n’obtient une fonction native
@@ -918,10 +928,11 @@ Un accord ne contourne jamais une interdiction de connexion. Voir le
 [contrat réseau du navigateur](../architecture/flows/browser.md) pour les domaines,
 ports, CIDR, HTTPS et WebSocket.
 
-**Superviser → Permissions mémorisées** (`/connection/permissions`) liste questions, décisions,
-agents, responsables et dates. Filtrez par agent ou réponse, puis supprimez une décision pour
-faire redemander à la prochaine tentative. Les privilèges `CONNECTION_ACCESS`/`CONNECTION_EDIT`
-et le périmètre des agents gérés s’appliquent ; la suppression exige `CONNECTION_EDIT`.
+**Superviser → Permissions** (`/connection/permissions`) regroupe demandes en attente et accords
+mémorisés : questions, décisions, agents, responsables et dates. La consultation utilise
+`PERMISSION_ACCESS`, les décisions `PERMISSION_DECIDE` et la révocation `PERMISSION_REVOKE`,
+avec le périmètre des agents gérés et les contrôles d'approbateur. Révoquer un accord fait
+redemander à la prochaine tentative ; voir le [guide des droits](privileges.md).
 La table `permission_decisions` converge avec DbAdmin. Une mise à jour nécessite aussi l’image
 `browser-executor` reconstruite afin d’activer le nouveau proxy.
 
@@ -937,14 +948,14 @@ Trois packages intégrés spécialisés sont créés pour chaque agent avec une 
 
 | Code technique | Libellé | Fonctions |
 |---|---|---|
-| `goal_management` | Gestion des objectifs | `goal_create`, `goal_list`, `goal_get`, `goal_update`, `goal_pause`, `goal_resume`, `goal_complete`, `goal_run_now`, `goal_delete` |
-| `skill_management` | Gestion des compétences | `skills_list`, `skill_read` |
-| `process_admin` | Administration des processus | CRUD des définitions et gestion des runs de tous les agents |
+| `goal_management` | Gestion des objectifs | `goal_create`, `goal_update`, `goal_pause`, `goal_resume`, `goal_complete`, `goal_delete` ; lectures via File Sharing |
+| `skills` | Compétences | `skills_list`, `skill_read` et administration selon la portée locale |
+| `process_admin` | Administration des processus | CRUD des définitions et gestion des runs dans la portée locale déléguée |
 
 Après `make update` :
 
 1. ouvrez les connexions de l’agent DRH ;
-2. activez **Gestion des objectifs**, **Gestion des compétences** et, si nécessaire,
+2. activez **Gestion des objectifs**, **Compétences** et, si nécessaire,
    **Administration des processus** uniquement sur cet agent ;
 3. laissez ces connexions inactives sur les autres agents ;
 4. désactivez éventuellement certaines fonctions au niveau de la connexion, par exemple
@@ -954,9 +965,13 @@ L’activation d’une connexion contrôle ce que le modèle peut appeler. Le RB
 les utilisateurs capables de modifier cette configuration dans l’interface : ce sont deux niveaux
 distincts et cumulatifs.
 
+Configurez aussi `tools.management_scope` dans la connexion : une activation seule ne donne
+aucune administration globale. Voir [les portées déléguées](tool-administration.md).
+
 `goal_create` choisit explicitement l’agent propriétaire et un agent référent différent. Les
-commandes de modification et de cycle utilisent `expected_revision`, obtenue avec `goal_get`, pour
-éviter les écrasements concurrents. `goal_get` expose aussi le suivi Markdown, la tâche courante,
+commandes de modification et de cycle utilisent `expected_revision`, obtenue par `file_read`
+sur `galaris://goal/<uuid>`, pour éviter les écrasements concurrents. Cette projection expose
+aussi le suivi HTML, la tâche courante,
 les verdicts, preuves, erreurs, coûts et derniers cycles. `goal_complete` conserve l’historique et
 arrête les cycles futurs ; `goal_delete` effectue une suppression logique et refuse un objectif
 ayant encore un cycle inachevé.
@@ -1064,7 +1079,7 @@ mise à jour, vérifiez toujours le rôle administrateur et les rôles personnal
 les privilèges de gestion des connexions avec prudence : ils donnent accès à la modification
 de secrets, même si les valeurs ne sont pas retournées en clair.
 
-Dans **Rôles & permissions → Privilèges**, douze rubriques sont installées par défaut à
+Dans **Rôles & autorisations → Privilèges**, des rubriques sont installées par défaut à
 la première synchronisation. Leurs libellés suivent la langue de l’interface, y compris
 dans les rôles. Les catégories personnalisées et les rubriques renommées conservent le
 texte saisi. Vous pouvez déplacer les privilèges et supprimer une rubrique avec
@@ -1231,3 +1246,11 @@ La procédure hôte, le modèle de sécurité et le service systemd du harness m
 dans [`docs/fr/components/harness-manager.md`](../components/harness-manager.md). Les
 particularités Hermès restent dans
 [`docs/fr/components/hermes.md`](../components/hermes.md).
+
+## Déléguer les domaines fonctionnels
+
+Les accès aux Contacts, Fichiers, historiques texte et voix, appels LLM, Permissions, modèles,
+profils, harnais et rubriques de Préférences se délèguent séparément. Le
+[guide des privilèges](privileges.md) donne les droits courants, les contrôles de périmètre
+et les règles de reprise des rôles existants. Vérifiez ces droits après la mise à jour ;
+les anciennes autorisations larges ne constituent pas une délégation permanente.

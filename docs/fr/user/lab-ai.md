@@ -45,7 +45,7 @@ Activez sa connexion **Lab Galaris**, puis attribuez-lui la compétence système
 (`galaris-lab`) dans les autorisations des compétences. La compétence est déjà autorisée pour
 l’agent **Galaris** créé à l’installation. Pour les autres agents, elle reste désactivée
 par défaut ; la connexion Lab reste à activer explicitement dans tous les cas.
-L'agent dispose alors de cinquante outils pour découvrir les dix labs, préparer et
+L’agent dispose alors des outils pour découvrir les dix labs, préparer et
 copier leurs jeux, modifier les prompts expérimentaux, lancer, suivre, arrêter, reprendre,
 rejuger et comparer les benchmarks, puis déposer ses propres évaluations.
 

@@ -164,7 +164,9 @@ modification source détache seulement son emplacement ; une révocation invalid
 Les routes en lecture seule `/api/dream/overview` et `/api/dream/receipts` exposent l'état du
 scheduler, la couverture et l'historique paginé des reçus. Le contrat HTTP, les filtres et la page
 Dream n'exposent aucune version de mécanisme. Le détail d'un reçu montre sa sortie préparée, son
-coût, ses tentatives et sa dernière erreur. Ces routes exigent `TASK_ACCESS`.
+coût, ses tentatives et sa dernière erreur. Ces routes exigent `DREAM_ACCESS` et la gestion
+globale des agents. Les réglages Dream utilisent séparément `DREAM_CONFIG_ACCESS` ou
+`DREAM_EDIT` ; l'indexation des fichiers utilise `FILE_INDEX_ACCESS` ou `FILE_INDEX_RUN`.
 
 La page charge ces projections lorsqu'elle est ouverte, puis écoute les événements `dream.update`
 du websocket authentifié. Les transitions du runtime et les changements terminaux des reçus

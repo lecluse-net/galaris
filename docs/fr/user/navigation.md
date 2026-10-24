@@ -2,6 +2,16 @@
 
 # Se repérer dans Galaris : menus, écrans et parcours
 
+Le **Tableau de bord** utilise `DASHBOARD_ACCESS`. Les **Contacts** utilisent
+`CONTACT_ACCESS` ou `CONTACT_EDIT`, indépendamment des souvenirs. Les onglets de **Rôles &
+autorisations** suivent leurs droits propres : privilèges, rôles et affectations peuvent être
+consultés ou administrés séparément. Un onglet non autorisé ne charge pas ses catalogues.
+
+Les onglets Fournisseurs, Modèles disponibles et Modèles utilisés suivent leurs droits
+propres. Les réglages de Préférences se délèguent aussi par fonction. Le
+[guide des privilèges](../admin/privileges.md) détaille les droits et les périmètres ;
+changer de rôle peut donc changer les onglets et les actions disponibles.
+
 **Connaissances → Jeux de données** ouvre la bibliothèque JSON. Voir le [parcours des jeux de données](datasets.md).
 
 Ce guide aide à trouver une fonction dans l’application. La
@@ -81,7 +91,7 @@ La route est exclue des constructions des autres environnements.
 | **Configurer** | Fournisseurs & modèles, Agents, Outils & connexions, Compétences |
 | **Agir** | Discussion, Objectifs, Processus |
 | **Connaissances** | Documents, Jeux de données, Fichiers, Mémoire, Contacts, Sujets |
-| **Superviser** | Tableau de bord, Activité, Dream, Journal des mails, Journal des échecs |
+| **Superviser** | Tableau de bord, Activité, Dream, Permissions, Journal des mails, Calendriers, Journal des échecs |
 | **Administrer** | Préférences, Laboratoire, Console, Utilisateurs, Équipes, Rôles & autorisations |
 | **Développeurs** (mode dev uniquement) | Référence graphique |
 
@@ -89,6 +99,14 @@ Dans la documentation technique, « Chat » correspond au menu **Discussion**,
 « tâches » à l’onglet **Tâches** d’**Activité**, « Topics » à **Sujets**
 et « Lab IA » au **Laboratoire**. Ces termes désignent les mêmes domaines ; ils ne sont
 pas autant de menus supplémentaires.
+
+## Calendriers et Journal des mails
+
+**Superviser → Calendriers** (`/connection/calendars`) permet de sélectionner une connexion
+Calendar puis de consulter ses flux avec `CALENDAR_ACCESS` ou `CALENDAR_EDIT`. La modification
+demande `CALENDAR_EDIT`. La création de la connexion reste dans Outils & connexions.
+Le Journal des mails utilise séparément `MAIL_ACCESS` ou `MAIL_EDIT` ; décider un envoi
+demande aussi `PERMISSION_DECIDE` et le statut de valideur désigné.
 
 ## Fournisseurs, modèles et agents
 
@@ -150,9 +168,11 @@ de chat déclarant les fichiers en entrée et le texte en sortie. Ajoutez un mod
 affectez-le à **Modèle d’analyse de document** dans **Modèles utilisés**. Si les métadonnées
 du fournisseur sont incomplètes, un modèle compatible peut manquer à cette liste.
 
-L’onglet **Modèles utilisés** demande `PARAMS_ACCESS` ou `PARAMS_EDIT`, en plus des
-droits nécessaires pour atteindre l’écran. Il est sélectionné par défaut pour les comptes
-autorisés ; sinon l’écran ouvre **Fournisseurs**.
+Chaque onglet utilise ses droits : `LLM_PROVIDER_ACCESS`/`LLM_PROVIDER_EDIT` pour les
+**Fournisseurs**, `LLM_MODEL_ACCESS`/`LLM_MODEL_EDIT` pour les **Modèles disponibles**, et
+`LLM_PROFILE_ACCESS`/`LLM_PROFILE_EDIT` pour **Modèles utilisés**. L’écran choisit un onglet
+autorisé, y compris après un changement de rôle. Les catalogues de sélection en lecture seule
+ne donnent pas le droit de modifier les fournisseurs.
 
 ### Créer un agent
 
@@ -335,10 +355,17 @@ Une compétence fournit des instructions ; l’accès effectif aux fonctions dé
 des Tools et connexions autorisés.
 
 **Configurer → Compétences** (`/skill`) contient **Compétences** (`?tab=skills`),
+**Compétences personnelles** (`?tab=personal`),
 **Auto-apprentissage** (`?tab=learned`) si l’apprentissage est activé, et
 **Autorisations** (`?tab=authorizations`) avec le privilège `SKILL_ASSIGN`.
 Cette dernière page gère l’affectation des compétences ; elle ne remplace pas les autorisations
 des Tools ni les rôles du compte humain.
+
+L'onglet personnel permet de lire et modifier les packages des agents gérés, de les activer
+ou supprimer, de changer leur propriétaire et, avec la gestion globale, de les convertir
+entre personnel et générique. Le [guide des compétences](skills.md) précise les révisions,
+les quotas et la délégation locale du Tool `skills`. La gestion ne donne pas l'usage d'un
+package personnel étranger.
 
 Ses colonnes **Global (tous)**, **Catégorie** et **Cet agent** proposent Actif/Bloqué et mettent
 en évidence la règle applicable. La règle de catégorie concerne l’agent sélectionné.
@@ -438,7 +465,7 @@ cette action de clôture. La tâche reste en erreur avec sa cause et son bilan ;
 échoués attendent votre décision de reprise. Une reprise manuelle actualise aussi le bilan.
 
 Dans **Activité LLM** et le détail d’une tâche, **Arrêter cet appel LLM** interrompt une
-inférence en cours avec le droit `TASK_EDIT`, dans le périmètre des agents gérés.
+inférence en cours avec le droit `LLM_CALL_CONTROL`, dans le périmètre des agents gérés.
 Confirmez la demande puis attendez son état terminal : l’accusé de réception ne signifie
 pas encore que le fournisseur est arrêté. La trace et les coûts sont conservés ; ces
 inférences ne proposent pas de corbeille. La tâche ou conversation en attente peut signaler

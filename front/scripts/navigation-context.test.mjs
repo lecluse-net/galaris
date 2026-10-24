@@ -66,3 +66,25 @@ test('the data loader rejects unreviewed runtime dependencies', t => {
   const load = dataLoader(path.join(root, 'front'))
   assert.throws(() => load('app/chat/availability.ts').isChatNavigationVisible(), /must not run/)
 })
+
+test('preference navigation carries generated parameter rights without admitting other generated modules', t => {
+  const { root, write } = fixture(t)
+  write('core/params/generatedAccess.ts', `export const parameterAccess: Record<string, readonly string[]> = {
+    TASK_LIMIT: ['TASK_CONFIG_ACCESS', 'TASK_CONFIG_EDIT'],
+  }`)
+  write('core/params/access.ts', `import { parameterAccess } from './generatedAccess';
+    export function parameterReadPrivileges(name: string) { return parameterAccess[name] ?? [] }`)
+  write('core/params/navigation.ts', `import { parameterReadPrivileges } from './access';
+    export default {admin: {children: {params: {
+      label: 'prefs', to: '/params', privileges: parameterReadPrivileges('TASK_LIMIT'),
+    }}}}`)
+  const context = navigationContext(root)
+  assert.deepEqual(context.entries[0].privilege_groups, [['TASK_CONFIG_ACCESS', 'TASK_CONFIG_EDIT']])
+  for (const content of generatedNavigationFiles(root).values()) {
+    assert.ok(content.includes('TASK_CONFIG_ACCESS'))
+    assert.ok(content.includes('TASK_CONFIG_EDIT'))
+  }
+  write('bridge/sample/generatedAccess.ts', 'export const unreviewed = true')
+  assert.throws(() => dataLoader(path.join(root, 'front'))('bridge/sample/generatedAccess.ts'),
+    /Unreviewed navigation import/)
+})

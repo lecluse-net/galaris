@@ -15,6 +15,22 @@ droits du responsable humain de l’agent. AgentAdmin conserve son propre périm
 
 ## Activer et limiter la délégation
 
+Dans le formulaire d'une connexion administrative, `tools.management_scope` propose
+`usage` (aucune administration), `personal` (ressources de l'agent), `team` (union de ses
+équipes actives) et `all` (global). Cette portée est locale, sans valeur globale ni héritage.
+AgentAdmin propose seulement `usage`, `team`, `all` et intersecte la délégation avec les
+droits et le périmètre du responsable humain ; il interdit les modifications de l'appelant.
+ToolAdmin exige `all` pour les définitions, paramètres et permissions partagés ; `personal`
+et `team` ne délèguent que les connexions concernées. Goal management suit l'agent responsable,
+Galaris Admin l'agent propriétaire des traces et Process Admin les règles de son domaine.
+Les [compétences](../user/skills.md) conservent leur propre distinction entre usage et gestion.
+
+Seul un humain en session web avec `CONNECTION_EDIT` et gestion globale des agents peut
+enregistrer cette délégation. Connexion, portée et équipes sont relues à chaque appel.
+Une ancienne connexion active sans portée explicite doit être configurée ; son activation
+ne donne plus une administration globale. La sauvegarde de connexion et portée est atomique.
+Les [privilèges humains](privileges.md), les fonctions accordées et les ACL restent distincts.
+
 Dans **Outils**, le sous-onglet **Outils personnalisés** s'ouvre par défaut, avant
 **Outils internes à Galaris**. Ils séparent les outils que vous ajoutez de ceux fournis par la plateforme. Une création ou un
 import affiche automatiquement le sous-onglet de l’outil enregistré. Dans **Connexions** et
@@ -57,9 +73,9 @@ opérations longues restent déférées selon les règles conversationnelles nor
 
 Les lectures comme les mutations vérifient la connexion active et la permission exacte à
 chaque appel. Les définitions intégrées restent non modifiables. Les services obligatoires
-Galaris, Conversation, Memory et File Sharing sont consultables, mais leurs réglages et
+Galaris, Conversation, Document, Memory et File Sharing sont consultables, mais leurs réglages et
 connexions restent gérés par le logiciel. Seul un humain peut attribuer ou modifier ToolAdmin,
-AgentAdmin, Galaris Admin, Process Admin, Lab, Goal management, Gestion des compétences et Console.
+AgentAdmin, Galaris Admin, Process Admin, Lab, Goal management, Compétences et Console.
 Une chaîne de commandes agentiques ne permet pas de s’attribuer une capacité administrative.
 
 ## Connecter un serveur MCP avec OAuth

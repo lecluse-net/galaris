@@ -120,6 +120,10 @@ choix traduit l’interface et devient aussi la langue de référence de vos nou
 Le menu de votre compte permet de changer d’affectation si plusieurs rôles vous ont été
 attribués. Les droits visibles changent immédiatement avec le rôle actif.
 
+Avant la connexion, l'interface suit la langue prise en charge du navigateur : français,
+anglais ou chinois. L'anglais reste utilisable si cette langue ne peut pas être chargée.
+Après connexion, la préférence de votre profil prend la priorité.
+
 Le profil permet également d’activer l’authentification à deux facteurs avec une application TOTP.
 Conservez les codes de secours affichés lors de l’activation dans un emplacement distinct et sûr :
 ils ne seront pas réaffichés et chacun ne fonctionne qu’une fois. Après plusieurs mots de passe ou
@@ -172,7 +176,7 @@ Ce parcours ne donne aucun droit supplémentaire et n’active aucun outil bloqu
 
 ## Créer sa première tâche dans l’interface
 
-1. Ouvrez **Suivi d’exécution → Tâches**, puis **Nouvelle tâche**.
+1. Ouvrez **Superviser → Activité → Tâches**, puis **Nouvelle tâche**.
 2. Donnez un libellé court, par exemple « Synthèse des factures de juin ».
 3. Choisissez l’agent dont le métier correspond au besoin.
 4. Placez la consigne complète dans **Objectif** : résultat attendu, entrées, contraintes et
@@ -181,10 +185,10 @@ Ce parcours ne donne aucun droit supplémentaire et n’active aucun outil bloqu
 6. Cliquez sur **Créer & exécuter**. **Créer** seul enregistre une tâche en pause, utile pour
    préparer ou faire relire la demande avant son lancement.
 
-L’option d’auto-approbation autorise à l’avance certaines actions demandant normalement une
-validation. Ne l’activez que si vous comprenez les effets possibles sur les fichiers, messages
-ou services externes. Une approbation donnée à un agent n’autorise pas automatiquement les
-agents auxquels il délègue.
+Les fonctions d'outils utilisent leurs règles Actif, Bloqué ou Sur demande. Les accords
+ponctuels et permanents se traitent dans **Superviser → Permissions** ; il n'existe plus de
+mode global d'auto-approbation. Un accord reste limité à sa connexion ou son type d'action
+et ne donne pas automatiquement les mêmes droits aux agents délégataires.
 
 Depuis la liste, cliquez sur une tâche pour ouvrir son détail. Vous y retrouvez la phase
 courante, les sous-tâches, les appels d’outils, les processus liés, les coûts LLM connus et le
@@ -271,6 +275,15 @@ partage le fichier dans le salon Achats. »
 Une tâche planifiée reste un travail fini : elle se termine après la livraison demandée. Un
 **objectif durable** est différent : Galaris lance des cycles successifs, évalue les progrès après
 chaque cycle et continue jusqu’à réussite ou arrêt explicite.
+
+Si un cycle dépend d'un choix humain encore indécidé, l'agent peut poser la question au
+référent puis attendre sa réponse. Une décision déjà enregistrée doit être lue dans sa
+source ; un fait nécessaire au choix doit être vérifié avant de poser la question.
+L'attente ne signifie pas que l'objectif est atteint.
+
+Galaris actualise automatiquement le suivi de l'objectif à la fin du cycle, à partir des
+preuves remontées par l'agent. Une livraison demandée reste une action à réaliser avec
+les autorisations nécessaires ; le suivi automatique ne la remplace pas.
 
 Lorsqu’une DRH agentique dispose des capacités de gestion correspondantes, vous pouvez lui
 demander par exemple :
@@ -556,7 +569,7 @@ agrège les messages arrivés en rafale, reconstruit l’historique utile et pr�
 Lorsqu’un outil doit produire un effet durable ou qu’un travail va prendre du temps, il crée une
 Tâche ou un Processus de fond et vous en donne la référence.
 
-Dans **Suivi d’exécution → Conversations textuelles**, vous pouvez voir les messages traités ou en
+Dans **Superviser → Activité → Conversations textuelles**, vous pouvez voir les messages traités ou en
 attente, les rounds, leurs tentatives, les appels LLM, la livraison et les éventuelles erreurs. Une
 réponse entre deux agents est admise seulement lorsqu’une requête fraîche l’attend ; cette garde
 évite les boucles automatiques de politesse.
@@ -864,7 +877,8 @@ la scission préparée. Une modification concurrente exige de rouvrir le contact
 Ce carnet d’adresses reste privé à l’agent sélectionné : il n’est pas nécessaire que le correspondant
 possède un compte utilisateur ou soit un agent. La création n’envoie aucun mail, ne crée aucun
 compte et ne lui accorde aucun accès. Une adresse déjà présente dans le carnet de cet agent est
-refusée, indépendamment des majuscules. Ces actions nécessitent `MEMORY_EDIT` et la gestion de cet agent.
+refusée, indépendamment des majuscules. Ces actions nécessitent `CONTACT_EDIT` et la gestion de cet agent.
+L'oubli d'un contact avec ses souvenirs liés exige également `MEMORY_EDIT`.
 
 Pour le Chat interne, l’identité **Utilisateur Galaris** suffit : aucune seconde identité de
 messagerie interne n’est créée. Les anciens alias internes redondants sont retirés lors de

@@ -29,6 +29,7 @@ particularly for preparing the product website: detailed capabilities, condition
 | Write, cite an object, share or export | [Rich content](user/rich-content.md) |
 | Create and reuse JSON | [Datasets](user/datasets.md) |
 | Browse an agent's resources | [Files](user/files.md) |
+| Manage generic and personal agent methods | [Skills](user/skills.md) |
 | Work on a Git checkout with an agent | [Code editor](user/code-editor.md) |
 | Design and monitor a BPMN workflow | [Internal Processes](user/internal-processes.md) |
 
@@ -56,6 +57,8 @@ This path explains, with examples:
 [Give any agent knowledge of Galaris](admin/product-knowledge.md)
 
 [Configure AI provider admission and concurrency](admin/provider-admission.md)
+
+[Delegate privileges and settings by function](admin/privileges.md)
 
 This path covers installation and operations:
 

@@ -420,7 +420,9 @@ du driver pour chaque tentative.
 Les deux modales possèdent une barre d’actions commune. Les routes
 `/conversations/rounds/{id}/dataset` et `/voice/conversations/turns/{id}/dataset` exposent le même
 jeu de données complet que l’inspection administrative afin de le copier en JSON. La suppression
-est réservée à `TASK_EDIT` et accepte le round quel que soit son état. Elle verrouille le round,
+du round texte est réservée à `CONVERSATION_CONTROL` et accepte le round quel que soit son état.
+Le contrôle et la suppression des tours vocaux utilisent `VOICE_HISTORY_CONTROL`, avec leur
+propre procédure de révocation et de nettoyage. La suppression texte verrouille le round,
 annule immédiatement son worker local s’il existe, puis supprime la ligne durable : un worker d’une
 autre instance perd alors sa lease et interrompt son action au heartbeat suivant. Elle retire le run
 de l’historique sans supprimer les messages canoniques Messenger. Les tâches et ProcessRuns déjà

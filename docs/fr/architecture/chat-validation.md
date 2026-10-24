@@ -6,6 +6,9 @@ Statut : `accepted-and-implemented`
 
 Validation initiale : 21 août 2026. Revue du contrat courant : 9 octobre 2026.
 
+Actualisation documentaire : 24 octobre 2026 (droits fonctionnels et stockage commun).
+Cette relecture ne constitue pas une nouvelle exécution des scénarios de qualification.
+
 Cette validation décrit le contrat livré ; elle remplace le plan d’implémentation désormais retiré.
 
 Ce dossier constitue les validations A et B exigées par le plan. Les contrats, modèles et tests
@@ -40,6 +43,10 @@ chaque Tool externe. La fusion des
 paramètres d’autorisation applique les paramètres de path en dernier, de sorte qu’un body ou une
 query ne peut masquer `room_id` ou `file_id`. Les services revérifient le membership sous verrou
 avant les mutations.
+
+Les paramètres de politique du décorateur (droits requis, fallback et ownership) restent
+autoritaires sur les données client ; l'assertion utilise la même source d'identité que le
+handler. Les métadonnées client ne peuvent pas affaiblir cette politique.
 
 | Surface | Privilège | Politique de ressource |
 |---|---|---|
@@ -119,11 +126,12 @@ ce classement ne dépend ni de la room courante ni du navigateur employé.
 
 L'API n'expose ni ajout, ni retrait, ni départ de participant. Les éventuelles rooms de groupe
 historiques restent en base mais sont exclues des collections et assertions de l'IHM interne. Les
-messages ne sont ni éditables ni supprimables dans cette version. Les blobs vivent sous
-`/data/chat/attachments/<préfixe>/<uuid-hex>` et leur durée de vie suit leur ligne
-canonique.
+messages ne sont ni éditables ni supprimables dans cette version. Les octets des pièces
+jointes internes vivent dans le stockage partagé `/data/files`, avec le registre `files`
+et leurs rattachements canoniques Messenger. Voir le [contrat de stockage](../dev/file-storage.md).
 
-PostgreSQL et `/data/chat` forment un seul jeu de sauvegarde cohérent. La procédure
+PostgreSQL, `/data/files`, les sources conservées de `/data/memory` et les données restantes
+de `/data/chat` forment un seul jeu de sauvegarde cohérent. La procédure
 opérateur impose une fenêtre sans écriture, le dump de la base et la copie du volume dans le même
 point de restauration. Après restauration, le réconciliateur peut enlever un blob sans ligne mais
 ne peut reconstituer des octets absents : une sauvegarde de la base seule est invalide.

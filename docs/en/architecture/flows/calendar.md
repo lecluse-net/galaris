@@ -6,6 +6,11 @@
 
 ## Connection and calendars
 
+**Monitor → Calendars** (`/connection/calendars`) selects a Calendar connection within
+management scope and displays its feeds. Reading uses `CALENDAR_ACCESS` or `CALENDAR_EDIT`;
+creating, editing and deleting feeds uses `CALENDAR_EDIT`. Connection and Process options
+are bounded metadata reads, without implicit Connection or Process administration.
+
 A Calendar connection has general time-slot search preferences: IANA time zone, start and end of the workday, and search interval. The same modal then allows one or more `CalendarFeed` resources to be added. Each resource specifies its human owner, its `read` or `write` mode, its active triggers, and the selected Task or Process action.
 
 Each `CalendarFeed` actually references its `Connection`. Deleting the connection therefore deletes its calendar configuration; disabling the connection immediately removes the MCP functions and excludes its calendars from CRON. The full URL, HTTP credentials, and iCalendar snapshot are encrypted at rest. The APIs return only the host name and indicators showing whether secrets are present.

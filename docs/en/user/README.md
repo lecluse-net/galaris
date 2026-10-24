@@ -67,7 +67,7 @@ The sidebar shows only the screens authorized by your role:
 |---|---|
 | Home | view available Agents, recent Tasks, and missing configuration steps |
 | Agents | learn the role, personality, and capabilities of each Agent |
-| Execution Tracking | separately track text conversations, calls, Tasks, Processes, and LLM calls in real time |
+| Activity | separately track text conversations, calls, Tasks, Processes, and LLM calls in real time |
 | Goals | track long-running missions, their cycles, evidence, and results |
 | Topics | find global topics and related knowledge across multiple channels |
 | Memory | search, read and correct an Agent’s private memories and authorised document syntheses; forget only standalone memories |
@@ -107,6 +107,10 @@ interface language. Custom names stay as entered; administrators can rename or d
 these categories without an update restoring them.
 
 The LLM, settings, users, and permissions sections are administrative. Their absence from your menu is normal. In **Profile**, choose Français, English or 简体中文; this choice translates the interface and also becomes the reference language for your new Tasks. Your account menu lets you change your assignment if you have been assigned multiple roles. The permissions displayed change immediately with the active role.
+
+Before login, the interface follows a supported browser language: French, English or
+Chinese. English remains usable if that language cannot be loaded. After login, your
+profile preference takes precedence.
 
 The profile also lets you enable two-factor authentication with a TOTP application. Keep the recovery codes displayed during activation in a separate, secure location: they will not be displayed again, and each one works only once. After several incorrect passwords or codes, Galaris temporarily slows down new login attempts.
 
@@ -148,14 +152,17 @@ enable blocked tools.
 
 ## Creating Your First Task in the Interface
 
-1. Open **Execution Tracking → Tasks**, then **New Task**.
+1. Open **Monitor → Activity → Tasks**, then **New Task**.
 2. Give it a short label, such as “June invoice summary.”
 3. Choose the Agent whose area of expertise matches the need.
 4. Put the complete instruction in **Objective**: expected result, inputs, constraints, and desired verification.
 5. Leave **Mode** and **Effort** set to **Auto** for a first attempt.
 6. Click **Create & run**. **Create** alone saves a paused Task, which is useful for preparing or having the request reviewed before launch.
 
-The auto-approval option authorizes certain actions in advance that would normally require approval. Enable it only if you understand the possible effects on files, messages, or external services. Approval given to one Agent does not automatically authorize the Agents to which it delegates.
+Tool functions use Active, Blocked or On request policies. Handle one-time and permanent
+approvals under **Monitor → Permissions**; there is no global auto-approval mode. Consent
+remains limited to its connection or action type and does not automatically authorize
+agents receiving delegated work.
 
 From the list, click a Task to open its details. There you will find the current phase, subtasks, Tool calls, related Processes, known LLM costs, and final response. The pause and resume buttons act on the work tree. **Force finish** is an administrative recovery action for a genuinely blocked execution: it marks the Task as failed and releases its lease; it is not an ordinary cancellation of the external work.
 
@@ -225,6 +232,14 @@ Describe the final deliverable rather than a step-by-step conversation. When the
 Example: “Compare these three offers, produce a reasoned table, verify the totals, and share the file in the Purchasing room.”
 
 A planned Task remains finite work: it ends after the requested delivery. A **durable Goal** is different: Galaris launches successive cycles, evaluates progress after each cycle, and continues until success or explicit termination.
+
+When a cycle depends on an unmade human choice, the Agent can ask the referrer and wait
+for the reply. An already recorded decision should be read from its source; a fact needed
+to make the choice should be checked before asking. Waiting does not mean the Goal is achieved.
+
+Galaris updates Goal tracking automatically at the end of the cycle, using the evidence
+returned by the Agent. A requested delivery still needs to be performed with the required
+permissions; automatic tracking does not replace it.
 
 When an Agentic HR Agent has the corresponding management capabilities, you can ask it, for example:
 
@@ -469,7 +484,7 @@ Operations that modify files retain their authorization requirement.
 
 A received message is no longer systematically turned into a Task. The conversational controller aggregates messages arriving in bursts, reconstructs the useful history, and prepares a short response. When a Tool must produce a lasting effect or work will take time, it creates a background Task or Process and gives you its reference.
 
-In **Execution Tracking → Text conversations**, you can see processed or pending messages, rounds, their attempts, LLM calls, delivery, and any errors. A response between two Agents is admitted only when a fresh request is waiting for it; this safeguard prevents automatic loops of polite exchanges.
+In **Monitor → Activity → Text conversations**, you can see processed or pending messages, rounds, their attempts, LLM calls, delivery, and any errors. A response between two Agents is admitted only when a fresh request is waiting for it; this safeguard prevents automatic loops of polite exchanges.
 
 Execution details show time to the first observed text or tool call, split into time within
 and between LLM calls. For Tasks, preparation, admission and waiting before the first claim
@@ -720,7 +735,8 @@ A concurrent edit requires reopening the contact before retrying.
 **Add email contact** accepts a name and a valid email address. This address book remains private
 to the selected agent: the correspondent does not need to be a user or an agent. Creation sends
 no email, creates no account, and grants no access. An address already in this agent’s address
-book is rejected regardless of case. These actions require `MEMORY_EDIT` and management access to that agent.
+book is rejected regardless of case. These actions require `CONTACT_EDIT` and management access to that agent.
+Forgetting a contact and its linked memories also requires `MEMORY_EDIT`.
 
 For internal Chat, the **Galaris user** identity is sufficient: no second internal messaging
 identity is created. DbAdmin synchronization removes existing redundant internal aliases

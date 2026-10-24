@@ -210,7 +210,8 @@ Le titre inséré est conservé dans votre texte : un renommage ultérieur ne le
 
 **Lien Galaris → Objets Galaris** recherche les tâches, objectifs, sujets, discussions,
 rounds texte, appels et tours vocaux. Leurs fiches et menus proposent **Copier la référence**.
-Collez cette référence dans un document pour insérer un lien titré, puis choisissez
+Collez cette référence avec **Ctrl+V** ou le menu **Coller** pour insérer un lien titré
+dans le document, puis choisissez
 **Afficher une carte** dans son menu contextuel en édition. **Afficher l'URL**
 restaure le lien.
 
@@ -288,6 +289,9 @@ pas des contenus joints : elles ne créent aucun fichier dans les pièces jointe
 Si le cache est effacé, l'aperçu peut être régénéré ; si la source n'est plus disponible,
 la carte conserve ses textes et son lien. Les anciennes cartes restent lisibles.
 Un clic sur un lien vers une pièce jointe ouvre sa visionneuse, même en édition.
+Depuis Memory, le bouton d'aperçu attend aussi la disponibilité du lecteur. Changer de
+souvenir ou d'agent pendant cette attente annule l'ancienne ouverture. En cas d'erreur,
+un message apparaît et le bouton redevient disponible pour une nouvelle tentative.
 Le clic droit sur une PJ, ou **Maj+F10** lorsqu’elle a le focus, propose l’ouverture,
 le téléchargement, le renommage, la copie de référence, l’insertion et le retrait selon
 les droits disponibles. Les vignettes conservent les icônes de téléchargement et de retrait ;

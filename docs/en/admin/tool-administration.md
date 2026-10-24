@@ -15,6 +15,21 @@ human rights. AgentAdmin retains its own scope and delegation.
 
 ## Enable and restrict delegation
 
+An administrative connection's `tools.management_scope` offers `usage` (no administration),
+`personal` (the agent's resources), `team` (the union of its active teams) and `all` (global).
+Scope is local, without a global value or inheritance. AgentAdmin offers only `usage`, `team`
+and `all`, intersects delegation with its human manager's rights/scope and forbids modifying
+the caller. ToolAdmin requires `all` for shared definitions, parameters and permissions;
+`personal` and `team` delegate only the relevant connections. Goal management follows the
+responsible agent, Galaris Admin the trace owner, and Process Admin its domain rules.
+[Skills](../user/skills.md) retain their distinction between usage and administration.
+
+Only a human web session with `CONNECTION_EDIT` and global agent management may save this
+delegation. Connection, scope and teams are reread on every call. Existing active connections
+without explicit scope need configuration; activation no longer grants global administration.
+Saving connection and scope is atomic. [Human privileges](privileges.md), function grants
+and resource ACLs remain separate.
+
 Under **Tools**, **Custom tools** opens by default, before **Galaris built-in tools**.
 These subtabs separate tools you add from those provided by the platform. Creating or importing a tool automatically
 shows the saved tool’s subtab. Under **Connections** and **Authorizations**, the **Filter by
@@ -53,10 +68,10 @@ For Chat, also enable the Tool's conversation mode under **Tools**; long operati
 the normal conversation deferral rules.
 
 Reads and mutations check the active connection and exact function permission on every call.
-Integrated definitions are read-only. Mandatory Galaris, Conversation, Memory and File Sharing
+Integrated definitions are read-only. Mandatory Galaris, Conversation, Document, Memory and File Sharing
 services can be inspected, but their settings and connections remain software-owned.
 Only humans can delegate or modify ToolAdmin, AgentAdmin, Galaris Admin, Process Admin, Lab,
-Goal management, Skill management and Console. A sequence of agent commands cannot grant
+Goal management, Skills and Console. A sequence of agent commands cannot grant
 administrative capabilities to its caller.
 
 ## Connect an MCP server with OAuth

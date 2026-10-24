@@ -6,6 +6,9 @@ Status: `accepted-and-implemented`
 
 Initial validation: August 21, 2026. Current-contract review: October 9, 2026.
 
+Documentation refresh: October 24, 2026 (functional privileges and shared storage).
+This review does not constitute a new qualification-scenario run.
+
 This validation describes the delivered contract; it replaces the implementation plan that has now been removed.
 
 This document constitutes validations A and B required by the plan. The related contracts, models, and tests remain the source of truth when this document becomes outdated.
@@ -25,7 +28,7 @@ front/app/chat
 
 The bootstrap declares the modules in `back/modules.py` and `front/modules.ts`, imports the provider before Messenger resolution, registers the WebSocket policy, and schedules storage reconciliation. The integrated `chat` Tool exposes no MCP tools, auto-connects every active agent, and never reactivates a disabled connection during a later synchronization.
 
-Each route is protected by a global privilege. Routes carrying a room UUID add `ChatRoomAccessAssertion`; internal mutations retain `InternalRoomAccessAssertion`. Human identity comes from the session and the exact `messenger_users.galaris_user_id` match for each external Tool. Authorization parameter merging applies path parameters last, so a body or query cannot mask `room_id` or `file_id`. Services recheck membership under lock before mutations.
+Each route is protected by a global privilege. Routes carrying a room UUID add `ChatRoomAccessAssertion`; internal mutations retain `InternalRoomAccessAssertion`. Human identity comes from the session and the exact `messenger_users.galaris_user_id` match for each external Tool. Authorization parameter merging applies path parameters last, so a body or query cannot mask `room_id` or `file_id`. Services recheck membership under lock before mutations. Decorator policy (required privileges, fallback and ownership) remains authoritative over client input; assertions use the same identity source as handlers.
 
 | Surface | Privilege | Resource policy |
 |---|---|---|
@@ -71,6 +74,9 @@ The “My Profile” screen allows users to set or remove the mapping for each e
 
 The emoji picker maintains a private, atomic ranking for each account by frequency and then recency. Its first 25 values form the highlighted “Frequently Used” category; this ranking depends neither on the current room nor on the browser used.
 
-The API exposes no participant addition, removal, or departure. Any historical group rooms remain in the database but are excluded from the internal UI collections and assertions. Messages cannot be edited or deleted in this version. Blobs live under `/data/chat/attachments/<prefix>/<uuid-hex>` and their lifetime follows their canonical row.
+The API exposes no participant addition, removal, or departure. Any historical group rooms remain in the database but are excluded from the internal UI collections and assertions. Messages cannot be edited or deleted in this version. Internal attachment bytes live in shared `/data/files` storage, with the `files` registry and canonical Messenger links. See the [storage contract](../dev/file-storage.md).
 
-PostgreSQL and `/data/chat` form a single coherent backup set. The operator procedure requires a write-free window, a database dump, and a volume copy at the same restore point. After restoration, the reconciler may remove a blob with no row but cannot reconstruct missing bytes: a database-only backup is invalid.
+PostgreSQL, `/data/files`, retained `/data/memory` sources and remaining `/data/chat` data form
+a single coherent backup set. The operator procedure requires a write-free window, a database
+dump and volume copies at the same restore point. After restoration, reconciliation can remove
+an orphan blob but cannot reconstruct missing bytes: a database-only backup is invalid.

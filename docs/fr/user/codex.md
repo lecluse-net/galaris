@@ -77,7 +77,7 @@ codex --model profil1/text/high
 ```
 
 Demandez une réponse courte pour vérifier l’inférence et sa trace dans
-**Suivi d’exécution → Appels LLM**. Pour changer de profil ou de palier, changez
+**Superviser → Activité → Activité LLM**. Pour changer de profil ou de palier, changez
 seulement `model` ou l’argument `--model`, par exemple `profil1/text/standard`.
 Le code du profil reste stable lorsqu’on renomme son libellé.
 

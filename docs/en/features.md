@@ -19,6 +19,10 @@ For installation/update commands, follow the [installation guide](admin/installa
 
 ## Talk to an agent that can keep working
 
+After setup, Welcome offers a guided first mission: edit an example, start the request and
+find its document. Progress distinguishes Task completion from an available deliverable;
+the user still reviews its content.
+
 A conversation can remain a simple exchange or initiate research, analysis or production. Attach
 files, dictate, send voice notes and find the resulting documents, Tasks and Processes. Long work
 can continue while the conversation resumes.
@@ -64,6 +68,10 @@ and attachments. Sharing with a human, agent or team makes joint work accessible
 everywhere.
 
 ## Turn a document into a usable tool
+
+The Documents library can also open its own conversation with an agent, preserving selection,
+saving before sending and remembering the last chosen thread. The panel starts closed when
+the document opens; the user chooses when to resume the conversation.
 
 A document can contain a form, calculator, chart or small application. The agent writes the page;
 the human retains editable explanations and uses forms directly. The document editor
@@ -113,6 +121,11 @@ events and alarms can also trigger Tasks or Processes.
 
 ## Give agents practical means to act
 
+[Personal skills](user/skills.md) add private packages per agent, with editing, activation and
+ownership transfer. Generic methods remain assignable across agents. Native Process AI
+conditions can either delegate work to an agent or request a boolean decision directly from
+an explicitly selected model, without tools or an auxiliary Task.
+
 Tools cover web search, interactive browsing, files and, for equipped agents, a Linux console.
 Agents can consult sources, manipulate resources, work on a repository, start a long command and
 check results in a browser. URIs identify the same files across tools.
@@ -138,6 +151,10 @@ search and event management.
 Mail approval is available in the reviewer's private chat and in the mail journal. Permanent
 consent for a Tool function can avoid later prompts on that connection; resource rights and
 versions remain checked.
+
+Incoming mail initially records headers only: unknown senders need consent before body
+reading and Task admission, according to `mail_process` policy. Recognized Contacts belong
+to that agent; processing consent does not authorize sending.
 
 ## Work with multimedia
 
@@ -191,6 +208,10 @@ not automatically make other services local. The interface provides usage settin
 monitoring; backups, updates and operating checks belong to the administrator.
 
 ## Start using it
+
+[Functional privileges](admin/privileges.md) separate reading, control and configuration:
+delegate Contacts, Files, Permissions, models, history or a Preferences section without
+opening all administration. Resource permissions remain applicable.
 
 - [User guide](user/README.md): carry out actions in the interface.
 - [Administrator guide](admin/README.md): connect services and operate the installation.

@@ -5,7 +5,7 @@
 Un Claude Code installé sur votre poste peut utiliser les modèles des profils Galaris
 via `https://galaris.example/api/profile/anthropic`. Tous les profils partagent cette
 URL ; le champ `model` choisit le profil et le palier, par exemple `profil1/text/high`.
-Les appels restent visibles dans **Suivi d’exécution → Appels LLM**.
+Les appels restent visibles dans **Superviser → Activité → Activité LLM**.
 
 ## Préparer la connexion
 

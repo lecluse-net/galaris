@@ -2,6 +2,15 @@
 
 # Finding your way around Galaris: menus, screens and workflows
 
+The **Dashboard** uses `DASHBOARD_ACCESS`. **Contacts** uses `CONTACT_ACCESS` or `CONTACT_EDIT`,
+independently of memories. **Roles & authorizations** tabs follow their own privileges:
+privileges, roles and assignments can be viewed or administered separately. An unauthorized
+tab does not load its catalogues.
+
+Providers, Available models and Models in use have their own rights. Preferences settings
+can also be delegated by function. The [privilege guide](../admin/privileges.md) lists rights
+and scopes; changing roles can therefore change the available tabs and actions.
+
 **Knowledge → Datasets** opens the JSON library. See the [Dataset journey](datasets.md).
 
 Use this guide to locate a feature in the application. The
@@ -71,13 +80,21 @@ The route is excluded from builds for other environments.
 | **Configure** | Providers & models, Agents, Tools & connections, Skills |
 | **Act** | Chat, Goals, Processes |
 | **Knowledge** | Documents, Datasets, Files, Memory, Contacts, Thematic dossiers |
-| **Monitor** | Dashboard, Activity, Dream, Mail journal, Failure journal |
+| **Monitor** | Dashboard, Activity, Dream, Permissions, Mail journal, Calendars, Failure journal |
 | **Administer** | Preferences, Laboratory, Console, Users, Teams, Roles & permissions |
 | **Developers** (dev mode only) | Visual reference |
 
 Technical documentation may refer to “Tasks”, “Conversations” or “AI Lab”. Tasks and
 conversation histories are tabs inside **Activity**; the AI Lab is **Laboratory**.
 They are not additional sidebar menus. Use the generated map for labels in each language.
+
+## Calendars and Mail journal
+
+**Monitor → Calendars** (`/connection/calendars`) selects a Calendar connection and displays
+its feeds with `CALENDAR_ACCESS` or `CALENDAR_EDIT`. Editing requires `CALENDAR_EDIT`;
+connection creation remains under Tools & connections. The Mail journal separately uses
+`MAIL_ACCESS` or `MAIL_EDIT`; send decisions also require `PERMISSION_DECIDE` and the
+designated approver identity.
 
 ## Providers, models and agents
 
@@ -134,8 +151,11 @@ and filters the provider catalog. **Documents / PDF** lists chat models declarin
 input and text output. Add a model, then assign it to **Document analysis model** under
 **Models in use**. Incomplete provider metadata may leave a compatible model out of this list.
 
-**Models in use** requires `PARAMS_ACCESS` or `PARAMS_EDIT`, in addition to access to
-the screen. It is the default tab for authorized accounts; other accounts start on **Providers**.
+Each tab uses its own privileges: `LLM_PROVIDER_ACCESS`/`LLM_PROVIDER_EDIT` for **Providers**,
+`LLM_MODEL_ACCESS`/`LLM_MODEL_EDIT` for **Available models**, and
+`LLM_PROFILE_ACCESS`/`LLM_PROFILE_EDIT` for **Models in use**. The page selects an authorized
+tab, including after a role change. Read-only selection catalogues do not permit editing
+provider configuration.
 
 ### Create an agent
 
@@ -306,9 +326,15 @@ To give an agent product knowledge, start in **Connections**, find its **Galaris
 connection, then follow the [product knowledge guide](../admin/product-knowledge.md).
 A skill provides instructions; actual function access also depends on authorized Tools and connections.
 
-**Configure → Skills** (`/skill`) contains **Skills** (`?tab=skills`), **Self-learning**
+**Configure → Skills** (`/skill`) contains **Skills** (`?tab=skills`), **Personal skills**
+(`?tab=personal`), **Self-learning**
 (`?tab=learned`) when learning is enabled, and **Authorizations** (`?tab=authorizations`)
 with `SKILL_ASSIGN`. Skill assignments do not replace Tool permissions or human account roles.
+
+The personal tab supports reading/editing managed agents' packages, activation, deletion,
+owner changes and, with global management, conversion between personal and generic.
+The [Skills guide](skills.md) explains revisions, quotas and local `skills` Tool delegation.
+Administration does not grant usage of another agent's personal package.
 
 Its **Global (all)**, **Category** and **This agent** columns offer Active/Blocked and highlight
 the applicable rule. Category rules concern the selected agent. Agent skill exceptions take
@@ -403,7 +429,7 @@ The task remains in error with its cause and report; failed work waits for your 
 A manual retry also updates the report.
 
 In **LLM activity** and task details, **Stop this LLM call** interrupts a running
-inference with `TASK_EDIT`, within your managed agents. Confirm the request, then wait
+inference with `LLM_CALL_CONTROL`, within your managed agents. Confirm the request, then wait
 for its terminal state: acceptance does not yet confirm that the provider has stopped.
 The trace and costs are retained; these inferences do not offer a delete button.
 The waiting task or conversation may report an interruption. To suspend work while

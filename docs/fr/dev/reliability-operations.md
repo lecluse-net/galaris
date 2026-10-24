@@ -289,6 +289,13 @@ et produit les ressources JSON des autres langues, également précachées pour 
 qui dépend de la langue. Un téléchargement échoué préserve l’interface courante et peut être
 réessayé ; une réponse tardive ne remplace ni une sélection plus récente ni une autre session.
 
+Le build refuse un graphe initial supérieur à 460 000 octets gzip en anglais ou
+600 000 en français/chinois. Ces budgets incluent le catalogue sélectionné et sont
+contrôlés après émission du rapport ; les polices, API et téléchargements du précache
+restent hors de cette mesure. La façade `core/util/facade` expose les primitives utiles
+au bootstrap sans charger le catalogue de composants ; les mêmes instances restent
+disponibles via l'interface racine.
+
 Les lecteurs, éditeurs et prévisualisations lourds exposés par `core/util`, ainsi que les
 panneaux Activité, Fournisseurs & modèles et plusieurs sections des Préférences, se
 chargent à leur ouverture. `defineAsyncView` conserve le contrat Vue des props, événements,

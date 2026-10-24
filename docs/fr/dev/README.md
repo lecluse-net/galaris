@@ -15,6 +15,7 @@ font foi ; les plans décrivent les extensions encore ouvertes.
 | Manipuler du JSON et le codec typé | [Domaine Dataset](datasets.md) |
 | Exécuter un workflow interne | [Profil BPMN natif](native-processes.md) |
 | Partager des ressources | [Contrats et migration des ACL](sharing.md) |
+| Déléguer les domaines et les réglages | [Privilèges par fonction](../admin/privileges.md) |
 | Choisir une preuve et une commande de test | [Tester un comportement](testing.md) |
 | Observer une mission avec de vrais agents collaborateurs | [Pilote de travail d'équipe](agent-team-qualification.md) |
 
@@ -557,8 +558,9 @@ temporaire borné et automatiquement nettoyé. Ils ne demandent jamais à l'agen
 préparatoire. Une destination collection conserve le nom renvoyé par les métadonnées source, y
 compris lorsque son locator est opaque. `galaris://` projette en lecture seule les tâches,
 rounds de conversation, Goals, cycles de Goal et Processes affectés, avec les ACL de leur domaine.
-Sous `galaris://skill/`, une connexion `skill_management` active permet en plus de lire et
-modifier les fichiers des compétences utilisateurs ; les définitions système restent en lecture seule.
+Sous `galaris://skill/`, une connexion `skills` active permet de lire les compétences autorisées
+et d'administrer les packages selon sa portée locale. L'espace personnel est
+`galaris://skill/personnal/<agent>/<code>/` ; les définitions système restent en lecture seule.
 Le Tool intégré `console` déclare son flag `file_share_config` avec le service natif `console` ;
 `console://` désigne directement le home SSH et n'est pas dupliqué comme provider externe. Ainsi,
 `console://mon_fichier` désigne exactement `~/mon_fichier` et aucune couche ne préfixe son URI par
@@ -714,7 +716,7 @@ anciens sont oubliés par lots bornés et leur pointeur source est remis à `nul
 cycle canonique. Messenger observe les contacts avant les interactions avec un repli fail-open ;
 son journal permet un rejeu idempotent.
 
-La description et le suivi Markdown canoniques d'un Goal ne vivent plus dans ces projections :
+La description et le suivi HTML canoniques d'un Goal ne vivent plus dans ces projections :
 chaque Goal référence deux documents privés de travail appartenant à Document. Leur contenu est modifiable depuis
 les IHM Goal et Documents, mais leur propriétaire, leur titre et leur chemin restent exclusivement
 pilotés par le Goal. Le dossier porte le titre expurgé du Goal et les documents portent les
@@ -1054,9 +1056,13 @@ Depuis un round textuel ou un tour vocal, **Ajouter au Lab** sélectionne le jeu
 correspondant avant de copier le cas.
 
 Les modales texte et voix proposent également la copie du JSON complet et la suppression du tour.
-Les routes de suppression exigent `TASK_EDIT`, refusent les exécutions actives et conservent les
+Les routes de suppression exigent respectivement `CONVERSATION_CONTROL` et
+`VOICE_HISTORY_CONTROL` et conservent les
 Tâches, ProcessRuns et appels LLM d’audit déjà produits. Les appels LLM sont détachés du tour
 supprimé afin que leur journal global demeure exploitable.
+La suppression texte interrompt le round ; la suppression vocale peut rester en attente
+(HTTP 202) pendant la révocation et le nettoyage durable. Voir les
+[machines d'état](../architecture/state-machines.md).
 Le parcours d’interface se trouve dans le [guide opérateur](../user/lab-ai.md).
 
 ## 5. Base de données et synchronisation
@@ -1148,6 +1154,20 @@ Déclarez les privilèges avec des codes stables. `make sync-db` régénère et 
 définitions backend/frontend. Ne renommez pas un code existant comme une simple traduction :
 les codes sont des identifiants persistés, les libellés sont traduisibles.
 
+Les familles fonctionnelles et les réglages se délèguent séparément ; voir le
+[guide des privilèges](../admin/privileges.md). La politique par clé est exhaustive dans
+`core.params.access` et génère les contrôles des champs frontend. Ajouter une clé exige
+sa politique ; une clé inconnue est refusée. Le guard garde la politique de son décorateur
+(conjonction de droits, fallback, paramètres d'ownership) autoritaire sur les données client.
+Les identités de path restent prioritaires et l'assertion lit les paramètres de la même
+source que le handler. Les tests HTTP `test_guard_policy_parameters.py` protègent ces règles.
+
+En développement, le backend monte les destinations générées `front/core/authorize`
+et `front/core/params` dans le dépôt. Le contrat `generatedAccess.ts` doit être présent
+pour compiler le frontend et suit le générateur `core.params.access`, sans édition
+manuelle de ses politiques. Une simple génération ne nécessite pas de redémarrer
+le frontend ; un changement de montage du backend s'applique à sa prochaine création.
+
 Les droits sont mis en cache uniquement pendant une requête HTTP, séparément par session
 SQL, utilisateur et rôle actif. Le cache est invalidé après un flush, une écriture SQL ou
 une fin de transaction, y compris un rollback ou un savepoint. Les contrôles WebSocket et
@@ -1204,18 +1224,20 @@ indisponible, la connexion reste inactive ; le provisionnement peut être relanc
 depuis les connexions. Ces cinq Tools sont autorisés en conversation à leur
 première initialisation. Les réglages et restrictions existants sont conservés.
 
-Les packages `goal_management`, `skill_management` et `process_admin` sont déclarés dans
+Les packages `goal_management`, `skills` et `process_admin` sont déclarés dans
 `app.tools.mandatory_tools` avec `default_active=False`. La synchronisation crée donc une connexion
 pour chaque agent compatible, mais ne lui accorde aucune fonction par défaut. Une connexion
-`goal_management` active élargit les fonctions Goal partagées à tous les propriétaires et expose
+`goal_management` active avec une portée administrative élargit les fonctions Goal partagées
+aux agents de cette portée locale (`personal`, `team`, `all`) et expose
 uniquement les commandes administratives `goal_create`, `goal_update`, `goal_delete`, `goal_pause`,
 `goal_resume` et `goal_complete`. Conservez cette propriété pour toute capacité d'administration
-déléguée. Cette connexion active est le témoin d'administration : `app.goal.mcp` la revérifie au
+déléguée. `usage` ou une portée absente n'accorde aucune administration. `app.goal.mcp` revérifie
+la connexion, la portée et les équipes au
 moment de chaque commande administrative, même si la fonction avait déjà été montée dans un
 toolset. Sans ce témoin, les fonctions partagées injectent l'identifiant de l'agent appelant jusque
 dans la requête du service et répondent comme si tout Goal étranger était inexistant.
 
-Les Tools `galaris`, `conversation`, `memory` et `file_sharing` portent `can_disable=false`.
+Les Tools `galaris`, `conversation`, `document`, `memory` et `file_sharing` portent `can_disable=false`.
 Cette propriété persistée appartient au logiciel et n'est pas acceptée par les contrats d'écriture.
 Leurs connexions sont créées pour tous les agents et convergent vers l'état actif, y compris après
 une désactivation historique. L’API protège leurs définitions, connexions actives et paramètres système contre les mutations
@@ -1254,21 +1276,24 @@ constitue pas une autorisation durable.
 
 - création avec propriétaire et référent agent explicites et distincts ;
 - liste et inspection bornées au propriétaire, sauf élévation `goal_management` ;
-- historique des cycles séparé de la fiche Goal et suivi Markdown modifiable explicitement ;
+- historique des cycles séparé de la fiche Goal et suivi HTML modifiable explicitement ;
 - mise à jour et commandes pause/reprise/clôture/exécution immédiate protégées par
   `expected_revision` ;
 - suppression logique refusée lorsqu’un cycle est inachevé.
 
-Les réponses Goal conservent les champs texte `description` et `tracking_markdown`, résolus depuis
+Les réponses Goal conservent les champs texte `description` et `tracking_content`, résolus depuis
 leurs documents canoniques, et exposent aussi `description_document_id` et
 `tracking_document_id`. La transition initiale a sauvegardé les anciennes colonnes dans
 `galaris_migration.goal_markdown_backup`, créé les documents protégés, puis laissé Atlas supprimer
 les colonnes texte et imposer les clés étrangères UUID. Le hook temporaire a été retiré après la
 validation de cette contraction en production ; la sauvegarde reste disponible pour audit.
 
-`app.skill.mcp` expose exactement deux lectures : la matrice d’autorisation effective d’un agent et
-le seul fichier `SKILL.md` d’une compétence centrale. `skill_read` ne doit jamais devenir un explorateur de
-fichiers générique : les scripts, références et assets restent hors de ce contrat de management.
+`app.skill.mcp` expose découverte, lecture de `SKILL.md`, métadonnées, activation, suppression,
+autorisations génériques et retrait de propriété sous le Tool `skills`. Les portées locales
+et révisions sont vérifiées par `app.skill.interface`, commun à MCP et File Sharing.
+`skill_read` lit uniquement le fichier principal ; scripts, références et assets passent par
+`file_*`. Les personnels sont privés au propriétaire et exclus de la matrice générique.
+Voir le [guide des compétences](../user/skills.md).
 
 Le wrapper MCP central ouvre exactement une session courte avec `get_db_session` pour chaque appel.
 La fonction MCP et tous les services qu'elle appelle réutilisent cette session avec `get_db()` : ils

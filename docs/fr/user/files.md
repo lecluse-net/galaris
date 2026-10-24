@@ -2,6 +2,13 @@
 
 # Explorer les fichiers d’un agent
 
+L’accès à **Fichiers** utilise `FILE_ACCESS` ou `FILE_EDIT`. Le second autorise aussi les
+mutations de fichiers. Les Documents, Datasets et souvenirs conservent leurs propres droits :
+un droit Fichiers ne les ouvre pas, et lire une pièce jointe depuis son domaine ne demande
+pas un droit global Fichiers. Les périmètres des agents et les ACL restent appliqués.
+L’onglet **Indexation** utilise séparément `FILE_INDEX_ACCESS` ou `FILE_INDEX_RUN` ; le second
+permet de lancer, annuler et réparer les indexations. Il est accessible sans droit Dream.
+
 Lorsqu'une suppression est confirmée, ou que l'indexation constate la disparition d'un
 fichier externe, l'item mémoire lié est supprimé avec ses contenus et index si aucune
 autre URI ne le rattache à une ressource. Une panne ou un refus d'accès ne déclenche

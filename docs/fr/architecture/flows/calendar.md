@@ -9,6 +9,12 @@ explicitement une connexion Calendar pour l’agent depuis l’écran **Outils >
 
 ## Connexion et calendriers
 
+**Superviser → Calendriers** (`/connection/calendars`) sélectionne une connexion Calendar
+du périmètre géré puis affiche ses ressources. La consultation utilise `CALENDAR_ACCESS`
+ou `CALENDAR_EDIT` ; création, modification et suppression des flux utilisent `CALENDAR_EDIT`.
+Les options de connexion et de Process sont des métadonnées ciblées, sans délégation
+implicite d'administration des connexions ou des processus.
+
 Une connexion Calendar possède les préférences générales de recherche de créneaux : fuseau IANA,
 début et fin de journée de travail et pas de recherche. La même modale permet ensuite d’ajouter une
 ou plusieurs ressources `CalendarFeed`. Chaque ressource indique son propriétaire humain, son mode

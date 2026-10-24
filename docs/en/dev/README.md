@@ -15,6 +15,7 @@ and tests remain authoritative; plans describe extensions still open.
 | Handle JSON and the typed codec | [Dataset domain](datasets.md) |
 | Execute an internal workflow | [Native BPMN profile](native-processes.md) |
 | Share resources | [ACL contracts and migration](sharing.md) |
+| Delegate domains and settings | [Functional privileges](../admin/privileges.md) |
 | Choose evidence and test commands | [Testing behavior](testing.md) |
 | Observe a mission with real collaborating agents | [Teamwork pilot](agent-team-qualification.md) |
 
@@ -543,8 +544,9 @@ automatically cleaned temporary. They never ask the agent for a preparatory loca
 collection destination preserves the name returned by source metadata, including when its locator
 is opaque. `galaris://` projects Tasks, conversation rounds, Goals, Goal cycles, and assigned
 Processes as read-only, with their domain ACLs. Under `galaris://skill/`, an active
-`skill_management` connection additionally allows reading and modifying user skill files; system
-definitions remain read-only. The integrated `console` Tool declares its `file_share_config`
+`skills` connection allows reading authorized skills and administering packages within its local
+scope. Personal packages use `galaris://skill/personnal/<agent>/<code>/`; system definitions
+remain read-only. The integrated `console` Tool declares its `file_share_config`
 flag with the native `console` service; `console://` directly designates the SSH home and is not
 duplicated as an external provider. Thus, `console://my_file` means exactly `~/my_file`, and no
 layer prefixes its URI with a virtual `main/` segment. When available, the console is the only
@@ -694,7 +696,7 @@ projection retention: older items are forgotten in bounded batches and their sou
 reset to `null`, without deleting the canonical cycle. Messenger observes contacts before
 interactions with a fail-open fallback; its journal enables idempotent replay.
 
-The canonical Markdown description and tracking of a Goal no longer live in these projections:
+The canonical HTML description and tracking of a Goal no longer live in these projections:
 each Goal references two private working documents owned by Document. Their content can be modified from
 the Goal and Documents UIs, but their owner, title, and path remain exclusively controlled by
 the Goal. The folder bears the scrubbed Goal title and the documents are titled
@@ -1027,9 +1029,12 @@ From a text round or voice turn, **Add to Lab** selects a corresponding executor
 copying the case.
 
 The text and voice modals also offer copying the complete JSON and deleting the turn.
-Deletion routes require `TASK_EDIT`, reject active executions, and retain already produced
+Deletion routes require `CONVERSATION_CONTROL` and `VOICE_HISTORY_CONTROL` respectively,
+and retain already produced
 Tasks, ProcessRuns, and audit LLM calls. LLM calls are detached from the deleted turn so their
 global journal remains usable.
+Text deletion interrupts the round; voice deletion may remain pending (HTTP 202) during
+durable revocation and cleanup. See [state machines](../architecture/state-machines.md).
 The interface flow is available in the [operator guide](../user/lab-ai.md).
 
 ## 5. Database and Synchronization
@@ -1120,6 +1125,20 @@ Declare privileges with stable codes. `make sync-db` regenerates and synchronize
 definitions. Do not rename an existing code as a simple translation:
 codes are persisted identifiers; labels are translatable.
 
+Functional domains and settings are delegated separately; see the
+[privilege guide](../admin/privileges.md). `core.params.access` owns an exhaustive per-key
+policy and generates frontend field access. New keys require a policy; unknown keys are
+rejected. Guard decorator policy (privilege conjunction, fallback and ownership parameters)
+remains authoritative over client input. Path identities take priority and assertions read
+identities from the same source as handlers. HTTP tests in `test_guard_policy_parameters.py`
+protect these rules.
+
+In development, the backend mounts the generated destinations `front/core/authorize`
+and `front/core/params` into the checkout. `generatedAccess.ts` must be present to build
+the frontend and follows the `core.params.access` generator; do not edit its policies
+manually. Generating the file does not require a frontend restart; a changed backend
+mount applies when that container is next created.
+
 Permissions are cached only during one HTTP request, separately for each SQL session,
 user, and active role. A flush, SQL write, or transaction end invalidates the cache,
 including rollbacks and savepoints. WebSocket checks and autonomous jobs do not cache
@@ -1173,18 +1192,20 @@ the connection remains inactive; provisioning can be retried from Connections.
 These five Tools are enabled for conversations on first initialization. Existing
 settings and restrictions are preserved.
 
-The `goal_management`, `skill_management`, and `process_admin` packages are declared in
+The `goal_management`, `skills`, and `process_admin` packages are declared in
 `app.tools.mandatory_tools` with `default_active=False`. Synchronization therefore creates a
 connection for every compatible agent, but grants it no functions by default. An active
-`goal_management` connection broadens shared Goal functions to all owners and exposes only the
+`goal_management` connection with administrative scope broadens shared Goal functions to agents
+within its local `personal`, `team` or `all` scope and exposes only the
 administrative commands `goal_create`, `goal_update`, `goal_delete`, `goal_pause`,
 `goal_resume`, and `goal_complete`. Preserve this property for every delegated administrative
-capability. This active connection is the administrative witness: `app.goal.mcp` rechecks it
+capability. `usage` or missing scope grants no administration. `app.goal.mcp` rechecks the
+connection, scope and teams
 when each administrative command is called, even if the function had already been mounted in a
 toolset. Without this witness, shared functions inject the calling agent's identifier into the
 service request and respond as if every foreign Goal were nonexistent.
 
-The `galaris`, `conversation`, `memory` and `file_sharing` Tools carry `can_disable=false`.
+The `galaris`, `conversation`, `document`, `memory` and `file_sharing` Tools carry `can_disable=false`.
 This persisted property is software-owned and absent from write contracts. Their connections are
 created for every agent and converge to active, including previously disabled connections. The API protects their definitions, active connections and system parameters from ordinary
 mutations. Their functions retain Enabled/Disabled/Ask modes and the global/agent cascade,
@@ -1219,21 +1240,23 @@ time; prior function discovery alone is not durable authorization.
 
 - creation with explicit and distinct owner and agent referrer;
 - lists and inspection bounded to the owner, except with `goal_management` elevation;
-- cycle history separate from the Goal record and explicitly editable Markdown tracking;
+- cycle history separate from the Goal record and explicitly editable HTML tracking;
 - update and pause/resume/close/immediate-execution commands protected by
   `expected_revision`;
 - logical deletion rejected when a cycle is unfinished.
 
-Goal responses retain the text fields `description` and `tracking_markdown`, resolved from
+Goal responses retain the text fields `description` and `tracking_content`, resolved from
 their canonical documents, and also expose `description_document_id` and
 `tracking_document_id`. The initial transition backed up the old columns in
 `galaris_migration.goal_markdown_backup`, created protected documents, then allowed
 Atlas to remove the text columns and enforce UUID foreign keys. The temporary hook was removed
 after validating this contraction in production; the backup remains available for audit.
 
-`app.skill.mcp` exposes exactly two reads: an agent's effective authorization matrix and the
-single `SKILL.md` file of a core skill. `skill_read` must never become a generic file browser:
-scripts, references, and assets remain outside this management contract.
+`app.skill.mcp` exposes discovery, `SKILL.md` reads, metadata, activation, deletion, generic
+authorizations and ownership release under the `skills` Tool. `app.skill.interface` checks
+local scopes and revisions for both MCP and File Sharing. `skill_read` reads only the main
+file; scripts, references and assets use `file_*`. Personal packages are private to their
+owner and excluded from the generic matrix. See the [Skills guide](../user/skills.md).
 
 The central MCP wrapper opens exactly one short session with `get_db_session` for each call.
 The MCP function and all services it calls reuse this session with `get_db()`: they

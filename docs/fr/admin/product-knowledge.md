@@ -6,6 +6,16 @@ Tout agent peut expliquer Galaris et guider ses utilisateurs sans changer de mis
 personnalité. La capacité repose sur la documentation officielle de la version installée,
 une recherche hybride et la compétence système **Connaissance de Galaris** (`galaris-knowledge`).
 
+Les consignes communes aux exécuteurs relient aussi les fonctionnalités à la mission et à
+l'objectif courant : répondre dans la conversation, suivre une tâche, avancer une Goal,
+utiliser un Process affecté ou réutiliser le bon Document/Dataset. Elles demandent de
+vérifier l'effet obtenu et de conserver les contributions existantes, sans produire un
+rapport ou une copie uniquement pour démontrer de l'activité. Une Goal déjà atteinte
+appelle sa preuve, pas un nouveau cycle de contenu. Ces consignes ne donnent aucun droit
+supplémentaire et ne garantissent pas le bon choix du modèle ; le
+[corpus du Lab](../dev/lab-reference-corpus.md)
+permet de qualifier ces choix.
+
 ## Activation
 
 1. Dans **Configurer → Outils & connexions → Connexions** (`/tools?tab=connections`),

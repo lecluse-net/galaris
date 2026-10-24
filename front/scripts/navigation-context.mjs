@@ -23,7 +23,7 @@ export function dataLoader(front) {
     }
     const allowed = /(?:^|\/)(navigation|presentation|access|i18n)\.ts$/.test(relative)
       || ['modules.ts', 'app/index/navigationSections.ts', 'core/navigation/tree.ts',
-        'core/authorize/definitions.ts', 'core/i18n/merge.ts',
+        'core/authorize/definitions.ts', 'core/params/generatedAccess.ts', 'core/i18n/merge.ts',
         'app/lab/processI18n.ts', 'app/process/nativeI18n.ts',
         'core/i18n/locales/fr.ts', 'core/i18n/locales/en.ts'].includes(relative)
     if (!allowed || relative.includes('..')) throw new Error(`Unreviewed navigation import: ${relative}`)

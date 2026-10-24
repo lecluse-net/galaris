@@ -98,6 +98,13 @@ avec `file_write` suppose d'avoir lu tout le contenu nécessaire à sa conservat
 s'adapte à l'usage, sans réduction de longueur ni réécriture globale systématique. Cette règle
 éditoriale ne demande pas de condenser les entrées Dataset ou le code.
 
+Vérifier les affirmations des contributions dans leurs sources avant de les reprendre dans le
+document ou la réponse. Une contradiction suppose deux affirmations incompatibles sur le même
+objet, la même période et le même périmètre. Une hypothèse ou une information manquante reste
+une inconnue ; une rubrique « contradictions » peut légitimement n'en contenir aucune.
+L'absence de preuve ne réfute pas une affirmation : une inférence du collègue reste non étayée,
+sans devenir une contradiction, sauf si une source établit un fait incompatible.
+
 Un nouveau document est privé. `document_sharing` résout le destinataire humain, agent ou équipe
 et sa version de droits ; `document_share` accorde `read` ou `edit` avant transmission. Un lien
 ou `document_show` ne donne aucun droit. Une livraison externe est une opération distincte dont
@@ -217,6 +224,9 @@ indivisible trop grand produit sa taille requise : un appel explicite peut aller
 2 000 000 caractères. Aucun fragment de balise coupée n’est présenté comme HTML.
 
 `file_edit` utilise `start_line`/`end_line` comme numéros de blocs uniquement pour document://.
+Faire correspondre le premier et le dernier bloc de remplacement aux bornes lues. Un titre
+constitue un bloc distinct : s'il reste hors de la plage, ne pas le recopier dans le remplacement.
+Vérifier le passage assemblé avec ses blocs voisins conservés avant de soumettre l'édition.
 `expected_revision` y est obligatoire, ainsi que pour remplacement et ajout. Le remplacement
 textuel documentaire cible une occurrence unique dans un nœud textuel, jamais les attributs.
 Les ajouts répétés immédiatement par le même auteur et la même tâche sont idempotents.

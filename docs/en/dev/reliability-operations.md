@@ -258,6 +258,12 @@ are asynchronous: await them before actions that depend on the language. Failed 
 preserve the current interface and can be retried; late responses cannot replace a newer
 selection or another session.
 
+Builds reject initial graphs above 460,000 gzip bytes in English or 600,000 in
+French/Chinese. These budgets include the selected catalogue and are checked after the
+report is emitted; fonts, APIs and precache downloads remain outside this measurement.
+The `core/util/facade` surface exposes bootstrap primitives without loading the component
+catalogue; the same instances remain available through the root interface.
+
 Heavy readers, editors and previews exported by `core/util`, the Activity and Providers
 & models panels, and several Preferences sections load when opened. `defineAsyncView`
 preserves Vue props, events, slots and references. After a short wait it displays an

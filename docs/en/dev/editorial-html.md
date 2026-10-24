@@ -94,6 +94,13 @@ replacement with `file_write` requires reading all content needed to preserve it
 concision to the purpose without systematic shortening or full rewrites. This editorial
 guidance does not call for compacting Dataset entries or code.
 
+Check contributors' claims against their cited sources before adopting them in the document or
+reply. A contradiction requires incompatible statements about the same subject, time and scope.
+A hypothesis or missing information remains an unknown; a contradictions section may correctly
+contain none.
+Missing evidence does not refute a claim: a contributor's unsupported inference remains unsupported,
+not a contradiction, unless a source establishes an incompatible fact.
+
 A new document is private. `document_sharing` resolves the human, agent or team recipient and
 the sharing version; `document_share` grants `read` or `edit` before handoff. A link or
 `document_show` grants no rights. External delivery is a separate operation whose success
@@ -207,6 +214,9 @@ its required size; an explicit read can request up to 2,000,000 characters. A cu
 returned as an HTML fragment.
 
 For document:// only, `file_edit` interprets `start_line`/`end_line` as block numbers.
+Match the first and last replacement blocks to the observed bounds. A heading is a separate
+block: if it lies outside that range, do not repeat it in the replacement. Check the assembled
+passage with its retained neighbours before submitting the edit.
 `expected_revision` is mandatory for edits, replacements and appends. Text replacement matches
 one unique occurrence in a text node, never an attribute. Immediate repeated appends by the
 same author/task are idempotent. Canonically unchanged saves do not create another revision.

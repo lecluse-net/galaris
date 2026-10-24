@@ -5,7 +5,7 @@
 A Claude Code client installed on your machine can use Galaris profile models
 through `https://galaris.example/api/profile/anthropic`. All profiles share this
 URL; the `model` field selects the profile and tier, such as `profile1/text/high`.
-Calls remain visible under **Execution tracking → LLM calls**.
+Calls remain visible under **Monitor → Activity → LLM activity**.
 
 ## Prepare the connection
 

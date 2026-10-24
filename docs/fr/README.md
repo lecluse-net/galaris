@@ -30,6 +30,7 @@ notamment pour préparer le site web : capacités détaillées, conditions, limi
 | Écrire, citer un objet, partager ou exporter | [Contenus riches](user/rich-content.md) |
 | Créer et réutiliser du JSON | [Jeux de données](user/datasets.md) |
 | Parcourir les ressources d'un agent | [Fichiers](user/files.md) |
+| Gérer les méthodes génériques et personnelles des agents | [Compétences](user/skills.md) |
 | Travailler sur un checkout Git avec l'agent | [Éditeur de code](user/code-editor.md) |
 | Concevoir et suivre un workflow BPMN | [Processus internes](user/internal-processes.md) |
 
@@ -57,6 +58,8 @@ Ce parcours explique avec des exemples :
 [Donner la connaissance de Galaris à n'importe quel agent](admin/product-knowledge.md)
 
 [Régler l'admission et la concurrence des fournisseurs IA](admin/provider-admission.md)
+
+[Déléguer les privilèges et les réglages par fonction](admin/privileges.md)
 
 Ce parcours couvre l’installation et l’exploitation :
 

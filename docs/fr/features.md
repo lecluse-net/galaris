@@ -14,6 +14,10 @@ préconfigurés. On peut commencer à discuter, puis ajouter progressivement des
 et des intégrations depuis l’interface graphique. Il n’est pas nécessaire de construire une équipe
 ou un workflow pour poser sa première question.
 
+Après la configuration, Welcome propose une première mission guidée : choisir un exemple
+modifiable, lancer la demande puis retrouver son document. Le suivi distingue la fin de la
+tâche de la disponibilité du livrable ; l'utilisateur garde la revue de son contenu.
+
 L’application s’utilise sur ordinateur et mobile, avec une interface française, anglaise ou chinoise simplifiée,
 un thème clair ou sombre et une installation possible comme PWA. La navigation, la recherche,
 les notifications et les écrans de suivi gardent les opérations courantes accessibles.
@@ -66,6 +70,10 @@ Le texte enrichi accueille tableaux, encadrés, images, pièces jointes et liens
 ressources. Dictée, lecture vocale, impression, PDF et archive HTML facilitent son utilisation
 au-delà du chat. Chacun classe les documents dans ses propres dossiers et choisit ses icônes,
 sans imposer ce rangement aux autres lecteurs.
+
+La bibliothèque Documents peut aussi ouvrir sa propre conversation avec un agent, avec
+sélection de passage, sauvegarde avant envoi et rappel du dernier fil choisi. Le panneau
+reste fermé à l'ouverture du document ; l'utilisateur choisit quand reprendre l'échange.
 
 Ces documents sont aussi une **base de connaissance** : leur contenu, leurs références et leurs
 pièces jointes peuvent être retrouvés dans les recherches autorisées. Partager avec une personne,
@@ -131,6 +139,8 @@ Les URI permettent de retrouver les mêmes fichiers d’un outil à l’autre.
 
 Les compétences apportent des méthodes réutilisables ; les serveurs MCP connectés étendent les
 capacités. À l’inverse, Galaris peut exposer les outils autorisés d’un agent à un client MCP externe.
+Les [compétences personnelles](user/skills.md) gardent aussi des packages privés par agent,
+avec édition, activation et transfert de propriété ; les méthodes génériques restent distribuables.
 Les processus n8n apportent des traitements métier réutilisables, suivis depuis leur lancement
 jusqu’à leur résultat.
 
@@ -139,6 +149,8 @@ humains, outils et appels REST, avec variables typées, branches, boucles et sou
 Les échanges humains passent par la messagerie ; le suivi présente le graphe du run,
 ses données, ses fichiers et ses attentes. La création dans l'interface reste temporairement
 réservée au mode développement. Les runs gardent leur propre état dans Process.
+Une condition IA peut confier un travail à un agent ou demander directement une décision
+booléenne à un modèle explicitement choisi, sans outils ni tâche auxiliaire.
 
 Le [navigateur de fichiers](user/files.md) explore les emplacements accessibles de chaque
 agent. Pour un dépôt Git, l'[éditeur de code conversationnel](user/code-editor.md) permet
@@ -148,6 +160,9 @@ Le courrier complète ces moyens d’action : lire et rechercher des mails, trai
 préparer une réponse et, si la connexion l’exige, attendre que l’humain approuve exactement ce qui
 sera envoyé. Les calendriers ajoutent disponibilités, recherche de créneaux et événements.
 L’approbation d’un mail est accessible dans le chat privé du valideur comme dans son journal.
+À la réception, le journal conserve d'abord les en-têtes : les expéditeurs inconnus demandent
+un accord avant lecture du corps et lancement d'une tâche, selon la politique `mail_process`.
+Les Contacts reconnus appartiennent à cet agent ; un accord de traitement ne permet pas l'envoi.
 Pour une fonction d’outil, un accord permanent peut éviter les demandes suivantes sur cette
 connexion ; les droits des ressources et leurs versions restent vérifiés.
 
@@ -208,6 +223,10 @@ Les fonctions disponibles dépendent donc des droits, connexions et modèles con
 un modèle local ne rend pas automatiquement locaux les autres services utilisés. L’interface
 permet de régler les usages et d’en suivre l’activité ; les sauvegardes, mises à jour et contrôles
 d’exploitation relèvent de l’administrateur.
+
+Les [privilèges par fonction](admin/privileges.md) séparent consultation, contrôle et réglages :
+on peut déléguer Contacts, Fichiers, Permissions, modèles, historiques ou une rubrique de
+Préférences sans ouvrir toute l'administration. Les droits des ressources restent applicables.
 
 ## Passer à l’usage
 

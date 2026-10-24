@@ -1,0 +1,89 @@
+<p align="right"><a href="../../fr/user/skills.md">Français</a> · <strong>English</strong></p>
+
+# Use and administer skills
+
+Open **Configure → Skills** (`/skill`). A skill is a package containing `SKILL.md` and
+optional references, scripts or templates. It gives an agent a method; connections,
+action approvals and resource permissions remain necessary.
+
+## Choose the right collection
+
+| Tab | Contents |
+|---|---|
+| Skills | Generic catalogue, categories and protected system packages |
+| Personal skills | Private packages, each owned by one agent |
+| Self-learning | Procedures learned by Dream, when learning is enabled |
+| Authorizations | Generic assignments, requiring `SKILL_ASSIGN` |
+
+Personal skills are separate from memories and Documents. Generic packages can be assigned
+to multiple agents; personal packages are usable only by their owner. Administration of
+that owner does not make their skills usable by your other agents.
+
+## Edit a personal package
+
+Under **Personal skills**, search packages or filter by owner agent. Pagination defaults to
+50 items, offering 10, 20, 50, 100 or 500. Open a package to inspect files, edit a text file
+or label, enable, disable or delete it. Reading follows Skill privileges and management
+scope; mutations require `SKILL_EDIT`.
+
+Changes check the revision you read. If another actor modified the package, the conflict
+preserves your draft: reload and inspect changes before retrying. Activation applies only
+to the owner. Deletion removes the package and its files; system packages stay protected.
+
+**Change owner** transfers a personal package to another active agent you manage. Identity,
+author and files remain; activation is removed from the former owner and granted only to
+the new owner. Check the recipient and confirm. A code collision or exceeded quota rejects
+the transfer without overwriting anything. Personal quotas are 100 packages and 200 MiB
+in total per owner.
+
+## Convert between personal and generic
+
+These conversions require Skill editing and global agent management.
+
+- **Make personal** on a non-system generic package asks for an owner agent. Existing
+  assignments, global activation and the package's category are removed; it becomes enabled
+  only for that owner. Other skills in the category remain unchanged.
+- **Convert to generic skill** releases personal ownership, initially enabled for nobody.
+  Configure its assignments under **Authorizations** afterwards.
+
+Choose another code if it conflicts. Conversions retain identity, author and files and
+preserve a recovery receipt; retrying an uncertain operation must not create a second
+conversion. Transferring between agents remains separate from publishing in the generic catalogue.
+
+## Delegate management to an agent
+
+Under **Tools & connections → Connections**, configure **Skills** (`skills`). Its local
+`tools.management_scope` has no global value or inheritance:
+
+| Scope | Capability |
+|---|---|
+| `usage` | Discover and read usable skills; default when scope is absent |
+| `personal` | Administer its own personal packages |
+| `team` | Also administer personal packages and generic assignments for agents sharing an active team |
+| `all` | Administer all user packages and the generic catalogue; release ownership |
+
+`team` follows the union of active teams, reread on every call. Administration of a foreign
+personal package uses an explicit view and never grants usage. Only a human web session with
+Connection editing and global agent management can change this delegation. Activating a
+connection alone grants no global scope.
+
+Agents use `skills_list` and `skill_read` to discover and read `SKILL.md`. Files use `file_*`
+on `galaris://skill/`; personal packages use `galaris://skill/personnal/<agent>/<code>/`
+(canonical spelling `personnal`). Creation starts with a valid `SKILL.md` in the authenticated
+agent's space. `skill_update`, `skill_set_enabled`, `skill_delete`, `skill_set_authorization`,
+`skill_set_category_authorization` and `skill_release_ownership` recheck scope, revision and
+permissions on every call.
+
+The former `skill_management` Tool is replaced by `skills`, preserving connections and
+settings. Disabled connections stay disabled.
+
+## When changes take effect
+
+Before a new execution, managed harnesses reconcile authorized packages and assignments,
+including only the owner's personal packages. Projection failure blocks starting with a
+stale copy and remains retryable. An already running Task keeps its loaded context; a
+checkpoint resume keeps the context of the operation being reconciled. Future reads and
+mutations still recheck current rights.
+
+See also [privileges](../admin/privileges.md), [Tool administration](../admin/tool-administration.md)
+and [navigation](navigation.md).

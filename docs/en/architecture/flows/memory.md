@@ -313,6 +313,21 @@ the automatic brief separately from explicit `memory_*` calls.
 
 ## Acquisition, Dream, and Automatic Extraction
 
+Vector similarity proposes duplicate candidates; at acquisition it never establishes full
+equivalence. Without an affirmative configured decision, the new fact is retained. Dream can
+propose `ENRICH` for an editable personal memory: the service retains complete content,
+keywords, temporal scope and sources, then adds information/provenance with revision checks.
+`CONTRADICT` retains a distinct claim and link; existing content is not automatically declared
+false or erased. Managed projections and another agent's memories cannot be enriched this way.
+
+Extraction includes successful child Tasks and Goal-cycle Tasks with their producing identities.
+Prepared instructions, delegated work and Goal instructions remain attributed to AI; AI-only
+sources cannot create human personal facts, preferences or corrections. Capture opt-out
+propagates through Task lineage. Tool evidence remains distinct from final claims. Already
+acquired document analyses can be reused without new analysis, checking agent, URI, version
+and access. See [0228](../../../../project/decisions/0228-work-discovery-and-memory-continuity.md)
+and [0229](../../../../project/decisions/0229-memory-evidence-and-context-budgets.md).
+
 `memory_sources` is the provenance association between a memory and its canonical activity. Each
 row retains the extensible `source_kind + source_ref` identity and, as applicable, carries a typed
 foreign key to `tasks` or `conversation_rounds`. These two relationships are many-to-many: an

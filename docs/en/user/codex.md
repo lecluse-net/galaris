@@ -77,7 +77,7 @@ codex --model profile1/text/high
 ```
 
 Request a short answer to verify inference and its trace under
-**Execution tracking → LLM calls**. To change profiles or tiers, change only
+**Monitor → Activity → LLM activity**. To change profiles or tiers, change only
 `model` or the `--model` argument, for example to `profile1/text/standard`.
 The profile code remains stable when its label is renamed.
 

@@ -4,7 +4,8 @@
 
 The `bridge.mail` adapts an external mailbox to Galaris's Tool and Messenger contracts.
 The agent invokes MCP functions scoped to its single active `mail` connection; the
-canonical listener also polls the INBOX and admits each new email as a dedicated Task.
+canonical listener also polls INBOX, journals headers and admits authorized emails as
+dedicated Tasks after the `mail_process` gate.
 
 ```text
 Agent / Task
@@ -20,8 +21,10 @@ Agent / Task
 Active Mail connection
    → IMAP polling every poll_interval_s
    → durable UIDVALIDITY + UID cursor in app.messenger
-   → canonical inbound journal and deduplication
-   → immediate Task requesting mail_get for the opaque reference
+   → durable header-only Mail receipt before cursor advancement
+   → mail_process: function policy, exact Contacts and consent where required
+   → canonical Messenger journal and deduplication
+   → dedicated Task requesting mail_get for the opaque reference
 ```
 
 ## Reception and polling
@@ -46,6 +49,15 @@ to the sender: any reply or mutation requires an explicit call to `mail_reply`,
 `mail_send`, `mail_move`, `mail_set_flags`, or `mail_trash`.
 
 ## Identity and inbound content
+
+`mail_process` has a prepared authorization boundary. Its software default accepts senders
+already in this agent's Contacts and asks for unknown senders. Explicit On request asks for
+everyone; Active accepts all and Blocked rejects processing. Display names or another agent's
+contacts confer no trust. Bodies and attachments stay on IMAP before consent; denial adds
+no contact and admits no Task. Recovery uses the same receipt and rechecks connection,
+configuration and identity. Processing consent never authorizes SMTP sending. Private Chat,
+Permissions and the Mail journal's Reception tab share common decisions.
+See [0221](../../../../project/decisions/0221-mail-inbound-consent-and-journal.md).
 
 The MCP `mail_search` schema exposes `has_attachments=true` to require an attachment,
 and omission or `null` to disable this filter. `false` is rejected before IMAP: the bridge
@@ -106,7 +118,7 @@ Each historical pending email also produces a `mail_approval` choice in a privat
 with that approver. The request shows To/Cc/Bcc recipients, the subject, each body preview limited
 to 6,000 characters, and attachment metadata; the Mail journal retains the full content.
 **Allow sending** and **Reject** call the same domain operations as the journal. Identity,
-active user status, `CONNECTION_ACCESS`, and agent management scope are checked before notification
+active user status, `MAIL_EDIT`, `PERMISSION_DECIDE`, and agent management scope are checked before notification
 and again when deciding. Approval applies to the prepared MIME, never to future emails.
 
 A failed notification leaves the email pending. A job in the existing scheduler retries bounded
@@ -159,7 +171,7 @@ to Ask without enabling blocked functions. An active policy without an active US
 before the mail is created. The Tool is not auto-connected and remains absent from an agent's
 catalog until an administrator has created and activated its connection.
 
-The `/connection/mail` page, protected by `CONNECTION_ACCESS`, displays emails with a pending
+The `/connection/mail` page, protected by `MAIL_ACCESS` or `MAIL_EDIT`, displays emails with a pending
 common authorization and historical `pending_approval` emails first, followed by the complete
 history. Both lists use server-side pagination capped
 at 500, an agent filter, and a search across the agent, sender, recipients, subject, and
@@ -167,4 +179,4 @@ body. The details expose the relevant content, reviewer, and SMTP outcome, but n
 MIME payload. Its navigation entry is visible only if at least one active Mail connection
 exists; the page privilege continues to be checked independently. Approval and rejection
 routes add a contextual assertion: the current USER must be the official approver fixed on the
-mail, in addition to possessing `CONNECTION_ACCESS`.
+mail, in addition to possessing `MAIL_EDIT` and `PERMISSION_DECIDE` in a web session.

@@ -3,7 +3,8 @@
 # Teams and dialogue permissions
 
 Task management belongs to the owning agent, its human managers and global administrators.
-An agent with an active **Galaris Admin** connection can operate on every agent’s tasks.
+An agent with an active **Galaris Admin** connection can operate on Tasks within its
+delegated scope; only `all` opens global scope.
 The requester of a delegated task can follow its result without gaining management of the
 recipient’s other tasks.
 
@@ -12,7 +13,8 @@ allowed contacts in Chat, and the membership catalogue when composing a team. Th
 choices are checked again whenever the selector opens.
 
 A **team** contains humans and agents. Each member can belong to several teams. Members
-sharing a team can talk through the available channels without an additional rule.
+sharing a team can engage in human–agent dialogue under channel privileges. Agent-to-agent
+exchanges also follow their messaging connection's local scope.
 
 ## Manage membership
 
@@ -31,10 +33,15 @@ impersonation or access to other humans’ conversations.
 
 ## Who can communicate?
 
-Chat access requires a shared team, management of the agent, or administrator access
+Human–agent Chat access requires a shared team, management of the agent, or administrator access
 (`AGENT_MANAGE_ALL`). There are no Inherit / Allow / Deny settings for contacts outside
-a team. Access never propagates through a third member. Two agents must share a team
-to communicate with one another.
+a team. Access never propagates through a third member.
+
+For agent-to-agent exchanges, **Tools & connections → Connections → Inter-agent communication**
+offers `none` (no peers), `team` (shared teams, default) or `all` (other active agents).
+This local `tools.management_scope` is reserved to global human managers and rechecked on
+every exchange. Both sender and recipient connections are checked. It changes neither
+human contact rights nor document permissions.
 
 Documents keep their finer sharing rules: individual or team grants, with separate read
 and write access. Sharing a team for chat does not automatically expose all documents.
@@ -49,7 +56,8 @@ available; already admitted tasks are not cancelled. Personal preferences and do
 retain their own authorization rules.
 
 External contacts must be linked to a verified Galaris identity to engage an agent, including
-through asynchronous messages. Permissions do not enable new channels: native Chat remains
+through asynchronous messages. Mail has its own Contacts and consent procedure before admission,
+described in the [Mail journal](tasks.md). Permissions do not enable new channels: native Chat remains
 human ↔ agent. Delegated agent tasks also enforce contact permissions.
 
 ## Privileges

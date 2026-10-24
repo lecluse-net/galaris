@@ -6,6 +6,15 @@ Any agent can explain Galaris and guide users while keeping its existing role an
 The capability combines the official documentation shipped with the installed version, hybrid
 retrieval and the **Galaris knowledge** system skill (`galaris-knowledge`).
 
+Shared executor instructions also connect features to the mission and current objective:
+answer in the conversation, track a Task, advance a Goal, use an assigned Process, or reuse
+the appropriate Document/Dataset. They require verification of the outcome and preservation
+of existing contributions, without producing reports or copies merely to demonstrate activity.
+An achieved Goal calls for its evidence, not another cycle of content. These instructions
+grant no additional rights and do not guarantee correct model choices; the
+[Lab corpus](../dev/lab-reference-corpus.md)
+supports qualification of those choices.
+
 ## Enable access
 
 1. In **Configure → Tools & connections → Connections** (`/tools?tab=connections`),

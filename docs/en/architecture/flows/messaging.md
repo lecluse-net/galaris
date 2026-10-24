@@ -413,7 +413,9 @@ the fallback response sent, its status and error, and the driver’s partial tra
 The two modals have a shared action bar. The routes
 `/conversations/rounds/{id}/dataset` and `/voice/conversations/turns/{id}/dataset` expose the same
 complete dataset as administrative inspection for copying as JSON. Deletion is restricted to
-`TASK_EDIT` and accepts the round regardless of its state. It locks the round, immediately
+`CONVERSATION_CONTROL` for text rounds and accepts the round regardless of its state.
+Voice control and deletion use `VOICE_HISTORY_CONTROL` with their own revocation and cleanup
+procedure. Text deletion locks the round, immediately
 cancels its local worker if one exists, then deletes the durable row; a worker on another instance
 then loses its lease and interrupts its action at the next heartbeat. It removes the run from
 history without deleting canonical Messenger messages. Already-created Tasks and ProcessRuns are

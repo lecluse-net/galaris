@@ -26,7 +26,12 @@
       },
       "privilege_groups": [
         [
-          "LLM_PROVIDER_ACCESS"
+          "LLM_PROVIDER_ACCESS",
+          "LLM_PROVIDER_EDIT",
+          "LLM_MODEL_ACCESS",
+          "LLM_MODEL_EDIT",
+          "LLM_PROFILE_ACCESS",
+          "LLM_PROFILE_EDIT"
         ]
       ],
       "conditions": [],
@@ -58,7 +63,8 @@
       },
       "privilege_groups": [
         [
-          "AGENT_ACCESS"
+          "AGENT_ACCESS",
+          "AGENT_EDIT"
         ]
       ],
       "conditions": [],
@@ -90,7 +96,13 @@
       },
       "privilege_groups": [
         [
-          "TOOL_ACCESS"
+          "TOOL_ACCESS",
+          "TOOL_EDIT",
+          "CONNECTION_ACCESS",
+          "CONNECTION_EDIT",
+          "PERMISSION_ACCESS",
+          "PERMISSION_DECIDE",
+          "PERMISSION_REVOKE"
         ]
       ],
       "conditions": [],
@@ -122,7 +134,9 @@
       },
       "privilege_groups": [
         [
-          "SKILL_ACCESS"
+          "SKILL_ACCESS",
+          "SKILL_EDIT",
+          "SKILL_ASSIGN"
         ]
       ],
       "conditions": [],
@@ -191,7 +205,10 @@
       },
       "privilege_groups": [
         [
-          "GOAL_ACCESS"
+          "GOAL_ACCESS",
+          "GOAL_EDIT",
+          "GOAL_CONFIG_ACCESS",
+          "GOAL_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -223,7 +240,9 @@
       },
       "privilege_groups": [
         [
-          "PROCESS_READ"
+          "PROCESS_READ",
+          "PROCESS_EDIT",
+          "PROCESS_ADMIN"
         ]
       ],
       "conditions": [],
@@ -255,7 +274,9 @@
       },
       "privilege_groups": [
         [
-          "DOCUMENT_ACCESS"
+          "DOCUMENT_ACCESS",
+          "DOCUMENT_EDIT",
+          "DOCUMENT_ADMIN"
         ]
       ],
       "conditions": [],
@@ -321,7 +342,10 @@
       },
       "privilege_groups": [
         [
-          "MEMORY_ACCESS"
+          "FILE_ACCESS",
+          "FILE_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
         ]
       ],
       "conditions": [],
@@ -353,7 +377,9 @@
       },
       "privilege_groups": [
         [
-          "MEMORY_ACCESS"
+          "MEMORY_ACCESS",
+          "MEMORY_EDIT",
+          "MEMORY_ADMIN"
         ]
       ],
       "conditions": [],
@@ -385,7 +411,8 @@
       },
       "privilege_groups": [
         [
-          "MEMORY_ACCESS"
+          "CONTACT_ACCESS",
+          "CONTACT_EDIT"
         ]
       ],
       "conditions": [],
@@ -450,8 +477,7 @@
       },
       "privilege_groups": [
         [
-          "TASK_ACCESS",
-          "TASK_EDIT"
+          "DASHBOARD_ACCESS"
         ]
       ],
       "conditions": [],
@@ -483,7 +509,16 @@
       },
       "privilege_groups": [
         [
-          "TASK_ACCESS"
+          "TASK_ACCESS",
+          "TASK_EDIT",
+          "CONVERSATION_ACCESS",
+          "CONVERSATION_CONTROL",
+          "VOICE_HISTORY_ACCESS",
+          "VOICE_HISTORY_CONTROL",
+          "LLM_CALL_ACCESS",
+          "LLM_CALL_CONTROL",
+          "PROCESS_READ",
+          "PROCESS_ADMIN"
         ]
       ],
       "conditions": [],
@@ -515,11 +550,15 @@
       },
       "privilege_groups": [
         [
-          "TASK_ACCESS",
-          "AGENT_MANAGE_ALL"
+          "DREAM_ACCESS"
         ]
       ],
-      "conditions": [],
+      "conditions": [
+        {
+          "node": "monitor.dream",
+          "visibility": "dynamic"
+        }
+      ],
       "sources": [
         "front/app/dream/navigation.ts"
       ]
@@ -548,7 +587,8 @@
       },
       "privilege_groups": [
         [
-          "CONNECTION_ACCESS"
+          "MAIL_ACCESS",
+          "MAIL_EDIT"
         ]
       ],
       "conditions": [
@@ -585,8 +625,42 @@
       },
       "privilege_groups": [
         [
-          "CONNECTION_ACCESS",
-          "CONNECTION_EDIT"
+          "PERMISSION_ACCESS",
+          "PERMISSION_DECIDE",
+          "PERMISSION_REVOKE"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/connection/navigation.ts"
+      ]
+    },
+    {
+      "id": "monitor.calendars",
+      "labels": {
+        "fr": "Calendriers",
+        "en": "Calendars"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Superviser",
+          "Calendriers"
+        ],
+        "en": [
+          "Monitor",
+          "Calendars"
+        ]
+      },
+      "route": "/connection/calendars",
+      "href": null,
+      "description": {
+        "fr": "Consulter et gérer les flux calendaires des agents",
+        "en": "Read and manage agent calendar feeds"
+      },
+      "privilege_groups": [
+        [
+          "CALENDAR_ACCESS",
+          "CALENDAR_EDIT"
         ]
       ],
       "conditions": [],
@@ -651,7 +725,36 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -686,10 +789,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT"
         ]
       ],
       "conditions": [],
@@ -723,10 +856,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -760,10 +923,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -797,10 +990,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -834,10 +1057,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT"
         ]
       ],
       "conditions": [],
@@ -871,10 +1124,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -908,10 +1191,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -945,10 +1258,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -982,10 +1325,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -1019,10 +1392,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -1056,10 +1459,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -1093,11 +1526,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS",
-          "PARAMS_EDIT"
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ]
       ],
       "conditions": [
@@ -1136,10 +1598,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -1173,10 +1665,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -1210,10 +1732,40 @@
       },
       "privilege_groups": [
         [
-          "PARAMS_ACCESS"
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT"
         ],
         [
-          "PARAMS_ACCESS"
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -1947,7 +2499,8 @@
       },
       "privilege_groups": [
         [
-          "CONSOLE_ACCESS"
+          "CONSOLE_ACCESS",
+          "CONSOLE_ADMIN"
         ]
       ],
       "conditions": [
@@ -1984,7 +2537,10 @@
       },
       "privilege_groups": [
         [
-          "READ_USER"
+          "READ_USER",
+          "CREATE_USER",
+          "UPDATE_USER",
+          "DELETE_USER"
         ]
       ],
       "conditions": [],
@@ -2048,7 +2604,12 @@
       },
       "privilege_groups": [
         [
-          "READ_ROLE"
+          "READ_ROLE",
+          "MANAGE_ROLE",
+          "READ_PRIVILEGE",
+          "MANAGE_PRIVILEGE",
+          "READ_ASSIGNMENT",
+          "MANAGE_ASSIGNMENT"
         ]
       ],
       "conditions": [],

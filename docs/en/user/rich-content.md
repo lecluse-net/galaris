@@ -193,7 +193,7 @@ text: renaming the target later does not replace it.
 
 **Galaris link → Galaris objects** searches Tasks, Goals, Topics, discussions, text rounds,
 calls and voice turns. Their details and menus offer **Copy reference**. Paste it into a
-Document to insert a titled link, then choose **Show card** from its context
+Document with **Ctrl+V** or the **Paste** menu to insert a titled link, then choose **Show card** from its context
 menu while editing. **Show URL** restores the link.
 
 Task and exchange cards retain essential information from insertion time without copying
@@ -264,6 +264,9 @@ Previews require public HTTPS URLs; plain links remain available. Thumbnails are
 previews, not attached content: they create no files in the document's attachments. If the cache
 is cleared, the preview can be regenerated; if the source is unavailable, the card retains its
 text and link. Old cards remain readable. Clicking an attachment link opens its viewer, including while editing.
+From Memory, the preview button also waits for its reader to become available. Changing
+the memory or agent while waiting cancels the previous opening. An error shows a message
+and makes the button available for another attempt.
 Right-click an attachment, or press **Shift+F10** while it has focus, to open, download,
 rename, copy its reference, insert or remove it according to the available permissions.
 Thumbnails retain download and remove icons; clicking the thumbnail opens its preview.
