@@ -347,6 +347,10 @@ relationship between deliverables is ambiguous. The Task service remains authori
 checks scope and revision, notably refuses materialized plans, and records every accepted
 amendment in `task_amendments`. Colleague or Process expectations are projected as `WAITING`
 with their question and deadline; a human pause remains `PAUSED`.
+During delegation, an accepted instruction is retained with `applied_at=null` and a `deferred=true`
+receipt. Fan-in applies it after contributions and before synthesis, in the same transaction as
+resumption. Contributions and their effects remain available; human pauses, incompatible
+checkpoints and terminal states retain their protections.
 An amendment strictly preserves the same artifact or primary target and substantially identical
 success criteria. A target, repository, resource, deliverable, or separately verifiable result
 requires `CREATE_NEW`, even when it extends the same incident. The round exposes the

@@ -114,6 +114,27 @@ et le contexte ordinaire du contrôleur ne sont pas réécrits.
 
 ## Preuves dans le code
 
+### 2026-10-24 — Consignes pendant les délégations
+
+Une modification du même livrable peut être acceptée pendant les contributions déléguées,
+sans interrompre les enfants ni changer la définition et la révision utilisées par le worker.
+`task_amendments.applied_at` devient nullable : nul signifie accepté mais en attente ; les
+lignes historiques appliquées conservent leur date. Le reçu distingue `deferred` de l'application.
+Les validations de portée, de révision, de checkpoint, de racine et de plan restent applicables.
+
+L'admission et le fan-in prennent le même verrou de parent (`FOR NO KEY UPDATE`, compatible
+avec les clés étrangères des traces). Les consignes sont datées après acquisition du verrou.
+Le fan-in applique les instructions dans l'ordre d'admission avant la synthèse, avec les résultats
+des enfants inchangés. Application, horodatages, nouvelle portée et consommation des contributions
+sont committés ensemble. La phase n'est jamais terminale à titre provisoire.
+
+Les pauses humaines retardent l'application ; l'annulation ou la terminaison ne sont pas annulées.
+Un checkpoint devenu incompatible conserve la suspension et la consigne, avec un diagnostic.
+La file est bornée à 100 instructions de 8 000 caractères ; un rejeu idempotent conserve son reçu
+même lorsque cette limite est atteinte. Les nouveaux livrables indépendants et les plans
+matérialisés restent hors de ce parcours. Un message reçu n'est pas encore un amendement accepté :
+le contrôleur doit appeler l'admission avec la bonne cible et sa révision.
+
 `back/app/conversation/models.py`, `back/app/voice/models.py`,
 `back/app/voice/conversation_service.py`, `back/app/voice/monitoring_service.py`,
 `back/app/dream/mechanisms/conversation_memory.py`.

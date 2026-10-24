@@ -125,7 +125,7 @@ async def list_task_amendments_by_source(
             "instruction": item.instruction,
             "reason": item.reason,
             "created_at": item.created_at.isoformat(),
-            "applied_at": item.applied_at.isoformat(),
+            "applied_at": item.applied_at.isoformat() if item.applied_at else None,
         }
         for item in rows
     ]

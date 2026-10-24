@@ -68,6 +68,15 @@ once its executor has regained ownership. Agreement remains recorded during this
 do not create another Task to bypass a resumption refusal or repeat the action.
 A manual pause still takes precedence.
 
+## Change an instruction during contributions
+
+In the same conversation, state what changes and what remains valid, for example:
+“The budget changes to EUR 6,800; commitments remain EUR 6,300.”
+When the agent accepts this change for the current Task, it can remain pending while colleagues
+finish their contributions. The leader must then resume synthesis with the new constraint and
+preserve facts that remain valid. A queued acknowledgment does not mean the deliverable has
+already been corrected. Manual pauses retain priority; this path does not reopen a terminal Task.
+
 ## What Happens After Submission
 
 A request continuing existing work can reuse its tracking document without repeating

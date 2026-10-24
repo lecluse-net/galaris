@@ -247,7 +247,7 @@ class Task(HistoryMixin, Base):
 
 
 class TaskAmendment(Base):
-    """Immutable audit record for an instruction merged into an existing Task."""
+    """Durable instruction; a null applied_at means it awaits safe consolidation."""
 
     __tablename__ = "task_amendments"
     __table_args__ = (
@@ -272,8 +272,8 @@ class TaskAmendment(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    applied_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
+    applied_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     task: Mapped["Task"] = relationship("Task")

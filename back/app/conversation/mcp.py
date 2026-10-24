@@ -549,7 +549,10 @@ async def _create_conversation_task(
         "when it shares the same document or incident. Sharing a destination is not enough "
         "to amend: if either outcome can be completed without the other, create a new Task "
         "and leave existing work unchanged. Amendments require target_task_id and "
-        "expected_revision. An unavailable amendment returns without creating another Task: re-read "
+        "expected_revision. While delegated children are active, an accepted amendment is queued "
+        "durably for the leader's next synthesis: the receipt has deferred=true and applied_at=null. "
+        "Contributions keep running; do not edit source documents or send a peer message as a "
+        "substitute for this instruction. An unavailable amendment returns without creating another Task: re-read "
         "the target and reconsider the amendment; use CREATE_NEW for an independent outcome. "
         "Use REPLACE only for an explicit replacement: its successor waits for confirmed stop "
         "of target_task_id at expected_revision. Unresolved coordination returns a conflict. "
@@ -715,6 +718,8 @@ async def conversation_task_submit(
                             "requested_action": disposition,
                             "amendment_id": str(amended.amendment.id),
                             "interrupted": amended.interrupted,
+                            "deferred": amended.deferred,
+                            "applied_at": amended.amendment.applied_at.isoformat() if amended.amendment.applied_at else None,
                             **(await _task_dict(amended.task)),
                         }
 

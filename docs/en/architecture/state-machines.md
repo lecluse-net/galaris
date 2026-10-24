@@ -170,6 +170,15 @@ pass back through the dispatcher. If the Task was in `EXEC`, it is first interru
 correlation until fan-in. The operational states `QUEUED`, `RUNNING`, `WAITING`, `PAUSED`, and
 `TERMINAL` are read projections, not new PostgreSQL phases.
 
+During active delegation, accepted amendments remain in `task_amendments` with a null `applied_at`,
+without interrupting colleagues or changing the parent's revision or lease. The parent lock
+serializes admission with fan-in. Once all contributions are available, instructions are applied
+in admission order, in the same transaction as parent resumption and consumed-contribution markers.
+Synthesis uses the revised objective and existing results without replaying effects. Human pauses
+delay application; terminal states prevent it. An incompatible checkpoint retains the pending
+instruction and suspension with a diagnostic. A materialized root plan remains unsupported.
+The queue is limited to 100 instructions, each at most 8,000 characters.
+
 A conversational amendment tolerates a newer technical revision only when the server-frozen
 definition fingerprint for the requested revision still matches under the row lock. Changes
 to objective, plan, overrides, scope or terminal state remain conflicts; without a known

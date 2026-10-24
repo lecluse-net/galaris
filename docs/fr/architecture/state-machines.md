@@ -172,6 +172,16 @@ repasser par le dispatcher. Si la tâche était en `EXEC`, elle est d'abord inte
 corrélation jusqu'au fan-in. Les états opérationnels `QUEUED`, `RUNNING`, `WAITING`, `PAUSED` et
 `TERMINAL` sont des projections de lecture, pas de nouvelles phases PostgreSQL.
 
+Pendant des délégations actives, l'amendement accepté reste en attente dans `task_amendments`
+(`applied_at` nul) sans interrompre les collègues ni modifier la révision ou le lease du parent.
+Le verrou du parent sérialise cette admission avec le fan-in. Après réception de toutes les
+contributions, les consignes sont appliquées dans l'ordre d'acceptation et leur horodatage est
+fixé dans la même transaction que la reprise du parent et les marqueurs de contributions consommées.
+La synthèse utilise donc le nouvel objectif et les résultats existants ; les effets ne sont pas rejoués.
+Une pause humaine retarde cette application ; une terminaison l'empêche. Un checkpoint incompatible
+conserve la consigne en attente et la suspension, avec un diagnostic. Le plan matérialisé du parent
+reste refusé. La file est limitée à 100 consignes, chacune de 8 000 caractères au maximum.
+
 L'amendement conversationnel tolère une révision technique plus récente seulement lorsque
 l'empreinte de définition figée par le serveur pour la révision demandée est encore identique
 sous verrou. Objectif, plan, forçages, portée ou terminaison modifiés restent conflictuels ;

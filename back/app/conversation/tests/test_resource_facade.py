@@ -114,8 +114,10 @@ async def test_conversation_round_resources_are_scoped_by_connection_owner(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("applied", [False, True])
 async def test_conversation_round_resource_exposes_task_amendment_lineage(
     db: AsyncSession,
+    applied: bool,
 ) -> None:
     owner, round_ = await _round_scope(db, "Amendment room")
     task = Task(
@@ -137,6 +139,7 @@ async def test_conversation_round_resource_exposes_task_amendment_lineage(
         disposition="AMEND_CURRENT",
         instruction="Move Galaris and MaLibFin into a development directory.",
         reason="Related preventive work.",
+        applied_at=datetime.now(timezone.utc) if applied else None,
     )
     db.add(amendment)
     await db.flush()
@@ -159,7 +162,7 @@ async def test_conversation_round_resource_exposes_task_amendment_lineage(
             "instruction": "Move Galaris and MaLibFin into a development directory.",
             "reason": "Related preventive work.",
             "created_at": amendment.created_at.isoformat(),
-            "applied_at": amendment.applied_at.isoformat(),
+            "applied_at": amendment.applied_at.isoformat() if applied else None,
         }
     ]
 

@@ -537,7 +537,7 @@ async def test_admission_amends_the_same_current_deliverable(
         paused=True,
         data={"pause_reasons": ["await"]},
     )
-    amendment = SimpleNamespace(id=uuid4())
+    amendment = SimpleNamespace(id=uuid4(), applied_at=datetime.now(timezone.utc))
     amend = AsyncMock(
         return_value=amendment_service.TaskAmendmentResult(
             task=task,
@@ -664,7 +664,7 @@ async def test_queued_task_amendment_is_normalized_after_agent_slot_changes(
 ) -> None:
     turn = _turn()
     task = _task(status=TaskStatus.CREATE)
-    amendment = SimpleNamespace(id=uuid4())
+    amendment = SimpleNamespace(id=uuid4(), applied_at=datetime.now(timezone.utc))
     amend = AsyncMock(
         return_value=amendment_service.TaskAmendmentResult(
             task=task,

@@ -43,10 +43,15 @@ class TaskOperationalSnapshot(TypedDict):
     waits: list[TaskWait]
     amendable: bool
     amend_blocker: str | None
+    amendment_application: NotRequired[Literal["immediate", "after_children"]]
     replacement: NotRequired[dict[str, Any]]
 
 
 _TERMINAL = (TaskStatus.SUCCESS, TaskStatus.ERROR)
+
+
+def has_active_delegations(children: Sequence[Task]) -> bool:
+    return any(bool(_data(child).get("delegated")) and child.status not in _TERMINAL for child in children)
 
 
 def _data(task: Task) -> dict[str, Any]:
@@ -165,7 +170,7 @@ def operational_snapshot(task: Task, children: Sequence[Task] = ()) -> TaskOpera
     elif task.plan is not None:
         blocker = "A Task with a materialized plan cannot be amended safely."
     elif any(
-        bool(_data(child).get("delegated")) or child.plan is not None
+        child.plan is not None and not bool(_data(child).get("delegated"))
         for child in children
         if child.status not in _TERMINAL
     ):
@@ -188,6 +193,7 @@ def operational_snapshot(task: Task, children: Sequence[Task] = ()) -> TaskOpera
         "waits": waits,
         "amendable": blocker is None,
         "amend_blocker": blocker,
+        "amendment_application": "after_children" if has_active_delegations(children) else "immediate",
     }
     if replacement:
         snapshot["replacement"] = {"state": replacement.get("state"),

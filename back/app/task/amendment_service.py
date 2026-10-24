@@ -9,18 +9,19 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from core.database import get_db
 
 from .models import Task, TaskAmendment, TaskStatus
-from .operational_state import operational_snapshot
+from .operational_state import has_active_delegations, operational_snapshot
 from .task_service import TaskEditConflict, TaskRevisionConflict
 from .workflow import TaskEvent, transition
 
 
 _MAX_INSTRUCTION_CHARS = 8_000
 _MAX_REASON_CHARS = 1_000
+_MAX_PENDING_AMENDMENTS = 100
 _AMENDMENT_HEADING = "Additional instructions received after this Task was created:"
 _AMEND_DISPOSITIONS = {"AMEND_CURRENT", "AMEND_QUEUED"}
 
@@ -53,6 +54,7 @@ class TaskAmendmentResult:
     amendment: TaskAmendment
     created: bool
     interrupted: bool
+    deferred: bool = False
 
 
 def _merge_instruction(objective: str | None, instruction: str) -> str:
@@ -87,7 +89,42 @@ async def _existing_amendment(
         amendment=existing,
         created=False,
         interrupted=False,
+        deferred=existing.applied_at is None,
     )
+
+
+def _apply_instruction(task: Task, instruction: str, key: str) -> None:
+    task.objective = _merge_instruction(task.objective, instruction)
+    task.dispatch_result = None
+    task.execution_result = None
+    task.feedback = None
+    task.last_error = None
+    data: dict[str, Any] = dict(task.data or {})
+    from app.agent import SCOPE_KEY, amend_scope, parse_scope
+    scope = parse_scope(data)
+    if scope is not None:
+        data[SCOPE_KEY] = amend_scope(scope, instruction,
+            f"galaris://task/{task.id}/amendment/{key}").model_dump(mode="json")
+    data["amendment_count"] = int(data.get("amendment_count", 0) or 0) + 1
+    data["last_amended_at"] = datetime.now(timezone.utc).isoformat()
+    task.data = data
+
+
+async def apply_pending_amendments(task: Task) -> bool:
+    """Apply in admission order under the caller's fan-in Task lock; never commit here."""
+    pending = list(await get_db().scalars(select(TaskAmendment)
+        .where(TaskAmendment.task_id == task.id, TaskAmendment.applied_at.is_(None))
+        .order_by(TaskAmendment.created_at, TaskAmendment.id)))
+    if not pending:
+        return False
+    from app.agent import objective_amendment_blocker
+    blocker = objective_amendment_blocker(task.data or {}, execution_active=False)
+    if blocker:
+        raise TaskEditConflict(blocker)
+    for amendment in pending:
+        _apply_instruction(task, amendment.instruction, amendment.idempotency_key)
+        amendment.applied_at = datetime.now(timezone.utc)
+    return True
 
 
 async def amend_task(
@@ -127,7 +164,7 @@ async def amend_task(
         return existing
 
     task = await db.scalar(
-        Task.histo_filter(select(Task).where(Task.id == task_id).with_for_update()
+        Task.histo_filter(select(Task).where(Task.id == task_id).with_for_update(key_share=True)
                           .execution_options(populate_existing=True))
     )
     if task is None:
@@ -167,6 +204,22 @@ async def amend_task(
     if disposition == "AMEND_CURRENT" and snapshot["operational_state"] == "QUEUED":
         raise TaskEditConflict("Use AMEND_QUEUED for a queued Task.")
 
+    pending_count = await db.scalar(select(func.count()).select_from(TaskAmendment).where(
+        TaskAmendment.task_id == task.id, TaskAmendment.applied_at.is_(None))) or 0
+    if has_active_delegations(children) or pending_count:
+        if pending_count >= _MAX_PENDING_AMENDMENTS:
+            raise TaskEditConflict("This Task has too many pending amendments; wait for consolidation.")
+        # The root lock serializes this admission with fan-in. Do not change its
+        # revision, lease, scope or checkpoint while a worker still owns the old run.
+        amendment = TaskAmendment(task_id=task.id, source_kind=source_kind[:40],
+            source_id=source_id[:200], idempotency_key=idempotency_key, disposition=disposition,
+            instruction=clean_instruction, reason=clean_reason,
+            created_at=datetime.now(timezone.utc), applied_at=None)
+        db.add(amendment)
+        await db.commit()
+        await db.refresh(amendment)
+        return TaskAmendmentResult(task, amendment, created=True, interrupted=False, deferred=True)
+
     from . import scheduler, task_service
 
     interrupted = False
@@ -177,23 +230,10 @@ async def amend_task(
     if task.status == TaskStatus.EXEC:
         transition(task, TaskEvent.INTERRUPT_EXECUTION)
 
-    task.objective = _merge_instruction(task.objective, clean_instruction)
-    task.dispatch_result = None
     # The previous visible trace belongs to the superseded objective. The durable driver
     # checkpoint remains available for effect-safe replay, but the revised run must publish
     # a fresh result before the Task can become terminal again.
-    task.execution_result = None
-    task.feedback = None
-    task.last_error = None
-    data: dict[str, Any] = task.data.copy() if task.data is not None else {}
-    from app.agent import SCOPE_KEY, amend_scope, parse_scope
-    scope = parse_scope(data)
-    if scope is not None:
-        data[SCOPE_KEY] = amend_scope(scope, clean_instruction,
-            f"galaris://task/{task.id}/amendment/{idempotency_key}").model_dump(mode="json")
-    data["amendment_count"] = int(data.get("amendment_count", 0) or 0) + 1
-    data["last_amended_at"] = datetime.now(timezone.utc).isoformat()
-    task.data = data
+    _apply_instruction(task, clean_instruction, idempotency_key)
 
     # An internal wait keeps its resume point and correlation. Every other non-planned task
     # returns to CREATE so the dispatcher sees the revised objective.
@@ -217,6 +257,7 @@ async def amend_task(
         disposition=disposition[:30],
         instruction=clean_instruction,
         reason=clean_reason,
+        applied_at=datetime.now(timezone.utc),
     )
     db.add(amendment)
     saved = await task_service.save(task)

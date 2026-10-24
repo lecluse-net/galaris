@@ -359,6 +359,10 @@ entre livrables est ambiguë. Le service tâche reste l’autorité : il vérifi
 refuse notamment les plans matérialisés et inscrit chaque amendement accepté dans
 `task_amendments`. Les attentes de collègue ou de Process sont projetées comme `WAITING` avec leur
 question et leur échéance ; une pause humaine reste `PAUSED`.
+Pendant une délégation, l'instruction acceptée est conservée avec `applied_at=null` et un reçu
+`deferred=true`. Le fan-in l'applique après les contributions et avant la synthèse, dans la même
+transaction que la reprise. Les contributions et leurs effets restent acquis ; les pauses humaines,
+checkpoints incompatibles et états terminaux gardent leurs protections.
 Un amendement conserve strictement le même artefact ou la même cible principale et des critères de
 réussite substantiellement identiques. Une cible, un dépôt, une ressource, un livrable ou un
 résultat vérifiable séparément impose `CREATE_NEW`, même lorsqu'il prolonge le même incident. Le

@@ -560,6 +560,18 @@ async def maybe_fan_in(parent_id: Optional[UUID]) -> None:
     if not fresh:
         return  # Everything was folded during an earlier cycle.
 
+    from .amendment_service import apply_pending_amendments
+    try:
+        await apply_pending_amendments(parent)
+    except task_service.TaskEditConflict as error:
+        # Keep both the instructions and contributions pending when an uncertain
+        # effect/checkpoint prevents safe rebase; never resume the obsolete objective.
+        diagnostic = f"Pending instruction cannot yet be applied: {error}"
+        if parent.last_error != diagnostic:
+            parent.last_error = diagnostic
+            await task_service.save(parent)
+        return
+
     block = _message(parent, "resume_prompt") + "\n\n" + "\n\n".join(
         _render_await_result(c) for c in fresh
     )

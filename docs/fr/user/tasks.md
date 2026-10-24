@@ -68,6 +68,16 @@ appel lorsque son exécuteur a repris la main. L'accord reste enregistré pendan
 attente ; ne créez pas une autre tâche pour contourner un refus de reprise et ne répétez
 pas l'action. Une pause manuelle reste prioritaire.
 
+## Modifier une consigne pendant les contributions
+
+Dans la même discussion, précisez ce qui change et ce qui reste valable, par exemple :
+« Le budget passe à 6 800 EUR ; les engagements restent de 6 300 EUR. »
+Lorsque l'agent accepte cette modification pour la tâche en cours, elle peut rester en attente
+pendant que ses collègues terminent leurs contributions. Le responsable doit ensuite reprendre
+la synthèse avec la nouvelle contrainte et conserver les informations toujours valables.
+Une confirmation de mise en attente ne signifie pas que le livrable est déjà corrigé.
+Une pause manuelle reste prioritaire ; une tâche terminée n'est pas rouverte par cette voie.
+
 ## Ce qui se passe après l’envoi
 
 Une demande qui poursuit un travail peut réutiliser son document de suivi sans recopier

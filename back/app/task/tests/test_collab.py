@@ -110,10 +110,12 @@ async def test_wait_resume_and_finish_consumes_children_before_publishing_parent
 
 
 @pytest.mark.asyncio
-async def test_concurrent_fan_in_consumes_a_result_only_once(committed_database, monkeypatch):
+@pytest.mark.parametrize("revised", [False, True])
+async def test_concurrent_fan_in_consumes_a_result_only_once(committed_database, monkeypatch, revised):
     from core.database import get_db_session
     parent = _await_parent(agent_id=None)
-    child = _delegated_child(parent.id, TaskStatus.SUCCESS, agent_id=None, feedback="Synthetic budget")
+    child = _delegated_child(parent.id, TaskStatus.EXEC if revised else TaskStatus.SUCCESS,
+                             agent_id=None, feedback="Synthetic budget")
     parent_id, child_id = parent.id, child.id
     scheduled = []
     monkeypatch.setattr("app.task.runner.go_next", lambda task_id, **_: scheduled.append(task_id))
@@ -121,6 +123,13 @@ async def test_concurrent_fan_in_consumes_a_result_only_once(committed_database,
         db.add(parent)
         await db.flush()
         db.add(child)
+        await db.commit()
+        if revised:
+            from app.task.amendment_service import amend_task
+            await amend_task(task_id=parent.id, expected_revision=parent.revision,
+                instruction="Use the revised budget.", disposition="AMEND_CURRENT", reason=None,
+                source_kind="conversation_round", source_id="synthetic-round", idempotency_key="concurrent-amendment")
+            child.status = TaskStatus.SUCCESS
     async def consume():
         async with get_db_session():
             await collab.maybe_fan_in(parent_id)
@@ -132,6 +141,12 @@ async def test_concurrent_fan_in_consumes_a_result_only_once(committed_database,
         assert collab.collab_context(parent).count(f"galaris://task/{child_id}") == 1
         assert child.data[collab.FANNED_IN_KEY] is True
         assert not parent.paused
+        if revised:
+            from app.task.models import TaskAmendment
+            from sqlalchemy import select
+            amendment = await db.scalar(select(TaskAmendment).where(TaskAmendment.task_id == parent_id))
+            assert amendment.applied_at is not None
+            assert parent.objective.count("Use the revised budget.") == 1
     assert scheduled == [parent_id]
 
 
@@ -272,6 +287,7 @@ async def test_maybe_fan_in_never_reopens_terminal_parent(
 
 @pytest.mark.asyncio
 async def test_maybe_fan_in_reexecutes_and_counts_round(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.task.amendment_service.apply_pending_amendments", AsyncMock(return_value=False))
     parent = _await_parent(data={collab.ROUNDS_KEY: 1, "language": "en"})
     c1 = _await_child(parent.id, "lyra", TaskStatus.SUCCESS, feedback="CR Lyra")
     c2 = _await_child(parent.id, "bob", TaskStatus.ERROR, feedback="no response")
@@ -468,6 +484,7 @@ async def test_suspend_on_pending_children_recovers_parent_after_stream_failure(
 
 @pytest.mark.asyncio
 async def test_maybe_fan_in_resumes_on_delegated_child(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.task.amendment_service.apply_pending_amendments", AsyncMock(return_value=False))
     parent = _task(status=TaskStatus.DISPATCH, paused=True, data={"pause_reasons": ["child"]})
     child = _delegated_child(parent.id, TaskStatus.SUCCESS, feedback="deliverable ready")
     monkeypatch.setattr(collab.task_service, "get_by_id", AsyncMock(return_value=parent))
@@ -490,6 +507,7 @@ async def test_maybe_fan_in_resumes_on_delegated_child(monkeypatch: pytest.Monke
 async def test_maybe_fan_in_marks_awaits_and_is_idempotent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("app.task.amendment_service.apply_pending_amendments", AsyncMock(return_value=False))
     parent = _await_parent()
     child = _await_child(parent.id, "lyra", TaskStatus.SUCCESS, feedback="CR Lyra")
     monkeypatch.setattr(collab.task_service, "get_by_id", AsyncMock(return_value=parent))
