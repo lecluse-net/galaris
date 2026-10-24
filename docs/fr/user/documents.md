@@ -25,11 +25,11 @@ Le sélecteur affiche l'avatar de chaque agent et propose une pagination pour le
 listes : 50 conversations par défaut, avec un choix de 10, 20, 50, 100 ou 500 par page.
 Changer de page ou rechercher une conversation conserve l'échange ouvert et son brouillon.
 La dernière conversation choisie ou créée est mémorisée pour chaque document et chaque
-utilisateur. Sur ordinateur, le panneau se rouvre au chargement du document et sélectionne
-la conversation mémorisée si vous y avez toujours accès. Sans conversation mémorisée, il
-reste fermé. Vous pouvez toujours le masquer avec son bouton de fermeture.
-Changer de document restaure la conversation propre à ce
-document ; sans préférence, le sélecteur reste vide. Cette préférence ne modifie ni le
+utilisateur. Le panneau reste toujours fermé au chargement et lors d'un changement de
+document : aucune conversation n'est chargée avant un clic sur l'icône **Conversation**.
+Ce clic retrouve la dernière conversation mémorisée pour ce document si vous y avez
+toujours accès ; sinon, le panneau s'ouvre vide. Vous pouvez le masquer avec son bouton
+de fermeture. Cette préférence ne modifie ni le
 contenu du document ni ses droits.
 Les échanges restent des conversations accessibles dans **Discussion**. Documents
 privilégie la rédaction autour du contenu ouvert ; Discussion privilégie les échanges

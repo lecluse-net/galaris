@@ -145,7 +145,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAgentStore } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { AgentConversationPanel as DocumentConversationPanel, conversationPanel, hasDocumentConversation, type DocumentFocus } from '@/core/util'
+import { AgentConversationPanel as DocumentConversationPanel, conversationPanel, type DocumentFocus } from '@/core/util'
 import { OwnerSelect } from '@/app/share'
 import { documentIdFromRouteQuery, documentNavigationKey, documentResourceHref, DocumentNavigationButtons, PageHeader, useDocumentHistory } from '@/core/util'
 import { websocket } from '@/core/websocket'
@@ -177,9 +177,8 @@ const agentStore = useAgentStore()
 const privilegeStore = usePrivilegeStore()
 const canAccessChat = computed(() => Boolean(conversationPanel) && privilegeStore.hasPrivilege(privileges.CHAT_ACCESS))
 const chatOpen = ref(false), chatStarted = ref(false), libraryOpen = ref(true)
-let chatVisibilityRevision = 0, chatRestoreRevision = 0
 const loadedDocumentId = ref<string | null>(null), loadedMobileDocumentId = ref<string | null>(null)
-watch(chatOpen, open => { chatVisibilityRevision++; if (open) chatStarted.value = true }, { flush: 'sync' })
+watch(chatOpen, open => { if (open) chatStarted.value = true }, { flush: 'sync' })
 watch(canAccessChat, allowed => { if (!allowed) { chatOpen.value = false; chatStarted.value = false } })
 const documentEditor = useTemplateRef<InstanceType<typeof DocumentEditor>>('documentEditor')
 const mobileChatHost = useTemplateRef<HTMLElement>('mobileChatHost')
@@ -244,18 +243,7 @@ const displayedDocumentId = computed(() => {
   if ($q.screen.lt.md) return mobileDocumentOpen.value && loadedMobileDocumentId.value === mobileDocumentId.value ? loadedMobileDocumentId.value : null
   return !listingOpen.value && loadedDocumentId.value === selectedDocumentId.value ? loadedDocumentId.value : null
 })
-watch(() => [displayedDocumentId.value, canAccessChat.value, $q.screen.lt.md] as const, async ([id, allowed, mobile]) => {
-  const revision = ++chatRestoreRevision, visibility = chatVisibilityRevision
-  if (!id || !allowed || mobile || chatOpen.value || !hasDocumentConversation) return
-  let shouldOpen: boolean
-  try { shouldOpen = await hasDocumentConversation(id) }
-  catch {
-    // The panel provides the existing error and retry UI for an unavailable preference.
-    shouldOpen = true
-  }
-  if (!disposed && revision === chatRestoreRevision && visibility === chatVisibilityRevision
-    && displayedDocumentId.value === id && shouldOpen) chatOpen.value = true
-})
+watch(displayedDocumentId, () => { chatOpen.value = false }, { flush: 'sync' })
 watch(() => [selectedDocumentId.value, selectedAgentId.value], () => { loadedDocumentId.value = null }, { flush: 'sync' })
 watch(() => [mobileDocumentId.value, mobileDocumentAgentId.value], () => { loadedMobileDocumentId.value = null }, { flush: 'sync' })
 async function prepareChatMessage(): Promise<boolean> {

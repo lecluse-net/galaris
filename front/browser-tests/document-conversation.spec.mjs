@@ -114,9 +114,6 @@ async function workspace(page, privileges = ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CH
   })
   if (notificationSurface !== 'chat') await expect(page.getByLabel('Title', { exact: true })).toHaveValue(state.item.title)
   else await expect(page.locator('.conversation-pane')).toContainText('Earlier exchange')
-  if (notificationSurface !== 'chat' && page.viewportSize().width >= 1024 && privileges.includes('CHAT_ACCESS')) {
-    await expect.poll(() => state.preferenceReads.length).toBeGreaterThan(0)
-  }
   return state
 }
 
@@ -193,10 +190,12 @@ for (const mobile of [false]) test(`Documents saves before conversing and can cr
   await expect(title).toHaveValue('Edited report')
 })
 
-for (const mobile of [false]) test(`Documents restores the last conversation per document (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
-  await page.setViewportSize({ width: mobile ? 390 : 1600, height: 1000 })
+test('Documents loads the last conversation per document only after a manual opening', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
   const state = await workspace(page, undefined, 102)
   await expect(page.getByRole('region', { name: 'Conversation', exact: true })).not.toBeVisible()
+  expect(state.preferenceReads).toEqual([])
+  expect(state.roomRequests).toEqual([])
   const firstId = state.item.id
   const secondId = '00000000-0000-4000-8000-000000000322'
   state.documents.set(secondId, { ...state.item, id: secondId, title: 'Second synthetic document' })
@@ -208,24 +207,33 @@ for (const mobile of [false]) test(`Documents restores the last conversation per
   expect(state.preferenceWrites).toEqual([])
   await page.evaluate(id => window.testApp.navigate(`/documents?document_id=${id}`), secondId)
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Second synthetic document')
-  if (mobile) await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await expect(panel).not.toBeVisible()
+  expect(state.preferenceReads).toEqual([firstId])
+  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await expect(panel).toContainText('Choose a conversation or start one with an agent.')
+  expect(state.created).toEqual([])
   await expect(panel).not.toContainText('Conversation 102')
   await panel.getByRole('combobox', { name: 'Open a conversation', exact: true }).click()
   await page.getByRole('option').filter({ hasText: 'Existing conversation' }).click()
   await expect.poll(() => state.preferences.get(secondId)).toBe('room-a')
   await page.evaluate(id => window.testApp.navigate(`/documents?document_id=${id}`), firstId)
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue(state.item.title)
-  if (mobile) await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await expect(panel).not.toBeVisible()
+  expect(state.preferenceReads).toEqual([firstId, secondId])
+  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
   await expect(panel).toContainText('Conversation 102')
   // A new page instance reads server persistence, rather than its old in-memory selection.
   await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
     route: `/documents?document_id=${secondId}`, privileges: ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CHAT_SEND', 'CHAT_MANAGE'],
   })
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Second synthetic document')
+  await expect(panel).not.toBeVisible()
+  expect(state.preferenceReads).toEqual([firstId, secondId, firstId])
+  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
   await expect(panel).toContainText('Existing conversation')
 })
 
-test('late automatic restoration does not reopen a panel the user just closed', async ({ page }) => {
+test('a late saved conversation does not reopen a panel the user just closed', async ({ page }) => {
   const state = await workspace(page)
   state.preferences.set(state.item.id, 'room-a')
   let release, entered
@@ -235,9 +243,9 @@ test('late automatic restoration does not reopen a panel the user just closed', 
   await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
     route: `/documents?document_id=${state.item.id}`, privileges: ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CHAT_SEND', 'CHAT_MANAGE'],
   })
-  await started
   const trigger = page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true })
   await trigger.click()
+  await started
   await expect(trigger).toHaveAttribute('aria-expanded', 'true')
   await trigger.click()
   const response = page.waitForResponse(url => url.url().includes(`/chat/documents/${state.item.id}/conversation`))
@@ -262,6 +270,9 @@ test('late preference responses cannot replace the conversation for the current 
   await started
   await page.evaluate(id => window.testApp.navigate(`/documents?document_id=${id}`), secondId)
   const panel = page.getByRole('region', { name: 'Conversation', exact: true })
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Second synthetic document')
+  await expect(panel).not.toBeVisible()
+  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
   await expect(panel).toContainText('Conversation 002')
   const response = page.waitForResponse(url => url.url().includes(`/chat/documents/${firstId}/conversation`))
   release()

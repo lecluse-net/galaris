@@ -113,7 +113,9 @@ counts that remained active after the response became visible.
 
 `document-authoring.spec.mjs` exercises checklist state, undo/redo, nesting, reopening and
 export, plus hierarchical outline navigation. `document-conversation.spec.mjs` covers
-choosing and creating conversations in Documents, paging and searching more than 100
+choosing and creating conversations in Documents, manual opening and per-document restoration
+after clicking, no conversation loading when opening or switching documents, an empty panel
+without a saved conversation, paging and searching more than 100
 conversations on mobile and desktop, saving before sending, preserving drafts after failures,
 and checking privileges. It also covers mouse/keyboard selection across opening chat,
 sending selection after autosave and retry, and invalidating positions when content is replaced.

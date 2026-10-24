@@ -5,6 +5,10 @@ import { collectPageErrors } from '../page-errors.mjs'
 test('Documents persists checklist state and converses in a room also available in Chat', async ({ page, request }) => {
   const errors = collectPageErrors(page)
   const displayedRooms = []
+  const documentConversationRequests = []
+  page.on('request', request => {
+    if (/\/api\/chat\/documents\/[^/]+\/conversation$/.test(request.url())) documentConversationRequests.push(request.url())
+  })
   page.on('websocket', socket => socket.on('framesent', ({ payload }) => {
     if (typeof payload !== 'string' || !payload.startsWith('42[')) return
     const [event, data] = JSON.parse(payload.slice(2))
@@ -33,6 +37,9 @@ test('Documents persists checklist state and converses in a room also available 
   await page.goto(`/documents?document_id=${document.id}`)
   const editor = page.locator('[data-editor-surface]')
   await expect(editor).toContainText('Review draft')
+  const conversationToggle = page.getByRole('toolbar', { name: /^(Content|Contenu)$/ }).getByRole('button', { name: 'Conversation', exact: true })
+  await expect(conversationToggle).toHaveAttribute('aria-expanded', 'false')
+  expect(documentConversationRequests).toEqual([])
   await editor.locator('p').click()
   await page.getByRole('button', { name: /^(Checklist|Liste à cocher)$/ }).click()
   await editor.getByRole('checkbox', { name: 'Review draft', exact: true }).check()
@@ -47,7 +54,7 @@ test('Documents persists checklist state and converses in a room also available 
   await page.keyboard.press('Home')
   await page.keyboard.press('Shift+End')
   await expect.poll(() => page.evaluate(() => window.getSelection().toString())).toBe('Review draft')
-  await page.getByRole('toolbar', { name: /^(Content|Contenu)$/ }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await conversationToggle.click()
   const panel = page.getByRole('region', { name: 'Conversation', exact: true })
   await panel.getByRole('combobox').click()
   const roomLabel = page.getByText(room.label, { exact: true }).and(page.locator('.q-item__label:not(.q-item__label--caption)'))
@@ -66,8 +73,13 @@ test('Documents persists checklist state and converses in a room also available 
   await expect.poll(async () => (await (await request.get(`/api/chat/rooms/${room.id}`, { headers })).json()).unread_count).toBe(0)
   await page.screenshot({ path: test.info().outputPath('document-with-outline-and-conversation.png') })
   await expect.poll(async () => (await (await request.get(`/api/chat/documents/${document.id}/conversation`, { headers })).json()).room_id).toBe(room.id)
+  const conversationRequestsBeforeReload = documentConversationRequests.length
   await page.reload()
   await expect(editor).toContainText('Review draft')
+  await expect(conversationToggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(panel).not.toBeVisible()
+  expect(documentConversationRequests).toHaveLength(conversationRequestsBeforeReload)
+  await conversationToggle.click()
   await expect(panel.locator('.message-timeline')).toContainText('Synthetic document conversation')
   await expect(panel.locator('.message-timeline')).toContainText('Réponse progressive terminée.')
   await errors.settle()
