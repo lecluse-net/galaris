@@ -10,7 +10,7 @@
         <div class="comparison-columns">
           <section v-for="side in sides" :key="side.key">
             <h3>{{ t('evaluation.comparison.' + side.key) }}</h3>
-            <q-select v-model="side.datasetId" :options="datasets" option-value="id" option-label="name" emit-value map-options outlined :label="t('evaluation.comparison.dataset')" />
+            <q-select v-model="side.datasetId" :options="datasets" option-value="id" option-label="name" emit-value map-options outlined dense :label="t('evaluation.comparison.dataset')" />
             <q-select v-model="side.runId" :options="side.runs.map(run => ({ value: run.id, label: runLabel(run) }))" emit-value map-options outlined :loading="side.loading" :disable="side.loading" :label="t('evaluation.comparison.run')" class="q-mt-sm" />
             <p class="text-caption">{{ t('evaluation.comparison.recentRuns') }}</p>
             <p v-if="side.datasetId && !side.loading && !side.error && !side.runs.length">{{ t('evaluation.comparison.noRuns') }}</p>

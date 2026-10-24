@@ -8,7 +8,7 @@
       </q-card-section>
     </q-card>
     <div class="row items-center q-gutter-sm">
-      <q-select v-model="datasetId" :options="datasets" option-value="id" option-label="name" emit-value map-options outlined class="col" :label="t('evaluation.contract.dataset')" :loading="loading" :disable="busy" />
+      <q-select v-model="datasetId" :options="datasets" option-value="id" option-label="name" emit-value map-options outlined dense class="col" :label="t('evaluation.contract.dataset')" :loading="loading" :disable="busy" />
       <q-btn v-if="canEdit" icon="add" color="primary" :label="t('evaluation.contract.newDataset')" :disable="loading || busy" @click="openName('dataset')" />
       <q-btn v-if="canEdit" icon="auto_awesome" outline color="primary" :label="t('evaluation.synthetic.title')" :disable="loading || busy" @click="syntheticDialog = true" />
       <q-btn flat icon="refresh" :aria-label="t('evaluation.refresh')" @click="reload" />
