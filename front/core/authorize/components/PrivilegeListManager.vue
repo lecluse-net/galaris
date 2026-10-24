@@ -15,10 +15,10 @@
     </q-banner>
 
     <!-- Drag and Drop Interface -->
-    <div class="row q-col-gutter-md">
+    <div class="privilege-columns">
 
       <!-- Left Column: Unassigned Privileges -->
-      <div class="col-12 col-md-4">
+      <div class="privilege-column">
         <q-card class="unassigned-privileges-card column full-height bg-grey-1">
           <q-card-section class="bg-grey-3 q-py-sm row items-center">
              <div class="text-subtitle1 text-weight-bold">{{ $t('authorize.privilegeLists.unassigned') }}</div>
@@ -28,6 +28,9 @@
 
           <q-card-section 
             class="privilege-drop-zone col q-pa-sm scroll start-drop-zone"
+            role="region"
+            :aria-label="$t('authorize.privilegeLists.unassigned')"
+            tabindex="0"
             @dragover.prevent
             @drop="onDropToUnassigned"
           >
@@ -53,9 +56,10 @@
       </div>
 
       <!-- Right Column: Lists -->
-      <div class="col-12 col-md-8">
+      <div class="privilege-column">
         <div class="privilege-lists-title text-subtitle1 q-mb-sm text-grey-8">{{ $t('authorize.privilegeLists.lists') }}</div>
 
+        <div class="privilege-lists-scroll" role="region" :aria-label="$t('authorize.privilegeLists.lists')" tabindex="0">
         <div v-if="loading" class="row justify-center">
             <q-spinner color="primary" size="2em" />
         </div>
@@ -97,6 +101,7 @@
                     </q-card-section>
                 </q-card>
             </div>
+        </div>
         </div>
       </div>
     </div>
@@ -318,12 +323,57 @@ function confirmDelete(item: PrivilegeList) {
 </script>
 
 <style scoped>
+.privilege-list-manager {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.privilege-list-actions,
+.privilege-info-banner {
+    flex-shrink: 0;
+}
+
+.privilege-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 16px;
+    flex: 1;
+    min-height: 0;
+}
+
+.privilege-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+
+.privilege-lists-title,
+.unassigned-privileges-card > .q-card__section:first-child {
+    flex-shrink: 0;
+}
+
+.privilege-lists-scroll,
+.privilege-drop-zone {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+}
+
+.privilege-lists-scroll {
+    flex: 1;
+    padding: 4px;
+}
+
 .start-drop-zone {
     transition: background-color 0.2s;
 }
 
 .unassigned-privileges-card {
-    min-height: 500px;
+    min-height: 0;
 }
 
 .privilege-drop-zone,
@@ -331,7 +381,7 @@ function confirmDelete(item: PrivilegeList) {
     display: flex;
     align-content: flex-start;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 3px;
 }
 
 .privilege-list-drop-zone {
@@ -339,6 +389,7 @@ function confirmDelete(item: PrivilegeList) {
 }
 
 .privilege-chip {
+    margin: 0;
     max-width: 100%;
     height: auto;
     min-height: 26px;
@@ -383,12 +434,18 @@ body.body--dark .privilege-chip--unassigned {
 }
 
 @media (max-width: 1023px) {
-    .unassigned-privileges-card {
-        min-height: 0;
+    .privilege-list-manager {
+        height: auto;
     }
 
-    .privilege-lists-title {
-        margin-top: 12px;
+    .privilege-columns {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .privilege-drop-zone,
+    .privilege-lists-scroll {
+        max-height: 50dvh;
+        flex: auto;
     }
 
     .privilege-drop-zone,
@@ -399,7 +456,6 @@ body.body--dark .privilege-chip--unassigned {
 
     .privilege-chip {
         width: 100%;
-        margin: 0;
     }
 
     .privilege-chip :deep(.q-chip__content) {

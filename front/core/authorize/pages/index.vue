@@ -1,5 +1,9 @@
 <template>
-  <q-page class="authorizations-page q-pa-md">
+  <q-page
+    class="authorizations-page q-pa-md"
+    :class="{ 'authorizations-page--privileges': tab === 'privileges' }"
+    :style-fn="pageStyle"
+  >
     <PageHeader :icon="navigationIcon('security')" :title="$t('nav.authorizations')" :description="$t('nav.authorizations_desc')" />
 
     <q-tabs
@@ -20,8 +24,8 @@
 
     <q-separator />
 
-    <q-tab-panels v-model="tab" animated keep-alive class="bg-transparent">
-      <q-tab-panel name="privileges" class="q-pa-none">
+    <q-tab-panels v-model="tab" animated keep-alive class="authorization-panels bg-transparent">
+      <q-tab-panel name="privileges" class="privileges-panel q-pa-none">
         <PrivilegeListManager />
       </q-tab-panel>
 
@@ -45,11 +49,40 @@ import AssignmentManager from '../components/AssignmentManager.vue'
 import PrivilegeListManager from '../components/PrivilegeListManager.vue'
 
 const tab = ref('roles')
+
+function pageStyle(offset: number, height: number) {
+  return {
+    minHeight: `${height - offset}px`,
+    '--authorization-page-height': `${height - offset}px`,
+  }
+}
 </script>
 
 <style scoped>
 .authorization-tabs {
   max-width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .authorizations-page--privileges {
+    display: flex;
+    flex-direction: column;
+    height: var(--authorization-page-height);
+  }
+
+  .authorizations-page--privileges > * {
+    flex-shrink: 0;
+  }
+
+  .authorizations-page--privileges .authorization-panels {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .privileges-panel {
+    height: 100%;
+    overflow: hidden;
+  }
 }
 
 @media (max-width: 599px) {
