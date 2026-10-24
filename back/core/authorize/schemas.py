@@ -19,6 +19,7 @@ class PrivilegeListCreate(PrivilegeListBase):
 
 class PrivilegeList(PrivilegeListBase):
     id: int
+    translation_key: str | None = None
     privileges: List['Privilege'] = []
 
     model_config = ConfigDict(from_attributes=True)

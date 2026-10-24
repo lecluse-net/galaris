@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, List, Optional
+from datetime import datetime
 
-from sqlalchemy import Integer, String, ForeignKey, UniqueConstraint, Boolean
+from sqlalchemy import Integer, String, ForeignKey, UniqueConstraint, Boolean, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from core.database import Base, HistoryMixin
 
@@ -43,11 +44,22 @@ class PrivilegeList(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     display_name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    translation_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Relationships
     privileges: Mapped[List["Privilege"]] = relationship(
         "Privilege", back_populates="privilege_list"
     )
+
+
+class PrivilegeListDefault(Base):
+    """Initialization receipts survive administrator deletion of a category."""
+
+    __tablename__ = "privilege_list_defaults"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    initialized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Role(Base):

@@ -65,13 +65,13 @@
         </div>
 
         <div class="row q-col-gutter-md">
-            <div class="col-12 col-md-6" v-for="list in privilegeLists" :key="list.id">
+            <div class="col-12 col-md-6" v-for="list in sortedPrivilegeLists" :key="list.id">
                 <q-card class="privilege-list-card full-height">
                     <q-card-section class="bg-primary text-white q-py-xs row items-center">
-                        <div class="privilege-list-name text-subtitle2">{{ list.display_name }}</div>
+                        <div class="privilege-list-name text-subtitle2">{{ localizedPrivilegeListLabel(list) }}</div>
                         <q-space />
-                        <q-btn v-if="canManage" flat round dense icon="edit" size="sm" @click="openEditDialog(list)" />
-                        <q-btn v-if="canManage" flat round dense icon="delete" size="sm" @click="confirmDelete(list)" />
+                        <q-btn v-if="canManage" flat round dense icon="edit" size="sm" :aria-label="$t('common.edit')" @click="openEditDialog(list)" />
+                        <q-btn v-if="canManage" flat round dense color="negative" icon="delete" size="sm" :aria-label="$t('common.delete')" @click="confirmDelete(list)" />
                     </q-card-section>
 
                     <q-card-section 
@@ -145,7 +145,7 @@ import { useI18n } from 'vue-i18n'
 import { authorizeService, type Privilege, type PrivilegeList } from '../services/authorize.service'
 import { privileges } from '../definitions'
 import { usePrivilegeStore } from '../stores/privilegeStore'
-import { localizedAuthorizeLabel } from '../presentation'
+import { localizedAuthorizeLabel, localizedPrivilegeListLabel } from '../presentation'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -153,12 +153,16 @@ const privilegeStore = usePrivilegeStore()
 const canManage = computed(() => privilegeStore.hasPrivilege(privileges.MANAGE_PRIVILEGE))
 
 const privilegeLists = ref<PrivilegeList[]>([])
+const sortedPrivilegeLists = computed(() => [...privilegeLists.value].sort((a, b) =>
+    localizedPrivilegeListLabel(a).localeCompare(localizedPrivilegeListLabel(b))))
 const allPrivileges = ref<Privilege[]>([])
 const loading = ref(false)
 
 // Dialog state
 const showDialog = ref(false)
 const isEdit = ref(false)
+const originalDisplayName = ref('')
+const initialDisplayName = ref('')
 const editedItem = ref({
     id: 0,
     display_name: ''
@@ -191,9 +195,6 @@ async function loadData() {
             return nameA.localeCompare(nameB)
         }
 
-        // Sort Lists
-        lists.sort((a, b) => a.display_name.localeCompare(b.display_name))
-        
         // Sort Privileges within Lists
         lists.forEach(l => {
             l.privileges.sort(sortPrivs)
@@ -274,9 +275,11 @@ function openCreateDialog() {
 
 function openEditDialog(item: PrivilegeList) {
   isEdit.value = true
+  originalDisplayName.value = item.display_name
+  initialDisplayName.value = localizedPrivilegeListLabel(item)
   editedItem.value = { 
       id: item.id, 
-      display_name: item.display_name
+      display_name: initialDisplayName.value
   }
   showDialog.value = true
 }
@@ -286,7 +289,8 @@ async function saveList() {
   try {
     if (isEdit.value) {
       await authorizeService.updatePrivilegeList(editedItem.value.id, {
-        display_name: editedItem.value.display_name
+        display_name: editedItem.value.display_name === initialDisplayName.value
+          ? originalDisplayName.value : editedItem.value.display_name
       })
       $q.notify({ color: 'positive', message: t('authorize.privilegeLists.updated') })
     } else {
@@ -306,7 +310,7 @@ async function saveList() {
 function confirmDelete(item: PrivilegeList) {
   showConfirmationDialog({
     title: t('common.confirm'),
-    message: t('authorize.privilegeLists.deleteConfirm', { name: item.display_name }),
+    message: t('authorize.privilegeLists.deleteConfirm', { name: localizedPrivilegeListLabel(item) }),
     cancel: true
   }).onOk(async () => {
     try {

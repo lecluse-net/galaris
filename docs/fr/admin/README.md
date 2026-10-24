@@ -1064,6 +1064,15 @@ mise à jour, vérifiez toujours le rôle administrateur et les rôles personnal
 les privilèges de gestion des connexions avec prudence : ils donnent accès à la modification
 de secrets, même si les valeurs ne sont pas retournées en clair.
 
+Dans **Rôles & permissions → Privilèges**, douze rubriques sont installées par défaut à
+la première synchronisation. Leurs libellés suivent la langue de l’interface, y compris
+dans les rôles. Les catégories personnalisées et les rubriques renommées conservent le
+texte saisi. Vous pouvez déplacer les privilèges et supprimer une rubrique avec
+`MANAGE_PRIVILEGE` : ses privilèges deviennent non assignés, sans retirer les droits des
+rôles. Les synchronisations suivantes ne recréent pas la rubrique et ne rétablissent pas
+les affectations initiales. Les catégories existantes portant les noms initiaux sont
+reprises avec leurs identifiants et leur répartition ; les autres catégories sont conservées.
+
 ## 9. Sauvegarde et restauration
 
 Un exercice entièrement isolé est disponible avec `make tests-restore` : dump et

@@ -1040,6 +1040,14 @@ update, always verify the administrator role and custom roles. Grant connection-
 privileges carefully: they provide access to modifying secrets, even though the values are not
 returned in clear text.
 
+In **Roles & permissions → Privileges**, twelve default categories are installed on the
+first synchronization. Their labels follow the interface language, including within
+roles. Custom categories and renamed categories preserve the entered text. With
+`MANAGE_PRIVILEGE`, you can move privileges and delete a category: its privileges become
+unassigned without removing role grants. Later synchronizations neither recreate the
+category nor restore initial assignments. Existing categories bearing the initial names
+retain their identifiers and organization; other categories are preserved.
+
 ## 9. Backup and Restore
 
 A fully isolated rehearsal is available with `make tests-restore`: PostgreSQL dump and

@@ -450,7 +450,7 @@ async def set_default_assignment(
 # ==================== Privilege Lists ====================
 
 @router.get("/privilege-lists", response_model=List[PrivilegeListSchema])
-@authorize(privileges=[Privileges.READ_PRIVILEGE, Privileges.MANAGE_PRIVILEGE])
+@authorize(privileges=[Privileges.READ_PRIVILEGE, Privileges.MANAGE_PRIVILEGE, Privileges.READ_ROLE, Privileges.MANAGE_ROLE])
 async def list_privilege_lists(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(PrivilegeList)
@@ -498,6 +498,8 @@ async def update_privilege_list(
         raise HTTPException(status_code=404, detail=await _detail("list_not_found"))
     
     update_data = item_update.model_dump(exclude_unset=True)
+    if "display_name" in update_data and update_data["display_name"] != item.display_name:
+        item.translation_key = None
     for key, value in update_data.items():
         setattr(item, key, value)
     

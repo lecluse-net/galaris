@@ -1,19 +1,17 @@
-"""Permanent RBAC presentation data for Chat."""
+"""Schema-triggered Chat data transitions."""
 
 from __future__ import annotations
 
 import json
 from typing import cast
 
-from sqlalchemy import Table, select, text
+from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.authorize import Privilege, PrivilegeList, RolePrivilege
+from core.authorize import Privilege, RolePrivilege
 from core.dbadmin import (
     DbAdminAction,
-    DbAdminDataSource,
-    DbAdminDataset,
     DbAdminPhase,
     DbAdminRegistry,
     SchemaTransitionSet,
@@ -23,20 +21,11 @@ from core.params import Param, Params
 from .privileges import (
     CHAT_ACCESS,
     CHAT_CALL,
-    CHAT_IMPERSONATE,
     CHAT_MANAGE,
     CHAT_SEND,
 )
 
 
-PRIVILEGE_LIST_NAME = "Chat"
-_PRIVILEGE_CODES = (
-    "CHAT_ACCESS",
-    "CHAT_CALL",
-    "CHAT_IMPERSONATE",
-    "CHAT_MANAGE",
-    "CHAT_SEND",
-)
 _LEGACY_PRIVILEGE_CODES = {
     "INTERNAL_MESSENGER_ACCESS": "CHAT_ACCESS",
     "INTERNAL_MESSENGER_CALL": "CHAT_CALL",
@@ -252,65 +241,6 @@ async def _legacy_grants_are_migrated(
             return False
     return True
 
-# Keep imports tied to the declared constants so a rename cannot silently leave
-# this presentation dataset pointing at privileges that no longer exist.
-assert all(
-    value
-    for value in (
-        CHAT_ACCESS,
-        CHAT_CALL,
-        CHAT_IMPERSONATE,
-        CHAT_MANAGE,
-        CHAT_SEND,
-    )
-)
-
-
-async def _privilege_group_rows(
-    session: AsyncSession,
-) -> tuple[dict[str, object], ...]:
-    list_id = await session.scalar(
-        select(PrivilegeList.id).where(
-            PrivilegeList.display_name == PRIVILEGE_LIST_NAME
-        )
-    )
-    if list_id is None:
-        raise RuntimeError("DbAdmin could not resolve the Chat privilege list")
-    return tuple(
-        {"code": code, "privilege_list_id": int(list_id)}
-        for code in _PRIVILEGE_CODES
-    )
-
-
-def _datasets() -> tuple[DbAdminDataset, ...]:
-    return (
-        DbAdminDataset(
-            key="app.chat.privilege_list",
-            table=cast(Table, PrivilegeList.__table__),
-            natural_key=("display_name",),
-            rows=({"display_name": PRIVILEGE_LIST_NAME},),
-            update_columns=(),
-            depends_on=("core.authorize.privileges",),
-        ),
-        DbAdminDataset(
-            key="app.chat.privilege_group",
-            table=cast(Table, Privilege.__table__),
-            natural_key=("code",),
-            rows=_privilege_group_rows,
-            update_columns=("privilege_list_id",),
-            # Once an administrator moves a privilege, its organization is theirs.
-            update_only_null=True,
-            depends_on=(
-                "app.chat.privilege_list",
-                "core.authorize.privileges",
-            ),
-        ),
-    )
-
-
-DATA_SOURCE = DbAdminDataSource(key="app.chat", factory=_datasets)
-
-
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_action(
         DbAdminAction(
@@ -342,4 +272,3 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
             postcondition=_native_chat_channel_is_enabled,
         )
     )
-    registry.register_data_source(DATA_SOURCE)

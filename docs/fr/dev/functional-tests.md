@@ -7,6 +7,19 @@ Il décrit les garanties couvertes par les suites ; leur présence ne signifie p
 ont été exécutées sur votre checkout. Pour choisir une commande et comprendre sa portée,
 consultez la [méthode de test](testing.md).
 
+## Catégories de privilèges par défaut
+
+`core/authorize/tests/test_default_lists.py` vérifie l’installation des rubriques par défaut,
+la reprise des regroupements existants, le rollback et la conservation des renommages,
+déplacements et suppressions après synchronisation, avec refus HTTP pour un lecteur.
+`front/browser-tests/privilege-lists.spec.mjs` couvre les libellés traduits, les textes
+personnalisés, l’édition sans perte de la clé et les groupes dans les rôles, sur mobile et ordinateur.
+`e2e/specs/privilege-categories.spec.mjs` vérifie dans l’application assemblée les douze
+rubriques installées, l’édition traduite et la création personnalisée après rechargement.
+`app/chat/tests/test_dbadmin.py` vérifie aussi que les contributions Chat et Authorize
+réunies ne recréent ni l’ancienne catégorie Chat ni les affectations retirées. L’ancien test
+imposant ce regroupement propre au Chat est remplacé par cette garantie administrable.
+
 ## Compétences personnelles
 
 Les mutations humaines des compétences personnelles sont couvertes par

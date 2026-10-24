@@ -5921,6 +5921,7 @@
       {
         "files": [
           "back/core/authorize/dbadmin.py",
+          "back/core/authorize/default_lists.py",
           "back/core/authorize/update_admin_role.py"
         ],
         "source": "core.authorize",
@@ -9912,7 +9913,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 69,
+        "line": 81,
         "module": "core.authorize",
         "table": "assignments"
       },
@@ -11502,11 +11503,20 @@
         "table": "permission_decisions"
       },
       {
+        "class_name": "PrivilegeListDefault",
+        "file": "back/core/authorize/models.py",
+        "foreign_keys": [],
+        "history_mixin": false,
+        "line": 55,
+        "module": "core.authorize",
+        "table": "privilege_list_defaults"
+      },
+      {
         "class_name": "PrivilegeList",
         "file": "back/core/authorize/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 41,
+        "line": 42,
         "module": "core.authorize",
         "table": "privilege_lists"
       },
@@ -11517,7 +11527,7 @@
           "privilege_lists.id"
         ],
         "history_mixin": false,
-        "line": 22,
+        "line": 23,
         "module": "core.authorize",
         "table": "privileges"
       },
@@ -11643,7 +11653,7 @@
           "roles.id"
         ],
         "history_mixin": false,
-        "line": 11,
+        "line": 12,
         "module": "core.authorize",
         "table": "role_privileges"
       },
@@ -11652,7 +11662,7 @@
         "file": "back/core/authorize/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 53,
+        "line": 65,
         "module": "core.authorize",
         "table": "roles"
       },
@@ -14246,7 +14256,7 @@
         "declared_path": "/authorize/privilege-lists/{id}",
         "file": "back/core/authorize/router.py",
         "handler": "delete_privilege_list",
-        "line": 511,
+        "line": 513,
         "method": "DELETE",
         "module": "core.authorize"
       },
@@ -14264,7 +14274,7 @@
         "declared_path": "/authorize/privilege-lists/{id}/privileges",
         "file": "back/core/authorize/router.py",
         "handler": "remove_privileges_from_list",
-        "line": 563,
+        "line": 565,
         "method": "DELETE",
         "module": "core.authorize"
       },
@@ -14273,7 +14283,7 @@
         "declared_path": "/authorize/privilege-lists/{id}/privileges",
         "file": "back/core/authorize/router.py",
         "handler": "add_privileges_to_list",
-        "line": 532,
+        "line": 534,
         "method": "POST",
         "module": "core.authorize"
       },

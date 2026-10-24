@@ -5,15 +5,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.chat.dbadmin import (
-    DATA_SOURCE,
-    PRIVILEGE_LIST_NAME,
+    register_dbadmin as register_chat_dbadmin,
     _enable_native_chat_channel,
     _introduces_native_chat,
     _native_chat_channel_is_enabled,
     _introduces_durable_unread_state,
 )
 from core.authorize import Privilege, PrivilegeList
-from core.dbadmin import SchemaTransitionSet, reconcile_dataset
+from core.authorize.dbadmin import register_dbadmin as register_authorize_dbadmin
+from core.dbadmin import DbAdminRegistry, SchemaTransitionSet, reconcile_dataset
 from core.params import Param, Params
 
 
@@ -64,17 +64,19 @@ async def test_dbadmin_enables_native_chat_without_overwriting_other_channels(
 
 
 @pytest.mark.asyncio
-async def test_dbadmin_groups_chat_privileges_without_overwriting(
+async def test_chat_organization_respects_admin_moves_and_deletion_across_datasets(
     db: AsyncSession,
 ) -> None:
-    list_dataset, group_dataset = DATA_SOURCE.compile()
-    await reconcile_dataset(db, list_dataset)
-    await reconcile_dataset(db, group_dataset)
+    registry = DbAdminRegistry()
+    register_authorize_dbadmin(registry)
+    register_chat_dbadmin(registry)
+    for dataset in registry.datasets:
+        await reconcile_dataset(db, dataset)
     await db.flush()
 
     privilege_list = await db.scalar(
         select(PrivilegeList).where(
-            PrivilegeList.display_name == PRIVILEGE_LIST_NAME
+            PrivilegeList.display_name == "authorize.privilegeLists.defaults.discussion"
         )
     )
     assert privilege_list is not None
@@ -104,6 +106,15 @@ async def test_dbadmin_groups_chat_privileges_without_overwriting(
     privilege.privilege_list_id = other_list.id
     await db.flush()
 
-    await reconcile_dataset(db, group_dataset)
+    for dataset in registry.datasets:
+        await reconcile_dataset(db, dataset)
     await db.flush()
     assert privilege.privilege_list_id == other_list.id
+
+    await db.delete(privilege_list)
+    await db.flush()
+    for dataset in registry.datasets:
+        await reconcile_dataset(db, dataset)
+    assert await db.scalar(select(PrivilegeList.id).where(PrivilegeList.display_name == "Chat")) is None
+    assert await db.scalar(select(Privilege.privilege_list_id).where(Privilege.code == "CHAT_SEND")) is None
+    assert await db.scalar(select(Privilege.privilege_list_id).where(Privilege.code == "CHAT_ACCESS")) == other_list.id

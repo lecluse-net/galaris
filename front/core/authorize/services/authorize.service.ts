@@ -65,6 +65,7 @@ export interface RolePrivilegeAction {
 // ==================== Privilege Lists ====================
 
 export interface PrivilegeList {
+    translation_key?: string | null
     id: number
     display_name: string
     privileges: Privilege[]

@@ -14,3 +14,14 @@ export function localizedAuthorizeLabel(item: AuthorizeLabel): string {
   if (!label) return item.code
   return i18n.global.te(label) ? i18n.global.t(label) : label
 }
+
+/** Only software-provided category labels carry a translation key. */
+export function localizedPrivilegeListLabel(item: {
+  display_name: string
+  translation_key?: string | null
+}): string {
+  const key = item.translation_key
+  return key && key === item.display_name && i18n.global.te(key)
+    ? i18n.global.t(key)
+    : item.display_name
+}

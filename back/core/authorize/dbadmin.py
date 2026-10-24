@@ -15,7 +15,8 @@ from core.dbadmin import (
     DbAdminRegistry,
 )
 
-from .models import Privilege, Role, RolePrivilege
+from .models import Privilege, PrivilegeListDefault, Role, RolePrivilege
+from .default_lists import DEFAULT_PRIVILEGE_LISTS, initialize_default_lists
 from .privilege_service import PrivilegeService
 from .update_admin_role import ADMIN_ROLE_CODE, ADMIN_ROLE_DISPLAY_NAME
 
@@ -56,6 +57,15 @@ def datasets() -> tuple[DbAdminDataset, ...]:
             update_columns=("display_name",),
             delete_missing=True,
             after_merge=_generate_accessors,
+        ),
+        DbAdminDataset(
+            key="core.authorize.default_privilege_lists",
+            table=cast(Table, PrivilegeListDefault.__table__),
+            natural_key=("code",),
+            rows=tuple({"code": item.code} for item in DEFAULT_PRIVILEGE_LISTS),
+            update_columns=(),
+            after_merge=initialize_default_lists,
+            depends_on=("core.authorize.privileges",),
         ),
         DbAdminDataset(
             key="core.authorize.admin_role",

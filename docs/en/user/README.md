@@ -102,6 +102,10 @@ In **Providers**, an administrator can adjust concurrent LLM calls for each conn
 Voice conversations take priority, followed by text conversations and background work;
 with a single place, the current call must still finish before the next one starts.
 
+In **Roles & permissions**, privilege categories supplied at installation follow the
+interface language. Custom names stay as entered; administrators can rename or delete
+these categories without an update restoring them.
+
 The LLM, settings, users, and permissions sections are administrative. Their absence from your menu is normal. In **Profile**, choose Français, English or 简体中文; this choice translates the interface and also becomes the reference language for your new Tasks. Your account menu lets you change your assignment if you have been assigned multiple roles. The permissions displayed change immediately with the active role.
 
 The profile also lets you enable two-factor authentication with a TOTP application. Keep the recovery codes displayed during activation in a separate, secure location: they will not be displayed again, and each one works only once. After several incorrect passwords or codes, Galaris temporarily slows down new login attempts.

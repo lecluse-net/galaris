@@ -110,6 +110,10 @@ Dans **Fournisseurs**, un administrateur peut régler le nombre d'appels LLM sim
 par connexion. Les conversations vocales puis textuelles ont priorité sur le travail de
 fond ; avec une seule place, un appel déjà engagé doit toutefois terminer avant le suivant.
 
+Dans **Rôles & permissions**, les rubriques de privilèges fournies à l’installation sont
+traduites dans la langue de l’interface. Les noms personnalisés restent tels que saisis ;
+un administrateur peut renommer ou supprimer ces rubriques sans qu’une mise à jour les rétablisse.
+
 Les rubriques LLM, paramètres, utilisateurs et autorisations sont administratives. Leur
 absence dans votre menu est normale. Dans **Profil**, choisissez Français, English ou 简体中文 ; ce
 choix traduit l’interface et devient aussi la langue de référence de vos nouvelles tâches.

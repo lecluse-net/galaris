@@ -2,6 +2,19 @@
 
 # Functional guarantees catalogue
 
+## Default privilege categories
+
+`core/authorize/tests/test_default_lists.py` checks default category installation,
+adoption of existing organization, rollback and persistent renames, moves and deletions
+after synchronization, including HTTP denial for readers.
+`front/browser-tests/privilege-lists.spec.mjs` covers translated and custom labels,
+editing without losing the key, and role groups, on mobile and desktop.
+`e2e/specs/privilege-categories.spec.mjs` checks all twelve installed categories,
+translated editing and persistent custom creation in the assembled application.
+`app/chat/tests/test_dbadmin.py` also checks that combined Chat and Authorize contributions
+recreate neither the former Chat category nor removed assignments. This replaces the
+former expectation of a separate Chat grouping with administrator-owned organization.
+
 ## Personal skills
 
 Human personal-skill mutations are covered by `app/skill/tests/test_agent_reads.py`

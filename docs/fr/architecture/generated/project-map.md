@@ -18,7 +18,7 @@ tests restent l’autorité sur le comportement.
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
 - 750 handlers HTTP/WebSocket détectés ;
-- 178 tables SQLAlchemy détectées ;
+- 179 tables SQLAlchemy détectées ;
 - 278 outils MCP natifs détectés ;
 - 51 pages Vue détectées.
 
@@ -742,7 +742,7 @@ tests restent l’autorité sur le comportement.
 | `core.api` | `core.user` | `back/core/api.py` |
 | `core.api` | `core.util` | `back/core/api.py` |
 | `core.authorize` | `core.database` | `back/core/authorize/admin_guard.py`, `back/core/authorize/guard_provider.py`, `back/core/authorize/model_scanner.py`, `back/core/authorize/models.py`, `back/core/authorize/router.py`, `back/core/authorize/update_admin_role.py` |
-| `core.authorize` | `core.dbadmin` | `back/core/authorize/dbadmin.py`, `back/core/authorize/update_admin_role.py` |
+| `core.authorize` | `core.dbadmin` | `back/core/authorize/dbadmin.py`, `back/core/authorize/default_lists.py`, `back/core/authorize/update_admin_role.py` |
 | `core.authorize` | `core.i18n` | `back/core/authorize/admin_guard.py`, `back/core/authorize/guard_provider.py`, `back/core/authorize/router.py` |
 | `core.authorize` | `core.user` | `back/core/authorize/admin_guard.py`, `back/core/authorize/assertions.py`, `back/core/authorize/authorize_service.py`, `back/core/authorize/guard_provider.py`, `back/core/authorize/logic.py`, `back/core/authorize/models.py`, `back/core/authorize/router.py`, `back/core/authorize/schemas.py` |
 | `core.database` | `core.user` | `back/core/database/history.py` |
@@ -1306,10 +1306,10 @@ tests restent l’autorité sur le comportement.
 | GET | `/authorize/my-privileges` | `core.authorize` | `get_my_privileges` | oui | `back/core/authorize/router.py:66` |
 | GET | `/authorize/privilege-lists` | `core.authorize` | `list_privilege_lists` | oui | `back/core/authorize/router.py:454` |
 | POST | `/authorize/privilege-lists` | `core.authorize` | `create_privilege_list` | oui | `back/core/authorize/router.py:465` |
-| DELETE | `/authorize/privilege-lists/{id}` | `core.authorize` | `delete_privilege_list` | oui | `back/core/authorize/router.py:511` |
+| DELETE | `/authorize/privilege-lists/{id}` | `core.authorize` | `delete_privilege_list` | oui | `back/core/authorize/router.py:513` |
 | PUT | `/authorize/privilege-lists/{id}` | `core.authorize` | `update_privilege_list` | oui | `back/core/authorize/router.py:490` |
-| DELETE | `/authorize/privilege-lists/{id}/privileges` | `core.authorize` | `remove_privileges_from_list` | oui | `back/core/authorize/router.py:563` |
-| POST | `/authorize/privilege-lists/{id}/privileges` | `core.authorize` | `add_privileges_to_list` | oui | `back/core/authorize/router.py:532` |
+| DELETE | `/authorize/privilege-lists/{id}/privileges` | `core.authorize` | `remove_privileges_from_list` | oui | `back/core/authorize/router.py:565` |
+| POST | `/authorize/privilege-lists/{id}/privileges` | `core.authorize` | `add_privileges_to_list` | oui | `back/core/authorize/router.py:534` |
 | GET | `/authorize/privileges` | `core.authorize` | `list_privileges` | oui | `back/core/authorize/router.py:59` |
 | POST | `/authorize/privileges` | `core.authorize` | `create_privilege` | oui | `back/core/authorize/router.py:89` |
 | DELETE | `/authorize/privileges/{id}` | `core.authorize` | `delete_privilege` | oui | `back/core/authorize/router.py:107` |
@@ -1990,7 +1990,7 @@ tests restent l’autorité sur le comportement.
 | `agent_skills` | `AgentSkill` | `app.skill` | non | `agents.id`, `skills.id` | `back/app/skill/models.py:128` |
 | `agent_teams` | `AgentTeam` | `app.agent` | non | `agent_groups.id`, `agents.id` | `back/app/agent/models.py:17` |
 | `agents` | `Agent` | `app.agent` | oui | `agent_groups.id`, `harnesses.id`, `llm_profiles.id`, `memory_items.id`, `titles.id`, `users.id` | `back/app/agent/models.py:37` |
-| `assignments` | `Assignment` | `core.authorize` | oui | `roles.id`, `users.id` | `back/core/authorize/models.py:69` |
+| `assignments` | `Assignment` | `core.authorize` | oui | `roles.id`, `users.id` | `back/core/authorize/models.py:81` |
 | `calendar_feeds` | `CalendarFeed` | `bridge.calendar` | oui | `connections.id` | `back/bridge/calendar/models.py:15` |
 | `calendar_triggers` | `CalendarTrigger` | `bridge.calendar` | non | `calendar_feeds.id`, `process_runs.id`, `tasks.id` | `back/bridge/calendar/models.py:60` |
 | `chat_document_conversations` | `ChatDocumentConversation` | `app.chat` | non | `documents.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:25` |
@@ -2123,8 +2123,9 @@ tests restent l’autorité sur le comportement.
 | `multimedia_output_receipts` | `MediaOutputReceipt` | `app.multimedia` | non | `multimedia_generations.id` | `back/app/multimedia/models.py:40` |
 | `params` | `Param` | `core.params` | non | — | `back/core/params/models.py:7` |
 | `permission_decisions` | `PermissionDecision` | `app.messenger` | oui | `agents.id`, `messenger_interactions.id`, `users.id` | `back/app/messenger/models.py:234` |
-| `privilege_lists` | `PrivilegeList` | `core.authorize` | non | — | `back/core/authorize/models.py:41` |
-| `privileges` | `Privilege` | `core.authorize` | non | `privilege_lists.id` | `back/core/authorize/models.py:22` |
+| `privilege_list_defaults` | `PrivilegeListDefault` | `core.authorize` | non | — | `back/core/authorize/models.py:55` |
+| `privilege_lists` | `PrivilegeList` | `core.authorize` | non | — | `back/core/authorize/models.py:42` |
+| `privileges` | `Privilege` | `core.authorize` | non | `privilege_lists.id` | `back/core/authorize/models.py:23` |
 | `process_definition_grants` | `ProcessDefinitionGrant` | `app.process` | non | `agent_groups.id`, `agents.id`, `process_definitions.id`, `users.id` | `back/app/process/models.py:74` |
 | `process_definition_revisions` | `ProcessDefinitionRevision` | `app.process` | non | `agents.id`, `process_definitions.id` | `back/app/process/models.py:89` |
 | `process_definitions` | `ProcessDefinition` | `app.process` | oui | `agents.id`, `documents.id`, `tools.id`, `users.id` | `back/app/process/models.py:29` |
@@ -2134,8 +2135,8 @@ tests restent l’autorité sur le comportement.
 | `process_run_files` | `ProcessRunFile` | `app.process` | oui | `files.id`, `process_runs.id` | `back/app/process/models.py:182` |
 | `process_runs` | `ProcessRun` | `app.process` | oui | `agents.id`, `process_definitions.id`, `process_node_attempts.id`, `process_runs.id`, `tasks.id`, `users.id` | `back/app/process/models.py:100` |
 | `process_start_jobs` | `ProcessStartJob` | `app.process` | non | `process_runs.id` | `back/app/process/models.py:220` |
-| `role_privileges` | `RolePrivilege` | `core.authorize` | non | `privileges.id`, `roles.id` | `back/core/authorize/models.py:11` |
-| `roles` | `Role` | `core.authorize` | non | — | `back/core/authorize/models.py:53` |
+| `role_privileges` | `RolePrivilege` | `core.authorize` | non | `privileges.id`, `roles.id` | `back/core/authorize/models.py:12` |
+| `roles` | `Role` | `core.authorize` | non | — | `back/core/authorize/models.py:65` |
 | `runtime_action_permissions` | `RuntimeActionPermission` | `app.tools` | non | `agents.id`, `users.id` | `back/app/tools/authorization_models.py:64` |
 | `runtime_run_grants` | `RuntimeRunGrant` | `app.tools` | non | `agent_mcp_tokens.id`, `agents.id` | `back/app/tools/authorization_models.py:81` |
 | `share_configs` | `ShareConfig` | `app.share` | oui | — | `back/app/share/models.py:23` |

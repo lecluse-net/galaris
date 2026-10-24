@@ -190,7 +190,7 @@ import { authorizeService, type Role, type RoleWithPrivileges, type Privilege, t
 import { usePrivilegeStore } from '../stores/privilegeStore'
 import { useAuthorizeStore } from '../stores/authorizeStore'
 import { privileges } from '../definitions'
-import { localizedAuthorizeLabel } from '../presentation'
+import { localizedAuthorizeLabel, localizedPrivilegeListLabel } from '../presentation'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -250,7 +250,7 @@ function groupPrivileges(privileges: Privilege[]): Record<string, Privilege[]> {
     
     const listMap = new Map<number, string>()
     for (const list of privilegeLists.value) {
-        listMap.set(list.id, list.display_name)
+        listMap.set(list.id, localizedPrivilegeListLabel(list))
     }
     
     for (const p of privileges) {
@@ -283,7 +283,7 @@ function groupPrivileges(privileges: Privilege[]): Record<string, Privilege[]> {
 function getPrivilegeListName(priv: Privilege): string {
     if (priv.privilege_list_id) {
          const list = privilegeLists.value.find(l => l.id === priv.privilege_list_id)
-         if (list) return list.display_name
+         if (list) return localizedPrivilegeListLabel(list)
     }
     return t('authorize.roles.others')
 }
