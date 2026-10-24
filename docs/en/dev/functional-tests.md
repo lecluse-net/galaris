@@ -2,6 +2,34 @@
 
 # Functional guarantees catalogue
 
+## Team qualification with real models
+
+`tests/test_agent_team_recovery.py` covers bootstrap without reseeding, rejection of a different
+run identity or configuration, backend-only fault injection, retained restart errors and waiting
+for a durable instruction before interruption. Completed work proves neither fault injection nor
+preserved contributions. The optional real `--restart-after-amendment` run retains before/after
+states and still requires review.
+`--restart-after-write` additionally requires the committed revision to survive and delivery after
+restart; tests reject a lost revision, a changed hash or an earlier delivery.
+
+The [teamwork pilot](agent-team-qualification.md), invoked through `make agent-team-pilot`,
+uses an isolated stack and fictional data with the real runtime. `prepare` checks setup without
+a mission; `run` submits a Chat mission and retains evidence. `tests/test_agent_team_pilot.py`
+protects database isolation, pagination, contributor identity, redaction and the absence of
+acceptance inferred from SUCCESS. They also protect consecutive duplicate-heading observations,
+without flagging legitimate repetitions separated by content or treating a missing target as checked.
+Those tests prove no model ability. `baseline`, `missing`,
+`conflict` and `amendment` still require real qualification and human content review. `amendments`
+checks two distinct sends after the first instruction is admitted; uncertain delivery is never retried.
+`peer_failure` exposes Finance to an actual provider failure. `comparison` supplies the same mission
+and rubric for team and solo runs; results require review, without any presumed team advantage.
+
+`app/task/tests/test_amendment_service.py` covers an instruction received during two delegations,
+idempotent replay, application order, recovery in a new session and the queue limit. Human pauses,
+cancellation and incompatible checkpoints retain their protections. `app/task/tests/test_collab.py`
+verifies that concurrent fan-in consumes each contribution and instruction once before synthesis
+resumes. Conversation admission and resource tests cover receipts and pending/applied audit records.
+
 ## Default privilege categories
 
 `core/authorize/tests/test_default_lists.py` checks default category installation,

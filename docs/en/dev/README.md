@@ -16,6 +16,7 @@ and tests remain authoritative; plans describe extensions still open.
 | Execute an internal workflow | [Native BPMN profile](native-processes.md) |
 | Share resources | [ACL contracts and migration](sharing.md) |
 | Choose evidence and test commands | [Testing behavior](testing.md) |
+| Observe a mission with real collaborating agents | [Teamwork pilot](agent-team-qualification.md) |
 
 The [Lab reference corpus](lab-reference-corpus.md) supplies reproducible editorial and
 resource-boundary cases. Frontend builds print `frontend_build_bytes` using

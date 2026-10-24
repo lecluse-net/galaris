@@ -1,0 +1,92 @@
+# Disposable real-runtime qualification. No existing database, network or credential is reused.
+services:
+  db-team:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: pilot
+      POSTGRES_PASSWORD: isolated-team-pilot-only
+      POSTGRES_DB: agent_team_pilot
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U pilot -d agent_team_pilot"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  backend:
+    image: ${GALARIS_TEAM_BACKEND_IMAGE:-galaris-backend}
+    user: ${TEAM_PILOT_UID:-1000}:${TEAM_PILOT_GID:-1000}
+    entrypoint: []
+    working_dir: /repo/back
+    environment:
+      APP_ENV: qualification
+      APP_HOST: http://localhost:8484
+      BACK_ALLOWED_HOSTS: backend,frontend,localhost,galaris-back
+      POSTGRES_HOST: db-team
+      POSTGRES_USER: pilot
+      POSTGRES_PASSWORD: isolated-team-pilot-only
+      POSTGRES_DB: agent_team_pilot
+      ENCRYPTION_MASTER_KEY: isolated-team-pilot-encryption-key-0001
+      WEBRTC_TURN_MODE: disabled
+      PYTHONPATH: /repo/back
+      LOGFIRE_SEND_TO_LOGFIRE: 'false'
+      TEAM_PILOT_CASE: ${TEAM_PILOT_CASE:-baseline}
+      TEAM_PILOT_MODE: ${TEAM_PILOT_MODE:-spontaneous}
+      TEAM_PILOT_EXECUTE: ${TEAM_PILOT_EXECUTE:-0}
+      TEAM_PILOT_RUN_ID: ${TEAM_PILOT_RUN_ID:?Set TEAM_PILOT_RUN_ID}
+      TEAM_PILOT_RESTART: ${TEAM_PILOT_RESTART:-0}
+      TEAM_PILOT_RESTART_PHASE: ${TEAM_PILOT_RESTART_PHASE:-pending_amendment}
+    volumes:
+      - ./back:/repo/back:ro
+      - ${TEAM_PILOT_ARTIFACTS:?Set TEAM_PILOT_ARTIFACTS}:/artifacts
+      - ${TEAM_PILOT_CONFIG:-./back/tests/agent_team_pilot/provider.example.json}:/run/pilot/config.json:ro
+      - ${TEAM_PILOT_KEY_FILE:-/dev/null}:/run/pilot/api-key:ro
+      - data-team:/data
+    command: [bash, -c, "python -m core.dbadmin synchronize --mode test && python -m tests.agent_team_pilot.bootstrap && exec uvicorn main:app --host 0.0.0.0 --port 8000"]
+    networks:
+      default:
+        aliases: [galaris-back]
+    depends_on:
+      db-team:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/ready')"]
+      interval: 3s
+      timeout: 3s
+      retries: 100
+  frontend:
+    build:
+      context: ./front
+      target: prod-stage
+    environment:
+      APP_NAME: galaris
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8484/]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  observer:
+    image: ${GALARIS_TEAM_BACKEND_IMAGE:-galaris-backend}
+    user: ${TEAM_PILOT_UID:-1000}:${TEAM_PILOT_GID:-1000}
+    entrypoint: []
+    working_dir: /repo/back
+    volumes:
+      - ./back:/repo/back:ro
+      - ${TEAM_PILOT_ARTIFACTS}:/artifacts
+      - ${TEAM_PILOT_KEY_FILE:-/dev/null}:/run/pilot/api-key:ro
+    command: [python, -m, tests.agent_team_pilot.runner]
+  browser:
+    build: ./e2e
+    user: ${TEAM_PILOT_UID:-1000}:${TEAM_PILOT_GID:-1000}
+    # localhost supplies the browser secure context used by application crypto.
+    network_mode: service:frontend
+    init: true
+    working_dir: /tests
+    volumes:
+      - ${TEAM_PILOT_ARTIFACTS}:/artifacts
+    command: [node, pilots/agent-team.mjs, check]
+
+volumes:
+  data-team:

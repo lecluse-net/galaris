@@ -1,0 +1,8 @@
+{
+  "base_url": "https://example.invalid/v1",
+  "model": "replace-with-your-model",
+  "context_length": 128000,
+  "timeout_seconds": 600,
+  "max_tokens": 150000,
+  "allow_no_api_key": false
+}

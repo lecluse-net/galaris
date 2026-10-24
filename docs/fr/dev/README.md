@@ -16,6 +16,7 @@ font foi ; les plans décrivent les extensions encore ouvertes.
 | Exécuter un workflow interne | [Profil BPMN natif](native-processes.md) |
 | Partager des ressources | [Contrats et migration des ACL](sharing.md) |
 | Choisir une preuve et une commande de test | [Tester un comportement](testing.md) |
+| Observer une mission avec de vrais agents collaborateurs | [Pilote de travail d'équipe](agent-team-qualification.md) |
 
 Le [corpus de référence du Lab](lab-reference-corpus.md) fournit des cas reproductibles sur
 les contraintes éditoriales et les ressources. Les builds frontend affichent `frontend_build_bytes`

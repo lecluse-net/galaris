@@ -425,6 +425,10 @@ tests-e2e: ## Run browser workflows and PWA updates in a fully isolated stack
 	@bash bin/test-e2e.sh $(ARGS)
 .PHONY: tests-e2e
 
+agent-team-pilot: ## Prepare or run one isolated real-agent collaboration qualification
+	@bash bin/agent-team-pilot.sh $(ARGS)
+.PHONY: agent-team-pilot
+
 tests-front-tooling: ## Verify that the TypeScript gate rejects invalid application and build code
 	docker compose $(COMPOSE_FILES) exec -T frontend npm run test:tooling
 .PHONY: tests-front-tooling

@@ -7,6 +7,36 @@ Il décrit les garanties couvertes par les suites ; leur présence ne signifie p
 ont été exécutées sur votre checkout. Pour choisir une commande et comprendre sa portée,
 consultez la [méthode de test](testing.md).
 
+## Qualification d'une équipe avec de vrais modèles
+
+`tests/test_agent_team_recovery.py` vérifie le bootstrap sans réinitialisation, le refus d'une
+identité ou configuration différente, l'injection limitée au backend, la conservation des erreurs
+de redémarrage et l'attente d'une consigne durable avant interruption. Une mission terminée ne
+prouve ni qu'une panne a eu lieu ni qu'une contribution a été conservée. L'essai réel optionnel
+`--restart-after-amendment` conserve les états avant/après et reste soumis à relecture.
+`--restart-after-write` exige aussi la conservation de la révision écrite et une livraison après
+redémarrage ; les tests refusent une révision perdue, une empreinte changée ou une livraison antérieure.
+
+Le [pilote de travail d'équipe](agent-team-qualification.md), lancé par `make agent-team-pilot`,
+utilise une stack et des données fictives isolées, avec le véritable runtime. `prepare` vérifie
+la préparation sans mission ; `run` soumet une mission dans le Chat et conserve les preuves.
+`tests/test_agent_team_pilot.py` protège les refus hors base dédiée, la collecte paginée, les
+identités des contributions, l'expurgation et l'absence d'acceptation depuis un statut SUCCESS.
+Il protège aussi le signalement des titres identiques consécutifs, sans rejeter une répétition
+légitime séparée par du contenu ni présenter une cible absente comme vérifiée.
+Ces tests ne prouvent aucune compétence du modèle. Les scénarios `baseline`, `missing`, `conflict`
+et `amendment` restent soumis à qualification réelle et relecture humaine. `amendments` vérifie
+deux envois distincts après admission de la première consigne ; une issue incertaine n'est pas rejouée.
+`peer_failure` expose Finances à une vraie panne fournisseur. `comparison` fournit la même mission
+et la même grille en équipe et en solo ; leurs résultats restent à relire, sans avantage présumé.
+
+`app/task/tests/test_amendment_service.py` vérifie l'instruction reçue pendant deux délégations,
+son rejeu idempotent, l'ordre d'application, la reprise dans une nouvelle session et la limite
+de file. Les pauses humaines, annulations et checkpoints incompatibles conservent leurs protections.
+`app/task/tests/test_collab.py` vérifie que deux fan-in concurrents ne consomment qu'une fois
+la contribution et la consigne, avant reprise de la synthèse. Les tests d'admission et de ressources
+conversationnelles couvrent le reçu et l'audit des instructions en attente ou appliquées.
+
 ## Catégories de privilèges par défaut
 
 `core/authorize/tests/test_default_lists.py` vérifie l’installation des rubriques par défaut,
