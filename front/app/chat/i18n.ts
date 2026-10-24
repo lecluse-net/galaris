@@ -43,6 +43,7 @@ export default {
       },
     },
     chat: {
+      documentPanel: { title: 'Conversation', hide: 'Masquer la conversation', choose: 'Ouvrir une conversation', empty: 'Aucune conversation trouvée.', more: 'Charger la suite', context: 'Le document ouvert accompagne votre prochain message. Ses droits restent indépendants.', start: 'Choisissez une conversation ou démarrez-en une avec un agent.' },
       home: {
         title: "Avec qui souhaitez-vous échanger ?",
         subtitle: "Choisissez un agent pour démarrer une conversation, ou reprenez un échange récent.",
@@ -413,6 +414,7 @@ export default {
       },
     },
     chat: {
+      documentPanel: { title: 'Conversation', hide: 'Hide conversation', choose: 'Open a conversation', empty: 'No conversations found.', more: 'Load more', context: 'The open document accompanies your next message. Its permissions remain independent.', start: 'Choose a conversation or start one with an agent.' },
       sources: {
         nextcloudTalk: "Nextcloud Talk",
         telegram: "Telegram",
@@ -773,6 +775,7 @@ export default {
       },
     },
     chat: {
+      documentPanel: { title: '对话', hide: '隐藏对话', choose: '打开对话', empty: '未找到对话。', more: '加载更多', context: '当前文档将随下一条消息提供。其权限保持独立。', start: '选择对话或与智能体开始新对话。' },
       sources: { nextcloudTalk: "Nextcloud Talk", telegram: "Telegram", matrix: "Matrix", oneBot: "OneBot", whatsApp: "WhatsApp", other: "外部" },
       responseControl: {
         pause: '暂停回复', stop: '停止回复', resume: '继续回复', restart: '重新开始回复', respond: '立即回复',

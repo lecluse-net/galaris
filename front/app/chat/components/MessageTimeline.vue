@@ -543,7 +543,10 @@ function onWindowRendered(): void {
   observeAttachmentVisibility()
 }
 
-watch(timelineRenderKey, async () => {
+// A streamed row keeps its render key when the saved message takes over, but its
+// durable ID must start participating in visibility and read acknowledgements.
+const messageVisibilityKey = computed(() => props.messages.map(message => message.id).join('\0'))
+watch([timelineRenderKey, messageVisibilityKey], async () => {
   await nextTick()
   observeMessageVisibility()
 }, { flush: 'post' })

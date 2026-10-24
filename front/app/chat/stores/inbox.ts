@@ -81,7 +81,7 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
   const displayedRoomId = ref<string | null>(null)
   const started = ref(false)
   const loading = ref(false)
-  const fallbackTimers = new Map<string, number>()
+  const fallbackTimers = new Map<string, { roomId: string; timer: number; cancelled: boolean }>()
   let notificationSequence = 0
   let unregisterLogoutHook: (() => void) | null = null
 
@@ -198,12 +198,12 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
     }
   }
 
-  async function notifyInApp(roomId: string, messageId: string): Promise<void> {
+  async function notifyInApp(roomId: string, messageId: string, cancelled: () => boolean): Promise<void> {
     const lifecycle = lifecycleGeneration
     const session = sessionGeneration()
     await refreshSummary()
     if (lifecycle !== lifecycleGeneration || session !== sessionGeneration()) return
-    if (displayedRoomId.value === roomId) return
+    if (cancelled() || displayedRoomId.value === roomId) return
     const subscription = await currentSubscription()
     if (lifecycle !== lifecycleGeneration || session !== sessionGeneration()) return
     subscribed.value = subscription !== null
@@ -218,6 +218,7 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
     if (lifecycle !== lifecycleGeneration || session !== sessionGeneration()) return
     if (
       room.muted
+      || cancelled()
       || room.unread_count === 0
       || message?.id !== messageId
       || message.is_mine
@@ -238,8 +239,29 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
 
   function setDisplayedRoom(roomId: string | null): void {
     displayedRoomId.value = roomId
+    if (roomId !== null) {
+      // Once observed, a delayed fallback must not reappear after leaving the conversation.
+      for (const [messageId, pending] of fallbackTimers) {
+        if (pending.roomId !== roomId) continue
+        pending.cancelled = true
+        window.clearTimeout(pending.timer)
+        fallbackTimers.delete(messageId)
+      }
+    }
     if (roomId !== null && inAppNotification.value?.roomId === roomId) {
       inAppNotification.value = null
+    }
+    if (roomId !== null) void dismissDisplayedPush(roomId).catch(() => undefined)
+  }
+
+  async function dismissDisplayedPush(roomId: string): Promise<void> {
+    if (!('serviceWorker' in navigator)) return
+    const session = sessionGeneration()
+    const registration = await navigator.serviceWorker.getRegistration()
+    const notifications = await registration?.getNotifications() ?? []
+    if (session !== sessionGeneration() || displayedRoomId.value !== roomId) return
+    for (const notification of notifications) {
+      if ((notification.data as { roomId?: unknown } | null)?.roomId === roomId) notification.close()
     }
   }
 
@@ -264,11 +286,21 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
       return
     }
     const existing = fallbackTimers.get(messageId)
-    if (existing !== undefined) window.clearTimeout(existing)
-    fallbackTimers.set(messageId, window.setTimeout(() => {
-      fallbackTimers.delete(messageId)
-      void notifyInApp(roomId, messageId).catch(() => undefined)
-    }, FALLBACK_DELAY_MS))
+    if (existing !== undefined) {
+      existing.cancelled = true
+      window.clearTimeout(existing.timer)
+    }
+    if (displayedRoomId.value === roomId) {
+      void refreshSummary().catch(() => undefined)
+      return
+    }
+    const pending = { roomId, timer: 0, cancelled: false }
+    pending.timer = window.setTimeout(() => {
+      void notifyInApp(roomId, messageId, () => pending.cancelled).catch(() => undefined).finally(() => {
+        if (fallbackTimers.get(messageId) === pending) fallbackTimers.delete(messageId)
+      })
+    }, FALLBACK_DELAY_MS)
+    fallbackTimers.set(messageId, pending)
   }
 
   function onConnect(): void {
@@ -318,7 +350,10 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.removeEventListener('message', onServiceWorkerMessage)
     }
-    for (const timer of fallbackTimers.values()) window.clearTimeout(timer)
+    for (const pending of fallbackTimers.values()) {
+      pending.cancelled = true
+      window.clearTimeout(pending.timer)
+    }
     fallbackTimers.clear()
     unregisterLogoutHook?.()
     unregisterLogoutHook = null

@@ -16,6 +16,24 @@ DOCUMENT = "4e98431c-c16c-4a6e-936e-15a595723340"
 ATTACHMENT = "ae6942a7-b8c9-463f-8f08-8494d08ed186"
 
 
+def test_checklist_state_round_trips_in_editable_html():
+    source = '<ul class="galaris-checklist"><li data-checked="true"><p>First</p><ul class="galaris-checklist"><li data-checked="false"><p>Nested</p></li></ul></li></ul>'
+    normalized = normalize_html(source, profile="document")
+    assert normalized == source
+    assert normalize_html(normalized, profile="document") == source
+    assert "First" in visible_text(normalized)
+    assert "Nested" in visible_text(normalized)
+
+
+@pytest.mark.parametrize("source", [
+    '<ul class="galaris-checklist"><li data-checked="yes"><p>Invalid</p></li></ul>',
+    '<p data-checked="true">Invalid</p>',
+])
+def test_checklist_state_rejects_invalid_values_or_elements(source):
+    with pytest.raises(RichTextError):
+        normalize_html(source, profile="document")
+
+
 def test_code_display_options_round_trip_without_changing_semantic_content():
     plain = '<pre><code class="language-python">  print("hello")\n</code></pre>'
     source = plain.replace('<code ', '<code data-code-lines="true" data-code-nowrap="true" ')

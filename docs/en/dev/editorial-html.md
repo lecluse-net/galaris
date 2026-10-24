@@ -183,6 +183,16 @@ line wraps on screen.
 
 ## Revisions and agentic reads
 
+Editorial checklists use `<ul class="galaris-checklist">` containing
+`<li data-checked="true">` or `false`, with paragraphs and nested lists. Editor controls
+are never serialized. State belongs to the versioned HTML, without a Dataset, script or
+additional permission. Readers and exports display the saved states without read-only mutations.
+
+The outline is a temporary projection of Tiptap headings, without injected identifiers or
+additional revisions. The Documents conversation panel reuses chat state in a scope
+independent of the Chat page, through its public component. It waits for saves before
+sending `displayed_document_id`, never forwards an unloaded document and does not change ACLs.
+
 MCP sharing uses `document_sharing` to discover recipients and the current `lock_version`,
 then `document_share` with exactly one `agent_id`, `user_id` or `team_id`.
 Access is `read`, `edit`, or `none` to remove that specific grant. Teams include their current

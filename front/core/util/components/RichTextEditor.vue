@@ -1,6 +1,6 @@
 <template>
   <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @click.capture="editorClick" @contextmenu.capture="openContextMenu">
-    <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :single-row="singleRowToolbar" :hidden-groups="hiddenToolbarGroups" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
+    <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :outline-open="outlineOpen" :single-row="singleRowToolbar" :hidden-groups="hiddenToolbarGroups" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
       <template v-if="personalVoice" #voice>
         <EditorialToolButton v-if="!readonly" flat dense :color="voice?.dictating || voice?.dictationPending ? 'negative' : 'primary'" :icon="voice?.dictating || voice?.dictationPending ? 'stop' : 'mic'" :label="voice?.dictating ? voice.labels.finishDictation : voice?.dictationPending ? voice.labels.processing : voice?.labels.dictate ?? ''" :disable="sourceMode || voice?.reading" @click="voice?.toggleDictation()" />
         <EditorialToolButton flat dense color="primary" :icon="voice?.reading && !voice.paused ? 'pause' : 'play_arrow'" :label="voice?.reading ? voice.paused ? voice.labels.paused : voice.labels.reading : voice?.labels.read ?? ''" :disable="voice?.dictating || voice?.dictationPending" @click="action('read')" />
@@ -15,6 +15,7 @@
           </q-list></q-menu>
         </EditorialToolButton>
       </template>
+      <template v-if="$slots['toolbar-actions']" #actions><slot name="toolbar-actions" :exit-fullscreen="exitFullscreen" /></template>
     </EditorialToolbar>
     <div v-if="findOpen" class="editorial-search-bar" role="search" :aria-label="t('richEditor.find')">
       <q-input ref="searchInput" v-model="fields.search" class="editorial-search-input" dense outlined :label="t('richEditor.find')" @keydown.enter.prevent="findNext" />
@@ -27,9 +28,12 @@
       <q-btn dense color="primary" :label="t('richEditor.replace')" :disable="readonly || !matches.length" @click="replaceMatch" />
       <q-btn flat round dense icon="close" :aria-label="t('common.close')" @click="closeFind" />
     </div>
+    <div class="editorial-workspace">
+      <DocumentOutline v-if="profile === 'document' && outlineOpen && editor" :editor="editor" :revision="revision" @close="outlineOpen = false" />
     <div class="editorial-body" :data-document-layout="profile === 'document' ? effectiveLayout : undefined">
       <EditorialSource v-if="sourceMode" :model-value="sourceDraft" :readonly="readonly" :label="t('richEditor.source')" @update:model-value="editSource" />
       <div v-show="!sourceMode" ref="editorHost" />
+    </div>
     </div>
     <template v-if="!sourceMode">
       <Teleport v-for="target in codeCopies" :key="target.key" :to="target.element"><CodeBlockCopyButton :source="target.source" /></Teleport>
@@ -52,7 +56,7 @@
               <q-item-section>{{ t('richEditor.clipboard.' + key) }}</q-item-section>
             </q-item>
             <q-separator />
-            <EditorialToolbar menu :editor="editor" :revision="revision" :document="profile === 'document'" :find-open="findOpen" :hidden-groups="hiddenToolbarGroups" :disabled-actions="disabledActions" @action="runPointerTextAction" />
+            <EditorialToolbar menu :editor="editor" :revision="revision" :document="profile === 'document'" :find-open="findOpen" :outline-open="outlineOpen" :hidden-groups="hiddenToolbarGroups" :disabled-actions="disabledActions" @action="runPointerTextAction" />
           </template>
         </q-list>
       </q-menu>
@@ -103,6 +107,7 @@ import { closeHistory } from '@tiptap/pm/history'
 import { marked } from 'marked'
 import EditorialToolButton from './EditorialToolButton.vue'
 import EditorialToolbar from './EditorialToolbar.vue'
+import DocumentOutline from './DocumentOutline.vue'
 import EditorialSource from './EditorialSource.vue'
 import EditorialContextActions from './EditorialContextActions.vue'
 import { useContextMenuDismissal } from '../contextMenuDismissal'
@@ -168,6 +173,8 @@ const imagePreview = ref('')
 const imagePreviewOpen = computed({ get: () => Boolean(imagePreview.value), set: (open: boolean) => { if (!open) imagePreview.value = '' } })
 const editor = shallowRef<Editor>(), revision = ref(0), sourceMode = ref(false), sourceDraft = ref(''), fullscreen = ref(false), layout = ref<'fixed' | 'full'>('fixed'), fits = ref(true)
 const findOpen = ref(false), searchInput = useTemplateRef<QInput>('searchInput')
+const outlineOpen = ref(false)
+function exitFullscreen(): void { fullscreen.value = false }
 const codeCopies = shallowRef<Array<{ key: number; element: HTMLElement; source: () => string }>>([])
 const pointerMenu = useTemplateRef<QMenu>('pointerMenu')
 const pointerMenuOpen = ref(false)
@@ -888,11 +895,12 @@ function tableAction(key: TableAction): void {
   current.view.dispatch(closeHistory(current.state.tr))
   current.chain().focus()[item.command]().run()
 }
-function indent(amount: number): void { const current = editor.value; if (!current) return; if (current.isActive('listItem')) { amount > 0 ? current.commands.sinkListItem('listItem') : current.commands.liftListItem('listItem'); return }; for (const type of ['paragraph', 'heading']) if (current.isActive(type)) { const style = document.createElement('div'); style.setAttribute('style', current.getAttributes(type).editorialStyle ?? ''); const width = Math.max(0, (parseFloat(style.style.marginLeft) || 0) + amount * 40); if (width) style.style.marginLeft = width + 'px'; else style.style.removeProperty('margin-left'); current.commands.updateAttributes(type, { editorialStyle: style.getAttribute('style') }); break } }
+function indent(amount: number): void { const current = editor.value; if (!current) return; const item = current.isActive('checklistItem') ? 'checklistItem' : current.isActive('listItem') ? 'listItem' : null; if (item) { amount > 0 ? current.commands.sinkListItem(item) : current.commands.liftListItem(item); return }; for (const type of ['paragraph', 'heading']) if (current.isActive(type)) { const style = document.createElement('div'); style.setAttribute('style', current.getAttributes(type).editorialStyle ?? ''); const width = Math.max(0, (parseFloat(style.style.marginLeft) || 0) + amount * 40); if (width) style.style.marginLeft = width + 'px'; else style.style.removeProperty('margin-left'); current.commands.updateAttributes(type, { editorialStyle: style.getAttribute('style') }); break } }
 function action(key: string, value?: string): void {
   const current = editor.value; if (!current) return
   if (key === 'source') { if (profile === 'document') return; if (sourceMode.value) { applyingExternal = true; current.commands.setContent(editableHtml(sourceDraft.value), { emitUpdate: false }); applyingExternal = false }; sourceDraft.value = html(); stop(); sourceMode.value = !sourceMode.value; return }
   if (key === 'fullscreen') { fullscreen.value = !fullscreen.value; return }
+  if (key === 'outline') { outlineOpen.value = !outlineOpen.value; return }
   if (key === 'selectAll') { current.commands.selectAll(); return }
   if (key === 'layout.full') { layout.value = layout.value === 'fixed' ? 'full' : 'fixed'; return }
   if (key === 'help') { showDialog('help'); return }
@@ -915,13 +923,14 @@ function action(key: string, value?: string): void {
     case 'undo': chain.undo().run(); break; case 'redo': chain.redo().run(); break
     case 'removeFormat': case 'shortcuts.clearDirectFormat': clearDirectFormat(); break
     case 'shortcuts.insertText': if (value) chain.insertContent({ type: 'text', text: value }).run(); break
-    case 'shortcuts.clearList': if (current.isActive('orderedList')) chain.toggleOrderedList().run(); else if (current.isActive('bulletList')) chain.toggleBulletList().run(); break
+    case 'shortcuts.clearList': if (current.isActive('checklist')) chain.toggleList('checklist', 'checklistItem').run(); else if (current.isActive('orderedList')) chain.toggleOrderedList().run(); else if (current.isActive('bulletList')) chain.toggleBulletList().run(); break
     case 'shortcuts.table': if (current.isActive('table')) showDialog('tableProperties'); else action('insertTable'); break
     case 'shortcuts.heading': {
       if (value === '0') { if (!current.isActive('paragraph')) chain.setParagraph().run() }
       else if (!current.isActive('heading', { level: Number(value) })) chain.setHeading({ level: Number(value) as 1 | 2 | 3 | 4 | 5 | 6 }).run()
       break
     }
+    case 'checklist': chain.toggleList('checklist', 'checklistItem').run(); break
     case 'bulletList': chain.toggleBulletList().run(); break; case 'orderedList': chain.toggleOrderedList().run(); break; case 'quote': chain.toggleBlockquote().run(); break; case 'code': chain.toggleNode('codeBlock', 'paragraph').run(); break; case 'separator': chain.setHorizontalRule().run(); break
     case 'heading': if (value === '0') chain.setParagraph().run(); else chain.toggleHeading({ level: Number(value) as 1 | 2 | 3 | 4 | 5 | 6 }).run(); break
     case 'callout': {
@@ -1017,7 +1026,17 @@ onMounted(() => {
 watch(() => modelValue, value => { if (value === lastEmitted) return; stop(); imageCache.clear(); lastEmitted = value; applyingExternal = true; sourceDraft.value = value; createEditor(); applyingExternal = false })
 watch(() => profile, () => { stop(); sourceMode.value = false; createEditor() })
 watch(() => resourceAgentId, () => { stop(); imageCache.clear(); createEditor() })
-watch(() => readonly, value => { objectPreview.value = null; if (value) stop(); editor.value?.setEditable(!value, false); revision.value++ })
+watch(() => readonly, value => {
+  objectPreview.value = null
+  if (value) stop()
+  const current = editor.value
+  if (current) {
+    current.setEditable(!value, false)
+    // Node-view controls also follow permission changes without editing content.
+    current.view.dispatch(current.state.tr)
+  }
+  revision.value++
+})
 watch(locale, () => { editor.value?.view.dom.setAttribute('aria-label', ariaLabel || t('richEditor.content')); revision.value++ })
 watch([effectiveLayout, editor], () => { if (editor.value && profile === 'document') editor.value.view.dom.dataset.documentLayout = effectiveLayout.value })
 onBeforeUnmount(() => { stop(); imageCache.clear(); document.removeEventListener('selectionchange', syncReadingSelection); document.removeEventListener('keydown', trackKeyboardModifiers, true); document.removeEventListener('keyup', trackKeyboardModifiers, true); window.removeEventListener('blur', resetKeyboardModifiers); observer?.disconnect(); if (layoutFrame !== undefined) cancelAnimationFrame(layoutFrame); scrollPadding?.dispose(); editor.value?.destroy(); urls.forEach(URL.revokeObjectURL); urls.clear() })

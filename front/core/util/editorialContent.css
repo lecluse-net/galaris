@@ -2,6 +2,14 @@
 .rich-content { color: var(--rich-foreground); background: var(--rich-background); overflow-wrap: anywhere; font-family: Helvetica, Arial, Tahoma, Verdana, sans-serif; font-size: 16px; line-height: 1.6; }
 .rich-content > :first-child { margin-top: 0; }
 .rich-content p { margin: 0 0 1em; }
+.rich-content ul.galaris-checklist { list-style: none; padding-inline-start: 1.6em; }
+.rich-content ul.galaris-checklist > li { position: relative; }
+.rich-content ul.galaris-checklist > li::before { content: '☐'; position: absolute; inset-inline-start: -1.4em; }
+.rich-content ul.galaris-checklist > li[data-checked='true']::before { content: '☑'; }
+.rich-content ul.galaris-checklist > li:has(> .editorial-checklist-control)::before { content: none; }
+.rich-content .editorial-checklist-control { position: absolute; inset-inline-start: -1.6em; top: .15em; }
+.rich-content .editorial-checklist-control input { width: 1em; height: 1em; accent-color: var(--q-primary, var(--solaire-blue-accent)); cursor: pointer; }
+.rich-content .editorial-checklist-control input:disabled { cursor: default; }
 .rich-content figure { margin: 1em auto; }
 .rich-content figure.image { display: table; clear: both; max-width: 100%; }
 .rich-content figure.image img { display: block; max-width: 100%; height: auto; }

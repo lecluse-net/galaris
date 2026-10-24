@@ -17,9 +17,13 @@
     <div v-for="group in groups" :key="group.name" role="group" :aria-label="t('richEditor.groups.' + group.name)" class="editorial-toolbar-group">
       <span v-if="!singleRow" class="editorial-toolbar-title">{{ t('richEditor.groups.' + group.name) }}</span>
       <div class="editorial-toolbar-commands">
-        <div v-if="group.name === 'reading' && $slots.voice" class="editorial-toolbar-row"><slot name="voice" /></div>
+        <div v-if="group.name === 'reading' && ($slots.voice || readingHelp)" class="editorial-toolbar-row">
+          <slot name="voice" />
+          <EditorialCommand v-if="readingHelp" :item="readingHelp" :option-active="optionActive" @action="dispatch" />
+        </div>
         <div v-for="(row, index) in group.rows" :key="index" class="editorial-toolbar-row">
-          <EditorialCommand v-for="item in row" :key="item.key" :item="item" :option-active="optionActive" @action="dispatch" />
+          <EditorialCommand v-for="item in row.filter(item => item.key !== 'help')" :key="item.key" :item="item" :option-active="optionActive" @action="dispatch" />
+          <slot v-if="group.name === 'reading' && index === 0" name="actions" />
         </div>
       </div>
     </div>
@@ -27,6 +31,7 @@
     <div v-else class="editorial-mobile-toolbar">
       <EditorialCommand v-for="item in mobileItems" :key="item.key" :item="item" compact :option-active="optionActive" @action="dispatch" />
       <slot v-if="!hiddenGroups.includes('reading')" name="voice" />
+      <slot v-if="!hiddenGroups.includes('reading')" name="actions" />
       <q-btn flat dense icon="more_horiz" :aria-label="t('richEditor.moreTools')">
         <q-tooltip>{{ t('richEditor.moreTools') }}</q-tooltip>
         <q-menu v-model="moreOpen"><div class="editorial-toolbar-overflow" @mousedown.prevent>
@@ -54,8 +59,8 @@ import zipIcon from '../icons/bootstrap/file-zip-fill.svg?raw'
 import { solaire } from '../solaire'
 import { editorialIcon } from '../editorialIcons'
 import { imageAlignment } from '../imageAlignment'
-const { editor, revision, document = false, source = false, findOpen = false, singleRow = false, hiddenGroups = [], fullWidth = false, fullscreen = false, fits = true, disabledActions = [], menu = false } = defineProps<{
-  editor: Editor; revision: number; document?: boolean; source?: boolean; findOpen?: boolean; singleRow?: boolean; hiddenGroups?: readonly EditorToolbarGroupName[]; fullWidth?: boolean; fullscreen?: boolean; fits?: boolean; disabledActions?: readonly string[]; menu?: boolean
+const { editor, revision, document = false, outlineOpen = false, source = false, findOpen = false, singleRow = false, hiddenGroups = [], fullWidth = false, fullscreen = false, fits = true, disabledActions = [], menu = false } = defineProps<{
+  editor: Editor; revision: number; document?: boolean; outlineOpen?: boolean; source?: boolean; findOpen?: boolean; singleRow?: boolean; hiddenGroups?: readonly EditorToolbarGroupName[]; fullWidth?: boolean; fullscreen?: boolean; fits?: boolean; disabledActions?: readonly string[]; menu?: boolean
 }>()
 const emit = defineEmits<{ action: [key: string, value?: string] }>()
 const { t } = useI18n()
@@ -77,7 +82,7 @@ function navigateToolbar(event: KeyboardEvent): void {
   buttons[next]?.focus(); event.preventDefault()
 }
 const coloredIcon = (svg: string, color: string) => 'img:data:image/svg+xml,' + encodeURIComponent(svg.replaceAll('<path ', `<path fill="${color}" `))
-const mobileKeys = ['undo', 'redo', 'bold', 'italic', 'removeFormat', 'heading', 'callout', 'bulletList', 'orderedList', ...alignments, 'galarisLink', 'share.action', 'help']
+const mobileKeys = ['undo', 'redo', 'bold', 'italic', 'removeFormat', 'heading', 'callout', 'bulletList', 'orderedList', 'checklist', 'outline', ...alignments, 'galarisLink', 'share.action', 'help']
 const mobileItems = computed(() => {
   const items = groups.value.flatMap(group => group.rows.flat())
   return mobileKeys.flatMap(key => items.find(item => item.key === key) ?? [])
@@ -114,7 +119,7 @@ const groups = computed(() => {
   }
   return [
     { name: 'reading' as const, rows: [[
-      ...(document ? [{ ...button('layout.full', 'width_full', fullWidth, true), disabled: !fits }] : [button('source', 'code', source, true)]), button('fullscreen', 'fullscreen', fullscreen, true), ...(document && !$q.screen.lt.md ? [button('help', 'keyboard', false, true)] : []),
+      ...(document ? [button('outline', 'format_list_bulleted', outlineOpen, true), { ...button('layout.full', 'width_full', fullWidth, true), disabled: !fits }] : [button('source', 'code', source, true)]), button('fullscreen', 'fullscreen', fullscreen, true), ...(document && !$q.screen.lt.md ? [button('help', 'keyboard', false, true)] : []),
     ]] },
     { name: 'editing' as const, rows: [[button('undo', 'undo'), button('redo', 'redo'), button('find', 'search', document ? findOpen : undefined), button('selectAll', 'select_all')], [button('removeFormat', 'format_clear'),
       ...(document ? [$q.screen.lt.md ? button('share.action', 'share', false, true) : button('print', 'print', false, true), button('exportPdf', 'picture_as_pdf', false, true), button('resources.documentExportBundle', 'folder_zip', false, true)] : [])]] },
@@ -128,7 +133,7 @@ const groups = computed(() => {
     ]] },
     { name: 'paragraph' as const, rows: [[
       heading, ...(document ? [] : [callout]),
-      button('bulletList', 'format_list_bulleted', editor.isActive('bulletList')), button('orderedList', 'format_list_numbered', editor.isActive('orderedList')), button('listProperties', 'format_list_numbered_rtl'),
+      button('bulletList', 'format_list_bulleted', editor.isActive('bulletList')), button('orderedList', 'format_list_numbered', editor.isActive('orderedList')), ...(document ? [button('checklist', 'checklist', editor.isActive('checklist'))] : []), button('listProperties', 'format_list_numbered_rtl'),
     ], [
       ...alignments.map(value => button(value, 'format_align_' + value, image ? imageAlignment(image) === value : editor.isActive({ textAlign: value }) || value === 'left' && editor.isActive({ textAlign: null }))),
       button('shortcuts.outdent', 'format_indent_decrease'), button('shortcuts.indent', 'format_indent_increase'),
@@ -137,6 +142,7 @@ const groups = computed(() => {
       ...(document ? [[button('quote', 'format_quote', editor.isActive('blockquote')), button('code', 'code', editor.isActive('codeBlock')), button('separator', 'horizontal_rule'), button('specialCharacters', 'emoji_symbols')]] : [])] },
   ].filter(group => !hiddenGroups.includes(group.name))
 })
+const readingHelp = computed(() => groups.value.find(group => group.name === 'reading')?.rows.flat().find(item => item.key === 'help'))
 const contextPrimaryKeys = ['heading', 'bold', 'italic', 'underline', 'removeFormat']
 const contextPrimary = computed(() => contextPrimaryKeys.flatMap(key => groups.value.flatMap(group => group.rows.flat()).find(item => item.key === key) ?? []))
 const contextGroups = computed(() => groups.value.filter(group => group.name !== 'reading').map(group => ({

@@ -69,8 +69,8 @@ test('only the legacy development worker reopens clients, tolerating a closed ta
 })
 
 test('only a visible client displaying the same room suppresses push', async t => {
-  for (const [visible, displayed, suppressed] of [[true, 'room-a', true], [true, 'room-b', false], [false, 'room-a', false]]) {
-    const runtime = worker(t, { clients: [{ visibilityState: visible ? 'visible' : 'hidden', postMessage(_query, [port]) { port.postMessage({ type: 'galaris:chat-displayed-room-response', roomId: displayed }); port.close() } }] })
+  for (const path of ['/chat', '/documents']) for (const [visible, displayed, suppressed] of [[true, 'room-a', true], [true, 'room-b', false], [false, 'room-a', false]]) {
+    const runtime = worker(t, { clients: [{ url: `https://galaris.example.test${path}`, visibilityState: visible ? 'visible' : 'hidden', postMessage(_query, [port]) { port.postMessage({ type: 'galaris:chat-displayed-room-response', roomId: displayed }); port.close() } }] })
     await runtime.emit('push', { data: { json: () => ({ data: { roomId: 'room-a' }, unreadCount: 0 }) } })
     assert.equal(runtime.notifications.length, suppressed ? 0 : 1)
     assert.deepEqual(runtime.badges, [0])

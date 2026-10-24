@@ -32,10 +32,9 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { apiErrorDetail, getStoredAccessToken } from '@/core/api'
 import { playChatNotificationSound, unlockChatNotificationSound } from '../notificationSound'
-import { useChatStore } from '../stores/chat'
 import { useChatInboxStore } from '../stores/inbox'
 
 const SNOOZE_KEY = 'galaris:chat-push-prompt-after'
@@ -43,12 +42,11 @@ const SNOOZE_MS = 7 * 24 * 60 * 60 * 1_000
 
 const $q = useQuasar()
 const { t } = useI18n()
-const route = useRoute()
 const router = useRouter()
-const chat = useChatStore()
 const inbox = useChatInboxStore()
 const snoozedUntil = ref(Number(localStorage.getItem(SNOOZE_KEY) || 0))
 let retryTimer: number | null = null
+const activeNotifications = new Map<string, { roomId: string; dismiss: () => void }>()
 
 const showPrompt = computed(() => (
   inbox.canPrompt
@@ -102,9 +100,14 @@ function unlockSound(): void {
 
 function roomIsDisplayed(roomId: string): boolean {
   return document.visibilityState === 'visible'
-    && route.path === '/chat'
-    && chat.selectedRoom?.id === roomId
+    && inbox.displayedRoomId === roomId
 }
+
+watch(() => inbox.displayedRoomId, roomId => {
+  for (const notification of activeNotifications.values()) {
+    if (notification.roomId === roomId) notification.dismiss()
+  }
+})
 
 watch(
   () => inbox.inAppNotification?.sequence ?? 0,
@@ -112,19 +115,22 @@ watch(
     const notification = inbox.inAppNotification
     if (!sequence || !notification || roomIsDisplayed(notification.roomId)) return
     void playChatNotificationSound().catch(() => undefined)
-    $q.notify({
+    const dismiss = $q.notify({
+      group: notification.messageId,
       icon: 'chat',
       color: 'primary',
       message: notification.roomLabel,
       caption: notification.body,
       position: 'top',
       timeout: 8_000,
+      onDismiss: () => activeNotifications.delete(notification.messageId),
       actions: [{
         label: t('chat.notifications.open'),
         color: 'white',
         handler: () => void router.push({ path: '/chat', query: { room: notification.roomId } }),
       }],
     })
+    activeNotifications.set(notification.messageId, { roomId: notification.roomId, dismiss })
   },
 )
 
@@ -137,6 +143,8 @@ onBeforeUnmount(() => {
   if (retryTimer !== null) window.clearTimeout(retryTimer)
   window.removeEventListener('pointerdown', unlockSound)
   window.removeEventListener('keydown', unlockSound)
+  for (const notification of activeNotifications.values()) notification.dismiss()
+  activeNotifications.clear()
   inbox.stop()
 })
 </script>

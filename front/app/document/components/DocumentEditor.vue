@@ -1,5 +1,5 @@
 <template>
-  <div class="document-editor">
+  <div ref="focusContainer" class="document-editor">
     <div v-if="loading" class="document-editor-state">
       <q-spinner color="primary" size="36px" />
     </div>
@@ -183,6 +183,7 @@
             :min-height="contentMinHeight"
             :max-height="contentMaxHeight"
           >
+            <template v-if="$slots['toolbar-actions']" #toolbar-actions="actions"><slot name="toolbar-actions" v-bind="actions" /></template>
             <template #embedded-code="{ source, language, registerSnapshot }">
               <DocumentApplicationBlock :source="source" :language="language" :register-snapshot="registerSnapshot" :resolve-media="resolveInlineImage" :document-id="currentDocument.id" :revision="currentDocument.revision" :ready="!hasUnsavedChanges && !conflictDocument && (autosaveState === 'saved' || !canEditDocument)" />
             </template>
@@ -251,7 +252,7 @@ import { useI18n } from 'vue-i18n'
 import { copyToClipboard, useQuasar, type QInput } from 'quasar'
 import type { DocumentRowAction } from '@/app/document/libraryShortcuts'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { RichTextEditor, richLinkHref, documentResourceHtml, documentResourceHref } from '@/core/util'
+import { RichTextEditor, richLinkHref, documentResourceHtml, documentResourceHref, useDocumentFocus, type DocumentFocus } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { useAgentStore } from '@/app/agent'
 import { OwnerSelect, type OwnerOption } from '@/app/share'
@@ -328,6 +329,9 @@ const agentStore = useAgentStore()
 const documentMutations = useDocumentMutations()
 const privilegeStore = usePrivilegeStore()
 const loading = ref(true)
+const focusContainer = useTemplateRef<HTMLElement>('focusContainer')
+const documentFocus = useDocumentFocus(focusContainer)
+watch(() => [props.documentId, props.agentId], () => documentFocus.reset(), { flush: 'sync' })
 const titleInput = useTemplateRef<QInput>('titleInput')
 const requestedRowAction = ref<DocumentRowAction | null>(null)
 const ownerOptionsReady = ref(false)
@@ -1232,7 +1236,11 @@ watch([requestedRowAction, loading, ownerOptionsReady], () => {
     titleInput.value?.select()
   }
 }, { flush: 'post' })
-defineExpose({ flush: flushAutosave, requestRowAction })
+function captureFocus(): DocumentFocus | null {
+  if (loading.value || historyOpen.value || currentDocument.value?.id !== props.documentId) return null
+  return documentFocus.capture(currentDocument.value.revision)
+}
+defineExpose({ flush: flushAutosave, requestRowAction, captureFocus })
 
 async function resolveInlineImage(documentId: string, attachmentId: string, signal?: AbortSignal): Promise<Blob> {
   return documentService.documentAttachmentBlob(documentId, attachmentId, requestAgentId.value, signal)

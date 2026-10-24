@@ -438,6 +438,9 @@ La [bibliothèque documentaire](documents.md) explique création, dossiers, sous
 listes, traitements groupés et raccourcis clavier.
 
 **Connaissances → Documents** (`/documents`) sert à retrouver et créer les contenus rédigés HTML.
+L'icône **Conversation** de la barre d'outils de l'éditeur permet d'échanger avec un agent dans cette page, en ouvrant un
+fil existant ou en créant une conversation. Le document reste le centre du travail ;
+**Discussion** conserve sa fonction de suivi des conversations et des activités.
 Les jeux de données JSON indépendants se créent et se gèrent séparément dans
 **Connaissances → Jeux de données** (`/dataset`), y compris ceux issus d'anciens documents.
 **Connaissances → Mémoire** (`/memory`) propose **Liste**

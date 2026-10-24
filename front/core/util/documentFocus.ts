@@ -129,8 +129,10 @@ export function useDocumentFocus(container: Ref<HTMLElement | null>) {
   const controller = new AbortController()
   onMounted(() => {
     document.addEventListener('selectionchange', remember, { signal: controller.signal })
+    // Capture before pointer focus changes and Tab navigation can clear the DOM selection.
+    for (const event of ['pointerdown', 'keydown']) document.addEventListener(event, remember, { capture: true, signal: controller.signal })
     // Input and keyup also cover textarea selections and edits before blur.
-    for (const event of ['input', 'keyup', 'pointerup', 'select']) container.value?.addEventListener(event, remember, { signal: controller.signal })
+    for (const event of ['input', 'keyup', 'pointerup', 'select', 'focusout']) container.value?.addEventListener(event, remember, { signal: controller.signal })
   })
   onBeforeUnmount(() => controller.abort())
   return { capture, reset: () => { remembered = null } }

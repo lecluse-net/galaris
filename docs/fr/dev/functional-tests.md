@@ -21,6 +21,30 @@ consultez la [méthode de test](testing.md).
 
 ## Interface partagée et édition documentaire
 
+`document-conversation.spec.mjs` vérifie les notifications dans Documents et Discussion,
+sur mobile et bureau : silence de la conversation affichée, notifications des autres fils,
+fermeture des toasts après ouverture et reprise après masquage du panneau ou de l'onglet.
+Les tests Inbox annulent les délais et réponses tardives après consultation et ferment les
+notifications système concernées ; les tests PWA vérifient le filtrage quelle que soit la page.
+`app/chat/tests/test_push_service.py` vérifie l'absence
+de mise en file d'un push pour une conversation visible et son annulation si elle s'ouvre
+pendant l'attente ou la préparation du payload, avant l'appel réseau.
+Le scénario de relais stream/message enregistré dans `chat-performance.spec.mjs` conserve
+le message utilisateur et vérifie aussi la détection de visibilité du nouvel identifiant :
+le contrôle historique du texte seul ne détectait pas le compteur non lu resté actif.
+
+`document-authoring.spec.mjs` vérifie les cases à cocher, leur annulation/rétablissement,
+leur imbrication, la réouverture et l'export, ainsi que la navigation hiérarchique dans le
+plan. `document-conversation.spec.mjs` couvre le choix et la création de conversations dans
+Documents, la pagination et la recherche parmi plus de 100 échanges sur mobile et bureau,
+la sélection souris/clavier conservée avant l'ouverture du chat, sa transmission après
+sauvegarde et réessai, et l'invalidation des positions après remplacement du contenu,
+la sauvegarde avant envoi, la conservation des brouillons en cas d'erreur et les
+privilèges. Le parcours E2E `document-authoring.spec.mjs` traverse la persistance réelle et
+le streaming, puis retrouve la même conversation dans Chat. Les fixtures des consommateurs
+utilisent les privilèges `DOCUMENT_*` et les événements `document.update`/`document.delete` :
+les anciennes fixtures Memory masquaient le décalage des contrôles du Chat.
+
 `app/tools/tests/test_management_scopes.py` protège les portées locales des connexions
 Process, ToolAdmin, Goals et Galaris Admin : absence de délégation implicite, filtrage
 avant pagination, refus des réaffectations hors périmètre et révocation après retrait

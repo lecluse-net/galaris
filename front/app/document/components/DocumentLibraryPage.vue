@@ -2,12 +2,15 @@
   <q-page class="documents-page q-pa-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }">
     <PageHeader help-key="documents" :help-text="$t('contextHelpPages.documents')" :icon="navigationIcon('description')" :title="t('nav.documents')" :description="t('nav.documents_desc')">
       <template #title-after>
-        <DocumentNavigationButtons :can-go-back="canGoBack" :can-go-forward="canGoForward" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
+        <div class="row items-center q-gutter-xs">
+          <DocumentNavigationButtons :can-go-back="canGoBack" :can-go-forward="canGoForward" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
+          <q-btn v-if="!$q.screen.lt.md" flat round icon="folder_open" :aria-label="t('documents.toggleLibrary')" :aria-expanded="libraryOpen" @click="libraryOpen = !libraryOpen"><q-tooltip>{{ t('documents.toggleLibrary') }}</q-tooltip></q-btn>
+        </div>
       </template>
     </PageHeader>
 
     <q-card flat bordered class="documents-workspace">
-      <q-splitter v-model="splitterModel" :limits="[20, 55]" class="documents-splitter" :class="{ 'documents-splitter--list': listingOpen }">
+      <q-splitter v-model="splitterModel" :limits="[15, 55]" class="documents-splitter" :class="{ 'documents-splitter--list': listingOpen, 'documents-splitter--collapsed': !libraryOpen }">
         <template #before>
           <DocumentLibraryNavigation ref="navigation" :selected-document-id="selectedDocumentId" @action="documentRowAction" @browse="openListing" @loaded="onLibraryLoaded" @select="selectEntry" @create="openCreateDocument" />
         </template>
@@ -15,19 +18,42 @@
           <DocumentSplitterHandle />
         </template>
         <template #after>
-          <DocumentBulkList v-if="listingOpen" :folder="listingFolder" @action="documentRowAction" @create="entry => openCreateDocument(undefined, entry)" @close="listingOpen = false" @select="selectEntry" @deleted="onDocumentDeleted" @changed="ids => navigation?.refreshDocuments(ids)" />
-          <div v-else-if="!selectedDocumentId" class="documents-placeholder text-grey-7">
-            <q-icon name="article" size="48px" />
-            <div>{{ t('documents.selectDocument') }}</div>
-          </div>
-          <DocumentEditor
-            v-else-if="!$q.screen.lt.md"
-            :key="`${selectedAgentId}:${selectedDocumentId}`"
-            ref="documentEditor"
-            :document-id="selectedDocumentId" :agent-id="selectedAgentId"
-            :initial-document="selectedInitialDocument"
-            @updated="onDocumentUpdated" @unavailable="onDocumentUnavailable" @deleted="onDocumentDeleted"
-          />
+          <q-splitter v-model="conversationSplitterModel" :limits="conversationSplitterLimits" :disable="!chatOpen || $q.screen.lt.md"
+            class="documents-conversation-splitter" :class="{ 'documents-conversation-splitter--closed': !chatOpen || $q.screen.lt.md }">
+            <template #before>
+              <DocumentBulkList v-if="listingOpen" :folder="listingFolder" @action="documentRowAction" @create="entry => openCreateDocument(undefined, entry)" @close="listingOpen = false" @select="selectEntry" @deleted="onDocumentDeleted" @changed="ids => navigation?.refreshDocuments(ids)" />
+              <div v-else-if="!selectedDocumentId" class="documents-placeholder text-grey-7">
+                <q-icon name="article" size="48px" />
+                <div>{{ t('documents.selectDocument') }}</div>
+              </div>
+              <DocumentEditor
+                v-else-if="!$q.screen.lt.md"
+                :key="`${selectedAgentId}:${selectedDocumentId}`"
+                ref="documentEditor"
+                :document-id="selectedDocumentId" :agent-id="selectedAgentId"
+                :initial-document="selectedInitialDocument"
+                @loaded="loadedDocumentId = $event.id"
+                @updated="onDocumentUpdated" @unavailable="onDocumentUnavailable" @deleted="onDocumentDeleted"
+              >
+                <template v-if="canAccessChat" #toolbar-actions="{ exitFullscreen }">
+                  <q-btn flat dense icon="forum" :aria-label="t('documents.conversation')" :aria-expanded="chatOpen" :color="chatOpen ? 'primary' : undefined" @click="exitFullscreen(); chatOpen = !chatOpen"><q-tooltip>{{ t('documents.conversation') }}</q-tooltip></q-btn>
+                </template>
+              </DocumentEditor>
+            </template>
+            <template #separator>
+              <DocumentSplitterHandle role="separator" tabindex="0" aria-orientation="vertical"
+                :aria-label="t('documents.resizeConversation')" :aria-valuenow="conversationSplitterModel"
+                :aria-valuemin="conversationSplitterLimits[0]" :aria-valuemax="conversationSplitterLimits[1]" @keydown="resizeConversationWithKeyboard" />
+            </template>
+            <template #after>
+              <aside v-if="chatStarted && canAccessChat" class="documents-chat-pane">
+                <Teleport :to="mobileChatHost ?? 'body'" :disabled="!$q.screen.lt.md || !mobileChatHost">
+                  <DocumentConversationPanel :document-id="displayedDocumentId" :before-send="prepareChatMessage" :capture-document-focus="captureChatDocumentFocus" :visible="chatOpen"
+                    @close="chatOpen = false" @open-document="openChatDocument" />
+                </Teleport>
+              </aside>
+            </template>
+          </q-splitter>
         </template>
       </q-splitter>
     </q-card>
@@ -56,12 +82,27 @@
             :document-id="mobileDocumentId"
             :agent-id="mobileDocumentAgentId"
             :initial-document="mobileInitialDocument"
+            @loaded="loadedMobileDocumentId = $event.id"
             content-min-height="min(42vh, 420px)"
             @updated="onDocumentUpdated"
             @unavailable="onMobileDocumentUnavailable"
             @deleted="onDocumentDeleted"
-          />
+          >
+            <template v-if="canAccessChat" #toolbar-actions="{ exitFullscreen }">
+              <q-btn flat dense icon="forum" :aria-label="t('documents.conversation')" :aria-expanded="chatOpen" @click="exitFullscreen(); chatOpen = true"><q-tooltip>{{ t('documents.conversation') }}</q-tooltip></q-btn>
+            </template>
+          </DocumentEditor>
         </div>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-if="$q.screen.lt.md && canAccessChat" v-model="chatOpen" maximized>
+      <q-card class="documents-mobile-chat galaris-dialog-card">
+        <q-card-section class="galaris-dialog-title row items-center no-wrap">
+          <div class="text-h6">{{ t('documents.conversation') }}</div><q-space />
+          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
+        </q-card-section>
+        <div ref="mobileChatHost" class="documents-mobile-chat-host" />
       </q-card>
     </q-dialog>
 
@@ -107,6 +148,8 @@ import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useAgentStore } from '@/app/agent'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
+import { AgentConversationPanel as DocumentConversationPanel, conversationPanel, type DocumentFocus } from '@/core/util'
 import { OwnerSelect } from '@/app/share'
 import { documentIdFromRouteQuery, documentNavigationKey, documentResourceHref, DocumentNavigationButtons, PageHeader, useDocumentHistory } from '@/core/util'
 import { websocket } from '@/core/websocket'
@@ -133,11 +176,29 @@ const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
 const agentStore = useAgentStore()
+const privilegeStore = usePrivilegeStore()
+const canAccessChat = computed(() => Boolean(conversationPanel) && privilegeStore.hasPrivilege(privileges.CHAT_ACCESS))
+const chatOpen = ref(false), chatStarted = ref(false), libraryOpen = ref(true)
+const loadedDocumentId = ref<string | null>(null), loadedMobileDocumentId = ref<string | null>(null)
+watch(chatOpen, open => { if (open) chatStarted.value = true })
+watch(canAccessChat, allowed => { if (!allowed) { chatOpen.value = false; chatStarted.value = false } })
 const documentEditor = useTemplateRef<InstanceType<typeof DocumentEditor>>('documentEditor')
+const mobileChatHost = useTemplateRef<HTMLElement>('mobileChatHost')
 const mobileDocumentEditor = useTemplateRef<InstanceType<typeof DocumentEditor>>('mobileDocumentEditor')
 const navigation = useTemplateRef<InstanceType<typeof DocumentLibraryNavigation>>('navigation')
 const entries = ref<DocumentLibraryEntry[]>([])
 const splitterModel = ref(30)
+const conversationSplitterModel = ref(60)
+const conversationSplitterLimits: [number, number] = [30, 80]
+function resizeConversationWithKeyboard(event: KeyboardEvent): void {
+  const [minimum, maximum] = conversationSplitterLimits
+  const value = event.key === 'Home' ? minimum : event.key === 'End' ? maximum
+    : event.key === 'ArrowLeft' ? conversationSplitterModel.value - 2
+      : event.key === 'ArrowRight' ? conversationSplitterModel.value + 2 : null
+  if (value === null) return
+  event.preventDefault()
+  conversationSplitterModel.value = Math.min(maximum, Math.max(minimum, value))
+}
 const listingOpen = ref(false)
 const listingFolder = ref<DocumentTag | null>(null)
 const selectedNodeKey = ref<string | null>(null)
@@ -180,6 +241,30 @@ const selectedDocumentId = computed(() => {
   const parts = selectedNodeKey.value?.split(':') ?? []
   return parts[0] === 'document' && parts.length >= 3 ? parts.slice(2).join(':') : null
 })
+const displayedDocumentId = computed(() => {
+  if ($q.screen.lt.md) return mobileDocumentOpen.value && loadedMobileDocumentId.value === mobileDocumentId.value ? loadedMobileDocumentId.value : null
+  return !listingOpen.value && loadedDocumentId.value === selectedDocumentId.value ? loadedDocumentId.value : null
+})
+watch(() => [selectedDocumentId.value, selectedAgentId.value], () => { loadedDocumentId.value = null }, { flush: 'sync' })
+watch(() => [mobileDocumentId.value, mobileDocumentAgentId.value], () => { loadedMobileDocumentId.value = null }, { flush: 'sync' })
+async function prepareChatMessage(): Promise<boolean> {
+  const generation = selectionGeneration, id = displayedDocumentId.value
+  const editor = $q.screen.lt.md ? mobileDocumentEditor.value : documentEditor.value
+  if (editor && !await editor.flush()) {
+    $q.notify({ type: 'negative', message: t('documents.autosaveError') })
+    return false
+  }
+  return !disposed && generation === selectionGeneration && displayedDocumentId.value === id
+}
+function captureChatDocumentFocus(): DocumentFocus | null {
+  if (!displayedDocumentId.value) return null
+  const editor = $q.screen.lt.md ? mobileDocumentEditor.value : documentEditor.value
+  return editor?.captureFocus() ?? null
+}
+async function openChatDocument(id: string): Promise<void> {
+  await openRouteDocument(id)
+  if ($q.screen.lt.md && mobileDocumentId.value === id) chatOpen.value = false
+}
 const mobileDocumentTitle = computed(() => (
   entries.value.find(entry => entry.item.id === mobileDocumentId.value)?.item.title
   ?? t('nav.documents')
@@ -343,6 +428,8 @@ function onDocumentDeleted(id: string): void {
   navigation.value?.removeDocument(id)
 }
 function onDocumentUnavailable(id: string): void {
+  if (loadedDocumentId.value === id) loadedDocumentId.value = null
+  if (loadedMobileDocumentId.value === id) loadedMobileDocumentId.value = null
   // A deletion already removed this row; avoid a second full-library refresh.
   if (entries.value.some(entry => entry.item.id === id)) navigation.value?.refreshDocuments([id])
 }
@@ -439,7 +526,21 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .documents-workspace, .documents-splitter { min-height: min(760px, calc(100vh - 260px)); }
-.documents-workspace { position: relative; }
+.documents-workspace { position: relative; display: flex; }
+.documents-splitter { flex: 1; min-width: 0; }
+.documents-conversation-splitter { height: 100%; min-width: 0; min-height: 0; }
+.documents-conversation-splitter :deep(> .q-splitter__panel) { min-height: 0; }
+.documents-conversation-splitter :deep(> .q-splitter__before) { overflow: auto; }
+.documents-conversation-splitter :deep(> .q-splitter__after) { display: flex; flex-direction: column; align-self: stretch; height: auto; overflow: hidden; }
+.documents-conversation-splitter :deep(> .q-splitter__separator) { background: color-mix(in srgb, var(--q-dark) 10%, transparent); }
+.documents-conversation-splitter--closed :deep(> .q-splitter__before) { width: 100% !important; }
+.documents-conversation-splitter--closed :deep(> .q-splitter__after), .documents-conversation-splitter--closed :deep(> .q-splitter__separator) { display: none; }
+.documents-chat-pane { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+.documents-chat-pane :deep(> .document-conversation) { flex: 1; height: auto; }
+.documents-mobile-chat { display: flex; flex-direction: column; }
+.documents-mobile-chat-host { flex: 1; min-height: 0; }
+.documents-splitter--collapsed :deep(> .q-splitter__before), .documents-splitter--collapsed :deep(> .q-splitter__separator) { display: none; }
+.documents-splitter--collapsed :deep(> .q-splitter__after) { width: 100% !important; }
 .documents-splitter :deep(> .q-splitter__before) { overflow: auto; }
 .documents-splitter :deep(> .q-splitter__separator) { background: color-mix(in srgb, var(--q-dark) 10%, transparent); }
 .documents-splitter :deep(.q-splitter__separator:hover),
@@ -481,6 +582,7 @@ onBeforeUnmount(() => {
     min-height: 0;
     overflow: auto;
   }
+  .documents-splitter :deep(> .q-splitter__after) { overflow: hidden; }
 
   .documents-placeholder {
     height: 100%;

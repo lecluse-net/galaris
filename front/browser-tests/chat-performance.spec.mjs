@@ -150,7 +150,7 @@ test('cached resources expire, invalidate while unmounted and isolate agents and
   expect(reads).toEqual(['human', 'human'])
   await away()
   revision = 3
-  await page.evaluate(() => window.testApp.emitSocket('memory.update', {
+  await page.evaluate(() => window.testApp.emitSocket('document.update', {
     data: { id: 'synthetic-document', node_kind: 'document', revision: 3 },
   }))
   await scrollTo(page, false)
@@ -187,7 +187,7 @@ test('a resource invalidation during a pending read cannot restore obsolete meta
   })
   await timeline(page, [{ ...message(0), text: 'document://00000000-0000-4000-8000-000000000001' }])
   await expect.poll(() => reads).toBe(1)
-  await page.evaluate(() => window.testApp.emitSocket('memory.delete', {
+  await page.evaluate(() => window.testApp.emitSocket('document.delete', {
     data: { id: '00000000-0000-4000-8000-000000000001', node_kind: 'document' },
   }))
   await expect(page.getByText('Document deleted', { exact: false })).toBeVisible()
@@ -201,19 +201,22 @@ test('a paused empty response keeps its controls and a durable handoff keeps aut
   const activity = { id: 'performance-round', status: 'PAUSED', response_message_id: null,
     message_ids: ['message-0'], available_actions: ['resume', 'stop'], attempt: 1,
     tools_used: [], execution_time: 0, cost: 0 }
+  const input = { ...message(0), is_mine: true }
   await mount(page, 'app/chat/components/MessageTimeline.vue', { privileges: ['CHAT_SEND'], props: {
-    roomId: 'performance-room', agentId: 7, agentName: 'Agent', messages: [message(0)],
+    roomId: 'performance-room', agentId: 7, agentName: 'Agent', messages: [input],
     activity: [activity], liveRound: live('', false), showAgentAvatars: false,
   } })
   await expect(page.getByRole('button', { name: 'Resume response', exact: true })).toBeVisible()
   const durable = { ...message(1), text: 'Authoritative saved response' }
-  await page.evaluate(({ activity, durable, round }) => window.testApp.setProps({
-    messages: [durable], activity: [{ ...activity, status: 'DONE', response_message_id: durable.id, message_ids: [durable.id] }],
+  await page.evaluate(({ input, activity, durable, round }) => window.testApp.setProps({
+    messages: [input, durable], activity: [{ ...activity, status: 'DONE', response_message_id: durable.id, message_ids: [input.id] }],
     liveRound: round,
-  }), { activity, durable, round: live('Obsolete streamed response') })
+  }), { input, activity, durable, round: live('Obsolete streamed response') })
   await expect(page.locator('[data-message-id="message-1"]')).toContainText('Authoritative saved response')
-  await expect(page.locator('.message-row')).toHaveCount(1)
+  await expect(page.locator('[data-message-id="message-0"]')).toContainText('Synthetic message 0')
+  await expect(page.locator('[data-message-id="message-1"]')).toHaveCount(1)
   // Execution details may retain the richer streamed snapshot; the message body
   // must always use the canonical durable text during that handoff.
-  await expect(page.locator('.message-text')).not.toContainText('Obsolete streamed response')
+  await expect(page.locator('[data-message-id="message-1"] .message-text')).not.toContainText('Obsolete streamed response')
+  await expect.poll(() => page.evaluate(() => window.testApp.events.some(event => event.name === 'messageVisible' && event.value === 'message-1'))).toBe(true)
 })

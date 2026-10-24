@@ -5,19 +5,24 @@ import * as vue from 'vue'
 import { deferred, loadTypescript } from '../../test-support/load-typescript.mjs'
 import { setImmediate } from 'node:timers/promises'
 
-function setup(t, permission, subscription = null, inbox = async () => ({ unread_count: 3 }), listeners = new Map()) {
+function setup(t, permission, subscription = null, inbox = async () => ({ unread_count: 3 }), listeners = new Map(), room = async () => null) {
   const registered = []
   let queries = 0
   const notification = permission === undefined ? undefined : { permission }
   const worker = new EventTarget()
+  worker.getRegistration = async () => undefined
   Object.defineProperty(worker, 'ready', { get() {
     assert.equal(permission, 'granted', 'No platform push access without permission')
     return Promise.resolve({ pushManager: { async getSubscription() { queries++; return subscription } } })
   } })
   const browserWindow = new EventTarget()
+  browserWindow.setTimeout = (...args) => setTimeout(...args)
+  browserWindow.clearTimeout = timer => clearTimeout(timer)
   browserWindow.PushManager = class {}
   if (notification) browserWindow.Notification = notification
-  for (const [name, value] of Object.entries({ window: browserWindow, navigator: { serviceWorker: worker }, Notification: notification })) {
+  const storage = new Map()
+  for (const [name, value] of Object.entries({ window: browserWindow, navigator: { serviceWorker: worker }, Notification: notification,
+    localStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) } })) {
     const original = Object.getOwnPropertyDescriptor(globalThis, name)
     Object.defineProperty(globalThis, name, { configurable: true, value })
     t.after(() => {
@@ -33,12 +38,13 @@ function setup(t, permission, subscription = null, inbox = async () => ({ unread
       offEvent() {}, onConnect(callback) { listeners.set('connect', callback) }, offConnect() {} } },
     '../services/chatService': { chatService: {
       inbox,
+      room,
       pushConfiguration: async () => ({ available: true, public_key: 'test' }),
       registerPushSubscription: async payload => registered.push(payload),
     } },
   })
   const store = useChatInboxStore(pinia.createPinia())
-  return { store, registered, queries: () => queries }
+  return { store, registered, listeners, queries: () => queries }
 }
 
 for (const permission of [undefined, 'default', 'denied']) {
@@ -128,5 +134,47 @@ test('reconnection refreshes the inbox without waiting on an obsolete HTTP reque
   await setImmediate()
   assert.equal(store.unreadCount, 9)
   store.stop()
+  store.$dispose()
+})
+
+for (const stage of ['arrival', 'timer', 'request', 'unseen']) test(`notification fallback respects a conversation viewed at ${stage}`, async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const pendingRoom = deferred()
+  let requests = 0
+  const room = { id: 'room-a', label: 'Synthetic room', unread_count: 1, muted: false, show_last_message: true,
+    last_message: { id: 'message-a', text: 'Synthetic message', is_mine: false } }
+  const { store, listeners } = setup(t, undefined, null, undefined, undefined, async () => {
+    requests++
+    return stage === 'request' ? pendingRoom.promise : room
+  })
+  await store.start()
+  if (stage === 'arrival') store.setDisplayedRoom('room-a')
+  listeners.get('chat.message')({ data: { room_id: 'room-a', message_id: 'message-a', is_new: true } })
+  if (stage === 'timer') store.setDisplayedRoom('room-a')
+  if (stage !== 'request') store.setDisplayedRoom(null)
+  t.mock.timers.tick(3200)
+  await setImmediate()
+  if (stage === 'request') {
+    assert.equal(requests, 1)
+    store.setDisplayedRoom('room-a')
+    store.setDisplayedRoom(null)
+    pendingRoom.resolve(room)
+    await setImmediate()
+  }
+  assert.equal(store.inAppNotification?.messageId ?? null, stage === 'unseen' ? 'message-a' : null)
+  if (stage === 'arrival' || stage === 'timer') assert.equal(requests, 0)
+  store.stop()
+  store.$dispose()
+})
+
+test('displaying a conversation closes only its existing system notifications', async t => {
+  const { store } = setup(t, undefined)
+  const closed = []
+  navigator.serviceWorker.getRegistration = async () => ({ getNotifications: async () => ['room-a', 'room-b'].map(roomId => ({
+    data: { roomId }, close() { closed.push(roomId) },
+  })) })
+  store.setDisplayedRoom('room-a')
+  await setImmediate()
+  assert.deepEqual(closed, ['room-a'])
   store.$dispose()
 })

@@ -14,6 +14,50 @@ dans le graphe mémoire ne supprime pas le document. Les souvenirs concernant un
 document restent privés à l'agent qui les a acquis.
 
 
+## Rédiger avec un agent
+
+L'icône **Conversation**, dans le groupe **Lecture** de la barre d'outils de l'éditeur,
+affiche un panneau à droite du document sur ordinateur. Faites glisser la poignée entre
+le document et le chat pour ajuster leurs largeurs, comme entre la bibliothèque et le
+document. Au clavier, placez le focus sur cette poignée et utilisez les flèches gauche/droite.
+Recherchez une conversation existante ou utilisez **Nouvelle conversation avec un agent**.
+Le sélecteur affiche l'avatar de chaque agent et propose une pagination pour les longues
+listes : 50 conversations par défaut, avec un choix de 10, 20, 50, 100 ou 500 par page.
+Changer de page ou rechercher une conversation conserve l'échange ouvert et son brouillon.
+Les échanges restent des conversations accessibles dans **Discussion**. Documents
+privilégie la rédaction autour du contenu ouvert ; Discussion privilégie les échanges
+et le suivi des activités.
+
+Avant un envoi, les modifications du document sont sauvegardées. Le document ouvert est
+indiqué à l'agent sans modifier ses droits d'accès. Si la sauvegarde échoue, le message
+reste dans le champ de saisie. Masquer le panneau sur ordinateur conserve la conversation
+et le message en cours. Sur mobile, l'icône ouvre une fenêtre de conversation.
+L'accès, la création et l'envoi respectent les mêmes privilèges que Discussion.
+Une conversation affichée ne produit ni notification sonore, ni toast, ni notification
+système pour ses nouveaux messages. Les messages effectivement visibles sont marqués lus.
+Masquer le panneau ou l'onglet rétablit les notifications des nouveaux messages non consultés.
+
+Sélectionnez un passage à la souris ou au clavier, puis écrivez votre demande dans le chat.
+La sélection est mémorisée avant la perte de focus, même si son surlignage disparaît.
+Chaque envoi transmet le texte sélectionné, ses positions de début et de fin et le dernier
+curseur, avec l'UUID et la révision sauvegardée du document. Ce fonctionnement est commun
+à Documents et au document ouvert dans Discussion. Les positions se rapportent au texte
+affiché, pas au HTML. Les extraits longs sont tronqués ; changer de document ou remplacer
+son contenu invalide les anciennes positions. Ce contexte reste dans les métadonnées du
+message : il ne crée pas de révision documentaire et ne modifie aucun droit d'accès.
+
+Dans l'éditeur, **Plan du document** ouvre à gauche une liste des titres, avec un retrait
+selon leur niveau. Tous les titres restent visibles. Le panneau reprend le fond et la
+bordure du document. Cliquer sur
+un titre rejoint sa section ; le plan suit les modifications des titres et peut être masqué.
+L'icône de bibliothèque permet aussi de masquer les dossiers sur ordinateur.
+
+**Liste à cocher** transforme le paragraphe ou la liste sélectionnés en checklist. Cocher
+une ligne enregistre son état dans le document, avec sa sauvegarde et ses révisions.
+**Entrée** ajoute une ligne ; **Tab** et **Maj+Tab** imbriquent ou désimbriquent les lignes.
+Les états restent visibles après réouverture, en lecture seule et dans les exports.
+Ces listes ne nécessitent aucun jeu de données.
+
 ## Créer et retrouver
 
 Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**

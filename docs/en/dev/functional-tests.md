@@ -34,6 +34,28 @@ For commands and the scope of their results, see the [testing method](testing.md
 
 ## Shared interface and document editing
 
+`document-conversation.spec.mjs` covers notifications in Documents and Chat on mobile and
+desktop: no alert for the displayed conversation, alerts for other rooms, dismissal on
+opening and recovery after hiding the panel or tab. Inbox tests cancel timers and late
+responses after viewing and close the relevant system notifications; PWA tests check
+filtering independently of the page.
+`app/chat/tests/test_push_service.py` prevents push admission for visible conversations and
+cancels delivery if one opens while queued or during payload preparation, before networking.
+The stream-to-saved-message scenario in `chat-performance.spec.mjs` retains the user input
+and checks visibility of the new message ID too: the former text-only check missed unread
+counts that remained active after the response became visible.
+
+`document-authoring.spec.mjs` exercises checklist state, undo/redo, nesting, reopening and
+export, plus hierarchical outline navigation. `document-conversation.spec.mjs` covers
+choosing and creating conversations in Documents, paging and searching more than 100
+conversations on mobile and desktop, saving before sending, preserving drafts after failures,
+and checking privileges. It also covers mouse/keyboard selection across opening chat,
+sending selection after autosave and retry, and invalidating positions when content is replaced.
+The `document-authoring.spec.mjs` E2E journey uses
+real persistence and streaming, then opens the same conversation in Chat. Consumer fixtures
+use `DOCUMENT_*` privileges and `document.update`/`document.delete` events: the old Memory
+fixtures had concealed the mismatch in Chat authorization controls.
+
 `metric-card.spec.mjs` protects displayed values, loading, optional mouse/keyboard activation
 and selected state in `MetricCard`. Text and voice histories retain their domain filter
 parameters and clearing behavior; `execution.spec.mjs` covers mutually exclusive Task filters.

@@ -20372,6 +20372,7 @@
         "files": [
           "front/app/chat/components/AgentExecutionTrace.vue",
           "front/app/chat/components/AgentTasksPanel.vue",
+          "front/app/chat/components/DocumentConversationPanel.vue",
           "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/navigation.ts",
           "front/app/chat/pages/index.vue",
@@ -20415,13 +20416,16 @@
           "front/app/chat/components/ConversationDocumentsPanel.vue",
           "front/app/chat/components/ConversationProcessDialog.vue",
           "front/app/chat/components/ConversationProcessesPanel.vue",
+          "front/app/chat/components/DocumentConversationPanel.vue",
           "front/app/chat/components/MarkdownAttachmentPreview.vue",
           "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/components/MessageTimeline.vue",
           "front/app/chat/components/SafeMessageContent.vue",
+          "front/app/chat/conversationPanel.ts",
           "front/app/chat/pages/index.vue",
           "front/app/chat/richContent.ts",
           "front/app/chat/services/chatService.ts",
+          "front/app/chat/stores/chat.ts",
           "front/app/chat/useChatAvatar.ts"
         ],
         "source": "app/chat",
@@ -20433,6 +20437,7 @@
           "front/app/chat/components/AgentTasksPanel.vue",
           "front/app/chat/components/ConversationDocumentsPanel.vue",
           "front/app/chat/components/ConversationProcessesPanel.vue",
+          "front/app/chat/components/DocumentConversationPanel.vue",
           "front/app/chat/pages/index.vue",
           "front/app/chat/stores/chat.ts",
           "front/app/chat/stores/inbox.ts",
@@ -20710,6 +20715,7 @@
         "files": [
           "front/app/document/components/DocumentBulkList.vue",
           "front/app/document/components/DocumentEditor.vue",
+          "front/app/document/components/DocumentLibraryPage.vue",
           "front/app/document/navigation.ts"
         ],
         "source": "app/document",

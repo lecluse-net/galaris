@@ -1,6 +1,6 @@
 import { api, AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
 import { createSessionReadCache, invalidateSessionReads, queuePreview, saveBlobAsResource } from '@/core/util/facade'
-import type { DocumentFocus } from '../documentFocus'
+import type { DocumentFocus } from '@/core/util'
 import type { MessengerInteraction } from '../types'
 import { isAxiosError } from 'axios'
 import type { CodeWorkspace } from '../code/types'

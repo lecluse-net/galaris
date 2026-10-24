@@ -13,6 +13,45 @@ graph does not delete the document. Memories about a document remain private to
 the agent that acquired them.
 
 
+## Write with an agent
+
+The **Conversation** icon in the editor toolbar's **Reading** group opens a panel to the
+right of the document on desktop. Drag the handle between the document and chat to adjust
+their widths, just as between the library and document. Focus the handle and use the
+left/right arrow keys to resize with the keyboard. Search
+for an existing conversation or select **New conversation with an agent**. The picker shows
+each agent's avatar and paginates long lists: 50 conversations by default, with a choice of
+10, 20, 50, 100 or 500 per page. Paging or searching preserves the open conversation and its
+draft. These are the
+same conversations available in **Chat**. Documents focuses on writing around the open
+content; Chat focuses on exchanges and activity monitoring.
+
+The document is saved before sending a message. The open document is identified to the
+agent without changing its access rights. A failed save keeps the message in the composer.
+Hiding the desktop panel preserves the conversation and its draft. On mobile, the button
+opens a conversation dialog from the same icon. Access, creation and sending use the same privileges as Chat.
+A displayed conversation produces no sound, toast or system notification for its new
+messages. Messages actually visible on screen are marked as read. Hiding the panel or tab
+restores notifications for new messages that have not been viewed.
+
+Select a passage with the mouse or keyboard, then write your request in the chat.
+The selection is remembered before focus leaves the editor, even if its highlight disappears.
+Each send includes the selected text, its start and end offsets and the last cursor position,
+with the document UUID and saved revision. This works both in Documents and in the document
+opened in Chat. Offsets refer to displayed text, not HTML. Long excerpts are truncated;
+switching documents or replacing content invalidates old positions. This context stays in
+message metadata: it creates no document revision and changes no access rights.
+
+In the editor, **Document outline** opens an indented list of headings on the left.
+All headings remain visible, and the panel uses the document's background and border. Select a
+heading to navigate to its section. The outline follows heading edits and can be hidden.
+The library icon also hides the desktop folder pane to make more room.
+
+**Checklist** turns the selected paragraph or list into a checklist. Checking a line saves
+its state in the document, including autosave and revisions. **Enter** adds a line;
+**Tab** and **Shift+Tab** nest or unnest lines. States survive reopening and remain visible
+in read-only views and exports. These lists require no Dataset.
+
 ## Create and find Documents
 
 In the **Documents** library, every folder offers a **New document** icon among its

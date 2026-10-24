@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { DocumentFocus } from '../documentFocus'
+import type { DocumentFocus } from '@/core/util'
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { usePrivilegeStore } from '@/core/authorize'
@@ -26,7 +26,8 @@ function compareMessages(left: MessengerMessage, right: MessengerMessage): numbe
     || left.id.localeCompare(right.id)
 }
 
-export const useChatStore = defineStore('chat', () => {
+/** Each conversation surface owns its selection and subscriptions. */
+export function useChatState() {
   const privilegeStore = usePrivilegeStore()
   const status = ref<MessengerStatus | null>(null)
   const rooms = ref<MessengerRoom[]>([])
@@ -958,4 +959,6 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   return { status, enabled, viewerAgentId, rooms, roomsTotal, hasMoreRooms, loadingMoreRooms, includeExternalRooms, includeArchivedRooms, selectedRoom, loadingSelectedRoom, messages, messagesTotal, latestDisplayedMessageId, hasOlderMessages, loadingOlderMessages, loadingRecentMessages, activity, activityTotal, activityPage, activityPageSize, commands, activeCall, stoppingCallId, endedCallId, callAvailable, liveRound, pendingVoiceTranscriptions, incomingMessageNotification, loading, sending, initialize, loadRooms, loadMoreRooms, selectRoom, setDisplayedRoom, markSelectedRoomRead, updateRoomPreferences, setRoomArchived, updateRoomTopic, prepareCallStart, markCallStopping, refreshSelected, loadRecentMessages, loadOlderMessages, setActivityPage, setViewerAgent, send, applyMessageTopicChange, disconnect, releaseSelectedRoom, purge }
-})
+}
+
+export const useChatStore = defineStore('chat', useChatState)

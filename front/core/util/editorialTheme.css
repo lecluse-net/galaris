@@ -25,6 +25,10 @@
 .editorial-toolbar-overflow { max-width: min(360px, 95vw); padding: 8px; }
 .editorial-toolbar-overflow > [role="group"] { margin-bottom: 8px; }
 .editorial-body { min-width: 0; background: var(--editorial-canvas); }
+.editorial-workspace { display: flex; align-items: flex-start; min-width: 0; }
+.editorial-workspace > .editorial-body { flex: 1; }
+.editorial-workspace:has(> .editorial-body[data-document-layout="fixed"]) > .document-outline { margin-top: 5px; }
+@media (max-width: 1023px) { .editorial-workspace { flex-direction: column; } .editorial-workspace > .editorial-body { width: 100%; } }
 .editorial-search-bar { position: sticky; top: var(--editorial-toolbar-height, 0px); z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--rich-editor-border); border-top: 0; background: var(--rich-editor-toolbar); }
 .editorial-search-input { flex: 1 1 180px; min-width: 0; }
 .rich-content mark.editorial-search-match { background: var(--solaire-yellow-light); color: var(--rich-foreground); }

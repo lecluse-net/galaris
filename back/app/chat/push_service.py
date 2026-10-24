@@ -165,6 +165,11 @@ async def enqueue_message_push(message: Message) -> None:
                 )
             ).all()
         )
+        room_name = f"ChatRoom:{persisted.messenger_room_id}"
+        user_ids = [
+            user_id for user_id in user_ids
+            if user_id is not None and not websocket.is_room_displayed_by_user(user_id, room_name)
+        ]
         if not user_ids:
             return
         now = datetime.now(timezone.utc)
@@ -328,6 +333,10 @@ async def _process_delivery(delivery_id: UUID) -> None:
         "unreadCount": await count_chat_unread(delivery.user_id),
     }
     now = datetime.now(timezone.utc)
+    # Presence may change while constructing the payload and counting unread messages.
+    if websocket.is_room_displayed_by_user(delivery.user_id, f"ChatRoom:{room.id}"):
+        await _cancel_delivery(delivery)
+        return
     try:
         await asyncio.to_thread(_send_web_push, subscription, payload)
     except WebPushException as exc:

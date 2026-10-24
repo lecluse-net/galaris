@@ -404,6 +404,9 @@ The [document library guide](documents.md) covers creation, folders, sub-documen
 lists, bulk actions and keyboard shortcuts.
 
 **Knowledge → Documents** (`/documents`) holds and creates authored HTML content.
+The editor toolbar's **Conversation** icon opens an existing conversation or starts one with an agent
+on the same page. The document remains the focus of the work; **Chat** continues to
+focus on conversations and activity monitoring.
 Independent JSON Datasets are created and managed separately under **Knowledge → Datasets**
 (`/dataset`), including those migrated from old documents.
 **Knowledge → Memory** (`/memory`) offers **List** and **Graph**: open the

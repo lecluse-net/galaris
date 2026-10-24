@@ -34,7 +34,7 @@ ATTRIBUTES: dict[str, set[str]] = {
     "*": {"style", "class"},
     "a": {"href", "title", "rel", "target"},
     "ol": {"start", "reversed"},
-    "li": {"value"},
+    "li": {"value", "data-checked"},
     "th": {"colspan", "rowspan", "colwidth"},
     "td": {"colspan", "rowspan", "colwidth"},
     "code": {"class", "data-code-lines", "data-code-nowrap"},
@@ -138,6 +138,7 @@ STYLE_PROPERTIES = {
     "list-style-type",
 }
 EDITORIAL_CLASSES = {
+    "galaris-checklist",
     "image",
     "image-inline",
     "image_resized",
@@ -354,6 +355,8 @@ class _Parser(HTMLParser):
                         raise RichTextError("Invalid or duplicate HTML attribute.")
                     if key == "data-html-page":
                         raise RichTextError("Archived page markers cannot be written.")
+                    if key == "data-checked" and (tag != "li" or value not in {"true", "false"}):
+                        raise RichTextError("Unsupported checklist state.")
                     if key in {"data-code-lines", "data-code-nowrap"} and (tag != "code" or value != "true"):
                         raise RichTextError("Unsupported code display option.")
                     if key == "href" and not value.startswith("#") and not valid_link(value):
@@ -381,6 +384,8 @@ class _Parser(HTMLParser):
                         raise RichTextError(f"Invalid {key}.")
                 elif key in {"data-code-lines", "data-code-nowrap"} and value != "true":
                     raise RichTextError("Unsupported code display option.")
+                elif key == "data-checked" and value not in {"true", "false"}:
+                    raise RichTextError("Unsupported checklist state.")
                 elif key == "colwidth" and not all(
                     part.isdecimal() and 0 <= int(part) <= 1600 for part in value.split(",")
                 ):

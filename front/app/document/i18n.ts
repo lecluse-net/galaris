@@ -238,6 +238,7 @@ document: {
       visibilities: { private: 'Privée', shared: 'Partagée', public: 'Publique' },
     },
 documents: {
+      conversation: 'Conversation', toggleLibrary: 'Afficher ou masquer la bibliothèque', resizeConversation: 'Redimensionner le document et la conversation',
       shortcuts: {
         folder: 'F2 : renommer · F3 : nouveau document · F4 : afficher en liste · F7 : nouveau sous-dossier · Suppr : supprimer',
         document: 'F2 : renommer · F3 / F7 : nouveau sous-document · F4 : ouvrir · Suppr : supprimer',
@@ -707,6 +708,7 @@ document: {
       visibilities: { private: 'Private', shared: 'Shared', public: 'Public' },
     },
 documents: {
+      conversation: 'Conversation', toggleLibrary: 'Show or hide library', resizeConversation: 'Resize document and conversation',
       shortcuts: {
         folder: 'F2: rename · F3: new document · F4: show as list · F7: new subfolder · Delete: delete',
         document: 'F2: rename · F3 / F7: new sub-document · F4: open · Delete: delete',
@@ -1024,6 +1026,7 @@ document: {
       visibilities: { private: '私有', shared: '共享', public: '公开' },
     },
 documents: {
+      conversation: '对话', toggleLibrary: '显示或隐藏文档库', resizeConversation: '调整文档与对话宽度',
       shortcuts: {
         folder: 'F2：重命名 · F3：新建文档 · F4：显示列表 · F7：新建子文件夹 · Delete：删除',
         document: 'F2：重命名 · F3 / F7：新建子文档 · F4：打开 · Delete：删除',

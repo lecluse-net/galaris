@@ -321,14 +321,20 @@ manually; an ordinary refresh does not reopen them.
 The search button in the **Documents** header finds accessible documents.
 The conversation bell opens a menu to enable or disable notifications on this device
 and mute or restore notifications for the conversation.
+The conversation actually displayed stays silent in both Chat and Documents: no sound,
+toast or system push. Opening a conversation also closes its existing notifications.
+Visible messages are marked as read; other conversations keep notifying according to
+your preferences.
 The **+** button in the same header creates a document even when the section
 is collapsed, provided you have edit permission.
 
 On desktop, when a document is open alongside the conversation, each message also gives the
 Agent the last text selection in that document, the last cursor position, and an excerpt of
-the area visible when you send. Select a passage, then write “rephrase this passage”; moving
-to the message field preserves that reference. This works in read-only documents, HTML content,
-and Source. Datasets have their own editor. Long excerpts are truncated and include the document revision.
+the area visible when you send. Select a passage with the mouse or keyboard, then write
+“rephrase this passage”; moving to the message field preserves that reference. The same
+mechanism works from Documents on desktop and mobile. Context includes the document UUID,
+saved revision and start/end offsets in the displayed text. Read-only documents also support
+this. Datasets have their own editor. Long excerpts are truncated.
 Switching documents or replacing content invalidates previous positions; closing the pane stops
 sending this context. The internals of embedded applications are not inspected. The Agent’s
 document permissions remain unchanged.

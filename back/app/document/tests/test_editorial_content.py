@@ -13,6 +13,24 @@ def png():
     Image.new("RGB", (4, 4), "blue").save(output, format="PNG")
     return output.getvalue()
 
+
+@pytest.mark.asyncio
+async def test_checklist_state_is_document_content_with_independent_revisions(agents, memory_storage, db):
+    owner, reader = agents
+    unchecked = '<ul class="galaris-checklist"><li data-checked="false"><p>Review draft</p></li></ul>'
+    checked = unchecked.replace('data-checked="false"', 'data-checked="true"')
+    document = await create_document(owner_agent_id=owner.id, title="Synthetic checklist", content=unchecked, task_id=None)
+    updated = await service.update_item(document.id, DocumentUpdate(expected_revision=1, payload=DocumentPayload(text=checked)), actor_agent_id=owner.id)
+    assert updated.revision == 2
+    await service.set_item_grant(document.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    reopened = await read_document(document.id, actor_agent_id=reader.id, task_id=None)
+    assert reopened["content"] == checked
+    snapshots = (await db.scalars(select(DocumentRevision).where(DocumentRevision.document_id == document.id).order_by(DocumentRevision.revision))).all()
+    assert [snapshot.revision for snapshot in snapshots] == [1, 2]
+    with pytest.raises(service.DocumentPermissionError):
+        await service.update_item(document.id, DocumentUpdate(expected_revision=2, payload=DocumentPayload(text=unchecked)), actor_agent_id=reader.id)
+    assert (await read_document(document.id, actor_agent_id=owner.id, task_id=None))["content"] == checked
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation", ["create", "append", "edit", "write"])
 async def test_document_writes_preserve_prose_about_a_secret(agents, memory_storage, operation):

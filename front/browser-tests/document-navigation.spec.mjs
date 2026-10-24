@@ -73,7 +73,7 @@ for (const mobile of [false, true]) {
     await open(items[0])
     await back().click()
     await expect(title).toHaveValue('Beta')
-    await page.evaluate(id => window.testApp.emitSocket('memory.delete', { data: { id, node_kind: 'document' } }), items[0].id)
+    await page.evaluate(id => window.testApp.emitSocket('document.delete', { data: { id, node_kind: 'document' } }), items[0].id)
     await expect(forward()).toBeDisabled()
     await page.screenshot({ path: testInfo.outputPath('document-navigation.png'), animations: 'disabled' })
   })

@@ -18,6 +18,7 @@
 
 <script setup lang="ts">
 import { useTemplateRef } from 'vue'
+import type { DocumentFocus } from '../documentFocus'
 import {
   workingDocumentEditor,
   type WorkingDocumentSnapshot,
@@ -44,6 +45,7 @@ const emit = defineEmits<{
 
 interface FlushableEditor {
   flush?: () => Promise<boolean>
+  captureFocus?: () => DocumentFocus | null
 }
 
 const editor = useTemplateRef<FlushableEditor>('editor')
@@ -52,7 +54,7 @@ async function flush(): Promise<boolean> {
   return await editor.value?.flush?.() ?? true
 }
 
-defineExpose({ flush })
+defineExpose({ flush, captureFocus: () => editor.value?.captureFocus?.() ?? null })
 
 function isDocumentSnapshot(value: unknown): value is WorkingDocumentSnapshot {
   if (!value || typeof value !== 'object') return false

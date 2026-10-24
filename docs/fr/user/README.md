@@ -404,15 +404,21 @@ deviennent vides. Vous pouvez les replier manuellement ; une simple actualisatio
 La loupe de l’en-tête **Documents** permet de rechercher un document accessible.
 La cloche de la conversation ouvre un menu pour activer ou désactiver les notifications
 sur cet appareil et couper ou rétablir celles de la conversation.
+La conversation effectivement affichée reste silencieuse, qu'elle soit ouverte dans
+Discussion ou Documents : ni son, ni toast, ni push système. L'ouverture d'une conversation
+ferme aussi ses notifications déjà présentes. Les messages visibles sont marqués lus ;
+les messages des autres conversations continuent de notifier selon vos préférences.
 Le bouton **+** du même en-tête permet de créer un document, même lorsque
 la rubrique est repliée, si vous disposez du droit de modification.
 
 Sur ordinateur, lorsqu’un document est ouvert à côté de la conversation, chaque message
 transmet aussi à l’agent la dernière sélection de texte dans ce document, la dernière position
 du curseur et un extrait de la zone visible au moment de l’envoi. Vous pouvez sélectionner
-un passage, puis écrire « reformule ce passage » sans perdre ce repère en passant au champ
-de message. Cela fonctionne en lecture seule, dans le contenu HTML et dans Source.
-Les jeux de données ont leur propre éditeur. Les extraits longs sont tronqués et accompagnés de la révision du document.
+un passage à la souris ou au clavier, puis écrire « reformule ce passage » sans perdre ce
+repère en passant au champ de message. Le même mécanisme s'applique depuis la page Documents,
+sur ordinateur et mobile. Le contexte comprend l'UUID, la révision sauvegardée du document
+et les positions de début et de fin dans le texte affiché. Cela fonctionne aussi en lecture
+seule. Les jeux de données ont leur propre éditeur. Les extraits longs sont tronqués.
 Un changement de document ou de contenu invalide les anciens repères ; fermer le panneau
 cesse de transmettre ce contexte. Les zones internes des applications intégrées ne sont pas
 inspectées. Les droits de l’agent sur le document restent inchangés.

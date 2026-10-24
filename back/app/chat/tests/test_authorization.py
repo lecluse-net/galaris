@@ -95,10 +95,10 @@ def test_every_route_has_the_expected_privilege_and_resource_assertion() -> None
         "control_response": (SEND, InternalRoomAccessAssertion),
         "read_room_tasks": (["TASK_ACCESS", "TASK_EDIT"], ChatRoomAccessAssertion),
         "read_room_documents": (
-            ["MEMORY_ACCESS", "MEMORY_EDIT", "MEMORY_ADMIN"],
+            ["DOCUMENT_ACCESS", "DOCUMENT_EDIT", "DOCUMENT_ADMIN"],
             ChatRoomAccessAssertion,
         ),
-        "create_room_document": ("MEMORY_EDIT", ChatRoomAccessAssertion),
+        "create_room_document": ("DOCUMENT_EDIT", ChatRoomAccessAssertion),
         "read_room_processes": (
             ["PROCESS_READ", "PROCESS_LAUNCH", "PROCESS_ADMIN"],
             ChatRoomAccessAssertion,

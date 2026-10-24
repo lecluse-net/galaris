@@ -275,9 +275,11 @@ async def test_push_delivery_persists_receipt_or_retry_without_disabling_healthy
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("display_stage", ["enqueue", "delivery", "payload"])
 async def test_displayed_room_cancels_queued_push_before_network_delivery(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
+    display_stage: str,
 ) -> None:
     _enable_push(monkeypatch)
     recipient, _membership, message = await _message_scope(db)
@@ -291,25 +293,36 @@ async def test_displayed_room_cancels_queued_push_before_network_delivery(
     db.add(subscription)
     await db.commit()
 
+    displayed = display_stage == "enqueue"
+
+    def room_is_displayed(user_id: int, room_name: str) -> bool:
+        return displayed and user_id == recipient.id and room_name == f"ChatRoom:{message.messenger_room_id}"
+
+    monkeypatch.setattr(push_service.websocket, "is_room_displayed_by_user", room_is_displayed)
+
     await push_service.enqueue_message_push(message)
     delivery = await db.scalar(select(ChatPushDelivery))
+    if display_stage == "enqueue":
+        assert delivery is None
+        return
     assert delivery is not None
     delivery.status = "sending"
     await db.commit()
     send = Mock(side_effect=AssertionError("Web Push must have been cancelled"))
     monkeypatch.setattr(push_service, "_send_web_push", send)
 
-    def room_is_displayed(user_id: int, room_name: str) -> bool:
-        return (
-            user_id == recipient.id
-            and room_name == f"ChatRoom:{message.messenger_room_id}"
-        )
+    if display_stage == "delivery":
+        displayed = True
+    else:
+        count_unread = push_service.count_chat_unread
 
-    monkeypatch.setattr(
-        push_service.websocket,
-        "is_room_displayed_by_user",
-        room_is_displayed,
-    )
+        async def count_after_open(user_id: int) -> int:
+            nonlocal displayed
+            count = await count_unread(user_id)
+            displayed = True
+            return count
+
+        monkeypatch.setattr(push_service, "count_chat_unread", count_after_open)
 
     await push_service._process_delivery(delivery.id)
 

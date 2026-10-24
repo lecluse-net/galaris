@@ -10,6 +10,7 @@ for (const kind of ['', '-info', '-warning', '-question', '-error', '-stop', '-f
 editorialClasses.add('galaris-process-diagram')
 editorialClasses.add('galaris-agent-card')
 editorialClasses.add('galaris-web-card')
+editorialClasses.add('galaris-checklist')
 for (const value of tableStyleClasses) editorialClasses.add(value)
 export function validEditorialStyle(key: string, value: string): boolean {
   const raw = value.trim().toLowerCase()

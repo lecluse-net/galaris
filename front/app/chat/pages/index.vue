@@ -186,6 +186,7 @@ import type { ConversationDocumentReference } from '../types'
 import { useChatInboxStore } from '../stores/inbox'
 import { sourceTranslationKey } from '../sourcePresentation'
 import { useChatStore } from '../stores/chat'; import { chatService as service } from '../services/chatService'; import type { ChatViewerAgent, MessageTopicChange, MessengerMessage, MessengerRoom, ReasoningEffort, RecipientCatalog } from '../types'
+import { useConversationVisibility } from '../useConversationVisibility'
 
 const $q=useQuasar(); const {t,locale}=useI18n(); const route=useRoute(); const store=useChatStore(); const inboxStore=useChatInboxStore(); const privilegeStore=usePrivilegeStore(); const mobileView=ref<'conversation'|'details'>('details'); const createDialog=ref(false); const creatingRoom=ref(false); const preferencesDialog=ref(false); const savingRoomPreferences=ref(false); const archivingRoom=ref(false); const conversationsExpanded=ref(false); const tasksExpanded=ref(false); const documentsExpanded=ref(false); const processesExpanded=ref(false); const recipients=ref<RecipientCatalog>({agents:[]}); const viewerAgents=ref<ChatViewerAgent[]>([]); const roomSearch=ref(''); const replyingTo=ref<MessengerMessage|null>(null); const selectedTopicId=ref<string|null>(null)
 const roomFiltersVisible = ref(false)
@@ -229,7 +230,6 @@ function toggleRoomFilters(): void {
   if (roomFiltersVisible.value) conversationsExpanded.value = true
   else if (!store.rooms.length) conversationsExpanded.value = false
 }
-const chatPageVisible=ref(document.visibilityState==='visible')
 type WorkTarget = { kind: 'document'; reference: WorkingDocumentReference } | { kind: 'code'; id: string }
 const selectedWorkTarget = ref<WorkTarget | null>(null)
 const selectedDocument = computed({
@@ -490,10 +490,14 @@ onBeforeUnmount(() => {
   documentDisplayRequest += 1
   websocket.offEvent('chat', 'document_show', onDocumentShow)
 })
-const chatPageFocused=ref(document.hasFocus())
-const latestIntersectingMessageId=ref<string|null>(null)
 const conversationSurfaceVisible=computed(() => !$q.screen.lt.md || mobileView.value === 'conversation' || integratedDocument.value !== null)
-const displayedConversationRoomId=computed(() => chatPageVisible.value && conversationSurfaceVisible.value ? store.selectedRoom?.id ?? null : null)
+const { markVisibleMessageRead } = useConversationVisibility({
+  roomId: () => store.selectedRoom?.id ?? null,
+  visible: () => conversationSurfaceVisible.value,
+  canRead: () => !store.loadingSelectedRoom && store.viewerAgentId === null,
+  markRead: id => store.markSelectedRoomRead(id),
+  setDisplayedRoom: id => store.setDisplayedRoom(id),
+})
 type MessageScrollArea = { getScroll: () => { verticalSize: number }; setScrollPosition: (axis: 'vertical', offset: number, duration?: number) => void; setScrollPercentage: (axis: 'vertical', offset: number, duration?: number) => void }
 type MessageScrollInfo = { verticalPosition: number; verticalSize: number; verticalContainerSize: number }
 type BottomScrollablePanelHandle = { scrollToBottom: () => void }
@@ -522,7 +526,7 @@ function startColumnResize(event:PointerEvent){if($q.screen.lt.md)return;resizin
 function moveColumnResize(event:PointerEvent){if(resizingPointerId!==event.pointerId)return;resizeColumnsAt(event.clientX)}
 function finishColumnResize(event:PointerEvent){if(resizingPointerId!==event.pointerId)return;const target=event.currentTarget as HTMLElement;if(target.hasPointerCapture(event.pointerId))target.releasePointerCapture(event.pointerId);resizingPointerId=null;resizingColumns.value=false}
 function resizeColumnsWithKeyboard(event:KeyboardEvent){if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;event.preventDefault();setConversationRatio(conversationRatio.value+(event.key==='ArrowLeft'?-2:2))}
-const canManagePrivilege=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_MANAGE)); const canSend=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_SEND)); const canCall=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_CALL)); const canImpersonate=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_IMPERSONATE)); const canCreateRoom=computed(()=>canManagePrivilege.value&&store.viewerAgentId===null&&store.status?.chat_enabled===true); const canCustomizeSelectedRoom=computed(()=>store.viewerAgentId===null&&store.selectedRoom!==null); const canWriteSelectedRoom=computed(()=>canSend.value&&store.viewerAgentId===null&&store.selectedRoom?.writable===true); const canReadTasks=computed(()=>privilegeStore.hasPrivilege(privileges.TASK_ACCESS)||privilegeStore.hasPrivilege(privileges.TASK_EDIT)); const canReadDocuments=computed(()=>privilegeStore.hasPrivilege(privileges.MEMORY_ACCESS)||privilegeStore.hasPrivilege(privileges.MEMORY_EDIT)||privilegeStore.hasPrivilege(privileges.MEMORY_ADMIN)); const canEditDocuments=computed(()=>privilegeStore.hasPrivilege(privileges.MEMORY_EDIT)&&store.viewerAgentId===null); const canReadProcesses=computed(()=>privilegeStore.hasPrivilege(privileges.PROCESS_READ)||privilegeStore.hasPrivilege(privileges.PROCESS_LAUNCH)||privilegeStore.hasPrivilege(privileges.PROCESS_ADMIN)); const canSelectTopic=computed(()=>privilegeStore.hasPrivilege(privileges.TOPIC_ACCESS)||privilegeStore.hasPrivilege(privileges.TOPIC_EDIT))
+const canManagePrivilege=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_MANAGE)); const canSend=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_SEND)); const canCall=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_CALL)); const canImpersonate=computed(()=>privilegeStore.hasPrivilege(privileges.CHAT_IMPERSONATE)); const canCreateRoom=computed(()=>canManagePrivilege.value&&store.viewerAgentId===null&&store.status?.chat_enabled===true); const canCustomizeSelectedRoom=computed(()=>store.viewerAgentId===null&&store.selectedRoom!==null); const canWriteSelectedRoom=computed(()=>canSend.value&&store.viewerAgentId===null&&store.selectedRoom?.writable===true); const canReadTasks=computed(()=>privilegeStore.hasPrivilege(privileges.TASK_ACCESS)||privilegeStore.hasPrivilege(privileges.TASK_EDIT)); const canReadDocuments=computed(()=>privilegeStore.hasPrivilege(privileges.DOCUMENT_ACCESS)||privilegeStore.hasPrivilege(privileges.DOCUMENT_EDIT)||privilegeStore.hasPrivilege(privileges.DOCUMENT_ADMIN)); const canEditDocuments=computed(()=>privilegeStore.hasPrivilege(privileges.DOCUMENT_EDIT)&&store.viewerAgentId===null); const canReadProcesses=computed(()=>privilegeStore.hasPrivilege(privileges.PROCESS_READ)||privilegeStore.hasPrivilege(privileges.PROCESS_LAUNCH)||privilegeStore.hasPrivilege(privileges.PROCESS_ADMIN)); const canSelectTopic=computed(()=>privilegeStore.hasPrivilege(privileges.TOPIC_ACCESS)||privilegeStore.hasPrivilege(privileges.TOPIC_EDIT))
 const canEditConversationTopic=computed(()=>privilegeStore.hasPrivilege(privileges.TOPIC_EDIT)&&store.viewerAgentId===null)
 watch([canCreateRoom, () => store.selectedRoom?.id, recipientsRevision, agentsPage, agentsPageSize], ([canCreate, roomId], _, onCleanup) => {
   let cancelled = false
@@ -656,14 +660,8 @@ async function saveRoomPreferences(label:string,showLastMessage:boolean,topicId:
 async function setRoomArchived(archived:boolean){archivingRoom.value=true;try{await store.setRoomArchived(archived);preferencesDialog.value=false;$q.notify({type:'positive',message:t(archived?'chat.roomPreferences.archived':'chat.roomPreferences.unarchived')})}catch(error){reportError(error)}finally{archivingRoom.value=false}}
 async function toggleMute(){if(!store.selectedRoom)return;await report(async()=>{await service.setMuted(store.selectedRoom!.id,!store.selectedRoom!.muted);await store.refreshSelected()})}
 async function toggleDeviceNotifications():Promise<void>{try{if(inboxStore.subscribed){await inboxStore.disablePush();$q.notify({type:'positive',message:t('chat.notifications.disabled')});return}const enabled=await inboxStore.enablePush();if(enabled)$q.notify({type:'positive',message:t('chat.notifications.enabled')});else if(inboxStore.permission==='denied')$q.notify({type:'warning',message:t('chat.notifications.denied')})}catch(error){reportError(error)}}
-function retryVisibleRead(){const messageId=latestIntersectingMessageId.value;if(messageId)void markVisibleMessageRead(messageId)}
-function updateChatPageVisibility(){chatPageVisible.value=document.visibilityState==='visible';if(chatPageVisible.value)retryVisibleRead()}
-function updateChatPageFocus(){chatPageFocused.value=document.hasFocus();if(chatPageFocused.value)retryVisibleRead()}
-async function markVisibleMessageRead(messageId:string):Promise<void>{latestIntersectingMessageId.value=messageId;if(!chatPageVisible.value||!chatPageFocused.value||!conversationSurfaceVisible.value||store.loadingSelectedRoom||store.viewerAgentId!==null||!store.messages.some(message=>message.id===messageId))return;if(await store.markSelectedRoomRead(messageId).catch(()=>false))await inboxStore.refreshSummary().catch(()=>undefined)}
 watch(() => store.rooms.length > 0, value => { conversationsExpanded.value = value || roomFiltersVisible.value }, { immediate: true })
-watch(() => store.selectedRoom?.id ?? null, () => { selectedTopicId.value=null;latestIntersectingMessageId.value=null })
-watch(conversationSurfaceVisible, visible => {if(visible)retryVisibleRead()})
-watch(displayedConversationRoomId, roomId => {inboxStore.setDisplayedRoom(roomId);store.setDisplayedRoom(roomId)}, {immediate:true})
+watch(() => store.selectedRoom?.id ?? null, () => { selectedTopicId.value=null })
 watch(
   () => route.query.room,
   value => {
@@ -673,9 +671,6 @@ watch(
   },
 )
 onMounted(() => {
-  document.addEventListener('visibilitychange', updateChatPageVisibility)
-  window.addEventListener('focus', updateChatPageFocus)
-  window.addEventListener('blur', updateChatPageFocus)
   void report(async () => {
     await store.initialize()
     if (documentPageDisposed) return
@@ -695,11 +690,6 @@ onBeforeUnmount(() => {
   ++roomSelectionRequest
   ++roomNavigationRequest
   removeRoomNavigationGuard()
-  document.removeEventListener('visibilitychange', updateChatPageVisibility)
-  window.removeEventListener('focus', updateChatPageFocus)
-  window.removeEventListener('blur', updateChatPageFocus)
-  inboxStore.setDisplayedRoom(null)
-  store.setDisplayedRoom(null)
   store.releaseSelectedRoom()
 })
 </script>

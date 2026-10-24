@@ -191,6 +191,18 @@ Ils suivent les lignes logiques, y compris lorsqu’une ligne longue revient à 
 
 ## Révisions et lecture agentique
 
+Les checklists éditoriales se stockent comme `<ul class="galaris-checklist">` avec des
+`<li data-checked="true">` ou `false`, contenant leurs paragraphes et listes imbriquées.
+Les contrôles de l'éditeur ne sont pas sérialisés. L'état fait partie du HTML révisé,
+sans Dataset, script ou autorisation supplémentaire. Les lecteurs et exports affichent
+les états enregistrés sans permettre de mutation en lecture seule.
+
+Le plan est une projection temporaire des titres Tiptap, sans identifiant injecté ni
+révision supplémentaire. Le panneau Conversation de Documents réutilise l'état de chat
+dans une portée indépendante de la page Chat et sa surface publique. Il attend les
+sauvegardes avant l'envoi de `displayed_document_id`, sans transmettre de document non
+chargé ni modifier les ACL.
+
 Le partage MCP passe par `document_sharing` pour découvrir les destinataires et leur
 `lock_version`, puis `document_share` avec exactement un `agent_id`,
 `user_id` ou `team_id`. L’accès vaut `read`, `edit` ou `none` pour retirer ce grant précis.

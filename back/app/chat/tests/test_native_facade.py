@@ -1802,6 +1802,7 @@ async def test_message_publish_preserves_an_explicit_topic(
 
     focus = DocumentFocus.model_validate({
         "revision": 7, "surface": "rendered",
+        "selection": {"start": 0, "end": 3, "text": "abc", "truncated": False},
         "cursor": {"offset": 3, "before": "abc", "after": "def"},
     })
     agent, owner, _member = await _scope(db)

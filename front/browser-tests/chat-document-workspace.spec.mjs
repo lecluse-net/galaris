@@ -50,7 +50,7 @@ async function workspace(page, editable = true, extraDocuments = [], content = '
   await page.route('**/api/documents/library', route => route.fulfill({ json: { entries: [{ item: { ...document, id: 'doc-b', title: 'Off-list document' }, agent_ids: [] }], total: 1, has_more: false } }))
   await jsonRoute(page, '**/api/chat/rooms/room-a/documents?*', { items: [{ id: document.id, label: document.title, uri: 'document://doc-a', revision: 3 }, ...extraDocuments], total: 1 + extraDocuments.length })
   await page.route('**/api/chat/rooms/room-a/documents', route => route.fulfill({ json: { id: document.id, label: route.request().postDataJSON().title, uri: 'document://doc-a' } }))
-  await mount(page, 'app/chat/pages/index.vue', { route: '/chat?room=room-a', browserHistory: true, privileges: ['CHAT_SEND', 'MEMORY_ACCESS', ...(editable ? ['MEMORY_EDIT'] : [])] })
+  await mount(page, 'app/chat/pages/index.vue', { route: '/chat?room=room-a', browserHistory: true, privileges: ['CHAT_SEND', 'DOCUMENT_ACCESS', ...(editable ? ['DOCUMENT_EDIT'] : [])] })
   await expect(page.locator('.conversation-pane')).toContainText(message.text)
   return {
     message,
@@ -61,7 +61,7 @@ async function workspace(page, editable = true, extraDocuments = [], content = '
     refuseSave(value) { refuseSave = value },
     async update(text, id = openedDocumentId) {
       document = { ...document, revision: document.revision + 1, payload: { text: `<p>${text}</p>` } }
-      await page.evaluate(data => window.testApp.emitSocket('memory.update', { data }), { id, node_kind: 'document', revision: document.revision })
+      await page.evaluate(data => window.testApp.emitSocket('document.update', { data }), { id, node_kind: 'document', revision: document.revision })
     },
   }
 }
@@ -235,13 +235,17 @@ for (const editable of [true, false]) {
     const content = page.locator('.chat-document-pane [data-editor-surface]')
     const paragraph = content.locator('p').nth(50)
     await paragraph.scrollIntoViewIfNeeded()
-    await paragraph.evaluate(element => {
-      const text = element.firstChild
+    const box = await paragraph.evaluate(element => {
       const range = document.createRange()
-      range.setStart(text, 0); range.setEnd(text, 10)
-      window.getSelection().removeAllRanges(); window.getSelection().addRange(range)
-      document.dispatchEvent(new Event('selectionchange'))
+      range.setStart(element.firstChild, 0); range.setEnd(element.firstChild, 10)
+      const { x, y, width, height } = range.getBoundingClientRect()
+      return { x, y, width, height }
     })
+    await page.mouse.move(box.x + 1, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width - 1, box.y + box.height / 2, { steps: 8 })
+    await page.mouse.up()
+    await expect.poll(() => page.evaluate(() => window.getSelection().toString())).toBe('Section 50')
     const draft = page.locator('.conversation-pane textarea')
     await draft.fill('Improve this passage')
     await page.getByRole('button', { name: 'Post', exact: true }).click()
@@ -630,7 +634,7 @@ test('a late response from the previous document cannot overwrite the selected d
     await new Promise(resolve => { release = resolve })
     await route.fulfill({ json: { item: { ...documentFixture, id: 'doc-b', payload: { text: 'Late private body' } }, agent_id: null } })
   })
-  await page.evaluate(() => window.testApp.emitSocket('memory.update', { data: { id: 'doc-b', node_kind: 'document', revision: 4 } }))
+  await page.evaluate(() => window.testApp.emitSocket('document.update', { data: { id: 'doc-b', node_kind: 'document', revision: 4 } }))
   await expect.poll(() => Boolean(release)).toBeTruthy()
   await expect(page.getByLabel('Open document Test document', { exact: true })).toBeVisible()
   await page.getByLabel('Open document Test document', { exact: true }).click()
@@ -755,7 +759,7 @@ test('denied document and reconnect recover authorized current content while cha
   await page.evaluate(() => window.testApp.emitSocket('connect'))
   await expect(page.locator('.chat-document-pane')).toContainText('Denied document body')
   await expect(page.locator('.conversation-pane textarea')).toHaveValue('Draft survives connection loss')
-  await page.evaluate(() => window.testApp.emitSocket('memory.delete', { data: { id: 'doc-b', node_kind: 'document' } }))
+  await page.evaluate(() => window.testApp.emitSocket('document.delete', { data: { id: 'doc-b', node_kind: 'document' } }))
   await expect(page.locator('.chat-document-pane')).toHaveCount(0)
   await expect(page.locator('.conversation-pane textarea')).toBeEditable()
   await page.getByRole('button', { name: 'Post', exact: true }).click()
@@ -788,7 +792,7 @@ for (const surface of ['desktop', 'mobile', 'dialog']) {
         ], total: 2 } })
       })
       const listRequest = page.waitForRequest(request => request.url().includes('/rooms/room-a/documents?'))
-      await page.evaluate(() => window.testApp.emitSocket('memory.update', { data: { id: 'doc-a', node_kind: 'document', revision: 3 } }))
+      await page.evaluate(() => window.testApp.emitSocket('document.update', { data: { id: 'doc-a', node_kind: 'document', revision: 3 } }))
       await listRequest
       if (deletion === 'editor') {
         let refused = surface === 'desktop'
@@ -807,13 +811,13 @@ for (const surface of ['desktop', 'mobile', 'dialog']) {
         }
         await confirm.getByRole('button', { name: 'Delete document', exact: true }).click()
       } else {
-        await page.evaluate(() => window.testApp.emitSocket('memory.delete', { data: { id: 'doc-a', node_kind: 'document' } }))
+        await page.evaluate(() => window.testApp.emitSocket('document.delete', { data: { id: 'doc-a', node_kind: 'document' } }))
       }
       await expect(viewer).toHaveCount(0)
       await expect(row).toHaveCount(0)
       // Repeated notifications and stale API results cannot restore the deleted entry.
       const listResponse = page.waitForResponse(response => response.url().includes('/rooms/room-a/documents?'))
-      await page.evaluate(() => window.testApp.emitSocket('memory.delete', { data: { id: 'doc-a', node_kind: 'document' } }))
+      await page.evaluate(() => window.testApp.emitSocket('document.delete', { data: { id: 'doc-a', node_kind: 'document' } }))
       releaseList()
       await listResponse
       await expect(page.getByLabel('Open document Remaining document', { exact: true })).toHaveCount(1)
@@ -841,9 +845,9 @@ test('an off-list deletion cannot reappear through a pending document list respo
     ], total: 3 } })
   })
   const request = page.waitForRequest(url => url.url().includes('/rooms/room-a/documents?'))
-  await page.evaluate(() => window.testApp.emitSocket('memory.update', { data: { id: 'doc-a', node_kind: 'document', revision: 3 } }))
+  await page.evaluate(() => window.testApp.emitSocket('document.update', { data: { id: 'doc-a', node_kind: 'document', revision: 3 } }))
   await request
-  await page.evaluate(() => window.testApp.emitSocket('memory.delete', { data: { id: 'doc-b', node_kind: 'document' } }))
+  await page.evaluate(() => window.testApp.emitSocket('document.delete', { data: { id: 'doc-b', node_kind: 'document' } }))
   releaseList()
   await expect(page.getByLabel('Open document Surviving new document', { exact: true })).toBeVisible()
   await expect(page.getByLabel('Open document Deleted before arrival', { exact: true })).toHaveCount(0)

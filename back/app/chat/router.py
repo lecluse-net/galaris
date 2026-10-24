@@ -1001,7 +1001,7 @@ async def read_room_tasks(
 
 @router.get("/rooms/{room_id}/documents", response_model=ConversationDocumentList)
 @authorize(
-    privileges=["MEMORY_ACCESS", "MEMORY_EDIT", "MEMORY_ADMIN"],
+    privileges=["DOCUMENT_ACCESS", "DOCUMENT_EDIT", "DOCUMENT_ADMIN"],
     assertion=ChatRoomAccessAssertion,
 )
 async def read_room_documents(
@@ -1033,7 +1033,7 @@ async def read_room_documents(
     response_model=ConversationDocument,
     status_code=status.HTTP_201_CREATED,
 )
-@authorize(privileges="MEMORY_EDIT", assertion=ChatRoomAccessAssertion)
+@authorize(privileges="DOCUMENT_EDIT", assertion=ChatRoomAccessAssertion)
 async def create_room_document(
     room_id: UUID,
     data: ConversationDocumentCreate,
