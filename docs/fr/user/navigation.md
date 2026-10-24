@@ -12,6 +12,25 @@ Les chemins ci-dessous sont relatifs à votre instance Galaris.
 Pour comprendre les jalons, les plans, les questions et les reprises, consulter le
 [guide des Tasks](tasks.md).
 
+## Retrouver un travail et intervenir
+
+L’accueil regroupe les conversations non lues, les indicateurs de consommation et **Activité
+récente**. Il ne propose pas de seconde liste de tâches et de résultats à ouvrir.
+Les tâches, leurs attentes, erreurs et commandes de reprise se consultent dans
+**Superviser → Activité → Tâches** ; les autorisations restent dans **Superviser → Permissions**.
+
+Les recherches se font dans les écrans concernés : Documents, Discussion, Activité, Objectifs,
+Fichiers et Mémoire. La page Welcome (`/welcome`) propose **Réaliser votre première mission**
+après la configuration, pour préparer une demande et suivre son document.
+Voir le [guide de découverte](README.md).
+
+Lors de l’acquisition Dream, une information complémentaire peut enrichir un souvenir personnel
+modifiable en conservant son contenu, ses mots-clés et ses sources. Une contradiction reste un
+souvenir distinct relié au précédent ; elle n’efface pas l’ancienne information. Une modification
+concurrente bloque l’enrichissement sur sa révision périmée. Les documents et projections gérées
+ne sont pas enrichis par cette opération. Consultez les contenus, sources et relations dans Mémoire
+pour examiner les informations et les corriger selon vos droits.
+
 Lors de la première ouverture d'un onglet ou d'un éditeur, un indicateur de chargement
 peut apparaître brièvement. Le reste de la page reste utilisable. Si le chargement échoue,
 **Réessayer** relance l'ouverture sans recharger la page ni effacer les saisies en cours.

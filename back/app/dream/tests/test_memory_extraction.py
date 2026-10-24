@@ -13,6 +13,8 @@ from app.agent.models import Agent, Title
 from app.dream.contracts import (
     MAX_MEMORY_EXTRACTION_CANDIDATES,
     MemoryCreateOperation,
+    MemoryEnrichOperation,
+    MemoryContradictOperation,
     MemoryExtractionDecision,
     MemoryExtractionExistingMemory,
     MemoryExtractionInput,
@@ -36,11 +38,14 @@ from app.llm.provider_models import LLM
 from app.llm.structured_service import StructuredInferenceResult
 from app.memory.contracts import SourceMemoryDocument
 from app.memory import service as memory_service
+from app.document.schemas import DocumentItemCreate, DocumentPayload
+from app.memory.tests.document_fixtures import create_document_reference
 from app.memory.schemas import (
     MemoryAcquisitionResult,
     MemoryItemCreate,
     MemoryPayload,
     MemorySearchHit,
+    MemoryItemUpdate,
 )
 from core.storage import NativeFileStorage, register_storage, reset_storage_registry
 
@@ -92,6 +97,76 @@ def test_canonical_prompt_default_matches_the_builtin_contract() -> None:
     packaged = " ".join(path.read_text(encoding="utf-8").split())
     builtin = " ".join(MEMORY_EXTRACTION_SYSTEM_PROMPT.split())
     assert packaged == builtin
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("action", ["ENRICH", "CONTRADICT"])
+async def test_continuity_preserves_content_sources_and_replay(db, memory_extraction_storage, action):
+    owner = await _owner(db)
+    existing, _ = await memory_service.create_item(MemoryItemCreate(
+        owner_agent_id=owner.id, title="Workshop policy",
+        payload=MemoryPayload(text="<p>The workshop welcomes beginners.</p>"), media_type="text/html",
+        keywords=["workshop"],
+    ))
+    operation_type = MemoryEnrichOperation if action == "ENRICH" else MemoryContradictOperation
+    values = dict(target_memory_id=str(existing.id), title=existing.title,
+                  content="<p>Participants may borrow cameras.</p>" if action == "ENRICH" else "<p>Only experienced participants may join.</p>",
+                  keywords=["cameras"], retention_reason="recurring_constraint", future_utility="high")
+    if action == "ENRICH":
+        values["expected_revision"] = existing.revision
+    operation = operation_type.model_validate(values)
+    prepared = MemoryExtractionPrepared(decision=MemoryExtractionDecision(operations=[operation]), candidate_memory_ids=[existing.id])
+    arguments = dict(agent_id=owner.id, source_kind="task", source_ref=f"task:{uuid4()}",
+                     source_excerpt="Synthetic workshop policy", memory_created_at=datetime.now(timezone.utc),
+                     metadata={"media_type": "text/html"}, contact_item_id=None, topic_item_id=None,
+                     idempotency_prefix=f"continuity:{uuid4()}")
+    first = await apply_memory_extraction(prepared, **arguments)
+    second = await apply_memory_extraction(prepared, **arguments)
+    assert first == second
+    original, content, *_ = await memory_service.get_item(existing.id, agent_id=owner.id)
+    assert b"welcomes beginners" in content
+    if action == "ENRICH":
+        assert first.operations[0].memory_id == existing.id
+        assert b"borrow cameras" in content
+        assert original.keywords == ["workshop", "cameras"]
+        assert original.revision == 2
+        assert arguments["source_ref"] in await memory_service.source_refs(existing.id)
+    else:
+        assert first.operations[0].memory_id != existing.id
+        assert b"experienced" not in content
+        links = await memory_service.list_links(existing.id, actor_agent_id=owner.id)
+        assert [(link.relation_type, link.target_item_id) for link in links] == [("contradicts", first.operations[0].memory_id)]
+
+
+def test_enrichment_requires_an_allowed_editable_candidate_with_the_seen_revision():
+    candidate = MemoryExtractionExistingMemory(id=str(uuid4()), title="Policy", content="Existing fact", revision=3, can_enrich=True)
+    operation = MemoryEnrichOperation(target_memory_id=candidate.id, expected_revision=3, title="Policy", content="Complementary fact",
+                                     retention_reason="recurring_constraint", future_utility="high")
+    for can_enrich, revision in [(False, 3), (True, 4), (True, 3)]:
+        current = candidate.model_copy(update={"can_enrich": can_enrich, "revision": revision})
+        result = validate_memory_extraction_decision(MemoryExtractionDecision(operations=[operation]),
+            allowed_memory_ids={candidate.id}, candidates={candidate.id: current})
+        assert bool(result.operations) == (can_enrich and revision == 3)
+
+
+@pytest.mark.asyncio
+async def test_enrichment_rejects_a_concurrent_edit_without_losing_either_content(db, memory_extraction_storage):
+    owner = await _owner(db)
+    existing, _ = await memory_service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+        title="Workshop policy", payload=MemoryPayload(text="<p>Initial policy.</p>"), media_type="text/html"))
+    prepared = MemoryExtractionPrepared(decision=MemoryExtractionDecision(operations=[MemoryEnrichOperation(
+        target_memory_id=str(existing.id), expected_revision=existing.revision, title="Workshop policy",
+        content="<p>A complementary fact.</p>", retention_reason="recurring_constraint", future_utility="high",
+    )]), candidate_memory_ids=[existing.id])
+    await memory_service.update_item(existing.id, MemoryItemUpdate(expected_revision=existing.revision,
+        payload=MemoryPayload(text="<p>A concurrent correction.</p>")), actor_agent_id=owner.id)
+    with pytest.raises(memory_service.MemoryConflictError, match="changed before enrichment"):
+        await apply_memory_extraction(prepared, agent_id=owner.id, source_kind="task", source_ref="task:stale-enrichment",
+            source_excerpt="A complementary fact.", memory_created_at=datetime.now(timezone.utc), metadata={"media_type": "text/html"},
+            contact_item_id=None, topic_item_id=None, idempotency_prefix=f"stale:{uuid4()}")
+    _, content, *_ = await memory_service.get_item(existing.id, agent_id=owner.id)
+    assert b"concurrent correction" in content and b"complementary" not in content
+    assert "task:stale-enrichment" not in await memory_service.source_refs(existing.id)
 
 
 def test_case_local_memory_corpus_is_limited_to_ten() -> None:
@@ -183,6 +258,10 @@ def test_normalized_operations_are_not_duplicated() -> None:
             reason="The source confirms the durable fact.",
         )
     ]
+    enrichment = MemoryEnrichOperation(target_memory_id="memory-001", expected_revision=1,
+        title="Workshop policy", content="Complementary fact.", retention_reason="recurring_constraint", future_utility="high")
+    with pytest.raises(ValidationError, match="one ENRICH per target revision"):
+        MemoryExtractionDecision(operations=[enrichment, enrichment])
 
 
 def test_malformed_json_is_rejected_instead_of_repaired() -> None:
@@ -217,12 +296,11 @@ async def test_every_recalled_node_is_shown_for_fact_containment(
             metadata={"memory_role": "agent"},
         )
     )
-    document, _created = await memory_service.create_item(
-        MemoryItemCreate(
+    document, _created = await create_document_reference(
+        DocumentItemCreate(
             owner_agent_id=owner.id,
             title="Guide de livraison",
-            payload=MemoryPayload(text="Les livraisons ont lieu chaque mardi."),
-            node_kind="document",
+            payload=DocumentPayload(text="Les livraisons ont lieu chaque mardi."),
         )
     )
     profile_item, _profile_content, profile_access, *_ = await memory_service.get_item(
@@ -408,14 +486,11 @@ async def test_link_adds_provenance_without_rewriting_existing_memory(
 ) -> None:
     del memory_extraction_storage
     owner = await _owner(db)
-    existing, _created = await memory_service.create_item(
-        MemoryItemCreate(
-            owner_agent_id=owner.id,
-            node_kind=node_kind,
-            title="Préférence de réponse",
-            payload=MemoryPayload(text="La personne préfère les réponses concises."),
-        )
-    )
+    values = dict(owner_agent_id=owner.id, title="Préférence de réponse", payload={"text": "La personne préfère les réponses concises."})
+    if node_kind == "document":
+        existing, _created = await create_document_reference(DocumentItemCreate.model_validate(values))
+    else:
+        existing, _created = await memory_service.create_item(MemoryItemCreate.model_validate(values))
     _, original_content, _, _, _ = await memory_service.get_item(
         existing.id, agent_id=owner.id,
     )
@@ -451,11 +526,18 @@ async def test_link_adds_provenance_without_rewriting_existing_memory(
     )
     assert len(application.operations) == 1
     assert application.operations[0].action == "LINK"
-    assert application.operations[0].memory_id == existing.id
-    assert application.operations[0].status == "merged"
     assert item.revision == original_revision
     assert content == original_content
-    assert await memory_service.source_refs(existing.id) == ["task:memory-link-test"]
+    if node_kind == "memory":
+        assert application.operations[0].memory_id == existing.id
+        assert application.operations[0].status == "merged"
+        assert await memory_service.source_refs(existing.id) == ["task:memory-link-test"]
+    else:
+        # Personal evidence belongs to a private memory, never the shared Document.
+        assert application.operations[0].memory_id != existing.id
+        assert application.operations[0].status == "stored"
+        assert await memory_service.source_refs(existing.id) == []
+        assert await memory_service.source_refs(application.operations[0].memory_id) == ["task:memory-link-test"]
 
 
 @pytest.mark.asyncio

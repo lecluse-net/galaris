@@ -147,12 +147,12 @@
           <q-item-section>
             <div class="row q-col-gutter-md q-gutter-y-sm">
               <div class="col-12"><q-badge :color="operation.action === 'CREATE' ? 'positive' : 'primary'">{{ operation.action }}</q-badge></div>
-              <template v-if="operation.action === 'CREATE'">
+              <template v-if="operation.action !== 'LINK'">
                 <div class="col-12 col-md-6"><q-input v-model="operation.title" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.memoryTitle')" /></div>
                 <div class="col-12 col-md-3"><q-select v-model="operation.retention_reason" :options="retentionReasons" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.retentionReason')" /></div>
                 <div class="col-12"><q-input v-model="operation.content" type="textarea" autogrow outlined :readonly="readonly" :label="t('evaluation.memoryEditor.memoryContent')" /></div>
               </template>
-              <template v-else>
+              <template v-if="operation.action !== 'CREATE'">
                 <div class="col-12 col-md-5"><q-select v-model="operation.target_memory_id" :options="memoryOptions" emit-value map-options outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.linkTarget')" /></div>
                 <div class="col-12 col-md"><q-input v-model="operation.reason" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.reason')" /></div>
               </template>
@@ -302,7 +302,7 @@ function removeMemory(index: number): void {
   model.value.existing_memories.splice(index, 1)
   if (!removed) return
   expected.value.relevant_memory_ids = expected.value.relevant_memory_ids.filter(id => id !== removed)
-  expected.value.operations = expected.value.operations.filter(operation => operation.action !== 'LINK' || operation.target_memory_id !== removed)
+  expected.value.operations = expected.value.operations.filter(operation => operation.action === 'CREATE' || operation.target_memory_id !== removed)
 }
 
 function addCreate(): void {

@@ -11,6 +11,22 @@ Paths below are relative to your Galaris instance.
 
 For milestones, plans, questions and recovery, see the [Task guide](tasks.md).
 
+## Find work and take action
+
+Home groups unread conversations, usage indicators and **Recent activity**. It does not add
+a second list of Tasks and results to open. Tasks, waits, failures and recovery commands remain
+under **Monitor → Activity → Tasks**; approvals remain under **Monitor → Permissions**.
+
+Search within the relevant screens: Documents, Discussion, Activity, Goals, Files and Memory.
+Welcome (`/welcome`) offers **Complete your first mission** after setup, to prepare a request
+and follow its document. See the [discovery guide](README.md).
+
+During Dream acquisition, complementary information may enrich an editable personal memory
+while preserving its content, keywords and sources. A contradiction remains a separate memory
+linked to the previous one; it does not erase the old information. A concurrent edit blocks
+enrichment against a stale revision. Documents and managed projections cannot be enriched by
+this operation. Examine content, sources and relations in Memory and correct them under your rights.
+
 A loading indicator may briefly appear when opening a tab or editor for the first time.
 The rest of the page stays usable. If loading fails, **Retry** attempts to open the view
 again without reloading the page or discarding current input. A persistent error leaves

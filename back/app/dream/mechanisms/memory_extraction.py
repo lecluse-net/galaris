@@ -22,7 +22,9 @@ from core.params import Params, params_service
 
 from ..contracts import (
     MAX_MEMORY_EXTRACTION_CANDIDATES,
-    MemoryCreateOperation,
+    MemoryEnrichOperation,
+    MemoryContradictOperation,
+    MemoryExtractionOperation,
     MemoryExtractionApplication,
     MemoryExtractionAppliedOperation,
     MemoryExtractionDecision,
@@ -86,7 +88,15 @@ For every qualifying independent fact, choose exactly one operation:
 - CREATE when the precise fact is not already present in any supplied existing node;
 - LINK when any existing node already contains that precise durable fact and this source should
   become additional provenance. Every supplied node can be a LINK target. LINK never rewrites or
-  enriches the existing node.
+  enriches the existing node;
+- ENRICH when a new complementary fact concerns the same identified subject and scope as an
+  editable personal memory with can_enrich=true. Copy its revision into expected_revision and
+  preserve its temporal value. Supply only the new information: the server retains all existing
+  content and sources. Use at most one ENRICH per target, combining complementary additions;
+- CONTRADICT when new evidence explicitly conflicts with an existing fact. Keep the new fact
+  standalone and cite target_memory_id. The server preserves both facts and links the conflict.
+Never enrich a document, profile, contact or other source-managed node. Never resolve a
+contradiction silently or infer that the newest source is necessarily correct.
 
 For each potential memory, ask whether its precise standalone information is explicitly stated or
 unambiguously entailed by a passage inside any supplied node. Do not compare the potential memory
@@ -189,7 +199,7 @@ def existing_memories_from_hits(
     # Kept for call-site compatibility: access and ranking were already enforced by
     # the canonical search. The extractor must see every returned node and decide
     # whether one passage contains the precise potential fact.
-    del owner_agent_id, source_text
+    del source_text
 
     result: list[MemoryExtractionExistingMemory] = []
     seen: set[UUID] = set()
@@ -208,6 +218,9 @@ def existing_memories_from_hits(
                 keywords=list(hit.item.keywords[:20]),
                 score=hit.score,
                 temporal=hit.item.temporal,
+                revision=hit.item.revision,
+                can_enrich=(hit.item.node_kind == "memory" and not hit.item.source_managed
+                            and not hit.item.read_only and hit.item.owner_agent_id == owner_agent_id),
             )
         )
     return result
@@ -218,10 +231,11 @@ def validate_memory_extraction_decision(
     *,
     allowed_memory_ids: set[str],
     allowed_evidence_refs: set[str] | None = None,
+    candidates: dict[str, MemoryExtractionExistingMemory] | None = None,
 ) -> MemoryExtractionDecision:
     """Drop unsafe, duplicate, or out-of-corpus operations before checkpointing."""
 
-    operations: list[MemoryCreateOperation | MemoryLinkOperation] = []
+    operations: list[MemoryExtractionOperation] = []
     created_contents: set[str] = set()
     linked_ids: set[str] = set()
     for operation in decision.operations:
@@ -236,6 +250,14 @@ def validate_memory_extraction_decision(
             linked_ids.add(operation.target_memory_id)
             operations.append(operation)
             continue
+        if isinstance(operation, (MemoryEnrichOperation, MemoryContradictOperation)):
+            if operation.target_memory_id not in allowed_memory_ids:
+                continue
+            if isinstance(operation, MemoryEnrichOperation):
+                candidate = (candidates or {}).get(operation.target_memory_id)
+                if (candidate is None or not candidate.can_enrich or candidate.revision != operation.expected_revision
+                        or candidate.temporal != operation.temporal):
+                    continue
         if operation.retention_reason == "unspecified" or operation.future_utility != "high":
             continue
         normalized = " ".join(operation.content.casefold().split())
@@ -299,7 +321,9 @@ async def run_memory_extraction(
         "Do not quote the object, prefix it, add prose, or use Markdown fences. "
         'The response must begin with {"operations": and end with }. '
         "LINK is allowed only when the candidate states the complete same durable fact; "
-        "otherwise use CREATE for the new fact.\n"
+        "Use ENRICH for a complementary fact about the same subject only when can_enrich is true, "
+        "copying its revision as expected_revision. Supply only the new information, never a replacement. "
+        "Use CONTRADICT for an incompatible fact, preserving both versions. Otherwise use CREATE.\n"
         f"{output_schema}"
     )
     prompt = ranked_input.model_dump_json()
@@ -347,6 +371,7 @@ async def run_memory_extraction(
     decision = validate_memory_extraction_decision(
         decision,
         allowed_memory_ids=allowed,
+        candidates={item.id: item for item in ranked_input.existing_memories},
         allowed_evidence_refs={part.ref for message in ranked_input.current for part in message.evidence
             if part.text and part.kind != "attachment"},
     )
@@ -443,11 +468,21 @@ async def apply_memory_extraction(
             content = safe_memory_text(operation.content)[:8_000]
             keywords = list(operation.keywords)
             action = "create"
+            if isinstance(operation, (MemoryEnrichOperation, MemoryContradictOperation)):
+                try:
+                    target_item_id = UUID(operation.target_memory_id)
+                except ValueError as exc:
+                    raise MemoryExtractionApplicationError("Invalid memory continuity target") from exc
+                if target_item_id not in allowed:
+                    raise MemoryExtractionApplicationError("Memory continuity target is outside the checkpoint allow-list")
+                action = "update" if isinstance(operation, MemoryEnrichOperation) else "contradict"
+                if isinstance(operation, MemoryEnrichOperation):
+                    operation_metadata["target_revision"] = operation.expected_revision
             operation_metadata.update(
                 {
                     "retention_reason": operation.retention_reason,
                     "future_utility": operation.future_utility,
-                    "memory_extraction_action": "CREATE",
+                    "memory_extraction_action": operation.action,
                 }
             )
             if not title or not content:
@@ -465,7 +500,7 @@ async def apply_memory_extraction(
                 source_kind=source_kind,
                 source_ref=source_ref,
                 metadata=operation_metadata,
-                temporal=operation.temporal if isinstance(operation, MemoryCreateOperation) else None,
+                temporal=operation.temporal if not isinstance(operation, MemoryLinkOperation) else None,
                 idempotency_key=hashlib.sha256(
                     f"{idempotency_prefix}:{index}".encode("utf-8")
                 ).hexdigest(),

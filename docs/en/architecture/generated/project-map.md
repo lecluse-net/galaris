@@ -903,10 +903,10 @@ tests remain authoritative for behavior.
 | `app/memory` | `core/navigation` | `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/util` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
 | `app/memory` | `core/websocket` | `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/stores/memoryStore.ts` |
-| `app/onboarding` | `core/api` | `front/app/onboarding/services/onboardingService.ts` |
-| `app/onboarding` | `core/authorize` | `front/app/onboarding/components/WelcomePage.vue` |
+| `app/onboarding` | `core/api` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/services/firstMissionService.ts`, `front/app/onboarding/services/onboardingService.ts` |
+| `app/onboarding` | `core/authorize` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/components/WelcomePage.vue` |
 | `app/onboarding` | `core/params` | `front/app/onboarding/components/WelcomePage.vue` |
-| `app/onboarding` | `core/user` | `front/app/onboarding/components/WelcomePage.vue` |
+| `app/onboarding` | `core/user` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/components/WelcomePage.vue` |
 | `app/process` | `app/agent` | `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/ProcessAgentSelect.vue`, `front/app/process/components/ProcessLaneHeader.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/pages/index.vue`, `front/app/process/services/processService.ts` |
 | `app/process` | `app/dataset` | `front/app/process/services/nativeProcessService.ts` |
 | `app/process` | `app/share` | `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/services/nativeProcessService.ts` |

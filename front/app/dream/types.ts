@@ -157,7 +157,11 @@ export interface LinkedMemory {
   reason?: string
 }
 
-export type MemoryExtractionOperation = ProposedMemory | LinkedMemory
+export type MemoryExtractionOperation = ProposedMemory | LinkedMemory | (Omit<ProposedMemory, 'action'> & {
+  action: 'ENRICH' | 'CONTRADICT'
+  target_memory_id: string
+  expected_revision?: number
+})
 
 export interface DreamOutcomeEvidenceItem {
   reference: string

@@ -221,9 +221,9 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
         dimensions=(
             _dimension(
                 "decision_correctness",
-                "CREATE, LINK or IGNORE",
+                "CREATE, LINK, ENRICH, CONTRADICT or IGNORE",
                 30,
-                "Chooses abstention, creation, or provenance linking consistently with the durable evidence and supplied existing memories.",
+                "Chooses abstention, creation, provenance linking, complementary enrichment or preserved contradiction consistently with durable evidence, candidate permissions and revisions.",
             ),
             _dimension(
                 "evidence_grounding",

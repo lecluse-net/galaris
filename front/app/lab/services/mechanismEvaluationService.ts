@@ -183,6 +183,8 @@ export interface MemoryExtractionMessage {
 }
 
 export interface MemoryExtractionExistingMemory {
+  revision?: number | null
+  can_enrich?: boolean
   id: string
   title: string
   content: string
@@ -210,6 +212,8 @@ export type MemoryExtractionOperation =
     reason: string
   }
   | { action: 'LINK', target_memory_id: string, reason: string }
+  | { action: 'ENRICH' | 'CONTRADICT', target_memory_id: string, expected_revision?: number, title: string, content: string,
+    keywords: string[], retention_reason: string, future_utility: 'high', reason: string }
 
 export interface MemoryExtractionOutput {
   operations: MemoryExtractionOperation[]

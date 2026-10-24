@@ -122,7 +122,7 @@ export default {
         eyebrow: 'Aujourd’hui',
         greeting: 'Bonjour {name}',
         summaryUnread: 'Vous avez {count} message non lu à consulter. | Vous avez {count} messages non lus à consulter.',
-        summaryClear: 'Rien ne demande votre attention pour le moment.',
+        summaryClear: 'Aucun message non lu dans vos conversations récentes.',
         refresh: 'Actualiser l’accueil',
         retry: 'Réessayer',
         metrics: {
@@ -411,7 +411,7 @@ export default {
         eyebrow: 'Today',
         greeting: 'Hello {name}',
         summaryUnread: 'You have {count} unread message to review. | You have {count} unread messages to review.',
-        summaryClear: 'Nothing needs your attention right now.',
+        summaryClear: 'No unread messages in your recent conversations.',
         refresh: 'Refresh home',
         retry: 'Retry',
         metrics: {
@@ -680,7 +680,7 @@ export default {
         eyebrow: '今天',
         greeting: '您好，{name}',
         summaryUnread: '您有 {count} 条未读消息需要查看。 | 您有 {count} 条未读消息需要查看。',
-        summaryClear: '目前没有需要您处理的事项。',
+        summaryClear: '最近的对话中没有未读消息。',
         refresh: '刷新首页',
         retry: '重试',
         metrics: { title: '本月用量', description: '仪表板中的关键指标。', more: '了解更多', loading: '正在加载月度指标', loadError: '无法刷新月度指标。' },

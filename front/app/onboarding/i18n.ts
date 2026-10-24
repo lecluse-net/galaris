@@ -1,6 +1,36 @@
+const fr = {
+  title: 'Réaliser votre première mission', description: 'Choisissez une demande, adaptez-la et suivez sa réalisation jusqu’au document produit.',
+  permission: 'Ce parcours demande les droits Discussion (accès, création et envoi), suivi des tâches et lecture des Documents. Demandez les accès manquants à votre administrateur.', agent: 'Agent', noAgent: 'Aucun agent actif accessible en Discussion. Vérifiez vos équipes et la configuration de la messagerie.',
+  kind: 'Votre besoin', request: 'Demande à confier', start: 'Lancer la mission', cost: 'Le lancement utilise vos modèles et peut entraîner un coût. Les outils et les accès habituels de l’agent s’appliquent.',
+  error: 'L’opération n’a pas pu être confirmée. Réessayez ; un message déjà envoyé conserve son identité et ne lance pas une seconde mission.',
+  open: 'Ouvrir la discussion', refresh: 'Actualiser le suivi', again: 'Préparer une autre mission', room: 'Ma première mission',
+  kinds: { summary: 'Synthétiser des notes', brief: 'Préparer un document', plan: 'Organiser un projet' },
+  prompts: {
+    summary: 'À partir de ces notes fictives, rédige une synthèse claire dans un document Galaris : l’équipe prépare une journée portes ouvertes ; la salle est réservée ; il reste à confirmer les intervenants et préparer les invitations. Distingue les acquis, les actions restantes et les informations manquantes. Recherche d’abord un document pertinent dans cette conversation et enrichis-le s’il existe. Sinon, crée un document, vérifie son enregistrement et donne-moi son lien accessible.',
+    brief: 'Prépare un document Galaris d’une page pour présenter un projet fictif de jardin partagé. Inclue l’objectif, les bénéficiaires, les étapes, les risques et les questions à trancher. Signale les hypothèses. Recherche d’abord un document pertinent dans cette conversation et enrichis-le s’il existe. Sinon, crée un document, vérifie son enregistrement et donne-moi son lien accessible.',
+    plan: 'Prépare dans un document Galaris un plan de travail pour un atelier fictif d’initiation à la photographie. Propose des étapes, des livrables vérifiables et les informations à préciser. N’invente pas de dates ni de personnes. Recherche d’abord un document pertinent dans cette conversation et enrichis-le s’il existe. Sinon, crée un document, vérifie son enregistrement et donne-moi son lien accessible.',
+  },
+  states: { sending: 'La conversation est préparée. L’envoi reste à confirmer ; Réessayer réutilise le même message.', running: 'Mission en cours. Vous pouvez poursuivre dans la discussion et revenir sur cette page.', waiting: 'La mission attend une réponse, une autorisation ou une reprise. Ouvrez la discussion pour intervenir.', failed: 'La mission a échoué. Ouvrez la discussion pour examiner la cause et reprendre le travail.', missing: 'L’exécution est terminée, mais aucun document associé n’est encore disponible. Vérifiez le résultat dans la discussion.', complete: 'La mission est terminée et son document est disponible ci-dessous. Ouvrez-le pour vérifier le contenu.' },
+}
+const en = {
+  title: 'Complete your first mission', description: 'Choose a request, adapt it and follow the work through to its document.',
+  permission: 'This journey requires Discussion access, creation and sending, Task monitoring and Document reading. Ask your administrator for any missing access.', agent: 'Agent', noAgent: 'No active agent is accessible in Discussion. Check your teams and messaging configuration.',
+  kind: 'Your need', request: 'Request to delegate', start: 'Start mission', cost: 'Starting uses your models and may incur a cost. The agent’s usual tools and access rules apply.',
+  error: 'The operation could not be confirmed. Retry; a message already sent keeps its identity and does not start a second mission.', open: 'Open discussion', refresh: 'Refresh progress', again: 'Prepare another mission', room: 'My first mission',
+  kinds: { summary: 'Summarize notes', brief: 'Prepare a document', plan: 'Organize a project' },
+  prompts: {
+    summary: 'Use these fictional notes to write a clear summary in a Galaris document: the team is preparing an open day; the venue is booked; speakers and invitations still need attention. Separate confirmed facts, remaining actions and missing information. First search for a relevant document in this conversation and enrich it if one exists. Otherwise create a document, verify it was saved and give me its accessible link.',
+    brief: 'Prepare a one-page Galaris document presenting a fictional community garden project. Include its objective, beneficiaries, steps, risks and open questions. Label assumptions. First search for a relevant document in this conversation and enrich it if one exists. Otherwise create a document, verify it was saved and give me its accessible link.',
+    plan: 'Prepare a work plan in a Galaris document for a fictional introductory photography workshop. Suggest steps, verifiable deliverables and missing information. Do not invent dates or people. First search for a relevant document in this conversation and enrich it if one exists. Otherwise create a document, verify it was saved and give me its accessible link.',
+  },
+  states: { sending: 'The conversation is ready. Sending still needs confirmation; Retry reuses the same message.', running: 'Mission in progress. Continue in the discussion and return to this page later.', waiting: 'The mission needs a reply, approval or continuation. Open the discussion to intervene.', failed: 'The mission failed. Open the discussion to examine the cause and resume the work.', missing: 'Execution finished, but no associated document is available yet. Check the result in the discussion.', complete: 'The mission finished and its document is available below. Open it to check the content.' },
+}
+export const missionI18n = { fr, en, zh: en }
+
 export default {
   fr: {
     onboarding: {
+      mission: missionI18n.fr,
       eyebrow: 'Premiers pas',
       title: 'Bienvenue sur Galaris',
       description: 'Préparez votre instance en quelques étapes. Un LLM utilisable et un premier agent constituent le socle ; messageries, outils, compétences et processus enrichissent ensuite ses capacités.',
@@ -106,6 +136,7 @@ export default {
   },
   en: {
     onboarding: {
+      mission: missionI18n.en,
       eyebrow: 'Getting started',
       title: 'Welcome to Galaris',
       description: 'Prepare your instance in a few steps. A usable LLM and a first agent form the foundation; messaging, tools, skills, and processes then expand its capabilities.',
@@ -211,6 +242,7 @@ export default {
   },
   zh: {
     onboarding: {
+      mission: missionI18n.zh,
       eyebrow: '开始使用', title: '欢迎使用 Galaris',
       description: '只需几步即可准备好您的实例。可用的 LLM 和第一个智能体是基础；消息、工具、技能和流程随后会扩展其能力。',
       loading: '正在检查配置…', progress: '必需配置', progressCount: '{count}/{total}', stepNumber: '第 {current} 步，共 {total} 步',

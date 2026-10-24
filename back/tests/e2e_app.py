@@ -63,13 +63,14 @@ from app.harness.runtime import build_model_for_llm as original_model_builder
 pydantic_ai.models.ALLOW_MODEL_REQUESTS = False
 gates: dict[UUID, asyncio.Event] = {}
 modes: dict[UUID, str] = {}
+first_mission_agents: set[int] = set()
 tool_trace_gates: dict[int, asyncio.Event] = {}
 quota_fixture = {"used": 2500, "status": 200, "codex_credits": 125.5}
 
 
 class ScriptedController:
     async def run(self, turn: ConversationTurn) -> ConversationOutcome:
-        if modes.get(turn.room_id) in {"conversation-control", "process-human"}:
+        if turn.agent_id in first_mission_agents or modes.get(turn.room_id) in {"conversation-control", "process-human"}:
             from app.harness.conversation import HarnessConversationController
             return await HarnessConversationController().run(turn)
         assert turn.publish_progress is not None
@@ -133,6 +134,20 @@ async def task_stream(request):
             yield event
         return
     messages = []
+    if request.agent.id in first_mission_agents:
+        # Script the model boundary; creation, provenance, persistence and access stay real.
+        from app.document import resource_service, DocumentItemCreate, DocumentPayload, DocumentSourceCreate
+        async with get_db_session():
+            document, _ = await resource_service.create_item(DocumentItemCreate(
+                owner_agent_id=request.agent.id, title="Synthetic first mission summary",
+                payload=DocumentPayload(text="<h1>Workshop summary</h1><p>The venue is booked.</p><p>Confirm speakers and invitations.</p>"),
+                media_type="text/html", source=DocumentSourceCreate(
+                    source_kind="task", source_ref=f"task:{request.task_id}",
+                ),
+            ), actor_task_id=request.task_id, deduplicate=False)
+            uri = f"document://{document.id}"
+        yield AgentEvent.from_result(ExecutionResult(prompt=request.objective, result=f"Saved: {uri}"))
+        return
     if request.agent.id in tool_trace_gates:
         for name, success in (("fixture_lookup", True), ("fixture_denied", False)):
             message = AIMessage(type="tool", tool_name=name, tool_call_external_id=f"{name}-1",
@@ -327,7 +342,7 @@ async def elevenlabs_voices():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = True):
-    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "process-human", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue"}:
+    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "process-human", "first-mission", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -372,6 +387,8 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
         assert tool is not None
         db.add(Connection(tool_id=tool.id, agent_id=agent.id, active=True))
         await db.commit()
+        if mode == "first-mission":
+            first_mission_agents.add(agent.id)
         if mode == "process-human":
             from app.tools import sync_integrated_tool_connections
             await sync_integrated_tool_connections(agent.id)

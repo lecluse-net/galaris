@@ -7,6 +7,26 @@ Il décrit les garanties couvertes par les suites ; leur présence ne signifie p
 ont été exécutées sur votre checkout. Pour choisir une commande et comprendre sa portée,
 consultez la [méthode de test](testing.md).
 
+## Accueil et première mission
+
+`work-experience.spec.mjs` côté composants vérifie
+les changements de rôle, les réponses tardives,
+le réessai d’un message de mission avec la même identité et le retour sur son suivi.
+`e2e/specs/work-experience.spec.mjs` parcourt les vraies API, droits et persistances jusqu’au
+document enregistré et à sa réouverture sur Welcome, sur ordinateur et mobile ; le modèle
+est scripté. Ces garanties ne mesurent pas la qualité d’un fournisseur réel.
+Le bloc « Travaux à suivre » et sa projection dédiée ont été retirés : l’accueil conserve
+« Activité récente », sans seconde liste de tâches et de résultats.
+La page de recherche globale et ses tests dédiés ont été retirés ; les recherches restent
+dans les écrans métier. Le parcours de première mission reste couvert sur Welcome.
+
+`app/dream/tests/test_memory_extraction.py` couvre ENRICH et CONTRADICT : contenu et mots-clés
+préservés, provenance, rejouabilité et refus d’une révision périmée. Ses anciens cas Documents
+créent désormais les ressources par le domaine Document et vérifient que la provenance personnelle
+reste dans un souvenir privé, conformément à la séparation Memory/Document.
+Le contrôle central `app/chat/tests/test_authorization.py` vérifie aussi les privilèges Documents
+sur la liste et la création dans une conversation, avec l’assertion d’accès à la room conservée.
+
 | Garantie à vérifier |
 |---|
 | [JSON et droits Dataset](#datasets) |

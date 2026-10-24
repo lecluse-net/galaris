@@ -34,7 +34,10 @@ has different calendar constraints, even if its prose contains a similar fact.
 For every qualifying independent fact, choose exactly one operation:
 
 - CREATE when the precise fact is not already present in any supplied existing node;
-- LINK when any existing node already contains that precise durable fact and this source should become additional provenance. Every supplied node can be a LINK target. LINK never rewrites or enriches the existing node.
+- LINK when any existing node already contains that precise durable fact and this source should become additional provenance. Every supplied node can be a LINK target. LINK never rewrites or enriches the existing node;
+- ENRICH when a new complementary fact concerns the same identified subject and scope as an editable personal memory with can_enrich=true. Copy its revision into expected_revision and preserve its temporal value. Supply only the new information: the server retains all existing content and sources. Use at most one ENRICH per target, combining complementary additions;
+- CONTRADICT when new evidence explicitly conflicts with an existing fact. Keep the new fact standalone and cite target_memory_id. The server preserves both facts and links the conflict.
+Never enrich a document, profile, contact or other source-managed node. Never resolve a contradiction silently or infer that the newest source is necessarily correct.
 
 For each potential memory, ask whether its precise standalone information is explicitly stated or unambiguously entailed by a passage inside any supplied node. Do not compare the potential memory with a node as two whole documents. A long job description, personality profile, contact card, Topic, or document can contain the fact even when the rest of that node discusses other things. Conversely, overall similarity, topical proximity, shared vocabulary, a related decision, or partial overlap is never proof that the fact is present. CREATE is the default when no supplied node contains the complete same durable fact. Never CREATE a paraphrase of information already contained in a node. Use only a target_memory_id present in existing_memories and never invent an identifier. The server rechecks every CREATE by searching for its exact proposed fact and links the source instead when an existing node already contains it.
 

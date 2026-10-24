@@ -82,6 +82,8 @@
           </template>
         </q-banner>
 
+        <FirstMission v-if="mandatoryReady" />
+
         <section :aria-label="t('onboarding.summary.title')">
           <q-stepper
             v-model="activeStep"
@@ -216,6 +218,7 @@ import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { languageFields, SettingsFields, useParamsStore } from '@/core/params'
 import { useAuthStore } from '@/core/user'
 import { useOnboardingStore } from '../stores/onboardingStore'
+import FirstMission from './FirstMission.vue'
 
 type StepKey = 'language' | 'llm' | 'agent' | 'tools' | 'connections' | 'skills' | 'processes'
 

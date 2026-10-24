@@ -65,6 +65,11 @@ qui partagent ces constructeurs ; qualifier séparément la voix temps réel et 
 harnais effectivement pris en charge. Une preuve sur l'interne ne qualifie pas Hermès,
 Codex, Claude Agent ou DeepSeek.
 
+Le lot [0228](../decisions/0228-work-discovery-and-memory-continuity.md) apporte
+le parcours de première mission sur Welcome et les opérations d’extraction ENRICH et
+CONTRADICT, avec préservation des sources et révisions. Il ne clôt pas le programme global
+d’identité et d’attribution ci-dessous ni la qualification de la pertinence documentaire.
+
 Ce cadrage ne réduit pas les critères de rétention, ne désactive pas Dream et n'introduit
 ni quota de documents, ni taille maximale de rédaction supplémentaire, ni purge ou fusion
 automatique du stock existant. Ne pas créer un nouveau juge, outil ou modèle de décision

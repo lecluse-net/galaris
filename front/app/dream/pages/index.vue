@@ -504,7 +504,7 @@
                       <q-badge
                         outline
                         :color="operation.action === 'LINK' ? 'secondary' : 'primary'"
-                        :label="t(operation.action === 'LINK' ? 'dream.detail.linkAction' : 'dream.detail.createAction')"
+                        :label="t(`dream.detail.${(operation.action ?? 'CREATE').toLowerCase()}Action`)"
                         class="q-mr-sm"
                       />
                       <span v-if="operation.action !== 'LINK'" class="text-weight-medium">
@@ -918,6 +918,9 @@ function isMemoryExtractionOperation(value: unknown): value is MemoryExtractionO
   if (!value || typeof value !== 'object') return false
   const candidate = value as Record<string, unknown>
   if (candidate.action === 'CREATE') return isProposedMemory(value)
+  if (candidate.action === 'ENRICH' || candidate.action === 'CONTRADICT') {
+    return isProposedMemory(value) && typeof candidate.target_memory_id === 'string'
+  }
   return candidate.action === 'LINK' && typeof candidate.target_memory_id === 'string'
 }
 

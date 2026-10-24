@@ -378,9 +378,11 @@ const unreadCount = computed(() => (
 ))
 const visibleUnreadConversations = computed(() => unreadConversations.value.slice(0, 5))
 const unreadCountLabel = computed(() => t('index.actionCenter.attention.unreadCount', { count: unreadCount.value }))
-const attentionSummary = computed(() => unreadCount.value > 0
-  ? t('index.actionCenter.summaryUnread', { count: unreadCount.value })
-  : t('index.actionCenter.summaryClear'))
+const attentionSummary = computed(() => {
+  if (unreadLoading.value || !privilegeStore.loaded) return t('index.actionCenter.attention.loading')
+  if (unreadError.value) return t('index.actionCenter.attention.errorText')
+  return unreadCount.value > 0 ? t('index.actionCenter.summaryUnread', { count: unreadCount.value }) : t('index.actionCenter.summaryClear')
+})
 const recentActivities = computed(() => (
   [...conversationActivities.value, ...domainActivities.value]
     .sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp))

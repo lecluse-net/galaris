@@ -29,7 +29,7 @@ import { computed } from 'vue'
 import type { EvaluationValue } from '../services/mechanismEvaluationService'
 
 interface DecisionOperationPreview {
-  action: 'CREATE' | 'LINK'
+  action: 'CREATE' | 'LINK' | 'ENRICH' | 'CONTRADICT'
   label: string
   meta: string
   reason: string
@@ -58,14 +58,14 @@ const operations = computed<DecisionOperationPreview[]>(() => {
   if (!Array.isArray(rawOperations)) return []
   return rawOperations.flatMap<DecisionOperationPreview>(rawOperation => {
     const operation = asRecord(rawOperation)
-    if (operation.action === 'LINK') {
+    if (operation.action === 'LINK' || operation.action === 'ENRICH' || operation.action === 'CONTRADICT') {
       const targetId = text(operation.target_memory_id)
       const targetLabel = memoryLabels.value.get(targetId) || targetId || '—'
       return [{
-        action: 'LINK' as const,
+        action: operation.action,
         label: targetLabel,
         meta: targetId && targetLabel !== targetId ? targetId : '',
-        reason: text(operation.reason),
+        reason: text(operation.content) || text(operation.reason),
         targetId,
       }]
     }

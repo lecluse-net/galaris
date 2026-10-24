@@ -105,6 +105,8 @@ class MemoryExtractionExistingMemory(BaseModel):
     keywords: list[DreamKeyword] = Field(default_factory=list, max_length=20)
     score: float = Field(default=0.0)
     temporal: MemoryTemporalAnchor | None = None
+    revision: int | None = Field(default=None, ge=1)
+    can_enrich: bool = False
 
 
 class MemoryExtractionEvidence(BaseModel):
@@ -200,8 +202,39 @@ class MemoryLinkOperation(BaseModel):
     evidence_refs: list[str] = Field(default_factory=list, max_length=20)
 
 
+class MemoryEnrichOperation(BaseModel):
+    """Add a complementary fact without replacing any existing content."""
+
+    action: Literal["ENRICH"] = "ENRICH"
+    target_memory_id: str = Field(min_length=1, max_length=100)
+    expected_revision: int = Field(ge=1)
+    temporal: MemoryTemporalAnchor | None = None
+    title: str = Field(min_length=1, max_length=500)
+    content: str = Field(min_length=1, max_length=8_000)
+    keywords: list[DreamKeyword] = Field(default_factory=list, max_length=20)
+    retention_reason: MemoryRetentionReason = "unspecified"
+    future_utility: MemoryFutureUtility = "low"
+    reason: str = Field(default="", max_length=500)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=20)
+
+
+class MemoryContradictOperation(BaseModel):
+    """Preserve an incompatible fact separately and link its provenance."""
+
+    action: Literal["CONTRADICT"] = "CONTRADICT"
+    target_memory_id: str = Field(min_length=1, max_length=100)
+    title: str = Field(min_length=1, max_length=500)
+    content: str = Field(min_length=1, max_length=8_000)
+    keywords: list[DreamKeyword] = Field(default_factory=list, max_length=20)
+    retention_reason: MemoryRetentionReason = "unspecified"
+    future_utility: MemoryFutureUtility = "low"
+    temporal: MemoryTemporalAnchor | None = None
+    reason: str = Field(default="", max_length=500)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=20)
+
+
 MemoryExtractionOperation = Annotated[
-    Union[MemoryCreateOperation, MemoryLinkOperation],
+    Union[MemoryCreateOperation, MemoryLinkOperation, MemoryEnrichOperation, MemoryContradictOperation],
     Field(discriminator="action"),
 ]
 
@@ -213,7 +246,7 @@ class MemoryExtractionDecision(BaseModel):
         default_factory=lambda: list[MemoryExtractionOperation](),
         max_length=12,
         description=(
-            "One CREATE or LINK per qualifying durable fact after actively checking "
+            "One CREATE, LINK, ENRICH or CONTRADICT per qualifying durable fact after actively checking "
             "the entire source; empty only when no fact qualifies."
         ),
     )
@@ -240,7 +273,7 @@ class MemoryExtractionDecision(BaseModel):
                 action = raw_action.strip().upper()
                 if action == "IGNORE":
                     continue
-                if action in {"CREATE", "LINK"}:
+                if action in {"CREATE", "LINK", "ENRICH", "CONTRADICT"}:
                     operation["action"] = action
             elif "target_memory_id" in operation:
                 operation["action"] = "LINK"
@@ -251,12 +284,20 @@ class MemoryExtractionDecision(BaseModel):
         normalized["operations"] = operations
         return normalized
 
+    @model_validator(mode="after")
+    def one_enrichment_per_revision(self) -> MemoryExtractionDecision:
+        targets = [operation.target_memory_id for operation in self.operations
+                   if isinstance(operation, MemoryEnrichOperation)]
+        if len(targets) != len(set(targets)):
+            raise ValueError("Combine complementary facts into one ENRICH per target revision")
+        return self
+
 
 class MemoryExtractionAppliedOperation(BaseModel):
     """Durable proof that one checkpointed memory operation was applied."""
 
     operation_index: int = Field(ge=0, le=11)
-    action: Literal["CREATE", "LINK"]
+    action: Literal["CREATE", "LINK", "ENRICH", "CONTRADICT"]
     memory_id: UUID
     status: Literal["stored", "merged"]
 

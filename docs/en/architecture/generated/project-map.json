@@ -21354,6 +21354,8 @@
       },
       {
         "files": [
+          "front/app/onboarding/components/FirstMission.vue",
+          "front/app/onboarding/services/firstMissionService.ts",
           "front/app/onboarding/services/onboardingService.ts"
         ],
         "source": "app/onboarding",
@@ -21361,6 +21363,7 @@
       },
       {
         "files": [
+          "front/app/onboarding/components/FirstMission.vue",
           "front/app/onboarding/components/WelcomePage.vue"
         ],
         "source": "app/onboarding",
@@ -21375,6 +21378,7 @@
       },
       {
         "files": [
+          "front/app/onboarding/components/FirstMission.vue",
           "front/app/onboarding/components/WelcomePage.vue"
         ],
         "source": "app/onboarding",

@@ -147,6 +147,25 @@ application métier hors connexion.
 Le [guide PWA détaillé](pwa.md) décrit l’installation pas à pas, les mises à jour, la sécurité
 de la session et les solutions aux problèmes courants.
 
+## Obtenir un premier document accompagné
+
+Sur la page Welcome (`/welcome`), **Réaliser votre première mission** est proposé après la configuration
+indispensable, choisissez un agent actif auquel vous avez accès en Discussion, puis une synthèse
+de notes, une présentation de projet ou un plan de travail. Les exemples sont fictifs et modifiables.
+Le parcours vérifie les droits de création et d’envoi en Discussion, de suivi des tâches et de
+lecture des Documents avant de proposer le lancement.
+Vérifiez la demande puis cliquez sur **Lancer la mission** ; l’appel utilise vos modèles et leurs coûts.
+Galaris prépare une conversation et envoie une demande de Task durable avec une identité stable.
+Un réessai d’envoi réutilise cette identité. Un échec de création de conversation peut nécessiter
+de vérifier Discussion avant de recommencer.
+
+Le suivi reste disponible après un retour sur cette page dans le même onglet navigateur. Les
+questions, autorisations, pauses et erreurs se traitent dans la discussion ou le suivi habituel.
+Le parcours distingue une exécution terminée d’un document associé disponible. Ouvrez le document
+pour vérifier son contenu ; un succès technique ne vaut pas validation humaine. Si le document
+manque, vérifiez les outils, les accès et le résultat dans la discussion, puis actualisez le suivi.
+Ce parcours ne donne aucun droit supplémentaire et n’active aucun outil bloqué.
+
 ## Créer sa première tâche dans l’interface
 
 1. Ouvrez **Suivi d’exécution → Tâches**, puis **Nouvelle tâche**.

@@ -2,6 +2,25 @@
 
 # Functional guarantees catalogue
 
+## Home and first mission
+
+The component `work-experience.spec.mjs` covers role changes,
+late responses, retrying a mission message with the same identity and reopening progress.
+`e2e/specs/work-experience.spec.mjs` exercises real APIs, permissions and persistence through
+the saved document and reopening it on Welcome on desktop and mobile; the model is scripted.
+These guarantees do not measure a real provider's quality.
+The work follow-up block and its dedicated projection have been removed: Home retains
+Recent activity without a second Task and result list.
+The global search page and its dedicated tests have been removed; search remains in the
+resource screens. The first-mission journey remains covered on Welcome.
+
+`app/dream/tests/test_memory_extraction.py` covers ENRICH and CONTRADICT: preserved content and
+keywords, provenance, replay and stale revision rejection. Its legacy Document scenarios now
+create resources through the Document domain and check that personal provenance remains in a
+private memory, following the Memory/Document separation.
+The central `app/chat/tests/test_authorization.py` check also covers Document privileges on
+conversation listing and creation while preserving the room access assertion.
+
 `app/tools/tests/test_management_scopes.py` protects connection-local Process,
 ToolAdmin, Goal and Galaris Admin scopes: no implicit delegation, filtering before
 pagination, denial of out-of-scope assignments and revocation after team removal.

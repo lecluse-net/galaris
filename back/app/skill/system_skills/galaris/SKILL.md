@@ -1296,6 +1296,14 @@ revision only after reading all content needed to preserve it, following paginat
 Neither a shorter document nor a full rewrite is a goal in itself; leave useful unaffected
 content in place. This editorial guidance does not call for compacting Dataset entries or code.
 
+Resolve continuity from the current conversation, its linked Tasks and exact resource references
+before broadening a search. Read candidates before deciding that their title describes the same
+work. Keep complementary information in the relevant existing document, with its sources and
+qualifications. Preserve both sides of an unresolved contradiction and identify their sources;
+recency alone is not proof. If several candidates fit equally well, ask which one to update.
+Respect resource rights and the admitted write scope throughout. Never recreate an inaccessible
+document to bypass a refusal, or claim a successful update before its write receipt.
+
 New documents are private. Before handing a document to an intended human, agent or team, inspect
 `document_sharing` and grant that recipient `read` access, or `edit` for collaboration, using
 `document_share` and the returned recipient ID and `lock_version`. Only claim sharing after the

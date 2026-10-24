@@ -89,6 +89,8 @@ def _memory_extraction_metrics(expected: Any, actual: Any) -> dict[str, Any]:
         "expected_decision": expected_decision,
         "create_count": actions.count("CREATE"),
         "link_count": actions.count("LINK"),
+        "enrich_count": actions.count("ENRICH"),
+        "contradict_count": actions.count("CONTRADICT"),
         "ignore": not actions,
         "false_link_count": len(actual_links - expected_links),
         "false_link_ids": sorted(actual_links - expected_links),

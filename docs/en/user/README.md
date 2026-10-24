@@ -125,6 +125,23 @@ The address must be provided over HTTPS by the administrator. The PWA caches its
 
 The [detailed PWA guide](pwa.md) describes installation step by step, updates, session security, and solutions to common problems.
 
+## Complete a guided first document
+
+On Welcome (`/welcome`), **Complete your first mission** is available after required setup. Choose an
+active agent you can reach in Discussion, then a notes summary, project brief or work plan.
+Examples are fictional and editable. The journey checks Discussion creation and sending, Task monitoring and Document reading
+permissions before offering to start. Review the request and click **Start mission**; it uses
+your models and their costs. Galaris prepares a conversation and sends a durable Task request
+with a stable identity. Retrying a send reuses that identity. If conversation creation fails,
+check Discussion before trying again.
+
+Progress remains available when returning in the same browser tab. Handle questions, approvals,
+pauses and errors in the discussion or usual monitoring. The journey distinguishes finished
+execution from an available associated document. Open the document to check its content;
+technical success does not mean human acceptance. If it is missing, check tools, access and
+the discussion result, then refresh progress. This journey grants no extra rights and does not
+enable blocked tools.
+
 ## Creating Your First Task in the Interface
 
 1. Open **Execution Tracking → Tasks**, then **New Task**.

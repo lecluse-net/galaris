@@ -554,7 +554,7 @@ async def _apply_acquisition_record(
     elif record.action == "update":
         if record.target_item_id is None:
             raise MemoryConflictError("An update acquisition requires a target memory.")
-        target, _content, _access, _content_type, _media_type = await get_item(
+        target, old_content, _access, _content_type, old_media_type = await get_item(
             record.target_item_id,
             agent_id=record.agent_id,
         )
@@ -562,14 +562,26 @@ async def _apply_acquisition_record(
             raise MemoryConflictError(
                 "Memory acquisition cannot edit a working document."
             )
+        content = record.content
+        keywords = list(record.keywords)
+        if record.metadata_.get("memory_extraction_action") == "ENRICH":
+            if target.source_managed or target.read_only or target.owner_agent_id != record.agent_id:
+                raise MemoryConflictError("Only this agent's editable personal memories can be enriched.")
+            revision = _target_revision(record.metadata_)
+            if revision is None or revision != target.revision:
+                raise MemoryConflictError("The memory changed before enrichment; reconsider the current revision.")
+            if record.metadata_.get("temporal") != target.temporal:
+                raise MemoryConflictError("Enrichment cannot change a memory's temporal scope.")
+            content = convert_to_html(old_content.decode("utf-8"), old_media_type) + "\n" + record.content
+            keywords = list(dict.fromkeys([*target.keywords, *record.keywords]))[:50]
         metadata = dict(target.metadata_)
         language = str(record.metadata_.get("language") or "").strip().lower()
         if language in {"en", "fr"}:
             metadata["language"] = language
         update_data = MemoryItemUpdate(
             expected_revision=_target_revision(record.metadata_),
-            payload=MemoryPayload(text=record.content),
-            keywords=list(record.keywords),
+            payload=MemoryPayload(text=content),
+            keywords=keywords,
             metadata=metadata,
         )
         if "temporal" in record.metadata_:
