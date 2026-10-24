@@ -5,6 +5,12 @@
 
 ## Décision
 
+L'administration humaine de l'onglet personnel utilise les mêmes mutations de package
+que MCP, sous l'identité humaine réelle et son périmètre de gestion, sans usurper celle
+du propriétaire. Édition de libellé/fichiers texte, activation et suppression exigent
+`SKILL_EDIT` et la révision lue. La conversion demeure réservée au management global,
+avec confirmation, choix du code et reçu rejouable. Un conflit conserve le brouillon.
+
 `app.skill` possède les packages personnels éditables, distincts des skills appris,
 de Memory et des Documents. `owner_agent_id` est une FK nullable : `NULL` désigne un
 générique. L'auteur agent reste indépendant. La suppression d'un agent conserve sa
@@ -66,6 +72,26 @@ la reprise après interruption. Le rescan ignore les publications non confirmée
 mutations verrouillent les identités ; les publications génériques partagent un verrou
 transactionnel de catalogue entre processus.
 
+La commande HTTP humaine inverse `assign-ownership` exige l'édition des compétences et la
+gestion globale des agents. Elle transforme un générique non système en personnel d'un unique
+agent actif. Elle conserve ID, auteur et fichiers ; supprime tous les `AgentSkill`, l'activation
+globale et le rattachement à une catégorie, puis crée la seule activation du propriétaire.
+Les droits de la catégorie elle-même sont conservés pour ses autres compétences. Les collisions
+chez le propriétaire et les dépassements de quota sont refusés sans écrasement. Le reçu existant
+porte désormais une direction, `release` par défaut pour les anciens reçus, ou `assign`.
+Les deux sens partagent staging et reprise ; une nouvelle conversion termine d'abord le nettoyage
+des précédentes. Les mutations du catalogue et les ajouts de matrice se sérialisent avec la
+conversion afin de ne pas recréer d'autorisation étrangère après le passage en personnel.
+
+Le changement de propriétaire personnel est une commande humaine révisionnée distincte,
+`POST /skills/personal/{id}/owner`. L'humain doit gérer le propriétaire source et le destinataire
+actif, et posséder le droit d'édition des compétences. L'opération conserve ID, auteur et contenu,
+retire l'activation de l'ancien propriétaire et crée celle du seul nouveau propriétaire. Les
+quotas et collisions sont vérifiés chez le destinataire. Le staging existant enregistre aussi
+l'ancien propriétaire pour restaurer son espace privé en cas d'interruption ; les anciens
+marqueurs sans ce champ restent compatibles. Le libellé/contenu se sauvegarde avant la confirmation
+du transfert, pour ne pas valider partiellement un brouillon en cas de collision ou refus d'accès.
+
 Les harnais et les projections incluent les personnels actifs du seul propriétaire.
 Des noms runtime déterministes évitent les collisions générique/personnel/appris sans
 renommer leurs sources. La réconciliation s'applique avant la prochaine exécution,
@@ -74,9 +100,9 @@ Les lectures et mutations futures revérifient néanmoins les droits courants.
 
 L'onglet **Skills personnels**, indépendant de Dream, expose liste paginée, recherche,
 filtre propriétaire et lecture des fichiers dans le périmètre humain courant. Il ne
-prend jamais l'identité de l'agent filtré. L'édition humaine des fichiers et les commandes
-de suppression/conversion ne disposent pas encore de boutons dans cet onglet ; la
-conversion a une route HTTP globale et le parcours agent est exposé par MCP.
+prend jamais l'identité de l'agent filtré. L'édition humaine des fichiers et du libellé,
+l'activation et la suppression utilisent les mutations révisionnées du domaine. La
+conversion globale utilise sa route HTTP avec un reçu conservé pendant les réessais.
 
 La configuration des portées se trouve dans **Tools → Connexions**, dans le formulaire
 de la connexion. L'onglet personnel ne contient plus de délégation. La précision utilisateur

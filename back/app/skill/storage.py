@@ -786,20 +786,22 @@ def _release_tree_digest(base: Path) -> str:
     return digest.hexdigest()
 
 
-def _prepare_ownership_release(operation: str, skill_id: int, owner: int, code: str, target_code: str) -> None:
+def _prepare_ownership_release(operation: str, skill_id: int, owner: int, code: str, target_code: str,
+                               *, direction: Literal['release', 'assign'] = 'release', source_owner: int | None = None) -> None:
     import json
     from uuid import UUID
     operation = str(UUID(operation))
-    if target_code == 'personnal' or is_system_code(target_code):
+    if direction == 'release' and (target_code == 'personnal' or is_system_code(target_code)):
         raise ValueError('Reserved generic skill code')
-    target = skill_dir(target_code)
+    source_owner, target_owner = (owner, None) if direction == 'release' else (source_owner, owner)
+    target = skill_dir(target_code, owner_agent_id=target_owner)
     if target.exists():
-        raise FileExistsError('Generic skill code already exists on disk')
+        raise FileExistsError('Destination skill code already exists on disk')
     base = ensure_root() / '.staging' / 'releases' / operation
     base.mkdir(parents=True, exist_ok=False)
     prepared = base / 'prepared'
     prepared.mkdir()
-    for relative, source in iter_skill_files(code, owner_agent_id=owner):
+    for relative, source in iter_skill_files(code, owner_agent_id=source_owner):
         destination = prepared / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
@@ -813,21 +815,25 @@ def _prepare_ownership_release(operation: str, skill_id: int, owner: int, code: 
             + '---\n' + '\n'.join(lines[end + 1:]) + '\n', encoding='utf-8')
     metadata_from_markdown((prepared / 'SKILL.md').read_text(encoding='utf-8'), expected_code=target_code)
     state: dict[str, object] = {'operation': operation, 'skill_id': skill_id, 'owner': owner,
-        'code': code, 'target_code': target_code, 'digest': _release_tree_digest(prepared)}
+        'code': code, 'target_code': target_code, 'direction': direction, 'source_owner': source_owner,
+        'digest': _release_tree_digest(prepared)}
     marker = base / 'state.pending'
     marker.write_text(json.dumps(state), encoding='utf-8')
     marker.replace(base / 'state.json')
-    skill_dir(code, owner_agent_id=owner).replace(base / 'original')
+    skill_dir(code, owner_agent_id=source_owner).replace(base / 'original')
     if target.exists():
-        raise FileExistsError('Generic skill code appeared concurrently')
+        raise FileExistsError('Destination skill code appeared concurrently')
+    target.parent.mkdir(parents=True, exist_ok=True)
     prepared.replace(target)
 
 
-def prepare_ownership_release(operation: str, skill_id: int, owner: int, code: str, target_code: str) -> None:
+def prepare_ownership_release(operation: str, skill_id: int, owner: int, code: str, target_code: str,
+                              *, direction: Literal['release', 'assign'] = 'release', source_owner: int | None = None) -> None:
     from uuid import UUID
     base = ensure_root() / '.staging' / 'releases' / str(UUID(operation))
     try:
-        _prepare_ownership_release(operation, skill_id, owner, code, target_code)
+        _prepare_ownership_release(operation, skill_id, owner, code, target_code,
+                                   direction=direction, source_owner=source_owner)
     except BaseException as primary:
         if base.exists() and not (base / 'state.json').exists():
             try:
@@ -846,19 +852,21 @@ def recover_ownership_release(operation: str, *, committed: bool, deleted: bool 
         return
     state = cast(dict[str, object], json.loads(marker.read_text(encoding='utf-8')))
     code, target_code, owner = str(state['code']), str(state['target_code']), int(str(state['owner']))
-    target = skill_dir(target_code)
+    old_owner = int(str(state['source_owner'])) if state.get('source_owner') is not None else None
+    source_owner, target_owner = (owner, None) if state.get('direction', 'release') == 'release' else (old_owner, owner)
+    target = skill_dir(target_code, owner_agent_id=target_owner)
     original = base / 'original'
     if not committed:
         if target.exists():
             if _release_tree_digest(target) != state['digest']:
-                raise RuntimeError('Ownership release recovery found changed generic files; originals retained')
+                raise RuntimeError('Ownership recovery found changed destination files; originals retained')
             shutil.rmtree(target)
-        destination = skill_dir(code, owner_agent_id=owner)
+        destination = skill_dir(code, owner_agent_id=source_owner)
         if original.exists():
             if destination.exists():
-                raise RuntimeError('Ownership release recovery found a conflicting personal directory')
+                raise RuntimeError('Ownership recovery found a conflicting source directory')
             destination.parent.mkdir(parents=True, exist_ok=True)
             original.replace(destination)
     elif not target.exists() and not deleted:
-        raise RuntimeError('Committed ownership release is missing its generic files; originals retained')
+        raise RuntimeError('Committed ownership conversion is missing its destination files; originals retained')
     shutil.rmtree(base)

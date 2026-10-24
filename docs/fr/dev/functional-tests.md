@@ -7,6 +7,23 @@ Il décrit les garanties couvertes par les suites ; leur présence ne signifie p
 ont été exécutées sur votre checkout. Pour choisir une commande et comprendre sa portée,
 consultez la [méthode de test](testing.md).
 
+## Compétences personnelles
+
+Les mutations humaines des compétences personnelles sont couvertes par
+`app/skill/tests/test_agent_reads.py` (droits, périmètre, révisions, contenu, activation
+et suppression), `skills.spec.mjs` (brouillon conservé après conflit et reçu de conversion
+réutilisé) et `e2e/specs/personal-skills.spec.mjs` (application assemblée, persistance,
+réouverture, conversion et suppression sur ordinateur et mobile).
+Les menus des listes génériques/personnelles sont exercés par `skills.spec.mjs` : choix
+d'action au clic droit, lecture au clic gauche, accès clavier, classement, activation, sélection
+standard du propriétaire et respect des droits. Les consommateurs
+existants du composant partagé restent couverts par `context-menus.spec.mjs`.
+`app/skill/tests/test_ownership_assignment.py` vérifie le passage en personnel : un seul
+propriétaire actif, révocation de tous les anciens droits, conservation des fichiers et de
+l'auteur, collisions, quotas, rejeu sans réactivation et reprise après panne ou interruption.
+Le parcours HTTP vérifie aussi le transfert entre deux propriétaires gérés, le refus des cibles
+hors périmètre, les homonymes du destinataire et la restauration après une panne de déplacement.
+
 ## Accueil et première mission
 
 `work-experience.spec.mjs` côté composants vérifie

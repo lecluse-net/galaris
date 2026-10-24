@@ -274,11 +274,11 @@ async def create_package(
 
 
 async def set_package_enabled(
-    skill_id: int, enabled: bool, *, actor_agent_id: int, expected_revision: int,
+    skill_id: int, enabled: bool, *, actor_agent_id: int | None, expected_revision: int,
     administration: bool = False,
 ) -> SkillPackageRef:
     record = await _package(skill_id, lock=True)
-    await _authorize(record, actor_agent_id, write=True, administration=administration)
+    await _authorize_mutation(record, actor_agent_id, administration)
     if record.owner_agent_id is None:
         raise ValueError("Generic skills use the authorization cascade")
     if record.revision != expected_revision:
@@ -352,25 +352,43 @@ async def personal_owners(actor_agent_id: int, offset: int, limit: int) -> list[
     return [owner for owner in owners if owner is not None]
 
 
-async def _mutation_record(skill_id: int, actor_agent_id: int, administration: bool) -> Skill:
+async def _authorize_mutation(record: Skill, actor_agent_id: int | None, administration: bool) -> None:
+    if actor_agent_id is not None:
+        await _authorize(record, actor_agent_id, write=True, administration=administration)
+        return
+    from app.agent import current_management_scope
+    from core.user import get_current_user_id
+    if get_current_user_id() is None:
+        raise PermissionError("An authenticated human is required")
+    scope = await current_management_scope()
+    if record.owner_agent_id is None or (scope.agent_ids is not None and record.owner_agent_id not in scope.agent_ids):
+        raise FileNotFoundError("Personal skill not found")
+    logger.info("Human skill mutation authorized: actor_user_id={} skill_id={} revision={}",
+                get_current_user_id(), record.id, record.revision)
+
+
+async def _mutation_record(skill_id: int, actor_agent_id: int | None, administration: bool) -> Skill:
     record = await _package(skill_id)
     if record.owner_agent_id is not None:
         # The owner lock serializes the cumulative budget across packages/workers.
         await get_db().scalar(select(Agent.id).where(Agent.id == record.owner_agent_id)
                               .with_for_update().execution_options(include_historized=True))
     record = await _package(skill_id, lock=True)
-    await _authorize(record, actor_agent_id, write=True, administration=administration)
+    await _authorize_mutation(record, actor_agent_id, administration)
     return record
 
 
 async def mutate_file(
-    skill_id: int, path: str, *, actor_agent_id: int,
+    skill_id: int, path: str, *, actor_agent_id: int | None,
     operation: Literal["create", "write", "append", "delete", "move"],
     content: bytes = b"", destination: str | None = None,
     overwrite: bool = False, expected_revision: int | None = None,
     administration: bool = False,
     expected_identity: SkillPackageRef | None = None,
+    label: str | None = None,
 ) -> storage.SkillFileData:
+    if label is not None and (not label.strip() or len(label) > 255):
+        raise ValueError("Invalid skill label")
     record = await _mutation_record(skill_id, actor_agent_id, administration)
     if expected_identity is not None and (record.code, record.owner_agent_id) != (expected_identity.code, expected_identity.owner_agent_id):
         raise SkillRevisionConflict("Skill package identity changed")
@@ -400,6 +418,8 @@ async def mutate_file(
             if destination is None:
                 raise ValueError("Move destination is required")
             result = await storage.move_file(code, path, destination, overwrite=overwrite, owner_agent_id=owner)
+        if label is not None:
+            record.label = label.strip()
         record.revision += 1
         await get_db().commit()
     except BaseException as primary:
@@ -422,7 +442,7 @@ async def mutate_file(
 
 
 async def update_package(
-    skill_id: int, label: str, *, actor_agent_id: int, expected_revision: int,
+    skill_id: int, label: str, *, actor_agent_id: int | None, expected_revision: int,
     administration: bool = False,
 ) -> SkillPackageRef:
     if not label.strip() or len(label) > 255:
@@ -437,7 +457,7 @@ async def update_package(
 
 
 async def delete_package(
-    skill_id: int, *, actor_agent_id: int, expected_revision: int,
+    skill_id: int, *, actor_agent_id: int | None, expected_revision: int,
     administration: bool = False,
 ) -> SkillPackageRef:
     record = await _mutation_record(skill_id, actor_agent_id, administration)
@@ -471,18 +491,62 @@ async def release_ownership(
     actor_agent_id: int | None = None, actor_user_id: int | None = None,
     new_code: str | None = None,
 ) -> dict[str, object]:
+    return await _change_ownership(skill_id, expected_revision=expected_revision, operation_id=operation_id,
+        actor_agent_id=actor_agent_id, actor_user_id=actor_user_id, new_code=new_code, direction="release")
+
+
+async def assign_ownership(
+    skill_id: int, *, owner_agent_id: int, expected_revision: int, operation_id: UUID,
+    actor_user_id: int, new_code: str | None = None,
+) -> dict[str, object]:
+    """Privatize a library package, revoking every previous authorization."""
+    return await _change_ownership(skill_id, expected_revision=expected_revision, operation_id=operation_id,
+        actor_user_id=actor_user_id, new_code=new_code, direction="assign", target_owner=owner_agent_id)
+
+
+async def transfer_ownership(
+    skill_id: int, *, owner_agent_id: int, expected_revision: int, operation_id: UUID,
+    new_code: str | None = None,
+) -> dict[str, object]:
+    """Human transfer between two managed owners, preserving private ownership."""
+    from core.user import get_current_user_id
+    actor = get_current_user_id()
+    if actor is None:
+        raise PermissionError("An authenticated human is required")
+    return await _change_ownership(skill_id, expected_revision=expected_revision, operation_id=operation_id,
+        actor_user_id=actor, new_code=new_code, direction="assign", target_owner=owner_agent_id, personal_only=True)
+
+
+async def _authorize_transfer(record: Skill, target_owner: int | None) -> None:
+    from app.agent import current_management_scope
+    await _authorize_mutation(record, None, False)
+    if target_owner is None or not (await current_management_scope()).allows(target_owner):
+        raise FileNotFoundError("Agent not found")
+
+
+async def _change_ownership(
+    skill_id: int, *, expected_revision: int, operation_id: UUID,
+    direction: Literal["release", "assign"], target_owner: int | None = None,
+    actor_agent_id: int | None = None, actor_user_id: int | None = None, new_code: str | None = None,
+    personal_only: bool = False,
+) -> dict[str, object]:
     """Explicit global conversion; replay returns its receipt without changing grants."""
     if (actor_agent_id is None) == (actor_user_id is None):
         raise PermissionError("Exactly one authenticated release actor is required")
     if actor_agent_id is not None:
         await require_global_administration(actor_agent_id)
+    if personal_only:
+        await _authorize_transfer(await _package(skill_id), target_owner)
     db = get_db()
     await lock_catalogue()
     receipt = await db.get(SkillOwnershipRelease, operation_id)
     if receipt is not None:
-        if (receipt.skill_id != skill_id or receipt.actor_agent_id != actor_agent_id
+        if personal_only:
+            await _authorize_transfer(await _package(skill_id), target_owner)
+        if (receipt.direction != direction or receipt.skill_id != skill_id or receipt.actor_agent_id != actor_agent_id
                 or receipt.actor_user_id != actor_user_id or receipt.expected_revision != expected_revision
-                or receipt.requested_code != new_code):
+                or receipt.requested_code != new_code
+                or (direction == "assign" and receipt.owner_agent_id != target_owner)):
             raise SkillRevisionConflict("Ownership release operation ID was already used differently")
         cleanup_pending = False
         try:
@@ -494,45 +558,79 @@ async def release_ownership(
             cleanup_pending = True
             logger.exception("Ownership release cleanup pending: operation_id={}", operation_id)
         return {"operation_id": str(operation_id), "skill_id": skill_id, "code": receipt.target_code,
-            "uri": f"galaris://skill/{receipt.target_code}/", "revision": receipt.result_revision,
+            "uri": (f"galaris://skill/{receipt.target_code}/" if direction == "release" else
+                    f"galaris://skill/personnal/{receipt.owner_agent_id}/{receipt.target_code}/"),
+            "revision": receipt.result_revision,
             "cleanup_pending": cleanup_pending}
+    from .ownership_recovery import recover_pending_ownership
+    await recover_pending_ownership(db)
+    if direction == "assign":
+        if target_owner is None:
+            raise ValueError("A personal skill requires one owner")
+        await _actor(target_owner, lock=True)
     record = await _package(skill_id)
     if record.owner_agent_id is not None:
         await db.scalar(select(Agent.id).where(Agent.id == record.owner_agent_id)
                         .with_for_update().execution_options(include_historized=True))
     record = await _package(skill_id, lock=True)
     if await db.get(SkillOwnershipRelease, operation_id) is not None:
-        return await release_ownership(skill_id, expected_revision=expected_revision, operation_id=operation_id,
-            actor_agent_id=actor_agent_id, actor_user_id=actor_user_id, new_code=new_code)
+        return await _change_ownership(skill_id, expected_revision=expected_revision, operation_id=operation_id,
+            actor_agent_id=actor_agent_id, actor_user_id=actor_user_id, new_code=new_code,
+            direction=direction, target_owner=target_owner, personal_only=personal_only)
     if actor_agent_id is not None:
         await _authorize(record, actor_agent_id, write=True, administration=True)
-    if record.owner_agent_id is None or record.system:
-        raise ValueError("Only a personal user skill can release ownership")
+    if personal_only:
+        await _authorize_transfer(record, target_owner)
+    if record.system or (not personal_only and (direction == "release") != (record.owner_agent_id is not None)):
+        raise ValueError("Only a user skill with the opposite ownership can be converted")
+    if personal_only and record.owner_agent_id == target_owner:
+        raise ValueError("Choose a different personal owner")
     if record.revision != expected_revision:
         raise SkillRevisionConflict("Skill package revision conflict")
-    owner, code = record.owner_agent_id, record.code
+    source_owner, code = record.owner_agent_id, record.code
+    owner = source_owner if direction == "release" else target_owner
+    assert owner is not None
+    destination_owner = None if direction == "release" else owner
     target = storage.validate_code(new_code or code)
-    if target == "personnal" or storage.is_system_code(target):
+    if direction == "release" and (target == "personnal" or storage.is_system_code(target)):
         raise ValueError("Reserved generic skill code")
-    if await db.scalar(select(Skill.id).where(Skill.owner_agent_id.is_(None), Skill.code == target)
+    if await db.scalar(select(Skill.id).where(Skill.owner_agent_id == destination_owner, Skill.code == target)
                        .execution_options(include_historized=True)) is not None:
-        raise FileExistsError("Generic skill code already exists; choose another code")
+        raise FileExistsError("Destination skill code already exists; choose another code")
+    personal_size = 0
+    if direction == "assign":
+        records = (await db.scalars(select(Skill).where(Skill.owner_agent_id == owner))).all()
+        if len(records) >= MAX_PERSONAL_PACKAGES:
+            raise ValueError("Personal skill package budget exceeded")
+        personal_size = sum(storage.inspect(item.code, owner_agent_id=owner).total_size for item in records)
+        if personal_size + storage.inspect(code, owner_agent_id=source_owner).total_size > MAX_PERSONAL_TOTAL_SIZE:
+            raise ValueError("Personal skill storage budget exceeded")
     try:
         await complete_io(storage.prune_incomplete_ownership_staging)
         await complete_io(storage.recover_ownership_release, str(operation_id), committed=False)
-        await complete_io(storage.prepare_ownership_release, str(operation_id), skill_id, owner, code, target)
+        if direction == "release":
+            await complete_io(storage.prepare_ownership_release, str(operation_id), skill_id, owner, code, target)
+        else:
+            await complete_io(storage.prepare_ownership_release, str(operation_id), skill_id, owner, code, target,
+                              direction="assign", source_owner=source_owner)
+            if personal_size + storage.inspect(target, owner_agent_id=owner).total_size > MAX_PERSONAL_TOTAL_SIZE:
+                raise ValueError("Personal skill storage budget exceeded")
         record.assignments.clear()
-        record.owner_agent_id = None
+        await db.flush()
+        record.owner_agent_id = destination_owner
         record.code = target
         record.category_id = None
         record.global_enabled = False
         record.revision += 1
-        db.add(SkillOwnershipRelease(id=operation_id, skill_id=skill_id, actor_agent_id=actor_agent_id,
+        db.add(SkillOwnershipRelease(id=operation_id, direction=direction, skill_id=skill_id, actor_agent_id=actor_agent_id,
             actor_user_id=actor_user_id, owner_agent_id=owner, source_code=code, target_code=target,
             requested_code=new_code,
             expected_revision=expected_revision, result_revision=record.revision))
         await db.flush()
-        await skill_service.ensure_assignment_matrix(skill_id=skill_id)
+        if direction == "release":
+            await skill_service.ensure_assignment_matrix(skill_id=skill_id)
+        else:
+            record.assignments.append(AgentSkill(agent_id=owner, active=True))
         revision = record.revision
         await db.commit()
         await db.refresh(record, attribute_names=["assignments"])
@@ -544,9 +642,9 @@ async def release_ownership(
                                        .execution_options(include_historized=True))).one_or_none()
             if actual is None:
                 raise RuntimeError("Ownership release outcome is unknown; originals retained")
-            if actual == (owner, code):
+            if actual == (source_owner, code):
                 await complete_io(storage.recover_ownership_release, str(operation_id), committed=False)
-            elif actual == (None, target):
+            elif actual == (destination_owner, target):
                 await complete_io(storage.recover_ownership_release, str(operation_id), committed=True)
             else:
                 raise RuntimeError("Ownership release has a conflicting outcome; originals retained")
@@ -562,4 +660,6 @@ async def release_ownership(
         cleanup_pending = True
         logger.exception("Ownership release cleanup pending: operation_id={}", operation_id)
     return {"operation_id": str(operation_id), "skill_id": skill_id, "code": target,
-        "uri": f"galaris://skill/{target}/", "revision": revision, "cleanup_pending": cleanup_pending}
+        "uri": (f"galaris://skill/{target}/" if direction == "release" else
+                f"galaris://skill/personnal/{owner}/{target}/"),
+        "revision": revision, "cleanup_pending": cleanup_pending}

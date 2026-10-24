@@ -342,7 +342,7 @@ async def elevenlabs_voices():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = True):
-    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "process-human", "first-mission", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue"}:
+    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "process-human", "first-mission", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue", "personal-skills"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -402,6 +402,29 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             rooms.append(str(room.id))
         fixture = {"email": owner.email, "password": "Browser-test-password-42!", "rooms": rooms,
                    "agent_id": agent.id}
+        if mode == "personal-skills":
+            from app.connection import ConnectionParam
+            from app.skill.interface import create_package
+            from app.skill.contracts import SkillPackageCreate
+            recipient = Agent(user_id=owner.id, title_id=title.id, first_name="Recipient", last_name=suffix,
+                              code=f"recipient-{suffix}", agent_driver="internal")
+            db.add(recipient)
+            await db.flush()
+            fixture.update({"recipient_id": recipient.id, "recipient_label": f"Recipient {suffix}"})
+            skill_tool = await db.scalar(select(Tool).where(Tool.code == "skills"))
+            connection = Connection(tool_id=skill_tool.id, agent_id=agent.id, active=True)
+            db.add(connection)
+            await db.flush()
+            db.add(ConnectionParam(connection_id=connection.id, param_name="tools.management_scope", param_value="personal"))
+            await db.commit()
+            packages = []
+            for label in ("A Synthetic private guide", "B Synthetic disposable guide"):
+                label = f"{label} {suffix}"
+                code = f"private-{uuid4().hex[:12]}"
+                package = await create_package(SkillPackageCreate(code=code, label=label,
+                    markdown=f"---\nname: {code}\ndescription: Synthetic private instructions.\n---\nOriginal private procedure\n"), actor_agent_id=agent.id)
+                packages.append({**package.model_dump(mode="json"), "label": label})
+            fixture.update({"personal_skills": packages, "agent_label": f"Browser {suffix}"})
         if mode == "task-tools":
             tool_trace_gates[agent.id] = asyncio.Event()
         if mode == "call-recovery":

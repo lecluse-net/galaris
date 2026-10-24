@@ -59,6 +59,7 @@ async def get(skill_id: int) -> Skill | None:
             selectinload(Skill.category).selectinload(SkillCategory.authorizations),
         )
         .where(Skill.id == skill_id, Skill.owner_agent_id.is_(None))
+        .execution_options(populate_existing=True)
     )
     return result.scalar_one_or_none()
 
@@ -122,7 +123,7 @@ async def ensure_assignment_matrix(
         agent_query = agent_query.where(Agent.id == agent_id)
     agent_ids = list((await db.execute(agent_query)).scalars().all())
 
-    skill_query = select(Skill.id).where(Skill.owner_agent_id.is_(None))
+    skill_query = select(Skill.id).where(Skill.owner_agent_id.is_(None)).order_by(Skill.id).with_for_update()
     if skill_id is not None:
         skill_query = skill_query.where(Skill.id == skill_id)
     skill_ids = list((await db.execute(skill_query)).scalars().all())
@@ -167,6 +168,7 @@ def to_public(skill: Skill) -> SkillPublic:
     inspection = storage.inspect(skill.code)
     return SkillPublic(
         id=skill.id,
+        revision=skill.revision,
         code=skill.code,
         label=skill.label,
         system=skill.system,
@@ -241,6 +243,8 @@ async def import_upload(
 
 
 async def update(skill_id: int, data: SkillUpdate) -> Skill | None:
+    from .interface import lock_catalogue
+    await lock_catalogue()
     record = await get(skill_id)
     if record is None:
         return None
@@ -259,6 +263,8 @@ async def update(skill_id: int, data: SkillUpdate) -> Skill | None:
 
 
 async def delete_skill(skill_id: int) -> tuple[bool, list[int]]:
+    from .interface import lock_catalogue
+    await lock_catalogue()
     record = await get(skill_id)
     if record is None:
         return False, []
@@ -433,6 +439,8 @@ async def set_global_authorization(
     agent_id: int,
     state: SkillGlobalAuthorizationState,
 ) -> tuple[SkillAuthorization, list[int]]:
+    from .interface import lock_catalogue
+    await lock_catalogue()
     agent = await _require_skill_agent(agent_id)
     record = await get(skill_id)
     if record is None:
@@ -455,6 +463,8 @@ async def set_agent_authorization(
     agent_id: int,
     state: SkillAuthorizationState,
 ) -> SkillAuthorization:
+    from .interface import lock_catalogue
+    await lock_catalogue()
     agent = await _require_skill_agent(agent_id)
     record = await get(skill_id)
     if record is None:
@@ -663,6 +673,8 @@ async def set_skill_category(
     skill_id: int,
     category_id: int | None,
 ) -> tuple[Skill, list[int]]:
+    from .interface import lock_catalogue
+    await lock_catalogue()
     skill = await get(skill_id)
     if skill is None:
         raise KeyError(skill_id)

@@ -2,6 +2,22 @@
 
 # Functional guarantees catalogue
 
+## Personal skills
+
+Human personal-skill mutations are covered by `app/skill/tests/test_agent_reads.py`
+(privileges, management scope, revisions, content, activation and deletion),
+`skills.spec.mjs` (draft preservation after conflicts and conversion receipt reuse),
+and `e2e/specs/personal-skills.spec.mjs` (assembled application, persistence, reopening,
+conversion and deletion on desktop and mobile).
+`skills.spec.mjs` exercises generic/personal list menus: right-click actions, left-click reading,
+keyboard access, category assignment, activation, standard owner selection and permissions. Existing consumers of the shared component
+remain covered by `context-menus.spec.mjs`.
+`app/skill/tests/test_ownership_assignment.py` covers making a skill personal: one active
+owner, revocation of all former grants, preserved files and authorship, collisions, quotas,
+replay without reactivation, and recovery after failures or interruption.
+The HTTP journey also covers transfer between managed owners, refusal of out-of-scope recipients,
+recipient homonyms, and restoring the source after an injected filesystem failure.
+
 ## Home and first mission
 
 The component `work-experience.spec.mjs` covers role changes,

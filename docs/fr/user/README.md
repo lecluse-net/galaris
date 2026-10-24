@@ -298,6 +298,16 @@ avec révision et identifiant d'opération le transforme en générique, sans ac
 Un rejeu conserve les droits configurés depuis la conversion. Les changements de chargement
 s'appliquent à la prochaine exécution ; les instructions déjà chargées restent dans le contexte courant.
 
+Dans les listes **Compétences** et **Compétences personnelles**, le clic gauche sur une ligne ou une carte
+ouvre le skill en lecture. Le clic droit ouvre son menu d'actions ; Maj+F10 depuis un bouton
+de la ligne ouvre aussi ce menu. Choisissez **Visualiser** pour lire le skill, ses fichiers et références.
+Les actions proposées respectent vos droits ; les boutons directs gardent leur action propre.
+Avec les droits d'édition des compétences et de gestion globale des agents, **Passer en personnel**
+permet de choisir un propriétaire unique pour une compétence non système. La confirmation supprime
+toutes ses autorisations individuelles, son activation globale et sa catégorie, puis l'active
+uniquement pour ce propriétaire. Les fichiers et le libellé sont conservés. En cas de code déjà
+utilisé chez le propriétaire, choisissez un autre code ; aucune compétence n'est écrasée.
+
 Dans **Compétences → Compétences personnelles**, consultez les packages privés possédés par les agents
 de votre périmètre de gestion, même lorsque Dream est désactivé. La liste indique le
 propriétaire, l'activation, la validité, les fichiers et la dernière modification. Filtrez
@@ -306,9 +316,26 @@ références. La portée se règle dans **Tools → Connexions → modifier la c
 Portée de gestion**, avec `usage`, `personal`, `team` ou `all`. Ce paramètre est propre à
 la connexion, sans héritage global ; sa modification demande édition des connexions et
 gestion globale des agents. Un agent dans trois équipes peut administrer les agents inclus
-dans au moins l'une des trois. Les fichiers sont en
-consultation dans cet onglet ; leur édition, activation et suppression agentiques passent
-par MCP. Les packages restent séparés de la bibliothèque générique et ne sont pas partageables.
+dans au moins l'une des trois. Avec le droit d'édition des compétences, la fiche permet
+de modifier le libellé et les fichiers texte, d'activer/désactiver le package pour son
+propriétaire et de le supprimer après confirmation. Dans le menu d'une ligne ou carte, **Modifier**
+ouvre directement la fiche en édition ; **Visualiser** ouvre le contenu en lecture. Le libellé
+reste éditable dès l'ouverture, avec le droit d'édition : **Enregistrer** peut le sauvegarder
+seul sans modifier les fichiers. **Modifier** rend aussi le contenu éditable et conserve le
+libellé déjà saisi. Les fichiers texte utilisent l'éditeur de code avec coloration adaptée
+à leur extension. **Enregistrer** sauvegarde alors libellé et contenu ensemble ; **Annuler**
+abandonne les modifications. Un conflit de révision
+conserve le brouillon : copiez-le si nécessaire, puis fermez et rouvrez la fiche avant de reprendre.
+Le champ **Agent propriétaire** utilise la sélection standard des agents de votre périmètre.
+Choisissez un autre agent, enregistrez les éventuelles modifications du libellé/contenu, puis
+confirmez **Changer de propriétaire**. Le transfert conserve le contenu et active le skill pour
+le seul nouveau propriétaire ; l'ancien n'y a plus accès. Un code déjà utilisé chez le destinataire
+est refusé sans écrasement : choisissez un autre code dans la confirmation.
+Un administrateur global peut **Convertir en compétence générique**, choisir un code libre
+et confirmer le retrait de propriété. La conversion n'active le package pour personne ;
+sa diffusion se configure ensuite dans la bibliothèque générique. Un réessai de conversion
+conserve le même reçu tant que la confirmation reste ouverte. La création personnelle
+reste effectuée par l'agent. Les packages personnels ne sont pas partageables.
 
 ### Déléguer une administration à un agent
 

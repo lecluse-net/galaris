@@ -15,7 +15,8 @@ from core.authorize import Privileges, authorize
 from app.agent import current_management_scope
 
 from . import interface, learning_service, personal_catalogue, skill_service, storage
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
+from .contracts import SkillPackageRef, SkillRevisionConflict
 from .models import LearnedSkill, LearnedSkillEvidence, Skill
 from .schemas import (
     LearnedSkillDetail,
@@ -61,6 +62,39 @@ class SkillOwnershipReleaseRequest(BaseModel):
     new_code: str | None = None
 
 
+class PersonalSkillMutation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_revision: int = Field(ge=1)
+
+
+class SkillOwnershipAssignRequest(PersonalSkillMutation):
+    owner_agent_id: int = Field(gt=0)
+    operation_id: UUID
+    new_code: str | None = Field(default=None, min_length=1, max_length=100)
+
+
+class PersonalSkillRevision(BaseModel):
+    revision: int
+
+
+class PersonalSkillContent(SkillFileContent):
+    revision: int
+
+
+class PersonalSkillFileUpdate(PersonalSkillMutation):
+    path: str = Field(min_length=1, max_length=1024)
+    content: str = Field(max_length=10_000_000)
+    label: str | None = Field(default=None, min_length=1, max_length=255)
+
+
+class PersonalSkillLabelUpdate(PersonalSkillMutation):
+    label: str = Field(min_length=1, max_length=255)
+
+
+class PersonalSkillEnabledUpdate(PersonalSkillMutation):
+    enabled: bool
+
+
 @router.post("/{skill_id}/release-ownership")
 @authorize(privileges=Privileges.SKILL_EDIT)
 async def release_skill_ownership(skill_id: int, data: SkillOwnershipReleaseRequest) -> dict[str, object]:
@@ -80,6 +114,24 @@ async def release_skill_ownership(skill_id: int, data: SkillOwnershipReleaseRequ
         raise _http_error(exc) from exc
 
 
+@router.post("/{skill_id}/assign-ownership")
+@authorize(privileges=Privileges.SKILL_EDIT)
+async def assign_skill_ownership(skill_id: int, data: SkillOwnershipAssignRequest) -> dict[str, object]:
+    await _require_global_scope()
+    from core.user import user_service
+    user_id = user_service.get_current_user_id()
+    if user_id is None:
+        raise HTTPException(status_code=403, detail="Authenticated human required")
+    try:
+        return await interface.assign_ownership(skill_id, actor_user_id=user_id,
+            owner_agent_id=data.owner_agent_id, expected_revision=data.expected_revision,
+            operation_id=data.operation_id, new_code=data.new_code)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise _http_error(exc) from exc
+
+
 async def _require_global_scope() -> None:
     if not (await current_management_scope()).is_global:
         raise HTTPException(
@@ -89,6 +141,10 @@ async def _require_global_scope() -> None:
 
 
 def _http_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, SkillRevisionConflict):
+        return HTTPException(status_code=409, detail=str(exc))
+    if isinstance(exc, PermissionError):
+        return HTTPException(status_code=403, detail=str(exc))
     if isinstance(exc, FileExistsError):
         return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     if isinstance(exc, FileNotFoundError):
@@ -139,18 +195,68 @@ async def get_personal_skill(skill_id: int) -> PersonalSkillDetail:
     return PersonalSkillDetail(skill=public, files=[SkillFile(**item) for item in files])
 
 
-@router.get("/personal/{skill_id}/content", response_model=SkillFileContent)
+@router.get("/personal/{skill_id}/content", response_model=PersonalSkillContent)
 @authorize(privileges=[Privileges.SKILL_ACCESS, Privileges.SKILL_EDIT, Privileges.SKILL_ASSIGN])
-async def get_personal_skill_content(skill_id: int, path: str = "SKILL.md") -> SkillFileContent:
+async def get_personal_skill_content(skill_id: int, path: str = "SKILL.md") -> PersonalSkillContent:
     scope = await current_management_scope()
     try:
-        record, _public = await personal_catalogue.get_record(skill_id, agent_ids=scope.agent_ids)
+        record, _public = await personal_catalogue.get_record(skill_id, agent_ids=scope.agent_ids, lock=True)
         content = storage.read_text(record.code, path, owner_agent_id=record.owner_agent_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Compétence introuvable") from exc
     except ValueError as exc:
         raise _http_error(exc) from exc
-    return SkillFileContent(path=path, content=content, size=len(content.encode("utf-8")))
+    return PersonalSkillContent(path=path, content=content, size=len(content.encode("utf-8")), revision=record.revision)
+
+
+@router.put("/personal/{skill_id}/content", response_model=PersonalSkillRevision)
+@authorize(privileges=Privileges.SKILL_EDIT)
+async def write_personal_skill(skill_id: int, data: PersonalSkillFileUpdate) -> PersonalSkillRevision:
+    try:
+        result = await interface.mutate_file(skill_id, data.path, actor_agent_id=None, operation="write",
+            content=data.content.encode("utf-8"), expected_revision=data.expected_revision, label=data.label)
+        return PersonalSkillRevision(revision=result.revision)
+    except (FileNotFoundError, ValueError, PermissionError, SkillRevisionConflict) as exc:
+        raise _http_error(exc) from exc
+
+
+@router.put("/personal/{skill_id}", response_model=SkillPackageRef)
+@authorize(privileges=Privileges.SKILL_EDIT)
+async def rename_personal_skill(skill_id: int, data: PersonalSkillLabelUpdate) -> SkillPackageRef:
+    try:
+        return await interface.update_package(skill_id, data.label, actor_agent_id=None, expected_revision=data.expected_revision)
+    except (FileNotFoundError, ValueError, PermissionError, SkillRevisionConflict) as exc:
+        raise _http_error(exc) from exc
+
+
+@router.put("/personal/{skill_id}/enabled", response_model=SkillPackageRef)
+@authorize(privileges=Privileges.SKILL_EDIT)
+async def enable_personal_skill(skill_id: int, data: PersonalSkillEnabledUpdate) -> SkillPackageRef:
+    try:
+        return await interface.set_package_enabled(skill_id, data.enabled, actor_agent_id=None, expected_revision=data.expected_revision)
+    except (FileNotFoundError, ValueError, PermissionError, SkillRevisionConflict) as exc:
+        raise _http_error(exc) from exc
+
+
+@router.post("/personal/{skill_id}/owner")
+@authorize(privileges=Privileges.SKILL_EDIT)
+async def transfer_personal_skill(skill_id: int, data: SkillOwnershipAssignRequest) -> dict[str, object]:
+    try:
+        return await interface.transfer_ownership(skill_id, owner_agent_id=data.owner_agent_id,
+            expected_revision=data.expected_revision, operation_id=data.operation_id, new_code=data.new_code)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise _http_error(exc) from exc
+
+
+@router.delete("/personal/{skill_id}", response_model=SkillPackageRef)
+@authorize(privileges=Privileges.SKILL_EDIT)
+async def delete_personal_skill(skill_id: int, data: PersonalSkillMutation) -> SkillPackageRef:
+    try:
+        return await interface.delete_package(skill_id, actor_agent_id=None, expected_revision=data.expected_revision)
+    except (FileNotFoundError, ValueError, PermissionError, SkillRevisionConflict) as exc:
+        raise _http_error(exc) from exc
 
 
 @router.post("/rescan", response_model=SkillRescanResult)

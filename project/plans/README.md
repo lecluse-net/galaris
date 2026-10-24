@@ -42,7 +42,7 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
 | Plan | Statut | Portée |
 |---|---|---|
-| [skills-personnels-agents.md](skills-personnels-agents.md) | `in-progress` | Tool unique Skills, MCP, File Share, harnais, portées usage/personal/team/all, conversion avec reprise et onglet de consultation réalisés. Restent les actions humaines de mutation dans cet onglet et la qualification sur une installation dédiée. Portée équipe : union des agents de ses équipes, réévaluée à chaque appel. |
+| [skills-personnels-agents.md](skills-personnels-agents.md) | `partial` | Tool unique Skills, MCP, File Share, harnais, portées usage/personal/team/all, conversions générique/personnel avec révocation des droits et reprise, et administration humaine réalisés. Reste la qualification de l'ensemble des harnais sur une installation dédiée. Portée équipe : union des agents de ses équipes, réévaluée à chaque appel. |
 | [programmes-documentaires-json.md](programmes-documentaires-json.md) | `design` | Programmes dans les Documents, `document_exec` avec nom personnel et entrée/sortie JSON, dernier contenu sauvegardé au démarrage, moteur isolé, suivi Process et amélioration autonome. |
 | [supervision-execution-llm.md](supervision-execution-llm.md) | `design` | Conversation conservée, petits exécuteurs et supervision par gros modèle à comparer ; corpus synthétiques, benchmarks de tâches complètes, escalade, coût par réussite et décision par famille. |
 | [navigation-file-share-harnais.md](navigation-file-share-harnais.md) | `design` | Hypothèse à confirmer : premier essai non concluant, aucun chantier FUSE engagé avant un gain utile démontré par une comparaison MCP/répertoire fiable. |

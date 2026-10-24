@@ -45,17 +45,9 @@ async def _rename_tool(session: AsyncSession, _delta: SchemaTransitionSet) -> No
 
 
 async def _recover_releases(session: AsyncSession) -> None:
+    from .ownership_recovery import recover_pending_ownership
     await session.execute(select(func.pg_advisory_xact_lock(SKILL_CATALOGUE_LOCK)))
-    storage.prune_incomplete_ownership_staging()
-    for state in storage.pending_ownership_releases():
-        record = await session.scalar(select(Skill).where(Skill.id == int(str(state["skill_id"]))).with_for_update()
-                                      .execution_options(include_historized=True, populate_existing=True))
-        if record is None:
-            raise RuntimeError("Ownership release recovery cannot find its package")
-        committed = record.owner_agent_id is None and record.code == state["target_code"]
-        if not committed and record.owner_agent_id != int(str(state["owner"])):
-            raise RuntimeError("Ownership release recovery found conflicting ownership")
-        storage.recover_ownership_release(str(state["operation"]), committed=committed, deleted=record.is_historized)
+    await recover_pending_ownership(session)
 
 
 def compile_skill_rows() -> tuple[
@@ -69,7 +61,8 @@ def compile_skill_rows() -> tuple[
     installed_rows: list[dict[str, object]] = []
     invalid: list[str] = []
     root = storage.ensure_root()
-    pending_codes = {str(item["target_code"]) for item in storage.pending_ownership_releases()}
+    pending_codes = {str(item["target_code"] if item.get("direction", "release") == "release" else item["code"])
+                     for item in storage.pending_ownership_releases()}
     for definition in storage.SYSTEM_SKILLS:
         if not storage.inspect(definition.code).valid:
             invalid.append(definition.code)
@@ -122,6 +115,7 @@ async def _installed_skill_rows(
 async def _assignment_rows(
     session: AsyncSession,
 ) -> tuple[dict[str, object], ...]:
+    await session.execute(select(func.pg_advisory_xact_lock(SKILL_CATALOGUE_LOCK)))
     driver_codes = tuple(spec.code for spec in list_driver_specs())
     agent_ids = tuple(
         int(value)

@@ -102,11 +102,16 @@
           :pagination="defaultPagination"
           :rows-per-page-options="[10, 20, 50, 100, 500]"
           class="skills-table"
+          :table-row-class-fn="() => 'cursor-pointer'"
+          @row-click="(_event, row) => openViewer(row)"
           flat
           bordered
         >
       <template #body-cell-label="props">
         <q-td :props="props">
+          <SkillRowMenu target="tr" :skill="props.row" :can-edit="canEdit" :categories="store.categories"
+            @view="openViewer" @edit="openEdit" @personal="ownershipSkill = $event"
+            @download="downloadSkill" @delete="confirmDelete" @category="onCategoryChange" />
           <div class="row items-center q-gutter-xs">
             <span class="text-weight-medium">{{ props.row.label }}</span>
             <q-chip
@@ -148,12 +153,16 @@
       </template>
       <template #body-cell-actions="props">
         <q-td :props="props" class="skill-actions-cell">
-          <div class="skill-actions">
-          <q-btn flat round color="primary" icon="visibility" size="sm" @click="openViewer(props.row)">
+          <div class="skill-actions" @click.stop>
+          <q-btn flat round color="primary" icon="visibility" size="sm" :aria-label="t('skills.view')" @click="openViewer(props.row)">
             <q-tooltip>{{ t('skills.view') }}</q-tooltip>
           </q-btn>
           <q-btn v-if="canEdit && !props.row.system" flat round color="primary" icon="edit" size="sm" @click="openEdit(props.row)">
             <q-tooltip>{{ t('skills.edit') }}</q-tooltip>
+          </q-btn>
+          <q-btn v-if="canEdit && !props.row.system" flat round color="primary" icon="person" size="sm"
+            :aria-label="t('skills.personal.assign')" @click="ownershipSkill = props.row">
+            <q-tooltip>{{ t('skills.personal.assign') }}</q-tooltip>
           </q-btn>
           <q-btn
             v-if="canEdit"
@@ -205,7 +214,10 @@
       </template>
       <template #item="props">
         <div class="q-table__grid-item col-12">
-          <q-card flat bordered class="skill-mobile-card">
+          <q-card flat bordered class="skill-mobile-card cursor-pointer" @click="openViewer(props.row)">
+            <SkillRowMenu target=".skill-mobile-card" :skill="props.row" :can-edit="canEdit" :categories="store.categories"
+              @view="openViewer" @edit="openEdit" @personal="ownershipSkill = $event"
+              @download="downloadSkill" @delete="confirmDelete" @category="onCategoryChange" />
             <q-card-section class="q-gutter-md">
               <div class="row items-start no-wrap q-gutter-sm">
                 <div class="col skill-mobile-heading">
@@ -245,12 +257,16 @@
                   <div class="skill-mobile-label">{{ t('skills.files') }}</div>
                   <div>{{ props.row.file_count }} · {{ formatSize(props.row.total_size) }}</div>
                 </div>
-                <div class="skill-mobile-actions">
+                <div class="skill-mobile-actions" @click.stop>
                   <q-btn flat round color="primary" icon="visibility" size="sm" :aria-label="t('skills.view')" @click="openViewer(props.row)">
                     <q-tooltip>{{ t('skills.view') }}</q-tooltip>
                   </q-btn>
                   <q-btn v-if="canEdit && !props.row.system" flat round color="primary" icon="edit" size="sm" :aria-label="t('skills.edit')" @click="openEdit(props.row)">
                     <q-tooltip>{{ t('skills.edit') }}</q-tooltip>
+                  </q-btn>
+                  <q-btn v-if="canEdit && !props.row.system" flat round color="primary" icon="person" size="sm"
+                    :aria-label="t('skills.personal.assign')" @click="ownershipSkill = props.row">
+                    <q-tooltip>{{ t('skills.personal.assign') }}</q-tooltip>
                   </q-btn>
                   <q-btn
                     v-if="canEdit"
@@ -313,7 +329,7 @@
       </q-tab-panel>
 
       <q-tab-panel name="personal" class="q-px-none">
-        <PersonalSkillManager :active="tab === 'personal'" />
+        <PersonalSkillManager :active="tab === 'personal'" @changed="refreshCatalogue" />
       </q-tab-panel>
       <q-tab-panel v-if="canAssign" name="authorizations" class="q-px-none">
         <SkillAuthorizationManager />
@@ -415,7 +431,7 @@
       <q-card class="column no-wrap galaris-dialog-card">
         <q-toolbar class="galaris-dialog-title bg-primary text-white">
           <q-toolbar-title>{{ t('skills.viewTitle', { label: store.currentSkill?.label || '' }) }}</q-toolbar-title>
-          <q-btn flat icon="download" :label="t('skills.download')" @click="store.currentSkill && downloadSkill(store.currentSkill)" />
+          <q-btn outline color="white" icon="download" :label="t('skills.download')" @click="store.currentSkill && downloadSkill(store.currentSkill)" />
           <q-btn
             flat
             round
@@ -446,7 +462,7 @@
                 <q-icon :name="selectedFile.text ? 'description' : 'data_object'" class="q-mr-sm" />
                 <q-toolbar-title class="text-subtitle1">{{ selectedFile.path }}</q-toolbar-title>
                 <span class="text-caption text-grey-7 q-mr-md">{{ formatSize(selectedFile.size) }}</span>
-                <q-btn flat round icon="download" @click="downloadSelectedFile">
+                <q-btn flat round color="primary" icon="download" :aria-label="t('skills.download')" @click="downloadSelectedFile">
                   <q-tooltip>{{ t('skills.download') }}</q-tooltip>
                 </q-btn>
               </q-toolbar>
@@ -599,6 +615,7 @@
     </q-dialog>
 
     <SkillCategoryManager v-model="categoryManagerDialog" />
+    <SkillOwnershipDialog v-model="ownershipSkill" @converted="refreshCatalogue" />
 
   </q-page>
 </template>
@@ -622,10 +639,12 @@ import SkillAuthorizationManager from '../components/SkillAuthorizationManager.v
 import SkillCategoryManager from '../components/SkillCategoryManager.vue'
 import LearnedSkillManager from '../components/LearnedSkillManager.vue'
 import PersonalSkillManager from '../components/PersonalSkillManager.vue'
+import SkillOwnershipDialog from '../components/SkillOwnershipDialog.vue'
+import SkillRowMenu from '../components/SkillRowMenu.vue'
 import { skillService, type Skill, type SkillFile } from '../services/skillService'
 import { useSkillStore } from '../stores/skillStore'
 
-type CodeLanguage = 'json' | 'yaml' | 'xml' | 'markdown' | 'text' | 'javascript' | 'typescript' | 'python' | 'sql' | 'html' | 'css'
+import { languageForSkillFile as languageFor, type CodeLanguage } from '../fileLanguage'
 interface FileTreeNode {
   key: string
   label: string
@@ -663,6 +682,11 @@ watch(canAssign, allowed => {
   if (!allowed && tab.value === 'authorizations') tab.value = 'skills'
 }, { immediate: true })
 
+async function refreshCatalogue(): Promise<void> {
+  try { await store.fetchSkills() }
+  catch { $q.notify({ type: 'negative', message: t('skills.error') }) }
+}
+
 async function loadLearningStatus(): Promise<void> {
   const response = await skillService.getLearnedSkillStatus()
   learningEnabled.value = response.data.enabled
@@ -676,6 +700,7 @@ const categoryManagerDialog = ref(false)
 const assigningSkillId = ref<number | null>(null)
 const editorDialog = ref(false)
 const editingSkill = ref<Skill | null>(null)
+const ownershipSkill = ref<Skill | null>(null)
 const editorOriginalMarkdown = ref('')
 const editorTab = ref<'source' | 'preview'>('source')
 const editorForm = reactive({ code: '', label: '', markdown: '', category_id: null as number | null })
@@ -762,8 +787,8 @@ const columns = computed<QTableProps['columns']>(() => [
     label: t('skills.description'),
     field: 'description',
     align: 'left',
-    style: 'width: 38%;',
-    headerStyle: 'width: 38%;',
+    style: 'width: auto;',
+    headerStyle: 'width: auto;',
   },
   {
     name: 'status',
@@ -788,8 +813,8 @@ const columns = computed<QTableProps['columns']>(() => [
     label: t('skills.actions'),
     field: 'actions',
     align: 'right',
-    style: 'width: 16%;',
-    headerStyle: 'width: 16%;',
+    style: 'width: 232px;',
+    headerStyle: 'width: 232px;',
   },
 ])
 
@@ -982,16 +1007,6 @@ function buildFileTree(files: SkillFile[]): FileTreeNode[] {
     })
   }
   return roots
-}
-
-function languageFor(path: string): CodeLanguage {
-  const extension = path.split('.').pop()?.toLowerCase()
-  const languages: Record<string, CodeLanguage> = {
-    json: 'json', yaml: 'yaml', yml: 'yaml', xml: 'xml', md: 'markdown',
-    js: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
-    py: 'python', sql: 'sql', html: 'html', css: 'css',
-  }
-  return extension ? languages[extension] || 'text' : 'text'
 }
 
 function saveBlob(blob: Blob, filename: string): void {
@@ -1255,7 +1270,7 @@ onMounted(async () => {
 
 .skill-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 2px;
 }

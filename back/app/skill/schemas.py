@@ -53,6 +53,7 @@ class SkillFileContent(BaseModel):
 
 class SkillPublic(SkillBase):
     id: int
+    revision: int
     system: bool
     available: bool
     valid: bool

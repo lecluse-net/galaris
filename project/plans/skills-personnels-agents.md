@@ -1,8 +1,8 @@
 # Skills personnels des agents
 
-- Statut : `in-progress`.
+- Statut : `partial`.
 - Date : 2026-10-23.
-- Portée : parcours agent MCP et consultation humaine implémentés ; activation en développement vérifiée après accord utilisateur, aucune intervention en production.
+- Portée : parcours agent MCP et administration humaine implémentés ; qualification de l'ensemble des harnais sur installation dédiée encore ouverte, aucune intervention en production.
 - Demande : permettre à un agent de créer et administrer ses propres skills lorsqu'il en a le droit,
   les consulter dans un onglet dédié et les séparer des skills génériques.
 - Précisions utilisateur : un skill personnel n'est jamais partageable. Le retrait de sa propriété
@@ -31,8 +31,12 @@ Le retrait de propriété conserve un reçu rejouable et un staging récupérabl
 et la restauration d'un agent conservent ses packages privés sans les réactiver.
 L'onglet permet de consulter les fichiers. La délégation se configure par le paramètre
 `tools.management_scope` dans Tools → Connexions → la connexion Skills. Ce paramètre local,
-sans héritage global, est réutilisable par les futurs Tools concernés. Restent les actions humaines d'édition/suppression/conversion
-dans cet onglet, ainsi que la qualification après activation sur une installation dédiée.
+sans héritage global, est réutilisable par les futurs Tools concernés. L'onglet permet
+désormais l'édition des fichiers texte et du libellé, l'activation, la suppression et la
+conversion explicite en générique, avec révision, identité humaine et reprise du reçu.
+La bibliothèque propose aussi le passage d'un générique non système en personnel, avec choix
+d'un propriétaire unique, suppression de ses autorisations antérieures et reprise dans les deux sens.
+Reste la qualification de l'ensemble des harnais sur une installation dédiée.
 Les modifications transverses sont coordonnées avec les sessions Memory/Document et Mail.
 Les tests passent exclusivement par PostgreSQL éphémère. La synchronisation de la base
 de développement partagée a ensuite été explicitement autorisée et exécutée : DbAdmin
@@ -398,4 +402,4 @@ La rédaction de ce plan ne justifie ni test de code, synchronisation DB, redém
 Documenter la décision acceptée au moment de l'implémentation ; actualiser les parcours utilisateur
 FR/EN, les descriptions des Tools, le skill runtime Galaris et le catalogue de tests. Régénérer
 les cartes à partir des sources. Maintenir le statut de ce plan et son entrée dans l'index ;
-le statut `in-progress` conserve explicitement les interfaces humaines encore absentes.
+le statut `partial` conserve explicitement la qualification élargie encore ouverte.

@@ -50,7 +50,7 @@ async def list_page(
 
 
 async def get_record(
-    skill_id: int, *, agent_ids: Collection[int] | None,
+    skill_id: int, *, agent_ids: Collection[int] | None, lock: bool = False,
 ) -> tuple[Skill, PersonalSkillPublic]:
     query = (select(Skill, Agent).join(Agent, Agent.id == Skill.owner_agent_id)
              .where(Skill.id == skill_id).options(selectinload(Skill.assignments), load_only(
@@ -58,6 +58,8 @@ async def get_record(
              )))
     if agent_ids is not None:
         query = query.where(Skill.owner_agent_id.in_(agent_ids))
+    if lock:
+        query = query.with_for_update(of=Skill).execution_options(populate_existing=True)
     result = (await get_db().execute(query)).one_or_none()
     if result is None:
         raise FileNotFoundError("Skill not found")

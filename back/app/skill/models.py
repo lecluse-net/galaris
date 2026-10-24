@@ -105,7 +105,7 @@ class Skill(HistoryMixin, Base):
 
 
 class SkillOwnershipRelease(Base):
-    """Immutable receipt, committed atomically with a personal-to-generic conversion."""
+    """Immutable receipt committed atomically with either ownership conversion."""
 
     __tablename__ = "skill_ownership_releases"
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
@@ -113,6 +113,7 @@ class SkillOwnershipRelease(Base):
     actor_agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id"), nullable=True)
     actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     owner_agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"))
+    direction: Mapped[str] = mapped_column(String(16), default="release", server_default="release")
     source_code: Mapped[str] = mapped_column(String(100))
     target_code: Mapped[str] = mapped_column(String(100))
     requested_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -120,6 +121,7 @@ class SkillOwnershipRelease(Base):
     result_revision: Mapped[int] = mapped_column(Integer)
     __table_args__ = (
         CheckConstraint("(actor_agent_id IS NULL) <> (actor_user_id IS NULL)", name="ck_skill_release_actor"),
+        CheckConstraint("direction IN ('release', 'assign')", name="ck_skill_ownership_direction"),
     )
 
 

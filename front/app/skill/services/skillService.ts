@@ -3,6 +3,7 @@ import type { AxiosResponse } from 'axios'
 
 export interface Skill {
     id: number
+    revision: number
     code: string
     label: string
     system: boolean
@@ -200,6 +201,29 @@ export interface LearnedSkillLearningStatus {
 }
 
 export const skillService = {
+    transferPersonalSkill(id: number, owner_agent_id: number, expected_revision: number, operation_id: string, new_code: string) {
+        return api.post<{ cleanup_pending: boolean }>(`/skills/personal/${id}/owner`,
+            { owner_agent_id, expected_revision, operation_id, new_code })
+    },
+    assignSkillOwner(id: number, owner_agent_id: number, expected_revision: number, operation_id: string, new_code: string) {
+        return api.post<{ cleanup_pending: boolean }>(`/skills/${id}/assign-ownership`,
+            { owner_agent_id, expected_revision, operation_id, new_code })
+    },
+    writePersonalSkill(id: number, path: string, content: string, expected_revision: number, label?: string) {
+        return api.put<{ revision: number }>(`/skills/personal/${id}/content`, { path, content, expected_revision, label })
+    },
+    renamePersonalSkill(id: number, label: string, expected_revision: number) {
+        return api.put<{ revision: number }>(`/skills/personal/${id}`, { label, expected_revision })
+    },
+    setPersonalSkillEnabled(id: number, enabled: boolean, expected_revision: number) {
+        return api.put<{ revision: number }>(`/skills/personal/${id}/enabled`, { enabled, expected_revision })
+    },
+    deletePersonalSkill(id: number, expected_revision: number) {
+        return api.delete(`/skills/personal/${id}`, { data: { expected_revision } })
+    },
+    releasePersonalSkill(id: number, expected_revision: number, operation_id: string, new_code: string) {
+        return api.post<{ cleanup_pending: boolean }>(`/skills/${id}/release-ownership`, { expected_revision, operation_id, new_code })
+    },
     getPersonalSkills(params: {
         owner_agent_id: number | null
         search: string
@@ -211,7 +235,7 @@ export const skillService = {
     getPersonalSkill(id: number): Promise<AxiosResponse<PersonalSkillDetail>> {
         return api.get(`/skills/personal/${id}`)
     },
-    getPersonalSkillContent(id: number, path: string): Promise<AxiosResponse<SkillFileContent>> {
+    getPersonalSkillContent(id: number, path: string): Promise<AxiosResponse<SkillFileContent & { revision: number }>> {
         return api.get(`/skills/personal/${id}/content`, { params: { path } })
     },
     getSkills(): Promise<AxiosResponse<Skill[]>> {

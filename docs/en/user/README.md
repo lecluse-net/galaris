@@ -246,6 +246,15 @@ turns it into a generic package and enables it for nobody. Replaying the operati
 permissions configured since conversion. Loading changes apply to the next execution;
 instructions already loaded remain in the current context.
 
+In the **Skills** and **Personal skills** lists, left-click a row or card to open the skill for reading.
+Right-click opens its action menu; Shift+F10 from a row action button also opens it.
+Choose **View** to read the skill, its files and references. Available actions respect your
+permissions; direct action buttons keep their own behavior.
+With skill editing and global agent management privileges, **Make personal** lets you select
+one owner for a non-system skill. Confirmation removes all its individual authorizations,
+global activation and category, then enables it only for that owner. Files and the label are
+preserved. If the owner already has the same code, choose another code; no skill is overwritten.
+
 In **Skills → Personal skills**, inspect private packages owned by agents within your
 management scope, even when Dream is disabled. The list shows the owner, activation,
 validity, files and last modification. Filter by agent or search by name/code, then use
@@ -253,9 +262,24 @@ validity, files and last modification. Filter by agent or search by name/code, t
 edit the Skills connection → Management scope**, choosing `usage`, `personal`, `team` or `all`.
 This parameter belongs to the connection and has no global inheritance; editing it requires
 connection editing and global agent management. An agent in three teams can administer agents
-included in at least one of those teams. Files are read-only
-in this tab; agent editing, activation and deletion use MCP. These packages remain separate
-from the generic library and cannot be shared.
+included in at least one of those teams. With skill editing privileges, the detail view
+lets you edit the label and text files, enable/disable the package for its owner, and
+delete it after confirmation. In a row or card menu, **Edit** opens the detail directly
+for editing; **View** opens the content for reading. With editing privileges, the label is
+editable immediately: **Save** can store it alone without changing any file. **Edit** also
+enables content editing and preserves the label already entered. Text files use the code
+editor with syntax highlighting for their extension. **Save** then stores label and content
+together; **Cancel** discards changes. A revision conflict preserves your draft: copy it if needed,
+then close and reopen the detail before continuing. The **Owner agent**
+field uses the standard selector for agents within your management scope. Select another agent,
+save any pending label/content edits, then confirm **Change owner**. Transfer preserves the content
+and enables the skill only for the new owner, revoking the previous owner's access. A code already
+used by the recipient is rejected without overwriting: choose another code in the confirmation.
+A global administrator can **Convert
+to generic skill**, choose an available code, and confirm ownership release. Conversion
+enables it for nobody; configure distribution in the generic library afterwards. Retrying
+conversion preserves the same receipt while its confirmation stays open. Personal creation
+remains an agent action. Personal packages cannot be shared.
 
 ### Delegating administration to an agent
 

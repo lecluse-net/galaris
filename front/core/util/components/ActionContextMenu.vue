@@ -13,6 +13,7 @@
             <q-item-section v-if="action.shortcut" side>{{ action.shortcut }}</q-item-section>
           </q-item>
         </template>
+        <slot />
       </q-list>
     </q-menu>
   </span>

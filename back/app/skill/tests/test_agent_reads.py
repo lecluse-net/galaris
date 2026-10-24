@@ -149,6 +149,8 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
     generic = await client.get("/api/skills", headers=headers[0])
     assert {row["id"] for row in generic.json()}.isdisjoint(package_ids)
     scope_path = f"/api/connections/{connection_id}/params/bulk"
+    mutation_path = f"{personal_path}/{package_ids[0]}"
+    assert (await client.put(mutation_path, headers=headers[0], json={"expected_revision": 1, "label": "Forbidden"})).status_code == 403
     def scope_data(value):
         return {'connection_id': connection_id, 'params': {'tools.management_scope': value}}
     assert (await client.post(scope_path, headers=headers[0], json=scope_data('all'))).status_code == 403
@@ -167,6 +169,72 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
         db.add(ConnectionParam(connection_id=connection_id, param_name='tools.management_scope', param_value='all'))
         await db.flush()
         same_manager_id = same_manager.id
+    assert (await client.put(f"{personal_path}/{package_ids[1]}", headers=headers[0], json={"expected_revision": 1, "label": "Forbidden"})).status_code == 404
+    assert (await client.put(mutation_path, headers=headers[0], json={"expected_revision": 1, "label": "Human edited guide"})).status_code == 200
+    source = "---\nname: private-guide\ndescription: Synthetic edited guide.\n---\nHuman source\n"
+    rejected = await client.put(f"{mutation_path}/content", headers=headers[0], json={"expected_revision": 2, "path": "SKILL.md", "content": "invalid frontmatter", "label": "Must not be saved"})
+    assert rejected.status_code == 422
+    assert (await client.get(mutation_path, headers=headers[0])).json()["skill"]["label"] == "Human edited guide"
+    saved = await client.put(f"{mutation_path}/content", headers=headers[0], json={"expected_revision": 2, "path": "SKILL.md", "content": source, "label": "Combined human edit"})
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["revision"] == 3
+    stale = await client.put(f"{mutation_path}/content", headers=headers[0], json={"expected_revision": 2, "path": "SKILL.md", "content": "stale", "label": "Stale label"})
+    assert stale.status_code == 409
+    content = (await client.get(f"{mutation_path}/content", headers=headers[0])).json()
+    assert content["content"] == source and content["revision"] == 3
+    assert (await client.get(mutation_path, headers=headers[0])).json()["skill"]["label"] == "Combined human edit"
+    assert (await client.put(f"{mutation_path}/enabled", headers=headers[0], json={"expected_revision": 3, "enabled": False})).status_code == 200
+    assert (await client.request("DELETE", mutation_path, headers=headers[0], json={"expected_revision": 3})).status_code == 409
+    assert (await client.post(f"/api/skills/{package_ids[0]}/release-ownership", headers=headers[0], json={"expected_revision": 4, "operation_id": "00000000-0000-0000-0000-000000000001"})).status_code == 403
+    from uuid import uuid4
+    transfer_path = f"{mutation_path}/owner"
+    transfer = {"expected_revision": 4, "owner_agent_id": same_manager_id, "operation_id": str(uuid4())}
+    assert (await client.post(transfer_path, headers=headers[1], json=transfer)).status_code == 403
+    denied = await client.post(transfer_path, headers=headers[0], json={**transfer, "owner_agent_id": other_id})
+    assert denied.status_code == 404, denied.text
+    assert (await client.post(f"{personal_path}/{package_ids[1]}/owner", headers=headers[0], json=transfer)).status_code == 404
+    assert (await client.post(transfer_path, headers=headers[0], json={**transfer, "expected_revision": 3})).status_code == 409
+    original_prepare = storage.prepare_ownership_release
+    def failed_transfer(*args, **kwargs):
+        original_prepare(*args, **kwargs)
+        raise RuntimeError("Synthetic transfer failure")
+    with monkeypatch.context() as patch:
+        patch.setattr(storage, "prepare_ownership_release", failed_transfer)
+        failed = await client.post(transfer_path, headers=headers[0], json=transfer)
+        assert failed.status_code == 409, failed.text
+    preserved = (await client.get(mutation_path, headers=headers[0])).json()["skill"]
+    assert preserved["owner_agent_id"] == owner_id and preserved["revision"] == 4 and not preserved["enabled"]
+    assert (await client.get(f"{mutation_path}/content", headers=headers[0])).json()["content"] == source
+    async with get_db_session() as db:
+        collision = Skill(code="private-guide", label="Synthetic recipient homonym", owner_agent_id=same_manager_id, assignments=[])
+        db.add(collision)
+        await storage.install_markdown(collision.code, collision.label,
+            "---\nname: private-guide\ndescription: Synthetic homonym.\n---\nPreserved recipient instructions\n", owner_agent_id=same_manager_id)
+    assert (await client.post(transfer_path, headers=headers[0], json=transfer)).status_code == 409
+    transfer["new_code"] = "transferred-guide"
+    transferred = await client.post(transfer_path, headers=headers[0], json=transfer)
+    assert transferred.status_code == 200, transferred.text
+    assert (await client.post(transfer_path, headers=headers[0], json=transfer)).json() == transferred.json()
+    moved = (await client.get(mutation_path, headers=headers[0])).json()["skill"]
+    assert moved["owner_agent_id"] == same_manager_id and moved["revision"] == 5 and moved["enabled"]
+    async with get_db_session() as db:
+        assert [(item.agent_id, item.active) for item in (await db.scalars(select(AgentSkill).where(AgentSkill.skill_id == package_ids[0]))).all()] == [(same_manager_id, True)]
+    back = await client.post(transfer_path, headers=headers[0], json={
+        "expected_revision": 5, "owner_agent_id": owner_id, "operation_id": str(uuid4()), "new_code": "private-guide",
+    })
+    assert back.status_code == 200, back.text
+    assert "Preserved recipient instructions" in storage.read_text("private-guide", "SKILL.md", owner_agent_id=same_manager_id)
+    assert (await client.post(f"/api/skills/{package_ids[0]}/assign-ownership", headers=headers[0], json={
+        "expected_revision": 4, "operation_id": "00000000-0000-0000-0000-000000000002", "owner_agent_id": owner_id,
+    })).status_code == 403
+    async with get_db_session() as db:
+        removable = Skill(code="synthetic-delete", label="Disposable private guide", owner_agent_id=owner_id, assignments=[])
+        db.add(removable)
+        await db.flush()
+        removable_id = removable.id
+        await storage.install_markdown(removable.code, removable.label, "---\nname: synthetic-delete\ndescription: Synthetic.\n---\nRemove me\n", owner_agent_id=owner_id)
+    assert (await client.request("DELETE", f"{personal_path}/{removable_id}", headers=headers[0], json={"expected_revision": 1})).status_code == 200
+    assert (await client.get(f"{personal_path}/{removable_id}", headers=headers[0])).status_code == 404
     assert (await client.post(scope_path, headers=headers[0], json=scope_data('all'))).status_code == 403
     assert (await client.patch(f'/api/connections/{connection_id}', headers=headers[0], json={
         'agent_id': same_manager_id,
@@ -204,8 +272,23 @@ async def test_skill_agent_http_preserves_manager_scope_and_assignment_privilege
     assert (await client.get('/api/connections', headers=headers[0], params={'agent_id': other_id})).json() == []
     from uuid import uuid4
     release = await client.post(f"/api/skills/{package_ids[0]}/release-ownership", headers=headers[0], json={
-        "expected_revision": 1, "operation_id": str(uuid4()), "new_code": "http-released-guide",
+        "expected_revision": 6, "operation_id": str(uuid4()), "new_code": "http-released-guide",
     })
     assert release.status_code == 200, release.text
     assert release.json()["uri"] == "galaris://skill/http-released-guide/"
     assert (await client.get(f"{personal_path}/{package_ids[0]}", headers=headers[0])).status_code == 404
+    assign_path = f"/api/skills/{package_ids[0]}/assign-ownership"
+    assignment = {"expected_revision": 7, "operation_id": str(uuid4()), "owner_agent_id": other_id}
+    assert (await client.post(assign_path, headers=headers[1], json=assignment)).status_code == 403
+    stale = await client.post(assign_path, headers=headers[0], json={**assignment, "expected_revision": 4})
+    assert stale.status_code == 409, stale.text
+    response = await client.post(assign_path, headers=headers[0], json=assignment)
+    assert response.status_code == 200, response.text
+    assert (await client.post(assign_path, headers=headers[0], json=assignment)).json() == response.json()
+    assert (await client.get(f"/api/skills/{package_ids[0]}", headers=headers[0])).status_code == 404
+    assigned = (await client.get(f"{personal_path}/{package_ids[0]}", headers=headers[0])).json()["skill"]
+    assert assigned["owner_agent_id"] == other_id and assigned["revision"] == 8 and assigned["enabled"]
+    async with get_db_session() as db:
+        record = await db.get(Skill, package_ids[0])
+        assert not record.global_enabled and record.category_id is None
+        assert [(row.agent_id, row.active) for row in (await db.scalars(select(AgentSkill).where(AgentSkill.skill_id == record.id))).all()] == [(other_id, True)]
