@@ -189,14 +189,14 @@ def test_pydantic_history_keeps_compact_context_with_each_message() -> None:
                 timestamp=posted_at + 60,
                 text="Je l'ai annoté.",
             ),
-        ]
+        ], self_agent_id=7,
     )
 
     assert isinstance(history[0], ModelRequest)
     human_part = history[0].parts[0]
     assert isinstance(human_part, UserPromptPart)
     assert str(human_part.content).startswith(
-        f"[{expected_timestamp} | Nicolas] Voici le rapport"
+        f"[{expected_timestamp} | Nicolas (id:nicolas) | human] Voici le rapport"
     )
     assert "<galaris_message_context>" not in str(human_part.content)
     assert "<conversation_history_metadata>" not in str(human_part.content)
@@ -215,7 +215,7 @@ def test_pydantic_history_keeps_compact_context_with_each_message() -> None:
     agent_part = history[1].parts[0]
     assert isinstance(agent_part, TextPart)
     assert f"[{expected_timestamp[:11]}" in agent_part.content
-    assert "| Aster]" in agent_part.content
+    assert "Aster" in agent_part.content and "agent:7" in agent_part.content
     assert "<galaris_message_context>" not in agent_part.content
     assert agent_part.content.endswith("Je l'ai annoté.")
 
@@ -238,7 +238,8 @@ def test_pydantic_history_context_uses_runtime_self_identity() -> None:
     assert isinstance(history[0], ModelResponse)
     part = history[0].parts[0]
     assert isinstance(part, TextPart)
-    assert part.content == "Réponse précédente"
+    assert part.content.endswith("Réponse précédente")
+    assert "agent-account" in part.content and "| AI]" in part.content
 
 
 @pytest.mark.asyncio

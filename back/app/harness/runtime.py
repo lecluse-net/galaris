@@ -50,7 +50,7 @@ from core.params import runtime_settings
 from app.llm import pydantic_ai_utils as _llm_pydantic_ai_utils
 from app.agent.contracts import TaskMessage as Message
 from app.agent.contracts import AIMessage, AgentUsage, normalize_tool_name
-from app.agent import ReasoningPatternGuard
+from app.agent import ReasoningPatternGuard, message_author_kind, message_history_role
 from app.agent.contracts import ReasoningDegenerationError
 from app.agent.conversation_context import (
     LeadingMessageMetadataFilter,
@@ -1162,7 +1162,9 @@ class Agent(AgentRuntime):
             if self._response_only:
                 pydantic_history = _response_only_history(pydantic_history)
         elif message_history:
-            pydantic_history = _convert_message_history_to_pydantic(message_history, self_id, native_inputs)
+            pydantic_history = _convert_message_history_to_pydantic(
+                message_history, self_id, native_inputs, self_agent_id=self._agent_id,
+            )
 
         self.prompt = prompt
         self.terminal_output = None
@@ -2040,16 +2042,15 @@ def _convert_message_history_to_pydantic(
     messages: List[Message],
     self_id: str | None = None,
     native_inputs: dict[str, NativeInput] | None = None,
+    *,
+    self_agent_id: int | None = None,
 ) -> List[_pydantic_messages.ModelMessage]:
     """Convert canonical messages with compact metadata local to each message."""
     result: List[_pydantic_messages.ModelMessage] = []
 
     for msg in messages:
-        is_self = bool(
-            (self_id and msg.sender_external_id == str(self_id))
-            or msg.is_ai
-        )
-        content = message_prompt(msg).strip()
+        is_self = message_history_role(msg, self_agent_id=self_agent_id, self_external_id=self_id) == "assistant"
+        content = message_prompt(msg, self_agent_id=self_agent_id, self_external_id=self_id).strip()
         if not content:
             continue
 
@@ -2057,12 +2058,15 @@ def _convert_message_history_to_pydantic(
             "user_id": str(msg.sender_id) if msg.sender_id else None,
             "external_id": msg.sender_external_id or None,
             "nickname": msg.sender_display_name or None,
-            "kind": "AI" if is_self else "human",
+            "kind": "AI" if is_self else message_author_kind(msg),
         }
 
         timestamp: datetime | None = None
-        if msg.time:
-            timestamp = datetime.fromtimestamp(msg.time, tz=timezone.utc)
+        if msg.time > 0:
+            try:
+                timestamp = datetime.fromtimestamp(msg.time, tz=timezone.utc)
+            except (OverflowError, OSError, ValueError):
+                pass
 
         msg_kwargs: dict[str, Any] = {"metadata": {"sender": sender_info}}
         if timestamp is not None:

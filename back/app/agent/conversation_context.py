@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import re
+from hashlib import sha256
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
-from typing import Any, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 
 
 _LINKED_OBJECTIVE_PROMPT_CHARS = 250
@@ -32,9 +33,9 @@ class ConversationContextSource(Protocol):
 _CLOSED_CODE_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
 _OPEN_CODE_FENCE_RE = re.compile(r"```.*$", re.DOTALL)
 _LEADING_MESSAGE_METADATA_RE = re.compile(
-    r"^\s*\[\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2})?"
+    r"^\s*\[(?:\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2})?"
     r"(?:Z|[+-]\d{2}:?\d{2})?\s*\|\s*[^\]\r\n|]+"
-    r"(?:\s*\|\s*(?:AI|human))?\s*\]\s*",
+    r"(?:\s*\|\s*(?:AI|human|unknown))?|[^\]\r\n|]+\s*\|\s*(?:AI|human|unknown))\s*\]\s*",
     re.IGNORECASE,
 )
 _LEADING_MESSAGE_CONTEXT_RE = re.compile(
@@ -268,14 +269,74 @@ def message_prompt(
     message: object,
     *,
     fallback_text: str = "",
+    self_agent_id: int | None = None,
+    self_external_id: str | None = None,
 ) -> str:
     """Render one provider message with a compact visible author/time envelope."""
 
-    content = message_history_text(message).strip() or fallback_text.strip()
-    return f"{message_history_prefix(message)}{content}".rstrip()
+    content = message_history_text(message).strip()
+    if fallback_text.strip() and not message_text(message):
+        content = f"{fallback_text.strip()}\n{content}".strip()
+    prefix = message_history_prefix(message, self_agent_id=self_agent_id, self_external_id=self_external_id)
+    return f"{prefix}{content}".rstrip() if content else ""
 
 
-def message_history_prefix(message: object) -> str:
+def _sender_field(message: object, flat: str, nested: str) -> object:
+    mapping = _as_mapping(message)
+    value = mapping.get(flat) if mapping is not None else getattr(message, flat, None)
+    if value is not None:
+        return value
+    sender = mapping.get("sender") if mapping is not None else getattr(message, "sender", None)
+    sender_mapping = _as_mapping(sender)
+    return sender_mapping.get(nested) if sender_mapping is not None else getattr(sender, nested, None)
+
+
+def message_author_kind(message: object) -> Literal["AI", "human", "unknown"]:
+    """Describe the speaker without conflating another AI with the current agent."""
+
+    if _sender_field(message, "sender_agent_id", "agent_id") is not None:
+        return "AI"
+    is_ai = _sender_field(message, "sender_is_ai", "is_ai")
+    if is_ai is not None:
+        return "AI" if is_ai else "human"
+    return "unknown"
+
+
+def message_history_role(
+    message: object,
+    *,
+    self_agent_id: int | None = None,
+    self_external_id: str | None = None,
+) -> Literal["user", "assistant", "system"] | None:
+    """Only the authenticated current agent supplies assistant conversation turns.
+
+    Legacy runtime records with no canonical sender retain their explicit role.
+    A canonical sender always takes precedence over a supplied role or AI flag.
+    Unsupported legacy records are left to the runtime's native history adapter.
+    """
+
+    mapping = _as_mapping(message)
+    canonical = mapping is None or any(
+        key in {"sender", "text", "attachments"} or key.startswith("sender_") for key in mapping
+    )
+    if not canonical and mapping is not None:
+        raw_role = mapping.get("role")
+        role = raw_role.strip().lower() if isinstance(raw_role, str) else None
+        if role in ("user", "assistant", "system"):
+            return role
+        return None
+    agent_id = _sender_field(message, "sender_agent_id", "agent_id")
+    if agent_id is not None and self_agent_id is not None:
+        return "assistant" if str(agent_id) == str(self_agent_id) else "user"
+    external_id = _sender_field(message, "sender_external_id", "external_id")
+    if self_external_id and external_id is not None and str(external_id) == self_external_id:
+        return "assistant"
+    return "user"
+
+
+def message_history_prefix(
+    message: object, *, self_agent_id: int | None = None, self_external_id: str | None = None,
+) -> str:
     """Render author/time metadata that provider message metadata does not expose."""
 
     mapping = _as_mapping(message)
@@ -320,29 +381,46 @@ def message_history_prefix(message: object) -> str:
         epoch = int(str(raw_timestamp or 0))
     except (TypeError, ValueError):
         epoch = 0
-    if epoch <= 0:
+    timestamp = ""
+    if epoch > 0:
+        try:
+            timestamp = datetime.fromtimestamp(epoch, tz=timezone.utc).astimezone().isoformat(timespec="minutes")
+        except (OverflowError, OSError, ValueError):
+            pass  # Missing or invalid dates must not erase the author.
+    author = _compact_metadata_value(name)[:64] if name else "unknown"
+    agent_id = _sender_field(message, "sender_agent_id", "agent_id")
+    identities: list[str] = []
+    if agent_id is not None:
+        identities.append(f"agent:{_compact_metadata_identity(agent_id)}")
+    if sender_id is not None:
+        identities.append(f"id:{_compact_metadata_identity(sender_id)}")
+    if identities:
+        author += f" ({'; '.join(identities)})"
+    if not timestamp and not (name or identities):
         return ""
-    timestamp = (
-        datetime.fromtimestamp(epoch, tz=timezone.utc)
-        .astimezone()
-        .isoformat(timespec="minutes")
-    )
-    author = (
-        _compact_metadata_value(name)
-        if name
-        else (
-            f"id:{_compact_metadata_value(sender_id)}"
-            if sender_id
-            else "unknown"
-        )
-    )
-    return f"[{timestamp} | {author}] "
+    date_prefix = f"{timestamp} | " if timestamp else ""
+    kind = "AI" if message_history_role(message, self_agent_id=self_agent_id, self_external_id=self_external_id) == "assistant" else message_author_kind(message)
+    return f"[{date_prefix}{author} | {kind}] "
 
 
 def _compact_metadata_value(value: object) -> str:
     """Keep an untrusted author label on one unambiguous envelope line."""
 
     return " ".join(str(value).replace("|", "/").replace("]", ")").split())
+
+
+def _compact_metadata_identity(value: object) -> str:
+    """Bound the display label without merging long or escaped sender identities.
+
+    Role matching continues to use the original identity, never this short label.
+    """
+
+    raw = str(value)
+    compact = _compact_metadata_value(raw)
+    if compact == raw and len(compact) <= 64:
+        return compact
+    digest = sha256(raw.encode(errors="surrogatepass")).hexdigest()[:12]
+    return f"{compact[:47]}…#{digest}"
 
 
 def _task_resource_uri(value: object) -> str:

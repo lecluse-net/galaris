@@ -948,7 +948,9 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
     assert context_request.task_data["attachments"][0]["uri"] == attachment_uri
     assert attachment_uri in str(captured["runtime_prompt"])
     assert captured["runtime_current_messages"][0].attachments[0].uri == attachment_uri
-    assert "| Nicolas] Quel temps fait-il ?" in str(captured["runtime_prompt"])
+    assert "Nicolas" in str(captured["runtime_prompt"])
+    assert "id:nicolas" in str(captured["runtime_prompt"])
+    assert "Quel temps fait-il ?" in str(captured["runtime_prompt"])
     assert "<galaris_message_context>" not in str(captured["runtime_prompt"])
     assert "# Turn context" in outcome.execution_result.system_prompt
     assert "language=fr" in outcome.execution_result.system_prompt

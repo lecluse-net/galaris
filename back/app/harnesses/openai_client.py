@@ -19,6 +19,8 @@ from app.agent import (
     AgentUsage,
     ExecutionResult,
     UsageQuality,
+    message_history_role,
+    message_prompt,
 )
 from app.agent.contracts import HarnessFailure
 
@@ -223,9 +225,15 @@ def _messages(envelope: AgentRunEnvelopeV1) -> list[dict[str, str]]:
     if system:
         messages.append({"role": "system", "content": system})
     for raw in envelope.conversation_history:
-        role = str(raw.get("role") or "").strip().lower()
-        content = raw.get("content")
-        if role in {"system", "user", "assistant"} and isinstance(content, str):
+        role = message_history_role(raw, self_agent_id=envelope.agent_id)
+        if role is None:
+            continue
+        legacy_content = raw.get("content")
+        content = message_prompt(
+            raw, fallback_text=legacy_content if isinstance(legacy_content, str) else "",
+            self_agent_id=envelope.agent_id,
+        )
+        if content:
             messages.append({"role": role, "content": content})
     objective = envelope.objective
     if envelope.messaging_context:

@@ -80,6 +80,7 @@ def test_canonical_conversation_snapshot_replaces_runtime_cache() -> None:
     request = cast(
         AgentRunRequest,
         SimpleNamespace(
+            agent=SimpleNamespace(id=7),
             conversation_history=(
                 {"id": "m1", "role": "user", "text": "canonical question"},
                 {
@@ -104,7 +105,8 @@ def test_canonical_conversation_snapshot_replaces_runtime_cache() -> None:
     assert "<conversation_history_metadata>" not in history[0]["content"]
     assert history[0]["content"] == "canonical question"
     assert history[1]["role"] == "assistant"
-    assert history[1]["content"] == "canonical answer"
+    assert history[1]["content"].endswith("canonical answer")
+    assert "agent:7" in history[1]["content"]
 
 
 def test_runtime_session_is_used_only_without_a_common_snapshot() -> None:
@@ -122,6 +124,7 @@ def test_canonical_history_keeps_file_only_message() -> None:
     request = cast(
         AgentRunRequest,
         SimpleNamespace(
+            agent=SimpleNamespace(id=7),
             conversation_history=(
                 {
                     "id": "file-only",
@@ -156,6 +159,7 @@ def test_canonical_history_keeps_attachment_post_date_and_sender() -> None:
     request = cast(
         AgentRunRequest,
         SimpleNamespace(
+            agent=SimpleNamespace(id=7),
             conversation_history=(
                 {
                     "id": "dated-file",
@@ -175,7 +179,7 @@ def test_canonical_history_keeps_attachment_post_date_and_sender() -> None:
 
     history = executor._merged_conversation_history(request, [])
     assert history[0]["content"].startswith(
-        f"[{expected_timestamp} | Nicolas] "
+        f"[{expected_timestamp} | Nicolas (id:nicolas) | unknown] "
     )
     assert "<galaris_message_context>" not in history[0]["content"]
     assert "<conversation_history_metadata>" not in history[0]["content"]

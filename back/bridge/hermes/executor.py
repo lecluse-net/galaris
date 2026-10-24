@@ -7,8 +7,7 @@ import json
 import time
 from dataclasses import replace
 from datetime import datetime
-from collections.abc import Mapping
-from typing import Any, AsyncIterator, Optional, cast
+from typing import Any, AsyncIterator, Optional
 from uuid import UUID, uuid4
 from loguru import logger
 from core.i18n import is_supported, render_prompt, t
@@ -26,7 +25,7 @@ from app.agent.contracts import (
     HarnessFailure,
     normalize_tool_name,
 )
-from app.agent import message_prompt
+from app.agent import message_history_role, message_prompt
 from . import client
 from . import driver as hermes_driver
 from .client import HermesTarget
@@ -574,24 +573,8 @@ def _request_conversation_history(task: AgentRunRequest) -> list[dict[str, Any]]
 
     history: list[dict[str, Any]] = []
     for raw in task.conversation_history:
-        role = str(raw.get("role") or "")
-        sender_raw = raw.get("sender")
-        sender: Mapping[str, Any] = (
-            cast(Mapping[str, Any], sender_raw)
-            if isinstance(sender_raw, Mapping)
-            else cast(Mapping[str, Any], {})
-        )
-        if role not in {"user", "assistant", "system"}:
-            role = (
-                "assistant"
-                if raw.get("sender_agent_id") is not None
-                or bool(raw.get("sender_is_ai"))
-                or sender.get("agent_id") is not None
-                else "user"
-            )
-        content = message_prompt(raw).strip()
-        if not content:
-            content = str(raw.get("content") or "").strip()
+        role = message_history_role(raw, self_agent_id=task.agent.id) or "user"
+        content = message_prompt(raw, fallback_text=str(raw.get("content") or ""), self_agent_id=task.agent.id).strip()
         if content:
             history.append({"role": role, "content": content})
     return history
