@@ -373,7 +373,7 @@ for (const mode of ['edit', 'read']) test(`${mode}: failed attachment downloads 
   expect(await page.evaluate(() => window.createdMediaUrls)).toEqual([])
 })
 
-test('document link thumbnails survive saving, reopening and repeated conversions', async ({ page }) => {
+for (const legacy of [false, true]) test(`document link thumbnails survive saving, reopening and repeated conversions (legacy=${legacy})`, async ({ page }, testInfo) => {
   const url = 'https://example.org/news'
   const current = { ...documentFixture, id: documentId, media_type: 'text/html', content_profile: 'document', payload: { text: `<p><a href="${url}">${url}</a></p>` } }
   const attachment = { id: attachmentId, name: 'link-preview.jpg', media_type: 'image/jpeg', size_bytes: 100 }
@@ -382,11 +382,16 @@ test('document link thumbnails survive saving, reopening and repeated conversion
   await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [{ id: 7, kind: 'agent', label: 'Alice', subtitle: '', avatar_url: null }], users: [] })
   await jsonRoute(page, '**/api/documents/keywords?*', [])
   await jsonRoute(page, '**/api/documents/folders?*', [])
-  await jsonRoute(page, `**/api/documents/${documentId}/attachments?*`, [attachment])
+  await jsonRoute(page, `**/api/documents/${documentId}/attachments?*`, legacy ? [attachment] : [])
+  await page.route('**/api/documents/link-card/thumbnail*', route => {
+    imageCalls++
+    expect(route.request().postDataJSON()).toEqual({ url })
+    return route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') })
+  })
   await page.route(`**/api/documents/${documentId}/link-card?*`, route => {
     cardCalls++
     expect(route.request().postDataJSON()).toEqual({ url })
-    return route.fulfill({ json: { attachment, html: `<blockquote class="galaris-link-card"><figure class="image"><a href="${url}"><img src="${uri}" alt="News" width="320"></a></figure><p><a href="${url}"><strong>News</strong></a></p><p>Daily news</p><p><a href="${url}">Publisher</a></p></blockquote>` } })
+    return route.fulfill({ json: { attachment: legacy ? attachment : null, html: `<blockquote class="galaris-link-card${legacy ? '' : ' galaris-web-card'}">${legacy ? `<figure class="image"><a href="${url}"><img src="${uri}" alt="News" width="320"></a></figure>` : ''}<p><a href="${url}"><strong>News</strong></a></p><p>Daily news</p><p><a href="${url}">Publisher</a></p></blockquote>` } })
   })
   await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}?*`, route => {
     imageCalls++
@@ -404,7 +409,12 @@ test('document link thumbnails survive saving, reopening and repeated conversion
   await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
   const card = page.locator('[data-editor-surface] .galaris-link-card')
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
-  await expect.poll(() => current.payload.text).toContain(uri)
+  await expect.poll(() => current.payload.text).toContain(legacy ? uri : 'galaris-web-card')
+  if (!legacy) {
+    expect(current.payload.text).not.toContain('<img')
+    expect(current.payload.text).not.toContain('/attachments/')
+    await expect(page.locator('.document-attachments')).not.toContainText('link-preview')
+  }
   expect(current.payload.text).not.toContain('blob:')
   await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
@@ -416,7 +426,7 @@ test('document link thumbnails survive saving, reopening and repeated conversion
     await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
     await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
   }
-  expect(imageCalls).toBe(2)
+  expect(imageCalls).toBeGreaterThanOrEqual(2)
   expect(cardCalls).toBe(1)
   const savedContent = current.payload.text
   const savedRevision = current.revision
@@ -432,6 +442,19 @@ test('document link thumbnails survive saving, reopening and repeated conversion
   }
   expect(current.payload.text).toBe(savedContent)
   expect(current.revision).toBe(savedRevision)
+  if (!legacy) {
+    const snapshot = await page.evaluate(async content => {
+      const { preparePortableDocumentSnapshot } = await import('/core/util/documentSnapshot.ts')
+      return preparePortableDocumentSnapshot(content, 'News', new AbortController().signal)
+    }, current.payload.text)
+    expect(snapshot).toContain('data:image/png;base64,')
+    expect(snapshot).not.toContain('/attachments/')
+    await page.locator('[data-editor-surface]').screenshot({ path: testInfo.outputPath('cached-link-preview.png') })
+    await mount(page, 'core/util/components/RichText.vue', { props: { profile: 'document', content: current.payload.text } })
+    await expect(page.locator('.rich-content img')).toHaveJSProperty('naturalWidth', 1)
+    await mount(page, 'core/util/components/WorkingDocumentEditor.vue', options)
+    await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
+  }
   // An unavailable preview stays reversible without repetitive notifications.
   await jsonRoute(page, `**/api/documents/${documentId}/link-card?*`, {
     attachment: null,
@@ -589,6 +612,25 @@ test('a thumbnail download failure can recover on the next card conversion', asy
   await page.getByRole('menuitem', { name: 'Show card', exact: true }).click()
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
   expect(await page.evaluate(() => window.imageCalls)).toBe(2)
+})
+
+for (const mode of ['edit', 'read']) test(`a cached web thumbnail cannot replace content after navigation (${mode})`, async ({ page }) => {
+  let finish, requested = false
+  await page.route('**/api/documents/link-card/thumbnail*', async route => {
+    requested = true
+    await new Promise(resolve => { finish = resolve })
+    await route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }).catch(() => {})
+  })
+  const field = mode === 'edit' ? 'modelValue' : 'content'
+  await mount(page, mode === 'edit' ? component : 'core/util/components/RichText.vue', { props: {
+    profile: 'document', [field]: '<blockquote class="galaris-link-card galaris-web-card"><p><a href="https://example.org">Synthetic page</a></p></blockquote>',
+  } })
+  await expect.poll(() => requested).toBe(true)
+  await page.evaluate(({ field }) => window.testApp.setProps({ [field]: '<p>Another document</p>' }), { field })
+  finish()
+  const content = page.locator(mode === 'edit' ? '[data-editor-surface]' : '.rich-content')
+  await expect(content).toHaveText('Another document')
+  await expect(content.locator('img')).toHaveCount(0)
 })
 
 test('pasting a URL inserts an inline address without a modal or a metadata request', async ({ page }) => {

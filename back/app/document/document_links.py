@@ -1,17 +1,16 @@
-"""Persist static link cards, with thumbnails owned by the document."""
+"""Persist link card text; thumbnails remain disposable shared previews."""
 
+import asyncio
 from html import escape
 from io import BytesIO
 from uuid import UUID
-
-from PIL import Image
 
 from core.user import HumanActor
 
 from core.preview import preview_web_link, thumbnails
 from core.util import normalize_html
 
-from . import document_attachment_service, resource_service as service
+from . import resource_service as service
 from .schemas import DocumentLinkCard
 
 
@@ -20,30 +19,35 @@ async def create_link_card(document_id: UUID, url: str, *, actor_agent_id: int |
     if not access.can_write or item.content_profile != "document":
         raise service.DocumentPermissionError("Document edit access required")
     metadata = await preview_web_link(url, agent_id=actor_agent_id)
-    attachment = None
-    if metadata.image:
-        try:
-            with Image.open(BytesIO(metadata.image)) as image:
-                if image.width * image.height > 40_000_000:
-                    raise ValueError("Thumbnail exceeds pixel limit")
-                content = metadata.image if image.format == "WEBP" and image.width <= thumbnails.MAX_SIZE[0] and image.height <= thumbnails.MAX_SIZE[1] else thumbnails.encode(image)
-            attachment = await document_attachment_service.add_document_attachment_bytes(
-                document_id, actor_agent_id=actor_agent_id, name="link-preview.webp",
-                media_type=thumbnails.MEDIA_TYPE, content=content,
-            )
-        except (OSError, ValueError, TimeoutError):
-            # A page without a usable thumbnail remains a useful text card.
-            pass
+    await _cache_thumbnail(url, metadata.image)
     href = escape(url, quote=True)
-    image_html = (
-        f'<figure class="image"><a href="{href}"><img src="document://{document_id}/attachments/{attachment.id}" '
-        f'alt="{escape(metadata.title, quote=True)}" width="320"></a></figure>'
-        if attachment else ""
-    )
     html = (
-        '<blockquote class="galaris-link-card">' + image_html
+        '<blockquote class="galaris-link-card galaris-web-card">'
         + f'<p><a href="{href}"><strong>{escape(metadata.title)}</strong></a></p>'
         + (f'<p>{escape(metadata.description)}</p>' if metadata.description else "")
         + f'<p><a href="{href}">{escape(metadata.site_name)}</a></p></blockquote>'
     )
-    return DocumentLinkCard(html=normalize_html(html, profile="document"), attachment=attachment)
+    return DocumentLinkCard(html=normalize_html(html, profile="document"))
+
+
+async def _cache_thumbnail(url: str, image: bytes | None) -> bytes | None:
+    if not image:
+        return None
+    content = await asyncio.to_thread(thumbnails.from_image, BytesIO(image))
+    if content:
+        try:
+            await asyncio.to_thread(thumbnails.write, thumbnails.cache_path(url), content)
+        except OSError:
+            # A full/read-only cache must not prevent a useful card or preview.
+            pass
+    return content
+
+
+async def link_thumbnail(url: str, *, actor: int | HumanActor) -> bytes | None:
+    """Read or regenerate a public HTTPS preview, without creating a resource."""
+    async with thumbnails.generation(url):
+        cached = await asyncio.to_thread(thumbnails.read, thumbnails.cache_path(url))
+        if cached:
+            return cached
+        metadata = await preview_web_link(url, agent_id=actor)
+        return await _cache_thumbnail(url, metadata.image)

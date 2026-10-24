@@ -590,6 +590,21 @@ async def import_document_image(document_id: UUID, data: DocumentLinkRequest, ac
     except Exception as exc:
         raise _http_error(exc) from exc
 
+@router.post("/link-card/thumbnail", response_class=Response)
+@authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
+async def read_link_card_thumbnail(data: DocumentLinkRequest, agent_id: int | None = Query(default=None, gt=0)) -> Response:
+    from .document_links import link_thumbnail
+    try:
+        actor, _ = await _item_request_actor(agent_id)
+        if actor is None:
+            actor = HumanActor((await current_management_scope()).user_id)
+        content = await link_thumbnail(data.url, actor=actor)
+        return Response(content, status_code=200 if content else 204, media_type="image/webp",
+                        headers={"Cache-Control": "no-store"})
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
 @router.post("/{document_id}/link-card", response_model=DocumentLinkCard)
 @authorize(privileges=Privileges.DOCUMENT_EDIT)
 async def create_document_link_card(document_id: UUID, data: DocumentLinkRequest, actor_agent_id: int | None = Query(default=None, gt=0)) -> DocumentLinkCard:

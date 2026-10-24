@@ -248,8 +248,8 @@ Paste a URL on its own into the document: it becomes a clickable link without a 
 Right-click the link and choose **Show card** in the editor’s context menu to insert its title,
 available description and thumbnail, including for YouTube. **Show URL** in the card’s context menu
 converts it back to a link. The card is fetched only after you choose it. You can repeat these appearance
-changes: a card with a thumbnail is reused during editing without downloading the page again or
-duplicating its attachment. If a site refuses automated previews, the card retains its address without
+changes: a card with a thumbnail reuses its cached preview during editing without creating
+an attachment. If a site refuses automated previews, the card retains its address without
 inventing metadata. Web pages use the same page capture generator and cache as conversations;
 YouTube uses the video thumbnail. Cards also share the conversation preview styling.
 The site’s published description is kept with the capture and displayed in both contexts.
@@ -260,8 +260,10 @@ thumbnail. Videos fit entirely without cropping; PDF attachments also have full-
 in a golden-ratio frame (width / height ≈ 1.618). **Open PDF in fullscreen**, to the right of the title, opens the existing
 viewer using the already loaded file.
 Printing and PDF export retain the static thumbnail or link.
-Previews require public HTTPS URLs; plain links remain available. Thumbnails are stored
-with the document. Clicking an attachment link opens its viewer, including while editing.
+Previews require public HTTPS URLs; plain links remain available. Thumbnails are cached technical
+previews, not attached content: they create no files in the document's attachments. If the cache
+is cleared, the preview can be regenerated; if the source is unavailable, the card retains its
+text and link. Old cards remain readable. Clicking an attachment link opens its viewer, including while editing.
 Right-click an attachment, or press **Shift+F10** while it has focus, to open, download,
 rename, copy its reference, insert or remove it according to the available permissions.
 Thumbnails retain download and remove icons; clicking the thumbnail opens its preview.

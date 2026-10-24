@@ -156,6 +156,7 @@ EDITORIAL_CLASSES = {
     "pen-red",
     "pen-green",
     "galaris-link-card",
+    "galaris-web-card",
     "galaris-media-audio",
     "galaris-media-video",
     "galaris-media-pdf",

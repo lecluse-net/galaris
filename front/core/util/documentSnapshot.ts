@@ -8,6 +8,7 @@ import { solaireStyles } from './solaire'
 import { layoutDocumentRendering } from './layoutDocumentRendering'
 import type { RenderedDocumentResolver } from './renderedDocument'
 import { embeddedResourceCards, prepareDocumentCard } from './resourceCards'
+import { webLinkCardImage, prependWebLinkImage } from './webLinkPreview'
 
 const MAX_SNAPSHOT_BYTES = 12_000_000
 
@@ -78,6 +79,11 @@ export async function prepareDocumentSnapshot(
     const blob = await resolveImage(...reference)
     signal.throwIfAborted()
     image.src = await imageUrl(blob)
+  }))
+  await Promise.all([...doc.querySelectorAll('blockquote.galaris-web-card')].map(async card => {
+    const blob = await webLinkCardImage(card, null, signal)
+    signal.throwIfAborted()
+    if (blob) prependWebLinkImage(card, await imageUrl(blob))
   }))
   signal.throwIfAborted()
   await Promise.all(interactive.map(async (code, index) => {

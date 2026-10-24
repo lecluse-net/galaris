@@ -4,7 +4,7 @@ from zipfile import ZipFile
 import pytest
 from PIL import Image
 
-from core.preview import WebLinkPreview
+from core.preview import WebLinkPreview, thumbnails
 from app.document import resource_service as service
 from app.document import document_links, document_export, document_image_import
 from app.document import document_attachment_service as attachments
@@ -43,7 +43,9 @@ async def test_html_attachment_bundle_is_portable_and_keeps_revision(agents, mem
 
 
 @pytest.mark.asyncio
-async def test_link_card_owns_thumbnail_and_checks_write_before_fetch(agents, memory_storage, monkeypatch):
+async def test_link_card_keeps_thumbnail_in_shared_cache_and_checks_write_before_fetch(agents, memory_storage, monkeypatch, tmp_path):
+    from core.settings import settings
+    monkeypatch.setattr(type(settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path))
     owner, reader = agents
     item = await document(owner)
     await service.set_item_grant(item.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
@@ -58,21 +60,84 @@ async def test_link_card_owns_thumbnail_and_checks_write_before_fetch(agents, me
         await document_links.create_link_card(item.id, "https://youtu.be/dQw4w9WgXcQ", actor_agent_id=reader.id)
     assert not calls
     card = await document_links.create_link_card(item.id, "https://youtu.be/dQw4w9WgXcQ", actor_agent_id=owner.id)
-    assert card.attachment is not None
-    assert card.attachment.media_type == "image/webp"
-    assert 'class="galaris-link-card"' in card.html
+    assert card.attachment is None
+    assert "galaris-web-card" in card.html
     assert "A &lt;video&gt;" in card.html and "A &amp; B" in card.html
     assert "iframe" not in card.html
-    assert f"document://{item.id}/attachments/{card.attachment.id}" in card.html
-    assert len(await attachments.list_document_attachments(item.id, actor_agent_id=reader.id)) == 1
+    assert "<img" not in card.html and "/attachments/" not in card.html
+    assert await attachments.list_document_attachments(item.id, actor_agent_id=reader.id) == []
     current, *_ = await service.get_item(item.id, agent_id=owner.id)
     assert current.revision == 1
+    url = "https://youtu.be/dQw4w9WgXcQ"
+    cached = await document_links.link_thumbnail(url, actor=reader.id)
+    assert len(calls) == 1
+    with Image.open(BytesIO(cached)) as image:
+        assert image.format == "WEBP" and image.size == (20, 10)
+    thumbnails.delete(url)
+    assert await document_links.link_thumbnail(url, actor=owner.id) == cached
+    assert len(calls) == 2
+    assert await attachments.list_document_attachments(item.id, actor_agent_id=owner.id) == []
 
 
 @pytest.mark.parametrize("url", ["http://example.org", "https://user:secret@example.org", "javascript:alert(1)"])
 def test_card_request_requires_https_without_credentials(url):
     with pytest.raises(ValueError):
         DocumentLinkRequest(url=url)
+
+
+@pytest.mark.asyncio
+async def test_link_thumbnail_http_checks_auth_and_agent_scope_without_attachments(client, monkeypatch, tmp_path):
+    from core.settings import settings
+    from sqlalchemy import select
+    from core.authorize.models import Assignment, Privilege, Role
+    from core.user import UserModel
+    from core.user.auth_service import create_access_token
+    from core.database import get_db_session
+    monkeypatch.setattr(type(settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path))
+    calls = []
+    output = BytesIO()
+    Image.new("RGB", (20, 10), "blue").save(output, format="PNG")
+
+    async def preview(url, *, agent_id):
+        calls.append((url, agent_id))
+        return WebLinkPreview("Synthetic page", "", "Example", output.getvalue())
+
+    monkeypatch.setattr(document_links, "preview_web_link", preview)
+    path = "/api/documents/link-card/thumbnail"
+    body = {"url": "https://example.org/synthetic-page"}
+    assert (await client.post(path, json=body)).status_code == 401
+    assert not calls
+    credentials = {"email": "preview-owner@example.com", "password": "Synthetic-preview-password-123"}
+    assert (await client.post("/api/auth/register", json=credentials)).status_code == 201
+    login = await client.post("/api/auth/login-json", json=credentials)
+    headers = {"Authorization": "Bearer " + login.json()["access_token"]}
+    choices = (await client.get("/api/agents/selection", headers=headers)).json()
+    agent_id = choices[0]["id"]
+    async with get_db_session() as db:
+        user = await db.scalar(select(UserModel).where(UserModel.email == credentials["email"]))
+        privilege = await db.scalar(select(Privilege).where(Privilege.code == "DOCUMENT_ACCESS"))
+        role = Role(code="synthetic-preview-reader", privileges=[privilege])
+        db.add(role)
+        await db.flush()
+        db.add(Assignment(user_id=user.id, role_id=role.id))
+        await db.commit()
+        headers = {"Authorization": "Bearer " + create_access_token({
+            "sub": user.email, "user_id": user.id, "role_id": role.id,
+        })}
+    invalid = await client.post(path, json={"url": "http://example.org"}, headers=headers)
+    assert invalid.status_code == 422 and not calls
+    denied = await client.post(path, json=body, params={"agent_id": 2147483647}, headers=headers)
+    assert denied.status_code in {403, 404} and not calls
+    response = await client.post(path, json=body, params={"agent_id": agent_id}, headers=headers)
+    assert response.status_code == 200 and response.headers["content-type"] == "image/webp"
+    assert calls == [(body["url"], agent_id)]
+    assert (await client.post(path, json=body, headers=headers)).content == response.content
+    assert len(calls) == 1
+    thumbnails.delete(body["url"])
+    async def no_thumbnail(*args, **kwargs):
+        return WebLinkPreview("Synthetic page", "", "Example")
+    monkeypatch.setattr(document_links, "preview_web_link", no_thumbnail)
+    assert (await client.post(path, json=body, headers=headers)).status_code == 204
 
 
 @pytest.mark.asyncio

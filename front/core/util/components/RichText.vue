@@ -27,6 +27,7 @@ import ResourceReadMenu from './ResourceReadMenu.vue'
 import WorkingDocumentIcon from './WorkingDocumentIcon.vue'
 import { useDocumentLinkIcons } from '../documentLinkIcons'
 import '../editorialTheme.css'
+import { webLinkCardImage, prependWebLinkImage } from '../webLinkPreview'
 const { content, profile = 'rich-text', resolveImage } = defineProps<{
   content: string
   profile?: ContentProfile
@@ -83,7 +84,9 @@ function revoke(): void {
   players.forEach(player => player.dispose()); players = []
   urls.forEach(URL.revokeObjectURL); urls = []
 }
-watch(() => [content, profile, resolveImage] as const, async () => {
+watch(() => [content, profile, resolveImage] as const, async (_value, _old, onCleanup) => {
+  const controller = new AbortController()
+  onCleanup(() => controller.abort())
   const current = ++generation
   revoke()
   const doc = new DOMParser().parseFromString('<body>' + sanitizeRichHtml(content, profile), 'text/html')
@@ -105,10 +108,11 @@ watch(() => [content, profile, resolveImage] as const, async () => {
     else link.removeAttribute('href')
   })
   const images = [...doc.body.querySelectorAll('img')]
+  const webCards = profile === 'document' ? [...doc.body.querySelectorAll('blockquote.galaris-web-card')] : []
   const references = images.map(image => attachmentReference(image.getAttribute('src') ?? ''))
   images.forEach(image => image.removeAttribute('src'))
   rendered.value = doc.body.innerHTML
-  await Promise.all(images.map(async (image, index) => {
+  await Promise.all([...images.map(async (image, index) => {
     const reference = references[index]
     if (!reference || !resolveImage) return
     try {
@@ -118,7 +122,13 @@ watch(() => [content, profile, resolveImage] as const, async () => {
       urls.push(url)
       image.src = url
     } catch { /* The alt text remains; no unauthorized preview is retained. */ }
-  }))
+  }), ...webCards.map(async card => {
+    let blob: Blob | null
+    try { blob = await webLinkCardImage(card, null, controller.signal) }
+    catch { return }
+    if (!blob || current !== generation) return
+    const url = URL.createObjectURL(blob); urls.push(url); prependWebLinkImage(card, url)
+  })])
   if (current === generation) {
     rendered.value = doc.body.innerHTML
     await nextTick()

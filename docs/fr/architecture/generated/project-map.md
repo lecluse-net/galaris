@@ -17,7 +17,7 @@ tests restent l’autorité sur le comportement.
 - 28 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 7 paires frontend directement bidirectionnelles ;
-- 740 handlers HTTP/WebSocket détectés ;
+- 741 handlers HTTP/WebSocket détectés ;
 - 177 tables SQLAlchemy détectées ;
 - 278 outils MCP natifs détectés ;
 - 51 pages Vue détectées.
@@ -1483,6 +1483,7 @@ tests restent l’autorité sur le comportement.
 | POST | `/documents/icons/resolve` | `app.document` | `resolve_document_icons` | oui | `back/app/document/router.py:291` |
 | GET | `/documents/keywords` | `app.document` | `read_document_keywords` | oui | `back/app/document/router.py:257` |
 | POST | `/documents/library` | `app.document` | `browse_managed_documents` | oui | `back/app/document/router.py:275` |
+| POST | `/documents/link-card/thumbnail` | `app.document` | `read_link_card_thumbnail` | oui | `back/app/document/router.py:595` |
 | PUT | `/documents/order` | `app.document` | `reorder_personal_documents` | oui | `back/app/document/router.py:308` |
 | PUT | `/documents/order/sort` | `app.document` | `sort_personal_documents` | oui | `back/app/document/router.py:318` |
 | GET | `/documents/owner-options` | `app.document` | `read_document_owner_options` | oui | `back/app/document/router.py:438` |
@@ -1494,52 +1495,52 @@ tests restent l’autorité sur le comportement.
 | PUT | `/documents/tags/{tag_id}` | `app.document` | `update_personal_document_tag` | oui | `back/app/document/router.py:391` |
 | GET | `/documents/tags/{tag_id}/sharing` | `app.document` | `read_folder_sharing` | oui | `back/app/document/router.py:373` |
 | PUT | `/documents/tags/{tag_id}/sharing` | `app.document` | `update_folder_sharing` | oui | `back/app/document/router.py:382` |
-| DELETE | `/documents/{document_id}` | `app.document` | `delete_managed_document` | oui | `back/app/document/router.py:766` |
-| GET | `/documents/{document_id}` | `app.document` | `read_managed_document` | oui | `back/app/document/router.py:742` |
-| PATCH | `/documents/{document_id}` | `app.document` | `update_human_document` | oui | `back/app/document/router.py:780` |
+| DELETE | `/documents/{document_id}` | `app.document` | `delete_managed_document` | oui | `back/app/document/router.py:781` |
+| GET | `/documents/{document_id}` | `app.document` | `read_managed_document` | oui | `back/app/document/router.py:757` |
+| PATCH | `/documents/{document_id}` | `app.document` | `update_human_document` | oui | `back/app/document/router.py:795` |
 | GET | `/documents/{document_id}/app-permissions` | `app.document` | `read_app_permissions` | oui | `back/app/document/router.py:130` |
 | PUT | `/documents/{document_id}/app-permissions/{app_key}/{alias}` | `app.document` | `update_app_permission` | oui | `back/app/document/router.py:138` |
 | POST | `/documents/{document_id}/apps/{app_id}/datasets/{alias}` | `app.document` | `access_app_dataset` | oui | `back/app/document/router.py:149` |
-| GET | `/documents/{document_id}/attachments` | `app.document` | `list_document_attachments` | oui | `back/app/document/router.py:1015` |
-| POST | `/documents/{document_id}/attachments` | `app.document` | `add_document_attachment` | oui | `back/app/document/router.py:1034` |
-| DELETE | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `delete_document_attachment` | oui | `back/app/document/router.py:1147` |
-| GET | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `read_document_attachment` | oui | `back/app/document/router.py:1116` |
-| PATCH | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `rename_document_attachment` | oui | `back/app/document/router.py:1085` |
-| GET | `/documents/{document_id}/attachments/{attachment_id}/info` | `app.document` | `read_document_attachment_info` | oui | `back/app/document/router.py:1099` |
-| GET | `/documents/{document_id}/attachments/{attachment_id}/thumbnail` | `app.document` | `read_document_attachment_thumbnail` | oui | `back/app/document/router.py:1054` |
-| DELETE | `/documents/{document_id}/collaborators/{agent_id}` | `app.document` | `remove_managed_document_grant` | oui | `back/app/document/router.py:984` |
-| PUT | `/documents/{document_id}/collaborators/{agent_id}` | `app.document` | `set_managed_document_grant` | oui | `back/app/document/router.py:950` |
+| GET | `/documents/{document_id}/attachments` | `app.document` | `list_document_attachments` | oui | `back/app/document/router.py:1030` |
+| POST | `/documents/{document_id}/attachments` | `app.document` | `add_document_attachment` | oui | `back/app/document/router.py:1049` |
+| DELETE | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `delete_document_attachment` | oui | `back/app/document/router.py:1162` |
+| GET | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `read_document_attachment` | oui | `back/app/document/router.py:1131` |
+| PATCH | `/documents/{document_id}/attachments/{attachment_id}` | `app.document` | `rename_document_attachment` | oui | `back/app/document/router.py:1100` |
+| GET | `/documents/{document_id}/attachments/{attachment_id}/info` | `app.document` | `read_document_attachment_info` | oui | `back/app/document/router.py:1114` |
+| GET | `/documents/{document_id}/attachments/{attachment_id}/thumbnail` | `app.document` | `read_document_attachment_thumbnail` | oui | `back/app/document/router.py:1069` |
+| DELETE | `/documents/{document_id}/collaborators/{agent_id}` | `app.document` | `remove_managed_document_grant` | oui | `back/app/document/router.py:999` |
+| PUT | `/documents/{document_id}/collaborators/{agent_id}` | `app.document` | `set_managed_document_grant` | oui | `back/app/document/router.py:965` |
 | GET | `/documents/{document_id}/content-revisions` | `app.document` | `list_managed_document_content_revisions` | oui | `back/app/document/router.py:484` |
 | GET | `/documents/{document_id}/content-revisions/{revision}` | `app.document` | `read_managed_document_content_revision` | oui | `back/app/document/router.py:510` |
 | GET | `/documents/{document_id}/content-revisions/{revision}/diff` | `app.document` | `diff_managed_document_content_revision` | oui | `back/app/document/router.py:534` |
 | POST | `/documents/{document_id}/content-revisions/{revision}/restore` | `app.document` | `restore_managed_document_content_revision` | oui | `back/app/document/router.py:558` |
-| GET | `/documents/{document_id}/dataset-attachments` | `app.document` | `read_document_datasets` | oui | `back/app/document/router.py:656` |
-| PUT | `/documents/{document_id}/dataset-attachments` | `app.document` | `attach_document_dataset` | oui | `back/app/document/router.py:711` |
-| DELETE | `/documents/{document_id}/dataset-attachments/{dataset_id}` | `app.document` | `detach_document_dataset` | oui | `back/app/document/router.py:723` |
-| POST | `/documents/{document_id}/export-bundle` | `app.document` | `export_document_bundle` | oui | `back/app/document/router.py:605` |
-| POST | `/documents/{document_id}/export-pdf` | `app.document` | `export_managed_document_pdf` | oui | `back/app/document/router.py:618` |
-| PATCH | `/documents/{document_id}/folder` | `app.document` | `move_managed_document` | oui | `back/app/document/router.py:822` |
-| PATCH | `/documents/{document_id}/global-access` | `app.document` | `set_managed_document_global_access` | oui | `back/app/document/router.py:921` |
-| DELETE | `/documents/{document_id}/grants/{agent_id}` | `app.document` | `remove_document_grant` | oui | `back/app/document/router.py:1204` |
-| PUT | `/documents/{document_id}/grants/{agent_id}` | `app.document` | `set_document_grant` | oui | `back/app/document/router.py:1172` |
+| GET | `/documents/{document_id}/dataset-attachments` | `app.document` | `read_document_datasets` | oui | `back/app/document/router.py:671` |
+| PUT | `/documents/{document_id}/dataset-attachments` | `app.document` | `attach_document_dataset` | oui | `back/app/document/router.py:726` |
+| DELETE | `/documents/{document_id}/dataset-attachments/{dataset_id}` | `app.document` | `detach_document_dataset` | oui | `back/app/document/router.py:738` |
+| POST | `/documents/{document_id}/export-bundle` | `app.document` | `export_document_bundle` | oui | `back/app/document/router.py:620` |
+| POST | `/documents/{document_id}/export-pdf` | `app.document` | `export_managed_document_pdf` | oui | `back/app/document/router.py:633` |
+| PATCH | `/documents/{document_id}/folder` | `app.document` | `move_managed_document` | oui | `back/app/document/router.py:837` |
+| PATCH | `/documents/{document_id}/global-access` | `app.document` | `set_managed_document_global_access` | oui | `back/app/document/router.py:936` |
+| DELETE | `/documents/{document_id}/grants/{agent_id}` | `app.document` | `remove_document_grant` | oui | `back/app/document/router.py:1219` |
+| PUT | `/documents/{document_id}/grants/{agent_id}` | `app.document` | `set_document_grant` | oui | `back/app/document/router.py:1187` |
 | PUT | `/documents/{document_id}/icon` | `app.document` | `save_document_icon` | oui | `back/app/document/router.py:298` |
 | POST | `/documents/{document_id}/import-image` | `app.document` | `import_document_image` | oui | `back/app/document/router.py:585` |
-| GET | `/documents/{document_id}/internal-attachments` | `app.document` | `read_internal_attachments` | oui | `back/app/document/router.py:666` |
-| PUT | `/documents/{document_id}/internal-attachments` | `app.document` | `change_internal_attachments` | oui | `back/app/document/router.py:677` |
-| POST | `/documents/{document_id}/link-card` | `app.document` | `create_document_link_card` | oui | `back/app/document/router.py:595` |
-| PATCH | `/documents/{document_id}/owner` | `app.document` | `change_document_owner` | oui | `back/app/document/router.py:859` |
+| GET | `/documents/{document_id}/internal-attachments` | `app.document` | `read_internal_attachments` | oui | `back/app/document/router.py:681` |
+| PUT | `/documents/{document_id}/internal-attachments` | `app.document` | `change_internal_attachments` | oui | `back/app/document/router.py:692` |
+| POST | `/documents/{document_id}/link-card` | `app.document` | `create_document_link_card` | oui | `back/app/document/router.py:610` |
+| PATCH | `/documents/{document_id}/owner` | `app.document` | `change_document_owner` | oui | `back/app/document/router.py:874` |
 | PUT | `/documents/{document_id}/parent` | `app.document` | `move_personal_subdocument` | oui | `back/app/document/router.py:349` |
-| GET | `/documents/{document_id}/process-attachments` | `app.document` | `read_document_processes` | oui | `back/app/document/router.py:689` |
-| PUT | `/documents/{document_id}/process-attachments` | `app.document` | `attach_document_process` | oui | `back/app/document/router.py:699` |
-| GET | `/documents/{document_id}/sharing` | `app.document` | `read_document_sharing` | oui | `back/app/document/router.py:795` |
-| PUT | `/documents/{document_id}/sharing` | `app.document` | `update_document_sharing` | oui | `back/app/document/router.py:803` |
-| PUT | `/documents/{document_id}/sharing-level` | `app.document` | `update_document_sharing_level` | oui | `back/app/document/router.py:811` |
+| GET | `/documents/{document_id}/process-attachments` | `app.document` | `read_document_processes` | oui | `back/app/document/router.py:704` |
+| PUT | `/documents/{document_id}/process-attachments` | `app.document` | `attach_document_process` | oui | `back/app/document/router.py:714` |
+| GET | `/documents/{document_id}/sharing` | `app.document` | `read_document_sharing` | oui | `back/app/document/router.py:810` |
+| PUT | `/documents/{document_id}/sharing` | `app.document` | `update_document_sharing` | oui | `back/app/document/router.py:818` |
+| PUT | `/documents/{document_id}/sharing-level` | `app.document` | `update_document_sharing_level` | oui | `back/app/document/router.py:826` |
 | GET | `/documents/{document_id}/summary` | `app.document` | `read_document_summary` | oui | `back/app/document/router.py:99` |
 | PUT | `/documents/{document_id}/summary` | `app.document` | `edit_document_summary` | oui | `back/app/document/router.py:111` |
 | PUT | `/documents/{document_id}/tags` | `app.document` | `move_personal_document` | oui | `back/app/document/router.py:341` |
 | DELETE | `/documents/{document_id}/tags/{tag_id}` | `app.document` | `remove_personal_document_tag` | oui | `back/app/document/router.py:415` |
 | PUT | `/documents/{document_id}/tags/{tag_id}` | `app.document` | `add_personal_document_tag` | oui | `back/app/document/router.py:407` |
-| POST | `/documents/{document_id}/thumbnail` | `app.document` | `read_document_thumbnail` | oui | `back/app/document/router.py:635` |
+| POST | `/documents/{document_id}/thumbnail` | `app.document` | `read_document_thumbnail` | oui | `back/app/document/router.py:650` |
 | GET | `/dream/memory/{item_id}/actions` | `app.dream` | `read_memory_dream_actions` | oui | `back/app/dream/router.py:50` |
 | POST | `/dream/memory/{item_id}/actions/{action}` | `app.dream` | `run_memory_dream_action` | oui | `back/app/dream/router.py:59` |
 | GET | `/dream/overview` | `app.dream` | `read_dream_overview` | oui | `back/app/dream/router.py:83` |

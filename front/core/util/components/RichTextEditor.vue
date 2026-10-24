@@ -59,6 +59,9 @@
     <ResourceDetailDialog v-if="resourceDetail" :target="resourceDetail" @close="resourceDetail = null" />
     <RenderedObjectPreview v-if="objectPreview" :key="objectPreview.key" :source="objectPreview.source" :language="objectPreview.language" :capture="capturePreview" :title="t('richEditor.interactivePreview')" @close="objectPreview = null" />
     <PdfPreview v-model="pdfPreview" />
+    <FullscreenPreview v-model="imagePreviewOpen" :viewer-label="t('richEditor.resources.openImage')">
+      <template #default="{ fit }"><img :src="imagePreview" :alt="t('richEditor.resources.openImage')" :style="{ maxWidth: fit ? '100vw' : 'none', maxHeight: fit ? '100dvh' : 'none' }" /></template>
+    </FullscreenPreview>
     <audio v-if="personalVoice" ref="playbackElement" hidden />
     <div v-if="personalVoice?.error.value" role="alert" class="q-pa-sm">{{ personalVoice.error.value }}</div>
     <div v-if="uploadProgress" role="status" class="row items-center q-gutter-sm q-pa-sm"><q-linear-progress class="col" :value="uploadProgress.progress" /><span>{{ uploadProgress.name }} · {{ Math.round(uploadProgress.progress * 100) }}% · {{ uploadProgress.index }}/{{ uploadProgress.total }}</span><q-btn flat round dense icon="close" :aria-label="t('richEditor.resources.cancelUpload')" @click="uploadRequest?.abort()" /></div>
@@ -111,11 +114,13 @@ import CodeBlockCopyButton from './CodeBlockCopyButton.vue'
 import { reserveEditorialToolbarSpace } from '../editorialScrollPadding'
 import { documentShortcut, editorialShortcuts, isAltGraphInput, readingShortcutCommands, shortcutKeys } from '../editorialShortcuts'
 import RenderedObjectPreview from './RenderedObjectPreview.vue'
+import FullscreenPreview from './FullscreenPreview.vue'
 import { DocumentResourceReferences as InternalResourcePicker } from '../resourceContributions'
 import PdfPreview from './PdfPreview.vue'
 import { contentExtensions, resolveEditorLinks, type EditorObject, type EditorToolbarGroupName, type ObjectHost } from '../tiptapContent'
 import { attachmentReference, canonicalRichLink, richLinkCard, richLinkHref, richLinkTarget, richLinkHasCard, richLinkTitle, sanitizeRichHtml, validRichLink, type ContentProfile } from '../richText'
 import { documentUriFromLink } from '../documentResource'
+import { mountWebLinkPreview } from '../webLinkPreview'
 import { useReferenceFormatting } from '../resourceReference'
 import { useDocumentNavigation } from '../documentNavigation'
 import { alignImage, imageAlignment } from '../imageAlignment'
@@ -159,6 +164,8 @@ const keyboardShortcuts = computed(() => [
 ])
 const root = useTemplateRef('root'), fileInput = useTemplateRef('fileInput'), playbackElement = useTemplateRef('playbackElement')
 const editorHost = useTemplateRef('editorHost'), selectedCardImage = ref('')
+const imagePreview = ref('')
+const imagePreviewOpen = computed({ get: () => Boolean(imagePreview.value), set: (open: boolean) => { if (!open) imagePreview.value = '' } })
 const editor = shallowRef<Editor>(), revision = ref(0), sourceMode = ref(false), sourceDraft = ref(''), fullscreen = ref(false), layout = ref<'fixed' | 'full'>('fixed'), fits = ref(true)
 const findOpen = ref(false), searchInput = useTemplateRef<QInput>('searchInput')
 const codeCopies = shallowRef<Array<{ key: number; element: HTMLElement; source: () => string }>>([])
@@ -246,6 +253,7 @@ function mountCard(target: ObjectHost): () => void {
   links.forEach(link => disposals.push(decorateDocumentLink(link)))
   const link = links[0], uri = link?.getAttribute('href') ?? ''
   for (const image of target.element.querySelectorAll('img')) { const src = image.getAttribute('src') ?? ''; image.dataset.editorAttachment = src; image.removeAttribute('src'); disposals.push(resolveAttachment(src, image)) }
+  if (profile === 'document') disposals.push(mountWebLinkPreview(target.element, resourceAgentId))
   if ((target.element.matches('.galaris-process-diagram, .galaris-agent-card') || richLinkTarget(uri)?.kind === 'document') && richLinkTarget(uri)) {
     prepareDocumentCard(target.element)
     const element = document.createElement('div'); element.className = 'galaris-resource-embed'; target.element.append(element)
@@ -260,6 +268,7 @@ function mountCard(target: ObjectHost): () => void {
   return () => disposals.forEach(dispose => dispose())
 }
 function createEditor(): void {
+  imagePreview.value = ''
   editor.value?.destroy(); embeddedTargets.value = []; resourceEmbeds.value = []; captures.clear(); resourceCaptures.clear(); selectedCardImage.value = ''
   editor.value = new Editor({
     element: editorHost.value!,
@@ -472,6 +481,7 @@ async function openInternal(): Promise<void> {
   linkOpen.value = true
 }
 function navigate(uri: string): void {
+  if (uri.startsWith('blob:')) { imagePreview.value = uri; return }
   if (navigateDocument(uri)) return
   const target = richLinkTarget(uri, '', resourceAgentId)
   if (target) { resourceDetail.value = target; return }
@@ -508,7 +518,7 @@ async function openContextMenu(event: MouseEvent): Promise<void> {
     if (!target.closest('.selectedCell') && (selection.empty || position < selection.from || position > selection.to)) current.commands.setTextSelection(position)
   }
   selectContextLink(target)
-  selectedCardImage.value = target instanceof HTMLImageElement ? target.dataset.editorAttachment ?? '' : ''
+  selectedCardImage.value = target instanceof HTMLImageElement ? target.dataset.editorAttachment ?? target.dataset.editorPreview ?? '' : ''
   await showContextMenu(event, request)
 }
 async function openKeyboardContextMenu(): Promise<void> {
@@ -553,7 +563,7 @@ async function showContextMenu(event: MouseEvent, request: number): Promise<void
 }
 function editorClick(event: MouseEvent): void {
   if (!(event.target instanceof Element) || !event.target.closest('[data-editor-surface]')) return
-  selectedCardImage.value = event.target instanceof HTMLImageElement ? event.target.dataset.editorAttachment ?? '' : ''
+  selectedCardImage.value = event.target instanceof HTMLImageElement ? event.target.dataset.editorAttachment ?? event.target.dataset.editorPreview ?? '' : ''
   if (readonly && event.target.closest('.galaris-image-object')) return
   if ((readonly || profile === 'document') && event.target.closest('.q-btn, input, select, textarea, [data-document-player]')) return
   const link = event.target.closest('[data-editor-surface] a')

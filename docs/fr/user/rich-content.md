@@ -270,7 +270,7 @@ Cliquez sur ce lien avec le bouton droit puis **Afficher une carte** dans le men
 le titre, la description disponible et une miniature, notamment pour YouTube. **Afficher l’URL**
 dans le menu de la carte permet de revenir au lien. La carte est récupérée seulement après ce choix.
 Vous pouvez répéter ces changements d’affichage : une carte avec miniature est réutilisée pendant
-l’édition, sans télécharger à nouveau la page ni dupliquer sa pièce jointe.
+l’édition, en réutilisant son aperçu en cache sans créer de pièce jointe.
 Si un site refuse les aperçus automatiques, la carte conserve son adresse sans inventer de métadonnées.
 Les pages web utilisent le générateur de captures et le cache des discussions ; YouTube utilise
 la miniature de la vidéo. La carte reprend aussi la présentation des aperçus des discussions.
@@ -283,7 +283,10 @@ recadrage. Les PDF insérés disposent aussi d’un aperçu en pleine largeur, d
 nombre d’or (largeur / hauteur ≈ 1,618). L’icône **Ouvrir le PDF en plein écran**, à droite du titre, ouvre la
 visionneuse avec le fichier déjà chargé. L’impression et le PDF conservent
 la miniature et le lien. Les aperçus exigent une URL HTTPS
-publique ; un lien simple reste possible. La miniature est conservée avec le document.
+publique ; un lien simple reste possible. Les miniatures sont des aperçus techniques en cache,
+pas des contenus joints : elles ne créent aucun fichier dans les pièces jointes du document.
+Si le cache est effacé, l'aperçu peut être régénéré ; si la source n'est plus disponible,
+la carte conserve ses textes et son lien. Les anciennes cartes restent lisibles.
 Un clic sur un lien vers une pièce jointe ouvre sa visionneuse, même en édition.
 Le clic droit sur une PJ, ou **Maj+F10** lorsqu’elle a le focus, propose l’ouverture,
 le téléchargement, le renommage, la copie de référence, l’insertion et le retrait selon

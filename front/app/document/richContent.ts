@@ -1,6 +1,7 @@
 import { documentIdFromResourceUri, type RichContentContribution } from '@/core/util'
 import { documentService } from './services/documentService'
 export default {
+  previewImage: (uri, agentId, signal) => documentService.linkThumbnail(uri, agentId, signal),
   async search(query) {
     const library = await documentService.browseDocumentLibrary({ query, limit: 50, include_keywords: false })
     return library.entries.map(({ item }) => ({ uri: `document://${item.id}`, title: item.title, context: String(item.owner_agent_id ?? item.owner_user_id ?? '') }))

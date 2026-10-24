@@ -25,6 +25,12 @@ export interface DocumentInternalAttachments {
 const ownerOptionsCache = createOwnerOptionsCache<DocumentOwnerOptions>()
 
 export const documentService = {
+async linkThumbnail(url: string, agentId: number | null, signal: AbortSignal): Promise<Blob | null> {
+  const response = await api.post<Blob>('/documents/link-card/thumbnail', { url }, {
+    params: { agent_id: agentId }, responseType: 'blob', signal,
+  })
+  return response.status === 204 ? null : response.data
+},
 async updateSummary(id: string, agentId: number, data: DocumentUpdate): Promise<DocumentDetail> {
   return (await api.put<DocumentDetail>(`/documents/${id}/summary`, data, {
     params: { actor_agent_id: agentId }, headers: { 'X-Editorial-Profile-Version': '1' },

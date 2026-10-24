@@ -267,13 +267,19 @@ un fichier retiré de la liste mais retenu pour le texte ou l'historique, sous l
 `POST /documents/{document_id}/link-card` exige un agent dans le périmètre utilisateur
 et le droit d'écriture avant tout accès réseau. `app.file_share.web_metadata` partage avec
 Messenger l'extraction Open Graph et YouTube oEmbed via le transport HTTPS public protégé
-contre les adresses privées et redirections internes. Memory passe par le port
-`core.preview.preview_web_link`, enregistré par File Share au chargement, pour éviter une
-dépendance circulaire entre les deux domaines. Pages : 1 Mio et 15 secondes ; images :
-5 Mio, 40 millions de pixels, redimensionnement maximal 640 × 360 et conversion JPEG.
-Le résultat est un `blockquote.galaris-link-card` statique avec une miniature en pièce jointe.
+contre les adresses privées et redirections internes. Documents passe par le port
+`core.preview.preview_web_link`, dont l'adaptateur Browser réutilise ce transport et
+le cache de captures partagé. Pages : 1 Mio et 15 secondes ; images :
+5 Mio et 40 millions de pixels.
+Le résultat est un `blockquote.galaris-link-card.galaris-web-card` avec les textes et
+l'URL source, sans image persistée dans le corps ni pièce jointe technique. La miniature
+WebP (320 × 320 au maximum) reste dans le cache partagé `core.preview.thumbnails`.
+`POST /documents/link-card/thumbnail` exige un droit d'accès documentaire et vérifie
+le périmètre de l'agent demandé avant de lire le cache ou de régénérer l'aperçu public.
+Le rendu ajoute l'image temporairement ; impression, PDF et ZIP l'intègrent à leur
+instantané. Une absence ou un échec d'aperçu conserve la carte textuelle.
 L'insertion dans le corps est une édition normale ; seule elle crée une révision.
-Une miniature déjà publiée reste réutilisable si l'insertion est annulée.
+Les anciennes cartes avec une image en PJ restent lisibles sans modification de leur historique.
 
 L'impression et le PDF reproduisent uniquement le corps du document.
 `POST /documents/{document_id}/export-bundle` exige la lecture du document, retourne

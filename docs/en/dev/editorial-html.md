@@ -254,12 +254,17 @@ resolves retained files under current document permissions.
 `POST /documents/{document_id}/link-card` checks managed-agent scope and write access
 before fetching. `app.file_share.web_metadata` shares Open Graph and YouTube oEmbed extraction
 with Messenger through the public HTTPS transport, including its private-address and redirect
-checks. Memory uses the `core.preview.preview_web_link` port registered by File Share at
-bootstrap, avoiding a circular domain dependency. Pages are bounded to 1 MiB and 15 seconds;
-thumbnails to 5 MiB and 40 million pixels,
-then resized to at most 640 × 360 and converted to JPEG attachments. The returned
-`blockquote.galaris-link-card` contains static text, links and a canonical image. Only inserting
-the card into the body creates a content revision. Published thumbnails survive cancelled insertion.
+checks. Documents uses the `core.preview.preview_web_link` port, whose Browser adapter
+reuses this transport and the shared capture cache. Pages are bounded to 1 MiB and 15 seconds;
+thumbnails to 5 MiB and 40 million pixels. The returned
+`blockquote.galaris-link-card.galaris-web-card` contains static text and the source URL,
+without a persisted image or technical attachment. WebP thumbnails (at most 320 × 320)
+remain in the shared `core.preview.thumbnails` cache. `POST /documents/link-card/thumbnail`
+requires document access privileges and checks the requested agent's scope before reading
+the cache or regenerating a public preview. Rendering adds a temporary image; print, PDF
+and ZIP snapshots embed it. Missing or failed previews preserve the text card. Only inserting
+the card into the body creates a content revision. Old cards with attached images remain
+readable without modifying their history.
 
 Print and PDF exports contain only the document body. The `/export-bundle` POST endpoint
 requires document read access and returns `document.html` plus attachments in a ZIP, without

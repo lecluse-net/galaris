@@ -1,5 +1,6 @@
 # Décisions d'architecture
 
+- [0226 — Miniatures de liens sans pièces jointes](0226-link-thumbnails-without-attachments.md)
 - [0225 — Datasets natifs pour les campagnes Process du Lab](0225-process-lab-native-datasets.md)
 - [0224 — Portées d'administration locales aux connexions](0224-connection-administration-scopes.md)
 
