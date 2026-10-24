@@ -571,6 +571,7 @@ async function routes(page) {
   await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Alice', last_name: 'Example', agent_driver: 'internal' }])
   await jsonRoute(page, '**/api/mail/approvers', [])
   await jsonRoute(page, '**/api/connections?*', connections)
+  await jsonRoute(page, '**/api/connections/overview?*', connections.map(connection => ({ ...connection, params: {}, configured_params: [] })))
   for (const connection of connections) {
     await jsonRoute(page, `**/api/connections/${connection.id}/params?*`, { ...connection, connection_id: connection.id, params: {}, configured_params: [] })
     await jsonRoute(page, `**/api/connections/${connection.id}/functions`, {
@@ -592,6 +593,7 @@ for (const mobile of [false, true]) {
       await routes(page)
       const customConnection = { id: 6, tool_id: 6, agent_id: 7, active: true }
       await jsonRoute(page, '**/api/connections?*', [...connections, customConnection])
+      await jsonRoute(page, '**/api/connections/overview?*', [...connections, customConnection].map(connection => ({ ...connection, params: {}, configured_params: [] })))
       await jsonRoute(page, '**/api/connections/6/params?*', { connection_id: 6, params: {}, configured_params: [] })
       await jsonRoute(page, '**/api/connections/6/functions', { success: true, functions: [] })
       await mount(page, `app/connection/components/${component}.vue`, { privileges, dark: mobile })

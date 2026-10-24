@@ -8,7 +8,7 @@ from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from ..models import Connection, ConnectionFunctionState
+from ..models import Connection, ConnectionFunctionState, ConnectionParam
 from .. import router
 from ..router import list_connections
 from ..schemas import CapabilityKind, FunctionState, FunctionStateUpdate
@@ -16,6 +16,128 @@ from app.tools import ToolCatalogRefreshResult
 from app.agent import AgentManagementScope
 from app.agent.models import Agent, Title
 from app.tools.models import Tool
+
+
+@pytest.mark.asyncio
+async def test_overview_http_requires_privileges_and_limits_rows_to_managed_agents(client):
+    from uuid import uuid4
+    from core.authorize import Assignment, Privilege, Role
+    from core.database import get_db_session
+    from core.user import UserModel, encrypt_password
+
+    suffix = uuid4().hex
+    password = "Synthetic-overview-password-123"
+    async with get_db_session() as db:
+        privilege = await db.scalar(select(Privilege).where(Privilege.code == "CONNECTION_ACCESS"))
+        assert privilege is not None
+        role = Role(code=f"overview-{suffix}", privileges=[privilege])
+        empty_role = Role(code=f"overview-denied-{suffix}", privileges=[])
+        users = [UserModel(email=f"overview-{suffix}-{index}@example.com", hashed_password=encrypt_password(password))
+                 for index in range(2)]
+        title = Title(label="Synthetic overview HTTP", gender="X")
+        tool = Tool(code=f"overview-http-{suffix}", label="Synthetic HTTP connector")
+        db.add_all([role, empty_role, *users, title, tool])
+        await db.flush()
+        db.add_all([Assignment(user_id=user.id, role_id=selected.id, is_default=True)
+                    for user, selected in zip(users, [role, empty_role], strict=True)])
+        agents = [Agent(user_id=user.id, title_id=title.id, code=f"overview-http-{suffix}-{index}",
+                        first_name="Synthetic", last_name=str(index)) for index, user in enumerate(users)]
+        db.add_all(agents)
+        await db.flush()
+        connections = [Connection(agent_id=agent.id, tool_id=tool.id, active=True) for agent in agents]
+        db.add_all(connections)
+        await db.flush()
+        expected = connections[0].id
+    path = "/api/connections/overview"
+    assert (await client.get(path)).status_code == 401
+    for index, expected_status in enumerate([200, 403]):
+        client.cookies.clear()
+        login = await client.post("/api/auth/login-json", json={"email": users[index].email, "password": password})
+        assert login.status_code == 200, login.text
+        headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+        response = await client.get(path, headers=headers)
+        assert response.status_code == expected_status, response.text
+        if expected_status == 200:
+            assert [row["id"] for row in response.json()] == [expected]
+            assert response.json()[0]["params"] == {}
+            assert (await client.get(path, headers=headers, params={"limit": 501})).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_overview_batches_parameters_preserves_scope_and_hides_historized_agents(db, monkeypatch):
+    from datetime import datetime, timezone
+    from uuid import uuid4
+
+    title = Title(label="Synthetic connections", gender="X")
+    tool = Tool(code=f"overview_{uuid4().hex}", label="Synthetic connector", connection_schema={
+        "params": {"host": {"type": "string"}, "token": {"type": "password"}},
+    })
+    db.add_all([title, tool])
+    await db.flush()
+    agents = [Agent(title_id=title.id, code=f"overview-{index}-{uuid4().hex}", first_name=f"Synthetic {index}", last_name="Overview",
+                    agent_driver="internal") for index in range(20)]
+    db.add_all(agents)
+    await db.flush()
+    connections = [Connection(tool_id=tool.id, agent_id=agent.id, active=index != 1)
+                   for index, agent in enumerate(agents)]
+    db.add_all(connections)
+    await db.flush()
+    for connection in connections:
+        db.add_all([
+            ConnectionParam(connection_id=connection.id, param_name="host", param_value="synthetic.example.test"),
+            ConnectionParam(connection_id=connection.id, param_name="token", param_value="synthetic-legacy-secret"),
+        ])
+    await db.flush()
+    queries = []
+
+    def count_queries(_connection, _cursor, statement, _parameters, _context, _many):
+        if statement.lstrip().upper().startswith("SELECT"):
+            queries.append(statement)
+
+    bind = (await db.connection()).sync_connection
+    event.listen(bind, "before_cursor_execute", count_queries)
+    try:
+        # Compare the former per-row read with the page projection under identical data.
+        for connection in connections:
+            await router.connection_service.get_params_for_api(connection.id)
+        previous_count = len(queries)
+        queries.clear()
+        monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(7, None)))
+        overview = await router.list_connection_overviews(skip=0, limit=500)
+        batch_count = len(queries)
+        assert batch_count <= 3
+        assert previous_count >= len(connections) * 3
+    finally:
+        event.remove(bind, "before_cursor_execute", count_queries)
+
+    rows = {row.id: row for row in overview}
+    assert set(rows) == {connection.id for connection in connections}
+    assert rows[connections[1].id].active is False
+    assert rows[connections[0].id].params == {"host": "synthetic.example.test", "token": None}
+    assert rows[connections[0].id].configured_params == ["token"]
+    assert "synthetic-legacy-secret" not in str(overview)
+
+    # A fresh snapshot includes changed and removed parameters, even in the same session.
+    await db.execute(ConnectionParam.__table__.update().where(
+        ConnectionParam.connection_id == connections[0].id, ConnectionParam.param_name == "host",
+    ).values(param_value="updated.example.test"))
+    await db.execute(ConnectionParam.__table__.delete().where(
+        ConnectionParam.connection_id == connections[0].id, ConnectionParam.param_name == "token",
+    ))
+    agents[-1].deleted_at = datetime.now(timezone.utc)
+    await db.flush()
+    overview = await router.list_connection_overviews(skip=0, limit=500)
+    assert connections[-1].id not in {row.id for row in overview}
+    assert overview[0].params == {"host": "updated.example.test"}
+    assert overview[0].configured_params == []
+    listed = await router.list_connections(tool_id=tool.id, agent_id=None, active_only=False, skip=0, limit=500)
+    assert connections[-1].id not in {row.id for row in listed}
+
+    monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(7, frozenset({agents[1].id, agents[-1].id}))))
+    assert [row.id for row in await router.list_connection_overviews(skip=0, limit=500)] == [connections[1].id]
+    assert await router.list_connection_overviews(skip=1, limit=1) == []
+    monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(7, frozenset())))
+    assert await router.list_connection_overviews(skip=0, limit=500) == []
 
 
 @pytest.fixture(autouse=True)
@@ -34,8 +156,9 @@ async def test_list_connections_uses_stable_bounded_pagination(
         Connection(id=502, tool_id=35, agent_id=2, active=True),
     ]
     result = MagicMock()
-    result.scalars.return_value.all.return_value = expected
-    db.execute.return_value = result
+    result.all.return_value = expected
+    db.scalars.return_value = result
+    monkeypatch.setattr(router.connection_service, "get_db", lambda: db)
     monkeypatch.setattr(
         router,
         "current_management_scope",
@@ -48,13 +171,12 @@ async def test_list_connections_uses_stable_bounded_pagination(
         active_only=True,
         skip=500,
         limit=500,
-        db=db,
     )
 
     assert rows == expected
-    statement = db.execute.await_args.args[0]
+    statement = db.scalars.await_args.args[0]
     sql = str(statement)
-    assert "connections.active = true" in sql
+    assert "connections.active IS true" in sql
     assert "ORDER BY connections.id" in sql
     assert "LIMIT" in sql
     assert "OFFSET" in sql

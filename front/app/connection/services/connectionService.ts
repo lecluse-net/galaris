@@ -18,6 +18,11 @@ export interface Connection {
     active: boolean
 }
 
+export interface ConnectionOverview extends Connection {
+    params: Record<string, unknown>
+    configured_params: string[]
+}
+
 /** Result of saving a draft or adopting an existing connection for an action. */
 export interface ConnectionActionResult extends Connection {
     savedParams?: Pick<ConnectionParamsResponse, 'params' | 'configured_params'>
@@ -191,6 +196,10 @@ export function saveFunctionPolicy(
 // =============================================================================
 
 export default {
+    getConnectionOverviews(skip = 0, limit = 500): Promise<AxiosResponse<ConnectionOverview[]>> {
+        return api.get('/connections/overview', { params: { skip, limit } })
+    },
+
     getConnections(
         tool_id?: number,
         agent_id?: number,

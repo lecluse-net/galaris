@@ -49,6 +49,13 @@
       </div>
     </div>
 
+    <q-banner v-if="connectionStore.error" role="alert" class="bg-negative text-white q-mb-md" rounded>
+      {{ $t('connection.auth.loadConnectionsError') }}
+      <template #action>
+        <q-btn outline :label="$t('common.retry')" @click="reloadConnections" />
+      </template>
+    </q-banner>
+
     <q-table
       :rows="filteredConnections"
       :columns="columns"
@@ -244,7 +251,7 @@
 
 <script setup lang="ts">
 import { isAxiosError } from 'axios'
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, onBeforeUnmount, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { useConnectionStore, type Connection } from '../stores/connectionStore'
@@ -306,6 +313,7 @@ let dialogGeneration = 0
 const filterAgent = ref<number | null>(null)
 const filterTool = ref<number | null>(null)
 const filterState = ref<FilterState>('active')
+loadFiltersFromSession()
 
 function loadFiltersFromSession(): void {
   const agentRaw = sessionStorage.getItem(SESSION_FILTER_AGENT_KEY)
@@ -346,6 +354,8 @@ const pagination = ref({
 })
 
 const isEdit = computed(() => !!currentConnection.value)
+const agentsById = computed(() => new Map(agentStore.agents.map(agent => [agent.id, agent])))
+const toolsById = computed(() => new Map(toolStore.tools.map(tool => [tool.id, tool])))
 
 const agentFilterOptions = computed(() =>
   agentStore.agents.map(e => ({ label: `${e.first_name} ${e.last_name}`, value: e.id }))
@@ -396,20 +406,20 @@ function localizedToolLabel(tool: Tool): string {
 }
 
 function getAgentName(agentId: number): string {
-  const e = agentStore.agents.find(e => e.id === agentId)
+  const e = agentsById.value.get(agentId)
   return e ? `${e.first_name} ${e.last_name}` : `ID: ${agentId}`
 }
 
 function isSystemTool(toolId: number): boolean {
-  return toolStore.tools.find(tool => tool.id === toolId)?.can_disable === false
+  return toolsById.value.get(toolId)?.can_disable === false
 }
 function getToolLabel(toolId: number): string {
-  const tool = toolStore.tools.find(item => item.id === toolId)
+  const tool = toolsById.value.get(toolId)
   return tool ? localizedToolLabel(tool) : `ID: ${toolId}`
 }
 
 function getToolSchema(toolId: number) {
-  const t = toolStore.tools.find(t => t.id === toolId)
+  const t = toolsById.value.get(toolId)
   return t?.connection_schema?.params ?? null
 }
 
@@ -424,7 +434,7 @@ function isUserField(fieldName: string, toolId: number): boolean {
 }
 
 function isGloballyForcedField(fieldName: string, toolId: number): boolean {
-  const tool = toolStore.tools.find(tool => tool.id === toolId)
+  const tool = toolsById.value.get(toolId)
   const globalParam = tool?.global_params?.[fieldName]
   return globalParam?.configured === true && globalParam.forced === true
 }
@@ -436,14 +446,14 @@ function hasDisplayValue(value: unknown): boolean {
 }
 
 function configParamLabel(fieldName: string, toolId: number): string {
-  const tool = toolStore.tools.find(item => item.id === toolId)
+  const tool = toolsById.value.get(toolId)
   return connectionParamLabel(tool?.code, fieldName, getToolSchema(toolId)?.[fieldName] ?? {}, t, te)
 }
 
 function formatConfigValue(fieldName: string, value: unknown, toolId: number): string {
   if (value === null || value === undefined) return '-'
   if (typeof value === 'string' || typeof value === 'number') {
-    const tool = toolStore.tools.find(item => item.id === toolId)
+    const tool = toolsById.value.get(toolId)
     const options = connectionParamOptions(tool?.code, fieldName, getToolSchema(toolId)?.[fieldName] ?? {}, t, te)
     const option = options.find(option => option.value === String(value))
     if (option) return option.label
@@ -484,7 +494,7 @@ function hasVisibleParams(connectionId: number, toolId: number): boolean {
 
 async function openDialog(connection?: Connection) {
   if (!canEdit.value || (connection && isSystemTool(connection.tool_id))) return
-  dialogGeneration++
+  const generation = ++dialogGeneration
   actionConnection = null
   saveError.value = null
   existingConnectionTarget.value = null
@@ -492,11 +502,14 @@ async function openDialog(connection?: Connection) {
   if (connection) {
     try {
       await connectionStore.fetchConnectionParams(connection.id)
+      if (generation !== dialogGeneration) return
       currentConnectionParams.value = connectionStore.getParamsForConnection(connection.id)
       currentConnectionConfiguredParams.value = connectionStore.getConfiguredParamsForConnection(connection.id)
     } catch {
-      currentConnectionParams.value = null
-      currentConnectionConfiguredParams.value = []
+      if (generation === dialogGeneration) {
+        $q.notify({ type: 'negative', message: t('connection.auth.loadConnectionsError') })
+      }
+      return
     }
   } else {
     currentConnectionParams.value = null
@@ -531,13 +544,7 @@ async function onRefreshTools() {
   if (!canEdit.value) return
   try {
     const result = await connectionStore.refreshToolCatalogs()
-    if (result.created > 0) {
-      await connectionStore.fetchConnections(
-        filterTool.value ?? undefined,
-        filterAgent.value ?? undefined
-      )
-      await loadAllConnectionParams()
-    }
+    await reloadConnections()
     $q.notify({
       type: result.complete ? 'positive' : 'warning',
       message: result.complete
@@ -654,7 +661,7 @@ async function onSubmit(payload: ConnectionPersistencePayload) {
     currentConnectionParams.value = null
     currentConnectionConfiguredParams.value = []
 
-    await connectionStore.fetchConnections(filterTool.value ?? undefined, filterAgent.value ?? undefined)
+    await reloadConnections()
     await refreshMailAvailability()
     $q.notify({
       type: 'positive',
@@ -675,8 +682,7 @@ async function onEmbeddedConfigured(): Promise<void> {
   currentConnection.value = null
   currentConnectionParams.value = null
   currentConnectionConfiguredParams.value = []
-  await connectionStore.fetchConnections(filterTool.value ?? undefined, filterAgent.value ?? undefined)
-  await loadAllConnectionParams()
+  await reloadConnections()
   await refreshMailAvailability()
 }
 
@@ -733,12 +739,12 @@ async function onDelete() {
   }
 }
 
-async function loadAllConnectionParams() {
-  await Promise.all(
-    connectionStore.connections.map(conn =>
-      connectionStore.fetchConnectionParams(conn.id).catch(() => null)
-    )
-  )
+async function reloadConnections(): Promise<void> {
+  try {
+    await connectionStore.fetchConnectionOverview()
+  } catch (error) {
+    console.error('Error loading connection overview:', error)
+  }
 }
 
 async function loadApproverLabels(): Promise<void> {
@@ -753,13 +759,9 @@ async function loadApproverLabels(): Promise<void> {
   }
 }
 
-watch([filterAgent, filterTool], async () => {
+watch([filterAgent, filterTool], () => {
   saveFiltersToSession()
-  await connectionStore.fetchConnections(
-    filterTool.value ?? undefined,
-    filterAgent.value ?? undefined
-  )
-  await loadAllConnectionParams()
+  pagination.value.page = 1
 })
 
 // Apply the status filter client-side without reloading.
@@ -769,19 +771,23 @@ watch(() => toolStore.tools.map(tool => tool.id), ids => {
   if (!toolStore.loading && filterTool.value !== null && !ids.includes(filterTool.value)) filterTool.value = null
 })
 
-onMounted(async () => {
-  loadFiltersFromSession()
+async function loadConnectionsTab(): Promise<void> {
   await Promise.all([
-    connectionStore.fetchConnections(
-      filterTool.value ?? undefined,
-      filterAgent.value ?? undefined
-    ),
+    reloadConnections(),
     agentStore.fetchAgents(),
     toolStore.fetchTools(),
     loadApproverLabels(),
   ])
-  await loadAllConnectionParams()
+}
+
+onMounted(loadConnectionsTab)
+let firstActivation = true
+onActivated(() => {
+  if (firstActivation) firstActivation = false
+  else void loadConnectionsTab()
 })
+
+onBeforeUnmount(() => { dialogGeneration++ })
 </script>
 
 <style scoped>

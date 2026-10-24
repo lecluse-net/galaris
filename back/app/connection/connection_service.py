@@ -9,7 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from .models import Connection, ConnectionParam, ConnectionFunctionState, ToolFunctionState, ConnectionOAuth
 from .parameter_resolution import RuntimeConnectionParams
-from .schemas import FunctionState, EffectiveFunctionState, CapabilityKind
+from .schemas import FunctionState, EffectiveFunctionState, CapabilityKind, ConnectionOverview
 from app.tools.facade import lock_tools, finish_write
 from core.util import get_encryption_service
 from core.database import get_db
@@ -72,6 +72,50 @@ def _decrypt_if_needed(
 # ==========================================================================
 # Parent connection records.
 # ==========================================================================
+
+async def list_management_connections(
+    *, agent_ids: frozenset[int] | None, tool_id: int | None = None,
+    agent_id: int | None = None, active_only: bool = False,
+    skip: int = 0, limit: int = 50,
+) -> list[Connection]:
+    from app.agent import Agent
+
+    # Involve the history-aware entity: connections themselves have no history.
+    query = select(Connection).join(Agent, Agent.id == Connection.agent_id)
+    if agent_ids is not None:
+        query = query.where(Connection.agent_id.in_(agent_ids))
+    if tool_id is not None:
+        query = query.where(Connection.tool_id == tool_id)
+    if agent_id is not None:
+        query = query.where(Connection.agent_id == agent_id)
+    if active_only:
+        query = query.where(Connection.active.is_(True))
+    return list((await get_db().scalars(query.order_by(Connection.id).offset(skip).limit(limit))).all())
+
+
+async def connection_overviews(connections: Collection[Connection]) -> list[ConnectionOverview]:
+    """Read local parameters and schemas once per page, never decrypting secrets."""
+    if not connections:
+        return []
+    from app.tools.facade import get_tools_by_ids
+
+    tools = await get_tools_by_ids({connection.tool_id for connection in connections})
+    schemas = {tool_id: _tool_schema(tool) for tool_id, tool in tools.items()}
+    params = await get_db().scalars(select(ConnectionParam).where(
+        ConnectionParam.connection_id.in_([connection.id for connection in connections]),
+    ).execution_options(populate_existing=True))
+    values: dict[int, dict[str, Any]] = {connection.id: {} for connection in connections}
+    configured: dict[int, list[str]] = {connection.id: [] for connection in connections}
+    tool_ids = {connection.id: connection.tool_id for connection in connections}
+    for param in params:
+        secret = _is_password_field(param.param_name, schemas.get(tool_ids[param.connection_id]))
+        values[param.connection_id][param.param_name] = None if secret else param.param_value
+        if secret and param.param_value:
+            configured[param.connection_id].append(param.param_name)
+    return [ConnectionOverview(id=connection.id, tool_id=connection.tool_id,
+        agent_id=connection.agent_id, active=connection.active, params=values[connection.id],
+        configured_params=sorted(configured[connection.id])) for connection in connections]
+
 
 async def tool_can_disable(tool_id: int) -> bool:
     from app.tools import facade as tool_service

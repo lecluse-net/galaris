@@ -142,6 +142,8 @@ test(`OAuth reuses an existing connection and its saved parameters (${scenario})
   let starts = 0
   let lookups = 0
   let savedRegion = 'us'
+  await page.route('**/api/connections/overview?*', route => route.fulfill({ json: scenario === 'listed'
+    ? [{ ...existing, params: { region: savedRegion, secret: null }, configured_params: ['secret'] }] : [] }))
   await jsonRoute(page, '**/api/tools', [{ id: 19, code: 'synthetic_mcp', label: 'Synthetic MCP', has_mcp: true,
     mcp_config: { type: 'http', auth: { type: 'none' } },
     global_params: { secret: { configured: true, value: null, forced: false } }, connection_schema: { params: {
@@ -214,6 +216,7 @@ test(`OAuth reuses an existing connection and its saved parameters (${scenario})
 // Transport compatibility is owned by the connection, without Tool OAuth settings.
 test('OAuth retries a parameter save without recreating the connection or losing the draft', async ({ page }) => {
   const connections = []
+  await page.route('**/api/connections/overview?*', route => route.fulfill({ json: connections.map(connection => ({ ...connection, params: {}, configured_params: [] })) }))
   let creations = 0
   let parameterWrites = 0
   let starts = 0

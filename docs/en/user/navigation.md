@@ -183,6 +183,10 @@ avatar; profile or avatar changes during generation prevent its replacement.
 | Connections | Configure connections associated with agents | `/tools?tab=connections` |
 | Authorizations | Administer access rules for tools and functions | `/tools?tab=authorizations` |
 
+In **Connections**, connections belonging to historized agents are hidden. Parameters
+refresh after saving and whenever you return to the tab. Filters apply to the loaded
+list; if loading fails, use **Retry**.
+
 Under **Tools**, **Galaris built-in tools** groups integrated definitions protected by the
 software. Created or imported Tools remain under **Custom tools**, including those
 using a dedicated bridge such as Nextcloud or AFFiNE. A bridge name does not determine

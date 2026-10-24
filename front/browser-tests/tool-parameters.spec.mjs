@@ -266,6 +266,13 @@ test('Saving a scoped connection uses one request, preserves failures and reopen
   await jsonRoute(page, '**/api/mail/status', { enabled: false })
   await jsonRoute(page, '**/api/agents?*', [{ id: 7, code: 'synthetic-agent', first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
   await page.route('**/api/connections?*', route => route.fulfill({ json: [connection] }))
+  let overviewReads = 0
+  let parameterReads = 0
+  page.on('request', request => { if (request.url().includes('/connections/43/params?')) parameterReads++ })
+  await page.route('**/api/connections/overview?*', route => {
+    overviewReads++
+    return route.fulfill({ json: [{ ...connection, params, configured_params: [] }] })
+  })
   await page.route('**/api/connections/43/params?*', route => route.fulfill({ json: {
     connection_id: 43, tool_id: 82, agent_id: 7, params, configured_params: [],
   } }))
@@ -279,6 +286,9 @@ test('Saving a scoped connection uses one request, preserves failures and reopen
   })
   await mount(page, 'app/connection/components/ConnectionList.vue', { privileges })
   const row = page.locator('tbody tr').filter({ hasText: 'Skills' })
+  await expect(row).toContainText('Management for this agent only')
+  expect(overviewReads).toBe(1)
+  expect(parameterReads).toBe(0)
   await row.getByRole('button', { name: 'Edit', exact: true }).click()
   const dialog = page.getByRole('dialog')
   const scope = dialog.getByRole('combobox', { name: 'Management scope', exact: true })
@@ -290,6 +300,8 @@ test('Saving a scoped connection uses one request, preserves failures and reopen
   expect(params[name]).toBe('personal')
   await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(dialog).toHaveCount(0)
+  await expect(row).toContainText('Team management')
+  expect(overviewReads).toBe(2)
   expect(writes).toHaveLength(2)
   expect(writes[1]).toMatchObject({ active: true, params: { [name]: 'team' } })
   await row.getByRole('button', { name: 'Edit', exact: true }).click()

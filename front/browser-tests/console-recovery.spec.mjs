@@ -12,6 +12,7 @@ for (const active of [true, false]) {
       await jsonRoute(page, `**/api/${endpoint}`, [])
     }
     await page.route('**/api/connections?*', route => route.fulfill({ json: [connection] }))
+    await page.route('**/api/connections/overview?*', route => route.fulfill({ json: [{ ...connection, params, configured_params: [] }] }))
     await page.route('**/api/connections/42/params?*', route => route.fulfill({ json: {
       ...connection, connection_id: 42, params, configured_params: [],
     } }))

@@ -199,6 +199,10 @@ précédent ; une fiche ou un avatar modifiés pendant la génération empêchen
 | Connexions | Configurer les connexions associées aux agents | `/tools?tab=connections` |
 | Autorisations | Administrer les règles d’accès aux outils et fonctions | `/tools?tab=authorizations` |
 
+Dans **Connexions**, les connexions des agents historisés sont masquées. Les paramètres
+s’actualisent après l’enregistrement et à chaque retour dans l’onglet. Les filtres
+s’appliquent à la liste chargée ; si son chargement échoue, utilisez **Réessayer**.
+
 Dans **Outils**, **Outils internes à Galaris** regroupe les définitions intégrées protégées par le
 logiciel. Les Tools créés ou importés restent dans **Outils personnalisés**, y compris
 lorsqu’ils utilisent un bridge dédié comme Nextcloud ou AFFiNE. Le nom du bridge ne

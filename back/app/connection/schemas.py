@@ -35,6 +35,13 @@ class Connection(ConnectionBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ConnectionOverview(Connection):
+    """Connection list projection with write-only secrets."""
+
+    params: Dict[str, Any]
+    configured_params: List[str]
+
+
 # =============================================================================
 # EAV parameter schemas.
 # =============================================================================

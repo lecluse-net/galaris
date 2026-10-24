@@ -14,6 +14,7 @@ from app.agent import AgentManagementScope, current_management_scope
 from .models import Connection, ConnectionParam
 from .schemas import (
     Connection as ConnectionSchema,
+    ConnectionOverview,
     ConnectionCreate,
     ConnectionUpdate,
     ConnectionParam as ConnectionParamSchema,
@@ -278,6 +279,19 @@ async def _refresh_agent_indexes(agent_ids: List[int]) -> None:
         )
 
 
+@router.get("/overview", response_model=list[ConnectionOverview])
+@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+async def list_connection_overviews(
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=500)] = 50,
+) -> list[ConnectionOverview]:
+    scope = await current_management_scope()
+    connections = await connection_service.list_management_connections(
+        agent_ids=scope.agent_ids, skip=skip, limit=limit,
+    )
+    return await connection_service.connection_overviews(connections)
+
+
 @router.get("", response_model=List[ConnectionSchema])
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
 async def list_connections(
@@ -286,21 +300,12 @@ async def list_connections(
     active_only: bool = Query(False, description="Return active connections only"),
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=500)] = 50,
-    db: AsyncSession = Depends(get_db)
 ):
     scope = await current_management_scope()
-    query = select(Connection)
-    if tool_id is not None:
-        query = query.where(Connection.tool_id == tool_id)
-    if agent_id:
-        query = query.where(Connection.agent_id == agent_id)
-    if scope.agent_ids is not None:
-        query = query.where(Connection.agent_id.in_(scope.agent_ids))
-    if active_only:
-        query = query.where(Connection.active == True)
-    query = query.order_by(Connection.id).offset(skip).limit(limit)
-    result = await db.execute(query)
-    return result.scalars().all()
+    return await connection_service.list_management_connections(
+        agent_ids=scope.agent_ids, tool_id=tool_id, agent_id=agent_id,
+        active_only=active_only, skip=skip, limit=limit,
+    )
 
 
 @router.get("/{connection_id}", response_model=ConnectionSchema)
@@ -440,8 +445,8 @@ async def get_connection_params(
     decrypt: bool = Query(False, description="Deprecated; secrets are always write-only")
 ):
     del decrypt
-    await _managed_connection(connection_id)
-    connection, params, configured = await connection_service.get_params_for_api(connection_id)
+    managed = await _managed_connection(connection_id)
+    connection, params, configured = await connection_service.get_params_for_api(managed)
     if not connection:
         raise HTTPException(status_code=404, detail=await _message("errors.not_found"))
     return ConnectionParamsResponse(

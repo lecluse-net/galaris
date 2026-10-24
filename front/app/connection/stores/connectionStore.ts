@@ -1,10 +1,13 @@
 import { defineStore } from 'pinia'
+import { isAxiosError } from 'axios'
+import { sessionGeneration } from '@/core/api'
 import connectionService, {
     type ConnectionCreate,
     type ConnectionUpdate,
     type ConnectionParamCreate,
     type ConnectionParamUpdate,
     type ConnectionParamsResponse,
+    type ConnectionOverview,
     type RefreshToolCatalogsResponse
 } from '../services/connectionService'
 import type { Connection, ConnectionParam } from '../services/connectionService'
@@ -26,6 +29,14 @@ interface ConnectionState {
     error: unknown
 }
 
+const overviewReads = new WeakMap<object, symbol>()
+const parameterReads = new WeakMap<object, Map<number, symbol>>()
+
+function invalidateReads(store: object, connectionId?: number): void {
+    overviewReads.delete(store)
+    if (connectionId !== undefined) parameterReads.get(store)?.delete(connectionId)
+}
+
 export const useConnectionStore = defineStore('connection', {
     state: (): ConnectionState => ({
         connections: [],
@@ -37,7 +48,45 @@ export const useConnectionStore = defineStore('connection', {
         error: null
     }),
     actions: {
+        async fetchConnectionOverview(): Promise<void> {
+            const request = Symbol('overview')
+            const generation = sessionGeneration()
+            overviewReads.set(this, request)
+            const current = () => overviewReads.get(this) === request && generation === sessionGeneration()
+            this.loading = true
+            this.error = null
+            try {
+                const rows: ConnectionOverview[] = []
+                const pageSize = 500
+                for (let skip = 0; ; skip += pageSize) {
+                    const { data } = await connectionService.getConnectionOverviews(skip, pageSize)
+                    if (!current()) return
+                    rows.push(...data)
+                    if (data.length < pageSize) break
+                }
+                // Publish the rows and their parameters together, including removals.
+                this.$patch(state => {
+                    state.connections = rows.map(({ id, tool_id, agent_id, active }) => ({ id, tool_id, agent_id, active }))
+                    state.paramsCache = Object.fromEntries(rows.map(row => [row.id, row.params]))
+                    state.configuredParamsCache = Object.fromEntries(rows.map(row => [row.id, row.configured_params]))
+                })
+            } catch (error) {
+                if (!current()) return
+                if (isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) {
+                    this.connections = []
+                    this.paramsCache = {}
+                    this.configuredParamsCache = {}
+                }
+                this.error = error
+                throw error
+            } finally {
+                if (current()) this.loading = false
+            }
+        },
+
         forgetDeletedTool(toolId: number): void {
+            invalidateReads(this)
+            this.loading = false
             this.connections = this.connections.filter(connection => connection.tool_id !== toolId)
             if (this.currentConnection?.tool_id === toolId) {
                 this.currentConnection = null
@@ -84,6 +133,7 @@ export const useConnectionStore = defineStore('connection', {
         },
 
         async createConnection(connection: ConnectionCreate): Promise<Connection> {
+            invalidateReads(this)
             this.loading = true
             this.error = null
             try {
@@ -100,6 +150,7 @@ export const useConnectionStore = defineStore('connection', {
         },
 
         async updateConnection(id: number, connection: ConnectionUpdate): Promise<Connection> {
+            invalidateReads(this, id)
             this.loading = true
             this.error = null
             try {
@@ -122,6 +173,7 @@ export const useConnectionStore = defineStore('connection', {
         },
 
         async deleteConnection(id: number): Promise<void> {
+            invalidateReads(this, id)
             this.loading = true
             this.error = null
             try {
@@ -160,11 +212,18 @@ export const useConnectionStore = defineStore('connection', {
         // =====================================================================
 
         async fetchConnectionParams(connectionId: number, decrypt: boolean = false): Promise<Record<string, unknown>> {
+            const reads = parameterReads.get(this) ?? new Map<number, symbol>()
+            parameterReads.set(this, reads)
+            const request = Symbol('params')
+            const generation = sessionGeneration()
+            reads.set(connectionId, request)
+            const current = () => reads.get(connectionId) === request && generation === sessionGeneration()
             this.loading = true
             this.error = null
             try {
                 const response = await connectionService.getConnectionParams(connectionId, decrypt)
                 const params = response.data.params
+                if (!current()) return this.paramsCache[connectionId] ?? {}
                 this.paramsCache[connectionId] = params
                 this.configuredParamsCache[connectionId] = response.data.configured_params
                 if (this.currentConnection?.id === connectionId) {
@@ -172,11 +231,12 @@ export const useConnectionStore = defineStore('connection', {
                 }
                 return params
             } catch (error) {
+                if (!current()) return this.paramsCache[connectionId] ?? {}
                 this.error = error
                 console.error('Error fetching connection params:', error)
                 throw error
             } finally {
-                this.loading = false
+                if (current()) this.loading = false
             }
         },
 
@@ -196,6 +256,7 @@ export const useConnectionStore = defineStore('connection', {
         },
 
         async createOrUpdateParam(param: ConnectionParamCreate): Promise<ConnectionParam> {
+            invalidateReads(this, param.connection_id)
             this.loading = true
             this.error = null
             try {
@@ -216,6 +277,7 @@ export const useConnectionStore = defineStore('connection', {
             connectionId: number,
             params: Record<string, string | null>
         ): Promise<ConnectionParam[]> {
+            invalidateReads(this, connectionId)
             this.loading = true
             this.error = null
             try {
@@ -237,6 +299,7 @@ export const useConnectionStore = defineStore('connection', {
             paramName: string,
             update: ConnectionParamUpdate
         ): Promise<ConnectionParam> {
+            invalidateReads(this, connectionId)
             this.loading = true
             this.error = null
             try {
@@ -254,6 +317,7 @@ export const useConnectionStore = defineStore('connection', {
         },
 
         async deleteParam(connectionId: number, paramName: string): Promise<void> {
+            invalidateReads(this, connectionId)
             this.loading = true
             this.error = null
             try {
