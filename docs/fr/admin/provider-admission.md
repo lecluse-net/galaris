@@ -5,7 +5,7 @@
 Dans **Configurer → Fournisseurs & modèles → Fournisseurs**, ouvrez la configuration
 d'un fournisseur et réglez **Appels simultanés maximum**. Cette limite est commune à
 tous ses modèles, profils, agents et utilisateurs. Elle porte sur les appels physiques
-tracés par Galaris, pas sur le nombre de Tasks ou de conversations ouvertes.
+tracés par Galaris, pas sur le nombre de tâches ou de conversations ouvertes.
 
 ## Choisir une limite
 

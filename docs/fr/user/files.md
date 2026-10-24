@@ -20,7 +20,7 @@ Ouvrez une racine, puis un répertoire dans l’arborescence ou dans la grille c
 Le fil d’Ariane et le bouton de répertoire parent permettent de remonter. Les fichiers
 disposent d’une miniature lorsque leur format peut être rendu ; une icône reste
 disponible sinon. Cliquez sur un fichier pour afficher son aperçu, sur un Document,
-une Task, un Dataset ou un échange pour ouvrir sa vue métier existante. Les formats
+une tâche, un Dataset ou un échange pour ouvrir sa vue métier existante. Les formats
 sans lecteur intégré se téléchargent.
 
 Les boutons **Précédent** et **Suivant** du navigateur retrouvent les agents,

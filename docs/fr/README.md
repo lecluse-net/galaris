@@ -22,7 +22,7 @@ notamment pour préparer le site web : capacités détaillées, conditions, limi
 
 [Trouver un écran, un menu ou un onglet](user/navigation.md)
 
-[Confier et suivre une Task](user/tasks.md)
+[Confier et suivre une tâche](user/tasks.md)
 
 | Parcours | Guide |
 |---|---|
@@ -39,7 +39,7 @@ Ce parcours explique avec des exemples :
 - comment [installer Galaris comme application](user/pwa.md) sur Android ou iPhone et conserver
   sa session ;
 - comment discuter, demander une action et lancer un travail de fond ;
-- comment suivre séparément conversations texte, appels vocaux, Tasks et processus de fond ;
+- comment suivre séparément conversations texte, appels vocaux, tâches et processus de fond ;
 - comment faire résumer une réunion ou une vidéo YouTube à partir d’un fichier ou d’une URL ;
 - comment exploiter la mémoire, les documents de travail et les dossiers thématiques ;
 - la différence entre effort `standard`/`high`, suivi par jalons et plan de tâches ;

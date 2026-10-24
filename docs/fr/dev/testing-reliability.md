@@ -33,7 +33,7 @@ make tests ARGS='tests/test_conversation_concurrency.py tests/test_driver_confor
 Les parcours vérifient la progression avant la fin, le remplacement live/durable
 sans doublon ni trou observé dans le DOM, le rechargement, les outils, la reconnexion,
 le changement de room, deux onglets, un viewport mobile, une erreur partielle et
-la chaîne conversation → Task → livraison du résultat.
+la chaîne conversation → tâche → livraison du résultat.
 Le second onglet et son rechargement doivent retrouver le texte déjà généré avant
 que la barrière autorise la fin : cette vérification exerce le snapshot actif HTTP.
 Ils vérifient aussi la restauration de session derrière le proxy avec un port
@@ -72,7 +72,7 @@ Un rendez-vous asynchrone force le démarrage concurrent, avec un timeout borné
 La base clonée est supprimée après chaque test, même en cas d’échec.
 
 Chaque lancement backend possède également son propre projet Compose. Les tests
-couvrent la prise unique d’un round ou d’une Task, l’arrêt brutal d’un processus
+couvrent la prise unique d’un round ou d’une tâche, l’arrêt brutal d’un processus
 après commit et l’expiration du lease avec ou sans effet déjà commencé.
 Un ancien propriétaire ne peut plus construire, finaliser ou faire échouer le round
 repris par un autre worker. Les tests de Process vérifient également qu'un callback

@@ -61,7 +61,7 @@ Les tests synthétiques sont dans `tests/test_document_pipeline.py` et
 
 ## Portée actuelle
 
-Chat/Tasks, Messenger/Hermès et Dream partagent le lecteur local. Les contextes inline
+Chat/tâches, Messenger/Hermès et Dream partagent le lecteur local. Les contextes inline
 restent bornés ; les notices renvoient à `document_analyze` pour les grandes sources.
 Responses replie les fichiers incorporés des messages ; les items stateful et les
 identifiants de fichiers hébergés chez le fournisseur conservent leur transport natif.

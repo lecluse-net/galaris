@@ -105,6 +105,13 @@ async def native_human_options(agent_id: int = Query(..., gt=0)) -> list[dict[st
         return await human_options(agent_id)
 
 
+@routes.get("/decision-models")
+@authorize(privileges=[Privileges.PROCESS_READ, "PROCESS_EDIT", Privileges.PROCESS_ADMIN])
+async def native_decision_models() -> list[dict[str, Any]]:
+    from .llm_decisions import model_options
+    return await model_options()
+
+
 @routes.get("/sharing-options")
 @authorize(privileges=["PROCESS_EDIT", Privileges.PROCESS_ADMIN])
 async def native_sharing_options(agent_id: int = Query(..., gt=0), owner: Literal["user", "agent"] = "user",

@@ -47,7 +47,7 @@ La racine `document://` ne convient pas ; une collection de pièces jointes de d
 Une console n'est utilisable que si sa connexion est active.
 
 Le résultat initial fournit un `generation_id` et un `run_id`. Utiliser `multimedia_get_run` jusqu'au résultat terminal.
-Les fichiers finaux figurent dans `output.files[].uri`, et sont ajoutés aux ressources de la Task.
+Les fichiers finaux figurent dans `output.files[].uri`, et sont ajoutés aux ressources de la tâche.
 La génération devient réussie après écriture dans la destination. Maximum : quatre fichiers de 100 Mio.
 
 `invocation_key` identifie une seule demande : la réutiliser pour retenter cette demande,

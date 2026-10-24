@@ -55,8 +55,8 @@ restent hors périmètre. Le [HTML interactif](document-apps.md) permet désorma
 aux documents HTML de contenir des formulaires et d'accéder à des datasets déclarés via un
 runtime isolé ; l'historique et les exports restent inertes.
 
-La politique commune aux exécuteurs Task, conversation et voix invite les agents à envisager
-un Dataset pour les données structurées réutilisables entre documents, calculs ou Tasks :
+La politique commune aux exécuteurs tâche, conversation et voix invite les agents à envisager
+un Dataset pour les données structurées réutilisables entre documents, calculs ou tâches :
 fiche d'entreprise avec capital et devise, catalogue de produits ou chiffres comparables.
 Privilégier un Dataset pertinent existant et relire ses données avant de rédiger un contenu
 qui en dépend. Conserver unités, dates, sources et incertitudes, sans inventer les valeurs
@@ -66,7 +66,7 @@ réponse autonome. La politique d'action du contexte et les droits restent appli
 un lien vers un Dataset n'actualise pas automatiquement la prose déjà enregistrée.
 
 Créer ou réviser un document lorsque le résultat demandé appelle un contenu rédigé durable
-à conserver, réviser ou partager. Une Task ne nécessite pas à elle seule un document : les réponses
+à conserver, réviser ou partager. Une tâche ne nécessite pas à elle seule un document : les réponses
 autonomes et confirmations restent dans la conversation, l'état opérationnel dans la ressource
 métier concernée. Ne pas ajouter un document uniquement pour consigner une action ou attester son
 achèvement. Respecter le type de ressource demandé ; une opération indisponible appelle une
@@ -82,7 +82,7 @@ peuvent toujours être désactivés.
 Avec les fonctions nécessaires disponibles, rechercher et réviser le document pertinent.
 Créer un nouveau document seulement si le contenu nécessite un support distinct, avec
 `file_create(path="document://", name="Titre", content="<p>Contenu HTML.</p>")`.
-Son URI reste la référence entre recherche, rédaction, revue, Tasks et
+Son URI reste la référence entre recherche, rédaction, revue, tâches et
 conversations. Il conserve les sources et liens vers les documents associés ; les médias restent
 des ressources canoniques ou des pièces jointes. Les conversations portent la discussion et une
 transmission concise du résultat, sans entretenir une copie concurrente de son contenu.
@@ -92,7 +92,7 @@ les répétitions. Conserver les faits utiles, les sources, les nuances, les que
 les raisons des décisions et le sens des contributions. Ajouter les informations distinctes ;
 conserver la chronologie lorsqu'elle sert le document, notamment un journal, un compte rendu ou
 un audit. Les révisions gardent les versions antérieures : le corps n'a pas à recopier son
-historique d'édition. Le suivi opérationnel reste dans les Tasks ou Goals, sauf s'il fait partie
+historique d'édition. Le suivi opérationnel reste dans les tâches ou Goals, sauf s'il fait partie
 du document demandé. Privilégier une édition ciblée avec `file_edit` ; un remplacement complet
 avec `file_write` suppose d'avoir lu tout le contenu nécessaire à sa conservation. La concision
 s'adapte à l'usage, sans réduction de longueur ni réécriture globale systématique. Cette règle
@@ -316,7 +316,7 @@ Les actions sont `app.memory.editorial_html`, `app.agent.editorial_html`,
 500 objets par lot et restent différées tant que leur postcondition n’est pas satisfaite.
 Répéter la synchronisation pour les ensembles plus grands. Les sources Memory restent dans
 les révisions immuables ; `profile_legacy_source` et `objective_legacy_source` conservent les
-champs antérieurs d’Agent et Task. Les liens anciens invalides perdent leur caractère cliquable,
+champs antérieurs d’Agent et tâche. Les liens anciens invalides perdent leur caractère cliquable,
 avec avertissement et destination conservée dans la source historique. Les images non migrables
 restent signalées et empêchent la convergence du lot concerné.
 

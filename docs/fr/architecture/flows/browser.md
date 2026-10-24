@@ -8,7 +8,7 @@ activation, puis les éventuelles désactivations fonction par fonction, déterm
 que le harnais interne et Hermès voient dans leur catalogue.
 
 ```text
-Agent / Task
+Agent / Tâche
    → fonctions MCP app.browser
    → validation et propriétaire {agent_id, task_id}
    → API authentifiée sur executor_net
@@ -69,7 +69,7 @@ lorsqu’une console est active, des fichiers durables sous `console://browser/<
 console, aucune destination locale implicite n’existe.
 
 Le contrat remis au modèle prescrit la séquence robuste : ouvrir avec `output="content"`, conserver
-le `session_id`, effectuer les interactions dans la même Task, relire `browser_content` pour
+le `session_id`, effectuer les interactions dans la même tâche, relire `browser_content` pour
 contrôler l’URL et l’état final, puis capturer immédiatement. Il conseille `1440 × 900` pour le
 desktop, `390 × 844` pour le mobile, JPEG par défaut et PNG pour les détails fins. Une session
 expirée n’est jamais réessayée : le modèle ouvre une nouvelle session et emploie son nouvel ID.

@@ -346,6 +346,56 @@ async function definitionFixtures(page, writable, kind = 'task', typed = false, 
   return writes
 }
 
+test('AI IF preserves agentic and simple LLM modes, selected model and instructions after saving and reopening', async ({ page }) => {
+  const writes = await definitionFixtures(page, true, 'if', true)
+  const value = graph()
+  value.schema_version = 'galaris.bpmn/v2'; value.inputs = []; value.outputs = []
+  value.nodes[1].kind = 'if'
+  value.nodes[1].config = { mode: 'ai', prompt: 'Does the synthetic request match this project?' }
+  value.flows[1].condition = 'decision'
+  value.flows.push({ id: 'false_branch', source: 'work', target: 'end', condition: null })
+  await page.route('**/api/processes/internal/definitions/invented_process', route => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({ json: { id: 1, code: 'invented_process', title: 'Invented workflow', revision: 2,
+      can_write: true, can_manage: true, lock_version: 1, archived: false, diagnostics: [], graph: value,
+      owner: { kind: 'agent', id: 7, label: 'Synthetic agent', has_avatar: false }, ...writes.at(-1) } })
+  })
+  let unavailable = true
+  await page.route('**/api/processes/internal/decision-models', route => route.fulfill(unavailable
+    ? { status: 503, json: { detail: 'Synthetic catalogue failure' } }
+    : { json: [{ id: 45, label: 'Jev synthetic', provider: 'Synthetic provider', decision: true },
+      { id: 46, label: 'Text synthetic', provider: 'Synthetic provider', decision: false }] }))
+  const open = () => page.getByRole('button', { name: 'Conditional choice · work', exact: true }).click()
+  await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
+  await open()
+  const mode = page.getByRole('combobox', { name: 'AI mode', exact: true })
+  await expect(mode).toHaveValue('Agentic (Task)')
+  await mode.click(); await page.getByRole('option', { name: 'Simple LLM call', exact: true }).click()
+  await expect(page.getByText('Unable to load LLM models.', { exact: true })).toBeVisible()
+  unavailable = false
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  const model = page.getByRole('combobox', { name: 'LLM model', exact: true })
+  await model.click(); await page.getByRole('option', { name: 'Jev synthetic · Synthetic provider', exact: true }).click()
+  await mode.click(); await page.getByRole('option', { name: 'Agentic (Task)', exact: true }).click()
+  await expect(model).toHaveCount(0)
+  await mode.click(); await page.getByRole('option', { name: 'Simple LLM call', exact: true }).click()
+  await expect(model).toHaveValue('Jev synthetic · Synthetic provider')
+  await page.getByRole('button', { name: 'Close settings', exact: true }).click()
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(1)
+  expect(writes[0].graph.nodes[1].config).toMatchObject({ mode: 'ai', ai_mode: 'llm', llm_id: 45,
+    prompt: 'Does the synthetic request match this project?' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ'] })
+  await open()
+  const inspector = page.getByRole('dialog', { name: 'Activity settings', exact: true })
+  await expect(inspector.getByText('Simple LLM call', { exact: true })).toBeVisible()
+  await expect(inspector.getByText('Jev synthetic · Synthetic provider', { exact: true })).toBeVisible()
+  await expect(mode).toHaveCount(0)
+  await inspector.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: test.info().outputPath('simple-llm-if-mobile.png'), fullPage: true, animations: 'disabled' })
+})
+
 test('process owner options refresh on reopening after five minutes without losing the draft', async ({ page }) => {
   await page.clock.install()
   await definitionFixtures(page, true)

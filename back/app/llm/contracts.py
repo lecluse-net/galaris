@@ -33,6 +33,7 @@ class InferenceInput(BaseModel):
     profile_fallback_llm_id: int | None = None
     profile_fallback_reasoning_effort: ReasoningEffort | None = None
     profile_fallback_resolved: bool = False
+    allow_profile_fallback: bool = True
 
 
 class TextInferenceRequest(InferenceInput):

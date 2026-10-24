@@ -110,7 +110,7 @@ utilisés dans cette configuration ; voir la
 | Catalogue absent du menu | Version du client prenant en charge la découverte, variable activée et éventuelle restriction `availableModels` |
 | Échec des outils ou du raisonnement | Capacités du modèle affecté et options demandées par le client |
 
-Cette connexion fournit l’inférence à votre client local. Elle ne crée pas de Task
+Cette connexion fournit l’inférence à votre client local. Elle ne crée pas de tâche
 ni d’Agent Galaris et ne configure pas de serveur MCP. Pour appeler directement un
 modèle concret, l’ancienne base `/api/llm/anthropic` reste disponible avec son code LLM.
 Pour OpenAI Codex, consultez le [guide Codex](codex.md).

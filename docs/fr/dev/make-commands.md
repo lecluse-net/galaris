@@ -95,7 +95,7 @@ Voir [Tester les comportements](testing.md).
 | `format-check` | Contrôler le formatage du périmètre défini par le script dédié. |
 | `tests` | Tests backend avec PostgreSQL éphémère ; sélection via `ARGS`. |
 | `tests-recovery` | Sélection de tests de reprise, reçus durables, retries et propriété des tentatives. |
-| `tests-harness-contracts` | Contrats de harnais, adaptateurs et intégration Task. |
+| `tests-harness-contracts` | Contrats de harnais, adaptateurs et intégration tâche. |
 | `tests-harness-runtimes` | SDK réels épinglés avec modèle déterministe isolé. |
 | `tests-providers` | Contrats fournisseurs sans appels API externes. |
 | `tests-dbadmin-load` | Transitions de schéma et indexation sur 100 000 lignes isolées. |

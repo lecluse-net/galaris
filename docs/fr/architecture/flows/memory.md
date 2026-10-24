@@ -90,12 +90,12 @@ mémoire accessible à l'agent, uniquement si sa similarité atteint `0,55` ; sa
 globale autorisée reste fusionnée afin qu'une erreur de classement thématique ne masque pas un
 souvenir réellement pertinent.
 
-La requête lexicale n'est jamais l'objectif complet de la Task. Elle est dérivée de façon
-déterministe et bornée : titre structuré du Goal lorsqu'il existe, sinon libellé de la Task, puis
+La requête lexicale n'est jamais l'objectif complet de la tâche. Elle est dérivée de façon
+déterministe et bornée : titre structuré du Goal lorsqu'il existe, sinon libellé de la tâche, puis
 court extrait de l'objectif en dernier recours. Pour un round conversationnel, les préfixes
 techniques d'expéditeur et le code Agent sont retirés ; la graine sémantique ajoute au plus les deux
 messages canoniques immédiatement précédents afin de résoudre « réessaye », « ça » et les autres
-références au tour précédent. Pour une Task Messenger humaine, l'UUID canonique
+références au tour précédent. Pour une tâche Messenger humaine, l'UUID canonique
 du contact borne la recherche ; son nom affiché, son identifiant natif et le code du bridge ne sont
 donc pas répétés dans la graine sémantique. Les suffixes de cycle sont retirés afin qu'un
 nouveau cycle puisse retrouver les précédents. Cette réduction évite qu'un long prompt devienne
@@ -156,7 +156,7 @@ Les liens `topic_contains`, `contact_contains` et `topic_involves_contact` sont 
 graphe utiles à la navigation. Le dernier rend directement visible le couple structurel, mais une
 jointure sur ces liens ne remplace jamais le scope exact.
 Une source conversationnelle sans contact prouvé reste inéligible. L'absence de Topic bloque les
-trois extracteurs automatiques Task, round texte et tour Voice, sans modifier les écritures
+trois extracteurs automatiques tâche, round texte et tour Voice, sans modifier les écritures
 explicites par tool ni le contrat distinct d’apprentissage.
 
 ## Documents indépendants et références du graphe
@@ -197,7 +197,7 @@ archives exige une opération distincte. Voir la
 [décision 0223](../../../../project/decisions/0223-memory-document-independence.md).
 
 Avant une délégation, le propriétaire partage explicitement le document puis place son UUID dans
-l'objectif de la Task enfant. Les agents conservent les notes provisoires dans le document et
+l'objectif de la tâche enfant. Les agents conservent les notes provisoires dans le document et
 promeuvent séparément les conclusions réellement durables avec `memory_remember`.
 
 Le registre de contexte d'`app.agent` est fail-open. Il prépare une seule valeur commune. Hermès
@@ -212,7 +212,7 @@ agent est toujours prioritaire.
 
 Le même provider ajoute une politique système commune aux drivers. Le modèle doit examiner le
 brief, puis appeler `file_search(memory://)` seulement lorsqu'un contexte durable peut matériellement
-modifier le travail et que le brief ne suffit pas. Une Task `high` ou récurrente impose cette
+modifier le travail et que le brief ne suffit pas. Une tâche `high` ou récurrente impose cette
 évaluation, jamais l'appel lui-même. Les états transactionnels restent lus avec les tools de leur
 domaine. Une recherche explicite utilise une requête courte et l'unique stratégie hybride.
 
@@ -290,7 +290,7 @@ signaux d'anomalie, de fusion ou de séparation restent exclus du classement : l
 univoquement positif pour la pertinence d'un souvenir.
 
 Le brief commun et `file_search(memory://)` résolvent côté serveur le Topic et la fiche contact de
-la Task ou du tour conversationnel. Pour le brief automatique, la fiche contact constitue à elle
+la tâche ou du tour conversationnel. Pour le brief automatique, la fiche contact constitue à elle
 seule la frontière d'identité et son libellé ne pollue pas la requête thématique. Une recherche
 explicite peut toujours employer un nom comme terme lexical, sans en faire une frontière : celle-ci
 reste l'UUID exact du contact et son appartenance persistée.
@@ -320,7 +320,7 @@ provenance et autres métadonnées n'y participent pas. Les rappels internes uti
 pour éviter les doublons ne comptent jamais comme des accès utiles.
 
 `created_at` représente la date d'origine du souvenir lorsqu'un producteur fiable la fournit.
-Dream lui transmet la date de création de la Task source, même lorsque cette Task historique est
+Dream lui transmet la date de création de la tâche source, même lorsque cette tâche historique est
 analysée plus tard. Les enregistrements d'acquisition, sources et révisions gardent leur propre
 date d'écriture pour préserver l'audit. Lors d'une fusion, l'item conserve la plus ancienne date
 d'origine connue.
@@ -340,7 +340,7 @@ relations sont n↔n : une activité peut produire plusieurs souvenirs et un sou
 fusionné peut être confirmé par plusieurs activités. Une création, une mise à jour ou une fusion
 ajoute toujours la nouvelle source sans réécrire le contenu lors d'une simple fusion. Les tools
 Memory appelés depuis un round texte ou vocal utilisent le round persistant injecté côté serveur ;
-ils ne retombent sur `agent:manual` qu'en l'absence de toute Task ou de tout round canonique.
+ils ne retombent sur `agent:manual` qu'en l'absence de toute tâche ou de tout round canonique.
 
 Les FKs utilisent `ON DELETE CASCADE` sur la seule ligne de provenance : supprimer physiquement
 une activité retire son association, jamais le `MemoryItem`. Les écritures courantes renseignent
@@ -377,14 +377,14 @@ conserve ses dates et sa provenance ; le rappel continue de l'exclure.
 
 ### Apprentissage procédural séparé
 
-L'analyse des résultats de Tasks réutilise certaines preuves observables de Memory, mais elle
+L'analyse des résultats de tâches réutilise certaines preuves observables de Memory, mais elle
 n'appartient pas à ce domaine. Le mécanisme Dream `skill.learn_task_outcome` crée et renforce des
 procédures dans les tables dédiées d'`app.skill`. Il ne crée aucun `MemoryItem`, et les expériences
 historiques ne sont plus rappelées. Son score, ses seuils d'injection et son audit sont décrits dans
 le [flux Dream](dream.md) et l'ADR 0047.
 
-La recherche de souvenirs dans les Tasks est entièrement détachée de leur terminaison. Le
-mécanisme `memory.extract_task` d'`app.dream` prend une Task racine réussie non scannée par
+La recherche de souvenirs dans les tâches est entièrement détachée de leur terminaison. Le
+mécanisme `memory.extract_task` d'`app.dream` prend une tâche racine réussie non scannée par
 cycle, rattachée à un agent et à un topic, hors Goal, Voice et refus explicite de capture,
 présente au petit modèle un rappel hybride borné des souvenirs déjà connus, l'identité exacte de
 l'expéditeur humain lorsqu'elle est disponible et, lorsqu'il existe,
@@ -425,8 +425,8 @@ et n'est disponible que si `MEMORY_CAPTURE_ENABLED` est actif.
 
 `memory.extract_task` ne devient éligible qu'après la fin du reçu `topic.classify_task`. Le même
 sujet n'apparaît donc pas simultanément comme classification en cours et extraction restante ; le
-compteur des Tasks non scannées reprend directement les états du mécanisme d'extraction au lieu de
-soustraire tous les reçus à toutes les Tasks terminales.
+compteur des tâches non scannées reprend directement les états du mécanisme d'extraction au lieu de
+soustraire tous les reçus à toutes les tâches terminales.
 
 La langue des contenus générés suit la source durable : `Task.data.language`, détectée par le
 dispatcher à partir de la conversation, ou `VoiceConversationSession.language` pour la voix.
@@ -442,7 +442,7 @@ les mécanismes disponibles. Après la fin complète de chaque opération, il at
 `DREAM_POLL_SECONDS` avant d'en démarrer une autre. Un appel LLM long ne réduit donc pas cette
 respiration ; la même durée sert d'intervalle de vérification lorsqu'aucun sujet n'est disponible.
 
-`app.memory.link_reconciliation` ne fait aucune inférence. Il relit chaque provenance de Task,
+`app.memory.link_reconciliation` ne fait aucune inférence. Il relit chaque provenance de tâche,
 round ou tour Voice classé, puis rattache le souvenir au Topic canonique. Une source
 conversationnelle utilise en plus le contact exact et le scope Topic/contact autoritatif. Le même
 service en projette l'arête directe `topic_involves_contact` et reconstruit `cycle_of` et
@@ -454,7 +454,7 @@ Le mode ciblé accepte l'UUID d'un `MemoryItem` et traite ses arêtes entrantes 
 opération Dream réussie peut inscrire ces nœuds dans le worker durable Memory. Le paramètre
 `MEMORY_LINK_RECONCILIATION_TRIGGER_MODE` choisit entre manuel uniquement, après Dream, planifié ou
 les deux. Le mode global planifié respecte
-`MEMORY_LINK_RECONCILIATION_INTERVAL_HOURS` et n'est inscrit que lorsque ni Task ni conversation
+`MEMORY_LINK_RECONCILIATION_INTERVAL_HOURS` et n'est inscrit que lorsque ni tâche ni conversation
 Voice n'est active ; si la charge revient avant son exécution, le job est différé. Les routes
 `GET|POST /api/memory/link-reconciliation` exposent son calendrier et son dernier état ; le `POST`
 exécute immédiatement un sweep global dans la requête courante, sans job durable ni garde
@@ -462,7 +462,7 @@ d'inactivité. Le verrou transactionnel du réconciliateur sérialise ce lanceme
 sweep planifié concurrent. La commande
 `make rebuild-memory-links ARGS='--item-id <uuid>'` expose le même contrat aux opérateurs.
 
-Les conversations Messenger et les Tasks de Goal peuvent ainsi être examinées sans promotion
+Les conversations Messenger et les tâches de Goal peuvent ainsi être examinées sans promotion
 automatique de leur résumé complet : seul un élément satisfaisant le contrat de durabilité devient
 un souvenir. Les projections déterministes de Goal restent l'autorité structurée de leurs cycles.
 Les appels explicites à `memory_remember` ou `memory_summarize` restent immédiats.
@@ -474,7 +474,7 @@ transcript sont ignorés, car leur promotion durable reste explicite via les too
 
 ## Dossiers thématiques et administration manuelle
 
-`app.topic` classe les Tasks et sessions Voice dans des dossiers globaux, puis projette chaque
+`app.topic` classe les tâches et sessions Voice dans des dossiers globaux, puis projette chaque
 dossier sous la forme d'un `MemoryItem` public, ownerless et source-managed. Les souvenirs privés
 restent privés : l'arête `topic_contains` n'accorde aucun accès au voisin. La lecture des dossiers
 utilise `TOPIC_ACCESS`; leur création, modification, suppression, fusion et scission utilisent le
@@ -504,14 +504,14 @@ interaction Messenger persistante. L'utilisateur d'origine choisit de créer, de
 des UUID checkpointés ou de ne pas classer l'activité. Une proposition sans route humaine reste
 non classée ; sa clé liée au reçu Dream évite tout envoi en double lors d'une reprise.
 
-Une fusion déplace toutes les arêtes `topic_contains` vers la cible, réaffecte les Tasks et sessions
+Une fusion déplace toutes les arêtes `topic_contains` vers la cible, réaffecte les tâches et sessions
 Voice, puis oublie la projection source. Une scission est une partition manuelle : l'administrateur
 crée le nouveau dossier et choisit explicitement les souvenirs dont l'arête doit être déplacée;
 les autres restent dans le dossier source. Le contenu, l'UUID, le propriétaire, la visibilité et
 les grants des souvenirs ne changent jamais. La projection publique est le seul `MemoryItem` qui
 porte le `topic_id` canonique, avec `ON DELETE CASCADE`; les deux extrémités de `memory_links`
 cascadent à leur tour vers les seules arêtes. Le nœud mémoire situé à l'autre extrémité ne dépend
-jamais du lien et survit. Tous les autres `topic_id` — Tasks, sessions et tours Voice, journal
+jamais du lien et survit. Tous les autres `topic_id` — tâches, sessions et tours Voice, journal
 Messenger et rounds — utilisent `ON DELETE SET NULL`. Comme l'API historise le Topic au lieu de le
 supprimer physiquement, son service applique explicitement la même politique : il purge la
 projection dérivée et ses arêtes, conserve les souvenirs liés et remet toutes les références à
@@ -536,7 +536,7 @@ identifiants, agent propriétaire, statut, numéro de cycle et verdict. La fiche
 l'identité, la personnalité et la fiche de poste, mais jamais les clés, tokens, mots de passe,
 configuration Hermès ou autres secrets techniques. Le Goal contient sa description et son suivi
 canonique. Chaque cycle contient son compte rendu, les preuves, le verdict et le résultat de sa
-Task, y compris lorsque cette Task a ensuite été historisée. Pour qu'un Goal possédant des milliers
+Tâche, y compris lorsque cette tâche a ensuite été historisée. Pour qu'un Goal possédant des milliers
 de cycles ne provoque jamais un chargement non borné, seules les 100 projections de cycles les plus
 récentes sont conservées. La fenêtre est calculée par `sequence`; lorsqu'elle avance, la projection
 sortante est oubliée et son `goal_cycles.memory_item_id` redevient nul.
@@ -585,11 +585,11 @@ make rebuild-memory-index ARGS='--all'              # recalcul complet en arriè
 make rebuild-memory-links                           # liens déterministes depuis leurs sources
 ```
 
-`rebuild-memory-links` refuse de créer une arête tant qu'une Task ou session Voice portant déjà une
+`rebuild-memory-links` refuse de créer une arête tant qu'une tâche ou session Voice portant déjà une
 provenance mémoire n'a pas de dossier thématique. Il remet en attente les classifications épuisées,
 puis doit être relancé lorsque Dream a terminé cette phase. Après cette barrière globale, il
 reconstruit les arêtes `cycle_of`, `result_of`, `topic_contains`, `contact_contains` et
-`topic_involves_contact` depuis les Goals, Process, Tasks, sessions Voice, Topics et scopes
+`topic_involves_contact` depuis les Goals, Process, tâches, sessions Voice, Topics et scopes
 Topic/contact canoniques. Les liens saisis manuellement et les relations issues d'une décision de
 consolidation ne sont pas déductibles de ces sources et ne peuvent pas être recréés après une
 suppression SQL intégrale.
@@ -600,7 +600,7 @@ transactionnelle de remplacement.
 
 Les messages Messenger, connexions, rooms, identifiants d'authentification, configurations de
 LLM/outils et diagnostics Lab ne sont jamais projetés automatiquement. La fiche sociale minimale
-des expéditeurs humains ne contient aucun texte de conversation. Les Tasks et tours Voice
+des expéditeurs humains ne contient aucun texte de conversation. Les tâches et tours Voice
 transcrits terminaux sont examinés progressivement par Dream. Process constitue l'autre exception
 bornée et déterministe décrite ci-dessus.
 
@@ -616,7 +616,7 @@ SHA-256 des octets complets, quel que soit le format, y compris pour les pièces
 la taille du fichier original, distinctes du format et de la taille de sa fiche.
 Une contrainte unique protège chaque paire nœud/URL ; une FK différée vérifie
 que l'URL principale appartient aux emplacements du nœud. Les usages référencent
-les Tasks par une vraie FK nullable, sans supprimer l'audit si une Task est effacée.
+les tâches par une vraie FK nullable, sans supprimer l'audit si une tâche est effacée.
 Une nouvelle copie conserve l'URL principale ; un déplacement la suit et une suppression
 choisit un emplacement restant, sinon `NULL`. L'action DbAdmin transfère les liens
 existants avant contraction. Voir la [décision 0159](../../../../project/decisions/0159-memory-url-associations.md).

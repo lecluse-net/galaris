@@ -139,12 +139,20 @@ lancés conservent leur profil d'origine.
 Une erreur d'exécution arrête le processus et ses branches actives. Le suivi renvoie
 le code d'erreur, avec son message ; les données du run et les fichiers sont conservés.
 Il n'y a aucun traitement de secours ni réessai automatique à configurer.
+Dans un IF avec le traitement **IA**, **Mode IA** distingue **Agentique (tâche)** et
+**Appel LLM simple**. Agentique confie le travail à l'agent via une tâche, avec ses outils
+et ses possibilités d'interaction. Appel LLM simple évalue uniquement la consigne et les
+données du processus : choisissez explicitement un **Modèle LLM** texte ou décisionnel,
+par exemple Jev. Il ne crée aucune tâche et n'utilise aucun outil. Une erreur du modèle
+arrête le processus en erreur ; elle ne sélectionne pas la branche False. Les IF existants
+restent agentiques. Le choix du mode et du modèle est conservé à l'enregistrement.
+
 Un IF possède deux poignées de sortie, **True** et **False**. Sur la ligne d'un acteur IA,
 choisir **IA** et saisir les instructions, ou **Code** et saisir un programme Python.
 Sur une ligne humaine, le mode humain est automatique : la personne affectée reçoit la
 question dans sa messagerie et choisit True ou False. Le run attend ce choix et poursuit
 une seule branche. Les IF historiques sans mode conservent leurs anciennes conditions.
-Les tâches proposent les mêmes modes selon leur acteur. Le code reçoit les variables du
+Les tâches conservent les traitements IA agentique, Code ou Humain selon leur acteur. Le code reçoit les variables du
 run directement : `return variable_2 != "pas mon projet"` pour un IF, ou
 `return {"variable_1": variable_1 + 1}` pour mettre à jour une sortie déclarée d'une tâche.
 Le champ est prérempli avec un exemple commenté ; seules les sorties valides sont intégrées.
@@ -154,7 +162,7 @@ de sortie, **Ajouter une branche** conserve la liaison existante et ajoute une a
 Pour réunir les branches, reliez-les directement à la tâche suivante : elle attend la réussite
 des branches activées puis démarre une seule fois. Une branche IF non choisie ne bloque pas
 cette attente. Aucun bloc de parallélisme dédié n'est à ajouter. Le harnais détermine combien
-de Tasks peuvent réellement s'exécuter ensemble.
+de tâches peuvent réellement s'exécuter ensemble.
 
 Valider vérifie le profil exécutable. Enregistrer crée une sauvegarde du processus.
 Un brouillon JSON invalide reste visible et bloque la sauvegarde. Le diagramme s'affiche
@@ -274,7 +282,7 @@ est remplacée par ces échanges dans la messagerie.
 
 Durées et coûts sont des mesures sans budget Process bloquant en v1. Un coût indisponible
 ou partiel n'est pas présenté comme nul. Le total inclusif ajoute les enfants accessibles
-et conserve la distinction des coûts estimés. Une reprise réattache les Tasks/Runs admis ;
+et conserve la distinction des coûts estimés. Une reprise réattache les tâches/Runs admis ;
 un effet Tool sans reçu certain n'est pas rejoué automatiquement.
 Le montant facturé et la valeur d'inférence sont séparés, notamment sous abonnement.
 La table détaille ces mesures pour chaque occurrence, y compris les boucles et retries.

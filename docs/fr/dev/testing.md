@@ -90,7 +90,7 @@ créent leurs propres bases ; ne pas lancer pytest dans le backend de développe
 | Besoin | Commande | Preuve apportée |
 |---|---|---|
 | Backend ciblé | `make tests ARGS='app/messenger/tests/test_interactions.py'` | Contrat et persistance des scénarios sélectionnés |
-| Compatibilité fournisseurs et admission | `make tests-providers` | Composition SDK → proxy → HTTP simulé, validation des sorties et persistance Task ; obligatoire en CI et dans `make validate` |
+| Compatibilité fournisseurs et admission | `make tests-providers` | Composition SDK → proxy → HTTP simulé, validation des sorties et persistance tâche ; obligatoire en CI et dans `make validate` |
 | Backend complet et couverture critique | `make tests-coverage` | Suite complète exécutée une fois avec mesure des lignes et branches configurées |
 | Typage, unités frontend et catalogues | `make typecheck` | Pyright, vue-tsc, tests Node rapides, cohérence i18n |
 | Composants Vue dans Chromium | `make tests-front-components` | DOM réel, événements, styles calculés et requêtes HTTP interceptées explicitement |
@@ -152,7 +152,7 @@ message est effectivement reçu par un utilisateur distant. Une qualification r�
 exige des comptes dédiés et des preuves de réception. `make qualify-matrix` fournit un premier
 parcours réel : deux comptes distincts, une room autorisée, un texte synthétique et un fichier
 dont le second compte vérifie les octets. Il ne qualifie pas les autres bridges ni l'admission
-d'une Task entrante. Aucun compte réel n'est configuré par la CI générale.
+d'une tâche entrante. Aucun compte réel n'est configuré par la CI générale.
 
 Les évaluations déterministes d'agents et de mémoire protègent le pipeline, les règles,
 l'isolation et les formats. Leurs réponses contrôlées ne mesurent pas la pertinence générale
@@ -182,7 +182,7 @@ suivent le même traitement. `project/regressions.json` relie les cas ayant une 
 à leur audit et à leur test. `make regression-check` vérifie leurs résultats JUnit et mutations.
 Un incident purement externe ne demande ni test artificiel ni fausse référence de correctif.
 
-Les séquences Task et callbacks Process utilisent plusieurs graines fixes et restituent la
+Les séquences tâche et callbacks Process utilisent plusieurs graines fixes et restituent la
 graine et l'historique en cas d'échec. `test_crash_recovery.py` tue un processus Python après
 un commit de callback ou après l'effet d'un fournisseur simulé, puis redémarre un processus
 sur la même base éphémère. Il vérifie résultat, attente, journal et clé d'idempotence.

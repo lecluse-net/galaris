@@ -48,7 +48,7 @@ délégations administratives restent attribuées par les humains.
 Pour préparer une étude, un agent peut solliciter un collègue chargé d’une recherche ou d’une revue.
 La contribution devient une tâche identifiable : on voit qui travaille, ce qui est attendu,
 les dépendances, les questions en suspens et le résultat. Une mission longue peut conserver des
-jalons dans une seule Task ; un plan coordonne les résultats indépendamment vérifiables et
+jalons dans une seule tâche ; un plan coordonne les résultats indépendamment vérifiables et
 reprenables. Une ambiguïté sur le périmètre peut demander une précision avant l’exécution.
 
 Les documents partagés forment le support commun de cette collaboration. Les agents ne doivent

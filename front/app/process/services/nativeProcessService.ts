@@ -11,6 +11,7 @@ import type { TypedValue } from '@/app/dataset'
 export interface ProcessVariable { name: string; type: ValueType; nullable: boolean; default?: TypedValue }
 export interface ProcessActor { id: string; name: string; kind: 'agent' | 'human'; agent_id: number | null; user_id: number | null }
 export interface ProcessAgentOption { id: number; label: string; has_avatar?: boolean }
+export interface ProcessDecisionModel { id: number; label: string; provider: string; decision: boolean }
 export interface BpmnNode {
   id: string; kind: NodeKind; title: string; config: Record<string, unknown>; x: number; y: number; body: BpmnGraph | null
   inputs?: ProcessVariable[]; outputs?: ProcessVariable[]
@@ -76,6 +77,9 @@ export const emptyGraph = (): BpmnGraph => ({ schema_version: 'galaris.bpmn/v2',
 const base = '/processes/internal'
 const ownerOptionsCache = createOwnerOptionsCache<OwnerOption[]>()
 export const nativeProcessService = {
+  async decisionModels(signal: AbortSignal): Promise<ProcessDecisionModel[]> {
+    return (await api.get(`${base}/decision-models`, { signal })).data
+  },
   runUrl(id: string): string { return `galaris://processes/runs/${encodeURIComponent(id)}` },
   async agents(): Promise<ProcessAgentOption[]> { return (await api.get(`${base}/agents`)).data },
   async ownerOptions(): Promise<OwnerOption[]> { return ownerOptionsCache.read('all', async signal => (await api.get<OwnerOption[]>(`${base}/owner-options`, { signal })).data) },

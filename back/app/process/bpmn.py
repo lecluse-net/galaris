@@ -173,6 +173,13 @@ def validate_graph(graph: Workflow, _identities: set[str] | None = None) -> Work
             raise ValueError("An actor must have a name and an assignment of its own type")
     for node in graph.nodes:
         mode = node.config.get("mode")
+        if "ai_mode" in node.config:
+            if node.kind != "if" or not graph.typed or node.config["ai_mode"] not in ("task", "llm"):
+                raise ValueError("AI execution modes belong to typed IF activities and require task or llm")
+        if node.kind == "if" and mode == "ai" and node.config.get("ai_mode") == "llm":
+            model_id = node.config.get("llm_id")
+            if type(model_id) is not int or model_id <= 0:
+                raise ValueError("A simple LLM IF requires a configured model")
         if node.kind == "if" and mode is not None:
             if not graph.typed or mode not in ("ai", "code", "human"):
                 raise ValueError("IF processing modes require the typed profile and ai, code or human")

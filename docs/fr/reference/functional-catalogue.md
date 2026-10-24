@@ -86,10 +86,10 @@ qualité figurent dans [l’exploitation](#exploitation).
 | **Compétence** | Un paquet de consignes et de ressources | Explique une méthode réutilisable ; ses fichiers peuvent accompagner les instructions. Une compétence ne confère pas de droit sur un Tool. |
 | **Conversation / salon** | Un échange sur un canal déterminé | Conserve les messages, leurs auteurs, les fichiers, les sujets et les travaux qui en découlent. |
 | **Round** | Le traitement d’un ou plusieurs messages reçus | Agrège l’entrée, exécute une réponse courte et enregistre ses actions, tentatives et livraisons. |
-| **Task / tâche** | Un travail avec un résultat identifiable | Conserve une consigne autonome, un agent, des étapes éventuelles, des tentatives et un résultat durable. |
+| **tâche / tâche** | Un travail avec un résultat identifiable | Conserve une consigne autonome, un agent, des étapes éventuelles, des tentatives et un résultat durable. |
 | **Plan / sous-tâche** | Une décomposition réelle du travail | Chaque étape devient un travail suivi avec ses dépendances, ses critères et ses livrables. |
 | **Goal / objectif** | Une finalité poursuivie sur plusieurs cycles | Relance du travail selon une fréquence ou un objectif parent ; juge l’avancement et conserve un suivi. |
-| **Cycle d’objectif** | Un passage de travail et d’évaluation | Relie une Task à un verdict et prépare la suite du Goal. |
+| **Cycle d’objectif** | Un passage de travail et d’évaluation | Relie une tâche à un verdict et prépare la suite du Goal. |
 | **Process / processus** | Un workflow métier interne BPMN ou externe | Possède une définition et des exécutions suivies ; le moteur natif orchestre activités IA, humaines, outils, code, branches et sous-processus. |
 | **Acteur de processus** | Un rôle nommé humain ou agent | Affecte les activités à leur exécutant ; les variables d’entrée/sortie déterminent le contrat de chaque activité. |
 | **Dépôt de code** | Un checkout Git de la Console SSH | S’ouvre dans VS Code OSS depuis le chat, avec droits propres et référence `galaris://code/<uuid>`. |
@@ -115,7 +115,7 @@ qualité figurent dans [l’exploitation](#exploitation).
 flowchart TD
     H[Humain ou événement externe] --> C[Conversation]
     C --> R[Réponse courte]
-    C --> T[Task durable]
+    C --> T[Tâche durable]
     H --> G[Goal]
     G --> Y[Cycle]
     Y --> T
@@ -488,7 +488,7 @@ Les modèles texte sont répartis en quatre niveaux communs :
 | **High** | Exécution high, Planner et Lab |
 
 Chaque niveau peut aussi porter un **effort de raisonnement**. Ce réglage du fournisseur est distinct
-de la complexité `standard` ou `high` de la Task. Les usages spécialisés disposent de leurs propres
+de la complexité `standard` ou `high` de la tâche. Les usages spécialisés disposent de leurs propres
 sélections : vision, documents, audio, vidéo, génération sonore, musicale et vidéo, images,
 transcription et embeddings. La voix se choisit sur l’agent ou l’utilisateur.
 
@@ -544,7 +544,7 @@ restent utilisables, y compris avec un unique modèle local.
 
 | Parcours | Rôle de Décision | Rôle conservé pour le texte ou les règles |
 |---|---|---|
-| Dispatcher Task et admission des pairs IA | Choisir parmi les routes, efforts et autres choix autorisés | Droits, politique du harnais et choix déterministe sans appel si une seule route/effort reste possible |
+| Dispatcher tâche et admission des pairs IA | Choisir parmi les routes, efforts et autres choix autorisés | Droits, politique du harnais et choix déterministe sans appel si une seule route/effort reste possible |
 | Sujets des activités et messages | Réutiliser un sujet, détecter une continuité ou demander un nouveau dossier | Rédiger le titre, la description et les mots-clés d’un nouveau sujet ; appliquer la politique de création |
 | Extraction Memory par Dream | Ignorer une source sans fait durable, rattacher des faits déjà couverts ou demander l’extraction | Rédiger et valider les connaissances nouvelles ou incomplètement couvertes |
 | Acquisition Memory | Confirmer l’équivalence complète avec un candidat proche | Recherche, droits, conservation des faits et rattachement idempotent de provenance |
@@ -685,7 +685,7 @@ transmis en Bearer dans les deux protocoles.
 
 Un usage absent, indisponible ou incompatible avec le protocole produit une erreur, sans emprunt
 à un autre profil. Les messages et résultats d’outils fournis par un client utilisateur restent
-du contenu : une URI de Task ou un nom de modèle dans ce contenu ne modifie ni le routage ni
+du contenu : une URI de tâche ou un nom de modèle dans ce contenu ne modifie ni le routage ni
 la corrélation de l’appel. Les routes historiques `/api/llm/openai` et `/api/llm/anthropic` restent
 disponibles pour les codes des modèles concrets.
 
@@ -764,7 +764,7 @@ Sources : [contrats d’inférence](../../../back/app/llm/contracts.py),
 ### Appeler un agent depuis un client compatible et utiliser Janus
 
 Une seconde façade compatible expose les **agents eux-mêmes comme modèles**, avec leur code,
-leurs droits et leur exécution adossée à une Task. Le client peut transmettre un historique et
+leurs droits et leur exécution adossée à une tâche. Le client peut transmettre un historique et
 recevoir une réponse JSON ou un flux SSE. Les appels issus d’un Process peuvent être corrélés au
 workflow. Cette façade est distincte du proxy qui appelle seulement un modèle LLM.
 
@@ -860,7 +860,7 @@ Le mode high exige que l’exécution utilise la sélection de modèle et le jou
 Galaris. Les quatre runtimes gérés imposent actuellement cette passerelle ; ils n’annoncent pas
 un mode utilisant leur propre abonnement indépendant. La capacité native d’un SDK à choisir son
 raisonnement ne suffit pas à déclarer high dans Galaris. La conversation courte conserve son
-contrôleur propre, indépendant du harnais affecté aux Tasks.
+contrôleur propre, indépendant du harnais affecté aux tâches.
 
 ### Lecture documentaire commune et analyse reprenable
 
@@ -894,7 +894,7 @@ Sources : [formats, budgets et qualification](../dev/document-qualification.md),
 
 Le harnais interne peut transmettre directement au modèle les **images, audios, vidéos et PDF**
 des messages courants et de l’historique retenu. Un agent peut ainsi examiner un média reçu sans
-appeler systématiquement un outil d’analyse séparé. Le chat et les Tasks qui utilisent ce harnais
+appeler systématiquement un outil d’analyse séparé. Le chat et les tâches qui utilisent ce harnais
 partagent ce comportement ; les médias conservent leur message d’origine et leur URI canonique.
 
 La prise en charge dépend à la fois du modèle sélectionné, du fournisseur et des formats que son
@@ -968,7 +968,7 @@ l’en-tête de sa rubrique repliée. La sélection des conversations et documen
 thème sombre.
 
 La lecture de l’annuaire par `agent_list` et `agent_get` est disponible en conversation selon
-les autorisations : identifier un collègue ne le contacte pas et ne crée pas de Task.
+les autorisations : identifier un collègue ne le contacte pas et ne crée pas de tâche.
 
 Le chat natif sert aux conversations **entre un humain et un agent**. L’utilisateur peut :
 
@@ -980,7 +980,7 @@ Le chat natif sert aux conversations **entre un humain et un agent**. L’utilis
 - écrire un message, répondre à un message précis et utiliser le sélecteur d’émojis,
   qui conserve les émojis fréquents ;
 - joindre des fichiers, envoyer une note vocale ou utiliser la dictée pour composer du texte ;
-- choisir un effort de raisonnement pour le message et demander explicitement une Task ;
+- choisir un effort de raisonnement pour le message et demander explicitement une tâche ;
 - lire la réponse au fil de sa production et consulter les étapes d’activité autorisées ;
 - répondre aux demandes de choix ou d’approbation par des boutons localisés ; la réponse retenue
   reste dans l’historique avec son auteur et l’option choisie, et une interaction résolue ne peut
@@ -1057,7 +1057,7 @@ Le Tool Conversation expose `document_show` pour demander l’ouverture d’un d
 texte interne de l’agent. Il accepte une URI `document://`, un UUID ou une URL Galaris documentaire.
 L’exécution revérifie accès, contexte et fraîcheur du round. Le client ignore les demandes d’un
 autre salon et sauvegarde le brouillon courant avant de changer de document. Cette fonction ne
-partage rien, ne constitue pas un reçu de lecture et n’est pas exposée aux Tasks, à la voix ou aux
+partage rien, ne constitue pas un reçu de lecture et n’est pas exposée aux tâches, à la voix ou aux
 canaux externes. Changement de disposition, réouverture et reconnexion préservent les données
 autorisées ; une réponse tardive ne remplace pas le nouveau document sélectionné.
 
@@ -1070,7 +1070,7 @@ en conservant le message humain. Relancer crée un nouveau round lié à celui a
 Répondre maintenant poursuit avec les informations disponibles, sans nouveaux outils ni
 chargement de compétences. Un outil engagé termine avant l’arrêt ; ses effets restent acquis.
 Les commandes vérifient la tentative observée, les droits du salon et `CHAT_SEND`.
-Elles restent distinctes des commandes des Tasks, Process et appels vocaux.
+Elles restent distinctes des commandes des tâches, Process et appels vocaux.
 
 Pause et arrêt persistent après fermeture ou reconnexion. Un nouveau message pendant une pause
 remplace le round en attente en réagrégeant les entrées non consommées. Une reprise automatique
@@ -1078,13 +1078,13 @@ de worker ne lève pas une pause humaine. Les rounds texte reprennent après red
 leurs checkpoints et reçus, sans consommer les essais réservés aux erreurs. Une action non
 idempotente ou une livraison sans reçu certain exige réconciliation avant répétition.
 
-Le contexte rassemble les **travaux actifs de l’agent**, y compris d’autres discussions : Tasks,
+Le contexte rassemble les **travaux actifs de l’agent**, y compris d’autres discussions : tâches,
 processus internes et externes, questions, autorisations et dépendances connues. Le dispatcher
 de conversation peut rattacher un message à une attente ou proposer un Process adapté avec le
 modèle Décision ; l’exécuteur réalise l’action sous les contrôles habituels. Sans décision
 concluante, il recherche lui-même la bonne attente. Une demande de suivi ne répond pas à une
 question ; une réponse ambiguë appelle une précision. Les échanges internes entre collègues
-passent par des Tasks, avec les droits de contact, sans boucle de réponses conversationnelles.
+passent par des tâches, avec les droits de contact, sans boucle de réponses conversationnelles.
 
 Sources : [parcours de conversation](../user/README.md),
 [transitions et reprise](../architecture/state-machines.md),
@@ -1101,7 +1101,7 @@ inférence de dispatcher préalable, quel que soit le canal texte. Pour un messa
 autre IA, le dispatcher garde son choix `EXEC`/`END` et ses limites de boucle.
 
 Il peut répondre directement, utiliser les outils autorisés en conversation ou confier un travail
-substantiel à une Task/à un Process. À l’admission d’une Task, le serveur conserve **la demande
+substantiel à une tâche/à un Process. À l’admission d’une tâche, le serveur conserve **la demande
 source et ses pièces jointes**, puis leur associe un complément de contexte produit par le modèle.
 Ce complément résout les références, reprend les contraintes antérieures utiles et précise le
 périmètre ; il ne remplace pas la demande originale par une synthèse potentiellement incomplète.
@@ -1115,7 +1115,7 @@ est inchangée ; une modification de fond ou une incompatibilité renvoie un con
 tâche supplémentaire. La création d’un travail indépendant reste une décision explicite.
 
 Une demande indépendante laisse les travaux précédents en cours ou en attente. Un amendement
-refusé ne provoque pas leur remplacement silencieux. La possibilité de modifier une Task tient
+refusé ne provoque pas leur remplacement silencieux. La possibilité de modifier une tâche tient
 compte de son état et de la reprise réellement prise en charge par son harnais ; un changement
 concurrent ne doit pas créer un second travail ou arrêter un travail sans rapport.
 
@@ -1137,12 +1137,12 @@ demandent d'examiner l'erreur et les effets précédents : une relance explicite
 corrigée peut justifier le retry ; sinon, privilégier une nouvelle tâche avec le contexte de
 l'échec et les corrections utiles.
 
-Les directives déterministes du chat permettent de demander les modes pris en charge : Task,
+Les directives déterministes du chat permettent de demander les modes pris en charge : tâche,
 exécution directe, planification, standard, high, effort et approbation. Le catalogue servi à la
 conversation indique les modes accessibles.
 
 Les directives `@task`, `@plan` ou `@effort` déclenchent l’admission durable avant l’exécution
-conversationnelle ; la confirmation suit la création de la Task. Dans le chat natif, les contrôles
+conversationnelle ; la confirmation suit la création de la tâche. Dans le chat natif, les contrôles
 sont conservés dans les métadonnées plutôt que dans le message visible. Les autres demandes
 laissent l’exécuteur choisir les outils et l’admission d’un travail de fond.
 
@@ -1176,8 +1176,8 @@ après reprise détermine l’état du round ; les erreurs antérieures restent 
 Après persistance de `SUCCEEDED`, les incidents LLM et outils corrélés à ce round sont marqués
 comme récupérés. Une attente d’accord, une interruption ou une livraison incertaine ne suffit pas.
 
-Quand la Task ou le Process se termine, une notification peut revenir dans la conversation. Si la
-Task a déjà livré son résultat avec une preuve de transport, le système évite un second envoi du
+Quand la tâche ou le Process se termine, une notification peut revenir dans la conversation. Si la
+Tâche a déjà livré son résultat avec une preuve de transport, le système évite un second envoi du
 même résultat. Une livraison à l’issue inconnue est distinguée d’un échec certain ; un opérateur
 peut résoudre explicitement les cas prévus sans relancer aveuglément les effets.
 
@@ -1207,7 +1207,7 @@ Les bridges adaptent les protocoles externes ; plusieurs canaux peuvent cohabite
 | **OneBot v11** | Messages, historique et recherche d’utilisateurs via un adaptateur et son WebSocket inverse. Les capacités de fichiers et de voix ne sont pas annoncées comme équivalentes aux autres bridges. |
 | **Telegram** | Bot, réception par polling, messages, fichiers, notes vocales et historique journalisé ; gestion des albums et reprises de réception. |
 | **WhatsApp Business** | API Cloud, webhooks authentifiés, messages, fichiers, notes vocales et historique journalisé ; modèles de messages pour les cas imposés par la fenêtre de service. |
-| **Mail** | Réception IMAP et actions SMTP/IMAP, avec admission directe en Task et validation humaine optionnelle ; décrit dans la section Courrier. |
+| **Mail** | Réception IMAP et actions SMTP/IMAP, avec admission directe en tâche et validation humaine optionnelle ; décrit dans la section Courrier. |
 
 Les capacités d’un bridge ne sont pas toutes des boutons ou fonctions MCP universels. Le contrat
 commun et le catalogue effectif déterminent les opérations utilisables sur chaque connexion.
@@ -1229,7 +1229,7 @@ Source : [tests des passerelles depuis une instance locale](../bridges/telegram-
 - Lire l’historique par pages ; les pièces jointes restent attachées au message qui les a reçues.
 - Rechercher des interlocuteurs sur les canaux actifs et utiliser une cible résolue.
 - Envoyer un message à un salon ou à un utilisateur, un fichier canonique ou une note audio générée.
-- Conserver le canal explicitement choisi, sinon celui de la Task ou de la conversation.
+- Conserver le canal explicitement choisi, sinon celui de la tâche ou de la conversation.
   Sans route fixée, utiliser le dernier message entrant du destinataire exactement identifié,
   puis le Chat interne ou la plus ancienne connexion disponible. Un canal explicitement choisi
   ou fixé devenu indisponible échoue sans repli. La route est figée par appel avant autorisation ;
@@ -1324,7 +1324,7 @@ Sources : [voix](../../../back/app/voice/), [appels natifs](../../../back/app/ch
 
 ### Créer et cadrer un travail
 
-Une Task peut provenir de l’interface, d’une conversation, d’un courrier entrant, d’un agent,
+Une tâche peut provenir de l’interface, d’une conversation, d’un courrier entrant, d’un agent,
 d’un Goal ou d’un calendrier.
 Elle porte un libellé, une consigne autonome en HTML, un agent, une origine et des
 références de contexte. On peut demander le choix automatique du mode ou forcer les options admises :
@@ -1345,12 +1345,12 @@ La **capsule de contexte** fige les informations antérieures utiles : conversat
 ressources et mémoire, avec leur provenance et les éventuelles troncatures. L’agent reçoit aussi son
 rôle, ses compétences autorisées et le catalogue d’outils effectif.
 
-Pour une Task admise depuis une conversation, la demande source reste distincte du complément
+Pour une tâche admise depuis une conversation, la demande source reste distincte du complément
 de contexte. Les messages et fichiers déclencheurs sont conservés même si ce complément omet une
 contrainte ou une ressource. Le cadrage ne réécrit pas la demande initiale et ne s’appuie pas sur
 des événements survenus après l’entrée qu’il doit traiter.
 
-Les objectifs de Task rédigés par un modèle sont validés comme HTML éditorial pendant les essais
+Les objectifs de tâche rédigés par un modèle sont validés comme HTML éditorial pendant les essais
 de sortie structurée. Une sortie invalide peut ainsi être corrigée avant l’admission de la tâche,
 sans attendre un échec lors de son enregistrement.
 
@@ -1363,11 +1363,11 @@ observations et URI de ressources, ainsi qu’une prochaine action. Ce suivi ne 
 livrable cohérent en tâches artificielles ; les sorties indépendantes restent coordonnées par le
 Planner, qui transmet l’organisation aux feuilles.
 
-`task_get` restitue le suivi et sa révision ; `task_work_update` enregistre les jalons de la Task
+`task_get` restitue le suivi et sa révision ; `task_work_update` enregistre les jalons de la tâche
 courante, uniquement pour son exécuteur et pendant une phase active non suspendue. Les écritures
 contrôlent la révision et préservent les checkpoints. `expected_revision` utilise
 `work_plan_revision` de `task_get` (0 initialement),
-indépendamment de la révision globale de la Task. Modifier un jalon déjà terminé exige une
+indépendamment de la révision globale de la tâche. Modifier un jalon déjà terminé exige une
 raison explicite. Le progrès déclaré ne remplace ni la vérification des ressources ni le résultat
 terminal de la tâche.
 
@@ -1382,18 +1382,18 @@ Sources : [organisation adaptative](../../../project/decisions/0171-adaptive-tas
 
 ### Conserver le périmètre demandé
 
-Les nouvelles Tasks conservent un périmètre sourcé : demande originale, exigences, références
+Les nouvelles tâches conservent un périmètre sourcé : demande originale, exigences, références
 exactes autorisées, amendements et réponses de clarification. Les enfants héritent du périmètre
 parent ; le texte d’une étape, un profil ou un souvenir ne crée pas une autorisation supplémentaire.
 Le plan doit déclarer les exigences couvertes et ses cibles : une exigence omise ou une cible
-sans source est refusée. Une clarification peut rester sur la même Task.
+sans source est refusée. Une clarification peut rester sur la même tâche.
 
 Les fonctions qui déclarent leurs effets enregistrent une décision avant l’action et revérifient
 le périmètre après l’autorisation native. Lire une ressource n’autorise pas sa modification ;
 une ressource créée et vérifiée pour ce travail peut être actualisée. Une révision périmée,
-une Task arrêtée ou une cible divergente empêche l’effet. Les fonctions sans description d’effet
+une tâche arrêtée ou une cible divergente empêche l’effet. Les fonctions sans description d’effet
 conservent leurs contrôles existants et signalent cette limite. Les ACL métier restent applicables.
-L’activité restitue un résumé du périmètre et les décisions ; les anciennes Tasks sans périmètre
+L’activité restitue un résumé du périmètre et les décisions ; les anciennes tâches sans périmètre
 conservent leur parcours. Le suivi d’un Goal ne crée pas de nouvelles autorisations.
 
 Sources : [portée et provenance](../../../project/decisions/0170-execution-scope-and-durable-controls.md),
@@ -1415,7 +1415,7 @@ la procédure complète se répète par cible plutôt que de créer une feuille 
 Les politiques d’effets et de concurrence sont fixées par le serveur, sans être choisies par le modèle.
 
 Les **collections progressives** découvrent un inventaire dans un Dataset JSON, vérifient sa
-complétude et les droits, puis figent sa révision. Une Task par élément substantiel est créée
+complétude et les droits, puis figent sa révision. Une tâche par élément substantiel est créée
 par vagues bornées par le plafond de feuilles. Une collection accepte jusqu’à **1 000 éléments**
 et un inventaire de **2 000 000 caractères** ; la profondeur inclut les éléments. Un petit lot
 mécanique connu d’au plus cinq éléments peut rester une feuille. Un inventaire incomplet ou un
@@ -1495,7 +1495,7 @@ restent diffusées au fil de leur génération.
 Après deux minutes sans réflexion, texte, arguments ou résultat d’outil reçus, le suivi signale
 le silence sans interrompre le travail. Les pauses, attentes déclarées et pertes de connexion
 sont distinguées. Pour le harnais interne, **Interrompre l’appel et reprendre** ferme la génération
-et reprend la même Task avec ses résultats et son budget ; un outil engagé ou un effet incertain
+et reprend la même tâche avec ses résultats et son budget ; un outil engagé ou un effet incertain
 empêche cette interruption. Une boucle de raisonnement répétitif peut recevoir deux récupérations
 guidées au maximum, sans répéter les écritures réussies ; une boucle persistante laisse un diagnostic.
 Réessayer un plan reprend la première étape inachevée, y compris dans ses groupes imbriqués.
@@ -1504,7 +1504,7 @@ La terminaison forcée libère les leases et les dépendances prévues, notammen
 bloqué. La suppression d’un travail actif invalide son exécution afin qu’un worker tardif ne puisse
 pas le faire réapparaître.
 
-**Terminer de force** rend la Task terminale et révoque son lease même si sa révision a changé.
+**Terminer de force** rend la tâche terminale et révoque son lease même si sa révision a changé.
 L’arrêt est committé avant la clôture du cycle Goal et les notifications, dont les échecs bornés
 ne remettent pas l’arrêt en cause. Répéter la commande peut reprendre la clôture d’un cycle ouvert.
 Un réessai ordinaire conserve le checkpoint opaque du driver et réconcilie son exécution existante ;
@@ -1556,9 +1556,9 @@ pas alimenté le Working Set. Un nouvel envoi explicitement demandé reste possi
 porte la ressource, le message, la connexion et le salon observés ; il ne rend pas atomiques
 le réseau et la base. Un texte de commande Git ou shell ne constitue pas une preuve de livraison.
 
-La validation finale d’un plan rapproche l’artefact actif, sa Task productrice, l’URI source et
+La validation finale d’un plan rapproche l’artefact actif, sa tâche productrice, l’URI source et
 la destination enregistrée de son reçu natif. Le reçu d’un autre fichier, d’une autre destination
-ou d’une autre Task ne suffit pas ; un artefact périmé ou en échec ne prouve pas un résultat disponible.
+ou d’une autre tâche ne suffit pas ; un artefact périmé ou en échec ne prouve pas un résultat disponible.
 Une mise à jour sur place doit viser l’URI complète demandée. La récupération d’une exécution
 échouée par une réponse modèle vide exige elle aussi cette correspondance ; une réussite directe
 déjà déclarée par le driver conserve son contrat de résultat terminal.
@@ -1567,7 +1567,7 @@ Source : [correspondance des preuves](../../../back/app/agent/delivery_evidence.
 
 ### Temps observés et coûts conservés
 
-Les détails de Task et de conversation distinguent l’attente, la préparation et la première
+Les détails de tâche et de conversation distinguent l’attente, la préparation et la première
 sortie observable, avec le temps dans les appels et entre les appels avant cette sortie.
 Ils utilisent les mesures effectivement disponibles : une donnée absente reste absente. Le début d’un appel
 d’outil peut constituer la première sortie ; il ne prouve pas la réussite du travail.
@@ -1594,7 +1594,7 @@ l’équité du scheduler.
 Ces limites contrôlent l’admission de nouvelles phases. Elles ne sont pas un plafond contractuel
 sur la facture fournisseur : une phase en cours peut dépasser sa réservation.
 
-Sources : [contrat Task](../../../back/app/task/schemas.py), [commandes](../../../back/app/task/router.py),
+Sources : [contrat tâche](../../../back/app/task/schemas.py), [commandes](../../../back/app/task/router.py),
 [contrats agentiques](../../../back/app/agent/contracts.py), [flux](../architecture/flows/agent-execution.md),
 [machines d’état](../architecture/state-machines.md), [tests métier](../../../back/app/task/tests/).
 
@@ -1621,7 +1621,7 @@ par passages successifs.
 
 ### Travail, jugement et suivi
 
-Un cycle crée une Task ordinaire, qui passe par l’orchestration commune. À sa fin, le mécanisme de
+Un cycle crée une tâche ordinaire, qui passe par l’orchestration commune. À sa fin, le mécanisme de
 suivi examine le résultat, les preuves et le suivi antérieur, puis décide de poursuivre ou de
 conclure. Les décisions, leur justification et les coûts restent consultables.
 
@@ -1632,19 +1632,19 @@ La description et le suivi sont portés par des **documents protégés** apparte
 Ils sont consultables dans la bibliothèque et modifiables selon leur contrat, sans perdre leur
 lien métier. Le suivi d’un Goal n’est donc pas enfoui dans un prompt de session.
 
-La fiche affiche les cycles récents et paginés, leur Task, leur état, leur verdict, les appels et
+La fiche affiche les cycles récents et paginés, leur tâche, leur état, leur verdict, les appels et
 les coûts. Reprendre un Goal terminé peut ouvrir de nouveaux cycles tout en conservant son histoire.
 Le runner attend lorsque l’agent est déjà occupé et respecte les pauses et horaires applicables.
 
-La demande « Exécuter un cycle maintenant » reste persistée jusqu’à la création de sa Task.
+La demande « Exécuter un cycle maintenant » reste persistée jusqu’à la création de sa tâche.
 Elle contourne les fenêtres horaires mais pas une pause globale explicite. Si elle doit d’abord
 récupérer une évaluation en échec, un verdict `CONTINUE` permet le nouveau cycle sans attendre
 le créneau suivant ; `STOP` annule la demande. « Réessayer le suivi » réévalue seulement le travail
-existant. Ces opérations préservent la Task et le résultat du cycle précédent.
+existant. Ces opérations préservent la tâche et le résultat du cycle précédent.
 
 ### Classement personnel des documents d’un objectif
 
-Les documents de description/suivi et les livrables dont la provenance les rattache aux Tasks
+Les documents de description/suivi et les livrables dont la provenance les rattache aux tâches
 du Goal sont rangés dans une arborescence personnelle **Objectifs / libellé du Goal**, traduite
 selon la langue de l’utilisateur. Les tâches déléguées conservent le rattachement au Goal.
 Une simple mention ou un titre ressemblant ne suffit pas à rattacher un document.
@@ -2035,7 +2035,7 @@ restent dans ce contenu commun ; les messages servent à discuter et transmettre
 Pour une correction, l’agent relit les passages concernés et y intègre les changements avec
 `file_edit`, en préservant faits utiles, sources, réserves et contributions. Il ajoute du contenu
 distinct avec `file_append` et conserve la chronologie lorsqu’elle sert un journal ou un compte rendu.
-Les versions antérieures restent dans l’historique ; l’état opérationnel appartient aux Tasks ou Goals.
+Les versions antérieures restent dans l’historique ; l’état opérationnel appartient aux tâches ou Goals.
 
 La création agentique utilise par exemple
 `file_create(path="document://", name="Rapport", content="<p>Contenu HTML.</p>")`.
@@ -2044,7 +2044,7 @@ accorde lecture ou édition avec `document_share` avant le passage de relais. En
 demander l’ouverture avec `document_show` n’accorde aucun droit.
 
 Une réponse courte reste dans le chat ; un fait durable concis peut devenir une mémoire.
-Une Task ne nécessite pas à elle seule un document : exécuter une action, répondre à une question
+Une tâche ne nécessite pas à elle seule un document : exécuter une action, répondre à une question
 ou mettre à jour une ressource métier n’impose pas de créer un compte rendu documentaire.
 Les fichiers Markdown/HTML restent adaptés à un format explicitement demandé ou à du code à
 livrer séparément. Une page interactive peut être créée directement comme document HTML Galaris.
@@ -2182,7 +2182,7 @@ Voir le [contrat de classement personnel](../../../project/decisions/0099-person
 ### Édition riche
 
 Les documents HTML utilisent **Tiptap**, sans badge d’éditeur, et stockent un HTML sémantique encadré par un profil. Les
-champs plus courts — mémoire, personnalité, fiche de poste, objectif de Task, description/suivi de
+champs plus courts — mémoire, personnalité, fiche de poste, objectif de tâche, description/suivi de
 Goal — emploient un profil riche plus restreint.
 
 L’éditeur permet :
@@ -2229,12 +2229,12 @@ existante valide le contenu reçu. Le paramètre historique `document_type="data
 `document://` reste un adaptateur qui renvoie `data://`. Seuls les anciens alias documentaires
 vérifiés restent valides : remplacer le schéma d’une URI ne crée pas un alias.
 
-Pour des données structurées réutilisées entre documents, calculs ou Tasks, les agents peuvent
+Pour des données structurées réutilisées entre documents, calculs ou tâches, les agents peuvent
 rechercher un Dataset pertinent avant d’en créer un et réutiliser son URI. Ils relisent les données
 courantes et conservent unités, dates, sources et incertitudes. Cette politique reste un choix
 adapté au besoin : une réponse autonome ou un fait isolé n’impose pas un Dataset. Une référence
 ne rafraîchit pas automatiquement les textes existants ; les registres métier restent leur source
-d’autorité et les droits de la conversation ou de la Task continuent de s’appliquer.
+d’autorité et les droits de la conversation ou de la tâche continuent de s’appliquer.
 
 ### Parcourir, transférer et supprimer un Dataset
 
@@ -2361,7 +2361,7 @@ code malveillant.
   directement dans le corps du document HTML lorsque ce format convient au résultat.
 
 Les images intégrées sont réservées aux documents ordinaires. Les mémoires, profils et contenus
-Task/Goal ne les acceptent pas ; les documents Goal gardent cette restriction même dans la
+Tâche/Goal ne les acceptent pas ; les documents Goal gardent cette restriction même dans la
 bibliothèque. Une image distante n’est pas conservée comme dépendance éditoriale : le collage peut importer une
 image HTTPS publique admissible dans les pièces jointes. Les SVG restent exclus des images
 éditoriales intégrées. Les aperçus automatiques de liens exigent les URL publiques prises en charge.
@@ -2374,7 +2374,7 @@ une réponse tardive d’un autre fichier est écartée.
 
 ### Liens métier, cartes et navigation documentaire
 
-Les liens Galaris couvrent agents, Documents, Datasets, Tasks, Goals, Topics, discussions,
+Les liens Galaris couvrent agents, Documents, Datasets, tâches, Goals, Topics, discussions,
 rounds texte, appels/tours vocaux, définitions Process et runs. Le sélecteur **Objets Galaris**
 et **Copier la référence** fournissent une URI stable et un titre. Les cartes compactes montrent
 les informations essentielles et l’état au moment de leur insertion ; leur ouverture consulte
@@ -2542,7 +2542,7 @@ Il ne remplace ni un salon de discussion, ni les dossiers documentaires personne
 périmètre de sécurité.
 
 - Créer un sujet avec titre, résumé/mots-clés selon le contrat ; rechercher et modifier les sujets.
-- Consulter les activités associées : messages, salons, Tasks, rounds texte, tours vocaux, mémoires
+- Consulter les activités associées : messages, salons, tâches, rounds texte, tours vocaux, mémoires
   et documents accessibles.
 - Voir les participants associés — agents, personnes, équipes — et les indicateurs mensuels
   d’activité/coût calculés à partir des activités rattachées.
@@ -2573,10 +2573,10 @@ ne déclenche pas artificiellement ce classement immédiat.
 
 Le résultat respecte le sujet du salon, les affectations manuelles et la politique de création
 (interdite, proposée ou automatique). Un résultat ancien ne remplace pas le sujet d’une entrée
-plus récente. Le dernier message d’entrée peut transmettre son sujet au round ; les Tasks issues
+plus récente. Le dernier message d’entrée peut transmettre son sujet au round ; les tâches issues
 directement du message peuvent le recevoir si elles n’en possèdent pas déjà un.
 
-Le harnais, les outils mémoire et la création de Tasks peuvent relire un classement arrivé après
+Le harnais, les outils mémoire et la création de tâches peuvent relire un classement arrivé après
 l’ouverture du tour. Une recherche déjà effectuée n’est pas relancée ; les opérations suivantes
 peuvent utiliser le sujet disponible. Celui-ci n’accorde aucun droit et ne remplace pas la portée
 contact du rappel humain par un filtre thématique excluant les autres connaissances autorisées.
@@ -2655,7 +2655,7 @@ réutilise ces mêmes reçus ; Dream assure le rattrapage des messages restant �
 ### Réutiliser les preuves déjà acquises
 
 L’extraction des rounds réutilise les transcriptions persistées et les analyses documentaires
-réussies des Tasks directement liées à la conversation, pour le même agent et l’URI exacte de la
+réussies des tâches directement liées à la conversation, pour le même agent et l’URI exacte de la
 pièce jointe. Un message audio sans texte peut donc fournir un fait durable sans nouvelle acquisition.
 Messages écrits, verbatim, texte extrait et interprétations restent distingués, avec leur couverture,
 leurs repères de source et une version attestée ou inconnue. Une pièce jointe non analysée ne suffit
@@ -2731,7 +2731,7 @@ une procédure. Les preuves, leur polarité, leur poids, la confiance et la just
 séparément de la mémoire ordinaire.
 
 Une première réussite ne suffit pas à injecter une nouvelle compétence. La procédure doit atteindre
-un seuil de score et être confirmée par plusieurs Tasks distinctes — trois par défaut — dans la
+un seuil de score et être confirmée par plusieurs tâches distinctes — trois par défaut — dans la
 limite du nombre de compétences actives. Les tâches historiques sont parcourues progressivement.
 L’interface permet de lire les procédures apprises, leurs preuves et leur score, puis de les
 suspendre ou réactiver.
@@ -2772,14 +2772,14 @@ ou une règle masquée par une dérogation ; elle ne signifie pas une désactiva
 
 ### Application des changements à la prochaine exécution
 
-Avant chaque nouvelle Task, Galaris compare les compétences autorisées et leurs fichiers à la
+Avant chaque nouvelle tâche, Galaris compare les compétences autorisées et leurs fichiers à la
 dernière projection réussie dans le harnais managé sélectionné. Éditions, imports, changements
 de catégories ou d’autorisations, fichiers annexes et compétences apprises sont pris en compte
 sans action de rafraîchissement depuis le navigateur. Les modifications successives sont
 regroupées jusqu’à l’exécution suivante.
 
 Les commandes de rafraîchissement enregistrent une demande durable. Elles ne redémarrent pas
-immédiatement un harnais sous une Task en cours et ne provisionnent pas un runtime absent.
+immédiatement un harnais sous une tâche en cours et ne provisionnent pas un runtime absent.
 Le statut technique distingue **en attente**, **à jour**, **erreur** et **non applicable**.
 Une copie interrompue ou échouée ne vaut pas synchronisation réussie : elle empêche le démarrage
 du driver avec une projection périmée et reste à réessayer. Un changement pendant la copie
@@ -2882,7 +2882,7 @@ aussi aux services système, dont les définitions et connexions restent protég
 **Browser, Search, Image et Multimedia** disposent de connexions intégrées actives par défaut.
 Browser et Search sont autorisés en conversation à leur première initialisation. **Console SSH,
 Image, Mail et Multimedia** demandent au contraire une activation explicite du mode conversation
-dans le catalogue des Tools ; cette règle ne désactive pas leur accès dans les Tasks.
+dans le catalogue des Tools ; cette règle ne désactive pas leur accès dans les tâches.
 Ces outils restent optionnels : les choix déjà enregistrés, restrictions et credentials sont
 conservés lors des mises à jour. L’activation d’une connexion et son autorisation en conversation
 sont deux réglages distincts. Les fonctions multimédias exigent les ressources IA compatibles du profil ;
@@ -3077,7 +3077,7 @@ contrôle l’accès** ; le nom affiché ne remplace pas son identité.
 | `document://` | Documents HTML et collection de pièces jointes `document://<uuid>/attachments/` ; anciens alias Dataset vérifiés seulement. |
 | `data://` | Datasets JSON indépendants, avec leurs droits et révisions propres. |
 | `memory://` | Recherche et lecture des connaissances autorisées. |
-| `galaris://` | Projections d’objets métier : Tasks, rounds texte, tours vocaux, Goals, cycles et processus selon les collections exposées. |
+| `galaris://` | Projections d’objets métier : tâches, rounds texte, tours vocaux, Goals, cycles et processus selon les collections exposées. |
 | `galaris://skill/` | Fichiers des compétences administrées, uniquement avec la connexion spécialisée active. |
 | `galaris://agent/<id>` | Profil courant d’un agent accessible, dont les champs éditoriaux d’identité et de mission ; l’identifiant entier est fourni par l’annuaire. |
 | `galaris://code/<uuid>` | Référence d’un dépôt Git dans la Console ; ouverture de son checkout courant avec droits propres. |
@@ -3096,7 +3096,7 @@ La liste se complète au défilement ; après erreur, Réessayer conserve les é
 Actualiser relit le répertoire. Changer d’agent retire les fichiers précédents et ferme leurs
 aperçus. Sur mobile, **Afficher les emplacements** ouvre l’arborescence. Les éléments cachés
 sont masqués ; les schémas sans listing de racine ou sans continuation signalent cette limite.
-Documents, Tasks, Datasets et échanges ouvrent leur vue métier ; les autres fichiers proposent
+Documents, tâches, Datasets et échanges ouvrent leur vue métier ; les autres fichiers proposent
 leur lecteur ou téléchargement, sans copie persistante ni droit supplémentaire.
 
 La racine **`file://`** regroupe fichiers internes indépendants et pièces jointes accessibles,
@@ -3303,7 +3303,7 @@ d’infrastructure avant la reconstruction et le redémarrage, dans les deux env
 
 ### Navigation interactive
 
-Le navigateur agentique s’appuie sur un sidecar Chromium. Chaque couple agent/Task reçoit un
+Le navigateur agentique s’appuie sur un sidecar Chromium. Chaque couple agent/tâche reçoit un
 contexte isolé et temporaire.
 
 - Ouvrir une URL HTTP(S) et créer une session ; choisir un viewport pour examiner une présentation
@@ -3467,7 +3467,7 @@ sans copie préparatoire par l’agent.
 
 `image_read` conserve la description avant de rendre un succès. Pour une pièce jointe
 documentaire active, elle enrichit le texte HTML de son compagnon Memory avec une révision et
-la provenance agent/Task. Une description identique est idempotente ; les droits du document
+la provenance agent/tâche. Une description identique est idempotente ; les droits du document
 sont revérifiés avant écriture. Une pièce jointe retirée mais conservée pour l’historique ne
 peut plus être enrichie. Pour une autre URI, la description devient une mémoire privée stable
 du couple agent/URI, sans partager la ressource source. Un échec de stockage fait échouer
@@ -3522,7 +3522,7 @@ non supportées sont refusées.
 Le lancement renvoie une **génération média durable** suivie avec `multimedia_get_run`, indépendamment
 des processus métier : on peut continuer la conversation pendant son exécution. Le résultat
 n’est réussi qu’après écriture des fichiers dans la destination. Les fichiers
-finaux et leurs URI sont reliés à la Task. Les callbacks sont authentifiés ; pour les providers
+finaux et leurs URI sont reliés à la tâche. Les callbacks sont authentifiés ; pour les providers
 concernés, l’état est revérifié auprès de leur API.
 
 Une clé d’invocation distingue la répétition de la même demande d’une nouvelle variation. Une
@@ -3569,10 +3569,10 @@ la boîte a changé d’identité, pour éviter qu’un ancien identifiant agiss
 
 Une connexion active relève l’INBOX selon son intervalle, 60 secondes par défaut. La première
 activation établit une référence de départ sans transformer tout l’historique en tâches. Les
-nouveaux messages sont journalisés et admis comme **Tasks dédiées**, avec déduplication et curseur
+nouveaux messages sont journalisés et admis comme **tâches dédiées**, avec déduplication et curseur
 durable. Un changement de génération IMAP établit une nouvelle référence de départ.
 
-L’agent lit le mail par son outil. La fin de la Task **n’envoie pas automatiquement sa réponse** à
+L’agent lit le mail par son outil. La fin de la tâche **n’envoie pas automatiquement sa réponse** à
 l’expéditeur : un envoi SMTP est une action explicite. Les expéditeurs et destinataires observés
 alimentent le répertoire de contacts selon les preuves de réception/envoi.
 
@@ -3622,7 +3622,7 @@ et pas de recherche des créneaux.
 - Vérifier la disponibilité sur une plage et obtenir les conflits.
 - Rechercher des créneaux libres selon les préférences de travail.
 - Créer, modifier ou supprimer un événement sur une ressource déclarée inscriptible.
-- Déclencher une Task ou un Process affecté à l’agent à partir d’un début d’événement ou d’une alarme.
+- Déclencher une tâche ou un Process affecté à l’agent à partir d’un début d’événement ou d’une alarme.
 
 Les événements annulés ou transparents ne bloquent pas la disponibilité. Les récurrences et alarmes
 sont développées à partir d’iCalendar. Les écritures utilisent le remplacement de la ressource `.ics`
@@ -3668,19 +3668,19 @@ fichiers sont accessibles au moteur via des références temporaires autorisées
 
 L’agent ou l’utilisateur peut :
 
-- lancer un processus depuis une Task, une conversation, l’administration ou un calendrier ;
+- lancer un processus depuis une tâche, une conversation, l’administration ou un calendrier ;
 - obtenir immédiatement la référence du run, ou utiliser l’attente bornée admise par le parcours ;
 - consulter statut, progression, événements, sortie, ressources et erreur ;
 - actualiser l’état depuis le moteur ou rattacher une exécution externe identifiée ;
 - demander une analyse du run, en conservant le diagnostic ;
 - demander une annulation, réessayer selon les règles ou supprimer un run autorisé ;
 - exporter le dossier de run et consulter les métriques d’exploitation ;
-- retrouver la Task à l’origine et les appels LLM/agents provenant du workflow.
+- retrouver la tâche à l’origine et les appels LLM/agents provenant du workflow.
 
 La page distingue l’attente de départ, le traitement, l’annulation en cours et les états terminaux.
 L’annulation peut être pleinement supportée, au mieux ou indisponible selon le moteur.
 
-Lors d’un remplacement de Task, l’arrêt des runs associés est coordonné. Un état terminal logique
+Lors d’un remplacement de tâche, l’arrêt des runs associés est coordonné. Un état terminal logique
 avec possibilité de poursuite distante bloque le successeur ; une observation ultérieure peut
 confirmer l’arrêt du run exact sans modifier sa sortie ni rejouer l’effet. Une erreur réseau ou
 une référence distante absente conserve cette incertitude.
@@ -3717,7 +3717,7 @@ antérieur sont disponibles, sans modifier les runs existants ni proposer de lan
 | Capacité | Fonctionnement |
 |---|---|
 | Tâche IA | Instructions, acteur agent, outils autorisés et résultat structuré validé ; les sorties sont remises avec `process_activity_complete`. |
-| Tâche humaine | Question transmise par Messenger à l’utilisateur affecté, dans le Chat ou son canal joignable ; pas de Task IA pour attendre sa réponse. |
+| Tâche humaine | Question transmise par Messenger à l’utilisateur affecté, dans le Chat ou son canal joignable ; pas de tâche IA pour attendre sa réponse. |
 | IF | Deux sorties True/False ; décision IA, Python isolé ou choix humain suivant le couloir, avec une seule branche retenue. |
 | Branches parallèles | Plusieurs sorties activent les branches ; la convergence attend les prédécesseurs activés et ne démarre qu’une fois. Une branche IF écartée ne bloque pas la suite. |
 | FOR / WHILE | Corps imbriqués, itérations suivies et reprise durable ; pas de cycle libre dans le graphe. |
@@ -3738,7 +3738,7 @@ Les définitions historiques v1 gardent leur contrat ; leur conversion vers v2 e
 L’agent recueille les entrées et lance le processus depuis le Chat avec une clé d’idempotence.
 Un retry technique retrouve le même run ; répondre à une activité ne déclenche pas un autre lancement.
 Les pages servent à concevoir et suivre, sans formulaire de lancement manuel natif. Les activités
-IA peuvent poser une question avec `process_activity_question` : leur Task existante attend puis
+IA peuvent poser une question avec `process_activity_question` : leur tâche existante attend puis
 reprend avec la réponse corrélée, sans enfant d’attente. Une réponse déjà reçue reste acquise ;
 une nouvelle question explicite possède une autre identité. Les messages ambigus demandent précision.
 Seul l’utilisateur affecté peut remettre le résultat d’une tâche humaine ; réponse identique et
@@ -3756,7 +3756,7 @@ révocations du processus s’appliquent aussi à ses runs et fichiers existants
 Chat, catalogue, Activité et liens internes ouvrent la **même modale de suivi**, avec le diagramme
 figé et les activités actives mises en évidence. Le détail d’un nœud montre ses occurrences,
 entrées/sorties, instructions et prompts réels, tentatives, retours d’outils, erreurs et liens
-vers les Tasks ou enfants. Les boucles et sous-processus s’ouvrent à la demande. Les données,
+vers les tâches ou enfants. Les boucles et sous-processus s’ouvrent à la demande. Les données,
 PJ téléchargeables/renommables, dernière activité, attentes, durée, tokens et coûts directs ou
 inclusifs restent consultables ; les totaux partiels sont signalés quand des enfants sont invisibles.
 Le coût facturé est distinct de la valeur d’inférence d’un abonnement. L’URI copiable est
@@ -3767,7 +3767,7 @@ perdre la sélection ; fermer arrête ce suivi. **Pause**, **Reprendre**, **Pas 
 d’arrêt sont durables. Le pas admet une occurrence et laisse progresser ses descendants composites.
 Les commandes réutilisent leur clé en cas de réponse perdue et contrôlent la révision ; elles
 ne répètent pas un pas déjà acquis. Arrêter ferme les demandes humaines et attend confirmation
-des Tasks, enfants et opérations engagés ; un run arrêté ne se reprend pas.
+des tâches, enfants et opérations engagés ; un run arrêté ne se reprend pas.
 
 Le moteur enregistre intentions, claims, retours et reçus d’intégration. Les branches lentes
 ne bloquent pas les autres ; un résultat acquis se réintègre après interruption sans réémettre
@@ -3803,7 +3803,7 @@ en retard. Deux découvertes concurrentes d’une même exécution retrouvent un
 avec un autre workflow est refusée.
 
 Les appels de modèles ou d’agents effectués par n8n peuvent être corrélés au run, pour relier coût et
-activité au workflow. Une fin de processus peut réveiller une Task en attente ou notifier la
+activité au workflow. Une fin de processus peut réveiller une tâche en attente ou notifier la
 conversation d’origine. Des définitions/résultats admissibles sont projetés dans Memory.
 
 L’exploitation expose les départs en attente, les runs anciens encore actifs, les échecs récents et
@@ -3868,7 +3868,7 @@ Sources : [campagnes Process du Lab](../../../back/app/lab/process_evaluation.py
 - Utiliser les éditeurs adaptés, recherche de paramètres, rubriques dépliables et édition JSON
   pour les valeurs structurées.
 - Créer un item, le nommer, fournir sa variable, son contexte et son attendu.
-- Capturer une Task, un round, un tour vocal ou une séquence de messages avec leur provenance.
+- Capturer une tâche, un round, un tour vocal ou une séquence de messages avec leur provenance.
 - Voir les écarts entre paramètres de la source et ceux du jeu avant import ; les confirmer crée
   le cas à revoir selon le contrat, sans cacher la configuration source.
 - Conserver l’historique propre à chaque item, y compris clarifications et médias quand ils font
@@ -3908,7 +3908,7 @@ Les situations sont adaptées au mécanisme : continuité et reprises de sujets,
 mémoire, dépendances d’un plan, preuves d’apprentissage ou de diagnostic, cycles d’objectif,
 historique conversationnel, délégation ou interruptions vocales transcrites. Les références
 doivent respecter les outils et leurs réponses simulées, sans transformer un échec configuré
-en succès attendu. La génération n’importe pas de conversations ou de Tasks réelles.
+en succès attendu. La génération n’importe pas de conversations ou de tâches réelles.
 
 Le jeu complet est validé avant enregistrement : un cas invalide ou une erreur fournisseur ne
 laisse pas de jeu partiel et préserve les jeux existants. Tous les nouveaux cas restent **brouillons**,
@@ -3985,8 +3985,8 @@ note les dimensions et justifie ses choix, puis enregistre avant révélation du
 et désaccords deviennent visibles. Chaque personne conserve sa revue indépendante ; une revue
 révélée est figée et un rejugement ouvre une autre campagne.
 
-Le diagnostic interactif d’une Task reste disponible séparément : sélectionner un dossier,
-ajouter du contexte humain et lancer l’analyse des preuves canoniques. Il ne rejoue pas la Task.
+Le diagnostic interactif d’une tâche reste disponible séparément : sélectionner un dossier,
+ajouter du contexte humain et lancer l’analyse des preuves canoniques. Il ne rejoue pas la tâche.
 Le diagnostic lui-même peut être capturé et évalué dans un jeu.
 
 Les simulations de réponses d’outils au Lab ne prouvent pas un effet externe réel. Le Lab vocal
@@ -4012,7 +4012,7 @@ les modèles de production.
 | Capture | Découvrir et importer des preuves réelles, prévisualiser puis capturer une plage complète de messages Topics |
 | Exécution | Lancer, suivre, annuler, reprendre les items restants, rejuger les sorties conservées et consulter les campagnes |
 | Comparaison | Comparer deux runs selon un axe explicite : modèle, prompt ou paramètres, en signalant les différences qui limitent la comparaison |
-| Diagnostic | Inscrire une Task existante dans le Lab, analyser ses preuves et relire les diagnostics sans rejouer la Task |
+| Diagnostic | Inscrire une tâche existante dans le Lab, analyser ses preuves et relire les diagnostics sans rejouer la tâche |
 | Évaluation | Déposer une appréciation attribuée à l’agent, distincte de la revue humaine et du score du juge |
 
 Les sources réelles et diagnostics demandent **en plus** Galaris Admin et les quatre fonctions
@@ -4053,7 +4053,7 @@ La revue ne remplace aucun de ces deux autres types d’évaluation.
 
 La route de revue masque le jugement automatique jusqu’au dépôt de l’avis de cet agent. Ce
 masquage ne prouve pas que l’agent n’a jamais consulté les scores par une autre route. Le run
-conserve également l’agent et la Task à l’origine de son lancement pour suivre la campagne.
+conserve également l’agent et la tâche à l’origine de son lancement pour suivre la campagne.
 
 Sources : [guide du Lab](../user/lab-ai.md), [contrats](../../../back/app/lab/contracts.py),
 [API](../../../back/app/lab/router.py), [architecture](../architecture/ai-lab-evaluation.md),
@@ -4091,7 +4091,7 @@ Un round réussi après une reprise est présenté comme réussi ; l’erreur pr
 l’historique des tentatives. Le détail distingue le traitement terminé, le texte retourné et les
 actions réalisées, y compris lorsqu’aucun texte final n’a été produit.
 
-Pour un appel LLM, les données disponibles comprennent : demandeur, agent, Task/tentative/run,
+Pour un appel LLM, les données disponibles comprennent : demandeur, agent, tâche/tentative/run,
 conversation ou Process, but de l’appel, fournisseur, modèle demandé/effectif, effort, streaming,
 messages, prompt système, réponse, raisonnement public retourné, outils, réponse brute conservée,
 raison de fin, erreur, durée et instant du premier token.
@@ -4106,12 +4106,12 @@ Le suivi des tokens distingue entrées, sorties, cache et raisonnement lorsqu’
 Les coûts portent leur qualification : estimation, montant connu, abonnement ou usage partiel.
 Les messages publics de progression d’un harnais sont distingués du résultat terminal autoritaire.
 
-Une inspection peut partir d’un identifiant d’appel, de sa période, d’une Task, d’un round, d’un tour
+Une inspection peut partir d’un identifiant d’appel, de sa période, d’une tâche, d’un round, d’un tour
 vocal ou d’un Process. Les interfaces ordinaires affichent des traces expurgées adaptées à leurs
 droits ; les outils administratifs exposent les dossiers plus complets. « Raisonnement » désigne les
 blocs effectivement transmis par le modèle/runtime, pas l’accès à une pensée interne non publiée.
 
-Tasks et rounds de conversation utilisent une présentation commune des détails d’exécution :
+Tâches et rounds de conversation utilisent une présentation commune des détails d’exécution :
 progression, outils, résultat, tokens et coûts facturés. La trace d’exécution reste la vue initiale ;
 les opérations Memory se consultent séparément et ouvrent les documents dans l’éditeur complet,
 avec leurs droits actuels. Les appels exposent leur but, leur effort et leurs données normalisées.
@@ -4125,16 +4125,16 @@ statuts lisibles ; le contenu complet reste accessible dans l’étape dépliée
 
 ### Arrêter un appel et borner sa durée
 
-Dans l’activité LLM et le détail de Task, **Arrêter cet appel LLM** demande l’arrêt d’une inférence
+Dans l’activité LLM et le détail de tâche, **Arrêter cet appel LLM** demande l’arrêt d’une inférence
 en cours, après confirmation, avec `TASK_EDIT` et dans le périmètre des agents gérés. L’accusé de
 réception ne prouve pas encore l’arrêt fournisseur. Traces et coûts restent conservés ; ces
 inférences ne proposent pas de suppression par corbeille. La tâche ou conversation peut ensuite
-signaler l’interruption ; la pause de Task reste l’action adaptée à un travail à reprendre.
+signaler l’interruption ; la pause de tâche reste l’action adaptée à un travail à reprendre.
 
 **Durée maximale d’un appel LLM** vaut **30 minutes par défaut**, réglable entre 1 et 1 440 minutes.
 Un appel sans résultat terminal échoue à cette échéance même s’il produit encore du texte ou du
 raisonnement. Le plafond porte sur chaque appel, indépendamment des retries et du contrôle
-d’inactivité de la Task ; un travail composé de plusieurs appels peut donc durer plus longtemps.
+d’inactivité de la tâche ; un travail composé de plusieurs appels peut donc durer plus longtemps.
 Les nouveaux appels prennent les nouveaux réglages. La détection de raisonnement répétitif tient
 compte des mots et snapshots cumulés, sans compter comme répétitions les fragments d’un même mot.
 
@@ -4181,7 +4181,7 @@ Sources : [dashboard](../../../back/app/dashboard/schemas.py), [appels LLM](../.
 | Architecture modulaire | Activation explicite backend/frontend ; `core` fournit l’infrastructure, `app` les domaines métier et `bridge` les systèmes externes. Façades/contrats publics et ports de composition encadrent les dépendances ; contrôles statiques de frontières, cycles et dette. |
 | API | FastAPI, validation Pydantic, contrats HTTP/WebSocket, documentation OpenAPI et API compatibles de modèles/agents ; authentification, RBAC et ACL appliqués côté serveur. |
 | Persistance | PostgreSQL/pgvector, SQLAlchemy async, transactions, historique et verrouillage optimiste ; leases et claims pour répartir les exécutions durables. DbAdmin dérive le schéma et applique les contributions idempotentes. |
-| Orchestration | Agent fournit façade, registre, résolution, dispatcher, planner et résultat ; Harness exécute Pydantic AI ; Task possède états, tentatives et scheduler. Les drivers rendent un unique résultat terminal après leurs événements. |
+| Orchestration | Agent fournit façade, registre, résolution, dispatcher, planner et résultat ; Harness exécute Pydantic AI ; tâche possède états, tentatives et scheduler. Les drivers rendent un unique résultat terminal après leurs événements. |
 | Messages | Messenger possède conversations, capacités, journal entrant et déduplication ; les bridges traduisent les protocoles. Les fichiers conservent leur URI et provenance dans la chronologie. |
 | Ressources | Memory possède le HTML éditorial, Dataset le JSON, Process le BPMN et ses runs, Storage les octets ; File Sharing unifie leurs URI sans déplacer leur autorité ni leurs droits. |
 | Interface | Vue/Quasar, Pinia, routes dérivées des fichiers, navigation déclarée, catalogue i18n par domaine et composants partagés chargés à la demande ; contrôles de parité FR/EN, thème et frontière mobile communs. |
@@ -4436,13 +4436,13 @@ Masquer puis rouvrir l’éditeur conserve la session, sans garantir la sauvegar
 
 ### Produire et partager un livrable
 
-Un humain demande une analyse dans le chat et joint un fichier. Le contrôleur crée une Task avec
+Un humain demande une analyse dans le chat et joint un fichier. Le contrôleur crée une tâche avec
 une consigne autonome et les URI de ressources. L’agent recherche les informations utiles, lit les
 fichiers, utilise au besoin le navigateur et rédige un document canonique. Il conserve la même URI
 pour la revue et partage ce document avec l’humain ou l’équipe avant d’en transmettre le lien.
-Dans un round interne, `document_show` peut ouvrir le document autorisé ; une Task ne dispose
+Dans un round interne, `document_show` peut ouvrir le document autorisé ; une tâche ne dispose
 pas de cet outil d’affichage. L’humain peut ensuite l’exporter ou l’agent livrer un fichier.
-La conversation retrouve la Task, le document et sa livraison ;
+La conversation retrouve la tâche, le document et sa livraison ;
 les coûts et erreurs éventuelles restent inspectables.
 
 ### Corriger et ranger un document avec son agent
@@ -4489,18 +4489,18 @@ calculateurs ou pages de suivi ; les calculs produits par l’IA restent à vér
 
 ### Traitement de courrier avec validation humaine
 
-Un nouveau mail crée une Task. L’agent lit le message et ses pièces jointes, prépare une réponse
+Un nouveau mail crée une tâche. L’agent lit le message et ses pièces jointes, prépare une réponse
 et la soumet au Tool Mail. Si la validation est activée, l’humain voit le contenu exact dans Mails,
 l’approuve ou le rejette. Le run conserve l’issue de l’envoi et évite les doublons de soumission.
 
 ### Suivi périodique ou déclenché par calendrier
 
 Un Goal planifie des cycles dans les horaires autorisés, ou un événement calendrier déclenche une
-Task/un Process. Les résultats et documents s’accumulent sans perdre leurs sources. Le jugement
+Tâche/un Process. Les résultats et documents s’accumulent sans perdre leurs sources. Le jugement
 met à jour le suivi ; une décision manquante peut être demandée au référent. Pause, reprise et
 lancement immédiat restent disponibles.
 
-Les documents reliés au Goal ou à ses Tasks rejoignent les dossiers personnels Objectifs des
+Les documents reliés au Goal ou à ses tâches rejoignent les dossiers personnels Objectifs des
 lecteurs concernés s’ils ne sont pas déjà classés. Chacun peut ensuite les déplacer ou renommer
 ses dossiers ; le classement automatique respecte cette organisation.
 
@@ -4564,7 +4564,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Décisions spécialisées | Facultatives, via l’adaptateur OpenRouter disponible ; repli gouverné dans le même profil, sans probabilités inventées ni gain systématique promis. |
 | Quotas ChatGPT | Fenêtres fournies pour l’ensemble du compte, consultées à un instant donné ; ni quota par agent ni budget de facture API. |
 | Harnais gérés | Standard/high via la passerelle Galaris ; un run simultané par instance externe ; le transport générique reste standard. |
-| Synchronisation des compétences | Appliquée avant une nouvelle exécution, sans interrompre une Task ; une continuation distante conserve son contexte antérieur et un échec de projection bloque le démarrage. |
+| Synchronisation des compétences | Appliquée avant une nouvelle exécution, sans interrompre une tâche ; une continuation distante conserve son contexte antérieur et un échec de projection bloque le démarrage. |
 | Routage | Seuls les couples EXEC/PLAN et effort déclarés par le harnais sont disponibles. |
 | Inférence durable | Préparation sans appel fournisseur, démarrage, commandes avec révision et échéance globale optionnelle ; reconnexion au flux sans génération, reprise explicite potentiellement facturée. |
 | Chat natif | Humain–agent ; les salons de groupe de transports externes ne constituent pas une messagerie native universelle entre humains. |
@@ -4579,7 +4579,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Dossier documentaire | Classement personnel, distinct d’un Topic ; sa visibilité dans Memory dérive des documents lisibles et ne crée pas un partage de dossier. |
 | Pièces jointes | Identité et structure en Memory ; quatre analyses Dream optionnelles, désactivées par défaut, complètent les descriptions vides. Dans Dream, la vidéo est traitée par son audio uniquement. Les descriptions produites par `image_read` sont aussi persistées. |
 | Entrées multimodales natives | Images, audios, vidéos et PDF joints peuvent atteindre directement le modèle du harnais interne, selon ses capacités et celles du transport. Droits, formats et budget d’octets restent contrôlés ; les outils spécialisés et replis sont conservés. |
-| Affichage documentaire agentique | `document_show` ouvre un document autorisé dans le salon texte interne de l’agent ; absent des Tasks, de la voix et des canaux externes, sans effet sur les ACL. |
+| Affichage documentaire agentique | `document_show` ouvre un document autorisé dans le salon texte interne de l’agent ; absent des tâches, de la voix et des canaux externes, sans effet sur les ACL. |
 | Classement des Goals | Traitement durable en arrière-plan, respectant droits et classement manuel ; l’admission d’un rattrapage n’en prouve pas l’achèvement. |
 | Partage PDF natif | Dépend du navigateur ; téléchargement proposé à défaut, sans publier automatiquement le document. |
 | YouTube | Sous-titres publics disponibles ; ni téléchargement universel ni accès aux vidéos privées. |
@@ -4587,7 +4587,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Budget | Limite d’admission basée sur consommation/réservations ; pas un plafond garanti de facture. |
 | Reprise | Dépend de l’état et des preuves d’effets ; une action externe ambiguë peut exiger une résolution explicite. |
 | Remplacement de tâche | Décision explicite ; coordination des descendants et runs Process, avec preuve d’arrêt de chacun. Goals et attentes non prises en charge sont refusés ; l’arrêt distant incertain bloque le successeur. |
-| Demande et travaux indépendants | La demande source d’une Task reste distincte de son complément de contexte ; un travail indépendant ou un amendement refusé ne remplace pas silencieusement les tâches existantes. |
+| Demande et travaux indépendants | La demande source d’une tâche reste distincte de son complément de contexte ; un travail indépendant ou un amendement refusé ne remplace pas silencieusement les tâches existantes. |
 | Erreur d’outil | Une erreur observée revient à l’agent pour décision ; une interruption sans réponse demeure soumise à réconciliation. Les budgets globaux restent applicables. |
 | Stockage local | Disponible pour l’agent seulement si une console est configurée et active. |
 | PWA | Installation et session persistante ; les traitements requièrent le serveur. |
@@ -4603,7 +4603,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Webhook générique | Aucun endpoint actif ; les callbacks et entrées des intégrations dédiées gardent leurs contrats propres. |
 | Traces | Restitution de ce que le provider/runtime expose, avec limites et expurgation. |
 | Organisation du travail | Actions directes, suivi durable par jalons ou clarification avant exécution ; progrès déclaré distinct des preuves de réussite. |
-| Portée d’exécution | Exigences et cibles sourcées pour les nouvelles Tasks ; contrôles d’effets pour les fonctions qui les déclarent, sans remplacer ACL et autorisations natives. |
+| Portée d’exécution | Exigences et cibles sourcées pour les nouvelles tâches ; contrôles d’effets pour les fonctions qui les déclarent, sans remplacer ACL et autorisations natives. |
 | Bilan après échec | Clôture indépendante explicitement demandée ; conserve l’échec du parent et s’actualise après retry manuel. |
 | Preuve de livraison | Artefact actif et reçu concordants pour la validation du plan ; un autre fichier livré ne valide pas le résultat demandé. |
 | Samba | SMB 2–3 signé, chiffrement SMB 3 optionnel, compte distant et TCP 445 joignable ; aucun montage ni lien public. |
@@ -4637,7 +4637,7 @@ Les familles sont celles du catalogue effectif : les commandes conversationnelle
 **Galaris Admin**, optionnel et inactif par défaut, sauf pour l’assistant Galaris à sa création.
 Les fonctions documentaires appartiennent aussi à Galaris Admin ; le pilotage des expériences
 appartient au Tool optionnel **Lab Galaris**. Les commandes système restent soumises à
-leur contexte : un service obligatoire n’expose pas ses fonctions de conversation aux Tasks.
+leur contexte : un service obligatoire n’expose pas ses fonctions de conversation aux tâches.
 Les colonnes « Famille » indiquent le namespace déclaré ou le Tool Topics qui sélectionne ses
 fonctions explicitement. Pour Messenger, la connexion de transport détermine le Tool concret.
 
@@ -4649,9 +4649,9 @@ fonctions explicitement. Pour Messenger, la connexion de transport détermine le
 | `agent_get` | `galaris` | Lire l’identité, la personnalité et la fiche de poste complètes d’un agent, avec son URI relisible via `file_read`. |
 | `task_run` | `galaris` | Créer une tâche enfant déléguée à un collègue autorisé et renvoyer son URI canonique ; l’agent ne peut pas se cibler lui-même. |
 | `task_get` | `galaris` | Lire l’état opérationnel compact, la révision, la progression, les jalons, la prochaine action, les attentes et le résultat disponible. |
-| `task_work_update` | `galaris` | Enregistrer le suivi par jalons de la Task courante avec contrôle de propriétaire, phase et révision ; préserver les checkpoints et justifier la révision d’un jalon terminé. |
+| `task_work_update` | `galaris` | Enregistrer le suivi par jalons de la tâche courante avec contrôle de propriétaire, phase et révision ; préserver les checkpoints et justifier la révision d’un jalon terminé. |
 | `task_stop` | `galaris` | Arrêter définitivement une autre tâche racine active et ses descendants inachevés ; refuse la tâche courante, ses ancêtres et une sous-tâche comme cible. |
-| `conversation_task_submit` | `conversation` | Créer, amender ou remplacer explicitement une Task avec contrôle de portée et de révision ; un conflit d’amendement ne crée rien et un remplacement attend une preuve d’arrêt. |
+| `conversation_task_submit` | `conversation` | Créer, amender ou remplacer explicitement une tâche avec contrôle de portée et de révision ; un conflit d’amendement ne crée rien et un remplacement attend une preuve d’arrêt. |
 | `conversation_task_list` | `conversation` | Lister les tâches récentes du périmètre de conversation. |
 | `conversation_task_status` | `conversation` | Lire phase, progression du plan, erreur et résultat borné d’une tâche précise. |
 | `conversation_task_pause` | `conversation` | Suspendre une tâche et ses descendants inachevés. |
@@ -4660,7 +4660,7 @@ fonctions explicitement. Pour Messenger, la connexion de transport détermine le
 | `conversation_task_stop` | `conversation` | Annuler une tâche inachevée ou restituer sans modification l’état d’une tâche déjà terminée. |
 | `conversation_choice_resolve` | `conversation` | Résoudre une interaction en attente à partir d’une réponse humaine comprise sans ambiguïté. |
 | `conversation_process_start` | `conversation` | Lancer un processus affecté et le rattacher à la conversation sans attendre sa fin. |
-| `document_show` | `conversation` | Demander l’ouverture d’un document lisible dans le salon texte interne courant de l’agent, après contrôle des droits et de la fraîcheur ; ne partage rien et ne s’exécute pas dans une Task. |
+| `document_show` | `conversation` | Demander l’ouverture d’un document lisible dans le salon texte interne courant de l’agent, après contrôle des droits et de la fraîcheur ; ne partage rien et ne s’exécute pas dans une tâche. |
 | `conversation_round_get` | `galaris_admin` | Inspection administrative complète d’un round : messages, tentatives, tâches créées/amendées, processus, résultat et appels. |
 
 ### Conversation : code et activités humaines
@@ -4920,12 +4920,12 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 | `process_restore` | `galaris` | Restaurer une sauvegarde comme nouvelle version courante sous contrôle de révision. |
 | `process_archive` | `galaris` | Archiver ou réactiver une définition sans effacer ses runs. |
 | `process_share` | `galaris` | Accorder/retirer à un agent lecture ou édition en tant que propriétaire. |
-| `process_activity_complete` | `galaris` | Remettre les sorties validées de l’activité Process courante et un message facultatif ; réservé à sa Task. |
+| `process_activity_complete` | `galaris` | Remettre les sorties validées de l’activité Process courante et un message facultatif ; réservé à sa tâche. |
 | `process_activity_question` | `galaris` | Poser une question corrélée au lanceur humain et suspendre l’activité courante jusqu’à réponse. |
 | `process_run_inspect` | `galaris` | Lire graphe figé, occurrences paginées, données et événements d’un run. |
 | `process_run_children` | `galaris` | Lister les enfants immédiats autorisés, sans plafond de profondeur métier. |
-| `process_run_occurrence` | `galaris` | Inspecter une occurrence exacte : prompts, entrées/sorties, tentatives, Tasks et enfants. |
-| `process_run_metrics` | `galaris` | Lire coûts/tokens directs et inclusifs, comptabilité par Task et couverture partielle. |
+| `process_run_occurrence` | `galaris` | Inspecter une occurrence exacte : prompts, entrées/sorties, tentatives, tâches et enfants. |
+| `process_run_metrics` | `galaris` | Lire coûts/tokens directs et inclusifs, comptabilité par tâche et couverture partielle. |
 | `process_run_control` | `galaris` | Persister pause, reprise, pas ou points d’arrêt avec clé de commande idempotente et révision. |
 | `process_run_cancel` | `galaris` | Demander l’annulation et confirmer la terminaison réelle des activités admises. |
 | `process_run_retry` | `galaris` | Relancer explicitement un run terminal avec ses entrées et la dernière définition ; clé idempotente requise. |
@@ -5030,14 +5030,14 @@ Ces fonctions exigent également les autorisations d’inspection de Galaris Adm
 | `lab_dataset_generate` | `lab` | Lancer une génération synthétique de jeu brouillon ; rendre une référence d’opération durable. |
 | `lab_expected_generate` | `lab` | Proposer de façon asynchrone une référence pour un cas, sans la valider automatiquement. |
 | `lab_run_analyze` | `lab` | Analyser un benchmark terminal dans une opération distincte, facturée hors budget du run. |
-| `lab_task_analyze` | `lab` | Diagnostiquer de façon asynchrone une Task inscrite à partir de ses preuves ; accès Admin requis. |
+| `lab_task_analyze` | `lab` | Diagnostiquer de façon asynchrone une tâche inscrite à partir de ses preuves ; accès Admin requis. |
 | `lab_operation_get` | `lab` | Consulter l’état d’une opération et relire son résultat complet par pages de caractères. |
 | `lab_operation_cancel` | `lab` | Annuler une opération en attente ou demander l’arrêt du travail engagé, sans présumer de l’arrêt du fournisseur. |
-| `lab_task_candidates` | `lab` | Découvrir les Tasks disponibles pour diagnostic, avec recherche et pagination ; accès Admin requis. |
-| `lab_task_list` | `lab` | Lister les Tasks déjà inscrites au Lab ; accès Admin requis. |
-| `lab_task_add` | `lab` | Inscrire une Task existante sans l’exécuter, avec restitution de son URI canonique ; accès Admin requis. |
-| `lab_task_remove` | `lab` | Retirer la référence Lab tout en conservant la Task canonique et ses diagnostics ; accès Admin requis. |
-| `lab_task_diagnoses` | `lab` | Lister les diagnostics immuables d’une Task ; accès Admin requis. |
+| `lab_task_candidates` | `lab` | Découvrir les tâches disponibles pour diagnostic, avec recherche et pagination ; accès Admin requis. |
+| `lab_task_list` | `lab` | Lister les tâches déjà inscrites au Lab ; accès Admin requis. |
+| `lab_task_add` | `lab` | Inscrire une tâche existante sans l’exécuter, avec restitution de son URI canonique ; accès Admin requis. |
+| `lab_task_remove` | `lab` | Retirer la référence Lab tout en conservant la tâche canonique et ses diagnostics ; accès Admin requis. |
+| `lab_task_diagnoses` | `lab` | Lister les diagnostics immuables d’une tâche ; accès Admin requis. |
 
 ### Lab : appréciations et contenus volumineux
 

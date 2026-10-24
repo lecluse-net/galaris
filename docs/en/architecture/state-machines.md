@@ -513,6 +513,10 @@ computation may repeat after a lost result; external effects are never replayed.
 A configured IF follows exactly one True/False output after validating its boolean.
 Human mode reuses `human_waiting` and Messenger choices, without an AI waiting Task or
 integrating the boolean into run data.
+Within AI processing, the `task` submode retains the agent Task; `llm` marks the attempt
+`llm_waiting` and observes durable inference. Only a successful validated answer completes
+the attempt. Failure or interruption selects no branch. Process cancellation waits for
+inference to stop; engine recovery reuses an acquired answer without calling again.
 
 Terminal states: `success`, `error`, `cancelled`.
 

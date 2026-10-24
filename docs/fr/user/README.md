@@ -9,7 +9,7 @@ par le [tour des fonctionnalités](../features.md).
 | Votre besoin | Guide |
 |---|---|
 | Trouver un menu ou un écran | [Navigation et parcours](navigation.md), [carte générée](../architecture/generated/navigation.md) |
-| Confier et suivre un travail | [Tasks, jalons et reprise](tasks.md) |
+| Confier et suivre un travail | [tâches, jalons et reprise](tasks.md) |
 | Organiser les contenus rédigés | [Bibliothèque documentaire](documents.md) |
 | Écrire, relier, partager et exporter | [Contenus riches](rich-content.md) |
 | Gérer des données JSON | [Jeux de données](datasets.md) |
@@ -75,7 +75,7 @@ La barre latérale ne montre que les écrans autorisés par votre rôle :
 |---|---|
 | Accueil | voir les agents disponibles, les tâches récentes et les étapes de configuration manquantes |
 | Agents | connaître le rôle, la personnalité et les capacités de chaque agent |
-| Suivi d’exécution | suivre séparément conversations texte, appels, Tasks, processus et appels LLM en temps réel |
+| Suivi d’exécution | suivre séparément conversations texte, appels, tâches, processus et appels LLM en temps réel |
 | Objectifs | suivre les missions de fond, leurs cycles, preuves et résultats |
 | Dossiers thématiques | retrouver les sujets globaux et les connaissances liées entre plusieurs canaux |
 | Mémoire | rechercher, lire et corriger les souvenirs privés d’un agent et les synthèses des documents autorisés ; oublier uniquement les souvenirs autonomes |
@@ -126,7 +126,7 @@ codes erronés, Galaris ralentit temporairement les nouvelles tentatives de conn
 Les gestionnaires d'agents peuvent choisir un **Profil principal** et un **Profil secondaire
 (secours)** dans **Agents → Modifier → Modèles**. Le secondaire est facultatif et sert lors
 d'une surcharge ou d'une indisponibilité du fournisseur principal. La conversation ou la
-Task conserve le travail déjà effectué ; les détails de la bascule apparaissent dans les
+Tâche conserve le travail déjà effectué ; les détails de la bascule apparaissent dans les
 journaux d'appels LLM. Une sélection vide dans le secondaire ne remplace pas un usage absent.
 
 ## Installer Galaris sur Android ou iPhone
@@ -155,7 +155,7 @@ de notes, une présentation de projet ou un plan de travail. Les exemples sont f
 Le parcours vérifie les droits de création et d’envoi en Discussion, de suivi des tâches et de
 lecture des Documents avant de proposer le lancement.
 Vérifiez la demande puis cliquez sur **Lancer la mission** ; l’appel utilise vos modèles et leurs coûts.
-Galaris prépare une conversation et envoie une demande de Task durable avec une identité stable.
+Galaris prépare une conversation et envoie une demande de tâche durable avec une identité stable.
 Un réessai d’envoi réutilise cette identité. Un échec de création de conversation peut nécessiter
 de vérifier Discussion avant de recommencer.
 
@@ -185,7 +185,7 @@ agents auxquels il délègue.
 Depuis la liste, cliquez sur une tâche pour ouvrir son détail. Vous y retrouvez la phase
 courante, les sous-tâches, les appels d’outils, les processus liés, les coûts LLM connus et le
 retour final. Les boutons de pause et de reprise agissent sur l’arbre de travail. **Forcer la fin**
-est une récupération administrative pour une exécution réellement bloquée : elle marque la Task
+est une récupération administrative pour une exécution réellement bloquée : elle marque la tâche
 en erreur et libère sa lease, elle ne constitue pas une annulation ordinaire du travail externe.
 
 Une erreur fournisseur temporaire dans DeepSeek déclenche une reprise automatique dans la
@@ -329,7 +329,7 @@ un assistant déjà initialisé se configure dans le formulaire de chaque connex
 ToolAdmin limite les niveaux personnel et équipe aux connexions ; les définitions et
 réglages partagés exigent `all`. Les définitions de processus suivent l'agent affecté,
 les exécutions leur lanceur et les objectifs leur responsable. Galaris Admin applique
-la portée aux Tasks, conversations et traces LLM sans élargir les droits des documents
+la portée aux tâches, conversations et traces LLM sans élargir les droits des documents
 ou souvenirs privés.
 
 AgentAdmin propose seulement `usage`, `team`, `all`. Il permet la création dans une
@@ -353,11 +353,11 @@ peut régler **Communication inter-agents** (`tools.management_scope`) : **Aucun
 **Agents de ses équipes** (`team`) ou **Tous les agents** (`all`). Le défaut `team` conserve
 les échanges entre agents partageant au moins une équipe. Ce réglage s'applique aux envois et
 aux réceptions de la connexion ; il ne change pas les droits de contact avec les humains.
-Les demandes internes vérifient les connexions des deux agents avant de créer une Task.
+Les demandes internes vérifient les connexions des deux agents avant de créer une tâche.
 
-Lorsqu'une Task doit solliciter un autre agent par le canal interne, elle lui crée une demande
+Lorsqu'une tâche doit solliciter un autre agent par le canal interne, elle lui crée une demande
 suivie et attend son résultat, sans nécessiter de conversation avec un humain. Vous pouvez suivre
-la demande par son lien Task. Son acceptation ne confirme ni une réponse du collègue ni
+la demande par son lien tâche. Son acceptation ne confirme ni une réponse du collègue ni
 l'accomplissement de l'action demandée ; les droits de contact et de partage restent nécessaires.
 
 Dans l’installation par défaut, les compétences `galaris-lab` et `galaris-knowledge` sont
@@ -457,16 +457,16 @@ Redemander un travail ne relance pas systématiquement une ancienne tâche écho
 examiner l’erreur et les résultats partiels : il peut relancer la même tâche si vous le demandez
 explicitement ou si la cause de l’échec a été corrigée. Si l’approche ou les instructions doivent
 changer, il privilégie une nouvelle tâche tenant compte de l’échec et de vos corrections, sur un
-canal autorisant les Tasks. La relance manuelle reste aussi disponible depuis la fiche tâche.
+canal autorisant les tâches. La relance manuelle reste aussi disponible depuis la fiche tâche.
 
-Une conversation native n'ouvre jamais de Task, même si le message le demande explicitement. Elle
-peut toutefois lancer un Processus configuré. Pour confier un travail durable à une Task, utilisez
-la page Tasks ou un autre canal dont la politique d'admission l'autorise.
+Une conversation native n'ouvre jamais de tâche, même si le message le demande explicitement. Elle
+peut toutefois lancer un Processus configuré. Pour confier un travail durable à une tâche, utilisez
+la page tâches ou un autre canal dont la politique d'admission l'autorise.
 
 Si votre organisation relie Nextcloud Talk, Matrix, OneBot, Telegram ou WhatsApp Business,
 adressez votre demande au compte de l’agent dans le salon prévu. Les plateformes configurées
 peuvent fonctionner simultanément et la réponse revient par la connexion et la conversation
-d’origine. Évitez de relancer plusieurs fois une demande lente : ouvrez plutôt la Task ou le
+d’origine. Évitez de relancer plusieurs fois une demande lente : ouvrez plutôt la tâche ou le
 Processus créé, ou demandez son état.
 
 Les pièces jointes restent des fichiers. Précisez leur nom et l’action attendue : « lis »,
@@ -505,25 +505,25 @@ erreurs. Si une action externe ou une livraison reste incertaine, le suivi le si
 vérification avant de la répéter.
 
 Un agent peut consulter l’annuaire des agents pendant une conversation pour identifier un
-collègue et son rôle, sans créer de Task. Demander la contribution d’un collègue suit la
+collègue et son rôle, sans créer de tâche. Demander la contribution d’un collègue suit la
 politique d’action habituelle et les droits de contact ; lire sa fiche ne le contacte pas.
 
 À l’initialisation, **Console SSH**, **Image**, **Mail** et **Multimédia** ne sont pas
 accessibles en mode conversation par défaut. Un administrateur peut autoriser chaque outil
 pour les conversations depuis le catalogue des outils. Ce réglage ne change pas leur accès
-dans les Tasks ; les mises à jour conservent les choix déjà enregistrés.
+dans les tâches ; les mises à jour conservent les choix déjà enregistrés.
 
-Si une Task attend votre accord pour lire un mail, répondez à la demande d’autorisation.
-Le harnais reprend la lecture du même message après la reprise de la Task ; un refus
+Si une tâche attend votre accord pour lire un mail, répondez à la demande d’autorisation.
+Le harnais reprend la lecture du même message après la reprise de la tâche ; un refus
 laisse son contenu privé. Cet accord de lecture n’autorise pas l’envoi d’un mail.
 
 La consultation d'une compétence déjà disponible dans le harnais DeepSeek ne demande pas
 d'accord de modification. Les opérations qui modifient des fichiers conservent leur autorisation.
 
-Un message reçu n’est plus systématiquement transformé en Task. Le contrôleur conversationnel
+Un message reçu n’est plus systématiquement transformé en tâche. Le contrôleur conversationnel
 agrège les messages arrivés en rafale, reconstruit l’historique utile et prépare une réponse courte.
 Lorsqu’un outil doit produire un effet durable ou qu’un travail va prendre du temps, il crée une
-Task ou un Processus de fond et vous en donne la référence.
+Tâche ou un Processus de fond et vous en donne la référence.
 
 Dans **Suivi d’exécution → Conversations textuelles**, vous pouvez voir les messages traités ou en
 attente, les rounds, leurs tentatives, les appels LLM, la livraison et les éventuelles erreurs. Une
@@ -531,7 +531,7 @@ réponse entre deux agents est admise seulement lorsqu’une requête fraîche l
 évite les boucles automatiques de politesse.
 
 Les détails d'exécution montrent le délai jusqu'au premier texte ou appel d'outil observé,
-avec le temps dans les appels LLM et entre ces appels. Pour une Task, la préparation,
+avec le temps dans les appels LLM et entre ces appels. Pour une tâche, la préparation,
 l'admission et l'attente avant sa prise en charge restent séparées. « Non mesuré » signifie
 que les traces nécessaires manquent ; ces délais serveur ne prouvent pas la livraison.
 
@@ -544,13 +544,13 @@ aucune transcription intermédiaire : l’absence de texte dans un tour natif n�
 perte de l’appel.
 
 L’onglet **Appels téléphoniques** montre les appels actifs ou terminés, leurs tours, interruptions,
-réponses, appels LLM et erreurs. Un tour vocal peut aussi créer une Task de fond ; celle-ci apparaît
-alors dans l’onglet **Tasks** et continue après la fin de l’appel.
+réponses, appels LLM et erreurs. Un tour vocal peut aussi créer une tâche de fond ; celle-ci apparaît
+alors dans l’onglet **tâches** et continue après la fin de l’appel.
 
 ### Résumer un audio, une vidéo ou une vidéo YouTube
 
 Dans le détail d'un tour de l'onglet **Appels téléphoniques**, les gestionnaires disposant
-du droit de modification des Tasks peuvent **Raccrocher de force** un traitement audio.
+du droit de modification des tâches peuvent **Raccrocher de force** un traitement audio.
 La confirmation conserve l'historique ; un arrêt encore en cours reste signalé.
 Lors d'une suppression, le tour reste affiché tant que le nettoyage audio n'est pas
 achevé. Le suivi reprend après réouverture et traverse les indisponibilités temporaires.
@@ -659,7 +659,7 @@ ou **Tous les agents** ne remplace pas cet agent mémorisé. Une sélection expl
 dans un lien, reste prioritaire. Un rechargement complet ou une déconnexion efface ce choix.
 
 La recherche de souvenirs conserve le contexte du contact courant, dans les échanges texte,
-les appels vocaux et les Tasks qui leur sont associées. Les commandes de mémorisation et les
+les appels vocaux et les tâches qui leur sont associées. Les commandes de mémorisation et les
 recherches de l'agent utilisent ce même contexte.
 
 La mémoire récente d’une conversation est reconstruite automatiquement. Pour le contexte durable,
@@ -803,12 +803,12 @@ Dans **Mémoire**, les comptes autorisés peuvent :
 - consulter contenu, révisions, provenance, relations et usages ;
 - corriger ou archiver un souvenir ordinaire ;
 - partager un document en lecture ou édition depuis son éditeur ;
-- créer des documents HTML de travail qui évoluent sur plusieurs Tasks ;
+- créer des documents HTML de travail qui évoluent sur plusieurs tâches ;
 - explorer le graphe sur une période donnée ;
 - oublier définitivement un élément, action irréversible réservée aux droits adéquats.
 
 Les agents sont invités à envisager un jeu de données lorsque des données structurées peuvent
-servir dans plusieurs documents, calculs ou Tasks. Par exemple, une fiche d'entreprise peut
+servir dans plusieurs documents, calculs ou tâches. Par exemple, une fiche d'entreprise peut
 regrouper son capital et sa devise pour les réutiliser dans une présentation ou un budget.
 Ils privilégient un jeu de données existant, conservent les sources et incertitudes et relisent
 les données lors de la rédaction. Ce choix reste adapté au besoin : un fait isolé ou une
@@ -847,7 +847,7 @@ Les fiches de fichiers restent vides tant qu'elles n'ont ni notes ni description
 Leurs métadonnées techniques (URI, taille, type, date, empreinte) ne remplissent pas la description.
 
 Les **Dossiers thématiques** regroupent les connaissances autour d’un sujet global, même si elles
-proviennent de salons, Tasks ou appels différents. Dream effectue ce classement en arrière-plan ;
+proviennent de salons, tâches ou appels différents. Dream effectue ce classement en arrière-plan ;
 il peut aussi associer les documents et les datasets à ces sujets. Dans la fiche d'un sujet,
 l'onglet **Contenus liés**, affiché en premier et ouvert par défaut, permet d'ouvrir les conversations,
 documents et jeux de données associés auxquels vous avez accès. Les tâches disposent de leur onglet,
@@ -863,7 +863,7 @@ Le bouton de référence du document conserve la copie de son adresse complète.
 La création automatique de sujets suit le réglage Dream existant ; en mode proposition,
 ces ressources sont uniquement rattachées aux sujets existants.
 Les comptes autorisés peuvent aussi corriger l’affectation d’un élément. Dream peut consolider des
-souvenirs et analyser séparément les résultats de Tasks afin de renforcer des compétences propres à
+souvenirs et analyser séparément les résultats de tâches afin de renforcer des compétences propres à
 l'agent. Une compétence auto-apprise n'est ajoutée aux futures exécutions qu'après avoir atteint les
 seuils de preuves et de score configurés ; la page **Compétences → Auto-apprises** permet d'en consulter
 les preuves et de la suspendre.
@@ -871,18 +871,18 @@ les preuves et de la suspendre.
 ## Organiser et suivre le travail
 
 Galaris distingue le niveau d’effort, la méthode de travail et la coordination. Une action
-simple peut être directe ; une mission longue conserve des jalons dans une seule Task ;
+simple peut être directe ; une mission longue conserve des jalons dans une seule tâche ;
 plusieurs résultats indépendants peuvent former un plan. Une ambiguïté sur le périmètre
 demande une précision avant l’exécution.
 
-Le [guide des Tasks](tasks.md) explique les directives du Chat, les jalons, la progression,
+Le [guide des tâches](tasks.md) explique les directives du Chat, les jalons, la progression,
 les questions, les autorisations et la reprise après erreur.
 
 ## Mesurer la qualité avec le Lab IA
 
 Les comptes autorisés disposent d’un **Lab IA** séparant deux usages : l’analyse complète d’une
-Task réelle et les benchmarks reproductibles du Dispatcher, du Planner et des
-exécuteurs Task/Conversation/Voice ainsi que des mécanismes Dream/Goal.
+Tâche réelle et les benchmarks reproductibles du Dispatcher, du Planner et des
+exécuteurs tâche/Conversation/Voice ainsi que des mécanismes Dream/Goal.
 
 Le [guide complet du Lab IA](lab-ai.md) explique comment importer un cas réel, construire une
 référence, lancer un modèle candidat, lire la pertinence et étalonner le juge automatique. Un
@@ -902,7 +902,7 @@ utilisateur et les commandes de vérification :
 
 Les URL restent communes à tous les profils ; le champ `model` porte le sélecteur complet.
 
-Claude Agent peut aussi être choisi directement comme **Moteur des Tasks** dans la fiche d'un
+Claude Agent peut aussi être choisi directement comme **Moteur des tâches** dans la fiche d'un
 agent. Galaris provisionne alors un conteneur Claude Agent SDK isolé, lui fournit le modèle interne
 résolu, les compétences et le MCP de cet agent, puis affiche en direct le texte, les appels d'outils,
 les appels LLM et le résultat terminal. Aucun compte ni token Anthropic direct n'est nécessaire.

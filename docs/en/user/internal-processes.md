@@ -119,11 +119,18 @@ be supplied. Explicit null never uses the default. False and zero remain values.
 Contract errors identify the task and variable. FOR/WHILE use the same editor and breadcrumbs.
 Old definitions retain their shared pool; **Configure typed inputs and outputs** starts
 an explicit conversion to complete before saving. Existing runs retain their original profile.
+For an IF using **AI** processing, **AI mode** distinguishes **Agentic (Task)** from
+**Simple LLM call**. Agentic delegates work to the agent through a Task, with its tools
+and interactions. Simple LLM call evaluates only the instructions and process data:
+explicitly choose a text or decision **LLM model**, such as Jev. It creates no Task and
+uses no tools. A model failure ends the process in error; it never selects the False
+branch. Existing IFs remain agentic. Saving preserves both the mode and selected model.
+
 An IF has two output handles, **True** and **False**. On an AI actor's lane, choose **AI**
 and enter instructions, or **Code** and enter a Python program. On a human lane, human mode
 is automatic: the assignee receives the question in messaging and chooses True or False.
 The run waits and follows exactly one branch. Historical IFs without a mode keep their
-existing conditions. Tasks offer the same processing modes according to their actor.
+existing conditions. Tasks retain agentic AI, Code or Human processing according to their actor.
 Code receives run data variables directly: `return variable_2 != "pas mon projet"` for
 an IF, or `return {"variable_1": variable_1 + 1}` to update a declared task output. The editor
 starts with a commented example; only valid outputs are integrated.

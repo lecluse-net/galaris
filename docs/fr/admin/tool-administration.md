@@ -435,7 +435,7 @@ chaque agent sont enregistrés séparément. Un résultat partiel précise `fail
 `remaining_agent_ids` ; retrouver leurs connexions et relancer `tool_admin_catalog_refresh`
 avec ces `connection_ids`, pas la mutation déjà enregistrée. Aucun Process n’est créé.
 La convergence DbAdmin supprime les anciennes définitions techniques `catalog_refresh`
-et leurs runs, après résolution des éventuelles Tasks en attente.
+et leurs runs, après résolution des éventuelles tâches en attente.
 
 Les anciennes sessions natives et externes revalident les permissions. Les appels externes
 suivants utilisent les nouveaux credentials. Un effet distant déjà envoyé n’est pas annulé

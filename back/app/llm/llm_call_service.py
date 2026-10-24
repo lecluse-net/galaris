@@ -1081,10 +1081,12 @@ async def create_running_call(
             agent_id is not None
             and process_run.launcher_agent_id != agent_id
         ):
-            raise ValueError(
-                f"Process run {process_run_id} is not assigned to agent "
-                f"{agent_id}."
-            )
+            from app.process.facade import is_activity_inference_agent
+            if not await is_activity_inference_agent(process_run.id, agent_id, current_llm_correlation_ref()):
+                raise ValueError(
+                    f"Process run {process_run_id} is not assigned to agent "
+                    f"{agent_id}."
+                )
     _validate_semantic_lineage(
         purpose=purpose,
         task_id=task_id,

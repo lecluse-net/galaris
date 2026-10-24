@@ -17,6 +17,7 @@ from core.database import get_db
 
 from . import process_service
 from .bpmn import Node, Workflow, decision_activity
+from .llm_decisions import simple_llm, observe_decision, stop_decision
 from .values import normalize, validate_values, loads_values, unwrap, external_outputs, ValueContractError
 from .expressions import evaluate, resolve
 from .engine import ProcessEngineError
@@ -593,7 +594,12 @@ class NativeProcessEngine:
             attempt.status = "tool_ready"
             await get_db().commit()
             return None
-        if node.kind == "task":
+        if node.kind == "task" and simple_llm(node):
+            result = await observe_decision(run, occurrence, node, attempt, assigned_agent,
+                lambda: self._fenced(run.id, claim))
+            if result is None:
+                return None
+        elif node.kind == "task":
             question = occurrence.context.get("activity_question", {})
             if question.get("status") == "pending":
                 task = await task_service.get_by_id(attempt.task_id) if attempt.task_id else None
@@ -1133,6 +1139,7 @@ class NativeProcessEngine:
         from .isolated_code import isolated_code_runner
         code_occurrences = list(await get_db().scalars(select(ProcessNodeRun).where(ProcessNodeRun.run_id == record.id)))
         for occurrence in code_occurrences:
+            stopped = await stop_decision(occurrence) and stopped
             jobs = deepcopy(occurrence.context.get("code_jobs", {}))
             for job in jobs.values():
                 if job.get("stopped"):
@@ -1151,7 +1158,7 @@ class NativeProcessEngine:
                 occurrence = await get_db().get(ProcessNodeRun, attempt.node_run_id)
                 assert occurrence is not None
                 kind = decision_activity(local_graph(record, occurrence).node(occurrence.node_key)).kind
-                if kind in {"task", "tool_call"}:
+                if kind in {"task", "tool_call"} and not simple_llm(local_graph(record, occurrence).node(occurrence.node_key)):
                     prefix = "process-node" if kind == "task" else "process-tool"
                     from .native_actors import execution_agent
                     admitted = await task_service.get_submission(execution_agent(local_graph(record, occurrence),

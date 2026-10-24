@@ -62,11 +62,11 @@ Le délai RPC global du SDK est désactivé pour ces acteurs gérés : l'annulat
 l'expiration des autorisations bornent leur attente. Les appels non gérés conservent leur délai.
 Les instances existantes doivent reconstruire leur image pour recevoir cette correction.
 
-Le catalogue d'outils utilise le driver `openai_messages` de l'affectation validée ; la Task
+Le catalogue d'outils utilise le driver `openai_messages` de l'affectation validée ; la tâche
 provient du contexte serveur, ce qui permet aux activités Process de poser une question humaine
 et d'enregistrer leur résultat dans leur propre exécution.
 
-Le contexte technique rendu par l'adapter conserve les identifiants de Task et de run dans le
+Le contexte technique rendu par l'adapter conserve les identifiants de tâche et de run dans le
 prompt envoyé au gateway ; ses extracteurs les rétablissent donc sur chaque `LLMCall`, y compris
 lorsque le SDK DeepSeek ne permet pas d'ajouter des en-têtes HTTP arbitraires. À la terminaison, le
 client commun agrège ces traces persistantes et leur coût qualifié ; les compteurs partiels du SDK
@@ -86,6 +86,6 @@ La première construction de l'image télécharge et compile la révision DSH é
 donc être longue. Depuis la supervision Galaris, **Redémarrer** ou **Mettre à jour** recrée
 le runtime sélectionné avec ses credentials ; **Actualiser** ne demande que la projection
 des compétences. Pour réparer un ancien conteneur dont le token est périmé, utiliser
-**Redémarrer**, attendre sa disponibilité, puis réessayer la Task. Aucun envoi n'est relancé
+**Redémarrer**, attendre sa disponibilité, puis réessayer la tâche. Aucun envoi n'est relancé
 par cette opération de gestion. Un seul run est admis simultanément par instance, conformément à la
-sérialisation actuelle des Tasks par agent.
+sérialisation actuelle des tâches par agent.

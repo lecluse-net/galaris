@@ -24,7 +24,7 @@ front/app/chat
   -> API /chat + room WebSocket autorisée
   -> app.chat
        -> app.messenger (journal, rooms directes, identités, fichiers)
-       -> app.conversation (activité expurgée et arbre transitif des Tasks liées)
+       -> app.conversation (activité expurgée et arbre transitif des tâches liées)
        -> app.voice (CallTransport navigateur)
 ```
 
@@ -58,11 +58,11 @@ par HTTP et purge son contenu sur déconnexion ou refus d’accès.
 
 Le flux texte est idempotent par `(connection_id, client_message_id, direction)`. Il persiste
 d’abord le message canonique puis admet un `ConversationRound`. Pour `platform=internal`, le contrat
-de conversation conserve le round foreground sans Task propre, mais expose la même admission de
-Task durable que Nextcloud Talk. Une directive Task ou une demande classée comme travail long crée
-une Task liée avant confirmation ; le contrôleur garde aussi les outils Process disponibles. La
-projection d’activité expose une trace bornée et nettoyée, et l’arbre des Tasks liées est chargé
-séparément sous privilège Task ; aucun prompt système ni secret ne franchit ces surfaces.
+de conversation conserve le round foreground sans tâche propre, mais expose la même admission de
+Tâche durable que Nextcloud Talk. Une directive tâche ou une demande classée comme travail long crée
+une tâche liée avant confirmation ; le contrôleur garde aussi les outils Process disponibles. La
+projection d’activité expose une trace bornée et nettoyée, et l’arbre des tâches liées est chargé
+séparément sous privilège tâche ; aucun prompt système ni secret ne franchit ces surfaces.
 
 Le flux fichier écrit par morceaux dans `.staging`, vérifie limite, capacité, MIME déclaré,
 extension et signatures actives, fait un déplacement atomique, puis journalise le fichier avec le
@@ -72,7 +72,7 @@ jamais un chemin hôte.
 
 Le flux voix crée un `BrowserCallTransport` WebRTC puis appelle la façade publique `app.voice`.
 Cette façade crée une session d'appel dans la room Chat courante et des rounds vocaux indépendants
-des Task. Les appels successifs partagent donc la chronologie sans partager leur cycle de vie. La
+des tâche. Les appels successifs partagent donc la chronologie sans partager leur cycle de vie. La
 conférence et le SFU restent hors périmètre, conformément au plan.
 
 Réserves acceptées : le registre des appels actifs est local au processus backend ; un déploiement
@@ -109,7 +109,7 @@ L’écran « Mon profil » permet de définir ou retirer la correspondance pour
 Chat n’affiche ensuite que les rooms dont cette identité est membre. Les rooms externes sont
 consultables, paginées par lots de 100 messages au scroll et strictement en lecture seule. Le badge
 de source distingue notamment Nextcloud Talk et Telegram. Les rooms techniques Mail sont exclues
-de cette projection : les courriels entrants restent journalisés et admis comme Tasks sans créer
+de cette projection : les courriels entrants restent journalisés et admis comme tâches sans créer
 une discussion visible par message. Le privilège `CHAT_IMPERSONATE` expose un sélecteur séparé
 pour consulter la même projection depuis l’identité canonique d’un agent IA.
 

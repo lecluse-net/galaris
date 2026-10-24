@@ -80,13 +80,13 @@ default: dict[str, object] = {
         "call_failure_hints": {
             "scope_clarification": (
                 "Aucun effet n’a eu lieu. Ne réessayez pas sur cette cible avec d’autres arguments ou un autre outil. "
-                "Le demandeur doit autoriser explicitement son URI exacte par un amendement de la Task racine. "
+                "Le demandeur doit autoriser explicitement son URI exacte par un amendement de la tâche racine. "
                 "Si cette étape exige l’action, signalez BLOCKED avec la cible et l’autorisation manquante ; "
                 "ne créez pas de document de remplacement pour contourner la restriction."
             ),
             "scope_denied": (
                 "Aucun effet n’a eu lieu. Ne réessayez pas en changeant les arguments ou les outils. "
-                "Inspectez la Task actuelle et replanifiez selon son périmètre autorisé courant ; "
+                "Inspectez la tâche actuelle et replanifiez selon son périmètre autorisé courant ; "
                 "arrêtez et signalez le blocage si le refus persiste."
             ),
             "actionable": "Appliquez la correction indiquée dans la cause avant de réessayer.",

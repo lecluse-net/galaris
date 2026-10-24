@@ -33,7 +33,7 @@ engagée peut conserver les instructions déjà chargées ; les appels restent c
 
 L'assistant Galaris reçoit déjà l'accès documentaire et cette compétence lors de sa création.
 Le harnais interne charge son guide produit dès la première requête du modèle en conversation
-texte, en voix par tours et en Task : concepts, recherche des sources, vérification des menus
+texte, en voix par tours et en tâche : concepts, recherche des sources, vérification des menus
 et distinction entre fonctions livrées et projets. Ce chargement reste soumis aux attributions
 et droits effectifs ; il n'active aucune connexion ni fonction. Il repose sur la configuration
 de la compétence, sans dépendre du nom, du code ou du marqueur d'installation de l'agent.
@@ -42,8 +42,8 @@ de la compétence, sans dépendre du nom, du code ou du marqueur d'installation 
 
 Le fichier facultatif `runtime.yaml` à la racine d'une compétence configure son chargement
 dans le harnais interne : `loading: eager` charge les instructions dès la première requête
-en Task, conversation texte et voix par tours. Sans fichier, ou avec `loading: deferred`,
-le chargement reste à la demande en Task, conversation texte et voix par tours : le modèle
+en tâche, conversation texte et voix par tours. Sans fichier, ou avec `loading: deferred`,
+le chargement reste à la demande en tâche, conversation texte et voix par tours : le modèle
 voit le catalogue des compétences autorisées et charge celle qui correspond à la demande.
 Une configuration invalide conserve ce défaut. Le frontmatter de `SKILL.md` reste inchangé.
 
@@ -54,9 +54,9 @@ compétence reste désactivé. Les compétences utilisateur peuvent fournir le m
 via leur éditeur de ressources. Les harnais externes conservent leur propre mécanisme.
 
 Les outils restent ceux autorisés dans le contexte courant. Si la recherche n'est disponible
-qu'en Task, une lecture directe d'une source connue reste possible avec `file_read` et le droit
-documentaire ; la recherche peut être confiée à une Task. Le mode voix temps réel conserve son
-inventaire limité et son recours aux Tasks. Les compétences sans configuration conservent
+qu'en tâche, une lecture directe d'une source connue reste possible avec `file_read` et le droit
+documentaire ; la recherche peut être confiée à une tâche. Le mode voix temps réel conserve son
+inventaire limité et son recours aux tâches. Les compétences sans configuration conservent
 leur chargement habituel.
 Ces consignes et le RAG ne garantissent pas à eux seuls l'exactitude de chaque réponse : vérifier
 les sources citées et les outils employés dans l'activité de la conversation.

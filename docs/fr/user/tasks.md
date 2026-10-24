@@ -1,18 +1,18 @@
 <p align="right"><strong>Français</strong> · <a href="../../en/user/tasks.md">English</a></p>
 
-# Confier et suivre une Task
+# Confier et suivre une tâche
 
-Une Task conserve un travail durable, son état et son résultat. Ce guide explique le choix
+Une tâche conserve un travail durable, son état et son résultat. Ce guide explique le choix
 de méthode, les jalons, les plans, les questions et la reprise. Pour créer votre première
 demande, suivre le [guide utilisateur](README.md) ; pour trouver les commandes, consulter
 les [menus et parcours](navigation.md).
 
 ## Mémoire utile au travail
 
-Dream peut retenir des faits durables issus des Tasks réussies, de leurs sous-tâches
+Dream peut retenir des faits durables issus des tâches réussies, de leurs sous-tâches
 et des cycles de Goal. Les instructions préparées par un agent restent attribuées
 à l'IA ; elles ne constituent pas une déclaration personnelle de l'utilisateur.
-Une exclusion de capture sur une Task s'applique aussi à ses descendants.
+Une exclusion de capture sur une tâche s'applique aussi à ses descendants.
 
 Les souvenirs sont privés à chaque agent. Les Documents et leurs résumés partagés,
 les Datasets et les définitions de Process conservent leurs propres droits et contenus.
@@ -50,22 +50,22 @@ afin de conserver leur cohérence. Un ensemble de livrables pouvant être valid�
 séparément peut passer par `PLAN`, même s'ils doivent être traités dans l'ordre et partagent un
 suivi commun. Un petit lot mécanique ne nécessite pas à lui seul un plan.
 
-Dans le Chat natif, `@task` placé n’importe où dans le message crée immédiatement une Task durable
+Dans le Chat natif, `@task` placé n’importe où dans le message crée immédiatement une tâche durable
 avec le texte restant comme objectif, sans appel au LLM de conversation. Pour le harnais interne
-Galaris, `@plan` suffit lui aussi à créer la Task et à forcer sa planification, sans ajouter `@task`.
+Galaris, `@plan` suffit lui aussi à créer la tâche et à forcer sa planification, sans ajouter `@task`.
 Ces directives se combinent, sans ordre imposé, avec `@standard` et `@high`. `@approve` ne donne
 aucun accord. Les actions sensibles utilisent [les autorisations](../admin/tool-administration.md). Le Chat
 conserve le round et publie aussitôt une confirmation déterministe
-dans la room ; le résultat de la Task y sera publié à sa terminaison. Le bouton `@` du composeur
+dans la room ; le résultat de la tâche y sera publié à sa terminaison. Le bouton `@` du composeur
 affiche uniquement les directives compatibles avec le driver de l’agent sélectionné.
 
 Le résultat revient automatiquement dans la discussion, même si un outil ou une pièce jointe
 a échoué. Si l’agent a déjà envoyé ce même résultat dans cette discussion, Galaris ne le renvoie
 pas. Une pièce jointe indisponible n’empêche pas la publication du texte.
 
-Après un accord humain sur une action d'un harnais géré, la même Task reprend le même
+Après un accord humain sur une action d'un harnais géré, la même tâche reprend le même
 appel lorsque son exécuteur a repris la main. L'accord reste enregistré pendant cette
-attente ; ne créez pas une autre Task pour contourner un refus de reprise et ne répétez
+attente ; ne créez pas une autre tâche pour contourner un refus de reprise et ne répétez
 pas l'action. Une pause manuelle reste prioritaire.
 
 ## Ce qui se passe après l’envoi
@@ -75,15 +75,15 @@ son URI dans le dernier message. Galaris résout cette référence depuis le con
 conserve la justification de sa mise à jour. Cela n'autorise pas à modifier les autres
 documents cités dans la discussion ; leurs droits d'accès restent applicables.
 
-1. La demande créée dans cet écran devient une Task durable.
+1. La demande créée dans cet écran devient une tâche durable.
 2. Le Dispatcher choisit la route, l’effort et l’organisation du travail.
 3. Une précision manquante peut suspendre la demande ; le planner prépare les travaux décomposables.
 4. Le driver exécute l’agent avec ses outils autorisés.
 5. Galaris enregistre la trace et le résultat, puis reprend les parents éventuels.
 
 Les conversations texte et voix suivent leur propre contrôleur et leur exécuteur configuré. Elles
-ne passent pas par le Dispatcher de Tasks ; lorsqu’elles ont besoin d’un travail durable, elles
-créent une Task explicitement liée.
+ne passent pas par le Dispatcher de tâches ; lorsqu’elles ont besoin d’un travail durable, elles
+créent une tâche explicitement liée.
 
 En mode voix native, vous pouvez reprendre la parole pendant une consultation lente.
 L'agent coupe sa réponse et ne reprend pas automatiquement l'ancienne phrase lorsque le
@@ -106,7 +106,7 @@ adapté si nécessaire. Une demande de suivi ne débloque pas une question en at
 
 La même projection est disponible pour la supervision via
 `GET /api/conversations/agents/{agent_id}/active-work?page=1&page_size=50`.
-Elle réunit les Tasks et les exécutions de processus internes et externes, avec leur état
+Elle réunit les tâches et les exécutions de processus internes et externes, avec leur état
 opérationnel, leurs attentes et leurs références. La réponse contient `items`, `total`,
 `page`, `page_size` et `observed_at` ; `kind` distingue `task` de `process`, et `engine_code`
 identifie le moteur d’un processus. L’accès exige `TASK_ACCESS`, `PROCESS_READ` et la gestion
@@ -128,14 +128,14 @@ déjà envoyés à un système externe ne sont pas annulés rétroactivement.
 ## Une méthode adaptée au travail
 
 Une action bornée, comme renommer un fichier précisément identifié, reste directe.
-Une mission longue ou complexe peut conserver un suivi par jalons dans la même Task :
+Une mission longue ou complexe peut conserver un suivi par jalons dans la même tâche :
 préparation, critères d’acceptation, résultats observés, ressources et prochaine action.
 Ce suivi aide à reprendre le travail sans perdre son contexte ni répéter des effets déjà acquis.
 Il ne crée pas de sous-tâches pour chaque phase d’un même livrable.
 
-Le détail de Task permet d’inspecter l’activité, les outils et les résultats ; `task_get`
+Le détail de tâche permet d’inspecter l’activité, les outils et les résultats ; `task_get`
 expose le suivi par jalons enregistré. L’exécuteur peut le mettre à jour
-avec `task_work_update`, sur sa Task active, avec contrôle de révision. Jusqu’à vingt jalons
+avec `task_work_update`, sur sa tâche active, avec contrôle de révision. Jusqu’à vingt jalons
 sont conservés ; un jalon déclaré terminé ne remplace pas la preuve du résultat ou de sa livraison.
 Le suivi possède sa propre révision : les sauvegardes d’exécution ne bloquent pas ses mises à jour.
 
@@ -146,7 +146,7 @@ de secrets sont masquées ; les anciens suivis qui ne contenaient pas ces détai
 
 Pendant une réflexion longue, les sauvegardes intermédiaires sont espacées pour laisser
 l'exécution avancer. Les résultats d'outils, erreurs et fins de blocs restent enregistrés
-immédiatement ; rouvrir la Task retrouve le dernier suivi sauvegardé.
+immédiatement ; rouvrir la tâche retrouve le dernier suivi sauvegardé.
 
 Si le périmètre ou la profondeur attendue change sensiblement le travail, Galaris peut poser
 une question avant de commencer. Répondez dans la conversation liée à la demande. Une inconnue
@@ -154,22 +154,22 @@ technique que l’agent peut résoudre par inspection autorisée relève de sa p
 
 ## Planner : décomposer un travail coordonné
 
-Dans le suivi détaillé de Task et le panneau de tâches de la discussion, une alerte apparaît
+Dans le suivi détaillé de tâche et le panneau de tâches de la discussion, une alerte apparaît
 après deux minutes sans activité reçue : réflexion, texte, génération d'arguments ou résultat
-d'outil. Elle disparaît dès que l'activité reprend et n'annule ni l'appel ni la Task. Une
+d'outil. Elle disparaît dès que l'activité reprend et n'annule ni l'appel ni la tâche. Une
 réflexion longue reste donc autorisée. Les pauses et attentes déclarées ne déclenchent pas
 cette alerte ; une connexion indisponible est signalée séparément.
 
-Pour une Task exécutée par le harnais interne, le bouton **Interrompre l’appel et reprendre**
-permet aux utilisateurs autorisés à modifier la Task de demander une reprise guidée.
-Le moteur ferme l’appel de génération courant puis poursuit la même Task avec ses résultats
+Pour une tâche exécutée par le harnais interne, le bouton **Interrompre l’appel et reprendre**
+permet aux utilisateurs autorisés à modifier la tâche de demander une reprise guidée.
+Le moteur ferme l’appel de génération courant puis poursuit la même tâche avec ses résultats
 d’outils et son budget conservés. Il refuse l’interruption si un outil est en cours ou si son
 effet est incertain. La demande, son acceptation ou son refus apparaissent dans le suivi ;
-une réponse tardive après un changement de Task ou de tentative ne modifie pas le suivi courant.
+une réponse tardive après un changement de tâche ou de tentative ne modifie pas le suivi courant.
 
 Si l'agent interne répète son raisonnement sans progresser, Galaris interrompt cette
 génération et lui demande de changer d'approche, en conservant les résultats d'outils acquis.
-La récupération est bornée : une boucle persistante laisse la Task inachevée avec un diagnostic.
+La récupération est bornée : une boucle persistante laisse la tâche inachevée avec un diagnostic.
 La relance d'un plan en échec repart de sa première étape inachevée, y compris dans les groupes
 imbriqués, sans rejouer les éléments réussis. Un document qui demande encore des contrôles ou
 une mise à jour du suivi reste dans l'inventaire de travail.
@@ -288,7 +288,7 @@ deviner. Une question est un résultat valide du tour en cours ; répondez dans 
 conversation pour continuer.
 
 Deux attentes doivent être distinguées. Pour choisir l’organisation d’une mission ambiguë,
-une question impossible à transmettre ou expirée sans réponse termine la Task en erreur,
+une question impossible à transmettre ou expirée sans réponse termine la tâche en erreur,
 sans démarrer le travail. Un réessai explicite repasse par le routage. Pour le cadrage d’un
 plan déjà choisi, le Planner peut demander une unique série de précisions et reprendre à
 l’expiration avec des hypothèses explicites. Aucune expiration ne donne une autorisation
@@ -323,7 +323,7 @@ Un succès technique ne garantit pas que le contenu est parfait. Pour une action
 vérifiez le livrable, la destination et les outils appelés.
 
 La pause conserve le travail ; la reprise poursuit selon les preuves disponibles.
-Un remplacement explicite attend l’arrêt confirmé de l’ancienne Task, de ses descendants
+Un remplacement explicite attend l’arrêt confirmé de l’ancienne tâche, de ses descendants
 et des processus associés. Une demande d’arrêt reçue, une erreur réseau ou une fin logique
 ne prouvent pas toujours l’arrêt distant. Les Goals et attentes non pris en charge restent
 refusés par ce parcours ; les autres travaux indépendants sont conservés.

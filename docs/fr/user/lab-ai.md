@@ -27,7 +27,7 @@ la valeur de la variable, son contexte et le résultat attendu, avec un nom et s
 | Dispatcher | Demande | Route, effort, action, langue et justification |
 | Planner | Objectif | Plan ou clarification |
 | Détection des sujets | Échange ordonné | Sujet de chaque message |
-| Extraction mémoire | Échange ou compte-rendu de Task | CREATE, LINK ou IGNORE |
+| Extraction mémoire | Échange ou compte-rendu de tâche | CREATE, LINK ou IGNORE |
 | Apprentissage | Issue d’exécution | Leçons étayées |
 | Suivi d’objectif | Résultat du cycle | Décision et suivi durable |
 | Exécuteur de tâches | Demande | Réponse et appels d’outils |
@@ -49,9 +49,9 @@ L'agent dispose alors de cinquante outils pour découvrir les dix labs, prépare
 copier leurs jeux, modifier les prompts expérimentaux, lancer, suivre, arrêter, reprendre,
 rejuger et comparer les benchmarks, puis déposer ses propres évaluations.
 
-Pour capturer des Tasks, messages, conversations, tours vocaux ou appels LLM réels,
+Pour capturer des tâches, messages, conversations, tours vocaux ou appels LLM réels,
 activez également **Galaris Admin** avec ses fonctions d'inspection des exécutions.
-L'accès à la seule documentation produit ne suffit pas. Les diagnostics de Tasks
+L'accès à la seule documentation produit ne suffit pas. Les diagnostics de tâches
 nécessitent ce même accès supplémentaire.
 
 Les jeux et résultats sont ceux du Lab habituel. Les générations synthétiques restent
@@ -100,7 +100,7 @@ suivi, historique et délégation pour la conversation, transcriptions et interr
 voix. Les références doivent respecter les outils disponibles et leurs réponses simulées.
 
 La génération utilise les contrats et la rubrique du lab, sans importer de conversations ou
-de Tasks réelles. Les appels d’outils des exécuteurs sont simulés. Les contrats et la cohérence
+de tâches réelles. Les appels d’outils des exécuteurs sont simulés. Les contrats et la cohérence
 des références sont contrôlés avant l’enregistrement du jeu complet ; un échec ne crée pas de
 jeu partiel. Les jeux existants sont conservés.
 
@@ -214,14 +214,14 @@ ce n'est pas une confirmation de réussite. Les mesures absentes restent « — 
 celui du candidat enregistré. Le [protocole FR/EN](../dev/lab-reference-corpus.md)
 fournit quatre parcours synthétiques pour préparer une comparaison reproductible.
 
-## Tasks
+## Tâches
 
-L’analyse interactive d’une Task reste disponible : sélectionnez la Task, ajoutez
+L’analyse interactive d’une tâche reste disponible : sélectionnez la tâche, ajoutez
 éventuellement un contexte humain, puis lancez son diagnostic. Ce parcours relit les
-preuves canoniques et ne rejoue pas la Task.
+preuves canoniques et ne rejoue pas la tâche.
 
 Dans la même page, **Tester et juger les diagnostics** ouvre le parcours par jeu.
-Le menu **Ajouter un cas au Lab** d’une Task propose aussi le diagnostic.
+Le menu **Ajouter un cas au Lab** d’une tâche propose aussi le diagnostic.
 
 ## Interpréter les résultats
 

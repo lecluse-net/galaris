@@ -105,6 +105,16 @@ Configured IFs have exactly two outputs: `decision` for True and an unconditiona
 processing. Durable attempts require a boolean `decision`, without integrating it into run variables. Human decisions use Messenger's True/False buttons without an AI Task just to wait.
 Historical IFs without a mode retain their expressions.
 
+For an IF with `mode: ai`, `config.ai_mode` is `task` (the historical default) or `llm`.
+The `llm` submode requires `config.llm_id`, an active text or decision model.
+Process uses the durable LLM inference facade, without a Task or agent tools: closed
+true/false choices for decision models, strictly boolean structured output for text
+models. The deterministic inference identity is stored in occurrence context before
+admission. Recovery reuses acquired answers; interrupted or failed inference causes an
+explicit error without automatically calling again or switching models. Cancellation
+waits for inference to stop. Calls are correlated with the run and attempt for occurrence
+costs. See [0231](../../../project/decisions/0231-native-if-ai-execution-modes.md).
+
 `preprocess`, `code` and `postprocess` use `IsolatedCodeRunner`. The Monty adapter starts a fresh
 worker per invocation: a Python subset without mounts, networking, external functions or host
 objects. Limits are 32 MB per VM, one second of execution, three seconds per request and two

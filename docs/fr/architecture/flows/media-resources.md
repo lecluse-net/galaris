@@ -168,9 +168,9 @@ supportent de gros fichiers surchargent l’upload/download afin de streamer les
 Pour une demande conversationnelle de renvoi, le modèle choisit la pièce jointe et la destination,
 puis appelle l'outil autorisé avec sa référence canonique. Le transport contrôle l'accès et la
 taille avant de copier les octets existants, sans régénération. Aucun raccourci lexical ne
-déclenche l'envoi ni ne bloque la création d'une Task pour une demande plus large.
+déclenche l'envoi ni ne bloque la création d'une tâche pour une demande plus large.
 
-Dans une Task, chaque fichier produit est inscrit avec l'URI exacte du provider qui le possède.
+Dans une tâche, chaque fichier produit est inscrit avec l'URI exacte du provider qui le possède.
 Une livraison réussie conserve la source, l'artefact final chez le provider de destination et un
 reçu (outil, destination et source). L'envoi Messenger est une copie sortante et ne supprime jamais
 la source. Les labels et noms de fichiers
@@ -191,7 +191,7 @@ la source et continuer. Après le début de l'upload, ou pendant un transfert di
 une erreur conserve un résultat incertain et interdit un rejeu aveugle. Le temporaire de staging
 est supprimé dans les deux cas.
 
-La référence échangée entre tools, Tasks et providers est canonique : `console://path`,
+La référence échangée entre tools, tâches et providers est canonique : `console://path`,
 `galaris://processes/runs/<uuid>` pour l'instantané JSON en lecture seule d'une exécution,
 `galaris://processes/runs/<uuid>/data` pour ses variables et
 `galaris://processes/runs/<uuid>/attachments/<file-uuid>` pour ses fichiers gérés,
@@ -276,7 +276,7 @@ spécialisés qui matérialisent une URI exigent le droit de lecture du document
 documentaire est immuable : la remplacer consiste à en créer une nouvelle puis, si nécessaire, à
 supprimer l'ancienne. Ces mutations ne créent aucune révision de contenu du document.
 
-Le chat et les Tasks internes partagent la préparation native des pièces jointes : messages
+Le chat et les tâches internes partagent la préparation native des pièces jointes : messages
 courants puis historique récent, avec déduplication par URI. Chaque média reste associé à son
 message d'origine ; les médias d'une ancienne réponse IA sont présentés immédiatement après
 celle-ci avec leur provenance. Les droits et métadonnées sont relus via `app.file_share` à chaque
@@ -315,7 +315,7 @@ Dans l'historique, une pièce jointe reste imbriquée dans le message qui l'a tr
 son URI construite avec le code exact du Tool, le locator provider de la room et l'UUID local du
 fichier. La projection remise aux runtimes préfixe le message avec son horodatage de post, son
 émetteur et sa nature humaine ou IA ; cette règle vaut pour les exécutions conversationnelles,
-les Tasks et l'historique des tours audio. Messenger et file-share sont des capabilities et ne
+les tâches et l'historique des tours audio. Messenger et file-share sont des capabilities et ne
 créent aucun schéma. Les messages fichier seul ne sont pas éliminés par les projections de session
 ou de runtime.
 

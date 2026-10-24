@@ -60,6 +60,8 @@ async def observe_run(run: ProcessRun, *, can_control: bool, visible_children: s
                 if key not in {"process_run_id", "process_label"} or wait.get("process_run_id") in visible_children}
                 for wait in task["waits"]]
             detail = {"task_uri": f"galaris://task/{attempt.task_id}" if attempt else None, "task": task}
+        elif attempt and attempt.status == "llm_waiting":
+            kind = "llm_inference"
         elif attempt and attempt.status in {"rest_ready", "tool_ready", "started", "claiming"}:
             kind = "external_operation"
         elif any(job.get("submitted") and not job.get("stopped") for job in context.get("code_jobs", {}).values()):
@@ -78,7 +80,7 @@ async def observe_run(run: ProcessRun, *, can_control: bool, visible_children: s
         last_activity = max(last_activity, datetime.fromisoformat(task["updated_at"]))
     uncertain = run.status == "unknown" or state.get("error", {}).get("code") == "effect_outcome_unknown"
     stopping = run.status == "cancelling" or bool(state.get("cancel_requested"))
-    in_flight = any(signal["kind"] in {"agent_task", "task_queue", "external_operation", "code_execution", "engine"} for signal in signals)
+    in_flight = any(signal["kind"] in {"agent_task", "task_queue", "llm_inference", "external_operation", "code_execution", "engine"} for signal in signals)
     phase = run.status
     if run.status not in TERMINAL_STATUSES:
         if stopping:

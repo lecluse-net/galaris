@@ -9,7 +9,7 @@ dans leurs fichiers `requirements.txt` respectifs. Le fichier
 `requirements-resolved.txt` dans l'image conserve les versions effectivement installées.
 Chaque nouvelle version est qualifiée avant de modifier ces références.
 Les mises à jour interviennent lors d'une construction/reconstruction explicite, jamais au
-milieu d'une Task. Les conteneurs existants ne changent pas à la seule modification du code.
+milieu d'une tâche. Les conteneurs existants ne changent pas à la seule modification du code.
 
 Au 21 octobre 2026, Hermès cible `v0.22.4` (0.22.4) et DeepSeek Harness cible
 `dsh-v0.2.1-rc.2`, au commit `687f282e8625c6b8d11ff58211a90524be2e4317`.
@@ -22,7 +22,7 @@ La réponse de supervision fournit `available_actions`, calculé depuis le cycle
 l'état observé et les capacités actuelles du provider. La carte Agent utilise cette projection,
 sans reconstruire sa propre matrice. `absent` propose « Créer » via `restart`, `stopped` propose
 `start`, et `provisioning`/`deprovisioning` ne proposent aucune commande concurrente.
-Les gardes serveur sur les Tasks non terminales restent autoritaires lors d'une reconstruction.
+Les gardes serveur sur les tâches non terminales restent autoritaires lors d'une reconstruction.
 
 Ce service FastAPI générique permet à Galaris de créer, piloter et supprimer des instances de
 harnais isolées par répertoire. Il s'exécute sur l'hôte qui possède Docker, en dehors de la stack

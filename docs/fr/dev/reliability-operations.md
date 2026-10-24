@@ -11,7 +11,7 @@ empêcher une application utilisable de démarrer.
 
 ## Budgets et conservation
 
-Les réglages avancés de Tasks exposent `TASK_ROOT_MAX_TOKENS`, `TASK_ROOT_MAX_COST` et
+Les réglages avancés de tâches exposent `TASK_ROOT_MAX_TOKENS`, `TASK_ROOT_MAX_COST` et
 `TASK_ROOT_MAX_SECONDS` (0 = désactivé). Ils couvrent une tâche racine et ses descendants causaux,
 y compris les nouvelles tentatives. Les réservations par phase sont des estimations : une phase
 active peut dépasser sa réserve et un harnais externe peut déclarer un usage incomplet. Activer
@@ -81,7 +81,7 @@ que la préparation d’un objectif ne remplace pas un coût connu par une estim
 Les écritures de fichiers vers un transport Messenger enregistrent leur reçu après l’envoi :
 la notification finale reconnaît l’URI et la destination exactes et ne renvoie pas la même image.
 
-Les livraisons de conversation et notifications Task/Process `UNKNOWN` se résolvent dans le
+Les livraisons de conversation et notifications tâche/Process `UNKNOWN` se résolvent dans le
 détail du tour, avec preuve et privilège d’édition dans le périmètre de l’agent. La décision est
 enregistrée par tentative ; un bail actif ou une tentative obsolète empêche sa résolution.
 Cette opération ne renvoie aucun message et ne relance aucun travail. Vérifier la destination avant de
@@ -187,7 +187,7 @@ ou secret n'est une dimension de métrique. Seuils initiaux à calibrer en prép
 | `db_pool_acquisition_seconds` | p95 > 0,5 s pendant 1 min | Distinguer attente de place, connexion et pré-ping ; examiner les timeouts |
 | `temporary_filesystem_free_bytes` | < 1 Gio | Libérer le stockage temporaire avant de relancer les transferts |
 
-L'âge d'observation inclut les runs jamais observés. L'âge d'une notification Task
+L'âge d'observation inclut les runs jamais observés. L'âge d'une notification tâche
 part de sa dernière mise à jour ; ce n'est pas un percentile de livraison. L'histogramme
 du pool mesure toute l'acquisition, attente, ouverture et pré-ping compris, avec issue
 `acquired`, `timeout` ou `error`. Les mesures de boucle et du système complètent ces jauges.
@@ -343,7 +343,7 @@ base éphémère. Les expressions CHECK/exclusion sont observées exactement dep
 leur équivalence sémantique et les transformations destructives ne sont pas automatisées.
 
 Le webhook générique accepte `Idempotency-Key` (1 à 255 caractères). Une même clé pour une
-même connexion et un même payload renvoie la même Task, même après perte de réponse.
+même connexion et un même payload renvoie la même tâche, même après perte de réponse.
 La réutilisation avec un autre payload renvoie 409 ; sans clé, deux demandes restent distinctes.
 
 Les révisions Memory se consultent avec `limit`/`offset`, 50 par défaut et 500 au maximum.
@@ -379,7 +379,7 @@ Les fichiers de routage peuvent conserver leurs noms `index.vue` et `[id].vue`.
 Le typage strict reste assuré par `make typecheck`, y compris Vite et les bridges.
 
 `make tests-coverage` mesure les branches des contrats DbAdmin, session navigateur,
-transitions/budgets Task, Process, reçus multimédia et entrées-sorties bornées. Le seuil
+transitions/budgets tâche, Process, reçus multimédia et entrées-sorties bornées. Le seuil
 bloquant de 95 % ne représente pas la couverture de tout Galaris. Les lignes et branches
 manquantes restent visibles dans `artifacts/coverage.xml`. `make tests-mutations` vérifie
 séparément que les gardes de transition sont détectées lorsqu'elles sont affaiblies.

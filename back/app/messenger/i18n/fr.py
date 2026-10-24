@@ -46,7 +46,7 @@ default: dict[str, object] = {
             "Message envoyé au collègue. Votre tâche attend sa réponse et reprendra "
             "automatiquement. Accusez brièvement réception auprès du demandeur initial."
         ),
-        "peer_task_required": "Contactez un collègue interne depuis une Task. Aucune demande n’a été créée.",
+        "peer_task_required": "Contactez un collègue interne depuis une tâche. Aucune demande n’a été créée.",
         "peer_request_waiting": (
             "Demande au collègue acceptée : ${uri}. Votre tâche attend son résultat et reprendra automatiquement."
         ),

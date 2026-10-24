@@ -112,7 +112,7 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None,
             fallback = await get_agent_fallback_model(
                 resolved.agent_id, resolved.llm_id,
                 model_field=resolved.model_field, purpose=resolved.purpose,
-            )
+            ) if resolved.allow_profile_fallback else None
             if fallback is not None:
                 profile_id, secondary, effort = fallback
                 resolved.profile_fallback = ProfileFallbackRoute(profile_id=profile_id)

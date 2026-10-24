@@ -14,7 +14,7 @@ Le conteneur expose :
 
 Le modèle demandé est le modèle d'exécution déjà résolu par `app.agent`. Le SDK pointe
 obligatoirement vers `/api/llm/anthropic` avec un token système tournant : les modèles internes
-Galaris restent donc disponibles, et chaque appel LLM est corrélé à la Task et au run. Le même
+Galaris restent donc disponibles, et chaque appel LLM est corrélé à la tâche et au run. Le même
 token donne accès au seul endpoint MCP de l'agent. Aucun credential Anthropic direct n'entre dans
 le conteneur.
 

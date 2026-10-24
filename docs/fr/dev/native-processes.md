@@ -54,8 +54,8 @@ directes des données typées du run sont refusées. Un reçu d'intégration per
 les changements disjoints sont préservés et les conflits d'une variable sont explicites.
 
 `process_activity_question` ouvre une demande au lanceur humain authentifié, dans la
-conversation d'origine. L'attente appartient à l'activité ; aucune Task auxiliaire n'est
-créée. La Task IA existante est suspendue pour raison `input`, puis reprend avec la réponse.
+conversation d'origine. L'attente appartient à l'activité ; aucune tâche auxiliaire n'est
+créée. La tâche IA existante est suspendue pour raison `input`, puis reprend avec la réponse.
 Le contexte de reprise associe explicitement la question et sa réponse typée. Une nouvelle
 formulation pour les mêmes variables restitue la réponse déjà reçue sans créer d'attente ;
 une nouvelle `question_key` stable demande volontairement une nouvelle réponse et reste
@@ -66,7 +66,7 @@ ou une réponse identique ne modifie jamais la question suivante. L'historique l
 à 2 Mo et n'est pas transmis aux activités suivantes. Découverte, livraison et retrait
 contrôlent l'identité de la question, en plus de celle de la tentative.
 Le lanceur du processus porte les échanges humains dans sa conversation d'origine, même
-si l'activité est exécutée par un autre agent ; la réponse réveille la Task de cet exécutant.
+si l'activité est exécutée par un autre agent ; la réponse réveille la tâche de cet exécutant.
 `conversation_process_respond` reçoit des valeurs JSON ordinaires comme `{"age": 27}` ;
 Conversation les valide et les convertit en valeurs typées avant de contrôler les fichiers.
 `typed_values: true` permet les enveloppes historiques, notamment pour les objets ; un objet
@@ -76,13 +76,13 @@ arrivées avant la fin du tour IA. Une pause utilisateur reste prioritaire. Chaq
 question est corrélée et idempotente. L'activité termine après la reprise et la remise
 des résultats. Le contexte en lecture seule contient aussi les données du run, même sans
 entrées locales déclarées. Les couloirs d'acteurs inutilisés ne bloquent pas le lancement.
-Les anciennes Tasks d'attente inertes sont retirées lors de l'observation du run ou de la
+Les anciennes tâches d'attente inertes sont retirées lors de l'observation du run ou de la
 réponse ; la question et sa référence restent conservées, sans nouvelle exécution.
 
 Après un tour réussi, la finalisation conserve le nettoyage de l'identité et du checkpoint
 effectué par la façade Agent. Le rafraîchissement des réponses concurrentes applique les
 changements locaux aux données fraîches au lieu de restaurer l'ancien checkpoint.
-La réponse humaine déclenche un nouveau tour du harnais sur la même Task ; un checkpoint
+La réponse humaine déclenche un nouveau tour du harnais sur la même tâche ; un checkpoint
 interrompu ou en attente d'autorisation conserve sa politique de reprise et ses reçus.
 Après une perte de transport, observer le résultat de l'ancien tour ne signifie pas que
 ce tour a lu la réponse reçue entre-temps. Le marqueur d'attente conserve l'identité du
@@ -90,7 +90,7 @@ tour qui a posé la question ; sa réconciliation laisse un nouveau tour prêt �
 la réponse. Un résultat explicitement remis après consommation de la réponse peut terminer
 dans le même tour. Le retrait asynchrone d'une ancienne demande ne ferme pas la suivante,
 même après un échec de transport et un rollback.
-À l'admission du tour, la Task recharge sous son lease les données et la révision courantes
+À l'admission du tour, la tâche recharge sous son lease les données et la révision courantes
 avant d'appliquer ses changements locaux. Une réponse arrivée pendant la préparation du
 contexte ne provoque donc pas de conflit de version ; une pause humaine concurrente interdit
 le départ du tour.
@@ -111,7 +111,17 @@ Les IF configurés possèdent exactement deux sorties : `decision` pour True et 
 sans condition pour False. `config.mode` vaut `ai`, `code` ou `human`. Un acteur IA autorise
 IA ou code ; un acteur humain impose humain. Les tentatives durables exigent un booléen
 `decision`, sans l'intégrer aux variables du run. Le choix humain passe par les boutons True/False
-de Messenger, sans Task IA d'attente. Les IF historiques sans mode conservent leurs expressions.
+de Messenger, sans tâche IA d'attente. Les IF historiques sans mode conservent leurs expressions.
+
+Pour un IF `mode: ai`, `config.ai_mode` vaut `task` (défaut historique) ou `llm`.
+Le sous-mode `llm` exige `config.llm_id`, un modèle texte ou décisionnel actif.
+Process utilise la façade d'inférence durable LLM, sans tâche ni outils agentiques :
+choix fermé true/false pour un modèle décisionnel, sortie structurée à booléen strict
+pour un modèle texte. L'identité déterministe est conservée dans le contexte de l'occurrence
+avant admission. Un reçu acquis est réutilisé après reprise ; une inférence interrompue ou
+échouée provoque une erreur explicite, sans nouvel appel automatique ni repli vers un autre
+modèle. L'annulation attend l'arrêt de l'inférence. Les appels sont corrélés au run et à
+la tentative pour les coûts par occurrence. Voir [0231](../../../project/decisions/0231-native-if-ai-execution-modes.md).
 
 Les phases `preprocess`, `code` et `postprocess` utilisent `IsolatedCodeRunner`. L'adapter
 Monty démarre un worker neuf par invocation : sous-ensemble Python sans montage, réseau,
@@ -162,7 +172,7 @@ Chaque run possède son JSON métier dans `process_runs.data` et ses liens de fi
 `process_run_files`, sans Dataset ni Document. Les données et pièces jointes héritent des
 droits du processus. Les tâches v1 peuvent écrire `galaris://processes/runs/<uuid>/data` avec
 `expected_revision` et utiliser `galaris://processes/runs/<uuid>/attachments/` pour les fichiers.
-Dans une Task, `file_create` sur cette collection accepte le grant sourcé du run exact,
+Dans une tâche, `file_create` sur cette collection accepte le grant sourcé du run exact,
 sans exiger que l'utilisateur nomme à l'avance l'URI de sa sous-collection. Les droits
 Process restent vérifiés et un run terminé ne reçoit plus de fichiers. Pour les runs
 typés v2, les activités rendent leurs `output_files` au moteur au lieu de publier directement.
@@ -179,9 +189,9 @@ la tâche relit puis réapplique sa modification en préservant les autres donn�
 Un effet ambigu arrête aussi les nouvelles admissions et demande l'arrêt du run,
 avec le code `effect_outcome_unknown`. Le debugger refuse reprise/pas avant réconciliation ; l'arrêt
 reste incertaine tant que l'arrêt externe n'est pas confirmé.
-Les activités Tool ont une Task de contexte non agentique, sous lease et soumise à la
-capacité du harnais. Une demande d'autorisation suspend cette Task ; sa décision reprend
-la même tentative, tandis qu'un refus connu ferme proprement Task et tentative.
+Les activités Tool ont une tâche de contexte non agentique, sous lease et soumise à la
+capacité du harnais. Une demande d'autorisation suspend cette tâche ; sa décision reprend
+la même tentative, tandis qu'un refus connu ferme proprement tâche et tentative.
 
 Les routes `/api/processes/internal` exposent définitions, validation, histoire,
 restauration, partage, lancement, runs, occurrences, enfants, métriques et debugger.
@@ -202,7 +212,7 @@ une réponse perdue rend ce reçu sans effectuer un second pas. L'interface cons
 la clé tant que la réponse est incertaine et détecte les commandes concurrentes.
 
 Les métriques distinguent coût facturé et valeur d'inférence, notamment pour les
-abonnements. Elles exposent les totaux directs/inclusifs, par Task et par occurrence
+abonnements. Elles exposent les totaux directs/inclusifs, par tâche et par occurrence
 exacte (boucles et retries compris), la devise USD et la date du calcul. Les descendants
 non autorisés sont exclus et le total visible est marqué partiel. Le temps écoulé du
 run part de l'admission ; les durées cumulées d'appels LLM restent une mesure séparée,

@@ -69,6 +69,8 @@
                     <q-select v-if="contractActivity && !['task', 'human_task', 'code'].includes(selected.kind)" :model-value="configString('actor') || null" :options="actorOptions"
                       emit-value map-options outlined clearable :readonly="!editable" :label="t('nativeProcesses.taskActor')" @update:model-value="setActor" />
                     <q-input :model-value="selected.title" outlined :readonly="!editable" :label="t('nativeProcesses.nodeTitle')" @update:model-value="setTitle" />
+                    <ProcessAiDecision v-if="selected.kind === 'if' && selected.config.mode === 'ai'" :key="selected.id"
+                      :config="selected.config" :readonly="!editable" @change="setConfig" />
                     <template v-if="localGraph.schema_version === 'galaris.bpmn/v2'">
                       <ProcessVariableDeclarations v-if="contractActivity || selected.kind === 'start'" :key="`${selected.id}-inputs`"
                         :model-value="selected.kind === 'start' ? localGraph.inputs ?? [] : selected.inputs ?? []" :readonly="!editable"
@@ -186,6 +188,7 @@ import BpmnCanvas from './BpmnCanvas.vue'
 import NativeRunsTable from './NativeRunsTable.vue'
 import ProcessSharingDraft from './ProcessSharingDraft.vue'
 import ProcessVariableDeclarations from './ProcessVariableDeclarations.vue'
+import ProcessAiDecision from './ProcessAiDecision.vue'
 import { persistLayout, processingMode, defaultDecisionCode, defaultTaskCode } from '../graphEditing'
 import { emptyGraph, nativeProcessService as service, type BpmnGraph, type BpmnNode, type NativeDefinition, type ProcessHistory, type ProcessAgentOption, type ProcessVariable } from '../services/nativeProcessService'
 const props = withDefaults(defineProps<{ code?: string | null }>(), { code: null })

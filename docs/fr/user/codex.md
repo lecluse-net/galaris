@@ -102,7 +102,7 @@ le [guide API](profile-api.md).
 | Appels envoyés au fournisseur habituel | `model_provider = "galaris"` et éventuelles surcharges de configuration |
 | Échec Responses, outils ou compaction | Compatibilité du fournisseur affecté au palier ; conserver `wire_api = "responses"` et choisir une affectation compatible |
 
-Cette connexion fournit les modèles à votre Codex local. Elle ne crée pas de Task
+Cette connexion fournit les modèles à votre Codex local. Elle ne crée pas de tâche
 ni d’Agent Galaris et ne configure pas de serveur MCP. La base `/api/llm/openai`
 reste utilisable pour appeler un modèle concret par son code LLM. Pour Claude Code,
 consultez le [guide Claude Code](claude-code.md).

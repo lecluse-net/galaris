@@ -94,12 +94,12 @@ Le contrôleur conversationnel utilise la même projection avec son lanceur spé
 et ce lanceur sont effectivement visibles. Le lanceur spécialisé force l’exécution asynchrone,
 lie le run au round et confie sa notification terminale au lien durable de conversation.
 Un Process affecté qui correspond à l’action demandée a une priorité absolue sur la création ou
-l’amendement d’une Task. Lorsque plus de dix définitions sont affectées et qu’un doute subsiste sur
-la projection, le modèle consulte `process_list` et `process_get` avant d’utiliser une Task.
+l’amendement d’une tâche. Lorsque plus de dix définitions sont affectées et qu’un doute subsiste sur
+la projection, le modèle consulte `process_list` et `process_get` avant d’utiliser une tâche.
 
 Dans l'interface Chat, la liste latérale des exécutions ne parcourt pas tous les runs historiques
 de la room. Elle part du plus ancien message actuellement chargé, résout les rounds visibles, puis
-réunit leurs `ConversationProcessLink` et les runs liés à l'arbre de Tasks issu de ces rounds.
+réunit leurs `ConversationProcessLink` et les runs liés à l'arbre de tâches issu de ces rounds.
 
 Le scope réduit d’une feuille planifiée conserve les six fonctions personnelles : une sélection
 d’outils faite en amont ne peut donc pas masquer le catalogue métier. Les fonctions sélectionnées
@@ -112,7 +112,7 @@ Le planner reçoit toujours le manifeste exhaustif des noms. `app.tools.catalog`
 depuis le même serveur MCP effectif. `app.tools.tool_search_service` enrichit ce manifeste par une
 recherche hybride FTS + pgvector sur des métadonnées publiques bornées. Les embeddings sont
 mutualisés par empreinte de définition, jamais par agent ; à chaque requête, les empreintes
-candidates proviennent exclusivement du catalogue effectif de l’agent, du runtime et de la Task.
+candidates proviennent exclusivement du catalogue effectif de l’agent, du runtime et de la tâche.
 Une fiche vectorielle périmée ne confère donc aucun droit. Sans modèle vectoriel ou en cas de
 panne sémantique, la recherche devient lexicale ; le manifeste exhaustif reste disponible.
 
@@ -184,13 +184,13 @@ Anthropic doit identifier son `ProcessRun`. Le contrat accepte, par ordre d'auto
 1. le UUID canonique dans `X-Galaris-Process-Run-Id` ou `galaris_process_run_id` ;
 2. le couple externe `galaris_workflow_id` + `galaris_engine_run_id`, résolu par `app.process`
    sous le scope Agent de l'appelant ;
-3. le `process_run_id` figé dans les données de la Task lorsque le Process a déclenché un appel
-   d'Agent et que les appels LLM bas niveau proviennent ensuite de cette Task.
+3. le `process_run_id` figé dans les données de la tâche lorsque le Process a déclenché un appel
+   d'Agent et que les appels LLM bas niveau proviennent ensuite de cette tâche.
 
 Chaque appel direct porte `purpose=process.exec` et une FK `LLMCall.process_run_id`. Un appel LLM
-appartenant à la Task déclenchée par le Process conserve cumulativement sa Task, sa tentative et son
-ProcessRun ; son purpose reste alors `agent.exec`, car la Task possède l'inférence tandis que le
-ProcessRun en exprime la provenance. Le service LLM redérive le ProcessRun depuis la Task pour le
+appartenant à la tâche déclenchée par le Process conserve cumulativement sa tâche, sa tentative et son
+ProcessRun ; son purpose reste alors `agent.exec`, car la tâche possède l'inférence tandis que le
+ProcessRun en exprime la provenance. Le service LLM redérive le ProcessRun depuis la tâche pour le
 harnais interne comme pour les runtimes externes et refuse un identifiant explicite divergent.
 
 Avant de contacter le provider, les routes API vérifient que le ProcessRun appartient au scope
@@ -217,7 +217,7 @@ canoniques. Les suppressions et réaffectations sont réconciliées par les reç
 - Une nouvelle demande sur un état terminal retourne l’état existant.
 
 Les runs `cancelling` restent dans le polling, y compris après une erreur réseau lors
-de la demande d'annulation. Toute sortie terminale résout son éventuelle Task d'attente.
+de la demande d'annulation. Toute sortie terminale résout son éventuelle tâche d'attente.
 Le marqueur durable `await_resolved_at` n'est écrit qu'après cette résolution et le fan-in
 du parent. Un callback dupliqué, un refresh ou le passage périodique reprend une résolution
 interrompue sans modifier le résultat terminal ni réexécuter le Process.
@@ -226,7 +226,7 @@ interrompue sans modifier le résultat terminal ni réexécuter le Process.
 
 Le bridge Calendar enregistre dans une transaction le curseur et tous les reçus découverts.
 Chaque reçu contient un snapshot chiffré de l'action et utilise un lease récupérable pour
-son dispatch. Les Tasks et Process sont soumis avec une clé d'idempotence stable ; la reprise
+son dispatch. Les tâches et Process sont soumis avec une clé d'idempotence stable ; la reprise
 des reçus ne nécessite plus de relire le calendrier distant. Voir l'ADR 0067 pour les limites
 de reprise des reçus historiques antérieurs à ce contrat.
 
@@ -255,7 +255,7 @@ règles d'idempotence, d'annulation et d'état terminal que les autres engines.
 ## Preuve d'arrêt pour un remplacement
 
 Le propriétaire Process enregistre un bloqueur et un coordinateur auprès du propriétaire
-Task. `coordinate_replacement` demande l'arrêt des runs du périmètre admis et relit ceux
+Tâche. `coordinate_replacement` demande l'arrêt des runs du périmètre admis et relit ceux
 en cours d'annulation. Un échec ne dispense pas de tenter l'arrêt des autres runs.
 Un terminal logique avec `remote_may_continue=true` bloque toujours le successeur.
 La lecture `refresh_run(..., confirm_terminal_stop=True)` peut confirmer tardivement le

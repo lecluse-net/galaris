@@ -47,7 +47,7 @@ accents et caractères encodés. Les identifiants sont résolus côté serveur.
 Plusieurs Tools peuvent viser des serveurs ou racines différents.
 
 Un Tool qui ne porte que cette capacité de fichiers n'est pas un catalogue de
-fonctions réservé aux Tasks : ses ressources passent par les fonctions `file_*`
+fonctions réservé aux tâches : ses ressources passent par les fonctions `file_*`
 autorisées dans le contexte courant.
 
 ## Droits et limites

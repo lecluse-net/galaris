@@ -156,7 +156,10 @@ async def run_structured(
     if capture is not None and request is not None:
         from .text_inference import RecordedTextModel
 
-        capture.request = {**capture.request, **request.model_dump(mode="json")}
+        # SDK arguments reconstruct only part of the admitted request. Preserve
+        # owner identities and frozen routing instead of replacing them by defaults.
+        capture.request = {**request.model_dump(mode="json"), **{
+            key: value for key, value in capture.request.items() if key not in request.model_fields_set}}
         model = RecordedTextModel(model, capture)
     model_settings: dict[str, Any] = {"temperature": temperature}
     if max_tokens is not None:
@@ -279,14 +282,16 @@ async def run_text(
     if capture is not None:
         from .text_inference import RecordedTextModel
 
-        capture.request = TextInferenceRequest(
+        request = TextInferenceRequest(
             llm_id=llm.id, task_id=task_id, agent_id=agent_id,
             prompt=prompt, system_prompt=system_prompt,
             parameters={"temperature": temperature, **capture.parameters},
             request_limit=request_limit, count_tokens_before_request=count_tokens_before_request,
             purpose=str(purpose or ""), model_field=model_field,
             reasoning_effort=profile_reasoning_effort,
-        ).model_dump(mode="json")
+        )
+        capture.request = {**request.model_dump(mode="json"), **{
+            key: value for key, value in capture.request.items() if key not in request.model_fields_set}}
         model = RecordedTextModel(model, capture)
     kwargs: dict[str, Any] = {
         "output_type": str,

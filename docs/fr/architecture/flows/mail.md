@@ -4,10 +4,10 @@
 
 Le bridge `bridge.mail` adapte une boîte externe aux contrats Tool et Messenger de Galaris.
 L’agent invoque des fonctions MCP bornées sur son unique connexion `mail` active ; le listener
-canonique interroge aussi l’INBOX et admet chaque nouveau courriel comme une Task dédiée.
+canonique interroge aussi l’INBOX et admet chaque nouveau courriel comme une tâche dédiée.
 
 ```text
-Agent / Task
+Agent / Tâche
    → fonctions MCP mail_*
    → paramètres effectifs : surcharge de connexion, sinon valeur globale du Tool
    → connexion Mail active de l'agent
@@ -21,7 +21,7 @@ Connexion Mail active
    → polling IMAP toutes les poll_interval_s
    → curseur durable UIDVALIDITY + UID dans app.messenger
    → journal entrant et déduplication canoniques
-   → Task immédiate demandant mail_get sur la référence opaque
+   → Tâche immédiate demandant mail_get sur la référence opaque
 ```
 
 ## Réception et polling
@@ -31,18 +31,18 @@ ses sous-dossiers. Les recherches dans les autres dossiers retournent uniquement
 sans les enregistrer comme réceptions. La création d'un reçu, l'autorisation, la lecture du corps
 et des pièces jointes vérifient cette limite avant tout accès au contenu. Elle s'applique aussi
 aux reçus historiques et à leur reprise après accord ; un ancien reçu hors INBOX ne peut pas
-déclencher de Task, même s'il avait déjà été autorisé.
+déclencher de tâche, même s'il avait déjà été autorisé.
 
 `poll_interval_s` est un paramètre du Tool Mail, configurable globalement et surchargeable par
 connexion sauf lorsqu’une valeur globale est imposée. Il vaut 60 secondes par défaut et est borné
 entre 5 secondes et 24 heures. La première activation établit une baseline sur `UIDNEXT` sans
-transformer l’historique déjà présent en Tasks. Les UID ultérieurs sont traités dans l’ordre
+transformer l’historique déjà présent en tâches. Les UID ultérieurs sont traités dans l’ordre
 croissant, par lots bornés à 50.
 
 Le curseur persiste `UIDVALIDITY + UID` dans `messenger_listener_state`. Un changement de
 `UIDVALIDITY` établit une nouvelle baseline au lieu de rejouer une boîte reconstruite. Chaque
-courriel est d’abord journalisé par `app.messenger`, puis admis directement comme Task ; il ne
-passe pas par le contrôleur conversationnel court. La Task ne livre pas automatiquement son texte
+courriel est d’abord journalisé par `app.messenger`, puis admis directement comme tâche ; il ne
+passe pas par le contrôleur conversationnel court. La tâche ne livre pas automatiquement son texte
 terminal à l’expéditeur : toute réponse ou mutation exige un appel explicite à `mail_reply`,
 `mail_send`, `mail_move`, `mail_set_flags` ou `mail_trash`.
 
@@ -148,7 +148,7 @@ Quand `mail_send`, `file_search` et `file_read` sont tous autorisés, le registr
 automatiquement à l’agent de chercher `memory://` si le destinataire est donné uniquement par son
 nom. Une adresse explicitement fournie dans la demande est utilisée telle quelle après validation.
 L’agent ne devine jamais une adresse : zéro ou plusieurs correspondances provoquent une demande
-de précision. Les deux fonctions de lecture restent dans le scope d’une Task planifiée qui expose
+de précision. Les deux fonctions de lecture restent dans le scope d’une tâche planifiée qui expose
 `mail_send`.
 
 ## Configuration et sécurité

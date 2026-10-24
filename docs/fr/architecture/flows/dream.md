@@ -3,21 +3,21 @@
 # Flux Dream
 
 `app.dream` exécute les travaux qui peuvent attendre une période d'inactivité. Il ne crée
-pas de Task agentique et ne passe jamais par un driver.
+pas de tâche agentique et ne passe jamais par un driver.
 
 ```text
 runtime supervisor
        │
        ▼
-app.dream scheduler ──► garde Voice + activité Task
+app.dream scheduler ──► garde Voice + activité tâche
        │                         │ activité
        │                         └──────────► attente / préemption
        ▼
 mécanismes ordonnés, un par un
        │
-       ├─► classement Topic des messages, tours Voice, Tasks et sessions Voice
-       ├─► extraction Memory des Tasks, rounds textuels et tours Voice
-       ├─► apprentissage fondé sur les résultats observables des Tasks
+       ├─► classement Topic des messages, tours Voice, tâches et sessions Voice
+       ├─► extraction Memory des tâches, rounds textuels et tours Voice
+       ├─► apprentissage fondé sur les résultats observables des tâches
        ├─► projection déterministe des Process
        ├─► préparation des miniatures persistantes des fichiers
        ├─► détection et maintenance déterministes pilotées par Memory
@@ -87,7 +87,7 @@ pour les sources conversationnelles textuelles comme vocales, le contact
 exact. Ils utilisent une unique décision structurée `CREATE`, `LINK` ou `IGNORE`, sans outil ni
 MCP. Chaque acquisition conserve le reçu et la clé stable du mécanisme.
 Le round réutilise aussi les transcriptions persistées et les analyses documentaires réussies
-de ses Tasks directement liées, pour l'agent et l'URI exacte d'une pièce jointe. Il ne lance
+de ses tâches directement liées, pour l'agent et l'URI exacte d'une pièce jointe. Il ne lance
 aucune acquisition supplémentaire. Écrit, transcription, extraction et interprétation restent
 distincts, avec couverture, localisateur et version attestée ou inconnue. Un apport tardif
 ouvre un nouveau reçu idempotent. L'application revalide le checkpoint ; lecture et rappel
@@ -97,14 +97,14 @@ ouvre un nouveau reçu idempotent. L'application revalide le checkpoint ; lectur
 réutilisables propres à l'agent. CREATE, REINFORCE, REVISE et WEAKEN alimentent les tables dédiées
 `learned_skills` et `learned_skill_evidences`, jamais Memory. L'empreinte des preuves fait partie de
 l'identité du sujet : une preuve matérielle tardive crée un nouveau sujet, tandis qu'un rescan
-identique reste sans effet. Toutes les Tasks terminales sont éligibles, y compris celles terminées
+identique reste sans effet. Toutes les tâches terminales sont éligibles, y compris celles terminées
 avant l'activation de l'apprentissage ; Dream les parcourt de la plus ancienne à la plus récente,
 une par passage. Le mode `observe` conserve la proposition checkpointée ; `learn` peut ensuite
 l'appliquer sans second appel LLM.
 
 Le score lissé `(positif + 1) / (positif + négatif + 2)` rend visibles renforcement et
 affaiblissement. Une première occurrence crée seulement une candidate. Une procédure non suspendue
-est ajoutée aux compétences ordinaires de l'agent seulement si `DREAM_SKILL_MIN_EVIDENCE` Tasks
+est ajoutée aux compétences ordinaires de l'agent seulement si `DREAM_SKILL_MIN_EVIDENCE` tâches
 distinctes ont confirmé la même action répétée et si elle atteint `DREAM_SKILL_ACTIVATION_SCORE`,
 dans la limite de `DREAM_SKILL_MAX_ACTIVE`. Le seuil de répétition vaut 3 par défaut. Sa projection
 de fichiers sous `.learned/` est reconstruite depuis la base et ne rejoint jamais l'index des
@@ -118,7 +118,7 @@ touché. La maintenance de `topic_contains`, `contact_contains`, `cycle_of`, `re
 suggestions thématiques n'est donc plus un mécanisme Dream : elle n'a ni reçu, ni jauge Dream, ni
 appel de modèle. `MEMORY_LINK_RECONCILIATION_TRIGGER_MODE` permet de conserver ou désactiver ce
 hook ciblé. Un sweep global peut aussi être inscrit selon l'intervalle
-`MEMORY_LINK_RECONCILIATION_INTERVAL_HOURS`; il attend toujours que Tasks et Voice soient inactifs.
+`MEMORY_LINK_RECONCILIATION_INTERVAL_HOURS`; il attend toujours que tâches et Voice soient inactifs.
 La page des préférences Dream affiche la prochaine échéance et permet un lancement manuel
 immédiat, exécuté dans la requête HTTP sans attendre l'inactivité.
 
@@ -136,7 +136,7 @@ Le mécanisme existant `memory.file_catalogue` prend aussi en charge la découve
 Pour chaque connexion en mode récursif, un premier travail liste la racine du schéma. Chaque
 sous-répertoire trouvé rejoint la frontière durable File Share et devient un sujet Dream lors
 d'un tour ultérieur. Une opération traite une seule page directe, bornée à 500 entrées ; elle
-n'utilise ni LLM, ni Task agentique, ni worker supplémentaire. Les reçus `file_directory`
+n'utilise ni LLM, ni tâche agentique, ni worker supplémentaire. Les reçus `file_directory`
 utilisent les leases, tentatives, interruptions et jauges habituels. La projection Memory,
 l'avancement et le checkpoint du résultat sont atomiques ; une reprise n'en double pas les effets.
 

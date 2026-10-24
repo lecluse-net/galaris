@@ -34,7 +34,7 @@ le schéma de sortie et la rubrique.
 | Exécuteur de tâches | Demande | Réponse et appels d’outils enregistrés |
 | Exécuteur conversationnel | Tour courant | Réponse et actions proposées |
 | Exécuteur vocal | Transcription du tour | Réponse et actions proposées |
-| Analyse de Tasks | Dossier de preuves | Diagnostic structuré |
+| Analyse de tâches | Dossier de preuves | Diagnostic structuré |
 
 Une variable peut être structurée : un dossier ou un résultat d’exécution est un seul objet
 métier. L’objectif initial de l’apprentissage reste un paramètre ; il ne devient pas une
@@ -69,7 +69,7 @@ restent dans la provenance et ne sont jamais des surcharges exécutables.
 
 Les captures copient les preuves disponibles sans modifier la source. Les traces insuffisantes
 restent des brouillons à revoir : un texte historique ne permet pas de reconstruire silencieusement
-tous ses paramètres. Le diagnostic peut être capturé depuis une Task. L’analyse interactive d’une Task reste disponible.
+tous ses paramètres. Le diagnostic peut être capturé depuis une tâche. L’analyse interactive d’une tâche reste disponible.
 
 ## 3. Fondements théoriques
 
@@ -186,7 +186,7 @@ jeu + items prêts → instantané des entrées, paramètres et modèles
 ```
 
 Le candidat reçoit uniquement son entrée résolue. Les outils des exécuteurs sont des enregistreurs
-avec réponses simulées configurables ; ils ne créent ni Task, ni Process, ni message.
+avec réponses simulées configurables ; ils ne créent ni tâche, ni Process, ni message.
 Les autres mécanismes utilisent leurs contrats métier et les services partagés correspondants.
 
 Le run fige les cas, les consignes, les paramètres, la rubrique, le profil de raisonnement et les

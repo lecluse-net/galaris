@@ -256,6 +256,13 @@ async def run_metrics(identity: UUID, actor: int | AgentManagementScope) -> dict
     per_node: dict[str, list[LLMCall]] = {}
     for key, task_id in activity_tasks:
         per_node.setdefault(key, []).extend(call for call in direct if call.task_id == task_id)
+    llm_bindings = (await get_db().execute(select(ProcessNodeAttempt.id, ProcessNodeRun.id, ProcessNodeRun.node_key)
+        .join(ProcessNodeRun).where(ProcessNodeRun.run_id == identity, ProcessNodeAttempt.task_id.is_(None)))).all()
+    llm_nodes = {f"process-attempt:{attempt}": node for attempt, node, _ in llm_bindings}
+    for attempt, _, key in llm_bindings:
+        matched = [call for call in direct if call.correlation_ref == f"process-attempt:{attempt}"]
+        if matched:
+            per_node.setdefault(key, []).extend(matched)
     missing = any(str(task_id) not in per_task for _, task_id in activity_tasks)
     durations = (await get_db().execute(select(ProcessNodeRun.node_key,
         func.sum(func.extract("epoch", func.coalesce(ProcessNodeRun.finished_at, func.now()) - ProcessNodeRun.started_at)))
@@ -276,6 +283,8 @@ async def run_metrics(identity: UUID, actor: int | AgentManagementScope) -> dict
     inclusive_calls: dict[UUID, list[LLMCall]] = {}
     for call in calls:
         node_id = task_nodes.get(call.task_id) if call.process_run_id == identity and call.task_id is not None else None
+        if call.process_run_id == identity and node_id is None:
+            node_id = llm_nodes.get(call.correlation_ref or "")
         if call.process_run_id == identity and node_id is not None:
             own_calls.setdefault(node_id, []).append(call)
         if call.process_run_id != identity:

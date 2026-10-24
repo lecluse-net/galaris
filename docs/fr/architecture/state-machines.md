@@ -24,11 +24,11 @@ La première décision valide gagne. Un état réconcilié reste terminal. L’a
 `galaris.execution-result/v2` avec `disposition=waiting_for_authorization` et les UUIDs concernés.
 Les UUIDs sont sérialisés en chaînes JSON avant la persistance du résultat en JSONB ; leur
 identité reste conservée lors du rechargement.
-La tentative Task termine en `WAITING_APPROVAL`, libère son lease et conserve son checkpoint ;
-la Task revient à la phase reprenable `DISPATCH`, avec une raison de pause d’autorisation.
+La tentative tâche termine en `WAITING_APPROVAL`, libère son lease et conserve son checkpoint ;
+la tâche revient à la phase reprenable `DISPATCH`, avec une raison de pause d’autorisation.
 L'accord reste acquis, mais le runtime voit encore l'appel en attente jusqu'à la reprise
 d'une tentative après la décision et le transfert de son grant vers ce lease actif.
-La récupération des orphelins ignore les Tasks suspendues. Une pause humaine
+La récupération des orphelins ignore les tâches suspendues. Une pause humaine
 indépendante reste prioritaire au réveil. Les rounds et la voix conservent la même disposition.
 Voir [0153](../../../project/decisions/0153-common-action-authorizations.md).
 
@@ -77,7 +77,7 @@ Voir [0097](../../../project/decisions/0097-durable-inference-lifecycle.md).
 
 Une sélection ne provisionne jamais. Le nettoyage, le redémarrage et la mise à jour répondent en
 `202` puis s'exécutent en arrière-plan. `restart` et `update` recréent destructivement l'unique
-conteneur stable `<agent.code>-agent`; aucune Task non terminale ne peut chevaucher une transition.
+conteneur stable `<agent.code>-agent`; aucune tâche non terminale ne peut chevaucher une transition.
 
 ## Tâches
 
@@ -114,17 +114,17 @@ la phase de reprise.
 Actions du scheduler : `CREATE → dispatch`, `DISPATCH → execute`, `PLAN → advance_plan`.
 Une tâche suspendue conserve sa phase sans être exécutée.
 
-Une demande d'information appartenant à un domaine suspend la Task existante avec la raison
+Une demande d'information appartenant à un domaine suspend la tâche existante avec la raison
 `input`, sans enfant technique. À la fin du tour, `INTERRUPT_EXECUTION` conserve un point de
 reprise `DISPATCH`. Une réponse reçue pendant `EXEC` est injectée à la finalisation ; une réponse
 reçue après libère uniquement `input`. Une pause utilisateur indépendante demeure effective.
 Le marqueur conserve le tour qui a posé la question. La réconciliation de ce tour après
-perte réseau ne termine pas la Task si la réponse arrivée depuis n'a pas encore été utilisée :
+perte réseau ne termine pas la tâche si la réponse arrivée depuis n'a pas encore été utilisée :
 un nouveau tour `DISPATCH` traite cette réponse, sans renvoyer la question.
 
 Une question d'organisation suspend en `PLAN`. Sa réponse conserve les précisions puis
 applique `REASSESS_ORGANIZATION` ; le routage choisit de nouveau avec cette réponse. Sans
-réponse à l'échéance, ou sans canal de question, `FAIL` termine la Task en `ERROR`.
+réponse à l'échéance, ou sans canal de question, `FAIL` termine la tâche en `ERROR`.
 
 Les collections utilisent les phases existantes : le groupe reste en `PLAN`, sa découverte
 puis ses éléments traversent `DISPATCH → EXEC → SUCCESS/ERROR`. Une nouvelle vague est
@@ -147,7 +147,7 @@ correction de schéma. La reprise restitue cette erreur sans réexécuter l’ap
 Un rejet historique prouvé avant effet donne `started → failed` ; une coupure sans réponse
 enregistrée donne `started → outcome_unknown`. `ModelRetry` seul n’est pas une preuve de rejet.
 Un reçu console v2 autorise `outcome_unknown → completed` par réconciliation sur la même cible.
-Sans reçu ni politique rejouable, la Task échoue avec un diagnostic. Le retry manuel conserve
+Sans reçu ni politique rejouable, la tâche échoue avec un diagnostic. Le retry manuel conserve
 le journal et les écritures d’une tentative remplacée ou expirée sont rejetées.
 Un reçu console peut également résoudre `error_reported → completed`. Voir
 [0103](../../../project/decisions/0103-tool-errors-return-to-agent.md).
@@ -162,13 +162,13 @@ Statuts d’une tentative : `CLAIMED`, `SUCCESS`, `ERROR`, `RETRY`, `CANCELLED`,
 `WAITING_CHILDREN`.
 
 Une suppression explicite est autoritaire dans toutes les phases. Le service applique d'abord
-`FORCE_TERMINATE` aux Tasks actives du sous-arbre éligible, annule leur action locale, clôt toute
+`FORCE_TERMINATE` aux tâches actives du sous-arbre éligible, annule leur action locale, clôt toute
 tentative `CLAIMED`, invalide le lease durable, puis effectue la suppression logique enfants avant
-parent. Un worker tardif ne peut donc ni réécrire ni reprendre une Task supprimée.
+parent. Un worker tardif ne peut donc ni réécrire ni reprendre une tâche supprimée.
 
-Une instruction conversationnelle acceptée sur une Task non planifiée utilise `REVISE` pour
-repasser par le dispatcher. Si la Task était en `EXEC`, elle est d'abord interrompue vers
-`DISPATCH`. Une Task suspendue sur une coordination conserve au contraire sa phase et sa
+Une instruction conversationnelle acceptée sur une tâche non planifiée utilise `REVISE` pour
+repasser par le dispatcher. Si la tâche était en `EXEC`, elle est d'abord interrompue vers
+`DISPATCH`. Une tâche suspendue sur une coordination conserve au contraire sa phase et sa
 corrélation jusqu'au fan-in. Les états opérationnels `QUEUED`, `RUNNING`, `WAITING`, `PAUSED` et
 `TERMINAL` sont des projections de lecture, pas de nouvelles phases PostgreSQL.
 
@@ -176,15 +176,15 @@ L'amendement conversationnel tolère une révision technique plus récente seule
 l'empreinte de définition figée par le serveur pour la révision demandée est encore identique
 sous verrou. Objectif, plan, forçages, portée ou terminaison modifiés restent conflictuels ;
 sans empreinte connue, la révision reste stricte. Le reçu d'amendement préserve l'idempotence.
-Tout amendement indisponible retourne `CONFLICT` sans nouvelle Task implicite, également
+Tout amendement indisponible retourne `CONFLICT` sans nouvelle tâche implicite, également
 pour la soumission vocale générique. Une création indépendante exige le choix explicite
 `CREATE_NEW`, qui reste disponible après le conflit.
 L'amendabilité vérifie aussi le rebasage du checkpoint auprès du driver, en lecture puis
 sous verrou avant interruption. Un lease ou une identité d'exécution sans checkpoint,
-ou un checkpoint incompatible, rend l'amendement indisponible sans modifier la Task.
+ou un checkpoint incompatible, rend l'amendement indisponible sans modifier la tâche.
 Deux résultats indépendants dans un même document utilisent `CREATE_NEW` ; le nouvel
 objectif conserve seulement son périmètre et demande de relire la ressource au démarrage.
-Le plafond existant d'une exécution par agent externe maintient la seconde Task en file.
+Le plafond existant d'une exécution par agent externe maintient la seconde tâche en file.
 Voir le complément du 19 septembre de la décision 0029.
 
 `REPLACE` est une décision explicite distincte. L'arrêt et le successeur suspendu sont
@@ -199,12 +199,12 @@ logiquement annulé avec `remote_may_continue` reste bloquant, même historisé.
 indépendants et les Processes terminés sans incertitude restent disponibles.
 Voir [0123](../../../project/decisions/0123-explicit-task-replacement.md).
 
-Les heartbeats de Task et de round renouvellent uniquement un lease encore valide :
+Les heartbeats de tâche et de round renouvellent uniquement un lease encore valide :
 un propriétaire expiré ne peut pas redevenir autoritaire en envoyant un heartbeat tardif.
 
-L'outil `conversation_task_stop` relit la Task sous verrou après contrôle de fraîcheur et
+L'outil `conversation_task_stop` relit la tâche sous verrou après contrôle de fraîcheur et
 de portée. Si elle est déjà en `SUCCESS` ou `ERROR`, il restitue son état sans nouvelle
-transition, modification de révision, de résultat ou de cause de fin. Une Task active
+transition, modification de révision, de résultat ou de cause de fin. Une tâche active
 conserve la commande `CANCEL` existante ; ce comportement ne change pas le contrat HTTP
 de révision attendue ni ne prouve l'arrêt physique d'un worker encore en cours de nettoyage.
 
@@ -292,22 +292,22 @@ est dérivé de sa langue ; les
 `LLMCall` des tentatives restent consultables séparément.
 
 Les notifications de round et de Process utilisent `PENDING → SENDING → DELIVERED`. Les résultats
-terminaux des Tasks lancées par une conversation utilisent sur leur lien
+terminaux des tâches lancées par une conversation utilisent sur leur lien
 `IDLE → SENDING → DELIVERED`, ou `IDLE → SKIPPED` lorsque leur résultat terminal porte déjà la
 preuve d'une livraison Messenger réussie. Le worker ne réclame la notification qu'après la
-libération du lease de Task et une dernière tentative durable en `SUCCESS` ou `ERROR`; une
+libération du lease de tâche et une dernière tentative durable en `SUCCESS` ou `ERROR`; une
 annulation et une erreur encore retryable ne produisent donc aucun message. Un message de
 progression distinct ne masque pas le résultat terminal. Une exception de transport après dispatch ou
 l’expiration d’un lease `SENDING` produit `UNKNOWN`, jamais un retry aveugle. Le numéro de tentative
-Task réarme une nouvelle notification après un retry humain ultérieur. L'état du fallback est porté
-par le round et celui d'un résultat de Task ou Process par son lien ; il n'existe plus d'outbox
-Conversation distincte. Les liens Task antérieurs à ce contrat conservent un compteur de tentative
+Tâche réarme une nouvelle notification après un retry humain ultérieur. L'état du fallback est porté
+par le round et celui d'un résultat de tâche ou Process par son lien ; il n'existe plus d'outbox
+Conversation distincte. Les liens tâche antérieurs à ce contrat conservent un compteur de tentative
 notifiée nul et ne déclenchent aucun message rétroactif.
 
 Un opérateur autorisé peut résoudre `UNKNOWN → DELIVERED` ou `UNKNOWN → SKIPPED` dans le détail
-du tour, y compris pour les liens Task/Process. Cette commande conserve une preuve par tentative,
+du tour, y compris pour les liens tâche/Process. Cette commande conserve une preuve par tentative,
 refuse les baux actifs et les décisions obsolètes ou contradictoires, et ne rejoue aucun envoi
-ni transition de Task/Process. Répéter la même décision avec la même preuve est idempotent.
+ni transition de tâche/Process. Répéter la même décision avec la même preuve est idempotent.
 
 Autorité : `back/app/conversation/models.py`, `service.py` et `scheduler.py`.
 
@@ -362,7 +362,7 @@ Autorité : `back/app/voice/models.py` et `conversation_service.py`.
 
 ### Raccrochage forcé administratif
 
-`POST /api/voice/conversations/turns/{id}/force-hangup` exige `TASK_EDIT` et la portée de gestion de l’agent. Cette action conserve les messages canoniques, les tours, les Tasks et les exécutions de Process. Les verrous sont pris dans l’ordre session puis tours : les tours audio actifs (`FROZEN`, `CLAIMED`, `RUNNING`, `WAITING_APPROVAL`) deviennent `INTERRUPTED` ; leurs leases, checkpoints chiffrés et autorisations en attente sont révoqués. Une session ACTIVE devient CANCELLED. Une session déjà terminale conserve son statut et ses dates, mais ses tours orphelins sont interrompus. Le commit précède l’annulation locale à attente bornée. Le contrôle périodique de l’état durable de la session demande l’arrêt des moteurs classique/realtime, y compris sur un autre worker ; `audio_stopped` (et son alias historique `local_audio_stopped`) acquitte la libération des propriétaires sur tous les workers, via les verrous consultatifs PostgreSQL conservés jusqu’à la fin du nettoyage du transport. Une erreur de fermeture empêche cet acquittement. L’action est idempotente. Elle n’annule pas rétroactivement les effets déjà envoyés avant révocation.
+`POST /api/voice/conversations/turns/{id}/force-hangup` exige `TASK_EDIT` et la portée de gestion de l’agent. Cette action conserve les messages canoniques, les tours, les tâches et les exécutions de Process. Les verrous sont pris dans l’ordre session puis tours : les tours audio actifs (`FROZEN`, `CLAIMED`, `RUNNING`, `WAITING_APPROVAL`) deviennent `INTERRUPTED` ; leurs leases, checkpoints chiffrés et autorisations en attente sont révoqués. Une session ACTIVE devient CANCELLED. Une session déjà terminale conserve son statut et ses dates, mais ses tours orphelins sont interrompus. Le commit précède l’annulation locale à attente bornée. Le contrôle périodique de l’état durable de la session demande l’arrêt des moteurs classique/realtime, y compris sur un autre worker ; `audio_stopped` (et son alias historique `local_audio_stopped`) acquitte la libération des propriétaires sur tous les workers, via les verrous consultatifs PostgreSQL conservés jusqu’à la fin du nettoyage du transport. Une erreur de fermeture empêche cet acquittement. L’action est idempotente. Elle n’annule pas rétroactivement les effets déjà envoyés avant révocation.
 
 ### Suppression différée des tours audio
 
@@ -402,7 +402,7 @@ Si « Lancer un cycle maintenant » doit d’abord reprendre une évaluation en 
 demande manuelle reste en attente : `CONTINUE` permet de créer une nouvelle tâche sans attendre
 le planning, tandis que `STOP` annule cette demande. « Réessayer le suivi » reprend seulement
 l’évaluation. Dans les deux cas, la tâche précédente et son résultat sont conservés.
-La clôture forcée d’une Task ignore la révision attendue, rend sa tentative terminale et libère
+La clôture forcée d’une tâche ignore la révision attendue, rend sa tentative terminale et libère
 son lease dans un premier commit. La clôture du cycle, les notifications et le cycle de vie terminal
 s’exécutent ensuite dans des transactions distinctes, avec une attente de cinq secondes par
 traitement ; leurs erreurs sont journalisées sans faire échouer l’arrêt acquis. Une nouvelle demande
@@ -443,19 +443,19 @@ Lors d'une synchronisation de base, le reconciler DbAdmin restaure en une passe 
 actives ; le scheduler conserve la reprise unitaire pour les checkpoints qui ne peuvent pas être
 résolus par cette projection directe.
 
-Une Task créée par un round conversationnel reçoit directement le Topic et le contact persistés
-du round dans la transaction de création. La création d'une Task enfant copie de même la portée de
-sa Task parente ou source. Si le classement d'un message ou d'un tour Voice se termine après la
-création de la Task, ce même passage de classement propage sa portée aux dérivés encore sans Topic ;
+Une tâche créée par un round conversationnel reçoit directement le Topic et le contact persistés
+du round dans la transaction de création. La création d'une tâche enfant copie de même la portée de
+sa tâche parente ou source. Si le classement d'un message ou d'un tour Voice se termine après la
+création de la tâche, ce même passage de classement propage sa portée aux dérivés encore sans Topic ;
 aucun mécanisme Dream d'héritage distinct n'est exécuté. L'extraction automatique de souvenirs
 attend toujours un `topic_id` non nul : avant cela, elle ne crée ni reçu, ni rappel, ni appel LLM.
-Cette dépendance est portée par les prédicats des extracteurs Task, round texte et tour Voice, pas
+Cette dépendance est portée par les prédicats des extracteurs tâche, round texte et tour Voice, pas
 par l'ordre de rotation du scheduler. Les sources conversationnelles exigent en plus le contact
 exact qui scelle leurs souvenirs ; une identité vocale ambiguë reste volontairement bloquée.
 
 La maintenance des liens n'a pas de machine d'état Dream. Un job durable `link_reconcile` converge
 directement depuis les provenances, projections et vecteurs courants. Les jobs ciblés suivent les
-opérations Dream réussies ; un job global quotidien n'est admis et exécuté qu'en l'absence de Task
+opérations Dream réussies ; un job global quotidien n'est admis et exécuté qu'en l'absence de tâche
 ou de conversation Voice active. Un report pour charge de premier plan remet le job en `pending`
 sans consommer son budget de tentatives.
 
@@ -466,7 +466,7 @@ puis le checkpoint préparé contient les opérations structurées sur les comp�
 peut être réclamé une fois lors du passage à `learn`, sans relancer le modèle. L'application ajoute
 une preuve idempotente et recalcule le score ; elle ne touche pas Memory. Une nouvelle preuve
 tardive ne rouvre pas le reçu terminal : elle crée un autre sujet
-`<task UUID>:<empreinte>`. Toutes les Tasks terminales sans reçu sont donc parcourues, historique
+`<task UUID>:<empreinte>`. Toutes les tâches terminales sans reçu sont donc parcourues, historique
 compris, de la plus ancienne à la plus récente. Le scheduler conserve son débit borné à une
 opération par passage ; le rattrapage n'est pas un traitement massif parallèle.
 Le scheduler n'exécute qu'une opération par passage et fait tourner le mécanisme prioritaire pour
@@ -517,7 +517,12 @@ rouvre un terminal. L'adapter Monty ferme son worker isolé avant de confirmer l
 Seule cette computation pure peut être recalculée après perte du résultat ; les effets
 externes ne sont pas rejoués. Un IF configuré suit une seule sortie True/False après
 validation de son booléen. Son mode humain réutilise `human_waiting` et les choix Messenger,
-sans Task IA d'attente et sans intégration du booléen dans les données du run.
+sans tâche IA d'attente et sans intégration du booléen dans les données du run.
+Dans le traitement IA, le sous-mode `task` conserve la tâche agentique ; `llm` place la
+tentative en `llm_waiting` et observe une inférence durable. Seul son résultat réussi et
+validé termine la tentative. Échec ou interruption ne sélectionne aucune branche.
+L'arrêt du Process attend la confirmation d'arrêt de l'inférence, et un résultat acquis
+est réutilisé sans nouvel appel après reprise du moteur.
 
 États terminaux : `success`, `error`, `cancelled`.
 
@@ -528,7 +533,7 @@ Un effet externe incertain renvoie `effect_outcome_unknown` et reste en arrêt e
 jusqu'à réconciliation. Aucun traitement de secours ou réessai automatique n'est exécuté.
 
 La finalisation d'une attente est distincte du statut du run : `await_resolved_at` reste nul
-jusqu'à la clôture de la Task enfant et à la reprise de son parent. Cette étape est rejouable
+jusqu'à la clôture de la tâche enfant et à la reprise de son parent. Cette étape est rejouable
 par callback, refresh ou réconciliation périodique. `cancelling` reste éligible au polling.
 
 | État courant | Cibles autorisées |
@@ -554,7 +559,7 @@ Une activité native `human_task` crée une tentative `human_waiting` et une occ
 le prochain passage du moteur passe l'occurrence à `success` et poursuit le flux.
 Une réponse identique rejoue le reçu ; une réponse différente après complétion est un conflit.
 Un autre utilisateur, un utilisateur inactif ou un Run en annulation/terminal ne peut plus
-créer de reçu. Une annulation ferme le Run sans admettre de Task IA pour l'activité humaine.
+créer de reçu. Une annulation ferme le Run sans admettre de tâche IA pour l'activité humaine.
 Ces garanties sont exercées par `test_human_activity_waits_for_assignee_and_replays_one_receipt`.
 
 ## Évaluations du Lab IA
@@ -573,7 +578,7 @@ apprentissage et suivi d’objectif. Chaque mécanisme déclare le
 format natif de son entrée et de sa sortie (`text` ou `json`), son prompt système de production et
 son schéma de sortie. Les workers Dispatcher et mécanismes génériques ont des réclamations
 disjointes. Ils ne traitent qu’un cas par passage et possèdent un lease récupérable, sans créer ni
-faire transiter une Task et sans déclencher d’outil ou de message.
+faire transiter une tâche et sans déclencher d’outil ou de message.
 
 Les benchmarks Planner possèdent une copie éditable du system prompt de décomposition, initialisée
 depuis le Param de production. Le run en fige la valeur exacte avant toute exécution, comme pour

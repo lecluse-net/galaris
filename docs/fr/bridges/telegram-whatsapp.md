@@ -190,7 +190,7 @@ Le bridge prend en charge :
 Les pièces jointes conservent l’URI du Tool Matrix et ne sont téléchargées qu’à la demande dans un
 temporaire serveur nettoyé après l’appel. Les noms, tailles annoncées et octets réellement
 transférés sont bornés. Les `m.notice` ne créent
-jamais de Task afin d’éviter les boucles entre bots. Une édition `m.replace` n’est pas interprétée
+jamais de tâche afin d’éviter les boucles entre bots. Une édition `m.replace` n’est pas interprétée
 comme un nouveau message.
 
 Le bridge ne possède pas les clés Megolm et ne revendique donc pas l’E2EE. Les événements et

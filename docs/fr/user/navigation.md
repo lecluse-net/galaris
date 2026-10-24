@@ -10,7 +10,7 @@ donne les libellés exacts, routes, descriptions et conditions d’accès de la 
 Les chemins ci-dessous sont relatifs à votre instance Galaris.
 
 Pour comprendre les jalons, les plans, les questions et les reprises, consulter le
-[guide des Tasks](tasks.md).
+[guide des tâches](tasks.md).
 
 ## Retrouver un travail et intervenir
 
@@ -86,7 +86,7 @@ La route est exclue des constructions des autres environnements.
 | **Développeurs** (mode dev uniquement) | Référence graphique |
 
 Dans la documentation technique, « Chat » correspond au menu **Discussion**,
-« Tasks » à l’onglet **Tâches** d’**Activité**, « Topics » à **Sujets**
+« tâches » à l’onglet **Tâches** d’**Activité**, « Topics » à **Sujets**
 et « Lab IA » au **Laboratoire**. Ces termes désignent les mêmes domaines ; ils ne sont
 pas autant de menus supplémentaires.
 
@@ -159,14 +159,14 @@ autorisés ; sinon l’écran ouvre **Fournisseurs**.
 L'assistant **Galaris** proposé à l'installation porte un avatar dédié : un G bleu et vert
 sur un fond de réseau étoilé.
 Son [guide de connaissance produit](../admin/product-knowledge.md) est chargé automatiquement
-dans ses réponses texte et voix par tours, et ses Tasks internes, sous ses droits existants.
+dans ses réponses texte et voix par tours, et ses tâches internes, sous ses droits existants.
 Vous pouvez personnaliser ou supprimer son avatar ; les mises à jour conservent votre choix.
 
 **Configurer → Agents** (`/agent`) contient les onglets **Agents**, **Équipes** et
 **Civilités**, selon les droits. Pour créer un agent, ouvrez l’onglet **Agents**, puis
 **Nouvel Agent**. Pour modifier un agent existant, ouvrez sa fiche depuis la liste.
 Les onglets de cette fiche ne sont pas les onglets de la page : ils regroupent notamment
-le général, les modèles et le MCP selon les droits. Le choix du moteur des Tasks appartient
+le général, les modèles et le MCP selon les droits. Le choix du moteur des tâches appartient
 à la fiche de l’agent. Elle s’affiche dès l’ouverture ; les sélecteurs se chargent ensuite.
 Dans **Général**, le choix du harnais suit les champs d’identité.
 Les profils et les voix sont actualisés à l’ouverture de **Modèles**. L’administration des harnais se trouve dans
@@ -175,7 +175,7 @@ dépendent du catalogue serveur : utilisez le lien affiché, sans inventer leur 
 
 Si un harnais géré refuse son identité technique (`Invalid runtime principal`), utiliser
 **Redémarrer** dans sa supervision pour recréer le runtime avec ses credentials, attendre
-sa disponibilité, puis réessayer la Task. **Actualiser** ne demande que la projection des
+sa disponibilité, puis réessayer la tâche. **Actualiser** ne demande que la projection des
 compétences. La recréation du runtime ne relance aucune action métier.
 
 Dans **Modèles**, choisissez le **Profil principal** et, si nécessaire, un
@@ -356,7 +356,7 @@ durable, ouvrez **Agir → Objectifs** (`/goal`). Pour lancer un workflow préd�
 ouvrez **Agir → Processus** (`/process`). Les analyses de pièces jointes et de gros rapports
 restent accessibles depuis la demande faite à l'agent et ne créent aucune entrée dans
 ce catalogue de workflows. Le [guide utilisateur](README.md) explique
-quand choisir une conversation, une Task ou un Goal.
+quand choisir une conversation, une tâche ou un Goal.
 
 La page **Processus** affiche ses listes sans attendre le contrôle du moteur externe ni
 le catalogue des agents. Les détails d'une exécution et son diagramme se chargent seulement
@@ -547,7 +547,7 @@ dans **Préférences > Mémoire** ; la fusion n'a plus de choix de mode. Les anc
 retirés à la mise à jour, en conservant le seuil personnalisé. Désactiver Dream suspend ce
 traitement avec les autres travaux d'entretien.
 Dream peut aussi retenir un fait durable issu d'un message audio transcrit ou d'une pièce
-jointe déjà analysée dans une Task liée à la conversation. Il conserve les preuves et leurs
+jointe déjà analysée dans une tâche liée à la conversation. Il conserve les preuves et leurs
 limites de couverture ; une pièce jointe non analysée ne suffit pas à produire un fait.
 Une preuve arrivée plus tard peut compléter les souvenirs. Pour les nouveaux souvenirs issus
 de ce traitement, retrait de la source, correction de la transcription ou révocation de la

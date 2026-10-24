@@ -11,13 +11,13 @@ utilisateur `/chat` est aussi la vue unifiée en lecture seule des rooms issues 
 externes. L’ancien `EmployeeMessenger` en boucle
 locale et son Tool `galaris_messenger` restent retirés.
 
-Depuis une Task, `messenger_send_message_to_user` adresse un collègue interne par
-`agent:<ID>` ou par son identité Messenger canonique. La façade Task admet une sous-tâche
+Depuis une tâche, `messenger_send_message_to_user` adresse un collègue interne par
+`agent:<ID>` ou par son identité Messenger canonique. La façade tâche admet une sous-tâche
 avec le message converti de Markdown en HTML ; le parent attend puis reprend avec son résultat,
 comme pour une délégation ordinaire. Aucun salon humain n'est recherché ou créé pour cet échange.
 Le reçu rend l'URI de la demande, sans attester de réponse ni d'action accomplie. Les droits de
 contact et d'accès documentaire, la pause humaine et la limite de collaboration restent appliqués.
-Cette voie exige une Task courante ; elle ne crée pas de Task depuis une conversation courte.
+Cette voie exige une tâche courante ; elle ne crée pas de tâche depuis une conversation courte.
 
 Chaque connexion de messagerie porte le paramètre local protégé `tools.management_scope` :
 `none` refuse les contacts inter-agents, `team` exige une équipe commune et `all` autorise
@@ -26,7 +26,7 @@ préserve le comportement historique ; une valeur inconnue ou une connexion inac
 le contact. Les paramètres globaux ne peuvent pas étendre cette portée. Les gardes canoniques
 contrôlent envois directs, salons et réception avec l'identité persistée et la connexion exacte.
 L'admission d'une demande interne vérifie aussi la connexion Chat du destinataire. Les contacts
-humains et les ACL documentaires restent indépendants ; les Tasks déjà admises poursuivent
+humains et les ACL documentaires restent indépendants ; les tâches déjà admises poursuivent
 leur cycle. Seul un gestionnaire humain global peut modifier ce paramètre.
 
 Le chat peut intégrer le composant documentaire complet dans sa page, à côté de la
@@ -46,7 +46,7 @@ document et la fraîcheur du round. L'événement `chat.document_show` ne contie
 l'identifiant du document, ne modifie aucun partage et ne vaut pas accusé de lecture. Le client
 ignore les autres rooms et préserve les sauvegardes avant ouverture ; les droits du lecteur
 restent contrôlés par l'API documentaire. L'action est implémentée dans `app.conversation.mcp`
-avec `task_enabled=False` : aucune Task, même issue du chat, ni la voix n'expose cet outil.
+avec `task_enabled=False` : aucune tâche, même issue du chat, ni la voix n'expose cet outil.
 Memory fournit le contrôle d'accès au document via son adaptateur enregistré au démarrage ;
 sa connexion n'est pas requise. Le Tool Conversation et ses connexions sont des services système obligatoires : les datasets
 les initialisent ou les réactivent, et leur activation reste protégée. Les modes de leurs
@@ -78,7 +78,7 @@ remplacement atomique : les deux représentations ne sont jamais affichées ense
 vide ne les sépare.
 
 À l’ingestion d’un message humain, Messenger fige aussi le `requester_user_id` issu de
-`MessengerUser.galaris_user_id`. Les rounds et Tasks admis propagent cet instantané. Un abonnement
+`MessengerUser.galaris_user_id`. Les rounds et tâches admis propagent cet instantané. Un abonnement
 ChatGPT personnel n’est utilisable que lorsque cet identifiant correspond à son titulaire ; une
 identité non associée dans « Mon profil » reste refusée, y compris en mode mono-utilisateur. Une
 modification ultérieure de l’annuaire ne change pas l’autorité des messages historiques.
@@ -115,27 +115,27 @@ l’accès exact à la room et au message, refuse également tout auteur qui n�
 lié, prépare le texte avec le même nettoyage que le pipeline Voice, puis diffuse le MP3 synthétisé
 avec la voix de l’auteur sans le persister dans le journal Messenger.
 L'HTTP fournit aussi le rattrapage des états de round après une reconnexion.
-Le volet droit du Messenger projette uniquement les Tasks directement liées aux rounds de la
+Le volet droit du Messenger projette uniquement les tâches directement liées aux rounds de la
 room, puis tous leurs descendants transitifs. La projection récursive suit la hiérarchie
 `parent_id` et la causalité `source_task_id` : une délégation à un autre agent reste donc visible,
 ainsi que toute sa descendance, sans limite de profondeur et sans filtre d'agent. L'endpoint
 `/chat/rooms/{room_id}/tasks` exige à la fois l'accès exact à la room et un privilège
-Task ordinaire. Le volet consomme les événements WebSocket canoniques
+Tâche ordinaire. Le volet consomme les événements WebSocket canoniques
 `task.create/update/delete/restore/cleanup`, puis réconcilie l'arbre par HTTP après chaque lot
 d'événements et chaque reconnexion. La fiche `TaskDetail` s'ouvre dans une modale locale au
 Messenger afin de ne pas quitter la conversation. Aucun état de suivi propre au Messenger n'est
-persisté. L'API renvoie les Tasks des plus récentes aux plus anciennes par pages de dix ; le volet
-charge la première tranche, puis ajoute dix Tasks antérieures lorsque le scroll atteint le haut.
+persisté. L'API renvoie les tâches des plus récentes aux plus anciennes par pages de dix ; le volet
+charge la première tranche, puis ajoute dix tâches antérieures lorsque le scroll atteint le haut.
 
 Cette projection suit la fenêtre de messages effectivement chargée par l'interface : le client
-transmet l'identifiant du plus ancien message affiché et les endpoints Tasks, documents de travail
+transmet l'identifiant du plus ancien message affiché et les endpoints tâches, documents de travail
 et Process ne retiennent que les rounds qui touchent la tranche chronologique correspondante. Le
 chargement progressif d'un morceau d'historique recule cette borne et étend les trois listes ; une
 room ancienne n'expose donc pas d'emblée tout son historique de travail. Les documents regroupent
 les références `document://` des messages, des traces d'outils réussies et des Working Sets actifs
-des Tasks projetées. Leur contenu et leur modification repassent par les ACL et les révisions
+des tâches projetées. Leur contenu et leur modification repassent par les ACL et les révisions
 optimistes d'`app.memory`. Les Process regroupent les runs liés directement aux rounds visibles et
-ceux rattachés à l'arbre de Tasks correspondant.
+ceux rattachés à l'arbre de tâches correspondant.
 Les listes de documents et de Process suivent elles aussi un ordre récent d'abord et chargent leurs
 éléments plus anciens au scroll, par tranches de dix, sans commande de pagination visible.
 
@@ -193,7 +193,7 @@ privilège `TOPIC_EDIT` qu'une modification ultérieure.
 
 Le Messenger interne ouvre le sélecteur de surcharge pour le prochain message avec `@topic`. Le
 sélecteur redevient vide après chaque envoi réussi. Une surcharge explicite dispense ce message de
-la classification Dream. Le round et toute Task qu'il lance reçoivent le Topic effectif du dernier
+la classification Dream. Le round et toute tâche qu'il lance reçoivent le Topic effectif du dernier
 message humain déclencheur. La réponse agent copie la provenance de Topic de ce message : elle
 reste donc alignée pendant le streaming, après persistance et après une modification du Topic de
 room, tout en conservant une éventuelle surcharge explicite.
@@ -214,8 +214,8 @@ correspondante, elle apparaît comme une affectation manuelle dans l'audit.
 | Nextcloud Talk | Polling ou signaling | Conversation Talk vers message/call canonique |
 | Telegram | Long polling | Update Bot API vers message canonique |
 | WhatsApp | Webhook push | Graph API vers message canonique et statuts de livraison |
-| Mail | Polling IMAP | UID entrant vers journal canonique puis Task directe de lecture |
-| Internal | API Galaris + WebSocket par room | Message humain natif vers round foreground ; travail long vers Task liée |
+| Mail | Polling IMAP | UID entrant vers journal canonique puis tâche directe de lecture |
+| Internal | API Galaris + WebSocket par room | Message humain natif vers round foreground ; travail long vers tâche liée |
 
 Le provider natif conserve le kind technique `internal`, tandis que son Tool public est `chat`.
 Les URI de ses pièces jointes utilisent donc le schéma `chat://`.
@@ -264,25 +264,25 @@ transport externe
   → app.messenger.service
   → projection privée du contact humain dans Memory
   → humain avec connexion + room exactes : app.conversation
-  → identité IA ou entrée legacy incomplète : collaboration/Task existante
+  → identité IA ou entrée legacy incomplète : collaboration/tâche existante
 ```
 
 La clé durable d’un message est `(connection_id, remote_message_id, direction)`. La connexion
 fait partie de l’identité parce qu’un même outil peut représenter plusieurs comptes. Un
 webhook dupliqué déjà `admitted` est accusé selon le protocole mais ne redéclenche pas le métier.
-Avant toute interaction, tout round ou toute Task, l'admission canonique applique une règle
+Avant toute interaction, tout round ou toute tâche, l'admission canonique applique une règle
 permanente aux bridges de messagerie instantanée : un message âgé de plus d'une heure est marqué
 `admitted` avec la disposition auditée `dream_only`, reste visible dans le journal et éligible aux
-mécanismes Dream, mais ne déclenche aucun run Conversation ou Task. Cette règle s'applique aussi
+mécanismes Dream, mais ne déclenche aucun run Conversation ou tâche. Cette règle s'applique aussi
 aux récupérations après crash et aux imports d'historique complet. Mail est explicitement exempté
 car son contrat asynchrone est `inbound_admission="task"`.
-Une Task issue directement d'une admission conserve en plus l'UUID canonique du message dans une
+Une tâche issue directement d'une admission conserve en plus l'UUID canonique du message dans une
 colonne unique. Le statut du journal n'est donc jamais l'unique barrière : une redelivery après un
-crash survenu entre la création de la Task et l'accusé `admitted` retrouve la même Task et ne peut
+crash survenu entre la création de la tâche et l'accusé `admitted` retrouve la même tâche et ne peut
 pas dupliquer l'effet métier. L'admission conversationnelle possède la même garantie par le lien
 durable unique du message à son round.
 Lors du cutover depuis l'ancien journal, DbAdmin ferme les entrées historiques restées à
-`received` avant le démarrage des listeners. Il met aussi en quarantaine les Tasks et rounds
+`received` avant le démarrage des listeners. Il met aussi en quarantaine les tâches et rounds
 encore actifs dont la création est postérieure de plus d'une heure à l'horodatage canonique de
 l'entrée : l'admission étant synchrone, cet écart prouve une réadmission d'historique. Les
 résultats déjà terminaux restent intacts pour audit.
@@ -297,7 +297,7 @@ Une entrée humaine possédant une connexion et une room exactes est admise dire
 `Message` Messenger canonique. Le verrou porte sur sa `Room` interne et le message est relié à un
 `ConversationRound` figé de cette room. En groupe, tous les auteurs partagent la même room mais
 restent identifiés sur leur propre message. Le scheduler `app.conversation` est indépendant de
-celui des Task : une room n’exécute qu’un round à la fois, tandis que des rooms différentes peuvent
+celui des tâche : une room n’exécute qu’un round à la fois, tandis que des rooms différentes peuvent
 avancer en parallèle.
 
 Le dernier message non traité est l’ancre LIFO du round. Tous les messages entrants non consommés
@@ -310,12 +310,12 @@ drainer et contrôler les données antérieures à la bascule avant leur suppres
 
 Le contrôleur court est toujours interne et utilise le niveau texte `low` dans l’unique profil
 effectif de l’agent. Il n’existe aucun repli vers l’exécuteur ni vers un autre profil. Il ne dépend pas du driver executor et ne
-prend aucun slot Task. Un travail long crée une Task liée qui
+prend aucun slot tâche. Un travail long crée une tâche liée qui
 reprend le scheduler et le driver ordinaires ; un Process est lancé sans attente. Le lien
-conversationnel projette le résultat réussi de la Task après sa terminaison. Son échec définitif
+conversationnel projette le résultat réussi de la tâche après sa terminaison. Son échec définitif
 revient par un message localisé qui expose la cause persistée après masquage des secrets usuels.
 Cet envoi et les résultats terminaux de Process utilisent un état de notification porté directement
-par le lien Task ou Process ; aucun driver agentique ne publie implicitement son texte terminal.
+par le lien tâche ou Process ; aucun driver agentique ne publie implicitement son texte terminal.
 En cas d’erreur de transport après dispatch potentiel, la livraison devient `UNKNOWN` et n’est pas
 rejouée aveuglément.
 
@@ -323,7 +323,7 @@ Son prompt dédié conserve le personnage de l’agent — identité, personnali
 poste — mais remplace les règles d’exécution longue par une politique de réponse rapide. Il reçoit
 la projection exacte des fonctions natives conversationnelles ainsi que les identifiants,
 libellés et descriptions des Process affectés. Il répond directement après quelques appels courts,
-lance le Process correspondant si le besoin est déjà modélisé, ou crée sinon une Task autonome ;
+lance le Process correspondant si le besoin est déjà modélisé, ou crée sinon une tâche autonome ;
 il ne bloque jamais la conversation en attendant leur résultat.
 
 Pour un auteur humain, la porte de réponse retourne directement `EXEC standard`, sans modèle.
@@ -331,27 +331,27 @@ Une préanalyse de rattachement et de sélection de Process ne s'exécute que si
 configure Décision. Elle distingue les conclusions négatives des analyses absentes ou incertaines
 et transmet les références exactes à l'exécuteur. Celui-ci doit rechercher lui-même une attente
 ou un Process adapté lorsqu'aucune conclusion suffisante n'est disponible. Il reste chargé
-d'appliquer les réponses et de lancer un Process ou une Task par les outils canoniques.
+d'appliquer les réponses et de lancer un Process ou une tâche par les outils canoniques.
 Le contrôleur restitue le résultat réussi sans contrôle d'admission a posteriori ni jugement de
 formulation. Il transmet les erreurs d'exécution au scheduler, qui conserve sa reprise bornée et
 ses protections contre la répétition d'effets. Une erreur finale produit la réponse de secours,
-avec sa catégorie et son détail après masquage des formes usuelles de secrets. La Task admise
+avec sa catégorie et son détail après masquage des formes usuelles de secrets. La tâche admise
 conserve l'agent, la room et le driver ordinaires ; Hermès peut donc l'exécuter sans intervenir
 dans le contrôleur conversationnel interne.
 
 Avant l'admission, le contrôleur distingue strictement amendement et nouveau travail. Un amendement
 conserve le même artefact ou la même cible principale ainsi que des critères de réussite
 substantiellement identiques. Une autre cible, un autre dépôt, une autre ressource, un autre
-livrable ou un résultat vérifiable indépendamment reçoit une nouvelle Task, même si la demande
-découle du même incident. L'URI d'une Task amendée reste unique, mais le round expose son
+livrable ou un résultat vérifiable indépendamment reçoit une nouvelle tâche, même si la demande
+découle du même incident. L'URI d'une tâche amendée reste unique, mais le round expose son
 `TaskAmendment` comme lignée d'audit. Lorsqu'un amendement interrompt une exécution, le nouveau
 dispatcher et l’exécuteur voient l'objectif fusionné ; le checkpoint conserve uniquement
 son journal d'effets anti-rejeu et abandonne l'ancien historique fournisseur. Un résultat ou un
 checkpoint portant l'empreinte d'un objectif antérieur est refusé avant persistance terminale.
 Le scheduler clôt alors l'ancien attempt comme annulé, sans consommer de retry ni inscrire une
-erreur sur la Task révisée.
+erreur sur la tâche révisée.
 
-Le contexte récent expose un nombre borné de Tasks et de ressources actives. Les libellés de run
+Le contexte récent expose un nombre borné de tâches et de ressources actives. Les libellés de run
 génériques ne servent pas de sujet au rappel mémoire : la requête est construite depuis le message
 humain courant et son identité structurée.
 
@@ -359,11 +359,11 @@ La session récente est reconstruite depuis le journal canonique Messenger et co
 chaque entrée, les UUID internes du message, de la room et des fichiers, les identifiants externes,
 l'expéditeur et les pièces jointes. Chaque fichier reste imbriqué dans son message et porte la
 référence `<tool.code>://<room-locator-provider>/<file-uuid-local>` ; un message sans texte qui contient uniquement un
-fichier reste une entrée chronologique complète. Cette même projection est figée dans toute Task admise depuis
+fichier reste une entrée chronologique complète. Cette même projection est figée dans toute tâche admise depuis
 le round : un planner ou un driver reçoit donc l'historique Messenger complet autorisé, pas
 seulement le dernier texte. Une demande explicite de joindre une version déjà présente est résolue
 par UUID de pièce jointe avant le dispatcher, puis les octets existants sont copiés vers la room.
-Elle ne crée aucune Task et le service d'admission refuse toute tentative de la transformer en
+Elle ne crée aucune tâche et le service d'admission refuse toute tentative de la transformer en
 nouvelle génération.
 
 Lorsqu'un message humain admis en conversation porte un ou plusieurs fichiers audio, Messenger
@@ -382,7 +382,7 @@ salutation initiale est gérée séparément : il adapte la longueur à la deman
 gardant une formulation naturelle à l’oral, ne relit pas la transcription et ne conclut par une
 formule d’au revoir que lorsque l’appelant termine réellement la conversation.
 
-Les expéditeurs reconnus comme agents IA conservent le workflow de collaboration Task. Une entrée
+Les expéditeurs reconnus comme agents IA conservent le workflow de collaboration tâche. Une entrée
 humaine sans adresse de réponse exacte reste temporairement sur le chemin legacy afin d’éviter
 une perte silencieuse.
 
@@ -393,9 +393,9 @@ au watermark courant rétablit cette référence. Le corps n'est lu qu'après au
 les expéditeurs inconnus demandent le consentement commun. Les règles explicites Actif,
 Sur demande et Bloqué restent prioritaires ; l'accord d'envoi est indépendant.
 Mail déclare une politique d’admission `task` propre au transport : chaque nouveau courriel
-autorisé pour réception crée une Task qui reçoit sa référence `mail_get`, sans passer par le
+autorisé pour réception crée une tâche qui reçoit sa référence `mail_get`, sans passer par le
 contrôleur conversationnel court. Cette exception reste possédée par `app.messenger`; le bridge
-IMAP ne crée jamais lui-même une Task. Le résultat terminal n’est pas renvoyé implicitement par
+IMAP ne crée jamais lui-même une tâche. Le résultat terminal n’est pas renvoyé implicitement par
 SMTP, car toute réponse doit rester un effet explicite et idempotent d’un outil `mail_*`.
 Les rooms techniques créées pour ces courriels restent dans le journal canonique mais sont exclues
 de la projection Chat, y compris dans la vue d’un agent, afin qu’un flux IMAP ne crée pas une
@@ -423,7 +423,7 @@ jeu de données complet que l’inspection administrative afin de le copier en J
 est réservée à `TASK_EDIT` et accepte le round quel que soit son état. Elle verrouille le round,
 annule immédiatement son worker local s’il existe, puis supprime la ligne durable : un worker d’une
 autre instance perd alors sa lease et interrompt son action au heartbeat suivant. Elle retire le run
-de l’historique sans supprimer les messages canoniques Messenger. Les Tasks et ProcessRuns déjà
+de l’historique sans supprimer les messages canoniques Messenger. Les tâches et ProcessRuns déjà
 créés ne sont pas supprimés. Les `LLMCall` restent dans le journal global après détachement de leur
 clé conversationnelle ; ceux encore `running` sont fermés comme `cancelled` avec leurs compteurs,
 coûts et sorties partielles intacts.
@@ -441,7 +441,7 @@ existe ; si aucun jeu n’existe, l’utilisateur peut le créer avant la copie.
 peut alimenter que l’**Exécuteur conversationnel**, et un tour vocal que l’**Exécuteur vocal**.
 Le cas reçoit une copie de travail de l’entrée et de la sortie ainsi qu’un snapshot source autonome
 contenant toutes les preuves persistées au moment du transfert. Le benchmark ne rejoue jamais le
-tour et ses outils factices ne produisent aucune Task ni aucun Process réel.
+tour et ses outils factices ne produisent aucune tâche ni aucun Process réel.
 
 Les appels téléphoniques sont les lignes parentes de leurs tours, affichés en permanence comme des
 sous-tâches et sans accordéon. Seule une ligne de tour est cliquable ; sa modale contient ce tour
@@ -474,7 +474,7 @@ leurs protocoles ne fournissant pas tous un historique distant arbitraire et por
 
 Après résolution serveur de la connexion et du kind réel, Messenger enrichit l'expéditeur courant
 avec l'annuaire des identités IA. Un expéditeur humain non vide est projeté par la façade publique
-de Memory avant la résolution d'une interaction ou la création d'une Task. Une réponse humaine
+de Memory avant la résolution d'une interaction ou la création d'une tâche. Une réponse humaine
 consommée par un choix produit donc elle aussi une fiche. L'écriture est fail-open : son échec est
 journalisé sans identifiant natif ni contenu et ne change jamais le traitement conversationnel.
 
@@ -486,7 +486,7 @@ connexion, le Tool, la room, l'agent et l'expéditeur exacts. Le LLM conversatio
 `conversation_choice_resolve` avec la référence et l'identifiant d'une option persistée, ou poser
 une question si l'intention reste ambiguë. La commande reverrouille la même portée, refuse toute
 option inventée et remet la résolution au handler idempotent d'origine. Une réorientation peut
-ainsi refuser une approbation devenue obsolète puis amender la Task concernée dans le même round.
+ainsi refuser une approbation devenue obsolète puis amender la tâche concernée dans le même round.
 
 La portée des choix associe l'UUID canonique du salon à l'identifiant externe du participant,
 avec la connexion, le Tool et l'agent. Les approbations Dream suivent ce même contrat : une réponse
@@ -505,7 +505,7 @@ destinataire, puis appelle directement le résolveur déterministe, sans round n
 envoi du même choix est idempotent ; un choix différent ou expiré est refusé. Les transitions
 de capture enregistrent aussi la réponse par bouton comme message humain dans le journal,
 avec le libellé choisi, la question et sa référence. Cette réponse appartient à l'historique
-transmis aux agents et au contact canonique, sans créer de round ni de Task. Le message et
+transmis aux agents et au contact canonique, sans créer de round ni de tâche. Le message et
 la décision sont committés ensemble avant le handler ; une reprise de celui-ci ne duplique
 pas la réponse, même après une erreur de traitement. Les transitions
 diffusent une invalidation du message pour synchroniser les autres vues, y compris après une
@@ -521,7 +521,7 @@ restent distincts. Deux canaux convergent automatiquement seulement lorsqu'ils p
 `galaris_user_id` prouvé. L'administration peut aussi fusionner explicitement deux contacts du même
 agent : les adresses deviennent alors des alias durables du contact conservé et les futures
 observations ne recréent pas le doublon. Cette fusion repointe dans une transaction les souvenirs
-scellés, scopes Topic/contact, arêtes mémoire, messages, rounds et Tasks avant d'oublier l'ancienne
+scellés, scopes Topic/contact, arêtes mémoire, messages, rounds et tâches avant d'oublier l'ancienne
 projection.
 
 Le carnet d’adresses permet aussi de créer un contact privé par nom et adresse mail validée,
@@ -531,7 +531,7 @@ concurrentes. L’API d’édition accepte le nom et des scissions explicites, j
 libre. Une scission déplace l’identité existante (UUID conservé) vers une nouvelle projection
 et conserve au moins une identité sur la fiche d’origine. Les deux projections deviennent
 gérées manuellement ; les observations futures respectent cette séparation. Les souvenirs,
-messages, rounds et Tasks restent sur le contact d’origine. Les contenus natifs inline et les
+messages, rounds et tâches restent sur le contact d’origine. Les contenus natifs inline et les
 identités sont enregistrés dans une seule transaction ; l’indexation et les notifications
 interviennent après ce commit. La fusion par sélection de contacts reste l’opération de regroupement.
 
@@ -544,7 +544,7 @@ utilisateur correspondante ; il préserve les identifiants de contact et les lie
 
 L'administration peut également oublier explicitement un contact. Les souvenirs scellés à ce
 contact sont oubliés avec leurs révisions et ressources, les références des messages, rounds et
-Tasks sont vidées, puis la projection et ses identités sont purgées. Une nouvelle interaction avec
+Tâches sont vidées, puis la projection et ses identités sont purgées. Une nouvelle interaction avec
 la même adresse recrée un contact neuf et ne réactive aucune donnée oubliée.
 
 `messenger_users` constitue le référentiel canonique des identités distantes observables. Une ligne
@@ -598,13 +598,13 @@ suivants et son nouveau curseur n'est enregistré qu'après admission complète 
 canonique. Un arrêt avant l'enregistrement rejoue le lot depuis l'ancien curseur ; la
 contrainte durable des messages et la déduplication des événements d'appel empêchent alors une
 seconde émission. Cette frontière accuse l'admission au journal, pas encore la réussite métier de
-tous ses consommateurs : la reprise générique journal → Task et sa file morte restent un chantier
+tous ses consommateurs : la reprise générique journal → tâche et sa file morte restent un chantier
 distinct.
 
 Le bridge Matrix filtre facultativement rooms, expéditeurs et mentions. L’auto-acceptation d’une
 invitation est désactivée par défaut, exige une allowlist et refuse les rooms annoncées comme
 chiffrées. Les notices automatisées, éditions et échos du compte bot n’entrent pas dans le workflow
-de Task. Les réponses conservent `m.in_reply_to`; les images, documents, vidéos et audios restent
+de tâche. Les réponses conservent `m.in_reply_to`; les images, documents, vidéos et audios restent
 des `File` canoniques téléchargés à la demande. Le bridge ne gérant pas Megolm, tout envoi
 dans une room chiffrée échoue avant transfert au lieu d’émettre du contenu en clair.
 
@@ -612,7 +612,7 @@ dans une room chiffrée échoue avant transfert au lieu d’émettre du contenu 
 
 Avant une exécution agentique, `app.messenger.session` reconstruit une vue bornée par
 `(connection_id, room_id)`. Elle lit le journal durable dans l'ordre canonique, écarte le message
-qui déclenche la Task et toute ligne plus récente, puis applique deux limites configurables :
+qui déclenche la tâche et toute ligne plus récente, puis applique deux limites configurables :
 nombre de messages et nombre de caractères. Avant cette lecture, la connexion est vérifiée comme
 appartenant à l'agent ; une
 référence étrangère ou invalide ne produit aucun historique. Le curseur, la portée et l'indicateur
@@ -625,9 +625,9 @@ pour reconstruire la projection à la même position ; `Task.messages` sert de t
 de repli si le journal est vide ou n'est plus disponible. Cette règle évite les doublons, interdit
 l'injection de messages futurs et permet de changer de driver sans perdre la conversation. Le
 provider de contexte commun remet ensuite les mêmes tours autorisés aux deux drivers. Pour une
-Task humaine dont le contact est prouvé, cette projection suit le contact canonique à travers les
+Tâche humaine dont le contact est prouvé, cette projection suit le contact canonique à travers les
 rooms et connexions et exclut tout autre participant. Elle alimente une capsule figée avec les
-Tasks, ressources et mémoires du même contact ; le Topic tardif de Dream n'est pas consulté. Sans
+Tâches, ressources et mémoires du même contact ; le Topic tardif de Dream n'est pas consulté. Sans
 contact prouvé, aucun historique de room collective n'est injecté.
 
 Le scope complet et le curseur du journal restent dans les métadonnées serveur. Le contexte rendu
@@ -649,9 +649,9 @@ compaction. Un ID de room externe n'est jamais utilisé comme nouvel ID de trans
 Une opération optionnelle non déclarée lève `NotSupported`; elle n’est pas simulée par une
 réponse de succès.
 
-### Réponse depuis une Task legacy
+### Réponse depuis une tâche legacy
 
-Une Task Messenger persiste une adresse exacte :
+Une tâche Messenger persiste une adresse exacte :
 
 ```text
 Task.messenger_connection_id + Task.message_platform + Task.message_group_id
@@ -664,22 +664,22 @@ réponse. La connexion reste une donnée serveur et n'est jamais ajoutée au blo
 par le modèle.
 
 Cette adresse fournit au runtime le contexte des pièces jointes, interactions et outils Messenger,
-mais ne déclenche aucun envoi terminal automatique. Une Task legacy directe, dépourvue de lien
+mais ne déclenche aucun envoi terminal automatique. Une tâche legacy directe, dépourvue de lien
 `ConversationTaskLink`, ne peut répondre dans la room qu'en exécutant explicitement un outil
 Messenger. Les drivers Internal, Hermès direct et Hermès Kanban retournent tous leur
 `ExecutionResult` sans appeler eux-mêmes le transport.
 
-Une Task créée par `app.conversation` conserve également cette adresse et son contrat Messenger
-complet. Conversation et Task sont deux modes de la même identité agentique : son planner et ses
+Une tâche créée par `app.conversation` conserve également cette adresse et son contrat Messenger
+complet. Conversation et tâche sont deux modes de la même identité agentique : son planner et ses
 interactions publient directement la notice initiale de planification, les questions et les
 autorisations. L'activation de chaque étape ne
-publie pas de message `Étape x/y` : la progression durable reste consultable sur la Task sans
+publie pas de message `Étape x/y` : la progression durable reste consultable sur la tâche sans
 polluer la conversation. Le résultat terminal est garanti par le lien conversationnel, indépendamment
 du Harness : après `SUCCESS`, il est envoyé si la trace ne prouve pas que ce même résultat a déjà été
 livré par Messenger ; après `ERROR`, une alerte est envoyée. Une livraison explicite réussie du même
 résultat classe la notification `SKIPPED`, tandis qu'un message de progression distinct ne la supprime pas.
 Les Process lancés par un round utilisent le même principe de notification durable sans recopier leur
-contenu dans une outbox. Pour une Task, la réclamation exige un lease libéré et une dernière tentative
+contenu dans une outbox. Pour une tâche, la réclamation exige un lease libéré et une dernière tentative
 terminale ; elle ignore donc les retries automatiques et les annulations. Une livraison ambiguë devient
 `UNKNOWN` et n'est pas rejouée. Un retry humain porte un numéro de tentative supérieur et réarme la
 projection terminale.
@@ -687,7 +687,7 @@ projection terminale.
 OneBot namespace ses rooms en `group:<id>` et `direct:<id>` avant d'entrer dans ce contrat. Les
 anciens IDs non préfixés restent interprétés comme des groupes pour permettre leur livraison, mais
 tout nouvel événement ou envoi direct conserve explicitement son kind. L'upgrade préfixe les
-anciens groupes persistés dans les Tasks, le journal, les interactions et les bindings
+anciens groupes persistés dans les tâches, le journal, les interactions et les bindings
 Hermès ; il ne tente pas d'inventer une room privée absente des anciens événements.
 
 ### Recherche et nouveau message vers un utilisateur
@@ -708,11 +708,11 @@ aucun rapprochement cross-canal ni canal préféré ; seule l'observation d'un m
 alimente la projection Memory. Les protocoles sans annuaire interrogeable, comme Telegram Bot ou
 WhatsApp Cloud, ne produisent pas de résultat tant qu'un cache technique dédié n'est pas défini.
 
-Pour un nouvel envoi, un canal explicitement demandé prime ; sinon la connexion exacte de la Task
+Pour un nouvel envoi, un canal explicitement demandé prime ; sinon la connexion exacte de la tâche
 (notamment celle du référent d'un Goal) ou de la conversation est conservée. Sans route fixée,
 le dernier message entrant du destinataire identifié exactement choisit le canal ; sans échange
 utilisable, le chat interne est le défaut, puis la plus ancienne connexion disponible. Un canal
-explicitement choisi ou fixé sur une Task qui devient indisponible échoue sans repli cross-canal.
+explicitement choisi ou fixé sur une tâche qui devient indisponible échoue sans repli cross-canal.
 La résolution précède l'autorisation et fige une connexion propre à chaque appel, réutilisée pour
 son effet ; les appels concurrents ne modifient pas les ressources communes du run. Messages,
 fichiers et notes vocales suivent cette sélection ; une note vocale exige une room récente sur le
@@ -787,7 +787,7 @@ subscriber entrant est encore en négociation : dès que la salutation est audib
 donc déjà opérationnelle.
 
 Chaque transcript validé crée un `ConversationRound` et un `AgentRunRequest(task_id=None)` : une
-intervention orale n'est donc pas une Task et n'apparaît pas en erreur quand l'utilisateur reprend
+intervention orale n'est donc pas une tâche et n'apparaît pas en erreur quand l'utilisateur reprend
 la parole. `conversation_round_messages` relie le round à ses messages d'entrée et de sortie ; ses
 deux FK sont en cascade, sans placer de FK conversationnelle dans le modèle Messenger.
 `conversation_round_id` corrèle le run agentique et ses appels LLM sans les rattacher à une tâche
@@ -802,7 +802,7 @@ Chaque commit VAD crée encore un `ConversationRound`, sans inventer de transcri
 textuel : l’audio est interprété directement par le modèle fournisseur. L'historique récent de la
 room est projeté comme transcript conversationnel non fiable au démarrage de chaque nouvel appel.
 La mémoire pertinente est injectée au démarrage, `memory_search` complète le contexte à la demande et
-`task_submit` crée une Task durable par le port agentique.
+`task_submit` crée une tâche durable par le port agentique.
 
 Après la conversation, Dream peut extraire progressivement les faits durables des tours terminés
 qui possèdent un `effective_objective` textuel. Cette extraction n'est jamais sur le chemin Voice.
@@ -865,17 +865,17 @@ l'approbation. Une interaction `PENDING` expirée reste dans l'audit et ne peut 
 salon ni son backlog de messages ; une interaction `PROCESSING` reste bloquante jusqu'à la reprise
 de son handler idempotent.
 Dans la rotation Dream, le classement d'un message réclamable précède toujours le classement d'une
-Task. Cette précédence ne réordonne pas les autres mécanismes entre eux et cesse dès que le
+Tâche. Cette précédence ne réordonne pas les autres mécanismes entre eux et cesse dès que le
 collecteur de messages ne trouve plus de sujet réclamable.
 
-Une Task lancée par un round reçoit immédiatement le Topic et le contact de ce round. L'outil de
+Une tâche lancée par un round reçoit immédiatement le Topic et le contact de ce round. L'outil de
 création relit la portée persistée au moment de l'effet pour couvrir un classement concurrent. Si
 le classement du message ou du tour Voice aboutit seulement après la création, son application met
-à jour la Task dérivée dans le même passage ; aucun tour Dream supplémentaire n'est réservé à un
-héritage de Task.
+à jour la tâche dérivée dans le même passage ; aucun tour Dream supplémentaire n'est réservé à un
+héritage de tâche.
 
 L'identité distante exacte observée à l'entrée est projetée en contact Memory puis copiée sur le
-message, le round et les Tasks dérivées. Les transports vocaux ne renseignent cette identité que
+message, le round et les tâches dérivées. Les transports vocaux ne renseignent cette identité que
 lorsqu'ils prouvent un unique participant distant. Plusieurs participants ou une identité absente
 laissent le contact nul et désactivent la capture de mémoire pour le tour, sans rapprochement
 heuristique entre plateformes.

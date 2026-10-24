@@ -32,8 +32,8 @@ et les contrats du corpus ; ils ne mesurent pas encore la réussite d'un modèle
 
 Les corpus `latency_corpus_fr.json` et `latency_corpus_en.json` contiennent chacun quatre
 cas de `conversation_executor` : calcul simple sans outil, recherche en Memory, lecture
-d'état d'une Task et admission simulée de Task. Toutes les données sont fictives.
-Les outils ont des réponses fixes, réinitialisées pour chaque observation ; aucune Task
+d'état d'une tâche et admission simulée de tâche. Toutes les données sont fictives.
+Les outils ont des réponses fixes, réinitialisées pour chaque observation ; aucune tâche
 réelle n'est créée. La recherche porte sur Memory, sans accès web.
 
 Dans le conteneur backend, prévisualiser puis importer chaque langue avec le même contrat

@@ -398,7 +398,7 @@ Un usage Vectoriel vide conserve le fonctionnement lexical sans aucun envoi d'em
 **Préférences → Dream** contrôle le scanner opportuniste, ses leases, ses reprises et le mode
 d'apprentissage.
 Le paramètre `ai.memory-extraction-system-prompt` règle le prompt complet de l’extracteur de
-souvenirs. Il s’applique aux Tasks, rounds texte et tours audio transcrits possédant déjà un Topic ;
+souvenirs. Il s’applique aux tâches, rounds texte et tours audio transcrits possédant déjà un Topic ;
 le Lab en copie la valeur à la création d’un dataset, puis laisse cette copie évoluer indépendamment.
 Le réglage **Création des dossiers thématiques** propose trois politiques : **Interdire** réutilise
 uniquement les dossiers existants, **Demander une autorisation** (valeur par défaut) envoie à
@@ -407,12 +407,12 @@ l'utilisateur d'origine un choix persistant entre création, réemploi et absenc
 réemploi. Une proposition sans conversation humaine exploitable n'est jamais créée implicitement.
 L’usage **Dream**, sélectionné dans **Modèles IA → Usages**, doit référencer un petit modèle texte.
 Sans modèle sélectionné, aucun sujet nécessitant une inférence n'est réclamé. Dream exécute un
-mécanisme à la fois, sans driver ni outil, cède la priorité aux Tasks et s'interrompt dès qu'une
+mécanisme à la fois, sans driver ni outil, cède la priorité aux tâches et s'interrompt dès qu'une
 conversation Voice commence.
 
 La page **Dream** montre en temps réel son état courant, le mécanisme et le sujet réclamés, la phase,
 les souvenirs créés, les reprises, les erreurs et le coût.
-Chaque témoin peut être ouvert pour consulter la Task source et la sortie structurée préparée. La
+Chaque témoin peut être ouvert pour consulter la tâche source et la sortie structurée préparée. La
 page est en lecture seule, exige `TASK_ACCESS` et ne rafraîchit ses données que lorsqu'elle est
 ouverte.
 
@@ -433,10 +433,10 @@ jamais à valider une entrée. Les trois privilèges sont `MEMORY_ACCESS`, `MEMO
 Les documents de travail Markdown utilisent le même stockage et les mêmes ACL, mais ne sont ni
 dédupliqués avec les souvenirs ordinaires, ni oubliés pour simple inactivité. Leur partage direct
 `read` ou `edit` est administré par le propriétaire et chaque révision conserve l’agent ainsi que
-la Task auteure lorsqu’elle existe.
+la tâche auteure lorsqu’elle existe.
 
-La page **Dossiers thématiques** administre les sujets globaux utilisés pour relier mémoire, Tasks
-et conversations indépendamment de leur canal. Dream classe d’abord les Tasks et tours Voice, puis
+La page **Dossiers thématiques** administre les sujets globaux utilisés pour relier mémoire, tâches
+et conversations indépendamment de leur canal. Dream classe d’abord les tâches et tours Voice, puis
 projette les liens mémoire. Une correction manuelle change l’affectation sans modifier les sources ;
 fusion et scission automatiques ne font pas partie du contrat actuel.
 
@@ -455,9 +455,9 @@ projection mémoire ; les cycles métier plus anciens restent inchangés dans l
 `DREAM_SKILL_LEARNING_MODE` vaut `off`, `observe` ou `learn` et reste `off` par défaut. `observe`
 conserve les preuves et propositions dans les reçus Dream sans modifier les compétences ; `learn`
 crée, renforce, révise ou affaiblit des candidates propres à l'agent. Dream parcourt aussi toutes
-les Tasks terminales historiques, de manière progressive et idempotente, une opération par
+les tâches terminales historiques, de manière progressive et idempotente, une opération par
 passage. Une candidate devient une compétence injectable en plus des compétences affectées lorsque le nombre
-de Tasks distinctes confirmant la même procédure atteint `DREAM_SKILL_MIN_EVIDENCE` (3 par défaut)
+de tâches distinctes confirmant la même procédure atteint `DREAM_SKILL_MIN_EVIDENCE` (3 par défaut)
 et que sa note atteint `DREAM_SKILL_ACTIVATION_SCORE`, dans la limite de
 `DREAM_SKILL_MAX_ACTIVE`. Ces seuils sont paramétrables dans **Préférences → Dream**. La page
 **Compétences → Auto-apprises**, masquée lorsque le mode vaut `off`, expose score, preuves et état
@@ -522,7 +522,7 @@ depuis leurs sources canoniques avec :
 make rebuild-memory-links
 ```
 
-La commande ne crée aucun lien tant qu'une Task ou session Voice portant une provenance mémoire
+La commande ne crée aucun lien tant qu'une tâche ou session Voice portant une provenance mémoire
 n'a pas encore de dossier thématique. Elle remet en attente les classifications épuisées : laissez
 alors Dream terminer les classements, puis relancez la commande. Elle reconstruit les liens
 `cycle_of`, `result_of` et `topic_contains`; les liens manuels ou issus d'une décision de
@@ -603,10 +603,10 @@ déjà publié ne peut pas changer de fournisseur. Voir la [décision 0180](../.
 | Exécuteur | exécution `standard` du harnais interne |
 | Exécuteur high | exécution `high`, utilisant l’exécuteur standard du même profil lorsque high n’est pas configuré |
 | Conversation | réponses rapides du control plane des conversations texte |
-| Dispatcher | choix `EXEC`/`PLAN` et effort des Tasks ; il n’exécute pas les conversations |
+| Dispatcher | choix `EXEC`/`PLAN` et effort des tâches ; il n’exécute pas les conversations |
 | Planner | création de plans et synthèse finale |
 | Goal | jugement et suivi des cycles de Goals |
-| Lab | analyse de Tasks, proposition de références, jugement et analyse des benchmarks du Lab IA |
+| Lab | analyse de tâches, proposition de références, jugement et analyse des benchmarks du Lab IA |
 | Dream | classement, extraction et apprentissage Dream |
 | Vectoriel | embeddings de mémoire |
 | Vision | analyse d’images |
@@ -626,7 +626,7 @@ Sélectionnez l’usage **Lab** dans **Fournisseurs & modèles → Usages**. Le 
 capacité `chat` et produire de façon fiable les sorties structurées demandées. Il remplit quatre
 rôles volontairement centralisés :
 
-- analyser les preuves d’une Task ;
+- analyser les preuves d’une tâche ;
 - proposer une sortie de référence éditable ;
 - juger chaque dimension sémantique d’un benchmark ;
 - produire le rapport Markdown d’un run terminal.
@@ -639,7 +639,7 @@ Choisissez un modèle suffisamment puissant pour juger les modèles candidats. S
 chaque cas : un benchmark générique appelle normalement une fois le candidat et une fois le juge,
 puis une analyse facultative effectue un appel supplémentaire pour le run. Les contenus des cas
 sont transmis au fournisseur du modèle du Lab ; appliquez la même politique de confidentialité que
-pour les Tasks métier.
+pour les tâches métier.
 
 Lancer le même modèle comme candidat et juge est autorisé mais augmente le risque d’auto-préférence.
 Avant d’utiliser les scores comme garde de livraison, calibrez le juge sur des sorties notées par
@@ -742,7 +742,7 @@ fiche puis son onglet **Hermès** ; un bandeau rappelle ce chemin dans les préf
 Chaque agent Hermès possède une instance, un volume et un conteneur `<agent.code>-agent` propres.
 Le harness manager générique est seulement le plan de contrôle de ces instances et n’exécute
 aucune CLI Hermès. Le transport Kanban historique est explicitement refusé et n’est plus utilisé
-pour une nouvelle Task `high`.
+pour une nouvelle tâche `high`.
 
 Les fichiers de conversation conservent leur URI provider et ne passent pas par l’API de fichiers
 Hermès limitée à 100 Mio. Les consommateurs compatibles les lisent via `file_share` et les
@@ -774,8 +774,8 @@ Chaque agent Hermès possède un réglage **Utiliser un LLM fourni par Galaris**
 | activé, valeur par défaut | Galaris injecte son endpoint OpenAI, le modèle sélectionné et un jeton limité dans `config.yaml` et `data/.env` | appels LLM, outils observés par le proxy, coûts et erreurs sont tracés |
 | désactivé | les sections LLM de `config.yaml`, les clés de `data/.env` et les variables Docker Compose restent gérées par Hermès | les runs restent visibles, mais pas les appels LLM ni leur coût détaillé |
 
-En mode LLM Galaris, le contexte du run transporte les identifiants de Task, de run et de modèle :
-les appels restent donc rattachés à la bonne Task même si une autre exécution du même agent existe.
+En mode LLM Galaris, le contexte du run transporte les identifiants de tâche, de run et de modèle :
+les appels restent donc rattachés à la bonne tâche même si une autre exécution du même agent existe.
 Lorsque le LLM est configuré directement dans Hermès, cette trace détaillée demeure indisponible.
 
 Lors du passage au LLM configuré directement dans Hermès, la synchronisation retire uniquement
@@ -800,7 +800,7 @@ les quotas LLM et la charge des outils. Une lease trop courte peut rendre une ac
 récupérable alors qu’elle travaille encore ; une lease trop longue retarde la reprise après
 un crash. Les changements s’appliquent aux nouvelles actions sans redémarrer le backend.
 
-Le Dispatcher ne traite que les Tasks et ne produit que `EXEC` ou `PLAN`. Les échanges courts
+Le Dispatcher ne traite que les tâches et ne produit que `EXEC` ou `PLAN`. Les échanges courts
 utilisent le control plane conversationnel avec le modèle Conversation du profil effectif, ses limites
 d’agrégation et une garde de réponse IA→IA fondée sur une requête fraîche. Pour diagnostiquer une
 boucle, inspectez les rounds de conversation plutôt que les résultats du Dispatcher.
@@ -861,7 +861,7 @@ connexion inactive ni un privilège absent. Utilisez le diagnostic de connexion 
 
 ### Conversations et voix temps réel
 
-Galaris possède trois profils de prompt d’exécuteur : Task, conversation texte et voix. Leur
+Galaris possède trois profils de prompt d’exécuteur : tâche, conversation texte et voix. Leur
 suffixe administrable se règle dans **Préférences** avec `ai.executor-system-prompt`,
 `ai.conversation-executor-system-prompt` et `ai.voice-executor-system-prompt`; le reste de l’arbre
 JSON est construit par le code. Les jeux de données du Lab reprennent les mêmes catégories,
@@ -885,7 +885,7 @@ tour audio natif et ses appels de fonctions plutôt que d’attendre un texte in
 ### Navigateur agentique isolé
 
 La connexion intégrée **Navigateur** se configure agent par agent.
-Le sidecar `browser-executor` héberge Chromium, mais chaque couple agent/Task reçoit un
+Le sidecar `browser-executor` héberge Chromium, mais chaque couple agent/tâche reçoit un
 `BrowserContext` privé et éphémère. Les sessions expirent automatiquement et sont fermées lors de
 l’annulation du run.
 

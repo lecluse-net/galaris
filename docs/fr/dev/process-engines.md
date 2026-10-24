@@ -25,7 +25,7 @@ Une réponse HTTP perdue ne prouve pas que le traitement n'a pas commencé.
 ## 2. Responsabilités et identités
 
 `app.process` possède les définitions, runs, événements, jobs de démarrage, transitions,
-attentes de Tasks et rétention. Le bridge possède la traduction du protocole externe,
+attentes de tâches et rétention. Le bridge possède la traduction du protocole externe,
 l'authentification distante, la validation métier et la normalisation des résultats.
 Il ne crée pas un second état canonique et ne modifie pas directement les tables Process.
 
@@ -378,7 +378,7 @@ Les délais, limites de réponse et diagnostics doivent être bornés dans le cl
 La matrice effective figure dans [les machines d'état](../architecture/state-machines.md)
 et `process_service.TRANSITIONS`. Un callback peut terminer le run avant la réponse du
 POST initial ; le worker conserve ce terminal. Le polling récupère son état sous verrou
-après l'appel distant. La fin résout l'éventuelle Task d'attente, avec reprise idempotente
+après l'appel distant. La fin résout l'éventuelle tâche d'attente, avec reprise idempotente
 de cette résolution.
 
 Un service peut envoyer `POST /api/processes/runs/{UUID}/events` avec
@@ -410,7 +410,7 @@ Une annulation d'un job encore non soumis peut être locale. Sinon, le moteur re
 demande ; une acceptation HTTP d'arrêt n'est pas une preuve d'arrêt physique.
 Si l'annulation est indisponible, le socle ordinaire peut marquer le run localement
 `cancelled` avec `remote_may_continue=true`. Les opérations intégrées peuvent refuser
-cette annulation et conserver le suivi. Un remplacement de Task reste bloqué tant que
+cette annulation et conserver le suivi. Un remplacement de tâche reste bloqué tant que
 l'arrêt distant reste incertain. Voir [le flux Process](../architecture/flows/process.md).
 
 ## 8. Fichiers et provenance
@@ -448,7 +448,7 @@ garantir que le job appartient à l'opération et au périmètre attendus.
 | Isolation | Agent affecté autorisé, autre agent refusé ; découverte et lecture sans fuite. |
 | Validation avant effet | Entrée, fichier ou opération invalide : aucun POST distant. |
 | Déduplication distante | Même corrélation, soumissions concurrentes et réponse perdue : un seul effet métier. |
-| Reprise | Redémarrer le worker après soumission, avant reçu local et après terminal avant reprise de Task. |
+| Reprise | Redémarrer le worker après soumission, avant reçu local et après terminal avant reprise de tâche. |
 | Ordre des événements | Callback terminal avant réponse de départ ; redelivery ; observation tardive sans mutation du terminal. |
 | Observation dégradée | Timeout, 429, réponse invalide, panne prolongée puis retour : aucune réussite ni erreur métier inventée. |
 | Annulation | Job non soumis, demande distante en attente, arrêt confirmé, API indisponible et fin concurrente. |

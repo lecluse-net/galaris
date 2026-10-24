@@ -88,7 +88,7 @@ Avant enregistrement, les droits, le responsable, le profil et la révision de l
 sont revérifiés. Une erreur fournisseur, une révocation ou une modification concurrente
 conserve l'état courant ; la fonction ne resoumet pas automatiquement la génération.
 DbAdmin purge les anciennes définitions `agent_admin:<agent>:avatar` et leurs exécutions,
-jobs et événements, après résolution de leurs éventuelles Tasks d'attente.
+jobs et événements, après résolution de leurs éventuelles tâches d'attente.
 
 `agent_avatar_set` lit une URI canonique autorisée avec `app.file_share` dans un temporaire
 borné, ensuite nettoyé. Upload, URI et génération partagent le décodage réel JPEG/PNG/GIF/WebP,

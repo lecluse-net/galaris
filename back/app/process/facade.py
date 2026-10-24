@@ -135,3 +135,30 @@ async def run_evidence(identity: UUID, actor: int | AgentManagementScope) -> dic
 async def stop_run(identity: UUID, actor: int | AgentManagementScope) -> None:
     await native_runs.require_run(identity, actor, control=True)
     await process_service.cancel_run(identity)
+
+
+async def is_activity_inference_agent(run_id: UUID, agent_id: int, correlation_ref: str | None) -> bool:
+    """A delegated IF call must identify its real, admitted Process activity."""
+    from .models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun
+
+    run = await get_db().get(ProcessRun, run_id)
+    if run is None:
+        return False
+    if correlation_ref is None or not correlation_ref.startswith("process-attempt:"):
+        return False
+    try:
+        identity = UUID(correlation_ref.removeprefix("process-attempt:"))
+    except ValueError:
+        return False
+    attempt = await get_db().get(ProcessNodeAttempt, identity)
+    occurrence = await get_db().get(ProcessNodeRun, attempt.node_run_id) if attempt else None
+    if (attempt is None or occurrence is None or occurrence.run_id != run.id
+            or attempt.status != "llm_waiting" or attempt.task_id is not None):
+        return False
+    from .native_engine import local_graph
+    from .native_actors import execution_agent
+    from .llm_decisions import simple_llm
+
+    graph = local_graph(run, occurrence)
+    node = graph.node(occurrence.node_key)
+    return node.kind == "if" and simple_llm(node) and execution_agent(graph, node, run.launcher_agent_id) == agent_id

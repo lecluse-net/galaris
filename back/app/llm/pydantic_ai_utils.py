@@ -149,6 +149,9 @@ class _InternalLLMTransport(httpx2.AsyncBaseTransport):
         try:
             from .call_capture import text_call_capture
 
+            capture = text_call_capture.get()
+            if capture is not None and capture.request.get("process_run_id") is not None:
+                options["process_run_id"] = UUID(str(capture.request["process_run_id"]))
             chat = proxy_chat_completion
             responses = proxy_responses
             if self._durable and text_call_capture.get() is None:

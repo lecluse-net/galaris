@@ -3,7 +3,7 @@
 # Tool Calendar et iCalendar
 
 `bridge.calendar` adapte des ressources iCalendar HTTPS au catalogue `app.tools`, aux
-connexions d’agents, aux Tasks et aux Process de Galaris. Le Tool intégré `calendar` est toujours
+connexions d’agents, aux tâches et aux Process de Galaris. Le Tool intégré `calendar` est toujours
 présent dans le catalogue, mais il n’est jamais connecté automatiquement : un administrateur crée
 explicitement une connexion Calendar pour l’agent depuis l’écran **Outils > Connexions**.
 
@@ -12,7 +12,7 @@ explicitement une connexion Calendar pour l’agent depuis l’écran **Outils >
 Une connexion Calendar possède les préférences générales de recherche de créneaux : fuseau IANA,
 début et fin de journée de travail et pas de recherche. La même modale permet ensuite d’ajouter une
 ou plusieurs ressources `CalendarFeed`. Chaque ressource indique son propriétaire humain, son mode
-`read` ou `write`, les déclencheurs actifs et l’action Task ou Process choisie.
+`read` ou `write`, les déclencheurs actifs et l’action tâche ou Process choisie.
 
 Chaque `CalendarFeed` référence réellement sa `Connection`. Supprimer la connexion supprime donc sa
 configuration calendrier ; désactiver la connexion retire immédiatement les fonctions MCP et exclut
@@ -36,11 +36,11 @@ Le scheduler durable d’`app.task` héberge `calendar-sync` avec un intervalle 
 3. les débuts d’événement et notifications dans la fenêtre depuis le contrôle précédent produisent
    une empreinte stable ;
 4. la contrainte unique `(calendar_id, fingerprint)` crée un seul `CalendarTrigger` ;
-5. le bridge soumet une Task via la façade publique d’`app.agent`, ou lance le Process affecté à
+5. le bridge soumet une tâche via la façade publique d’`app.agent`, ou lance le Process affecté à
    l’agent via `app.process` avec une clé d’idempotence dérivée de l’empreinte.
 
 La reprise après indisponibilité relit au plus sept jours. Le texte du calendrier est toujours marqué
-comme contenu externe non fiable dans les Tasks et les outils MCP.
+comme contenu externe non fiable dans les tâches et les outils MCP.
 
 ## Fonctions MCP
 

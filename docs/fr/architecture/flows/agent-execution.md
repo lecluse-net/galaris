@@ -24,7 +24,7 @@ natifs d'autorisation et de fraîcheur restent appliqués.
 
 ## Organisation du travail
 
-Pour une Task, le Dispatcher choisit `direct`, `tracked` ou `clarify` dans son inférence
+Pour une tâche, le Dispatcher choisit `direct`, `tracked` ou `clarify` dans son inférence
 de routage existante. Une action simple reste directe. Une mission longue ou complexe
 prépare sa méthode et conserve ses jalons via `task_work_update`, même lorsqu'un seul
 exécutant garde la responsabilité du livrable. Les résultats indépendants restent coordonnés
@@ -39,7 +39,7 @@ des jalons reste déclarative : elle ne remplace pas la vérification des ressou
 résultat terminal. Voir [0171](../../../../project/decisions/0171-adaptive-task-organization.md).
 
 Le harnais interne applique la politique `runtime.yaml` des compétences effectivement
-attribuées : `loading: eager` les charge dès la première requête en Task, conversation texte
+attribuées : `loading: eager` les charge dès la première requête en tâche, conversation texte
 et voix par tours ; le défaut reste à la demande dans ces trois contextes. Le catalogue
 différé permet de découvrir les compétences attribuées pendant une conversation.
 Les outils gardent leurs propres droits et restrictions.
@@ -49,7 +49,7 @@ marqueur d'installation de l'agent. Voir le [parcours de connaissance produit](.
 
 Avant chaque nouvelle exécution, la façade vérifie la révision des compétences du
 provider sélectionné. Un changement de contenu ou d'autorisation est projeté avant
-le démarrage du driver, sans interrompre une Task en cours. Le reçu est invalidé
+le démarrage du driver, sans interrompre une tâche en cours. Le reçu est invalidé
 avant copie et une erreur empêche l'exécution avec une projection périmée. Les
 demandes de rafraîchissement sont persistées, indépendamment de l'interface ; le
 statut du runtime expose l'état des compétences. Une reprise avec checkpoint conserve
@@ -73,7 +73,7 @@ Un réessai explicite est négocié via `DriverCheckpointRetryPolicy`. Un checkp
 conserve son driver et son identité runtime ; `None` demande une nouvelle opération d'inférence.
 Les harnais réseau gérés choisissent toujours une nouvelle opération : la façade archive le
 checkpoint précédent, efface l'identité active et les approbations périmées, et conserve la
-Task et l'historique des tentatives. Le driver révoque l'ancienne autorité et confirme l'arrêt
+Tâche et l'historique des tentatives. Le driver révoque l'ancienne autorité et confirme l'arrêt
 ou l'absence de l'acteur avant d'émettre une nouvelle autorité et de soumettre les mêmes
 objectif et paramètres. Des observations d'outils précédentes, bornées, renseignent la nouvelle
 inférence sur les effets existants. Le harnais interne conserve son journal d'effets.
@@ -99,7 +99,7 @@ Voir [0139](../../../../project/decisions/0139-provider-output-capacity.md).
 Les modèles internes Chat/Responses traversent la façade d’inférence durable de `app.llm`.
 Le Dispatcher utilise aussi l’adaptateur structuré, avec son schéma et contexte
 de validation figés. L’admission est committée avant le départ du worker ; ses leases,
-événements et résultats ne remplacent ni les tentatives Task ni les checkpoints d’outils.
+événements et résultats ne remplacent ni les tentatives tâche ni les checkpoints d’outils.
 `LLMCall` reste la source des coûts des appels physiques. Le pilote d’extraction Memory du Lab
 utilise le même journal tout en gardant ses retries métier.
 
@@ -136,7 +136,7 @@ ce délai. Sans résultat terminal à l’échéance, le transport est fermé et
 en erreur ; l’inférence durable termine en échec en conservant son journal et ses coûts.
 Les appels de décision natifs respectent également cette limite et leurs délais plus courts.
 Un résultat terminal déjà reçu reste terminal même si la fin du transport tarde.
-Chaque nouvel appel reçoit son propre budget ; la durée totale d’une Task n’est pas bornée.
+Chaque nouvel appel reçoit son propre budget ; la durée totale d’une tâche n’est pas bornée.
 
 Le proxy Responses complète uniquement le suffixe manquant des arguments d’une fonction
 depuis `response.function_call_arguments.done` ou `response.output_item.done`, avant de
@@ -146,10 +146,10 @@ le flux avant l’outil. La trace et le modèle consomment les mêmes arguments 
 
 ## Activité des tâches et provenance
 
-Les inférences et les files Task/Conversation sont réveillées après commit. Le suivi interne
+Les inférences et les files tâche/Conversation sont réveillées après commit. Le suivi interne
 et Chat/Responses attendent les nouveaux événements par curseur ; pause et arrêt réveillent
 l'exécuteur sans attendre le renouvellement de son bail (5 secondes). Les réconciliations de
-secours restent espacées de 30 secondes pour LLM/Conversation et 15 secondes pour Task,
+secours restent espacées de 30 secondes pour LLM/Conversation et 15 secondes pour tâche,
 avec réveil anticipé pour les retries persistés. Les maintenances gardent leur propre cadence.
 Voir [0145](../../../../project/decisions/0145-committed-runtime-wakeups.md) pour les producteurs,
 les garanties de transaction et les limites du transport local mono-worker.
@@ -164,12 +164,12 @@ Le harnais interne rend les erreurs d’outil au modèle sous forme structurée,
 lorsque leur effet reste incertain. Le modèle décide de vérifier, corriger, poursuivre
 ou arrêter. Le checkpoint v5 conserve séparément ces erreurs acquittées et les appels
 interrompus sans réponse ; le stream continue de signaler un échec d’outil sans en faire
-automatiquement un échec de Task. Voir [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
+automatiquement un échec de tâche. Voir [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
 
 Les refus de périmètre conservent leur décision `clarify` ou `deny` dans la preuve native MCP
 et le checkpoint. Le résultat destiné au modèle porte un code `execution_scope_*` et
 `retryable=false` : changer d'arguments ou d'outil ne résout pas ce refus. Une cible absente
-requiert un amendement explicite de la Task racine ; un périmètre périmé impose sa relecture
+requiert un amendement explicite de la tâche racine ; un périmètre périmé impose sa relecture
 et une replanification. Le modèle peut poursuivre le travail indépendant autorisé ou signaler
 `BLOCKED`. Aucun droit n'est ajouté depuis le plan et aucune attente humaine n'est créée
 automatiquement par ce diagnostic.
@@ -177,7 +177,7 @@ automatiquement par ce diagnostic.
 Une demande d’autorisation suspend l’appel avant effet. Le checkpoint v5 conserve les requêtes
 différées Pydantic AI et leur identité ; l’accord reprend cet appel sans nouvelle décision du
 modèle. Le résultat v2 expose `waiting_for_authorization` et les UUIDs exacts. La tentative
-Task libère son lease pendant l’attente ; les rounds texte et voix exposent aussi cette
+Tâche libère son lease pendant l’attente ; les rounds texte et voix exposent aussi cette
 disposition. Les harnais gérés conservent leurs callbacks dans un acteur runtime et valident
 le protocole d’autorisation avant de démarrer un ancien SDK. Une issue inconnue interdit le
 rejeu automatique. Le résultat est sérialisé en mode JSON avant écriture JSONB, y compris
@@ -215,7 +215,7 @@ pause demandée ou acquittée, attentes, dernière tentative et prochaine repris
 également cette activité pour les tâches actives et terminales. Le résultat terminal reste
 autoritaire, et la façade rejette les événements tardifs avant leur publication.
 
-Les conversations affichent les fragments de texte immédiatement. Les vues Task attendent
+Les conversations affichent les fragments de texte immédiatement. Les vues tâche attendent
 la clôture des blocs (`AIMessage.stream_complete`) pour afficher leur texte ou réflexion ;
 les états et résultats d'outils restent actualisés pendant l'exécution. Les anciens drivers
 sans marqueur attendent l'opération suivante ou le résultat terminal, et les vues par appels
@@ -225,14 +225,14 @@ checkpoints. Voir [0087](../../../../project/decisions/0087-task-activity-snapsh
 Le checkpoint visuel `TaskAttempt.data.live_activity` est limité à 40 messages de 4 000 caractères,
 sans prompts. Les arguments et retours structurés d’outils disposent chacun d’un aperçu de
 4 000 octets maximum, avec masquage des clés de secrets et indication de troncature. Le flux
-Task autorisé conserve les mêmes détails, y compris à la reconnexion. Une écriture JSONB indépendante préserve les reçus
+Tâche autorisé conserve les mêmes détails, y compris à la reconnexion. Une écriture JSONB indépendante préserve les reçus
 et checkpoints d’effets. Le harnais personnalisé peut sélectionner les appels LLM corrélés avec
 `streams_ai_messages=false` ; les harnais intégrés conservent leurs messages natifs. Le frontend
 signale la limite de 500 appels chargés et n’additionne pas les deux sources.
 
 La fiche montre la demande initiale conservée à l’admission des nouvelles tâches, la provenance
 et les ressources/reçus enregistrés. Les tâches historiques ne sont pas rétroactivement réécrites.
-La fiche tâche et le détail du round affichent aussi le démarrage initial des Tasks créées par
+La fiche tâche et le détail du round affichent aussi le démarrage initial des tâches créées par
 la conversation : préparation de l’objectif, admission après préparation et borne maximale
 d’attente avant la première prise en charge. `Task.data._startup_timing` conserve les trois
 horodatages UTC observés ; `TaskAttempt.data.claimed_at` conserve l’heure réelle de prise en
@@ -251,9 +251,9 @@ Elle ne fabrique pas une heure de claim depuis `created_at` ou `updated_at`. Les
 les intervalles disponibles avec leur source plutôt que des cases « non mesuré ». Les requêtes
 sont groupées sur les seules tâches autorisées. Les appels servent également à mesurer la
 première sortie utile : texte non vide ou outil observé dans le journal, hors raisonnement
-et décisions internes. Task et Conversation séparent le temps dans les appels LLM et les
+et décisions internes. Tâche et Conversation séparent le temps dans les appels LLM et les
 intervalles non attribués entre appels ; les appels simultanés comptent une seule fois.
-Les Task ajoutent le délai depuis leur admission et leur première prise en charge. Sans
+Les tâche ajoutent le délai depuis leur admission et leur première prise en charge. Sans
 journal ou fin d'appel probante, la mesure concernée reste inconnue. Ces temps serveur ne
 mesurent ni le rendu client ni la livraison au destinataire.
 Voir la [décision 0087](../../../../project/decisions/0087-task-activity-snapshots.md) pour les bornes,
@@ -263,7 +263,7 @@ la réhydratation et la distinction avec le futur contrôle générique des effe
 
 Une connexion `openai-codex` représente un abonnement personnel et désigne son titulaire dans
 Galaris. Avant tout transport, la façade LLM recoupe ce titulaire avec le requester durable de la
-Task et de sa lignée. Un Goal fige le requester de son référent lors de sa configuration et le
+Tâche et de sa lignée. Un Goal fige le requester de son référent lors de sa configuration et le
 transmet à chaque cycle. Les enfants, délégations, Processes et harnais conservent ainsi la
 même autorité sans accepter un identifiant déclaré par le runtime. Sur une instance
 mono-utilisateur, les travaux internes sans auteur explicite peuvent revenir au seul titulaire ;
@@ -271,7 +271,7 @@ ce repli ne s’applique jamais aux origines Messenger.
 
 Ce flux explique le chemin commun d’une tâche, indépendamment du runtime concret. Le control plane
 texte de `app.conversation` possède un contrôleur interne distinct ; les conversations vocales
-temps réel conservent leur chemin spécifique sans Task.
+temps réel conservent leur chemin spécifique sans tâche.
 
 ```text
 Task PostgreSQL ── app.task scheduler/agent_adapter ──► AgentTaskPort
@@ -313,7 +313,7 @@ Task PostgreSQL ── app.task scheduler/agent_adapter ──► AgentTaskPort
 | Driver disponible et descripteur | registre `app.agent` |
 | Route EXEC/PLAN et effort | dispatcher `app.agent` borné par la politique du harnais sélectionné |
 | Activation du planner | `DriverPipelinePolicy` |
-| Tous les usages LLM | niveau texte ou colonne spécialisée du profil effectif, sauf surcharge durable de raisonnement portée par la Task |
+| Tous les usages LLM | niveau texte ou colonne spécialisée du profil effectif, sauf surcharge durable de raisonnement portée par la tâche |
 | Modèle standard/high | resolver `app.agent`, une fois par run |
 | Adaptateur direct ou Kanban interne à Hermès | `bridge.hermes.driver` |
 | Session conversationnelle | projection du journal `app.messenger` |
@@ -331,25 +331,25 @@ Task PostgreSQL ── app.task scheduler/agent_adapter ──► AgentTaskPort
 `app.task` ne choisit ni le driver, ni le modèle, ni l’activation des aides. Un driver ne
 recalcule pas ces décisions après réception de l’`AgentRunRequest`.
 Le driver Hermès refuse tout `AgentRunRequest` sans `task_id` : les rounds conversationnels et
-vocaux sans Task sélectionnent explicitement le harnais interne avant l’appel d’un driver.
+vocaux sans tâche sélectionnent explicitement le harnais interne avant l’appel d’un driver.
 Le proxy LLM applique le même invariant aux requêtes authentifiées d'un runtime géré. Le handshake
-MCP reste autorisé avant une Task, car le client Hermès s'initialise au démarrage du conteneur ; la
-Task active est injectée dans le contexte des requêtes d'outils. Les jetons MCP créés explicitement
+MCP reste autorisé avant une tâche, car le client Hermès s'initialise au démarrage du conteneur ; la
+Tâche active est injectée dans le contexte des requêtes d'outils. Les jetons MCP créés explicitement
 par un utilisateur conservent leur contrat générique.
-Une corrélation implicite par seul `agent_id` n'est acceptée que lorsqu'une unique Task est active.
+Une corrélation implicite par seul `agent_id` n'est acceptée que lorsqu'une unique tâche est active.
 Le gateway consulte d'abord le registre local du run, puis l'unique lease durable de cet agent afin
 que la corrélation reste valable derrière plusieurs workers HTTP. Plusieurs correspondances font
 échouer cette voie fermée. Chaque provider de Harness externe déclare donc actuellement
 `max_parallel_tasks=1`; le scheduler vérifie cette limite sous le verrou transactionnel de l'agent
 en comptant les leases non expirés. Le harnais interne expose `max_parallel_tasks=null` et peut
-exécuter plusieurs Tasks du même agent, car chacune transporte explicitement `task_id` et
+exécuter plusieurs tâches du même agent, car chacune transporte explicitement `task_id` et
 `agent_run_id`. Le service LLM résout en plus la tentative active et redérive le round depuis la
-Task. Un Harness n'exécute jamais un round conversationnel et ne transporte donc jamais de
+Tâche. Un Harness n'exécute jamais un round conversationnel et ne transporte donc jamais de
 `conversation_round_id` : les conversations texte et voix utilisent exclusivement leur contrôleur
 interne dédié.
 Les appels bas niveau du contrôleur conversationnel interne conservent en revanche leur corrélation
 `agent_id` pour l'audit sans devenir des exécutions de Harness ni des requêtes de runtime managé :
-un round conversationnel ou vocal sans Task reste donc autorisé quel que soit le driver configuré
+un round conversationnel ou vocal sans tâche reste donc autorisé quel que soit le driver configuré
 sur l'agent. La configuration
 opérateur d'Hermès est possédée par `/api/hermes/configurations` et n'est plus exposée par le CRUD
 Agent générique. Sa présentation reste une contribution de `front/bridge/hermes` à l'onglet de la
@@ -383,7 +383,7 @@ runtime `AgentHarness`. L'activation rend une carte sélectionnable sans la masq
 inactive. Une configuration OpenAI Messages, son secret et son modèle sont saisis uniquement sur
 sa page de catalogue, jamais dans la fiche Agent. Désactiver une carte ou supprimer une
 configuration OpenAI Messages détruit les runtimes affectés puis repasse leurs agents sur le
-harnais interne ; l'opération reste interdite pendant une Task non terminale.
+harnais interne ; l'opération reste interdite pendant une tâche non terminale.
 
 Modifier un agent ne provisionne jamais un conteneur. Un changement de Harness persiste d'abord
 la nouvelle préférence, marque son runtime `absent` et détruit l'ancien runtime en arrière-plan
@@ -394,9 +394,9 @@ d'instance `<agent.code>` et l'unique nom de conteneur `<agent.code>-agent`, ind
 Harness sélectionné. Les configurations OpenAI Messages non conteneurisées deviennent directement
 `ready` puisqu'elles ne possèdent aucun runtime local à construire.
 
-La fiche Agent inspecte les Tasks racines non terminales avant ce changement. Lorsqu'elles sont
+La fiche Agent inspecte les tâches racines non terminales avant ce changement. Lorsqu'elles sont
 en pause, elle les nomme, explique qu'une terminaison forcée les marquera en erreur et demande une
-confirmation explicite avant d'exécuter cette commande puis de reprendre la sauvegarde. Les Tasks
+confirmation explicite avant d'exécuter cette commande puis de reprendre la sauvegarde. Les tâches
 actives ne sont jamais terminées automatiquement ; elles restent signalées comme bloqueurs jusqu'à
 leur fin.
 
@@ -430,7 +430,7 @@ leur fin.
    signifie « automatique ». La valeur historique `minimal` est normalisée en `low` et n’est plus
    émise. Les bridges et harnesses gérés adaptent cette échelle lorsque leur runtime emploie des
    niveaux différents.
-   Une Task peut toutefois porter un `reasoning_effort_override` explicite, choisi à l’admission
+   Une tâche peut toutefois porter un `reasoning_effort_override` explicite, choisi à l’admission
    Chat avec `@effort`. Cette commande implique directement `@task`, tandis que `@task` seul
    conserve l’effort de raisonnement du profil. Les deux tags de contrôle sont retirés du texte
    visible et leur intention est transportée dans les métadonnées serveur. La valeur durable a
@@ -441,7 +441,7 @@ leur fin.
    Une fois `PLAN` sélectionné — automatiquement pour plusieurs unités réellement décomposables ou
    explicitement par le créateur — le planner produit le squelette du plan en une seule passe.
    Il privilégie une séquence complète répétée par élément indépendant : chaque fichier à traiter
-   reçoit une Task qui lit, transforme, écrit, vérifie et consigne son résultat. Une tâche cohérente
+   reçoit une tâche qui lit, transforme, écrit, vérifie et consigne son résultat. Une tâche cohérente
    unique reste une feuille, même complexe ou explicitement en PLAN ; ses phases, chapitres,
    composants et fichiers d'implémentation ne sont pas des unités autonomes. Le forçage PLAN
    change l'orchestration, jamais le résultat demandé en simple rédaction d'un plan.
@@ -449,8 +449,8 @@ leur fin.
    pour des opérations triviales et déterministes avec vérification simple du lot, sans découverte.
    Le travail substantiel par élément (`substantial` par défaut), les lots plus grands ou de
    taille inconnue exigent une décomposition. Cette règle ne modifie pas l'activation de PLAN.
-   Pour les collections, une Task de découverte prépare un inventaire Dataset complet et borné.
-   Le serveur vérifie son reçu et ses ACL, fige les éléments et développe une Task par élément,
+   Pour les collections, une tâche de découverte prépare un inventaire Dataset complet et borné.
+   Le serveur vérifie son reçu et ses ACL, fige les éléments et développe une tâche par élément,
    par vagues limitées. Les workspaces et leurs documents restent séquentiels : l'ordre demandé
    ne justifie jamais de fusionner une collection entière dans une feuille. Réessayer conserve
    les succès, l'inventaire et les journaux d'effets, puis reprend l'élément en échec.
@@ -468,39 +468,39 @@ leur fin.
 5. Les providers enregistrés composent la session, le contexte partagé et leurs métadonnées. Le
    contexte Messenger est figé à la position du message déclencheur et hérité par chaque feuille du
    plan ; les messages plus récents ne peuvent donc pas modifier rétroactivement une exécution déjà
-   admise. Le journal canonique reste la source de vérité. Une Task issue du control plane
+   admise. Le journal canonique reste la source de vérité. Une tâche issue du control plane
    conversationnel conserve le message déclencheur et ses métadonnées serveur dans `Task.data`,
    mais ne duplique plus l'historique complet dans `Task.messages`. Si l'admission a déjà produit
    un objectif autonome, le dispatcher reçoit directement ce libellé et cet objectif ; les
    providers ne relisent plus la session Messenger, Memory ou la continuité historique consommées
    par cet appel. Le contexte de salon et d'interlocuteur reste déterministe dans `Task.data` et
    `messaging_context`, tandis que le Working Set et les apports du plan et du harnais
-   peuvent encore enrichir le travail courant. Pour les autres Tasks, le provider Memory reçoit des
+   peuvent encore enrichir le travail courant. Pour les autres tâches, le provider Memory reçoit des
    identifiants structurés afin qu'un nom inclus dans la requête ne serve jamais de frontière d'identité. Pour
-   une Task humaine, le rappel réunit les mémoires non conversationnelles et celles du contact
-   courant, tout en excluant celles des autres contacts ; le Topic assigné à la Task est
+   une tâche humaine, le rappel réunit les mémoires non conversationnelles et celles du contact
+   courant, tout en excluant celles des autres contacts ; le Topic assigné à la tâche est
    délibérément ignoré comme frontière dure, mais le rappel peut inférer un prior thématique
    additif depuis la requête. Les libellés du contact ne diluent pas la requête sémantique. Le
    brief automatique injecte directement le top-k borné déjà fusionné entre les rangs
    lexicaux, vectoriels et graphiques, sans second seuil absolu.
    Une défaillance locale
-   est consignée mais ne bloque pas la Task. Le provider Working Set lit en plus le registre de la
-   Task racine et injecte les références exactes des documents, fichiers, destinataires et reçus
+   est consignée mais ne bloque pas la tâche. Le provider Working Set lit en plus le registre de la
+   Tâche racine et injecte les références exactes des documents, fichiers, destinataires et reçus
    actifs ; toutes les feuilles d'un même plan voient donc le même état de travail.
 
    Hors admission à objectif autonome, les providers publient aussi des candidats structurés non
    conversationnels pour une origine
    Messenger humaine. Le compositeur les déduplique, les classe et les borne, fusionne les
    ressources partageant la même URI canonique, puis fige sur la racine une capsule par contact
-   exact avant le dispatch. Elle réunit Tasks récentes, ressources de leurs Working Sets et
+   exact avant le dispatch. Elle réunit tâches récentes, ressources de leurs Working Sets et
    mémoires scellées au contact, sans jamais filtrer par Topic. L'historique Messenger reste la
    projection native distincte et ses messages n'entrent pas dans cette capsule. Les enfants et
    retries relisent le manifeste ; seul le Working Set courant continue d'évoluer. Sans contact
    prouvé, la room collective n'est pas utilisée comme repli. Une conversation directe, y compris
-   une session audio temps réel, ne possède pas de Task racine où figer une capsule : les
-   providers recherchent alors les documents récents des Tasks et des rounds terminés de cet agent
+   une session audio temps réel, ne possède pas de tâche racine où figer une capsule : les
+   providers recherchent alors les documents récents des tâches et des rounds terminés de cet agent
    et de ce contact, rendent leurs URI `document://` dans la section de continuité de la session et
-   excluent les fichiers temporaires ainsi que le texte libre non vérifié. Les Tasks liées
+   excluent les fichiers temporaires ainsi que le texte libre non vérifié. Les tâches liées
    présentées au contrôleur conservent toutes les entrées actives ou à venir, les pauses humaines
    âgées d'au plus 24 heures et les deux dernières terminales si elles ont moins d'une heure. Chacune
    expose sa date locale de création et `state_since`, fondé sur la dernière mise à jour avec repli
@@ -510,11 +510,11 @@ leur fin.
    Le catalogue des Processes affectés suit une règle distincte : tous sont injectés jusqu’à dix ;
    au-delà, exactement les dix plus pertinents pour la demande courante sont retenus par classement
    sémantique multilingue avec repli lexical, sans seuil. Un Process correspondant a une priorité
-   absolue sur l’admission d’une Task.
+   absolue sur l’admission d’une tâche.
 6. Le resolver fige le modèle, la cible, ses capacités effectives, les limites, le contexte de
    trace et l'`AgentRunContext` dans l’`AgentRunRequest`. Le snapshot canonique de l’agent — nom,
    genre, poste, personnalité et fiche de poste — est rendu dans le socle du prompt système de
-   Task. Il gouverne notamment le style, les choix rédactionnels, l’auteur et les éventuelles
+   Tâche. Il gouverne notamment le style, les choix rédactionnels, l’auteur et les éventuelles
    préférences explicites de signature du contenu produit. La façade lie le `run_id` logique à la
    tentative courante, puis valide sa projection `AgentRunEnvelopeV1` sérialisable et sans secret.
    Cette enveloppe transporte le prompt système complet vers les harnais réseau ; Internal et
@@ -522,13 +522,13 @@ leur fin.
    Les callbacks de progression, checkpoint et projection d'événements restent isolés dans
    l'`AgentRunControl` local.
    Un `LLMCall` est une trace d'inférence bas niveau, indépendante de la notion de Harness. Un
-   appel conversationnel direct porte son `ConversationRound` sans Task ; un appel de Task porte
-   la Task et sa tentative ; lorsque cette Task provient du control plane conversationnel, le même
-   appel conserve cumulativement la Task, la tentative et le round d'origine. Le round exprime la
-   provenance conversationnelle tandis que la Task et sa tentative restent propriétaires de
-   l'exécution et de son accounting. Le Harness ne reçoit que l'identité de Task et de run ; le
+   appel conversationnel direct porte son `ConversationRound` sans tâche ; un appel de tâche porte
+   la tâche et sa tentative ; lorsque cette tâche provient du control plane conversationnel, le même
+   appel conserve cumulativement la tâche, la tentative et le round d'origine. Le round exprime la
+   provenance conversationnelle tandis que la tâche et sa tentative restent propriétaires de
+   l'exécution et de son accounting. Le Harness ne reçoit que l'identité de tâche et de run ; le
    service LLM redérive le round côté serveur, recoupe le lien durable `ConversationTaskLink` avec
-   le `conversation_round_id` figé dans les données de Task et refuse toute divergence. Le champ
+   le `conversation_round_id` figé dans les données de tâche et refuse toute divergence. Le champ
    `purpose` distingue notamment `agent.dispatch`, `agent.planning` et
    `agent.exec`, indépendamment du Harness concret.
 7. La façade invoque le driver enregistré, normalise son mode streamé ou non streamé, impose le
@@ -542,7 +542,7 @@ leur fin.
    le budget initial et le journal d'effets ; elles ne relancent pas les écritures acquises.
    Une boucle persistante termine avec un diagnostic d'inachèvement. Les autres drivers
    conservent l'arrêt terminal du garde commun. Voir [0176](../../../../project/decisions/0176-guided-reasoning-recovery.md).
-   Les surfaces live Conversation et Task partagent strictement le même contrat de contenu :
+   Les surfaces live Conversation et tâche partagent strictement le même contrat de contenu :
    chaque interaction est un `AIMessage`, leur accumulation est un `AIResult`, et le résultat
    terminal autoritaire est encore un `AIResult`. Les enveloppes WebSocket peuvent ajouter des
    signaux de contrôle ordonnés (`started`, `reset`, `finished`), mais ne définissent jamais un
@@ -559,7 +559,7 @@ leur fin.
    Le runtime Codex embarque le SDK Python officiel et son App Server local dans un conteneur
    dédié. Il traduit sa réponse finale en chunks Chat Completions et ses commentaires ou résumés
    publics de raisonnement en événements sémantiques `thinking`, conservés dans les étapes de
-   réflexion de la Task. Les deltas publics sont diffusés immédiatement avec un `stream_id` stable
+   réflexion de la tâche. Les deltas publics sont diffusés immédiatement avec un `stream_id` stable
    par bloc ; les projections live les concatènent sans persister une étape par fragment. Aucun
    delta `agentMessage` n'est considéré terminal avant la fin du tour :
    le dernier item final devient la réponse et tous ses prédécesseurs restent des réflexions.
@@ -590,11 +590,11 @@ leur fin.
 9. Les observers terminaux inscrivent uniquement les projections déterministes nécessaires. Aucun
    driver ni Harness ne transforme implicitement le texte terminal en envoi Messenger : il rend
    l'`ExecutionResult` et conserve seulement le contexte de room nécessaire aux pièces jointes,
-   interactions et outils explicitement appelés. Pour une Task issue d'un round texte,
+   interactions et outils explicitement appelés. Pour une tâche issue d'un round texte,
    `app.conversation` garantit la projection du résultat dans Messenger et la saute lorsque le
-   résultat terminal contient déjà une preuve de livraison réussie. Une Task Messenger directe sans
+   résultat terminal contient déjà une preuve de livraison réussie. Une tâche Messenger directe sans
    lien conversationnel doit effectuer tout envoi demandé par un outil explicite. La recherche de
-   nouveaux souvenirs dans les Tasks appartient au scanner opportuniste `app.dream` et ne s'exécute
+   nouveaux souvenirs dans les tâches appartient au scanner opportuniste `app.dream` et ne s'exécute
    pas sur ce chemin.
 10. Le scheduler clôt la tentative, libère le lease et programme éventuellement la suite.
 
@@ -608,7 +608,7 @@ doublons ; les erreurs annexes seules ne produisent pas cet état.
 
 ## Identité, enveloppe et timeline du run
 
-`AgentRunIdentityV1` distingue quatre niveaux qui ne doivent pas être fusionnés : la Task durable,
+`AgentRunIdentityV1` distingue quatre niveaux qui ne doivent pas être fusionnés : la tâche durable,
 sa tentative liée au lease, le run logique conservé lors d'une reprise compatible et l'identifiant
 opaque éventuellement attribué par le runtime. Une reprise du même objectif avec le même driver
 conserve le run logique ; un changement de driver crée une nouvelle identité.
@@ -621,7 +621,7 @@ transportable par accident.
 
 La timeline durable est une projection bornée dans `TaskAttempt.data`. Elle conserve les
 identifiants, la séquence, le type d'événement, les résumés d'outils et le résultat terminal compact,
-avec l'usage normalisé lorsqu'il existe. Le `ExecutionResult` porté par la Task reste la source de
+avec l'usage normalisé lorsqu'il existe. Le `ExecutionResult` porté par la tâche reste la source de
 vérité complète ; une erreur de projection de timeline ne transforme jamais un effet externe réussi
 en échec rejouable.
 
@@ -687,7 +687,7 @@ complet sans répéter les deltas ni les enveloppes intermédiaires ; un stream 
 ne possède pas toujours d'objet final autonome, conserve toutes ses lignes SSE observées dans leur
 ordre. Cette trace d'audit est capturée avant la normalisation en texte, raisonnement et appels
 d'outils ; elle n'est ni reconstruite depuis ces projections, ni utilisée comme résultat métier de
-la Task.
+la tâche.
 
 Une feuille planifiée qui termine avec un résultat commençant par `BLOCKED:` donne au planner une
 unique possibilité de récupération. Il reçoit la cause, les résultats acquis, les étapes restantes
@@ -695,7 +695,7 @@ et le catalogue effectif, puis choisit soit d'insérer une action sûre et maté
 soit d'arrêter le plan. Une nouvelle feuille bloquée ne déclenche jamais une seconde replanification.
 Les étapes non exécutées sont marquées comme ignorées dans leurs métadonnées et exclues de la
 synthèse ; l'échec terminal reste communiqué par le lien de conversation durable, ou directement
-pour les anciennes Tasks Messenger qui ne possèdent pas ce lien.
+pour les anciennes tâches Messenger qui ne possèdent pas ce lien.
 
 Une action de clôture indépendante explicitement demandée, telle que la mise à jour d'un rapport
 durable même en cas d'échec, utilise une feuille finale `run_after_failure=true`. Les autres
@@ -710,7 +710,7 @@ leur bilan, préserve les autres travaux réussis et reprend au premier travail 
 
 Le Working Set est un registre versionné stocké dans `Task.data["working_set"]` sur la racine du
 plan. Une entrée typée porte au minimum un rôle stable, un type de ressource, une référence exacte,
-un état (`active`, `superseded`, `stale` ou `failed`) et la Task productrice. Il ne copie ni le
+un état (`active`, `superseded`, `stale` ou `failed`) et la tâche productrice. Il ne copie ni le
 contenu d'un document ni les octets d'un fichier. Une nouvelle référence active pour un même rôle
 classe l'ancienne comme `superseded` sans la supprimer ; les sous-tâches lisent et mettent à jour
 le registre de leur racine sous verrou.
@@ -742,20 +742,20 @@ de partage peut produire l'artefact final et son reçu. L'envoi Messenger copie 
 provider de destination sans supprimer sa source.
 
 Le planner ne peut terminer un plan annoncé comme réussi si ses livrables exigent un document sans
-document primaire, si un fichier produit n'a aucun artefact final actif, ou si une Task issue de
+document primaire, si un fichier produit n'a aucun artefact final actif, ou si une tâche issue de
 Messenger n'a aucun reçu de livraison. La récupération d'une exécution directe en échec avec une
 réponse modèle vide exige un artefact livré et son reçu natif concordant. Une exécution directe
 annoncée comme réussie conserve le résultat terminal de son driver, conformément à
 [ADR 0101](../../../../project/decisions/0101-dispatch-without-action-judgment.md).
 Les feuilles d'un plan conservent les outils explicites de
-messagerie, mais leur texte terminal n'est jamais envoyé automatiquement : seule la Task racine
+messagerie, mais leur texte terminal n'est jamais envoyé automatiquement : seule la tâche racine
 porte la livraison automatique de secours. Un message de progression distinct ne vaut pas livraison
 du résultat : le fallback est supprimé uniquement si le texte terminal exact a déjà été envoyé avec
 succès par Messenger.
 
-Le contrôle terminal rapproche l'artefact et son reçu par la Task productrice, l'URI source
+Le contrôle terminal rapproche l'artefact et son reçu par la tâche productrice, l'URI source
 et la destination réellement enregistrées. Un reçu d'un autre fichier, d'une autre destination
-ou d'une autre Task ne valide pas le livrable. Les ressources périmées ou échouées ne prouvent
+ou d'une autre tâche ne valide pas le livrable. Les ressources périmées ou échouées ne prouvent
 pas une production disponible. La mise à jour sur place exige l'URI entière nommée par l'objectif,
 pas le préfixe d'un autre nom de fichier. La récupération d'une réponse modèle vide après livraison
 utilise cette même correspondance ; elle conserve l'échec si les preuves ne concordent pas.
@@ -789,14 +789,14 @@ Les cartes d'outils sont des mises à jour d'invocation, pas des fragments de te
 `tool_call_external_id` (avec le numéro de retry éventuel), ou à défaut `stream_id`,
 rapproche les événements live et les snapshots sans concaténer ni compter deux fois le résultat.
 Hermès conserve cette identité depuis son historique et ses checkpoints. La projection terminale
-Task inclut les AIMessages avec un contenu borné et sans arguments ni résultats structurés ;
+Tâche inclut les AIMessages avec un contenu borné et sans arguments ni résultats structurés ;
 sa liste d'outils fait autorité, y compris pour les harnais sans identifiant d'invocation.
 Deux appels distincts au même outil restent deux cartes, même si leur contenu est identique.
 Hermès publie aussi ses blocs texte et `thinking` avec une identité persistée et
 `stream_mode="snapshot"` : leur contenu cumulatif remplace le bloc déjà reçu par HTTP.
 Le mode `delta`, conservé par défaut, ajoute uniquement le fragment reçu. Un résultat
 terminal élimine les copies live surnuméraires des réflexions historiques ; le snapshot
-HTTP d'une Task terminée applique la même réconciliation si l'événement terminal a été perdu.
+HTTP d'une tâche terminée applique la même réconciliation si l'événement terminal a été perdu.
 Le scheduler conversationnel et les deux moteurs vocaux utilisent `ConversationRuntimeStream`
 pour publier le même résultat vers Chat. Les tours audio diffusent donc leurs messages avant
 la fin de la synthèse vocale. Chaque événement est ordonné par round, tentative et séquence ;
@@ -809,7 +809,7 @@ snapshot cumulatif sans bloquer la génération. Le jeton de lease est vérifié
 Voir [ADR 0062](../../../../project/decisions/0062-identified-message-streams.md).
 
 Un message humain Messenger est relié directement à un round de sa `Room` par `app.conversation`.
-Son scheduler ne réclame ni Task, ni slot d’agent et lance un round court avec le harnais interne
+Son scheduler ne réclame ni tâche, ni slot d’agent et lance un round court avec le harnais interne
 Pydantic AI et le niveau texte `low` du profil effectif de l’agent. Une colonne vide est
 une erreur de configuration et ne reprend ni l’exécuteur ni le profil courant lorsque l’agent a un
 profil personnel. Le driver Hermès n’est jamais repris. Le toolset est une
@@ -822,7 +822,7 @@ Le profil conversationnel du dispatcher répond directement aux humains et arbit
 pour un message émis par une autre IA. Ce `END` termine uniquement le round conversationnel sans
 réponse ; `EXEC` lance toujours le contrôleur direct en effort `standard`. Ce profil n’expose ni
 `PLAN`, ni effort `high`. `END` n’appartient plus au contrat actif du dispatcher de
-Task, limité à `EXEC`/`PLAN`. Les deux sorties structurées ne demandent aucune justification au
+Tâche, limité à `EXEC`/`PLAN`. Les deux sorties structurées ne demandent aucune justification au
 modèle : elles ne contiennent que les champs de routage nécessaires et sont bornées à 256 tokens.
 Le champ historique de la décision durable reste réservé aux diagnostics et décisions
 déterministes produits localement.
@@ -830,11 +830,11 @@ déterministes produits localement.
 Le prompt système conversationnel est distinct de celui de l'executor, mais reprend son contrat
 d'identité : nom, genre, poste, personnalité et fiche de poste. Il ajoute le contexte temporel et
 social courant, l'inventaire natif autorisé et le catalogue compact des Process affectés à
-l'agent. Il rend séparément les Tools des connexions actives réservés au mode Task, sans répéter
+l'agent. Il rend séparément les Tools des connexions actives réservés au mode tâche, sans répéter
 ceux autorisés dans la conversation, et interdit d'en déduire une absence d'accès : si la demande
 requiert l'un d'eux, l'admission par `conversation_task_submit` est obligatoire. Ses règles
 demandent une réponse immédiate pour le travail court ; un travail long lance d'abord un Process
-correspondant avec `conversation_process_start`, ou crée sinon une Task avec
+correspondant avec `conversation_process_start`, ou crée sinon une tâche avec
 `conversation_task_submit`, sans jamais attendre leur fin.
 
 Pour un humain, la porte de réponse retourne `EXEC standard` sans inférence. Si le profil
@@ -845,20 +845,20 @@ L'exécuteur reçoit les références exactes et les états `not_evaluated`, `un
 `selected` vers la fin de son prompt. Sans modèle, après échec ou sans conclusion suffisante,
 il doit rechercher lui-même l'attente et choisir puis lancer le bon Process si nécessaire.
 Un catalogue partiel ne permet pas d'affirmer qu'aucun Process ne convient. La préanalyse
-n'exécute aucun effet et ne change pas le dispatcher des Tasks. Les chemins vocaux directs
+n'exécute aucun effet et ne change pas le dispatcher des tâches. Les chemins vocaux directs
 conservent cette responsabilité dans l'exécuteur. Voir l'[ADR 0194](../../../../project/decisions/0194-conversation-decision-routing.md).
 L'exécuteur décide d'utiliser un outil ou d'admettre du travail durable.
 Le contrôleur ne juge plus une réponse réussie : absence d'admission, absence
 d'outil ou formulation répétée ne provoquent aucune relance. Les erreurs d'exécution remontent au
 scheduler, dont le budget et les protections contre les effets dupliqués restent applicables.
-Le champ `requires_action` disparaît aussi du dispatcher de Task et du Lab. Les drivers interne
+Le champ `requires_action` disparaît aussi du dispatcher de tâche et du Lab. Les drivers interne
 et Hermès acceptent un résultat réussi sans contrôle d'action ou d'artefact après réponse ; les
 reçus d'effets et les reprises de livraison restent gouvernés par leurs contrats propres.
 Une directive contenant `@task`, `@plan` ou `@effort`, quelle que soit sa position dans le message,
 court-circuite plus tôt encore le dispatcher et le runtime conversationnels. Dans le Chat natif,
 ces contrôles sont retirés du message visible et projetés en métadonnées avant admission ; les tags
 encore présents sur les transports externes restent parsés de façon déterministe, puis l'opération
-canonique crée une Task liée au round avant que sa confirmation ne soit publiée dans la room.
+canonique crée une tâche liée au round avant que sa confirmation ne soit publiée dans la room.
 Le prompt demande préventivement une formulation nouvelle en une seule passe. Pour les pairs IA,
 le dispatcher conserve ses limites anti-boucle et son choix `EXEC`/`END`. Il n'effectue aucun retry
 de validation : une sortie structurée invalide déclenche immédiatement son fallback `END`.
@@ -872,7 +872,7 @@ séparément le salon, l'interlocuteur et les contrôles de dispatch. Il vérifi
 l'appel puis la fraîcheur du round après celui-ci ; aucun objet intermédiaire n'est persisté.
 Ces directives ne font jamais planifier le contrôleur conversationnel : elles empruntent un chemin
 déterministe `EXEC`, puis appellent l'opération canonique
-d'admission avant tout runtime LLM conversationnel. Sur une Task durable, une directive de message
+d'admission avant tout runtime LLM conversationnel. Sur une tâche durable, une directive de message
 est une préférence négociée après résolution
 des routes déclarées par `AgentDriverSpec.pipeline_policy`; elle ne peut donc pas activer une étape
 que le driver n'expose pas. Seul un
@@ -895,7 +895,7 @@ que déduire un consentement ambigu. Lorsque le message réoriente le travail, i
 l'approbation devenue obsolète puis appeler `conversation_task_submit` avec `AMEND_CURRENT` ou
 `AMEND_QUEUED`. `app.task` reste seul propriétaire de l'interruption et de la reprise durable.
 
-Les prompts système des trois exécuteurs — Task, conversation textuelle et voix — sont construits
+Les prompts système des trois exécuteurs — tâche, conversation textuelle et voix — sont construits
 comme des arbres JSON ordonnés `galaris.system-prompt/v1`, puis convertis en Markdown par un
 renderer unique à la frontière du modèle. Chaque arbre se termine par un nœud `raw_markdown`
 alimenté par le Param correspondant à l’exécuteur. Ce suffixe n’est jamais sélectionné par LLM :
@@ -904,10 +904,10 @@ textuels et le Param voix couvre le pipeline comme le realtime natif. La règle 
 dialogue immédiat et action de fond vient séparément de `ai.conversation-action-policy`; elle est
 injectée dans les prompts conversation et voix et figée dans les runs correspondants du Lab.
 Cette politique classe chaque résultat demandé dans quatre voies : réponse directe, petit effet
-conversationnel gouverné, Process affecté ou Task d'arrière-plan. Les opérations Memory bornées,
+conversationnel gouverné, Process affecté ou tâche d'arrière-plan. Les opérations Memory bornées,
 la consultation d'état et la résolution d'une interaction explicitement exposées restent au
 premier plan ; un effet externe correspondant à un Process conserve une priorité absolue sur une
-Task. Le catalogue de Processes ne répète plus cet arbitrage dans les prompts courts : il fournit
+Tâche. Le catalogue de Processes ne répète plus cet arbitrage dans les prompts courts : il fournit
 uniquement les métadonnées sélectionnées, tandis que la politique conversationnelle en est
 l'unique propriétaire.
 
@@ -933,13 +933,13 @@ est conservée dans le `ExecutionResult`. La voix obtient la même projection pa
 y compris lorsque la mémoire est désactivée, vide ou non consultée. Les libellés techniques tels
 que `Conversation — <agent>` sont génériques : la requête de rappel utilise l'objectif utilisateur
 borné, afin de ne pas remplacer le sujet courant par le nom du runtime. La projection initiale des
-Tasks filtre les travaux anciens selon leur état et borne chaque objectif, sans plafonner le nombre
-de travaux encore actifs. Le modèle peut appeler `conversation_task_list` pour retrouver une Task
+Tâches filtre les travaux anciens selon leur état et borne chaque objectif, sans plafonner le nombre
+de travaux encore actifs. Le modèle peut appeler `conversation_task_list` pour retrouver une tâche
 plus ancienne. Cet appel reste limité aux
-Tasks racines du contexte conversationnel courant, omet leurs résultats volumineux et conserve les
+Tâches racines du contexte conversationnel courant, omet leurs résultats volumineux et conserve les
 références actives du Working Set ; `conversation_task_status` fournit le détail borné par UUID.
 
-Galaris n’impose aucun plafond de sortie ni budget cumulé en tokens aux exécuteurs Task,
+Galaris n’impose aucun plafond de sortie ni budget cumulé en tokens aux exécuteurs tâche,
 conversation et voix, ni aux mécanismes LLM spécialisés. Un historique ou un prompt déjà
 constitué ne doit jamais empêcher une réponse à cause d’une borne applicative. La fenêtre de
 contexte physique et les limites propres au fournisseur restent applicables. Les mécanismes Dream
@@ -955,9 +955,9 @@ pas continuer dans deux appels provider.
 Chaque outil MCP natif possède en plus un délai mural borné par
 `TASK_TOOL_TIMEOUT_SECONDS` (300 secondes par défaut), inférieur au délai d'inactivité de l'action. Un
 provider de fichiers ou un appel réseau suspendu rend ainsi une erreur d'outil récupérable au
-runtime au lieu d'immobiliser toute la Task. `TASK_ACTION_TIMEOUT_SECONDS` est un watchdog de
+runtime au lieu d'immobiliser toute la tâche. `TASK_ACTION_TIMEOUT_SECONDS` est un watchdog de
 progression durable : chaque checkpoint ou événement sémantique le réarme. La durée totale n'est
-donc pas bornée et une Task peut rester active plusieurs jours ; seule une absence continue de
+donc pas bornée et une tâche peut rester active plusieurs jours ; seule une absence continue de
 progression pendant la durée configurée termine la tentative avec un diagnostic explicite.
 Le harnais interne réarme aussi ce contrôle pendant la génération d'arguments d'outil :
 un delta non vide déjà journalisé par la passerelle publie une progression durable, limitée
@@ -973,26 +973,26 @@ Le runtime temps réel interrompt aussi une prose significative répétée trois
 qu'un modèle qui boucle ne maintienne pas indéfiniment un stream ouvert. Au démarrage, le scheduler
 ferme aussi comme `cancelled` toute trace LLM restée `running` alors que son round est déjà
 terminal. Le job périodique applique immédiatement la même règle à un appel `agent.exec` dont la
-Task est déjà `SUCCESS` ou `ERROR`.
+Tâche est déjà `SUCCESS` ou `ERROR`.
 
-Une demande substantielle compare d'abord les Tasks récentes du même contexte. Le contrôleur
+Une demande substantielle compare d'abord les tâches récentes du même contexte. Le contrôleur
 choisit explicitement de compléter le même livrable actif, de modifier un livrable encore en file,
-de créer une Task indépendante ou de demander une clarification. Le backend valide le scope, la
+de créer une tâche indépendante ou de demander une clarification. Le backend valide le scope, la
 révision et l'amendabilité. Une création rend son identifiant sans attendre ; un amendement
-conserve l'UUID et inscrit une ligne `TaskAmendment` idempotente. Cette Task retourne au flux
+conserve l'UUID et inscrit une ligne `TaskAmendment` idempotente. Cette tâche retourne au flux
 nominal ci-dessus et utilise donc son driver habituel. Elle
 reste un mode d’exécution de la même identité agentique et conserve intégralement son adresse
 Messenger : le planner, le driver, les interactions d’approbation et les outils peuvent parler,
-poser une question et publier le résultat final par le flux Task ordinaire. Le lien conversationnel
-sert à la filiation et au suivi ; il ne rend pas la Task muette et ne duplique pas sa sortie.
+poser une question et publier le résultat final par le flux tâche ordinaire. Le lien conversationnel
+sert à la filiation et au suivi ; il ne rend pas la tâche muette et ne duplique pas sa sortie.
 
 Le contrôleur qui l'admet reste toujours interne, y compris lorsque l'agent est configuré avec
-Hermès ; seule la Task nouvellement persistée repasse ensuite par la résolution normale de son
+Hermès ; seule la tâche nouvellement persistée repasse ensuite par la résolution normale de son
 driver. Le garde conversationnel ne modifie donc ni le contrat `AgentDriver`, ni le chemin Hermès.
 
 Un appel LLM du contrôleur porte `agent_run_id` et `conversation_round_id`, avec `task_id=NULL`.
-Le proxy ne peut donc pas lui attribuer la Task externe active par heuristique. La limite du Harness
-externe à une Task et la recherche de son unique lease durable corrèlent ses appels de travail,
+Le proxy ne peut donc pas lui attribuer la tâche externe active par heuristique. La limite du Harness
+externe à une tâche et la recherche de son unique lease durable corrèlent ses appels de travail,
 y compris lorsque la requête atteint un autre worker backend.
 Le round conserve également le `ExecutionResult` normalisé du harnais interne (prompts, trace
 d’outils, opérations mémoire, coût et résultat terminal). La projection visible par un participant
@@ -1010,16 +1010,16 @@ directement un `AgentRunRequest(task_id=None)` avec `ConversationRound.id` comme
 `conversation_round_id`, compose les mêmes providers
 de contexte puis fige le driver `internal` et le modèle de conversation du profil effectif (avec
 la même absence de repli que le texte). L’exécuteur Pydantic AI utilise le prompt conversationnel et exactement la
-projection `conversation_only`; le driver Task configuré, notamment Hermès, et son catalogue
+projection `conversation_only`; le driver tâche configuré, notamment Hermès, et son catalogue
 complet ne participent jamais au tour. Le contrat de stream terminal reste inchangé. Le scheduler,
 les leases et les `TaskAttempt` ne participent pas à ce chemin.
 Le résultat terminal normalisé est conservé sur le round et chargé à la demande dans le monitoring,
 sans gonfler la liste des appels. Les `LLMCall` restent une projection corrélée séparée.
 
-Les traces `LLMCall` sont des écritures d'audit et de comptabilité : une suppression de Task ne les
+Les traces `LLMCall` sont des écritures d'audit et de comptabilité : une suppression de tâche ne les
 supprime jamais. Elle ferme immédiatement comme `cancelled` leurs éventuels appels encore marqués
 `running`, sans modifier l'usage, les compteurs de tokens, le coût ni la sortie partielle.
-Le champ de présentation `prompt` d'un appel `agent.exec` projette l'objectif durable de la Task ;
+Le champ de présentation `prompt` d'un appel `agent.exec` projette l'objectif durable de la tâche ;
 les messages exacts envoyés au fournisseur restent séparément dans `request_messages`, y compris
 les rappels techniques ajoutés par un Harness. Le coût rapporté par le fournisseur est prioritaire
 sur l'estimation issue des tarifs configurés ; un
@@ -1031,13 +1031,13 @@ des traces ; modifier l'abonnement actuel ne change jamais les mois passés.
 Son coût API agrégé reste fondé sur `inference_cost`. Une
 réconciliation périodique applique le même traitement aux traces sans activité persistée au-delà
 du timeout d'action configuré, augmenté d'une marge de finalisation, et sert aussi de filet de
-sécurité si le processus tombe entre la suppression de la Task et cette fermeture.
+sécurité si le processus tombe entre la suppression de la tâche et cette fermeture.
 
 Une prise de parole pendant la réponse annule le run courant et termine le round en
 `INTERRUPTED`, pas en `Task.ERROR`. Son objectif effectif reste en attente dans la session et est
 préfixé au transcript suivant. Seule une réponse complète efface cet objectif. Le prompt commun
 autorise la parole et les consultations bornées. Toute autre action doit lancer sans attente un
-Process affecté via `conversation_process_start`, ou une Task autosuffisante via
+Process affecté via `conversation_process_start`, ou une tâche autosuffisante via
 `conversation_task_submit`; le runtime conversationnel ne réalise jamais cette action directement.
 
 Le mode vocal `realtime` ne découpe pas l’audio en exécutions textuelles. `app.agent` compose une
@@ -1053,10 +1053,10 @@ en cours conserve son résultat, sans déclencher une réponse vocale obsolète.
 d'outils ne relance le modèle qu'une fois, après tous ses résultats et autorisations.
 
 La session reçoit uniquement les fonctions conversationnelles bornées nécessaires : recherche
-mémoire, liste, création, amendement et lecture d’une Task, découverte/lecture des Process affectés
+mémoire, liste, création, amendement et lecture d’une tâche, découverte/lecture des Process affectés
 et lancement asynchrone d’un Process. Les noms de contrôle (`conversation_task_list`,
 `conversation_task_submit`, `conversation_task_status`, `conversation_process_start`) et la politique d’action sont les mêmes
-que pour le pipeline. `conversation_task_submit` utilise `AgentTaskPort`, crée ou amende la Task
+que pour le pipeline. `conversation_task_submit` utilise `AgentTaskPort`, crée ou amende la tâche
 durable avant de renvoyer son UUID, puis réveille le scheduler. Les fonctions Process passent par
 la façade
 `app.process`. Le modèle fournisseur n’a donc aucun accès direct à `app.task`, aux modèles ORM ni à
@@ -1082,7 +1082,7 @@ sans backend de management actif, et la récupération de ses appels de fonction
 `LLMCall.tool_calls` est inactive et le chemin direct s’appuie sur le stream et la session
 persistante Hermès.
 
-La Task PostgreSQL reste l’autorité sur le lease, les tentatives et l’état final. Une carte créée
+La tâche PostgreSQL reste l’autorité sur le lease, les tentatives et l’état final. Une carte créée
 avant cette désactivation demeure un handle de runtime subordonné. Elle n’est jamais convertie en
 run direct au risque de rejouer ses effets, mais son ancien transport partagé n’est plus disponible
 depuis l’ADR 0058 et la reprise échoue explicitement.
@@ -1105,7 +1105,7 @@ depuis l’ADR 0058 et la reprise échoue explicitement.
 - `cancel_requested` est durable ; la capacité d’annulation du driver doit être déclarée.
 - Le harnais interne enregistre chaque run actif sous son `run_id` et son `task_id`.
   Une annulation demandée au driver utilise le `CancellationToken` Pydantic AI ; une pause de
-  Task ou une perte de lease peut conserver son annulation asyncio externe. Dans les deux cas,
+  Tâche ou une perte de lease peut conserver son annulation asyncio externe. Dans les deux cas,
   le runtime récupère l'historique détaché du run, persiste un checkpoint `interrupted`, interrompt
   la requête fournisseur et l’appel MCP en cours, arrête la commande console active, puis ferme
   toutes les ressources enregistrées. La reprise fournit cet historique à Pydantic AI, qui répare
@@ -1116,9 +1116,9 @@ depuis l’ADR 0058 et la reprise échoue explicitement.
   fonction MCP et ses services la récupèrent uniquement avec `get_db()`. Les checkpoints et événements
   sont verrouillés dans l'ordre du journal puis persistés par une transaction indépendante. Une
   défaillance locale effectue donc son rollback sans invalider la session d'un autre outil ni la
-  transaction durable de la Task. Les outils déclarés `exclusive` restent des barrières, tandis
+  transaction durable de la tâche. Les outils déclarés `exclusive` restent des barrières, tandis
   que seuls les outils explicitement `safe` s'exécutent simultanément. Les sessions séquentielles
-  du scheduler de Task et du contrôleur de conversation restent disponibles pendant
+  du scheduler de tâche et du contrôleur de conversation restent disponibles pendant
   l'initialisation du runtime (catalogue, modèle, contexte), puis leur transaction est libérée
   avant la première requête modèle ; aucune branche parallèle ne l'utilise.
 - Trois résultats d’échec identiques et consécutifs pour le même outil et les mêmes arguments
@@ -1185,19 +1185,19 @@ uniquement `file.write`. Une référence présente dans l'objectif ou la mémoir
 pas seule à donner cet accord. Les suppressions et transports ne sont pas autorisés par
 cette résolution. Voir [0206](../../../../project/decisions/0206-contextual-task-write-targets.md).
 Un enfant hérite du scope parent, même si sa rédaction ou son payload propose
-d'autres grants. Une ancienne Task sans scope conserve son parcours historique.
+d'autres grants. Une ancienne tâche sans scope conserve son parcours historique.
 
 Le planner produit `requirement_ids` et `target_refs`. La validation déterministe refuse
 exigence omise, identifiant inconnu et cible non sourcée ; elle vérifie la couverture
 déclarée, sans remplacer une évaluation sémantique du résultat. Une clarification nécessaire
-utilise la même Task. Le scope est transmis aux runtimes et dans `AgentRunEnvelopeV1`.
+utilise la même tâche. Le scope est transmis aux runtimes et dans `AgentRunEnvelopeV1`.
 
 Le catalogue filtré `app.tools` expose facultativement `EffectDescriptorV1`. Ses propriétaires
 déclarent capacité, nature, cibles, visibilité, réversibilité, idempotence et reçu. Le préflight
 est persisté avant l'effet, puis la révision est revérifiée après l'autorisation native.
 Lecture et création ordinaire selon le descripteur restent autonomes. La création vérifiée
 dans le Working Set autorise la mise à jour du même artefact ; une simple lecture ne le fait pas.
-Une version inconnue, un scope périmé, une Task arrêtée ou une cible divergente empêche l'effet.
+Une version inconnue, un scope périmé, une tâche arrêtée ou une cible divergente empêche l'effet.
 Les outils sans descripteur restent utilisables et leur effet est enregistré comme inconnu,
 sous les contrôles existants. Les domaines gardent leurs ACL et postconditions.
 Process déclare la sélection autonome dans son catalogue affecté lorsque la demande ne
@@ -1205,8 +1205,8 @@ fixe aucun workflow exact : `allow_and_record` conserve cette décision sous l'a
 vivante et l'autorisation native. Un workflow explicitement demandé ne peut pas être remplacé
 par un autre. Les cycles Goal sourcent leur portée dans la description, sans grant issu du suivi.
 
-Les décisions bornées sont conservées dans la tentative active, ou la projection Task sans
-tentative ; elles ne modifient pas la révision métier de la Task. `TaskActivitySnapshot` expose
+Les décisions bornées sont conservées dans la tentative active, ou la projection tâche sans
+tentative ; elles ne modifient pas la révision métier de la tâche. `TaskActivitySnapshot` expose
 un résumé de portée (version, révision, source, propriétaire et nombres d'exigences/grants)
 et les préflights dans l'activité existante, sans seconde timeline. La portée complète reste
 dans `Task.data` et l'enveloppe du runtime ; elle n'est pas recopiée à chaque actualisation.
@@ -1214,7 +1214,7 @@ Le contrôle des ressources produites charge les provenances en lot, sans relire
 objectifs, messages et historiques de chaque tâche productrice.
 
 Le remplacement explicite fige l'arbre de descendants et invoque les propriétaires externes
-en dehors des verrous Task. Le successeur reste suspendu jusqu'à la preuve d'arrêt de chaque
+en dehors des verrous tâche. Le successeur reste suspendu jusqu'à la preuve d'arrêt de chaque
 run, à la libération des leases et à la confirmation du propriétaire Process. Arbre agrandi,
 nouveau run, suppression ou propriétaire inconnu produit un conflit. Les pauses utilisateur
 et tâches indépendantes sont préservées. Une Goal ou une attente inconnue reste un refus
