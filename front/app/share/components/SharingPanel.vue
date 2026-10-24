@@ -171,7 +171,7 @@ watch(publicWrite, write => { if (write === true) menuOpen.value = false })
 <style scoped>
 .sharing-panel-clickable :deep(.q-field__control) { cursor: pointer; }
 .sharing-values, .sharing-shortcut { display: flex; align-items: center; gap: 4px; }
-.sharing-values { flex-wrap: wrap; }
+.sharing-values { flex-wrap: wrap; row-gap: 1px; }
 .sharing-private { font-size: 14px; }
 .sharing-icon { color: var(--solaire-blue-accent); }
 .sharing-arrow-disabled { opacity: .4; }
@@ -182,6 +182,7 @@ watch(publicWrite, write => { if (write === true) menuOpen.value = false })
 .shortcut-actions { display: flex; gap: 6px; }
 .shortcut-actions .q-btn { padding: 3px 8px; font-size: 12px; }
 .sharing-grants { display: contents; }
+.sharing-grant { margin-top: 0; margin-bottom: 0; }
 .sharing-grant :deep(.q-chip__content) { gap: 4px; }
 .sharing-right-toggle { opacity: .6; }
 .sharing-right-toggle:hover, .sharing-right-toggle:focus { opacity: 1; }
