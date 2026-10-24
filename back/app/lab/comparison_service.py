@@ -14,6 +14,7 @@ from .schemas import EvaluationMechanism, EvaluationRunRead, EvaluationRunCaseRe
 from .comparison_summary import summarize
 from .comparison_schemas import ComparisonFocus
 from .comparison_evidence import assessed, critical_regression, dimension_evidence, first_output, paired_evidence, summarize_evidence, verdict_regression
+from .comparison_evidence import quality_uncertainty
 
 
 async def _runs(
@@ -243,6 +244,7 @@ async def compare(
             })
     return {
         "axis": axis,
+        "quality_uncertainty": (await quality_uncertainty(paired_evidence(left_id, right_id))).model_dump() if not blockers else None,
         "comparable": not blockers,
         "differences": differences,
         "blockers": blockers,

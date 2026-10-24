@@ -1,5 +1,6 @@
 """Blind review payloads never disclose model identities or unreviewed judgments."""
 
+import asyncio
 from math import isfinite
 from typing import Any
 from uuid import UUID
@@ -117,11 +118,13 @@ async def review_queue(
                 judge=JudgmentResultRead.model_validate(judgment) if review and judgment else None,
             )
         )
+    from .calibration import calibrate
     return HumanReviewQueue(
         campaign_id=campaign.id,
         rubric=campaign.configuration["rubric"],
         parameters=run.configuration_snapshot.get("parameters", {}),
         items=items,
+        calibration=await asyncio.to_thread(calibrate, items),
     )
 
 

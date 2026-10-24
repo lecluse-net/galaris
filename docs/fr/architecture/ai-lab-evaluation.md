@@ -425,7 +425,12 @@ l’export standard des résultats et les gardes CI restent des travaux du
 La revue humaine masque le modèle et le juge jusqu'à la soumission, conserve une appréciation
 immuable par utilisateur, résultat et campagne, puis affiche les écarts dimensionnels,
 les désaccords de verdict et l'écart absolu moyen. Elle n'efface pas l'exposition préalable
-aux résultats et ne remplace pas un protocole d'étalonnage. Voir l'[ADR 0082](../../../project/decisions/0082-lab-stability-human-review.md).
+aux résultats. Le rapport d'étalonnage utilise les revues du seul utilisateur et de la
+campagne choisie : couverture, faux passages/rejets, biais et erreurs dimensionnelles.
+Les intervalles regroupent les répétitions par entrée/référence ; ils restent conditionnels
+au corpus et au juge. La répétabilité du juge et les campagnes réellement annotées restent
+distinctes. Voir les ADR [0082](../../../project/decisions/0082-lab-stability-human-review.md)
+et [0230](../../../project/decisions/0230-lab-human-calibration-and-case-uncertainty.md).
 Les empreintes sont persistées, mais ne constituent pas encore un écran de comparaison automatique.
 Les validations automatisées utilisent des réponses contrôlées ; elles ne qualifient pas la qualité
 d’un modèle distant.

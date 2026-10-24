@@ -92,6 +92,8 @@ async def test_regressions_and_paired_performance_cover_the_run_before_paginatio
     assert not any(row["introduced_critical"] for row in first["items"])
     assert first["risks"] == {"assessed_pairs": 13, "introduced_critical": 2, "pass_to_fail": 2,
         "dimensions": [{"code": "grounding", "pairs": 12, "decreased": 2, "increased": 0, "equal": 10, "mean_delta": pytest.approx(-140 / 12)}]}
+    assert first["quality_uncertainty"]["cases"] == 13
+    assert first["quality_uncertainty"]["sufficient"] is False
     assert first["performance"]["first_output"] == {"pairs": 12, "left_median": 2, "right_median": 1, "median_delta": -1}
     assert first["performance"]["cost"]["median_delta"] == pytest.approx(-0.02)
     for focus, dimension in (("critical", None), ("verdict", None), ("dimension", "grounding")):
@@ -113,6 +115,7 @@ async def test_regressions_and_paired_performance_cover_the_run_before_paginatio
     await db.flush()
     blocked = await compare("conversation_executor", before.id, after.id, "model", focus="critical")
     assert blocked["risks"] is blocked["performance"] is None
+    assert blocked["quality_uncertainty"] is None
     assert blocked["items"] == []
 
 

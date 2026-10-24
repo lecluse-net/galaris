@@ -418,7 +418,12 @@ Fingerprints are persisted but do not yet provide an automatic comparison screen
 Human review hides model identities and automatic judgments until submission, persists an
 immutable assessment per user, result and campaign, then shows dimension differences,
 verdict disagreements and mean absolute difference. It cannot undo prior exposure to
-results and does not replace a calibration protocol. See [ADR 0082](../../../project/decisions/0082-lab-stability-human-review.md).
+results. Calibration uses only the current user's reviews for the selected judgment
+campaign: coverage, false passes/rejections, bias and dimension errors. Intervals keep
+repetitions together by input/reference; they remain conditional on the corpus and judge.
+Judge repeatability and genuinely annotated campaigns remain separate work. See ADRs
+[0082](../../../project/decisions/0082-lab-stability-human-review.md) and
+[0230](../../../project/decisions/0230-lab-human-calibration-and-case-uncertainty.md).
 Automated checks use controlled responses; they do not qualify a remote model's quality.
 
 ## 13. Code authority

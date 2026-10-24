@@ -1,5 +1,6 @@
 """SQL projections of paired evidence; never materialize whole-run output bodies."""
 
+import asyncio
 from uuid import UUID
 
 from sqlalchemy import Float, and_, case, cast, func, literal, or_, select, true
@@ -10,6 +11,14 @@ from sqlalchemy.sql.selectable import CTE
 from core.database import get_db
 from .models import LabEvaluationRunCase as Result
 from .comparison_schemas import ComparisonPerformance, ComparisonRisks, PairedMetric
+from .statistics import CaseEstimate, estimate
+
+
+async def quality_uncertainty(pairs: CTE) -> CaseEstimate:
+    rows = (await get_db().execute(select(
+        func.array_agg(pairs.c.right_score - pairs.c.left_score).label("deltas"),
+    ).where(assessed(pairs)).group_by(pairs.c.left_input, pairs.c.left_reference))).mappings().all()
+    return await asyncio.to_thread(estimate, [list(row["deltas"]) for row in rows])
 
 
 def json_number(value: ColumnElement[object]) -> ColumnElement[float]:

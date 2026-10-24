@@ -239,6 +239,21 @@ differences and verdict disagreements. Your independent assessment is immutable 
 disclosure and does not alter the judge. Each user and judgment campaign has a separate
 review. This mode cannot undo prior exposure to results viewed elsewhere.
 
+The review also reports calibration against **your** assessments for the selected
+judgment campaign: reviewed/eligible coverage, missing or invalid judgments, false passes,
+false rejections, judge bias, absolute error and differences by criterion. No human review
+means unknown calibration. Agent reviews are excluded. These measurements do not certify
+the corpus or the judge; case selection and previous exposure can bias the reference.
+
+Before/after comparisons report uncertainty of the quality difference across distinct
+input/reference cases. Each case has equal weight and its repetitions stay together.
+The 95% percentile bootstrap uses 2,000 deterministic resamples. Calibration uses the
+same grouping; false-pass rates use a conservative Hoeffding bound, including when no
+false pass was observed. No interval is reported with fewer than two distinct cases;
+fewer than 20 cases is explicitly marked insufficient for a general conclusion.
+Intervals remain conditional on this corpus and judge. They do not separate candidate
+variation from judge variation; judge repeatability still requires a separate experiment.
+
 ## Evaluate a process with synthetic inputs
 
 In the **Process Lab** (`/lab/processes`), enter the executing agent,

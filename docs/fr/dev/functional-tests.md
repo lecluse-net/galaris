@@ -36,6 +36,10 @@ propriétaire actif, révocation de tous les anciens droits, conservation des fi
 l'auteur, collisions, quotas, rejeu sans réactivation et reprise après panne ou interruption.
 Le parcours HTTP vérifie aussi le transfert entre deux propriétaires gérés, le refus des cibles
 hors périmètre, les homonymes du destinataire et la restauration après une panne de déplacement.
+Le Lab complète ses revues avec `test_statistics.py`, `test_stability_and_review.py`
+et `test_comparison.py` : poids égal des cas malgré les répétitions, intervalle absent
+sans données suffisantes, faux passages non assimilés à une certitude et isolation par
+utilisateur/campagne. `lab-insights.spec.mjs` exerce l'affichage après révélation du juge.
 `tests/test_legacy_spreadsheets.py` protège les caches XLS originaux, formules/tokens,
 feuilles et dimensions cachées, formats, fusions, diagnostics, limites et préparation
 complète d'un XLS produit par le vrai LibreOffice, sans modification de l'original.

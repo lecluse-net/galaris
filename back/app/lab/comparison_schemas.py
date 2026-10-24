@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 from .schemas import EvaluationRunRead
+from .statistics import CaseEstimate
 
 ComparisonAxis = Literal["model", "prompt", "parameters"]
 ComparisonFocus = Literal["all", "critical", "verdict", "dimension"]
@@ -89,6 +90,7 @@ class ComparisonItem(BaseModel):
 
 
 class RunComparison(BaseModel):
+    quality_uncertainty: CaseEstimate | None = None
     axis: ComparisonAxis
     comparable: bool
     differences: list[str]

@@ -80,6 +80,7 @@ export interface ComparisonItem {
   left_error: string | null; right_error: string | null
 }
 export interface RunComparison {
+  quality_uncertainty?: CaseEstimate | null
   risks: { assessed_pairs: number; introduced_critical: number; pass_to_fail: number; dimensions: { code: string; pairs: number; decreased: number; increased: number; equal: number; mean_delta: number }[] } | null
   performance: Record<'first_output' | 'cost' | 'duration' | 'quality', PairedMetric> | null
   axis: ComparisonAxis; comparable: boolean; differences: string[]; blockers: string[]
@@ -152,4 +153,14 @@ export interface ReviewItem {
   assessment: JudgeOutput | null; human_score: number | null; human_verdict: string | null
   judge: { score_percent: number | null; verdict: string; output: JudgeOutput | null } | null
 }
-export interface ReviewQueue { campaign_id: string; rubric: Rubric; parameters: Record<string, unknown>; items: ReviewItem[] }
+export interface CaseEstimate {
+  cases: number; observations: number; mean: number | null; lower: number | null; upper: number | null
+  confidence: number; method: string; resamples: number; sufficient: boolean
+}
+export interface HumanCalibration {
+  eligible: number; reviewed: number; paired: number; missing_judgments: number; human_failures: number
+  false_passes: number; false_failures: number; disagreements: number
+  bias: CaseEstimate; absolute_error: CaseEstimate; false_pass_rate: CaseEstimate
+  dimension_bias: Record<string, CaseEstimate>; judge_repeatability: 'not_measured'
+}
+export interface ReviewQueue { campaign_id: string; rubric: Rubric; parameters: Record<string, unknown>; items: ReviewItem[]; calibration?: HumanCalibration | null }

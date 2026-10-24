@@ -21,10 +21,15 @@ Ce socle ne constitue pas une qualification des applications externes ou de la c
 
 ## Lots restants
 
+Le rapport d'étalonnage par utilisateur/campagne et l'incertitude par groupes de cas
+sont réalisés dans [0230](../decisions/0230-lab-human-calibration-and-case-uncertainty.md).
+Ils utilisent les revues existantes sans fabriquer de référence humaine. Les lots ci-dessous
+conservent les campagnes annotées réelles, l'arbitrage et la séparation des variances.
+
 | Lot | Travail | Réception |
 |---|---|---|
 | Étalonnage humain | Corpus annotés par mécanisme, arbitrage justifié, biais/corrélation/faux passages du juge. | Erreur de passage mesurable contre référence humaine revue, juge/corpus/date versionnés ; panne/couverture faible sans bonne note fictive. |
-| Incertitude | Intervalles adaptés au volume et aux dépendances ; variance candidat distincte de variance juge. | Répétitions d'un épisode non présentées comme observations indépendantes ; insuffisance de données visible. |
+| Incertitude | Intervalles par cas et insuffisance d'échantillon réalisés ; restent qualification sur corpus représentatifs et séparation de la variance candidat/juge. | Répétitions d'un épisode non présentées comme observations indépendantes ; répétabilité du juge mesurée séparément. |
 | Comparabilité/tendances | Campagnes réelles du protocole FR/EN ; politiques pour changement de rubrique/corpus/juge ; tendances dimensionnelles. | Aucun changement de référence présenté comme gain du candidat ; résultats liés aux snapshots et incertitude publiée. |
 | Gardes | Baseline approuvée/remplaçable, seuils dimensionnels/globaux/erreurs/couverture, verdict machine et export CI. | Nouvelle défaillance critique bloquante malgré une moyenne meilleure ; verdict reconstructible, rapport narratif sans pouvoir de lever la garde. |
 | Portabilité/gouvernance | Import/export versionné des datasets/résultats ; revue des références, rétention, gel/ouverture des holdouts. | Corpus/paramètres/provenance préservés, secrets et droits des sources respectés. |

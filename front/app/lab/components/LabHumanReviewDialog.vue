@@ -8,6 +8,20 @@
         <template v-if="queue">
           <p>{{ t('evaluation.insights.blindHelp') }}</p>
           <p v-if="agreement.count">{{ t('evaluation.insights.agreement', agreement) }}</p>
+          <section v-if="queue.calibration">
+            <h3>{{ t('evaluation.comparison.calibrationTitle') }}</h3>
+            <p>{{ t('evaluation.comparison.calibrationCounts', queue.calibration) }}</p>
+            <h4>{{ t('evaluation.comparison.bias') }}</h4>
+            <LabCaseEstimate :value="queue.calibration.bias" />
+            <h4>{{ t('evaluation.comparison.absoluteError') }}</h4>
+            <LabCaseEstimate :value="queue.calibration.absolute_error" />
+            <h4>{{ t('evaluation.comparison.falsePassRate') }}</h4>
+            <LabCaseEstimate :value="queue.calibration.false_pass_rate" />
+            <template v-for="(value, code) in queue.calibration.dimension_bias" :key="code">
+              <h4>{{ code }}</h4><LabCaseEstimate :value="value" />
+            </template>
+            <p>{{ t('evaluation.comparison.calibrationHelp') }}</p>
+          </section>
           <p v-if="!queue.items.length">{{ t('evaluation.insights.noReviewItems') }}</p>
           <q-select v-model="itemId" :options="queue.items.map(row => ({ value: row.result_id, label: row.name + ' · ' + t('evaluation.insights.attempt', { number: row.repetition }) }))" emit-value map-options outlined :label="t('evaluation.insights.reviewItem')" />
           <template v-if="item">
@@ -55,6 +69,7 @@ import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { labWorkbenchService as api, type LabKey, type ReviewQueue } from '../services/labWorkbenchService'
 import LabReadableValue from './LabReadableValue.vue'
+import LabCaseEstimate from './LabCaseEstimate.vue'
 const opened = defineModel<boolean>({ default: false })
 const { mechanism, runId, canEdit, campaignId } = defineProps<{ mechanism: LabKey; runId: string; canEdit: boolean; campaignId?: string }>()
 const { t } = useI18n()
@@ -98,5 +113,5 @@ async function submit() {
 <style scoped>
 .review-dialog { width: 1100px; max-width: 96vw; }
 .review-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 24px; }
-h3 { font-size: 1rem; font-weight: 600; }
+h3, h4 { font-size: 1rem; line-height: 1.5; font-weight: 600; }
 </style>

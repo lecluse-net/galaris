@@ -1,5 +1,10 @@
 <template>
   <section v-if="comparison.comparable" class="q-my-md">
+    <template v-if="comparison.quality_uncertainty">
+      <h3>{{ t('evaluation.comparison.uncertaintyTitle') }}</h3>
+      <LabCaseEstimate :value="comparison.quality_uncertainty" />
+      <p>{{ t('evaluation.comparison.uncertaintyHelp') }}</p>
+    </template>
     <template v-if="comparison.risks">
       <h3>{{ t('evaluation.comparison.risksTitle') }}</h3>
       <p>{{ t('evaluation.comparison.riskCoverage', { count: comparison.risks.assessed_pairs }) }}</p>
@@ -29,6 +34,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import type { ComparisonFilter, RunComparison } from '../services/labWorkbenchService'
+import LabCaseEstimate from './LabCaseEstimate.vue'
 defineProps<{ comparison: RunComparison }>()
 const emit = defineEmits<{ focus: [filter: ComparisonFilter] }>()
 const { t, locale } = useI18n()

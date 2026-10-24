@@ -266,6 +266,22 @@ le juge. Après révélation, elle ne peut plus être corrigée. Chaque utilisat
 propre revue ; un rejugement ouvre une nouvelle campagne indépendante. Une revue
 n'efface pas une connaissance préalable des résultats consultés ailleurs.
 
+La revue affiche aussi l'étalonnage contre **vos** appréciations pour la campagne de
+jugement choisie : couverture revus/éligibles, jugements absents ou invalides, faux passages,
+faux rejets, biais du juge, écart absolu et écarts par critère. Sans revue humaine,
+l'étalonnage reste inconnu. Les revues d'agents sont exclues. Ces mesures ne certifient
+ni le corpus ni le juge ; sélection des cas et exposition préalable peuvent biaiser la référence.
+
+Les comparaisons avant/après affichent l'incertitude de l'écart de qualité entre cas
+distincts, regroupés par entrée et référence. Chaque cas a le même poids et ses répétitions
+restent ensemble. L'intervalle bootstrap percentile à 95 % utilise 2 000 rééchantillonnages
+déterministes. L'étalonnage utilise les mêmes groupes ; le taux de faux passages emploie
+une borne conservatrice de Hoeffding, même sans faux passage observé. Aucun intervalle
+avec moins de deux cas distincts ; moins de 20 cas est signalé comme insuffisant pour
+une conclusion générale. Les intervalles restent conditionnels au corpus et au juge.
+Ils ne séparent pas la variabilité du candidat de celle du juge ; la répétabilité du juge
+exige encore une expérience distincte.
+
 ## Évaluer un processus avec des entrées synthétiques
 
 Dans le **Lab des processus** (`/lab/processes`), indiquez l'agent exécutant,

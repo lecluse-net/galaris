@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from .contracts import LabInput
+from .statistics import CaseEstimate
 
 from datetime import datetime
 from typing import Any, Literal
@@ -677,8 +678,25 @@ class HumanReviewItem(BaseModel):
     judge: JudgmentResultRead | None = None
 
 
+class HumanCalibration(BaseModel):
+    eligible: int = 0
+    reviewed: int = 0
+    paired: int = 0
+    missing_judgments: int = 0
+    human_failures: int = 0
+    false_passes: int = 0
+    false_failures: int = 0
+    disagreements: int = 0
+    bias: CaseEstimate
+    absolute_error: CaseEstimate
+    false_pass_rate: CaseEstimate
+    dimension_bias: dict[str, CaseEstimate] = Field(default_factory=dict[str, CaseEstimate])
+    judge_repeatability: Literal["not_measured"] = "not_measured"
+
+
 class HumanReviewQueue(BaseModel):
     campaign_id: UUID
     rubric: dict[str, Any]
     parameters: dict[str, Any]
     items: list[HumanReviewItem]
+    calibration: HumanCalibration | None = None

@@ -202,6 +202,8 @@ async def test_review_is_blind_immutable_and_isolated_by_reviewer_and_campaign(
     monkeypatch.setattr(human_review_service, "get_current_user_id", lambda: reviewers[0].id)
     queue = await human_review_service.review_queue("planner", run.id)
     assert queue.items[0].judge is None and queue.items[0].assessment is None
+    assert queue.calibration.paired == 0
+    assert queue.calibration.bias.mean is None
     assert "Hidden candidate" not in queue.model_dump_json()
     assert "Automatic assessment" not in queue.model_dump_json()
     data = HumanReviewCreate(
@@ -221,14 +223,22 @@ async def test_review_is_blind_immutable_and_isolated_by_reviewer_and_campaign(
     assert revealed.items[0].human_verdict == "fail"
     assert revealed.items[0].judge.score_percent == 90
     assert revealed.items[0].judge.verdict == "pass"
+    assert revealed.calibration.false_passes == revealed.calibration.human_failures == 1
+    assert revealed.calibration.bias.mean == 40
+    assert revealed.calibration.absolute_error.mean == 40
+    assert revealed.calibration.bias.cases == 1
+    assert revealed.calibration.bias.lower is None
+    assert revealed.calibration.judge_repeatability == "not_measured"
     with pytest.raises(ValueError, match="already submitted"):
         await human_review_service.submit_review("planner", run.id, data)
     monkeypatch.setattr(human_review_service, "get_current_user_id", lambda: reviewers[1].id)
-    assert (await human_review_service.review_queue("planner", run.id)).items[0].judge is None
+    other = await human_review_service.review_queue("planner", run.id)
+    assert other.items[0].judge is None and other.calibration.paired == 0
     with pytest.raises(LookupError):
         await human_review_service.review_queue("task_executor", run.id)
     monkeypatch.setattr(human_review_service, "get_current_user_id", lambda: reviewers[0].id)
     await rejudge("planner", run.id, EvaluationRejudge())
+    assert (await human_review_service.review_queue("planner", run.id)).calibration.paired == 0
     assert (await human_review_service.review_queue("planner", run.id)).items[0].assessment is None
     assert (await human_review_service.review_queue("planner", run.id, queue.campaign_id)).items[
         0

@@ -1,5 +1,13 @@
 import { processLabMessages } from './processI18n'
 const comparisonFr = {
+  uncertaintyTitle: 'Incertitude de l’écart de qualité',
+  caseEstimate: '{cases} cas distincts · {observations} observations · moyenne par cas {mean} · intervalle à 95 % [{lower} ; {upper}]',
+  bootstrap: 'Bootstrap par cas, 2 000 rééchantillonnages.', hoeffding: 'Borne de Hoeffding par cas ; conserve une incertitude même sans faux passage observé.',
+  insufficientCases: 'Moins de 20 cas distincts : données insuffisantes pour une conclusion générale. Aucun intervalle avec moins de deux cas.',
+  uncertaintyHelp: 'Chaque entrée et référence forme un groupe ; ses répétitions restent ensemble. Intervalle conditionnel au corpus et au juge actuels, sans garantie de représentativité. La variation des scores ne sépare pas la variabilité du candidat de celle du juge.',
+  calibrationTitle: 'Étalonnage contre vos évaluations humaines', bias: 'Biais du juge (juge − humain, points)', absoluteError: 'Écart absolu (points)', falsePassRate: 'Faux passages parmi les échecs humains (%)',
+  calibrationCounts: '{reviewed}/{eligible} revues · {paired} jugements comparables · {missing_judgments} absents ou invalides · {false_passes} faux passages sur {human_failures} échecs humains · {false_failures} faux rejets.',
+  calibrationHelp: 'Votre référence humaine et cette campagne uniquement. Les revues d’agents sont exclues. Les cas non revus restent inconnus ; une sélection de cas peut biaiser ces mesures. La répétabilité du juge n’est pas mesurée.',
   risksTitle: 'Régressions à examiner', riskCoverage: '{count} paires avec des jugements comparables. Les preuves manquantes restent inconnues.',
   criticalCount: '{count} apparitions d’échec critique — voir les cas', verdictCount: '{count} passages de réussi à échoué — voir les cas',
   newCritical: 'Apparition d’un échec critique.', passToFail: 'Verdict passé de réussi à échoué.',
@@ -33,6 +41,14 @@ const comparisonFr = {
   pageSize: 'Cas par page', previous: 'Précédent', next: 'Suivant', page: 'Page {number}', loadError: 'Impossible de charger la comparaison.',
 }
 const comparisonEn: typeof comparisonFr = {
+  uncertaintyTitle: 'Uncertainty of quality difference',
+  caseEstimate: '{cases} distinct cases · {observations} observations · mean across cases {mean} · 95% interval [{lower}, {upper}]',
+  bootstrap: 'Case-cluster bootstrap, 2,000 resamples.', hoeffding: 'Case-level Hoeffding bound; retains uncertainty even when no false pass was observed.',
+  insufficientCases: 'Fewer than 20 distinct cases: insufficient data for a general conclusion. No interval with fewer than two cases.',
+  uncertaintyHelp: 'Each input and reference defines a cluster; its repetitions stay together. The interval is conditional on this corpus and judge, without a guarantee of representativeness. Score variation does not separate candidate variation from judge variation.',
+  calibrationTitle: 'Calibration against your human assessments', bias: 'Judge bias (judge − human, points)', absoluteError: 'Absolute difference (points)', falsePassRate: 'False passes among human failures (%)',
+  calibrationCounts: '{reviewed}/{eligible} reviews · {paired} comparable judgments · {missing_judgments} missing or invalid · {false_passes} false passes among {human_failures} human failures · {false_failures} false rejections.',
+  calibrationHelp: 'Your human reference and this campaign only. Agent reviews are excluded. Unreviewed cases remain unknown; case selection can bias these measures. Judge repeatability has not been measured.',
   risksTitle: 'Regressions to review', riskCoverage: '{count} pairs with comparable judgments. Missing evidence remains unknown.',
   criticalCount: '{count} newly critical outcomes — view cases', verdictCount: '{count} pass-to-fail changes — view cases',
   newCritical: 'A critical failure appeared.', passToFail: 'Verdict changed from pass to fail.',
@@ -66,6 +82,14 @@ const comparisonEn: typeof comparisonFr = {
   pageSize: 'Cases per page', previous: 'Previous', next: 'Next', page: 'Page {number}', loadError: 'Unable to load the comparison.',
 }
 const comparisonZh: typeof comparisonFr = {
+  uncertaintyTitle: '质量差异的不确定性',
+  caseEstimate: '{cases} 个不同案例 · {observations} 次观察 · 案例平均值 {mean} · 95% 区间 [{lower}, {upper}]',
+  bootstrap: '按案例分组的自助法，重采样 2,000 次。', hoeffding: '按案例计算 Hoeffding 界限；即使未发现错误通过，也保留不确定性。',
+  insufficientCases: '少于 20 个不同案例，数据不足以得出一般结论。少于两个案例时不计算区间。',
+  uncertaintyHelp: '按输入和参考答案分组，重复测量保留在组内。区间仅针对当前语料和评判，不保证代表性，也不能区分候选模型与评判的变异。',
+  calibrationTitle: '与您的人工评估校准', bias: '评判偏差（评判 − 人工，分）', absoluteError: '绝对差异（分）', falsePassRate: '人工失败中的错误通过率（%）',
+  calibrationCounts: '{reviewed}/{eligible} 次审核 · {paired} 次可比较评判 · {missing_judgments} 次缺失或无效 · {human_failures} 次人工失败中 {false_passes} 次错误通过 · {false_failures} 次错误拒绝。',
+  calibrationHelp: '仅限您的人工参考和本次评判活动。不含智能体审核。未审核案例保持未知，选择偏差可能影响结果。尚未测量评判的重复性。',
   risksTitle: '待审查的退步', riskCoverage: '{count} 对具有可比评审。缺失证据仍为未知。',
   criticalCount: '{count} 项新增严重失败 — 查看案例', verdictCount: '{count} 项通过变失败 — 查看案例',
   newCritical: '出现了严重失败。', passToFail: '结论由通过变为失败。',

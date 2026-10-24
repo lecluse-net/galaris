@@ -64,6 +64,8 @@ test('human review saves independent notes before disclosing the judge and prese
     if (route.request().method() === 'POST') {
       submitted = route.request().postDataJSON()
       Object.assign(item, { assessment: submitted, human_score: 50, human_verdict: 'fail', judge: { score_percent: 90, verdict: 'pass', output: { explanation: 'Automatic approval', dimensions: [{ code: 'grounding', score_percent: 90, assessment: 'Automatic grounds' }] } } })
+      const estimate = mean => ({ cases: 1, observations: 1, mean, lower: null, upper: null, confidence: 0.95, method: 'case-cluster-percentile-bootstrap/v1', resamples: 2000, sufficient: false })
+      queue.calibration = { eligible: 1, reviewed: 1, paired: 1, missing_judgments: 0, human_failures: 1, false_passes: 1, false_failures: 0, disagreements: 1, bias: estimate(40), absolute_error: estimate(40), false_pass_rate: { ...estimate(100), method: 'case-cluster-hoeffding/v1', resamples: 0 }, dimension_bias: {}, judge_repeatability: 'not_measured' }
     }
     await route.fulfill({ json: queue })
   })
@@ -80,6 +82,9 @@ test('human review saves independent notes before disclosing the judge and prese
   expect(submitted).toMatchObject({ campaign_id: 'campaign', result_id: 'result', dimensions: [{ code: 'grounding', score_percent: 50, assessment: 'Missing sources' }] })
   await expect(dialog.getByText('You: 50 · Judge: 90 · Judge − human: 40.0')).toBeVisible()
   await expect(dialog.getByText('1 comparisons · 1 verdict disagreements · mean absolute difference 40.0')).toBeVisible()
+  await expect(dialog.getByRole('heading', { name: 'Calibration against your human assessments' })).toBeVisible()
+  await expect(dialog.getByText(/1 false passes among 1 human failures/)).toBeVisible()
+  await expect(dialog.getByText(/Fewer than 20 distinct cases/).first()).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Save and reveal judgment' })).not.toBeVisible()
   await dialog.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(dialog).not.toBeVisible()
