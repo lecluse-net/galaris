@@ -16,7 +16,13 @@
                     :title="t('task.memory.documentKindHint')">
                     {{ t('memory.graph.roles.document') }}
                 </q-badge>
-                <DocumentIcon v-if="displayedItem.nodeKind === 'document' && documentId" :document-id="documentId" :title="displayedItem.title" class="q-mr-sm" />{{ displayedItem.title }}
+                <template v-if="displayedItem.nodeKind === 'document'">
+                    <DocumentIcon v-if="documentId" :document-id="documentId" :title="displayedItem.title" class="q-mr-sm" />{{ displayedItem.title }}
+                </template>
+                <template v-else>
+                    <span>{{ t(`memory.kinds.${displayedItem.nodeKind || 'memory'}`) }}</span>
+                    <span class="text-caption q-ml-sm">{{ t('memory.updated') }} : {{ updatedDate }}</span>
+                </template>
             </q-card-section>
 
             <q-separator />
@@ -86,7 +92,7 @@ const props = withDefaults(defineProps<{
     unavailable: false,
 })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const $q = useQuasar()
 const documentOpen = ref(false)
 
@@ -101,6 +107,14 @@ const displayedItem = computed<MemoryItemPreview | null>(() => {
         }
     }
     return props.preview || null
+})
+
+const updatedDate = computed(() => {
+    const value = props.item?.updated_at || props.item?.created_at
+    const timestamp = value ? Date.parse(value) : NaN
+    return Number.isFinite(timestamp)
+        ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(timestamp)
+        : '—'
 })
 
 const documentId = computed(() => displayedItem.value?.nodeKind === 'document' ? displayedItem.value.id : undefined)
