@@ -1,11 +1,13 @@
 # Plans actifs de Galaris
 
-Revue documentaire du **20 octobre 2026**, à partir des contrats, du code, des tests
-existants et des décisions. L'admission fournisseur est désormais `partial` : son socle
-mono-worker est réalisé ; provenance exhaustive, priorités détaillées configurables et
-qualification élargie restent ouvertes. Les autres statuts sont conservés après examen
-des acquis documentés et des travaux explicitement restants. Cette revue ne lance
-aucune campagne, ne rejoue pas les benchmarks et ne prouve aucun déploiement.
+Tri du **24 octobre 2026**, à partir des contrats, du code, des tests existants et des
+décisions. Les plans de l'éditeur de code, de la séparation Memory/Document, des
+inférences durables et du contrat de portée/provenance sont retirés : leur périmètre
+livré est documenté dans les décisions 0173, 0223, 0097, 0170 et 0206. La revue
+des baselines de la séparation est acquise ; son ancienne attente est périmée.
+Les autres plans conservent des extensions, conceptions ou expériences ouvertes.
+Le socle Process du Lab est réalisé ; ses mocks d'applications restent à concevoir.
+Ce tri ne rejoue ni les parcours applicatifs ni les benchmarks et ne prouve aucun déploiement.
 
 Ce répertoire conserve les écarts concrets, conceptions et expériences encore ouverts.
 Les contrats réalisés appartiennent aux [décisions](../decisions/README.md),
@@ -26,24 +28,20 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 | Plan | Statut | Reste à faire |
 |---|---|---|
 | [optimisation-generalisee.md](optimisation-generalisee.md) | `approved` | Campagne préparée le 19 octobre, lancement envisagé le 20 sur instruction : inventaire exhaustif des fichiers/modules, mesures par parcours et charge, recherche transversale, corrections par lots et qualification avant/après. Aucun audit ou correctif lancé par la création du plan. |
-| [editeur-code-conversationnel.md](editeur-code-conversationnel.md) | `partial` | Intégration stable réalisée (0173), reprise autorisée sans remplacement du buffer et archivage/restauration des profils. Résultats globaux par snapshot dans `artifacts/validation/`. Limite d'aperçu Firefox acceptée. Seules la synchronisation du thème, le terminal complet et l'identité humaine distincte restent facultatifs. |
 | [processus-metier-internes-bpmn.md](processus-metier-internes-bpmn.md) | `partial` | Profil v2 réalisé : contrats locaux typés, URI sans transfert, intégration idempotente, jobs MCP/REST et convergence. IF binaires IA/code/humain selon l'acteur ; computations Python pures dans les workers Monty avec snapshot du Dataset. Restent le Python généraliste sur VM/hôte dédié, le broker de capacités, le worker Process distinct et les qualifications de charge/multi-harnais. |
 | [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `partial` | Transcriptions et analyses acquises vers les souvenirs, reçus tardifs et provenance réalisés (0169). Restent analyses partielles/Tasks descendantes, index PJ précis, pertinence/utilité aval, observation et réaffectation des Topics. Volet identité, doublons et omissions coordonné avec le plan conversationnel, en conception sans réduction de rétention. Qualifications du catalogue File Share regroupées ici. |
 | [analyse-documentaire-unifiee.md](analyse-documentaire-unifiee.md) | `partial` | XLS structurel, formats non couverts, isolation réseau, contrôles sémantiques et qualification répétée des grandes sources. |
 | [graphe-memoire-multiechelle.md](graphe-memoire-multiechelle.md) | `partial` | Graphe exclusivement 3D (0168), répertoires connus dès l'ouverture, fichiers paginés à l'approche, représentants des éléments masqués et actualisation sans perte de cadrage. Les états incompatibles reconstruisent le placement. Générations serveur, occurrences de fichiers, carte régionale préparée et qualification très grands volumes restent planifiées. |
 | [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `partial` | Arbre Task/Process coordonné livré (0170), preuve distante tardive sans rejeu. Programme global identité, attribution des messages, recherche avant création et enrichissement sans journal d'édition cadré le 22 octobre, en conception. Restent Goal active, qualification des runtimes, mesures des prompts/capacités et parcours complet. |
-| [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `partial` | Étalonnage, incertitude, comparabilité/tendances, gardes et portabilité ; campagnes des modèles de décision ; intégration progressive des tests/benchmarks Process, mocks d'applications en seconde phase. |
-| [llm-calls-durables.md](llm-calls-durables.md) | `partial` | Préparation/démarrage explicite, révision des commandes et échéance globale livrés (0170). Restent entrées médias supplémentaires et mesures du journal selon consommateur ; qualification fournisseur distincte. |
+| [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `partial` | Étalonnage, incertitude, comparabilité/tendances, gardes et portabilité ; campagnes des modèles de décision et mocks d'applications Process. Le socle de campagnes Process avec Datasets natifs et runs réels est livré (0225). |
 | [ordonnancement-llm-par-fournisseur.md](ordonnancement-llm-par-fournisseur.md) | `partial` | Admission partagée et configuration réalisées (0181) ; restent provenance exhaustive, priorités par opération, transports non tracés, coordination multi-backend et qualification de charge/fournisseur. |
-| [convergence-pydantic-ai.md](convergence-pydantic-ai.md) | `partial` | Métadonnées OpenRouter, transport Codex alternatif, projection des réglages, surfaces supplémentaires et adaptateurs de décision différés. |
-| [portee-provenance-execution-agentique.md](portee-provenance-execution-agentique.md) | `partial` | Contrat v1, admission/héritage/amendement, validation du plan, descripteurs natifs et préflight durable intégrés à l'activité (0170). Restent qualification élargie, cibles non canoniques et métadonnées des outils externes. |
+| [convergence-pydantic-ai.md](convergence-pydantic-ai.md) | `partial` | Métadonnées OpenRouter, transport Codex alternatif, projection des réglages, surfaces supplémentaires et adaptateurs de décision différés. Extensions médias durables, futurs consommateurs du rejeu et mesures du journal regroupés ici. |
 | [outils-mcp-multimedia.md](outils-mcp-multimedia.md) | `partial` | Accès officiel Suno, références/composition/annulation distante et extensions locales ; recettes des comptes dans le guide. |
 
 ## Conceptions
 
 | Plan | Statut | Portée |
 |---|---|---|
-| [separation-memory-document.md](separation-memory-document.md) | `in-progress` | Séparation implémentée : documents et résumés autonomes, souvenirs privés, API et Tool documentaires distincts. Migration PostgreSQL/Atlas, interruption/rejeu et parcours assemblés qualifiés ; reprise de développement appliquée. Revue des baselines d'architecture en attente avant clôture et vérifications finales. |
 | [skills-personnels-agents.md](skills-personnels-agents.md) | `in-progress` | Tool unique Skills, MCP, File Share, harnais, portées usage/personal/team/all, conversion avec reprise et onglet de consultation réalisés. Restent les actions humaines de mutation dans cet onglet et la qualification sur une installation dédiée. Portée équipe : union des agents de ses équipes, réévaluée à chaque appel. |
 | [programmes-documentaires-json.md](programmes-documentaires-json.md) | `design` | Programmes dans les Documents, `document_exec` avec nom personnel et entrée/sortie JSON, dernier contenu sauvegardé au démarrage, moteur isolé, suivi Process et amélioration autonome. |
 | [supervision-execution-llm.md](supervision-execution-llm.md) | `design` | Conversation conservée, petits exécuteurs et supervision par gros modèle à comparer ; corpus synthétiques, benchmarks de tâches complètes, escalade, coût par réussite et décision par famille. |
@@ -55,6 +53,27 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
 ## Plans retirés et suivi conservé
 
+- **Portée et provenance d'exécution** : contrat v1, admission/héritage/amendement,
+  validation du plan, préflight durable et activité réalisés dans
+  [0170](../decisions/0170-execution-scope-and-durable-controls.md) ; cibles d'écriture
+  contextuelles dans [0206](../decisions/0206-contextual-task-write-targets.md).
+  Qualification élargie et pannes après effet dans le [plan conversationnel](fiabilisation-conversationnelle.md) ;
+  extensions de cibles et descripteurs externes dans la [cible prospective](cible.md#gouvernance-des-effets).
+- **Inférences durables** : cycle persistant, commandes, préparation, révisions et
+  échéance globale réalisés dans [0097](../decisions/0097-durable-inference-lifecycle.md)
+  et [0170](../decisions/0170-execution-scope-and-durable-controls.md).
+  Extensions médias, réception des futurs consommateurs du rejeu et mesures du journal
+  regroupées dans le [plan SDK/fournisseurs](convergence-pydantic-ai.md), sans chantier
+  distinct pour le cycle livré.
+- **Éditeur de code conversationnel** : intégration, reprise et profils réalisés ;
+  contrat et limites dans [0173](../decisions/0173-conversational-code-workspaces.md),
+  parcours dans le [guide utilisateur](../../docs/fr/user/code-editor.md).
+  Thème synchronisé, terminal Console complet et identité Git humaine distincte restent
+  des extensions facultatives décrites par la décision, sans maintenir le plan terminé.
+- **Séparation Memory/Document** : documents et résumés autonomes, souvenirs privés,
+  migration et consommateurs réalisés ; revue des dépendances et baselines acquise dans
+  [0223](../decisions/0223-memory-document-independence.md). Les suites de frontière et de
+  migration conservent les garanties ; le plan ne porte plus de travail ouvert.
 - **Indexation File Share/Memory** : catalogue, reprise, réparation, Dream, SHA-256 et
   emplacements Messenger réalisés ; contrats dans [0155](../decisions/0155-durable-file-indexing.md).
   Recettes de démarrage à froid/providers et capacités avancées dans le plan mémoire.

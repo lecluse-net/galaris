@@ -204,9 +204,11 @@ pas déclenchés par l'écriture de ce plan.
 
 Le [plan Lab](lab-evaluation-mecanismes-ia.md) possède les mécanismes communs de comparaison,
 pas la décision d'architecture de cette étude. Articuler le contrat de mission avec le
-[plan de portée/provenance](portee-provenance-execution-agentique.md), et les mesures sous
+[contrat de portée/provenance](../decisions/0170-execution-scope-and-durable-controls.md),
+complété par les [cibles contextuelles](../decisions/0206-contextual-task-write-targets.md), et les mesures sous
 charge avec l'[ordonnancement par fournisseur](ordonnancement-llm-par-fournisseur.md).
-Ces plans ne sont pas présumés réalisés ni des prérequis à tout essai isolé.
+Les extensions du Lab et de l'ordonnancement ne sont pas présumées réalisées ni des
+prérequis à tout essai isolé.
 L'étude ne dépend pas d'un entraînement LoRA ni de l'achat de matériel.
 
 Pour les futurs changements de runtime, renforcer les tests existants du contrat affecté,

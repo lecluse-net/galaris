@@ -3,7 +3,7 @@
 - Status: accepted architectural choice; implementation delivered locally and targeted acceptance
   acquired. Global qualification is recorded per snapshot under `artifacts/validation/`.
 - Date: 2026-10-11.
-- Plan: [Conversational code editor](../plans/editeur-code-conversationnel.md).
+- User guide: [Conversational code editor](../../docs/en/user/code-editor.md).
 
 Humans need to inspect and edit the exact Git checkout used by their developers through
 Console, including uncommitted changes. They requested standard VS Code behavior and

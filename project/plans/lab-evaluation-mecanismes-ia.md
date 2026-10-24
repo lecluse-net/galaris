@@ -1,8 +1,8 @@
 # Lab IA — étalonnage, comparaisons et gardes
 
 - Statut : `partial`
-- Revue des sources : 2026-10-08. Les campagnes ne sont pas rejouées par cette revue.
-- Extension demandée le 2026-10-11 : tests, données synthétiques et benchmarks Process sur le socle interne ; mocks d'applications explicitement reportés à une seconde phase. Conception à réaliser, distincte du socle existant.
+- Revue des sources : 2026-10-08 ; tri du socle Process le 2026-10-24. Les campagnes ne sont pas rejouées par cette revue.
+- Extension Process demandée le 2026-10-11 : socle de campagnes avec cas synthétiques et runs réels réalisé ; mocks d'applications conservés en seconde phase.
 
 ## Socle réalisé
 
@@ -14,6 +14,11 @@ au [guide](../../docs/fr/user/lab-ai.md) et aux décisions
 [0134](../decisions/0134-agent-lab-control.md).
 Un score, rôle holdout ou digest ne prouve pas à lui seul étanchéité, qualité ou comparabilité.
 
+Les campagnes Process enregistrent leurs cas dans des Datasets natifs et lancent de vrais
+runs sous droits Lab/Process : [0225](../decisions/0225-process-lab-native-datasets.md) et
+[parcours utilisateur](../../docs/fr/user/lab-ai.md#évaluer-un-processus-avec-des-entrées-synthétiques).
+Ce socle ne constitue pas une qualification des applications externes ou de la charge.
+
 ## Lots restants
 
 | Lot | Travail | Réception |
@@ -24,25 +29,23 @@ Un score, rôle holdout ou digest ne prouve pas à lui seul étanchéité, quali
 | Gardes | Baseline approuvée/remplaçable, seuils dimensionnels/globaux/erreurs/couverture, verdict machine et export CI. | Nouvelle défaillance critique bloquante malgré une moyenne meilleure ; verdict reconstructible, rapport narratif sans pouvoir de lever la garde. |
 | Portabilité/gouvernance | Import/export versionné des datasets/résultats ; revue des références, rétention, gel/ouverture des holdouts. | Corpus/paramètres/provenance préservés, secrets et droits des sources respectés. |
 | Jugement renforcé | Juges multiples/arbitrage si besoin mesuré ; biais de position, verbosité et auto-préférence. | Risque réduit et coût connu face au juge courant ; nombre de juges sans valeur probante propre. |
-| Processus internes — socle | Intégration progressive du moteur Process, cas/PJ synthétiques, résultats et benchmarks simples sur contenu courant. | Résultats/métriques accessibles sous droits Lab/Process ; référence du contenu exécuté conservée, aucun choix de version ni mock d'application requis en v1. |
 | Mocks Process — seconde phase | Création de mocks d'applications externes, simulation et campagnes hybrides, après l'infrastructure Process. | Mocks et configuration conservés, isolation des cas et absence de repli réel ; conformité aux vrais contrats et interprétation des mesures à qualifier à ce stade. |
 
 Préparer étalonnage/comparabilité, puis incertitude, avant gardes décisionnelles.
 Les datasets versionnés restent entièrement synthétiques. Une revue masquée ne supprime
 pas l'exposition passée aux réponses.
 
-## Extension Process : infrastructure puis mocks
+## Extension Process : mocks d'applications
 
 Le [plan des processus internes](processus-metier-internes-bpmn.md) confie au Lab la
 génération synthétique, les tests et benchmarks des processus, sans deuxième moteur.
-La v1 met d'abord en place les accès publics, données/résultats et métriques Process ;
-les premières campagnes simples pourront s'appuyer sur la génération et les services Lab
-existants. L'admission Process actuellement simulée ne prouve pas l'exécution d'un graphe
-complet, et les tests de droits, DB et reprise restent nécessaires au fil de l'implémentation.
+Le socle utilise déjà les accès publics, Datasets, résultats et métriques Process.
+Les tests de droits, DB, reprise et runs réels conservent ces garanties ; les mocks
+d'applications restent un travail distinct.
 
 Chaque lancement Lab utilise la dernière sauvegarde courante, comme les autres appelants.
 Conserver avec les résultats les cas JSON/PJ synthétiques, paramètres, harnais et références
-Document des contenus réellement démarrés. Comparer les campagnes enregistrées ; aucun
+Process des contenus réellement démarrés. Comparer les campagnes enregistrées ; aucun
 pinning de dépendance ni paramètre de version Process à exécuter. Une restauration de
 l'historique remet un contenu en courant avant son nouveau lancement. Les Datasets des
 runs restent distincts des datasets de test du Lab.

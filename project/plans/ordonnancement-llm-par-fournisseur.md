@@ -3,7 +3,8 @@
 - Statut : `partial`.
 - Revue documentaire : 2026-10-20.
 - Socle livré : [ADR 0181](../decisions/0181-provider-llm-admission.md).
-- Dépendance : [inférences durables](llm-calls-durables.md).
+- Contrat consommé : [inférences durables](../decisions/0097-durable-inference-lifecycle.md),
+  complété par les [commandes et échéances](../decisions/0170-execution-scope-and-durable-controls.md).
 
 ## Socle actuel
 

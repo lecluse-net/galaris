@@ -43,10 +43,19 @@ de crash ; installation, upgrade et restauration des artefacts publiés démontr
 
 ## Gouvernance des effets
 
-Le contrôle générique de portée reste dans le
-[plan provenance](portee-provenance-execution-agentique.md).
+Le contrôle générique de portée est réalisé dans
+[0170](../decisions/0170-execution-scope-and-durable-controls.md), complété pour les
+cibles d'écriture contextuelles par [0206](../decisions/0206-contextual-task-write-targets.md).
+La qualification élargie et les pannes entre effet et livraison relèvent du
+[plan conversationnel](fiabilisation-conversationnelle.md).
 L'autorisation ponctuelle réalisée relève de
 [0153](../decisions/0153-common-action-authorizations.md).
+
+Extensions de ce socle : résolution des cibles exprimées par libellé au-delà du contrat
+d'écriture contextuelle et enrichissement des descripteurs des catalogues externes.
+Une cible ambiguë demande une résolution sourcée ; un libellé, un profil ou une découverte
+n'accorde aucun droit. Les outils sans descripteur conservent leurs contrôles existants,
+sans être présentés comme couverts par une description d'effet exhaustive.
 
 Extension prospective : intercepteur commun aux surfaces à effet, taxonomie versionnée,
 `ActionIntent/Decision/Observation`, politiques par portée, identité effective/délégation,
