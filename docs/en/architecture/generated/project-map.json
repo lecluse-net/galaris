@@ -369,6 +369,7 @@
       {
         "files": [
           "back/app/chat/assertions.py",
+          "back/app/chat/document_conversation.py",
           "back/app/chat/events.py",
           "back/app/chat/router.py",
           "back/app/chat/schemas.py"
@@ -403,7 +404,15 @@
       },
       {
         "files": [
+          "back/app/chat/document_conversation.py"
+        ],
+        "source": "app.chat",
+        "target": "app.document"
+      },
+      {
+        "files": [
           "back/app/chat/assertions.py",
+          "back/app/chat/document_conversation.py",
           "back/app/chat/document_previews.py",
           "back/app/chat/events.py",
           "back/app/chat/provider.py",
@@ -445,6 +454,7 @@
       },
       {
         "files": [
+          "back/app/chat/document_conversation.py",
           "back/app/chat/emoji_service.py",
           "back/app/chat/events.py",
           "back/app/chat/models.py",
@@ -507,6 +517,7 @@
       },
       {
         "files": [
+          "back/app/chat/document_conversation.py",
           "back/app/chat/events.py",
           "back/app/chat/router.py",
           "back/app/chat/webrtc.py"
@@ -6369,7 +6380,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 300,
+      "domain_edges": 301,
       "fan_in": [
         {
           "count": 43,
@@ -6677,9 +6688,10 @@
           ]
         },
         {
-          "count": 6,
+          "count": 7,
           "module": "app.document",
           "modules": [
+            "app.chat",
             "app.dataset",
             "app.dream",
             "app.file_share",
@@ -7073,6 +7085,20 @@
         },
         {
           "count": 8,
+          "module": "app.chat",
+          "modules": [
+            "app.agent",
+            "app.browser",
+            "app.code",
+            "app.conversation",
+            "app.document",
+            "app.messenger",
+            "app.topic",
+            "app.voice"
+          ]
+        },
+        {
+          "count": 8,
           "module": "app.messenger",
           "modules": [
             "app.agent",
@@ -7083,19 +7109,6 @@
             "app.memory",
             "app.task",
             "app.tools"
-          ]
-        },
-        {
-          "count": 7,
-          "module": "app.chat",
-          "modules": [
-            "app.agent",
-            "app.browser",
-            "app.code",
-            "app.conversation",
-            "app.messenger",
-            "app.topic",
-            "app.voice"
           ]
         },
         {
@@ -9928,13 +9941,26 @@
         "table": "calendar_triggers"
       },
       {
+        "class_name": "ChatDocumentConversation",
+        "file": "back/app/chat/models.py",
+        "foreign_keys": [
+          "documents.id",
+          "messenger_rooms.id",
+          "users.id"
+        ],
+        "history_mixin": false,
+        "line": 25,
+        "module": "app.chat",
+        "table": "chat_document_conversations"
+      },
+      {
         "class_name": "ChatEmojiUsage",
         "file": "back/app/chat/models.py",
         "foreign_keys": [
           "users.id"
         ],
         "history_mixin": false,
-        "line": 25,
+        "line": 46,
         "module": "app.chat",
         "table": "chat_emoji_usages"
       },
@@ -9948,7 +9974,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 105,
+        "line": 126,
         "module": "app.chat",
         "table": "chat_push_deliveries"
       },
@@ -9959,7 +9985,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 62,
+        "line": 83,
         "module": "app.chat",
         "table": "chat_push_subscriptions"
       },
@@ -14508,8 +14534,26 @@
         "declared_path": "/chat/agents/{agent_id}/avatar",
         "file": "back/app/chat/router.py",
         "handler": "read_agent_avatar",
-        "line": 401,
+        "line": 441,
         "method": "GET",
+        "module": "app.chat"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/chat/documents/{document_id}/conversation",
+        "file": "back/app/chat/router.py",
+        "handler": "read_document_conversation_preference",
+        "line": 197,
+        "method": "GET",
+        "module": "app.chat"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/chat/documents/{document_id}/conversation",
+        "file": "back/app/chat/router.py",
+        "handler": "update_document_conversation_preference",
+        "line": 210,
+        "method": "PUT",
         "module": "app.chat"
       },
       {
@@ -14517,7 +14561,7 @@
         "declared_path": "/chat/emojis/frequent",
         "file": "back/app/chat/router.py",
         "handler": "read_frequent_emojis",
-        "line": 322,
+        "line": 362,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14526,7 +14570,7 @@
         "declared_path": "/chat/emojis/usage",
         "file": "back/app/chat/router.py",
         "handler": "create_emoji_usage",
-        "line": 331,
+        "line": 371,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14535,7 +14579,7 @@
         "declared_path": "/chat/identities",
         "file": "back/app/chat/router.py",
         "handler": "read_identity_mappings",
-        "line": 341,
+        "line": 381,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14544,7 +14588,7 @@
         "declared_path": "/chat/identities/{tool_id}",
         "file": "back/app/chat/router.py",
         "handler": "delete_identity_mapping",
-        "line": 371,
+        "line": 411,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -14553,7 +14597,7 @@
         "declared_path": "/chat/identities/{tool_id}",
         "file": "back/app/chat/router.py",
         "handler": "update_identity_mapping",
-        "line": 350,
+        "line": 390,
         "method": "PUT",
         "module": "app.chat"
       },
@@ -14562,7 +14606,7 @@
         "declared_path": "/chat/inbox",
         "file": "back/app/chat/router.py",
         "handler": "read_inbox",
-        "line": 283,
+        "line": 323,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14571,7 +14615,7 @@
         "declared_path": "/chat/push/configuration",
         "file": "back/app/chat/router.py",
         "handler": "read_push_configuration",
-        "line": 289,
+        "line": 329,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14580,7 +14624,7 @@
         "declared_path": "/chat/push/subscriptions",
         "file": "back/app/chat/router.py",
         "handler": "remove_push_subscription",
-        "line": 312,
+        "line": 352,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -14589,7 +14633,7 @@
         "declared_path": "/chat/push/subscriptions",
         "file": "back/app/chat/router.py",
         "handler": "create_push_subscription",
-        "line": 299,
+        "line": 339,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14598,7 +14642,7 @@
         "declared_path": "/chat/recipients",
         "file": "back/app/chat/router.py",
         "handler": "read_recipients",
-        "line": 378,
+        "line": 418,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14607,7 +14651,7 @@
         "declared_path": "/chat/rooms",
         "file": "back/app/chat/router.py",
         "handler": "read_rooms",
-        "line": 421,
+        "line": 461,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14616,7 +14660,7 @@
         "declared_path": "/chat/rooms",
         "file": "back/app/chat/router.py",
         "handler": "create_room",
-        "line": 447,
+        "line": 487,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14625,7 +14669,7 @@
         "declared_path": "/chat/rooms/{room_id}",
         "file": "back/app/chat/router.py",
         "handler": "read_room",
-        "line": 475,
+        "line": 515,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14634,7 +14678,7 @@
         "declared_path": "/chat/rooms/{room_id}",
         "file": "back/app/chat/router.py",
         "handler": "update_room_preferences",
-        "line": 492,
+        "line": 532,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -14643,7 +14687,7 @@
         "declared_path": "/chat/rooms/{room_id}/activity",
         "file": "back/app/chat/router.py",
         "handler": "read_activity",
-        "line": 940,
+        "line": 980,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14652,7 +14696,7 @@
         "declared_path": "/chat/rooms/{room_id}/activity/{round_id}",
         "file": "back/app/chat/router.py",
         "handler": "read_activity_detail",
-        "line": 955,
+        "line": 995,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14661,7 +14705,7 @@
         "declared_path": "/chat/rooms/{room_id}/activity/{round_id}/control",
         "file": "back/app/chat/router.py",
         "handler": "control_response",
-        "line": 969,
+        "line": 1009,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14670,7 +14714,7 @@
         "declared_path": "/chat/rooms/{room_id}/archive",
         "file": "back/app/chat/router.py",
         "handler": "update_room_archive",
-        "line": 510,
+        "line": 550,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -14679,7 +14723,7 @@
         "declared_path": "/chat/rooms/{room_id}/attachments",
         "file": "back/app/chat/router.py",
         "handler": "create_attachment_message",
-        "line": 1192,
+        "line": 1232,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14688,7 +14732,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls",
         "file": "back/app/chat/router.py",
         "handler": "start_call",
-        "line": 1371,
+        "line": 1411,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14697,7 +14741,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/active",
         "file": "back/app/chat/router.py",
         "handler": "read_active_call",
-        "line": 1430,
+        "line": 1470,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14706,7 +14750,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/status",
         "file": "back/app/chat/router.py",
         "handler": "read_voice_call_status",
-        "line": 1344,
+        "line": 1384,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14715,7 +14759,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/{call_id}",
         "file": "back/app/chat/router.py",
         "handler": "stop_call",
-        "line": 1489,
+        "line": 1529,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -14724,7 +14768,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/{call_id}/candidates",
         "file": "back/app/chat/router.py",
         "handler": "add_call_candidate",
-        "line": 1454,
+        "line": 1494,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14733,7 +14777,7 @@
         "declared_path": "/chat/rooms/{room_id}/commands",
         "file": "back/app/chat/router.py",
         "handler": "read_room_commands",
-        "line": 551,
+        "line": 591,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14742,7 +14786,7 @@
         "declared_path": "/chat/rooms/{room_id}/dictation",
         "file": "back/app/chat/router.py",
         "handler": "transcribe_dictation",
-        "line": 1141,
+        "line": 1181,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14751,7 +14795,7 @@
         "declared_path": "/chat/rooms/{room_id}/documents",
         "file": "back/app/chat/router.py",
         "handler": "read_room_documents",
-        "line": 1007,
+        "line": 1047,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14760,7 +14804,7 @@
         "declared_path": "/chat/rooms/{room_id}/documents",
         "file": "back/app/chat/router.py",
         "handler": "create_room_document",
-        "line": 1037,
+        "line": 1077,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14769,7 +14813,7 @@
         "declared_path": "/chat/rooms/{room_id}/files/{file_id}",
         "file": "back/app/chat/router.py",
         "handler": "download_file",
-        "line": 1299,
+        "line": 1339,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14778,7 +14822,7 @@
         "declared_path": "/chat/rooms/{room_id}/files/{file_id}",
         "file": "back/app/chat/router.py",
         "handler": "rename_chat_attachment",
-        "line": 1289,
+        "line": 1329,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -14787,7 +14831,7 @@
         "declared_path": "/chat/rooms/{room_id}/interactions/{interaction_id}",
         "file": "back/app/chat/router.py",
         "handler": "read_interaction",
-        "line": 1083,
+        "line": 1123,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14796,7 +14840,7 @@
         "declared_path": "/chat/rooms/{room_id}/interactions/{interaction_id}/answer",
         "file": "back/app/chat/router.py",
         "handler": "answer_interaction",
-        "line": 1092,
+        "line": 1132,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14805,7 +14849,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages",
         "file": "back/app/chat/router.py",
         "handler": "read_messages",
-        "line": 565,
+        "line": 605,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14814,7 +14858,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages",
         "file": "back/app/chat/router.py",
         "handler": "create_message",
-        "line": 1108,
+        "line": 1148,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14823,7 +14867,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/previews",
         "file": "back/app/chat/router.py",
         "handler": "read_message_previews",
-        "line": 715,
+        "line": 755,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14832,7 +14876,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/previews/content",
         "file": "back/app/chat/router.py",
         "handler": "read_message_preview_content",
-        "line": 894,
+        "line": 934,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14841,7 +14885,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/previews/image",
         "file": "back/app/chat/router.py",
         "handler": "read_message_preview_image",
-        "line": 841,
+        "line": 881,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14850,7 +14894,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/previews/repository",
         "file": "back/app/chat/router.py",
         "handler": "open_message_directory_repository",
-        "line": 810,
+        "line": 850,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14859,7 +14903,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/speech",
         "file": "back/app/chat/router.py",
         "handler": "read_message_speech",
-        "line": 616,
+        "line": 656,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14868,7 +14912,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/topic",
         "file": "back/app/chat/router.py",
         "handler": "update_message_topic",
-        "line": 684,
+        "line": 724,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -14877,7 +14921,7 @@
         "declared_path": "/chat/rooms/{room_id}/mute",
         "file": "back/app/chat/router.py",
         "handler": "set_muted",
-        "line": 1281,
+        "line": 1321,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14886,7 +14930,7 @@
         "declared_path": "/chat/rooms/{room_id}/processes",
         "file": "back/app/chat/router.py",
         "handler": "read_room_processes",
-        "line": 1065,
+        "line": 1105,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14895,7 +14939,7 @@
         "declared_path": "/chat/rooms/{room_id}/read",
         "file": "back/app/chat/router.py",
         "handler": "mark_read",
-        "line": 1273,
+        "line": 1313,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14904,7 +14948,7 @@
         "declared_path": "/chat/rooms/{room_id}/repositories",
         "file": "back/app/chat/router.py",
         "handler": "discover_room_repositories",
-        "line": 771,
+        "line": 811,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14913,7 +14957,7 @@
         "declared_path": "/chat/rooms/{room_id}/repositories",
         "file": "back/app/chat/router.py",
         "handler": "open_room_repository",
-        "line": 787,
+        "line": 827,
         "method": "POST",
         "module": "app.chat"
       },
@@ -14922,7 +14966,7 @@
         "declared_path": "/chat/rooms/{room_id}/speech/status",
         "file": "back/app/chat/router.py",
         "handler": "read_message_speech_status",
-        "line": 590,
+        "line": 630,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14931,7 +14975,7 @@
         "declared_path": "/chat/rooms/{room_id}/tasks",
         "file": "back/app/chat/router.py",
         "handler": "read_room_tasks",
-        "line": 986,
+        "line": 1026,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14940,7 +14984,7 @@
         "declared_path": "/chat/rooms/{room_id}/topic",
         "file": "back/app/chat/router.py",
         "handler": "update_room_topic",
-        "line": 527,
+        "line": 567,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -14949,7 +14993,7 @@
         "declared_path": "/chat/status",
         "file": "back/app/chat/router.py",
         "handler": "read_status",
-        "line": 273,
+        "line": 313,
         "method": "GET",
         "module": "app.chat"
       },
@@ -14958,7 +15002,7 @@
         "declared_path": "/chat/viewer-agents",
         "file": "back/app/chat/router.py",
         "handler": "read_viewer_agents",
-        "line": 394,
+        "line": 434,
         "method": "GET",
         "module": "app.chat"
       },
@@ -20426,6 +20470,7 @@
           "front/app/chat/components/ChatNotificationBootstrap.vue",
           "front/app/chat/components/ConversationDocumentsPanel.vue",
           "front/app/chat/components/ConversationProcessesPanel.vue",
+          "front/app/chat/components/DocumentConversationPanel.vue",
           "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/components/MessageTimeline.vue",
           "front/app/chat/pages/index.vue",

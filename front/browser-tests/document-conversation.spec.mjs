@@ -6,7 +6,8 @@ async function workspace(page, privileges = ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CH
   const id = '00000000-0000-4000-8000-000000000321'
   const state = { item: { ...documentFixture, id, owner_agent_id: null, owner_user_id: 1,
     media_type: 'text/html', content_profile: 'document', payload: { text: '<h1>Synthetic report</h1><p>Working content</p>' } },
-    refuseSave: false, refuseSend: false, refuseRooms: 0, roomRequests: [], reads: [], writes: [], operations: [], created: [] }
+    refuseSave: false, refuseSend: false, refuseRooms: 0, roomRequests: [], reads: [], writes: [], operations: [], created: [],
+    preferences: new Map(), preferenceReads: [], preferenceWrites: [], refusePreferenceRead: false, refusePreferenceWrite: false }
   const room = { id: 'room-a', label: 'Existing conversation', agent_id: 7, agent_name: 'Synthetic agent',
     agent_active: false, source: null, writable: true, members: [], muted: false, archived: false, unread_count: 0, conversation_type: 'text' }
   const rooms = [room, ...Array.from({ length: roomCount - 1 }, (_, index) => ({
@@ -15,6 +16,7 @@ async function workspace(page, privileges = ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CH
   const message = { id: 'message-a', room_id: room.id, text: 'Earlier exchange', files: [], sender: null,
     created_at: '2026-09-01T12:00:00Z', is_mine: true, status: 'sent' }
   const messages = [message]
+  state.documents = new Map([[id, state.item]])
   state.receive = (roomId, id, text) => {
     const incoming = { ...message, id, room_id: roomId, text, is_mine: false,
       created_at: new Date(Date.parse(message.created_at) + messages.length * 1000).toISOString() }
@@ -28,22 +30,43 @@ async function workspace(page, privileges = ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CH
   await jsonRoute(page, '**/api/documents/keywords?*', [])
   await jsonRoute(page, `**/api/documents/${id}/attachments*`, [])
   await page.route('**/api/documents/library', route => route.fulfill({ json: {
-    entries: [{ item: state.item, tags: [], agent_ids: [], writable_agent_ids: [], user_access: state.item.access }], total: 1, has_more: false,
+    entries: [...state.documents.values()].map(item => ({ item, tags: [], agent_ids: [], writable_agent_ids: [], user_access: item.access })), total: state.documents.size, has_more: false,
   } }))
-  await page.route(new RegExp(`/api/documents/${id}(?:\\?|$)`), route => {
+  await page.route(/\/api\/documents\/([0-9a-f-]+)(?:\?.*)?$/, route => {
+    const documentId = new URL(route.request().url()).pathname.split('/').at(-1)
+    const item = documentId === id ? state.item : state.documents.get(documentId)
+    if (!item) return route.fulfill({ status: 404, json: { detail: 'Missing document' } })
     if (route.request().method() === 'PATCH') {
       state.operations.push('save')
       if (state.refuseSave) return route.fulfill({ status: 503, json: { detail: 'Save unavailable' } })
-      state.item = { ...state.item, ...route.request().postDataJSON(), revision: state.item.revision + 1 }
-      return route.fulfill({ json: state.item })
+      const updated = { ...item, ...route.request().postDataJSON(), revision: item.revision + 1 }
+      state.documents.set(documentId, updated)
+      if (documentId === id) state.item = updated
+      return route.fulfill({ json: updated })
     }
-    return route.fulfill({ json: { item: state.item, agent_id: null } })
+    return route.fulfill({ json: { item, agent_id: null } })
+  })
+  await page.route('**/api/chat/documents/*/conversation', async route => {
+    const documentId = new URL(route.request().url()).pathname.split('/').at(-2)
+    if (route.request().method() === 'PUT') {
+      if (state.refusePreferenceWrite) return route.fulfill({ status: 503, json: { detail: 'Save unavailable' } })
+      const value = route.request().postDataJSON()
+      state.preferences.set(documentId, value.room_id)
+      state.preferenceWrites.push({ documentId, ...value })
+      return route.fulfill({ json: value })
+    }
+    const roomId = state.preferences.get(documentId) ?? null
+    state.preferenceReads.push(documentId)
+    if (state.refusePreferenceRead) return route.fulfill({ status: 503, json: { detail: 'Read unavailable' } })
+    if (state.waitPreferenceRead) await state.waitPreferenceRead(documentId)
+    return route.fulfill({ json: { room_id: roomId } })
   })
   await jsonRoute(page, '**/api/chat/status', { enabled: true, chat_enabled: true, max_attachment_bytes: 1000000 })
   await jsonRoute(page, '**/api/chat/push/configuration', { available: false, public_key: '' })
   await jsonRoute(page, '**/api/mail/status', { enabled: false })
   await page.route('**/api/chat/inbox', route => route.fulfill({ json: { unread_count: rooms.reduce((total, room) => total + room.unread_count, 0) } }))
-  await page.route('**/api/chat/rooms?*', route => {
+  await page.route('**/api/chat/rooms?*', async route => {
+    if (state.waitRooms) await state.waitRooms()
     const query = new URL(route.request().url()).searchParams
     const currentPage = Number(query.get('page') ?? 1), size = Number(query.get('page_size') ?? 50)
     const search = query.get('search') ?? ''
@@ -55,8 +78,10 @@ async function workspace(page, privileges = ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CH
   await page.route(/\/api\/chat\/rooms\/room-(?:[ab]|\d+)(?:\?.*)?$/, route => route.fulfill({ json: rooms.find(room => new URL(route.request().url()).pathname.endsWith(`/${room.id}`)) }))
   await jsonRoute(page, '**/api/chat/rooms/*/activity?*', { items: [], total: 0 })
   await jsonRoute(page, '**/api/chat/rooms/*/documents?*', { items: [], total: 0 })
-  await page.route('**/api/chat/rooms/*/messages?*', route => {
+  await jsonRoute(page, '**/api/documents/*/attachments*', [])
+  await page.route('**/api/chat/rooms/*/messages?*', async route => {
     const roomId = route.request().url().match(/rooms\/([^/]+)/)[1]
+    if (state.waitMessages) await state.waitMessages(roomId)
     const items = messages.filter(message => message.room_id === roomId || message.id === 'message-a')
     return route.fulfill({ json: { items, total: items.length } })
   })
@@ -89,6 +114,9 @@ async function workspace(page, privileges = ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CH
   })
   if (notificationSurface !== 'chat') await expect(page.getByLabel('Title', { exact: true })).toHaveValue(state.item.title)
   else await expect(page.locator('.conversation-pane')).toContainText('Earlier exchange')
+  if (notificationSurface !== 'chat' && page.viewportSize().width >= 1024 && privileges.includes('CHAT_ACCESS')) {
+    await expect.poll(() => state.preferenceReads.length).toBeGreaterThan(0)
+  }
   return state
 }
 
@@ -109,6 +137,7 @@ for (const mobile of [false, true]) test(`Documents saves before conversing and 
   await title.fill('Edited report')
   if (!mobile) await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
   const panel = await openConversation(page)
+  await expect.poll(() => state.preferences.get(state.item.id)).toBe('room-a')
   await expect(page.locator('.editorial-fullscreen')).toHaveCount(0)
   await panel.locator('textarea').fill('Work on this report')
   await panel.getByRole('button', { name: 'Post', exact: true }).click()
@@ -144,6 +173,7 @@ for (const mobile of [false, true]) test(`Documents saves before conversing and 
   await create.getByRole('button', { name: 'Chat', exact: true }).click()
   await expect.poll(() => state.created.length).toBe(1)
   await expect(panel.getByText('New conversation', { exact: true })).toBeVisible()
+  await expect.poll(() => state.preferences.get(state.item.id)).toBe('room-b')
   await panel.locator('textarea').fill('Continue here')
   await panel.getByRole('button', { name: 'Post', exact: true }).click()
   await expect.poll(() => state.writes.length).toBe(2)
@@ -161,6 +191,161 @@ for (const mobile of [false, true]) test(`Documents saves before conversing and 
   await panel.getByRole('button', { name: 'Hide conversation', exact: true }).click()
   await expect(panel).toBeHidden()
   await expect(title).toHaveValue('Edited report')
+})
+
+for (const mobile of [false, true]) test(`Documents restores the last conversation per document (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+  await page.setViewportSize({ width: mobile ? 390 : 1600, height: 1000 })
+  const state = await workspace(page, undefined, 102)
+  await expect(page.getByRole('region', { name: 'Conversation', exact: true })).not.toBeVisible()
+  const firstId = state.item.id
+  const secondId = '00000000-0000-4000-8000-000000000322'
+  state.documents.set(secondId, { ...state.item, id: secondId, title: 'Second synthetic document' })
+  // Restoration is independent of the first picker page.
+  state.preferences.set(firstId, 'room-102')
+  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  const panel = page.getByRole('region', { name: 'Conversation', exact: true })
+  await expect(panel).toContainText('Conversation 102')
+  expect(state.preferenceWrites).toEqual([])
+  await page.evaluate(id => window.testApp.navigate(`/documents?document_id=${id}`), secondId)
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Second synthetic document')
+  if (mobile) await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await expect(panel).not.toContainText('Conversation 102')
+  await panel.getByRole('combobox', { name: 'Open a conversation', exact: true }).click()
+  await page.getByRole('option').filter({ hasText: 'Existing conversation' }).click()
+  await expect.poll(() => state.preferences.get(secondId)).toBe('room-a')
+  await page.evaluate(id => window.testApp.navigate(`/documents?document_id=${id}`), firstId)
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue(state.item.title)
+  if (mobile) await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await expect(panel).toContainText('Conversation 102')
+  // A new page instance reads server persistence, rather than its old in-memory selection.
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
+    route: `/documents?document_id=${secondId}`, privileges: ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CHAT_SEND', 'CHAT_MANAGE'],
+  })
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Second synthetic document')
+  if (mobile) await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await expect(panel).toContainText('Existing conversation')
+})
+
+test('late automatic restoration does not reopen a panel the user just closed', async ({ page }) => {
+  const state = await workspace(page)
+  state.preferences.set(state.item.id, 'room-a')
+  let release, entered
+  const started = new Promise(resolve => { entered = resolve })
+  const delayed = new Promise(resolve => { release = resolve })
+  state.waitPreferenceRead = async () => { entered(); await delayed }
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
+    route: `/documents?document_id=${state.item.id}`, privileges: ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CHAT_SEND', 'CHAT_MANAGE'],
+  })
+  await started
+  const trigger = page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true })
+  await trigger.click()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  await trigger.click()
+  const response = page.waitForResponse(url => url.url().includes(`/chat/documents/${state.item.id}/conversation`))
+  release()
+  await response
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('region', { name: 'Conversation', exact: true })).not.toBeVisible()
+})
+
+test('late preference responses cannot replace the conversation for the current document', async ({ page }) => {
+  const state = await workspace(page, undefined, 2)
+  const firstId = state.item.id
+  const secondId = '00000000-0000-4000-8000-000000000322'
+  state.documents.set(secondId, { ...state.item, id: secondId, title: 'Second synthetic document' })
+  state.preferences.set(firstId, 'room-a')
+  state.preferences.set(secondId, 'room-2')
+  let release, entered
+  const started = new Promise(resolve => { entered = resolve })
+  const delayed = new Promise(resolve => { release = resolve })
+  state.waitPreferenceRead = async id => { if (id === firstId) { entered(); await delayed } }
+  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await started
+  await page.evaluate(id => window.testApp.navigate(`/documents?document_id=${id}`), secondId)
+  const panel = page.getByRole('region', { name: 'Conversation', exact: true })
+  await expect(panel).toContainText('Conversation 002')
+  const response = page.waitForResponse(url => url.url().includes(`/chat/documents/${firstId}/conversation`))
+  release()
+  await response
+  await expect(panel).toContainText('Conversation 002')
+  expect(state.preferenceWrites).toEqual([])
+})
+
+test('preference failures are retryable and keep the selected conversation usable', async ({ page }) => {
+  const state = await workspace(page)
+  state.refusePreferenceRead = true
+  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  const panel = page.getByRole('region', { name: 'Conversation', exact: true })
+  await expect(panel.getByRole('alert')).toBeVisible()
+  state.refusePreferenceRead = false
+  await panel.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(panel.getByRole('alert')).toHaveCount(0)
+  state.refusePreferenceWrite = true
+  await panel.getByRole('combobox', { name: 'Open a conversation', exact: true }).click()
+  await page.getByRole('option').filter({ hasText: 'Existing conversation' }).click()
+  await expect(panel).toContainText('Earlier exchange')
+  await expect(panel.getByRole('alert')).toBeVisible()
+  await panel.locator('textarea').fill('Preserved draft')
+  state.refusePreferenceWrite = false
+  await panel.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect.poll(() => state.preferences.get(state.item.id)).toBe('room-a')
+  await expect(panel.locator('textarea')).toHaveValue('Preserved draft')
+})
+
+test('opening a conversation saves the preference even while its history is loading', async ({ page }) => {
+  const state = await workspace(page)
+  let release
+  const delayed = new Promise(resolve => { release = resolve })
+  state.waitMessages = () => delayed
+  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  const panel = page.getByRole('region', { name: 'Conversation', exact: true })
+  await panel.getByRole('combobox', { name: 'Open a conversation', exact: true }).click()
+  await page.getByRole('option').filter({ hasText: 'Existing conversation' }).click()
+  await panel.getByRole('button', { name: 'Hide conversation', exact: true }).click()
+  await expect.poll(() => state.preferences.get(state.item.id)).toBe('room-a')
+  release()
+})
+
+test('a manual selection supersedes a pending saved conversation', async ({ page }) => {
+  const state = await workspace(page, undefined, 2)
+  state.preferences.set(state.item.id, 'room-a')
+  let release, entered
+  const started = new Promise(resolve => { entered = resolve })
+  const delayed = new Promise(resolve => { release = resolve })
+  state.waitPreferenceRead = async () => { entered(); await delayed }
+  await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
+  await started
+  const panel = page.getByRole('region', { name: 'Conversation', exact: true })
+  await panel.getByRole('combobox', { name: 'Open a conversation', exact: true }).click()
+  await page.getByRole('option').filter({ hasText: 'Conversation 002' }).click()
+  await expect.poll(() => state.preferences.get(state.item.id)).toBe('room-2')
+  const response = page.waitForResponse(url => url.url().includes(`/chat/documents/${state.item.id}/conversation`) && url.request().method() === 'GET')
+  release()
+  await response
+  await expect(panel).toContainText('Conversation 002')
+})
+
+test('creating a conversation saves it before refreshing a slow room list', async ({ page }) => {
+  const state = await workspace(page, undefined, 2)
+  const panel = await openConversation(page)
+  let release, delayed = false
+  const waiting = new Promise(resolve => { release = resolve })
+  state.waitRooms = async () => { if (!delayed && state.created.length) { delayed = true; await waiting } }
+  await panel.getByRole('button', { name: 'New conversation with an agent', exact: true }).click()
+  const create = page.getByRole('dialog').filter({ hasText: 'New conversation' })
+  await create.getByRole('combobox').click()
+  await page.getByRole('option').filter({ hasText: 'Synthetic agent' }).click()
+  await create.getByRole('button', { name: 'Chat', exact: true }).click()
+  await expect(panel.getByText('New conversation', { exact: true })).toBeVisible()
+  await expect.poll(() => state.preferences.get(state.item.id)).toBe('room-b')
+  await panel.getByRole('combobox', { name: 'Open a conversation', exact: true }).click()
+  await page.getByRole('option').filter({ hasText: 'Conversation 002' }).click()
+  await expect.poll(() => state.preferences.get(state.item.id)).toBe('room-2')
+  const response = page.waitForResponse(url => url.url().includes('/chat/rooms?') && url.request().method() === 'GET')
+  release()
+  await response
+  await expect(panel).toContainText('Conversation 002')
+  expect(state.preferences.get(state.item.id)).toBe('room-2')
 })
 
 for (const surface of ['documents', 'chat']) for (const mobile of [false, true]) test(`visible conversations suppress notifications (${surface}, ${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {

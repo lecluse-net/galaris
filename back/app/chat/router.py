@@ -93,6 +93,7 @@ from app.conversation import (
 )
 
 from . import storage
+from .document_conversation import read_document_conversation, write_document_conversation
 from .document_previews import with_deleted_document_previews
 from .assertions import (
     ChatRoomAccessAssertion,
@@ -106,6 +107,7 @@ from .emoji_service import (
 )
 from .thumbnail_service import schedule_html_thumbnail
 from .schemas import (
+    DocumentConversationPreference,
     ConversationControlCommand,
     InteractionAnswer,
     ActiveCall,
@@ -188,6 +190,44 @@ _DICTATION_MIME_TYPES = {
 }
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+@router.get("/documents/{document_id}/conversation", response_model=DocumentConversationPreference)
+@authorize(privileges=ACCESS)
+async def read_document_conversation_preference(document_id: UUID) -> DocumentConversationPreference:
+    await _require_document_privilege()
+    try:
+        room_id = await read_document_conversation(document_id, await current_management_scope())
+        return DocumentConversationPreference(room_id=room_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+@router.put("/documents/{document_id}/conversation", response_model=DocumentConversationPreference)
+@authorize(privileges=ACCESS)
+async def update_document_conversation_preference(
+    document_id: UUID, data: DocumentConversationPreference,
+) -> DocumentConversationPreference:
+    await _require_document_privilege()
+    try:
+        room_id = await write_document_conversation(document_id, data.room_id, await current_management_scope())
+        return DocumentConversationPreference(room_id=room_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+async def _require_document_privilege() -> None:
+    user = await user_service.get_current_user()
+    if user is None or not any([
+        await check_privilege(user, privilege, get_db())
+        for privilege in ("DOCUMENT_ACCESS", "DOCUMENT_EDIT", "DOCUMENT_ADMIN")
+    ]):
+        raise HTTPException(status_code=403, detail="Document access denied.")
+
 
 def _room_for_scope(
     room: NativeMessengerRoom,

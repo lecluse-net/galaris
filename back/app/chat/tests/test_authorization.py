@@ -58,6 +58,8 @@ from core.user import UserModel as User
 
 def test_every_route_has_the_expected_privilege_and_resource_assertion() -> None:
     expected = {
+        "read_document_conversation_preference": (ACCESS, None),
+        "update_document_conversation_preference": (ACCESS, None),
         "read_status": (ACCESS, None),
         "read_inbox": (ACCESS, None),
         "read_push_configuration": (ACCESS, None),

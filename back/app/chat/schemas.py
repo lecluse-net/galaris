@@ -28,6 +28,12 @@ class ChatStatus(BaseModel):
     page_sizes: list[int] = Field(default_factory=lambda: [10, 20, 50, 100, 500])
 
 
+class DocumentConversationPreference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    room_id: UUID | None
+
+
 class ConversationControlCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
     action: ConversationControlAction

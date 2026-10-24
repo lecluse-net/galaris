@@ -24,6 +24,13 @@ Recherchez une conversation existante ou utilisez **Nouvelle conversation avec u
 Le sélecteur affiche l'avatar de chaque agent et propose une pagination pour les longues
 listes : 50 conversations par défaut, avec un choix de 10, 20, 50, 100 ou 500 par page.
 Changer de page ou rechercher une conversation conserve l'échange ouvert et son brouillon.
+La dernière conversation choisie ou créée est mémorisée pour chaque document et chaque
+utilisateur. Sur ordinateur, le panneau se rouvre au chargement du document et sélectionne
+la conversation mémorisée si vous y avez toujours accès. Sans conversation mémorisée, il
+reste fermé. Vous pouvez toujours le masquer avec son bouton de fermeture.
+Changer de document restaure la conversation propre à ce
+document ; sans préférence, le sélecteur reste vide. Cette préférence ne modifie ni le
+contenu du document ni ses droits.
 Les échanges restent des conversations accessibles dans **Discussion**. Documents
 privilégie la rédaction autour du contenu ouvert ; Discussion privilégie les échanges
 et le suivi des activités.

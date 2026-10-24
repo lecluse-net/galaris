@@ -11,14 +11,14 @@ tests remain authoritative for behavior.
 
 - 78 declared backend modules;
 - 40 declared frontend modules;
-- 628 backend dependency edges;
+- 629 backend dependency edges;
 - 218 frontend dependency edges;
-- 300 edges between `app`/`bridge` domains;
+- 301 edges between `app`/`bridge` domains;
 - 28 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 748 detected HTTP/WebSocket handlers;
-- 177 detected SQLAlchemy tables;
+- 750 detected HTTP/WebSocket handlers;
+- 178 detected SQLAlchemy tables;
 - 278 detected native MCP tools;
 - 51 detected Vue pages.
 
@@ -190,22 +190,23 @@ tests remain authoritative for behavior.
 | `app.browser` | `core.secrets` | `back/app/browser/router.py`, `back/app/browser/service.py` |
 | `app.browser` | `core.settings` | `back/app/browser/service.py` |
 | `app.browser` | `core.user` | `back/app/browser/__init__.py`, `back/app/browser/service.py` |
-| `app.chat` | `app.agent` | `back/app/chat/assertions.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py` |
+| `app.chat` | `app.agent` | `back/app/chat/assertions.py`, `back/app/chat/document_conversation.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py` |
 | `app.chat` | `app.browser` | `back/app/chat/router.py`, `back/app/chat/thumbnail_service.py` |
 | `app.chat` | `app.code` | `back/app/chat/router.py` |
 | `app.chat` | `app.conversation` | `back/app/chat/document_previews.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py` |
-| `app.chat` | `app.messenger` | `back/app/chat/assertions.py`, `back/app/chat/document_previews.py`, `back/app/chat/events.py`, `back/app/chat/provider.py`, `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py` |
+| `app.chat` | `app.document` | `back/app/chat/document_conversation.py` |
+| `app.chat` | `app.messenger` | `back/app/chat/assertions.py`, `back/app/chat/document_conversation.py`, `back/app/chat/document_previews.py`, `back/app/chat/events.py`, `back/app/chat/provider.py`, `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py` |
 | `app.chat` | `app.topic` | `back/app/chat/router.py` |
 | `app.chat` | `app.voice` | `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
 | `app.chat` | `core.authorize` | `back/app/chat/assertions.py`, `back/app/chat/dbadmin.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
-| `app.chat` | `core.database` | `back/app/chat/emoji_service.py`, `back/app/chat/events.py`, `back/app/chat/models.py`, `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py`, `back/app/chat/webrtc.py` |
+| `app.chat` | `core.database` | `back/app/chat/document_conversation.py`, `back/app/chat/emoji_service.py`, `back/app/chat/events.py`, `back/app/chat/models.py`, `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py`, `back/app/chat/webrtc.py` |
 | `app.chat` | `core.dbadmin` | `back/app/chat/dbadmin.py` |
 | `app.chat` | `core.i18n` | `back/app/chat/router.py` |
 | `app.chat` | `core.params` | `back/app/chat/dbadmin.py`, `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py` |
 | `app.chat` | `core.scheduling` | `back/app/chat/__init__.py` |
 | `app.chat` | `core.settings` | `back/app/chat/storage.py`, `back/app/chat/webrtc.py` |
 | `app.chat` | `core.storage` | `back/app/chat/router.py`, `back/app/chat/storage.py` |
-| `app.chat` | `core.user` | `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
+| `app.chat` | `core.user` | `back/app/chat/document_conversation.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
 | `app.chat` | `core.util` | `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py` |
 | `app.code` | `core.authorize` | `back/app/code/gateway.py`, `back/app/code/lifecycle.py`, `back/app/code/router.py`, `back/app/code/service.py` |
 | `app.code` | `core.database` | `back/app/code/gateway.py`, `back/app/code/lifecycle.py`, `back/app/code/models.py`, `back/app/code/resource_facade.py`, `back/app/code/router.py`, `back/app/code/runtime_configuration.py`, `back/app/code/service.py` |
@@ -806,7 +807,7 @@ tests remain authoritative for behavior.
 | `app/chat` | `app/conversation` | `front/app/chat/components/AgentExecutionTrace.vue` |
 | `app/chat` | `app/task` | `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/CompactTaskOperations.vue`, `front/app/chat/liveState.ts`, `front/app/chat/runtimeState.ts`, `front/app/chat/types.ts` |
 | `app/chat` | `app/topic` | `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/Composer.vue`, `front/app/chat/components/MessageTimeline.vue`, `front/app/chat/components/RoomCreateDialog.vue`, `front/app/chat/components/RoomPreferencesDialog.vue` |
-| `app/chat` | `core/api` | `front/app/chat/availability.ts`, `front/app/chat/code/services/codeService.ts`, `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ChatIdentityMappings.vue`, `front/app/chat/components/ChatNotificationBootstrap.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessesPanel.vue`, `front/app/chat/components/MessageResourcePreviews.vue`, `front/app/chat/components/MessageTimeline.vue`, `front/app/chat/pages/index.vue`, `front/app/chat/services/chatService.ts`, `front/app/chat/stores/chat.ts`, `front/app/chat/stores/inbox.ts`, `front/app/chat/useChatAvatar.ts` |
+| `app/chat` | `core/api` | `front/app/chat/availability.ts`, `front/app/chat/code/services/codeService.ts`, `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ChatIdentityMappings.vue`, `front/app/chat/components/ChatNotificationBootstrap.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessesPanel.vue`, `front/app/chat/components/DocumentConversationPanel.vue`, `front/app/chat/components/MessageResourcePreviews.vue`, `front/app/chat/components/MessageTimeline.vue`, `front/app/chat/pages/index.vue`, `front/app/chat/services/chatService.ts`, `front/app/chat/stores/chat.ts`, `front/app/chat/stores/inbox.ts`, `front/app/chat/useChatAvatar.ts` |
 | `app/chat` | `core/authorize` | `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/DocumentConversationPanel.vue`, `front/app/chat/components/MessageResourcePreviews.vue`, `front/app/chat/navigation.ts`, `front/app/chat/pages/index.vue`, `front/app/chat/stores/chat.ts` |
 | `app/chat` | `core/navigation` | `front/app/chat/navigation.ts`, `front/app/chat/pages/index.vue` |
 | `app/chat` | `core/params` | `front/app/chat/settings.ts` |
@@ -1028,8 +1029,8 @@ tests remain authoritative for behavior.
 | `app.tools` | 9 | `app.agent`, `app.connection`, `app.console`, `app.documentation`, `app.file_share`, `app.llm`, `app.messenger`, `app.task`, `app.util` |
 | `app.voice` | 9 | `app.agent`, `app.connection`, `app.conversation`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.task`, `app.tools` |
 | `app.agent` | 8 | `app.file_share`, `app.image`, `app.llm`, `app.messenger`, `app.process`, `app.share`, `app.skill`, `app.tools` |
+| `app.chat` | 8 | `app.agent`, `app.browser`, `app.code`, `app.conversation`, `app.document`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.messenger` | 8 | `app.agent`, `app.connection`, `app.conversation`, `app.file_share`, `app.llm`, `app.memory`, `app.task`, `app.tools` |
-| `app.chat` | 7 | `app.agent`, `app.browser`, `app.code`, `app.conversation`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.document` | 7 | `app.agent`, `app.conversation`, `app.goal`, `app.process`, `app.share`, `app.task`, `app.tools` |
 | `app.onboarding` | 7 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.process`, `app.skill`, `app.tools` |
 | `app.audio` | 6 | `app.file_share`, `app.llm`, `app.messenger`, `app.task`, `app.tools`, `bridge.youtube` |
@@ -1098,7 +1099,7 @@ tests remain authoritative for behavior.
 | `app.conversation` | 12 | `app.chat`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.memory` | 10 | `app.contact`, `app.dataset`, `app.dream`, `app.file_share`, `app.lab`, `app.messenger`, `app.process`, `app.topic`, `app.voice`, `bridge.hermes` |
 | `app.skill` | 10 | `app.agent`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.onboarding`, `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
-| `app.document` | 6 | `app.dataset`, `app.dream`, `app.file_share`, `app.memory`, `app.process`, `app.topic` |
+| `app.document` | 7 | `app.chat`, `app.dataset`, `app.dream`, `app.file_share`, `app.memory`, `app.process`, `app.topic` |
 | `app.goal` | 6 | `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.memory`, `app.task` |
 | `app.voice` | 6 | `app.chat`, `app.dream`, `app.lab`, `app.memory`, `bridge.matrix`, `bridge.nextcloud` |
 | `app.console` | 5 | `app.file_share`, `app.harness`, `app.process`, `app.tools`, `bridge.code_server` |
@@ -1337,57 +1338,59 @@ tests remain authoritative for behavior.
 | PUT | `/calendars/{calendar_id}` | `bridge.calendar` | `update_calendar` | yes | `back/bridge/calendar/router.py:75` |
 | POST | `/calendars/{calendar_id}/test` | `bridge.calendar` | `test_calendar` | yes | `back/bridge/calendar/router.py:97` |
 | GET | `/catalogue` | `app.process` | `read_catalogue` | yes | `back/app/process/router.py:94` |
-| GET | `/chat/agents/{agent_id}/avatar` | `app.chat` | `read_agent_avatar` | yes | `back/app/chat/router.py:401` |
-| GET | `/chat/emojis/frequent` | `app.chat` | `read_frequent_emojis` | yes | `back/app/chat/router.py:322` |
-| POST | `/chat/emojis/usage` | `app.chat` | `create_emoji_usage` | yes | `back/app/chat/router.py:331` |
-| GET | `/chat/identities` | `app.chat` | `read_identity_mappings` | yes | `back/app/chat/router.py:341` |
-| DELETE | `/chat/identities/{tool_id}` | `app.chat` | `delete_identity_mapping` | yes | `back/app/chat/router.py:371` |
-| PUT | `/chat/identities/{tool_id}` | `app.chat` | `update_identity_mapping` | yes | `back/app/chat/router.py:350` |
-| GET | `/chat/inbox` | `app.chat` | `read_inbox` | yes | `back/app/chat/router.py:283` |
-| GET | `/chat/push/configuration` | `app.chat` | `read_push_configuration` | yes | `back/app/chat/router.py:289` |
-| DELETE | `/chat/push/subscriptions` | `app.chat` | `remove_push_subscription` | yes | `back/app/chat/router.py:312` |
-| POST | `/chat/push/subscriptions` | `app.chat` | `create_push_subscription` | yes | `back/app/chat/router.py:299` |
-| GET | `/chat/recipients` | `app.chat` | `read_recipients` | yes | `back/app/chat/router.py:378` |
-| GET | `/chat/rooms` | `app.chat` | `read_rooms` | yes | `back/app/chat/router.py:421` |
-| POST | `/chat/rooms` | `app.chat` | `create_room` | yes | `back/app/chat/router.py:447` |
-| GET | `/chat/rooms/{room_id}` | `app.chat` | `read_room` | yes | `back/app/chat/router.py:475` |
-| PATCH | `/chat/rooms/{room_id}` | `app.chat` | `update_room_preferences` | yes | `back/app/chat/router.py:492` |
-| GET | `/chat/rooms/{room_id}/activity` | `app.chat` | `read_activity` | yes | `back/app/chat/router.py:940` |
-| GET | `/chat/rooms/{room_id}/activity/{round_id}` | `app.chat` | `read_activity_detail` | yes | `back/app/chat/router.py:955` |
-| POST | `/chat/rooms/{room_id}/activity/{round_id}/control` | `app.chat` | `control_response` | yes | `back/app/chat/router.py:969` |
-| PATCH | `/chat/rooms/{room_id}/archive` | `app.chat` | `update_room_archive` | yes | `back/app/chat/router.py:510` |
-| POST | `/chat/rooms/{room_id}/attachments` | `app.chat` | `create_attachment_message` | yes | `back/app/chat/router.py:1192` |
-| POST | `/chat/rooms/{room_id}/calls` | `app.chat` | `start_call` | yes | `back/app/chat/router.py:1371` |
-| GET | `/chat/rooms/{room_id}/calls/active` | `app.chat` | `read_active_call` | yes | `back/app/chat/router.py:1430` |
-| GET | `/chat/rooms/{room_id}/calls/status` | `app.chat` | `read_voice_call_status` | yes | `back/app/chat/router.py:1344` |
-| DELETE | `/chat/rooms/{room_id}/calls/{call_id}` | `app.chat` | `stop_call` | yes | `back/app/chat/router.py:1489` |
-| POST | `/chat/rooms/{room_id}/calls/{call_id}/candidates` | `app.chat` | `add_call_candidate` | yes | `back/app/chat/router.py:1454` |
-| GET | `/chat/rooms/{room_id}/commands` | `app.chat` | `read_room_commands` | yes | `back/app/chat/router.py:551` |
-| POST | `/chat/rooms/{room_id}/dictation` | `app.chat` | `transcribe_dictation` | yes | `back/app/chat/router.py:1141` |
-| GET | `/chat/rooms/{room_id}/documents` | `app.chat` | `read_room_documents` | yes | `back/app/chat/router.py:1007` |
-| POST | `/chat/rooms/{room_id}/documents` | `app.chat` | `create_room_document` | yes | `back/app/chat/router.py:1037` |
-| GET | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `download_file` | yes | `back/app/chat/router.py:1299` |
-| PATCH | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `rename_chat_attachment` | yes | `back/app/chat/router.py:1289` |
-| GET | `/chat/rooms/{room_id}/interactions/{interaction_id}` | `app.chat` | `read_interaction` | yes | `back/app/chat/router.py:1083` |
-| POST | `/chat/rooms/{room_id}/interactions/{interaction_id}/answer` | `app.chat` | `answer_interaction` | yes | `back/app/chat/router.py:1092` |
-| GET | `/chat/rooms/{room_id}/messages` | `app.chat` | `read_messages` | yes | `back/app/chat/router.py:565` |
-| POST | `/chat/rooms/{room_id}/messages` | `app.chat` | `create_message` | yes | `back/app/chat/router.py:1108` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews` | `app.chat` | `read_message_previews` | yes | `back/app/chat/router.py:715` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/content` | `app.chat` | `read_message_preview_content` | yes | `back/app/chat/router.py:894` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/image` | `app.chat` | `read_message_preview_image` | yes | `back/app/chat/router.py:841` |
-| POST | `/chat/rooms/{room_id}/messages/{message_id}/previews/repository` | `app.chat` | `open_message_directory_repository` | yes | `back/app/chat/router.py:810` |
-| POST | `/chat/rooms/{room_id}/messages/{message_id}/speech` | `app.chat` | `read_message_speech` | yes | `back/app/chat/router.py:616` |
-| PATCH | `/chat/rooms/{room_id}/messages/{message_id}/topic` | `app.chat` | `update_message_topic` | yes | `back/app/chat/router.py:684` |
-| POST | `/chat/rooms/{room_id}/mute` | `app.chat` | `set_muted` | yes | `back/app/chat/router.py:1281` |
-| GET | `/chat/rooms/{room_id}/processes` | `app.chat` | `read_room_processes` | yes | `back/app/chat/router.py:1065` |
-| POST | `/chat/rooms/{room_id}/read` | `app.chat` | `mark_read` | yes | `back/app/chat/router.py:1273` |
-| GET | `/chat/rooms/{room_id}/repositories` | `app.chat` | `discover_room_repositories` | yes | `back/app/chat/router.py:771` |
-| POST | `/chat/rooms/{room_id}/repositories` | `app.chat` | `open_room_repository` | yes | `back/app/chat/router.py:787` |
-| GET | `/chat/rooms/{room_id}/speech/status` | `app.chat` | `read_message_speech_status` | yes | `back/app/chat/router.py:590` |
-| GET | `/chat/rooms/{room_id}/tasks` | `app.chat` | `read_room_tasks` | yes | `back/app/chat/router.py:986` |
-| PATCH | `/chat/rooms/{room_id}/topic` | `app.chat` | `update_room_topic` | yes | `back/app/chat/router.py:527` |
-| GET | `/chat/status` | `app.chat` | `read_status` | yes | `back/app/chat/router.py:273` |
-| GET | `/chat/viewer-agents` | `app.chat` | `read_viewer_agents` | yes | `back/app/chat/router.py:394` |
+| GET | `/chat/agents/{agent_id}/avatar` | `app.chat` | `read_agent_avatar` | yes | `back/app/chat/router.py:441` |
+| GET | `/chat/documents/{document_id}/conversation` | `app.chat` | `read_document_conversation_preference` | yes | `back/app/chat/router.py:197` |
+| PUT | `/chat/documents/{document_id}/conversation` | `app.chat` | `update_document_conversation_preference` | yes | `back/app/chat/router.py:210` |
+| GET | `/chat/emojis/frequent` | `app.chat` | `read_frequent_emojis` | yes | `back/app/chat/router.py:362` |
+| POST | `/chat/emojis/usage` | `app.chat` | `create_emoji_usage` | yes | `back/app/chat/router.py:371` |
+| GET | `/chat/identities` | `app.chat` | `read_identity_mappings` | yes | `back/app/chat/router.py:381` |
+| DELETE | `/chat/identities/{tool_id}` | `app.chat` | `delete_identity_mapping` | yes | `back/app/chat/router.py:411` |
+| PUT | `/chat/identities/{tool_id}` | `app.chat` | `update_identity_mapping` | yes | `back/app/chat/router.py:390` |
+| GET | `/chat/inbox` | `app.chat` | `read_inbox` | yes | `back/app/chat/router.py:323` |
+| GET | `/chat/push/configuration` | `app.chat` | `read_push_configuration` | yes | `back/app/chat/router.py:329` |
+| DELETE | `/chat/push/subscriptions` | `app.chat` | `remove_push_subscription` | yes | `back/app/chat/router.py:352` |
+| POST | `/chat/push/subscriptions` | `app.chat` | `create_push_subscription` | yes | `back/app/chat/router.py:339` |
+| GET | `/chat/recipients` | `app.chat` | `read_recipients` | yes | `back/app/chat/router.py:418` |
+| GET | `/chat/rooms` | `app.chat` | `read_rooms` | yes | `back/app/chat/router.py:461` |
+| POST | `/chat/rooms` | `app.chat` | `create_room` | yes | `back/app/chat/router.py:487` |
+| GET | `/chat/rooms/{room_id}` | `app.chat` | `read_room` | yes | `back/app/chat/router.py:515` |
+| PATCH | `/chat/rooms/{room_id}` | `app.chat` | `update_room_preferences` | yes | `back/app/chat/router.py:532` |
+| GET | `/chat/rooms/{room_id}/activity` | `app.chat` | `read_activity` | yes | `back/app/chat/router.py:980` |
+| GET | `/chat/rooms/{room_id}/activity/{round_id}` | `app.chat` | `read_activity_detail` | yes | `back/app/chat/router.py:995` |
+| POST | `/chat/rooms/{room_id}/activity/{round_id}/control` | `app.chat` | `control_response` | yes | `back/app/chat/router.py:1009` |
+| PATCH | `/chat/rooms/{room_id}/archive` | `app.chat` | `update_room_archive` | yes | `back/app/chat/router.py:550` |
+| POST | `/chat/rooms/{room_id}/attachments` | `app.chat` | `create_attachment_message` | yes | `back/app/chat/router.py:1232` |
+| POST | `/chat/rooms/{room_id}/calls` | `app.chat` | `start_call` | yes | `back/app/chat/router.py:1411` |
+| GET | `/chat/rooms/{room_id}/calls/active` | `app.chat` | `read_active_call` | yes | `back/app/chat/router.py:1470` |
+| GET | `/chat/rooms/{room_id}/calls/status` | `app.chat` | `read_voice_call_status` | yes | `back/app/chat/router.py:1384` |
+| DELETE | `/chat/rooms/{room_id}/calls/{call_id}` | `app.chat` | `stop_call` | yes | `back/app/chat/router.py:1529` |
+| POST | `/chat/rooms/{room_id}/calls/{call_id}/candidates` | `app.chat` | `add_call_candidate` | yes | `back/app/chat/router.py:1494` |
+| GET | `/chat/rooms/{room_id}/commands` | `app.chat` | `read_room_commands` | yes | `back/app/chat/router.py:591` |
+| POST | `/chat/rooms/{room_id}/dictation` | `app.chat` | `transcribe_dictation` | yes | `back/app/chat/router.py:1181` |
+| GET | `/chat/rooms/{room_id}/documents` | `app.chat` | `read_room_documents` | yes | `back/app/chat/router.py:1047` |
+| POST | `/chat/rooms/{room_id}/documents` | `app.chat` | `create_room_document` | yes | `back/app/chat/router.py:1077` |
+| GET | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `download_file` | yes | `back/app/chat/router.py:1339` |
+| PATCH | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `rename_chat_attachment` | yes | `back/app/chat/router.py:1329` |
+| GET | `/chat/rooms/{room_id}/interactions/{interaction_id}` | `app.chat` | `read_interaction` | yes | `back/app/chat/router.py:1123` |
+| POST | `/chat/rooms/{room_id}/interactions/{interaction_id}/answer` | `app.chat` | `answer_interaction` | yes | `back/app/chat/router.py:1132` |
+| GET | `/chat/rooms/{room_id}/messages` | `app.chat` | `read_messages` | yes | `back/app/chat/router.py:605` |
+| POST | `/chat/rooms/{room_id}/messages` | `app.chat` | `create_message` | yes | `back/app/chat/router.py:1148` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews` | `app.chat` | `read_message_previews` | yes | `back/app/chat/router.py:755` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/content` | `app.chat` | `read_message_preview_content` | yes | `back/app/chat/router.py:934` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/image` | `app.chat` | `read_message_preview_image` | yes | `back/app/chat/router.py:881` |
+| POST | `/chat/rooms/{room_id}/messages/{message_id}/previews/repository` | `app.chat` | `open_message_directory_repository` | yes | `back/app/chat/router.py:850` |
+| POST | `/chat/rooms/{room_id}/messages/{message_id}/speech` | `app.chat` | `read_message_speech` | yes | `back/app/chat/router.py:656` |
+| PATCH | `/chat/rooms/{room_id}/messages/{message_id}/topic` | `app.chat` | `update_message_topic` | yes | `back/app/chat/router.py:724` |
+| POST | `/chat/rooms/{room_id}/mute` | `app.chat` | `set_muted` | yes | `back/app/chat/router.py:1321` |
+| GET | `/chat/rooms/{room_id}/processes` | `app.chat` | `read_room_processes` | yes | `back/app/chat/router.py:1105` |
+| POST | `/chat/rooms/{room_id}/read` | `app.chat` | `mark_read` | yes | `back/app/chat/router.py:1313` |
+| GET | `/chat/rooms/{room_id}/repositories` | `app.chat` | `discover_room_repositories` | yes | `back/app/chat/router.py:811` |
+| POST | `/chat/rooms/{room_id}/repositories` | `app.chat` | `open_room_repository` | yes | `back/app/chat/router.py:827` |
+| GET | `/chat/rooms/{room_id}/speech/status` | `app.chat` | `read_message_speech_status` | yes | `back/app/chat/router.py:630` |
+| GET | `/chat/rooms/{room_id}/tasks` | `app.chat` | `read_room_tasks` | yes | `back/app/chat/router.py:1026` |
+| PATCH | `/chat/rooms/{room_id}/topic` | `app.chat` | `update_room_topic` | yes | `back/app/chat/router.py:567` |
+| GET | `/chat/status` | `app.chat` | `read_status` | yes | `back/app/chat/router.py:313` |
+| GET | `/chat/viewer-agents` | `app.chat` | `read_viewer_agents` | yes | `back/app/chat/router.py:434` |
 | GET | `/code/rooms/{room_id}` | `app.code` | `room_workspaces` | yes | `back/app/code/router.py:37` |
 | POST | `/code/sessions/{identifier}/heartbeat` | `app.code` | `heartbeat` | yes | `back/app/code/router.py:84` |
 | POST | `/code/sessions/{identifier}/navigate` | `app.code` | `navigate_session` | yes | `back/app/code/router.py:70` |
@@ -1990,9 +1993,10 @@ tests remain authoritative for behavior.
 | `assignments` | `Assignment` | `core.authorize` | yes | `roles.id`, `users.id` | `back/core/authorize/models.py:69` |
 | `calendar_feeds` | `CalendarFeed` | `bridge.calendar` | yes | `connections.id` | `back/bridge/calendar/models.py:15` |
 | `calendar_triggers` | `CalendarTrigger` | `bridge.calendar` | no | `calendar_feeds.id`, `process_runs.id`, `tasks.id` | `back/bridge/calendar/models.py:60` |
-| `chat_emoji_usages` | `ChatEmojiUsage` | `app.chat` | no | `users.id` | `back/app/chat/models.py:25` |
-| `chat_push_deliveries` | `ChatPushDelivery` | `app.chat` | no | `chat_push_subscriptions.id`, `messenger_messages.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:105` |
-| `chat_push_subscriptions` | `ChatPushSubscription` | `app.chat` | no | `users.id` | `back/app/chat/models.py:62` |
+| `chat_document_conversations` | `ChatDocumentConversation` | `app.chat` | no | `documents.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:25` |
+| `chat_emoji_usages` | `ChatEmojiUsage` | `app.chat` | no | `users.id` | `back/app/chat/models.py:46` |
+| `chat_push_deliveries` | `ChatPushDelivery` | `app.chat` | no | `chat_push_subscriptions.id`, `messenger_messages.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:126` |
+| `chat_push_subscriptions` | `ChatPushSubscription` | `app.chat` | no | `users.id` | `back/app/chat/models.py:83` |
 | `code_conversation_links` | `CodeConversationLink` | `app.code` | no | `code_workspaces.id`, `messenger_rooms.id`, `tasks.id` | `back/app/code/models.py:44` |
 | `code_display_requests` | `CodeDisplayRequest` | `app.code` | no | `code_workspaces.id`, `messenger_rooms.id`, `tasks.id` | `back/app/code/models.py:54` |
 | `code_grants` | `CodeGrant` | `app.code` | no | `agents.id`, `code_workspaces.id`, `users.id` | `back/app/code/models.py:30` |

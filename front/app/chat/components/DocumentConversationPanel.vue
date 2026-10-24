@@ -1,6 +1,6 @@
 <template>
   <section class="document-conversation" :class="{ 'document-conversation--dark': $q.dark.isActive }" :aria-label="t('chat.documentPanel.title')">
-    <q-toolbar>
+    <q-toolbar class="document-conversation-header">
       <q-icon name="forum" color="primary" />
       <q-toolbar-title class="text-subtitle1">{{ t('chat.documentPanel.title') }}</q-toolbar-title>
       <q-btn v-if="canCreate" flat round dense icon="add" :aria-label="t('chat.newRoom')" :disable="openingCreate" @click="openCreate">
@@ -12,12 +12,12 @@
       {{ error }}
       <q-btn outline :label="t('common.retry')" @click="retry" />
     </q-banner>
-    <q-linear-progress v-if="initializing" indeterminate />
+    <q-linear-progress v-if="initializing || restoring" indeterminate />
     <template v-if="store.enabled">
-      <div class="q-pa-sm">
+      <div class="document-conversation-filter q-pa-sm">
         <q-select :model-value="store.selectedRoom" :options="roomOptions" option-label="label" option-value="id"
           outlined dense use-input input-debounce="250" :label="t('chat.documentPanel.choose')"
-          :loading="searching" @filter="filterRooms" @update:model-value="selectRoom">
+          :loading="searching || restoring" @filter="filterRooms" @update:model-value="selectRoom">
           <template #prepend>
             <InternalAgentAvatar v-if="store.selectedRoom" :agent-id="store.selectedRoom.agent_id" :name="store.selectedRoom.agent_name" size="28px" />
           </template>
@@ -39,7 +39,7 @@
         </q-select>
       </div>
       <template v-if="store.selectedRoom">
-        <div v-if="documentId" class="q-px-sm q-pb-sm text-caption">{{ t('chat.documentPanel.context') }}</div>
+        <q-separator />
         <q-scroll-area ref="scrollArea" class="document-conversation-messages" @scroll="onScroll">
           <MessageTimeline :room-id="store.selectedRoom.id" :messages="store.messages" :activity="store.activity"
             :live-round="store.liveRound" :pending-transcriptions="store.pendingVoiceTranscriptions"
@@ -68,6 +68,7 @@ import { useI18n } from 'vue-i18n'
 import { isAxiosError } from 'axios'
 import type { QScrollArea } from 'quasar'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
+import { sessionGeneration } from '@/core/api'
 import { websocket } from '@/core/websocket'
 import type { DocumentFocus } from '@/core/util'
 import { useChatState } from '../stores/chat'
@@ -96,6 +97,7 @@ const { markVisibleMessageRead: markVisibleRead } = useConversationVisibility({
 })
 const scrollArea = useTemplateRef<QScrollArea>('scrollArea')
 const initializing = ref(false), searching = ref(false), error = ref('')
+const initialized = ref(false), restoring = ref(false)
 const openingCreate = ref(false), creating = ref(false), createOpen = ref(false)
 const recipients = ref<MessengerAgent[]>([])
 const replyingTo = ref<MessengerMessage | null>(null)
@@ -107,6 +109,8 @@ const roomsPage = ref(1), roomsPageSize = ref(50), roomsTotal = ref(0)
 const roomOptions = computed(() => rooms.value.filter(room => room.conversation_type !== 'audio'))
 let roomSearch = ''
 let disposed = false, searchGeneration = 0
+let contextGeneration = 0, contextDocumentId: string | null = documentId, restored = false
+let preferenceWrites: Promise<void> = Promise.resolve()
 let following = true, preparedDocumentId: string | null = null
 let preparedDocumentFocus: DocumentFocus | null = null
 let retryAction: () => Promise<unknown> = initialize
@@ -132,14 +136,66 @@ async function initialize(): Promise<void> {
         roomsPageSize.value = 50
         roomSearch = ''
       }
+      if (!disposed) initialized.value = true
     }
     if (disposed) store.releaseSelectedRoom()
   } finally { initializing.value = false }
 }
 async function selectRoom(room: MessengerRoom): Promise<void> {
+  const generation = ++contextGeneration, id = documentId
+  restored = true
+  restoring.value = false
   following = true
-  await run(() => store.selectRoom(room))
+  await Promise.all([
+    run(async () => {
+      try { await store.selectRoom(room) }
+      catch (failure) { if (!disposed && generation === contextGeneration) throw failure }
+    }),
+    id ? rememberRoom(id, room.id, generation) : Promise.resolve(),
+  ])
   followBottom()
+}
+async function rememberRoom(id: string, roomId: string, generation: number): Promise<void> {
+  const session = sessionGeneration()
+  const write = () => session === sessionGeneration() ? rememberRoom(id, roomId, generation) : Promise.resolve()
+  preferenceWrites = preferenceWrites.catch(() => undefined).then(() => {
+    if (session === sessionGeneration()) return chatService.setDocumentConversation(id, roomId)
+  })
+  try { await preferenceWrites }
+  catch {
+    if (!disposed && generation === contextGeneration && session === sessionGeneration()) { retryAction = write; reportError() }
+  }
+}
+async function restoreRoom(id: string | null, generation: number): Promise<void> {
+  const session = sessionGeneration()
+  const current = () => !disposed && generation === contextGeneration && documentId === id && visible && session === sessionGeneration()
+  restoring.value = true
+  try {
+    // A quick return to a document must read after its previous selection was saved.
+    await preferenceWrites.catch(() => undefined)
+    if (!current()) return
+    if (id) {
+      const roomId = await chatService.documentConversation(id)
+      if (!current()) return
+      if (roomId) {
+        let room: MessengerRoom
+        try { room = await chatService.room(roomId) }
+        catch (failure) {
+          if (isAxiosError(failure) && [403, 404].includes(failure.response?.status ?? 0)) {
+            if (current()) restored = true
+            return
+          }
+          throw failure
+        }
+        if (!current()) return
+        await store.selectRoom(room)
+        followBottom()
+      }
+    }
+    if (current()) restored = true
+  } catch (failure) {
+    if (current()) throw failure
+  } finally { if (current()) restoring.value = false }
 }
 function filterRooms(value: string, update: (callback: () => void) => void): void {
   const generation = searchGeneration + 1
@@ -189,13 +245,20 @@ async function createRoom(agentId: number, label: string, topicId: string | null
   creating.value = true
   error.value = ''
   retryAction = initialize
+  const generation = ++contextGeneration, id = documentId
+  const session = sessionGeneration()
+  restored = true
+  restoring.value = false
   try {
     const room = await chatService.createRoom(agentId, label, topicId, showLastMessage)
-    if (disposed) return
+    if (disposed || generation !== contextGeneration || documentId !== id || session !== sessionGeneration()) return
     createOpen.value = false
-    await store.selectRoom(room)
-    await loadRooms('', 1)
-  } catch { reportError() }
+    await Promise.all([
+      store.selectRoom(room),
+      loadRooms('', 1),
+      id ? rememberRoom(id, room.id, generation) : Promise.resolve(),
+    ])
+  } catch { if (!disposed && generation === contextGeneration && session === sessionGeneration()) reportError() }
   finally { creating.value = false }
 }
 async function prepare(): Promise<boolean> {
@@ -235,6 +298,17 @@ function showDocument(event: { data?: { room_id?: string; document_id?: string }
   if (visible && canReadDocuments.value && !store.selectedRoom?.source && event.data?.room_id === store.selectedRoom?.id && event.data?.document_id) emit('open-document', event.data.document_id)
 }
 watch(() => store.selectedRoom?.id, () => { replyingTo.value = null; following = true })
+watch(() => [documentId, visible, initialized.value] as const, ([id, shown, ready]) => {
+  const generation = ++contextGeneration
+  if (id !== contextDocumentId) {
+    contextDocumentId = id
+    restored = false
+    createOpen.value = false
+    void store.selectRoom(null)
+  }
+  restoring.value = false
+  if (shown && ready && !restored) void run(() => restoreRoom(id, generation))
+}, { flush: 'sync' })
 watch(() => store.enabled, enabled => {
   if (!enabled) {
     searchGeneration++
@@ -248,22 +322,30 @@ onMounted(() => { websocket.onEvent('chat', 'document_show', showDocument); void
 onBeforeUnmount(() => { disposed = true; searchGeneration++; websocket.offEvent('chat', 'document_show', showDocument); store.releaseSelectedRoom() })
 </script>
 
+<style scoped src="../conversationBackground.css"></style>
+
 <style scoped>
 .document-conversation {
-  --chat-page-bg: transparent; --chat-surface: transparent;
+  --chat-surface: white;
   --chat-surface-raised: var(--solaire-gray-light); --chat-surface-soft: var(--solaire-gray-light);
   --chat-surface-sent: var(--solaire-blue-light); --chat-surface-selected: var(--solaire-blue-light);
   --chat-text: currentColor; --chat-text-secondary: currentColor;
   --chat-border: color-mix(in srgb, currentColor 20%, transparent); --chat-border-strong: var(--chat-border); --chat-received-border: var(--chat-border);
   --chat-thinking-bg: var(--solaire-yellow-light); --chat-thinking-text: currentColor;
   display: flex; flex-direction: column; height: 100%; min-width: 0; min-height: 0; overflow: hidden;
+  background: var(--chat-page-bg);
 }
 .document-conversation--dark {
+  --chat-surface: var(--solaire-gray-dark);
   --chat-surface-raised: var(--solaire-gray-dark); --chat-surface-soft: var(--solaire-gray-dark);
   --chat-surface-sent: var(--solaire-blue-dark); --chat-surface-selected: var(--solaire-blue-dark);
   --chat-thinking-bg: var(--solaire-yellow-dark);
 }
+.document-conversation-header, .document-conversation-filter { background: var(--chat-surface); }
 .document-conversation-messages { flex: 1; min-height: 150px; }
+.document-conversation-messages :deep(.message-timeline) { padding-inline: 8px; }
+.document-conversation-messages :deep(.message-row) { padding-right: 12px; }
+.document-conversation-messages :deep(.message-row--sent) { padding-right: 0; padding-left: 12px; }
 .document-conversation :deep(.composer-shell) { max-height: 45%; overflow: auto; }
 .document-conversation-pagination { position: sticky; top: 0; z-index: 1; margin-top: 0; padding: 8px; background: white; }
 :global(body.body--dark) .document-conversation-pagination { background: var(--solaire-gray-dark); }

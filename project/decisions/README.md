@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0232 — Dernière conversation par document et utilisateur](0232-personal-document-conversation.md)
+
 - [0228 — Retrouver les travaux, première mission et continuité mémoire](0228-work-discovery-and-memory-continuity.md)
 
 - [0227 — Espace de rédaction documentaire, listes à cocher et conversation](0227-document-authoring-workspace.md)

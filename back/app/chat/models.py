@@ -22,6 +22,27 @@ from sqlalchemy.orm import Mapped, mapped_column
 from core.database import Base
 
 
+class ChatDocumentConversation(Base):
+    """The last room opened by one human alongside one Document."""
+
+    __tablename__ = "chat_document_conversations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[UUID] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    room_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("messenger_rooms.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("document_id", "user_id", name="uq_chat_document_conversation_user"),
+    )
+
+
 class ChatEmojiUsage(Base):
     """Per-user frequency counter for one emoji selected in Chat."""
 
@@ -164,4 +185,4 @@ class ChatPushDelivery(Base):
     )
 
 
-__all__ = ["ChatEmojiUsage", "ChatPushDelivery", "ChatPushSubscription"]
+__all__ = ["ChatDocumentConversation", "ChatEmojiUsage", "ChatPushDelivery", "ChatPushSubscription"]

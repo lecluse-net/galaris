@@ -30,6 +30,12 @@ export class DictationNotConfiguredError extends Error {
 }
 
 export const chatService = {
+  async documentConversation(documentId: string): Promise<string | null> {
+    return (await api.get<{ room_id: string | null }>(`${base}/documents/${documentId}/conversation`)).data.room_id
+  },
+  async setDocumentConversation(documentId: string, roomId: string | null): Promise<void> {
+    await api.put(`${base}/documents/${documentId}/conversation`, { room_id: roomId })
+  },
   async renameAttachment(roomId: string, fileId: string, name: string): Promise<void> {
     await api.patch(`${base}/rooms/${roomId}/files/${fileId}`, { name })
     invalidateSessionReads('chat-preview-metadata')

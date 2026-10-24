@@ -22,7 +22,13 @@ left/right arrow keys to resize with the keyboard. Search
 for an existing conversation or select **New conversation with an agent**. The picker shows
 each agent's avatar and paginates long lists: 50 conversations by default, with a choice of
 10, 20, 50, 100 or 500 per page. Paging or searching preserves the open conversation and its
-draft. These are the
+draft. The last conversation selected or created is saved per document and per user.
+On desktop, loading the document reopens the panel and selects its saved conversation
+if you still have access. Without a saved conversation, the panel stays closed.
+You can still hide it with its close button.
+Switching documents restores that document's conversation; without a saved preference,
+the picker stays empty. This preference changes neither document content nor permissions.
+These are the
 same conversations available in **Chat**. Documents focuses on writing around the open
 content; Chat focuses on exchanges and activity monitoring.
 

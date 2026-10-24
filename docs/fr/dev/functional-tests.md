@@ -73,6 +73,10 @@ distincte, avec échecs fournisseurs explicites.
 `document-conversation.spec.mjs` vérifie les notifications dans Documents et Discussion,
 sur mobile et bureau : silence de la conversation affichée, notifications des autres fils,
 fermeture des toasts après ouverture et reprise après masquage du panneau ou de l'onglet.
+Il vérifie aussi la dernière conversation par document après réouverture, les réponses
+tardives et le réessai des préférences sans perte du brouillon.
+`app/chat/tests/test_document_conversation.py` couvre l'isolation utilisateur/document,
+la valeur nulle, les droits actuels et les suppressions SQL en cascade des trois références.
 Les tests Inbox annulent les délais et réponses tardives après consultation et ferment les
 notifications système concernées ; les tests PWA vérifient le filtrage quelle que soit la page.
 `app/chat/tests/test_push_service.py` vérifie l'absence

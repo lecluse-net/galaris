@@ -694,6 +694,8 @@ onBeforeUnmount(() => {
 })
 </script>
 
+<style scoped src="../conversationBackground.css"></style>
+
 <style scoped>
 .messenger-page :deep(:is(.disabled, [disabled])),
 .messenger-page :deep(:is(.disabled, [disabled]) *) {
@@ -701,7 +703,6 @@ onBeforeUnmount(() => {
 }
 
 .messenger-page {
-  --chat-page-bg: #eceff3;
   --chat-surface: #fff;
   --chat-surface-raised: #fbfcfe;
   --chat-surface-soft: #f5f7fa;
@@ -729,7 +730,6 @@ onBeforeUnmount(() => {
 }
 
 .messenger-page--dark {
-  --chat-page-bg: #0e1014;
   --chat-surface: #1b1e23;
   --chat-surface-raised: #24282f;
   --chat-surface-soft: #22262c;

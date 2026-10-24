@@ -1,0 +1,9 @@
+.messenger-page,
+.document-conversation {
+  --chat-page-bg: #eceff3;
+}
+
+.messenger-page--dark,
+.document-conversation--dark {
+  --chat-page-bg: #0e1014;
+}

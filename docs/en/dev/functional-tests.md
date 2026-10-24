@@ -85,6 +85,10 @@ desktop: no alert for the displayed conversation, alerts for other rooms, dismis
 opening and recovery after hiding the panel or tab. Inbox tests cancel timers and late
 responses after viewing and close the relevant system notifications; PWA tests check
 filtering independently of the page.
+It also verifies each document's last conversation after reopening, late responses and
+preference retries without losing the draft. `app/chat/tests/test_document_conversation.py`
+covers user/document isolation, null selection, live access checks and SQL cascade deletes
+for all three references.
 `app/chat/tests/test_push_service.py` prevents push admission for visible conversations and
 cancels delivery if one opens while queued or during payload preparation, before networking.
 The stream-to-saved-message scenario in `chat-performance.spec.mjs` retains the user input
