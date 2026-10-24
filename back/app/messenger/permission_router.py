@@ -14,7 +14,7 @@ router = APIRouter(prefix="/permissions", tags=["permissions"])
 
 
 @router.get("", response_model=PermissionPage)
-@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+@authorize(privileges=[Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
 async def list_permissions(
     agent_id: int | None = Query(default=None, gt=0),
     allowed: bool | None = None,
@@ -32,7 +32,7 @@ class PermissionAnswer(BaseModel):
 
 
 @router.post("/{permission_id}/answer", dependencies=[Depends(require_web_session)])
-@authorize(privileges=Privileges.CONNECTION_EDIT)
+@authorize(privileges=Privileges.PERMISSION_DECIDE)
 async def answer_request(permission_id: UUID, data: PermissionAnswer) -> dict[str, bool]:
     scope = await current_management_scope()
     try:
@@ -45,7 +45,7 @@ async def answer_request(permission_id: UUID, data: PermissionAnswer) -> dict[st
 
 
 @router.delete("/{permission_id}", status_code=204)
-@authorize(privileges=Privileges.CONNECTION_EDIT)
+@authorize(privileges=Privileges.PERMISSION_REVOKE)
 async def delete_permission(permission_id: UUID) -> None:
     scope = await current_management_scope()
     if not await delete_decision(permission_id, managed_agent_ids=scope.agent_ids):

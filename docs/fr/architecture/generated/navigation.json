@@ -753,6 +753,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ]
@@ -817,6 +820,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -884,6 +890,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -951,6 +960,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -1018,6 +1030,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -1085,6 +1100,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -1152,6 +1170,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -1219,6 +1240,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -1286,6 +1310,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -1353,6 +1380,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -1420,6 +1450,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -1487,6 +1520,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -1554,6 +1590,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -1626,6 +1665,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -1693,6 +1735,9 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
@@ -1760,12 +1805,18 @@
           "INSTRUCTION_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
           "BROWSER_CONFIG_ACCESS",
           "BROWSER_CONFIG_EDIT"
         ],
         [
           "LOG_CONFIG_ACCESS",
-          "LOG_CONFIG_EDIT"
+          "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE"
         ]
       ],
       "conditions": [],

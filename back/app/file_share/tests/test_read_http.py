@@ -19,8 +19,9 @@ from core.user.user_service import encrypt_password
 async def test_file_read_http_permissions_isolation_and_reopening(client):
     password = "synthetic-file-reader-password"
     async with get_db_session() as db:
-        privilege = await db.scalar(select(Privilege).where(Privilege.code == "MEMORY_ACCESS"))
-        role = Role(code="synthetic-file-reader", privileges=[privilege])
+        privilege = await db.scalar(select(Privilege).where(Privilege.code == "FILE_ACCESS"))
+        index_privilege = await db.scalar(select(Privilege).where(Privilege.code == "FILE_INDEX_ACCESS"))
+        role = Role(code="synthetic-file-reader", privileges=[privilege, index_privilege])
         users = [UserModel(email=f"file-reader-{index}@example.com", is_active=True,
                            hashed_password=encrypt_password(password)) for index in range(2)]
         title = Title(label="Synthetic HTTP file reads", gender="M")
@@ -74,7 +75,7 @@ async def test_video_stream_reads_only_requested_bytes_and_rechecks_access(clien
     from app.file_share.file_contracts import FileEntry
 
     async with get_db_session() as db:
-        privilege = await db.scalar(select(Privilege).where(Privilege.code == "MEMORY_ACCESS"))
+        privilege = await db.scalar(select(Privilege).where(Privilege.code == "FILE_ACCESS"))
         role = Role(code="synthetic-media-reader", privileges=[privilege])
         user = UserModel(email="media-reader@example.com", is_active=True,
                          hashed_password=encrypt_password("synthetic-media-password"))

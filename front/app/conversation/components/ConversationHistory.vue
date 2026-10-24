@@ -29,7 +29,7 @@
           class="history-toolbar-filter"
           @update:model-value="filtersChanged"
         />
-        <TopicSelect
+        <TopicSelect v-if="canFilterTopics"
           v-model="topicFilter"
           :allow-create="false"
           :label="t('topic.filter')"
@@ -248,7 +248,8 @@ import { useI18n } from 'vue-i18n'
 import { useInterval, type QTableColumn, type QTableProps } from 'quasar'
 import AgentAvatar from '@/app/agent/components/AgentAvatar.vue'
 import { AgentSelect } from '@/app/agent'
-import { useAgentStore } from '@/app/agent/stores/agentStore'
+import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import type { LLMCall } from '@/app/llm/types'
 import ConversationTurnDialog from '@/core/util/components/ConversationTurnDialog.vue'
 import WaitingResponseIndicator from '@/core/util/components/WaitingResponseIndicator.vue'
@@ -278,7 +279,13 @@ interface ConversationMetric {
 
 const { t, te, locale } = useI18n()
 const { registerInterval } = useInterval()
-const agentStore = useAgentStore()
+const agents = ref<AgentSelectionOption[]>([])
+const privilegeStore = usePrivilegeStore()
+const canFilterTopics = computed(() => privilegeStore.hasAnyPrivilege([privileges.TOPIC_ACCESS, privileges.TOPIC_EDIT]))
+async function loadAgents(): Promise<void> {
+  try { agents.value = await getAgentSelection('management') }
+  catch { error.value = t('common.anError') }
+}
 const messages = ref<ConversationMessage[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -314,8 +321,8 @@ const columns = computed<QTableColumn<ConversationMessage>[]>(() => [
 
 const agentOptions = computed(() => [
   { label: t('conversation.history.allAgents'), value: null },
-  ...agentStore.sortedAgents.map(agent => ({
-    label: `${agent.first_name} ${agent.last_name}`.trim() || agent.code,
+  ...agents.value.map(agent => ({
+    label: agent.label,
     value: agent.id,
   })),
 ])
@@ -335,7 +342,7 @@ const metrics = computed<ConversationMetric[]>(() => [
 const detailTitle = computed(() => t('conversation.history.detail.turn'))
 
 onMounted(() => {
-  if (!agentStore.agents.length) void agentStore.fetchAgents()
+  void loadAgents()
   void refresh()
   registerInterval(() => {
     void refresh(false)

@@ -24,7 +24,7 @@ async def _authorize_monitoring(user_id: int, resource_id: str) -> bool:
 def register_events() -> None:
     websocket.register_resource_room(
         "dream", DreamRoom,
-        required_privileges=(Privileges.TASK_ACCESS, Privileges.TASK_EDIT),
+        required_privileges=(Privileges.DREAM_ACCESS,),
         authorize=_authorize_monitoring,
         displayed_only=True,
     )

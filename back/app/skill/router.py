@@ -476,7 +476,7 @@ async def list_learned_skills(
 
 
 @router.get("/learned/status", response_model=LearnedSkillLearningStatus)
-@authorize(privileges=[Privileges.SKILL_ACCESS, Privileges.SKILL_EDIT])
+@authorize(privileges=[Privileges.SKILL_ACCESS, Privileges.SKILL_EDIT, Privileges.SKILL_ASSIGN])
 async def get_learned_skill_status() -> LearnedSkillLearningStatus:
     mode = learning_service.learning_mode()
     return LearnedSkillLearningStatus(mode=mode, enabled=mode != "off")

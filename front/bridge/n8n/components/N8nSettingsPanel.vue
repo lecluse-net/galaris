@@ -84,7 +84,7 @@ const { t, te } = useI18n()
 const $q = useQuasar()
 const params = useParamsStore()
 const access = usePrivilegeStore()
-const canEdit = computed(() => access.hasPrivilege(privileges.PARAMS_EDIT))
+const canEdit = computed(() => access.hasPrivilege(privileges.PROCESS_CONFIG_EDIT))
 const canReadProcesses = computed(() => access.hasPrivilege(privileges.PROCESS_READ) || access.hasPrivilege(privileges.PROCESS_ADMIN))
 const fields = [
   { name: 'PROCESS_N8N_BASE_URL', label: 'processSettings.fields.baseUrl', hint: 'n8nSetup.urlHint', advanced: false, secret: false },

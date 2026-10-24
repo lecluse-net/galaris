@@ -6,6 +6,7 @@
     <q-toggle
       v-if="showEnabledToggle"
       v-model="enabled"
+      :disable="readonly"
       color="primary"
       :label="t(scope === 'global'
         ? 'goal.runtime.enableGlobalSchedule'
@@ -23,7 +24,7 @@
           color="negative"
           icon="deselect"
           :label="t('goal.runtime.clearGrid')"
-          :disable="slots.size === 0"
+          :disable="readonly || slots.size === 0"
           @click="slots = new Set()"
         />
       </div>
@@ -41,6 +42,7 @@
               >
                 <button
                   type="button"
+                  :disabled="readonly"
                   class="goal-schedule-grid__group-button"
                   :aria-label="weekdayToggleLabel(weekday)"
                   data-schedule-group="weekday"
@@ -62,6 +64,7 @@
               >
                 <button
                   type="button"
+                  :disabled="readonly"
                   class="goal-schedule-grid__group-button"
                   :aria-label="hourToggleLabel(hour)"
                   data-schedule-group="hour"
@@ -84,9 +87,9 @@
                 :data-weekday="weekday"
                 :data-hour="hour"
                 role="checkbox"
-                :tabindex="isSlotAllowed(weekday, hour) ? 0 : -1"
+                :tabindex="!readonly && isSlotAllowed(weekday, hour) ? 0 : -1"
                 :aria-checked="isSlotActive(weekday, hour)"
-                :aria-disabled="!isSlotAllowed(weekday, hour)"
+                :aria-disabled="readonly || !isSlotAllowed(weekday, hour)"
                 :aria-label="slotLabel(weekday, hour)"
                 @pointerdown="beginSlotDrag($event, weekday, hour)"
                 @click="handleSlotClick($event, weekday, hour)"
@@ -134,9 +137,11 @@ const {
   scope = 'goal',
   allowedSlots,
   showEnabledToggle = true,
+  readonly = false,
 } = defineProps<{
   scope?: 'global' | 'goal'
   allowedSlots?: GoalScheduleSlots
+  readonly?: boolean
   showEnabledToggle?: boolean
 }>()
 
@@ -190,7 +195,7 @@ function isSlotAllowed(weekday: number, hour: number): boolean {
 }
 
 function toggleSlot(weekday: number, hour: number): void {
-  if (!isSlotAllowed(weekday, hour)) return
+  if (readonly || !isSlotAllowed(weekday, hour)) return
   setSlot(weekday, hour, !isSlotActive(weekday, hour))
 }
 
@@ -202,6 +207,7 @@ function paintSlot(weekday: number, hour: number): void {
 }
 
 function beginSlotDrag(event: PointerEvent, weekday: number, hour: number): void {
+  if (readonly) return
   if ((event.pointerType === 'mouse' && event.button !== 0)
     || !isSlotAllowed(weekday, hour)) return
   if (event.pointerType === 'touch') return
@@ -303,6 +309,7 @@ function stopSlotDrag(): void {
 }
 
 function toggleGroup(coordinates: ReadonlyArray<readonly [number, number]>): void {
+  if (readonly) return
   const allowedCoordinates = coordinates.filter(([weekday, hour]) => (
     isSlotAllowed(weekday, hour)
   ))

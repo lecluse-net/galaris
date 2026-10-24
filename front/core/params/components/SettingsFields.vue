@@ -33,6 +33,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { SettingField } from '../settingsTypes'
 import SettingFieldControl from './SettingFieldControl.vue'
+import { usePrivilegeStore } from '@/core/authorize'
+import { parameterReadPrivileges } from '../access'
 
 const props = withDefaults(defineProps<{
     fields: SettingField[]
@@ -41,8 +43,10 @@ const props = withDefaults(defineProps<{
     advancedLabel?: string
 }>(), { columns: 1, expandAdvanced: true })
 const { t } = useI18n()
-const basicFields = computed(() => props.fields.filter(field => !props.expandAdvanced || !field.advanced))
-const advancedFields = computed(() => props.expandAdvanced ? props.fields.filter(field => field.advanced) : [])
+const privilegeStore = usePrivilegeStore()
+const visibleFields = computed(() => props.fields.filter(field => privilegeStore.hasAnyPrivilege(parameterReadPrivileges(field.name))))
+const basicFields = computed(() => visibleFields.value.filter(field => !props.expandAdvanced || !field.advanced))
+const advancedFields = computed(() => props.expandAdvanced ? visibleFields.value.filter(field => field.advanced) : [])
 function isWide(field: SettingField): boolean {
     return ['prompt', 'code', 'textarea', 'boolean', 'checkbox'].includes(field.input ?? '')
 }

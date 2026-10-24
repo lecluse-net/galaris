@@ -3,11 +3,12 @@
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
 
-from core.authorize import Privileges, authorize
-from core.user import user_service
+from core.authorize import Privileges, authorize, check_privilege
+from core.user import user_service, require_web_session
+from core.database import get_db
 from app.agent import current_management_scope
 from app.connection.facade import get_connection, has_any_active_tool_connection
 
@@ -31,7 +32,7 @@ router = APIRouter(prefix="/mail", tags=["mail"])
 
 
 @router.get("/inbound", response_model=MailInboundPage)
-@authorize(privileges=Privileges.CONNECTION_ACCESS)
+@authorize(privileges=[Privileges.MAIL_ACCESS, Privileges.MAIL_EDIT])
 async def list_inbound_mail(
     agent_id: int | None = Query(default=None, gt=0),
     search: str = Query(default="", max_length=200),
@@ -48,7 +49,7 @@ async def list_inbound_mail(
 
 
 @router.get("/inbound/{receipt_id}", response_model=MailInboundDetail)
-@authorize(privileges=Privileges.CONNECTION_ACCESS)
+@authorize(privileges=[Privileges.MAIL_ACCESS, Privileges.MAIL_EDIT])
 async def read_inbound_mail(receipt_id: UUID) -> MailInboundDetail:
     from .inbound import get_receipt
 
@@ -80,7 +81,7 @@ def _review_error(exc: Exception) -> HTTPException:
 
 
 @router.get("/status", response_model=MailStatus)
-@authorize(privileges=Privileges.CONNECTION_ACCESS)
+@authorize(privileges=[Privileges.MAIL_ACCESS, Privileges.MAIL_EDIT])
 async def read_mail_status() -> MailStatus:
     scope = await current_management_scope()
     return MailStatus(
@@ -91,7 +92,7 @@ async def read_mail_status() -> MailStatus:
 
 
 @router.get("/outbound", response_model=MailDeliveryPage)
-@authorize(privileges=Privileges.CONNECTION_ACCESS)
+@authorize(privileges=[Privileges.MAIL_ACCESS, Privileges.MAIL_EDIT])
 async def list_outbound_mail(
     scope: Literal["pending", "history", "all"] = Query(default="history"),
     agent_id: int | None = Query(default=None, gt=0),
@@ -114,7 +115,7 @@ async def list_outbound_mail(
 
 
 @router.get("/outbound/agents", response_model=list[MailDeliveryAgentOption])
-@authorize(privileges=Privileges.CONNECTION_ACCESS)
+@authorize(privileges=[Privileges.MAIL_ACCESS, Privileges.MAIL_EDIT])
 async def list_outbound_mail_agents() -> list[MailDeliveryAgentOption]:
     scope = await current_management_scope()
     return await service.list_delivery_agents(agent_ids=scope.agent_ids)
@@ -133,7 +134,7 @@ async def list_mail_approvers() -> list[MailApproverOption]:
 
 
 @router.get("/outbound/{delivery_id}", response_model=MailDeliveryDetail)
-@authorize(privileges=Privileges.CONNECTION_ACCESS)
+@authorize(privileges=[Privileges.MAIL_ACCESS, Privileges.MAIL_EDIT])
 async def read_outbound_mail(delivery_id: UUID) -> MailDeliveryDetail:
     try:
         scope = await current_management_scope()
@@ -146,12 +147,15 @@ async def read_outbound_mail(delivery_id: UUID) -> MailDeliveryDetail:
         raise _review_error(exc) from exc
 
 
-@router.post("/outbound/{delivery_id}/approve", response_model=MailSendReceipt)
+@router.post("/outbound/{delivery_id}/approve", response_model=MailSendReceipt, dependencies=[Depends(require_web_session)])
 @authorize(
-    privileges=Privileges.CONNECTION_ACCESS,
+    privileges=Privileges.MAIL_EDIT,
     assertion=MailApproverAssertion,
 )
 async def approve_outbound_mail(delivery_id: UUID) -> MailSendReceipt:
+    user = await user_service.get_current_user()
+    if not await check_privilege(user, Privileges.PERMISSION_DECIDE, get_db()):
+        raise HTTPException(403, "Mail review requires permission decisions")
     try:
         scope = await current_management_scope()
         return await service.approve_delivery(
@@ -168,15 +172,18 @@ async def approve_outbound_mail(delivery_id: UUID) -> MailSendReceipt:
         raise _review_error(exc) from exc
 
 
-@router.post("/outbound/{delivery_id}/reject", response_model=MailDeliveryDetail)
+@router.post("/outbound/{delivery_id}/reject", response_model=MailDeliveryDetail, dependencies=[Depends(require_web_session)])
 @authorize(
-    privileges=Privileges.CONNECTION_ACCESS,
+    privileges=Privileges.MAIL_EDIT,
     assertion=MailApproverAssertion,
 )
 async def reject_outbound_mail(
     delivery_id: UUID,
     review: MailDeliveryReview,
 ) -> MailDeliveryDetail:
+    user = await user_service.get_current_user()
+    if not await check_privilege(user, Privileges.PERMISSION_DECIDE, get_db()):
+        raise HTTPException(403, "Mail review requires permission decisions")
     try:
         scope = await current_management_scope()
         return await service.reject_delivery(

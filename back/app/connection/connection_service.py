@@ -18,8 +18,28 @@ from core.i18n import render_prompt, tr
 
 _encryption = get_encryption_service()
 
+
+async def permission_connection_options(
+    *, agent_ids: Collection[int] | None, skip: int, limit: int,
+) -> list["PermissionConnectionOption"]:
+    from app.tools import ToolModel
+    from app.tools.facade import tool_can_edit
+    from .schemas import PermissionConnectionOption
+
+    statement = select(Connection, ToolModel.code, ToolModel.label, ToolModel.can_disable).join(
+        ToolModel, ToolModel.id == Connection.tool_id
+    ).where(Connection.active.is_(True)).order_by(Connection.id).offset(skip).limit(limit)
+    if agent_ids is not None:
+        statement = statement.where(Connection.agent_id.in_(agent_ids))
+    rows = (await get_db().execute(statement)).all()
+    return [PermissionConnectionOption(id=connection.id, agent_id=connection.agent_id,
+        tool_id=connection.tool_id, active=connection.active, tool_code=code, tool_label=label,
+        tool_can_edit=can_disable and tool_can_edit(code), tool_can_disable=can_disable)
+        for connection, code, label, can_disable in rows]
+
 if TYPE_CHECKING:
     from app.tools import Tool
+    from .schemas import PermissionConnectionOption
 
 
 async def _get_tool_schema(tool_id: int) -> Optional[Dict[str, Any]]:
@@ -978,3 +998,30 @@ async def resolve_function(connection: Connection, function_name: str, *, capabi
     tool_states = {s.function_name: stored_function_state(s) for s in await list_tool_function_states(connection.tool_id) if (s.capability_kind or "tool") == capability_kind}
     return project_function_policy(function_name, conn_states, tool_states, default=default,
                                    capability_kind=capability_kind, native=native)
+
+
+async def connection_tool_options() -> list[dict[str, Any]]:
+    from app.tools import tool_service
+    from app.tools.facade import public_connection_schema
+    records = await tool_service.get_all_tool_records()
+    return [{"id": t.id, "code": t.code, "label": t.label, "description": t.description,
+             "can_disable": t.can_disable, "can_edit": False,
+             "has_mcp": bool(t.mcp_config), "has_api": bool(t.rest_config),
+             "has_file_share": bool(t.file_share_config), "has_messenger": bool(t.messenger_config),
+             "has_listener": bool(t.listener_config), "conversation_enabled": t.conversation_enabled,
+             "mcp_config": {"type": t.mcp_config.get("type")} if t.mcp_config else None,
+             "connection_schema": public_connection_schema(t.connection_schema or {}),
+             "global_params": {}, "created_at": t.created_at, "updated_at": t.updated_at}
+            for t in records]
+
+
+async def tool_connection_options(tool_code: str, *, agent_ids: Collection[int] | None) -> list[dict[str, Any]]:
+    from app.tools import ToolModel
+    from app.agent import Agent
+    statement = select(Connection.id, Connection.agent_id, Agent.first_name, Agent.last_name).join(
+        ToolModel, ToolModel.id == Connection.tool_id).join(Agent, Agent.id == Connection.agent_id).where(
+        ToolModel.code == tool_code).order_by(Connection.id)
+    if agent_ids is not None:
+        statement = statement.where(Connection.agent_id.in_(agent_ids))
+    return [{"id": identity, "agent_id": agent_id, "label": f"{first} {last}"}
+            for identity, agent_id, first, last in (await get_db().execute(statement)).all()]

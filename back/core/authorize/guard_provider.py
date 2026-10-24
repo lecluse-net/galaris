@@ -301,8 +301,7 @@ async def global_authorization_guard(
 
     # ── 3. Assertion Check ──────────────────────────────────────────────
     if guard.assertion:
-        merged_params = dict(guard.params)
-        merged_params.update(dict(request.query_params))
+        merged_params: Dict[str, Any] = dict(request.query_params)
 
         # Assertions may depend on JSON or form values. Parse the body only after
         # the coarse privilege check has succeeded, and only when it is needed.
@@ -321,8 +320,10 @@ async def global_authorization_guard(
                     type(exc).__name__,
                 )
 
-        # Path parameters are authoritative resource identities. Apply them last so
-        # a query string or request body can never substitute a different UUID.
+        # Policy belongs to the server; request data cannot replace assertion
+        # configuration such as required privileges or the ownership rule.
+        merged_params.update(guard.params)
+        # Path parameters remain authoritative resource identities.
         merged_params.update(request.path_params)
         merged_params["__route_name__"] = route_name
 

@@ -13,11 +13,15 @@ from core.i18n import current_language, is_supported, render_prompt, t
 
 from .contracts import NativeInteractionAnswer, NativeInteractionOption, NativeMessengerInteraction
 from .events import message_journaled
-from .interactions import ChoiceOption, resolve_pending_choice
+from .interactions import ChoiceOption, resolve_pending_choice, choice_authorized
 from .models import Interaction, Message, MessengerUser, Room
 
 
-def _snapshot(record: Interaction, *, participant: str | None) -> NativeMessengerInteraction:
+async def _can_answer(record: Interaction, user_id: int | None) -> bool:
+    return await choice_authorized(record.kind, user_id)
+
+
+def _snapshot(record: Interaction, *, participant: str | None, authorized: bool) -> NativeMessengerInteraction:
     status = record.status
     if status == "PENDING" and record.expires_at <= datetime.now(timezone.utc):
         status = "EXPIRED"
@@ -33,7 +37,7 @@ def _snapshot(record: Interaction, *, participant: str | None) -> NativeMessenge
         expires_at=record.expires_at,
         selected_option_id=selected if isinstance(selected, str) else None,
         can_answer=(
-            status == "PENDING"
+            authorized and status == "PENDING"
             and participant is not None
             and record.user_id in {None, participant}
         ),
@@ -64,7 +68,7 @@ async def message_interactions(
         )
     )
     participant = f"user:{viewer_user_id}" if viewer_user_id is not None else None
-    return {message_id: _snapshot(record, participant=participant) for message_id, record in rows}
+    return {message_id: _snapshot(record, participant=participant, authorized=await _can_answer(record, viewer_user_id)) for message_id, record in rows}
 
 
 async def message_interaction_answers(
@@ -146,7 +150,7 @@ async def read_internal_interaction(
         interaction_id,
         require_active=False,
     )
-    return _snapshot(record, participant=human.external_id)
+    return _snapshot(record, participant=human.external_id, authorized=await _can_answer(record, user_id))
 
 
 async def answer_internal_interaction(
@@ -164,6 +168,8 @@ async def answer_internal_interaction(
         interaction_id,
         require_active=True,
     )
+    if not await _can_answer(record, user_id):
+        raise PermissionError("Permission decision access is required.")
     options = [ChoiceOption.model_validate(option) for option in record.options]
     option = next((option for option in options if option.id == option_id), None)
     if option is None:
@@ -243,4 +249,4 @@ async def answer_internal_interaction(
     if captured is not None:
         await message_journaled.send_async(captured)
     await get_db().refresh(record)
-    return _snapshot(record, participant=human.external_id)
+    return _snapshot(record, participant=human.external_id, authorized=await _can_answer(record, user_id))

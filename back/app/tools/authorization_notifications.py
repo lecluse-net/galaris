@@ -50,7 +50,7 @@ async def _answer(interaction: PendingChoice, resolution: ChoiceResolution) -> N
     await sync_authorization_choice(row)
 
 
-register_choice_handler(KIND, _answer)
+register_choice_handler(KIND, _answer, required_privileges=("PERMISSION_DECIDE",))
 
 
 @asynccontextmanager
@@ -119,6 +119,9 @@ async def deliver_authorization_notifications() -> None:
                 row.finished_at = row.wake_due_at = now
                 row.notification_due_at = None
                 await db.commit()
+                continue
+            from core.authorize import check_assigned_privilege
+            if not await check_assigned_privilege(row.approver_user_id, "PERMISSION_DECIDE", db):
                 continue
             language = await current_language(user_id=row.approver_user_id)
             options = [ChoiceOption(id="allow", label=t("permissions.allow_once", language)),

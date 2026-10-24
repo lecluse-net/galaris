@@ -28,7 +28,7 @@ for (const width of [1440, 390]) {
       profile = { ...profile, ...update }
       return route.fulfill({ json: profile })
     })
-    const options = { locale: 'fr', privileges: ['PARAMS_EDIT'] }
+    const options = { locale: 'fr', privileges: ['LLM_PROFILE_EDIT'] }
     await mount(page, 'app/llm/components/LlmUsageManager.vue', options)
     const row = page.getByRole('row').filter({ has: page.getByText('Texte standard', { exact: true }) })
     const select = row.getByRole('combobox')

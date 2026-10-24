@@ -28,7 +28,7 @@ router.include_router(media_router, prefix="/browser")
 
 
 @router.post("/files", response_model=ResourceDescriptor, status_code=201)
-@authorize(privileges=Privileges.MEMORY_EDIT)
+@authorize(privileges=Privileges.FILE_EDIT)
 async def create_managed_file(upload: UploadFile, agent_id: int) -> ResourceDescriptor:
     from .managed_files import upload_managed_file
 
@@ -40,7 +40,7 @@ async def create_managed_file(upload: UploadFile, agent_id: int) -> ResourceDesc
 
 
 @router.patch("/files/{file_id}", response_model=ResourceDescriptor)
-@authorize(privileges=Privileges.MEMORY_EDIT)
+@authorize(privileges=Privileges.FILE_EDIT)
 async def rename_file(file_id: UUID, agent_id: int, data: FileRename) -> ResourceDescriptor:
     from .managed_files import rename_managed_file
 
@@ -54,7 +54,7 @@ async def rename_file(file_id: UUID, agent_id: int, data: FileRename) -> Resourc
 
 
 @router.get("/files/{file_id}/content", response_class=FileResponse)
-@authorize(privileges=Privileges.MEMORY_ACCESS)
+@authorize(privileges=[Privileges.FILE_ACCESS, Privileges.FILE_EDIT])
 async def read_managed_file(file_id: UUID, agent_id: int) -> FileResponse:
     from core.storage import file_path
     from .managed_files import managed_file_info
@@ -73,7 +73,7 @@ async def read_managed_file(file_id: UUID, agent_id: int) -> FileResponse:
 
 
 @router.get("/files/{file_id}/thumbnail", response_class=Response)
-@authorize(privileges=Privileges.MEMORY_ACCESS)
+@authorize(privileges=[Privileges.FILE_ACCESS, Privileges.FILE_EDIT])
 async def read_managed_file_thumbnail(file_id: UUID, agent_id: int) -> Response:
     from .managed_files import managed_file_thumbnail
 
@@ -100,14 +100,14 @@ async def _index_access(agent_id: int) -> None:
 
 
 @router.get("/items/{item_id}/resources", response_model=list[catalogue_resources.CatalogueResource])
-@authorize(privileges=Privileges.MEMORY_ACCESS)
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
 async def read_item_resources(item_id: UUID, agent_id: int, limit: int = Query(default=500, ge=1, le=500)) -> list[catalogue_resources.CatalogueResource]:
     await _index_access(agent_id)
     return await catalogue_resources.resources(item_id, agent_id, limit=limit)
 
 
 @router.get("/items/{item_id}/resources/{entry_id}/thumbnail", response_class=Response)
-@authorize(privileges=Privileges.MEMORY_ACCESS)
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
 async def read_item_resource_thumbnail(item_id: UUID, entry_id: UUID, agent_id: int, cached_only: bool = False) -> Response:
     await _index_access(agent_id)
     try:
@@ -120,7 +120,7 @@ async def read_item_resource_thumbnail(item_id: UUID, entry_id: UUID, agent_id: 
 
 
 @router.get("/items/{item_id}/resources/{entry_id}/content", response_class=StreamingResponse)
-@authorize(privileges=Privileges.MEMORY_ACCESS)
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
 async def read_item_resource_content(item_id: UUID, entry_id: UUID, agent_id: int, preview: bool = True) -> StreamingResponse:
     await _index_access(agent_id)
     manager = catalogue_resources.content(item_id, agent_id, entry_id, preview=preview)
@@ -141,14 +141,14 @@ async def read_item_resource_content(item_id: UUID, entry_id: UUID, agent_id: in
 
 
 @router.get("/indexing", response_model=FileIndexPage)
-@authorize(privileges=Privileges.MEMORY_ACCESS)
+@authorize(privileges=[Privileges.FILE_INDEX_ACCESS, Privileges.FILE_INDEX_RUN])
 async def read_indexing(agent_id: int, page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500)) -> FileIndexPage:
     await _index_access(agent_id)
     return await index_progress(agent_id, page, page_size)
 
 
 @router.post("/indexing", response_model=FileIndexProgress)
-@authorize(privileges=Privileges.MEMORY_EDIT)
+@authorize(privileges=Privileges.FILE_INDEX_RUN)
 async def create_indexing(data: FileIndexRequest) -> FileIndexProgress:
     await _index_access(data.agent_id)
     try:
@@ -163,7 +163,7 @@ async def create_indexing(data: FileIndexRequest) -> FileIndexProgress:
 
 
 @router.post("/indexing/{run_id}/cancel")
-@authorize(privileges=Privileges.MEMORY_EDIT)
+@authorize(privileges=Privileges.FILE_INDEX_RUN)
 async def cancel_indexing(run_id: UUID, agent_id: int) -> dict[str, bool]:
     await _index_access(agent_id)
     if not await cancel_index_run(run_id, agent_id):
@@ -173,7 +173,7 @@ async def cancel_indexing(run_id: UUID, agent_id: int) -> dict[str, bool]:
 
 
 @router.post("/indexing/repairs/retry")
-@authorize(privileges=Privileges.MEMORY_EDIT)
+@authorize(privileges=Privileges.FILE_INDEX_RUN)
 async def retry_index_repairs(agent_id: int) -> dict[str, int]:
     await _index_access(agent_id)
     return {"retried": await retry_repairs(agent_id)}

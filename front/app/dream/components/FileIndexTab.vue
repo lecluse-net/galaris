@@ -3,7 +3,7 @@
     v-model="selectedAgentId"
     :options="agentOptions"
     :load-agents="false"
-    :loading="agentStore.loading"
+    :loading="loading"
     :label="t('dream.indexing.agent')"
     behavior="menu"
     outlined
@@ -11,44 +11,50 @@
     options-dense
     class="q-my-md"
   />
-  <q-banner v-if="agentStore.error" rounded class="q-mb-md">
+  <q-banner v-if="error" rounded class="q-mb-md">
     {{ t('dream.indexing.agentError') }}
     <q-btn flat :label="t('common.retry')" @click="loadAgents" />
   </q-banner>
-  <div v-else-if="!agentStore.loading && !agentOptions.length" class="q-mb-md">{{ t('agent.noAgent') }}</div>
+  <div v-else-if="!loading && !agentOptions.length" class="q-mb-md">{{ t('agent.noAgent') }}</div>
   <FileIndexPanel v-if="selectedAgentId !== null" :agent-id="selectedAgentId" :editable="canEdit" />
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { AgentSelect, useAgentStore, useAgentSelectionStore } from '@/app/agent'
+import { AgentSelect, getAgentSelection, useAgentSelectionStore, type AgentSelectionOption } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import FileIndexPanel from './FileIndexPanel.vue'
+import { FileIndexPanel } from '@/app/file_share/interface'
 
 const { t } = useI18n()
 const route = useRoute()
-const agentStore = useAgentStore()
+const agents = ref<AgentSelectionOption[]>([])
+const loading = ref(false), error = ref(false)
 const agentSelectionStore = useAgentSelectionStore()
 const privilegeStore = usePrivilegeStore()
 const selectedAgentId = defineModel<number | null>({ required: true })
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_EDIT))
-const agentOptions = computed(() => agentStore.agents.map(agent => ({
-  label: `${agent.first_name} ${agent.last_name}`.trim(),
+const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.FILE_INDEX_RUN))
+const agentOptions = computed(() => agents.value.map(agent => ({
+  label: agent.label,
   value: agent.id,
   hasAvatar: agent.has_avatar,
 })))
 let disposed = false
 
 async function loadAgents(): Promise<void> {
-  await agentStore.fetchAgents()
-  if (disposed || agentStore.error) return
-  if (agentStore.agents.some(agent => agent.id === selectedAgentId.value)) return
-  const raw = Array.isArray(route.query.agent) ? route.query.agent[0] : route.query.agent
-  const requested = raw ? Number(raw) : null
-  selectedAgentId.value = agentStore.agents.some(agent => agent.id === requested)
-    ? requested : agentSelectionStore.defaultAgentId(agentStore.agents)
+  loading.value = true; error.value = false
+  try {
+    const result = await getAgentSelection('management')
+    if (disposed) return
+    agents.value = result
+    if (agents.value.some(agent => agent.id === selectedAgentId.value)) return
+    const raw = Array.isArray(route.query.agent) ? route.query.agent[0] : route.query.agent
+    const requested = raw ? Number(raw) : null
+    selectedAgentId.value = agents.value.some(agent => agent.id === requested)
+      ? requested : agentSelectionStore.defaultAgentId(agents.value)
+  } catch { if (!disposed) error.value = true }
+  finally { if (!disposed) loading.value = false }
 }
 
 onMounted(() => { void loadAgents() })

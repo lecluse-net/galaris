@@ -25,7 +25,7 @@ for (const width of [1440, 390]) {
       saved = { ...saved, ...writes.at(-1) }
       return route.fulfill({ json: saved })
     })
-    const options = { privileges: ['LLM_PROVIDER_EDIT'] }
+    const options = { privileges: ['LLM_MODEL_EDIT'] }
     await mount(page, 'app/llm/components/ConfiguredLlmManager.vue', options)
     await page.getByRole('button', { name: 'Add an LLM', exact: true }).click()
     const dialog = page.getByRole('dialog')
@@ -81,7 +81,7 @@ test('existing capabilities refresh only after preview, apply and save', async (
     saved = { ...saved, ...writes.at(-1) }
     return route.fulfill({ json: saved })
   })
-  await mount(page, 'app/llm/components/ConfiguredLlmManager.vue', { privileges: ['LLM_PROVIDER_EDIT'] })
+  await mount(page, 'app/llm/components/ConfiguredLlmManager.vue', { privileges: ['LLM_MODEL_EDIT'] })
   const edit = page.getByRole('button', { name: 'Edit', exact: true })
   const dialog = page.getByRole('dialog')
   await edit.click()

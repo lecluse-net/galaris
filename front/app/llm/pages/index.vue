@@ -11,8 +11,8 @@
       active-color="primary"
       indicator-color="primary"
     >
-      <q-tab name="providers" icon="cloud" :label="t('llm.providerCatalog')" />
-      <q-tab name="models" icon="smart_toy" :label="t('llm.myLlms')" />
+      <q-tab v-if="canViewProviders" name="providers" icon="cloud" :label="t('llm.providerCatalog')" />
+      <q-tab v-if="canViewModels" name="models" icon="smart_toy" :label="t('llm.myLlms')" />
       <q-tab v-if="canViewUsage" name="usage" icon="tune" :label="t('llm.usageTitle')" />
     </q-tabs>
     <q-separator />
@@ -24,11 +24,11 @@
       class="bg-transparent llm-tab-panels"
       @transition="onTabTransition"
     >
-      <q-tab-panel name="providers" class="q-px-none provider-tab-panel">
+      <q-tab-panel v-if="canViewProviders" name="providers" class="q-px-none provider-tab-panel">
         <ProviderWorkspace @create-llm="createLlmFromModel" />
       </q-tab-panel>
 
-      <q-tab-panel name="models" class="q-px-none">
+      <q-tab-panel v-if="canViewModels" name="models" class="q-px-none">
         <ConfiguredLlmManager ref="llmManager" :show-heading="false" />
       </q-tab-panel>
 
@@ -58,18 +58,21 @@ const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
 const privilegeStore = usePrivilegeStore()
+const canViewProviders = computed(() => privilegeStore.hasAnyPrivilege([privileges.LLM_PROVIDER_ACCESS, privileges.LLM_PROVIDER_EDIT]))
+const canViewModels = computed(() => privilegeStore.hasAnyPrivilege([privileges.LLM_MODEL_ACCESS, privileges.LLM_MODEL_EDIT]))
 const canViewUsage = computed(() => (
-  privilegeStore.hasPrivilege(privileges.PARAMS_ACCESS)
-  || privilegeStore.hasPrivilege(privileges.PARAMS_EDIT)
+  privilegeStore.hasPrivilege(privileges.LLM_PROFILE_ACCESS)
+  || privilegeStore.hasPrivilege(privileges.LLM_PROFILE_EDIT)
 ))
 type LlmTab = 'providers' | 'models' | 'usage'
 type LlmCreationRequest = { providerId: number; model: LLMModelInfo }
 
 function tabFromQuery(value: unknown): LlmTab {
-  if (value === 'usage' && !canViewUsage.value) return 'providers'
-  return value === 'providers' || value === 'models' || value === 'usage'
-    ? value
-    : 'providers'
+  const allowed: LlmTab[] = []
+  if (canViewProviders.value) allowed.push('providers')
+  if (canViewModels.value) allowed.push('models')
+  if (canViewUsage.value) allowed.push('usage')
+  return allowed.includes(value as LlmTab) ? value as LlmTab : (allowed[0] ?? 'providers')
 }
 
 const activeTab = ref<LlmTab>(tabFromQuery(route.query.tab))
@@ -80,12 +83,8 @@ watch(() => route.query.tab, value => {
   activeTab.value = tabFromQuery(value)
 })
 
-watch(canViewUsage, allowed => {
-  if (!allowed && activeTab.value === 'usage') {
-    activeTab.value = 'providers'
-    return
-  }
-  if (allowed) activeTab.value = tabFromQuery(route.query.tab)
+watch([canViewProviders, canViewModels, canViewUsage], () => {
+  activeTab.value = tabFromQuery(route.query.tab)
 })
 
 watch(activeTab, tab => {

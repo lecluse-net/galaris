@@ -206,7 +206,7 @@ const props = defineProps<{ connectionId: number; agentId: number }>()
 const $q = useQuasar()
 const { t, locale } = useI18n()
 const privilegeStore = usePrivilegeStore()
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
+const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CALENDAR_EDIT))
 const feeds = ref<CalendarFeed[]>([])
 const processes = ref<CalendarProcessOption[]>([])
 const loading = ref(false)
@@ -259,7 +259,7 @@ async function load(): Promise<void> {
   loading.value = true
   try {
     feeds.value = await calendarService.list(props.connectionId)
-    processes.value = await calendarService.processes().catch(() => [])
+    processes.value = canEdit.value ? await calendarService.processes() : []
   } catch (error) {
     notifyError(error)
   } finally {

@@ -934,12 +934,11 @@ const canManageAgent = (agent: Agent): boolean => (
   canEdit.value && (agent.is_owner || canManageAllAgents.value)
 )
 const canViewLlms = computed(() => (
-  privilegeStore.hasPrivilege(privileges.LLM_PROVIDER_ACCESS)
-  || privilegeStore.hasPrivilege(privileges.LLM_PROVIDER_EDIT)
+  privilegeStore.hasAnyPrivilege([privileges.LLM_MODEL_ACCESS, privileges.LLM_MODEL_EDIT, privileges.LLM_PROFILE_ACCESS, privileges.LLM_PROFILE_EDIT])
 ))
 const canViewParams = computed(() => (
-  privilegeStore.hasPrivilege(privileges.PARAMS_ACCESS)
-  || privilegeStore.hasPrivilege(privileges.PARAMS_EDIT)
+  privilegeStore.hasPrivilege(privileges.LLM_PROFILE_ACCESS)
+  || privilegeStore.hasPrivilege(privileges.LLM_PROFILE_EDIT)
 ))
 
 const activeTab = ref('agents')
@@ -1516,6 +1515,7 @@ function voiceSelectionForAgent(agent: Agent): string {
 }
 
 async function loadNativeVoiceResources(generation: number): Promise<void> {
+  if (!privilegeStore.hasAnyPrivilege([privileges.LLM_PROVIDER_ACCESS, privileges.LLM_PROVIDER_EDIT])) return
   const providerIds = [...new Set(
     llmProviderStore.llms
       .filter(llm => llm.service_capabilities.includes('realtime_conversation'))

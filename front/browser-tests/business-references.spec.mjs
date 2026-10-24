@@ -40,6 +40,7 @@ async function fixtures(page) {
   await jsonRoute(page, '**/api/agents?*', [])
   await jsonRoute(page, '**/api/agents/titles?*', [])
   await jsonRoute(page, '**/api/goals/settings', { globally_paused: false, schedule_enabled: false, schedule: [], timezone: 'UTC', is_active: true })
+  await jsonRoute(page, '**/api/goals/runtime-status', { globally_paused: false, schedule_enabled: false, timezone: 'UTC', is_active: true })
   await jsonRoute(page, '**/api/goals/tree', { items: [goal], total: 1 })
   await jsonRoute(page, `**/api/goals/${id}/cycles?*`, { items: [], total: 0, page: 1, page_size: 50 })
   await jsonRoute(page, `**/api/goals/${id}`, goal)
@@ -65,7 +66,9 @@ for (const [kind, url, title, detail] of cases) for (const format of ['uri', 'ur
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await fixtures(page)
     const uri = `galaris://${kind}/${id}`
-    await mount(page, 'core/util/components/RichTextEditor.vue', { props: { modelValue: '<p>Keep surrounding text</p>', profile: 'document' }, privileges: ['TASK_ACCESS', 'TOPIC_ACCESS'] })
+    const grants = { task: 'TASK_ACCESS', goal: 'GOAL_ACCESS', topic: 'TOPIC_ACCESS',
+      text: 'CONVERSATION_ACCESS', voice: 'VOICE_HISTORY_ACCESS', voice_session: 'VOICE_HISTORY_ACCESS', room: 'CHAT_ACCESS' }
+    await mount(page, 'core/util/components/RichTextEditor.vue', { props: { modelValue: '<p>Keep surrounding text</p>', profile: 'document' }, privileges: [grants[kind]] })
     const surface = page.locator('[data-editor-surface]')
     await surface.click(); await page.keyboard.press('End')
     await paste(page, format === 'uri' ? uri : new URL(url, page.url()).href)

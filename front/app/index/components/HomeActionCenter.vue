@@ -363,7 +363,7 @@ const canReadMemory = computed(() => (
   || privilegeStore.hasPrivilege(privileges.MEMORY_ADMIN)
 ))
 const canReadIncidents = computed(() => privilegeStore.hasPrivilege(privileges.INCIDENT_ACCESS))
-const canSeeDashboard = canReadTasks
+const canSeeDashboard = computed(() => privilegeStore.hasPrivilege(privileges.DASHBOARD_ACCESS))
 const canSeeQuickActions = computed(() => (
   canReadAgents.value || canReadChat.value || canReadTasks.value
 ))

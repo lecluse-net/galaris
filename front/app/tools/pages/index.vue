@@ -10,20 +10,20 @@
       active-color="primary"
       indicator-color="primary"
     >
-      <q-tab name="tools" icon="build" :label="$t('tools.tabTools')" />
-      <q-tab name="connections" icon="link" :label="$t('tools.tabConnections')" />
-      <q-tab name="authorizations" icon="shield" :label="$t('tools.tabAuthorizations')" />
+      <q-tab v-if="canView('tools')" name="tools" icon="build" :label="$t('tools.tabTools')" />
+      <q-tab v-if="canView('connections')" name="connections" icon="link" :label="$t('tools.tabConnections')" />
+      <q-tab v-if="canView('authorizations')" name="authorizations" icon="shield" :label="$t('tools.tabAuthorizations')" />
     </q-tabs>
     <q-separator />
 
     <q-tab-panels v-model="tab" animated keep-alive class="bg-transparent">
-      <q-tab-panel name="tools" class="q-px-none">
+      <q-tab-panel v-if="canView('tools')" name="tools" class="q-px-none">
         <ToolsList />
       </q-tab-panel>
-      <q-tab-panel name="connections" class="q-px-none">
+      <q-tab-panel v-if="canView('connections')" name="connections" class="q-px-none">
         <ConnectionList />
       </q-tab-panel>
-      <q-tab-panel name="authorizations" class="q-px-none">
+      <q-tab-panel v-if="canView('authorizations')" name="authorizations" class="q-px-none">
         <AuthorizationManager />
       </q-tab-panel>
     </q-tab-panels>
@@ -32,7 +32,8 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { useRoute } from 'vue-router'
 import { PageHeader } from '@/core/util'
 import ToolsList from '../components/ToolsList.vue'
@@ -42,12 +43,23 @@ import AuthorizationManager from '@/app/connection/components/AuthorizationManag
 const route = useRoute()
 
 // Select Tools by default while allowing direct links through the tab query parameter.
-const allowedTabs = ['tools', 'connections', 'authorizations']
+const privilegeStore = usePrivilegeStore()
+const allowed = computed(() => ({
+  tools: privilegeStore.hasAnyPrivilege([privileges.TOOL_ACCESS, privileges.TOOL_EDIT]),
+  connections: privilegeStore.hasAnyPrivilege([privileges.CONNECTION_ACCESS, privileges.CONNECTION_EDIT]),
+  authorizations: privilegeStore.hasAnyPrivilege([privileges.PERMISSION_ACCESS, privileges.PERMISSION_DECIDE, privileges.PERMISSION_REVOKE]),
+}))
+type ToolTab = keyof typeof allowed.value
+const canView = (value: ToolTab) => allowed.value[value]
+const allowedTabs = computed(() => (Object.keys(allowed.value) as ToolTab[]).filter(key => allowed.value[key]))
 const tab = ref(
-  typeof route.query.tab === 'string' && allowedTabs.includes(route.query.tab)
+  typeof route.query.tab === 'string' && allowedTabs.value.includes(route.query.tab as ToolTab)
     ? route.query.tab
-    : 'tools'
+    : (allowedTabs.value[0] ?? 'tools')
 )
+watch(allowedTabs, tabs => {
+  if (!tabs.includes(tab.value as ToolTab)) tab.value = tabs[0] ?? 'tools'
+}, { immediate: true })
 </script>
 
 <style scoped>

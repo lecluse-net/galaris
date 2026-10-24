@@ -403,8 +403,7 @@ const selectedMetric = ref<Metric>('tokens')
 const activeModelKey = ref<string | null>(null)
 
 const canSeeDashboard = computed(() => (
-  privilegeStore.hasPrivilege(privileges.TASK_ACCESS)
-  || privilegeStore.hasPrivilege(privileges.TASK_EDIT)
+  privilegeStore.hasPrivilege(privileges.DASHBOARD_ACCESS)
 ))
 const canViewAgents = computed(() => (
   privilegeStore.hasPrivilege(privileges.AGENT_ACCESS)

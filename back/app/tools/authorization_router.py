@@ -34,7 +34,7 @@ def projection(row: ActionAuthorization) -> dict[str, Any]:
 
 
 @router.get("")
-@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+@authorize(privileges=[Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
 async def list_requests(agent_id: int | None = None, status: str | None = None,
                         offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=500)) -> dict[str, Any]:
     scope = await current_management_scope()
@@ -57,7 +57,7 @@ def redacted(value: Any) -> Any:
 
 
 @router.get("/runtime-permissions")
-@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+@authorize(privileges=[Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
 async def list_runtime_permissions(agent_id: int | None = None,
                                   offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=500)) -> dict[str, object]:
     from .runtime_permissions import list_permissions
@@ -66,7 +66,7 @@ async def list_runtime_permissions(agent_id: int | None = None,
 
 
 @router.delete("/runtime-permissions/{identifier}")
-@authorize(privileges=Privileges.CONNECTION_EDIT)
+@authorize(privileges=Privileges.PERMISSION_REVOKE)
 async def delete_runtime_permission(identifier: UUID) -> dict[str, bool]:
     from .runtime_permissions import revoke_permission
     scope = await current_management_scope()
@@ -76,7 +76,7 @@ async def delete_runtime_permission(identifier: UUID) -> dict[str, bool]:
 
 
 @router.get("/{identifier}")
-@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+@authorize(privileges=[Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
 async def get_request(identifier: UUID) -> dict[str, Any]:
     scope = await current_management_scope()
     row = await get_db().get(ActionAuthorization, identifier)
@@ -106,7 +106,7 @@ class ActionAnswer(BaseModel):
 
 
 @router.post("/{identifier}/answer")
-@authorize(privileges=Privileges.CONNECTION_EDIT)
+@authorize(privileges=Privileges.PERMISSION_DECIDE)
 async def answer_request(identifier: UUID, data: ActionAnswer) -> dict[str, bool]:
     scope = await current_management_scope()
     row = await get_db().get(ActionAuthorization, identifier)
@@ -118,7 +118,7 @@ async def answer_request(identifier: UUID, data: ActionAnswer) -> dict[str, bool
 
 
 @router.post("/{identifier}/cancel")
-@authorize(privileges=Privileges.CONNECTION_EDIT)
+@authorize(privileges=Privileges.PERMISSION_REVOKE)
 async def cancel_request(identifier: UUID) -> dict[str, bool]:
     """Management may stop an unconsumed action, but cannot approve for its reviewer."""
     from datetime import datetime, timezone

@@ -560,10 +560,10 @@ test('opening memory selects an agent and loads its results and filters only onc
     requests.results++
     return route.fulfill({ json: { hits: [{ item, score: 1 }], total: 1, has_more: false } })
   })
-  await mount(page, 'app/memory/pages/index.vue', { privileges: ['DOCUMENT_EDIT'] })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_ACCESS'] })
   await expect(page.getByText('Current memory', { exact: true }).first()).toBeVisible()
   expect(requests).toEqual({ filters: 1, results: 1 })
-  await mount(page, 'app/memory/pages/index.vue', { privileges: ['DOCUMENT_EDIT'] })
+  await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_ACCESS'] })
   await expect(page.getByText('Current memory', { exact: true }).first()).toBeVisible()
   expect(requests).toEqual({ filters: 2, results: 2 })
 })

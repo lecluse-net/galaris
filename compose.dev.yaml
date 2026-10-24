@@ -36,6 +36,7 @@ services:
             - ./project/decisions:/opt/galaris-documentation/project/decisions:ro
             - ./project/plans:/opt/galaris-documentation/project/plans:ro
             - ./front/core/authorize:/app-front/core/authorize
+            - ./front/core/params:/app-front/core/params
         command:
             - bash
             - -c

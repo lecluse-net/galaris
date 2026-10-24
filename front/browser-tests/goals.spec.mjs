@@ -7,6 +7,7 @@ async function goals(page, status = 'ACTIVE', id = 'goal-a') {
   await jsonRoute(page, '**/api/agents?*', [agent])
   await jsonRoute(page, '**/api/agents/titles?*', [])
   await jsonRoute(page, '**/api/goals/settings', { globally_paused: false, schedule_enabled: false, schedule: [], timezone: 'UTC', is_active: true, inactive_reason: null, next_active_at: null })
+  await jsonRoute(page, '**/api/goals/runtime-status', { globally_paused: false, schedule_enabled: false, timezone: 'UTC', is_active: true, inactive_reason: null, next_active_at: null })
   await jsonRoute(page, '**/api/goals/tree', { items: [current], total: 1 })
   await jsonRoute(page, `**/api/goals/${id}/cycles?*`, { items: [], total: 0, page: 1, page_size: 50 })
   await page.route('**/api/goals?*', route => route.fulfill({ json: { items: [current], total: 1, summary: { active: 1, paused: 0, completed: 0, errors: 0, total_cost: 0 }, tracking_llm_configured: true } }))
@@ -71,7 +72,7 @@ for (const width of [390, 1440]) {
 
 test('read-only goal details never expose mutation actions or an editing tab', async ({ page }) => {
   await goals(page, 'COMPLETED')
-  await mount(page, 'app/goal/pages/index.vue')
+  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_ACCESS'] })
   await page.locator('button').filter({ has: page.locator('.q-icon', { hasText: 'visibility' }) }).first().click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('tab', { name: /edit/i })).toHaveCount(0)

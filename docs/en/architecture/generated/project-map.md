@@ -11,7 +11,7 @@ tests remain authoritative for behavior.
 
 - 78 declared backend modules;
 - 40 declared frontend modules;
-- 632 backend dependency edges;
+- 631 backend dependency edges;
 - 219 frontend dependency edges;
 - 301 edges between `app`/`bridge` domains;
 - 28 directly bidirectional domain pairs;
@@ -406,7 +406,6 @@ tests remain authoritative for behavior.
 | `app.lab` | `core.params` | `back/app/lab/evidence_service.py`, `back/app/lab/executor_prompt_service.py` |
 | `app.lab` | `core.scheduling` | `back/app/lab/__init__.py` |
 | `app.lab` | `core.user` | `back/app/lab/human_review_service.py`, `back/app/lab/operations.py`, `back/app/lab/process_evaluation.py` |
-| `app.lab` | `core.util` | `back/app/lab/mechanism_registry.py`, `back/app/lab/synthetic_service.py` |
 | `app.llm` | `app.agent` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/contracts.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/decision_service.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_facade.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/profile_fallback.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/text_inference.py`, `back/app/llm/tts_service.py` |
 | `app.llm` | `app.connection` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py` |
 | `app.llm` | `app.conversation` | `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
@@ -1832,7 +1831,7 @@ tests remain authoritative for behavior.
 | GET | `/messenger/channels` | `app.messenger` | `list_enabled_messenger_channels` | yes | `back/app/messenger/router.py:71` |
 | POST | `/messenger/configuration/test` | `app.messenger` | `test_messenger_configuration` | yes | `back/app/messenger/router.py:34` |
 | GET | `/messenger/users` | `app.messenger` | `search_messenger_users` | yes | `back/app/messenger/router.py:44` |
-| GET | `/metrics` | `app.process` | `read_metrics` | yes | `back/app/process/router.py:470` |
+| GET | `/metrics` | `app.process` | `read_metrics` | yes | `back/app/process/router.py:472` |
 | POST | `/multimedia/callback/{run_id}/{token}` | `app.multimedia` | `acknowledge_callback` | no | `back/app/multimedia/router.py:57` |
 | GET | `/multimedia/runs/{run_id}/deliveries` | `app.multimedia` | `list_deliveries` | yes | `back/app/multimedia/router.py:32` |
 | POST | `/multimedia/runs/{run_id}/deliveries/{receipt_id}/resolve` | `app.multimedia` | `resolve_delivery` | yes | `back/app/multimedia/router.py:44` |
@@ -1863,15 +1862,15 @@ tests remain authoritative for behavior.
 | GET | `/retention/preview` | `app.process` | `preview_retention` | yes | `back/app/process/router.py:110` |
 | GET | `/runs` | `app.process` | `read_runs` | yes | `back/app/process/router.py:275` |
 | POST | `/runs` | `app.process` | `create_run` | yes | `back/app/process/router.py:229` |
-| DELETE | `/runs/{run_id}` | `app.process` | `delete_run` | yes | `back/app/process/router.py:330` |
-| GET | `/runs/{run_id}` | `app.process` | `read_run` | yes | `back/app/process/router.py:320` |
-| POST | `/runs/{run_id}/analyze` | `app.process` | `analyze_run` | yes | `back/app/process/router.py:357` |
-| POST | `/runs/{run_id}/cancel` | `app.process` | `cancel_run` | yes | `back/app/process/router.py:367` |
-| POST | `/runs/{run_id}/events` | `app.process` | `receive_event` | no | `back/app/process/router.py:400` |
+| DELETE | `/runs/{run_id}` | `app.process` | `delete_run` | yes | `back/app/process/router.py:332` |
+| GET | `/runs/{run_id}` | `app.process` | `read_run` | yes | `back/app/process/router.py:322` |
+| POST | `/runs/{run_id}/analyze` | `app.process` | `analyze_run` | yes | `back/app/process/router.py:359` |
+| POST | `/runs/{run_id}/cancel` | `app.process` | `cancel_run` | yes | `back/app/process/router.py:369` |
+| POST | `/runs/{run_id}/events` | `app.process` | `receive_event` | no | `back/app/process/router.py:402` |
 | GET | `/runs/{run_id}/export` | `app.process` | `export_process_run` | yes | `back/app/process/router.py:117` |
-| GET | `/runs/{run_id}/files/{file_id}` | `app.process` | `download_run_file` | no | `back/app/process/router.py:414` |
-| POST | `/runs/{run_id}/refresh` | `app.process` | `refresh_run` | yes | `back/app/process/router.py:342` |
-| POST | `/runs/{run_id}/retry` | `app.process` | `retry_run` | yes | `back/app/process/router.py:380` |
+| GET | `/runs/{run_id}/files/{file_id}` | `app.process` | `download_run_file` | no | `back/app/process/router.py:416` |
+| POST | `/runs/{run_id}/refresh` | `app.process` | `refresh_run` | yes | `back/app/process/router.py:344` |
+| POST | `/runs/{run_id}/retry` | `app.process` | `retry_run` | yes | `back/app/process/router.py:382` |
 | POST | `/runtime-agents/{id}/sync-skills` | `app.harness` | `sync_harness_skills` | yes | `back/app/harness/router.py:99` |
 | POST | `/runtime-authorizations` | `app.tools` | `request_action` | no | `back/app/tools/runtime_authorization_router.py:47` |
 | GET | `/runtime-authorizations/context` | `app.tools` | `context_status` | no | `back/app/tools/runtime_authorization_router.py:75` |
@@ -1957,18 +1956,18 @@ tests remain authoritative for behavior.
 | GET | `/tools/{tool_id}/global-params` | `app.tools` | `get_global_params` | yes | `back/app/tools/router.py:127` |
 | PUT | `/tools/{tool_id}/global-params` | `app.tools` | `update_global_params` | yes | `back/app/tools/router.py:144` |
 | GET | `/topics` | `app.topic` | `read_topics` | yes | `back/app/topic/router.py:47` |
-| POST | `/topics` | `app.topic` | `create_topic` | yes | `back/app/topic/router.py:103` |
+| POST | `/topics` | `app.topic` | `create_topic` | yes | `back/app/topic/router.py:104` |
 | GET | `/topics/conversation` | `app.topic` | `read_conversation_topics` | yes | `back/app/topic/router.py:66` |
 | GET | `/topics/keywords` | `app.topic` | `read_topic_keywords` | yes | `back/app/topic/router.py:81` |
-| GET | `/topics/refs` | `app.topic` | `read_topic_refs` | yes | `back/app/topic/router.py:93` |
-| PUT | `/topics/resources/{kind}/{identity}` | `app.topic` | `change_resource_topic` | yes | `back/app/topic/router.py:110` |
-| DELETE | `/topics/{topic_id}` | `app.topic` | `delete_topic` | yes | `back/app/topic/router.py:223` |
-| GET | `/topics/{topic_id}` | `app.topic` | `read_topic` | yes | `back/app/topic/router.py:231` |
-| PUT | `/topics/{topic_id}` | `app.topic` | `update_topic` | yes | `back/app/topic/router.py:179` |
-| GET | `/topics/{topic_id}/content` | `app.topic` | `read_topic_content` | yes | `back/app/topic/router.py:150` |
-| GET | `/topics/{topic_id}/memories` | `app.topic` | `read_topic_memories` | yes | `back/app/topic/router.py:134` |
-| POST | `/topics/{topic_id}/merge` | `app.topic` | `merge_topic` | yes | `back/app/topic/router.py:191` |
-| POST | `/topics/{topic_id}/split` | `app.topic` | `split_topic` | yes | `back/app/topic/router.py:209` |
+| GET | `/topics/refs` | `app.topic` | `read_topic_refs` | yes | `back/app/topic/router.py:94` |
+| PUT | `/topics/resources/{kind}/{identity}` | `app.topic` | `change_resource_topic` | yes | `back/app/topic/router.py:111` |
+| DELETE | `/topics/{topic_id}` | `app.topic` | `delete_topic` | yes | `back/app/topic/router.py:224` |
+| GET | `/topics/{topic_id}` | `app.topic` | `read_topic` | yes | `back/app/topic/router.py:232` |
+| PUT | `/topics/{topic_id}` | `app.topic` | `update_topic` | yes | `back/app/topic/router.py:180` |
+| GET | `/topics/{topic_id}/content` | `app.topic` | `read_topic_content` | yes | `back/app/topic/router.py:151` |
+| GET | `/topics/{topic_id}/memories` | `app.topic` | `read_topic_memories` | yes | `back/app/topic/router.py:135` |
+| POST | `/topics/{topic_id}/merge` | `app.topic` | `merge_topic` | yes | `back/app/topic/router.py:192` |
+| POST | `/topics/{topic_id}/split` | `app.topic` | `split_topic` | yes | `back/app/topic/router.py:210` |
 | POST | `/v1/chat/completions` | `bridge.codex` | `chat_completions` | no | `back/bridge/codex/default-agent/server.py:264` |
 | GET | `/v1/galaris/capabilities` | `app.harnesses` | `capabilities` | no | `back/app/harnesses/runtime_web.py:22` |
 | POST | `/v1/galaris/runs` | `app.harnesses` | `start` | no | `back/app/harnesses/runtime_web.py:27` |
@@ -2260,13 +2259,13 @@ tests remain authoritative for behavior.
 | `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:35` |
 | `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:20` |
 | `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:382` |
-| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:449` |
+| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:446` |
 | `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:300` |
-| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:511` |
-| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:410` |
+| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:508` |
+| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:407` |
 | `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:169` |
 | `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:141` |
-| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:481` |
+| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:478` |
 | `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:246` |
 | `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:120` |
 | `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:201` |
@@ -2281,12 +2280,12 @@ tests remain authoritative for behavior.
 | `goal_update_suivi` | `galaris` | `app.goal` | `mcp_goal_update_suivi` | `back/app/goal/mcp.py:268` |
 | `process_activity_complete` | `galaris` | `app.process` | `process_activity_complete` | `back/app/process/mcp.py:158` |
 | `process_activity_question` | `galaris` | `app.process` | `process_activity_question` | `back/app/process/mcp.py:173` |
-| `process_analyze_run` | `galaris` | `app.process` | `process_analyze_run` | `back/app/process/mcp.py:380` |
+| `process_analyze_run` | `galaris` | `app.process` | `process_analyze_run` | `back/app/process/mcp.py:379` |
 | `process_archive` | `galaris` | `app.process` | `process_archive` | `back/app/process/mcp.py:225` |
 | `process_create` | `galaris` | `app.process` | `process_create` | `back/app/process/mcp.py:187` |
 | `process_definition_read` | `galaris` | `app.process` | `process_definition_read` | `back/app/process/mcp.py:181` |
 | `process_get` | `galaris` | `app.process` | `process_get` | `back/app/process/mcp.py:119` |
-| `process_get_run` | `galaris` | `app.process` | `process_get_run` | `back/app/process/mcp.py:367` |
+| `process_get_run` | `galaris` | `app.process` | `process_get_run` | `back/app/process/mcp.py:366` |
 | `process_history` | `galaris` | `app.process` | `process_history` | `back/app/process/mcp.py:211` |
 | `process_list` | `galaris` | `app.process` | `process_list` | `back/app/process/mcp.py:110` |
 | `process_list_runs` | `galaris` | `app.process` | `process_list_runs` | `back/app/process/mcp.py:342` |
@@ -2406,21 +2405,21 @@ tests remain authoritative for behavior.
 | `sound_generate` | `multimedia` | `app.multimedia` | `sound_generate` | `back/app/multimedia/mcp.py:28` |
 | `video_generate` | `multimedia` | `app.multimedia` | `video_generate` | `back/app/multimedia/mcp.py:43` |
 | `video_read` | `multimedia` | `app.multimedia` | `video_read` | `back/app/multimedia/mcp.py:18` |
-| `process_admin_analyze_run` | `process_admin` | `app.process` | `process_admin_analyze_run` | `back/app/process/mcp.py:724` |
-| `process_admin_cancel_run` | `process_admin` | `app.process` | `process_admin_cancel_run` | `back/app/process/mcp.py:696` |
-| `process_admin_create` | `process_admin` | `app.process` | `process_admin_create` | `back/app/process/mcp.py:482` |
-| `process_admin_delete` | `process_admin` | `app.process` | `process_admin_delete` | `back/app/process/mcp.py:563` |
-| `process_admin_delete_run` | `process_admin` | `app.process` | `process_admin_delete_run` | `back/app/process/mcp.py:738` |
-| `process_admin_engines` | `process_admin` | `app.process` | `process_admin_engines` | `back/app/process/mcp.py:394` |
-| `process_admin_get` | `process_admin` | `app.process` | `process_admin_get` | `back/app/process/mcp.py:462` |
-| `process_admin_get_run` | `process_admin` | `app.process` | `process_admin_get_run` | `back/app/process/mcp.py:662` |
-| `process_admin_list` | `process_admin` | `app.process` | `process_admin_list` | `back/app/process/mcp.py:431` |
-| `process_admin_list_runs` | `process_admin` | `app.process` | `process_admin_list_runs` | `back/app/process/mcp.py:624` |
-| `process_admin_refresh_run` | `process_admin` | `app.process` | `process_admin_refresh_run` | `back/app/process/mcp.py:682` |
-| `process_admin_retry_run` | `process_admin` | `app.process` | `process_admin_retry_run` | `back/app/process/mcp.py:710` |
-| `process_admin_start` | `process_admin` | `app.process` | `process_admin_start` | `back/app/process/mcp.py:585` |
-| `process_admin_sync` | `process_admin` | `app.process` | `process_admin_sync` | `back/app/process/mcp.py:414` |
-| `process_admin_update` | `process_admin` | `app.process` | `process_admin_update` | `back/app/process/mcp.py:513` |
+| `process_admin_analyze_run` | `process_admin` | `app.process` | `process_admin_analyze_run` | `back/app/process/mcp.py:725` |
+| `process_admin_cancel_run` | `process_admin` | `app.process` | `process_admin_cancel_run` | `back/app/process/mcp.py:697` |
+| `process_admin_create` | `process_admin` | `app.process` | `process_admin_create` | `back/app/process/mcp.py:481` |
+| `process_admin_delete` | `process_admin` | `app.process` | `process_admin_delete` | `back/app/process/mcp.py:562` |
+| `process_admin_delete_run` | `process_admin` | `app.process` | `process_admin_delete_run` | `back/app/process/mcp.py:739` |
+| `process_admin_engines` | `process_admin` | `app.process` | `process_admin_engines` | `back/app/process/mcp.py:393` |
+| `process_admin_get` | `process_admin` | `app.process` | `process_admin_get` | `back/app/process/mcp.py:461` |
+| `process_admin_get_run` | `process_admin` | `app.process` | `process_admin_get_run` | `back/app/process/mcp.py:663` |
+| `process_admin_list` | `process_admin` | `app.process` | `process_admin_list` | `back/app/process/mcp.py:430` |
+| `process_admin_list_runs` | `process_admin` | `app.process` | `process_admin_list_runs` | `back/app/process/mcp.py:623` |
+| `process_admin_refresh_run` | `process_admin` | `app.process` | `process_admin_refresh_run` | `back/app/process/mcp.py:683` |
+| `process_admin_retry_run` | `process_admin` | `app.process` | `process_admin_retry_run` | `back/app/process/mcp.py:711` |
+| `process_admin_start` | `process_admin` | `app.process` | `process_admin_start` | `back/app/process/mcp.py:584` |
+| `process_admin_sync` | `process_admin` | `app.process` | `process_admin_sync` | `back/app/process/mcp.py:413` |
+| `process_admin_update` | `process_admin` | `app.process` | `process_admin_update` | `back/app/process/mcp.py:512` |
 | `search_web` | `search` | `app.tools` | `search_web` | `back/app/tools/mcp.py:74` |
 | `skill_delete` | `skills` | `app.skill` | `mcp_skill_delete` | `back/app/skill/mcp.py:62` |
 | `skill_read` | `skills` | `app.skill` | `mcp_skill_read` | `back/app/skill/mcp.py:29` |

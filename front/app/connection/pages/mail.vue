@@ -79,7 +79,7 @@
         <template #body-cell-actions="props">
           <q-td :props="props">
             <q-btn
-              v-if="props.row.can_review"
+              v-if="props.row.can_review && canReview"
               outline
               dense
               color="positive"
@@ -178,7 +178,7 @@
           </q-banner>
 
           <q-input
-            v-if="selected.status === 'pending_approval' && selected.can_review"
+            v-if="selected.status === 'pending_approval' && selected.can_review && canReview"
             v-model="rejectionReason"
             type="textarea"
             outlined
@@ -191,7 +191,7 @@
         <q-separator />
         <q-card-actions align="right" class="q-px-lg q-py-md galaris-dialog-actions">
           <q-btn outline color="primary" :label="t('common.close')" v-close-popup />
-          <template v-if="selected?.status === 'pending_approval' && selected.can_review">
+          <template v-if="selected?.status === 'pending_approval' && selected.can_review && canReview">
             <q-btn
               outline
               color="negative"
@@ -219,6 +219,7 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { computed, defineComponent, h, onMounted, ref, watch } from 'vue'
 import { QChip, useQuasar, type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -250,6 +251,7 @@ const historyPagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0 })
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const selected = ref<MailDeliveryDetail | null>(null)
+const canReview = computed(() => usePrivilegeStore().hasPrivilege(privileges.MAIL_EDIT) && usePrivilegeStore().hasPrivilege(privileges.PERMISSION_DECIDE))
 const rejectionReason = ref('')
 const reviewing = ref<'approve' | 'reject' | null>(null)
 

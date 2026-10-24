@@ -7,7 +7,7 @@ const navigation: NavigationTree = { knowledge: { children: {
         icon: 'description',
         order: 10,
         to: '/documents',
-        privileges: [privileges.DOCUMENT_ACCESS],
+        privileges: [privileges.DOCUMENT_ACCESS, privileges.DOCUMENT_EDIT, privileges.DOCUMENT_ADMIN],
       },
 } } }
 export default navigation

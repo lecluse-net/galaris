@@ -9,7 +9,7 @@ from difflib import SequenceMatcher
 from typing import Any, cast as type_cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import Date, cast, func, or_, select, union_all, update
+from sqlalchemy import false, Date, cast, func, or_, select, union_all, update
 from sqlalchemy.orm import aliased, load_only
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import ColumnElement
@@ -731,6 +731,7 @@ async def get_content(
     limit: int = 50,
     agent_ids: Collection[int] | None = None,
     resource_scope: AgentManagementScope | None = None,
+    allowed_sections: frozenset[str] | None = None,
 ) -> TopicContentRead:
     """Return a cross-domain, read-only recap of one thematic dossier."""
 
@@ -740,6 +741,7 @@ async def get_content(
     from app.messenger import Message, Room
     from app.task import Task
 
+    allowed = allowed_sections if allowed_sections is not None else frozenset({"tasks", "text", "voice", "memories", "documents", "datasets"})
     topic = await _record(topic_id)
     if topic is None:
         raise TopicNotFoundError("Topic not found.")
@@ -790,6 +792,8 @@ async def get_content(
             Task.created_at, raiseload=True,
         ))
     )
+    if "tasks" not in allowed:
+        task_query = task_query.where(false())
     if agent_ids is not None:
         task_query = task_query.where(Task.agent_id.in_(agent_ids))
     task_rows = (
@@ -800,6 +804,8 @@ async def get_content(
     task_count_query = Task.histo_filter(
         select(func.count(Task.id)).where(Task.topic_id == topic_id)
     )
+    if "tasks" not in allowed:
+        task_count_query = task_count_query.where(false())
     if agent_ids is not None:
         task_count_query = task_count_query.where(Task.agent_id.in_(agent_ids))
     task_count = int(await get_db().scalar(task_count_query) or 0)
@@ -837,6 +843,13 @@ async def get_content(
         default_room_ids = default_room_ids.join(
             Connection, Connection.id == Room.connection_id
         ).where(Connection.agent_id.in_(agent_ids))
+    # Rooms are metadata of the readable histories, not an alternative Chat API.
+    history_kinds = (["text"] if "text" in allowed else []) + (["audio"] if "voice" in allowed else [])
+    readable_rooms = select(Room.id).where(Room.conversation_type.in_(history_kinds))
+    round_room_ids = round_room_ids.where(Room.id.in_(readable_rooms))
+    message_room_ids = message_room_ids.where(Message.messenger_room_id.in_(readable_rooms))
+    task_room_ids = task_room_ids.where(Room.id.in_(readable_rooms))
+    default_room_ids = default_room_ids.where(Room.id.in_(readable_rooms))
     room_ids = union_all(
         round_room_ids,
         message_room_ids,
@@ -917,6 +930,16 @@ async def get_content(
         text_round_query = text_round_query.where(Connection.agent_id.in_(agent_ids))
         voice_turn_query = voice_turn_query.where(Connection.agent_id.in_(agent_ids))
         round_count_query = round_count_query.where(Connection.agent_id.in_(agent_ids))
+    if "text" not in allowed:
+        text_round_query = text_round_query.where(false())
+    if "voice" not in allowed:
+        voice_turn_query = voice_turn_query.where(false())
+    permitted_rounds: list[ColumnElement[bool]] = []
+    if "text" in allowed:
+        permitted_rounds.append(ConversationRound.voice_session_id.is_(None))
+    if "voice" in allowed:
+        permitted_rounds.append(ConversationRound.voice_session_id.is_not(None))
+    round_count_query = round_count_query.where(or_(*permitted_rounds) if permitted_rounds else false())
     text_round_rows = (await get_db().execute(text_round_query)).all()
     voice_turn_rows = (await get_db().execute(voice_turn_query)).all()
     text_round_count, voice_turn_count = (
@@ -925,11 +948,11 @@ async def get_content(
 
     memories = (
         await list_linked_memories_in_scope(topic_id, agent_ids=agent_ids)
-        if topic.memory_item_id is not None
+        if topic.memory_item_id is not None and "memories" in allowed
         else []
     )
     documents: list[TopicRelatedDocument] = []
-    if topic.memory_item_id is not None:
+    if topic.memory_item_id is not None and "documents" in allowed:
         linked_documents = await list_topics_linked_documents(
             {topic.memory_item_id},
             agent_ids=agent_ids,
@@ -944,13 +967,13 @@ async def get_content(
             for document in linked_documents
         ]
 
-    direct_documents = await list_documents_by_topics({topic_id}, scope=resource_scope, agent_ids=agent_ids)
+    direct_documents = await list_documents_by_topics({topic_id}, scope=resource_scope, agent_ids=agent_ids) if "documents" in allowed else []
     by_id = {document.id: document for document in documents}
     by_id.update({identity: TopicRelatedDocument(id=identity, title=title, filename=filename)
                   for _, identity, title, filename in direct_documents})
     documents = sorted(by_id.values(), key=lambda document: (document.title.casefold(), str(document.id)))
     datasets = [TopicRelatedDataset(id=identity, title=title) for _, identity, title in
-                await list_datasets_by_topics({topic_id}, scope=resource_scope, agent_ids=agent_ids)]
+                (await list_datasets_by_topics({topic_id}, scope=resource_scope, agent_ids=agent_ids) if "datasets" in allowed else [])]
 
     return TopicContentRead(
         topic=_read(topic),

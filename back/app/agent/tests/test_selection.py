@@ -64,7 +64,7 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         assert {item['id'] for item in response.json()} == set(expected)
         ordered_ids = [item['id'] for item in response.json() if item['id'] in ids]
         assert ordered_ids == [agent_id for agent_id in reversed(ids) if agent_id in expected]
-        assert all(set(item) == {'id', 'label', 'has_avatar'} for item in response.json())
+        assert all(set(item) == {'id', 'label', 'has_avatar', 'driver'} for item in response.json())
     assert (await client.get('/api/agents/selection', headers=admin)).status_code == 200
     for task_id in task_ids[1:]:
         assert (await client.get(f'/api/tasks/{task_id}', headers=human)).status_code == 404

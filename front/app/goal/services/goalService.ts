@@ -15,9 +15,10 @@ import type {
 } from '../types'
 
 export const goalService = {
-  async getSettings(): Promise<GoalSettings> {
-    const response = await api.get<GoalSettings>('/goals/settings')
-    return response.data
+  async getSettings(configuration = true): Promise<GoalSettings> {
+    if (configuration) return (await api.get<GoalSettings>('/goals/settings')).data
+    const response = await api.get<Omit<GoalSettings, 'schedule'>>('/goals/runtime-status')
+    return { ...response.data, schedule: [] }
   },
 
   async updateSettings(data: GoalSettingsUpdate): Promise<GoalSettings> {

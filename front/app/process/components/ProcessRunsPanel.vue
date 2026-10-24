@@ -202,7 +202,7 @@ import { MetricCard } from '@/core/util'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useInterval, type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { AgentSelect, useAgentStore } from '@/app/agent'
+import { AgentSelect, useAgentChoices } from '@/app/agent'
 import {
   defineAsyncView,
   ExecutionDateFilters,
@@ -238,7 +238,7 @@ interface RunsRequest {
 
 const { t, te, locale } = useI18n()
 const { registerInterval } = useInterval()
-const agentStore = useAgentStore()
+const agentStore = useAgentChoices()
 const runs = ref<ProcessRun[]>([])
 const activeRuns = ref<ProcessRun[]>([])
 const operations = ref<ProcessOperations | null>(null)
@@ -313,7 +313,7 @@ const statusOptions = computed(() => (
 const agentOptions = computed(() => [
   { label: t('processes.allAgents'), value: null },
   ...agentStore.sortedAgents.map(agent => ({
-    label: `${agent.first_name} ${agent.last_name}`.trim() || agent.code,
+    label: agent.label,
     value: agent.id,
   })),
 ])

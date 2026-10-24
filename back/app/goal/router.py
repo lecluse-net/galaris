@@ -23,6 +23,7 @@ from .schemas import (
     GoalPage,
     GoalRead,
     GoalSettingsRead,
+    GoalRuntimeRead,
     GoalSettingsUpdate,
     GoalTreePage,
     GoalUpdate,
@@ -113,14 +114,20 @@ async def search_messenger_referrers(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.get("/settings", response_model=GoalSettingsRead)
+@router.get("/runtime-status", response_model=GoalRuntimeRead)
 @authorize(privileges=[Privileges.GOAL_ACCESS, Privileges.GOAL_EDIT])
+async def read_goal_runtime() -> GoalRuntimeRead:
+    return GoalRuntimeRead.model_validate((await settings_service.get_settings()).model_dump())
+
+
+@router.get("/settings", response_model=GoalSettingsRead)
+@authorize(privileges=[Privileges.GOAL_CONFIG_ACCESS, Privileges.GOAL_CONFIG_EDIT])
 async def read_goal_settings() -> GoalSettingsRead:
     return await settings_service.get_settings()
 
 
 @router.patch("/settings", response_model=GoalSettingsRead)
-@authorize(privileges=Privileges.GOAL_EDIT)
+@authorize(privileges=Privileges.GOAL_CONFIG_EDIT)
 async def update_goal_settings(data: GoalSettingsUpdate) -> GoalSettingsRead:
     try:
         scope = await current_management_scope()

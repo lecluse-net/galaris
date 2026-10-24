@@ -31,8 +31,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   function canRead(): boolean {
     return auth.isAuthenticated && (
-      access.privileges.includes(privileges.TASK_ACCESS)
-      || access.privileges.includes(privileges.TASK_EDIT)
+      access.privileges.includes(privileges.DASHBOARD_ACCESS)
     )
   }
 

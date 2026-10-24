@@ -14,6 +14,8 @@ function setup(getActivity) {
   const { useTaskActivity } = loadTypescript(new URL('./useTaskActivity.ts', import.meta.url), {
     vue: { ...vue, onBeforeUnmount: callback => { cleanup = callback } },
     'vue-i18n': { useI18n: () => ({ t: key => key }) },
+    '@/core/authorize': { privileges: { LLM_CALL_ACCESS: 'LLM_CALL_ACCESS', LLM_CALL_CONTROL: 'LLM_CALL_CONTROL' },
+      usePrivilegeStore: () => ({ hasAnyPrivilege: () => true }) },
     '@/core/websocket': { BaseRoom: class {}, websocket: {
       createWebsocket() {}, joinRoom() {}, leaveRoom() {},
       onEvent: (subject, action, callback) => events.set(`${subject}.${action}`, callback),

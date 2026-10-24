@@ -102,6 +102,7 @@ def test_optional_infrastructure_and_persistent_volume_wiring() -> None:
     override = _compose("compose.override.yaml.example")
     postgres = _compose("compose.postgres.yaml")
     development = _compose("compose.dev.yaml")
+    assert "./front/core/params:/app-front/core/params" in development["services"]["backend"]["volumes"]
 
     base_backend = base["services"]["backend"]
     base_search = base["services"]["search"]

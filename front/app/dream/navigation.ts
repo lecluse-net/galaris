@@ -1,5 +1,5 @@
 import type { NavigationTree } from '@/core/navigation'
-import { privileges } from '@/core/authorize'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 
 const navigation: NavigationTree = {
   monitor: {
@@ -10,7 +10,8 @@ const navigation: NavigationTree = {
         icon: 'bedtime',
         order: 20,
         to: '/dream',
-        privileges: [privileges.TASK_ACCESS, privileges.AGENT_MANAGE_ALL],
+        privileges: [privileges.DREAM_ACCESS],
+        visible: () => usePrivilegeStore().hasPrivilege(privileges.AGENT_MANAGE_ALL),
       },
     },
   },

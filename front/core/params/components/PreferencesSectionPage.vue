@@ -1,5 +1,5 @@
 <template>
-    <q-page class="preferences-section q-pa-md">
+    <q-page v-if="canViewSection" class="preferences-section q-pa-md">
         <PageHeader :icon="navigationIcon(currentSection.icon)"
             :title="t('configuration.pageTitle', { name: t(currentSection.titleKey) })"
             :description="t(currentSection.descriptionKey)"
@@ -177,7 +177,7 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { PageHeader, defineAsyncView } from '@/core/util'
@@ -195,12 +195,13 @@ import {
     voiceFields,
 } from '../settingsCatalog'
 import { useParamsStore } from '../stores/paramsStore'
+import { sectionPrivileges } from '../access'
 import BridgeSettingsPanel from './BridgeSettingsPanel.vue'
 import PreferencesMenuGrid from './PreferencesMenuGrid.vue'
 import SettingsFields from './SettingsFields.vue'
 import SettingsBlock from './SettingsBlock.vue'
 import type { SettingField } from '../settingsTypes'
-import { privileges, usePrivilegeStore } from '@/core/authorize'
+import { usePrivilegeStore } from '@/core/authorize'
 import { harnessSettingsPath, preferenceSections, type PreferenceSectionKey } from '../presentation'
 
 const DreamSettingsPanel = defineAsyncView(() => import('./DreamSettingsPanel.vue'))
@@ -215,7 +216,8 @@ const { t } = useI18n()
 const $q = useQuasar()
 const paramsStore = useParamsStore()
 const privilegeStore = usePrivilegeStore()
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.PARAMS_EDIT))
+const canViewSection = computed(() => privilegeStore.hasAnyPrivilege(sectionPrivileges(section)))
+const canEdit = computed(() => privilegeStore.hasPrivilege(sectionPrivileges(section)[1] ?? ''))
 const currentSection = computed(() => preferenceSections.find(item => item.key === section) ?? preferenceSections[0])
 const paramValues = ref<Record<string, string | null>>({})
 const originalValues = ref<Record<string, string | null>>({})
@@ -280,13 +282,14 @@ async function copyJanusApiUrl(): Promise<void> {
     $q.notify({ type: 'positive', message: t('params.janusApiCopied'), timeout: 1500 })
 }
 
-onMounted(async () => {
+watch([() => section, canViewSection], async ([, allowed]) => {
+    if (!allowed) return
     await Promise.all([
-        paramsStore.fetchParams(),
-        ...harnessBridgeSettings.map(contribution => contribution.refreshAvailability?.()),
+        ...(privilegeStore.hasAnyPrivilege(sectionPrivileges(section).slice(0, 2)) ? [paramsStore.fetchParams()] : []),
+        ...(section === 'harnesses' ? harnessBridgeSettings.map(contribution => contribution.refreshAvailability?.()) : []),
     ])
     syncParamValues()
-})
+}, { immediate: true })
 </script>
 
 <style scoped>

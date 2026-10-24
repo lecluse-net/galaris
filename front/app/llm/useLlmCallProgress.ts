@@ -4,12 +4,15 @@ import { websocket } from '@/core/websocket'
 import { llmCallService } from './services/llmCallService'
 import { applyLlmCallProgress, isNewerCallRevision, type LLMCallProgress } from './progress'
 import type { LLMCall } from './types'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 
 /** Subscribe only while mounted; recover gaps once per visible call. */
 export function useLlmCallProgress(select: (id: string) => LLMCall | undefined, apply: (call: LLMCall) => void): void {
+  const privilegeStore = usePrivilegeStore()
   const pending = new Map<string, AbortController>()
   let disposed = false
   function receive(event: { data: LLMCallProgress }): void {
+    if (!privilegeStore.hasAnyPrivilege([privileges.LLM_CALL_ACCESS, privileges.LLM_CALL_CONTROL])) return
     const progress = event.data
     const current = select(progress.id)
     if (!current) return
@@ -23,7 +26,8 @@ export function useLlmCallProgress(select: (id: string) => LLMCall | undefined, 
     pending.set(progress.id, controller)
     const session = sessionGeneration()
     void llmCallService.getById(progress.id, controller.signal).then(snapshot => {
-      if (disposed || session !== sessionGeneration()) return
+      if (disposed || session !== sessionGeneration()
+        || !privilegeStore.hasAnyPrivilege([privileges.LLM_CALL_ACCESS, privileges.LLM_CALL_CONTROL])) return
       const latest = select(progress.id)
       if (!latest || latest.status !== 'running') return
       if (isNewerCallRevision(latest.updated_at, snapshot.updated_at)) return

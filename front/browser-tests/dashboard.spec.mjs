@@ -16,7 +16,7 @@ test('dashboard month navigation reuses data, refresh bypasses cache and revoked
     await route.fulfill({ json: { month, available_months: [...new Set([month, '2026-08', '2026-07'])],
       totals: totals(cost), previous_totals: totals(0), daily_usage: [], agents: [] } })
   })
-  await mount(page, 'app/index/components/HomeConnected.vue', { privileges: ['TASK_ACCESS'] })
+  await mount(page, 'app/index/components/HomeConnected.vue', { privileges: ['DASHBOARD_ACCESS'] })
   const select = page.getByRole('combobox', { name: 'Reporting month' })
   await expect(page.getByRole('button', { name: 'Refresh data', exact: true })).toBeVisible()
   await select.click()
@@ -36,7 +36,7 @@ test('dashboard month navigation reuses data, refresh bypasses cache and revoked
   await setPrivileges(page, [])
   await expect(select).toHaveCount(0)
   await expect(page.getByText('$19.00', { exact: true })).toHaveCount(0)
-  await setPrivileges(page, ['TASK_ACCESS'])
+  await setPrivileges(page, ['DASHBOARD_ACCESS'])
   await expect(page.getByText('$19.00', { exact: true }).first()).toBeVisible()
   expect(requests).toHaveLength(count + 2)
 })

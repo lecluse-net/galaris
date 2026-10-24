@@ -21,8 +21,8 @@
         </q-item-section>
         <q-item-section side class="external-harnesses__actions">
           <span class="text-caption">{{ t(entry.enabled ? 'harnesses.preferences.enabled' : 'harnesses.preferences.disabled') }}</span>
-          <q-btn flat color="primary" :icon="canEdit ? 'edit' : 'visibility'"
-            :label="t(canEdit ? 'common.edit' : 'harnesses.preferences.view')"
+          <q-btn outline color="primary" :icon="canChangeExisting ? 'edit' : 'visibility'"
+            :label="t(canChangeExisting ? 'common.edit' : 'harnesses.preferences.view')"
             @click="openEditor(entry)" />
         </q-item-section>
       </q-item>
@@ -41,7 +41,7 @@
         <div class="galaris-dialog-body">
           <HarnessEditor v-if="editing" :key="editorSession" :harness-id="selected?.id ?? 'new'" embedded
             @close="editing = false" @done="editing = false" @mutation="trackMutation" />
-          <q-card-section v-if="editing && selected && canEdit">
+          <q-card-section v-if="editing && selected">
             <HarnessExecutionSettings :key="editorSession" :provider-code="selected.provider_code" />
           </q-card-section>
         </div>
@@ -63,7 +63,8 @@ const props = defineProps<{ entries: HarnessCatalogEntry[] }>()
 const emit = defineEmits<{ updated: [entry: HarnessCatalogEntry]; removed: [id: string] }>()
 const { t } = useI18n()
 const privilegeStore = usePrivilegeStore()
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.PARAMS_EDIT))
+const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.HARNESS_CONFIG_EDIT))
+const canChangeExisting = computed(() => canEdit.value && privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL))
 const search = ref<string | null>('')
 const editing = ref(false)
 const selected = ref<HarnessCatalogEntry | null>(null)

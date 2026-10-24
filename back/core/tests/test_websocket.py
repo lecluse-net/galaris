@@ -283,10 +283,9 @@ async def test_emit_rejects_unclassified_subject_and_resource_room(
     assert fake_server.events == []
 
 
-async def test_dream_events_use_task_monitoring_privileges() -> None:
+async def test_dream_events_use_dream_monitoring_privileges() -> None:
     assert websocket._EVENT_PRIVILEGES["dream"] == (  # pyright: ignore[reportPrivateUsage]
-        "TASK_ACCESS",
-        "TASK_EDIT",
+        "DREAM_ACCESS",
     )
 
 

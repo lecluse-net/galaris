@@ -33,6 +33,8 @@ from core.user import Token, require_web_session
 from .assertions import OwnUserOrPrivilegeAssertion
 from .decorators import authorize
 from .definitions import Privileges
+from .schemas import AssignmentUserOption
+from core.user import UserModel
 
 
 router = APIRouter(prefix="/authorize", tags=["authorization"])
@@ -55,7 +57,7 @@ async def _guard_admin(*, role: Role | None = None, assignment_id: int | None = 
 # ==================== Privileges ====================
 
 @router.get("/privileges", response_model=List[PrivilegeSchema])
-@authorize(privileges=[Privileges.READ_PRIVILEGE, Privileges.MANAGE_PRIVILEGE])
+@authorize(privileges=[Privileges.READ_PRIVILEGE, Privileges.MANAGE_PRIVILEGE, Privileges.MANAGE_ROLE])
 async def list_privileges(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Privilege))
     return result.scalars().all()
@@ -125,6 +127,20 @@ async def delete_privilege(
 
 
 # ==================== Roles ====================
+
+@router.get("/role-options", response_model=list[RoleSchema])
+@authorize(privileges=[Privileges.READ_ASSIGNMENT, Privileges.MANAGE_ASSIGNMENT])
+async def assignment_role_options():
+    return list(await get_db().scalars(select(Role).order_by(Role.code)))
+
+
+@router.get("/assignment-user-options", response_model=list[AssignmentUserOption])
+@authorize(privileges=Privileges.MANAGE_ASSIGNMENT)
+async def assignment_user_options(q: str = Query(min_length=1, max_length=200)):
+    return list(await get_db().scalars(select(UserModel).where(
+        UserModel.email.icontains(q, autoescape=True)
+        | UserModel.display_name.icontains(q, autoescape=True)
+    ).order_by(UserModel.email).limit(50)))
 
 @router.get("/roles", response_model=List[RoleWithPrivileges])
 @authorize(privileges=[Privileges.READ_ROLE, Privileges.MANAGE_ROLE])

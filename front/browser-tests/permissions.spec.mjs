@@ -22,7 +22,7 @@ test('permanent network permissions can be revoked, with retry after failure', a
     removed = true;
     return route.fulfill({ status: 204 });
   });
-  await mount(page, 'app/connection/pages/permissions.vue', { privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'] });
+  await mount(page, 'app/connection/pages/permissions.vue', { privileges: ['PERMISSION_ACCESS', 'PERMISSION_DECIDE', 'PERMISSION_REVOKE'] });
   await page.getByRole('tab', { name: 'Permanent permissions' }).click();
   await expect(page.getByText(row.question)).toBeVisible();
   await expect(page.getByText('Synthetic manager')).toBeVisible();
@@ -85,7 +85,7 @@ for (const width of [390, 1440]) test(`pending approvals are answered without li
     writes.push(route.request().postDataJSON()); granted = false;
     return route.fulfill({ json: { effective_state: 'ask' } });
   });
-  await mount(page, 'app/connection/pages/permissions.vue', { privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'] });
+  await mount(page, 'app/connection/pages/permissions.vue', { privileges: ['PERMISSION_ACCESS', 'PERMISSION_DECIDE', 'PERMISSION_REVOKE'] });
   await expect(page.getByText(row.preview)).toBeVisible();
   expect(queries[0].status).toBe('pending');
   await page.getByRole('button', { name: 'Review request' }).click();
@@ -123,7 +123,7 @@ test('pending network requests can be answered from Permissions with recovery af
     pending = false;
     return route.fulfill({ json: { accepted: true } });
   });
-  await mount(page, 'app/connection/pages/permissions.vue', { privileges: ['CONNECTION_EDIT'] });
+  await mount(page, 'app/connection/pages/permissions.vue', { privileges: ['PERMISSION_DECIDE', 'PERMISSION_REVOKE'] });
   await page.getByRole('button', { name: 'Allow and remember', exact: true }).click();
   await expect(page.getByRole('alert')).toBeVisible();
   await page.getByRole('button', { name: 'Allow and remember', exact: true }).click();

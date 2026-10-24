@@ -90,7 +90,7 @@ async def _require_global_scope() -> None:
 
 
 @routes.get("/catalogue", response_model=ProcessCataloguePage)
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def read_catalogue(
     page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500),
     search: str = Query("", max_length=200), kind: Literal["all", "native", "external"] = "all",
@@ -126,13 +126,13 @@ async def export_process_run(
 
 
 @routes.get("/tools", response_model=list[ProcessToolRead])
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def read_process_tools() -> list[Any]:
     return await process_service.list_process_tools()
 
 
 @routes.get("/tools/{tool_code}/health", response_model=ProcessEngineHealth)
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def read_process_tool_health(tool_code: str) -> ProcessEngineHealth:
     try:
         return await process_service.get_tool_health(tool_code)
@@ -141,7 +141,7 @@ async def read_process_tool_health(tool_code: str) -> ProcessEngineHealth:
 
 
 @routes.get("/operations", response_model=ProcessOperationsRead)
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def read_process_operations(
     agent_id: Optional[int] = Query(default=None, gt=0),
 ) -> ProcessOperationsRead:
@@ -152,7 +152,7 @@ async def read_process_operations(
 
 
 @routes.get("/definitions", response_model=list[ProcessDefinitionRead])
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def read_definitions(
     agent_id: Optional[int] = Query(default=None, gt=0),
 ) -> list[Any]:
@@ -189,7 +189,7 @@ async def sync_definitions(tool_code: str = "n8n") -> list[dict[str, Any]]:
 
 
 @routes.get("/definitions/{process_id}", response_model=ProcessDefinitionRead)
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def read_definition(process_id: int) -> Any:
     return await _definition_or_404(process_id)
 
@@ -355,7 +355,7 @@ async def refresh_run(run_id: UUID) -> ProcessRunRead:
 
 
 @routes.post("/runs/{run_id}/analyze", response_model=ProcessAnalysis)
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def analyze_run(run_id: UUID) -> ProcessAnalysis:
     try:
         await _run_or_404(run_id)
@@ -468,7 +468,7 @@ async def download_run_file(run_id: UUID, file_id: str, request: Request) -> Fil
 
 
 @routes.get("/metrics")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def read_metrics() -> dict[str, list[dict[str, Any]]]:
     await _require_global_scope()
     return metrics.snapshot()

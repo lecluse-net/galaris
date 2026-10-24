@@ -73,6 +73,7 @@
           :key="task.id"
           :task="task"
           :avatar-urls="avatarUrls"
+          :agent-labels="agentLabels"
           :topic-titles="topicTitles"
           :children-map="childrenByParent"
           :depth="0"
@@ -127,7 +128,7 @@
 <script setup lang="ts">
 import { onMounted, computed, reactive, watch } from 'vue'
 import { useTaskStore } from '../stores/taskStore'
-import { useAgentStore } from '../../agent/stores/agentStore'
+import { useAgentChoices } from '@/app/agent'
 import { agentService } from '../../agent/services/agentService'
 import { AgentSelect } from '@/app/agent'
 import { ExecutionDateFilters } from '@/core/util'
@@ -139,7 +140,7 @@ import TopicSelect from '@/app/topic/components/TopicSelect.vue'
 defineEmits<{ select: [taskId: string] }>()
 
 const store = useTaskStore()
-const agentStore = useAgentStore()
+const agentStore = useAgentChoices()
 const avatarUrls = reactive<Record<number, string>>({})
 const { titles: topicTitles, resolveTopicRefs } = useTopicRefs()
 
@@ -194,10 +195,11 @@ function buildRootTasks(tasks: Task[]): Task[] {
     .sort((left, right) => compareByDisplayedDate(left, right, -1))
 }
 
+const agentLabels = computed(() => Object.fromEntries(agentStore.agents.map(agent => [agent.id, agent.label])))
 const agentOptions = computed(() =>
   agentStore.agents.map(e => ({
     value: e.id,
-    label: `${e.first_name} ${e.last_name}`.trim()
+    label: e.label
   }))
 )
 

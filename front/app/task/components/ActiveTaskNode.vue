@@ -55,6 +55,7 @@
       :key="child.id"
       :task="child"
       :avatar-urls="avatarUrls"
+      :agent-labels="agentLabels"
       :topic-titles="topicTitles"
       :children-map="childrenMap"
       :depth="(depth || 0) + 1"
@@ -84,6 +85,7 @@ defineOptions({ name: 'ActiveTaskNode' })
 const props = defineProps<{
   task: Task
   avatarUrls?: Record<number, string>
+  agentLabels?: Record<number, string>
   topicTitles?: Record<string, string>
   childrenMap?: Map<string, Task[]>
   depth?: number
@@ -139,11 +141,12 @@ const agent = computed(() => {
 })
 const agentName = computed(() => {
   if (props.task.agent_id == null) return t('task.list.noAgent')
+  if (props.agentLabels?.[props.task.agent_id]) return props.agentLabels[props.task.agent_id]!
   if (!agent.value) return t('task.list.agentId', { id: props.task.agent_id })
   return `${agent.value.first_name} ${agent.value.last_name}`.trim()
 })
 const agentAvatarUrl = computed(() => {
-  if (props.task.agent_id == null || !agent.value?.has_avatar) return undefined
+  if (props.task.agent_id == null) return undefined
   return props.avatarUrls?.[props.task.agent_id]
 })
 const descriptionText = computed(() => {

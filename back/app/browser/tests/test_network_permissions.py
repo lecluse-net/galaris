@@ -20,6 +20,12 @@ async def setup_scope(db, *, create_rooms=True, public_access_mode="ask"):
     title = Title(label="Network tests", gender="X")
     db.add_all([*users, title])
     await db.flush()
+    from core.authorize import Assignment, Privilege, Role
+    decide = await db.scalar(select(Privilege).where(Privilege.code == "PERMISSION_DECIDE"))
+    role = Role(code=f"network-reviewer-{suffix}", privileges=[decide])
+    db.add(role)
+    await db.flush()
+    db.add_all([Assignment(user_id=user.id, role_id=role.id) for user in users])
     agents = [Agent(user_id=user.id, title_id=title.id, code=f"net-{suffix}-{i}", first_name=f"Browser {i}",
                     last_name="Synthetic", agent_driver="internal") for i, user in enumerate(users)]
     db.add_all(agents)
@@ -290,7 +296,7 @@ async def test_permission_http_management_is_scoped_and_sidecar_requires_credent
     async with get_db_session() as db:
         agents, users, _ = await setup_scope(db)
         roles = []
-        for index, codes in enumerate([["CONNECTION_ACCESS", "CONNECTION_EDIT"], ["CONNECTION_ACCESS"], []]):
+        for index, codes in enumerate([["PERMISSION_ACCESS", "PERMISSION_REVOKE"], ["PERMISSION_ACCESS"], []]):
             role = Role(code=f"permission-{uuid4().hex}", display_name=f"Permission fixture {index}")
             role.privileges = list((await db.scalars(select(Privilege).where(Privilege.code.in_(codes)))).all())
             db.add(role); await db.flush(); roles.append(role)
@@ -482,3 +488,27 @@ async def test_all_sites_consent_respects_explicit_denials_connection_and_manage
     agents[0].user_id = users[1].id
     await db.commit()
     assert (await authorize_network(request)).code == "permission_required"
+
+
+@pytest.mark.asyncio
+async def test_revoked_decision_right_rejects_buttons_and_text_without_consuming_the_choice(db):
+    from sqlalchemy import delete
+    from core.authorize import Assignment
+    agents, users, _ = await setup_scope(db)
+    request = NetworkRequest(owner={"agent_id": agents[0].id}, url="https://example.com/review", method="POST", addresses=["93.184.215.14"])
+    await authorize_network(request)
+    decision = await db.scalar(select(PermissionDecision).where(PermissionDecision.agent_id == agents[0].id))
+    choice = await db.get(Interaction, decision.interaction_id)
+    await db.execute(delete(Assignment).where(Assignment.user_id == users[0].id))
+    await db.commit()
+    with pytest.raises(PermissionError):
+        await answer_internal_interaction(users[0].id, UUID(choice.room_id), choice.id, option_id="allow")
+    message = Message(connection_id=choice.connection_id, tool_id=choice.tool_id, text="oui", direction="inbound")
+    message.room = await db.get(Room, UUID(choice.room_id))
+    message.sender = await db.scalar(select(MessengerUser).where(MessengerUser.tool_id == choice.tool_id,
+        MessengerUser.external_id == f"user:{users[0].id}"))
+    assert await resolve_from_message(message, agent_id=agents[0].id) is None
+    await db.refresh(choice)
+    await db.refresh(decision)
+    assert choice.status == "PENDING" and choice.resolution is None
+    assert decision.allowed is None

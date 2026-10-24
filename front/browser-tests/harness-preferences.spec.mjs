@@ -42,9 +42,9 @@ async function fixtures(page) {
 }
 
 const open = (page, options = {}) => mount(page, 'core/params/components/PreferencesSectionPage.vue', {
-  props: { section: 'harnesses' }, route: '/params/harnesses?tab=managed', privileges: ['PARAMS_ACCESS', 'PARAMS_EDIT'], ...options,
+  props: { section: 'harnesses' }, route: '/params/harnesses?tab=managed', privileges: ['HARNESS_CONFIG_ACCESS', 'HARNESS_CONFIG_EDIT', 'AGENT_MANAGE_ALL'], ...options,
 })
-const openTasks = page => open(page, { props: { section: 'tasks' }, route: '/params/tasks' })
+const openTasks = page => open(page, { props: { section: 'tasks' }, route: '/params/tasks', privileges: ['TASK_CONFIG_ACCESS', 'TASK_CONFIG_EDIT'] })
 
 function pipelineConfigurations(internalPlanner, externalPlanner) {
   return ['internal', 'future-runtime'].map(provider_code => ({
@@ -67,7 +67,7 @@ for (const [scenario, internalPlanner, externalPlanner] of [
 ]) {
   test(`pipeline settings list only eligible harnesses: ${scenario}`, async ({ page }) => {
     await fixtures(page)
-    await jsonRoute(page, '**/api/harnesses/execution-configurations', pipelineConfigurations(internalPlanner, externalPlanner))
+    await jsonRoute(page, '**/api/harnesses/pipeline-options', pipelineConfigurations(internalPlanner, externalPlanner))
     await openTasks(page)
     await expect(page.getByRole('region', { name: 'Per-run limits', exact: true })).toBeVisible()
     const planner = page.getByRole('region', { name: 'Planner', exact: true })
@@ -77,7 +77,7 @@ for (const [scenario, internalPlanner, externalPlanner] of [
         ...(internalPlanner ? ['Internal harness (Galaris)'] : []), ...(externalPlanner ? ['Future runtime'] : []),
       ])
     }
-    await setPrivileges(page, ['PARAMS_ACCESS'])
+    await setPrivileges(page, ['TASK_CONFIG_ACCESS'])
     if (internalPlanner || externalPlanner) await expect(planner.locator('textarea')).toHaveAttribute('readonly', '')
   })
 }
@@ -86,7 +86,7 @@ test('pipeline prompts recover loading and saving errors, preserve drafts and pe
   await fixtures(page)
   let failLoad = true
   let failSave = true
-  await page.route('**/api/harnesses/execution-configurations', route => route.fulfill(failLoad
+  await page.route('**/api/harnesses/pipeline-options', route => route.fulfill(failLoad
     ? { status: 503, json: { detail: 'Unavailable' } }
     : { json: pipelineConfigurations(true, false) }))
   const params = ['planner'].map(key => ({
@@ -166,7 +166,7 @@ test('managed toggles persist, reveal Hermes configuration and confirm agent rea
   await claude.click()
   await expect(page.getByRole('alert').filter({ hasText: /Unable to change Harness activation/ })).toBeVisible()
   await expect(claude).not.toBeChecked()
-  await setPrivileges(page, ['PARAMS_ACCESS'])
+  await setPrivileges(page, ['HARNESS_CONFIG_ACCESS'])
   await expect(hermes).toBeDisabled()
   await expect(claude).toBeDisabled()
 })
@@ -205,12 +205,12 @@ test('tabs separate managed and external harnesses and preserve manager drafts',
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     await page.screenshot({ path: testInfo.outputPath(`managed-mobile-dark-${width}.png`), fullPage: true })
   }
-  await open(page, { route: '/params/harnesses?tab=external', privileges: ['PARAMS_ACCESS'] })
+  await open(page, { route: '/params/harnesses?tab=external', privileges: ['HARNESS_CONFIG_ACCESS'] })
   await expect(page.getByText('Independent API', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'View', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Add an OpenAI Messages API', exact: true })).toHaveCount(0)
   await expect(page.getByRole('tab', { name: 'Common settings', exact: true })).toHaveCount(0)
-  await expect(page.getByRole('tab', { name: 'Internal harness', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Internal harness', exact: true })).toBeVisible()
 })
 
 test('catalogue failures remain explicit and can be retried', async ({ page }) => {
@@ -274,11 +274,14 @@ test('external harnesses are created, reopened, updated and deleted from a modal
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
   const confirmation = page.getByRole('dialog').filter({ hasText: 'Permanently delete' })
   await expect(confirmation).toContainText('internal Galaris Harness')
-  await page.route('**/api/harnesses/catalog/created', route => route.fulfill({ status: 204 }))
+  await page.route('**/api/harnesses/catalog/created', route => {
+    entries.splice(entries.findIndex(item => item.id === 'created'), 1)
+    return route.fulfill({ status: 204 })
+  })
   await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   await expect(page.getByRole('listitem').filter({ hasText: 'Renamed API' })).toHaveCount(0)
-  await setPrivileges(page, ['PARAMS_ACCESS'])
+  await setPrivileges(page, ['HARNESS_CONFIG_ACCESS'])
   await page.getByRole('button', { name: 'View', exact: true }).click()
   await expect(dialog.getByLabel('Harness name', { exact: true })).toHaveAttribute('readonly')
   await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
@@ -385,8 +388,9 @@ test('each harness configuration saves its own provider policy and preserves int
   // Reopening must preserve the saved policy, independently of framework load counts.
   await open(page, { route: '/params/harnesses?tab=internal' })
   await expect(concurrency).toHaveValue('3')
-  await setPrivileges(page, ['PARAMS_ACCESS'])
-  await expect(concurrency).not.toBeVisible()
+  await setPrivileges(page, ['HARNESS_CONFIG_ACCESS'])
+  await expect(concurrency).toBeDisabled()
+  await expect(internalPanel.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
 })
 
 for (const tab of ['common', 'advanced']) {

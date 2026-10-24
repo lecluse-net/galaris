@@ -511,7 +511,7 @@ import type {
 } from '../services/llmProviderService'
 
 const privilegeStore = usePrivilegeStore()
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.LLM_PROVIDER_EDIT))
+const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.LLM_MODEL_EDIT))
 
 type LlmForm = LLMModalities & {
   id: number | null

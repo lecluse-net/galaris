@@ -52,7 +52,7 @@ const { agentId = null, kind = 'runtime', agents = [] } = defineProps<{ agentId?
 const agentLabel = (id: number) => agents.find(agent => agent.id === id)?.label ?? String(id)
 const { t } = useI18n()
 const authorize = usePrivilegeStore()
-const canEdit = computed(() => authorize.hasPrivilege(privileges.CONNECTION_EDIT))
+const canEdit = computed(() => authorize.hasPrivilege(privileges.PERMISSION_REVOKE))
 type PermanentPermission = RuntimePermission | FunctionPermission
 const rows = ref<PermanentPermission[]>([])
 const selected = ref<PermanentPermission | null>(null)

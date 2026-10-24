@@ -107,7 +107,7 @@ def _model_info_response(model: Any) -> LLMModelInfoResponse:
 # =============================================================================
 
 @router.get("/llms", response_model=List[LLMWithProviderResponse])
-@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT])
+@authorize(privileges=[Privileges.LLM_MODEL_ACCESS, Privileges.LLM_MODEL_EDIT, Privileges.LLM_PROFILE_ACCESS, Privileges.LLM_PROFILE_EDIT, Privileges.LLM_CALL_ACCESS, Privileges.LLM_CALL_CONTROL])
 async def list_llms(
     provider_id: Optional[int] = Query(default=None, description="Filter by provider ID")
 ) -> List[LLMWithProviderResponse]:
@@ -119,7 +119,7 @@ async def list_llms(
 
 
 @router.post("/llms", response_model=LLMResponse, status_code=status.HTTP_201_CREATED)
-@authorize(privileges=[Privileges.LLM_PROVIDER_EDIT])
+@authorize(privileges=Privileges.LLM_MODEL_EDIT)
 async def create_llm(data: LLMCreate) -> LLMResponse:
     """Create a configured LLM.
 
@@ -146,7 +146,7 @@ async def create_llm(data: LLMCreate) -> LLMResponse:
 
 
 @router.post("/fetch-pricing", response_model=dict)
-@authorize(privileges=[Privileges.LLM_PROVIDER_EDIT])
+@authorize(privileges=[Privileges.LLM_PROVIDER_EDIT, Privileges.LLM_MODEL_EDIT])
 async def fetch_pricing(request: dict[str, Any]) -> dict[str, Any]:
     """Fetch normalized metadata without coupling the API to one provider."""
     model_id = request.get("model_id")
@@ -186,7 +186,7 @@ async def fetch_pricing(request: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.get("/llms/{llm_id}", response_model=LLMWithProviderResponse)
-@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT])
+@authorize(privileges=[Privileges.LLM_MODEL_ACCESS, Privileges.LLM_MODEL_EDIT])
 async def get_llm(llm_id: int) -> LLMWithProviderResponse:
     """Return details for a configured LLM."""
     llm = await llm_service.get_llm(llm_id)
@@ -201,7 +201,7 @@ async def get_llm(llm_id: int) -> LLMWithProviderResponse:
 
 
 @router.put("/llms/{llm_id}", response_model=LLMResponse)
-@authorize(privileges=[Privileges.LLM_PROVIDER_EDIT])
+@authorize(privileges=Privileges.LLM_MODEL_EDIT)
 async def update_llm(
     llm_id: int,
     data: LLMUpdate
@@ -234,7 +234,7 @@ async def update_llm(
 
 
 @router.delete("/llms/{llm_id}", status_code=status.HTTP_204_NO_CONTENT)
-@authorize(privileges=[Privileges.LLM_PROVIDER_EDIT])
+@authorize(privileges=Privileges.LLM_MODEL_EDIT)
 async def delete_llm(llm_id: int) -> None:
     """Delete a configured LLM."""
     deleted = await llm_service.delete_llm(llm_id)
@@ -253,7 +253,7 @@ async def delete_llm(llm_id: int) -> None:
 # =============================================================================
 
 @router.get("", response_model=List[LLMProviderResponse])
-@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT])
+@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT, Privileges.LLM_MODEL_ACCESS, Privileges.LLM_MODEL_EDIT])
 async def list_providers(active_only: bool = False) -> List[LLMProviderResponse]:
     """List LLM providers."""
     providers = await llm_provider_service.list_providers(active_only=active_only)
@@ -275,14 +275,14 @@ async def create_provider(data: LLMProviderCreate) -> LLMProviderResponse:
 
 
 @router.get("/catalog", response_model=ProviderCatalogResponse)
-@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT])
+@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT, Privileges.LLM_MODEL_ACCESS, Privileges.LLM_MODEL_EDIT])
 async def get_provider_catalog() -> ProviderCatalogResponse:
     """Return fixed profiles merged with custom and configured connections."""
     return await llm_provider_service.get_provider_catalog()
 
 
 @router.get("/catalog/{catalog_code}/resources", response_model=LLMModelsListResponse)
-@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT])
+@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT, Privileges.LLM_MODEL_ACCESS, Privileges.LLM_MODEL_EDIT])
 async def list_catalog_resources(
     catalog_code: str,
     capability: AICapability = Query(default="chat"),
@@ -542,7 +542,7 @@ async def delete_provider(provider_id: int) -> None:
 
 
 @router.get("/{provider_id}/models", response_model=LLMModelsListResponse)
-@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT])
+@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT, Privileges.LLM_MODEL_ACCESS, Privileges.LLM_MODEL_EDIT])
 async def list_provider_models(
     provider_id: int,
     refresh: bool = Query(default=False, description="Refresh public model metadata"),
@@ -594,7 +594,7 @@ async def list_provider_models(
 
 
 @router.get("/{provider_id}/resources", response_model=LLMModelsListResponse)
-@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT])
+@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT, Privileges.LLM_MODEL_ACCESS, Privileges.LLM_MODEL_EDIT])
 async def list_provider_resources(
     provider_id: int,
     capability: AICapability = Query(default="chat"),
@@ -640,7 +640,7 @@ async def list_provider_resources(
 
 
 @router.get("/{provider_id}/transcription-models", response_model=LLMModelsListResponse)
-@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT])
+@authorize(privileges=[Privileges.LLM_PROVIDER_ACCESS, Privileges.LLM_PROVIDER_EDIT, Privileges.LLM_MODEL_ACCESS, Privileges.LLM_MODEL_EDIT])
 async def list_provider_transcription_models(provider_id: int) -> LLMModelsListResponse:
     """List a provider's transcription models with ``input_audio`` enabled.
 

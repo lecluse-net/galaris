@@ -299,7 +299,7 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { usePrivilegeStore } from '@/core/authorize'
@@ -356,9 +356,9 @@ watch(() => store.selectedTaskId, () => {
   userContext.value = ''
 })
 
-onMounted(() => {
-  void load()
-})
+watch([() => section, () => privilegeStore.loaded], ([active, loaded]) => {
+  if (active === 'tasks' && loaded && privilegeStore.hasAnyPrivilege(labSectionPrivileges.tasks)) void load()
+}, { immediate: true })
 
 async function load(): Promise<void> {
   try {

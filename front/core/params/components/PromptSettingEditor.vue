@@ -138,7 +138,8 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { privileges, usePrivilegeStore } from '@/core/authorize'
+import { usePrivilegeStore } from '@/core/authorize'
+import { parameterEditPrivilege } from '../access'
 import { CodeEditor } from '@/core/util'
 import type { PromptAction } from '../services/paramsService'
 import type { SettingField } from '../settingsTypes'
@@ -162,7 +163,7 @@ const savingAction = ref<SavingAction>(null)
 const param = computed(() => paramsStore.getParamByName(field.name))
 const metadata = computed(() => param.value?.prompt ?? null)
 const currentValue = computed(() => param.value?.value ?? metadata.value?.default_value ?? '')
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.PARAMS_EDIT))
+const canEdit = computed(() => privilegeStore.hasPrivilege(parameterEditPrivilege(field.name)))
 const saving = computed(() => savingAction.value !== null)
 const dirty = computed(() => draft.value !== currentValue.value)
 const status = computed(() => {

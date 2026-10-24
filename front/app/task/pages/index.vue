@@ -10,6 +10,7 @@
     </PageHeader>
 
     <q-tabs
+      v-if="privilegeStore.loaded"
       v-model="activeTab"
       class="text-primary"
       active-color="primary"
@@ -18,10 +19,10 @@
       outside-arrows
       mobile-arrows
     >
-      <q-tab name="conversations" icon="forum" :label="$t('conversation.history.tab')" />
-      <q-tab name="voice" icon="phone_in_talk" :label="$t('voice.history.tab')" />
-      <q-tab name="tasks" icon="task" :label="$t('task.tabs.tasks')" />
-      <q-tab name="llm" icon="monitor_heart" :label="$t('task.tabs.llmActivity')" />
+      <q-tab v-if="canReadConversations" name="conversations" icon="forum" :label="$t('conversation.history.tab')" />
+      <q-tab v-if="canReadVoice" name="voice" icon="phone_in_talk" :label="$t('voice.history.tab')" />
+      <q-tab v-if="canReadTasks" name="tasks" icon="task" :label="$t('task.tabs.tasks')" />
+      <q-tab v-if="canReadLlm" name="llm" icon="monitor_heart" :label="$t('task.tabs.llmActivity')" />
       <q-tab
         v-if="canReadProcesses"
         name="processes"
@@ -32,16 +33,16 @@
 
     <q-separator />
 
-    <q-tab-panels v-model="activeTab" animated class="bg-transparent">
-      <q-tab-panel name="conversations" class="q-pa-none q-pt-md">
+    <q-tab-panels v-if="privilegeStore.loaded" v-model="activeTab" animated class="bg-transparent">
+      <q-tab-panel v-if="canReadConversations" name="conversations" class="q-pa-none q-pt-md">
         <ConversationHistory v-if="activeTab === 'conversations'" />
       </q-tab-panel>
 
-      <q-tab-panel name="voice" class="q-pa-none q-pt-md">
+      <q-tab-panel v-if="canReadVoice" name="voice" class="q-pa-none q-pt-md">
         <VoiceCallHistory v-if="activeTab === 'voice'" />
       </q-tab-panel>
 
-      <q-tab-panel name="tasks" class="q-pa-none q-pt-md">
+      <q-tab-panel v-if="canReadTasks" name="tasks" class="q-pa-none q-pt-md">
         <template v-if="activeTab === 'tasks'">
           <div class="row q-col-gutter-md q-mb-lg">
             <div v-for="metric in taskMetrics" :key="metric.label" class="col-6 col-md-3">
@@ -104,7 +105,7 @@
         </template>
       </q-tab-panel>
 
-      <q-tab-panel name="llm" class="q-pa-none q-pt-md">
+      <q-tab-panel v-if="canReadLlm" name="llm" class="q-pa-none q-pt-md">
         <LlmActivityPanel v-if="activeTab === 'llm'" />
       </q-tab-panel>
 
@@ -145,12 +146,17 @@ const store = useTaskStore()
 const privilegeStore = usePrivilegeStore()
 const route = useRoute()
 const router = useRouter()
+const canReadConversations = computed(() => privilegeStore.hasAnyPrivilege([privileges.CONVERSATION_ACCESS, privileges.CONVERSATION_CONTROL]))
+const canReadVoice = computed(() => privilegeStore.hasAnyPrivilege([privileges.VOICE_HISTORY_ACCESS, privileges.VOICE_HISTORY_CONTROL]))
+const canReadTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
+const canReadLlm = computed(() => privilegeStore.hasAnyPrivilege([privileges.LLM_CALL_ACCESS, privileges.LLM_CALL_CONTROL]))
 const canReadProcesses = computed(() => (
   privilegeStore.hasPrivilege(privileges.PROCESS_READ)
+  || privilegeStore.hasPrivilege(privileges.PROCESS_EDIT)
   || privilegeStore.hasPrivilege(privileges.PROCESS_ADMIN)
 ))
 const activeTab = ref<ActivityTab>(
-  route.query.task_id ? 'tasks' : tabFromQuery(route.query.tab),
+  route.query.task_id && canReadTasks.value ? 'tasks' : tabFromQuery(route.query.tab),
 )
 
 // Permissions
@@ -245,10 +251,13 @@ onUnmounted(() => {
 watch(activeTab, tab => {
   if (tab === 'tasks') {
     store.subscribeToTasks()
+    openTaskFromQuery(route.query.task_id)
   } else {
     store.unsubscribeFromTasks()
   }
 
+  // Keep a deep link while the current identity's privileges are still loading.
+  if (!privilegeStore.loaded) return
   const query = { ...route.query }
   if (tab === 'processes') {
     query.tab = 'processes'
@@ -273,12 +282,8 @@ watch(() => route.query.tab, value => {
   if (activeTab.value !== tab) activeTab.value = tab
 })
 
-watch(canReadProcesses, allowed => {
-  if (allowed && route.query.tab === 'processes') {
-    activeTab.value = 'processes'
-  } else if (!allowed && activeTab.value === 'processes') {
-    activeTab.value = 'conversations'
-  }
+watch([canReadConversations, canReadVoice, canReadTasks, canReadLlm, canReadProcesses], () => {
+  activeTab.value = route.query.task_id && canReadTasks.value ? 'tasks' : tabFromQuery(route.query.tab)
 })
 
 watch(() => route.query.task_id, openTaskFromQuery)
@@ -296,16 +301,18 @@ function closeReference(): void {
 }
 
 function tabFromQuery(value: unknown): ActivityTab {
-  if (value === 'processes' && canReadProcesses.value) return 'processes'
-  if (value === 'llm') return 'llm'
-  if (value === 'voice') return 'voice'
-  if (value === 'tasks') return 'tasks'
-  return 'conversations'
+  const allowed: ActivityTab[] = []
+  if (canReadConversations.value) allowed.push('conversations')
+  if (canReadVoice.value) allowed.push('voice')
+  if (canReadTasks.value) allowed.push('tasks')
+  if (canReadLlm.value) allowed.push('llm')
+  if (canReadProcesses.value) allowed.push('processes')
+  return allowed.includes(value as ActivityTab) ? value as ActivityTab : (allowed[0] ?? 'conversations')
 }
 
 function openTaskFromQuery(value: unknown) {
   const taskId = Array.isArray(value) ? value[0] : value
-  if (typeof taskId !== 'string' || !taskId) return
+  if (!canReadTasks.value || typeof taskId !== 'string' || !taskId) return
   activeTab.value = 'tasks'
   selectedTaskId.value = taskId
   detailDialogOpen.value = true

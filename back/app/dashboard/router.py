@@ -13,7 +13,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 @router.get("", response_model=DashboardResponse)
-@authorize(privileges=[Privileges.TASK_ACCESS, Privileges.TASK_EDIT])
+@authorize(privileges=Privileges.DASHBOARD_ACCESS)
 async def read_dashboard(
     month: str | None = Query(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
 ) -> DashboardResponse:

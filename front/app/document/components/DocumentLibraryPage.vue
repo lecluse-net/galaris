@@ -143,7 +143,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, useTempla
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { useAgentStore } from '@/app/agent'
+import { useAgentChoices } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { AgentConversationPanel as DocumentConversationPanel, conversationPanel, type DocumentFocus } from '@/core/util'
 import { OwnerSelect } from '@/app/share'
@@ -173,7 +173,7 @@ const libraryDocumentIcon = 'M6.5 5h11a2.5 2.5 0 0 1 2.5 2.5v9a2.5 2.5 0 0 1-2.5
 const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
-const agentStore = useAgentStore()
+const agentStore = useAgentChoices()
 const privilegeStore = usePrivilegeStore()
 const canAccessChat = computed(() => Boolean(conversationPanel) && privilegeStore.hasPrivilege(privileges.CHAT_ACCESS))
 const chatOpen = ref(false), chatStarted = ref(false), libraryOpen = ref(true)

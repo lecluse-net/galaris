@@ -55,7 +55,7 @@
         </q-card-section>
         <q-card-actions align="right">
           <q-btn v-close-popup outline :label="t('permissions.cancel')" />
-          <q-btn v-if="selected?.can_cancel && canAnswer" :label="t('permissions.cancelAction')"
+          <q-btn v-if="selected?.can_cancel && canCancel" :label="t('permissions.cancelAction')"
             :loading="answering" @click="cancel" />
           <template v-if="selected?.can_answer && canAnswer">
             <q-btn :label="t('permissions.denyAction')" :loading="answering" @click="answer(false)" />
@@ -82,7 +82,8 @@ const emit = defineEmits<{ answered: [] }>()
 const { t } = useI18n()
 const route = useRoute()
 const privilegeStore = usePrivilegeStore()
-const canAnswer = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
+const canAnswer = computed(() => privilegeStore.hasPrivilege(privileges.PERMISSION_DECIDE))
+const canCancel = computed(() => privilegeStore.hasPrivilege(privileges.PERMISSION_REVOKE))
 const rows = ref<ActionAuthorization[]>([])
 const selected = ref<ActionAuthorization | null>(null)
 const detailId = ref<string | null>(null)

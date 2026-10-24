@@ -37,7 +37,7 @@ async def _review_scope(delivery: MailOutboundDelivery, user: UserModel) -> Agen
     # A notification or replay can run in another actor's context.
     token = role_id_ctx.set(None)
     try:
-        if not await check_privilege(user, Privileges.CONNECTION_ACCESS, get_db()):
+        if not all([await check_privilege(user, code, get_db()) for code in (Privileges.MAIL_EDIT, Privileges.PERMISSION_DECIDE)]):
             return None
         scope = await management_scope_for(user, get_db())
         return scope if scope.allows(delivery.agent_id) else None
@@ -177,4 +177,4 @@ async def handle_approval(choice: PendingChoice, resolution: ChoiceResolution) -
             raise
 
 
-register_choice_handler(KIND, handle_approval)
+register_choice_handler(KIND, handle_approval, required_privileges=("MAIL_EDIT", "PERMISSION_DECIDE"))

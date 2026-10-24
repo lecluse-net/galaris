@@ -67,8 +67,11 @@ export const calendarService = {
   async list(connectionId: number): Promise<CalendarFeed[]> {
     return (await api.get('/calendars', { params: { connection_id: connectionId } })).data
   },
+  async connections(): Promise<{ id: number; agent_id: number; label: string }[]> {
+    return (await api.get('/calendars/connection-options')).data
+  },
   async processes(): Promise<CalendarProcessOption[]> {
-    return (await api.get('/processes/definitions')).data
+    return (await api.get('/calendars/process-options')).data
   },
   async create(data: CalendarFeedCreate): Promise<CalendarFeed> {
     return (await api.post('/calendars', data)).data

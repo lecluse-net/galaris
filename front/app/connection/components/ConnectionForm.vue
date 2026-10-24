@@ -221,7 +221,7 @@
     </q-card>
 
     <CalendarConnectionEditor
-      v-if="selectedTool?.code === 'calendar' && form.id !== null && form.agent_id !== null"
+      v-if="selectedTool?.code === 'calendar' && privilegeStore.hasAnyPrivilege([privileges.CALENDAR_ACCESS, privileges.CALENDAR_EDIT]) && form.id !== null && form.agent_id !== null"
       :connection-id="form.id"
       :agent-id="form.agent_id"
     />

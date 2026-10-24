@@ -15,6 +15,7 @@ function setup(t) {
   const cleanups = []
   const cleanup = () => cleanups.forEach(fn => fn())
   let session = 'A'
+  const access = vue.reactive({ allowed: true })
   const requests = new Map(), notices = []
   const dependencies = {
     vue: { ...vue, onBeforeUnmount(fn) { cleanups.push(fn) } },
@@ -22,7 +23,7 @@ function setup(t) {
     quasar: { useQuasar: () => ({ notify: notice => notices.push(notice) }) },
     '@/core/api': { sessionGeneration: () => session },
     '@/core/util': { showConfirmationDialog: () => assert.fail('No confirmation is expected while loading calls') },
-    '@/core/authorize': { usePrivilegeStore: () => ({ hasPrivilege: () => true }), privileges: {} },
+    '@/core/authorize': { usePrivilegeStore: () => ({ hasPrivilege: () => true, hasAnyPrivilege: () => access.allowed }), privileges: {} },
     '@/core/websocket': { websocket: { createWebsocket() {}, onEvent() {}, offEvent() {} } },
     './LlmCallTaskDetail.vue': {},
     '../services/llmCallService': { llmCallService: { getByTask(id) { const r = deferred(); requests.set(id, r); return r.promise } } },
@@ -31,6 +32,7 @@ function setup(t) {
     vue: dependencies.vue,
     '@/core/api': dependencies['@/core/api'],
     '@/core/websocket': dependencies['@/core/websocket'],
+    '@/core/authorize': dependencies['@/core/authorize'],
     './services/llmCallService': dependencies['../services/llmCallService'],
     './progress': { applyLlmCallProgress, isNewerCallRevision },
   })
@@ -43,7 +45,7 @@ function setup(t) {
   const props = vue.reactive({ taskId: 'first', externalCalls: [], loading: false, error: '' })
   const state = scope.run(() => exports.default.setup(props, { expose() {} }))
   t.after(() => { cleanup(); scope.stop() })
-  return { state, props, requests, notices, close: () => cleanup(), switchSession: () => { session = 'B' } }
+  return { state, props, requests, notices, access, close: () => cleanup(), switchSession: () => { session = 'B' } }
 }
 
 test('LLM calls reject old success/error after selection, session change and closure', async t => {
@@ -61,5 +63,16 @@ test('LLM calls reject old success/error after selection, session change and clo
   c.props.taskId = 'fourth'; await vue.nextTick()
   c.close()
   c.requests.get('fourth').reject(new Error('closed')); await vue.nextTick(); await vue.nextTick()
+  assert.deepEqual(c.notices, [])
+})
+
+test('revoking call access clears history and ignores the in-flight response', async t => {
+  const c = setup(t)
+  c.access.allowed = false
+  await vue.nextTick()
+  c.requests.get('first').resolve([{ id: 'revoked' }])
+  await vue.nextTick(); await vue.nextTick()
+  assert.deepEqual([...c.state.calls.value], [])
+  assert.equal(c.state.internalLoading.value, false)
   assert.deepEqual(c.notices, [])
 })

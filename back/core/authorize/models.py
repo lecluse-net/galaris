@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Integer, String, ForeignKey, UniqueConstraint, Boolean, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -68,6 +68,16 @@ class Role(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     display_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    # Existing rows stay NULL until DbAdmin projects their former broad grants.
+    # New roles use the separated catalogue immediately, without inferred grants.
+    domain_privileges_initialized_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    functional_isolation_initialized_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        default=lambda: datetime.now(timezone.utc),
+    )
 
     # Relationships use __table__ for the SQLAlchemy Table object.
     privileges: Mapped[List["Privilege"]] = relationship(

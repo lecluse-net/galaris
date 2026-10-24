@@ -561,7 +561,7 @@ import { websocket } from '@/core/websocket'
 import { PageHeader } from '@/core/util'
 import { privileges } from '@/core/authorize'
 import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
-import { useAgentStore } from '@/app/agent/stores/agentStore'
+import { useAgentChoices } from '@/app/agent'
 import { AgentSelect, useAgentSelectionStore } from '@/app/agent'
 import MemoryGraph from '../components/MemoryGraph.vue'
 import MemoryDreamActions from '../components/MemoryDreamActions.vue'
@@ -595,11 +595,11 @@ function formatTemporalDate(value: string): string {
 const route = useRoute()
 const $q = useQuasar()
 const store = useMemoryStore()
-const agentStore = useAgentStore()
+const agentStore = useAgentChoices()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_EDIT))
 const canAdminister = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_ADMIN))
-const canViewTasks = computed(() => privilegeStore.hasPrivilege(privileges.TASK_ACCESS))
+const canViewTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
 const activeTab = ref<'list' | 'graph'>('list')
 const detailDialog = ref(false)
 const memoryGraph = useTemplateRef<InstanceType<typeof MemoryGraph>>('memoryGraph')
@@ -652,7 +652,7 @@ const contactFilterOptions = ref<{ value: string, label: string }[]>([])
 type TableRequest = Parameters<NonNullable<QTableProps['onRequest']>>[0]
 const agentOptions = computed(() => agentStore.agents.map(agent => ({
   value: agent.id,
-  label: `${agent.first_name} ${agent.last_name}`.trim() || agent.code,
+  label: agent.label,
 })))
 const taskSourcePattern = /^task:([0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})$/i
 const displayedSources = computed(() => (

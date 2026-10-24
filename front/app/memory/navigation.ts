@@ -10,7 +10,7 @@ const navigation: NavigationTree = {
         icon: 'memory',
         order: 20,
         to: '/memory',
-        privileges: [privileges.MEMORY_ACCESS],
+        privileges: [privileges.MEMORY_ACCESS, privileges.MEMORY_EDIT, privileges.MEMORY_ADMIN],
       },
       contacts: {
         label: 'nav.contacts',
@@ -18,7 +18,7 @@ const navigation: NavigationTree = {
         icon: 'contacts',
         order: 25,
         to: '/memory/contacts',
-        privileges: [privileges.MEMORY_ACCESS],
+        privileges: [privileges.CONTACT_ACCESS, privileges.CONTACT_EDIT],
       },
     },
   },

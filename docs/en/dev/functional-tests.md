@@ -47,6 +47,22 @@ in both documentation maps while unreviewed imports remain rejected.
 late responses after revocation; the notification browser scenario checks startup after
 granting Chat and stopping after removal.
 
+`test_functional_settings.py` covers every declared key and settings pair: domain-only
+reading, writes restricted to its operator, rejection of unknown/internal keys and an
+identical generated TypeScript contract. `test_functional_projection.py` also checks
+composition of both upgrade generations, rollback and persistent revocations.
+`test_source_domain_boundaries.py` covers the five HTTP audit reproductions, positive and
+foreign-scope reads, Calendar and secret-free metadata. Permission choices also check
+buttons, typed replies and interrupted delivery after revocation; restoring authority
+never replays an old answer.
+
+`e2e/specs/rbac-isolation.spec.mjs` opens assembled application functions using a distinct
+role for each reader/operator, including Lab sections, settings, users and RBAC management.
+Chat/Team composition exceptions and Dream's global scope are explicit. Unexpected API
+denials from neighbouring domains are never ignored. Preview scenarios use their source
+rights rather than reusing Task access for every object. `useAgentChoices.test.mjs`
+checks late responses, role changes, denial and disposal of metadata selectors.
+
 ## Batched catalogue reads and file retirement
 
 `app/tools/tests/test_catalog_sql_budget.py` bounds delegated catalogue reads at

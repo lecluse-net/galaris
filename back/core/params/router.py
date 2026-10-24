@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 from pydantic import ValidationError
 from core.authorize import authorize
-from core.authorize import Privileges
 from core.i18n import render_prompt, tr
 from .schemas import (
     ParamListItem,
@@ -11,6 +10,10 @@ from .schemas import (
     PromptParamMetadata,
 )
 from . import params_service
+from .access import parameter_privileges, PARAMETER_READ_PRIVILEGES, PARAMETER_WRITE_PRIVILEGES
+from core.authorize import check_privilege
+from core.database import get_db
+from core.user import user_service
 
 from loguru import logger
 
@@ -42,7 +45,7 @@ async def _prompt_metadata(
 
 
 @router.get("", response_model=ParamsListResponse)
-@authorize(privileges=[Privileges.PARAMS_ACCESS, Privileges.PARAMS_EDIT])
+@authorize(privileges=list(PARAMETER_READ_PRIVILEGES))
 async def read_params():
     """Return all parameter names and values.
 
@@ -52,8 +55,16 @@ async def read_params():
     params = await params_service.get_all_with_metadata()
 
     params_list: list[ParamListItem] = []
+    user = await user_service.get_current_user()
+    assert user is not None
+    allowed: dict[tuple[str, ...], bool] = {}
     for param in params:
         if params_service.is_internal(param.name):
+            continue
+        required = parameter_privileges(param.name)
+        if required not in allowed:
+            allowed[required] = await check_privilege(user, list(required), get_db())
+        if not allowed[required]:
             continue
         secret = params_service.is_secret(param.name)
         revealed = params_service.reveal(param.name, param.value)
@@ -79,7 +90,7 @@ async def read_params():
     return ParamsListResponse(params=params_list)
 
 @router.put("/{name}", response_model=ParamUpdateResponse, status_code=status.HTTP_200_OK)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=list(PARAMETER_WRITE_PRIVILEGES))
 async def update_param(
     name: str,
     param_update: ParamUpdate,
@@ -93,10 +104,16 @@ async def update_param(
     logger.info("Updating parameter {}", name)
 
     if params_service.is_internal(name) or not await params_service.has(name):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=await _not_found(name),
-        )
+        raise HTTPException(status_code=404, detail=await _not_found(name))
+
+    user = await user_service.get_current_user()
+    assert user is not None
+    if not await check_privilege(user, list(parameter_privileges(name, write=True)), get_db()):
+        raise HTTPException(status_code=403, detail="Missing parameter domain privilege")
+
+    if name == "goal.runtime.settings":
+        # The Goal API also validates the composite value, global scope and events.
+        raise HTTPException(status_code=403, detail="Use the Goal settings API")
 
     secret = params_service.is_secret(name)
     if param_update.prompt_action is not None and not params_service.is_prompt(name):

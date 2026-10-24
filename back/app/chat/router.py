@@ -309,7 +309,7 @@ async def _validate_topic(topic_id: UUID | None) -> None:
 
 
 @router.get("/status", response_model=ChatStatus)
-@authorize(privileges=ACCESS)
+@authorize(privileges=[ACCESS, "MESSAGING_CONFIG_ACCESS", "MESSAGING_CONFIG_EDIT"])
 async def read_status() -> ChatStatus:
     return ChatStatus(
         enabled=True,

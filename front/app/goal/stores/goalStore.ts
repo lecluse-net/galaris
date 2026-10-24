@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { websocket } from '@/core/websocket'
 import { useAuthStore } from '@/core/user/stores/authStore'
 import { goalService } from '../services/goalService'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { sessionGeneration } from '@/core/api'
 import type {
   Goal,
@@ -66,7 +67,7 @@ export function createGoalState() {
   const isSubscribed = ref(false)
   const unwatchAuth = ref<(() => void) | null>(null)
   let refreshTimer: ReturnType<typeof setTimeout> | null = null
-  const requests = { list: 0, tree: 0, detail: 0, cycles: 0 }
+  const requests = { list: 0, tree: 0, detail: 0, cycles: 0, settings: 0 }
   function beginRequest(kind: keyof typeof requests): () => boolean {
     const request = ++requests[kind]
     const session = sessionGeneration()
@@ -89,15 +90,17 @@ export function createGoalState() {
   ))
 
   async function fetchSettings(): Promise<GoalSettings> {
+    const current = beginRequest('settings')
     if (settings.value === null) settingsLoading.value = true
     try {
-      settings.value = await goalService.getSettings()
-      return settings.value
+      const result = await goalService.getSettings(usePrivilegeStore().hasAnyPrivilege([privileges.GOAL_CONFIG_ACCESS, privileges.GOAL_CONFIG_EDIT]))
+      if (current()) settings.value = result
+      return result
     } catch (caught) {
       console.error('Error fetching Goal settings:', caught)
       throw caught
     } finally {
-      settingsLoading.value = false
+      if (current()) settingsLoading.value = false
     }
   }
 
@@ -280,6 +283,10 @@ export function createGoalState() {
     if (response.data.goal_id) scheduleRefresh()
   }
 
+  function onRuntimeUpdate(response: { data: Omit<GoalSettings, 'schedule'> }): void {
+    settings.value = { ...response.data, schedule: settings.value?.schedule ?? [] }
+  }
+
   function onSettingsUpdate(response: { data: GoalSettings }): void {
     settings.value = response.data
   }
@@ -309,10 +316,12 @@ export function createGoalState() {
     websocket.onEvent('goal', 'delete', onGoalDelete)
     websocket.onEvent('task', 'update', onTaskUpdate)
     websocket.onEvent('goal_settings', 'update', onSettingsUpdate)
+    websocket.onEvent('goal_runtime', 'update', onRuntimeUpdate)
     isSubscribed.value = true
   }
 
   function unsubscribe(): void {
+    requests.settings++
     requests.list++
     requests.tree++
     clearSelection()
@@ -329,6 +338,7 @@ export function createGoalState() {
     websocket.offEvent('goal', 'delete', onGoalDelete)
     websocket.offEvent('task', 'update', onTaskUpdate)
     websocket.offEvent('goal_settings', 'update', onSettingsUpdate)
+    websocket.offEvent('goal_runtime', 'update', onRuntimeUpdate)
     isSubscribed.value = false
   }
 

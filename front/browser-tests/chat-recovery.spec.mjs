@@ -489,7 +489,7 @@ for (const width of [1280, 390]) {
 }
 
 for (const section of [
-  { path: 'documents', label: 'Documents', privilege: 'MEMORY_ACCESS', event: 'memory.update',
+  { path: 'documents', label: 'Documents', privilege: 'DOCUMENT_ACCESS', event: 'document.update',
     item: { id: 'doc-a', label: 'Available document', uri: 'document://doc-a', revision: 1 } },
   { path: 'tasks', label: 'Tasks', privilege: 'TASK_ACCESS', event: 'task.update',
     item: { id: 'task-a', label: 'Available task', status: 'SUCCESS', agent_id: null, data: {}, revision: 1,

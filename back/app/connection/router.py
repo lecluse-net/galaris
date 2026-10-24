@@ -9,6 +9,8 @@ from core.database import get_db
 from core.user import require_web_session, get_current_user_id
 from pydantic import AnyHttpUrl, Field, ValidationError
 from core.authorize import Privileges, authorize, public
+from core.authorize import check_privilege
+from core.user import get_current_user
 from core.i18n import render_prompt, tr
 from app.agent import AgentManagementScope, current_management_scope
 from .models import Connection, ConnectionParam
@@ -29,6 +31,7 @@ from .schemas import (
     ConnectionFunctionsResponse,
     FunctionStateUpdate,
     FunctionStateResolved,
+    PermissionConnectionOption,
     RefreshToolCatalogsResponse,
     SyncIntegratedConnectionsResponse,
 )
@@ -49,6 +52,15 @@ from app.tools.mcp import build_mcp_server
 from loguru import logger
 
 router = APIRouter(prefix="/connections", tags=["connections"])
+
+
+async def _require_permission_state(state: str) -> None:
+    user = await get_current_user()
+    required = [Privileges.PERMISSION_DECIDE]
+    if state in {"disabled", "ask"}:
+        required.append(Privileges.PERMISSION_REVOKE)
+    if user is None or not await check_privilege(user, required, get_db()):
+        raise HTTPException(403, "Missing permission decision privilege")
 
 
 async def _message(key: str, **values: Any) -> str:
@@ -86,12 +98,27 @@ async def _editable_tool(tool_id: int) -> None:
 
 
 @router.get("/function-permissions", dependencies=[Depends(require_web_session)])
-@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+@authorize(privileges=[Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
 async def list_function_permissions(agent_id: int | None = None,
                                     offset: int = Query(0, ge=0),
                                     limit: int = Query(50, ge=1, le=500)) -> dict[str, object]:
     from .function_permissions import list_permissions
     return await list_permissions(await current_management_scope(), agent_id=agent_id, offset=offset, limit=limit)
+
+
+@router.get("/tool-options")
+@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+async def connection_tool_options() -> list[dict[str, Any]]:
+    return await connection_service.connection_tool_options()
+
+
+@router.get("/permission-options", response_model=list[PermissionConnectionOption])
+@authorize(privileges=[Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
+async def permission_connection_options(
+    skip: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=500),
+) -> list[PermissionConnectionOption]:
+    scope = await current_management_scope()
+    return await connection_service.permission_connection_options(agent_ids=scope.agent_ids, skip=skip, limit=limit)
 
 
 def _oauth_user() -> int:
@@ -649,7 +676,7 @@ async def test_mcp_tools(data: TestMcpToolsRequest):
 # =============================================================================
 
 @router.get("/{connection_id}/functions", response_model=ConnectionFunctionsResponse)
-@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT, Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
 async def list_connection_functions(connection_id: int):
     """List currently exposed MCP functions and their cascade state."""
     await _managed_connection(connection_id)
@@ -658,9 +685,10 @@ async def list_connection_functions(connection_id: int):
 
 
 @router.put("/{connection_id}/functions/{function_name}", response_model=FunctionStateResolved, dependencies=[Depends(require_web_session)])
-@authorize(privileges=Privileges.CONNECTION_EDIT)
+@authorize(privileges=[Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
 async def set_connection_function(connection_id: int, function_name: str, data: FunctionStateUpdate):
     """Apply a function state directly at connection level."""
+    await _require_permission_state(data.state)
     connection = await _managed_connection(connection_id)
     await connection_service.set_connection_function_state(connection_id, function_name, data.state, capability_kind=data.capability_kind)
     resolved = await connection_service.resolve_function(connection, function_name, capability_kind=data.capability_kind)
@@ -671,7 +699,7 @@ async def set_connection_function(connection_id: int, function_name: str, data: 
 
 
 @router.put("/{connection_id}/functions/{function_name}/global", response_model=FunctionStateResolved, dependencies=[Depends(require_web_session)])
-@authorize(privileges=Privileges.CONNECTION_EDIT)
+@authorize(privileges=[Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
 async def set_connection_function_global(connection_id: int, function_name: str, data: FunctionStateUpdate):
     """Apply a global function state at the connection's tool level."""
     return await _set_global_function_policy(connection_id, function_name, data)
@@ -684,6 +712,7 @@ async def _set_global_function_policy(
     *,
     inherit_connection: bool = False,
 ) -> FunctionStateResolved:
+    await _require_permission_state(data.state)
     connection = await _managed_connection(connection_id)
     scope = await current_management_scope()
     if not scope.is_global:
@@ -708,7 +737,7 @@ class CapabilityStateUpdate(FunctionStateUpdate):
 
 
 @router.put("/{connection_id}/capabilities", response_model=FunctionStateResolved, dependencies=[Depends(require_web_session)])
-@authorize(privileges=Privileges.CONNECTION_EDIT)
+@authorize(privileges=[Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
 async def set_capability_policy(connection_id: int, data: CapabilityStateUpdate):
     """Exact names and URIs travel in the body, independently of their capability kind."""
     if data.global_policy:

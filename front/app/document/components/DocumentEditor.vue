@@ -254,7 +254,7 @@ import type { DocumentRowAction } from '@/app/document/libraryShortcuts'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { RichTextEditor, richLinkHref, documentResourceHtml, documentResourceHref, useDocumentFocus, type DocumentFocus } from '@/core/util'
 import { websocket } from '@/core/websocket'
-import { useAgentStore } from '@/app/agent'
+import { useAgentChoices } from '@/app/agent'
 import { OwnerSelect, type OwnerOption } from '@/app/share'
 import { ResourceTopicBadge, reassignResourceTopic } from '@/core/util'
 import { DatasetDocumentRedirect, documentService } from '../services/documentService'
@@ -325,7 +325,7 @@ const emit = defineEmits<{
 const { t, locale } = useI18n()
 const referenceFormatting = useReferenceFormatting()
 const $q = useQuasar()
-const agentStore = useAgentStore()
+const agentStore = useAgentChoices()
 const documentMutations = useDocumentMutations()
 const privilegeStore = usePrivilegeStore()
 const loading = ref(true)
@@ -446,7 +446,7 @@ let initialDocument = props.initialDocument
 
 const agentOptions = computed(() => agentStore.sortedAgents.map(agent => ({
   value: agent.id,
-  label: `${agent.first_name} ${agent.last_name}`.trim() || agent.code,
+  label: agent.label,
 })))
 const ownerChoices = computed<OwnerChoice[]>(() => choicesFromOwnerOptions(ownerOptions.value))
 const selectedOwnerChoice = computed(() => (

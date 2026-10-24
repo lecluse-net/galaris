@@ -41,6 +41,17 @@ class HarnessConfigurationRead(BaseModel):
     pipeline_policy: DriverPipelinePolicy
 
 
+class HarnessPipelineOption(BaseModel):
+    provider_code: str
+    label: str
+    pipeline_policy: DriverPipelinePolicy
+
+
+def pipeline_options() -> list[HarnessPipelineOption]:
+    return [HarnessPipelineOption(provider_code=code, label=label, pipeline_policy=pipeline)
+        for code, (label, _capabilities, pipeline) in _declarations().items()]
+
+
 def _declarations() -> dict[str, tuple[str, frozenset[HarnessCapability], DriverPipelinePolicy]]:
     specs = {spec.code: spec for spec in list_driver_specs()}
     declarations = {code: (spec.label_key, driver_capabilities(spec), spec.pipeline_policy) for code, spec in specs.items()}

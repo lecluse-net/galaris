@@ -1,6 +1,6 @@
 <template>
   <div class="row q-col-gutter-lg items-stretch">
-    <div class="col-12 col-lg-6">
+    <div v-if="canReadTasks" class="col-12 col-lg-6">
       <q-card flat class="activity-card full-height">
         <DashboardSectionHeader
           compact
@@ -82,7 +82,7 @@
       </q-card>
     </div>
 
-    <div class="col-12 col-lg-6">
+    <div v-if="canReadCalls" class="col-12 col-lg-6">
       <q-card flat class="activity-card full-height">
         <DashboardSectionHeader
           compact
@@ -170,11 +170,12 @@
 
 <script setup lang="ts">
 import { richTextExcerpt } from '@/core/util'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useInterval } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { agentService } from '@/app/agent/services/agentService'
-import { useAgentStore } from '@/app/agent/stores/agentStore'
+import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { formatBilledCost, LlmCallTokenBadge, useLlmCallProgress } from '@/app/llm'
 import { llmCallService } from '@/app/llm/services/llmCallService'
 import type { LLMCall, LLMToolCall } from '@/app/llm/types'
@@ -187,7 +188,10 @@ import DashboardSectionHeader from './DashboardSectionHeader.vue'
 const MAX_ITEMS = 5
 const { t } = useI18n()
 const { registerInterval, removeInterval } = useInterval()
-const agentStore = useAgentStore()
+const agents = ref<AgentSelectionOption[]>([])
+const privilegeStore = usePrivilegeStore()
+const canReadTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
+const canReadCalls = computed(() => privilegeStore.hasAnyPrivilege([privileges.LLM_CALL_ACCESS, privileges.LLM_CALL_CONTROL]))
 const tasks = ref<Task[]>([])
 const calls = ref<LLMCall[]>([])
 const agentAvatarUrls = reactive<Record<number, string>>({})
@@ -213,9 +217,9 @@ function activityDate(task: Task): string {
 
 function agentName(agentId?: number): string {
   if (!agentId) return t('index.dashboard.agentFallback')
-  const agent = agentStore.agents.find(item => item.id === agentId)
+  const agent = agents.value.find(item => item.id === agentId)
   if (!agent) return t('index.dashboard.liveActivity.agentNumber', { id: agentId })
-  return `${agent.first_name} ${agent.last_name}`.trim() || agent.code
+  return agent.label || t('index.dashboard.liveActivity.agentNumber', { id: agentId })
 }
 
 function agentAvatarUrl(agentId?: number): string | undefined {
@@ -289,8 +293,8 @@ async function refreshActivity(): Promise<void> {
   if (refreshInFlight) return
   refreshInFlight = true
   const [taskResult, callResult] = await Promise.allSettled([
-    taskService.getActive(MAX_ITEMS),
-    llmCallService.getRunning(MAX_ITEMS),
+    canReadTasks.value ? taskService.getActive(MAX_ITEMS) : Promise.resolve([]),
+    canReadCalls.value ? llmCallService.getRunning(MAX_ITEMS) : Promise.resolve([]),
   ])
 
   if (taskResult.status === 'fulfilled') {
@@ -355,8 +359,9 @@ const onCallDelete = (response: { data?: { id: string } } | { id: string }) => {
 const onCallCleanup = () => { void refreshActivity() }
 
 async function loadAgents(): Promise<void> {
-  await agentStore.fetchAgents()
-  await Promise.all(agentStore.agents.map(async agent => {
+  try { agents.value = await getAgentSelection('management') }
+  catch (error) { console.error('Could not load managed agent labels:', error); return }
+  await Promise.all(agents.value.map(async agent => {
     if (!agent.has_avatar || agentAvatarUrls[agent.id]) return
     try {
       agentAvatarUrls[agent.id] = await agentService.getAvatarBlobUrl(agent.id)
@@ -366,6 +371,7 @@ async function loadAgents(): Promise<void> {
   }))
 }
 
+watch([canReadTasks, canReadCalls], () => { tasks.value = []; calls.value = []; void refreshActivity() })
 onMounted(() => {
   void refreshActivity()
   void loadAgents()

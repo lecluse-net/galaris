@@ -433,7 +433,7 @@ async def llm_run_usage(
 
 
 @calls_router.get("", response_model=list[LLMCallRead])
-@authorize(privileges=[Privileges.TASK_ACCESS, Privileges.TASK_EDIT])
+@authorize(privileges=[Privileges.LLM_CALL_ACCESS, Privileges.LLM_CALL_CONTROL])
 async def read_calls(
     task_id: Optional[UUID] = None,
     task_ids: list[UUID] | None = Query(default=None, max_length=50),
@@ -458,7 +458,7 @@ async def read_calls(
 
 
 @calls_router.get("/running", response_model=list[LLMCallRead])
-@authorize(privileges=[Privileges.TASK_ACCESS, Privileges.TASK_EDIT])
+@authorize(privileges=[Privileges.LLM_CALL_ACCESS, Privileges.LLM_CALL_CONTROL])
 async def read_running_calls(
     limit: int = Query(default=10, ge=1, le=50),
     date_from: date | None = None,
@@ -476,7 +476,7 @@ async def read_running_calls(
 
 
 @calls_router.get("/history", response_model=LLMCallPage)
-@authorize(privileges=[Privileges.TASK_ACCESS, Privileges.TASK_EDIT])
+@authorize(privileges=[Privileges.LLM_CALL_ACCESS, Privileges.LLM_CALL_CONTROL])
 async def read_call_history(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=500),
@@ -521,7 +521,7 @@ async def preview_call_retention() -> dict[str, int]:
 
 
 @calls_router.post("/{call_id}/stop", status_code=status.HTTP_202_ACCEPTED)
-@authorize(privileges=Privileges.TASK_EDIT)
+@authorize(privileges=Privileges.LLM_CALL_CONTROL)
 async def stop_llm_call(call_id: UUID) -> None:
     """Accept a stop request; the worker publishes the terminal call state."""
     scope = await current_management_scope()
@@ -555,7 +555,7 @@ async def delete_call(call_id: UUID) -> None:
 
 
 @calls_router.get("/{call_id}", response_model=LLMCallRead)
-@authorize(privileges=[Privileges.TASK_ACCESS, Privileges.TASK_EDIT])
+@authorize(privileges=[Privileges.LLM_CALL_ACCESS, Privileges.LLM_CALL_CONTROL])
 async def read_call(call_id: UUID) -> LLMCallRead:
     scope = await current_management_scope()
     call = await llm_call_service.get_call(call_id, agent_ids=scope.agent_ids)

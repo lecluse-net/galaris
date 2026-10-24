@@ -58,6 +58,12 @@ export interface AssignmentCreate {
     role_id: number
 }
 
+export interface AssignmentUserOption {
+    id: number
+    email: string
+    display_name: string | null
+}
+
 export interface RolePrivilegeAction {
     privilege_ids: number[]
 }
@@ -86,6 +92,12 @@ export interface PrivilegeListAction {
 // ==================== Service ====================
 
 export const authorizeService = {
+    async assignmentRoleOptions(): Promise<Role[]> {
+        return (await api.get<Role[]>('/authorize/role-options')).data
+    },
+    async assignmentUserOptions(q: string): Promise<AssignmentUserOption[]> {
+        return (await api.get<AssignmentUserOption[]>('/authorize/assignment-user-options', { params: { q } })).data
+    },
     // ---------- Privileges ----------
     async listPrivileges(): Promise<Privilege[]> {
         const response: AxiosResponse<Privilege[]> = await api.get('/authorize/privileges')

@@ -11,7 +11,7 @@ const navigation: NavigationTree = {
                 to: '/dashboard',
                 order: 1,
                 description: 'nav.dashboard_desc',
-                privileges: [privileges.TASK_ACCESS, privileges.TASK_EDIT],
+                privileges: [privileges.DASHBOARD_ACCESS],
             },
         },
     },

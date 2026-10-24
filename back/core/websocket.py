@@ -29,10 +29,11 @@ from .secrets import auth_secret_key
 _MAX_AUTH_TOKEN_LENGTH = 8192
 
 _EVENT_PRIVILEGES: dict[str, tuple[str, ...]] = {
-    "dream": (Privileges.TASK_ACCESS, Privileges.TASK_EDIT),
+    "dream": (Privileges.DREAM_ACCESS,),
     "goal": (Privileges.GOAL_ACCESS, Privileges.GOAL_EDIT),
-    "goal_settings": (Privileges.GOAL_ACCESS, Privileges.GOAL_EDIT),
-    "llm_call": (Privileges.TASK_ACCESS, Privileges.TASK_EDIT),
+    "goal_settings": (Privileges.GOAL_CONFIG_ACCESS, Privileges.GOAL_CONFIG_EDIT),
+    "goal_runtime": (Privileges.GOAL_ACCESS, Privileges.GOAL_EDIT),
+    "llm_call": (Privileges.LLM_CALL_ACCESS, Privileges.LLM_CALL_CONTROL),
     "memory": (
         Privileges.MEMORY_ACCESS,
         Privileges.MEMORY_EDIT,
@@ -40,7 +41,7 @@ _EVENT_PRIVILEGES: dict[str, tuple[str, ...]] = {
     ),
     "process_run": (Privileges.PROCESS_READ, Privileges.PROCESS_ADMIN),
     "task": (Privileges.TASK_ACCESS, Privileges.TASK_EDIT),
-    "voice_conversation": (Privileges.TASK_ACCESS, Privileges.TASK_EDIT),
+    "voice_conversation": (Privileges.VOICE_HISTORY_ACCESS, Privileges.VOICE_HISTORY_CONTROL),
 }
 
 

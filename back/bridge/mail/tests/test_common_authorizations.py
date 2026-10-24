@@ -111,6 +111,11 @@ async def test_only_the_designated_mail_approver_can_answer(committed_database, 
         row = await db.get(ActionAuthorization, caught.value.request_id)
         assert row.approver_user_id == reviewer.id and row.decision_source is None
         assert not await answer_action(row.id, user_id=manager.id, approved=True)
+        assert not await answer_action(row.id, user_id=reviewer.id, approved=False)
+        from core.authorize import Assignment, Role
+        role = await db.scalar(select(Role).where(Role.code == "mail-reviewer-test"))
+        db.add(Assignment(user_id=reviewer.id, role_id=role.id))
+        await db.flush()
         assert await answer_action(row.id, user_id=reviewer.id, approved=False)
     async with get_db_session():
         with prepared_authorization(replace(action, callback_key=action.callback_key)):

@@ -82,13 +82,13 @@
         outlined
         clearable
         :label="t('llm.manualResourceId')"
-        :disable="!canEdit"
+        :disable="!canCreateModel"
         @keyup.enter="requestManualCreate"
       >
         <template #prepend><q-icon name="edit_note" /></template>
         <template #append>
           <q-btn
-            v-if="canEdit"
+            v-if="canCreateModel"
             round
             flat
             dense
@@ -230,7 +230,7 @@
 
               <div class="column items-center q-gutter-xs">
                 <q-btn
-                  v-if="canEdit"
+                  v-if="canCreateModel"
                   round
                   unelevated
                   :color="isConfigured(model.id) ? 'positive' : 'primary'"
@@ -350,6 +350,7 @@ const emit = defineEmits<{
 
 const { t, locale } = useI18n()
 const privilegeStore = usePrivilegeStore()
+const canCreateModel = computed(() => privilegeStore.hasPrivilege(privileges.LLM_MODEL_EDIT))
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.LLM_PROVIDER_EDIT))
 const selectedCapability = computed({
   get: () => props.capability,
@@ -422,7 +423,7 @@ function isConfigured(modelId: string): boolean {
 }
 
 function requestManualCreate(): void {
-  if (!canEdit.value) return
+  if (!canCreateModel.value) return
   const id = manualModelValue.value
   if (!id || isConfigured(id)) return
   emit('create-llm', {

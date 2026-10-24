@@ -41,6 +41,8 @@ class AssertionContext:
     - Path parameters (e.g. connection_id from /{connection_id})
     - Query parameters (e.g. ?tool_name=talk)
     - Body parameters (JSON or form data, best-effort)
+    - Server-declared assertion parameters override query and body values
+    - Path identities override all of the above
     - __route_name__: the FastAPI route name
     """
 

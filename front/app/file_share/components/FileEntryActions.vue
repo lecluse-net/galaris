@@ -51,9 +51,14 @@ const emit = defineEmits<{ changed: [entry: FileEntry, replacement: string | nul
 const { t } = useI18n(), $q = useQuasar(), privileges = usePrivilegeStore()
 const displayName = computed(() => skillCollectionLabel(entry.uri, t) ?? entry.name)
 const renameButton = useTemplateRef<InstanceType<typeof RenameFileButton>>('renameButton')
-const canEdit = computed(() => privileges.hasPrivilege('MEMORY_EDIT'))
-const canRename = computed(() => (fileBrowserService.canMove(entry) ? canEdit.value
-  : ['MEMORY_EDIT', 'MEMORY_ADMIN', 'DATASET_EDIT', 'DATASET_ADMIN'].some(code => privileges.hasPrivilege(code))) && fileBrowserService.canRename(entry))
+const canEdit = computed(() => {
+  const source = typeof entry.metadata?.rename_uri === 'string' ? entry.metadata.rename_uri : entry.uri
+  const required = source.startsWith('document://') ? ['DOCUMENT_EDIT', 'DOCUMENT_ADMIN']
+    : source.startsWith('data://') ? ['DATASET_EDIT', 'DATASET_ADMIN']
+    : ['FILE_EDIT']
+  return privileges.hasAnyPrivilege(required)
+})
+const canRename = computed(() => canEdit.value && fileBrowserService.canRename(entry))
 const canDelete = computed(() => canEdit.value && fileBrowserService.canDelete(entry))
 const busy = ref(false), confirmDelete = ref(false), error = ref('')
 const menuOpen = ref(false)

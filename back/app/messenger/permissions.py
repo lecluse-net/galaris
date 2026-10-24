@@ -263,6 +263,9 @@ async def _answer(interaction: PendingChoice, resolution: ChoiceResolution) -> N
         return
     if policy.manager_user_id != record.approver_user_id:
         return
+    from core.authorize import check_assigned_privilege
+    if not await check_assigned_privilege(record.approver_user_id, "PERMISSION_DECIDE", db):
+        return
     now = datetime.now(timezone.utc)
     if resolution.option_id == "allow_always":
         key = str(interaction.metadata.get("always_key") or "")
@@ -285,4 +288,4 @@ async def _answer(interaction: PendingChoice, resolution: ChoiceResolution) -> N
     await db.commit()
 
 
-register_choice_handler(KIND, _answer)
+register_choice_handler(KIND, _answer, required_privileges=("PERMISSION_DECIDE",))

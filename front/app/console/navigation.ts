@@ -17,7 +17,7 @@ const navigation: NavigationTree = {
         icon: 'terminal',
         to: '/console/executor',
         order: 30,
-        privileges: [privileges.CONSOLE_ACCESS],
+        privileges: [privileges.CONSOLE_ACCESS, privileges.CONSOLE_ADMIN],
         visible: isEmbeddedExecutorInUse,
       },
     },

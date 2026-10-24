@@ -42,6 +42,14 @@ class ConnectionOverview(Connection):
     configured_params: List[str]
 
 
+class PermissionConnectionOption(Connection):
+    """Metadata needed by the policy editor, without connection parameters."""
+    tool_code: str
+    tool_label: str
+    tool_can_edit: bool
+    tool_can_disable: bool
+
+
 # =============================================================================
 # EAV parameter schemas.
 # =============================================================================

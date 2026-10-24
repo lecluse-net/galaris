@@ -17,6 +17,7 @@ from .authorization_views import (
 )
 from .admin_network import diagnostic_client as mcp_http_client
 from .management_scope import AdministrationScope as AdministrationScope, administration_scope as administration_scope
+from .assertions import tool_can_edit as tool_can_edit
 
 
 from .rest_contracts import RestAuth, RestConfig, RestError, RestRequest, RestResponse

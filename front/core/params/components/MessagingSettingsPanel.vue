@@ -185,7 +185,7 @@ const { t, tm } = useI18n()
 const $q = useQuasar()
 const paramsStore = useParamsStore()
 const privilegeStore = usePrivilegeStore()
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.PARAMS_EDIT))
+const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.MESSAGING_CONFIG_EDIT))
 const canConfigureTools = computed(() => (
     privilegeStore.hasPrivilege(privileges.TOOL_ACCESS)
     || privilegeStore.hasPrivilege(privileges.TOOL_EDIT)

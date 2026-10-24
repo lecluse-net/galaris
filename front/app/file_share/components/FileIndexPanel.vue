@@ -4,18 +4,18 @@
       <q-linear-progress v-if="loading && !data" indeterminate color="primary" class="q-mb-sm" />
       <q-form v-if="editable" class="row items-center q-gutter-sm" @submit="start">
         <q-input v-model="root" class="col" outlined dense :label="t('dream.indexing.root')" />
-        <q-btn type="submit" :loading="busy" :disable="!root.trim()" :label="t('dream.indexing.start')" />
+        <q-btn color="primary" type="submit" :loading="busy" :disable="!root.trim()" :label="t('dream.indexing.start')" />
       </q-form>
       <div v-if="error" role="alert" class="q-mt-sm">{{ t('dream.indexing.error') }}</div>
-      <q-btn v-if="error" flat :label="t('common.retry')" @click="load" />
+      <q-btn v-if="error" outline color="primary" :label="t('common.retry')" @click="load" />
       <p v-if="data" class="q-mt-sm">{{ t('dream.indexing.repairs', { pending: data.pending_repairs, failed: data.failed_repairs }) }}</p>
-      <q-btn v-if="editable && data?.failed_repairs" flat :label="t('dream.indexing.retryRepairs')" @click="retryRepairs" />
+      <q-btn v-if="editable && data?.failed_repairs" outline color="primary" :label="t('dream.indexing.retryRepairs')" @click="retryRepairs" />
       <q-table v-if="data" :rows="data.runs" :columns="columns" row-key="id" :loading="loading"
         v-model:pagination="pagination" :rows-per-page-options="[10, 20, 50, 100, 500]"
         :no-data-label="t('dream.indexing.empty')" @request="requested">
         <template #body-cell-status="props"><q-td :props="props">{{ t(`dream.indexing.status.${props.row.status}`) }}</q-td></template>
         <template #body-cell-actions="props"><q-td :props="props">
-          <q-btn v-if="editable && ['queued', 'running', 'retry'].includes(props.row.status)" flat
+          <q-btn v-if="editable && ['queued', 'running', 'retry'].includes(props.row.status)" outline color="primary"
             :label="t('common.cancel')" @click="cancel(props.row.id)" />
         </q-td></template>
       </q-table>

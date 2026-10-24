@@ -1,6 +1,8 @@
 export default {
   fr: {
     calendars: {
+      title: 'Calendriers', description: 'Consulter et gérer les flux calendaires des agents',
+      connection: 'Connexion du calendrier',
       connectionTitle: 'Calendriers de cette connexion',
       connectionHint: 'Ajoutez une ou plusieurs URL iCalendar pour cet agent.',
       saveConnectionFirst: 'Créez d’abord la connexion Calendar, puis rouvrez-la pour ajouter ses calendriers.',
@@ -53,6 +55,8 @@ export default {
   },
   en: {
     calendars: {
+      title: 'Calendars', description: 'Read and manage agent calendar feeds',
+      connection: 'Calendar connection',
       connectionTitle: 'Calendars in this connection',
       connectionHint: 'Add one or more iCalendar URLs for this agent.',
       saveConnectionFirst: 'Create the Calendar connection first, then reopen it to add calendars.',
@@ -105,6 +109,8 @@ export default {
   },
   zh: {
     calendars: {
+      title: '日历', description: '查看和管理智能体日历订阅',
+      connection: '日历连接',
       connectionTitle: '此连接中的日历', connectionHint: '为此智能体添加一个或多个 iCalendar URL。',
       saveConnectionFirst: '请先创建日历连接，然后重新打开以添加日历。', add: '添加日历', edit: '编辑日历', empty: '尚未配置日历',
       label: '标签', owner: '日历所有者', ownerHint: '智能体本人或第三方', access: '访问权限', read: '只读', write: '读写',

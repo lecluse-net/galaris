@@ -17,23 +17,23 @@
       narrow-indicator
       class="authorization-tabs text-primary"
     >
-      <q-tab name="privileges" :label="$t('authorize.tabPrivileges')" icon="vpn_key" />
-      <q-tab name="roles" :label="$t('authorize.tabRoles')" icon="security" />
-      <q-tab name="assignments" :label="$t('authorize.tabAssignments')" icon="people" />
+      <q-tab v-if="canView('privileges')" name="privileges" :label="$t('authorize.tabPrivileges')" icon="vpn_key" />
+      <q-tab v-if="canView('roles')" name="roles" :label="$t('authorize.tabRoles')" icon="security" />
+      <q-tab v-if="canView('assignments')" name="assignments" :label="$t('authorize.tabAssignments')" icon="people" />
     </q-tabs>
 
     <q-separator />
 
     <q-tab-panels v-model="tab" animated keep-alive class="authorization-panels bg-transparent">
-      <q-tab-panel name="privileges" class="privileges-panel q-pa-none">
+      <q-tab-panel v-if="canView('privileges')" name="privileges" class="privileges-panel q-pa-none">
         <PrivilegeListManager />
       </q-tab-panel>
 
-      <q-tab-panel name="roles" class="q-pa-none">
+      <q-tab-panel v-if="canView('roles')" name="roles" class="q-pa-none">
         <RoleManager />
       </q-tab-panel>
 
-      <q-tab-panel name="assignments" class="q-pa-none">
+      <q-tab-panel v-if="canView('assignments')" name="assignments" class="q-pa-none">
         <AssignmentManager />
       </q-tab-panel>
     </q-tab-panels>
@@ -42,13 +42,25 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { PageHeader } from '@/core/util'
 import RoleManager from '../components/RoleManager.vue'
 import AssignmentManager from '../components/AssignmentManager.vue'
 import PrivilegeListManager from '../components/PrivilegeListManager.vue'
 
-const tab = ref('roles')
+const privilegeStore = usePrivilegeStore()
+const allowedTabs = computed(() => ({
+  roles: privilegeStore.hasAnyPrivilege([privileges.READ_ROLE, privileges.MANAGE_ROLE]),
+  privileges: privilegeStore.hasAnyPrivilege([privileges.READ_PRIVILEGE, privileges.MANAGE_PRIVILEGE]),
+  assignments: privilegeStore.hasAnyPrivilege([privileges.READ_ASSIGNMENT, privileges.MANAGE_ASSIGNMENT]),
+}))
+type AuthorizationTab = keyof typeof allowedTabs.value
+const canView = (value: AuthorizationTab) => allowedTabs.value[value]
+const tab = ref<AuthorizationTab>('roles')
+watch(allowedTabs, allowed => {
+  if (!allowed[tab.value]) tab.value = (Object.keys(allowed) as AuthorizationTab[]).find(key => allowed[key]) ?? 'roles'
+}, { immediate: true })
 
 function pageStyle(offset: number, height: number) {
   return {

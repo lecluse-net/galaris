@@ -458,3 +458,14 @@ class GoalJudgement(BaseModel):
         if self.action == "STOP" and not self.progress.evidence:
             raise ValueError("STOP requires at least one observable evidence item")
         return self
+
+
+class GoalRuntimeRead(BaseModel):
+    """Operational metadata needed to explain a Goal's availability."""
+
+    globally_paused: bool
+    schedule_enabled: bool
+    timezone: str
+    is_active: bool
+    inactive_reason: Literal["GLOBAL_PAUSE", "OUTSIDE_SCHEDULE"] | None = None
+    next_active_at: datetime | None = None

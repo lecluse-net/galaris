@@ -23,6 +23,38 @@ class DefaultPrivilegeList:
 
 
 DEFAULT_PRIVILEGE_LISTS = (
+    DefaultPrivilegeList("functionalSettings", "Réglages par fonction", (
+        "LANGUAGE_CONFIG_ACCESS",
+        "LANGUAGE_CONFIG_EDIT",
+        "SEARCH_CONFIG_ACCESS",
+        "SEARCH_CONFIG_EDIT",
+        "INSTRUCTION_CONFIG_ACCESS",
+        "INSTRUCTION_CONFIG_EDIT",
+        "LOG_CONFIG_ACCESS",
+        "LOG_CONFIG_EDIT",
+        "MESSAGING_CONFIG_ACCESS",
+        "MESSAGING_CONFIG_EDIT",
+        "MEMORY_CONFIG_ACCESS",
+        "MEMORY_CONFIG_EDIT",
+        "VOICE_CONFIG_ACCESS",
+        "VOICE_CONFIG_EDIT",
+        "AUDIO_CONFIG_ACCESS",
+        "AUDIO_CONFIG_EDIT",
+        "PROCESS_CONFIG_ACCESS",
+        "PROCESS_CONFIG_EDIT",
+        "TASK_CONFIG_ACCESS",
+        "TASK_CONFIG_EDIT",
+        "JANUS_CONFIG_ACCESS",
+        "JANUS_CONFIG_EDIT",
+        "BROWSER_CONFIG_ACCESS",
+        "BROWSER_CONFIG_EDIT",
+        "GOAL_CONFIG_ACCESS",
+        "GOAL_CONFIG_EDIT",
+        "DREAM_CONFIG_ACCESS",
+    )),
+    DefaultPrivilegeList("mailCalendars", "Mail & calendriers", (
+        "MAIL_ACCESS", "MAIL_EDIT", "CALENDAR_ACCESS", "CALENDAR_EDIT",
+    )),
     DefaultPrivilegeList("administration", "Administration", (
         "CONSOLE_ACCESS", "CONSOLE_ADMIN", "HARNESS_CONFIG_ACCESS", "HARNESS_CONFIG_EDIT",
         "INCIDENT_ACCESS", "INCIDENT_EDIT", "INCIDENT_PURGE", "LLM_MODEL_ACCESS",

@@ -4,21 +4,13 @@ import pytest
 from sqlalchemy import select
 
 from app.agent.models import Agent, Title
-from app.contact import router, service
+from app.contact import service
 from app.memory import MessengerContactObservation, observe_messenger_contact
 from core.storage import NativeFileStorage, register_storage, reset_storage_registry
-from core.authorize.models import Assignment, Privilege, Role
+from core.authorize.models import Assignment, Privilege, Role, RolePrivilege
 from core.database import get_db_session
 from core.user import UserModel
 from core.user.auth_service import create_access_token
-
-
-def test_contact_endpoints_reuse_memory_privileges() -> None:
-    assert router.read_contacts._authorize_meta["privileges"] == [  # pyright: ignore[reportFunctionMemberAccess]
-        "MEMORY_ACCESS", "MEMORY_EDIT", "MEMORY_ADMIN",
-    ]
-    for endpoint in (router.create_contact, router.update_contact, router.merge_contacts, router.forget_contact):
-        assert endpoint._authorize_meta["privileges"] == ["MEMORY_EDIT"]  # pyright: ignore[reportFunctionMemberAccess]
 
 
 @pytest.mark.asyncio
@@ -32,7 +24,7 @@ async def test_address_book_rename_split_and_merge_require_privilege_and_managed
             editor = UserModel(email=f"contact-editor-{uuid4()}@example.test", hashed_password="unused", is_active=True)
             reader = UserModel(email=f"contact-reader-{uuid4()}@example.test", hashed_password="unused", is_active=True)
             roles = []
-            for code in ("MEMORY_EDIT", "MEMORY_ACCESS"):
+            for code in ("CONTACT_EDIT", "CONTACT_ACCESS"):
                 role = Role(code=f"contact-{uuid4()}", privileges=list((await db.scalars(
                     select(Privilege).where(Privilege.code == code)
                 )).all()))
@@ -102,5 +94,13 @@ async def test_address_book_rename_split_and_merge_require_privilege_and_managed
             json={"target_contact_item_id": str(contact_ids[0])}, headers=headers[0])
         assert rejoined.status_code == 200, rejoined.text
         assert {i["id"] for i in rejoined.json()["contact"]["identities"]} == set(split["expected_identity_ids"])
+        # Forgetting also erases linked memories; address-book editing alone must not grant it.
+        assert (await client.delete(url, headers=headers[0])).status_code == 403
+        async with get_db_session() as db:
+            memory_edit_id = await db.scalar(select(Privilege.id).where(Privilege.code == "MEMORY_EDIT"))
+            db.add(RolePrivilege(role_id=roles[0].id, privilege_id=memory_edit_id))
+        assert (await client.delete(f"/api/contacts/{contact_ids[1]}", headers=headers[0])).status_code == 404
+        forgotten = await client.delete(url, headers=headers[0])
+        assert forgotten.status_code == 200, forgotten.text
     finally:
         reset_storage_registry()

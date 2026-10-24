@@ -74,7 +74,7 @@ import AgentAvatar from './AgentAvatar.vue'
 import { useAgentStore } from '../stores/agentStore'
 import { useAgentSelectionStore } from '../stores/agentSelectionStore'
 import { AUTH_TOKEN_CHANGED_EVENT, apiErrorDetail, isCancelledRequest } from '@/core/api'
-import { usePrivilegeStore } from '@/core/authorize'
+import { privileges as privilegeCodes, usePrivilegeStore } from '@/core/authorize'
 import { getAgentSelection, type AgentSelectionScope, type AgentSelectionOption as AuthorizedAgent } from '../services/agentSelectionService'
 
 defineOptions({ inheritAttrs: false })
@@ -154,7 +154,8 @@ async function refresh(): Promise<void> {
   try {
     const result = await getAgentSelection(scope, controller.signal)
     if (current !== request) return
-    if (loadAgents && scope === 'management' && agentStore.agents.length === 0) {
+    if (loadAgents && scope === 'management' && agentStore.agents.length === 0
+      && privileges.hasAnyPrivilege([privilegeCodes.AGENT_ACCESS, privilegeCodes.AGENT_EDIT])) {
       await agentStore.fetchAgents()
       if (current !== request) return
       if (agentStore.error) throw agentStore.error

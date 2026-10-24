@@ -28,7 +28,7 @@ let disposed = false
 onBeforeUnmount(() => { disposed = true })
 const canStop = computed(() => props.call.status === 'running'
   && Boolean(props.call.inference_attempt_id)
-  && privilegeStore.hasPrivilege(privileges.TASK_EDIT))
+  && privilegeStore.hasPrivilege(privileges.LLM_CALL_CONTROL))
 
 function requestStop(): void {
   if (!canStop.value || pending.value) return

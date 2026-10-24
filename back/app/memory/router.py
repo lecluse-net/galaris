@@ -164,8 +164,8 @@ async def read_memory_metrics() -> dict[str, list[dict[str, Any]]]:
 )
 @authorize(
     privileges=[
-        Privileges.PARAMS_ACCESS,
-        Privileges.PARAMS_EDIT,
+        Privileges.DREAM_CONFIG_ACCESS,
+        Privileges.DREAM_EDIT,
         Privileges.MEMORY_ADMIN,
     ]
 )

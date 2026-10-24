@@ -53,6 +53,23 @@ figurent dans les deux cartes documentaires, tout en refusant les imports non ex
 ignorent les réponses tardives après révocation ; le scénario navigateur des notifications
 vérifie le démarrage après attribution de Chat et l'arrêt après retrait.
 
+`test_functional_settings.py` vérifie toutes les clés déclarées et chaque paire de réglages :
+lecture limitée au domaine, écriture réservée à son opérateur, clés inconnues ou internes
+refusées, contrat TypeScript généré identique. `test_functional_projection.py` vérifie aussi
+la composition des deux générations de reprise, avec rollback et révocations conservées.
+`test_source_domain_boundaries.py` couvre les cinq reproductions HTTP de l'audit, les
+lectures positives et étrangères, les calendriers et les métadonnées sans secrets.
+Les choix de permissions vérifient aussi les boutons, réponses textuelles et reprises après
+retrait du droit ; réattribuer le droit ne rejoue pas une ancienne réponse.
+
+`e2e/specs/rbac-isolation.spec.mjs` ouvre les fonctions de l'application assemblée avec un
+rôle distinct pour chaque lecteur et opérateur, y compris les rubriques Lab, les réglages,
+les utilisateurs et l'administration RBAC. Les exceptions de composition Chat/Équipes et
+la portée globale de Dream sont explicites. Aucun refus API de domaine voisin n'est ignoré.
+Les scénarios d'aperçus utilisent les droits de leur source, et non une ancienne délégation
+Task utilisée indistinctement pour tous les objets. `useAgentChoices.test.mjs` vérifie les
+réponses tardives, changements de rôle, refus et fermeture des sélecteurs de métadonnées.
+
 ## Lectures groupées des catalogues et retrait des fichiers
 
 `app/tools/tests/test_catalog_sql_budget.py` borne les lectures du catalogue délégué

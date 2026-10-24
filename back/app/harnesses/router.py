@@ -42,17 +42,25 @@ from .configuration import (
     HarnessConfigurationConflict, HarnessConfigurationRead, HarnessConfigurationUpdate,
     list_configurations, update_configuration,
     configured_provider_capabilities,
+    HarnessPipelineOption, pipeline_options,
 )
 
 
+@router.get("/pipeline-options", response_model=list[HarnessPipelineOption])
+@authorize(privileges=[Privileges.TASK_CONFIG_ACCESS, Privileges.TASK_CONFIG_EDIT])
+async def read_pipeline_options() -> list[HarnessPipelineOption]:
+    """Runtime eligibility labels for Task settings, without execution policies."""
+    return pipeline_options()
+
+
 @router.get("/execution-configurations", response_model=list[HarnessConfigurationRead])
-@authorize(privileges=[Privileges.PARAMS_ACCESS, Privileges.PARAMS_EDIT])
+@authorize(privileges=[Privileges.HARNESS_CONFIG_ACCESS, Privileges.HARNESS_CONFIG_EDIT])
 async def read_execution_configurations() -> list[HarnessConfigurationRead]:
     return await list_configurations()
 
 
 @router.put("/execution-configurations/{provider_code}", response_model=HarnessConfigurationRead)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.HARNESS_CONFIG_EDIT)
 async def save_execution_configuration(
     provider_code: str, data: HarnessConfigurationUpdate,
 ) -> HarnessConfigurationRead:
@@ -93,7 +101,7 @@ def _http_error(exc: Exception) -> HTTPException:
 
 
 @router.get("/providers", response_model=list[HarnessProviderRead])
-@authorize(privileges=[Privileges.AGENT_ACCESS, Privileges.AGENT_EDIT])
+@authorize(privileges=[Privileges.AGENT_ACCESS, Privileges.AGENT_EDIT, Privileges.HARNESS_CONFIG_ACCESS, Privileges.HARNESS_CONFIG_EDIT])
 async def list_harness_providers() -> list[HarnessProviderRead]:
     return [
         HarnessProviderRead(
@@ -111,8 +119,8 @@ async def list_harness_providers() -> list[HarnessProviderRead]:
 @router.get("/catalog", response_model=list[HarnessCatalogRead])
 @authorize(
     privileges=[
-        Privileges.PARAMS_ACCESS,
-        Privileges.PARAMS_EDIT,
+        Privileges.HARNESS_CONFIG_ACCESS,
+        Privileges.HARNESS_CONFIG_EDIT,
         Privileges.AGENT_ACCESS,
         Privileges.AGENT_EDIT,
     ]
@@ -128,7 +136,7 @@ async def list_harness_catalogue(
 
 
 @router.post("/catalog", response_model=HarnessCatalogRead, status_code=201)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.HARNESS_CONFIG_EDIT)
 async def create_harness(data: HarnessCatalogCreate) -> HarnessCatalogRead:
     try:
         return await service.create_catalogue_harness(data)
@@ -137,7 +145,7 @@ async def create_harness(data: HarnessCatalogCreate) -> HarnessCatalogRead:
 
 
 @router.post("/catalog/probe", response_model=HarnessProbeResult)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.HARNESS_CONFIG_EDIT)
 async def probe_harness(data: HarnessProbe) -> HarnessProbeResult:
     try:
         return await service.probe_openai_harness(data)
@@ -146,7 +154,7 @@ async def probe_harness(data: HarnessProbe) -> HarnessProbeResult:
 
 
 @router.get("/catalog/{harness_id}", response_model=HarnessCatalogRead)
-@authorize(privileges=[Privileges.PARAMS_ACCESS, Privileges.PARAMS_EDIT])
+@authorize(privileges=[Privileges.HARNESS_CONFIG_ACCESS, Privileges.HARNESS_CONFIG_EDIT])
 async def read_harness(harness_id: UUID) -> HarnessCatalogRead:
     try:
         scope = await current_management_scope()
@@ -159,7 +167,7 @@ async def read_harness(harness_id: UUID) -> HarnessCatalogRead:
 
 
 @router.put("/catalog/{harness_id}", response_model=HarnessCatalogRead)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.HARNESS_CONFIG_EDIT)
 async def update_harness(
     harness_id: UUID,
     data: HarnessCatalogUpdate,
@@ -178,7 +186,7 @@ async def update_harness(
 
 
 @router.delete("/catalog/{harness_id}", status_code=204)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.HARNESS_CONFIG_EDIT)
 async def delete_harness(harness_id: UUID) -> None:
     try:
         if not (await current_management_scope()).is_global:

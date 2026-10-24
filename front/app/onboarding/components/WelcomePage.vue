@@ -244,7 +244,7 @@ const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
 const privilegeStore = usePrivilegeStore()
 const paramsStore = useParamsStore()
-const canAccessParams = computed(() => authStore.isAuthenticated && privilegeStore.hasPrivilege(privileges.PARAMS_ACCESS))
+const canAccessParams = computed(() => authStore.isAuthenticated && privilegeStore.hasAnyPrivilege([privileges.LANGUAGE_CONFIG_ACCESS, privileges.LANGUAGE_CONFIG_EDIT]))
 const defaultLanguageFields = languageFields.filter(field => field.name === 'DEFAULT_LANGUAGE')
 const configuredLanguage = computed(() => {
   const value = paramsStore.getParamValue('DEFAULT_LANGUAGE')
@@ -286,7 +286,7 @@ const steps = computed<SetupStep[]>(() => [
     route: null,
     required: true,
     complete: onboardingStore.languageConfigured === true,
-    canEdit: canAccessParams.value && privilegeStore.hasPrivilege(privileges.PARAMS_EDIT),
+    canEdit: canAccessParams.value && privilegeStore.hasPrivilege(privileges.LANGUAGE_CONFIG_EDIT),
     tipKeys: [],
   },
   {

@@ -251,17 +251,14 @@
 
 <script setup lang="ts">
 import { isAxiosError } from 'axios'
-import { ref, computed, onMounted, onActivated, onBeforeUnmount, watch } from 'vue'
+import { reactive, ref, computed, onMounted, onActivated, onBeforeUnmount, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { useConnectionStore, type Connection } from '../stores/connectionStore'
 import connectionService, { type ConnectionActionResult, type ConnectionCreate, type ConnectionUpdate } from '../services/connectionService'
-import { useAgentStore } from '@/app/agent/stores/agentStore'
-import { AgentSelect } from '@/app/agent'
-import { useToolStore } from '@/app/tools/stores/toolStore'
-import type { Tool } from '@/app/tools/services/toolService'
+import { AgentSelect, getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 import ConnectionForm from './ConnectionForm.vue'
-import { SystemToolIcon, ToolFilterSelect, ToolOriginBadge } from '@/app/tools'
+import { SystemToolIcon, ToolFilterSelect, ToolOriginBadge, type Tool } from '@/app/tools'
 import { useI18n } from 'vue-i18n'
 import { connectionParamLabel, connectionParamOptions, toolMessageKey } from '@/app/tools/presentation'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -291,8 +288,8 @@ interface VisibleConnectionParam {
 }
 
 const connectionStore = useConnectionStore()
-const agentStore = useAgentStore()
-const toolStore = useToolStore()
+const agentOptionsData = ref<AgentSelectionOption[]>([])
+const toolStore = reactive({ tools: [] as Tool[], loading: false })
 const { t, te } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
@@ -354,11 +351,11 @@ const pagination = ref({
 })
 
 const isEdit = computed(() => !!currentConnection.value)
-const agentsById = computed(() => new Map(agentStore.agents.map(agent => [agent.id, agent])))
+const agentsById = computed(() => new Map(agentOptionsData.value.map(agent => [agent.id, agent])))
 const toolsById = computed(() => new Map(toolStore.tools.map(tool => [tool.id, tool])))
 
 const agentFilterOptions = computed(() =>
-  agentStore.agents.map(e => ({ label: `${e.first_name} ${e.last_name}`, value: e.id }))
+  agentOptionsData.value.map(e => ({ label: e.label, value: e.id }))
 )
 
 const stateFilterOptions = computed(() => [
@@ -389,10 +386,10 @@ const columns = computed<QTableProps['columns']>(() => [
 ])
 
 const agentOptions = computed(() =>
-  agentStore.agents.map(e => ({
+  agentOptionsData.value.map(e => ({
     value: e.id,
-    label: `${e.first_name} ${e.last_name}`,
-    agentDriver: e.agent_driver,
+    label: e.label,
+    agentDriver: e.driver ?? '',
   }))
 )
 
@@ -407,7 +404,7 @@ function localizedToolLabel(tool: Tool): string {
 
 function getAgentName(agentId: number): string {
   const e = agentsById.value.get(agentId)
-  return e ? `${e.first_name} ${e.last_name}` : `ID: ${agentId}`
+  return e ? e.label : `ID: ${agentId}`
 }
 
 function isSystemTool(toolId: number): boolean {
@@ -774,8 +771,8 @@ watch(() => toolStore.tools.map(tool => tool.id), ids => {
 async function loadConnectionsTab(): Promise<void> {
   await Promise.all([
     reloadConnections(),
-    agentStore.fetchAgents(),
-    toolStore.fetchTools(),
+    getAgentSelection('management').then(options => { agentOptionsData.value = options }),
+    connectionService.getToolOptions().then(options => { toolStore.tools = options }),
     loadApproverLabels(),
   ])
 }

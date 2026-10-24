@@ -1,5 +1,5 @@
 <template>
-  <div class="q-mt-md">
+  <div v-if="canRead" class="q-mt-md">
     <q-banner v-if="props.error" rounded class="bg-negative text-white q-mb-md">
       {{ props.error }}
     </q-banner>
@@ -58,6 +58,7 @@ const internalLoading = ref(false)
 let generation = 0
 let disposed = false
 const canPurge = computed(() => privilegeStore.hasPrivilege(privileges.LLM_CALL_PURGE))
+const canRead = computed(() => privilegeStore.hasAnyPrivilege([privileges.LLM_CALL_ACCESS, privileges.LLM_CALL_CONTROL]))
 const visibleCalls = computed(() => props.taskId ? calls.value : props.externalCalls)
 const visibleLoading = computed(() => props.taskId ? internalLoading.value : props.loading)
 
@@ -67,8 +68,8 @@ async function load(): Promise<void> {
   const session = sessionGeneration()
   const current = () => !disposed && request === generation && taskId === props.taskId && session === sessionGeneration()
   calls.value = []
-  internalLoading.value = Boolean(taskId)
-  if (!taskId) return
+  internalLoading.value = Boolean(taskId) && canRead.value
+  if (!taskId || !canRead.value) return
   try {
     const result = await llmCallService.getByTask(taskId)
     if (current()) calls.value = result
@@ -80,6 +81,7 @@ async function load(): Promise<void> {
 }
 
 function upsert(call: LLMCall): void {
+  if (!canRead.value) return
   if (!isTaskOwnedCall(call)) {
     removeCall(call.id)
     return
@@ -114,7 +116,7 @@ onBeforeUnmount(() => {
   websocket.offEvent('llm_call', 'delete', onDelete)
 })
 
-watch(() => props.taskId, () => void load(), { immediate: true })
+watch([() => props.taskId, canRead], () => void load(), { immediate: true })
 
 function removeCall(callId: string): void {
   calls.value = calls.value.filter(call => call.id !== callId)

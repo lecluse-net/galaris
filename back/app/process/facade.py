@@ -1,6 +1,7 @@
 """Public current-definition and durable-run port for the Lab and other domains."""
 
 from typing import Any, cast
+from collections.abc import Collection
 from uuid import UUID
 
 from app.agent import AgentManagementScope
@@ -162,3 +163,10 @@ async def is_activity_inference_agent(run_id: UUID, agent_id: int, correlation_r
     graph = local_graph(run, occurrence)
     node = graph.node(occurrence.node_key)
     return node.kind == "if" and simple_llm(node) and execution_agent(graph, node, run.launcher_agent_id) == agent_id
+
+
+async def definition_options(*, agent_ids: Collection[int] | None) -> list[dict[str, Any]]:
+    """Bounded metadata for selecting an external process in another domain."""
+    records = await process_service.list_definitions(agent_ids=agent_ids)
+    return [{"agent_id": item.agent_id, "engine_process_id": item.engine_process_id, "label": item.label}
+            for item in records if item.code is None]

@@ -234,6 +234,10 @@
     },
     {
       "source": "app/dream",
+      "target": "app/file_share"
+    },
+    {
+      "source": "app/dream",
       "target": "app/llm"
     },
     {
@@ -900,15 +904,7 @@
     },
     {
       "source": "front/app/connection/components/AuthorizationManager.vue",
-      "target": "@/app/agent/stores/agentStore"
-    },
-    {
-      "source": "front/app/connection/components/AuthorizationManager.vue",
       "target": "@/app/tools/presentation"
-    },
-    {
-      "source": "front/app/connection/components/AuthorizationManager.vue",
-      "target": "@/app/tools/stores/toolStore"
     },
     {
       "source": "front/app/connection/components/ConnectionForm.vue",
@@ -924,27 +920,11 @@
     },
     {
       "source": "front/app/connection/components/ConnectionList.vue",
-      "target": "@/app/agent/stores/agentStore"
-    },
-    {
-      "source": "front/app/connection/components/ConnectionList.vue",
       "target": "@/app/tools/presentation"
-    },
-    {
-      "source": "front/app/connection/components/ConnectionList.vue",
-      "target": "@/app/tools/services/toolService"
-    },
-    {
-      "source": "front/app/connection/components/ConnectionList.vue",
-      "target": "@/app/tools/stores/toolStore"
     },
     {
       "source": "front/app/conversation/components/ConversationHistory.vue",
       "target": "@/app/agent/components/AgentAvatar.vue"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationHistory.vue",
-      "target": "@/app/agent/stores/agentStore"
     },
     {
       "source": "front/app/conversation/components/ConversationHistory.vue",
@@ -995,10 +975,6 @@
       "target": "@/core/util/components/WaitingResponseIndicator.vue"
     },
     {
-      "source": "front/app/goal/pages/index.vue",
-      "target": "@/app/agent/stores/agentStore"
-    },
-    {
       "source": "front/app/goal/stores/goalStore.ts",
       "target": "@/core/user/stores/authStore"
     },
@@ -1009,10 +985,6 @@
     {
       "source": "front/app/index/components/DashboardLiveActivity.vue",
       "target": "@/app/agent/services/agentService"
-    },
-    {
-      "source": "front/app/index/components/DashboardLiveActivity.vue",
-      "target": "@/app/agent/stores/agentStore"
     },
     {
       "source": "front/app/index/components/DashboardLiveActivity.vue",
@@ -1047,10 +1019,6 @@
       "target": "@/app/agent/services/agentService"
     },
     {
-      "source": "front/app/llm/components/LlmActivityPanel.vue",
-      "target": "@/app/agent/stores/agentStore"
-    },
-    {
       "source": "front/app/llm/components/LlmCall.vue",
       "target": "@/app/agent/stores/agentStore"
     },
@@ -1064,19 +1032,11 @@
     },
     {
       "source": "front/app/memory/pages/index.vue",
-      "target": "@/app/agent/stores/agentStore"
-    },
-    {
-      "source": "front/app/memory/pages/index.vue",
       "target": "@/core/authorize/stores/privilegeStore"
     },
     {
       "source": "front/app/skill/components/SkillAuthorizationManager.vue",
       "target": "@/app/agent/components/AgentAvatar.vue"
-    },
-    {
-      "source": "front/app/skill/components/SkillAuthorizationManager.vue",
-      "target": "@/app/agent/stores/agentStore"
     },
     {
       "source": "front/app/skill/pages/index.vue",
@@ -1101,10 +1061,6 @@
     {
       "source": "front/app/task/components/ActiveTasksPanel.vue",
       "target": "@/app/agent/services/agentService"
-    },
-    {
-      "source": "front/app/task/components/ActiveTasksPanel.vue",
-      "target": "@/app/agent/stores/agentStore"
     },
     {
       "source": "front/app/task/components/ActiveTasksPanel.vue",
@@ -1216,10 +1172,6 @@
     },
     {
       "source": "front/app/voice/components/VoiceCallHistory.vue",
-      "target": "@/app/agent/stores/agentStore"
-    },
-    {
-      "source": "front/app/voice/components/VoiceCallHistory.vue",
       "target": "@/app/topic/components/TopicBadge.vue"
     },
     {
@@ -1313,14 +1265,6 @@
     {
       "source": "front/core/App.vue",
       "target": "@/core/user/stores/authStore"
-    },
-    {
-      "source": "front/core/authorize/components/AssignmentManager.vue",
-      "target": "@/core/user/services/authService"
-    },
-    {
-      "source": "front/core/authorize/components/AssignmentManager.vue",
-      "target": "@/core/user/services/userService"
     },
     {
       "source": "front/core/authorize/components/AssignmentMenu.vue",

@@ -38,7 +38,7 @@ for (const kind of ['document', 'process']) test(`${kind} sharing survives reope
   const role = await checked(await request.post('/api/authorize/roles', { headers,
     data: { code: `synthetic-sharing-${suffix}`, display_name: 'Synthetic resource editor' } }))
   const privileges = await checked(await request.get('/api/authorize/privileges', { headers }))
-  const allowed = new Set(['user', 'MEMORY_ACCESS', 'MEMORY_EDIT', 'PROCESS_READ', 'PROCESS_EDIT', 'AGENT_ACCESS', 'CHAT_ACCESS'])
+  const allowed = new Set(['user', 'MEMORY_ACCESS', 'MEMORY_EDIT', 'DOCUMENT_ACCESS', 'DOCUMENT_EDIT', 'PROCESS_READ', 'PROCESS_EDIT', 'AGENT_ACCESS', 'CHAT_ACCESS'])
   await checked(await request.post(`/api/authorize/roles/${role.id}/privileges`, { headers,
     data: { privilege_ids: privileges.filter(privilege => allowed.has(privilege.code)).map(privilege => privilege.id) } }))
   await checked(await request.post('/api/authorize/assignments', { headers,

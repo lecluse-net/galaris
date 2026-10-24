@@ -16,7 +16,7 @@ from core.user.user_service import encrypt_password
 async def test_catalogue_http_scopes_counts_and_rechecks_after_reassignment(client):
     password = "synthetic-catalogue-password"
     async with get_db_session() as db:
-        privilege = await db.scalar(select(Privilege).where(Privilege.code == "PARAMS_ACCESS"))
+        privilege = await db.scalar(select(Privilege).where(Privilege.code == "HARNESS_CONFIG_ACCESS"))
         title_id = await db.scalar(select(Title.id).limit(1))
         reader = Role(code="synthetic-catalogue-reader", privileges=[privilege])
         users = [UserModel(email=f"catalogue-{name}@example.com", is_active=True,

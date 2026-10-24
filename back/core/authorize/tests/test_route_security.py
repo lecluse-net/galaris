@@ -173,6 +173,8 @@ def test_broad_user_route_allowlist_is_exact() -> None:
         ("core.authorize.router", "switch_role"),
         ("core.authorize.router", "set_default_assignment"),
         ("app.onboarding.router", "get_onboarding_overview"),
+        # Removes only this browser's scoped media cookie; it returns no data.
+        ("app.file_share.media_router", "release_media"),
     }
     actual: set[RouteKey] = set()
     for route in _all_routes():
@@ -242,12 +244,6 @@ def test_security_critical_route_policies_are_exact() -> None:
         .endpoint._authorize_meta["privileges"]
     ) == {Privileges.AGENT_ACCESS, Privileges.AGENT_EDIT}
 
-    for name in ("hermes_reachable", "hermes_list_agents"):
-        assert set(
-            by_key[("bridge.hermes.router", name)]
-            .endpoint._authorize_meta["privileges"]
-        ) == {Privileges.HERMES_ACCESS, Privileges.HERMES_EDIT}
-
     meta = by_key[
         ("app.harnesses.router", "run_harness_action")
     ].endpoint._authorize_meta
@@ -261,7 +257,7 @@ def test_security_critical_route_policies_are_exact() -> None:
         "delete_harness",
     ):
         meta = by_key[("app.harnesses.router", name)].endpoint._authorize_meta
-        assert meta["privileges"] == [Privileges.PARAMS_EDIT]
+        assert meta["privileges"] == [Privileges.HARNESS_CONFIG_EDIT]
 
     for name in (
         "update_agent",

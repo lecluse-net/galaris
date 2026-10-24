@@ -30,7 +30,7 @@
       <div class="col-12 col-md-3">
         <ToolFilterSelect
           v-model="filterTool"
-          :tools="toolStore.tools"
+          :tools="tools"
           :label="$t('connection.filterTool')"
         />
       </div>
@@ -291,20 +291,20 @@ import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { toolMessageKey } from '@/app/tools/presentation'
-import { AgentSelect } from '@/app/agent'
+import { AgentSelect, getAgentSelection } from '@/app/agent'
 import { SystemToolIcon, ToolFilterSelect, ToolOriginBadge } from '@/app/tools'
 import connectionService, {
   saveFunctionPolicy,
   waitForFunctionPolicyWrites,
-  type Connection,
+  permissionConnectionOptions,
+  type PermissionConnectionOption,
   type ConnectionFunctionInfo,
   type EffectiveFunctionState,
   type FunctionState,
   type FunctionStateResolved,
   type FunctionPolicyChange,
 } from '../services/connectionService'
-import { useAgentStore } from '@/app/agent/stores/agentStore'
-import { useToolStore } from '@/app/tools/stores/toolStore'
+
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import FunctionPolicyToggle from './FunctionPolicyToggle.vue'
 
@@ -317,10 +317,21 @@ type FilterState = 'active' | 'inactive' | 'ask' | 'all'
 
 const $q = useQuasar()
 const { t } = useI18n()
-const agentStore = useAgentStore()
-const toolStore = useToolStore()
+const agents = ref<{ id: number; first_name: string; last_name: string }[]>([])
+const tools = computed(() => [...new Map(connections.value.map(connection => [connection.tool_id, {
+  id: connection.tool_id, code: connection.tool_code, label: connection.tool_label,
+  can_edit: connection.tool_can_edit, can_disable: connection.tool_can_disable,
+}])).values()])
+async function loadAgents(): Promise<void> {
+  try {
+    const options = await getAgentSelection('management')
+    if (!disposed) agents.value = options.map(agent => ({ id: agent.id, first_name: agent.label, last_name: '' }))
+  } catch {
+    if (!disposed) connectionsError.value = t('connection.auth.loadConnectionsError')
+  }
+}
 const privilegeStore = usePrivilegeStore()
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
+const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.PERMISSION_DECIDE))
 const canManageAllAgents = computed(() => (
   privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL)
 ))
@@ -330,10 +341,10 @@ const filterTool = ref<number | null>(null)
 const filterState = ref<FilterState>('all')
 const selectedConnectionId = ref<number | null>(null)
 
-const connections = ref<Connection[]>([])
+const connections = ref<PermissionConnectionOption[]>([])
 const systemConnection = computed(() => {
   const connection = connections.value.find(item => item.id === selectedConnectionId.value)
-  return toolStore.tools.find(tool => tool.id === connection?.tool_id)?.can_disable === false
+  return tools.value.find(tool => tool.id === connection?.tool_id)?.can_disable === false
 })
 const connectionsLoading = ref(true)
 const connectionsError = ref<string | null>(null)
@@ -360,7 +371,7 @@ function globalPolicyState(row: ConnectionFunctionInfo): EffectiveFunctionState 
 const policyLabel = (state: FunctionState) => t(`connection.auth.${state === 'ask' ? 'stateAsk' : state === 'disabled' ? 'stateDisabled' : state === 'enabled' ? 'stateEnabled' : 'stateDefault'}`)
 
 const agentFilterOptions = computed(() =>
-  agentStore.agents.map(a => ({ label: `${a.first_name} ${a.last_name}`, value: a.id }))
+  agents.value.map(a => ({ label: `${a.first_name} ${a.last_name}`, value: a.id }))
 )
 
 function localizedToolLabel(tool: { code: string; label: string; can_edit?: boolean }): string {
@@ -376,18 +387,18 @@ const stateFilterOptions = computed(() => [
 ])
 
 function getAgentName(agentId: number): string {
-  const a = agentStore.agents.find(e => e.id === agentId)
+  const a = agents.value.find(e => e.id === agentId)
   return a ? `${a.first_name} ${a.last_name}` : `#${agentId}`
 }
 
 function getToolLabel(toolId: number): string {
-  const tool = toolStore.tools.find(e => e.id === toolId)
+  const tool = tools.value.find(e => e.id === toolId)
   return tool ? localizedToolLabel(tool) : `#${toolId}`
 }
 
 // Only active connections can expose MCP functions and therefore be selected.
 const activeConnections = computed(() => connections.value.filter(connection =>
-  connection.active && toolStore.tools.some(tool => tool.id === connection.tool_id)))
+  connection.active && tools.value.some(tool => tool.id === connection.tool_id)))
 const hasConnectionFilters = computed(() => filterAgent.value !== null || filterTool.value !== null)
 
 const connectionOptions = computed(() =>
@@ -397,7 +408,7 @@ const connectionOptions = computed(() =>
     .map(c => ({
       label: `${getAgentName(c.agent_id)} — ${getToolLabel(c.tool_id)}`,
       value: c.id,
-      tool: toolStore.tools.find(tool => tool.id === c.tool_id),
+      tool: tools.value.find(tool => tool.id === c.tool_id),
     }))
 )
 
@@ -406,16 +417,10 @@ async function loadConnections(): Promise<void> {
   connectionsLoading.value = true
   connectionsError.value = null
   try {
-    const loadedConnections: Connection[] = []
+    const loadedConnections: PermissionConnectionOption[] = []
     let skip = 0
     while (true) {
-      const { data } = await connectionService.getConnections(
-        undefined,
-        undefined,
-        true,
-        skip,
-        CONNECTION_PAGE_SIZE
-      )
+      const data = await permissionConnectionOptions(skip, CONNECTION_PAGE_SIZE)
       if (requestId !== connectionRequestId) return
       loadedConnections.push(...data)
       if (data.length < CONNECTION_PAGE_SIZE) break
@@ -660,18 +665,17 @@ onMounted(async () => {
   loadFiltersFromSession()
   await Promise.all([
     loadConnections(),
-    agentStore.fetchAgents(),
-    toolStore.fetchTools(),
+    loadAgents(),
   ])
   if (
     filterAgent.value !== null
-    && !agentStore.agents.some(agent => agent.id === filterAgent.value)
+    && !agents.value.some(agent => agent.id === filterAgent.value)
   ) {
     filterAgent.value = null
   }
   if (
     filterTool.value !== null
-    && !toolStore.tools.some(tool => tool.id === filterTool.value)
+    && !tools.value.some(tool => tool.id === filterTool.value)
   ) {
     filterTool.value = null
   }
@@ -683,8 +687,8 @@ onActivated(() => {
   if (initialized) void loadConnections()
 })
 
-watch(() => toolStore.tools.map(tool => tool.id), ids => {
-  if (!toolStore.loading && filterTool.value !== null && !ids.includes(filterTool.value)) filterTool.value = null
+watch(() => tools.value.map(tool => tool.id), ids => {
+  if (!connectionsLoading.value && filterTool.value !== null && !ids.includes(filterTool.value)) filterTool.value = null
 })
 </script>
 

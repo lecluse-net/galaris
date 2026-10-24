@@ -30,7 +30,7 @@ test('shared harness settings load directly and save a revisioned configuration'
     response.descriptor.policy = saved.policy
     await route.fulfill({ json: response })
   })
-  await mount(page, 'app/harnesses/components/HarnessExecutionSettings.vue')
+  await mount(page, 'app/harnesses/components/HarnessExecutionSettings.vue', { privileges: ['HARNESS_CONFIG_EDIT', 'AGENT_MANAGE_ALL'] })
   const concurrency = page.getByLabel('Maximum concurrent tasks', { exact: true })
   await concurrency.fill('3')
   await expect(concurrency).toHaveValue('3')
@@ -66,7 +66,7 @@ test('configuration conflicts keep edits and arbitrary providers use the same co
     attempted = route.request().postDataJSON()
     await route.fulfill({ status: 409, json: { detail: 'Concurrent edit' } })
   })
-  await mount(page, 'app/harnesses/components/HarnessExecutionSettings.vue')
+  await mount(page, 'app/harnesses/components/HarnessExecutionSettings.vue', { privileges: ['HARNESS_CONFIG_EDIT', 'AGENT_MANAGE_ALL'] })
   await page.getByLabel('Harness', { exact: true }).click()
   await page.getByRole('option', { name: 'arbitrary-runtime', exact: true }).click()
   await page.getByLabel('Maximum run duration (seconds)', { exact: true }).fill('120')

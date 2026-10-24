@@ -3,13 +3,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { AgentSelect, useAgentStore } from '@/app/agent'
+import { computed, onMounted } from 'vue'
+import { AgentSelect, useAgentChoices } from '@/app/agent'
 
 defineProps<{ label: string }>()
 const model = defineModel<number | null>({ required: true })
-const agents = useAgentStore()
+const agents = useAgentChoices()
+onMounted(() => agents.fetchAgents())
 const options = computed(() => agents.agents.map(agent => ({
-  value: agent.id, label: `${agent.first_name} ${agent.last_name}`.trim(), hasAvatar: agent.has_avatar,
+  value: agent.id, label: agent.label, hasAvatar: agent.has_avatar,
 })))
 </script>

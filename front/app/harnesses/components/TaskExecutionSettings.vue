@@ -22,7 +22,7 @@ import { executionLimitFields } from '../runtimeSettings'
 import HarnessPipelineSettings from './HarnessPipelineSettings.vue'
 
 const { t } = useI18n()
-const configurations = ref<HarnessExecutionConfiguration[]>([])
+const configurations = ref<Pick<HarnessExecutionConfiguration, 'provider_code' | 'label' | 'pipeline_policy'>[]>([])
 const loading = ref(false)
 const failed = ref(false)
 let disposed = false
@@ -32,7 +32,7 @@ async function load(): Promise<void> {
   loading.value = true
   failed.value = false
   try {
-    const result = await harnessService.executionConfigurations()
+    const result = await harnessService.pipelineOptions()
     if (!disposed) configurations.value = result.data
   } catch {
     if (!disposed) failed.value = true

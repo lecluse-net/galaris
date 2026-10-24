@@ -43,6 +43,10 @@ export const usePrivilegeStore = defineStore('privilege', () => {
         }
     })
 
+    function hasAnyPrivilege(codes: readonly string[]): boolean {
+        return codes.some(code => hasPrivilege.value(code))
+    }
+
     /**
      * Get all privilege codes for the current role,
      * including implicit "user" or "guest".
@@ -150,6 +154,7 @@ export const usePrivilegeStore = defineStore('privilege', () => {
         loading: isLoading,
         // Getters
         hasPrivilege,
+        hasAnyPrivilege,
         // Actions
         loadPrivileges,
         clearPrivileges,

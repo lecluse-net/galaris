@@ -321,7 +321,8 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { sessionGeneration } from '@/core/api'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useQuasar, type QTableColumn, type QTableProps } from 'quasar'
@@ -365,6 +366,8 @@ const selectedIncident = ref<FailureIncidentDetail | null>(null)
 const patternOpen = ref(false)
 const patternForm = ref<FailurePattern | null>(null)
 const saving = ref(false)
+let listVersion = 0
+let detailVersion = 0
 
 const kindOptions = computed(() => ([
   { label: t('incidents.kinds.llm'), value: 'llm' },
@@ -395,17 +398,18 @@ const patternColumns = computed<QTableColumn<FailurePattern>[]>(() => [
   { name: 'actions', label: '', field: 'id', align: 'right', style: 'width: 48px' },
 ])
 
-onMounted(async () => {
-  if (!privilegeStore.loaded) await privilegeStore.loadPrivileges()
-  if (!canAccess.value) {
-    await router.replace('/params')
-    return
-  }
-  await loadIncidents()
-})
 watch([() => privilegeStore.loaded, canAccess], ([loaded, allowed]) => {
-  if (loaded && !allowed) void router.replace('/params')
-})
+  if (!loaded || !allowed) {
+    listVersion++
+    detailVersion++
+    incidents.value = []
+    patterns.value = []
+    selectedIncident.value = null
+    detailOpen.value = false
+    patternOpen.value = false
+    if (loaded) void router.replace('/')
+  } else void loadIncidents()
+}, { immediate: true })
 watch(tab, value => void (value === 'incidents' ? loadIncidents() : loadPatterns()))
 
 function refresh(): void {
@@ -433,6 +437,10 @@ function requestPatterns(request: TableRequest): void {
 }
 
 async function loadIncidents(): Promise<void> {
+  if (!privilegeStore.loaded || !canAccess.value) return
+  const version = ++listVersion
+  const session = sessionGeneration()
+  const current = () => version === listVersion && session === sessionGeneration() && canAccess.value
   loading.value = true
   error.value = ''
   try {
@@ -443,16 +451,21 @@ async function loadIncidents(): Promise<void> {
       recovered: recoveryFilter.value === null ? undefined : recoveryFilter.value === 'recovered',
       search: (incidentSearch.value || '').trim() || undefined,
     })
+    if (!current()) return
     incidents.value = response.data.items
     incidentPagination.value.rowsNumber = response.data.total
   } catch {
-    error.value = t('incidents.loadError')
+    if (current()) error.value = t('incidents.loadError')
   } finally {
-    loading.value = false
+    if (current()) loading.value = false
   }
 }
 
 async function loadPatterns(): Promise<void> {
+  if (!privilegeStore.loaded || !canAccess.value) return
+  const version = ++listVersion
+  const session = sessionGeneration()
+  const current = () => version === listVersion && session === sessionGeneration() && canAccess.value
   loading.value = true
   error.value = ''
   try {
@@ -463,12 +476,13 @@ async function loadPatterns(): Promise<void> {
       status: patternStatus.value || undefined,
       search: (patternSearch.value || '').trim() || undefined,
     })
+    if (!current()) return
     patterns.value = response.data.items
     patternPagination.value.rowsNumber = response.data.total
   } catch {
-    error.value = t('incidents.loadError')
+    if (current()) error.value = t('incidents.loadError')
   } finally {
-    loading.value = false
+    if (current()) loading.value = false
   }
 }
 
@@ -477,16 +491,21 @@ function openIncidentFromRow(_event: Event, row: FailureIncident): void {
 }
 
 async function openIncident(row: FailureIncident): Promise<void> {
+  const version = ++detailVersion
+  const session = sessionGeneration()
+  const current = () => version === detailVersion && session === sessionGeneration() && canAccess.value
   detailOpen.value = true
   detailLoading.value = true
   selectedIncident.value = null
   try {
-    selectedIncident.value = (await incidentService.getIncident(row.id)).data
+    const response = await incidentService.getIncident(row.id)
+    if (current()) selectedIncident.value = response.data
   } catch {
+    if (!current()) return
     detailOpen.value = false
     $q.notify({ type: 'negative', message: t('incidents.detailError') })
   } finally {
-    detailLoading.value = false
+    if (current()) detailLoading.value = false
   }
 }
 

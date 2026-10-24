@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
+from httpx import AsyncClient
 from starlette.requests import Request
 
 from app.agent import active_run
@@ -17,14 +18,22 @@ from bridge.hermes.router import hermes_provider_search
 from bridge.hermes.schemas import HermesMemorySearchRequest
 
 
-def test_memory_provider_routes_keep_their_existing_urls() -> None:
+def test_bridge_routes_keep_configuration_and_memory_without_legacy_management() -> None:
     from bridge.hermes.router import router
 
     paths = {route.path for route in router.routes}
-    assert "/hermes/reachable" in paths
-    assert "/hermes/agents" in paths
+    assert "/hermes/reachable" not in paths
+    assert "/hermes/agents" not in paths
+    assert "/hermes/configurations" in paths
+    assert "/hermes/configurations/{id}" in paths
     assert "/memory/provider/search" in paths
     assert "/memory/provider/remember" in paths
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("path", ["/api/hermes/reachable", "/api/hermes/agents"])
+async def test_removed_management_endpoints_return_not_found(client: AsyncClient, path: str) -> None:
+    assert (await client.get(path)).status_code == 404
 
 
 def test_memory_context_handoff_is_task_scoped() -> None:

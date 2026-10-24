@@ -34,6 +34,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { apiErrorDetail, getStoredAccessToken } from '@/core/api'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { playChatNotificationSound, unlockChatNotificationSound } from '../notificationSound'
 import { useChatInboxStore } from '../stores/inbox'
 
@@ -44,12 +45,14 @@ const $q = useQuasar()
 const { t } = useI18n()
 const router = useRouter()
 const inbox = useChatInboxStore()
+const privilegeStore = usePrivilegeStore()
+const canUseChat = computed(() => privilegeStore.loaded && privilegeStore.hasPrivilege(privileges.CHAT_ACCESS))
 const snoozedUntil = ref(Number(localStorage.getItem(SNOOZE_KEY) || 0))
 let retryTimer: number | null = null
 const activeNotifications = new Map<string, { roomId: string; dismiss: () => void }>()
 
 const showPrompt = computed(() => (
-  inbox.canPrompt
+  canUseChat.value && inbox.canPrompt
   && Date.now() >= snoozedUntil.value
 ))
 
@@ -57,11 +60,12 @@ function scheduleStart(): void {
   if (retryTimer !== null) return
   retryTimer = window.setTimeout(() => {
     retryTimer = null
-    if (getStoredAccessToken()) void startInbox()
+    if (getStoredAccessToken() && canUseChat.value) void startInbox()
   }, 1_000)
 }
 
 async function startInbox(): Promise<void> {
+  if (!canUseChat.value) return
   try {
     await inbox.start()
   } catch {
@@ -75,6 +79,7 @@ function snooze(): void {
 }
 
 async function enable(): Promise<void> {
+  if (!canUseChat.value) return
   try {
     const enabled = await inbox.enablePush()
     if (enabled) {
@@ -134,8 +139,18 @@ watch(
   },
 )
 
+watch(canUseChat, allowed => {
+  if (allowed) void startInbox()
+  else {
+    if (retryTimer !== null) window.clearTimeout(retryTimer)
+    retryTimer = null
+    inbox.stop()
+    for (const notification of activeNotifications.values()) notification.dismiss()
+    activeNotifications.clear()
+  }
+}, { immediate: true, flush: 'sync' })
+
 onMounted(() => {
-  void startInbox()
   window.addEventListener('pointerdown', unlockSound, { once: true })
   window.addEventListener('keydown', unlockSound, { once: true })
 })

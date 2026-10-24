@@ -17,6 +17,14 @@ from core.params.consts import Params
 # Fixtures
 # =============================================================================
 
+@pytest.fixture(autouse=True)
+def authenticated_parameter_policy(monkeypatch, mock_db):
+    # These existing unit tests isolate serialization/secret handling. The real
+    # per-domain authorization is exercised through HTTP in core.authorize tests.
+    monkeypatch.setattr(router.user_service, "get_current_user", AsyncMock(return_value=Mock(id=1)))
+    monkeypatch.setattr(router, "check_privilege", AsyncMock(return_value=True))
+    monkeypatch.setattr(router, "get_db", lambda: mock_db)
+
 @pytest.fixture
 def mock_db():
     """Provide a mocked database session."""
@@ -27,9 +35,9 @@ def mock_db():
 def mock_params_dict():
     """Provide parameters in dictionary form."""
     return {
-        "ai.model.chatbot": "deepseek/deepseek-v3.2",
-        "ai.model.agent": "openai/gpt-4",
-        "app.timeout": "30"
+        "DEFAULT_LANGUAGE": "deepseek/deepseek-v3.2",
+        "LOCALIZATION": "openai/gpt-4",
+        "HTTP_RATE_LIMIT_PER_MINUTE": "30"
     }
 
 
@@ -37,11 +45,11 @@ def mock_params_dict():
 def mock_params_list():
     """Provide parameters as a list of names and values."""
     param1 = Mock()
-    param1.name = "ai.model.chatbot"
+    param1.name = "DEFAULT_LANGUAGE"
     param1.value = "deepseek/deepseek-v3.2"
 
     param2 = Mock()
-    param2.name = "app.timeout"
+    param2.name = "HTTP_RATE_LIMIT_PER_MINUTE"
     param2.value = "30"
 
     return [param1, param2]
@@ -65,7 +73,7 @@ class TestRouterFunctions:
             # The result is a Pydantic ParamsListResponse object.
             assert hasattr(result, 'params')
             assert len(result.params) == 2
-            assert result.params[0].name == "ai.model.chatbot"
+            assert result.params[0].name == "DEFAULT_LANGUAGE"
 
     @pytest.mark.asyncio
     async def test_update_param_success_logic(self, mock_db):
@@ -76,15 +84,15 @@ class TestRouterFunctions:
             with patch.object(params_service, 'set', new_callable=AsyncMock) as mock_set:
                 mock_set.return_value = True
 
-                param_update = ParamUpdate(value="new-model")
+                param_update = ParamUpdate(value="en")
                 result = await update_param(
-                    name="ai.model.chatbot",
+                    name="DEFAULT_LANGUAGE",
                     param_update=param_update
                 )
 
                 assert result.status == "success"
-                assert result.name == "ai.model.chatbot"
-                assert result.value == "new-model"
+                assert result.name == "DEFAULT_LANGUAGE"
+                assert result.value == "en"
 
     @pytest.mark.asyncio
     async def test_read_params_masks_configured_secrets(self):

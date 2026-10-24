@@ -3,10 +3,11 @@
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.agent.models import Agent, Title
 from core.authorize import Assignment, Privilege, Role
+from core.authorize.models import RolePrivilege
 from core.database import get_db_session
 from core.storage import StoredFile
 
@@ -25,11 +26,13 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
     assert created.status_code == 201, created.text
     human_id = created.json()["id"]
     async with get_db_session() as db:
-        permissions = list(await db.scalars(select(Privilege).where(Privilege.code.in_(["MEMORY_ACCESS", "MEMORY_EDIT", "DATASET_EDIT"]))))
+        permissions = list(await db.scalars(select(Privilege).where(Privilege.code.in_(
+            ["FILE_ACCESS", "FILE_EDIT", "DOCUMENT_ACCESS", "DOCUMENT_EDIT", "DATASET_EDIT"]))))
         role = Role(code=f"file-owner-{uuid4()}", display_name="Synthetic file owner", privileges=permissions)
         title = Title(label="Synthetic files", gender="X")
         db.add_all([role, title])
         await db.flush()
+        role_id = role.id
         db.add(Assignment(user_id=human_id, role_id=role.id, is_default=True))
         owner = Agent(user_id=human_id, title_id=title.id, code=f"file-owner-{uuid4()}", first_name="File", last_name="Owner")
         other = Agent(user_id=admin_id, title_id=title.id, code=f"file-other-{uuid4()}", first_name="Other", last_name="Owner")
@@ -40,7 +43,7 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
     denied = await client.post(f"/api/file-share/files?agent_id={owner_id}", files={"upload": ("x.txt", b"private")})
     assert denied.status_code in {401, 403}
     login = await client.post("/api/auth/login-json", json=human_credentials)
-    human = {"Authorization": "Bearer " + login.json()["access_token"]}
+    human = {"Authorization": "Bearer " + login.json()["access_token"], "X-Editorial-Profile-Version": "1"}
     uploaded = await client.post(f"/api/file-share/files?agent_id={owner_id}", headers=human,
         files={"upload": ("Report.txt", b"Synthetic HTTP bytes", "text/plain")})
     assert uploaded.status_code == 201, uploaded.text
@@ -91,10 +94,10 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
     assert search.status_code == 200, search.text
     assert {hit["resource"]["uri"] for hit in search.json()["hits"]} == {uri, second.json()["uri"]}
     assert (await client.get(f"{browser}/search", params={"agent_id": other_id, "uri": "file://", "query": "Official"}, headers=human)).status_code == 404
-    document = await client.post("/api/memory/documents", headers=human, json={"owner_kind": "agent", "owner_id": owner_id,
+    document = await client.post("/api/documents", headers=human, json={"owner_kind": "agent", "owner_id": owner_id,
         "actor_agent_id": owner_id, "document_type": "html", "title": "Synthetic internal attachments"})
     assert document.status_code == 201, document.text
-    endpoint = f"/api/memory/documents/{document.json()['id']}/internal-attachments"
+    endpoint = f"/api/documents/{document.json()['id']}/internal-attachments"
     body = {"uris": [uri, second.json()["uri"]], "resource_agent_id": owner_id,
         "expected_lock_version": document.json()["lock_version"]}
     attached = await client.put(endpoint, headers=human, json=body, params={"actor_agent_id": owner_id})
@@ -118,7 +121,7 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
     assert (await client.put(endpoint, headers=admin, json={**body, "resource_agent_id": other_id})).status_code in {403, 404}
     assert (await client.get(f"{browser}/entries", params={"agent_id": owner_id, "uri": "file://", "cursor": "invalid"}, headers=human)).status_code == 422
     # A domain reference keeps shared bytes alive. Only independent owned files are removable here.
-    domain_attachment = await client.post(f"/api/memory/documents/{document.json()['id']}/attachments",
+    domain_attachment = await client.post(f"/api/documents/{document.json()['id']}/attachments",
         params={"actor_agent_id": owner_id}, headers=human,
         files={"file": ("Domain-owned.txt", b"Synthetic domain attachment", "text/plain")})
     assert domain_attachment.status_code == 201, domain_attachment.text
@@ -134,5 +137,18 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
     removed = await client.delete(f"{browser}/entry", params=disposable_params, headers=human)
     assert removed.status_code == 200, removed.text
     assert (await client.get(f"{browser}/info", params=disposable_params, headers=human)).status_code == 404
+    # Native resources keep working when independent-file access is revoked.
+    async with get_db_session() as db:
+        file_privileges = select(Privilege.id).where(Privilege.code.in_(["FILE_ACCESS", "FILE_EDIT"]))
+        await db.execute(delete(RolePrivilege).where(
+            RolePrivilege.role_id == role_id, RolePrivilege.privilege_id.in_(file_privileges)))
+    native_uri = f"document://{document.json()['id']}/attachments/{domain_attachment.json()['id']}"
+    native = await client.get(f"{browser}/content", headers=human,
+        params={"agent_id": owner_id, "uri": native_uri, "preview": False})
+    assert native.status_code == 200 and native.content == b"Synthetic domain attachment", native.text
+    dataset_info = await client.get(f"{browser}/info", headers=human,
+        params={"agent_id": owner_id, "uri": personal_uri, "management": True})
+    assert dataset_info.status_code == 200, dataset_info.text
+    assert (await client.get(f"{browser}/content", params=params, headers=human)).status_code == 403
     client.cookies.clear()
     assert (await client.get(f"{browser}/schemes", params={"agent_id": owner_id})).status_code in {401, 403}

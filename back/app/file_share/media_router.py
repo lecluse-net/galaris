@@ -8,13 +8,14 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
 
-from core.authorize import Privileges, authorize, independent_auth
+from core.authorize import authorize, independent_auth
 from core.settings import settings
 from core.util import complete_await
 from . import resource_service
 from .browser import browser_context
 from .browser_router import browser_access
 from .media_access import COOKIE_NAME, MEDIA_SECONDS, issue_media_cookie, media_identity
+from .browser_policy import BrowserResourceAssertion, BROWSER_PRIVILEGES
 
 router = APIRouter()
 
@@ -34,7 +35,7 @@ def byte_range(value: str | None, size: int) -> tuple[int, int]:
 
 
 @router.post("/media")
-@authorize(privileges=Privileges.MEMORY_ACCESS)
+@authorize(privileges=list(BROWSER_PRIVILEGES), assertion=BrowserResourceAssertion)
 async def prepare_media(response: Response, agent_id: int, uri: str = Query(max_length=4096),
                         management: bool = False) -> dict[str, str | None]:
     async with browser_access(agent_id), browser_context(agent_id, management=management) as ctx:
@@ -45,7 +46,7 @@ async def prepare_media(response: Response, agent_id: int, uri: str = Query(max_
             return {"url": None}
         identifier = uuid4()
         path = f"/api/file-share/browser/media/{identifier}"
-        cookie = await issue_media_cookie(identifier, agent_id, uri, management)
+        cookie = await issue_media_cookie(identifier, agent_id, info.uri, management)
         response.set_cookie(COOKIE_NAME, cookie, max_age=MEDIA_SECONDS, path=path,
             httponly=True, secure=settings.APP_HOST.lower().startswith("https://"), samesite="strict")
         response.headers["Cache-Control"] = "private, no-store"
@@ -112,7 +113,7 @@ async def read_media(identifier: UUID, request: Request) -> Response:
 
 
 @router.delete("/media/{identifier}", status_code=204)
-@authorize(privileges=Privileges.MEMORY_ACCESS)
+@authorize(privileges="user")
 async def release_media(identifier: UUID) -> Response:
     response = Response(status_code=204)
     response.delete_cookie(COOKIE_NAME, path=f"/api/file-share/browser/media/{identifier}")

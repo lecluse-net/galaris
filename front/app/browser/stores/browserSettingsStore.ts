@@ -8,8 +8,8 @@ import { fetchBrowserAvailability } from '../services/browserService'
 export const useBrowserSettingsStore = defineStore('browserSettings', () => {
     const auth = useAuthStore()
     const access = usePrivilegeStore()
-    const canAccess = computed(() => access.hasPrivilege(privileges.PARAMS_ACCESS)
-        || access.hasPrivilege(privileges.PARAMS_EDIT))
+    const canAccess = computed(() => access.hasPrivilege(privileges.BROWSER_CONFIG_ACCESS)
+        || access.hasPrivilege(privileges.BROWSER_CONFIG_EDIT))
     const available = ref<boolean | null>(null)
     const loading = ref(false)
     const failed = ref(false)

@@ -159,9 +159,7 @@ import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { isCancelledRequest } from '@/core/api'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { authorizeService, type AssignmentWithRole, type Role } from '../services/authorize.service'
-import { userService } from '@/core/user/services/userService'
-import type { User } from '@/core/user/services/authService'
+import { authorizeService, type AssignmentWithRole, type AssignmentUserOption, type Role } from '../services/authorize.service'
 import { privileges } from '../definitions'
 import { usePrivilegeStore } from '../stores/privilegeStore'
 import { localizedAuthorizeLabel } from '../presentation'
@@ -184,7 +182,7 @@ const pagination = ref({
 const roles = ref<Role[]>([])
 
 // Filtered options for dropdowns
-const userOptions = ref<User[]>([])
+const userOptions = ref<AssignmentUserOption[]>([])
 const userSearchFailed = ref(false)
 let userSearchVersion = 0
 function invalidateUserSearch(): void { userSearchVersion += 1 }
@@ -213,7 +211,7 @@ onMounted(async () => {
         pagination: pagination.value
     })
     // Load roles for dropdown
-    roles.value = (await authorizeService.listRoles()).map(r => r as unknown as Role)
+    roles.value = await authorizeService.assignmentRoleOptions()
 })
 
 async function onRequest(props: any) {
@@ -253,7 +251,7 @@ async function filterUsers (val: string, update: (callback: () => void) => void,
   }
 
   try {
-    const users = await userService.listUsers(val)
+    const users = await authorizeService.assignmentUserOptions(val)
     if (version !== userSearchVersion) return
     update(() => { userOptions.value = users })
   } catch (error) {

@@ -1,5 +1,5 @@
 <template>
-  <q-page v-if="contribution" class="harness-preferences q-pa-md">
+  <q-page v-if="contribution && canViewHarness" class="harness-preferences q-pa-md">
     <PageHeader :icon="contribution.icon"
       :title="t('configuration.harnessProviderTitle', { name: contribution.label })"
       :description="t('harnessSettings.providerSubtitle', { name: contribution.label })"
@@ -30,11 +30,15 @@ import { PageHeader } from '@/core/util'
 import { harnessBridgeSettings } from '../../bridgeSettings'
 import BridgeSettingsPanel from '../../components/BridgeSettingsPanel.vue'
 import { useParamsStore } from '../../stores/paramsStore'
+import { usePrivilegeStore } from '@/core/authorize'
+import { sectionPrivileges } from '../../access'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const paramsStore = useParamsStore()
+const privilegeStore = usePrivilegeStore()
+const canViewHarness = computed(() => privilegeStore.hasAnyPrivilege(sectionPrivileges('harnesses')))
 const availabilityResolved = ref(false)
 
 const providerCode = computed(() => String(route.params.provider ?? ''))
@@ -47,8 +51,9 @@ const contribution = computed(() => {
   return item.isAvailable?.() === false ? undefined : item
 })
 
-watch(providerCode, async () => {
+watch([providerCode, canViewHarness], async () => {
   availabilityResolved.value = false
+  if (!canViewHarness.value) return
   const item = declaredContribution.value
   if (!item) {
     await router.replace('/params/harnesses')

@@ -11,6 +11,8 @@ function setup() {
     '@/core/api': { sessionGeneration: () => 'test' },
     '@/core/websocket': { websocket: {} },
     '@/core/user/stores/authStore': {},
+    '@/core/authorize': { privileges: { GOAL_CONFIG_ACCESS: 'GOAL_CONFIG_ACCESS', GOAL_CONFIG_EDIT: 'GOAL_CONFIG_EDIT' },
+      usePrivilegeStore: () => ({ hasAnyPrivilege: () => true }) },
     '../services/goalService': { goalService: {
       get(id) { const request = deferred(); requests.set(id, request); return request.promise },
       async listCycles(id) { return { items: [{ id: `cycle-${id}` }], page: 1, page_size: 50, total: 1 } },

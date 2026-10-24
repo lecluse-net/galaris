@@ -458,7 +458,8 @@ async def test_ambiguous_room_answer_requires_reference(db) -> None:
 
 
 @pytest.mark.asyncio
-async def test_failed_handler_is_replayed_from_persistent_resolution(db) -> None:
+@pytest.mark.parametrize("revoked", [False, True])
+async def test_failed_handler_is_replayed_from_persistent_resolution(db, revoked) -> None:
     from app.messenger import interactions
 
     await _reset_for_tests()
@@ -471,23 +472,83 @@ async def test_failed_handler_is_replayed_from_persistent_resolution(db) -> None
         if calls == 1:
             raise RuntimeError("temporary")
 
-    register_choice_handler("retry-handler", flaky_handler)
+    participant = "alice"
+    if revoked:
+        from sqlalchemy import select, delete
+        from core.authorize import Assignment, Privilege, Role, RolePrivilege
+        from core.user import UserModel
+        user = UserModel(email=f"synthetic-choice-{uuid4()}@example.test", hashed_password="unused", is_active=True)
+        privilege = await db.scalar(select(Privilege).where(Privilege.code == "PERMISSION_DECIDE"))
+        role = Role(code=f"synthetic-choice-{uuid4()}", privileges=[privilege])
+        db.add_all([user, role])
+        await db.flush()
+        db.add(Assignment(user_id=user.id, role_id=role.id))
+        await db.flush()
+        participant = f"user:{user.id}"
+    register_choice_handler("retry-handler", flaky_handler,
+        required_privileges=("PERMISSION_DECIDE",) if revoked else ())
     pending = await create_choice(
         _FakeMessenger(),  # type: ignore[arg-type]
         agent_id=7,
         room_id="room-1",
+        user_id=participant,
         request=ChoiceRequest(kind="retry-handler", title="Retry", free_text=True),
     )
-    assert await resolve_from_message(_incoming("ok"), agent_id=7) is not None
+    assert await resolve_from_message(_incoming("ok", user_id=participant), agent_id=7) is not None
 
     record = await db.get(Interaction, pending.id)
     assert record is not None and record.status == "PROCESSING"
     record.processing_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    if revoked:
+        await db.execute(delete(RolePrivilege).where(RolePrivilege.role_id == role.id))
     await db.commit()
 
     await interactions.retry_pending_interactions()
 
     await db.refresh(record)
+    if revoked:
+        assert calls == 1 and record.status == "PENDING" and record.resolution is None
+        db.add(RolePrivilege(role_id=role.id, privilege_id=privilege.id))
+        await db.commit()
+        await interactions.retry_pending_interactions()
+        assert calls == 1  # Restoring authority never replays the revoked answer.
+        assert await resolve_from_message(_incoming("ok", user_id=participant), agent_id=7) is not None
+        await db.refresh(record)
     assert calls == 2
     assert record.status == "RESOLVED"
     await _reset_for_tests()
+
+
+@pytest.mark.asyncio
+async def test_revocation_cannot_reopen_a_choice_completed_during_its_authority_check(db, monkeypatch) -> None:
+    from sqlalchemy import update
+    from app.messenger import interactions
+
+    async def handler(_choice, _resolution):
+        raise AssertionError("A revoked answer must never dispatch")
+
+    register_choice_handler("synthetic-terminal-race", handler, required_privileges=("PERMISSION_DECIDE",))
+    pending = await create_choice(_FakeMessenger(), agent_id=7, room_id="room-1",
+        request=ChoiceRequest(kind="synthetic-terminal-race", title="Synthetic review", free_text=True))
+    record = await db.get(Interaction, pending.id)
+    token = uuid4()
+    record.status = "PROCESSING"
+    record.processing_token = token
+    record.resolution = {"interaction_id": str(record.id), "kind": record.kind,
+        "option_id": None, "metadata": {}, "text": "Synthetic answer"}
+    await db.commit()
+    original = interactions._recipient_authorized
+
+    async def finish_while_checking(choice):
+        permitted = await original(choice)
+        assert not permitted
+        # An independent review completes while the authorization query yields.
+        await db.execute(update(Interaction).where(Interaction.id == choice.id).values(
+            status="RESOLVED", resolved_at=datetime.now(timezone.utc), processing_token=None))
+        await db.commit()
+        return permitted
+
+    monkeypatch.setattr(interactions, "_recipient_authorized", finish_while_checking)
+    assert not await interactions._deliver_record(record.id, token)
+    await db.refresh(record)
+    assert record.status == "RESOLVED" and record.processing_token is None

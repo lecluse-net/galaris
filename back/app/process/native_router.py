@@ -184,7 +184,7 @@ async def native_transfer_owner(code: str, data: OwnerUpdate) -> dict[str, objec
 
 
 @routes.get("/resource-preview")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def native_resource_preview(response: Response, uri: str = Query(max_length=4096),
     agent_id: int | None = Query(default=None, gt=0), thumbnail: bool = False) -> dict[str, Any]:
     from .resource_previews import process_resource_preview
@@ -197,7 +197,7 @@ async def native_resource_preview(response: Response, uri: str = Query(max_lengt
 
 
 @routes.get("/resource-options")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def native_resource_options(response: Response, query: str = Query(default="", max_length=200),
     agent_id: int | None = Query(default=None, gt=0)) -> list[dict[str, str]]:
     from .resource_previews import process_resource_options
@@ -287,7 +287,7 @@ async def native_run_list(code: str | None = None, page: int = Query(1, ge=1),
 
 
 @routes.get("/runs/{identity}")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def native_inspect_run(identity: UUID, page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500),
                       after_event: int = Query(0, ge=0), agent_id: int | None = Query(default=None, gt=0)) -> dict[str, Any]:
     with domain_errors():
@@ -299,7 +299,7 @@ async def native_inspect_run(identity: UUID, page: int = Query(1, ge=1), page_si
 
 
 @routes.get("/runs/{identity}/nodes/{node_identity}")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def native_inspect_node(identity: UUID, node_identity: UUID, agent_id: int | None = None) -> dict[str, Any]:
     with domain_errors():
         return await runs.inspect_occurrence(identity, node_identity, await _preview_actor(agent_id))
@@ -314,7 +314,7 @@ async def native_rename_run_file(identity: UUID, file_id: UUID, data: FileRename
 
 
 @routes.get("/runs/{identity}/files/{file_id}", response_class=FileResponse)
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def native_run_file(identity: UUID, file_id: UUID, agent_id: int | None = None) -> FileResponse:
     from .run_resources import run_file_path
     with domain_errors():
@@ -327,7 +327,7 @@ async def native_run_file(identity: UUID, file_id: UUID, agent_id: int | None = 
 
 
 @routes.get("/runs/{identity}/activities/{node_key}")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def native_activity_occurrences(identity: UUID, node_key: str, body_path: list[str] | None = Query(None),
                                       page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500), agent_id: int | None = None) -> dict[str, Any]:
     with domain_errors():
@@ -335,14 +335,14 @@ async def native_activity_occurrences(identity: UUID, node_key: str, body_path: 
 
 
 @routes.get("/runs/{identity}/children")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def native_run_children(identity: UUID, page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=500), agent_id: int | None = None) -> dict[str, Any]:
     with domain_errors():
         return await runs.children(identity, await _preview_actor(agent_id), page=page, page_size=page_size)
 
 
 @routes.get("/runs/{identity}/metrics")
-@authorize(privileges=[Privileges.PROCESS_READ, Privileges.MEMORY_ACCESS, Privileges.PROCESS_ADMIN])
+@authorize(privileges=[Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN])
 async def native_metrics(identity: UUID, agent_id: int | None = None) -> dict[str, Any]:
     with domain_errors():
         return await runs.run_metrics(identity, await _preview_actor(agent_id))

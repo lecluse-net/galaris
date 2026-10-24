@@ -18,6 +18,7 @@ from core.dbadmin import (
 )
 
 from . import params_service
+from .access import parameter_privileges
 from .models import Param
 from .consts import DEFAULT_PARAMS, Params
 from core.util import encrypt_value
@@ -57,6 +58,7 @@ async def _declared_rows(session: AsyncSession) -> tuple[dict[str, object], ...]
     )))
     for row in rows:
         name = str(row["name"])
+        parameter_privileges(name)  # New declarations must also declare their functional policy.
         if name == Params.WEB_PUSH_VAPID_KEYS:
             stored = await session.scalar(select(Param).where(Param.name == name))
             if stored is not None:

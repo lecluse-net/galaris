@@ -222,7 +222,8 @@ const canOpenTopic = computed(() => (
   Boolean(props.topicId) && (privilegeStore.hasPrivilege(privileges.TOPIC_ACCESS)
   || privilegeStore.hasPrivilege(privileges.TOPIC_EDIT))
 ))
-const canOpenDream = computed(() => privilegeStore.hasPrivilege(privileges.TASK_ACCESS))
+const canOpenDream = computed(() => privilegeStore.hasPrivilege(privileges.DREAM_ACCESS)
+  && privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL))
 const canReassignTopic = computed(() => (
   props.allowTopicChange
   && ['message', 'document', 'dataset'].includes(props.subjectKind || '')

@@ -220,6 +220,8 @@ async def update_settings(data: GoalSettingsUpdate) -> GoalSettingsRead:
         result.model_dump(mode="json"),
         None,
     )
+    from .schemas import GoalRuntimeRead
+    await websocket.emit("goal_runtime", "update", GoalRuntimeRead.model_validate(result.model_dump()).model_dump(mode="json"), None)
     logger.info(
         "Goal runtime settings updated: paused={}, schedule_enabled={}, windows={}",
         config.globally_paused,

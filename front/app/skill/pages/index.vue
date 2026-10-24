@@ -12,7 +12,7 @@
       <q-tab name="skills" icon="psychology" :label="t('skills.tabSkills')" />
       <q-tab name="personal" icon="person" :label="t('skills.personal.tab')" />
       <q-tab
-        v-if="learningEnabled"
+        v-if="learningEnabled && canReadLearned"
         name="learned"
         icon="school"
         :label="t('skills.tabLearned')"
@@ -334,7 +334,7 @@
       <q-tab-panel v-if="canAssign" name="authorizations" class="q-px-none">
         <SkillAuthorizationManager />
       </q-tab-panel>
-      <q-tab-panel v-if="learningEnabled" name="learned" class="q-px-none">
+      <q-tab-panel v-if="learningEnabled && canReadLearned" name="learned" class="q-px-none">
         <LearnedSkillManager />
       </q-tab-panel>
     </q-tab-panels>
@@ -670,6 +670,7 @@ const canEdit = computed(() => (
   && privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL)
 ))
 const canAssign = computed(() => privilegeStore.hasPrivilege(privileges.SKILL_ASSIGN))
+const canReadLearned = computed(() => privilegeStore.hasAnyPrivilege([privileges.SKILL_ACCESS, privileges.SKILL_EDIT]))
 const learningEnabled = ref(false)
 const allowedTabs = ['skills', 'personal', 'learned', 'authorizations']
 const tab = ref(
@@ -680,6 +681,9 @@ const tab = ref(
 
 watch(canAssign, allowed => {
   if (!allowed && tab.value === 'authorizations') tab.value = 'skills'
+}, { immediate: true })
+watch(canReadLearned, allowed => {
+  if (!allowed && tab.value === 'learned') tab.value = 'skills'
 }, { immediate: true })
 
 async function refreshCatalogue(): Promise<void> {

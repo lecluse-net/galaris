@@ -33,7 +33,7 @@
       </template>
       <template #body-cell-actions="props">
         <q-td :props="props">
-          <template v-if="tab === 'pending' && canDelete && props.row.can_answer">
+          <template v-if="tab === 'pending' && canAnswer && props.row.can_answer">
             <q-btn v-for="option in props.row.options" :key="option.id" outline :label="option.label"
               :loading="answering === props.row.id" :disable="answering !== null" @click="answer(props.row.id, option.id)" class="q-ma-xs" />
           </template>
@@ -42,12 +42,12 @@
       </template>
       <template #item="props"><div class="col-12 q-pa-xs"><q-card flat bordered>
         <q-card-section>{{ props.row.question }}<div>{{ agentLabel(props.row.agent_id) }}</div></q-card-section>
-        <q-card-actions v-if="canDelete">
-          <template v-if="tab === 'pending' && props.row.can_answer">
+        <q-card-actions v-if="canDelete || canAnswer">
+          <template v-if="tab === 'pending' && canAnswer && props.row.can_answer">
             <q-btn v-for="option in props.row.options" :key="option.id" outline :label="option.label"
               :loading="answering === props.row.id" :disable="answering !== null" @click="answer(props.row.id, option.id)" />
           </template>
-          <q-btn v-else-if="tab === 'granted'" color="negative" :label="t('permissions.delete')" @click="selected = props.row" />
+          <q-btn v-else-if="tab === 'granted' && canDelete" color="negative" :label="t('permissions.delete')" @click="selected = props.row" />
         </q-card-actions>
       </q-card></div></template>
     </q-table>
@@ -82,7 +82,8 @@ import RuntimePermissions from '../components/RuntimePermissions.vue'
 
 const { t } = useI18n()
 const authorize = usePrivilegeStore()
-const canDelete = computed(() => authorize.hasPrivilege(privileges.CONNECTION_EDIT))
+const canAnswer = computed(() => authorize.hasPrivilege(privileges.PERMISSION_DECIDE))
+const canDelete = computed(() => authorize.hasPrivilege(privileges.PERMISSION_REVOKE))
 const agents = ref<AgentSelectionOption[]>([])
 const agentId = ref<number | null>(null)
 const permissionsVersion = ref(0)

@@ -417,7 +417,7 @@ const { t } = useI18n()
 const llmStore = useLLMProviderStore()
 const profileStore = useLLMProfileStore()
 const privilegeStore = usePrivilegeStore()
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.PARAMS_EDIT))
+const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.LLM_PROFILE_EDIT))
 
 const initialLoading = ref(true)
 const savingField = ref<EditableProfileField | null>(null)

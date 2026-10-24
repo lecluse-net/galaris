@@ -18,7 +18,7 @@ for (const width of [390, 1440]) {
     await jsonRoute(page, '**/api/tools/action-authorizations?*', { items: [row], total: 1 })
     await jsonRoute(page, '**/api/tools/action-authorizations/mail-review', row)
     await mount(page, 'app/connection/components/ActionAuthorizations.vue', {
-      locale: 'fr', privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'],
+      locale: 'fr', privileges: ['PERMISSION_ACCESS', 'PERMISSION_DECIDE', 'PERMISSION_REVOKE'],
     })
     await page.getByRole('button', { name: 'Examiner la demande' }).click()
     const dialog = page.getByRole('dialog')
@@ -59,7 +59,7 @@ for (const [locale, reviewName, allowName] of [
       return route.fulfill({ json: { accepted: true } })
     })
     await mount(page, 'app/connection/components/ActionAuthorizations.vue', {
-      locale, privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'],
+      locale, privileges: ['PERMISSION_ACCESS', 'PERMISSION_DECIDE', 'PERMISSION_REVOKE'],
     })
     await expect(page.getByText(row.preview, { exact: true })).toBeVisible()
     expect(queries[0].limit).toBe('50')
@@ -81,7 +81,7 @@ test('mobile viewers can inspect a pending action without answering for another 
     capability_kind: 'tool', capability_name: 'shell', status: 'pending', preview: 'Synthetic command', can_answer: false }
   await jsonRoute(page, '**/api/tools/action-authorizations?*', { items: [row], total: 1 })
   await jsonRoute(page, '**/api/tools/action-authorizations/read-only', row)
-  await mount(page, 'app/connection/components/ActionAuthorizations.vue', { privileges: ['CONNECTION_ACCESS'] })
+  await mount(page, 'app/connection/components/ActionAuthorizations.vue', { privileges: ['PERMISSION_ACCESS'] })
   await page.getByRole('button', { name: 'Review request' }).click()
   await expect(page.getByRole('dialog')).toContainText(row.preview)
   await expect(page.getByRole('button', { name: 'Allow this action' })).toHaveCount(0)
@@ -110,7 +110,7 @@ for (const [locale, inspect, functionAlways, runtimeAlways] of [
       return route.fulfill({ json: { accepted: true } })
     })
     await mount(page, 'app/connection/components/ActionAuthorizations.vue', {
-      locale, privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'],
+      locale, privileges: ['PERMISSION_ACCESS', 'PERMISSION_DECIDE', 'PERMISSION_REVOKE'],
     })
     await page.getByRole('button', { name: inspect, exact: true }).click()
     await expect(page.getByRole('dialog')).toContainText('topic_create')
@@ -143,7 +143,7 @@ test('remembered Harness action types can be revoked with error recovery and reo
     return route.fulfill({ json: { revoked: true } })
   })
   await page.setViewportSize({ width: 390, height: 844 })
-  await mount(page, 'app/connection/components/RuntimePermissions.vue', { privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT'] })
+  await mount(page, 'app/connection/components/RuntimePermissions.vue', { privileges: ['PERMISSION_ACCESS', 'PERMISSION_DECIDE', 'PERMISSION_REVOKE'] })
   await expect(page.getByText('deepseek_harness · write_file')).toBeVisible()
   await testInfo.attach('remembered-runtime-mobile', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' })
   await page.getByRole('button', { name: 'Revoke consent', exact: true }).click()

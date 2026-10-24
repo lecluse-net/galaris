@@ -39,7 +39,7 @@
           <div class="text-caption text-grey-7 q-mt-xs">{{ runtimeDescription }}</div>
         </div>
         <div
-          v-if="canEdit && canManageAllAgents"
+          v-if="canReadGoalConfiguration"
           class="goal-runtime-actions col-12 col-md-auto row q-gutter-sm"
         >
           <q-btn
@@ -52,6 +52,7 @@
           />
           <q-btn
             dense
+            v-if="canConfigureGoals && canManageAllAgents"
             :color="store.settings.globally_paused ? 'positive' : 'negative'"
             :icon="store.settings.globally_paused ? 'play_circle' : 'pause_circle'"
             :label="store.settings.globally_paused
@@ -591,6 +592,7 @@
               v-model:enabled="globalScheduleEnabledDraft"
               v-model:slots="globalScheduleDraft"
               scope="global"
+              :readonly="!canConfigureGoals || !canManageAllAgents"
             />
           </q-card-section>
           <q-separator />
@@ -601,7 +603,7 @@
               type="submit"
               :label="t('common.save')"
               :loading="store.settingsSaving"
-              :disable="!canSaveGlobalSchedule"
+              :disable="!canConfigureGoals || !canManageAllAgents || !canSaveGlobalSchedule"
             />
           </q-card-actions>
         </q-form>
@@ -1296,8 +1298,7 @@ import {
 import { apiErrorDetail, isCancelledRequest } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { useAuthStore } from '@/core/user'
-import { useAgentStore } from '@/app/agent/stores/agentStore'
-import { AgentSelect, useAgentSelectionStore } from '@/app/agent'
+import { AgentSelect, getAgentSelection, useAgentSelectionStore, type AgentSelectionOption } from '@/app/agent'
 import GoalScheduleEditor from '../components/GoalScheduleEditor.vue'
 import { goalService } from '../services/goalService'
 import {
@@ -1369,11 +1370,14 @@ const route = useRoute()
 const { previewGoalId } = defineProps<{ previewGoalId?: string }>()
 const emit = defineEmits<{ close: [] }>()
 const store = previewGoalId ? reactive(createGoalState()) : useGoalStore()
-const agentStore = useAgentStore()
+const selectableAgents = ref<AgentSelectionOption[]>([])
 const agentSelectionStore = useAgentSelectionStore()
 const privilegeStore = usePrivilegeStore()
 const authStore = useAuthStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.GOAL_EDIT))
+const canReadGoals = computed(() => privilegeStore.hasAnyPrivilege([privileges.GOAL_ACCESS, privileges.GOAL_EDIT]))
+const canReadGoalConfiguration = computed(() => privilegeStore.hasAnyPrivilege([privileges.GOAL_CONFIG_ACCESS, privileges.GOAL_CONFIG_EDIT]))
+const canConfigureGoals = computed(() => privilegeStore.hasPrivilege(privileges.GOAL_CONFIG_EDIT))
 const canManageAllAgents = computed(() => (
   privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL)
 ))
@@ -1382,7 +1386,7 @@ const canViewLlm = computed(() => (
   || privilegeStore.hasPrivilege(privileges.LLM_PROVIDER_EDIT)
 ))
 const canConfigureTrackingLlm = computed(() => (
-  canViewLlm.value && privilegeStore.hasPrivilege(privileges.PARAMS_EDIT)
+  canViewLlm.value && privilegeStore.hasPrivilege(privileges.LLM_PROFILE_EDIT)
 ))
 const canViewTasks = computed(() => (
   privilegeStore.hasPrivilege(privileges.TASK_ACCESS)
@@ -1426,8 +1430,8 @@ function invalidateMessengerSearch(): void {
 watch(() => form.agentId, invalidateMessengerSearch, { flush: 'sync' })
 watch(goalDialogOpen, open => { if (!open) invalidateMessengerSearch() }, { flush: 'sync' })
 
-const agentOptions = computed(() => agentStore.sortedAgents.map(agent => ({
-  label: `${agent.first_name} ${agent.last_name}`.trim() || agent.code,
+const agentOptions = computed(() => selectableAgents.value.map(agent => ({
+  label: agent.label,
   value: agent.id,
   hasAvatar: agent.has_avatar,
 })))
@@ -1496,7 +1500,7 @@ const canSaveGlobalSchedule = computed(() => (
 
 const globalAllowedSlots = computed<GoalScheduleSlots | undefined>(() => {
   const settings = store.settings
-  if (!settings?.schedule_enabled) return undefined
+  if (!canReadGoalConfiguration.value || !settings?.schedule_enabled) return undefined
   return goalScheduleWindowsToSlots(settings.schedule)
 })
 
@@ -1735,7 +1739,7 @@ function resetForm(): void {
   Object.assign(form, {
     title: '',
     description: '',
-    agentId: agentSelectionStore.defaultAgentId(agentStore.agents),
+    agentId: agentSelectionStore.defaultAgentId(selectableAgents.value),
     messengerReferrer: null,
     referrerMaxReminders: 1,
     triggerMode: 'TEMPORAL_DEFAULT' as GoalTriggerMode,
@@ -2129,22 +2133,32 @@ function openTask(taskId: string): void {
   void router.push({ path: '/task', query: { task_id: taskId } })
 }
 
-onMounted(async () => {
-  store.subscribe()
-  try {
-    await Promise.all([
-      ...(!previewGoalId ? [store.fetchGoals(0)] : []),
-      store.fetchTree(),
-      store.fetchSettings(),
-      agentStore.fetchAgents(),
-    ])
-    if (disposed) return
-    registerSettingsRefresh(() => {
-      void store.fetchSettings().catch(() => undefined)
-    }, 60_000)
-  } catch (error) {
-    notifyError(error)
-  }
+onMounted(() => {
+  watch([() => privilegeStore.loaded, canReadGoals, canReadGoalConfiguration], async ([loaded, goals, configuration]) => {
+    if (!loaded || disposed) return
+    if (!goals && !configuration) {
+      store.unsubscribe()
+      store.goals = []
+      store.treeGoals = []
+      store.settings = null
+      return
+    }
+    store.subscribe()
+    try {
+      await Promise.all([
+        ...(canReadGoals.value && !previewGoalId ? [store.fetchGoals(0)] : []),
+        ...(canReadGoals.value ? [store.fetchTree()] : []),
+        store.fetchSettings(),
+        ...(canReadGoals.value ? [getAgentSelection('management').then(options => { selectableAgents.value = options })] : []),
+      ])
+      if (disposed) return
+      registerSettingsRefresh(() => {
+        if (privilegeStore.loaded && (canReadGoals.value || canReadGoalConfiguration.value)) void store.fetchSettings().catch(() => undefined)
+      }, 60_000)
+    } catch (error) {
+      notifyError(error)
+    }
+  }, { immediate: true })
 })
 
 onUnmounted(() => {

@@ -10,7 +10,7 @@ const navigation: NavigationTree = {
                 to: '/agent',
                 order: 20,
                 description: 'nav.agent_desc',
-                privileges: [privileges.AGENT_ACCESS],
+                privileges: [privileges.AGENT_ACCESS, privileges.AGENT_EDIT],
             }
         }
     }

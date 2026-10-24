@@ -123,6 +123,9 @@ export interface HarnessTaskBlockers {
 }
 
 export const harnessService = {
+    pipelineOptions(): Promise<AxiosResponse<Pick<HarnessExecutionConfiguration, 'provider_code' | 'label' | 'pipeline_policy'>[]>> {
+        return api.get('/harnesses/pipeline-options')
+    },
     executionConfigurations(): Promise<AxiosResponse<HarnessExecutionConfiguration[]>> {
         return api.get('/harnesses/execution-configurations')
     },

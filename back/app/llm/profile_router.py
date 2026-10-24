@@ -63,7 +63,7 @@ def _update_values(payload: LlmProfileUpdate) -> dict[str, str | None] | None:
 
 
 @router.get("", response_model=LlmProfileListResponse)
-@authorize(privileges=[Privileges.PARAMS_ACCESS, Privileges.PARAMS_EDIT])
+@authorize(privileges=[Privileges.LLM_PROFILE_ACCESS, Privileges.LLM_PROFILE_EDIT])
 async def list_profiles() -> LlmProfileListResponse:
     """List every profile for browsing without applying anything."""
     profiles = await profile_service.list_profiles()
@@ -74,7 +74,7 @@ async def list_profiles() -> LlmProfileListResponse:
 
 
 @router.get("/{profile_id}", response_model=LlmProfileOut)
-@authorize(privileges=[Privileges.PARAMS_ACCESS, Privileges.PARAMS_EDIT])
+@authorize(privileges=[Privileges.LLM_PROFILE_ACCESS, Privileges.LLM_PROFILE_EDIT])
 async def get_profile(profile_id: int) -> LlmProfileOut:
     """Return one profile with its stored values."""
     profile = await profile_service.get_profile(profile_id)
@@ -84,7 +84,7 @@ async def get_profile(profile_id: int) -> LlmProfileOut:
 
 
 @router.post("", response_model=LlmProfileOut, status_code=status.HTTP_201_CREATED)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.LLM_PROFILE_EDIT)
 async def create_profile(profile_create: LlmProfileCreate) -> LlmProfileOut:
     """Create a profile with a label; values are edited afterwards."""
     logger.info("Creating LLM profile '{}'", profile_create.label)
@@ -96,7 +96,7 @@ async def create_profile(profile_create: LlmProfileCreate) -> LlmProfileOut:
 
 
 @router.put("/{profile_id}", response_model=LlmProfileOut)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.LLM_PROFILE_EDIT)
 async def update_profile(
     profile_id: int, profile_update: LlmProfileUpdate
 ) -> LlmProfileOut:
@@ -115,7 +115,7 @@ async def update_profile(
 
 
 @router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.LLM_PROFILE_EDIT)
 async def delete_profile(profile_id: int) -> None:
     """Delete a profile. Deleting the last remaining profile is forbidden."""
     try:
@@ -130,7 +130,7 @@ async def delete_profile(profile_id: int) -> None:
     "/{profile_id}/use",
     response_model=LlmProfileUseResponse,
 )
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.LLM_PROFILE_EDIT)
 async def use_profile(profile_id: int) -> LlmProfileUseResponse:
     """Make the profile the current one (pointer only, no value copy)."""
     try:

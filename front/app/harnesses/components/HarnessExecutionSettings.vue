@@ -15,17 +15,17 @@
         <div class="row q-col-gutter-md q-mt-sm">
           <div class="col-12 col-md-6">
             <q-select v-model="policy.disabled_capabilities" multiple use-chips emit-value map-options outlined
-              :options="capabilityOptions" :disable="saving" :label="t('harnesses.policy.disabled')" />
+              :options="capabilityOptions" :disable="saving || !canEdit" :label="t('harnesses.policy.disabled')" />
           </div>
           <div v-for="field in fields" :key="field" class="col-12 col-md-6">
-            <q-input v-model.number="policy[field]" type="number" outlined :disable="saving"
+            <q-input v-model.number="policy[field]" type="number" outlined :disable="saving || !canEdit"
               :step="isSize(field) ? 0.000001 : 'any'"
               :label="t(`harnesses.policy.${field}`)" :hint="isOptional(field) ? t('harnesses.policy.optional') : undefined" />
           </div>
         </div>
         <p v-if="saveFailed" class="q-mt-md" role="alert">{{ t('harnesses.policy.saveError') }}</p>
         <p v-if="saved" class="q-mt-md" role="status">{{ t('harnesses.policy.saved') }}</p>
-        <q-btn class="q-mt-md" type="submit" color="primary" :loading="saving" :label="t('common.save')" />
+        <q-btn v-if="canEdit" class="q-mt-md" type="submit" color="primary" :loading="saving" :label="t('common.save')" />
       </q-form>
     </div>
       <q-banner v-if="!loading && !failed && !availableConfigurations.length">{{ t('harnesses.preferences.noPolicies') }}</q-banner>
@@ -35,6 +35,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { sizeInMegabytes, sizeFromMegabytes } from '@/core/util'
 import { harnessService, type HarnessExecutionConfiguration, type HarnessExecutionPolicy } from '../services/harnessService'
 
@@ -42,6 +43,9 @@ const { providerCode } = defineProps<{
   providerCode?: string
 }>()
 const { t, te } = useI18n()
+const privilegeStore = usePrivilegeStore()
+const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.HARNESS_CONFIG_EDIT)
+  && privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL))
 const configurations = ref<HarnessExecutionConfiguration[]>([])
 const code = ref('')
 const loading = ref(false)
@@ -97,7 +101,7 @@ async function load(): Promise<void> {
 }
 
 async function save(): Promise<void> {
-  if (!selected.value || !policy.value) return
+  if (!canEdit.value || !selected.value || !policy.value) return
   const ticket = generation
   const current = selected.value
   const update = { ...policy.value }

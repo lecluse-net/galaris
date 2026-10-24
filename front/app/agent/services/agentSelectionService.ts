@@ -7,6 +7,7 @@ export interface AgentSelectionOption {
   id: number
   label: string
   has_avatar: boolean
+  driver?: string | null
 }
 
 const selections = createSessionReadCache<AgentSelectionOption[]>({ sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration, group: 'agent-selection', maxAgeMs: 0, maxEntries: 0 })

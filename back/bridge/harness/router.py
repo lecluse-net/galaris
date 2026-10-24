@@ -17,32 +17,32 @@ router = APIRouter(prefix="/harness-manager", tags=["harness-manager"])
 
 
 @router.get("/diagnostics", response_model=ManagerDiagnostics)
-@authorize(privileges=[Privileges.PARAMS_ACCESS, Privileges.PARAMS_EDIT])
+@authorize(privileges=[Privileges.HARNESS_CONFIG_ACCESS, Privileges.HARNESS_CONFIG_EDIT])
 async def manager_diagnostics() -> ManagerDiagnostics:
     return await diagnose()
 
 
 @router.get("/configuration", response_model=ManagerConfiguration)
-@authorize(privileges=[Privileges.PARAMS_ACCESS, Privileges.PARAMS_EDIT])
+@authorize(privileges=[Privileges.HARNESS_CONFIG_ACCESS, Privileges.HARNESS_CONFIG_EDIT])
 async def read_configuration() -> ManagerConfiguration:
     return configuration()
 
 
 @router.put("/configuration", response_model=ManagerConfiguration)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.HARNESS_CONFIG_EDIT)
 async def update_configuration(data: ManagerConfigurationUpdate) -> ManagerConfiguration:
     return await save_configuration(data)
 
 
 @router.post("/generate-secret")
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.HARNESS_CONFIG_EDIT)
 async def generate_secret(response: Response) -> dict[str, str]:
     response.headers["Cache-Control"] = "no-store"
     return {"secret": Fernet.generate_key().decode("ascii")}
 
 
 @router.post("/environment", response_class=Response)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.HARNESS_CONFIG_EDIT)
 async def manager_environment(data: ManagerHostSetup) -> Response:
     try:
         content = export_environment(data)
@@ -68,19 +68,19 @@ def _archive_response(release: Release, *, configured: bool = False) -> Response
 
 
 @router.get("/release", response_model=ReleaseManifest)
-@authorize(privileges=[Privileges.PARAMS_ACCESS, Privileges.PARAMS_EDIT])
+@authorize(privileges=[Privileges.HARNESS_CONFIG_ACCESS, Privileges.HARNESS_CONFIG_EDIT])
 def release_manifest() -> ReleaseManifest:
     return _release().manifest
 
 
 @router.get("/release.zip", response_class=Response)
-@authorize(privileges=[Privileges.PARAMS_ACCESS, Privileges.PARAMS_EDIT])
+@authorize(privileges=[Privileges.HARNESS_CONFIG_ACCESS, Privileges.HARNESS_CONFIG_EDIT])
 def release_archive() -> Response:
     return _archive_response(_release())
 
 
 @router.post("/installation.zip", response_class=Response)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.HARNESS_CONFIG_EDIT)
 def installation_archive(data: ManagerHostSetup) -> Response:
     try:
         environment = export_environment(data)

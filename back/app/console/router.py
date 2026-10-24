@@ -171,13 +171,13 @@ _ADMIN_OPERATIONS = frozenset({
 
 
 @router.get("/executor/availability", response_model=ExecutorAvailability)
-@authorize(privileges=Privileges.CONSOLE_ACCESS)
+@authorize(privileges=[Privileges.CONSOLE_ACCESS, Privileges.CONSOLE_ADMIN])
 async def executor_availability() -> ExecutorAvailability:
     return ExecutorAvailability(in_use=await is_embedded_executor_in_use())
 
 
 @router.get("/executor/status", response_model=ExecutorResponse)
-@authorize(privileges=Privileges.CONSOLE_ACCESS)
+@authorize(privileges=[Privileges.CONSOLE_ACCESS, Privileges.CONSOLE_ADMIN])
 async def executor_status() -> ExecutorResponse:
     await _require_global_scope()
     try:

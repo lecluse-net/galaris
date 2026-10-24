@@ -90,7 +90,7 @@ const props = withDefaults(defineProps<{
 const { t, tm } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.PARAMS_EDIT))
+const canEdit = computed(() => privilegeStore.hasPrivilege(props.contribution.area === 'harness' ? privileges.HARNESS_CONFIG_EDIT : props.contribution.area === 'process' ? privileges.PROCESS_CONFIG_EDIT : privileges.MESSAGING_CONFIG_EDIT))
 const testing = ref(false)
 const testStatus = ref<{ ok: boolean; message: string } | null>(null)
 const setupSteps = computed(() => {

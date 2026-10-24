@@ -248,7 +248,10 @@ async def test_global_settings_update_refreshes_stale_cache(
         "schedule_enabled": False,
         "schedule": [],
     }
-    emit.assert_awaited_once()
+    events = {call.args[0]: call.args[2] for call in emit.await_args_list}
+    assert set(events) == {"goal_settings", "goal_runtime"}
+    assert "schedule" in events["goal_settings"]
+    assert "schedule" not in events["goal_runtime"]
 
 
 @pytest.mark.asyncio

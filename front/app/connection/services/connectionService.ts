@@ -1,5 +1,6 @@
 import api, { sessionGeneration, SupersededSessionError } from '@/core/api'
 import type { AxiosRequestConfig, AxiosResponse } from 'axios'
+import type { Tool } from '@/app/tools'
 import { CONNECTIONS_CHANGED_EVENT } from '../events'
 
 function connectionsChanged<T>(response: T): T {
@@ -21,6 +22,17 @@ export interface Connection {
 export interface ConnectionOverview extends Connection {
     params: Record<string, unknown>
     configured_params: string[]
+}
+
+export interface PermissionConnectionOption extends Connection {
+    tool_code: string
+    tool_label: string
+    tool_can_edit: boolean
+    tool_can_disable: boolean
+}
+
+export async function permissionConnectionOptions(skip: number, limit: number): Promise<PermissionConnectionOption[]> {
+    return (await api.get<PermissionConnectionOption[]>('/connections/permission-options', { params: { skip, limit } })).data
 }
 
 /** Result of saving a draft or adopting an existing connection for an action. */
@@ -196,6 +208,9 @@ export function saveFunctionPolicy(
 // =============================================================================
 
 export default {
+    async getToolOptions(): Promise<Tool[]> {
+        return (await api.get<Tool[]>('/connections/tool-options')).data
+    },
     getConnectionOverviews(skip = 0, limit = 500): Promise<AxiosResponse<ConnectionOverview[]>> {
         return api.get('/connections/overview', { params: { skip, limit } })
     },

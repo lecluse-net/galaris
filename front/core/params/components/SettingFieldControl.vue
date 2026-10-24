@@ -129,7 +129,8 @@ import type { QInputProps } from 'quasar'
 import { CodeEditor } from '@/core/util'
 import type { SettingField } from '../settingsTypes'
 import { useParamsStore } from '../stores/paramsStore'
-import { privileges, usePrivilegeStore } from '@/core/authorize'
+import { usePrivilegeStore } from '@/core/authorize'
+import { parameterEditPrivilege } from '../access'
 import PromptSettingEditor from './PromptSettingEditor.vue'
 
 const props = defineProps<{ field: SettingField }>()
@@ -137,7 +138,7 @@ const { t } = useI18n()
 const $q = useQuasar()
 const paramsStore = useParamsStore()
 const privilegeStore = usePrivilegeStore()
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.PARAMS_EDIT))
+const canEdit = computed(() => privilegeStore.hasPrivilege(parameterEditPrivilege(props.field.name)))
 const localValue = ref<string | null>('')
 const saving = ref(false)
 

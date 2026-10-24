@@ -53,6 +53,12 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
 ## Plans retirés et suivi conservé
 
+- **Réorganisation RBAC** : garde central, 24 droits fonctionnels, menus/onglets,
+  paramètres par domaine, transports et projection unique des rôles réalisés ; contrat dans
+  [0233](../decisions/0233-functional-domain-privileges.md), conclusions dans
+  [l'audit](../audits/2026-10-24-rbac-reorganisation.md) et garanties dans le
+  [catalogue de tests](../../docs/fr/dev/functional-tests.md). Aucun rôle ou regroupement
+  personnalisé n'est remplacé par un modèle imposé.
 - **Portée et provenance d'exécution** : contrat v1, admission/héritage/amendement,
   validation du plan, préflight durable et activité réalisés dans
   [0170](../decisions/0170-execution-scope-and-durable-controls.md) ; cibles d'écriture

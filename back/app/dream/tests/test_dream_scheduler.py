@@ -1456,7 +1456,7 @@ def test_monitoring_routes_require_task_access() -> None:
         read_dream_receipt,
         read_dream_receipts,
     ):
-        assert endpoint._authorize_meta["privileges"] == [Privileges.TASK_ACCESS]  # pyright: ignore[reportFunctionMemberAccess]
+        assert endpoint._authorize_meta["privileges"] == [Privileges.DREAM_ACCESS]  # pyright: ignore[reportFunctionMemberAccess]
 
 
 @pytest.mark.asyncio

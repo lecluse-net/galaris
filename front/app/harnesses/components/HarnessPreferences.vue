@@ -2,7 +2,7 @@
   <section class="harness-preferences" :aria-label="t('harnessSettings.title')">
     <q-tabs :model-value="tab" align="left" active-color="primary" indicator-color="primary" class="text-primary"
       @update:model-value="selectTab">
-      <q-tab v-if="canEdit" name="internal" icon="smart_toy" :label="t('harnesses.preferences.internal')" />
+      <q-tab name="internal" icon="smart_toy" :label="t('harnesses.preferences.internal')" />
       <q-tab name="managed" icon="dns" :label="t('harnesses.preferences.managed')" />
       <q-tab name="external" icon="cloud" :label="t('harnesses.preferences.external')" />
     </q-tabs>
@@ -15,7 +15,7 @@
       <template #action><q-btn flat :label="t('common.retry')" @click="load" /></template>
     </q-banner>
     <q-tab-panels v-show="!catalogTab || (!loading && !failed)" :model-value="tab" keep-alive animated>
-      <q-tab-panel v-if="canEdit" name="internal" :aria-label="t('harnesses.preferences.internal')">
+      <q-tab-panel name="internal" :aria-label="t('harnesses.preferences.internal')">
         <p>{{ t('harnesses.preferences.internalHint') }}</p>
         <h2 class="text-h6 q-mt-none">{{ t('harnesses.inputFiles.title') }}</h2>
         <SettingsFields :fields="inputFields" class="q-mb-lg" />
@@ -43,7 +43,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { SettingsFields } from '@/core/params'
 import { harnessService, type HarnessCatalogEntry } from '../services/harnessService'
 import { managedComposeFields } from '../managedSettings'
@@ -56,12 +55,9 @@ import HarnessManagerHelp from './HarnessManagerHelp.vue'
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
-const privilegeStore = usePrivilegeStore()
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.PARAMS_EDIT))
 const tab = computed(() => {
   const requested = route.query.tab
   if (requested === 'managed' || requested === 'external') return requested
-  if (!canEdit.value) return 'managed'
   return 'internal'
 })
 watch(() => route.query.tab, requested => {

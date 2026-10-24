@@ -16,8 +16,8 @@ from .local_file_transport import TemporaryFileTransport
 async def test_browser_rename_delete_files_and_trees_preserve_scope_and_conflicts(client, monkeypatch, tmp_path):
     password = "Synthetic-browser-mutations-123"
     async with get_db_session() as db:
-        read = await db.scalar(select(Privilege).where(Privilege.code == "MEMORY_ACCESS"))
-        edit = await db.scalar(select(Privilege).where(Privilege.code == "MEMORY_EDIT"))
+        read = await db.scalar(select(Privilege).where(Privilege.code == "FILE_ACCESS"))
+        edit = await db.scalar(select(Privilege).where(Privilege.code == "FILE_EDIT"))
         roles = [Role(code="synthetic-files-writer", privileges=[read, edit]),
                  Role(code="synthetic-files-reader", privileges=[read])]
         users = [UserModel(email=f"browser-mutations-{index}@example.com", is_active=True,
@@ -57,8 +57,8 @@ async def test_browser_rename_delete_files_and_trees_preserve_scope_and_conflict
     # A file edit privilege cannot bypass the native domain's own mutation authorization.
     for native in ["galaris://skill/synthetic/extra.txt", "data://00000000-0000-4000-8000-000000000001"]:
         native_params = {**params, "uri": native}
-        assert (await client.delete(endpoint, params=native_params, headers=headers[0])).status_code == 404
-        assert (await client.patch(endpoint, params=native_params, json={"name": "New"}, headers=headers[0])).status_code == 404
+        assert (await client.delete(endpoint, params=native_params, headers=headers[0])).status_code == 403
+        assert (await client.patch(endpoint, params=native_params, json={"name": "New"}, headers=headers[0])).status_code == 403
     for name in ["../escape", "dir/name", "dir\\name", ".."]:
         assert (await client.patch(endpoint, params=params, json={"name": name}, headers=headers[0])).status_code == 422
     renamed = await client.patch(endpoint, params=params, json={"name": "New é.txt"}, headers=headers[0])

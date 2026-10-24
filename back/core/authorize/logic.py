@@ -66,3 +66,16 @@ async def check_privilege(
     if not allowed:
         logger.debug("User {} denied access to {}", user.id, privilege_code)
     return allowed
+
+
+async def check_assigned_privilege(user_id: int, code: str, db: AsyncSession) -> bool:
+    """Revalidate a background choice recipient independently of its sender's role.
+
+    HTTP entry points still enforce the caller's active role before dispatch.
+    """
+    user = await db.get(User, user_id, populate_existing=True)
+    token = role_id_ctx.set(None)
+    try:
+        return await check_privilege(user, code, db)
+    finally:
+        role_id_ctx.reset(token)

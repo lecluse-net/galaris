@@ -84,7 +84,12 @@ async def read_topic_keywords() -> list[str]:
 
 @router.get("/refs", response_model=list[TopicRef])
 @authorize(
-    privileges=[Privileges.TASK_ACCESS, Privileges.TOPIC_ACCESS, Privileges.TOPIC_EDIT]
+    privileges=[Privileges.TASK_ACCESS, Privileges.TASK_EDIT, Privileges.TOPIC_ACCESS, Privileges.TOPIC_EDIT,
+        Privileges.CONVERSATION_ACCESS, Privileges.CONVERSATION_CONTROL,
+        Privileges.VOICE_HISTORY_ACCESS, Privileges.VOICE_HISTORY_CONTROL,
+        Privileges.CHAT_ACCESS, Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN,
+        Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN,
+        Privileges.DATASET_READ, Privileges.DATASET_EDIT, Privileges.DATASET_ADMIN]
 )
 async def read_topic_refs(
     ids: list[UUID] = Query(default_factory=list, max_length=500),
@@ -130,6 +135,9 @@ def _mutation_error(exc: Exception) -> HTTPException:
 async def read_topic_memories(topic_id: UUID) -> list[TopicLinkedMemoryRead]:
     try:
         scope = await current_management_scope()
+        user = await get_user_record(scope.user_id)
+        if not await check_privilege(user, [Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN], get_db()):
+            return []
         return await service.list_linked_memories_in_scope(
             topic_id,
             agent_ids=scope.agent_ids,
@@ -146,11 +154,22 @@ async def read_topic_content(
 ) -> TopicContentRead:
     try:
         scope = await current_management_scope()
+        user = await get_user_record(scope.user_id)
+        domains = {
+            "tasks": [Privileges.TASK_ACCESS, Privileges.TASK_EDIT],
+            "text": [Privileges.CONVERSATION_ACCESS, Privileges.CONVERSATION_CONTROL],
+            "voice": [Privileges.VOICE_HISTORY_ACCESS, Privileges.VOICE_HISTORY_CONTROL],
+            "memories": [Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN],
+            "documents": [Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN],
+            "datasets": [Privileges.DATASET_READ, Privileges.DATASET_EDIT, Privileges.DATASET_ADMIN],
+        }
+        allowed = frozenset([name for name, codes in domains.items() if await check_privilege(user, codes, get_db())])
         return await service.get_content(
             topic_id,
             limit=limit,
             agent_ids=scope.agent_ids,
             resource_scope=scope,
+            allowed_sections=allowed,
         )
     except service.TopicNotFoundError as exc:
         raise _mutation_error(exc) from exc

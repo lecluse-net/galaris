@@ -8,7 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Body, HTTPException, Query, status
 
-from core.authorize import Privileges, authorize
+from core.authorize import AssertionContext, BaseAssertion, Privileges, authorize, check_privilege
 from app.agent import current_management_scope
 
 from . import monitoring_service
@@ -24,12 +24,43 @@ from .schemas import (
     DreamRuntimeView,
     DreamTopicAssignmentAudit,
     TopicAssignmentSubjectKind,
-    MemoryDreamAction, MemoryDreamActions, MemoryDreamActionResult,
+    MemoryDreamAction,
+    MemoryDreamActions,
+    MemoryDreamActionResult,
 )
 
 
 router = APIRouter(prefix="/dream", tags=["dream"])
 ReceiptStatus = Literal["running", "retry", "success", "error"]
+
+
+_SUBJECT_PRIVILEGES: dict[str, tuple[str, ...]] = {
+    "document": (Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN),
+    "dataset": (Privileges.DATASET_READ, Privileges.DATASET_EDIT, Privileges.DATASET_ADMIN),
+    "task": (Privileges.TASK_ACCESS, Privileges.TASK_EDIT),
+    "message": (
+        Privileges.CHAT_ACCESS,
+        Privileges.CONVERSATION_ACCESS,
+        Privileges.CONVERSATION_CONTROL,
+    ),
+    "conversation_round": (Privileges.CONVERSATION_ACCESS, Privileges.CONVERSATION_CONTROL),
+    "voice_session": (Privileges.VOICE_HISTORY_ACCESS, Privileges.VOICE_HISTORY_CONTROL),
+}
+_TOPIC_AUDIT_PRIVILEGES = (Privileges.TOPIC_ACCESS, Privileges.TOPIC_EDIT)
+
+
+class TopicAssignmentAssertion(BaseAssertion):
+    async def assert_route(
+        self, route_name: str, params: dict[str, object], context: AssertionContext
+    ) -> bool:
+        del route_name, params
+        if context.request is None or context.user is None or context.db is None:
+            return False
+        subject_kind = context.request.query_params.get("subject_kind", "")
+        required = _SUBJECT_PRIVILEGES.get(subject_kind)
+        return required is not None and await check_privilege(
+            context.user, [*required, *_TOPIC_AUDIT_PRIVILEGES], context.db
+        )
 
 
 def _action_error(exc: Exception) -> HTTPException:
@@ -47,7 +78,9 @@ def _action_error(exc: Exception) -> HTTPException:
 
 @router.get("/memory/{item_id}/actions", response_model=MemoryDreamActions)
 @authorize(privileges=[Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
-async def read_memory_dream_actions(item_id: UUID, agent_id: int = Query(gt=0)) -> MemoryDreamActions:
+async def read_memory_dream_actions(
+    item_id: UUID, agent_id: int = Query(gt=0)
+) -> MemoryDreamActions:
     try:
         return await manual.available_actions(item_id, agent_id, await current_management_scope())
     except Exception as exc:
@@ -56,9 +89,16 @@ async def read_memory_dream_actions(item_id: UUID, agent_id: int = Query(gt=0)) 
 
 @router.post("/memory/{item_id}/actions/{action}", response_model=MemoryDreamActionResult)
 @authorize(privileges=[Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
-async def run_memory_dream_action(item_id: UUID, action: MemoryDreamAction, agent_id: int = Query(gt=0), snapshot: DocumentThumbnailRender | None = Body(default=None)) -> MemoryDreamActionResult:
+async def run_memory_dream_action(
+    item_id: UUID,
+    action: MemoryDreamAction,
+    agent_id: int = Query(gt=0),
+    snapshot: DocumentThumbnailRender | None = Body(default=None),
+) -> MemoryDreamActionResult:
     try:
-        return await manual.run_action(item_id, agent_id, action, await current_management_scope(), snapshot=snapshot)
+        return await manual.run_action(
+            item_id, agent_id, action, await current_management_scope(), snapshot=snapshot
+        )
     except Exception as exc:
         raise _action_error(exc) from exc
 
@@ -72,21 +112,21 @@ async def _require_global_scope() -> None:
 
 
 @router.get("/runtime", response_model=DreamRuntimeView)
-@authorize(privileges=Privileges.TASK_ACCESS)
+@authorize(privileges=Privileges.DREAM_ACCESS)
 async def read_dream_runtime() -> DreamRuntimeView:
     await _require_global_scope()
     return await monitoring_service.get_runtime()
 
 
 @router.get("/overview", response_model=DreamOverview)
-@authorize(privileges=Privileges.TASK_ACCESS)
+@authorize(privileges=Privileges.DREAM_ACCESS)
 async def read_dream_overview() -> DreamOverview:
     await _require_global_scope()
     return await monitoring_service.get_overview()
 
 
 @router.get("/receipts", response_model=DreamReceiptPage)
-@authorize(privileges=Privileges.TASK_ACCESS)
+@authorize(privileges=Privileges.DREAM_ACCESS)
 async def read_dream_receipts(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=500),
@@ -112,18 +152,15 @@ async def read_dream_receipts(
 
 @router.get("/topic-assignment", response_model=DreamTopicAssignmentAudit)
 @authorize(
-    privileges=[
-        Privileges.TASK_ACCESS,
-        Privileges.CHAT_ACCESS,
-        Privileges.TOPIC_ACCESS,
-        Privileges.TOPIC_EDIT,
-        Privileges.MEMORY_ACCESS,
-        Privileges.MEMORY_EDIT,
-        Privileges.MEMORY_ADMIN,
-        Privileges.DATASET_READ,
-        Privileges.DATASET_EDIT,
-        Privileges.DATASET_ADMIN,
-    ]
+    privileges=list(
+        dict.fromkeys(
+            [
+                *_TOPIC_AUDIT_PRIVILEGES,
+                *(code for values in _SUBJECT_PRIVILEGES.values() for code in values),
+            ]
+        )
+    ),
+    assertion=TopicAssignmentAssertion,
 )
 async def read_topic_assignment(
     topic_id: UUID,
@@ -135,9 +172,20 @@ async def read_topic_assignment(
     scope = await current_management_scope()
     if subject_kind in ("document", "dataset"):
         try:
-            return await monitoring_service.get_topic_assignment_audit(topic_id=topic_id,
-                subject_kind=subject_kind, subject_id=subject_id, resource_scope=scope)
-        except (LookupError, FileNotFoundError, MemoryNotFoundError, MemoryPermissionError, DocumentNotFoundError, DocumentPermissionError) as exc:
+            return await monitoring_service.get_topic_assignment_audit(
+                topic_id=topic_id,
+                subject_kind=subject_kind,
+                subject_id=subject_id,
+                resource_scope=scope,
+            )
+        except (
+            LookupError,
+            FileNotFoundError,
+            MemoryNotFoundError,
+            MemoryPermissionError,
+            DocumentNotFoundError,
+            DocumentPermissionError,
+        ) as exc:
             raise HTTPException(status_code=404, detail="Topic assignment not found") from exc
     agent_id = await monitoring_service.get_topic_assignment_agent_id(
         subject_kind=subject_kind,
@@ -154,7 +202,7 @@ async def read_topic_assignment(
 
 
 @router.get("/receipts/{receipt_id}", response_model=DreamReceiptDetail)
-@authorize(privileges=Privileges.TASK_ACCESS)
+@authorize(privileges=Privileges.DREAM_ACCESS)
 async def read_dream_receipt(receipt_id: UUID) -> DreamReceiptDetail:
     await _require_global_scope()
     receipt = await monitoring_service.get_receipt(receipt_id)

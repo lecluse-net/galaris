@@ -34,7 +34,7 @@
             dense
             options-dense
             :label="t('contacts.agent')"
-            :loading="agentStore.loading"
+            :loading="agentsLoading"
           />
         </div>
         <div class="col-12 col-md">
@@ -111,6 +111,7 @@
         <template #body-cell-memory="props">
           <q-td :props="props">
             <q-btn
+              v-if="canViewMemories"
               flat
               dense
               color="primary"
@@ -119,6 +120,7 @@
               :to="memoryLink(props.row)"
               :aria-label="t('contacts.openMemory', { name: props.row.display_name })"
             />
+            <span v-else>{{ props.row.linked_memory_count }}</span>
           </q-td>
         </template>
 
@@ -133,7 +135,7 @@
               <q-tooltip>{{ t('contacts.edit') }}</q-tooltip>
             </q-btn>
             <q-btn
-              v-if="canEdit"
+              v-if="canForget"
               flat
               round
               dense
@@ -166,6 +168,7 @@
                     </q-chip>
                   </div>
                   <q-btn
+                    v-if="canViewMemories"
                     flat
                     dense
                     color="primary"
@@ -175,6 +178,7 @@
                     :aria-label="t('contacts.openMemory', { name: props.row.display_name })"
                     @click.stop
                   />
+                  <span v-else>{{ props.row.linked_memory_count }}</span>
                 </div>
                 <q-btn
                   v-if="canEdit"
@@ -185,7 +189,7 @@
                   <q-tooltip>{{ t('contacts.edit') }}</q-tooltip>
                 </q-btn>
                 <q-btn
-                  v-if="canEdit"
+                  v-if="canForget"
                   flat
                   round
                   dense
@@ -303,13 +307,13 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar, type QTableProps } from 'quasar'
 import { apiErrorDetail } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { PageHeader } from '@/core/util'
-import { AgentSelect, useAgentStore, useAgentSelectionStore } from '@/app/agent'
+import { AgentSelect, getAgentSelection, useAgentSelectionStore, type AgentSelectionOption } from '@/app/agent'
 import { contactService } from '../services/contactService'
 import ContactEditDialog from '../components/ContactEditDialog.vue'
 import ContactCreateDialog from '../components/ContactCreateDialog.vue'
@@ -317,10 +321,14 @@ import type { Contact, ContactIdentity } from '../types'
 
 const { t, locale } = useI18n()
 const $q = useQuasar()
-const agentStore = useAgentStore()
+const agents = ref<AgentSelectionOption[]>([])
+const agentsLoading = ref(false)
 const agentSelectionStore = useAgentSelectionStore()
 const privilegeStore = usePrivilegeStore()
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_EDIT))
+const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONTACT_EDIT))
+const canRead = computed(() => privilegeStore.hasAnyPrivilege([privileges.CONTACT_ACCESS, privileges.CONTACT_EDIT]))
+const canViewMemories = computed(() => privilegeStore.hasAnyPrivilege([privileges.MEMORY_ACCESS, privileges.MEMORY_EDIT, privileges.MEMORY_ADMIN]))
+const canForget = computed(() => canEdit.value && privilegeStore.hasPrivilege(privileges.MEMORY_EDIT))
 const contacts = ref<Contact[]>([])
 const selected = ref<Contact[]>([])
 const selectedAgentId = ref<number | null>(null)
@@ -346,9 +354,9 @@ const pagination = ref({
 
 type TableRequest = Parameters<NonNullable<QTableProps['onRequest']>>[0]
 
-const agentOptions = computed(() => agentStore.agents.map(agent => ({
+const agentOptions = computed(() => agents.value.map(agent => ({
   value: agent.id,
-  label: `${agent.first_name} ${agent.last_name}`.trim() || agent.code,
+  label: agent.label,
 })))
 
 const selectionHint = computed(() => {
@@ -405,7 +413,7 @@ function memoryLink(contact: Contact): { path: string, query: Record<string, str
 
 async function load(): Promise<void> {
   const generation = ++loadGeneration
-  if (selectedAgentId.value === null) {
+  if (selectedAgentId.value === null || !canRead.value) {
     contacts.value = []
     pagination.value.rowsNumber = 0
     loading.value = false
@@ -455,12 +463,13 @@ function onRequest(request: TableRequest): void {
 }
 
 function openMerge(): void {
-  if (selected.value.length !== 2) return
+  if (!canEdit.value || selected.value.length !== 2) return
   canonicalContactItemId.value = selected.value[0]?.memory_item_id ?? null
   mergeDialog.value = true
 }
 
 async function confirmMerge(): Promise<void> {
+  if (!canEdit.value) return
   const targetId = canonicalContactItemId.value
   const source = selected.value.find(contact => contact.memory_item_id !== targetId)
   if (targetId === null || source === undefined) return
@@ -484,11 +493,13 @@ async function confirmMerge(): Promise<void> {
 }
 
 function openForget(contact: Contact): void {
+  if (!canForget.value) return
   contactToForget.value = contact
   forgetDialog.value = true
 }
 
 async function confirmForget(): Promise<void> {
+  if (!canForget.value) return
   const contact = contactToForget.value
   if (contact === null) return
   forgetting.value = true
@@ -523,14 +534,26 @@ watch(selectedAgentId, () => {
 })
 watch(canEdit, allowed => {
   if (!allowed) {
+    mergeDialog.value = false
     contactToEdit.value = null
     createDialog.value = false
   }
 })
+watch(canForget, allowed => { if (!allowed) forgetDialog.value = false }, { flush: 'sync' })
+watch(canRead, () => {
+  selected.value = []
+  contacts.value = []
+  void load()
+}, { flush: 'sync' })
+onBeforeUnmount(() => { loadGeneration++ })
 
 onMounted(async () => {
-  await agentStore.fetchAgents()
-  selectedAgentId.value = agentSelectionStore.defaultAgentId(agentStore.agents)
+  agentsLoading.value = true
+  try {
+    agents.value = await getAgentSelection('management')
+    selectedAgentId.value = agentSelectionStore.defaultAgentId(agents.value)
+  } catch (reason) { error.value = reason }
+  finally { agentsLoading.value = false }
 })
 </script>
 

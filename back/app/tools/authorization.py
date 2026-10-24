@@ -645,6 +645,9 @@ async def answer_action(request_id: UUID, *, user_id: int, approved: bool, remem
         .execution_options(populate_existing=True))
     if responsible is None or not responsible.is_active:
         return False
+    from core.authorize import check_assigned_privilege
+    if not await check_assigned_privilege(user_id, "PERMISSION_DECIDE", db):
+        return False
     row = await db.scalar(select(ActionAuthorization).where(ActionAuthorization.id == request_id).with_for_update()
                           .execution_options(populate_existing=True))
     if row is None or row.approver_user_id != user_id:

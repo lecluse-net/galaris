@@ -48,7 +48,7 @@ async def read_agent_active_work(
 
 
 @router.get("/messages", response_model=ConversationMessagePage)
-@authorize(privileges=Privileges.TASK_ACCESS)
+@authorize(privileges=[Privileges.CONVERSATION_ACCESS, Privileges.CONVERSATION_CONTROL])
 async def read_conversation_messages(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=500),
@@ -91,13 +91,13 @@ async def _round_or_404(round_id: UUID) -> ConversationRoundDetail:
 
 
 @router.get("/rounds/{round_id}", response_model=ConversationRoundDetail)
-@authorize(privileges=Privileges.TASK_ACCESS)
+@authorize(privileges=[Privileges.CONVERSATION_ACCESS, Privileges.CONVERSATION_CONTROL])
 async def read_conversation_round(round_id: UUID) -> ConversationRoundDetail:
     return await _round_or_404(round_id)
 
 
 @router.put("/rounds/{round_id}/topic", response_model=ConversationRoundDetail)
-@authorize(privileges=Privileges.TASK_EDIT)
+@authorize(privileges=Privileges.CONVERSATION_CONTROL)
 async def update_conversation_round_topic(
     round_id: UUID,
     update: ConversationTopicUpdate,
@@ -119,7 +119,7 @@ async def update_conversation_round_topic(
 
 
 @router.get("/rounds/{round_id}/dataset", response_model=dict[str, Any])
-@authorize(privileges=Privileges.TASK_ACCESS)
+@authorize(privileges=[Privileges.CONVERSATION_ACCESS, Privileges.CONVERSATION_CONTROL])
 async def export_conversation_round(round_id: UUID) -> dict[str, Any]:
     await _round_or_404(round_id)
     dataset = await inspection_service.inspect_round(round_id)
@@ -132,7 +132,7 @@ async def export_conversation_round(round_id: UUID) -> dict[str, Any]:
 
 
 @router.post("/rounds/{round_id}/delivery-resolution", response_model=ConversationRoundDetail)
-@authorize(privileges=Privileges.TASK_EDIT)
+@authorize(privileges=Privileges.CONVERSATION_CONTROL)
 async def resolve_conversation_delivery(
     round_id: UUID, resolution: ConversationDeliveryResolve,
 ) -> ConversationRoundDetail:
@@ -157,7 +157,7 @@ async def resolve_conversation_delivery(
 
 
 @router.delete("/rounds/{round_id}", status_code=status.HTTP_204_NO_CONTENT)
-@authorize(privileges=Privileges.TASK_EDIT)
+@authorize(privileges=Privileges.CONVERSATION_CONTROL)
 async def delete_conversation_round(round_id: UUID) -> None:
     await _round_or_404(round_id)
     deleted = await management_service.delete_round(round_id)

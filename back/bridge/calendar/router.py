@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from core.authorize import Privileges, authorize
 from app.agent import current_management_scope
-from app.connection.facade import get_connection
+from app.connection.facade import get_connection, tool_connection_options
 
 from . import service
 from .schemas import (
@@ -49,15 +49,31 @@ async def _require_calendar_scope(calendar_id: int) -> None:
     await _require_connection_scope(feed.connection_id)
 
 
+@router.get("/process-options")
+@authorize(privileges=Privileges.CALENDAR_EDIT)
+async def process_options() -> list[dict[str, object]]:
+    from app.process.facade import definition_options
+    scope = await current_management_scope()
+    definitions = await definition_options(agent_ids=scope.agent_ids)
+    return definitions
+
+
+@router.get("/connection-options")
+@authorize(privileges=[Privileges.CALENDAR_ACCESS, Privileges.CALENDAR_EDIT])
+async def connection_options() -> list[dict[str, object]]:
+    scope = await current_management_scope()
+    return await tool_connection_options("calendar", agent_ids=scope.agent_ids)
+
+
 @router.get("", response_model=list[CalendarFeedRead])
-@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+@authorize(privileges=[Privileges.CALENDAR_ACCESS, Privileges.CALENDAR_EDIT])
 async def read_calendars(connection_id: int = Query(gt=0)) -> list[CalendarFeedRead]:
     await _require_connection_scope(connection_id)
     return await service.list_feeds(connection_id=connection_id)
 
 
 @router.post("", response_model=CalendarFeedRead, status_code=status.HTTP_201_CREATED)
-@authorize(privileges=Privileges.CONNECTION_EDIT)
+@authorize(privileges=Privileges.CALENDAR_EDIT)
 async def create_calendar(data: CalendarFeedCreate) -> CalendarFeedRead:
     try:
         await _require_connection_scope(data.connection_id)
@@ -71,7 +87,7 @@ async def create_calendar(data: CalendarFeedCreate) -> CalendarFeedRead:
 
 
 @router.put("/{calendar_id}", response_model=CalendarFeedRead)
-@authorize(privileges=Privileges.CONNECTION_EDIT)
+@authorize(privileges=Privileges.CALENDAR_EDIT)
 async def update_calendar(calendar_id: int, data: CalendarFeedUpdate) -> CalendarFeedRead:
     try:
         await _require_calendar_scope(calendar_id)
@@ -85,7 +101,7 @@ async def update_calendar(calendar_id: int, data: CalendarFeedUpdate) -> Calenda
 
 
 @router.delete("/{calendar_id}", status_code=status.HTTP_204_NO_CONTENT)
-@authorize(privileges=Privileges.CONNECTION_EDIT)
+@authorize(privileges=Privileges.CALENDAR_EDIT)
 async def delete_calendar(calendar_id: int) -> None:
     await _require_calendar_scope(calendar_id)
     if not await service.delete_feed(calendar_id):
@@ -93,7 +109,7 @@ async def delete_calendar(calendar_id: int) -> None:
 
 
 @router.post("/{calendar_id}/test", response_model=CalendarConnectionStatus)
-@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
+@authorize(privileges=[Privileges.CALENDAR_ACCESS, Privileges.CALENDAR_EDIT])
 async def test_calendar(calendar_id: int) -> CalendarConnectionStatus:
     try:
         await _require_calendar_scope(calendar_id)

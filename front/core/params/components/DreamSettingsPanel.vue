@@ -33,7 +33,7 @@
             :description="t('dreamSettings.linkReconciliation.subtitle')" icon="link">
             <SettingsFields :fields="dreamLinkReconciliationFields" :columns="2" />
 
-            <q-card flat bordered class="link-reconciliation-card q-mt-lg">
+            <q-card v-if="canReadStatus" flat bordered class="link-reconciliation-card q-mt-lg">
                 <q-card-section>
                     <div class="row items-start justify-between q-col-gutter-md">
                         <div class="col-12 col-md">
@@ -186,7 +186,8 @@ const statusLoading = ref(false)
 const statusError = ref(false)
 const launching = ref(false)
 const lastManualResult = ref<MemoryLinkReconciliationRunResult | null>(null)
-const canLaunch = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_ADMIN))
+const canReadStatus = computed(() => privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL))
+const canLaunch = computed(() => canReadStatus.value && privilegeStore.hasPrivilege(privileges.MEMORY_ADMIN))
 const scheduleSignature = computed(() => [
     paramsStore.getParamValue('MEMORY_LINK_RECONCILIATION_TRIGGER_MODE'),
     paramsStore.getParamValue('MEMORY_LINK_RECONCILIATION_INTERVAL_HOURS'),
@@ -208,7 +209,7 @@ function formatDate(value: string): string {
 }
 
 async function refreshStatus(): Promise<void> {
-    if (statusLoading.value) return
+    if (!canReadStatus.value || statusLoading.value) return
     statusLoading.value = true
     statusError.value = false
     try {

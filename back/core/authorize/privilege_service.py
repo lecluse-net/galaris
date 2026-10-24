@@ -131,3 +131,9 @@ class PrivilegeService:
         with open(ts_file_path, "w") as f:
             f.write("\n".join(ts_content) + "\n")
         logger.info(f"Generated TypeScript privileges definitions at {ts_file_path}")
+        from pathlib import Path
+        from core.params import generate_parameter_access_file, declared_rows
+        generate_parameter_access_file(
+            (str(row["name"]) for row in declared_rows()),
+            Path("/app-front/core/params/generatedAccess.ts"),
+        )

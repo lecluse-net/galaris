@@ -409,7 +409,7 @@
               </div>
 
               <q-btn
-                v-if="selectedTaskId"
+                v-if="selectedTaskId && canViewTasks"
                 class="q-mt-md"
                 outline
                 color="primary"
@@ -583,7 +583,8 @@ const { t, locale } = useI18n()
 const $q = useQuasar()
 const route = useRoute()
 const privilegeStore = usePrivilegeStore()
-const canViewIndexing = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_ACCESS))
+const canViewIndexing = computed(() => privilegeStore.hasAnyPrivilege([privileges.FILE_INDEX_ACCESS, privileges.FILE_INDEX_RUN]))
+const canViewTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
 const activeTab = ref<'tracking' | 'history' | 'indexing'>('tracking')
 const selectedIndexAgentId = ref<number | null>(null)
 const overview = ref<DreamOverview | null>(null)

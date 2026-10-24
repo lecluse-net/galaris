@@ -18,7 +18,7 @@ import { SettingsBlock, SettingsFields } from '@/core/params'
 import { plannerFields } from '../runtimeSettings'
 import type { HarnessExecutionConfiguration } from '../services/harnessService'
 
-const { configurations } = defineProps<{ configurations: HarnessExecutionConfiguration[] }>()
+const { configurations } = defineProps<{ configurations: Pick<HarnessExecutionConfiguration, 'provider_code' | 'label' | 'pipeline_policy'>[] }>()
 const { t, te } = useI18n()
 const blocks = computed(() => [
   {

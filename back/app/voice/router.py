@@ -27,7 +27,7 @@ ConversationStatus = Literal["ACTIVE", "COMPLETED", "CANCELLED", "ERROR"]
 
 
 @router.get("", response_model=VoiceConversationPage)
-@authorize(privileges=Privileges.TASK_ACCESS)
+@authorize(privileges=[Privileges.VOICE_HISTORY_ACCESS, Privileges.VOICE_HISTORY_CONTROL])
 async def read_voice_conversations(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=500),
@@ -84,7 +84,7 @@ async def _turn_or_404(turn_id: UUID) -> VoiceConversationTurnDetail:
 
 
 @router.get("/turns/{turn_id}", response_model=VoiceConversationTurnDetail)
-@authorize(privileges=Privileges.TASK_ACCESS)
+@authorize(privileges=[Privileges.VOICE_HISTORY_ACCESS, Privileges.VOICE_HISTORY_CONTROL])
 async def read_voice_conversation_turn(
     turn_id: UUID,
 ) -> VoiceConversationTurnDetail:
@@ -94,7 +94,7 @@ async def read_voice_conversation_turn(
 
 
 @router.put("/turns/{turn_id}/topic", response_model=VoiceConversationTurnDetail)
-@authorize(privileges=Privileges.TASK_EDIT)
+@authorize(privileges=Privileges.VOICE_HISTORY_CONTROL)
 async def update_voice_conversation_turn_topic(
     turn_id: UUID,
     update: VoiceConversationTopicUpdate,
@@ -116,7 +116,7 @@ async def update_voice_conversation_turn_topic(
 
 
 @router.get("/turns/{turn_id}/dataset", response_model=dict[str, Any])
-@authorize(privileges=Privileges.TASK_ACCESS)
+@authorize(privileges=[Privileges.VOICE_HISTORY_ACCESS, Privileges.VOICE_HISTORY_CONTROL])
 async def export_voice_conversation_turn(turn_id: UUID) -> dict[str, Any]:
     await _turn_or_404(turn_id)
     dataset = await inspection_service.inspect_turn(turn_id)
@@ -129,7 +129,7 @@ async def export_voice_conversation_turn(turn_id: UUID) -> dict[str, Any]:
 
 
 @router.post("/turns/{turn_id}/force-hangup", response_model=dict[str, object])
-@authorize(privileges=Privileges.TASK_EDIT)
+@authorize(privileges=Privileges.VOICE_HISTORY_CONTROL)
 async def force_hangup_voice_conversation_turn(turn_id: UUID) -> dict[str, object]:
     """Stop an audio execution even after its call ended, retaining history."""
     await _turn_or_404(turn_id)
@@ -143,7 +143,7 @@ async def force_hangup_voice_conversation_turn(turn_id: UUID) -> dict[str, objec
 
 
 @router.get("/turns/{turn_id}/deletion", response_model=dict[str, object])
-@authorize(privileges=Privileges.TASK_ACCESS)
+@authorize(privileges=[Privileges.VOICE_HISTORY_ACCESS, Privileges.VOICE_HISTORY_CONTROL])
 async def read_voice_turn_deletion(turn_id: UUID) -> dict[str, object]:
     scope = await current_management_scope()
     request = await management_service.deletion_status(turn_id)
@@ -153,7 +153,7 @@ async def read_voice_turn_deletion(turn_id: UUID) -> dict[str, object]:
 
 
 @router.delete("/turns/{turn_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
-@authorize(privileges=Privileges.TASK_EDIT)
+@authorize(privileges=Privileges.VOICE_HISTORY_CONTROL)
 async def delete_voice_conversation_turn(turn_id: UUID) -> Any:
     scope = await current_management_scope()
     turn = await monitoring_service.get_turn(turn_id)
@@ -179,7 +179,7 @@ async def delete_voice_conversation_turn(turn_id: UUID) -> Any:
 
 
 @router.get("/{conversation_id}", response_model=VoiceConversationDetail)
-@authorize(privileges=Privileges.TASK_ACCESS)
+@authorize(privileges=[Privileges.VOICE_HISTORY_ACCESS, Privileges.VOICE_HISTORY_CONTROL])
 async def read_voice_conversation(
     conversation_id: UUID,
 ) -> VoiceConversationDetail:

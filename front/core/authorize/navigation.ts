@@ -10,7 +10,7 @@ const navigation: NavigationTree = {
         order: 50,
         to: '/authorize',
         description: 'nav.authorizations_desc',
-        privileges: [privileges.READ_ROLE],
+        privileges: [privileges.READ_ROLE, privileges.MANAGE_ROLE, privileges.READ_PRIVILEGE, privileges.MANAGE_PRIVILEGE, privileges.READ_ASSIGNMENT, privileges.MANAGE_ASSIGNMENT],
       }
     }
   }

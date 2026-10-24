@@ -12,7 +12,7 @@ from app.memory import (
     MemoryNotFoundError,
     get_messenger_contact,
 )
-from core.authorize import Privileges, authorize
+from core.authorize import Privileges, RequireAllPrivilegesAssertion, authorize
 
 from . import service
 from .schemas import (
@@ -42,7 +42,7 @@ def _mutation_error(exc: Exception) -> HTTPException:
 
 @router.get("", response_model=ContactPage)
 @authorize(
-    privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN]
+    privileges=[Privileges.CONTACT_ACCESS, Privileges.CONTACT_EDIT]
 )
 async def read_contacts(
     agent_id: int = Query(gt=0),
@@ -60,7 +60,7 @@ async def read_contacts(
 
 
 @router.post("", response_model=ContactRead, status_code=status.HTTP_201_CREATED)
-@authorize(privileges=Privileges.MEMORY_EDIT)
+@authorize(privileges=Privileges.CONTACT_EDIT)
 async def create_contact(data: ContactCreate) -> ContactRead:
     await _require_agent_scope(data.agent_id)
     try:
@@ -70,7 +70,7 @@ async def create_contact(data: ContactCreate) -> ContactRead:
 
 
 @router.patch("/{contact_item_id}", response_model=ContactRead)
-@authorize(privileges=Privileges.MEMORY_EDIT)
+@authorize(privileges=Privileges.CONTACT_EDIT)
 async def update_contact(contact_item_id: UUID, data: ContactUpdate) -> ContactRead:
     try:
         contact = await get_messenger_contact(contact_item_id)
@@ -85,7 +85,7 @@ async def update_contact(contact_item_id: UUID, data: ContactUpdate) -> ContactR
 
 
 @router.post("/{source_contact_item_id}/merge", response_model=ContactMergeResult)
-@authorize(privileges=Privileges.MEMORY_EDIT)
+@authorize(privileges=Privileges.CONTACT_EDIT)
 async def merge_contacts(
     source_contact_item_id: UUID, data: ContactMergeRequest
 ) -> ContactMergeResult:
@@ -104,7 +104,8 @@ async def merge_contacts(
 
 
 @router.delete("/{contact_item_id}", response_model=ContactForgetResult)
-@authorize(privileges=Privileges.MEMORY_EDIT)
+@authorize(privileges=Privileges.CONTACT_EDIT, assertion=RequireAllPrivilegesAssertion,
+    params={"required_privileges": [Privileges.CONTACT_EDIT, Privileges.MEMORY_EDIT]})
 async def forget_contact(contact_item_id: UUID) -> ContactForgetResult:
     try:
         contact = await get_messenger_contact(contact_item_id)

@@ -13,6 +13,7 @@ from .parameter_resolution import effective_param_value_expression as effective_
 
 from .connection_service import (
     get_management_scope as get_management_scope,
+    tool_connection_options,
     function_state_label,
     get_connection,
     get_connections_by_agent,
@@ -44,7 +45,7 @@ from .connection_service import (
 )
 
 __all__ = [
-    "mcp_oauth_auth",
+    "mcp_oauth_auth", "tool_connection_options",
     "effective_param_value_expression",
     "function_state_label",
     "get_connection",

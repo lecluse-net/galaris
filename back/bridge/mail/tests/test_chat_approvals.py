@@ -38,12 +38,12 @@ async def _setup_mail_chat(db, monkeypatch):
     tool = await db.scalar(select(Tool).where(Tool.code == "chat"))
     assert tool is not None
     db.add(Connection(agent_id=agent_id, tool_id=tool.id, active=True))
-    privilege = await db.scalar(select(Privilege).where(Privilege.code == "CONNECTION_ACCESS"))
-    assert privilege is not None
+    grants = list(await db.scalars(select(Privilege).where(Privilege.code.in_(["MAIL_EDIT", "PERMISSION_DECIDE"]))))
+    assert len(grants) == 2
     role = Role(code="mail-reviewer-test", display_name="Mail reviewer")
     db.add(role)
     await db.flush()
-    db.add_all([RolePrivilege(role_id=role.id, privilege_id=privilege.id), Assignment(user_id=approver.id, role_id=role.id)])
+    db.add_all([*(RolePrivilege(role_id=role.id, privilege_id=privilege.id) for privilege in grants), Assignment(user_id=approver.id, role_id=role.id)])
     await db.commit()
     config = _config(connection_id, agent_id=agent_id).model_copy(
         update={"approval_required": True, "approver_user_id": approver.id}

@@ -7,7 +7,7 @@ import { loadTypescript, deferred } from '../../../test-support/load-typescript.
 function setup(t) {
   const auth = vue.reactive({ isAuthenticated: true, user: { id: 1 } })
   const authorize = vue.reactive({ activeRole: { id: 1 } })
-  const access = vue.reactive({ privileges: ['TASK_ACCESS'] })
+  const access = vue.reactive({ privileges: ['DASHBOARD_ACCESS'] })
   const window = new EventTarget()
   let session = 'first'
   const requests = []
@@ -16,7 +16,7 @@ function setup(t) {
     '@/core/api': { AUTH_TOKEN_CHANGED_EVENT: 'token', sessionGeneration: () => session },
     '@/core/user': { useAuthStore: () => auth },
     '@/core/authorize': { useAuthorizeStore: () => authorize, usePrivilegeStore: () => access,
-      privileges: { TASK_ACCESS: 'TASK_ACCESS', TASK_EDIT: 'TASK_EDIT' } },
+      privileges: { DASHBOARD_ACCESS: 'DASHBOARD_ACCESS', TASK_EDIT: 'TASK_EDIT' } },
     '../services/dashboardService': { dashboardService: { getDashboard(month) {
       const response = deferred(); requests.push({ month, ...response }); return response.promise
     } } },

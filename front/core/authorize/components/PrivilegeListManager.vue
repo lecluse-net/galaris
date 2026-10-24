@@ -19,7 +19,11 @@
 
       <!-- Left Column: Unassigned Privileges -->
       <div class="privilege-column">
-        <q-card class="unassigned-privileges-card column full-height bg-grey-1">
+        <q-card
+          class="unassigned-privileges-card column full-height bg-grey-1"
+          @dragover.prevent
+          @drop.prevent.stop="onDropToUnassigned"
+        >
           <q-card-section class="bg-grey-3 q-py-sm row items-center">
              <div class="text-subtitle1 text-weight-bold">{{ $t('authorize.privilegeLists.unassigned') }}</div>
              <q-space />
@@ -31,8 +35,6 @@
             role="region"
             :aria-label="$t('authorize.privilegeLists.unassigned')"
             tabindex="0"
-            @dragover.prevent
-            @drop="onDropToUnassigned"
           >
              <q-chip
                 v-for="priv in unassignedPrivileges"
@@ -66,7 +68,11 @@
 
         <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6" v-for="list in sortedPrivilegeLists" :key="list.id">
-                <q-card class="privilege-list-card full-height">
+                <q-card
+                    class="privilege-list-card full-height"
+                    @dragover.prevent
+                    @drop.prevent.stop="onDropToList($event, list)"
+                >
                     <q-card-section class="bg-primary text-white q-py-xs row items-center">
                         <div class="privilege-list-name text-subtitle2">{{ localizedPrivilegeListLabel(list) }}</div>
                         <q-space />
@@ -76,8 +82,6 @@
 
                     <q-card-section 
                         class="privilege-list-drop-zone q-pa-sm"
-                        @dragover.prevent
-                        @drop="onDropToList($event, list)"
                     >
                          <div class="privilege-chip-list">
                              <q-chip

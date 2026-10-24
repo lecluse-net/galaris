@@ -23,7 +23,6 @@ from app.memory import (
 )
 
 from . import approvals as _approvals  # noqa: F401  # pyright: ignore[reportUnusedImport]
-from .manager import manager
 from .memory_provider import get_memory_context
 from . import config_service
 from .schemas import (
@@ -92,46 +91,6 @@ async def update_hermes_configuration(
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
-
-
-@router.get(
-    "/hermes/reachable",
-    summary="Check Hermes bridge connectivity",
-)
-@authorize(privileges=[Privileges.HERMES_ACCESS, Privileges.HERMES_EDIT])
-async def hermes_reachable() -> dict[str, bool]:
-    """Return whether the selected Hermes management backend is reachable."""
-
-    return {"reachable": await manager.check_reachable()}
-
-
-@router.get(
-    "/hermes/agents",
-    summary="List Hermes runtime instances",
-)
-@authorize(privileges=[Privileges.HERMES_ACCESS, Privileges.HERMES_EDIT])
-async def hermes_list_agents() -> dict[str, list[str]]:
-    """List instances declared by the Hermes management backend."""
-
-    try:
-        scope = await current_management_scope()
-        managed_codes = {
-            agent.code
-            for agent in await list_agent_records(
-                driver_code="hermes",
-                agent_ids=scope.agent_ids,
-            )
-        }
-        return {
-            "agents": [
-                code for code in await manager.list_agents() if code in managed_codes
-            ]
-        }
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
 

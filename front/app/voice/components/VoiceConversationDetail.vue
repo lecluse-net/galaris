@@ -257,7 +257,7 @@ const emit = defineEmits<{
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
-const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.TASK_EDIT))
+const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.VOICE_HISTORY_CONTROL))
 const canEditLab = computed(() => privilegeStore.hasPrivilege(
   labSectionPrivileges.voice_executor[1],
 ))

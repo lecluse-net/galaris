@@ -68,6 +68,14 @@ class RoleWithPrivileges(Role):
     privileges: List[Privilege] = []
 
 
+class AssignmentUserOption(BaseModel):
+    id: int
+    email: str
+    display_name: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # Assignment schemas
 class AssignmentBase(BaseModel):
     user_id: int

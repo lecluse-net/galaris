@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.messenger.facade import MessengerFacade
@@ -83,13 +83,37 @@ class PendingChoice:
 
 ChoiceHandler = Callable[[PendingChoice, ChoiceResolution], Awaitable[None]]
 _choice_handlers: dict[str, ChoiceHandler] = {}
+_choice_privileges: dict[str, tuple[str, ...]] = {}
 _PROCESSING_TIMEOUT_SECONDS = 30
 _REFERENCE_RE = re.compile(r"#([A-F0-9]{8,12})\b", re.IGNORECASE)
 
 
-def register_choice_handler(kind: str, handler: ChoiceHandler) -> None:
+def register_choice_handler(kind: str, handler: ChoiceHandler, *, required_privileges: tuple[str, ...] = ()) -> None:
     """Register a domain handler for an interaction kind."""
     _choice_handlers[kind] = handler
+    _choice_privileges[kind] = required_privileges
+
+
+async def choice_authorized(kind: str, user_id: int | None, *, assigned: bool = False) -> bool:
+    """Recheck server-registered rights before capturing or replaying a decision."""
+    required = _choice_privileges.get(kind, ())
+    if not required:
+        return True
+    if user_id is None:
+        return False
+    from core.authorize import check_assigned_privilege, check_privilege
+    from core.user import get_user_record
+    if assigned:
+        return all([await check_assigned_privilege(user_id, code, get_db()) for code in required])
+    user = await get_user_record(user_id)
+    return all([await check_privilege(user, code, get_db()) for code in required])
+
+
+async def _recipient_authorized(record: Interaction) -> bool:
+    identity = record.user_id or ""
+    user_id = int(identity[5:]) if identity.startswith("user:") and identity[5:].isdigit() else None
+    from core.user import get_current_user_id
+    return await choice_authorized(record.kind, user_id, assigned=get_current_user_id() != user_id)
 
 
 def _normalize_answer(text: str) -> str:
@@ -309,6 +333,8 @@ async def resolve_from_message(
         return None
 
     record, choice, option = compatible[0]
+    if not await _recipient_authorized(record):
+        return None
     resolution = ChoiceResolution(
         interaction_id=choice.id,
         kind=choice.kind,
@@ -487,6 +513,9 @@ async def resolve_pending_choice(
     if record.status != "PENDING" or record.expires_at <= datetime.now(timezone.utc):
         raise ValueError("This choice is no longer pending.")
 
+    if not await _recipient_authorized(record):
+        raise PermissionError("Permission decision access is required.")
+
     if capture_response is not None:
         await capture_response()
 
@@ -570,6 +599,20 @@ async def _deliver_record(interaction_id: UUID, processing_token: UUID) -> bool:
         logger.warning(
             "Handler or resolution is unavailable for interaction '{}'", record.kind
         )
+        return False
+
+    if not await _recipient_authorized(record):
+        # A captured answer must not execute later after authority was revoked.
+        changed = await db.scalar(update(Interaction).where(
+            Interaction.id == interaction_id,
+            Interaction.status == "PROCESSING",
+            Interaction.processing_token == processing_token,
+        ).values(status="PENDING", resolution=None, processing_token=None,
+            processing_expires_at=None).returning(Interaction.id)
+            .execution_options(synchronize_session="fetch"))
+        await db.commit()
+        if changed is not None:
+            await interaction_changed.send_async(record)
         return False
 
     try:

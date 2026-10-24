@@ -10,7 +10,7 @@ export default {
             icon: 'web',
             to: '/browser/settings',
             order: 10,
-            privileges: [privileges.PARAMS_ACCESS, privileges.PARAMS_EDIT],
+            privileges: [privileges.BROWSER_CONFIG_ACCESS, privileges.BROWSER_CONFIG_EDIT],
             visible: () => useBrowserSettingsStore().available === true,
         },
     } } } },

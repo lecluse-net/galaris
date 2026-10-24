@@ -29,12 +29,12 @@ async def test_resolution_requires_edit_privilege_and_owner_scope(client):
         db.add_all([*users, *roles, title])
         await db.flush()
         privileges = {p.code: p.id for p in await db.scalars(select(Privilege).where(
-            Privilege.code.in_(["TASK_ACCESS", "TASK_EDIT"])
+            Privilege.code.in_(["CONVERSATION_ACCESS", "CONVERSATION_CONTROL"])
         ))}
         assert len(privileges) == 2
         db.add_all([RolePrivilege(role_id=roles[0].id, privilege_id=privileges[code])
                     for code in privileges])
-        db.add(RolePrivilege(role_id=roles[1].id, privilege_id=privileges["TASK_ACCESS"]))
+        db.add(RolePrivilege(role_id=roles[1].id, privilege_id=privileges["CONVERSATION_ACCESS"]))
         for i, user in enumerate(users):
             db.add(Assignment(user_id=user.id, role_id=roles[1 if i == 2 else 0].id, is_default=True))
         agent = Agent(user_id=users[0].id, title_id=title.id, first_name="Delivery", last_name="Test", code=suffix)

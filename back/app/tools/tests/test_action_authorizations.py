@@ -27,6 +27,12 @@ async def action(committed_database):
         title = Title(label="Synthetic", gender="X")
         db.add_all([user, title])
         await db.flush()
+        from core.authorize import Assignment, Privilege, Role
+        privilege = await db.scalar(select(Privilege).where(Privilege.code == "PERMISSION_DECIDE"))
+        role = Role(code=f"synthetic-approver-{uuid4().hex}", privileges=[privilege])
+        db.add(role)
+        await db.flush()
+        db.add(Assignment(user_id=user.id, role_id=role.id))
         agent = Agent(user_id=user.id, title_id=title.id, code=f"approval-{uuid4().hex}", first_name="Synthetic", last_name="Agent")
         db.add(agent)
         await db.flush()
@@ -748,7 +754,7 @@ async def test_function_permissions_list_only_reusable_grants_and_revoke_to_ask(
         other = UserModel(email=f"scope-{uuid4().hex}@example.test", hashed_password="synthetic")
         role = Role(code=f"permissions-{uuid4().hex}", display_name="Synthetic permission manager")
         role.privileges = list(await db.scalars(select(Privilege).where(
-            Privilege.code.in_(["CONNECTION_ACCESS", "CONNECTION_EDIT"]))))
+            Privilege.code.in_(["PERMISSION_ACCESS", "PERMISSION_DECIDE", "PERMISSION_REVOKE"]))))
         db.add_all([other, role])
         await db.flush()
         db.add_all([Assignment(user_id=user.id, role_id=role.id, is_default=True) for user in (manager, other)])

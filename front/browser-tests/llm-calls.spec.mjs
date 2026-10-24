@@ -41,11 +41,11 @@ for (const component of ['LlmCall', 'LlmCallTaskDetail']) {
     })
     await mount(page, `app/llm/components/${component}.vue`, { props: {
       call: running, deletable: true, taskColor: { name: 'primary', hex: '#087FF5' },
-    }, privileges: ['TASK_ACCESS', 'LLM_CALL_PURGE'] })
+    }, privileges: ['LLM_CALL_ACCESS', 'LLM_CALL_PURGE'] })
     const stop = page.getByRole('button', { name: 'Stop this LLM call', exact: true })
     await expect(stop).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Delete this LLM call' })).toHaveCount(0)
-    await setPrivileges(page, ['TASK_EDIT', 'LLM_CALL_PURGE'])
+    await setPrivileges(page, ['LLM_CALL_CONTROL', 'LLM_CALL_PURGE'])
     await stop.focus()
     await page.keyboard.press('Enter')
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click()

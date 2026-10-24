@@ -135,6 +135,7 @@ const emit = defineEmits<{
 const store = useLLMProviderStore()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.LLM_PROVIDER_EDIT))
+const canReadModels = computed(() => privilegeStore.hasAnyPrivilege([privileges.LLM_MODEL_ACCESS, privileges.LLM_MODEL_EDIT, privileges.LLM_PROFILE_ACCESS, privileges.LLM_PROFILE_EDIT]))
 const $q = useQuasar()
 const { t } = useI18n()
 const { registerInterval, removeInterval } = useInterval()
@@ -551,7 +552,7 @@ watch(selectedKey, () => { void loadSelection(selectedItem.value) })
 onMounted(async () => {
   initialLoading.value = true
   try {
-    await Promise.all([store.fetchCatalog(), store.fetchProviders(), store.fetchLLMs()])
+    await Promise.all([store.fetchCatalog(), store.fetchProviders(), ...(canReadModels.value ? [store.fetchLLMs()] : [])])
     chooseSelection()
   } catch (error) {
     $q.notify({ type: 'negative', message: errorMessage(error) || t('llm.notify.fetchProvidersError') })

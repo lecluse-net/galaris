@@ -11,13 +11,15 @@ from fastapi import HTTPException
 from jose import JWTError, jwt
 from pydantic import BaseModel, ValidationError
 
-from core.authorize import Privileges, check_privilege, role_id_ctx
+from core.authorize import check_privilege, role_id_ctx
 from core.database import get_db
 from core.secrets import auth_secret_key
 from core.user import (
     current_web_session_family, get_current_user, get_user_record,
     user_identity_context, web_session_active,
 )
+
+from .browser_policy import resource_privileges
 
 COOKIE_NAME = "galaris_file_media"
 MEDIA_SECONDS = 6 * 60 * 60
@@ -63,7 +65,8 @@ async def media_identity(identifier: UUID, cookie: str | None) -> AsyncGenerator
     role_token = role_id_ctx.set(grant.role_id)
     try:
         with user_identity_context(user):
-            if not await check_privilege(user, Privileges.MEMORY_ACCESS, get_db()):
+            required = resource_privileges(grant.uri)
+            if not required or not await check_privilege(user, list(required), get_db()):
                 raise HTTPException(403, "Media access denied")
             yield grant
     finally:

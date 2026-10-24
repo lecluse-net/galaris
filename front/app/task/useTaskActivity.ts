@@ -6,6 +6,7 @@ import { taskService } from './services/taskService'
 import { applyTaskLiveRunEvent, completedTaskAIResult, emptyAIResult, reconcileTaskAIResult, taskRunId, type TaskLiveRunEvent, type TaskLiveRunState } from './aiResult'
 import { roomReferences, type TaskActivitySnapshot } from './activity'
 import type { AIResult, Task } from './types'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 
 class TaskRunRoom extends BaseRoom { readonly className = 'TaskRunRoom' }
 const rooms = roomReferences(
@@ -15,9 +16,13 @@ const rooms = roomReferences(
 
 export function useTaskActivity(tasks: () => readonly Task[]) {
   const { t } = useI18n()
+  const privilegeStore = usePrivilegeStore()
   const snapshots = ref<Record<string, TaskActivitySnapshot>>({})
   const live = ref<Record<string, TaskLiveRunState>>({})
   const fallback = ref<Record<string, AIResult>>({})
+  watch(() => privilegeStore.hasAnyPrivilege([privileges.LLM_CALL_ACCESS, privileges.LLM_CALL_CONTROL]), allowed => {
+    if (!allowed) fallback.value = {}
+  })
   const unavailable = ref(false)
   const observedActivity = new Map<string, { runId: string; attemptId: string | null; at: string }>()
   let ids = new Set<string>()
@@ -144,12 +149,14 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
       snapshots.value = next
       for (const event of events) receive(event)
       unavailable.value = values.length !== selected.length
-      const custom = values.filter(value => !value.streams_ai_messages && value.run_id)
+      const canReadCalls = privilegeStore.hasAnyPrivilege([privileges.LLM_CALL_ACCESS, privileges.LLM_CALL_CONTROL])
+      const custom = canReadCalls ? values.filter(value => !value.streams_ai_messages && value.run_id) : []
       const projected: Record<string, AIResult> = {}
       for (let offset = 0; offset < custom.length; offset += 50) {
         const batch = custom.slice(offset, offset + 50)
         const calls = await llmCallService.getByRuns(batch.map(item => item.task_id), batch.map(item => item.run_id!))
-        if (disposed || request !== generation) return
+        if (disposed || request !== generation
+          || !privilegeStore.hasAnyPrivilege([privileges.LLM_CALL_ACCESS, privileges.LLM_CALL_CONTROL])) return
         for (const value of batch) {
           value.calls_limited = calls.length >= 500
           const result = emptyAIResult()

@@ -10,7 +10,7 @@ const navigation: NavigationTree = {
         icon: 'account_tree',
         to: '/process',
         order: 30,
-        privileges: [privileges.PROCESS_READ],
+        privileges: [privileges.PROCESS_READ, privileges.PROCESS_EDIT, privileges.PROCESS_ADMIN],
       },
     },
   },

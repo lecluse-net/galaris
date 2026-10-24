@@ -28,7 +28,7 @@ const audioConversation = {
   status: 'ACTIVE', transport_kind: 'matrix', room_id: 'synthetic-audio-room', language: 'en',
 }
 
-async function audioAdministration(page, privileges = ['TASK_ACCESS', 'TASK_EDIT']) {
+async function audioAdministration(page, privileges = ['VOICE_HISTORY_ACCESS', 'VOICE_HISTORY_CONTROL']) {
   await jsonRoute(page, '**/api/voice/conversations/turns/*', audioTurn)
   await page.route('**/api/voice/conversations/turns/*/deletion', route => route.fulfill({ status: 404, json: {} }))
   await mount(page, 'app/voice/components/VoiceConversationDetail.vue', {
@@ -43,10 +43,10 @@ test('audio administration honors edit permissions and confirms force hangup wit
     requests += 1
     return route.fulfill({ json: { revoked: true, local_audio_stopped: false } })
   })
-  await audioAdministration(page, ['TASK_ACCESS'])
+  await audioAdministration(page, ['VOICE_HISTORY_ACCESS'])
   const hangup = page.getByRole('button', { name: 'Force hangup', exact: true })
   await expect(hangup).toHaveCount(0)
-  await setPrivileges(page, ['TASK_ACCESS', 'TASK_EDIT'])
+  await setPrivileges(page, ['VOICE_HISTORY_ACCESS', 'VOICE_HISTORY_CONTROL'])
   await hangup.focus()
   await page.keyboard.press('Enter')
   await expect(page.getByRole('dialog')).toBeVisible()

@@ -256,7 +256,6 @@ import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import AgentAvatar from '@/app/agent/components/AgentAvatar.vue'
 import { AgentSelect } from '@/app/agent'
-import { useAgentStore } from '@/app/agent/stores/agentStore'
 
 import {
   skillService,
@@ -289,7 +288,6 @@ const canAssign = computed(() => privilegeStore.hasPrivilege(privileges.SKILL_AS
 const canManageAllAgents = computed(() => (
   privilegeStore.hasPrivilege(privileges.AGENT_MANAGE_ALL)
 ))
-const agentStore = useAgentStore()
 const store = useSkillStore()
 
 const filterAgentId = ref<number | null>(null)
@@ -595,7 +593,6 @@ onMounted(async () => {
       store.fetchAgents(),
       store.fetchSkills(),
       store.fetchCategories(),
-      agentStore.agents.length ? Promise.resolve() : agentStore.fetchAgents(),
     ])
     loadSession()
     if (!agentOptions.value.some(option => option.value === filterAgentId.value)) {

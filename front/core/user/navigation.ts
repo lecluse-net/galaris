@@ -9,7 +9,7 @@ const navigation: NavigationTree = {
         order: 40,
         to: '/user/users',
         description: 'nav.users_desc',
-        privileges: ['READ_USER'], // String constant because this module loads before authorize.
+        privileges: ['READ_USER', 'CREATE_USER', 'UPDATE_USER', 'DELETE_USER'], // This module loads before authorize.
       }
     }
   }

@@ -117,7 +117,7 @@ import { useQuasar, type QTableColumn, type QTableProps } from 'quasar'
 import { websocket } from '@/core/websocket'
 import { usePrivilegeStore, privileges } from '@/core/authorize'
 import { ExecutionDateFilters, startVisiblePolling } from '@/core/util'
-import { useAgentStore } from '@/app/agent/stores/agentStore'
+import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 import { agentService } from '@/app/agent/services/agentService'
 import LlmCall from './LlmCall.vue'
 import { llmCallService } from '../services/llmCallService'
@@ -128,7 +128,7 @@ import { useLlmCallProgress } from '../useLlmCallProgress'
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
-const agentStore = useAgentStore()
+const agents = ref<AgentSelectionOption[]>([])
 const liveCalls = ref<LLMCall[]>([])
 const recentCalls = ref<LLMCall[]>([])
 const agentAvatarUrls = reactive<Record<number, string>>({})
@@ -304,7 +304,7 @@ const onDelete = (response: { data: { id: string } }) => {
 
 onMounted(() => {
   void load()
-  void Promise.all([loadAgents(), agentStore.fetchTitles()])
+  void loadAgents()
   websocket.createWebsocket()
   websocket.onEvent('llm_call', 'create', onCreate)
   websocket.onEvent('llm_call', 'update', onUpdate)
@@ -364,8 +364,8 @@ function sortCalls(a: LLMCall, b: LLMCall): number {
 
 function agentName(agentId?: number): string | undefined {
   if (!agentId) return undefined
-  const agent = agentStore.agents.find(item => item.id === agentId)
-  return agent ? agentStore.getFullName(agent, t) : `Agent #${agentId}`
+  const agent = agents.value.find(item => item.id === agentId)
+  return agent?.label
 }
 
 function agentAvatarUrl(agentId?: number): string | undefined {
@@ -373,8 +373,9 @@ function agentAvatarUrl(agentId?: number): string | undefined {
 }
 
 async function loadAgents(): Promise<void> {
-  await agentStore.fetchAgents()
-  await Promise.all(agentStore.agents.map(async agent => {
+  try { agents.value = await getAgentSelection('management') }
+  catch { error.value = t('common.anError'); return }
+  await Promise.all(agents.value.map(async agent => {
     if (!agent.has_avatar || agentAvatarUrls[agent.id]) return
     try {
       agentAvatarUrls[agent.id] = await agentService.getAvatarBlobUrl(agent.id)

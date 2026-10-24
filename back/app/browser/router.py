@@ -30,7 +30,7 @@ class BrowserStatus(BaseModel):
 
 
 @router.get("/status", response_model=BrowserStatus)
-@authorize(privileges=[Privileges.PARAMS_ACCESS, Privileges.PARAMS_EDIT])
+@authorize(privileges=[Privileges.BROWSER_CONFIG_ACCESS, Privileges.BROWSER_CONFIG_EDIT])
 async def status() -> BrowserStatus:
     """A configured, active agent connection makes the Tool used by the instance."""
     return BrowserStatus(enabled=await has_any_active_tool_connection("browser"))

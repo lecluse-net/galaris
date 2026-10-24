@@ -55,6 +55,20 @@ runtimes décrits dans le plan des harnais modulaires.
   et un conteneur par agent conformément à l’ADR 0058 ;
 - l'ancien transport Kanban `legacy` est refusé explicitement.
 
+## Retrait des anciennes routes Galaris — 2026-10-24
+
+Les routes Galaris `/api/hermes/reachable` et `/api/hermes/agents` sont supprimées,
+ainsi que les privilèges `HERMES_ACCESS` et `HERMES_EDIT`. Aucun alias ni redirection
+n’est conservé. Le diagnostic du gestionnaire utilise `/api/harness-manager/diagnostics` ;
+l’état, les journaux et les actions par agent passent par `/api/harnesses/agents/{id}`
+et ses sous-routes, avec les privilèges communs Params et Agent et le périmètre de gestion.
+La configuration propre à Hermès et les endpoints du MemoryProvider restent dans son bridge.
+
+Le dataset autoritatif `core.authorize.privileges` retire les codes supprimés lors de la
+synchronisation. La clé étrangère `role_privileges.privilege_id` en `ON DELETE CASCADE`
+supprime leurs grants sans supprimer les rôles, les listes ou les autres privilèges.
+Aucun grant de remplacement n’est créé.
+
 ## Preuves dans le code
 
 `harness_manager/main.py`, ses tests, `back/bridge/harness/manager.py`,

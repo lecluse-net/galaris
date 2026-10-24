@@ -29,7 +29,7 @@
           class="history-toolbar-filter"
           @update:model-value="filtersChanged"
         />
-        <TopicSelect
+        <TopicSelect v-if="canFilterTopics"
           v-model="topicFilter"
           :allow-create="false"
           :label="t('topic.filter')"
@@ -334,7 +334,8 @@ import { useI18n } from 'vue-i18n'
 import type { QTableColumn, QTableProps } from 'quasar'
 import AgentAvatar from '@/app/agent/components/AgentAvatar.vue'
 import { AgentSelect } from '@/app/agent'
-import { useAgentStore } from '@/app/agent/stores/agentStore'
+import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
+import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { websocket } from '@/core/websocket'
 import ConversationTurnDialog from '@/core/util/components/ConversationTurnDialog.vue'
 import WaitingResponseIndicator from '@/core/util/components/WaitingResponseIndicator.vue'
@@ -355,7 +356,13 @@ import TopicSelect from '@/app/topic/components/TopicSelect.vue'
 type TableRequest = Parameters<NonNullable<QTableProps['onRequest']>>[0]
 
 const { t, locale } = useI18n()
-const agentStore = useAgentStore()
+const agents = ref<AgentSelectionOption[]>([])
+const privilegeStore = usePrivilegeStore()
+const canFilterTopics = computed(() => privilegeStore.hasAnyPrivilege([privileges.TOPIC_ACCESS, privileges.TOPIC_EDIT]))
+async function loadAgents(): Promise<void> {
+  try { agents.value = await getAgentSelection('management') }
+  catch { error.value = t('common.anError') }
+}
 const conversations = ref<VoiceConversationDetailData[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -383,8 +390,8 @@ const columns = computed<QTableColumn<VoiceConversationDetailData>[]>(() => [
 
 const agentOptions = computed(() => [
   { label: t('voice.history.allAgents'), value: null },
-  ...agentStore.sortedAgents.map(agent => ({
-    label: `${agent.first_name} ${agent.last_name}`.trim() || agent.code,
+  ...agents.value.map(agent => ({
+    label: agent.label,
     value: agent.id,
   })),
 ])
@@ -547,7 +554,7 @@ function scheduleRealtimeRefresh(): void {
 }
 
 onMounted(() => {
-  if (!agentStore.agents.length) void agentStore.fetchAgents()
+  void loadAgents()
   void load()
   const socket = websocket.createWebsocket()
   socket.on('connect', scheduleRealtimeRefresh)

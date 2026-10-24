@@ -10,7 +10,7 @@ const navigation: NavigationTree = {
         icon: 'flag_circle',
         order: 20,
         to: '/goal',
-        privileges: [privileges.GOAL_ACCESS],
+        privileges: [privileges.GOAL_ACCESS, privileges.GOAL_EDIT, privileges.GOAL_CONFIG_ACCESS, privileges.GOAL_CONFIG_EDIT],
       },
     },
   },

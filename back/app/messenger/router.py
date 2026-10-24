@@ -30,7 +30,7 @@ async def list_messenger_bridges() -> list[MessengerBridgeInfo]:
 
 
 @router.post("/configuration/test", response_model=MessengerConfigurationCheck)
-@authorize(privileges=Privileges.PARAMS_EDIT)
+@authorize(privileges=Privileges.MESSAGING_CONFIG_EDIT)
 async def test_messenger_configuration() -> MessengerConfigurationCheck:
     """Validate active credentials and report inbound-listener health."""
     return MessengerConfigurationCheck.model_validate(await check_configuration())

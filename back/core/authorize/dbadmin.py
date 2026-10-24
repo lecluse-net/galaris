@@ -13,12 +13,18 @@ from core.dbadmin import (
     DbAdminDataset,
     DbAdminDatasetResult,
     DbAdminRegistry,
+    DbAdminAction,
+    DbAdminPhase,
 )
 
 from .models import Privilege, PrivilegeListDefault, Role, RolePrivilege
 from .default_lists import DEFAULT_PRIVILEGE_LISTS, initialize_default_lists
 from .privilege_service import PrivilegeService
 from .update_admin_role import ADMIN_ROLE_CODE, ADMIN_ROLE_DISPLAY_NAME
+from .domain_projection import (
+    needs_domain_projection, project_domain_privileges, domain_projection_complete,
+)
+from .functional_projection import needs_functional_projection, project_functional_privileges, functional_projection_complete
 
 
 async def _generate_accessors(
@@ -98,3 +104,19 @@ DATA_SOURCE = DbAdminDataSource(key="core.authorize", factory=datasets)
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_data_source(DATA_SOURCE)
+    registry.register_action(DbAdminAction(
+        key="core.authorize.split_domain_privileges",
+        phase=DbAdminPhase.AFTER_DATASET,
+        checksum="explicit-capability-projection",
+        predicate=needs_domain_projection,
+        handler=project_domain_privileges,
+        postcondition=domain_projection_complete,
+    ))
+    registry.register_action(DbAdminAction(
+        key="core.authorize.functional_isolation",
+        phase=DbAdminPhase.AFTER_DATASET,
+        checksum="functional-read-write-domains",
+        predicate=needs_functional_projection,
+        handler=project_functional_privileges,
+        postcondition=functional_projection_complete,
+    ))
