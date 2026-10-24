@@ -530,19 +530,26 @@ for (const mode of ['reader', 'editor', 'document editor']) {
 }
 
 
-for (const width of [1440, 390]) for (const autoGrow of [false, true]) test(`document search highlights results and cycles without editing at ${width}px (autoGrow=${autoGrow})`, async ({ page }, testInfo) => {
+for (const profile of ['document', 'rich-text']) for (const readonly of [false, true]) for (const width of [1440, 390]) for (const autoGrow of [false, true]) test(`search highlights results and cycles without editing for ${profile} at ${width}px (autoGrow=${autoGrow}, readonly=${readonly})`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 844 })
   const middle = Array.from({ length: 40 }, (_, index) => `<p>Filler paragraph ${index}</p>`).join('')
   await mount(page, 'core/util/components/RichTextEditor.vue', { props: {
-    profile: 'document', autoGrow, modelValue: '<p>First <strong>needle</strong></p>' + middle + '<p>Second needle</p>', ariaLabel: 'Document',
+    profile, readonly, autoGrow, modelValue: '<p>First <strong>needle</strong></p>' + middle + '<p>Second needle</p>', ariaLabel: 'Document',
   }, containerStyle: { height: '700px', overflow: 'auto' } })
-  const editor = page.getByRole('textbox', { name: 'Document', exact: true })
+  const editor = page.locator('[data-editor-surface]')
   const original = await editorHtml(page)
-  await editor.locator('p').first().click()
+  await editor.locator('p').first().click({ position: { x: 1, y: 1 } })
   await page.keyboard.press('Control+Home')
   await command(page, 'Find')
   const search = page.getByRole('search', { name: 'Find', exact: true })
   const input = search.getByRole('textbox', { name: 'Find', exact: true })
+  await expect(input).toBeFocused()
+  await expect(page.getByRole('dialog', { name: 'Find', exact: true })).toHaveCount(0)
+  if (readonly) {
+    await expect(search.getByRole('textbox', { name: 'Replace', exact: true })).toBeDisabled()
+    await expect(search.getByRole('button', { name: 'Replace', exact: true })).toBeDisabled()
+    await expect(search.getByRole('button', { name: 'Replace all', exact: true })).toBeDisabled()
+  }
   await input.fill('needle')
   await expect(editor.locator('mark[data-search-match]')).toHaveText(['needle', 'needle'])
   await input.press('Enter')
@@ -577,26 +584,38 @@ for (const width of [1440, 390]) for (const autoGrow of [false, true]) test(`doc
   await expect(editor).toBeFocused()
   await command(page, 'Find')
   await expect(input).toHaveValue('missing')
+  await editor.focus()
+  await editor.press('Control+f')
+  await expect(input).toBeFocused()
   await input.fill('needle')
   await expect(editor.locator('[data-search-match]')).toHaveCount(2)
   await command(page, 'Find')
   await expect(search).toBeHidden()
   await expect(editor.locator('[data-search-match]')).toHaveCount(0)
+  await command(page, 'Fullscreen')
+  await command(page, 'Find')
+  await expect(input).toHaveValue('needle')
+  await input.press('Enter')
+  await expect(editor.locator('[data-search-current]')).toBeInViewport({ ratio: 1 })
+  await input.press('Escape')
+  await expect(search).toBeHidden()
+  await expect(editor).toBeFocused()
+  await expect(page.locator('.editorial-fullscreen')).toHaveCount(1)
+  await editor.press('Escape')
+  await expect(page.locator('.editorial-fullscreen')).toHaveCount(0)
   expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
 })
 
-for (const [profile, width] of [['rich-text', 1024], ['document', 1024], ['document', 390]]) {
+for (const [profile, width] of [['rich-text', 1024], ['rich-text', 390], ['document', 1024], ['document', 390]]) {
 test(`native find and replace remains usable for ${profile} at ${width}px`, async ({page}, testInfo)=>{
   await page.setViewportSize({width,height:844})
   await mount(page,'core/util/components/RichTextEditor.vue',{props:{profile,modelValue:'<p>Find <strong>me</strong></p>',ariaLabel:'Editorial content'},dark:true})
-  if (profile === 'document') {
-    await page.locator('[data-editor-surface]').click()
-    await page.keyboard.press('Control+f')
-    await expect(page.getByRole('textbox', {name:'Find',exact:true})).toBeFocused()
-  } else await command(page,'Find')
+  await page.locator('[data-editor-surface]').click()
+  await page.keyboard.press('Control+f')
+  await expect(page.getByRole('search', { name: 'Find', exact: true })).toBeVisible()
+  await expect(page.getByRole('textbox', {name:'Find',exact:true})).toBeFocused()
   await page.getByRole('textbox', {name:'Find',exact:true}).fill('Find')
-  if (profile === 'document') await page.getByRole('textbox', {name:'Find',exact:true}).press('Enter')
-  else await page.getByRole('button', {name:'Next',exact:true}).click()
+  await page.getByRole('textbox', {name:'Find',exact:true}).press('Enter')
   await page.getByRole('textbox', {name:'Replace',exact:true}).fill('Found')
   await page.getByRole('button', {name:'Replace',exact:true}).click()
   await expect(page.locator('[data-editor-surface]')).toContainText('Found me')
@@ -606,12 +625,10 @@ test(`native find and replace remains usable for ${profile} at ${width}px`, asyn
   await page.getByRole('textbox', {name:'Replace',exact:true}).fill('Whole match')
   await page.getByRole('button', {name:'Replace',exact:true}).click()
   expect(await lastValue(page)).toBe('<p>Whole match</p>')
-  if (profile === 'document') {
-    await page.getByRole('textbox', {name:'Find',exact:true}).press('Control+f')
-    await expect(page.getByRole('textbox', {name:'Find',exact:true})).toBeFocused()
-    await page.getByRole('textbox', {name:'Find',exact:true}).press('Escape')
-    await expect(page.locator('[data-editor-surface]')).toBeFocused()
-  } else await page.getByRole('button', {name:'Cancel',exact:true}).click()
+  await page.getByRole('textbox', {name:'Find',exact:true}).press('Control+f')
+  await expect(page.getByRole('textbox', {name:'Find',exact:true})).toBeFocused()
+  await page.getByRole('textbox', {name:'Find',exact:true}).press('Escape')
+  await expect(page.locator('[data-editor-surface]')).toBeFocused()
   await page.evaluate(() => window.testApp.setProps({ modelValue: '<p>Blue blue blueberry <strong>BLUE</strong></p>' }))
   await command(page,'Find')
   await page.getByRole('textbox', {name:'Find',exact:true}).fill('blue')
@@ -624,12 +641,10 @@ test(`native find and replace remains usable for ${profile} at ${width}px`, asyn
   await page.getByRole('button', {name:'Replace all',exact:true}).click()
   await expect(page.locator('[data-editor-surface]')).toHaveText('green green blueberry green')
   await page.screenshot({path:testInfo.outputPath('native-search.png')})
-  if (profile === 'document') {
-    await page.getByRole('button', {name:'Close',exact:true}).click()
-    await expect(page.locator('[data-editor-surface]')).toBeFocused()
-    await command(page,'Find')
-    await expect(page.getByRole('textbox', {name:'Find',exact:true})).toHaveValue('blue')
-  }
+  await page.getByRole('button', {name:'Close',exact:true}).click()
+  await expect(page.locator('[data-editor-surface]')).toBeFocused()
+  await command(page,'Find')
+  await expect(page.getByRole('textbox', {name:'Find',exact:true})).toHaveValue('blue')
 })
 }
 

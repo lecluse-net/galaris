@@ -76,6 +76,12 @@ for (const mobile of [false, true]) {
     await page.evaluate(id => window.testApp.emitSocket('document.delete', { data: { id, node_kind: 'document' } }), items[0].id)
     await expect(forward()).toBeDisabled()
     await page.screenshot({ path: testInfo.outputPath('document-navigation.png'), animations: 'disabled' })
+    if (!mobile) {
+      const toggleLibrary = buttons().getByRole('button', { name: 'Show or hide library', exact: true })
+      await toggleLibrary.click()
+      await page.screenshot({ path: testInfo.outputPath('document-library-collapsed.png'), animations: 'disabled' })
+      await toggleLibrary.click()
+    }
   })
 
   test(`document history retains edits and its position when saving fails (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {

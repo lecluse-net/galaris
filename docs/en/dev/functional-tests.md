@@ -183,6 +183,11 @@ and mobile. Columns, merged cells and captions survive; new rows inherit the pre
 18 combinations.
 Theme changes adapt rendering without another edit or changing the HTML; reopening and
 reading follow the active theme while printing and PDF retain the light presentation.
+Find uses the same bar for `document` and `rich-text` profiles on mobile and desktop,
+in fullscreen and read-only views: temporary highlights, navigation, reopening and intact
+content. Replacement remains limited to editable content.
+`document-dialog-navigation.spec.mjs` also checks the bar in document windows and after
+navigation, without opening a nested search modal.
 
 `document-print.spec.mjs` checks that PDF exports preserve process diagrams, their participants
 and agent portraits. Images and cards have no active links while ordinary text links remain

@@ -34,7 +34,7 @@ comme en lecture seule. Leur **mode complet** ajoute l’affichage en
 page et son bouton **Pleine largeur**, les insertions documentaires, l’impression et les
 exports PDF/ZIP dans **Édition**. La dictée et la lecture vocale apparaissent dans **Lecture**
 dans les deux modes, avec vos modèles personnels. En lecture seule, **Lire le texte** reste
-disponible et la dictée est masquée. Sélectionnez un passage pour ne lire que celui-ci, ou
+disponible et le micro de dictée reste visible, mais désactivé. Sélectionnez un passage pour ne lire que celui-ci, ou
 laissez le curseur sans sélection pour lire tout le texte. **Commandes de lecture** ouvre
 un menu avec icônes et libellés pour **Pause**, **Reprendre** et **Arrêter la lecture**.
 La barre reste accessible au défilement tant que le document est à l’écran, même après un clic sur le fond.

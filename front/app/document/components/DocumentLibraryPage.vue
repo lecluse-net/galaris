@@ -3,8 +3,8 @@
     <PageHeader help-key="documents" :help-text="$t('contextHelpPages.documents')" :icon="navigationIcon('description')" :title="t('nav.documents')" :description="t('nav.documents_desc')">
       <template #title-after>
         <div class="row items-center q-gutter-xs">
+          <q-btn v-if="!$q.screen.lt.md" flat round :icon="libraryOpen ? fullDocumentIcon : libraryDocumentIcon" :aria-label="t('documents.toggleLibrary')" :aria-expanded="libraryOpen" @click="libraryOpen = !libraryOpen"><q-tooltip>{{ t('documents.toggleLibrary') }}</q-tooltip></q-btn>
           <DocumentNavigationButtons :can-go-back="canGoBack" :can-go-forward="canGoForward" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
-          <q-btn v-if="!$q.screen.lt.md" flat round icon="folder_open" :aria-label="t('documents.toggleLibrary')" :aria-expanded="libraryOpen" @click="libraryOpen = !libraryOpen"><q-tooltip>{{ t('documents.toggleLibrary') }}</q-tooltip></q-btn>
         </div>
       </template>
     </PageHeader>
@@ -87,11 +87,7 @@
             @updated="onDocumentUpdated"
             @unavailable="onMobileDocumentUnavailable"
             @deleted="onDocumentDeleted"
-          >
-            <template v-if="canAccessChat" #toolbar-actions="{ exitFullscreen }">
-              <q-btn flat dense icon="forum" :aria-label="t('documents.conversation')" :aria-expanded="chatOpen" @click="exitFullscreen(); chatOpen = true"><q-tooltip>{{ t('documents.conversation') }}</q-tooltip></q-btn>
-            </template>
-          </DocumentEditor>
+          />
         </div>
       </q-card>
     </q-dialog>
@@ -172,6 +168,8 @@ import DocumentBulkList from '@/app/document/components/DocumentBulkList.vue'
 interface MemoryRealtimeEvent { data: { id: string; node_kind: DocumentNodeKind } }
 
 const { t } = useI18n()
+const fullDocumentIcon = 'M6.5 5h11a2.5 2.5 0 0 1 2.5 2.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9A2.5 2.5 0 0 1 6.5 5z@@fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round'
+const libraryDocumentIcon = 'M6.5 5h11a2.5 2.5 0 0 1 2.5 2.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9A2.5 2.5 0 0 1 6.5 5zM10 5v14M4 12h6@@fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round'
 const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()

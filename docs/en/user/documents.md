@@ -125,12 +125,15 @@ can be retried while displayed documents remain available; access revocation rem
 
 ## Write and share
 
-In the document editor, **Ctrl+F** (or **Cmd+F**) and the **Find** tool open a bar below
+In every document editor, **Ctrl+F** (or **Cmd+F**) and the **Find** tool open a bar below
 the icons, with search and replacement fields. Clicking **Find** again hides the bar and
 keeps the query for reopening. Matches are highlighted as you type without changing the
 document. The content remains accessible. **Enter** in the search field or **Next**
 selects the next match; options support case-sensitive and whole-word
 search. **Escape** or the close button hides the bar and returns focus to the document.
+The same bar is available on desktop and mobile, in Documents, documents opened from
+other pages and fullscreen, including rich-text content. Read-only documents keep search
+available with replacement disabled. Find no longer opens a modal.
 
 To develop a document with an agent, ask for updates to the relevant passages. The agent
 preserves useful information and can add distinct material; prior versions remain in the

@@ -2,7 +2,7 @@
   <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @click.capture="editorClick" @contextmenu.capture="openContextMenu">
     <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :outline-open="outlineOpen" :single-row="singleRowToolbar" :hidden-groups="hiddenToolbarGroups" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
       <template v-if="personalVoice" #voice>
-        <EditorialToolButton v-if="!readonly" flat dense :color="voice?.dictating || voice?.dictationPending ? 'negative' : 'primary'" :icon="voice?.dictating || voice?.dictationPending ? 'stop' : 'mic'" :label="voice?.dictating ? voice.labels.finishDictation : voice?.dictationPending ? voice.labels.processing : voice?.labels.dictate ?? ''" :disable="sourceMode || voice?.reading" @click="voice?.toggleDictation()" />
+        <EditorialToolButton flat dense :color="voice?.dictating || voice?.dictationPending ? 'negative' : 'primary'" :icon="voice?.dictating || voice?.dictationPending ? 'stop' : 'mic'" :label="voice?.dictating ? voice.labels.finishDictation : voice?.dictationPending ? voice.labels.processing : voice?.labels.dictate ?? ''" :disable="readonly || sourceMode || voice?.reading" @click="voice?.toggleDictation()" />
         <EditorialToolButton flat dense color="primary" :icon="voice?.reading && !voice.paused ? 'pause' : 'play_arrow'" :label="voice?.reading ? voice.paused ? voice.labels.paused : voice.labels.reading : voice?.labels.read ?? ''" :disable="voice?.dictating || voice?.dictationPending" @click="action('read')" />
         <EditorialToolButton flat dense icon="expand_more" :label="voice?.labels.readingControls ?? ''">
           <q-menu><q-list dense role="menu" :aria-label="voice?.labels.readingControls">
@@ -77,7 +77,6 @@
         <q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('richEditor.' + dialog) }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
         <q-card-section class="galaris-dialog-body" :class="{ 'q-gutter-md': dialog !== 'help' }">
           <template v-if="dialog === 'link'"><q-input v-model="fields.url" :label="t('richEditor.uri')" /><q-input v-model="fields.text" :label="t('richEditor.linkText')" /></template>
-          <template v-else-if="dialog === 'find'"><q-input v-model="fields.search" :label="t('richEditor.find')" /><q-input v-model="fields.replace" :label="t('richEditor.replace')" /><q-checkbox v-model="fields.matchCase" :label="t('richEditor.matchCase')" /><q-checkbox v-model="fields.wholeWords" :label="t('richEditor.wholeWords')" /><div role="status">{{ matches.length }}</div></template>
           <template v-else-if="dialog === 'image'"><q-input v-model="fields.alt" :label="t('richEditor.alt')" /><q-input v-model="fields.caption" :label="t('richEditor.caption')" /><q-input v-model="fields.width" :label="t('richEditor.imageWidth')" /><q-select v-model="fields.imageStyle" :options="imageStyles" emit-value map-options :label="t('richEditor.imageStyle')" /><q-input v-model="fields.imageLink" :label="t('richEditor.link')" /></template>
           <template v-else-if="dialog === 'tableProperties' || dialog === 'cellProperties'"><q-input v-model="fields.width" :label="t('richEditor.width')" /><q-input v-model="fields.height" :label="t('richEditor.height')" /><q-input v-model="fields.background" :label="t('richEditor.backgroundColor')" /><q-input v-model="fields.border" :label="t('richEditor.border')" /><q-input v-if="dialog === 'tableProperties'" v-model="fields.caption" :label="t('richEditor.caption')" /></template>
           <template v-else-if="dialog === 'listProperties'"><q-input v-if="editor?.isActive('orderedList')" v-model="fields.start" type="number" min="1" :label="t('richEditor.listStart')" /><q-checkbox v-if="editor?.isActive('orderedList')" v-model="fields.reversed" :label="t('richEditor.reversed')" /><q-select v-model="fields.listStyle" :options="listStyles" emit-value map-options :label="t('richEditor.listStyle')" /></template>
@@ -87,7 +86,7 @@
             <tbody><tr v-for="shortcut in keyboardShortcuts" :key="shortcut.label + shortcut.keys"><td>{{ shortcut.label }}</td><td class="text-right"><kbd>{{ shortcut.keys }}</kbd></td></tr></tbody>
           </q-markup-table>
         </q-card-section>
-        <q-card-actions v-if="dialog !== 'help'" align="right"><q-btn v-close-popup outline :label="t('common.cancel')" /><template v-if="dialog === 'find'"><q-btn outline :label="t('richEditor.next')" @click="findNext" /><q-btn outline :label="t('richEditor.replaceAll')" :disable="readonly || !matches.length" @click="replaceAll" /><q-btn color="primary" :label="t('richEditor.replace')" :disable="readonly || !matches.length" @click="replaceMatch" /></template><q-btn v-else color="primary" :label="t('richEditor.apply')" :disable="readonly" @click="applyDialog" /></q-card-actions>
+        <q-card-actions v-if="dialog !== 'help'" align="right"><q-btn v-close-popup outline :label="t('common.cancel')" /><q-btn color="primary" :label="t('richEditor.apply')" :disable="readonly" @click="applyDialog" /></q-card-actions>
       </q-card>
     </q-dialog>
     <q-dialog v-model="shareOpen" @hide="cancelShare">
@@ -284,7 +283,7 @@ function createEditor(): void {
       card: mountCard, image: resolveAttachment, openImage: navigate, readonly: () => readonly, codeCopy: mountCodeCopy, linkIcon: mountDocumentLinkIcon }),
     editorProps: { attributes: { class: 'rich-content', 'aria-label': ariaLabel || t('richEditor.content'), 'data-editor-surface': '', tabindex: '0' },
       decorations: state => {
-        if (!findOpen.value && !(dialogOpen.value && dialog.value === 'find')) return null
+        if (!findOpen.value) return null
         return DecorationSet.create(state.doc, findMatches(state.doc).map(({ from, to }) => Decoration.inline(from, to, {
           nodeName: 'mark', class: 'editorial-search-match', 'data-search-match': '',
           ...(state.selection.from === from && state.selection.to === to ? { 'data-search-current': '' } : {}),
@@ -324,9 +323,11 @@ function createEditor(): void {
         if (event.altKey && !mod && !event.shiftKey && event.key === 'F10') { root.value?.querySelector<HTMLElement>('[role="toolbar"] button')?.focus(); return true }
         if (!mod && !event.altKey && (event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10')) { event.preventDefault(); void openKeyboardContextMenu(); return true }
         const shortcut = profile === 'document' ? documentShortcut(event, altGraphPressed) : undefined
+        if (shortcut?.[2] === 'find') { event.preventDefault(); showDialog('find'); return true }
         if (shortcut && readingShortcutCommands.has(shortcut[2])) { event.preventDefault(); action(shortcut[2], shortcut[3]); return true }
+        if (mod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'f') { showDialog('find'); return true }
         if (readonly) return false
-        if (mod && !event.shiftKey && !event.altKey && ['k', 'f'].includes(event.key.toLowerCase())) { showDialog(event.key.toLowerCase() === 'k' ? 'link' : 'find'); return true }
+        if (mod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k') { showDialog('link'); return true }
         if (profile !== 'document') return false
         if (event.key === 'Tab' && !mod && !event.altKey && current.isActive('table')) {
           event.preventDefault()
@@ -645,7 +646,9 @@ function editorKeydown(event: KeyboardEvent): void {
     else fullscreen.value = false
     return
   }
-  if (!event.defaultPrevented && !readonly && profile === 'document' && documentShortcut(event, altGraphPressed)?.[2] === 'find') {
+  const findShortcut = profile === 'document' ? documentShortcut(event, altGraphPressed)?.[2] === 'find'
+    : (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'f'
+  if (!event.defaultPrevented && !event.isComposing && !isAltGraphInput(event, altGraphPressed) && findShortcut) {
     event.preventDefault(); showDialog('find'); return
   }
   if (!event.defaultPrevented && event.altKey && event.key === 'Enter') {
@@ -670,7 +673,8 @@ const listStyles = computed(() => (editor.value?.isActive('orderedList') ? ['dec
 const fields = ref({ url: '', text: '', search: '', replace: '', matchCase: false, wholeWords: false, alt: '', caption: '', width: '', height: '', background: '', border: '', color: '#087FF5', imageStyle: 'breakText', imageLink: '', start: '1', reversed: false, listStyle: 'decimal' })
 function showDialog(kind: string): void {
   const current = editor.value; if (!current) return
-  if (kind === 'find' && profile === 'document') {
+  if (kind === 'find') {
+    if (sourceMode.value) return
     findOpen.value = true
     nextTick(() => { searchInput.value?.focus(); searchInput.value?.select() })
     return
@@ -786,11 +790,16 @@ const matches = computed(() => {
   return editor.value ? findMatches(editor.value.state.doc) : []
 })
 // Query changes redraw temporary highlights without changing the document or undo history.
-watch([findOpen, dialogOpen, dialog, () => fields.value.search, () => fields.value.matchCase, () => fields.value.wholeWords], () => {
+watch([findOpen, () => fields.value.search, () => fields.value.matchCase, () => fields.value.wholeWords], () => {
   const current = editor.value
   if (current && !current.isDestroyed) current.view.updateState(current.state)
 })
-function closeFind(): void { findOpen.value = false; editor.value?.commands.focus() }
+function closeFind(): void {
+  findOpen.value = false
+  editor.value?.commands.focus()
+  // Tiptap does not focus a noneditable surface; it remains keyboard-accessible.
+  if (readonly) nextTick(() => { if (!findOpen.value) editor.value?.view.dom.focus() })
+}
 function findNext(): void {
   const current = editor.value
   if (!current) return
@@ -913,8 +922,8 @@ function action(key: string, value?: string): void {
   if (key === 'share.action') { void prepareShare(); return }
   if (key === 'read') { if (personalVoice?.controls.value.reading) personalVoice.controls.value.togglePause(); else personalVoice?.controls.value.read(window.getSelection()?.isCollapsed ? undefined : selectedHtml()); return }
   if (key === 'stopReading') { personalVoice?.stop(); return }
+  if (key === 'find' && !sourceMode.value) { if (findOpen.value) closeFind(); else showDialog('find'); return }
   if (readonly || sourceMode.value) return
-  if (key === 'find' && profile === 'document') { if (findOpen.value) closeFind(); else showDialog('find'); return }
   current.view.dispatch(closeHistory(current.state.tr))
   const chain = current.chain()
   if (!current.view.hasFocus()) chain.focus()

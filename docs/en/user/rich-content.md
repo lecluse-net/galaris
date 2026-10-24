@@ -31,7 +31,7 @@ width without a menu bar. Focusing the document keeps its neutral border.
 Their **Full mode** adds page layout and its
 **Full width** button, document insertions, printing and PDF/ZIP exports in **Editing**.
 Dictation and speech playback appear in **Reading** in both modes, using your personal models.
-In read-only mode, **Read text** remains available and dictation is hidden. Select a passage
+In read-only mode, **Read text** remains available and the dictation microphone stays visible but disabled. Select a passage
 to read only that passage, or leave the selection collapsed to read the entire text.
 **Reading controls** opens a menu with icons and labels for **Pause**, **Resume** and **Stop reading**.
 The toolbar stays accessible while scrolling through the document, even after clicking the page background.

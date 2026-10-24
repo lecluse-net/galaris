@@ -121,7 +121,7 @@ const groups = computed(() => {
     { name: 'reading' as const, rows: [[
       ...(document ? [button('outline', 'format_list_bulleted', outlineOpen, true), { ...button('layout.full', 'width_full', fullWidth, true), disabled: !fits }] : [button('source', 'code', source, true)]), button('fullscreen', 'fullscreen', fullscreen, true), ...(document && !$q.screen.lt.md ? [button('help', 'keyboard', false, true)] : []),
     ]] },
-    { name: 'editing' as const, rows: [[button('undo', 'undo'), button('redo', 'redo'), button('find', 'search', document ? findOpen : undefined), button('selectAll', 'select_all')], [button('removeFormat', 'format_clear'),
+    { name: 'editing' as const, rows: [[button('undo', 'undo'), button('redo', 'redo'), { ...button('find', 'search', findOpen, true), disabled: source || disabledActions.includes('find') }, button('selectAll', 'select_all')], [button('removeFormat', 'format_clear'),
       ...(document ? [$q.screen.lt.md ? button('share.action', 'share', false, true) : button('print', 'print', false, true), button('exportPdf', 'picture_as_pdf', false, true), button('resources.documentExportBundle', 'folder_zip', false, true)] : [])]] },
     { name: 'text' as const, rows: [[
       menu('fontFamily', 'font_download', ['default', 'Arial', 'Georgia', 'Times New Roman', 'Courier New'].map(value => [value === 'default' ? '' : value, value === 'default' ? t('richEditor.defaultFont') : value]), editor.getAttributes('textStyle').fontFamily || t('richEditor.defaultFont')),

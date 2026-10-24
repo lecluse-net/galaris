@@ -22,7 +22,7 @@ export const editorialShortcuts = [
   ['shortcuts.nonbreakingHyphen', 'Mod-Shift-Minus', 'shortcuts.insertText', '\u2011'],
 ] as const
 
-export const readingShortcutCommands = new Set(['help', 'print', 'fullscreen', 'selectAll', 'shortcuts.toolbarFocus', 'shortcuts.contextFocus'])
+export const readingShortcutCommands = new Set(['help', 'print', 'fullscreen', 'selectAll', 'find', 'shortcuts.toolbarFocus', 'shortcuts.contextFocus'])
 
 /** Firefox also reports AltGraph for Ctrl+Alt (Windows) and Option (macOS).
  * Track the actual AltGr key separately so those shortcuts remain usable. */

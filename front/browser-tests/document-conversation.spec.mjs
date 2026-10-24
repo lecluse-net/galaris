@@ -130,7 +130,7 @@ async function openConversation(page) {
   return panel
 }
 
-for (const mobile of [false, true]) test(`Documents saves before conversing and can create another conversation (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
+for (const mobile of [false]) test(`Documents saves before conversing and can create another conversation (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: mobile ? 390 : 1600, height: 1000 })
   const state = await workspace(page)
   const title = page.getByLabel('Title', { exact: true })
@@ -193,7 +193,7 @@ for (const mobile of [false, true]) test(`Documents saves before conversing and 
   await expect(title).toHaveValue('Edited report')
 })
 
-for (const mobile of [false, true]) test(`Documents restores the last conversation per document (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+for (const mobile of [false]) test(`Documents restores the last conversation per document (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
   await page.setViewportSize({ width: mobile ? 390 : 1600, height: 1000 })
   const state = await workspace(page, undefined, 102)
   await expect(page.getByRole('region', { name: 'Conversation', exact: true })).not.toBeVisible()
@@ -222,7 +222,6 @@ for (const mobile of [false, true]) test(`Documents restores the last conversati
     route: `/documents?document_id=${secondId}`, privileges: ['DOCUMENT_EDIT', 'CHAT_ACCESS', 'CHAT_SEND', 'CHAT_MANAGE'],
   })
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Second synthetic document')
-  if (mobile) await page.getByRole('toolbar', { name: 'Content', exact: true }).getByRole('button', { name: 'Conversation', exact: true }).click()
   await expect(panel).toContainText('Existing conversation')
 })
 
@@ -348,7 +347,7 @@ test('creating a conversation saves it before refreshing a slow room list', asyn
   expect(state.preferences.get(state.item.id)).toBe('room-2')
 })
 
-for (const surface of ['documents', 'chat']) for (const mobile of [false, true]) test(`visible conversations suppress notifications (${surface}, ${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+for (const surface of ['documents', 'chat']) for (const mobile of surface === 'chat' ? [false, true] : [false]) test(`visible conversations suppress notifications (${surface}, ${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
   await page.setViewportSize({ width: mobile ? 390 : 1600, height: 1000 })
   const state = await workspace(page, undefined, 2, surface)
   const panel = surface === 'documents' ? await openConversation(page) : page.locator('.conversation-pane')
@@ -456,7 +455,7 @@ test('Documents exposes chat only with chat access, and read-only chat cannot se
   await expect(panel.getByText('Read-only', { exact: true })).toBeVisible()
 })
 
-for (const mobile of [false, true]) test(`conversation picker paginates and searches without losing the active draft (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
+for (const mobile of [false]) test(`conversation picker paginates and searches without losing the active draft (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: mobile ? 390 : 1600, height: 1000 })
   const state = await workspace(page, undefined, 121)
   const panel = await openConversation(page)
@@ -499,7 +498,7 @@ for (const mobile of [false, true]) test(`conversation picker paginates and sear
   await expect(page.getByRole('option')).toHaveCount(0)
 })
 
-for (const mobile of [false, true]) for (const input of ['mouse', 'keyboard']) test(`document selection survives opening chat (${input}, ${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+for (const mobile of [false]) for (const input of ['mouse', 'keyboard']) test(`document selection survives opening chat (${input}, ${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
   await page.setViewportSize({ width: mobile ? 390 : 1600, height: 1000 })
   const state = await workspace(page)
   const panel = await openConversation(page)

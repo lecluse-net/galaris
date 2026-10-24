@@ -181,6 +181,11 @@ préservées ; les nouvelles lignes héritent de la présentation. `core/util/te
 vérifie la conservation des 18 combinaisons par la normalisation HTML backend.
 Les changements de thème adaptent le rendu sans nouvelle édition ni modification du HTML ;
 la réouverture et la lecture suivent le thème actif, tandis que l’impression et le PDF restent clairs.
+La recherche utilise la même barre pour les profils `document` et `rich-text`, sur mobile
+et ordinateur, en plein écran et en lecture seule : surlignage temporaire, navigation,
+réouverture et contenu intact. Les remplacements restent réservés à l’édition.
+`document-dialog-navigation.spec.mjs` vérifie aussi cette barre dans les documents ouverts
+en fenêtre et après navigation, sans ouvrir de modale de recherche imbriquée.
 
 `document-print.spec.mjs` vérifie que le PDF conserve les diagrammes de processus, leurs
 participants et les portraits d’agents. Images et cartes y restent sans liens actifs, tandis

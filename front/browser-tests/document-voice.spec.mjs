@@ -107,7 +107,8 @@ test('read-only documents can read and cancel pending speech without dictation',
   await controls(page, { editable: false })
   await page.setViewportSize({ width: 390, height: 844 })
   try {
-    await expect(page.getByRole('button', { name: 'Dictate', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Dictate', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Dictate', exact: true })).toBeDisabled()
     await page.getByRole('button', { name: 'Read text' }).click()
     await expect.poll(() => requested).toBe(true)
     await expect(page.getByRole('menuitem', { name: 'Stop reading' })).not.toBeVisible()
@@ -125,7 +126,7 @@ for (const simple of [false, true]) for (const editable of [true, false]) test(`
     return route.fulfill({ body: silentAudio(), contentType: 'audio/wav', headers: { 'X-Next-Offset': String(route.request().postDataJSON().offset + 20), 'X-Speech-Done': 'false' } })
   })
   await controls(page, { editable }, '<p>Avant <strong>premier passage</strong></p><p>second passage après</p>', simple)
-  if (!editable) await expect(page.getByRole('button', { name: 'Dictate', exact: true })).toHaveCount(0)
+  if (!editable) await expect(page.getByRole('button', { name: 'Dictate', exact: true })).toBeDisabled()
   if (simple) await expect(page.getByRole('button', { name: 'Full width', exact: true })).toHaveCount(0)
   const editor = page.locator('[data-editor-surface]')
   await editor.evaluate(element => {
