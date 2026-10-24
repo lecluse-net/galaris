@@ -1,7 +1,7 @@
 import { api } from '@/core/api'
 import type { RichContentContribution } from '@/core/util'
 import type { Task } from './types'
-import { referenceId, referenceCardHtml, referenceDate, referenceStatus } from '@/core/util'
+import { referenceId, referenceCardHtml, referenceDate, referenceStatus } from '@/core/util/facade'
 import { taskService } from './services/taskService'
 import { pauseBadge } from './services/taskStatusService'
 const idFrom = (uri: string) => referenceId(uri, 'task', '/task', 'task_id')

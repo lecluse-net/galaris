@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { PersonAvatar } from '@/core/util'
+import { PersonAvatar } from '@/core/util/facade'
 
 defineProps<{
   name: string

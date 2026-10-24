@@ -11,7 +11,7 @@ from core.util import complete_io
 from . import skill_service, storage
 from . import learning_service
 from . import interface
-from .contracts import runtime_skill_name
+from .contracts import SkillPackageRef, runtime_skill_name
 
 
 @dataclass(frozen=True)
@@ -93,7 +93,7 @@ async def build_skill_projection(
             continue
         name = runtime_skill_name(package.code, "personal", str(package.id), occupied)
         actual_codes.append(name)
-        def personal_files() -> list[SkillProjectionFile]:
+        def personal_files(package: SkillPackageRef = package, name: str = name) -> list[SkillProjectionFile]:
             result: list[SkillProjectionFile] = []
             for relative, source in storage.iter_skill_files(package.code, owner_agent_id=agent_id):
                 if relative == "SKILL.md" and name != package.code:

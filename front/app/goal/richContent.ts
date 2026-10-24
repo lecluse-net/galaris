@@ -1,6 +1,6 @@
 import type { RichContentContribution } from '@/core/util'
 import { goalService } from './services/goalService'
-import { referenceId, referenceCardHtml, referenceDate, referenceStatus } from '@/core/util'
+import { referenceId, referenceCardHtml, referenceDate, referenceStatus } from '@/core/util/facade'
 const idFrom = (uri: string) => referenceId(uri, 'goal', '/goal', 'goal_id')
 export default {
   schemes: ['galaris'],

@@ -214,27 +214,69 @@ for (const surface of ['document', 'resource']) {
   })
 }
 
-test('an audio attachment opened from Memory uses a dismissible player and reopens', async ({ page }) => {
+for (const changeContext of [false, true]) test(`an audio attachment opened from Memory awaits its view and reopens with context-change=${changeContext}`, async ({ page }) => {
   const documentId = '00000000-0000-0000-0000-000000000001'
   const attachmentId = '00000000-0000-0000-0000-000000000002'
+  const currentAttachmentId = '00000000-0000-0000-0000-000000000003'
+  let releaseView
+  await page.route('**/app/document/components/DocumentAttachments.vue*', async route => {
+    await new Promise(resolve => { releaseView = resolve })
+    await route.continue()
+  }, { times: 1 })
   await jsonRoute(page, '**/api/memory/items/memory-1?*', { primary_url: `document://${documentId}/attachments/${attachmentId}`, metadata: {} })
   await jsonRoute(page, `**/api/documents/${documentId}/attachments/${attachmentId}/info?*`, { id: attachmentId, name: 'recording.wav', media_type: 'audio/wav', size_bytes: silentAudio().length })
   await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}?*`, route => route.fulfill({ contentType: 'audio/wav', body: silentAudio() }))
+  await jsonRoute(page, '**/api/memory/items/memory-2?*', { primary_url: `document://${documentId}/attachments/${currentAttachmentId}`, metadata: {} })
+  await jsonRoute(page, `**/api/documents/${documentId}/attachments/${currentAttachmentId}/info?*`, { id: currentAttachmentId, name: 'current.wav', media_type: 'audio/wav', size_bytes: silentAudio().length })
+  await page.route(`**/api/documents/${documentId}/attachments/${currentAttachmentId}?*`, route => route.fulfill({ contentType: 'audio/wav', body: silentAudio() }))
   await mount(page, 'app/memory/components/MemoryAttachmentButton.vue', { props: { itemId: 'memory-1', agentId: 7 } })
+  const preview = page.getByRole('button', { name: 'Preview', exact: true })
+  await preview.click()
+  await expect.poll(() => Boolean(releaseView)).toBe(true)
+  await expect(preview.locator('.q-spinner')).toBeVisible()
+  if (changeContext) {
+    await page.evaluate(() => window.testApp.setProps({ itemId: 'memory-2' }))
+    await expect(preview.locator('.q-spinner')).toHaveCount(0)
+    await preview.click()
+    await expect(preview.locator('.q-spinner')).toBeVisible()
+  }
+  releaseView()
+  const filename = changeContext ? 'current.wav' : 'recording.wav'
   for (const dismiss of ['backdrop', 'escape']) {
-    await page.getByRole('button', { name: 'Preview', exact: true }).click()
     const dialog = page.getByRole('dialog')
     const audio = dialog.locator('audio')
     await expect(audio).toBeVisible()
     await expect.poll(() => audio.evaluate(element => element.readyState)).toBeGreaterThanOrEqual(2)
     await expect(dialog.getByRole('button', { name: /fullscreen|Zoom|Fit to screen/ })).toHaveCount(0)
     const downloaded = page.waitForEvent('download')
-    await dialog.getByRole('button', { name: 'Download recording.wav', exact: true }).click()
-    expect((await downloaded).suggestedFilename()).toBe('recording.wav')
+    await dialog.getByRole('button', { name: `Download ${filename}`, exact: true }).click()
+    expect((await downloaded).suggestedFilename()).toBe(filename)
     if (dismiss === 'backdrop') await page.locator('.q-dialog__backdrop').click({ position: { x: 5, y: 5 } })
     else await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
     await expect(page.locator('audio')).toHaveCount(0)
+    if (dismiss === 'backdrop') await preview.click()
+  }
+})
+
+test('a failed Memory attachment view download releases loading and reports each retry', async ({ page }) => {
+  const documentId = '00000000-0000-0000-0000-000000000001'
+  const attachmentId = '00000000-0000-0000-0000-000000000002'
+  await page.route('**/app/document/components/DocumentAttachments.vue*', route => route.abort('failed'))
+  await jsonRoute(page, `**/api/documents/${documentId}/attachments/${attachmentId}/info?*`, {
+    id: attachmentId, name: 'recording.wav', media_type: 'audio/wav', size_bytes: silentAudio().length,
+  })
+  await mount(page, 'app/memory/components/MemoryAttachmentButton.vue', { props: {
+    itemId: 'memory-1', agentId: 7, resourceUri: `document://${documentId}/attachments/${attachmentId}`,
+  } })
+  const preview = page.getByRole('button', { name: 'Preview', exact: true })
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await preview.click()
+    const notification = page.locator('.q-notification')
+    await expect(notification).toContainText('The attachment operation failed.')
+    await expect(preview.locator('.q-spinner')).toHaveCount(0)
+    await notification.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(notification).toHaveCount(0)
   }
 })
 

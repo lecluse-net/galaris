@@ -1,5 +1,5 @@
 import { settings } from '@/core/settings'
-import { solaireCss } from '@/core/util'
+import { solaireCss } from '@/core/util/facade'
 
 const editions = {
   dev: { color: solaireCss.orange.accent, badgeColor: solaireCss.orange.dark, label: 'index.environment.dev' },

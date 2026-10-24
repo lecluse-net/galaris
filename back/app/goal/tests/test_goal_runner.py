@@ -680,6 +680,9 @@ async def test_due_goal_creates_an_ordinary_dispatcher_owned_task(
     assert "retention_reasons" in task.data
     assert f"id={referrer.id}" in (task.objective or "")
     assert "DURABLE GOAL TRACKING" in (task.objective or "")
+    from app.goal.evaluation import goal_cycle_work_instructions
+    assert goal_cycle_work_instructions("AGENT") in task.objective
+    assert "goal_ask_referrer" not in task.objective
     from app.agent import parse_scope
     scope = parse_scope(task.data)
     assert scope is not None
@@ -771,6 +774,8 @@ async def test_messenger_goal_cycles_keep_the_linked_galaris_requester(
     task = await db.scalar(select(Task).where(Task.goal_id == created.id))
     assert task is not None
     assert task.requester_user_id == owner.id
+    from app.goal.evaluation import goal_cycle_work_instructions
+    assert goal_cycle_work_instructions("MESSENGER") in (task.objective or "")
     await db.refresh(persisted)
     assert persisted.requester_user_id == owner.id
 

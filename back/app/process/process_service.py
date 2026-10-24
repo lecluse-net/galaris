@@ -18,7 +18,8 @@ from app.agent import AgentManagementScope
 from pydantic import ValidationError
 from sqlalchemy import DateTime, String, case, cast as sa_cast, func, or_, and_, select, true, false
 from sqlalchemy.sql.elements import ColumnElement
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import defer
+from sqlalchemy.exc import IntegrityError, InvalidRequestError
 
 from core import settings, websocket
 from core.database import get_db
@@ -999,7 +1000,9 @@ async def paginate_runs(
     page_size: int = 20,
     agent_ids: Collection[int] | None = None,
     native_actor: AgentManagementScope | None = None,
+    summary_only: bool = False,
 ) -> tuple[list[ProcessRun], int]:
+    """Select a page, optionally omitting private JSON for summary consumers."""
     if native_actor is not None:
         from .query_policy import prepare_process_read
         await prepare_process_read()
@@ -1054,13 +1057,16 @@ async def paginate_runs(
         .offset((page - 1) * page_size)
         .limit(page_size)
     )
-    rows = (
-        await get_db().execute(
-            select(ProcessRun)
-            .where(ProcessRun.id.in_(paged_ids))
-            .order_by(ordering, id_ordering)
+    query = select(ProcessRun).where(ProcessRun.id.in_(paged_ids)).order_by(ordering, id_ordering)
+    if summary_only:
+        query = query.options(
+            defer(ProcessRun.data, raiseload=True),
+            defer(ProcessRun.execution_state, raiseload=True),
+            defer(ProcessRun.raw_snapshot, raiseload=True),
+            defer(ProcessRun.analysis, raiseload=True),
+            defer(ProcessRun.launch_snapshot, raiseload=True),
         )
-    ).scalars().all()
+    rows = (await get_db().execute(query)).scalars().all()
     return list(rows), total
 
 
@@ -1088,6 +1094,41 @@ async def _run_read(run: ProcessRun, *, fresh: bool = True) -> ProcessRunRead:
         "fresh": fresh,
         "summary": await tr(f"process.summary.{run.status}"),
     })
+
+
+async def _run_reads(run_ids: Sequence[UUID]) -> list[ProcessRunRead]:
+    """Serialize already selected runs without loading their private execution state."""
+    from app.agent import Agent
+
+    fields = set(ProcessRunRead.model_fields) | {"engine_code"}
+    columns = [column for column in ProcessRun.__table__.columns if column.key in fields]
+    summaries: dict[UUID, ProcessRunRead] = {}
+    for offset in range(0, len(run_ids), 500):
+        rows = (await get_db().execute(
+            select(
+                *columns,
+                ProcessDefinition.engine_process_id.label("workflow_id"),
+                ProcessDefinition.label.label("process_label"),
+                Agent.code.label("launcher_agent_code"),
+                ProcessRun.launch_snapshot["workflow_id"].label("snapshot_workflow_id"),
+                ProcessRun.launch_snapshot["process_label"].label("snapshot_process_label"),
+            )
+            .select_from(ProcessRun)
+            .outerjoin(ProcessDefinition, ProcessDefinition.id == ProcessRun.process_id)
+            .outerjoin(Agent, and_(Agent.id == ProcessRun.launcher_agent_id, Agent.deleted_at.is_(None)))
+            .where(ProcessRun.id.in_(run_ids[offset:offset + 500]))
+            .execution_options(include_historized=True)
+        )).mappings().all()
+        for row in rows:
+            base = ProcessRunRead.model_validate(row)
+            summaries[base.id] = base.model_copy(update={
+                "workflow_id": base.workflow_id if base.workflow_id is not None else str(row["snapshot_workflow_id"] or ""),
+                "process_label": base.process_label if base.process_label is not None else str(row["snapshot_process_label"] or ""),
+                "summary": await tr(f"process.summary.{base.status}"),
+            })
+    if any(run_id not in summaries for run_id in run_ids):
+        raise InvalidRequestError("A selected process run no longer exists")
+    return [summaries[run_id] for run_id in run_ids]
 
 
 async def get_run_detail(run_id: UUID, *, refresh_if_stale: bool = False) -> Optional[ProcessRunDetail]:
@@ -1197,7 +1238,7 @@ async def list_run_summaries_for_scope(
         (
             await get_db().scalars(
                 ProcessRun.histo_filter(
-                    select(ProcessRun)
+                    select(ProcessRun.id)
                     .where(scope_condition)
                     .order_by(ProcessRun.created_at, ProcessRun.id)
                     .limit(max(1, min(limit, 500)))
@@ -1205,7 +1246,7 @@ async def list_run_summaries_for_scope(
             )
         ).all()
     )
-    return [await _run_read(row) for row in rows]
+    return await _run_reads(rows)
 
 
 async def list_run_summaries_page_for_scope(
@@ -1247,7 +1288,7 @@ async def list_run_summaries_page_for_scope(
         (
             await get_db().scalars(
                 ProcessRun.histo_filter(
-                    select(ProcessRun)
+                    select(ProcessRun.id)
                     .where(scope_condition)
                     .order_by(ProcessRun.created_at.desc(), ProcessRun.id.desc())
                     .offset((page - 1) * page_size)
@@ -1256,7 +1297,7 @@ async def list_run_summaries_page_for_scope(
             )
         ).all()
     )
-    return [await _run_read(row) for row in rows], total
+    return await _run_reads(rows), total
 
 
 async def _apply_snapshot(run: ProcessRun, snapshot: EngineRunSnapshot, event_type: str) -> None:

@@ -348,14 +348,15 @@ async def process_list_runs(
     runs = await process_service.list_runs(
         participant_agent_id=ctx.agent_id, workflow_id=workflow_id, status=status, limit=limit
     )
-    visible: list[dict[str, Any]] = []
+    visible: list[UUID] = []
     for run in runs:
         try:
             await _require_visible_run(ctx, run.id)
         except (PermissionError, LookupError):
             continue
-        visible.append((await process_service._run_read(run)).model_dump(mode="json"))  # pyright: ignore[reportPrivateUsage]
-    return visible
+        visible.append(run.id)
+    summaries = await process_service._run_reads(visible)  # pyright: ignore[reportPrivateUsage]
+    return [summary.model_dump(mode="json") for summary in summaries]
 
 
 @mcp_tool("galaris", approval='enabled', approval_reason='Governed bounded read or polling',
@@ -649,10 +650,8 @@ async def process_admin_list_runs(
         except (PermissionError, LookupError):
             continue
         visible.append(run)
-    return [
-        dict((await process_service._run_read(run)).model_dump(mode="json"))  # pyright: ignore[reportPrivateUsage]
-        for run in visible
-    ]
+    summaries = await process_service._run_reads([run.id for run in visible])  # pyright: ignore[reportPrivateUsage]
+    return [summary.model_dump(mode="json") for summary in summaries]
 
 
 @mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',

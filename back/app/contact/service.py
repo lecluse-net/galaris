@@ -34,30 +34,39 @@ from .schemas import (
 
 async def _canonical_contact_index(
     owner_agent_id: int,
+    *,
+    messenger_identities: set[tuple[str, str]],
+    galaris_user_ids: set[int],
 ) -> tuple[
     dict[tuple[str, str], MessengerContactRecord],
     dict[int, MessengerContactRecord],
 ]:
-    """Index all canonical contacts by their strong Messenger and user identities."""
+    """Index the canonical contacts matching reachable strong identities."""
 
     by_messenger: dict[tuple[str, str], MessengerContactRecord] = {}
     by_galaris_user: dict[int, MessengerContactRecord] = {}
-    offset = 0
-    while True:
-        records, _total = await list_messenger_contacts(
-            owner_agent_id=owner_agent_id,
-            limit=500,
-            offset=offset,
-        )
-        for record in records:
-            for identity in record.identities:
-                if identity.kind == "messenger":
-                    by_messenger[(identity.namespace, identity.external_id)] = record
-                elif identity.galaris_user_id is not None:
-                    by_galaris_user[identity.galaris_user_id] = record
-        if len(records) < 500:
-            break
-        offset += len(records)
+    messenger_keys = sorted(messenger_identities)
+    user_ids = sorted(galaris_user_ids)
+    # Keep query parameters bounded when several channels return large directories.
+    for start in range(0, max(len(messenger_keys), len(user_ids)), 500):
+        offset = 0
+        while True:
+            records, _total = await list_messenger_contacts(
+                owner_agent_id=owner_agent_id,
+                limit=500,
+                offset=offset,
+                messenger_identities=messenger_keys[start:start + 500],
+                galaris_user_ids=user_ids[start:start + 500],
+            )
+            for record in records:
+                for identity in record.identities:
+                    if identity.kind == "messenger":
+                        by_messenger[(identity.namespace, identity.external_id)] = record
+                    elif identity.galaris_user_id is not None:
+                        by_galaris_user[identity.galaris_user_id] = record
+            if len(records) < 500:
+                break
+            offset += len(records)
     return by_messenger, by_galaris_user
 
 
@@ -66,12 +75,18 @@ async def list_reachable_humans(
 ) -> tuple[ReachableHumanContact, ...]:
     """List reachable humans and collapse routes belonging to one canonical contact."""
 
-    identities = await search_agent_users(agent_id, query)
-    by_messenger, by_galaris_user = await _canonical_contact_index(agent_id)
+    identities = [identity for identity in await search_agent_users(agent_id, query)
+        if not identity[3].is_ai and identity[3].agent_id is None]
+    if not identities:
+        return ()
+    by_messenger, by_galaris_user = await _canonical_contact_index(
+        agent_id,
+        messenger_identities={(platform, user.external_id) for _connection, _tool, platform, user in identities},
+        galaris_user_ids={user.galaris_user_id for _connection, _tool, _platform, user in identities
+            if user.galaris_user_id is not None},
+    )
     contacts: dict[tuple[str, object], ReachableHumanContact] = {}
     for connection_id, tool_id, platform, user in identities:
-        if user.is_ai or user.agent_id is not None:
-            continue
         canonical = by_messenger.get((platform, user.external_id))
         if canonical is None and user.galaris_user_id is not None:
             canonical = by_galaris_user.get(user.galaris_user_id)

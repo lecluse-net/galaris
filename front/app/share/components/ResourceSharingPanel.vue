@@ -11,7 +11,7 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
-import { PersonAvatar } from '@/core/util'
+import { PersonAvatar } from '@/core/util/facade'
 import { SharingPanel } from '../panel'
 import type { SharingDraft } from '../sharing'
 import type { SharingState, SharingUpdate } from '../types'

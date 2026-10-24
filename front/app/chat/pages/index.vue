@@ -518,7 +518,7 @@ let conversationScrollRevision=0
 const conversationBottomThreshold=24
 function chatPageStyle(offset:number,height:number):{height:string;minHeight:string}{const availableHeight=Math.max(0,height-offset);return{height:`${availableHeight}px`,minHeight:`${availableHeight}px`}}
 const messengerGridStyle=computed(()=>store.selectedRoom ? {'--conversation-width':`clamp(420px, calc(${conversationRatio.value}% - ${8*conversationRatio.value/100}px), calc(100% - 328px))`} : undefined)
-const visibleFromMessageId=computed(()=>store.messages[0]?.id ?? null)
+const visibleFromMessageId=computed(()=>store.messages.find(message=>!message.id.startsWith('pending:'))?.id ?? null)
 function columnRatioLimits():[number,number]{const width=Math.max(1,(messengerGrid.value?.getBoundingClientRect().width??0)-8);const minimumConversation=Math.min(420,width*.6);const minimumDetails=Math.min(320,width*.4);return[minimumConversation/width*100,(width-minimumDetails)/width*100]}
 function setConversationRatio(value:number){const[min,max]=columnRatioLimits();conversationRatio.value=Math.min(max,Math.max(min,value))}
 function resizeColumnsAt(clientX:number){const bounds=messengerGrid.value?.getBoundingClientRect();if(!bounds)return;const available=Math.max(1,bounds.width-8);setConversationRatio((clientX-bounds.left)/available*100)}

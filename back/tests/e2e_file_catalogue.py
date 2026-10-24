@@ -12,9 +12,8 @@ from app.file_share.models import FileCatalogEntry
 from app.file_share.resource_contracts import ResourceContext
 from app.file_share.tests.local_file_transport import TemporaryFileTransport
 from app.tools import ToolModel
-from app.memory import service, detect_memory_findings, maintenance
-from app.document import document_attachment_service
-from app.memory.schemas import MemoryItemCreate, MemoryPayload
+from app.memory import detect_memory_findings, maintenance
+from app.document import document_attachment_service, resource_service as documents, DocumentItemCreate, DocumentPayload
 from core.database import get_db
 
 
@@ -58,9 +57,9 @@ async def seed_catalogue(agent_id: int, root: Path) -> dict[str, object]:
     for entry in entries:
         await db.refresh(entry)
     assert entries[0].memory_node_id == entries[1].memory_node_id
-    document, _ = await service.create_item(MemoryItemCreate(
+    document, _ = await documents.create_item(DocumentItemCreate(
         owner_agent_id=agent_id, title='Synthetic 3D document',
-        node_kind='document', media_type='text/html', payload=MemoryPayload(text='<p>Synthetic geometry</p>'),
+        payload=DocumentPayload(text='<p>Synthetic geometry</p>'),
     ))
     attachment = await document_attachment_service.add_document_attachment_bytes(
         document.id, actor_agent_id=agent_id, name='triangle.obj', media_type='model/obj',

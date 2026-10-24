@@ -21,6 +21,12 @@ CORPORA = {
     "dispatcher-boundaries": CORPUS.with_name("dispatcher_boundaries_corpus.json"),
     "task-organization": CORPUS.with_name("task_organization_corpus.json"),
     "planner-boundaries": CORPUS.with_name("planner_boundaries_corpus.json"),
+    "outcomes-fr": CORPUS.with_name("outcome_capabilities_corpus_fr.json"),
+    "outcomes-en": CORPUS.with_name("outcome_capabilities_corpus_en.json"),
+    "outcome-decisions-fr": CORPUS.with_name("outcome_decisions_corpus_fr.json"),
+    "outcome-decisions-en": CORPUS.with_name("outcome_decisions_corpus_en.json"),
+    "outcome-transfer-fr": CORPUS.with_name("outcome_transfer_corpus_fr.json"),
+    "outcome-transfer-en": CORPUS.with_name("outcome_transfer_corpus_en.json"),
 }
 
 

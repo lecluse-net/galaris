@@ -110,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { showConfirmationDialog } from '@/core/util'
+import { showConfirmationDialog } from '@/core/util/facade'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'

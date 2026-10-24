@@ -4,7 +4,7 @@ import { Quasar } from 'quasar'
 import quasarUserOptions from '../quasar-user-options'
 import App from './App.vue'
 import router from '@/app/index/router'
-import i18n, { initialLocaleReady } from '@/core/i18n'
+import i18n, { getLocale, initialLocaleReady, setLocale } from '@/core/i18n'
 import '@/app/style.scss'
 import '../pwa/register'
 
@@ -16,6 +16,8 @@ async function initApp() {
     app.use(router)
     app.use(i18n)
     app.use(Quasar, quasarUserOptions)
+    // Quasar installs its default pack; restore the already loaded app language.
+    await setLocale(getLocale())
 
     app.mount('#app')
 }

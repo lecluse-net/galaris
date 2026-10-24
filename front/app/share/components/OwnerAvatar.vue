@@ -8,7 +8,7 @@ const avatars = createSessionImageCache('agent-avatar', 300_000)
 </script>
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
-import { PersonAvatar } from '@/core/util'
+import { PersonAvatar } from '@/core/util/facade'
 import { onReadSessionChanged, onSessionReadInvalidation } from '@/core/util/facade'
 import type { OwnerOption } from '../owners'
 

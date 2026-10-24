@@ -305,12 +305,10 @@ async def read_runs(
         page_size=page_size,
         agent_ids=scope.agent_ids,
         native_actor=scope,
+        summary_only=True,
     )
     return ProcessRunPage(
-        items=[
-            await process_service._run_read(run)  # pyright: ignore[reportPrivateUsage]
-            for run in rows
-        ],
+        items=await process_service._run_reads([run.id for run in rows]),  # pyright: ignore[reportPrivateUsage]
         total=total,
         page=page,
         page_size=page_size,

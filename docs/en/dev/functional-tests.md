@@ -2044,7 +2044,10 @@ undecryptable values in connection dictionaries.
 `front/browser-tests/business-references.spec.mjs` exercises Task, Goal, Topic, discussion,
 text-round, voice-call and voice-turn URIs and URLs: titled paste, reversible compact
 cards, preserved content, modal opening and reopening, copy, backdrop dismissal, search
-recovery and obsolete responses. The reader also exercises its context menu and keyboard.
+recovery and obsolete responses. Activity keeps a Task detail open through query
+normalization; removing its identifier, Escape, backdrop dismissal and access revocation
+close it. The check waits for Quasar transitions to finish to detect delayed dismissal.
+The reader also exercises its context menu and keyboard.
 Task and exchange cards contain no execution body. The assembled journey lives in
 `e2e/specs/business-references.spec.mjs`: copy from Activity, paste, save, reload and
 Task/Topic detail modals. Identity validation and normalization are covered by

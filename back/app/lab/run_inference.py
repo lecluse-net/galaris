@@ -269,7 +269,7 @@ async def evaluate_claim(run: RunClaim) -> CaseEvaluation:
             )
         cost += inference_cost
         score_details["candidate_status"] = "completed"
-        score_details["checks"] = check_output(mechanism, input_data, actual)
+        score_details["checks"] = check_output(mechanism, input_data, actual, expected=expected)
         structured_score, details = _structured_score(expected, actual)
         score_details["reference_similarity"] = {
             "score_percent": structured_score,

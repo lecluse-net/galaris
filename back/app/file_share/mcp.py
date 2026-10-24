@@ -395,8 +395,11 @@ async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revi
     description=(
         "Replace a 1-based inclusive range in an existing UTF-8 resource. For HTML documents, "
         "start_line/end_line identify complete blocks returned by file_read, content is valid HTML, "
-        "and expected_revision is mandatory. Use this for focused prose corrections or consolidation, "
-        "preserving useful detail and sources; Galaris document-content changes retain prior revisions. "
+        "and expected_revision is mandatory. Use this for focused prose corrections or consolidation. "
+        "Match the first and last replacement blocks to that numbered range. A heading outside "
+        "the range is retained: do not repeat it in content. Check the replacement with its "
+        "retained neighbours before editing. "
+        "Preserve useful detail and sources; Galaris document-content changes retain prior revisions. "
         "data:// Datasets use actual lines and require "
         "expected_revision; the complete result must remain valid JSON. For "
         "example start_line=10 and end_line=14 rewrites lines 10 through 14. Binary resources "

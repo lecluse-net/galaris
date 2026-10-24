@@ -15,6 +15,9 @@ from app.lab.objective_checks import check_output
 @pytest.mark.parametrize("corpus_name, count", [
     ("reference", 6), ("latency-fr", 4), ("latency-en", 4), ("dispatcher-boundaries", 15),
     ("planner-boundaries", 24), ("task-organization", 8),
+    ("outcomes-fr", 12), ("outcomes-en", 12),
+    ("outcome-decisions-fr", 3), ("outcome-decisions-en", 3),
+    ("outcome-transfer-fr", 5), ("outcome-transfer-en", 5),
 ])
 async def test_reference_import_uses_http_authorization_and_never_overwrites(client, corpus_name, count):
     import httpx
@@ -39,6 +42,9 @@ async def test_reference_import_uses_http_authorization_and_never_overwrites(cli
     "dispatcher_boundaries_corpus.json",
     "task_organization_corpus.json",
     "planner_boundaries_corpus.json",
+    "outcome_capabilities_corpus_fr.json", "outcome_capabilities_corpus_en.json",
+    "outcome_decisions_corpus_fr.json", "outcome_decisions_corpus_en.json",
+    "outcome_transfer_corpus_fr.json", "outcome_transfer_corpus_en.json",
 ])
 async def test_reference_corpus_can_be_saved_resolved_and_checked(db, filename):
     corpus = json.loads((Path(__file__).parents[1] / filename).read_text())
@@ -58,9 +64,11 @@ async def test_reference_corpus_can_be_saved_resolved_and_checked(db, filename):
             assert native["objective"].startswith("<p>")
         else:
             assert native["message"] == case["input_data"]["variable_value"]
-            assert native["tool_responses"] == corpus["parameters"]["tool_responses"]
+            assert native.get("goal_referrer_type") == case["input_data"]["context"].get("goal_referrer_type")
+            fixtures = case["input_data"]["context"].get("tool_responses")
+            assert native["tool_responses"] == (fixtures if fixtures is not None else corpus["parameters"].get("tool_responses", {}))
         assert "expected_output" not in native
-        checks = check_output(corpus["mechanism"], native, saved.expected_output)
+        checks = check_output(corpus["mechanism"], native, saved.expected_output, expected=saved.expected_output)
         assert all(row["passed"] for row in checks), checks
         assert saved.categories == case["categories"]
 
@@ -109,3 +117,53 @@ async def test_latency_campaign_uses_native_effect_free_tools_and_separate_measu
             assert actual["tool_results"][0]["result"] == corpus["parameters"]["tool_responses"][proposed[0]][0]
         else:
             assert actual["tool_calls"] == actual["tool_results"] == []
+
+
+@pytest.mark.parametrize("language", ["fr", "en"])
+@pytest.mark.parametrize("family", ["outcome_capabilities", "outcome_decisions", "outcome_transfer"])
+def test_outcome_references_use_real_galaris_function_signatures_and_hide_oracles(language, family):
+    import inspect
+    from app.file_share.mcp import read_file, edit_file, create_file
+    from app.process.mcp import process_get, process_start
+    from app.goal.mcp import mcp_goal_ask_referrer
+    from app.task.mcp import mcp_get_task
+    from app.lab.mechanism_registry import get_mechanism
+    from app.lab.executor_outcomes import selected_call
+    from core.util import validate_schema
+
+    functions = {"file_read": read_file, "file_edit": edit_file, "file_create": create_file,
+                 "process_get": process_get, "process_start": process_start,
+                 "goal_ask_referrer": mcp_goal_ask_referrer, "task_get": mcp_get_task}
+    corpus = json.loads((Path(__file__).parents[1] / f"{family}_corpus_{language}.json").read_text())
+    for case in corpus["cases"]:
+        _, native = resolve_input(corpus["mechanism"], case["input_data"], corpus["parameters"])
+        payload = json.loads(get_mechanism(corpus["mechanism"]).prompt(native))
+        assert set(payload) == {"request", "context", "message_context"}
+        assert set(payload["context"]) <= {"history", "memories", "resources", "plan", "working_set", "interrupted_objective"}
+        for index, call in enumerate(case["expected_output"]["tool_calls"]):
+            name, arguments = selected_call(call)
+            if name == "file_read":
+                prior_evidence = {"input": payload, "earlier_results": case["expected_output"]["tool_results"][:index]}
+                assert arguments["uri"] in json.dumps(prior_evidence), "A required source must be visible before reading it"
+            inspect.signature(functions[name]).bind(object(), **arguments)
+            schema = next(spec["parameters"] for spec in native["tool_catalog"] if spec["name"] == name)
+            validate_schema(arguments, schema)
+
+
+@pytest.mark.parametrize("mechanism", ["task_executor", "conversation_executor", "voice_executor"])
+@pytest.mark.parametrize("referrer_type", [None, "AGENT", "MESSENGER"])
+def test_goal_cycle_context_reaches_only_explicit_goal_task_cases(mechanism, referrer_type):
+    from app.goal.evaluation import goal_cycle_work_instructions
+    from app.lab.mechanism_registry import get_mechanism
+
+    definition = get_mechanism(mechanism)
+    original = "<p>Inspect the actual prerequisite before choosing the next action.</p>"
+    payload = json.loads(definition.prompt({
+        "message": original, "goal_referrer_type": referrer_type,
+        "history": [{"text": "A current fact must be preserved."}],
+    }))
+    if mechanism == "task_executor" and referrer_type is not None:
+        assert payload["request"] == original + "\n\n" + goal_cycle_work_instructions(referrer_type)
+    else:
+        assert payload["request"] == original
+    assert payload["context"]["history"] == [{"text": "A current fact must be preserved."}]

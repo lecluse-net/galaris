@@ -133,6 +133,7 @@ class ExecutorParameters(Parameters):
     context_projection: str = ""
     linked_work: str = ""
     available_tools: list[str] = Field(default_factory=list[str])
+    tool_catalog: list[dict[str, JsonValue]] = Field(default_factory=list[dict[str, JsonValue]])
     available_processes: list[dict[str, JsonValue]] = Field(
         default_factory=list[dict[str, JsonValue]]
     )
@@ -142,6 +143,8 @@ class ExecutorParameters(Parameters):
     working_set: list[JsonValue] = Field(default_factory=list[JsonValue])
     interrupted_objective: str = ""
     tool_responses: dict[str, list[JsonValue]] = Field(default_factory=dict[str, list[JsonValue]])
+    tool_response_arguments: dict[str, list[dict[str, JsonValue]]] = Field(default_factory=dict[str, list[dict[str, JsonValue]]])
+    tool_calls_limit: int = Field(default=3, ge=1, le=20)
 
 
 class DiagnosisParameters(Parameters):
@@ -193,6 +196,9 @@ class GoalContext(ItemContext):
 
 class ExecutorContext(ItemContext):
     history: list[dict[str, JsonValue]] = Field(default_factory=list[dict[str, JsonValue]])
+    goal_referrer_type: Literal["AGENT", "MESSENGER"] | None = None
+    tool_responses: dict[str, list[JsonValue]] | None = None
+    tool_response_arguments: dict[str, list[dict[str, JsonValue]]] | None = None
 
 
 @dataclass(frozen=True)
@@ -348,6 +354,10 @@ def resolve_input(mechanism: str, value: object, shared: dict[str, Any]) -> tupl
     parameters = validate_parameters(mechanism, shared)
     context = contract.context_type.model_validate(item.context).model_dump(mode="json")
     native_fields = {**parameters, **context}
+    if mechanism.endswith("_executor"):
+        for field in ("tool_responses", "tool_response_arguments"):
+            if context.get(field) is None:
+                native_fields[field] = parameters[field]
     variable = item.variable_value
     kind = contract.variable_type
     if kind == "string" and (not isinstance(variable, str) or not variable.strip()):

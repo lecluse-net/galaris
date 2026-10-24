@@ -39,9 +39,9 @@ def test_every_executor_prompt_is_a_json_tree_with_the_suffix_last() -> None:
         assert tree["children"][-1]["source"] == EXECUTOR_SUFFIX_SOURCE
         assert json.loads(json.dumps(tree, ensure_ascii=False)) == tree
         rendered = render_prompt_tree(tree)
-        # Shared document guidance must reach every executor without a loaded skill
+        # Shared outcome/document guidance must reach every executor without a loaded skill
         # and with a custom personality. This checks delivery, not model compliance.
-        for policy_key in ("collaboration-evidence", "document-revision-policy", "dataset-consideration-policy"):
+        for policy_key in ("outcome-and-capabilities", "collaboration-evidence", "document-revision-policy", "dataset-consideration-policy"):
             policies = [
                 node for node in tree["children"] if node["key"] == policy_key
             ]

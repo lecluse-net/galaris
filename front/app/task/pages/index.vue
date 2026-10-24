@@ -62,6 +62,7 @@
           <!-- Large task-detail dialog -->
           <q-dialog
             v-model="detailDialogOpen"
+            no-route-dismiss
             transition-show="slide-up"
             transition-hide="slide-down"
           >
@@ -286,7 +287,14 @@ watch([canReadConversations, canReadVoice, canReadTasks, canReadLlm, canReadProc
   activeTab.value = route.query.task_id && canReadTasks.value ? 'tasks' : tabFromQuery(route.query.tab)
 })
 
-watch(() => route.query.task_id, openTaskFromQuery)
+watch(() => route.query.task_id, (value, previous) => {
+  if (!value && previous) {
+    detailDialogOpen.value = false
+    selectedTaskId.value = null
+    return
+  }
+  openTaskFromQuery(value)
+})
 const referenceTarget = ref<ResourceDetailTarget | null>(null)
 watch(() => route.fullPath, () => {
   const uri = canonicalRichLink(route.fullPath)

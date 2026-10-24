@@ -1637,83 +1637,37 @@ async def split_selection(
     )
 
 
-def _llm_call_topic_id() -> ColumnElement[UUID | None]:
-    from app.conversation import ConversationProcessLink, ConversationRound
-    from app.llm import LLMCall
-    from app.process import ProcessRun
-    from app.task import Task
-
-    process_task = aliased(Task)
-    process_topic_id = (
-        select(process_task.topic_id)
-        .join(ProcessRun, ProcessRun.task_id == process_task.id)
-        .where(ProcessRun.id == LLMCall.process_run_id)
-        .scalar_subquery()
-    )
-    process_round = aliased(ConversationRound)
-    process_conversation_topic_id = (
-        select(process_round.topic_id)
-        .join(
-            ConversationProcessLink,
-            ConversationProcessLink.round_id == process_round.id,
-        )
-        .where(ConversationProcessLink.process_run_id == LLMCall.process_run_id)
-        .scalar_subquery()
-    )
-    return type_cast(
-        ColumnElement[UUID | None],
-        func.coalesce(
-            Task.topic_id,
-            process_topic_id,
-            process_conversation_topic_id,
-            ConversationRound.topic_id,
-        ),
-    )
-
-
-def _join_llm_call_topics(query: Select[Any]) -> Select[Any]:
-    from app.conversation import ConversationRound
-    from app.llm import LLMCall
-    from app.task import Task
-
-    return (
-        query
-        .outerjoin(Task, Task.id == LLMCall.task_id)
-        .outerjoin(
-            ConversationRound,
-            ConversationRound.id == LLMCall.conversation_round_id,
-        )
-    )
-
-
-def _llm_call_agent_id() -> ColumnElement[int | None]:
+def _llm_call_attribution(
+    *, scoped: bool,
+) -> tuple[Select[Any], ColumnElement[UUID | None], ColumnElement[int | None]]:
+    """Resolve one attribution per call using the unique Process conversation link."""
     from app.connection import Connection
-    from app.conversation import ConversationRound
+    from app.conversation import ConversationProcessLink, ConversationRound
     from app.llm import LLMCall
     from app.messenger import Room
     from app.process import ProcessRun
     from app.task import Task
 
-    conversation_agent_id = (
-        select(Connection.agent_id)
-        .join(Room, Room.connection_id == Connection.id)
-        .where(Room.id == ConversationRound.room_id)
-        .scalar_subquery()
+    process_task = aliased(Task)
+    process_round = aliased(ConversationRound)
+    query = (
+        select(LLMCall.id)
+        .select_from(LLMCall)
+        .outerjoin(Task, Task.id == LLMCall.task_id)
+        .outerjoin(ConversationRound, ConversationRound.id == LLMCall.conversation_round_id)
+        .outerjoin(ProcessRun, ProcessRun.id == LLMCall.process_run_id)
+        .outerjoin(process_task, process_task.id == ProcessRun.task_id)
+        .outerjoin(ConversationProcessLink, ConversationProcessLink.process_run_id == LLMCall.process_run_id)
+        .outerjoin(process_round, process_round.id == ConversationProcessLink.round_id)
     )
-    process_agent_id = (
-        select(ProcessRun.launcher_agent_id)
-        .where(ProcessRun.id == LLMCall.process_run_id)
-        .scalar_subquery()
-    )
-    return type_cast(
-        ColumnElement[int | None],
-        func.coalesce(
-            LLMCall.agent_id,
-            Task.agent_id,
-            conversation_agent_id,
-            process_agent_id,
-        ),
-    )
+    if scoped:
+        query = query.outerjoin(Room, Room.id == ConversationRound.room_id).outerjoin(
+            Connection, Connection.id == Room.connection_id)
+    topic_id = type_cast(ColumnElement[UUID | None], func.coalesce(
+        Task.topic_id, process_task.topic_id, process_round.topic_id, ConversationRound.topic_id))
+    agent_id = type_cast(ColumnElement[int | None], func.coalesce(
+        LLMCall.agent_id, Task.agent_id, Connection.agent_id, ProcessRun.launcher_agent_id))
+    return query, topic_id, agent_id
 
 
 async def _available_usage_months(
@@ -1724,14 +1678,12 @@ async def _available_usage_months(
 ) -> list[str]:
     from app.llm import LLMCall
 
-    topic_id = _llm_call_topic_id()
+    query, topic_id, agent_id = _llm_call_attribution(scoped=agent_ids is not None)
     call_month = cast(
         func.date_trunc("month", func.timezone(timezone_name, LLMCall.started_at)),
         Date,
     ).label("month")
-    query = _join_llm_call_topics(
-        select(call_month).select_from(LLMCall)
-    )
+    query = query.with_only_columns(call_month)
     query = (
         query
         .where(topic_id.is_not(None))
@@ -1739,7 +1691,7 @@ async def _available_usage_months(
         .order_by(call_month.desc())
     )
     if agent_ids is not None:
-        query = query.where(_llm_call_agent_id().in_(agent_ids))
+        query = query.where(agent_id.in_(agent_ids))
     result = await get_db().execute(query)
     months = {
         f"{value.year:04d}-{value.month:02d}"
@@ -1944,13 +1896,12 @@ async def list_page(
         month,
         timezone_name=timezone_name,
     )
-    topic_id = _llm_call_topic_id()
-    usage_query = select(
+    usage_query, topic_id, agent_id = _llm_call_attribution(scoped=agent_ids is not None)
+    usage_query = usage_query.with_only_columns(
             topic_id.label("topic_id"),
             func.count(LLMCall.id).label("llm_calls"),
             func.coalesce(func.sum(LLMCall.inference_cost), 0.0).label("inference_cost"),
-        ).select_from(LLMCall)
-    usage_query = _join_llm_call_topics(usage_query)
+        )
     usage = (
         usage_query
         .where(
@@ -1961,7 +1912,7 @@ async def list_page(
         .group_by(topic_id)
     )
     if agent_ids is not None:
-        usage = usage.where(_llm_call_agent_id().in_(agent_ids))
+        usage = usage.where(agent_id.in_(agent_ids))
     usage = usage.subquery()
     query = Topic.histo_filter(select(Topic))
     normalized = (search or "").strip()

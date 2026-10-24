@@ -72,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ContextSubmenu } from '@/core/util'
+import { ContextSubmenu } from '@/core/util/facade'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'

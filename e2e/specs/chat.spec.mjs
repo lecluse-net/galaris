@@ -55,10 +55,10 @@ async function prepare(page, request, mode = 'normal') {
   return fixture
 }
 
-async function send(page) {
+async function send(page, text = 'Vérifie le scénario de streaming') {
   const input = page.locator('.composer-fields textarea')
-  await input.fill('Vérifie le scénario de streaming')
-  await expect(input).toHaveValue('Vérifie le scénario de streaming')
+  await input.fill(text)
+  await expect(input).toHaveValue(text)
   expect(await page.evaluate(() => window.isSecureContext)).toBe(true)
   await input.press('Enter')
   // Admission can recover from a concurrent room lock through the real
@@ -200,13 +200,20 @@ test('mobile viewport preserves the response through reload', async ({ page, req
 test('conversation admission runs a real durable Task and delivers its result once', async ({ page, request }) => {
   test.setTimeout(90_000)
   const fixture = await prepare(page, request, 'task')
-  await send(page)
+  const temporaryReads = []
+  page.on('request', request => {
+    const url = new URL(request.url())
+    if ((url.searchParams.get('from_message_id') ?? '').startsWith('pending:')
+      || decodeURIComponent(url.pathname).includes('/messages/pending:')) temporaryReads.push(url.pathname)
+  })
+  await send(page, 'Vérifie le scénario de streaming document://00000000-0000-4000-8000-000000000399')
   await release(request, fixture.rooms[0])
   const result = page.locator('.message-row').filter({ hasText: 'Résultat durable de la tâche.' })
   await expect(result).toHaveCount(1, { timeout: 40_000 })
   await expect(result).toHaveAttribute('data-message-id', /.+/)
   await page.reload()
   await expect(page.locator('.message-row').filter({ hasText: 'Résultat durable de la tâche.' })).toHaveCount(1)
+  expect(temporaryReads).toEqual([])
 })
 
 test('a silence warning interrupts a real model call and continues the same durable Task', async ({ page, request }) => {

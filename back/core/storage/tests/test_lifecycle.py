@@ -1,10 +1,99 @@
 from uuid import uuid4
+import asyncio
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select, text
 
 from core.storage import FileAlias, StoredFile, file_path, register_file, retire_file_references, purge_retired_file
 from core.storage.lifecycle import resume_file_purges
+from tests.sql_reads import measured_reads
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("count", [10, 100, 1001])
+async def test_bulk_reference_retirement_bounds_reads_and_preserves_shared_files(db, count):
+    prefix = f"document://{uuid4()}/attachments/"
+    identifiers = [uuid4() for _ in range(count)]
+    for identifier in identifiers:
+        path = file_path(identifier)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"Synthetic immutable file")
+        await register_file(identifier, name="Synthetic.txt", media_type="text/plain", alias=f"{prefix}{identifier}")
+    shared = identifiers[0]
+    await register_file(shared, name="Synthetic.txt", media_type="text/plain", alias=f"chat://synthetic/{shared}")
+    await db.commit()
+    db.expunge_all()
+    async with measured_reads(db, f"retire-references-{count}") as reads:
+        retired = await retire_file_references(prefix)
+    assert retired == sorted(set(identifiers) - {shared})
+    assert len(reads) <= (4 if count <= 100 else 10), "Retiring more references must not add per-file lookups"
+    assert all(file_path(identifier).read_bytes() == b"Synthetic immutable file" for identifier in identifiers)
+    assert await db.get(StoredFile, shared) is not None
+    await db.rollback()
+    assert set(await db.scalars(select(FileAlias.file_id).where(FileAlias.uri.startswith(prefix)))) == set(identifiers)
+    assert len(list(await db.scalars(select(StoredFile).where(StoredFile.id.in_(identifiers))))) == count
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("commit_retirement", [False, True])
+async def test_registration_waits_for_retirement_and_obeys_its_commit(committed_database, commit_retirement):
+    identifier = uuid4()
+    prefix = f"document://{uuid4()}/attachments/"
+    path = file_path(identifier)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"Synthetic concurrent file")
+    async with committed_database() as setup:
+        await register_file(identifier, name="Concurrent.txt", media_type="text/plain",
+                            alias=f"{prefix}{identifier}", session=setup)
+        await setup.commit()
+    attempted = asyncio.Event()
+    writer_pid = None
+
+    async def add_alias():
+        nonlocal writer_pid
+        async with committed_database() as writer:
+            writer_pid = await writer.scalar(text("SELECT pg_backend_pid()"))
+            connection = await writer.connection()
+            def capture(_connection, _cursor, _statement, _parameters, _context, _many):
+                attempted.set()
+            event.listen(connection.sync_connection, "before_cursor_execute", capture)
+            try:
+                await register_file(identifier, name="Concurrent.txt", media_type="text/plain",
+                                    alias=f"chat://concurrent/{identifier}", session=writer)
+                await writer.commit()
+            finally:
+                event.remove(connection.sync_connection, "before_cursor_execute", capture)
+
+    async with committed_database() as retiring:
+        assert await retire_file_references(prefix, session=retiring) == [identifier]
+        pending = asyncio.create_task(add_alias())
+        try:
+            async with asyncio.timeout(5):
+                await attempted.wait()
+                async with committed_database() as observer:
+                    while not await observer.scalar(text("SELECT EXISTS (SELECT 1 FROM pg_locks "
+                        "WHERE pid = :pid AND NOT granted)"), {"pid": writer_pid}):
+                        await asyncio.sleep(0)
+            assert not pending.done()
+            if commit_retirement:
+                await retiring.commit()
+                with pytest.raises(ValueError, match="identity conflicts"):
+                    await pending
+            else:
+                await retiring.rollback()
+                await pending
+        finally:
+            await retiring.rollback()
+            if not pending.done():
+                pending.cancel()
+            await asyncio.gather(pending, return_exceptions=True)
+    async with committed_database() as reader:
+        record = await reader.scalar(select(StoredFile).where(StoredFile.id == identifier)
+                                     .execution_options(include_historized=True))
+        assert (record.deleted_at is not None) is commit_retirement
+        aliases = list(await reader.scalars(select(FileAlias.uri).where(FileAlias.file_id == identifier)))
+        assert (f"chat://concurrent/{identifier}" in aliases) is not commit_retirement
+        assert path.read_bytes() == b"Synthetic concurrent file"
 
 
 @pytest.mark.asyncio

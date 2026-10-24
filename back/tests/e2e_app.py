@@ -59,6 +59,7 @@ from tests import e2e_conversation_control
 from tests import e2e_process_conversations
 from app.harness.executor import stream as internal_task_stream
 from app.harness.runtime import build_model_for_llm as original_model_builder
+from app.llm import LLMCallPurpose
 
 pydantic_ai.models.ALLOW_MODEL_REQUESTS = False
 gates: dict[UUID, asyncio.Event] = {}
@@ -166,7 +167,7 @@ async def harness_model(llm, **kwargs):
         return await e2e_process_conversations.build_model(llm, **kwargs)
     if kwargs.get("agent_id") in e2e_conversation_control.states:
         return await e2e_conversation_control.build_model(llm, **kwargs)
-    if kwargs.get("agent_id") in e2e_call_recovery.states:
+    if kwargs.get("agent_id") in e2e_call_recovery.states and kwargs.get("purpose") == LLMCallPurpose.AGENT_EXEC:
         return await e2e_call_recovery.build_model(llm, **kwargs)
     return await original_model_builder(llm, **kwargs)
 
@@ -625,6 +626,37 @@ async def subscription(room_id: UUID):
         "joined": bool(server and list(server.manager.get_participants("/", f"ChatRoom:{room_id}"))),
         "rooms": [key for key in server.manager.rooms.get("/", {}) if key and key.startswith("ChatRoom:")] if server else [],
     }
+
+
+@app.post("/api/__test/topics/{topic_id}/usage")
+async def topic_usage_fixture(topic_id: UUID, agent_id: int, room_id: UUID):
+    from datetime import datetime, timezone
+    from app.conversation.models import ConversationRound
+    from app.llm import LLMCall
+    from app.messenger import Room
+    from app.task import Task, TaskStatus
+    from app.topic import Topic
+
+    async with get_db_session() as db:
+        room = await db.scalar(select(Room.id).join(Connection, Connection.id == Room.connection_id)
+            .where(Room.id == room_id, Connection.agent_id == agent_id))
+        if room is None or await db.get(Topic, topic_id) is None:
+            raise HTTPException(422, "Synthetic Topic and room must exist in this agent's scope")
+        task = Task(label="Synthetic monthly accounting", status=TaskStatus.SUCCESS,
+            agent_id=agent_id, topic_id=topic_id)
+        round_ = ConversationRound(room_id=room_id, topic_id=topic_id, status="SUCCEEDED")
+        db.add_all([task, round_])
+        await db.flush()
+        db.add_all([
+            LLMCall(task_id=task.id, cost=99.0, inference_cost=0.125, status="success",
+                started_at=datetime(2026, 7, 15, 12, tzinfo=timezone.utc)),
+            LLMCall(conversation_round_id=round_.id, cost=99.0, inference_cost=0.25, status="success",
+                started_at=datetime(2026, 7, 16, 12, tzinfo=timezone.utc)),
+            LLMCall(task_id=task.id, cost=99.0, inference_cost=0.5, status="success",
+                started_at=datetime(2026, 8, 15, 12, tzinfo=timezone.utc)),
+        ])
+    return {"july": {"llm_calls": 2, "inference_cost": 0.375},
+        "august": {"llm_calls": 1, "inference_cost": 0.5}}
 
 
 from tests.e2e_agent_admin import router as agent_admin_fixture_router

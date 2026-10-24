@@ -132,13 +132,14 @@ async def list_connections(agent_id: int, tool_id: int | None, active_only: bool
 
 async def list_tools(search: str, skip: int, limit: int) -> dict[str, Any]:
     from app.tools import tool_service
-    from app.tools.facade import public_connection_schema
-    records = [t for t in await tool_service.get_all_tool_records()
+    from app.tools.facade import get_tools_by_ids, public_connection_schema
+    records = [t for t in await tool_service.get_all_tool_records(summary_only=True)
                if not search or search.casefold() in f"{t.code} {t.label}".casefold()]
+    selected = records[skip:skip + limit]
+    current = set(await get_tools_by_ids({record.id for record in selected}))
     values: list[dict[str, Any]] = []
-    for record in records[skip:skip + limit]:
-        tool = await tool_service.get_tool_by_id(record.id)
-        if tool is not None:
+    for record in selected:
+        if record.id in current:
             values.append({"id": record.id, "code": record.code, "label": record.label,
                            "mandatory": not record.can_disable,
                            "human_only": record.code in HUMAN_ONLY_TOOL_CODES,

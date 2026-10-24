@@ -15,6 +15,7 @@ from app.topic import TopicDetectionLabInput
 from core.database import get_db
 from .transactions import publish
 from core.i18n import tr
+from core.util import validate_schema, YAMLValidationError
 
 from .contracts import CONTRACTS, resolve_input, validate_parameters
 from .mechanism_evaluation_service import dataset_read, prepare_dataset
@@ -25,6 +26,8 @@ from .synthetic_context import USAGE_CONTEXT
 from .mechanism_rubrics import get_rubric
 from .models import LabEvaluationCase, LabEvaluationDataset
 from .objective_checks import check_output
+from .executor_outcomes import selected_call
+from .executor_fixtures import ExecutorToolResponses
 from .schemas import EvaluationMechanism, MechanismDatasetCreate
 from .synthetic_schemas import (
     SyntheticContent, SyntheticDatasetRequest, SyntheticDatasetResult, SyntheticExecutorOutput,
@@ -79,10 +82,14 @@ def validate_content(
                 failures.append("Memory references must belong to the supplied corpus")
         if definition.executor is not None:
             tools = {
-                tool.__name__: tool for tool in recording_tools(
-                    definition.executor, native["tool_responses"], []
+                (getattr(tool, "name", None) or getattr(tool, "__name__", "")): tool for tool in recording_tools(
+                    definition.executor, native["tool_responses"], [], available_tools=native["available_tools"],
+                    tool_catalog=native["tool_catalog"],
+                    response_arguments=native["tool_response_arguments"],
                 )
             }
+            schemas = {spec["name"]: spec["parameters"] for spec in native["tool_catalog"]}
+            simulation = ExecutorToolResponses(native["tool_responses"], native["tool_response_arguments"]) if schemas else None
             if any(call["name"] not in tools for call in output["tool_calls"]):
                 failures.append("Use only the simulated tools available to this executor")
             call_counts: dict[str, int] = {}
@@ -92,13 +99,22 @@ def validate_content(
                 tool_name = call["name"]
                 if tool_name in tools:
                     try:
-                        inspect.signature(tools[tool_name]).bind(**call["arguments"])
-                    except TypeError as exc:
+                        if tool_name in schemas:
+                            validate_schema(call["arguments"], schemas[tool_name])
+                        else:
+                            inspect.signature(tools[tool_name]).bind(**call["arguments"])
+                    except (TypeError, YAMLValidationError) as exc:
                         failures.append(str(exc))
-                index = call_counts.get(tool_name, 0)
-                call_counts[tool_name] = index + 1
-                fixtures = native["tool_responses"].get(tool_name)
-                if fixtures is not None and (index >= len(fixtures) or result["result"] != fixtures[index]):
+                selected = selected_call(call)[0]
+                fixture_name = selected if selected in native["tool_responses"] else tool_name
+                index = call_counts.get(fixture_name, 0)
+                call_counts[fixture_name] = index + 1
+                fixtures = native["tool_responses"].get(fixture_name)
+                if simulation is not None:
+                    expected_result = simulation.take(tool_name, call["arguments"])
+                    if result["result"] != expected_result:
+                        failures.append("Reference tool results must match the argument-scoped fixtures")
+                elif fixtures is not None and (index >= len(fixtures) or result["result"] != fixtures[index]):
                     failures.append("Reference tool results must match the configured response fixtures")
         if failures:
             raise ValueError(f"{case.name}: {'; '.join(failures)}")
@@ -178,7 +194,7 @@ async def generate_dataset(
         payload["executor_prompt_context"] = (
             "selected_context_snapshot" if fixed_parameters is not None else "example_with_default_parameters"
         )
-        payload["simulated_tools"] = [
+        payload["simulated_tools"] = (fixed_parameters or {}).get("tool_catalog") or [
             {"name": tool.__name__, "signature": str(inspect.signature(tool)), "description": inspect.getdoc(tool)}
             for tool in recording_tools(definition.executor, {}, [])
         ]

@@ -57,6 +57,25 @@ def _ondelete(model: type[object], column_name: str) -> str | None:
     return foreign_keys[0].ondelete
 
 
+@pytest.mark.asyncio
+async def test_topic_content_http_resolves_domain_privileges_before_reading(client):
+    credentials = {"email": "synthetic-topic-content@example.com", "password": "Synthetic-topic-password-123!"}
+    registered = await client.post('/api/auth/register', json=credentials)
+    assert registered.status_code == 201, registered.text
+    authenticated = await client.post('/api/auth/login-json', json=credentials)
+    assert authenticated.status_code == 200, authenticated.text
+    headers = {"Authorization": f"Bearer {authenticated.json()['access_token']}"}
+    created = await client.post('/api/topics', headers=headers, json={"title": "Synthetic empty topic"})
+    assert created.status_code == 201, created.text
+    identity = created.json()['id']
+    for _ in range(2):
+        response = await client.get(f'/api/topics/{identity}/content', headers=headers)
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload['topic']['id'] == identity
+        assert payload['tasks'] == [] and payload['conversation_rounds'] == []
+
+
 def test_topic_foreign_key_delete_policies_are_explicit() -> None:
     for model in (
         Task,
@@ -761,18 +780,20 @@ async def test_list_page_includes_related_participants_teams_and_documents(
                 display_name="Nicolas",
             )
         )
-        document, _created = await memory_service.create_item(
-            MemoryItemCreate(
+        from app.agent import AgentManagementScope
+        from app.document import DocumentItemCreate, DocumentPayload, change_document_topic, resource_service as documents
+
+        document, _created = await documents.create_item(
+            DocumentItemCreate(
                 owner_agent_id=agent.id,
                 title="Renovation brief",
-                payload=MemoryPayload(text="# Renovation brief"),
-                node_kind="document",
-                filename="renovation-brief.md",
+                payload=DocumentPayload(text="<h1>Renovation brief</h1>"),
+                filename="renovation-brief.html",
             )
         )
-        await ensure_topic_memory_link(
-            topic_item_id=topic.memory_item_id,
-            memory_item_id=document.id,
+        await change_document_topic(
+            document.id, AgentManagementScope(user_id=agent.user_id, agent_ids=frozenset({agent.id})),
+            topic_id=topic.id, expected_topic_id=None, expected_lock_version=document.lock_version,
         )
         db.add(
             Task(
@@ -806,7 +827,7 @@ async def test_list_page_includes_related_participants_teams_and_documents(
             {
                 "id": document.id,
                 "title": "Renovation brief",
-                "filename": "renovation-brief.md",
+                "filename": "renovation-brief.html",
             }
         ]
         assert by_id[empty_topic.id].agents == []

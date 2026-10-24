@@ -289,7 +289,7 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
     ),
     "goal_tracking": MechanismRubric(
         mechanism="goal_tracking",
-        version="goal_tracking-score:v2",
+        version="goal_tracking-score:v3",
         dimensions=(
             _dimension(
                 "objective_alignment",
@@ -301,7 +301,9 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
                 "evidence_grounded_progress",
                 "Evidence-grounded progress",
                 25,
-                "Updates progress only from the latest task evidence and does not convert claims into verified accomplishments.",
+                "Updates progress from verified effects on completion criteria, not the number of "
+                "reports, messages, created resources or successful Tasks. Does not convert claims "
+                "into verified accomplishments.",
             ),
             _dimension(
                 "continuation_decision",
@@ -313,7 +315,8 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
                 "tracking_continuity",
                 "Tracking continuity",
                 20,
-                "Maintains a coherent durable Markdown state that preserves relevant prior context while incorporating the new cycle.",
+                "Maintains coherent durable HTML tracking that preserves useful prior context "
+                "while integrating the new cycle without accumulating redundant activity logs.",
             ),
             _dimension(
                 "next_step_utility",
@@ -325,13 +328,16 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
     ),
     "task_executor": MechanismRubric(
         mechanism="task_executor",
-        version="task_executor-score:v2",
+        version="task_executor-score:v3",
         dimensions=(
             _dimension(
                 "action_selection",
                 "Action selection",
                 30,
-                "Chooses a tool-backed action, clarification, or direct reply consistently with the request and Task executor policy.",
+                "Chooses the next useful action for the assigned mission and supplied Goal criteria: "
+                "use an appropriate existing business workflow, update the authoritative resource, "
+                "ask a blocking human decision, or answer without writes. Producing content alone "
+                "does not establish progress. Preserve all necessary distinct deliverables.",
             ),
             _dimension(
                 "objective_fidelity",
@@ -343,7 +349,9 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
                 "tool_use_quality",
                 "Tool-use quality",
                 20,
-                "Uses the effect-free Task tool recorder when action is required and avoids unsupported claims of completion.",
+                "Uses only declared capabilities, reads current resources and revisions, preserves "
+                "useful contributions after conflict, and avoids competing copies or unsupported "
+                "claims of completion. Required effects must have matching receipts.",
             ),
             _dimension(
                 "response_quality",
@@ -361,7 +369,7 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
     ),
     "conversation_executor": MechanismRubric(
         mechanism="conversation_executor",
-        version="conversation_executor-score:v2",
+        version="conversation_executor-score:v3",
         dimensions=(
             _dimension(
                 "action_selection",
@@ -397,7 +405,7 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
     ),
     "voice_executor": MechanismRubric(
         mechanism="voice_executor",
-        version="voice_executor-score:v2",
+        version="voice_executor-score:v3",
         dimensions=(
             _dimension(
                 "action_selection",

@@ -1,5 +1,5 @@
 import type { RichContentContribution } from '@/core/util'
-import { referenceId, referenceCardHtml, referenceDate, referenceStatus } from '@/core/util'
+import { referenceId, referenceCardHtml, referenceDate, referenceStatus } from '@/core/util/facade'
 import { voiceConversationService } from './services/voiceConversationService'
 const turnId = (uri: string) => referenceId(uri, 'voice', '/task', 'voice_turn_id')
 const sessionId = (uri: string) => referenceId(uri, 'voice_session', '/task', 'voice_session_id')

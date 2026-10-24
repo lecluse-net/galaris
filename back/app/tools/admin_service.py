@@ -12,6 +12,7 @@ from typing import Any, cast
 
 from sqlalchemy import JSON, func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import load_only
 
 from core import settings
 from core.database import get_db, release_db_transaction
@@ -130,7 +131,9 @@ async def list_tools(actor: AdministrationContext, search: str = "", kind: str =
             configured = configured | Tool.code.in_([spec.code for spec in INTEGRATED_TOOL_SPECS if spec.mcp_tools])
         query = query.where(configured)
     total = await get_db().scalar(select(func.count()).select_from(query.subquery()))
-    tools = (await get_db().scalars(query.order_by(Tool.code).offset(offset).limit(limit))).all()
+    tools = (await get_db().scalars(query.options(load_only(
+        Tool.id, Tool.code, Tool.label, Tool.can_disable, Tool.conversation_enabled, raiseload=True,
+    )).order_by(Tool.code).offset(offset).limit(limit))).all()
     return {"total": total, "offset": offset, "limit": limit,
             "items": [{"id": tool.id, "code": tool.code, "label": tool.label, "integrated": tool.code in INTEGRATED_TOOL_CODES,
                        "system": not tool.can_disable, "conversation_enabled": tool.conversation_enabled} for tool in tools]}

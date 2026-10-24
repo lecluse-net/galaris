@@ -6,7 +6,7 @@
 <script setup lang="ts">
 import { ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { defineAsyncView } from '@/core/util'
+import { defineAsyncView } from '@/core/util/facade'
 import { agentService, type Agent } from '../services/agentService'
 const AgentManagement = defineAsyncView(() => import('../pages/index.vue'))
 

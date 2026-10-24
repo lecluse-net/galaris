@@ -17,7 +17,7 @@
 <script setup lang="ts">
 import { documentService } from '@/app/document'
 
-import { nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onErrorCaptured, ref, useTemplateRef, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { attachmentReference } from '@/core/util'
@@ -40,9 +40,35 @@ const attachment = ref<DocumentAttachment | null>(null)
 const loading = ref(false)
 const failed = ref(false)
 let generation = 0
+let pendingOpen: {
+  generation: number
+  id: string
+  resolve: () => void
+  reject: (error: unknown) => void
+} | null = null
+
+function openReadyViewer(): void {
+  const pending = pendingOpen, component = viewer.value
+  if (!pending || !component || typeof component.openById !== 'function') return
+  pendingOpen = null
+  Promise.resolve().then(() => {
+    if (pending.generation === generation) return component.openById(pending.id)
+  }).then(pending.resolve, pending.reject)
+}
+
+watch(viewer, openReadyViewer, { flush: 'post' })
+onErrorCaptured(error => {
+  if (!pendingOpen) return
+  const pending = pendingOpen
+  pendingOpen = null
+  pending.reject(error)
+  return false
+})
 
 function reset(): void {
   generation++
+  pendingOpen?.resolve()
+  pendingOpen = null
   documentId.value = null
   attachment.value = null
   loading.value = false
@@ -73,7 +99,12 @@ async function load(openViewer: boolean): Promise<void> {
     attachment.value = info
     documentId.value = reference[0]
     await nextTick()
-    if (request === generation && openViewer) await viewer.value?.openById(reference[1])
+    if (request === generation && openViewer) {
+      await new Promise<void>((resolve, reject) => {
+        pendingOpen = { generation: request, id: reference[1], resolve, reject }
+        openReadyViewer()
+      })
+    }
   } catch {
     if (request === generation) {
       failed.value = true

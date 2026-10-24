@@ -49,3 +49,31 @@ test('startup measurement includes the selected JSON catalog and counts shared a
     assert.equal(report.startup_by_locale[locale].gzip_bytes, report.eager.gzip_bytes + gzipSync(data).length)
   }
 })
+
+test('startup budgets reject eager code and each secondary language independently', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'startup-budget-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  await mkdir(join(directory, '.vite'))
+  await writeFile(join(directory, 'manifest.webmanifest'), JSON.stringify({ theme_color: '#202020', background_color: '#202020' }))
+  // Deterministic synthetic text whose compressed size exceeds every startup budget.
+  let state = 123456789
+  const noise = Array.from({ length: 900_000 }, () => {
+    state ^= state << 13; state ^= state >>> 17; state ^= state << 5
+    return 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'[state >>> 0 & 63]
+  }).join('')
+  const report = () => execFileSync(process.execPath, [
+    fileURLToPath(new URL('./report-build.mjs', import.meta.url)), directory,
+  ], { encoding: 'utf8', stdio: 'pipe' })
+  for (const locale of ['en', 'fr', 'zh']) {
+    await t.test(locale, async () => {
+      const manifest = { 'index.html': { file: 'index.js', isEntry: true } }
+      await writeFile(join(directory, 'index.js'), locale === 'en' ? `export const text = ${JSON.stringify(noise)}` : 'export const text = "small"')
+      if (locale !== 'en') {
+        manifest[`core/i18n/catalogs/${locale}.json`] = { file: `${locale}.json` }
+        await writeFile(join(directory, `${locale}.json`), JSON.stringify({ text: noise }))
+      }
+      await writeFile(join(directory, '.vite/manifest.json'), JSON.stringify(manifest))
+      assert.throws(report, new RegExp(`${locale} startup exceeds gzip budget`))
+    })
+  }
+})

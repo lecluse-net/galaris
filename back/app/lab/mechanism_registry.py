@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 from pydantic import BaseModel
+from pydantic_ai import Tool as RecordingTool
+from core.util import validate_schema, YAMLValidationError
 
 from app.agent import (
     evaluate_dispatcher_input,
@@ -31,7 +33,7 @@ from app.dream.evaluation import (
     evaluate_memory_extraction,
     outcome_reflection_system_prompt,
 )
-from app.goal.evaluation import GoalJudgement, goal_tracking_system_prompt
+from app.goal.evaluation import GoalJudgement, goal_tracking_system_prompt, goal_cycle_work_instructions
 from app.llm import LLM, LLMCallPurpose, model_usages
 from app.llm.facade import record_text_inferences
 from app.llm.structured_service import (
@@ -55,6 +57,8 @@ from .schemas import (
     TaskAnalysisContent,
 )
 from .prompts import ANALYST_SYSTEM_PROMPT
+from .executor_outcomes import OutcomeChecks
+from .executor_fixtures import ExecutorToolResponses
 from app.agent.evaluation import (
     planner_evaluation_system_prompt,
 )
@@ -102,6 +106,11 @@ class MechanismDefinition:
             message = str(mapping.get("message") or "").strip()
             if not message:
                 raise ValueError("Executor benchmark input.message cannot be empty")
+            referrer_type = mapping.get("goal_referrer_type")
+            if self.executor == "task" and referrer_type in {"AGENT", "MESSENGER"}:
+                message += "\n\n" + goal_cycle_work_instructions(
+                    cast(Literal["AGENT", "MESSENGER"], referrer_type)
+                )
             context = {
                 key: mapping[key]
                 for key in (
@@ -114,7 +123,8 @@ class MechanismDefinition:
                 )
                 if mapping.get(key)
             }
-            return json.dumps({"request": message, "context": context}, ensure_ascii=False)
+            return json.dumps({"request": message, "context": context,
+                               "message_context": {"language": mapping.get("language", "en")}}, ensure_ascii=False)
         if self.input_format == "text":
             if isinstance(value, dict):
                 return json.dumps(value, ensure_ascii=False, indent=2)
@@ -130,6 +140,8 @@ class MechanismDefinition:
         return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
     def validate_output(self, value: Any) -> Any:
+        if self.executor is not None and isinstance(value, dict) and "outcome_checks" in value:
+            OutcomeChecks.model_validate(value["outcome_checks"])
         if self.key == "topic_classification":
             return TopicDetectionLabOutput.model_validate(value).model_dump(mode="json")
         if self.output_format == "text":
@@ -409,11 +421,12 @@ def build_executor_benchmark_prompt(
     if definition.executor in {"conversation", "voice"}:
         tool_text = (
             "Only these effect-free conversation tool contracts are exposed in this benchmark: "
-            "`memory_search`, `conversation_task_submit`, `conversation_task_status`, "
-            "`process_list`, `process_get`, and `conversation_process_start`."
+            + (", ".join(tool_names) or "none") + "."
         )
     else:
-        tool_text = (
+        tool_text = ("These effect-free tools use the case's frozen public function contracts. "
+                     "Their responses are simulated; no business effect is performed."
+                     if mapping.get("tool_catalog") else
             "The benchmark exposes the effect-free `executor_tool_call` recorder. "
             f"The case declares these representative Task tools: {', '.join(tool_names) or 'none'}."
         )
@@ -527,34 +540,80 @@ def _executor_tools(executor: ExecutorKind) -> list[Any]:
 
 
 def recording_tools(
-    executor: ExecutorKind, responses: dict[str, list[Any]], transcript: list[dict[str, Any]]
+    executor: ExecutorKind, responses: dict[str, list[Any]], transcript: list[dict[str, Any]],
+    *, available_tools: list[str] | None = None,
+    tool_catalog: list[dict[str, Any]] | None = None,
+    response_arguments: dict[str, list[dict[str, Any]]] | None = None,
 ) -> list[Any]:
     """Typed native tool signatures with item-owned, sequential response fixtures."""
+    if executor == "task" and tool_catalog:
+        return _catalog_recording_tools(tool_catalog, available_tools or [], responses, transcript, response_arguments or {})
+    if response_arguments:
+        raise ValueError("Argument-scoped fixtures require native tool contracts")
     tools = _executor_tools(executor)
-    if set(responses) - {tool.__name__ for tool in tools}:
+    if executor != "task" and available_tools is not None:
+        tools = [tool for tool in tools if tool.__name__ in available_tools]
+    fixture_names = {tool.__name__ for tool in tools}
+    if executor == "task":
+        fixture_names.update(available_tools or [])
+    if set(responses) - fixture_names:
         raise ValueError("A response fixture names a tool unavailable to this executor")
 
-    def wrap(tool: Any) -> Any:
-        calls = 0
+    counters: dict[str, int] = {}
 
+    def wrap(tool: Any) -> Any:
         @wraps(tool)
         async def recorded(*args: Any, **kwargs: Any) -> Any:
-            nonlocal calls
             arguments = dict(inspect.signature(tool).bind(*args, **kwargs).arguments)
-            if tool.__name__ in responses:
-                fixtures = responses[tool.__name__]
+            selected = str(arguments.get("tool_name", "")) if executor == "task" else tool.__name__
+            if executor == "task" and available_tools is not None and selected not in available_tools:
+                raise ValueError("The selected Task tool is unavailable")
+            fixture_name = selected if selected in responses else tool.__name__
+            calls = counters.get(fixture_name, 0)
+            if fixture_name in responses:
+                fixtures = responses[fixture_name]
                 if calls >= len(fixtures):
                     raise ValueError("The tool response fixture is exhausted")
                 result = fixtures[calls]
             else:
                 result = await tool(*args, **kwargs)
-            calls += 1
+            counters[fixture_name] = calls + 1
             transcript.append({"name": tool.__name__, "arguments": arguments, "result": result})
             return result
 
         return recorded
 
     return [wrap(tool) for tool in tools]
+
+
+def _catalog_recording_tools(catalog: list[dict[str, Any]], available: list[str],
+                             responses: dict[str, list[Any]], transcript: list[dict[str, Any]],
+                             response_arguments: dict[str, list[dict[str, Any]]]) -> list[Any]:
+    """Expose schemas to the model, validate arguments, and never call the real function."""
+    names = [str(item["name"]) for item in catalog]
+    if (len(set(names)) != len(names) or set(names) != set(available)
+            or set(responses) - set(names) or set(response_arguments) - set(responses)):
+        raise ValueError("Simulated tool contracts must match the declared available inventory")
+    simulation = ExecutorToolResponses(responses, response_arguments)
+
+    def build(spec: dict[str, Any]) -> RecordingTool[None]:
+        name = str(spec["name"])
+        schema = cast(dict[str, Any], spec["parameters"])
+
+        async def recorded(**arguments: Any) -> Any:
+            try:
+                validate_schema(arguments, schema)
+            except YAMLValidationError as exc:
+                result: Any = {"success": False, "error": "invalid_tool_arguments", "detail": str(exc)[:500]}
+            else:
+                result = simulation.take(name, arguments)
+            transcript.append({"name": name, "arguments": arguments, "result": result})
+            return result
+
+        return RecordingTool.from_schema(recorded, name=name, description=str(spec.get("description", "")),
+                                         json_schema=schema, sequential=True)
+
+    return [build(spec) for spec in catalog]
 
 
 def _executor_action(tool_calls: list[dict[str, Any]]) -> str:
@@ -631,7 +690,12 @@ async def evaluate_mechanism(
             llm=llm,
             prompt=prompt,
             system_prompt=system_prompt_override,
-            tools=recording_tools(definition.executor, responses, transcript),
+            tools=recording_tools(definition.executor, responses, transcript,
+                                  available_tools=input_data.get("available_tools", []),
+                                  tool_catalog=input_data.get("tool_catalog"),
+                                  response_arguments=input_data.get("tool_response_arguments")),
+            request_limit=int(input_data.get("tool_calls_limit", 3)) + 1,
+            tool_calls_limit=int(input_data.get("tool_calls_limit", 3)),
             measure_latency=observations is not None,
             purpose=LLMCallPurpose.LAB_MECHANISM_RUN,
             model_field=model_usages.LAB,

@@ -134,3 +134,106 @@ async def test_metadata_edits_preserve_search_and_links_without_reparsing_conten
         assert getattr(changed, field) == updates[field]
     assert await db.scalar(select(MemoryLink.id).where(MemoryLink.source_item_id == identity)) == link_id
     read.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('source,empty,archived,external', [
+    (0, False, False, False), (1, False, False, False), (2, False, False, False),
+    (3, False, False, False), (4, False, False, False), (0, True, False, False),
+    (3, True, False, False), (3, False, True, False), (1, False, False, True),
+], ids=['body', 'revision', 'summary-revision', 'summary', 'missing', 'empty-body',
+        'empty-summary', 'archived-summary', 'external-body'])
+async def test_native_pointer_sources_preserve_precedence_in_one_read(db, agents, source, empty, archived, external):
+    from datetime import datetime, timezone
+    from hashlib import sha256
+    from uuid import uuid4
+    from sqlalchemy import null
+    from app.document import DocumentSummaryRevision
+    from app.document.inline_content import read_inline_content
+    from tests.sql_reads import measured_reads
+
+    pointer = str(uuid4())
+    values = [None if index < source else ('' if index == source and empty else f'Synthetic café 🧪 source {index}')
+              for index in range(4)]
+    if external:
+        values[0] = 'Synthetic external body must be ignored'
+    item = Document(owner_agent_id=agents[0].id, title='Synthetic pointer owner',
+        provider_code='external' if external else 'native', resource_id=pointer, content=values[0],
+        content_hash=sha256(b'synthetic').hexdigest(), summary_resource_id=pointer,
+        summary_content=values[3] if values[3] is not None else null(),
+        deleted_at=datetime.now(timezone.utc) if archived else None)
+    db.add(item)
+    await db.flush()
+    db.add(DocumentRevision(document_id=item.id, revision=1, provider_code='native', resource_id=pointer,
+        content=values[1], content_hash=sha256(b'synthetic').hexdigest(), title=item.title,
+        content_type='text', media_type='text/html'))
+    db.add(DocumentSummaryRevision(document_id=item.id, revision=1, provider_code='native', resource_id=pointer,
+        content=values[2], content_hash=sha256(b'synthetic').hexdigest(), source_document_revision=1, keywords=[]))
+    await db.flush()
+    # The lookup must not publish an unrelated pending owner through autoflush.
+    pending = Document(owner_agent_id=agents[0].id, title='Synthetic pending owner', provider_code='native',
+        resource_id=str(uuid4()), content='Unpublished', content_hash=sha256(b'Unpublished').hexdigest())
+    db.add(pending)
+    expected = values[source].encode() if source < 4 else None
+    async with measured_reads(db, 'document-native-pointer') as reads:
+        assert await read_inline_content(pointer) == expected
+    assert pending in db.new
+    assert len(reads) <= 1
+
+
+@pytest.mark.asyncio
+async def test_native_pointer_keeps_unflushed_text_and_independent_commits(committed_database):
+    from hashlib import sha256
+    from uuid import uuid4
+    from app.document.inline_content import read_inline_content
+    from core.database.database import db_session_ctx
+    from tests.sql_reads import measured_reads
+
+    async with committed_database() as reader:
+        token = db_session_ctx.set(reader)
+        try:
+            user = UserModel(email='synthetic-inline-reader@example.invalid', hashed_password='unused', is_active=True)
+            reader.add(user)
+            await reader.flush()
+            user_id = user.id
+            pointer = str(uuid4())
+            item = Document(owner_user_id=user_id, title='Synthetic committed owner', provider_code='native',
+                resource_id=pointer, content='Original café 🧪', content_hash=sha256(b'synthetic').hexdigest())
+            reader.add(item)
+            async with measured_reads(reader, 'pending-inline-owner') as reads:
+                assert await read_inline_content(pointer) == 'Original café 🧪'.encode()
+            assert not reads and item in reader.new
+            await reader.commit()
+            identity = item.id
+            assert await read_inline_content(pointer) == 'Original café 🧪'.encode()
+            async with committed_database() as writer:
+                await writer.execute(update(Document).where(Document.id == identity).values(content='Independent update'))
+                await writer.commit()
+            assert item.content == 'Original café 🧪'  # The reader's ORM value is intentionally stale.
+            assert await read_inline_content(pointer) == b'Independent update'
+            item.content = 'Unflushed local text'
+            async with measured_reads(reader, 'dirty-inline-owner') as reads:
+                assert await read_inline_content(pointer) == b'Unflushed local text'
+            assert not reads
+            await reader.rollback()
+            assert await read_inline_content(pointer) == b'Independent update'
+            other_pointer = str(uuid4())
+            async with committed_database() as writer:
+                writer.add(Document(owner_user_id=user_id, title='Synthetic other owner', provider_code='native',
+                    resource_id=other_pointer, content='Other pointer', content_hash=sha256(b'synthetic').hexdigest()))
+                await writer.commit()
+
+            async def read_in_own_session(target, expected):
+                async with committed_database() as session:
+                    context = db_session_ctx.set(session)
+                    try:
+                        for _ in range(3):
+                            assert await read_inline_content(target) == expected
+                    finally:
+                        db_session_ctx.reset(context)
+
+            import asyncio
+            await asyncio.gather(read_in_own_session(pointer, b'Independent update'),
+                                 read_in_own_session(other_pointer, b'Other pointer'))
+        finally:
+            db_session_ctx.reset(token)

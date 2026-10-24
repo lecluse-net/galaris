@@ -1,5 +1,5 @@
 import { api } from '@/core/api'
-import { attachmentReference, browserResourceKind } from '@/core/util'
+import { attachmentReference, browserResourceKind } from '@/core/util/facade'
 import { thumbnailReady } from '@/core/util/facade'
 import type { GraphContext, GraphState, GraphStatePatch } from '../graphState'
 import type { CatalogueResource, MemoryItem, MemoryItemCreate, MemoryItemDetail, MemoryItemUpdate, MemoryGraphCursor, MemoryFinding, MemoryGraphPage, MemoryGraphNode, MemoryFilterOptions, MemoryLink, MemoryNodeKind, MemoryRevision, MemoryRankedItem, MemoryRelationType, MemorySearchPage, MemorySortField } from '../types'

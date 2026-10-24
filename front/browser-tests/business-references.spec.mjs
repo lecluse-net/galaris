@@ -1,4 +1,4 @@
-import { test, expect, mount, jsonRoute, editorHtml } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, editorHtml, setPrivileges } from './fixtures.mjs'
 import { goal as goalFixture, result } from './data.mjs'
 
 const id = '00000000-0000-4000-8000-000000000251'
@@ -45,6 +45,37 @@ async function fixtures(page) {
   await jsonRoute(page, `**/api/goals/${id}/cycles?*`, { items: [], total: 0, page: 1, page_size: 50 })
   await jsonRoute(page, `**/api/goals/${id}`, goal)
 }
+test('a direct Task dialog survives query normalization and follows navigation and dismissal', async ({ page }) => {
+  await fixtures(page)
+  await jsonRoute(page, '**/api/tasks/recent?*', { items: [], total: 0,
+    summary: { completed: 0, paused: 0, running: 0, errors: 0 } })
+  await mount(page, 'app/task/pages/index.vue', {
+    route: `/task?tab=tasks&task_id=${id}`, privileges: ['TASK_ACCESS'],
+  })
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('FULL TASK OBJECTIVE')
+  // Rewriting the activity query must not dismiss an unchanged Task reference.
+  await page.evaluate(value => window.testApp.navigate(value), `/task?task_id=${id}`)
+  await dialog.evaluate(element => Promise.all(element.getAnimations({ subtree: true }).map(animation => animation.finished.catch(() => {}))))
+  await expect(dialog).toBeVisible()
+  await page.evaluate(() => window.testApp.navigate('/task?tab=tasks'))
+  await expect(dialog).toHaveCount(0)
+  await page.evaluate(value => window.testApp.navigate(value), `/task?tab=tasks&task_id=${id}`)
+  await expect(dialog).toContainText('FULL TASK OBJECTIVE')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await page.evaluate(() => window.testApp.navigate('/task?tab=tasks'))
+  await page.evaluate(value => window.testApp.navigate(value), `/task?tab=tasks&task_id=${id}`)
+  await expect(dialog).toBeVisible()
+  await page.locator('.q-dialog__backdrop').last().click({ position: { x: 4, y: 4 } })
+  await expect(dialog).toHaveCount(0)
+  await page.evaluate(() => window.testApp.navigate('/task?tab=tasks'))
+  await page.evaluate(value => window.testApp.navigate(value), `/task?tab=tasks&task_id=${id}`)
+  await expect(dialog).toBeVisible()
+  await setPrivileges(page, [])
+  await expect(dialog).toHaveCount(0)
+})
+
 async function paste(page, text) {
   await page.locator('[data-editor-surface]').evaluate((root, value) => {
     const data = new DataTransfer(); data.setData('text/plain', value)
@@ -71,7 +102,12 @@ for (const [kind, url, title, detail] of cases) for (const format of ['uri', 'ur
     await mount(page, 'core/util/components/RichTextEditor.vue', { props: { modelValue: '<p>Keep surrounding text</p>', profile: 'document' }, privileges: [grants[kind]] })
     const surface = page.locator('[data-editor-surface]')
     await surface.click(); await page.keyboard.press('End')
-    await paste(page, format === 'uri' ? uri : new URL(url, page.url()).href)
+    if (format === 'uri') await paste(page, uri)
+    else {
+      await page.evaluate(value => navigator.clipboard.writeText(value), new URL(url, page.url()).href)
+      await surface.locator('p').click({ button: 'right' })
+      await page.getByRole('menuitem', { name: 'Paste', exact: true }).click()
+    }
     const link = surface.locator('a')
     await expect(link).toContainText(title)
     await link.click({ button: 'right' })
@@ -97,6 +133,9 @@ for (const [kind, url, title, detail] of cases) for (const format of ['uri', 'ur
       // Discussions expose reference copying on the card, without a modal copy button.
       await page.keyboard.press('Escape')
       await card.click({ button: 'right', position: { x: 4, y: 4 } })
+      await page.getByRole('menuitem', { name: 'Copy reference', exact: true }).click()
+    } else if (kind === 'task') {
+      await dialog.locator('.task-detail').click({ button: 'right' })
       await page.getByRole('menuitem', { name: 'Copy reference', exact: true }).click()
     } else await dialog.getByRole('button', { name: 'Copy reference', exact: true }).first().click()
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(uri)

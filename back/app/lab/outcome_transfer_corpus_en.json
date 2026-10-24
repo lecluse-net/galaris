@@ -1,0 +1,987 @@
+{
+  "version": 4,
+  "mechanism": "task_executor",
+  "name": "Goal cycle transfer checks v4 (EN)",
+  "purpose": "validation",
+  "description": "Five synthetic Goal-cycle scenarios: four transfer cases and a resumed authenticated referrer answer that supersedes older tracking. Source-URI omission corrected in v2; oracles preserved. No business effects.",
+  "parameters": {
+    "agent": {
+      "name": "Synthetic Operations Agent",
+      "gender": "female",
+      "job_title": "Intake coordinator",
+      "personality": "Precise, helpful, practical.",
+      "job_description": "<p>Complete assigned intake objectives using verified business evidence, existing Galaris resources and assigned workflows. Preserve confidentiality and other contributors' work.</p>"
+    },
+    "language": "en",
+    "tool_calls_limit": 6,
+    "available_tools": [
+      "tools_list",
+      "file_search",
+      "file_read",
+      "file_edit",
+      "file_create",
+      "process_get",
+      "process_start",
+      "process_activity_complete",
+      "goal_ask_referrer",
+      "task_get",
+      "task_run",
+      "memory_remember"
+    ],
+    "available_processes": [
+      {
+        "workflow_id": "synthetic-intake",
+        "description": "Existing assigned business workflow for validating intake cases."
+      }
+    ],
+    "tool_catalog": [
+      {
+        "name": "tools_list",
+        "description": "List authorized MCP functions and distinguish those present in this run from those requiring a new execution context, grouped by application tool.",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {},
+          "type": "object"
+        }
+      },
+      {
+        "name": "file_search",
+        "description": "Search below a collection URI by name or bounded UTF-8 content. Returns canonical resource URIs that can be passed directly to every compatible file tool. Use galaris:// to find tasks, conversation rounds, goals, goal cycles, and assigned processes; authorized skill files are searched below galaris://skill/. galaris:// supports name and text search, not semantic search; use memory:// for semantic recall. On document://, mode='name' matches titles and filenames only and returns compact metadata without body excerpts; use mode='text' or 'semantic' to search document content. memory:// retains hybrid recall in every mode.",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "uri": {
+              "type": "string"
+            },
+            "query": {
+              "type": "string"
+            },
+            "mode": {
+              "default": "name",
+              "enum": [
+                "name",
+                "text",
+                "semantic"
+              ],
+              "type": "string"
+            },
+            "recursive": {
+              "default": true,
+              "type": "boolean"
+            },
+            "max_results": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "cursor": {
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "uri",
+            "query"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "file_read",
+        "description": "Read any resource URI. UTF-8 text is returned in bounded pages; small binary files are returned completely as base64. Keep large binaries out of model context: pass their URI to a specialized tool, or copy to console:// only when console software must handle them. Use next_offset to continue text reads. Dataset JSON pages retain character offsets and include one-based start_line/end_line, total_lines and start_line_complete/end_line_complete flags for file_edit; a false flag means the first/last line is partial, so read its missing text before replacing that line. HTML Memory/document pages contain complete numbered blocks, format, profile and revision. Their offsets count blocks, not characters. A large indivisible block reports its required max_chars (up to 2 MB); the default budget stays 20,000.",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "uri": {
+              "type": "string"
+            },
+            "offset": {
+              "default": 0,
+              "type": "integer"
+            },
+            "max_chars": {
+              "default": 20000,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "uri"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "file_edit",
+        "description": "Replace a 1-based inclusive range in an existing UTF-8 resource. For HTML documents, start_line/end_line identify complete blocks returned by file_read, content is valid HTML, and expected_revision is mandatory. Use this for focused prose corrections or consolidation, preserving useful detail and sources; Galaris document-content changes retain prior revisions. data:// Datasets use actual lines and require expected_revision; the complete result must remain valid JSON. For example start_line=10 and end_line=14 rewrites lines 10 through 14. Binary resources are rejected. Pass expected_revision for document:// or galaris://skill/ when one is already known. For Nextcloud, pass expected_etag from file_read when known; concurrent edits are rejected.",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "uri": {
+              "type": "string"
+            },
+            "start_line": {
+              "type": "integer"
+            },
+            "end_line": {
+              "type": "integer"
+            },
+            "content": {
+              "type": "string"
+            },
+            "expected_revision": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "expected_etag": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "uri",
+            "start_line",
+            "end_line",
+            "content"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "file_create",
+        "description": "Create a new complete text or binary file and return its canonical URI. Use path='file://' plus name for an independent private managed file; its returned file://UUID is stable and does not expose a host path. For path providers, pass an exact file path or a collection path plus name. Use path='document://' to let Galaris assign a new document URI. Use path='data://' for an independent Dataset with valid UTF-8 JSON; its canonical URI is data://UUID and its content remains free JSON. Dataset creation requires the content argument containing complete valid JSON, for example '[]' or '{}'; omitting content is rejected before creation. document_type remains immutable; the deprecated dataset option at document:// returns data:// too. For an HTML document, content must be an editorial HTML fragment with encoding='utf-8', for example '<h1>Report</h1><p>Findings.</p>', not Markdown or a full HTML page with html/head/body tags. Documents accept ordinary form, style and script elements, rendered in an isolated sandbox alongside editable prose. No special app manifest is required. An HTML form declares a Dataset with data-dataset='data://UUID' (verified legacy document:// aliases also work), optionally data-dataset-alias='entries'. Inside the sandbox use galaris.datasets.read/append/replace, with the read revision for mutations; share both the page and Dataset explicitly. Source editing preserves this ordinary HTML. Use document://<uuid>/attachments/ plus name to attach a file to an editable document. Choose a destination scheme returned by file_schemes; console:// is the local filesystem whenever it is advertised. With personal Skills management, create your own skill at galaris://skill/personnal/<YOUR_AGENT_ID>/<code>/SKILL.md with valid UTF-8 Markdown starting with YAML frontmatter name: <code> and description. File Sharing delegates to Skills validation and live permissions; a new personal package is enabled for its owner only. This private creation needs no pre-existing exact URI grant. Generic creation below galaris://skill/<code>/ requires global Skills management and a sourced Task target. For galaris://processes/runs/<uuid>/attachments/ plus name, a sourced grant for that exact run or its attachments collection is required, along with live Process write access. Goal, Task and Process definition snapshots remain read-only: use goal_create, task_run or process_create for those business operations. Existing resources are never overwritten.",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "content": {
+              "default": "",
+              "type": "string"
+            },
+            "encoding": {
+              "default": "utf-8",
+              "enum": [
+                "utf-8",
+                "base64"
+              ],
+              "type": "string"
+            },
+            "name": {
+              "default": "",
+              "type": "string"
+            },
+            "document_type": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "html",
+                    "dataset"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "process_get",
+        "description": "Describe one workflow assigned to the current agent.",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "workflow_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "workflow_id"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "process_start",
+        "description": "Start a business process assigned to the current agent and return its tracking ID. Each files item uses {uri, description}; uri accepts any authorized canonical file_schemes resource and is transferred transparently when the process downloads it.",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "workflow_id": {
+              "type": "string"
+            },
+            "input": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "files": {
+              "anyOf": [
+                {
+                  "items": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "wait_for_completion": {
+              "default": false,
+              "type": "boolean"
+            },
+            "idempotency_key": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "workflow_id"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "process_activity_complete",
+        "description": "For your current native Process activity Task only: submit its declared output variables as ordinary JSON (for example output={\"age\": 42}). Optionally provide a concise user-facing message. The engine validates and stores typed data; your final prose is not parsed as JSON. Stop after acceptance.",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "output": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "message": {
+              "default": "",
+              "type": "string"
+            }
+          },
+          "required": [
+            "output"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "goal_ask_referrer",
+        "description": "Ask the configured human Messenger referrer of the current agent's own Goal a question and wait for their answer. Use only when an answer or decision is required; use messenger_send_message_to_user for non-blocking progress updates. The question is correlated durably, the current Task waits, automatic reminders are sent every 24 hours up to the Goal's configured limit, and the Goal pauses if no answer arrives.",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "question": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "question"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "task_get",
+        "description": "Return a compact operational view of a task with its canonical resource URI, target agent, requester, objective, feedback, actionable terminal diagnostics, progress, amendment eligibility, and explicit waits such as the colleague, question, and deadline. Accept a canonical galaris://task/ URI, a full UUID, or a unique UUID prefix.",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "task_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task_id"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "task_run",
+        "description": "Create a child task delegated to a peer and return its canonical galaris://task/ URI. Never target your own agent_id; perform that work directly. Write `objective` as a rich-text HTML fragment with a direct instruction to the recipient. Your task waits and resumes automatically with the child result. Use this for delegated work; use messenger_send_message_to_user for conversation. `effort` may be auto, standard, or high. `mode` may be auto, exec, or plan. Document references in objective are checked before creation. Set document_access to write when the recipient must edit them. Share them first using document_share; delegation never grants access.",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "agent_id": {
+              "type": "integer"
+            },
+            "label": {
+              "type": "string"
+            },
+            "objective": {
+              "type": "string"
+            },
+            "effort": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "mode": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "document_access": {
+              "default": "read",
+              "enum": [
+                "read",
+                "write"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent_id",
+            "label",
+            "objective"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "memory_remember",
+        "description": "Store one durable governed memory as semantic HTML (paragraphs, lists, tables, links; no images). Use sparingly for an explicit memory request, a correction, or an especially important confirmed fact worth retaining immediately. Leave routine extraction and duplicate checking to Dream; skip equivalent known memories. Storage is immediate and auditable. Keywords may be an array of strings or a JSON-encoded array string. Optional temporal contains partial year/month/day/weekday (Monday=1..Sunday=7)/hour/minute in Galaris's configured timezone. Unset components are wildcards. An anchor excludes automatic recall outside its period and forces priority inclusion when it matches, subject to access and context budgets. Use it for intended reminders, not historical timestamps or ordinary facts; never default to today.",
+        "parameters": {
+          "$defs": {
+            "MemoryTemporalAnchor": {
+              "additionalProperties": false,
+              "description": "Unset components are wildcards; weekday uses ISO Monday=1, Sunday=7.",
+              "properties": {
+                "year": {
+                  "anyOf": [
+                    {
+                      "maximum": 9999,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "month": {
+                  "anyOf": [
+                    {
+                      "maximum": 12,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "day": {
+                  "anyOf": [
+                    {
+                      "maximum": 31,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "weekday": {
+                  "anyOf": [
+                    {
+                      "maximum": 7,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "hour": {
+                  "anyOf": [
+                    {
+                      "maximum": 23,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "minute": {
+                  "anyOf": [
+                    {
+                      "maximum": 59,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                }
+              },
+              "type": "object"
+            }
+          },
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "title": {
+              "default": "",
+              "type": "string"
+            },
+            "keywords": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "temporal": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MemoryTemporalAnchor"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "content"
+          ],
+          "type": "object"
+        }
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "transfer-unmade-choice-en",
+      "categories": [
+        "nominal",
+        "robustness",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "<p>Resolve the remaining step for session Delta.</p>",
+        "context": {
+          "history": [
+            {
+              "text": "All checks are finished. The owner must pick the copper room or the chalk room; she has not expressed a preference yet. No record can supply her future preference. Her channel is bound. No further material is needed."
+            }
+          ],
+          "tool_responses": {
+            "goal_ask_referrer": [
+              {
+                "status": "waiting",
+                "interaction_uri": "galaris://interaction/00000000-0000-4000-8000-000000000332"
+              }
+            ]
+          },
+          "tool_response_arguments": {
+            "goal_ask_referrer": [
+              {}
+            ]
+          },
+          "goal_referrer_type": "MESSENGER"
+        }
+      },
+      "expected_output": {
+        "action": "use_tool",
+        "response": "The question was sent to the referrer; their decision is pending.",
+        "tool_calls": [
+          {
+            "name": "goal_ask_referrer",
+            "arguments": {
+              "question": "Which mode do you choose: standard or express?"
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "name": "goal_ask_referrer",
+            "arguments": {
+              "question": "Which mode do you choose: standard or express?"
+            },
+            "result": {
+              "status": "waiting",
+              "interaction_uri": "galaris://interaction/00000000-0000-4000-8000-000000000332"
+            }
+          }
+        ],
+        "outcome_checks": {
+          "required_calls": [
+            {
+              "tool": "goal_ask_referrer"
+            }
+          ],
+          "forbidden_tools": [
+            "file_create",
+            "file_edit",
+            "task_run",
+            "process_start",
+            "memory_remember"
+          ],
+          "max_tool_calls": 1,
+          "response_values": [],
+          "tool_call_limits": {
+            "goal_ask_referrer": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "transfer-already-recorded-decision-en",
+      "categories": [
+        "nominal",
+        "robustness",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "<p>State the authorized mode for session Delta.</p>",
+        "context": {
+          "history": [
+            {
+              "text": "An older exchange left the choice open. The final answer has since been recorded in the indicated Dataset. Read that current answer."
+            },
+            {
+              "source": "data://00000000-0000-4000-8000-000000000331",
+              "text": "Current source to read."
+            }
+          ],
+          "tool_responses": {
+            "file_read": [
+              {
+                "uri": "data://00000000-0000-4000-8000-000000000331",
+                "revision": 11,
+                "content": "{\"approved_mode\":\"standard\",\"approved_by\":\"human_referrer\"}"
+              }
+            ]
+          },
+          "tool_response_arguments": {
+            "file_read": [
+              {
+                "uri": "data://00000000-0000-4000-8000-000000000331"
+              }
+            ]
+          },
+          "goal_referrer_type": "MESSENGER"
+        }
+      },
+      "expected_output": {
+        "action": "use_tool",
+        "response": "The approved mode is standard.",
+        "tool_calls": [
+          {
+            "name": "file_read",
+            "arguments": {
+              "uri": "data://00000000-0000-4000-8000-000000000331"
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "name": "file_read",
+            "arguments": {
+              "uri": "data://00000000-0000-4000-8000-000000000331"
+            },
+            "result": {
+              "uri": "data://00000000-0000-4000-8000-000000000331",
+              "revision": 11,
+              "content": "{\"approved_mode\":\"standard\",\"approved_by\":\"human_referrer\"}"
+            }
+          }
+        ],
+        "outcome_checks": {
+          "required_calls": [
+            {
+              "tool": "file_read",
+              "arguments": {
+                "uri": "data://00000000-0000-4000-8000-000000000331"
+              }
+            }
+          ],
+          "forbidden_tools": [
+            "file_create",
+            "file_edit",
+            "task_run",
+            "process_start",
+            "memory_remember",
+            "goal_ask_referrer"
+          ],
+          "max_tool_calls": 1,
+          "response_values": [
+            "standard"
+          ],
+          "tool_call_limits": {
+            "goal_ask_referrer": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "transfer-inspectable-decision-prerequisite-en",
+      "categories": [
+        "nominal",
+        "robustness",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "<p>Obtain the choice needed for session Delta.</p>",
+        "context": {
+          "history": [
+            {
+              "text": "The owner must choose an early or a late slot. She needs the total current quote cost before choosing. The indicated Dataset is the source of that cost."
+            },
+            {
+              "source": "data://00000000-0000-4000-8000-000000000331",
+              "text": "Current source to read."
+            }
+          ],
+          "tool_responses": {
+            "file_read": [
+              {
+                "uri": "data://00000000-0000-4000-8000-000000000331",
+                "revision": 12,
+                "content": "{\"amount\":23,\"currency\":\"EUR\"}"
+              }
+            ],
+            "goal_ask_referrer": [
+              {
+                "status": "waiting",
+                "interaction_uri": "galaris://interaction/00000000-0000-4000-8000-000000000332"
+              }
+            ]
+          },
+          "tool_response_arguments": {
+            "file_read": [
+              {
+                "uri": "data://00000000-0000-4000-8000-000000000331"
+              }
+            ],
+            "goal_ask_referrer": [
+              {}
+            ]
+          },
+          "goal_referrer_type": "MESSENGER"
+        }
+      },
+      "expected_output": {
+        "action": "use_tool",
+        "response": "The question was sent to the referrer; their decision is pending.",
+        "tool_calls": [
+          {
+            "name": "file_read",
+            "arguments": {
+              "uri": "data://00000000-0000-4000-8000-000000000331"
+            }
+          },
+          {
+            "name": "goal_ask_referrer",
+            "arguments": {
+              "question": "The current quote is 23 EUR. Do you choose standard or express?"
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "name": "file_read",
+            "arguments": {
+              "uri": "data://00000000-0000-4000-8000-000000000331"
+            },
+            "result": {
+              "uri": "data://00000000-0000-4000-8000-000000000331",
+              "revision": 12,
+              "content": "{\"amount\":23,\"currency\":\"EUR\"}"
+            }
+          },
+          {
+            "name": "goal_ask_referrer",
+            "arguments": {
+              "question": "The current quote is 23 EUR. Do you choose standard or express?"
+            },
+            "result": {
+              "status": "waiting",
+              "interaction_uri": "galaris://interaction/00000000-0000-4000-8000-000000000332"
+            }
+          }
+        ],
+        "outcome_checks": {
+          "required_calls": [
+            {
+              "tool": "file_read",
+              "arguments": {
+                "uri": "data://00000000-0000-4000-8000-000000000331"
+              }
+            },
+            {
+              "tool": "goal_ask_referrer",
+              "argument_values": {
+                "question": [
+                  "23"
+                ]
+              },
+              "argument_any_values": {
+                "question": [
+                  "EUR",
+                  "€"
+                ]
+              }
+            }
+          ],
+          "forbidden_tools": [
+            "file_create",
+            "file_edit",
+            "task_run",
+            "process_start",
+            "memory_remember"
+          ],
+          "max_tool_calls": 2,
+          "response_values": [],
+          "tool_call_limits": {
+            "goal_ask_referrer": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "transfer-unavailable-prerequisite-en",
+      "categories": [
+        "nominal",
+        "robustness",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "<p>Verify the quote before asking any question.</p>",
+        "context": {
+          "history": [
+            {
+              "text": "The owner must choose an early or a late slot. She needs the total current quote cost before choosing. The indicated Dataset is the source of that cost."
+            },
+            {
+              "source": "data://00000000-0000-4000-8000-000000000331",
+              "text": "Current source to read."
+            }
+          ],
+          "tool_responses": {
+            "file_read": [
+              {
+                "error": "unavailable",
+                "retryable": false,
+                "message": "Quote is unavailable; do not infer its amount."
+              }
+            ],
+            "goal_ask_referrer": [
+              {
+                "status": "waiting",
+                "interaction_uri": "galaris://interaction/00000000-0000-4000-8000-000000000332"
+              }
+            ]
+          },
+          "tool_response_arguments": {
+            "file_read": [
+              {
+                "uri": "data://00000000-0000-4000-8000-000000000331"
+              }
+            ],
+            "goal_ask_referrer": [
+              {}
+            ]
+          },
+          "goal_referrer_type": "MESSENGER"
+        }
+      },
+      "expected_output": {
+        "action": "use_tool",
+        "response": "The quote is unavailable.",
+        "tool_calls": [
+          {
+            "name": "file_read",
+            "arguments": {
+              "uri": "data://00000000-0000-4000-8000-000000000331"
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "name": "file_read",
+            "arguments": {
+              "uri": "data://00000000-0000-4000-8000-000000000331"
+            },
+            "result": {
+              "error": "unavailable",
+              "retryable": false,
+              "message": "Quote is unavailable; do not infer its amount."
+            }
+          }
+        ],
+        "outcome_checks": {
+          "required_calls": [
+            {
+              "tool": "file_read",
+              "arguments": {
+                "uri": "data://00000000-0000-4000-8000-000000000331"
+              },
+              "successful": false
+            }
+          ],
+          "forbidden_tools": [
+            "file_create",
+            "file_edit",
+            "task_run",
+            "process_start",
+            "memory_remember",
+            "goal_ask_referrer"
+          ],
+          "max_tool_calls": 1,
+          "response_values": [],
+          "tool_call_limits": {}
+        }
+      }
+    },
+    {
+      "name": "answered-referrer-resume-en",
+      "categories": [
+        "nominal",
+        "robustness",
+        "multilingual"
+      ],
+      "input_data": {
+        "variable_value": "<p>The cycle resumes after the authenticated referrer reply. State the mode they just chose; no write is requested.</p>",
+        "context": {
+          "history": [
+            {
+              "source": "goal_tracking",
+              "text": "Earlier tracking: the referrer has not chosen standard or express yet."
+            },
+            {
+              "source": "authenticated_referrer_reply",
+              "text": "Reply received afterwards: I choose standard; this is my final choice."
+            }
+          ],
+          "tool_responses": {
+            "goal_ask_referrer": [
+              {
+                "status": "waiting",
+                "interaction_uri": "galaris://interaction/00000000-0000-4000-8000-000000000332"
+              }
+            ]
+          },
+          "tool_response_arguments": {
+            "goal_ask_referrer": [
+              {}
+            ]
+          },
+          "goal_referrer_type": "MESSENGER"
+        }
+      },
+      "expected_output": {
+        "action": "reply",
+        "response": "The chosen mode is standard.",
+        "tool_calls": [],
+        "tool_results": [],
+        "outcome_checks": {
+          "required_calls": [],
+          "forbidden_tools": [
+            "tools_list",
+            "file_search",
+            "file_read",
+            "file_edit",
+            "file_create",
+            "process_get",
+            "process_start",
+            "process_activity_complete",
+            "goal_ask_referrer",
+            "task_get",
+            "task_run",
+            "memory_remember"
+          ],
+          "max_tool_calls": 0,
+          "response_values": [
+            "standard"
+          ],
+          "tool_call_limits": {}
+        }
+      }
+    }
+  ]
+}

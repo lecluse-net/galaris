@@ -2130,8 +2130,11 @@ vides ou indéchiffrables des dictionnaires de connexion.
 `front/browser-tests/business-references.spec.mjs` exerce les URI et URL des tâches,
 objectifs, sujets, discussions, rounds texte, appels et tours vocaux : collage titré,
 cartes compactes réversibles, conservation du contenu, ouverture et réouverture en modale,
-copie, fermeture par le fond, recherche avec reprise et réponses obsolètes. Le lecteur
-exerce aussi le menu contextuel et le clavier. Les cartes de tâches et d'échanges ne
+copie, fermeture par le fond, recherche avec reprise et réponses obsolètes. La page Activité
+conserve aussi le détail Tâche pendant la normalisation de l'URL ; le retrait de son
+identifiant, Échap, le fond et la révocation du droit ferment ce détail. Le contrôle
+attend la fin des transitions Quasar pour détecter une fermeture différée.
+Le lecteur exerce aussi le menu contextuel et le clavier. Les cartes de tâches et d'échanges ne
 contiennent aucun corps d'exécution. Le parcours assemblé est dans
 `e2e/specs/business-references.spec.mjs` : copie depuis Activité, collage, sauvegarde,
 rechargement et fiches tâche/Topic. La validation des identités et la normalisation sont

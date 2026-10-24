@@ -223,7 +223,7 @@ def test_every_non_dispatch_mechanism_has_a_complete_versioned_semantic_rubric()
                 else ":v4"
                 if rubric.mechanism in {"planner", "dispatcher"}
                 else ":v3"
-                if rubric.mechanism == "topic_classification"
+                if rubric.mechanism in {"topic_classification", "goal_tracking", "task_executor", "conversation_executor", "voice_executor"}
                 else ":v2"
             )
             assert rubric.version.endswith(expected_version)
@@ -292,6 +292,8 @@ async def test_memory_extraction_import_preserves_source_corpus_with_dataset_par
             "temporal": None,
             "keywords": ["concision"],
             "score": 0.0,
+            "revision": None,
+            "can_enrich": False,
         }
     ]
     identities = [

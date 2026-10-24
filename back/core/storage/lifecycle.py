@@ -42,13 +42,17 @@ async def _retire(clause: ColumnElement[bool], *, session: AsyncSession | None) 
     ).distinct()))
     await db.execute(delete(FileAlias).where(clause))
     retired: list[UUID] = []
-    for identifier in sorted(identifiers):
-        if await db.scalar(select(FileAlias.id).where(FileAlias.file_id == identifier).limit(1)) is not None:
-            continue
-        record = await db.get(StoredFile, identifier)
-        if record is not None:
+    identifiers.sort()
+    # Bound bind parameters and loaded ORM state even for a whole domain's files.
+    for offset in range(0, len(identifiers), 500):
+        records = await db.scalars(select(StoredFile).where(
+            StoredFile.id.in_(identifiers[offset:offset + 500]),
+            ~select(FileAlias.id).where(FileAlias.file_id == StoredFile.id).exists(),
+        ).order_by(StoredFile.id))
+        for record in records:
             record.soft_delete()
-            retired.append(identifier)
+            retired.append(record.id)
+        await db.flush()
     await db.flush()
     return retired
 

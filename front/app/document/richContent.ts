@@ -1,4 +1,5 @@
-import { documentIdFromResourceUri, type RichContentContribution } from '@/core/util'
+import type { RichContentContribution } from '@/core/util'
+import { documentIdFromResourceUri } from '@/core/util/facade'
 import { documentService } from './services/documentService'
 export default {
   previewImage: (uri, agentId, signal) => documentService.linkThumbnail(uri, agentId, signal),

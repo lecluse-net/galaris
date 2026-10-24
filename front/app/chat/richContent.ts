@@ -1,5 +1,5 @@
 import type { RichContentContribution } from '@/core/util'
-import { referenceId, referenceCardHtml, referenceDate } from '@/core/util'
+import { referenceId, referenceCardHtml, referenceDate } from '@/core/util/facade'
 import { chatService } from './services/chatService'
 const idFrom = (uri: string) => referenceId(uri, 'room', '/chat', 'room')
 export default {

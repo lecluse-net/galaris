@@ -418,7 +418,8 @@ async def test_analysis_preserves_failure_evidence_and_authorizes_agent_calls(db
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("filter_name", ["agent_id", "agent_ids", "process_id", "workflow_id", "status", "active", "search", "created_after", "created_before"])
-async def test_run_filters_count_only_matching_authorized_results(db, workflow, filter_name):
+@pytest.mark.parametrize("summary_only", [False, True])
+async def test_run_filters_count_only_matching_authorized_results(db, workflow, filter_name, summary_only):
     first = await start(workflow, idempotency_key="first")
     second = await start(workflow, idempotency_key="second")
     own, other = await service.get_run(first.run_id), await service.get_run(second.run_id)
@@ -431,10 +432,10 @@ async def test_run_filters_count_only_matching_authorized_results(db, workflow, 
     filters = {"agent_id": workflow.owner.id, "agent_ids": [workflow.owner.id], "process_id": workflow.definition.id,
                "workflow_id": "report", "status": "success", "active": False, "search": " unique-receipt ",
                "created_after": old + timedelta(days=1), "created_before": old + timedelta(days=1)}
-    rows, total = await service.paginate_runs(**{filter_name: filters[filter_name]}, descending=False, sort_by="status", page_size=1)
+    rows, total = await service.paginate_runs(**{filter_name: filters[filter_name]}, descending=False, sort_by="status", page_size=1, summary_only=summary_only)
     expected = other.id if filter_name == "created_before" else own.id
     assert total == 1 and [row.id for row in rows] == [expected]
-    rows, total = await service.paginate_runs(**{filter_name: filters[filter_name]}, page=2, page_size=1)
+    rows, total = await service.paginate_runs(**{filter_name: filters[filter_name]}, page=2, page_size=1, summary_only=summary_only)
     assert rows == [] and total == 1
     listed = await service.list_runs(agent_id=workflow.owner.id, workflow_id="report", status="success")
     assert [row.id for row in listed] == [own.id]

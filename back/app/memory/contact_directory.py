@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Collection
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -10,8 +11,9 @@ from uuid import UUID
 
 from pydantic import EmailStr, TypeAdapter
 
-from sqlalchemy import delete, exists, func, or_, select, union_all, update
+from sqlalchemy import and_, delete, exists, func, or_, select, tuple_, union_all, update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import get_db
 from core.user import get_user_record
@@ -74,8 +76,10 @@ async def list_messenger_contacts(
     limit: int = 50,
     offset: int = 0,
     contact_item_id: UUID | None = None,
+    messenger_identities: Collection[tuple[str, str]] | None = None,
+    galaris_user_ids: Collection[int] | None = None,
 ) -> tuple[tuple[MessengerContactRecord, ...], int]:
-    """List active canonical contacts for one managed Agent."""
+    """List active contacts; supplied identity collections select their union."""
 
     bounded_limit = max(1, min(limit, 500))
     bounded_offset = max(0, offset)
@@ -87,6 +91,24 @@ async def list_messenger_contacts(
     ]
     if contact_item_id is not None:
         filters.append(MemoryItem.id == contact_item_id)
+    if messenger_identities is not None or galaris_user_ids is not None:
+        identity_conditions: list[ColumnElement[bool]] = []
+        if messenger_identities:
+            identity_conditions.append(and_(
+                MemoryContactIdentity.identity_kind == "messenger",
+                tuple_(MemoryContactIdentity.namespace, MemoryContactIdentity.external_id).in_(messenger_identities),
+            ))
+        if galaris_user_ids:
+            identity_conditions.append(and_(
+                MemoryContactIdentity.identity_kind == "galaris_user",
+                MemoryContactIdentity.galaris_user_id.in_(galaris_user_ids),
+            ))
+        if not identity_conditions:
+            return (), 0
+        filters.append(MemoryItem.id.in_(select(MemoryContactIdentity.contact_item_id).where(
+            MemoryContactIdentity.owner_agent_id == owner_agent_id,
+            or_(*identity_conditions),
+        ).distinct()))
     if normalized_query:
         pattern = f"%{normalized_query}%"
         filters.append(

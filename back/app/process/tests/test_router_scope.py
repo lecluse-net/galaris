@@ -106,6 +106,7 @@ async def test_export_requires_authenticated_admin(client):
     from core.user.user_service import encrypt_password
     url = f"/api/processes/runs/{uuid4()}/export"
     assert (await client.get(url)).status_code == 401
+    assert (await client.get('/api/processes/runs')).status_code == 401
     email = f"export-{uuid4()}@example.com"
     async with get_db_session() as db:
         db.add(User(email=email, hashed_password=encrypt_password("export-password"), is_active=True))
@@ -114,3 +115,4 @@ async def test_export_requires_authenticated_admin(client):
     assert (await client.get(url, headers={"Authorization": f"Bearer {login.json()['access_token']}"})).status_code == 403
     assert (await client.get('/api/processes/catalogue')).status_code == 401
     assert (await client.get('/api/processes/catalogue', headers={"Authorization": f"Bearer {login.json()['access_token']}"})).status_code == 403
+    assert (await client.get('/api/processes/runs', headers={"Authorization": f"Bearer {login.json()['access_token']}"})).status_code == 403

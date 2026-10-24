@@ -17,7 +17,7 @@ async function conversation(page, privileges = ['CHAT_SEND'], commandsHandler = 
     await jsonRoute(page, `**/api/chat/rooms/${room.id}/activity?*`, { items: [], total: 0 })
     if (activityHandler) await page.route(`**/api/chat/rooms/${room.id}/activity?*`, activityHandler)
     await page.route(`**/api/chat/rooms/${room.id}/messages?*`, route => route.fulfill({
-      json: { items: [messages[room.id]], total: 1, page: 1 },
+      json: { items: options.empty ? [] : [messages[room.id]], total: options.empty ? 0 : 1, page: 1 },
     }))
     await jsonRoute(page, `**/api/chat/rooms/${room.id}/read`, {})
     await jsonRoute(page, `**/api/chat/rooms/${room.id}/commands`, { commands: [] })
@@ -29,9 +29,53 @@ async function conversation(page, privileges = ['CHAT_SEND'], commandsHandler = 
   await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
   await jsonRoute(page, '**/api/chat/agents/7/avatar', {})
   await mount(page, 'app/chat/pages/index.vue', { route: options.route ?? '/chat?room=room-a', browserHistory: true, privileges })
-  if (options.route !== '/chat') await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
+  if (options.empty) await expect(page.locator('.conversation-empty-state')).toBeVisible()
+  else if (options.route !== '/chat') await expect(page.locator('.conversation-pane')).toContainText('Content room-a')
   return { rooms, messages }
 }
+
+test('a first message keeps temporary identifiers local and loads its resources after the canonical receipt', async ({ page }) => {
+  const reads = [], invalid = []
+  for (const kind of ['documents', 'processes', 'tasks']) await page.route(`**/api/chat/rooms/room-a/${kind}?*`, route => {
+    const anchor = new URL(route.request().url()).searchParams.get('from_message_id')
+    reads.push({ kind, anchor })
+    if (anchor?.startsWith('pending:')) invalid.push(kind)
+    return route.fulfill({ status: anchor?.startsWith('pending:') ? 422 : 200, json: { items: [], total: 0 } })
+  })
+  await page.route('**/api/chat/rooms/room-a/messages/*/previews*', route => {
+    const anchor = new URL(route.request().url()).pathname.split('/').at(-2)
+    reads.push({ kind: 'previews', anchor })
+    if (anchor.startsWith('pending:')) invalid.push('previews')
+    return route.fulfill({ status: anchor.startsWith('pending:') ? 422 : 200, json: [] })
+  })
+  const { messages } = await conversation(page, ['CHAT_SEND', 'DOCUMENT_ACCESS', 'TASK_ACCESS', 'PROCESS_READ'], null, null, { empty: true })
+  let accepted, release, submitted = false
+  const pending = new Promise(resolve => { release = resolve })
+  const canonical = '00000000-0000-4000-8000-000000000399'
+  const text = 'Synthetic first request document://00000000-0000-4000-8000-000000000398'
+  await page.route('**/api/chat/rooms/room-a/messages', async route => {
+    submitted = true
+    const input = route.request().postDataJSON()
+    await pending
+    accepted = { ...messages['room-a'], id: canonical, external_id: input.client_message_id, text }
+    return route.fulfill({ status: 201, json: accepted })
+  })
+  await page.route('**/api/chat/rooms/room-a/messages?*', route => route.fulfill({ json: { items: accepted ? [accepted] : [], total: accepted ? 1 : 0 } }))
+  try {
+    await page.getByPlaceholder('Write a message…').fill(text)
+    await page.getByRole('button', { name: 'Post', exact: true }).click()
+    await expect.poll(() => submitted).toBe(true)
+    await expect(page.locator('.message-row')).toContainText('Synthetic first request')
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    expect(invalid).toEqual([])
+    release()
+    await expect.poll(() => [...new Set(reads.filter(read => read.anchor === canonical).map(read => read.kind))].sort())
+      .toEqual(['documents', 'previews', 'processes', 'tasks'])
+    await expect(page.locator('.message-row')).toHaveCount(1)
+    await expect(page.getByPlaceholder('Write a message…')).toHaveValue('')
+    expect(invalid).toEqual([])
+  } finally { release() }
+})
 
 for (const width of [1440, 390]) {
   test(`browser history returns to visited conversations and the Chat home at ${width}px`, async ({ page }) => {

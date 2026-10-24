@@ -1,9 +1,21 @@
 """Native text and preservation references owned by Documents."""
 from collections.abc import Collection
-from sqlalchemy import select, union
+from sqlalchemy import Text, bindparam, func, select, union
+from sqlalchemy.sql.elements import BindParameter
 from core.database import get_db
 from core.storage import register_resource_content
 from .models import Document, DocumentRevision, DocumentSummaryRevision
+
+_CONTENT_POINTER: BindParameter[str] = bindparam("pointer")
+# COALESCE preserves source precedence and stops at the first non-NULL text.
+# This immutable statement holds no content or permissions between calls.
+_INLINE_LOOKUP = select(func.coalesce(
+    *(select(model.content).where(model.provider_code == "native", model.resource_id == _CONTENT_POINTER)
+      .limit(1).scalar_subquery() for model in (Document, DocumentRevision, DocumentSummaryRevision)),
+    select(Document.summary_content).where(Document.summary_provider_code == "native",
+        Document.summary_resource_id == _CONTENT_POINTER).limit(1).scalar_subquery(),
+    type_=Text,
+)).execution_options(include_historized=True)
 
 async def read_inline_content(pointer: str) -> bytes | None:
     try:
@@ -18,11 +30,7 @@ async def read_inline_content(pointer: str) -> bytes | None:
             if isinstance(row,Document) and state.get("summary_provider_code")=="native" and state.get("summary_resource_id")==pointer and isinstance(state.get("summary_content"),str):
                 return str(state["summary_content"]).encode()
     with db.no_autoflush:
-        for model in (Document,DocumentRevision,DocumentSummaryRevision):
-            value=await db.scalar(select(model.content).where(model.provider_code=="native",model.resource_id==pointer).execution_options(include_historized=True))
-            if value is not None:
-                return value.encode()
-        value=await db.scalar(select(Document.summary_content).where(Document.summary_provider_code=="native",Document.summary_resource_id==pointer).execution_options(include_historized=True))
+        value: str | None = await db.scalar(_INLINE_LOOKUP, {"pointer": pointer})
         return value.encode() if value is not None else None
 
 async def resource_referenced(provider: str, pointer: str) -> bool:

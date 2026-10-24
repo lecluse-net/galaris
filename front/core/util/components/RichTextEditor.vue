@@ -872,6 +872,10 @@ async function clipboardAction(key: typeof clipboardActions[number]): Promise<vo
       const text = !rich ? plain ? await (await plain.getType('text/plain')).text() : await navigator.clipboard.readText() : ''
       if (!unchanged()) return
       current.view.focus()
+      const transfer = new DataTransfer()
+      if (markup) transfer.setData('text/html', markup)
+      if (text) transfer.setData('text/plain', text)
+      if (handleTransfer(transfer, selection.from, new ClipboardEvent('paste', { clipboardData: transfer }))) return
       if (markup) current.view.pasteHTML(editableHtml(markup))
       else if (text) current.view.pasteText(text)
     } else {

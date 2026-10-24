@@ -2,7 +2,119 @@
 
 - Statut : `partial`
 - Revue des sources : 2026-10-11 pour les extensions de parcours ; 2026-10-22 pour le programme identité et qualité des contenus.
-- Le programme ci-dessous est en conception, sans implémentation ni campagne lancée par ce plan.
+- Priorité du 24 octobre : mission, Goals, choix des fonctionnalités et qualité des résultats.
+  Consignes communes, corpus et comparaison générative implémentés et revus le 24 octobre.
+  Les recherches superflues et la qualification élargie restent ouvertes ; les autres lots
+  ci-dessous gardent leur périmètre propre.
+
+## Priorité — résultats utiles et connaissance opérationnelle de Galaris
+
+La fiche de poste donne la mission ; la demande courante, la Task et la Goal fournie donnent
+le résultat attendu et sa portée. La réussite se mesure à ses critères vérifiés, pas au
+nombre de documents, messages ou appels. Les consignes communes orientent vers la fonction
+adaptée et l'existant, sans créer de droits ni supposer qu'un outil documenté est monté.
+Le jugement des cycles Goal distingue également activité produite et progrès démontré.
+
+Les corpus `outcome_capabilities_corpus_fr.json` et `_en.json` couvrent 12 familles chacun :
+réponse sans écriture, Goal atteinte, décision bloquante, synthèse existante, Dataset source,
+Process affecté, état d'un travail, erreur de lecture, conflit concurrent, deux livrables
+nécessaires, droits insuffisants et instruction parasite. Les oracles de référence restent
+hors du contexte candidat ; ils vérifient effets attendus/interdits, cibles, révisions,
+valeurs conservées et ordre causal. Les fixtures sont isolées par cas et par fonction.
+Voir le [protocole détaillé](../../docs/fr/dev/lab-reference-corpus.md#objectifs-et-choix-des-fonctionnalités).
+
+Le banc respecte maintenant l'inventaire déclaré, expose les schémas publics des fonctions,
+refuse les arguments incomplets et exige le reçu réussi du bon appel. Les fixtures sont
+ciblées par arguments : une lecture de Goal ne peut pas consommer la réponse d'un Document.
+Les lectures de statut et la vérification d'une écriture restent possibles ; cette dernière
+restitue le contenu réellement proposé dans ce seul cas. Les deux livrables exigent leurs
+faits et la séparation des audiences, sans imposer leur ordre. Un juge à 100 % ne peut pas
+masquer un effet manquant. Ces simulations restent sans effet métier réel.
+
+Première comparaison figée du corpus v6 : 24 cas FR/EN, trois répétitions par version,
+DeepSeek V4.1 Flash via OpenRouter, paramètres et état initial identiques. Les critères
+complets passent de **32/72 (44,4 %) à 46/72 (63,9 %)** ; les appels enregistrés de
+**241 à 200**, avec les deux documents complets conservés dans **6/6** essais pour les
+deux versions. Coût par réussite : **−10,6 %**, coût brut de la campagne : **+28,5 %**.
+Le total enregistré à cette étape, réglages inclus, est de **0,59409 USD**.
+
+Cette première campagne comporte 17 améliorations et trois régressions liées au budget
+d'appels. La reprise transforme les consignes communes en procédure : distinguer fait
+manquant et choix humain, ne rechercher que le préalable utile et s'arrêter sur un reçu
+suffisant. Elle conserve les révisions, les conflits et tous les livrables nécessaires.
+Trois contrôles supplémentaires par langue protègent le choix à demander, la décision
+déjà enregistrée et le fait à lire avant la question (`outcome_decisions_corpus_*`).
+
+Nouvelle comparaison figée, trois répétitions, mêmes modèle et banc : sur les 24 cas
+initiaux inchangés, **51/72 → 64/72 (70,8 % → 88,9 %)** et **187 → 157 appels**.
+Synthèse existante : **2/6 → 6/6** ; décision humaine anglaise : **0/3 → 3/3** ;
+deux livrables complets : **6/6 → 6/6**. Les nouveaux contrôles passent de **16/18 à 18/18**.
+À cette étape, deux des trois paires historiquement régressées réussissent ; la décision humaine française
+reste en échec par recherches superflues (**1/3 → 0/3**). Les lectures indisponibles et
+certains contrôles d'état restent aussi à corriger. Les rappels et placements testés sans
+stabilité sont écartés. Coût brut et latence ne s'améliorent pas. Le total enregistré,
+essais écartés inclus, est désormais **0,99128 USD**, sous le plafond de **4 USD**.
+Voir les [mesures et limites](../../docs/fr/dev/lab-reference-corpus.md#correction-des-régressions-du-24-octobre-2026).
+
+La reprise suivante cible uniquement le contrat de cycle de `app.goal`, partagé avec le Lab.
+Les branches séparent choix métier non pris, fait à lire et effet à exécuter ; la lecture
+de révision et l'inspection du Process restent conditionnées à l'effet prévu. Un refus de
+droits ou une lecture non réessayable ne déclenche pas une recherche de contournement.
+Les prototypes qui perdaient une inspection ou ajoutaient une question après refus sont écartés.
+
+Qualification retenue, à modèle et critères métier constants : décision humaine
+**0/10 → 10/10 en FR**, **2/10 → 10/10 en EN**, appels **97 → 26** ; autres consommateurs
+Goal **50/60 → 60/60**, droits/Process/injection **7/18 → 18/18**, transfert/reprise
+**34/50 → 50/50**. Le résultat brut du transfert était **49/50** : une question contenant
+correctement `€23` échouait au marqueur littéral `EUR`. L'équivalence explicite est testée
+contre montant/devise absents ou incorrects ; le rejeu sans inférence ne change que ce faux positif.
+Aucune régression appariée n'est observée dans ces campagnes, dont les cas se recoupent.
+Les 22 cas sans contexte explicite de cycle conservent leurs requêtes et prompts système exacts.
+
+Avec le texte complet produit par le constructeur réel d'objectif de cycle : **6/6 avant
+et après**, appels **17 → 7**. Le défaut français était reproduit dans le contexte court
+du Lab ; un échec systématique du worker en production n'est pas établi. Les dix cas
+de transfert/reprise et les contrôles de transmission aux Tasks réelles sont versionnés.
+Coût cumulé enregistré, essais écartés compris : **2,61728 USD sur 4 USD**.
+Voir la [qualification du contexte Goal](../../docs/fr/dev/lab-reference-corpus.md#qualification-du-contexte-goal).
+
+Le [parcours Goal natif](../audits/2026-10-24-goal-native-journey.md) est ensuite qualifié
+avec le dispatcher, le harness, MCP, Chat, les autorisations et le jugement réels : **12/12
+avant et après** la clarification C8 du suivi automatique. Cette précision retire **12
+écritures redondantes et 14 autorisations auxiliaires**, avec **86 → 64 appels physiques**,
+sans document métier supplémentaire. Les livraisons explicitement requises restent
+réalisées dans **6/6** essais séparés. Le corpus de non-régression et les limites de ce
+parcours sont détaillés dans l'audit ; les autres parcours natifs restent ouverts.
+
+La [qualification élargie du 24 octobre](../audits/2026-10-24-conversation-qualification.md)
+reproduit et corrige l'attribution des historiques interne, Hermes et OpenAI : un pair IA
+ne devient plus l'agent courant, et auteur/identifiant restent visibles sans date.
+Les sept reproductions initiales passent après correction ; le contrôle ciblé final
+couvre 144 cas, complétés par les sondes des quatre SDK réels sans réseau extérieur.
+La recette navigateur et ses incidents restent distingués des essais génératifs et des
+comptes externes réels. Un premier message révèle quatre lectures avec identifiant temporaire :
+la correction est reproduite puis vérifiée sur les trois navigateurs. Le pilote réel Quartz
+obtient deux contributions, une mise à jour du document existant et une livraison unique
+(17 appels physiques, 0,04483 USD). La fausse contradiction et le titre dupliqué observés
+conduisent à préciser la vérification des contributions et les bornes des blocs édités.
+Un nouvel essai complet conserve les faits, obtient deux contributions et livre une seule fois,
+sans ces deux défauts (20 appels, 0,05559 USD). La précision finale distingue aussi une affirmation
+non étayée d'une affirmation réfutée : sur trois situations courtes répétées trois fois,
+le classement passe de 8/9 à 9/9, avec les trois vrais conflits conservés. Les sondes ne
+remplacent pas une mission complète après cette dernière précision. Les sorties fournisseur
+inexploitables, les deux échecs communs de lecture indisponible, les coûts et les limites restent
+dans l'audit. Les preuves initiales ne sont pas réécrites. L'identité sémantique, la réserve
+indépendante et les autres lots demeurent ouverts.
+
+Le corpus public ayant servi au réglage, cette mesure ne clôt pas le plan et ne qualifie
+pas les cas de réserve, les profils variés, la conversation, la voix ou les Goals multi-cycles.
+
+Avant toute promotion, comparer au moins trois répétitions appariées à modèle, suffixe,
+contexte et outils identiques. Publier taux de critères satisfaits, mauvais choix,
+écritures évitables, créations nécessaires, complétude, coût par réussite et latence.
+Zéro nouvelle violation de droits, perte de contenu ou faux succès dans les cas de réception ;
+une réduction d'activité ne compense jamais une omission. Revoir la qualité sémantique
+indépendamment des compteurs, puis qualifier cas de réserve et parcours assemblés.
 
 Les corrections et contrats réalisés restent dans la
 [matrice projet](../audits/2026-09-19-fiabilisation-transversale.md),
@@ -16,6 +128,11 @@ Avant chaque extension, vérifier puis reproduire le manque actuel ; ces qualifi
 ne sont pas une liste de défauts prouvés.
 
 ## Travaux restants
+
+Le lot [0228](../decisions/0228-work-discovery-and-memory-continuity.md) apporte
+le parcours de première mission sur Welcome et les opérations d’extraction ENRICH et
+CONTRADICT, avec préservation des sources et révisions. Il ne clôt pas le programme global
+d’identité et d’attribution ci-dessous ni la qualification de la pertinence documentaire.
 
 Le lot [0170](../decisions/0170-execution-scope-and-durable-controls.md) coordonne
 les descendants Task et leur propriétaire Process. L'arbre est figé à l'admission et ne
@@ -64,11 +181,6 @@ Memory et l'acquisition Dream. Appliquer les mêmes règles sémantiques aux che
 qui partagent ces constructeurs ; qualifier séparément la voix temps réel et chaque
 harnais effectivement pris en charge. Une preuve sur l'interne ne qualifie pas Hermès,
 Codex, Claude Agent ou DeepSeek.
-
-Le lot [0228](../decisions/0228-work-discovery-and-memory-continuity.md) apporte
-le parcours de première mission sur Welcome et les opérations d’extraction ENRICH et
-CONTRADICT, avec préservation des sources et révisions. Il ne clôt pas le programme global
-d’identité et d’attribution ci-dessous ni la qualification de la pertinence documentaire.
 
 Ce cadrage ne réduit pas les critères de rétention, ne désactive pas Dream et n'introduit
 ni quota de documents, ni taille maximale de rédaction supplémentaire, ni purge ou fusion

@@ -22,6 +22,7 @@ from core.database import get_db
 
 from . import goal_service, settings_service
 from .document_store import get_goal_document_store
+from .cycle_context import goal_cycle_work_instructions
 from .models import (
     Goal,
     GoalCycle,
@@ -60,6 +61,10 @@ Judge the Goal, not whether the latest Task merely ended successfully. A failed 
 still justify CONTINUE. An open-ended Goal should continue while valuable concrete work remains.
 Base the decision only on the Goal, its current durable tracking, and the latest Task result.
 STOP must cite at least one observable evidence item. Do not invent evidence.
+Assess progress against the Goal's actual completion criteria: reports written, files created,
+messages sent and Task success are activities, not proof that the intended outcome changed.
+Preserve unresolved criteria even when the latest cycle produced polished content. Do not
+request more content or another cycle merely to appear productive when the criteria are met.
 
 Return semantic HTML fragments (paragraphs, headings, lists, tables, code and links), never Markdown. Images, scripts, arbitrary styles and external image URLs are forbidden.
 The tracking_content is the Goal's single shared source of truth. Return the entire document, not
@@ -577,12 +582,8 @@ async def _cycle_task_objective(goal: Goal, sequence: int) -> str:
         ),
         _referrer_context(goal),
         f"CYCLE:\n{sequence}",
-        (
-            "Perform useful work now and advance the Goal materially. Use the available tools "
-            "when appropriate. Do not stop at merely proposing what a later cycle could do. "
-            "Treat the durable tracking above as the shared source of truth. Explicitly identify "
-            "new facts, corrections, completed work, evidence, blockers, and remaining issues so "
-            "the post-cycle tracking step can update the full HTML document accurately."
+        goal_cycle_work_instructions(
+            goal.referrer_type.value if goal.referrer_type is not None else None
         ),
     ]
     return "\n\n".join(sections)

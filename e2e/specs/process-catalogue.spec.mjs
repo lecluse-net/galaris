@@ -27,6 +27,24 @@ test('the process catalogue loads summaries and opens its editor with the real A
     expect(launched.ok(), await launched.text()).toBeTruthy()
     runIds.push((await launched.json()).run_id)
   }
+  const checkRunSummaries = async () => {
+    const response = await request.get(`/api/processes/runs?process_id=${definition.id}&page_size=500`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+    expect(response.ok(), await response.text()).toBeTruthy()
+    const summaries = await response.json()
+    expect(summaries.total).toBe(runIds.length)
+    expect(summaries.items.map(run => run.id).sort()).toEqual([...runIds].sort())
+    for (const run of summaries.items) {
+      expect(run.process_label).toBe('Synthetic catalogue process')
+      expect(run.workflow_id).toBe(definition.code)
+      expect(run.launcher_agent_id).toBe(fixture.agent_id)
+      expect(run.fresh).toBe(true)
+      expect(run).not.toHaveProperty('execution_state')
+      expect(run).not.toHaveProperty('raw_snapshot')
+    }
+  }
+  await checkRunSummaries()
   const fullAgentReads = []
   page.on('request', request => { if (new URL(request.url()).pathname === '/api/agents') fullAgentReads.push(request.method()) })
   const selected = page.waitForResponse(response => new URL(response.url()).pathname === '/api/agents/selection')
@@ -60,10 +78,21 @@ test('the process catalogue loads summaries and opens its editor with the real A
   await expect(page.getByLabel(/^(Runs|Exécutions): Synthetic catalogue process$/, { exact: true })).toHaveAttribute('aria-expanded', 'true')
   for (const id of runIds) await expect(page.locator('.native-runs-table').getByRole('link', { name: new RegExp(id) })).toBeVisible()
 
+  await checkRunSummaries()
   const headers = { Authorization: `Bearer ${session.access_token}` }
-  const tools = await (await request.get('/api/processes/tools', { headers })).json()
+  const toolsResponse = await request.get('/api/processes/tools', { headers })
+  expect(toolsResponse.ok(), await toolsResponse.text()).toBeTruthy()
+  const tools = await toolsResponse.json()
+  let externalTool = tools.find(tool => tool.code === 'n8n')
+  if (!externalTool) {
+    const toolResponse = await request.post('/api/tools', { headers, data: {
+      code: 'n8n', label: 'Synthetic external engine',
+    } })
+    expect(toolResponse.ok(), await toolResponse.text()).toBeTruthy()
+    externalTool = await toolResponse.json()
+  }
   const externalResponse = await request.post('/api/processes/definitions', { headers, data: {
-    agent_id: fixture.agent_id, tool_id: tools.find(tool => tool.code === 'n8n').id,
+    agent_id: fixture.agent_id, tool_id: externalTool.id,
     engine_process_id: 'synthetic-external-catalogue', label: 'Synthetic external catalogue process', description: 'Synthetic original description',
   } })
   expect(externalResponse.ok(), await externalResponse.text()).toBeTruthy()

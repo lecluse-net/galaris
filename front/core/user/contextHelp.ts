@@ -1,5 +1,5 @@
 import { provide } from 'vue'
-import { contextHelpKey } from '@/core/util'
+import { contextHelpKey } from '@/core/util/facade'
 import { useHelpStore } from './stores/helpStore'
 
 export function provideContextHelp(): void {

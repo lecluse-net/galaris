@@ -196,9 +196,13 @@ async def test_crud_journey_preserves_html_code_and_default_delegation(db, admin
 
 
 @pytest.mark.asyncio
-async def test_real_connection_target_and_system_or_delegation_protections(db, admin_fixture):
+async def test_real_connection_target_and_system_or_delegation_protections(db, admin_fixture, admin_subject):
     caller, _, _, outsider, _, _, _ = admin_fixture
     ctx = mcp_loader.McpToolContext(caller.id, "internal")
+    catalogue = await connections_mcp.agent_tool_list(ctx, admin_subject.id, search="browser", limit=500)
+    assert any(item["code"] == "browser" for item in catalogue["items"])
+    with pytest.raises(PermissionError):
+        await connections_mcp.agent_tool_list(ctx, outsider.id)
     await mandatory_tools.sync_integrated_tool_connections(outsider.id)
     outsider_connection = await db.scalar(select(Connection).where(Connection.agent_id == outsider.id))
     await db.commit()
@@ -211,7 +215,7 @@ async def test_real_connection_target_and_system_or_delegation_protections(db, a
 
 
 @pytest.mark.asyncio
-async def test_catalogue_respects_scope_privileges_and_live_revocation(db, admin_fixture):
+async def test_catalogue_respects_scope_privileges_and_live_revocation(db, admin_fixture, admin_subject):
     caller, owner, _, _, _, role, connection = admin_fixture
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(caller.id, runtime="internal")
     names = {d.name for d in definitions}
@@ -231,6 +235,8 @@ async def test_catalogue_respects_scope_privileges_and_live_revocation(db, admin
     await db.refresh(connection)
     assert not connection.active
     assert not any(d.tool_code == "agent_admin" for d in await mcp_loader.list_enabled_native_mcp_definitions(caller.id, runtime="internal"))
+    with pytest.raises(PermissionError):
+        await connections_mcp.agent_tool_list(mcp_loader.McpToolContext(caller.id, "internal"), admin_subject.id)
 
 
 @pytest.mark.asyncio

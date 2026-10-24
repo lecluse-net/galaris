@@ -2,8 +2,20 @@ import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 
-test('activity and topic references persist as compact cards and open modals after reloading a document', async ({ page, request, context }) => {
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+test('activity and topic references persist as compact cards and open modals after reloading a document', async ({ page, request, context, browserName }) => {
+  if (browserName === 'chromium') await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  else {
+    let clipboardText = ''
+    await context.exposeBinding('__fixtureClipboardWrite', (_source, text) => { clipboardText = text })
+    await context.exposeBinding('__fixtureClipboardRead', () => clipboardText)
+    await page.addInitScript(() => {
+      // Firefox/WebKit do not expose Chromium's clipboard permissions. Replace
+      // only the OS boundary; the copy action and Paste menu stay real.
+      Object.defineProperty(navigator, 'clipboard', { value: {
+        writeText: value => window.__fixtureClipboardWrite(value), readText: () => window.__fixtureClipboardRead(),
+      } })
+    })
+  }
   const errors = collectPageErrors(page)
   const fixture = await (await request.post('/api/__test/seed')).json()
   await page.goto('/user/login')
@@ -24,6 +36,10 @@ test('activity and topic references persist as compact cards and open modals aft
     payload: { text: '<p>Preserve authored content</p>' },
   } }))
   await errors.settle()
+  await page.goto(`/task?task_id=${task.id}`)
+  await expect(page.getByRole('dialog').locator('.task-detail')).toContainText('Full objective kept outside the card')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.goto('/task?tab=tasks')
   const row = page.locator('.active-task-row').filter({ hasText: task.label })
   await expect(row).toBeVisible()
@@ -33,12 +49,18 @@ test('activity and topic references persist as compact cards and open modals aft
   await page.goto(`/documents?document_id=${document.id}`)
   const editor = page.locator('[data-editor-surface]')
   await expect(editor).toContainText('Preserve authored content')
-  await editor.click(); await page.keyboard.press('Control+End'); await page.keyboard.press('Enter'); await page.keyboard.press('Control+v')
+  await editor.click(); await page.keyboard.press('Control+End'); await page.keyboard.press('Enter')
+  if (browserName === 'chromium') await page.keyboard.press('Control+v')
+  else {
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`galaris://task/${task.id}`)
+    await editor.locator('p').last().click({ button: 'right' })
+    await page.getByRole('menuitem', { name: /^(Paste|Coller)$/, exact: true }).click()
+  }
   await expect(editor.locator('a')).toHaveText(task.label)
-  await editor.locator('a').click()
+  await editor.locator('a').click({ button: 'right' })
   const save = () => page.waitForResponse(response => new URL(response.url()).pathname === `/api/documents/${document.id}` && response.request().method() === 'PATCH')
   const cardSaved = save()
-  await page.getByRole('button', { name: /^(Show card|Afficher une carte)$/ }).click()
+  await page.getByRole('menuitem', { name: /^(Show card|Afficher une carte)$/ }).click()
   const card = editor.locator('.galaris-link-card')
   await expect(card).toContainText(task.label)
   await expect(card).not.toContainText('Full objective')

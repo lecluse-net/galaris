@@ -6,6 +6,7 @@ from collections.abc import Collection
 from loguru import logger
 import yaml
 from sqlalchemy import select
+from sqlalchemy.orm import load_only
 
 from core.database import get_db
 from core.i18n import render_prompt, tr
@@ -655,9 +656,13 @@ async def get_tool_record_by_id(tool_id: int) -> Optional[ToolModel]:
     return await db.scalar(select(ToolModel).where(ToolModel.id == tool_id).execution_options(populate_existing=True))
 
 
-async def get_all_tool_records() -> List[ToolModel]:
+async def get_all_tool_records(*, summary_only: bool = False) -> List[ToolModel]:
+    """Read the catalogue; summary callers hydrate only their selected page later."""
     db = get_db()
-    result = await db.execute(select(ToolModel).order_by(ToolModel.code))
+    query = select(ToolModel).order_by(ToolModel.code)
+    if summary_only:
+        query = query.options(load_only(ToolModel.id, ToolModel.code, ToolModel.label, raiseload=True))
+    result = await db.execute(query)
     return list(result.scalars().all())
 
 

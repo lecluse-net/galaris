@@ -4,9 +4,10 @@ from typing import Any, cast
 from dataclasses import replace
 from .mechanism_registry import get_mechanism
 from app.agent import resolve_pipeline_policy
+from .executor_outcomes import outcome_checks, selected_call
 
 
-def check_output(mechanism: str, native: Any, output: Any) -> list[dict[str, Any]]:
+def check_output(mechanism: str, native: Any, output: Any, *, expected: object = None) -> list[dict[str, Any]]:
     checks: list[dict[str, Any]] = []
 
     def check(code: str, passed: bool, detail: str) -> None:
@@ -95,12 +96,18 @@ def check_output(mechanism: str, native: Any, output: Any) -> list[dict[str, Any
     elif mechanism.endswith("_executor"):
         results = output.get("tool_results", [])
         calls = output.get("tool_calls", [])
-        check("tool_evidence", len(calls) == len(results), "Every tool call has a recorded result")
+        check("tool_evidence", len(calls) == len(results) and all(
+            call.get("name") == result.get("name") and call.get("arguments") == result.get("arguments")
+            for call, result in zip(calls, results)), "Every tool call has its own matching recorded result")
         if mechanism == "task_executor":
             allowed = set(native.get("available_tools", []))
             check(
                 "allowed_task_tools",
-                all(call.get("arguments", {}).get("tool_name") in allowed for call in calls),
+                all(selected_call(call)[0] in allowed for call in calls),
                 "Requested Task tools belong to the supplied catalog",
             )
+        else:
+            check("allowed_foreground_tools", all(selected_call(call)[0] in set(native.get("available_tools", []))
+                  for call in calls), "Foreground calls belong to the supplied current inventory")
+        checks.extend(outcome_checks(output, expected))
     return checks
