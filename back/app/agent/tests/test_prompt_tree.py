@@ -41,7 +41,7 @@ def test_every_executor_prompt_is_a_json_tree_with_the_suffix_last() -> None:
         rendered = render_prompt_tree(tree)
         # Shared document guidance must reach every executor without a loaded skill
         # and with a custom personality. This checks delivery, not model compliance.
-        for policy_key in ("document-revision-policy", "dataset-consideration-policy"):
+        for policy_key in ("collaboration-evidence", "document-revision-policy", "dataset-consideration-policy"):
             policies = [
                 node for node in tree["children"] if node["key"] == policy_key
             ]
